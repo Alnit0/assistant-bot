@@ -1,0 +1,14 @@
+# Secrets
+.env
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Data and logs
+*.db
+*.sqlite
+*.sqlite3
+logs/
+*.log
