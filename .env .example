@@ -1,0 +1,5 @@
+DISCORD_TOKEN=your-discord-bot-token
+OWNER_ID=your-discord-user-id
+INBOX_CHANNEL_ID=your-inbox-channel-id
+ANTHROPIC_API_KEY=your-anthropic-api-key
+CLAUDE_MODEL=claude-haiku-4-5
