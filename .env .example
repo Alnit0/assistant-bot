@@ -1,5 +1,12 @@
 DISCORD_TOKEN=your-discord-bot-token
 OWNER_ID=your-discord-user-id
-INBOX_CHANNEL_ID=your-inbox-channel-id
 ANTHROPIC_API_KEY=your-anthropic-api-key
 CLAUDE_MODEL=claude-haiku-4-5
+
+# Channels
+INBOX_CHANNEL_ID=your-inbox-channel-id
+BOT_LOG_CHANNEL_ID=your-bot-log-channel-id
+REMINDERS_CHANNEL_ID=your-reminders-channel-id
+GYM_CHANNEL_ID=your-gym-channel-id
+ADMIN_CHANNEL_ID=your-admin-channel-id
+DOCUMENTS_CHANNEL_ID=your-documents-channel-id
