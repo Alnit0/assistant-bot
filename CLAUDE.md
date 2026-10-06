@@ -34,8 +34,9 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   - `builtin/`: the first skill (ping, reset, buttons, stats, help). `help` lists
     the commands of every loaded skill
   - `lab/`: test bench for Discord features behind `/lab` slash commands
-    (owner only). The one skill allowed to use discord.py directly. See "Lab
-    commands" in `docs/DEVELOPMENT.md`
+    (owner only), plus an "Archive message" context menu and 📦 reaction. The
+    one skill allowed to use discord.py directly. See "Lab commands" in
+    `docs/DEVELOPMENT.md`
   - Hooks wired so far: `commands`, `migrations`, `jobs`, `reactions`,
     `app_commands` (slash commands and context menus), `events` and `startup`.
     `tools()` is declared but nothing calls it yet

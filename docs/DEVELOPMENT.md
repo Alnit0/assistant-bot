@@ -111,6 +111,8 @@ of `ENABLED_SKILLS`; the slash commands disappear at the next start.
 | `/lab react` | Posts a message with 📌 ⭐ 🔁 🗑️. React on it; after 15 quiet seconds it shows the final state and a timeline, then adds ✅ |
 | `/lab buttons` | A counter, toggles, single and multi selects, a modal form, an ephemeral reply and a link button; plus persistent buttons that still work after a restart |
 | `/lab pin [action:]` | `start` pins a status message that updates every minute (and resumes after a restart); `stop` unpins it. Pin changes anywhere are logged to #bot-log |
+| `/lab chart [renderer:] [days:]` | Messages per day and cost per day as two charts, drawn by QuickChart (a web service) or matplotlib (on the server) |
+| Archive | Right-click a message > Apps > **Archive message**, or react with 📦. Copies it to the archive channel under the author's name and avatar, with attachments, the original time and a link to where it was, then deletes the original |
 | `/lab notify mode:` | A normal, silent, @mention or direct message |
 | `/lab time` | Every dynamic timestamp style |
 | `/lab thread` | A message with a thread started on it |
@@ -136,6 +138,16 @@ Polls, Manage Messages, Pin Messages, Manage Webhooks.
 - **"The lab isn't for you":** your Discord ID isn't `OWNER_ID`.
 - **`/lab countdown step:1`** is the easy way to see rate limiting: watch
   for "🚦 Rate limited" cards and the slow-edit count in the summary.
+- **Archive does nothing or complains:** `ARCHIVE_CHANNEL_ID` must be set in
+  `.env`, and the bot needs Manage Webhooks in the archive channel and
+  Manage Messages where the original is. The original is only deleted after
+  the copy has been posted; if anything fails it stays where it is. A failed
+  📦 leaves a note in the channel for 20 seconds.
+- **Archiving has no "are you sure?":** choosing the menu item or adding 📦
+  is the confirmation. Only the owner's 📦 counts.
+- **QuickChart fails:** it is a third-party web service
+  (`quickchart.io`). It is sent dates, daily counts and daily cost only,
+  never message text. Use `renderer: matplotlib` if it is down.
 - **`/lab react` message never updates:** it only watches messages posted
   since the bot last started, and only counts the owner's reactions.
 - **The interactive `/lab buttons` message says "interaction failed":** it

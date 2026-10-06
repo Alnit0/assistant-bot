@@ -66,3 +66,11 @@ A short log of key decisions and why. Newest at the bottom.
 - **One global debouncer per use, not one timer per message:** matches how
   reactions come in (a burst across several messages) and lets the handler
   see the whole burst at once. The delay is set where it is created.
+- **Archiving reposts through a webhook, then deletes:** a webhook is the
+  only way to show the original author's name and avatar. The gesture (menu
+  item or 📦 from the owner) counts as the confirmation for the delete, and
+  the delete only happens once the copy, with every attachment, is posted.
+- **Two chart renderers kept side by side in the lab:** QuickChart needs no
+  heavy dependency but sends the numbers to a third party and can be down;
+  matplotlib is local and private but large. Pick one when a real skill
+  needs charts. Two measures get two charts, never one chart with two axes.
