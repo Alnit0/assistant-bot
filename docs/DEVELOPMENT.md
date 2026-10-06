@@ -612,7 +612,7 @@ One bot shows as **two** `python.exe` lines with the same start time: the
 
 ```powershell
 pip install -r requirements-dev.txt   # once: adds pytest
-python -m pytest                      # everything
+python -m pytest -q                   # everything (the routine run)
 python -m pytest tests/test_router.py # one file
 python -m pytest -k archive           # tests with "archive" in the name
 ```
