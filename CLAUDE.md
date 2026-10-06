@@ -22,6 +22,8 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   - `permissions.py`: `is_allowed(user, action)`, the one permission check
   - `backup.py`: nightly database backup and pre-migration snapshots
   - `scheduler.py`: small in-memory scheduler for daily jobs (to be expanded)
+  - `debounce.py`: `Debouncer(delay, callback)`, one global quiet-period timer
+    that hands over all collected events together
   - `llm.py`: Claude client, system prompt, conversation history, cost estimates
   - `discord_utils.py`: #bot-log embeds, `split_message`, `truncate`
 - `skills/` package (stage 3; see "How to add a skill" in `docs/DEVELOPMENT.md`):
@@ -31,8 +33,14 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
     startup, dispatches commands and checks `is_allowed` for each
   - `builtin/`: the first skill (ping, reset, buttons, stats, help). `help` lists
     the commands of every loaded skill
-  - Wired so far: commands, migrations and jobs. `tools()` and `reactions()` are
-    declared but nothing calls them yet
+  - `lab/`: test bench for Discord features behind `/lab` slash commands
+    (owner only). The one skill allowed to use discord.py directly. See "Lab
+    commands" in `docs/DEVELOPMENT.md`
+  - Hooks wired so far: `commands`, `migrations`, `jobs`, `reactions`,
+    `app_commands` (slash commands and context menus), `events` and `startup`.
+    `tools()` is declared but nothing calls it yet
+  - Slash commands live in an `app_commands.CommandTree` in `main.py` and are
+    synced at startup to the server the inbox channel is in
   - Commands match the whole message exactly; anything else goes to Claude
   - `ENABLED_SKILLS` in `.env` picks which skills load (empty = all). A skill that
     fails to load is skipped and reported at startup, not fatal
@@ -54,8 +62,9 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   (`assistant-*.db`). `pre-migration-*.db` snapshots are never auto-deleted
 - Permissions: only the owner (`OWNER_ID`, role `owner`) is allowed anything.
   Check with `is_allowed`, never by comparing against `OWNER_ID`
-- Discord channels: #inbox (main), #bot-log (activity cards), plus reserved
-  channels for future skills (#reminders, #gym, #admin, #documents)
+- Discord channels: #inbox (main), #bot-log (activity cards), #archive
+  (`ARCHIVE_CHANNEL_ID`, optional), plus reserved channels for future skills
+  (#reminders, #gym, #admin, #documents)
 
 ## Planned architecture
 

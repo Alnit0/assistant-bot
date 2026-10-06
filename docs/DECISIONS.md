@@ -56,3 +56,13 @@ A short log of key decisions and why. Newest at the bottom.
   the confirmations work.
 - **Commands match the whole message exactly, for now:** keeps "ping me
   tomorrow" going to Claude. Arguments wait for the tool-calling stage.
+- **Slash commands synced to one server, found from the inbox channel:**
+  server commands update instantly (global ones can take an hour) and no
+  extra setting is needed. Each start replaces the full list, so a disabled
+  skill's commands disappear.
+- **The lab skill may use discord.py directly:** its job is to try out what
+  Discord can do before the gateway layer is designed, so hiding Discord
+  from it would defeat the point. Real skills still go through the context.
+- **One global debouncer per use, not one timer per message:** matches how
+  reactions come in (a burst across several messages) and lets the handler
+  see the whole burst at once. The delay is set where it is created.

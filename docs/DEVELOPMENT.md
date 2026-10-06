@@ -30,12 +30,14 @@ automatically in new terminals. Check the prompt starts with `(.venv)`.
   - `users.py`, `permissions.py`: users and the `is_allowed` check
   - `context.py`: the `Context` object handed to skills
   - `backup.py`, `scheduler.py`: nightly backup and daily jobs
+  - `debounce.py`: waits for a quiet period, then handles events together
   - `llm.py`: Claude client, system prompt, history, cost estimates
   - `discord_utils.py`: #bot-log embeds and message helpers
 - `skills/`: one folder per feature
   - `base.py`: the `Skill` base class
   - `registry.py`: finds, loads and dispatches to skills
   - `builtin/`: ping, reset, buttons, stats, help
+  - `lab/`: `/lab` slash commands for trying out Discord features
 
 Always run `main.py` (not the files in `core/` or `skills/`). Paths are
 worked out from the project root, so it runs correctly from any working
@@ -85,12 +87,52 @@ Things to know:
   `await ctx.db.run(func)`, where `func(conn)` does the SQLite work; it runs
   in a worker thread so the bot is never blocked.
 - **Scheduled jobs:** return `DailyJob(name, at, func)` items from `jobs()`.
-- **`tools()` and `reactions()`** exist on the base class but are not used
-  yet.
+- **Reactions:** return `Reaction(emoji, handler)` items from `reactions()`.
+  The handler runs when an allowed user adds that emoji to any message.
+- **Slash commands:** return `app_commands.Group` or context menu objects
+  from `app_commands()`. They are synced to our server at startup.
+- **Other Discord events:** return `{"raw_reaction_add": handler, ...}` from
+  `events()`. `startup(client)` runs once when the bot is connected.
+- **`tools()`** exists on the base class but is not used yet.
 - **Turning skills on and off:** `ENABLED_SKILLS=builtin,greeter` in `.env`.
   Leave it empty to load everything. A disabled skill keeps its data.
 - A command name can only belong to one skill; the second one to claim it
   is skipped and reported at startup.
+
+## Lab commands
+
+`skills/lab/` is a test bench for Discord features. Everything is under the
+`/lab` slash command, only works for the owner, and is logged to
+`message_log` (kind `lab`) and #bot-log. To switch it off, leave `lab` out
+of `ENABLED_SKILLS`; the slash commands disappear at the next start.
+
+| Command | What it shows |
+|---|---|
+| `/lab notify mode:` | A normal, silent, @mention or direct message |
+| `/lab time` | Every dynamic timestamp style |
+| `/lab thread` | A message with a thread started on it |
+| `/lab poll [multiple:]` | A native poll that runs for an hour |
+| `/lab file [days:]` | Daily stats from `message_log` as a CSV file |
+| `/lab format` | Markdown, spoilers, ANSI colours, long message splitting |
+| `/lab layout` | Components v2 (containers, sections, thumbnails) |
+| `/lab countdown [seconds:] [step:]` | A self-editing message; reports rate limits |
+
+Slash commands are synced to the server the inbox channel is in, every time
+the bot starts. The "🟢 Bot started" card shows how many were synced.
+
+**Permissions the bot's role needs** (a missing one gives a message, not a
+crash): Send Messages, Embed Links, Attach Files, Read Message History,
+Add Reactions, Create Public Threads, Send Messages in Threads, Create
+Polls, Manage Messages, Pin Messages, Manage Webhooks.
+
+**Troubleshooting:**
+
+- **`/lab` doesn't appear:** check the "Slash commands" line on the start
+  card. If the sync failed with "Missing Access", re-invite the bot with the
+  `applications.commands` scope. Restarting Discord refreshes its list.
+- **"The lab isn't for you":** your Discord ID isn't `OWNER_ID`.
+- **`/lab countdown step:1`** is the easy way to see rate limiting: watch
+  for "🚦 Rate limited" cards and the slow-edit count in the summary.
 
 ## Day-to-day workflow
 

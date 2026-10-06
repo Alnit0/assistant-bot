@@ -3,6 +3,7 @@ import time
 
 import anthropic
 import discord
+from discord import app_commands
 
 from core import scheduler
 from core.backup import run_nightly_backup
@@ -43,6 +44,10 @@ intents.message_content = True
 client = discord.Client(intents=intents)
 bind_client(client)
 
+# Slash commands and context menus from skills, synced to our server at startup
+tree = app_commands.CommandTree(client)
+slash_status = "not set up yet"
+
 # Running totals since the bot started
 session_stats = {"messages": 0, "cost": 0.0}
 
@@ -50,12 +55,58 @@ scheduler.add_daily_job("nightly backup", BACKUP_TIME, run_nightly_backup)
 
 
 # ---------------------------------------------------------------------------
+# Slash commands
+# ---------------------------------------------------------------------------
+async def setup_slash_commands() -> str:
+    """Register skills' slash commands with our server. Returns a line for the start card."""
+    channel = client.get_channel(INBOX_CHANNEL_ID)
+    if channel is None:
+        return "not synced (inbox channel not found)"
+    guild = channel.guild
+
+    for command in registry.app_commands():
+        tree.add_command(command, guild=guild)
+    try:
+        # Replaces whatever was there before, so commands of disabled skills disappear
+        synced = await tree.sync(guild=guild)
+    except discord.HTTPException as error:
+        log.exception("Could not sync slash commands")
+        await log_error("Slash command sync failed", str(error))
+        return "sync failed (see the error card)"
+    log.info("Slash commands synced to %s: %s", guild.name, len(synced))
+    return f"{len(synced)} synced to {guild.name}"
+
+
+@tree.error
+async def on_app_command_error(
+    interaction: discord.Interaction, error: app_commands.AppCommandError
+):
+    # A failed check has already told the user why
+    if isinstance(error, app_commands.CheckFailure):
+        return
+    command = interaction.command.qualified_name if interaction.command else "unknown"
+    log.error("Slash command failed: %s", command, exc_info=error)
+    # Skills get first go at explaining what went wrong
+    await registry.emit("app_command_error", interaction, error)
+    if not interaction.response.is_done():
+        await interaction.response.send_message(
+            "⚠️ Command failed. Check #bot-log.", ephemeral=True
+        )
+
+
+# ---------------------------------------------------------------------------
 # Discord events
 # ---------------------------------------------------------------------------
 @client.event
 async def on_ready():
+    global slash_status
     log.info("Logged in as %s (id %s)", client.user, client.user.id)
     scheduler.start()
+
+    # on_ready fires again after a reconnect; only set up once
+    if slash_status == "not set up yet":
+        slash_status = await setup_slash_commands()
+        await registry.startup(client)
 
     channel = client.get_channel(INBOX_CHANNEL_ID)
     if channel:
@@ -68,6 +119,7 @@ async def on_ready():
     embed.add_field(name="History limit", value=f"{MAX_HISTORY} messages", inline=True)
     embed.add_field(name="Database", value=DB_PATH.name, inline=True)
     embed.add_field(name="Skills", value=truncate(registry.summary()), inline=False)
+    embed.add_field(name="Slash commands", value=truncate(slash_status), inline=False)
     if registry.problems():
         embed.add_field(
             name="⚠️ Skipped", value=truncate("\n".join(registry.problems())), inline=False
@@ -168,6 +220,32 @@ async def on_message(message: discord.Message):
         inline=True,
     )
     await send_log(embed)
+
+
+@client.event
+async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
+    # The bot's own reactions are never input
+    if payload.user_id == client.user.id:
+        return
+    await registry.emit("raw_reaction_add", payload)
+    await registry.dispatch_reaction(payload)
+
+
+@client.event
+async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent):
+    if payload.user_id == client.user.id:
+        return
+    await registry.emit("raw_reaction_remove", payload)
+
+
+@client.event
+async def on_guild_channel_pins_update(channel, last_pin):
+    await registry.emit("guild_channel_pins_update", channel, last_pin)
+
+
+@client.event
+async def on_app_command_completion(interaction: discord.Interaction, command):
+    await registry.emit("app_command_completion", interaction, command)
 
 
 # ---------------------------------------------------------------------------

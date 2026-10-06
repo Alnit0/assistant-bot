@@ -27,6 +27,7 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 OWNER_ID = os.getenv("OWNER_ID")
 INBOX_CHANNEL_ID = os.getenv("INBOX_CHANNEL_ID")
 BOT_LOG_CHANNEL_ID = os.getenv("BOT_LOG_CHANNEL_ID")
+ARCHIVE_CHANNEL_ID = os.getenv("ARCHIVE_CHANNEL_ID")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-haiku-4-5")
 
@@ -46,6 +47,7 @@ if missing:
 OWNER_ID = int(OWNER_ID)
 INBOX_CHANNEL_ID = int(INBOX_CHANNEL_ID)
 BOT_LOG_CHANNEL_ID = int(BOT_LOG_CHANNEL_ID) if BOT_LOG_CHANNEL_ID else None
+ARCHIVE_CHANNEL_ID = int(ARCHIVE_CHANNEL_ID) if ARCHIVE_CHANNEL_ID else None
 
 # Skills to load: comma-separated names in .env, or None (empty or missing) for all
 ENABLED_SKILLS = [

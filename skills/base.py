@@ -2,8 +2,11 @@ import sqlite3
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
+import discord
+
 from core.context import Context
 from core.scheduler import DailyJob
+from core.users import User
 
 
 @dataclass(frozen=True)
@@ -29,10 +32,15 @@ class Tool:
 
 @dataclass(frozen=True)
 class Reaction:
-    """An emoji reaction the skill responds to. Not used yet."""
+    """An emoji the skill responds to when an allowed user adds it to a message.
+
+    The handler gets Discord's reaction payload and the user who reacted. As
+    with commands, what it returns is recorded as the reply in message_log and
+    #bot-log.
+    """
 
     emoji: str
-    handler: Callable[..., Awaitable[None]]
+    handler: Callable[[discord.RawReactionActionEvent, User], Awaitable[str | None]]
 
 
 class Skill:
@@ -67,3 +75,19 @@ class Skill:
     def reactions(self) -> list[Reaction]:
         """Emoji this skill responds to."""
         return []
+
+    def app_commands(self) -> list:
+        """Slash command groups and context menus, synced to our server at startup."""
+        return []
+
+    def events(self) -> dict[str, Callable[..., Awaitable[None]]]:
+        """Discord events this skill wants, by name without the "on_" prefix.
+
+        Available: raw_reaction_add, raw_reaction_remove, guild_channel_pins_update,
+        app_command_completion, app_command_error. The handler gets the same
+        arguments as discord.py's event.
+        """
+        return {}
+
+    async def startup(self, client: discord.Client) -> None:
+        """Runs once when the bot is connected and ready."""
