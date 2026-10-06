@@ -10,7 +10,15 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 
 ## Current state
 
-- Single file: `bot.py` (planned refactor into `core/` and `skills/`)
+- Entry point: `main.py` (creates the Discord client, wires events, starts the bot)
+- `core/` package (stage 1 of the refactor; `skills/` is still planned):
+  - `config.py`: paths, settings from `.env`, validation, constants, `now_nz()`
+  - `logging_setup.py`: terminal and rotating file logging
+  - `database.py`: SQLite setup and the `message_log` helpers
+  - `llm.py`: Claude client, system prompt, conversation history, cost estimates
+  - `discord_utils.py`: #bot-log embeds, `split_message`, `truncate`
+  - `views.py`: the `TestButtons` view
+  - `commands.py`: ping, reset, buttons, stats, help
 - Runs as a Windows service via NSSM, named `assistant-bot`
 - Logs: `logs/bot.log` (rotating), `logs/service-*.log` (service output)
 - Database: `data/assistant.db` (`message_log` table records every input)
