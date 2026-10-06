@@ -92,11 +92,34 @@ def _create_skill_migrations(conn: sqlite3.Connection) -> None:
     )
 
 
+def _create_scheduled_jobs(conn: sqlite3.Connection) -> None:
+    # Things to do at a moment in the future (see core/scheduler.py). Moments are UTC.
+    conn.execute(
+        """
+        CREATE TABLE scheduled_jobs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER REFERENCES users(id),
+            skill TEXT NOT NULL,
+            kind TEXT NOT NULL,
+            payload TEXT NOT NULL DEFAULT '{}',
+            due_at TEXT NOT NULL,
+            status TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            finished_at TEXT,
+            late_by_s REAL,
+            error TEXT
+        )
+        """
+    )
+    conn.execute("CREATE INDEX scheduled_jobs_due ON scheduled_jobs (status, due_at)")
+
+
 MIGRATIONS = [
     _create_message_log,
     _create_users,
     _add_user_id_to_message_log,
     _create_skill_migrations,
+    _create_scheduled_jobs,
 ]
 
 

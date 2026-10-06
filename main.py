@@ -6,10 +6,8 @@ import anthropic
 import discord
 from discord import app_commands
 
-from core import instance_lock, interactions, scheduler
-from core.backup import run_nightly_backup
+from core import backup, instance_lock, interactions, scheduler
 from core.config import (
-    BACKUP_TIME,
     CLAUDE_MODEL,
     DB_PATH,
     INBOX_CHANNEL_ID,
@@ -58,7 +56,7 @@ INTERACTION_GRACE = 2.0
 # Running totals since the bot started
 session_stats = {"messages": 0, "cost": 0.0}
 
-scheduler.add_daily_job("nightly backup", BACKUP_TIME, run_nightly_backup)
+scheduler.register_handler(backup.JOB_SKILL, backup.JOB_KIND, backup.nightly_backup_job)
 
 
 # ---------------------------------------------------------------------------
@@ -165,12 +163,14 @@ async def on_interaction(interaction: discord.Interaction):
 async def on_ready():
     global slash_status
     log.info("Logged in as %s (id %s)", client.user, client.user.id)
-    scheduler.start()
 
     # on_ready fires again after a reconnect; only set up once
     if slash_status == "not set up yet":
         slash_status = await setup_slash_commands()
         await registry.startup(client)
+        await backup.schedule_next_backup()
+    # After the skills are ready: jobs that came due while we were off run now
+    scheduler.start()
 
     channel = client.get_channel(INBOX_CHANNEL_ID)
     if channel:

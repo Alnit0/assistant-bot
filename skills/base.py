@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import discord
 
 from core.context import Context
-from core.scheduler import DailyJob
+from core.scheduler import Job
 from core.users import User
 
 # Values for `channels`: where a registration works
@@ -157,9 +157,15 @@ class Skill:
         """Claude tool definitions and their handlers."""
         return []
 
-    def jobs(self) -> list[DailyJob]:
-        """Scheduled jobs, registered with the core scheduler at startup."""
-        return []
+    def job_handlers(self) -> dict[str, Callable[[Job], Awaitable[None]]]:
+        """What to run when one of this skill's scheduled jobs comes due, by kind.
+
+        Book a job with `await scheduler.add_job(self.name, kind, due_at, payload,
+        user_id)` (core/scheduler.py). Jobs are stored, so they survive restarts;
+        one that came due while the bot was off runs at the next start with
+        `job.is_late` set.
+        """
+        return {}
 
     def migrations(self) -> list[Callable[[sqlite3.Connection], None]]:
         """This skill's database migrations, in order. Applied by the core at startup.

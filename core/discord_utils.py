@@ -43,7 +43,7 @@ def truncate(text: str, limit: int = EMBED_FIELD_LIMIT) -> str:
 
 async def send_log(embed: discord.Embed) -> None:
     """Post an embed to #bot-log, if configured. Never crashes the bot."""
-    if BOT_LOG_CHANNEL_ID is None:
+    if BOT_LOG_CHANNEL_ID is None or client is None:
         return
     channel = client.get_channel(BOT_LOG_CHANNEL_ID)
     if channel is None:

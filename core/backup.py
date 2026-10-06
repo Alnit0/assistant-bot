@@ -3,13 +3,18 @@ import logging
 import sqlite3
 from pathlib import Path
 
-from core.config import BACKUP_DIR, BACKUP_KEEP, now_nz
+from core import scheduler
+from core.config import BACKUP_DIR, BACKUP_KEEP, BACKUP_TIME, now_nz
 from core.database import connect
 from core.discord_utils import log_error, log_simple
 
 log = logging.getLogger("assistant")
 
 NIGHTLY_PREFIX = "assistant-"
+
+# How the nightly backup is known to the scheduler
+JOB_SKILL = "core"
+JOB_KIND = "nightly_backup"
 
 
 def _copy_database(target: Path) -> None:
@@ -60,3 +65,28 @@ async def run_nightly_backup() -> None:
     size_kb = path.stat().st_size / 1024
     log.info("Backup saved: %s (%.0f KB)", path.name, size_kb)
     await log_simple("💾 Backup saved", f"{path.name} ({size_kb:.0f} KB)")
+
+
+# ---------------------------------------------------------------------------
+# Scheduling: one job in the scheduler at a time, which books the next when it runs
+# ---------------------------------------------------------------------------
+async def schedule_next_backup() -> None:
+    """Make sure a nightly backup is booked, for the next BACKUP_TIME on the NZ clock."""
+    if await scheduler.pending_jobs(JOB_SKILL, JOB_KIND):
+        return
+    due_at = scheduler.next_run(BACKUP_TIME, now_nz())
+    await scheduler.add_job(JOB_SKILL, JOB_KIND, due_at)
+    log.info("Next nightly backup: %s", due_at.isoformat())
+
+
+async def nightly_backup_job(job: scheduler.Job) -> None:
+    """Scheduler handler: back up now, then book tomorrow's.
+
+    If the bot was off at backup time this runs late, at the next start.
+    """
+    if job.is_late:
+        log.info("Nightly backup is running %.0f minutes late", job.late_by / 60)
+    try:
+        await run_nightly_backup()
+    finally:
+        await schedule_next_backup()

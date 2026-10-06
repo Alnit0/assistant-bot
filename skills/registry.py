@@ -124,7 +124,7 @@ def load() -> None:
             keywords = skill.keywords()
             reply_actions = skill.reply_actions()
             reactions = skill.reactions()
-            jobs = skill.jobs()
+            job_handlers = skill.job_handlers()
             events = skill.events()
             slash_commands = skill.app_commands()
             skill.migrations()
@@ -149,8 +149,8 @@ def load() -> None:
                 _problem(f"{name}: reaction {reaction.emoji} already belongs to {_reactions[key][0].name}")
                 continue
             _reactions[key] = (skill, reaction)
-        for job in jobs:
-            scheduler.add_daily_job(job.name, job.at, job.func)
+        for kind, handler in job_handlers.items():
+            scheduler.register_handler(skill.name, kind, handler)
         for event, handler in events.items():
             _events.setdefault(event, []).append((skill, handler))
         _app_commands.extend(slash_commands)
