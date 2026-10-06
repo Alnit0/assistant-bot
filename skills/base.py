@@ -84,6 +84,13 @@ class ReplyAction:
     usage: str = ""
     exact: bool = False
     keep_command: bool = False  # leave the user's reply in place after it works
+    # A regular expression for replies that aren't fixed words, e.g. r"\+\s*(.+)" for
+    # "+10m". Its groups become ctx.args
+    pattern: str | None = None
+    # Say whether this reply is ours: `async (ctx) -> bool`, asked before anything is
+    # logged or done. Use ctx.reply_target_id. If it says no, the message is treated
+    # as if it weren't a reply action at all (so it can still reach Claude)
+    applies_to: Callable[[Context], Awaitable[bool]] | None = None
 
     def __post_init__(self):
         self.words = _as_list(self.words)
@@ -189,8 +196,9 @@ class Skill:
         app_command_completion, app_command_error. The handler gets the same
         arguments as discord.py's event.
 
-        Also "action_finished", which is ours rather than Discord's: sent after
-        every word, reply action, reaction and chat, with a registry.ActionResult.
+        Two are ours rather than Discord's: "action_finished", sent after every
+        word, reply action, reaction and chat with a registry.ActionResult; and
+        "pin_notice", sent with Discord's "X pinned a message" system message.
         """
         return {}
 

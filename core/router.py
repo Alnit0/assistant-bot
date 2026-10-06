@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -83,6 +84,16 @@ class _Route:
 class Router:
     def __init__(self):
         self._routes: list[_Route] = []
+        self._patterns: list[tuple[re.Pattern[str], Any]] = []
+
+    def add_pattern(self, pattern: str, entry: Any) -> None:
+        """Register a regular expression for inputs that aren't fixed words, e.g. "+10m".
+
+        It must match the whole (normalised) message. What its groups capture
+        becomes the arguments. Words are tried first, and patterns are never
+        matched by typo.
+        """
+        self._patterns.append((re.compile(pattern), entry))
 
     def owner(self, phrase: str) -> Any | None:
         """The entry already registered for this phrase, if any."""
@@ -107,6 +118,8 @@ class Router:
         typed = normalise(text)
         if not typed:
             return None
+        # Matching ignores case, but arguments keep theirs ("timer 5m Roast chicken")
+        original = text.strip().rstrip(".!?").split()
 
         exact_matches: list[_Route] = []
         typo_matches: list[_Route] = []
@@ -125,7 +138,7 @@ class Router:
         # The longest phrase wins: "lab chart" beats a "lab" that takes arguments
         if exact_matches:
             route = max(exact_matches, key=lambda r: len(r.words))
-            return Match(route.entry, " ".join(route.words), typed[len(route.words) :], False)
+            return Match(route.entry, " ".join(route.words), original[len(route.words) :], False)
 
         if typo_matches:
             longest = max(len(route.words) for route in typo_matches)
@@ -133,5 +146,13 @@ class Router:
             # Two different things it could have been: don't guess
             if len({id(route.entry) for route in candidates}) == 1:
                 route = candidates[0]
-                return Match(route.entry, " ".join(route.words), typed[longest:], True)
+                return Match(route.entry, " ".join(route.words), original[longest:], True)
+            return None
+
+        text = " ".join(typed)
+        for pattern, entry in self._patterns:
+            found = pattern.fullmatch(text)
+            if found is not None:
+                args = " ".join(group for group in found.groups() if group).split()
+                return Match(entry, text, args, False)
         return None

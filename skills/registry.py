@@ -85,6 +85,8 @@ def _register_words(router: Router, skill: Skill, kind: str, item) -> None:
             _problem(f"{skill.name}: {kind} `{word}` already belongs to {owner[0].name}")
             continue
         router.add(word, entry, takes_args=item.takes_args, exact=item.exact)
+    if getattr(item, "pattern", None):
+        router.add_pattern(item.pattern, entry)
 
 
 def load() -> None:
@@ -363,6 +365,9 @@ async def dispatch_reply_action(ctx: Context) -> bool:
     if not works_in(action, ctx.channel_id):
         return False
     ctx.args = match.args
+    if action.applies_to is not None and not await action.applies_to(ctx):
+        ctx.args = []
+        return False
 
     async def call():
         target = await ctx.fetch_reply_target()

@@ -55,6 +55,13 @@ class Context:
         """True if the input was sent as a reply to another message."""
         return self._message is not None and self._message.reference is not None
 
+    @property
+    def reply_target_id(self) -> int | None:
+        """The id of the message this input replied to, if it was a reply."""
+        if not self.is_reply:
+            return None
+        return self._message.reference.message_id
+
     async def reply(self, text: str, *, view: discord.ui.View | None = None):
         """Send text back to where the input came from. Returns the (last) sent message.
 

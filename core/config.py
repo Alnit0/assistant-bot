@@ -71,6 +71,9 @@ try:
 except ValueError:
     sys.exit("CONFIRMATION_SECONDS in .env must be a number of seconds, e.g. 5")
 
+# Pomodoro: start each phase by itself (true), or wait for Start to be pressed (false)
+POMO_AUTO_CONTINUE = (os.getenv("POMO_AUTO_CONTINUE") or "").strip().lower() in ("1", "true", "yes", "on")
+
 # Skills to load: comma-separated names in .env, or None (empty or missing) for all
 ENABLED_SKILLS = [
     name.strip().lower() for name in os.getenv("ENABLED_SKILLS", "").split(",") if name.strip()
