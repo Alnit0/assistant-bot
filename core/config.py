@@ -71,6 +71,12 @@ try:
 except ValueError:
     sys.exit("CONFIRMATION_SECONDS in .env must be a number of seconds, e.g. 5")
 
+# Quiet time before reactions are acted on. Removing a reaction within it cancels
+try:
+    REACTION_DEBOUNCE_SECONDS = float(os.getenv("REACTION_DEBOUNCE") or 30)
+except ValueError:
+    sys.exit("REACTION_DEBOUNCE in .env must be a number of seconds, e.g. 30")
+
 # Pomodoro: start each phase by itself (true), or wait for Start to be pressed (false)
 POMO_AUTO_CONTINUE = (os.getenv("POMO_AUTO_CONTINUE") or "").strip().lower() in ("1", "true", "yes", "on")
 
@@ -91,7 +97,6 @@ EMBED_FIELD_LIMIT = 1000  # Discord allows 1024 characters per embed field
 BUTTON_TIMEOUT = 300  # seconds before test buttons expire
 BACKUP_TIME = time(3, 0)  # nightly database backup, NZ local time
 BACKUP_KEEP = 7  # number of nightly backups to keep
-REACTION_DEBOUNCE_SECONDS = 15  # quiet time before reactions are acted on (the undo window)
 
 # Approximate prices in USD per million tokens: (input, output).
 # Check Anthropic's pricing page and update if they change.

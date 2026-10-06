@@ -180,9 +180,13 @@ async def restart(timer: store.Timer, seconds: float) -> None:
 
 
 async def dismiss(timer: store.Timer) -> str:
+    """The "done" alert has been acknowledged: clear it away, leaving the original as the record."""
+    if timer.status != store.FINISHED:
+        raise UserError(f"**{timer.label}** has no alert to acknowledge.")
     await delete_message(timer.channel_id, timer.notice_message_id)
     timer.status, timer.notice_message_id = store.DISMISSED, None
     await store.save_timer(timer)
+    await edit_message(timer.channel_id, timer.message_id, content=render_timer(timer))
     return f"👍 Dismissed: {timer.label}"
 
 

@@ -92,6 +92,11 @@ class Context:
         self.replies.append(text)
         await self._channel.send(text, delete_after=CONFIRMATION_SECONDS)
 
+    def shown(self, text: str) -> None:
+        """Record that the user has been shown something by other means (a question
+        with buttons, say), so no "Done" confirmation is added on top of it."""
+        self.replies.append(text)
+
     async def note(self, text: str) -> None:
         """Send a small aside that isn't part of the reply (not recorded in the log).
 

@@ -10,6 +10,7 @@ import skills
 from core import scheduler
 from core.config import CHANNELS, ENABLED_SKILLS, REACTION_DEBOUNCE_SECONDS
 from core.context import Context
+from core import database, discord_utils, reactions
 from core.database import log_received, log_result
 from core.debounce import Debouncer
 from core.discord_utils import log_error, log_simple
@@ -391,20 +392,57 @@ async def dispatch_reply_action(ctx: Context) -> bool:
 
 # ---------------------------------------------------------------------------
 # Dispatch: reactions, after a quiet period
+#
+# Every add and remove of a registered emoji restarts one shared timer. When
+# things go quiet we look at where each reaction ended up and compare it with
+# what is already applied (core/reactions.py): apply what is new, undo what
+# has been taken away. An applied action gets ✅ on the message; when the last
+# one on a message is undone, the ✅ goes too.
 # ---------------------------------------------------------------------------
+def _partial_message(channel_id: int, message_id: int):
+    client = discord_utils.client
+    channel = client.get_channel(channel_id) if client else None
+    return channel.get_partial_message(message_id) if channel is not None else None
+
+
+async def _mark(channel_id: int, message_id: int, emoji: str, add: bool = True) -> None:
+    """Add or remove one of the bot's own marker reactions (✅, ⚠️). Best effort."""
+    message = _partial_message(channel_id, message_id)
+    if message is None:
+        return
+    try:
+        if add:
+            await message.add_reaction(emoji)
+        else:
+            await message.remove_reaction(emoji, discord_utils.client.user)
+    except discord.HTTPException:
+        pass  # the message has gone, or we may not react here
+
+
 async def _reactions_quiet(events: list[tuple[discord.RawReactionActionEvent, bool]]) -> None:
-    """Things have gone quiet: act on the reactions that are still there."""
-    balance: dict[tuple[int, str, int], int] = {}
-    latest: dict[tuple[int, str, int], discord.RawReactionActionEvent] = {}
+    """Things have gone quiet: bring what is applied into line with the reactions that are there."""
+    changes: list[tuple[reactions.Key, bool]] = []
+    payloads: dict[reactions.Key, discord.RawReactionActionEvent] = {}
+    users: dict[reactions.Key, User] = {}
     for payload, added in events:
-        key = (payload.message_id, _emoji_key(payload.emoji), payload.user_id)
-        balance[key] = balance.get(key, 0) + (1 if added else -1)
-        if added:
-            latest[key] = payload
-    for key, total in balance.items():
-        # Added and then removed again cancels out: that is the undo
-        if total > 0:
-            await dispatch_reaction(latest[key])
+        entry = _reactions.get(_emoji_key(payload.emoji))
+        if entry is None or not works_in(entry[1], payload.channel_id):
+            continue
+        # Reactions from anyone who isn't allowed are ignored without comment
+        user = await get_user_by_discord_id(payload.user_id)
+        if not is_allowed(user, entry[1].permission):
+            continue
+        key = (payload.message_id, _emoji_key(payload.emoji), user.id)
+        changes.append((key, added))
+        payloads[key], users[key] = payload, user
+
+    final = reactions.final_states(changes)
+    applied = await database.run(reactions.db_applied, sorted({key[0] for key in final}))
+    to_apply, to_undo = reactions.plan_changes(final, applied)
+    for key in to_undo:
+        await _undo_reaction(key, payloads[key], users[key])
+    for key in to_apply:
+        await _apply_reaction(key, payloads[key], users[key])
 
 
 # One timer for all reactions: any change to a registered emoji restarts it
@@ -417,44 +455,79 @@ def reaction_changed(payload: discord.RawReactionActionEvent, added: bool) -> No
         _reaction_debouncer.trigger((payload, added))
 
 
-async def dispatch_reaction(payload: discord.RawReactionActionEvent) -> bool:
-    """Run the reaction handler for this emoji. Returns False if nobody handles it."""
-    entry = _reactions.get(_emoji_key(payload.emoji))
-    if entry is None:
-        return False
-    skill, reaction = entry
-    if not works_in(reaction, payload.channel_id):
-        return False
-
-    # Reactions from anyone who isn't allowed are ignored without comment
-    user = await get_user_by_discord_id(payload.user_id)
-    if not is_allowed(user, reaction.permission):
-        return False
-
+async def _apply_reaction(key: reactions.Key, payload: discord.RawReactionActionEvent, user: User) -> None:
+    skill, reaction = _reactions[key[1]]
     text = f"reaction: {reaction.emoji}"
     row_id = await log_received(
         text, "reaction", payload.message_id, payload.channel_id, user_id=user.id
     )
     try:
         reply = await reaction.handler(payload, user)
-    except UserError as error:
-        log.info("Reaction %s not done: %s", reaction.emoji, error)
-        await log_result(row_id, status="error", error=str(error))
-        await log_error(f"Reaction failed: {reaction.emoji}", str(error), text)
-        return True
     except Exception as error:
-        log.exception("Reaction failed: %s (%s)", reaction.emoji, skill.name)
-        await log_result(row_id, status="error", error=repr(error))
-        await log_error(f"Reaction failed: {reaction.emoji}", repr(error), text)
-        return True
+        # Flag the message itself; the details belong in #bot-log, not the channel
+        detail = str(error) if isinstance(error, UserError) else repr(error)
+        if isinstance(error, UserError):
+            log.info("Reaction %s not done: %s", reaction.emoji, error)
+        else:
+            log.exception("Reaction failed: %s (%s)", reaction.emoji, skill.name)
+        await log_result(row_id, status="error", error=detail)
+        await _mark(payload.channel_id, payload.message_id, reactions.FAILED_EMOJI)
+        await log_error(f"Reaction failed: {reaction.emoji}", detail, text)
+        await emit(
+            "action_finished",
+            ActionResult("reaction", reaction.emoji, "error", user.id, payload.channel_id),
+        )
+        return
 
     reply = reply or "done"
     await log_result(row_id, reply=reply, status="ok")
     await log_simple(f"{reaction.emoji} Reaction: {skill.name}", reply)
+    if not reaction.destructive:
+        # Remember it, so taking the reaction away later can undo it
+        await database.run(reactions.db_mark_applied, key, payload.channel_id)
+        await _mark(payload.channel_id, payload.message_id, reactions.FAILED_EMOJI, add=False)
+        await _mark(payload.channel_id, payload.message_id, reactions.DONE_EMOJI)
     await emit(
         "action_finished",
         ActionResult("reaction", reaction.emoji, "ok", user.id, payload.channel_id, reply=reply),
     )
+
+
+async def _undo_reaction(key: reactions.Key, payload: discord.RawReactionActionEvent, user: User) -> None:
+    skill, reaction = _reactions[key[1]]
+    text = f"reaction removed: {reaction.emoji}"
+    row_id = await log_received(
+        text, "reaction", payload.message_id, payload.channel_id, user_id=user.id
+    )
+    try:
+        reply = (await reaction.undo(payload, user) if reaction.undo is not None else None) or "undone"
+    except Exception as error:
+        detail = str(error) if isinstance(error, UserError) else repr(error)
+        log.exception("Undoing reaction %s failed (%s)", reaction.emoji, skill.name)
+        await log_result(row_id, status="error", error=detail)
+        await _mark(payload.channel_id, payload.message_id, reactions.FAILED_EMOJI)
+        await log_error(f"Undoing reaction failed: {reaction.emoji}", detail, text)
+        return
+
+    still_applied = await database.run(reactions.db_forget, key)
+    await log_result(row_id, reply=reply, status="ok")
+    await log_simple(f"{reaction.emoji} Reaction removed: {skill.name}", reply)
+    if still_applied == 0:
+        await _mark(payload.channel_id, payload.message_id, reactions.DONE_EMOJI, add=False)
+
+
+async def dispatch_reaction(payload: discord.RawReactionActionEvent) -> bool:
+    """Apply one reaction straight away, without the quiet period (used by tests and tools).
+
+    Returns False if the emoji isn't registered here or the user isn't allowed.
+    """
+    entry = _reactions.get(_emoji_key(payload.emoji))
+    if entry is None or not works_in(entry[1], payload.channel_id):
+        return False
+    user = await get_user_by_discord_id(payload.user_id)
+    if not is_allowed(user, entry[1].permission):
+        return False
+    await _apply_reaction((payload.message_id, _emoji_key(payload.emoji), user.id), payload, user)
     return True
 
 

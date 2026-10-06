@@ -114,12 +114,29 @@ def _create_scheduled_jobs(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX scheduled_jobs_due ON scheduled_jobs (status, due_at)")
 
 
+def _create_reaction_state(conn: sqlite3.Connection) -> None:
+    # Which reaction actions are currently applied, so removing the reaction can undo them
+    conn.execute(
+        """
+        CREATE TABLE reaction_state (
+            message_id INTEGER NOT NULL,
+            channel_id INTEGER NOT NULL,
+            emoji TEXT NOT NULL,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            applied_at TEXT NOT NULL,
+            PRIMARY KEY (message_id, emoji, user_id)
+        )
+        """
+    )
+
+
 MIGRATIONS = [
     _create_message_log,
     _create_users,
     _add_user_id_to_message_log,
     _create_skill_migrations,
     _create_scheduled_jobs,
+    _create_reaction_state,
 ]
 
 

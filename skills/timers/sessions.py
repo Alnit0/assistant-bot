@@ -67,6 +67,7 @@ def render_card(session: store.Session) -> str:
 
 
 BUTTONS = {
+    "ok": ("OK", "👍", discord.ButtonStyle.secondary),
     "pause": ("Pause", "⏸️", discord.ButtonStyle.secondary),
     "resume": ("Resume", "▶️", discord.ButtonStyle.success),
     "start": ("Start", "▶️", discord.ButtonStyle.success),
@@ -169,7 +170,9 @@ async def on_due(job: scheduler.Job) -> None:
     # After downtime nothing starts by itself: the user may not be there
     if session.auto_continue and not job.is_late:
         await _begin_phase(session)
-        await _notify(session, f"{headline} {upcoming} ({length}) has started, ends {stamp(session.ends_at)}.", ["skip"])
+        await _notify(
+            session, f"{headline} {upcoming} ({length}) has started, ends {stamp(session.ends_at)}.", ["ok", "skip"]
+        )
     else:
         session.state, session.ends_at = store.WAITING, None
         late = f"\n-# It ended {stamp(job.due_at)}, while I was offline." if job.is_late else ""
@@ -282,12 +285,28 @@ async def stop(session: store.Session) -> str:
     return f"⏹️ Stopped: {session.label}"
 
 
-ACTIONS = {"pause": pause, "resume": resume, "start": press_start, "skip": skip, "stop": stop}
+async def acknowledge(session: store.Session) -> str:
+    """The phase-change alert has been seen: clear it away. The card carries on as it is."""
+    if session.notice_message_id is None:
+        raise UserError("There is no alert to acknowledge.")
+    await _clear_notice(session)
+    await _changed(session)
+    return "👍 Noted"
+
+
+ACTIONS = {
+    "ok": acknowledge,
+    "pause": pause,
+    "resume": resume,
+    "start": press_start,
+    "skip": skip,
+    "stop": stop,
+}
 
 
 class SessionButton(
     discord.ui.DynamicItem[discord.ui.Button],
-    template=r"timers:p:(?P<id>\d+):(?P<action>pause|resume|start|skip|stop)",
+    template=r"timers:p:(?P<id>\d+):(?P<action>ok|pause|resume|start|skip|stop)",
 ):
     """A button on a session card or phase notice. Its id carries the session's id,
     so it works after a restart."""

@@ -3,7 +3,7 @@ import discord
 from core.context import Context
 from core.errors import UserError
 from skills.base import ANY, Keyword, ReplyAction, Skill
-from skills.timers import board, sessions, store, timers
+from skills.timers import sessions, store, timers
 from skills.timers.board import session_line, timer_line
 from skills.timers.common import PERMISSION
 from skills.timers.durations import DurationError, parse_duration
@@ -75,6 +75,14 @@ async def extend_reply(ctx: Context, target: discord.Message) -> None:
         raise UserError(f"{error} Try `+10m`.")
     module, record = await _target(target)
     await ctx.confirm(await module.extend(record, seconds))
+
+
+async def acknowledge_reply(ctx: Context, target: discord.Message) -> None:
+    """Reply "ok" to an alert (timer done, or a Pomodoro phase change) to clear it away."""
+    module, record = await _target(target)
+    if target.id != record.notice_message_id:
+        raise UserError("Reply to the alert itself to acknowledge it.")
+    await ctx.confirm(await (timers.dismiss(record) if module is timers else sessions.acknowledge(record)))
 
 
 class TimersSkill(Skill):
@@ -152,6 +160,14 @@ class TimersSkill(Skill):
                 applies_to=_is_ours,
             ),
             ReplyAction(
+                ["ok", "done", "dismiss", "got it"],
+                "acknowledge a timer or Pomodoro alert, which clears it away",
+                acknowledge_reply,
+                examples=["ok"],
+                permission=PERMISSION,
+                applies_to=_is_ours,
+            ),
+            ReplyAction(
                 ["extend", "add"],
                 "add time to that timer, or to the current Pomodoro phase",
                 extend_reply,
@@ -169,9 +185,6 @@ class TimersSkill(Skill):
             timers.JOB_KIND: timers.on_due,
             sessions.JOB_KIND: sessions.on_due,
         }
-
-    def events(self) -> dict:
-        return {"pin_notice": board.on_pin_notice}
 
     def migrations(self) -> list:
         return list(store.MIGRATIONS)

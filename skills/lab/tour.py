@@ -94,7 +94,7 @@ STEPS: tuple[Step, ...] = (
         "box",
         "📦 reaction archive",
         "Post another message and react to it with 📦. It should be archived after "
-        f"{REACTION_DEBOUNCE_SECONDS} seconds.",
+        f"{REACTION_DEBOUNCE_SECONDS:g} seconds.",
         (Check("box_archived", "📦 archived the message"),),
         auto_pass=True,
     ),

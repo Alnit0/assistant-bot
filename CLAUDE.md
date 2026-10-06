@@ -58,13 +58,24 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   - Keywords default to #inbox; reply actions and reactions to any channel.
     Chat with Claude only happens in #inbox
   - Reactions are acted on through one core `Debouncer` after
-    `REACTION_DEBOUNCE_SECONDS` (15) of quiet; removing the reaction in time
-    cancels it
+    `REACTION_DEBOUNCE` seconds of quiet (`.env`, default 30). The registry
+    compares where the owner's reactions ended up with what is applied
+    (`core/reactions.py`, table `reaction_state`): it applies new ones and
+    adds ✅, and runs `undo` and removes ✅ when one is taken away. A failure
+    adds ⚠️ with details in #bot-log. `destructive=True` reactions (📦, 🗑️)
+    leave nothing to mark or undo
+  - `core/protection.py` says whether a message is pinned or 📌-marked;
+    `core/confirmations.py` asks before acting on one (Confirm / Cancel,
+    two-minute timeout, held in memory)
+  - The core deletes every "pinned a message" notice (`main.py`)
   - `builtin/`: ping, reset (clear, clear chat, wipe), buttons, stats (stat),
     and `help [skill or word]`, which is generated from the registry at request
     time and filtered by enabled skills, channel and permission
-  - `archive/`: reply `archive` / `delete`, the 📦 reaction and the "Archive
-    message" context menu. Reposts through a webhook, then deletes
+  - `archive/`: reply `archive` / `delete`, the 📦 and 🗑️ reactions and the
+    "Archive message" context menu. Reposts through a webhook, then deletes;
+    every way in asks first if the message is protected. Archived copies
+    carry a persistent Restore button (`archive_items` table) that reposts
+    to the original channel and removes the copy
   - `lab/`: test bench for Discord features. Each command is one `run_*`
     function reached by a typed word (`lab chart`) and by `/lab chart`
     through the `Run` adapters in `skills/lab/common.py`. See "Lab commands"
@@ -120,7 +131,8 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 - Database: `data/assistant.db`
   - Tables: `users`, `message_log` (records every input, with a `user_id`),
     `skill_migrations`, and the lab skill's own `lab_state` (key/value),
-    `lab_tour_runs` and `lab_tour_results`, `scheduled_jobs`, and the timers
+    `lab_tour_runs` and `lab_tour_results`, `scheduled_jobs`, `reaction_state`,
+    the archive skill's `archive_items`, and the timers
     skill's `timers_timers`, `timers_pomodoros`, `timers_focus_log` and
     `timers_boards`
   - Schema version is `PRAGMA user_version`. To change the schema, append a
@@ -187,6 +199,12 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   `skills/timers/durations.py` and `pomodoro.py` do) and add tests with it.
   Tests use a temporary database and made-up settings, never the real ones
 
+- At the end of every task, finish with a suggested commit message in
+  a code block, ready to copy:
+  - Title: short, present tense, under 50 characters
+  - Body: 2 to 4 bullet points on what changed and why
+  Then the exact git commands to run. Do not commit unless asked.
+
 ## Interaction rules (apply to every skill)
 
 Input
@@ -234,3 +252,5 @@ Interactions
 - Acknowledge every interaction within 3 seconds (defer first if slow).
 - Persistent buttons use stable custom_ids and survive restarts.
 - Error handlers check whether the interaction was already answered.
+
+

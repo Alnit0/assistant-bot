@@ -12,7 +12,8 @@ from skills.lab.common import Run, SlashRun, lab, lab_keyword, record
 
 log = logging.getLogger("assistant")
 
-PRESETS = ["📌", "⭐", "🔁", "🗑️"]
+# Plain colours, so the test can never collide with an emoji that does something
+PRESETS = ["🔴", "🟢", "🔵", "🟡"]
 QUIET_SECONDS = 15  # how long reactions must stop for before the message is updated
 MAX_TIMELINE = 20  # most recent changes shown; a message only holds 2,000 characters
 

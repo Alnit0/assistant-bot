@@ -36,6 +36,9 @@ automatically in new terminals. Check the prompt starts with `(.venv)`.
   - `scheduler.py`: stored jobs that run at a moment in the future, with catch-up
   - `backup.py`: nightly backup (a scheduler job) and pre-migration snapshots
   - `debounce.py`: waits for a quiet period, then handles events together
+  - `reactions.py`: what to apply or undo once reactions have settled
+  - `protection.py`, `confirmations.py`: pinned and 📌-marked messages, and
+    asking before acting on them
   - `llm.py`: Claude client, system prompt, history, cost estimates
   - `discord_utils.py`: #bot-log embeds, message helpers, safe replies
 - `skills/`: one folder per feature
@@ -43,7 +46,8 @@ automatically in new terminals. Check the prompt starts with `(.venv)`.
   - `registry.py`: finds and loads skills, dispatches to them, and knows everything
     the bot can do (for `help` and for Claude)
   - `builtin/`: ping, reset, buttons, stats, help
-  - `archive/`: archive or delete a message (reply action, 📦 reaction, context menu)
+  - `archive/`: archive or delete a message (reply, 📦 / 🗑️ reaction, context
+    menu), with a Restore button on archived copies
   - `lab/`: `lab …` words for trying out Discord features
   - `timers/`: short timers and Pomodoro sessions
 - `tests/`: unit tests (`python -m unittest`)
@@ -61,7 +65,7 @@ the channel you are in; `help <skill or word>` gives details.
 |---|---|---|
 | **A word on its own** | `stats`, `clear chat`, `lab chart 30` | Mostly #inbox; `lab …` and `help` anywhere |
 | **Reply to a message with a word** | reply `archive` or `delete` | Anywhere |
-| **A reaction** | 📦 on a message | Anywhere |
+| **A reaction** | 📦 or 🗑️ on a message | Anywhere |
 | Slash command (fallback) | `/lab chart`, Apps > Archive message | Anywhere |
 
 - **The whole message must be the word or phrase.** `stats` runs stats;
@@ -81,8 +85,16 @@ the channel you are in; `help <skill or word>` gives details.
 - **When one fails, your message stays and gets a ⚠️ reaction.** Nothing is
   said in the channel; the reason (including "Usage: …" for a wrong
   argument) is on a card in #bot-log.
-- **Reactions wait 15 seconds** (`REACTION_DEBOUNCE_SECONDS` in
-  `core/config.py`). Remove the reaction before then and nothing happens.
+- **Reactions wait 30 seconds** (`REACTION_DEBOUNCE` in `.env`). The bot
+  then acts once, on where your reactions ended up: add one and remove it
+  in time and nothing happens. Only your reactions count.
+- **After a reaction is acted on** the message gets ✅, and taking your
+  reaction away later undoes it and removes the ✅. Archive and delete are
+  the exception: the message is gone, so they can only be cancelled within
+  the 30 seconds. If a reaction fails, the message gets ⚠️ and the reason is
+  in #bot-log.
+- **Reactions made while the bot is off are not seen.**
+- **"X pinned a message" notices are deleted** wherever they appear.
 - **Claude knows the list too.** The same list `help` shows is added to its
   instructions, so "what can you do?" gets an accurate answer. Claude can't
   run them itself; it tells you what to type.
@@ -181,6 +193,16 @@ Things to know:
   (`greeter_...`) and give every record a `user_id`. Query with
   `await ctx.db.run(func)`, where `func(conn)` does the SQLite work; it runs
   in a worker thread so the bot is never blocked.
+- **Reactions that can be undone:** give the `Reaction` an `undo` handler;
+  the core runs it when the user takes the reaction away, and looks after
+  the ✅ and ⚠️ markers and the record of what is applied
+  (`core/reactions.py`). Set `destructive=True` when the message won't
+  exist afterwards. Never post a note in the channel about a failure.
+- **Before archiving, deleting or clearing a message**, check
+  `core.protection.is_protected(message)` (pinned or 📌-marked) and, if so,
+  ask with `core.confirmations.ask(channel, user, question, on_confirm)`.
+  Call `ctx.shown(...)` so the core doesn't add a "Done" on top of the
+  question.
 - **Doing something later:** book a job with
   `await scheduler.add_job(self.name, "kind", due_at, payload, user_id)`
   (`core/scheduler.py`) and return `{"kind": handler}` from `job_handlers()`.
@@ -237,14 +259,31 @@ owner.
 |---|---|
 | Reply `archive` (or `box`, `file away`) | The message is copied to the archive channel under its author's name and avatar, with attachments, the original time and a link to where it was. Then the original and your reply are deleted, and "📦 Archived: link" shows for 5 seconds |
 | Reply `delete` (or `remove`) | The message and your reply are deleted for good, and "🗑️ Deleted" shows for 5 seconds. Must be spelled exactly |
-| React 📦 | Same as replying `archive`, after 15 seconds. Remove the 📦 in time to cancel |
+| React 📦 | Same as replying `archive`, after 30 seconds. Remove the 📦 in time to cancel |
+| React 🗑️ | Same as replying `delete`, after 30 seconds. Remove the 🗑️ in time to cancel |
 | Apps > **Archive message** | Same as replying `archive` (fallback) |
+| **Restore** button on an archived copy | Reposts the message to the channel it came from (author's name and avatar, attachments, original time), then removes the archived copy |
 
-- **There is no "are you sure?".** The word or the 📦 is the confirmation.
-  Archive only deletes the original after the copy, with every attachment,
-  has been posted; if anything fails it stays where it is, your reply gets
-  a ⚠️ reaction and the reason is in #bot-log. A failed 📦 leaves a note in
-  the channel for 20 seconds.
+- **Undoing.** A 📦 or 🗑️ can be taken back by removing the reaction within
+  the 30 seconds. After that an archived message comes back with its
+  **Restore** button, which keeps working after a restart. A deleted
+  message is gone.
+- **Pinned and 📌-marked messages are asked about first**, whichever way you
+  go about it: "⚠️ That message is pinned. Archive it anyway?" with
+  **Confirm** and **Cancel**. Anyone's 📌 counts. The question removes itself
+  if you cancel or don't answer within two minutes, and stops working if
+  the bot restarts while it is waiting.
+- **Otherwise there is no "are you sure?".** The word or the reaction is
+  the confirmation. Archive only deletes the original after the copy, with
+  every attachment, has been posted.
+- **When it fails** nothing is moved or deleted. A reply gets ⚠️ on your
+  reply; a reaction gets ⚠️ on the message itself. The reason is in
+  #bot-log, never in the channel.
+- **Restore without Manage Webhooks** in the original channel still works:
+  the bot posts the message itself, headed "**Name** wrote:".
+- **Where the Restore button sits:** on the archived copy if Discord accepts
+  a button on the webhook message; otherwise on a small bot message
+  directly beneath it.
 - **It refuses** messages already in the archive channel, messages in
   #bot-log, and (for archive) messages with nothing to copy or a file too
   big to re-upload.
@@ -274,7 +313,9 @@ number is minutes. From 5 seconds to 24 hours.
 **A timer** posts one message with a live "ends in…" time. Reply to it with
 `pause`, `resume`, `cancel` or `+10m` (also `+ 10 min`, `extend 10m`). When
 it finishes, that message is edited to say so and you are @mentioned in a
-new message with **+5 min**, **Restart** and **Dismiss**.
+new message with **+5 min**, **Restart** and **Dismiss**. Pressing any of
+them, or replying `ok` (or `done`, `dismiss`) to the alert, clears the alert
+away; the original message stays as the record.
 
 **A Pomodoro session** is one card, edited in place, showing the phase,
 round, label and a live time, with **Pause/Resume**, **Skip** and **Stop**.
@@ -282,6 +323,9 @@ round, label and a live time, with **Pause/Resume**, **Skip** and **Stop**.
 - **At each phase end** you are @mentioned with **Start** and **Skip**, and
   the next phase's clock only starts when you press **Start**. `pomo auto`
   (or `POMO_AUTO_CONTINUE=true` in `.env`) starts phases by themselves.
+- **Each alert is cleared once you respond to it:** Start, Skip, the **OK**
+  button on auto-mode alerts, or a reply of `ok` / `done`. Replying `ok`
+  only acknowledges; it doesn't start the phase.
 - **Skip** moves straight on to the next phase. A skipped focus round is
   not counted in the stats; only ones that run to the end are.
 - **One session at a time.** Stop the current one before starting another.
@@ -324,7 +368,7 @@ To switch it off, leave `lab` out of `ENABLED_SKILLS`.
 
 | Type | What it shows |
 |---|---|
-| `lab react` | Posts a message with 📌 ⭐ 🔁 🗑️. React on it; after 15 quiet seconds it shows the final state and a timeline, then adds ✅ |
+| `lab react` | Posts a message with 🔴 🟢 🔵 🟡 (plain colours, so they never trigger a real action). React on it; after 15 quiet seconds it shows the final state and a timeline, then adds ✅ |
 | `lab buttons` | A counter, toggles, single and multi selects, a modal form, an ephemeral reply and a link button; plus persistent buttons that still work after a restart |
 | `lab pin [start\|stop]` | Pins a status message that updates every minute (and resumes after a restart); `stop` unpins it. Pin changes anywhere are logged to #bot-log |
 | `lab chart [quickchart\|matplotlib] [days]` | Messages per day and cost per day as two charts, drawn by QuickChart (a web service) or matplotlib (on the server) |
@@ -360,7 +404,7 @@ and is edited in place as you go, with **Pass**, **Fail**, **Skip**,
 | 2. Buttons | `lab buttons`, then press Count, flip a toggle, use a select, submit the Form | all four have been used |
 | 3. Reactions and debounce | `lab react`, react, wait 15 seconds | the quiet period ends and the summary is posted |
 | 4. Reply "archive" | Reply `archive` to a message | the archive worked and your reply was cleaned up |
-| 5. 📦 reaction | React 📦 to a message | it is archived after the wait |
+| 5. 📦 reaction | React 📦 to a message | it is archived after the 30-second wait |
 | 6. Pinned dashboard | `lab pin`, watch a minute tick, `lab pin stop` | never: it ticks the boxes, you press **Pass** |
 | 7. Chart | `lab chart` | never: you judge whether it reads well |
 | 8. Claude chat and reset | Message Claude in #inbox, then `reset` | Claude answered and then memory was cleared |

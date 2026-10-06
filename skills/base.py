@@ -110,9 +110,17 @@ class ReplyAction:
 class Reaction:
     """An emoji the skill responds to when an allowed user adds it to a message.
 
-    Reactions are acted on after a short quiet period (see
-    REACTION_DEBOUNCE_SECONDS), so removing one in time cancels it. The handler
-    gets Discord's reaction payload and the user who reacted.
+    Reactions are acted on after a quiet period (REACTION_DEBOUNCE in .env), on
+    where the user's reactions ended up: adding one and removing it in time
+    does nothing. The handler gets Discord's reaction payload and the user.
+
+    Once applied, the message gets ✅, and taking the reaction away later runs
+    `undo` and removes the ✅. Set `destructive=True` for an action after which
+    the message no longer exists (archive, delete): there is nothing left to
+    mark or undo, so it can only be cancelled within the quiet period.
+
+    If the handler fails, the message gets ⚠️ and the details go to #bot-log.
+    Don't post notes in the channel about it.
     """
 
     emoji: str
@@ -121,6 +129,8 @@ class Reaction:
     examples: list[str] | tuple = ()
     channels: list[str] | str = ANY
     permission: str = ""  # defaults to "reaction:<emoji>"
+    undo: Callable[[discord.RawReactionActionEvent, User], Awaitable[str | None]] | None = None
+    destructive: bool = False
 
     def __post_init__(self):
         self.examples = list(self.examples)
@@ -196,9 +206,8 @@ class Skill:
         app_command_completion, app_command_error. The handler gets the same
         arguments as discord.py's event.
 
-        Two are ours rather than Discord's: "action_finished", sent after every
-        word, reply action, reaction and chat with a registry.ActionResult; and
-        "pin_notice", sent with Discord's "X pinned a message" system message.
+        One is ours rather than Discord's: "action_finished", sent after every
+        word, reply action, reaction and chat with a registry.ActionResult.
         """
         return {}
 

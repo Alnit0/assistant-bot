@@ -199,9 +199,12 @@ async def on_ready():
 
 @client.event
 async def on_message(message: discord.Message):
-    # Discord's "X pinned a message" notice: skills may want to tidy theirs away
+    # Discord's "X pinned a message" notices are clutter: remove every one
     if message.type is discord.MessageType.pins_add:
-        await registry.emit("pin_notice", message)
+        try:
+            await message.delete()
+        except discord.HTTPException as error:
+            log.info("Could not delete a pin notice: %s", error)
         return
     # Ignore bots (including itself) and anyone who isn't allowed
     if message.author.bot:

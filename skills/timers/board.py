@@ -90,14 +90,3 @@ async def refresh(channel_id: int, user_id: int | None = None) -> None:
         pass
 
 
-async def on_pin_notice(message: discord.Message) -> None:
-    """Discord announced a pin. If it was one of our boards, remove the announcement."""
-    reference = message.reference
-    if reference is None or reference.message_id is None:
-        return
-    if not await store.is_board(reference.message_id):
-        return
-    try:
-        await message.delete()
-    except discord.HTTPException as error:
-        log.info("Could not delete the pin notice: %s", error)
