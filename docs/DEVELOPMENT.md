@@ -40,6 +40,7 @@ automatically in new terminals. Check the prompt starts with `(.venv)`.
   - `reactions.py`: what to apply or undo once reactions have settled
   - `protection.py`, `confirmations.py`: pinned and 📌-marked messages, and
     asking before acting on them
+  - `pins.py`: pinning and unpinning a message for skills
   - `llm.py`: Claude client, system prompt, history, cost estimates
   - `discord_utils.py`: #bot-log embeds, message helpers, safe replies
 - `skills/`: one folder per feature
@@ -49,6 +50,7 @@ automatically in new terminals. Check the prompt starts with `(.venv)`.
   - `builtin/`: ping, reset, buttons, stats, help
   - `archive/`: archive or delete a message (reply, 📦 / 🗑️ reaction, context
     menu), with a Restore button on archived copies
+  - `keep/`: the 📌 reaction, which keeps and pins a message
   - `lab/`: `lab …` words for trying out Discord features
   - `timers/`: short timers and Pomodoro sessions
   - `dev/`: the `dev …` words, the dev panel and the dev tools
@@ -67,7 +69,7 @@ the channel you are in; `help <skill or word>` gives details.
 |---|---|---|
 | **A word on its own** | `stats`, `clear chat`, `lab chart 30` | Mostly #inbox; `lab …` and `help` anywhere |
 | **Reply to a message with a word** | reply `archive` or `delete` | Anywhere |
-| **A reaction** | 📦 or 🗑️ on a message | Anywhere |
+| **A reaction** | 📦, 🗑️ or 📌 on a message | Anywhere |
 | Slash command (fallback) | `/lab chart`, Apps > Archive message | Anywhere |
 
 - **The whole message must be the word or phrase.** `stats` runs stats;
@@ -95,6 +97,12 @@ the channel you are in; `help <skill or word>` gives details.
   the exception: the message is gone, so they can only be cancelled within
   the 30 seconds. If a reaction fails, the message gets ⚠️ and the reason is
   in #bot-log.
+- **📌 keeps a message.** After the 30 seconds it is pinned and gets ✅.
+  Clean-ups leave it alone, and archiving or deleting it asks first. Take
+  your 📌 off and, after the 30 seconds, it is unkept and unpinned (even if
+  it was pinned by hand before you kept it). If the channel has as many
+  pins as Discord allows, the message gets ⚠️ instead: unpin something
+  there, then take your 📌 off and add it again.
 - **Reactions made while the bot is off are not seen.**
 - **"X pinned a message" notices are deleted** wherever they appear.
 - **Claude knows the list too.** The same list `help` shows is added to its
@@ -200,6 +208,9 @@ Things to know:
   the ✅ and ⚠️ markers and the record of what is applied
   (`core/reactions.py`). Set `destructive=True` when the message won't
   exist afterwards. Never post a note in the channel about a failure.
+- **Pinning:** `await core.pins.set_pinned(channel_id, message_id, True,
+  reason)` (or `False` to unpin). It raises `UserError` with the reason if
+  Discord refuses, for instance at the pin limit.
 - **Before archiving, deleting or clearing a message**, check
   `core.protection.is_protected(message)` (pinned or 📌-marked) and, if so,
   ask with `core.confirmations.ask(channel, user, question, on_confirm)`.
@@ -414,7 +425,7 @@ no slash commands. `help dev` lists the words.
 - **`dev inspect`** shows: pinned, protected from clean-up (pinned or 📌),
   the reactions on the message, the reaction actions applied to it
   (`reaction_state`) and its archive record, if it was archived or is an
-  archived copy. "Kept" reads "not built yet" until there is a keep action.
+  archived copy. "Kept" is yes once your 📌 on it has been acted on.
 - **`dev fire next`** takes the earliest pending job, which may be the
   nightly backup (it books its successor as usual).
 - **Test data** is anything the bot posted ending `-# 🧪 dev test data`:

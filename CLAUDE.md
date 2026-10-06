@@ -74,6 +74,12 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
     `core/confirmations.py` asks before acting on one (Confirm / Cancel,
     two-minute timeout, held in memory)
   - The core deletes every "pinned a message" notice (`main.py`)
+  - `keep/`: the 📌 reaction. Keeping pins the message natively; removing the
+    owner's 📌 unpins it (`undo`), whoever pinned it. The 📌 itself is what
+    protects it. Pins go through `core/pins.py` (`set_pinned`), so the skill
+    makes no Discord calls; the wording of a refusal (pin limit, message
+    gone, no permission) is `pin_problem` in `core/protection.py`. A refused
+    pin is a `UserError`, so the message gets ⚠️ and is not recorded as applied
   - `builtin/`: ping, reset (clear, clear chat, wipe), buttons, stats (stat),
     and `help [skill or word]`, which is generated from the registry at request
     time and filtered by enabled skills, channel and permission
@@ -234,11 +240,22 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
     table (status, date, notes) and the summary, and copy failures into
     `docs/BACKLOG.md` (create it if it doesn't exist)
 
-- At the end of every task, finish with a suggested commit message in
-  a code block, ready to copy:
+- At the end of every task, finish with the suggested commit as ONE
+  ready-to-paste PowerShell command in a code block:
   - Title: short, present tense, under 50 characters
-  - Body: 2 to 4 bullet points on what changed and why
-  Then the exact git commands to run. Do not commit unless asked.
+  - Body: 2 to 4 bullet points on what changed and why, each on its
+    own line
+  - Title and body as two -m arguments, each in single quotes; escape
+    any apostrophe by doubling it ('')
+  - Then "git push" on its own line
+  Example:
+
+      git commit -m 'Add dev mode and test tracker' -m '- Add dev mode with a pinned panel and inspection tools
+      - Split archive logic into testable modules
+      - Add docs/TESTING.md with Auto and Manual tests'
+      git push
+
+  Do not commit unless asked.
 
 ## Interaction rules (apply to every skill)
 

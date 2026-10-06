@@ -38,7 +38,8 @@ Last updated: 2026-10-07
 | H | Pomodoro | 16 | 4 | 12 | 12 | 4 | 0 | 0 |
 | J | Dev mode | 27 | 3 | 24 | 24 | 3 | 0 | 0 |
 | K | Startup and housekeeping | 9 | 3 | 6 | 6 | 3 | 0 | 0 |
-| | **Total** | **139** | **36** | **103** | **103** | **36** | **0** | **0** |
+| L | Keep | 8 | 3 | 5 | 5 | 3 | 0 | 0 |
+| | **Total** | **147** | **39** | **108** | **108** | **39** | **0** | **0** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off. "Log card" means a card in #bot-log.
@@ -131,7 +132,7 @@ off. "Log card" means a card in #bot-log.
 | E5 | 👤 Manual | Reply `delete` to a pinned message | "⚠️ That message is pinned. Delete it anyway?" with Confirm and Cancel; nothing deleted yet | ⬜ Untested | | |
 | E6 | 👤 Manual | Press **Confirm** on that question | Message deleted; the question shows the outcome, then removes itself | ⬜ Untested | | |
 | E7 | 👤 Manual | Ask again and press **Cancel**; ask again and wait two minutes | Question removed both times; message untouched | ⬜ Untested | | |
-| E8 | 👤 Manual | Add 📌 to a message, then reply `archive` and react 🗑️ on it | Both ask for confirmation first | ⬜ Untested | | |
+| E8 | 👤 Manual | Add 📌 to a message, then reply `archive` and react 🗑️ on it | Both ask for confirmation first (as "pinned" once the 📌 has been acted on, "marked 📌" before) | ⬜ Untested | | |
 | E9 | 👤 Manual | Apps > **Archive message** on a pinned message | Asks for confirmation first | ⬜ Untested | | |
 | E10 | 🤖 Auto | Protection rules | Pinned or 📌 by anyone protects; a removed 📌 doesn't | ✅ Pass | 2026-10-07 | `tests/test_reactions.py` |
 | E11 | 🤖 Auto | Delete refusals and the confirmation question | Archive and #bot-log messages aren't deleted on request; the question names the reason and the action | ✅ Pass | 2026-10-07 | `tests/test_archive_rules.py` |
@@ -208,7 +209,7 @@ Any channel. Check the bot's status in the member list.
 | J14 | 👤 Manual | `dev expire 1m` and wait | Panel shows the new expiry; after a minute dev mode switches itself off as in J3, reason "expired" | ⬜ Untested | | |
 | J15 | 👤 Manual | `dev reset` after changing settings | Panel back to the dev defaults with a fresh hour | ⬜ Untested | | |
 | J16 | 👤 Manual | Panel buttons: **+1 hour**, **Reset**, **Disable** | Expiry moves out an hour; settings reset; dev mode off as in J3 | ⬜ Untested | | |
-| J17 | 👤 Manual | Reply `dev inspect` to a pinned, 📌-marked message with an applied reaction | Card shows pinned, protected, the reactions on it, reactions applied and archive record | ⬜ Untested | | |
+| J17 | 👤 Manual | Add 📌 to a message, wait for its ✅, then reply `dev inspect` to it | Pinned: yes; Protected from clean-up: pinned; Kept: yes; "Reactions on it" lists 📌 and ✅; Reactions applied: 📌; Archive record: none | ⬜ Untested | | |
 | J18 | 👤 Manual | Reply `dev inspect` to an archived copy in #archive | Archive record line shows where it came from and when | ⬜ Untested | | |
 | J19 | 👤 Manual | `dev jobs` | Pending jobs with id, skill/kind and due time, including the nightly backup | ⬜ Untested | | |
 | J20 | 👤 Manual | `dev run backup`; then `dev run sweep` | "💾 Backup saved" log card and a new file in `data/backups/`; sweep gets ⚠️ with "not built" on the log card | ⬜ Untested | | |
@@ -233,3 +234,19 @@ Any channel. Check the bot's status in the member list.
 | K7 | 🤖 Auto | Permissions | Only the owner is allowed anything; someone else marked owner is demoted at startup; lookups are cached | ✅ Pass | 2026-10-07 | `tests/test_permissions.py` |
 | K8 | 🤖 Auto | Registrations | Every skill loads; every word, reply action and reaction has a description, an example, a channel and a permission | ✅ Pass | 2026-10-07 | `tests/test_registry.py` |
 | K9 | 🤖 Auto | Scheduler | Jobs run when due, late ones at startup flagged late, interrupted ones recovered; the nightly backup books its successor | ✅ Pass | 2026-10-07 | `tests/test_scheduler.py` |
+
+## L. Keep
+
+Any channel. 📌 from you keeps a message: it is pinned, clean-ups leave it
+alone, and archive and delete ask first (E8).
+
+| ID | Type | Test | Expected result | Status | Date | Notes |
+|---|---|---|---|---|---|---|
+| L1 | 👤 Manual | React 📌 on a message and wait 30 seconds | Nothing for 30 seconds, then it is pinned and gets ✅; no "pinned a message" notice left behind; "📌 Reaction: keep" log card | ⬜ Untested | | |
+| L2 | 👤 Manual | Remove your 📌 from a kept message and wait | It is unpinned and its ✅ is removed; "📌 Reaction removed: keep" log card | ⬜ Untested | | |
+| L3 | 👤 Manual | React 📌 and remove it within the wait | Nothing happens: not pinned, no ✅ | ⬜ Untested | | |
+| L4 | 👤 Manual | Keep a message, restart the bot, then remove your 📌 | Unpinned and its ✅ removed after the wait | ⬜ Untested | | |
+| L5 | 👤 Manual | React 📌 in a channel that is at Discord's pin limit; then unpin one, take the 📌 off and add it again | The message gets ⚠️, isn't pinned and nothing is said in the channel; the log card says the channel is full and what to do. The second time it is pinned, and ✅ replaces the ⚠️ | ⬜ Untested | | Needs a full channel; skip if there isn't one |
+| L6 | 🤖 Auto | The 📌 registration | A reaction of the keep skill, any channel, not destructive, with an undo; every reaction that leaves its message can be undone | ✅ Pass | 2026-10-07 | `tests/test_keep.py, test_registry.py` |
+| L7 | 🤖 Auto | Keeping and unkeeping | Keeping pins, unkeeping unpins; unkeeping a message that has gone is fine; a message counts as kept once 📌 is applied | ✅ Pass | 2026-10-07 | `tests/test_keep.py` |
+| L8 | 🤖 Auto | Discord refuses to pin or unpin | Pin limit, message gone, kind of message that can't be pinned, no permission: each fails with a reason the user can act on | ✅ Pass | 2026-10-07 | `tests/test_keep.py` |

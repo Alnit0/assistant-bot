@@ -5,7 +5,7 @@ import discord
 from core import devmode, reactions, scheduler
 from core.context import Context
 from core.errors import UserError
-from core.protection import is_protected, protection
+from core.protection import is_kept, is_protected, protection
 from core.scheduler import utc_now
 from skills.archive import store as archive
 
@@ -58,7 +58,7 @@ async def inspect(ctx: Context, target: discord.Message) -> str:
         f"🔎 **Message** `{target.id}` · {target.author.display_name} · sent {_stamp(target.created_at)}",
         f"Pinned: {'yes' if target.pinned else 'no'}",
         f"Protected from clean-up: {protection(target) or 'no'}",
-        "Kept: not built yet",
+        f"Kept: {'yes' if is_kept(applied) else 'no'}",
         f"Reactions on it: {on_message or 'none'}",
         f"Reactions applied: {', '.join(sorted(key[1] for key in applied)) or 'none'}",
         f"Archive record: {record or 'none'}",

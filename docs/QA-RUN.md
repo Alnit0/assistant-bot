@@ -1,6 +1,6 @@
 # QA run sheet
 
-One pass through the 103 👤 Manual tests in `docs/TESTING.md` that are
+One pass through the 108 👤 Manual tests in `docs/TESTING.md` that are
 ⬜ Untested (as of 2026-10-07). Blocks share setup and each one leaves things
 ready for the next, so run them in order.
 
@@ -11,17 +11,17 @@ tests (block 12).
 |---|---|---|---|---|
 | 1 | Start-up | off | 3 | 5 |
 | 2 | Builtin words and chat | off | 11 | 8 |
-| 3 | Reactions at the real 30 seconds | off | 4 | 4 |
+| 3 | Reactions at the real 30 seconds | off | 5 | 5 |
 | 4 | Pins | off | 4 | 5 |
 | 5 | Dev mode switch and panel | on and off | 10 | 8 |
-| 6 | Archive, delete and protection | on, debounce 2s | 19 | 20 |
+| 6 | Archive, delete, keep and protection | on, debounce 2s | 22 | 23 |
 | 7 | Timers and dev tools | on, speed 1x then 60x | 15 | 15 |
 | 8 | Pomodoro | on, speed 60x then 1x | 12 | 10 |
-| 9 | Lab tour and restarts | on, then off (restart) | 11 | 25 |
+| 9 | Lab tour and restarts | on, then off (restart) | 12 | 26 |
 | 10 | Rest of the lab | off | 8 | 8 |
 | 11 | Phone notifications | off | 4 | 10 |
 | 12 | Overnight backups | off | 2 | 2 nights |
-| | **Total** | | **103** (F2 is split over blocks 4 and 7, counted in 7) | **about 2 hours** |
+| | **Total** | | **108** (F2 is split over blocks 4 and 7, counted in 7) | **about 2 hours** |
 
 ## Before you start
 
@@ -72,7 +72,7 @@ Dev mode: off. In #inbox unless it says otherwise.
 ## 3. Reactions at the real 30 seconds
 
 Dev mode: off, so the debounce is the real `REACTION_DEBOUNCE`. In #scratch,
-type three messages first: `one`, `two`, `three`.
+type four messages first: `one`, `two`, `three`, `keep me`.
 
 | # | Do | Expect | Tests |
 |---|---|---|---|
@@ -80,8 +80,10 @@ type three messages first: `one`, `two`, `three`.
 | 2 | Look at the copy in #archive | Your name and avatar, original time, link back; original gone | D4 |
 | 3 | React 📦 on `two`, and about 5 seconds later on `three` | Both archived together, 30 seconds after the second reaction | C4 |
 | 4 | React 📦 on any card in #bot-log, wait 30 seconds | The card gets ⚠️; reason on a new log card; nothing said in the channel. Remove your 📦 | C6 |
+| 5 | React 📌 on `keep me` and time it | Nothing for 30 seconds, then it is pinned and gets ✅; no "pinned a message" notice left behind; "📌 Reaction: keep" log card. **Leave it kept** (target for block 9) | L1 |
 
-Leaves three archived copies in #archive (used in blocks 6 and 9).
+Leaves three archived copies in #archive (used in blocks 6 and 9) and the
+kept `keep me` (used in block 9).
 
 ## 4. Pins
 
@@ -112,7 +114,7 @@ the member list.
 | 9 | `dev off` | Panel unpinned and deleted; status cleared; "Dev mode off" log card with the reason | J3 |
 | 10 | `dev expire 1m`, wait a minute | Panel shows the new expiry; then dev mode switches itself off as in step 9, reason "expired" | J14 |
 
-## 6. Archive, delete and protection
+## 6. Archive, delete, keep and protection
 
 In #scratch. Dev mode: **`dev on`** (debounce 2s, verbose on); the steps
 change the debounce where a test needs it.
@@ -133,24 +135,22 @@ Targets already there: your `ping` (block 2) and the pinned `pin me`
 | 9 | In #archive: reply `dev inspect` to one of the copies | Card's "Archive record" line says where it came from and when | J18 |
 | 10 | `dev debounce 0`, then react 📦 on "https://example.com…" | Panel edited in place; the message is archived at once | J7 |
 | 11 | `dev debounce 5`; react 📦 on "Remember to renew…" and remove it within 5 seconds | Nothing happens | J8 |
-| 12 | `dev debounce 10`; react 🗑️ on the same message and remove it within 10 seconds | Nothing happens (the 30-second window, shortened) | E4 |
-| 13 | `dev debounce 2`; react 🗑️ on it again and wait | Deleted after 2 seconds | E3 |
-| 14 | Reply `delete` to the pinned `pin me` | "⚠️ That message is pinned. Delete it anyway?" with Confirm and Cancel; nothing deleted | E5 |
-| 15 | Press **Cancel** | Question removed; message untouched | E7 (first half) |
-| 16 | Right-click `pin me` > Apps > **Archive message**, then **Cancel** | Asks for confirmation first | E9 |
-| 17 | Add 📌 to `pin me`; reply `dev inspect` to it | Pinned: yes; protected, with the reason; "Reactions on it" lists 📌; archive record: none. "Reactions applied" will read **none**: see the note below | J17 |
-| 18 | Reply `delete` to `pin me` again and **don't answer**. Note the time | Question appears | |
-| 19 | Meanwhile: add 📌 to "Gym: 3 x 8 squats…"; reply `archive` to it, **Cancel**; then react 🗑️ on it, wait 2 seconds, **Cancel**. Remove the 🗑️ | Both ask for confirmation first; message untouched | E8 |
-| 20 | Two minutes after step 18, look at the question | Removed by itself; `pin me` untouched | E7 (second half) |
-| 21 | Reply `delete` to `pin me` once more, press **Confirm** | Message deleted; the question shows the outcome, then removes itself | E6 |
-| 22 | `dev seed 3`, then `dev clean` | Three tagged samples appear; clean removes them and the `dev inspect` card. The 📌-marked "Gym…" stays | J22 |
-| 23 | `dev seed 2`, pin one by hand, `dev clean` | The pinned one stays; the other goes | J23 |
-| 24 | Tidy up: unpin that one, remove the 📌 from "Gym…", `dev clean`; in #archive, `dev clean` | #scratch has no test data; the `dev inspect` card in #archive is gone | |
-
-**Note on J17.** The test asks for a message "with an applied reaction", but
-the only registered reactions (📦, 🗑️) are destructive and never recorded as
-applied, so that line can only read "none" today. Pass it on the other
-lines and say so in the report.
+| 12 | Still at 5 seconds: react 📌 on the same message and remove it within 5 seconds | Nothing happens: not pinned, no ✅ | L3 |
+| 13 | `dev debounce 10`; react 🗑️ on the same message and remove it within 10 seconds | Nothing happens (the 30-second window, shortened) | E4 |
+| 14 | `dev debounce 2`; react 🗑️ on it again and wait | Deleted after 2 seconds | E3 |
+| 15 | Reply `delete` to the pinned `pin me` | "⚠️ That message is pinned. Delete it anyway?" with Confirm and Cancel; nothing deleted | E5 |
+| 16 | Press **Cancel** | Question removed; message untouched | E7 (first half) |
+| 17 | Right-click `pin me` > Apps > **Archive message**, then **Cancel** | Asks for confirmation first | E9 |
+| 18 | Add 📌 to `pin me` and wait for its ✅ (2 seconds); reply `dev inspect` to it | Pinned: yes; Protected from clean-up: pinned; Kept: yes; "Reactions on it" lists 📌 and ✅; Reactions applied: 📌; Archive record: none | J17 |
+| 19 | Reply `delete` to `pin me` again and **don't answer**. Note the time | Question appears | |
+| 20 | Meanwhile: add 📌 to "Gym: 3 x 8 squats…" (it is pinned and gets ✅ after 2 seconds); reply `archive` to it, **Cancel**; then react 🗑️ on it, wait 2 seconds, **Cancel**. Remove the 🗑️ | Both ask for confirmation first; message untouched | E8 |
+| 21 | Two minutes after step 19, look at the question | Removed by itself; `pin me` untouched | E7 (second half) |
+| 22 | Reply `delete` to `pin me` once more, press **Confirm** | Message deleted; the question shows the outcome, then removes itself | E6 |
+| 23 | `dev seed 3`, then `dev clean` | Three tagged samples appear; clean removes them and the `dev inspect` card. The kept "Gym…" stays | J22 |
+| 24 | `dev seed 2`, pin one by hand, `dev clean` | The pinned one stays; the other goes | J23 |
+| 25 | Remove your 📌 from "Gym…" and wait 2 seconds | It is unpinned and its ✅ is removed; "📌 Reaction removed: keep" log card | L2 |
+| 26 | Tidy up: unpin the one from step 24, `dev clean`; in #archive, `dev clean` | #scratch has no test data; the `dev inspect` card in #archive is gone | |
+| 27 | Only if you have a channel that is at Discord's pin limit (otherwise report `L5 skip`): react 📌 on a message there. Then unpin one, take the 📌 off and add it again | The message gets ⚠️, isn't pinned and nothing is said in the channel; the log card says the channel is full and what to do. The second time it is pinned, and ✅ replaces the ⚠️ | L5 |
 
 Leaves dev mode on, and archived copies in #archive (needed for block 9).
 
@@ -231,22 +231,23 @@ switched off by the first restart, which is itself a test.
 | 8 | Wait for the 2 minutes to be up; press **Dismiss** | The timer fires on time; the button works | G11 |
 | 9 | Press a button on the persistent `lab buttons` message, then one on the other | Persistent one still works; the other says "⌛ That button or form no longer works" | B3 |
 | 10 | In #archive: press **Restore** on a copy made before the restart | Still works: reposted to #scratch, copy removed | D7 |
-| 11 | In #inbox: `lab tour` | Carries on at step 4; the buttons still work | B16 |
-| 12 | Tour step 4: reply `archive` to any message you don't need | Step ticks itself | |
-| 13 | Tour step 5: react 📦 on another | Archived after the full 30 seconds (the normal debounce is back, which completes J24); step ticks itself | |
-| 14 | Tour step 6: press **Skip**, then **Back**; then `lab pin`, wait a minute, `lab pin stop`, **Pass** | Skip and Back work; boxes tick; Pass moves on | |
-| 15 | Tour step 7: `lab chart`; press **Fail** and enter a note; then **Back** and **Pass** | The note shows on the card; Back reopens the step | |
-| 16 | Tour step 8: send Claude a message, then `reset` | Step ticks itself; the card becomes a summary, also posted to #bot-log | B15 |
+| 11 | In #scratch: remove your 📌 from `keep me` (kept in block 3) and wait 30 seconds | Unpinned and its ✅ removed: what was applied before the restart is still known | L4 |
+| 12 | In #inbox: `lab tour` | Carries on at step 4; the buttons still work | B16 |
+| 13 | Tour step 4: reply `archive` to any message you don't need | Step ticks itself | |
+| 14 | Tour step 5: react 📦 on another | Archived after the full 30 seconds (the normal debounce is back, which completes J24); step ticks itself | |
+| 15 | Tour step 6: press **Skip**, then **Back**; then `lab pin`, wait a minute, `lab pin stop`, **Pass** | Skip and Back work; boxes tick; Pass moves on | |
+| 16 | Tour step 7: `lab chart`; press **Fail** and enter a note; then **Back** and **Pass** | The note shows on the card; Back reopens the step | |
+| 17 | Tour step 8: send Claude a message, then `reset` | Step ticks itself; the card becomes a summary, also posted to #bot-log | B15 |
 
 **Second restart: three minutes of downtime**
 
 | # | Do | Expect | Tests |
 |---|---|---|---|
-| 17 | In #scratch: type `offline`, then `timer 1m`, then `pomo auto 1m/30s`. Stop the bot (`Ctrl + C`) | | |
-| 18 | While it is stopped: react 📦 on `offline`. Wait 3 minutes. Start the bot | | |
-| 19 | Look at #scratch | Timer alert says it finished while the bot was offline | G12 |
-| 20 | Look at the Pomodoro | Alert says the phase ended while offline; the next phase waits for **Start**, even though it is auto | H12 |
-| 21 | Wait 35 seconds, look at `offline` | Not archived. Remove the 📦, dismiss the alert, **Stop** the session | C8 |
+| 18 | In #scratch: type `offline`, then `timer 1m`, then `pomo auto 1m/30s`. Stop the bot (`Ctrl + C`) | | |
+| 19 | While it is stopped: react 📦 on `offline`. Wait 3 minutes. Start the bot | | |
+| 20 | Look at #scratch | Timer alert says it finished while the bot was offline | G12 |
+| 21 | Look at the Pomodoro | Alert says the phase ended while offline; the next phase waits for **Start**, even though it is auto | H12 |
+| 22 | Wait 35 seconds, look at `offline` | Not archived. Remove the 📦, dismiss the alert, **Stop** the session | C8 |
 
 ## 10. Rest of the lab
 

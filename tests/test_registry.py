@@ -32,7 +32,7 @@ def names(entries, attribute="keywords"):
 # --- loading ---------------------------------------------------------------
 def test_every_skill_loads_without_problems():
     assert registry.problems() == []
-    assert [skill.name for skill in registry.loaded_skills()] == ["builtin", "archive", "dev", "lab", "timers"]
+    assert [skill.name for skill in registry.loaded_skills()] == ["builtin", "archive", "dev", "keep", "lab", "timers"]
 
 
 def test_every_registration_describes_itself():
@@ -56,6 +56,12 @@ def test_destructive_words_must_be_spelled_exactly():
         assert registry.find(emoji)[2].destructive
 
 
+def test_reactions_that_leave_the_message_can_be_undone():
+    for entry in registry.catalogue():
+        for reaction in entry.reactions:
+            assert reaction.destructive or reaction.undo is not None, f"{reaction.emoji} can't be undone"
+
+
 # --- where and for whom ----------------------------------------------------
 def test_keywords_default_to_the_inbox_and_say_so():
     _, _, stats = registry.find("stats")
@@ -65,7 +71,7 @@ def test_keywords_default_to_the_inbox_and_say_so():
 
 
 def test_any_channel_registrations_work_everywhere():
-    for term in ("help", "timer", "dev on", "box", "📦"):
+    for term in ("help", "timer", "dev on", "box", "📦", "📌"):
         item = registry.find(term)[2]
         assert ANY in registry._channel_names(item)
         assert registry.works_in(item, ELSEWHERE)
@@ -109,6 +115,7 @@ def test_the_catalogue_can_show_one_skill(owner):
         ("file away", "reply action", "archive"),
         ("dev inspect", "reply action", "dev inspect"),
         ("📦", "reaction", "📦"),
+        ("📌", "reaction", "📌"),
         ("🗑", "reaction", "🗑️"),  # without the invisible emoji-style character
     ],
 )
@@ -157,7 +164,7 @@ def ctx(user, channel_id=INBOX):
 def test_help_overview_groups_by_skill(owner):
     text = builtin.build_overview(ctx(owner))
     assert text.startswith("**What I understand here**")
-    for heading in ("**Builtin**", "**Archive**", "**Dev**", "**Lab**", "**Timers**"):
+    for heading in ("**Builtin**", "**Archive**", "**Dev**", "**Keep**", "**Lab**", "**Timers**"):
         assert heading in text
     assert "• `ping`: check the bot is alive" in text
     assert text.endswith("Anything else goes to Claude. `help <skill or word>` shows details.")
