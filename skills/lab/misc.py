@@ -13,51 +13,59 @@ from core.discord_utils import split_message
 from skills.lab import data
 from skills.lab.common import (
     LabError,
+    Run,
+    SlashRun,
     check_owner,
     lab,
-    note,
+    lab_keyword,
     record_press,
     report_component_error,
-    target_channel,
 )
 from skills.lab.ratelimits import monitor
 
 SLOW_EDIT = 1.5  # seconds; an edit slower than this was probably held back by a rate limit
 
+# Each command below is one run_* function, reached two ways: a typed word
+# (collected in KEYWORDS at the bottom) and a /lab slash command.
+
+NOTIFY_MODES = ["normal", "silent", "mention", "dm"]
+
 
 # ---------------------------------------------------------------------------
-# /lab notify
+# lab notify
 # ---------------------------------------------------------------------------
-@lab.command(name="notify", description="Send a test notification: normal, silent, @mention or DM")
-@app_commands.describe(mode="How the message should be delivered")
-async def notify(
-    interaction: discord.Interaction, mode: Literal["normal", "silent", "mention", "dm"]
-):
-    await interaction.response.defer(ephemeral=True)
-    channel = target_channel(interaction)
-
+async def run_notify(run: Run, mode: str) -> None:
+    await run.start()
     if mode == "normal":
-        await channel.send("🔔 **Normal** message: notifies according to your channel settings.")
+        await run.channel.send("🔔 **Normal** message: notifies according to your channel settings.")
     elif mode == "silent":
-        await channel.send(
+        await run.channel.send(
             "🔕 **Silent** message: arrives without a sound or a push notification.", silent=True
         )
     elif mode == "mention":
-        await channel.send(
-            f"📣 **Mention**: {interaction.user.mention}, this one pings you directly.",
+        await run.channel.send(
+            f"📣 **Mention**: {run.member.mention}, this one pings you directly.",
             allowed_mentions=discord.AllowedMentions(users=True),
         )
     else:
         try:
-            await interaction.user.send("✉️ **Direct message** from the lab.")
+            await run.member.send("✉️ **Direct message** from the lab.")
         except discord.Forbidden:
             raise LabError(
                 "I can't DM you. Allow direct messages from server members in this "
                 "server's privacy settings."
             )
 
-    note(interaction, f"sent a {mode} notification")
-    await interaction.followup.send(f"Sent ({mode}).", ephemeral=True)
+    run.note(f"sent a {mode} notification")
+    await run.done(f"Sent ({mode}).")
+
+
+@lab.command(name="notify", description="Send a test notification: normal, silent, @mention or DM")
+@app_commands.describe(mode="How the message should be delivered")
+async def notify(
+    interaction: discord.Interaction, mode: Literal["normal", "silent", "mention", "dm"]
+):
+    await run_notify(SlashRun(interaction), mode)
 
 
 # ---------------------------------------------------------------------------
@@ -90,30 +98,39 @@ def build_time_demo(now: datetime) -> str:
     return "\n".join(lines)
 
 
+async def run_time(run: Run) -> None:
+    await run.start()
+    await run.channel.send(build_time_demo(now_nz()))
+    run.note("posted the timestamp styles")
+    await run.done("Timestamps posted.")
+
+
 @lab.command(name="time", description="Show every dynamic timestamp style")
 async def time_demo(interaction: discord.Interaction):
-    await interaction.response.send_message(build_time_demo(now_nz()))
-    note(interaction, "posted the timestamp styles")
+    await run_time(SlashRun(interaction))
 
 
 # ---------------------------------------------------------------------------
-# /lab thread
+# lab thread
 # ---------------------------------------------------------------------------
-@lab.command(name="thread", description="Post a message and start a thread on it")
-async def thread(interaction: discord.Interaction):
-    await interaction.response.defer(ephemeral=True)
-    channel = target_channel(interaction)
-    if not isinstance(channel, discord.TextChannel):
+async def run_thread(run: Run) -> None:
+    await run.start()
+    if not isinstance(run.channel, discord.TextChannel):
         raise LabError("Threads can only be started from a normal text channel.")
 
-    starter = await channel.send("🧵 **Thread test**: replies go in the thread below.")
+    starter = await run.channel.send("🧵 **Thread test**: replies go in the thread below.")
     new_thread = await starter.create_thread(
         name=f"Lab thread {now_nz():%d %b %H:%M}", auto_archive_duration=60
     )
     await new_thread.send("👋 First message inside the thread. It archives after an hour of quiet.")
 
-    note(interaction, f"started thread {new_thread.name}")
-    await interaction.followup.send(f"Started {new_thread.mention}.", ephemeral=True)
+    run.note(f"started thread {new_thread.name}")
+    await run.done(f"Started {new_thread.mention}.")
+
+
+@lab.command(name="thread", description="Post a message and start a thread on it")
+async def thread(interaction: discord.Interaction):
+    await run_thread(SlashRun(interaction))
 
 
 # ---------------------------------------------------------------------------
@@ -132,28 +149,37 @@ def build_poll(multiple: bool) -> discord.Poll:
     return poll
 
 
+async def run_poll(run: Run, multiple: bool) -> None:
+    await run.start()
+    await run.channel.send(poll=build_poll(multiple))
+    run.note(f"posted a poll (multiple answers: {'yes' if multiple else 'no'})")
+    await run.done("Poll posted.")
+
+
 @lab.command(name="poll", description="Post a native poll that runs for an hour")
 @app_commands.describe(multiple="Allow more than one answer")
 async def poll(interaction: discord.Interaction, multiple: bool = False):
-    await interaction.response.defer(ephemeral=True)
-    await target_channel(interaction).send(poll=build_poll(multiple))
-    note(interaction, f"posted a poll (multiple answers: {'yes' if multiple else 'no'})")
-    await interaction.followup.send("Poll posted.", ephemeral=True)
+    await run_poll(SlashRun(interaction), multiple)
 
 
 # ---------------------------------------------------------------------------
-# /lab file
+# lab file
 # ---------------------------------------------------------------------------
-@lab.command(name="file", description="Send daily stats as a CSV file")
-@app_commands.describe(days="How many days to include, ending today")
-async def file(interaction: discord.Interaction, days: app_commands.Range[int, 1, 365] = 30):
-    await interaction.response.defer()
+async def run_file(run: Run, days: int) -> None:
+    await run.start()
     stats = await data.daily_stats(days)
     # The BOM makes Excel read the file as UTF-8
     content = data.build_csv(stats).encode("utf-8-sig")
     attachment = discord.File(io.BytesIO(content), filename=f"hive-stats-{now_nz():%Y-%m-%d}.csv")
-    await interaction.followup.send(f"📎 Daily stats for the last {days} days.", file=attachment)
-    note(interaction, f"sent {days} days of stats as CSV ({len(content)} bytes)")
+    await run.channel.send(f"📎 Daily stats for the last {days} days.", file=attachment)
+    run.note(f"sent {days} days of stats as CSV ({len(content)} bytes)")
+    await run.done("File posted.")
+
+
+@lab.command(name="file", description="Send daily stats as a CSV file")
+@app_commands.describe(days="How many days to include, ending today")
+async def file(interaction: discord.Interaction, days: app_commands.Range[int, 1, 365] = 30):
+    await run_file(SlashRun(interaction), days)
 
 
 # ---------------------------------------------------------------------------
@@ -214,19 +240,21 @@ def long_text() -> str:
     return "\n".join(lines)
 
 
-@lab.command(name="format", description="Markdown, spoilers, ANSI colours and long message splitting")
-async def format_demo(interaction: discord.Interaction):
-    await interaction.response.defer(ephemeral=True)
-    channel = target_channel(interaction)
-
+async def run_format(run: Run) -> None:
+    await run.start()
     for sample in format_samples():
-        await channel.send(sample)
+        await run.channel.send(sample)
     chunks = split_message(long_text())
     for chunk in chunks:
-        await channel.send(chunk)
+        await run.channel.send(chunk)
 
-    note(interaction, f"posted 3 formatting samples and a long text in {len(chunks)} parts")
-    await interaction.followup.send("Formatting samples posted.", ephemeral=True)
+    run.note(f"posted 3 formatting samples and a long text in {len(chunks)} parts")
+    await run.done("Formatting samples posted.")
+
+
+@lab.command(name="format", description="Markdown, spoilers, ANSI colours and long message splitting")
+async def format_demo(interaction: discord.Interaction):
+    await run_format(SlashRun(interaction))
 
 
 # ---------------------------------------------------------------------------
@@ -282,20 +310,22 @@ def build_layout(avatar_url: str) -> "discord.ui.LayoutView":
     return view
 
 
+async def run_layout(run: Run) -> None:
+    await run.start()
+    if not supports_layout():
+        raise LabError(
+            f"Components v2 needs discord.py 2.6 or newer (installed: {discord.__version__})."
+        )
+    avatar_url = run.client.user.display_avatar.url
+    # A components v2 message can't also have ordinary text or embeds
+    await run.channel.send(view=build_layout(avatar_url))
+    run.note("posted a components v2 layout")
+    await run.done("Layout posted.")
+
+
 @lab.command(name="layout", description="Components v2: a message built from containers and sections")
 async def layout(interaction: discord.Interaction):
-    if not supports_layout():
-        await interaction.response.send_message(
-            f"Components v2 needs discord.py 2.6 or newer (installed: {discord.__version__}).",
-            ephemeral=True,
-        )
-        note(interaction, "components v2 not supported by this discord.py")
-        return
-
-    avatar_url = interaction.client.user.display_avatar.url
-    # A components v2 message can't also have ordinary text or embeds
-    await interaction.response.send_message(view=build_layout(avatar_url))
-    note(interaction, "posted a components v2 layout")
+    await run_layout(SlashRun(interaction))
 
 
 # ---------------------------------------------------------------------------
@@ -314,16 +344,10 @@ def countdown_summary(total: int, edits: int, hits: int, slow: int, slowest: flo
     )
 
 
-@lab.command(name="countdown", description="A message that counts down by editing itself")
-@app_commands.describe(seconds="How long to count down for", step="Seconds between edits")
-async def countdown(
-    interaction: discord.Interaction,
-    seconds: app_commands.Range[int, 5, 120] = 30,
-    step: app_commands.Range[int, 1, 30] = 5,
-):
-    await interaction.response.defer(ephemeral=True)
-    message = await target_channel(interaction).send(render_countdown(seconds, seconds))
-    await interaction.followup.send("Countdown started.", ephemeral=True)
+async def run_countdown(run: Run, seconds: int, step: int) -> None:
+    await run.start()
+    message = await run.channel.send(render_countdown(seconds, seconds))
+    await run.done("Countdown started.")
 
     loop = asyncio.get_running_loop()
     deadline = loop.time() + seconds
@@ -346,4 +370,57 @@ async def countdown(
 
     summary = countdown_summary(seconds, edits, monitor.count - hits_before, slow, slowest)
     await message.edit(content=summary)
-    note(interaction, summary)
+    run.note(summary)
+
+
+@lab.command(name="countdown", description="A message that counts down by editing itself")
+@app_commands.describe(seconds="How long to count down for", step="Seconds between edits")
+async def countdown(
+    interaction: discord.Interaction,
+    seconds: app_commands.Range[int, 5, 120] = 30,
+    step: app_commands.Range[int, 1, 30] = 5,
+):
+    await run_countdown(SlashRun(interaction), seconds, step)
+
+
+# ---------------------------------------------------------------------------
+# The typed forms
+# ---------------------------------------------------------------------------
+KEYWORDS = [
+    lab_keyword(
+        "lab notify",
+        "send a test notification: normal, silent, @mention or DM",
+        run_notify,
+        usage="<normal|silent|mention|dm>",
+        parse=lambda args: (args.choice(NOTIFY_MODES),),
+        examples=["lab notify silent", "lab notify dm"],
+    ),
+    lab_keyword("lab time", "show every dynamic timestamp style", run_time),
+    lab_keyword("lab thread", "post a message and start a thread on it", run_thread),
+    lab_keyword(
+        "lab poll",
+        "post a native poll that runs for an hour",
+        run_poll,
+        usage="[multiple]",
+        parse=lambda args: (args.flag("multiple"),),
+        examples=["lab poll", "lab poll multiple"],
+    ),
+    lab_keyword(
+        "lab file",
+        "send daily stats as a CSV file",
+        run_file,
+        usage="[days]",
+        parse=lambda args: (args.number("days", 30, 1, 365),),
+        examples=["lab file", "lab file 7"],
+    ),
+    lab_keyword("lab format", "markdown, spoilers, ANSI colours and long message splitting", run_format),
+    lab_keyword("lab layout", "components v2: a message built from containers and sections", run_layout),
+    lab_keyword(
+        "lab countdown",
+        "a message that counts down by editing itself, reporting rate limits",
+        run_countdown,
+        usage="[seconds] [step]",
+        parse=lambda args: (args.number("seconds", 30, 5, 120), args.number("step", 5, 1, 30)),
+        examples=["lab countdown", "lab countdown 20 1"],
+    ),
+]

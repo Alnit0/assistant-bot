@@ -49,6 +49,22 @@ INBOX_CHANNEL_ID = int(INBOX_CHANNEL_ID)
 BOT_LOG_CHANNEL_ID = int(BOT_LOG_CHANNEL_ID) if BOT_LOG_CHANNEL_ID else None
 ARCHIVE_CHANNEL_ID = int(ARCHIVE_CHANNEL_ID) if ARCHIVE_CHANNEL_ID else None
 
+# Every channel we know by name, for "where does this work?" rules. Only the
+# ones set in .env appear.
+CHANNELS: dict[str, int] = {
+    name: int(value)
+    for name, value in {
+        "inbox": os.getenv("INBOX_CHANNEL_ID"),
+        "bot-log": os.getenv("BOT_LOG_CHANNEL_ID"),
+        "archive": os.getenv("ARCHIVE_CHANNEL_ID"),
+        "reminders": os.getenv("REMINDERS_CHANNEL_ID"),
+        "gym": os.getenv("GYM_CHANNEL_ID"),
+        "admin": os.getenv("ADMIN_CHANNEL_ID"),
+        "documents": os.getenv("DOCUMENTS_CHANNEL_ID"),
+    }.items()
+    if value
+}
+
 # Skills to load: comma-separated names in .env, or None (empty or missing) for all
 ENABLED_SKILLS = [
     name.strip().lower() for name in os.getenv("ENABLED_SKILLS", "").split(",") if name.strip()
@@ -66,6 +82,7 @@ EMBED_FIELD_LIMIT = 1000  # Discord allows 1024 characters per embed field
 BUTTON_TIMEOUT = 300  # seconds before test buttons expire
 BACKUP_TIME = time(3, 0)  # nightly database backup, NZ local time
 BACKUP_KEEP = 7  # number of nightly backups to keep
+REACTION_DEBOUNCE_SECONDS = 15  # quiet time before reactions are acted on (the undo window)
 
 # Approximate prices in USD per million tokens: (input, output).
 # Check Anthropic's pricing page and update if they change.

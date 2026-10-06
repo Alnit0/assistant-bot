@@ -4,9 +4,14 @@ import re
 import discord
 from discord import app_commands
 
+from core import interactions
 from core.config import ARCHIVE_CHANNEL_ID, BOT_LOG_CHANNEL_ID
+from core.context import Context
+from core.errors import UserError
 from core.users import User
-from skills.lab.common import LabError, lab_check, note
+
+# This skill works with Discord messages directly (webhooks, deleting), like the
+# lab. It moves behind the gateway layer when that exists.
 
 log = logging.getLogger("assistant")
 
@@ -31,20 +36,20 @@ def safe_username(name: str) -> str:
 
 
 def check_archivable(message: discord.Message) -> None:
-    """Raise LabError if this message shouldn't or can't be archived."""
+    """Raise UserError if this message shouldn't or can't be archived."""
     if ARCHIVE_CHANNEL_ID is None:
-        raise LabError("ARCHIVE_CHANNEL_ID isn't set in .env, so there's nowhere to archive to.")
+        raise UserError("ARCHIVE_CHANNEL_ID isn't set in .env, so there's nowhere to archive to.")
     if message.channel.id == ARCHIVE_CHANNEL_ID:
-        raise LabError("That message is already in the archive.")
+        raise UserError("That message is already in the archive.")
     if BOT_LOG_CHANNEL_ID is not None and message.channel.id == BOT_LOG_CHANNEL_ID:
-        raise LabError("Messages in #bot-log stay where they are.")
+        raise UserError("Messages in #bot-log stay where they are.")
     if not (message.content or message.attachments or message.embeds):
-        raise LabError("There's nothing in that message I can copy (no text, files or embeds).")
+        raise UserError("There's nothing in that message I can copy (no text, files or embeds).")
 
     limit = message.guild.filesize_limit if message.guild else 10 * 1024 * 1024
     for attachment in message.attachments:
         if attachment.size > limit:
-            raise LabError(
+            raise UserError(
                 f"`{attachment.filename}` is too big for me to re-upload "
                 f"({attachment.size / 1_048_576:.1f} MB), so I've left the message where it is."
             )
@@ -78,21 +83,21 @@ async def _get_webhook(channel: discord.TextChannel) -> discord.Webhook:
                 return webhook
         _webhook = await channel.create_webhook(name=WEBHOOK_NAME, reason="Archiving messages")
     except discord.Forbidden:
-        raise LabError(f"I need the Manage Webhooks permission in {channel.mention} to archive.")
+        raise UserError(f"I need the Manage Webhooks permission in {channel.mention} to archive.")
     return _webhook
 
 
 async def archive_message(message: discord.Message) -> str:
     """Copy a message to the archive channel, then delete the original.
 
-    Returns a one-line summary. Raises LabError, leaving the original alone,
+    Returns a one-line summary. Raises UserError, leaving the original alone,
     if the copy can't be made in full.
     """
     global _webhook
     check_archivable(message)
     channel = _client.get_channel(ARCHIVE_CHANNEL_ID)
     if channel is None or not hasattr(channel, "webhooks"):
-        raise LabError("I can't find the archive channel. Check ARCHIVE_CHANNEL_ID.")
+        raise UserError("I can't find the archive channel. Check ARCHIVE_CHANNEL_ID.")
     webhook = await _get_webhook(channel)
 
     try:
@@ -101,7 +106,7 @@ async def archive_message(message: discord.Message) -> str:
             for attachment in message.attachments
         ]
     except discord.HTTPException as error:
-        raise LabError(f"I couldn't download an attachment ({error.status}), so nothing was archived.")
+        raise UserError(f"I couldn't download an attachment ({error.status}), so nothing was archived.")
 
     # Keep the original's own embeds (not link previews, which Discord rebuilds)
     embeds = [embed for embed in message.embeds if embed.type == "rich"][: MAX_EMBEDS - 1]
@@ -121,9 +126,9 @@ async def archive_message(message: discord.Message) -> str:
     except discord.NotFound:
         # The webhook was deleted by hand: forget it, so the next attempt makes a new one
         _webhook = None
-        raise LabError("The archive webhook had been deleted. Try again and I'll create a new one.")
+        raise UserError("The archive webhook had been deleted. Try again and I'll create a new one.")
     except discord.Forbidden:
-        raise LabError(f"Discord wouldn't let me post in {channel.mention}.")
+        raise UserError(f"Discord wouldn't let me post in {channel.mention}.")
 
     # Only now that the copy exists is it safe to remove the original
     summary = (
@@ -135,41 +140,87 @@ async def archive_message(message: discord.Message) -> str:
     except discord.NotFound:
         pass
     except discord.Forbidden:
-        raise LabError(
+        raise UserError(
             f"Archived to {copy.jump_url}, but I couldn't delete the original. "
             "I need Manage Messages in that channel."
         )
     return summary
 
 
+def check_deletable(message: discord.Message) -> None:
+    """Raise UserError if this message shouldn't be deleted on request."""
+    if ARCHIVE_CHANNEL_ID is not None and message.channel.id == ARCHIVE_CHANNEL_ID:
+        raise UserError("Messages in the archive stay there. Delete it by hand if you're sure.")
+    if BOT_LOG_CHANNEL_ID is not None and message.channel.id == BOT_LOG_CHANNEL_ID:
+        raise UserError("Messages in #bot-log stay where they are.")
+
+
+async def delete_message(message: discord.Message) -> str:
+    """Delete a message for good. Returns a one-line summary."""
+    check_deletable(message)
+    preview = (message.content or "(no text)").replace("\n", " ")[:80]
+    summary = (
+        f"deleted a message by {message.author.display_name} from #{message.channel.name} "
+        f"({len(message.attachments)} file(s)): {preview}"
+    )
+    try:
+        await message.delete()
+    except discord.NotFound:
+        raise UserError("That message has already gone.")
+    except discord.Forbidden:
+        raise UserError("I couldn't delete it. I need Manage Messages in that channel.")
+    return summary
+
+
 # ---------------------------------------------------------------------------
-# Way in 1: right-click a message > Apps > Archive message
+# Way in 1: reply to a message with "archive" or "delete"
 # ---------------------------------------------------------------------------
-async def archive_menu_callback(interaction: discord.Interaction, message: discord.Message):
-    await interaction.response.defer(ephemeral=True)
-    summary = await archive_message(message)
-    note(interaction, summary)
-    await interaction.followup.send(f"{ARCHIVE_EMOJI} Done: {summary}.", ephemeral=True)
+async def archive_reply(ctx: Context, target: discord.Message) -> str:
+    return await archive_message(target)
 
 
-archive_menu = app_commands.ContextMenu(name="Archive message", callback=archive_menu_callback)
-archive_menu.add_check(lab_check)
+async def delete_reply(ctx: Context, target: discord.Message) -> str:
+    return await delete_message(target)
 
 
 # ---------------------------------------------------------------------------
-# Way in 2: react to a message with 📦
+# Way in 2: react to a message with 📦 (acted on after the quiet period)
 # ---------------------------------------------------------------------------
 async def on_archive_reaction(payload: discord.RawReactionActionEvent, user: User) -> str:
     channel = _client.get_channel(payload.channel_id)
     if channel is None:
-        raise LabError("I can't see the channel that message is in.")
+        raise UserError("I can't see the channel that message is in.")
     message = await channel.fetch_message(payload.message_id)
     try:
         return await archive_message(message)
-    except LabError as error:
+    except UserError as error:
         # A reaction has nowhere private to reply, so leave a note that tidies itself away
         try:
             await channel.send(f"⚠️ Couldn't archive that: {error}", delete_after=20)
         except discord.HTTPException:
             log.warning("Could not post the archive failure note")
         raise
+
+
+# ---------------------------------------------------------------------------
+# Way in 3 (fallback): right-click a message > Apps > Archive message
+# ---------------------------------------------------------------------------
+async def menu_check(interaction: discord.Interaction) -> bool:
+    """Runs before the menu action: permission, then log the input."""
+    if not await interactions.check_allowed(
+        interaction, "reply:archive", "Archiving isn't for you."
+    ):
+        return False
+    await interactions.begin(interaction, kind="menu", label="Archive", emoji=ARCHIVE_EMOJI)
+    return True
+
+
+async def archive_menu_callback(interaction: discord.Interaction, message: discord.Message):
+    await interaction.response.defer(ephemeral=True)
+    summary = await archive_message(message)
+    interactions.note(interaction, summary)
+    await interaction.followup.send(f"{ARCHIVE_EMOJI} Done: {summary}.", ephemeral=True)
+
+
+archive_menu = app_commands.ContextMenu(name="Archive message", callback=archive_menu_callback)
+archive_menu.add_check(menu_check)

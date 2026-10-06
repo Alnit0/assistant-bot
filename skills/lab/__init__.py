@@ -1,32 +1,36 @@
 import discord
 
-from skills.base import Reaction, Skill
+from skills.base import Keyword, Skill
 from skills.lab import common, ratelimits, state
 
 # Importing these adds their subcommands to the /lab group
-from skills.lab import archive, buttons, charts, misc, react, status  # noqa: F401  isort: skip
+from skills.lab import buttons, charts, misc, react, status  # noqa: F401  isort: skip
 
 
 class LabSkill(Skill):
-    """A test bench for Discord features, behind the /lab slash commands.
+    """A test bench for Discord features: type "lab ..." (or use /lab as a fallback).
 
     Unlike other skills this one uses discord.py directly: trying out what
     Discord can do is the whole point of it.
     """
 
     name = "lab"
-    description = "Test bench for Discord features (/lab slash commands)"
+    description = "Test bench for Discord features. Owner only."
+
+    def keywords(self) -> list[Keyword]:
+        return [
+            *react.KEYWORDS,
+            *buttons.KEYWORDS,
+            *status.KEYWORDS,
+            *charts.KEYWORDS,
+            *misc.KEYWORDS,
+        ]
 
     def app_commands(self) -> list:
-        return [common.lab, archive.archive_menu]
-
-    def reactions(self) -> list[Reaction]:
-        return [Reaction(archive.ARCHIVE_EMOJI, archive.on_archive_reaction)]
+        return [common.lab]
 
     def events(self) -> dict:
         return {
-            "app_command_completion": common.finish,
-            "app_command_error": common.fail,
             "raw_reaction_add": react.on_reaction_add,
             "raw_reaction_remove": react.on_reaction_remove,
             "guild_channel_pins_update": status.on_pins_update,
@@ -42,7 +46,6 @@ class LabSkill(Skill):
     async def startup(self, client: discord.Client) -> None:
         ratelimits.install()
         react.bind(client)
-        archive.bind(client)
         await status.resume(client)
 
 

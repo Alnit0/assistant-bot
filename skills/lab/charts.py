@@ -8,7 +8,7 @@ import discord
 from discord import app_commands
 
 from skills.lab import data
-from skills.lab.common import LabError, lab, note
+from skills.lab.common import LabError, Run, SlashRun, lab, lab_keyword
 
 QUICKCHART_URL = "https://quickchart.io/chart"
 QUICKCHART_TIMEOUT = 15  # seconds
@@ -267,17 +267,8 @@ RENDERERS = {
 # ---------------------------------------------------------------------------
 # /lab chart
 # ---------------------------------------------------------------------------
-@lab.command(name="chart", description="Messages per day and cost per day, as charts")
-@app_commands.describe(
-    renderer="QuickChart draws it on the web; matplotlib draws it on the server",
-    days="How many days to show, ending today",
-)
-async def chart(
-    interaction: discord.Interaction,
-    renderer: Literal["quickchart", "matplotlib"] = "quickchart",
-    days: app_commands.Range[int, 3, 90] = 14,
-):
-    await interaction.response.defer()
+async def run_chart(run: Run, renderer: str, days: int) -> None:
+    await run.start()
     specs = build_specs(await data.daily_stats(days))
     images = await asyncio.gather(*(RENDERERS[renderer](spec) for spec in specs))
 
@@ -291,9 +282,37 @@ async def chart(
         embeds.append(embed)
         files.append(discord.File(io.BytesIO(image), filename=spec.filename))
 
-    await interaction.followup.send(embeds=embeds, files=files)
-    note(
-        interaction,
+    await run.channel.send(embeds=embeds, files=files)
+    run.note(
         f"posted 2 charts for {days} days with {renderer} "
-        f"({sum(len(image) for image in images) // 1024} KB)",
+        f"({sum(len(image) for image in images) // 1024} KB)"
     )
+    await run.done("Charts posted.")
+
+
+@lab.command(name="chart", description="Messages per day and cost per day, as charts")
+@app_commands.describe(
+    renderer="QuickChart draws it on the web; matplotlib draws it on the server",
+    days="How many days to show, ending today",
+)
+async def chart(
+    interaction: discord.Interaction,
+    renderer: Literal["quickchart", "matplotlib"] = "quickchart",
+    days: app_commands.Range[int, 3, 90] = 14,
+):
+    await run_chart(SlashRun(interaction), renderer, days)
+
+
+KEYWORDS = [
+    lab_keyword(
+        "lab chart",
+        "messages per day and cost per day, as charts",
+        run_chart,
+        usage="[quickchart|matplotlib] [days]",
+        parse=lambda args: (
+            args.choice(list(RENDERERS), default="quickchart"),
+            args.number("days", 14, 3, 90),
+        ),
+        examples=["lab chart", "lab chart matplotlib 30"],
+    ),
+]

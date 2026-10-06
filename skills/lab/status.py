@@ -9,7 +9,16 @@ from discord import app_commands
 from core.config import now_nz
 from core.discord_utils import log_simple
 from skills.lab import data, state
-from skills.lab.common import STARTED_AT, LabError, lab, note, record, target_channel
+from skills.lab.common import (
+    STARTED_AT,
+    LabError,
+    Run,
+    SlashRun,
+    TypedRun,
+    lab,
+    lab_keyword,
+    record,
+)
 
 log = logging.getLogger("assistant")
 
@@ -120,22 +129,20 @@ async def resume(client: discord.Client) -> None:
         log.info("Resumed the lab status message")
 
 
-@lab.command(name="pin", description="A pinned status message that updates itself every minute")
-@app_commands.describe(action="Start the status message, or stop and unpin it")
-async def pin(interaction: discord.Interaction, action: Literal["start", "stop"] = "start"):
-    await interaction.response.defer(ephemeral=True)
+async def run_pin(run: Run, action: str) -> None:
+    await run.start()
     stamp = int(now_nz().timestamp())
 
     if action == "stop":
         stopped = await stop_status(f"⏹️ **Hive status** stopped <t:{stamp}:R>.")
-        note(interaction, "stopped the status message" if stopped else "nothing was running")
-        await interaction.followup.send(
-            "Stopped and unpinned." if stopped else "No status message is running.",
-            ephemeral=True,
-        )
+        run.note("stopped the status message" if stopped else "nothing was running")
+        if not stopped and isinstance(run, TypedRun):
+            # Nothing visible happens in this case, so say so
+            await run.channel.send("No status message is running.")
+        await run.done("Stopped and unpinned." if stopped else "No status message is running.")
         return
 
-    channel = target_channel(interaction)
+    channel = run.channel
     await stop_status(f"⏹️ **Hive status** replaced by a newer one <t:{stamp}:R>.")
     await _remember_pins(channel)
 
@@ -152,11 +159,29 @@ async def pin(interaction: discord.Interaction, action: Literal["start", "stop"]
     await state.put(
         STATE_KEY,
         {"channel_id": channel.id, "message_id": message.id},
-        interaction.extras.get("user_id"),
+        run.user_id,
     )
     _start(channel.id, message.id)
-    note(interaction, f"pinned a status message in #{getattr(channel, 'name', channel.id)}")
-    await interaction.followup.send("Status message pinned. It updates every minute.", ephemeral=True)
+    run.note(f"pinned a status message in #{getattr(channel, 'name', channel.id)}")
+    await run.done("Status message pinned. It updates every minute.")
+
+
+@lab.command(name="pin", description="A pinned status message that updates itself every minute")
+@app_commands.describe(action="Start the status message, or stop and unpin it")
+async def pin(interaction: discord.Interaction, action: Literal["start", "stop"] = "start"):
+    await run_pin(SlashRun(interaction), action)
+
+
+KEYWORDS = [
+    lab_keyword(
+        "lab pin",
+        "a pinned status message that updates itself every minute",
+        run_pin,
+        usage="[start|stop]",
+        parse=lambda args: (args.choice(["start", "stop"], default="start"),),
+        examples=["lab pin", "lab pin stop"],
+    ),
+]
 
 
 # ---------------------------------------------------------------------------

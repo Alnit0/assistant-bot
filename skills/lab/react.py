@@ -8,7 +8,7 @@ from core.config import now_nz
 from core.debounce import Debouncer
 from core.permissions import is_allowed
 from core.users import get_user_by_discord_id
-from skills.lab.common import lab, note, record, target_channel
+from skills.lab.common import Run, SlashRun, lab, lab_keyword, record
 
 log = logging.getLogger("assistant")
 
@@ -140,10 +140,9 @@ async def on_reaction_remove(payload: discord.RawReactionActionEvent) -> None:
     await _on_change(payload, added=False)
 
 
-@lab.command(name="react", description="Reaction test: react, wait 15 seconds, see the summary")
-async def react(interaction: discord.Interaction):
-    await interaction.response.defer(ephemeral=True)
-    message = await target_channel(interaction).send(
+async def run_react(run: Run) -> None:
+    await run.start()
+    message = await run.channel.send(
         "🧪 **Reaction test**\n"
         "Add and remove reactions on this message, in any order.\n"
         f"When nothing has changed for {QUIET_SECONDS} seconds, I'll replace this text with "
@@ -153,5 +152,19 @@ async def react(interaction: discord.Interaction):
     for emoji in PRESETS:
         await message.add_reaction(emoji)
 
-    note(interaction, f"posted a reaction test with {' '.join(PRESETS)}")
-    await interaction.followup.send("Reaction test posted.", ephemeral=True)
+    run.note(f"posted a reaction test with {' '.join(PRESETS)}")
+    await run.done("Reaction test posted.")
+
+
+@lab.command(name="react", description="Reaction test: react, wait 15 seconds, see the summary")
+async def react(interaction: discord.Interaction):
+    await run_react(SlashRun(interaction))
+
+
+KEYWORDS = [
+    lab_keyword(
+        "lab react",
+        "reaction test: react, wait 15 seconds, see the final state and a timeline",
+        run_react,
+    ),
+]

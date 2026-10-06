@@ -19,15 +19,29 @@ claude = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
 history: list[dict] = []
 
 
-def build_system_prompt() -> str:
+def build_system_prompt(capabilities: str = "") -> str:
+    """The system prompt. `capabilities` is the list of things the bot itself can do
+    for this user in this channel (from the skill registry), so Claude can answer
+    "what can you do?" accurately."""
     now = now_nz().strftime("%A %d %B %Y, %I:%M %p")
-    return (
+    prompt = (
         "You are Hive, a personal assistant for Alex, chatting through Discord. "
         "Alex lives in Auckland, New Zealand. "
         f"The current date and time in Auckland is {now}. "
         "Use UK spelling. Keep replies short and conversational, suited to reading on a phone. "
         "Use simple Discord markdown (bold, short bullet lists) only when it genuinely helps."
     )
+    if capabilities:
+        prompt += (
+            "\n\nBesides chatting with you, the Discord bot you speak through has built-in "
+            "shortcuts, listed below. The user triggers them; you cannot run them yourself, "
+            "and a message that reaches you did not trigger one. If the user asks what you "
+            "can do, or asks for something on this list, tell them exactly what to type or "
+            "do (and that `help` shows the full list). Do not claim abilities that are "
+            "neither listed here nor part of ordinary conversation.\n\n"
+            f"{capabilities}"
+        )
+    return prompt
 
 
 def estimate_cost(model: str, input_tokens: int, output_tokens: int) -> float | None:
@@ -42,8 +56,11 @@ def format_cost(cost: float | None) -> str:
     return f"US${cost:.4f}" if cost is not None else "Unknown"
 
 
-async def ask_claude(user_text: str) -> tuple[str, int, int]:
-    """Send the message plus recent history to Claude. Returns (reply, input tokens, output tokens)."""
+async def ask_claude(user_text: str, capabilities: str = "") -> tuple[str, int, int]:
+    """Send the message plus recent history to Claude. Returns (reply, input tokens, output tokens).
+
+    `capabilities` describes the bot's own shortcuts; see build_system_prompt.
+    """
     # Keep only recent history; trimming before adding keeps it starting with a user message
     del history[:-MAX_HISTORY]
     history.append({"role": "user", "content": user_text})
@@ -52,7 +69,7 @@ async def ask_claude(user_text: str) -> tuple[str, int, int]:
         response = await claude.messages.create(
             model=CLAUDE_MODEL,
             max_tokens=MAX_TOKENS,
-            system=build_system_prompt(),
+            system=build_system_prompt(capabilities),
             messages=history,
         )
     except Exception:

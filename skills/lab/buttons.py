@@ -5,12 +5,13 @@ import discord
 
 from skills.lab.common import (
     STARTED_AT,
+    Run,
+    SlashRun,
     check_owner,
     lab,
-    note,
+    lab_keyword,
     record_press,
     report_component_error,
-    target_channel,
 )
 
 log = logging.getLogger("assistant")
@@ -272,18 +273,29 @@ def register(client: discord.Client) -> None:
     log.info("Registered persistent lab buttons: lab:uptime, lab:vote:<n>")
 
 
-@lab.command(name="buttons", description="Buttons, selects, a form, and buttons that survive restarts")
-async def buttons(interaction: discord.Interaction):
-    await interaction.response.defer(ephemeral=True)
-    channel = target_channel(interaction)
-
+async def run_buttons(run: Run) -> None:
+    await run.start()
     demo = DemoView()
-    demo.message = await channel.send(demo.render(), view=demo)
+    demo.message = await run.channel.send(demo.render(), view=demo)
 
-    await channel.send(
+    await run.channel.send(
         "♾️ **Persistent buttons**\nRestart the bot, then press these again: they still work.",
         view=build_panel(),
     )
 
-    note(interaction, "posted the component test and the persistent buttons")
-    await interaction.followup.send("Component tests posted.", ephemeral=True)
+    run.note("posted the component test and the persistent buttons")
+    await run.done("Component tests posted.")
+
+
+@lab.command(name="buttons", description="Buttons, selects, a form, and buttons that survive restarts")
+async def buttons(interaction: discord.Interaction):
+    await run_buttons(SlashRun(interaction))
+
+
+KEYWORDS = [
+    lab_keyword(
+        "lab buttons",
+        "buttons, selects, a form, and buttons that survive restarts",
+        run_buttons,
+    ),
+]

@@ -19,8 +19,9 @@ class User:
     created_at: str
 
 
-# Users already looked up, by Discord id. Cleared whenever the table changes.
-_cache: dict[int, User] = {}
+# Lookups already made, by Discord id (None = not one of our users). Cleared
+# whenever the table changes.
+_cache: dict[int, User | None] = {}
 
 
 def clear_user_cache() -> None:
@@ -72,13 +73,11 @@ def _get_user_by_discord_id(discord_id: int) -> User | None:
 async def get_user_by_discord_id(discord_id: int) -> User | None:
     """Look up a user by their Discord id, or None if we don't know them.
 
-    Known users are remembered, so permission checks on buttons and commands
-    answer at once and never wait on the database. Anything that changes the
-    users table must clear the cache.
+    Answers are remembered (including "don't know them"), so permission checks
+    on buttons, commands and every message the bot sees answer at once and
+    never wait on the database. Anything that changes the users table must
+    clear the cache.
     """
-    user = _cache.get(discord_id)
-    if user is None:
-        user = await asyncio.to_thread(_get_user_by_discord_id, discord_id)
-        if user is not None:
-            _cache[discord_id] = user
-    return user
+    if discord_id not in _cache:
+        _cache[discord_id] = await asyncio.to_thread(_get_user_by_discord_id, discord_id)
+    return _cache[discord_id]

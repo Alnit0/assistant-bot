@@ -6,7 +6,7 @@ import anthropic
 import discord
 from discord import app_commands
 
-from core import instance_lock, scheduler
+from core import instance_lock, interactions, scheduler
 from core.backup import run_nightly_backup
 from core.config import (
     BACKUP_TIME,
@@ -105,9 +105,10 @@ async def on_app_command_error(
         else:
             log.error("Slash command failed: %s", command, exc_info=error)
 
-        # Skills get first go at explaining what went wrong (and close their log rows)
+        # Close the log row and explain, if the command was a logged one
+        explained = await interactions.fail(interaction, error)
         await registry.emit("app_command_error", interaction, error)
-        if not gone and not interaction.response.is_done():
+        if not explained and not gone and not interaction.response.is_done():
             await safe_reply(interaction, "⚠️ Command failed. Check #bot-log.")
     except Exception:
         log.exception("The slash command error handler itself failed")
@@ -187,15 +188,19 @@ async def on_ready():
         embed.add_field(
             name="⚠️ Skipped", value=truncate("\n".join(registry.problems())), inline=False
         )
+    if registry.missing_descriptions():
+        embed.add_field(
+            name="⚠️ Missing descriptions",
+            value=truncate("\n".join(registry.missing_descriptions())),
+            inline=False,
+        )
     await send_log(embed)
 
 
 @client.event
 async def on_message(message: discord.Message):
-    # Ignore bots (including itself), other channels, and anyone who isn't allowed
+    # Ignore bots (including itself) and anyone who isn't allowed
     if message.author.bot:
-        return
-    if message.channel.id != INBOX_CHANNEL_ID:
         return
     user = await get_user_by_discord_id(message.author.id)
     if not is_allowed(user, "message"):
@@ -205,12 +210,18 @@ async def on_message(message: discord.Message):
     if not text:
         return
 
-    log.info("Received: %s", text)
-
-    # Skill commands first
+    # A reply with an action word acts on the message replied to; a registered
+    # word or phrase runs its skill. Each decides for itself where it works.
     ctx = Context.from_message(message, user)
-    if await registry.dispatch(ctx):
+    if await registry.dispatch_reply_action(ctx):
         return
+    if await registry.dispatch_keyword(ctx):
+        return
+
+    # Chatting with Claude only happens in the inbox
+    if message.channel.id != INBOX_CHANNEL_ID:
+        return
+    log.info("Received: %s", text)
 
     # Everything else goes to Claude. Log the raw input before processing.
     row_id = await log_received(text, "chat", message.id, message.channel.id, user_id=user.id)
@@ -218,7 +229,9 @@ async def on_message(message: discord.Message):
 
     async with message.channel.typing():
         try:
-            reply, input_tokens, output_tokens = await ask_claude(text)
+            # Tell Claude what the bot itself can do here, so it can point the user to it
+            capabilities = registry.capabilities_text(user, message.channel.id)
+            reply, input_tokens, output_tokens = await ask_claude(text, capabilities)
         except anthropic.APIStatusError as error:
             duration = time.perf_counter() - started
             log.error("Claude API error %s: %s", error.status_code, error.message)
@@ -291,7 +304,8 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
     if payload.user_id == client.user.id:
         return
     await registry.emit("raw_reaction_add", payload)
-    await registry.dispatch_reaction(payload)
+    # Registered reactions are acted on after a quiet period, so they can be undone
+    registry.reaction_changed(payload, added=True)
 
 
 @client.event
@@ -299,6 +313,7 @@ async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent):
     if payload.user_id == client.user.id:
         return
     await registry.emit("raw_reaction_remove", payload)
+    registry.reaction_changed(payload, added=False)
 
 
 @client.event
@@ -308,6 +323,7 @@ async def on_guild_channel_pins_update(channel, last_pin):
 
 @client.event
 async def on_app_command_completion(interaction: discord.Interaction, command):
+    await interactions.finish(interaction)
     await registry.emit("app_command_completion", interaction, command)
 
 

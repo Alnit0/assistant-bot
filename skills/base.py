@@ -8,18 +8,113 @@ from core.context import Context
 from core.scheduler import DailyJob
 from core.users import User
 
+# Values for `channels`: where a registration works
+INBOX = "inbox"
+ANY = "any"
 
-@dataclass(frozen=True)
-class Command:
-    """A text command. The whole message must equal `name` (case doesn't matter).
 
-    The handler replies through the context. Whatever it returns is recorded as
-    the reply in message_log and #bot-log; return None to record what was sent.
+def _as_list(value) -> list[str]:
+    return [value] if isinstance(value, str) else list(value)
+
+
+# ---------------------------------------------------------------------------
+# The three things a user can do to reach a skill. Each describes itself, so
+# `help` and Claude's knowledge of what the bot can do are generated from
+# these and never drift from the code. Always fill in `description`; a missing
+# one is reported at startup.
+# ---------------------------------------------------------------------------
+@dataclass
+class Keyword:
+    """A word or phrase the user types on its own, e.g. "stats".
+
+    `words` is the main word followed by any aliases. Small typos are
+    forgiven unless `exact` is set (use that for anything destructive). The
+    handler replies through the context; what it returns is recorded as the
+    reply in message_log and #bot-log (None records what was sent).
     """
 
-    name: str
-    description: str  # shown by `help`, e.g. "check the bot is alive"
+    words: list[str] | str
+    description: str
     handler: Callable[[Context], Awaitable[str | None]]
+    examples: list[str] | tuple = ()
+    channels: list[str] | str = INBOX  # channel names from config.CHANNELS, or ANY
+    permission: str = ""  # passed to is_allowed; defaults to "keyword:<word>"
+    takes_args: bool = False  # accept extra words after the phrase, as ctx.args
+    usage: str = ""  # the arguments, for help, e.g. "[days]"
+    exact: bool = False  # never match by typo
+    accepts: Callable[[list[str]], bool] | None = None  # say no to arguments that aren't ours
+
+    def __post_init__(self):
+        self.words = _as_list(self.words)
+        self.examples = list(self.examples)
+        self.permission = self.permission or f"keyword:{self.name}"
+
+    @property
+    def name(self) -> str:
+        return self.words[0]
+
+    @property
+    def aliases(self) -> list[str]:
+        return self.words[1:]
+
+
+@dataclass
+class ReplyAction:
+    """A word the user sends as a reply to a message, to act on that message.
+
+    The handler gets the context and the message that was replied to. After a
+    successful action the user's own reply is deleted when `remove_trigger` is
+    set, so the channel isn't left with stray command words.
+    """
+
+    words: list[str] | str
+    description: str
+    handler: Callable[[Context, discord.Message], Awaitable[str | None]]
+    examples: list[str] | tuple = ()
+    channels: list[str] | str = ANY
+    permission: str = ""  # defaults to "reply:<word>"
+    takes_args: bool = False
+    usage: str = ""
+    exact: bool = False
+    remove_trigger: bool = True
+
+    def __post_init__(self):
+        self.words = _as_list(self.words)
+        self.examples = list(self.examples)
+        self.permission = self.permission or f"reply:{self.name}"
+
+    @property
+    def name(self) -> str:
+        return self.words[0]
+
+    @property
+    def aliases(self) -> list[str]:
+        return self.words[1:]
+
+
+@dataclass
+class Reaction:
+    """An emoji the skill responds to when an allowed user adds it to a message.
+
+    Reactions are acted on after a short quiet period (see
+    REACTION_DEBOUNCE_SECONDS), so removing one in time cancels it. The handler
+    gets Discord's reaction payload and the user who reacted.
+    """
+
+    emoji: str
+    description: str
+    handler: Callable[[discord.RawReactionActionEvent, User], Awaitable[str | None]]
+    examples: list[str] | tuple = ()
+    channels: list[str] | str = ANY
+    permission: str = ""  # defaults to "reaction:<emoji>"
+
+    def __post_init__(self):
+        self.examples = list(self.examples)
+        self.permission = self.permission or f"reaction:{self.emoji}"
+
+    @property
+    def name(self) -> str:
+        return self.emoji
 
 
 @dataclass(frozen=True)
@@ -28,19 +123,6 @@ class Tool:
 
     definition: dict
     handler: Callable[..., Awaitable[str]]
-
-
-@dataclass(frozen=True)
-class Reaction:
-    """An emoji the skill responds to when an allowed user adds it to a message.
-
-    The handler gets Discord's reaction payload and the user who reacted. As
-    with commands, what it returns is recorded as the reply in message_log and
-    #bot-log.
-    """
-
-    emoji: str
-    handler: Callable[[discord.RawReactionActionEvent, User], Awaitable[str | None]]
 
 
 class Skill:
@@ -52,8 +134,16 @@ class Skill:
     name: str = ""
     description: str = ""
 
-    def commands(self) -> list[Command]:
-        """Text commands this skill handles."""
+    def keywords(self) -> list[Keyword]:
+        """Words and phrases the user can type."""
+        return []
+
+    def reply_actions(self) -> list[ReplyAction]:
+        """Words that act on a message when sent as a reply to it."""
+        return []
+
+    def reactions(self) -> list[Reaction]:
+        """Emoji this skill responds to."""
         return []
 
     def tools(self) -> list[Tool]:
@@ -72,12 +162,11 @@ class Skill:
         """
         return []
 
-    def reactions(self) -> list[Reaction]:
-        """Emoji this skill responds to."""
-        return []
-
     def app_commands(self) -> list:
-        """Slash command groups and context menus, synced to our server at startup."""
+        """Slash command groups and context menus, synced to our server at startup.
+
+        A fallback: prefer keywords, reply actions and reactions.
+        """
         return []
 
     def events(self) -> dict[str, Callable[..., Awaitable[None]]]:
