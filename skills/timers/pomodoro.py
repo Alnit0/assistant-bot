@@ -43,6 +43,15 @@ def counts_as_focus(phase: str, completed: bool) -> bool:
     return phase == FOCUS and completed
 
 
+def starts_by_itself(auto_continue: bool, is_late: bool) -> bool:
+    """Whether the next phase's clock starts without the user pressing Start.
+
+    Only in auto mode, and never when the phase ended while the bot was off:
+    after downtime the user may not be there.
+    """
+    return auto_continue and not is_late
+
+
 def parse_session(words: list[str]) -> tuple[Plan, str, bool | None]:
     """Read the words after "pomo": (plan, label, auto-continue or None for the default).
 

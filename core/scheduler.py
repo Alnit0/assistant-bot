@@ -5,8 +5,9 @@ import sqlite3
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import datetime, time, timedelta, timezone
+from time import perf_counter
 
-from core import database
+from core import database, devmode
 from core.config import TIMEZONE
 from core.discord_utils import log_error
 
@@ -182,6 +183,13 @@ def _db_pending(conn: sqlite3.Connection, skill: str, kind: str | None) -> list[
     return [_job(row) for row in conn.execute(sql + " ORDER BY due_at, id", values).fetchall()]
 
 
+def _db_all_pending(conn: sqlite3.Connection) -> list[Job]:
+    rows = conn.execute(
+        f"SELECT {_COLUMNS} FROM scheduled_jobs WHERE status = ? ORDER BY due_at, id", (PENDING,)
+    ).fetchall()
+    return [_job(row) for row in rows]
+
+
 # ---------------------------------------------------------------------------
 # For skills and the core
 # ---------------------------------------------------------------------------
@@ -221,6 +229,11 @@ async def pending_jobs(skill: str, kind: str | None = None) -> list[Job]:
     return await database.run(_db_pending, skill, kind)
 
 
+async def all_pending() -> list[Job]:
+    """Every job still waiting to run, soonest first."""
+    return await database.run(_db_all_pending)
+
+
 # ---------------------------------------------------------------------------
 # The loop
 # ---------------------------------------------------------------------------
@@ -240,14 +253,25 @@ async def run_due(now: datetime | None = None) -> int:
             continue
         if job.is_late:
             log.info("Running %s/%s job %s late by %.0fs", job.skill, job.kind, job.id, job.late_by)
+        started = perf_counter()
         try:
             await handler(job)
         except Exception as error:
             log.exception("Scheduled job %s (%s/%s) failed", job.id, job.skill, job.kind)
             await database.run(_db_finish, job.id, FAILED, job.late_by, repr(error))
             await log_error(f"Scheduled job failed: {job.skill}/{job.kind}", repr(error))
+            outcome = "failed"
         else:
             await database.run(_db_finish, job.id, DONE, job.late_by, None)
+            outcome = "done"
+        await devmode.debug(
+            f"Job {job.id}: {job.skill}/{job.kind}",
+            [
+                f"Outcome: {outcome} in {perf_counter() - started:.2f}s",
+                f"Due: {job.due_at.isoformat(timespec='seconds')} · late by {job.late_by:.1f}s",
+                f"Payload: {job.payload}",
+            ],
+        )
         ran += 1
     return ran
 

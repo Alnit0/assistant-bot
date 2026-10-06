@@ -121,6 +121,20 @@ Stop-Process -Id <ProcessId>      # stop a specific one
 
 ---
 
+## Tests
+
+```powershell
+pip install -r requirements-dev.txt   # once: adds pytest
+python -m pytest                      # run all the unit tests
+python -m pytest -k archive           # only tests with "archive" in the name
+```
+
+- Safe while the bot is running: no Discord, no real database, no `.env`
+- Run before every commit
+- `docs/TESTING.md` tracks them (🤖 Auto) and the by-hand tests (👤 Manual)
+
+---
+
 ## Logs
 
 ```powershell
@@ -196,6 +210,35 @@ git revert <commit-id>         # safely undo a commit with a new commit
 
 ---
 
+## Dev mode (typed in Discord)
+
+For testing: shorter waits, debug cards in #bot-log, and a few tools. Owner
+only, any channel, no slash. It is off after every restart.
+
+| Type | What it does |
+|---|---|
+| `dev on` | On, with the dev defaults: debounce 2s, speed 1x, verbose on, quiet hours ignored, off again after 1 hour |
+| `dev off` | Off: normal settings back, panel removed |
+| `dev` | Show the panel again at the bottom of the channel |
+| `dev reset` | Dev settings back to the dev defaults |
+| `dev debounce 0` | Seconds before reactions are acted on (0 = at once) |
+| `dev speed 60` | Timers and Pomodoro run 60 times faster (`timer 5m` takes 5s) |
+| `dev verbose on` / `off` | Debug cards in #bot-log |
+| `dev quiet on` / `off` | Quiet hours apply / are ignored |
+| `dev expire 30m` | Switch itself off after this long |
+| reply `dev inspect` | What the bot knows about that message |
+| `dev jobs` | Pending scheduler jobs |
+| `dev run backup` | Run a background task now (`sweep` and `summary` aren't built yet) |
+| `dev fire next` | Run the next pending job now |
+| `dev seed 5` | Post 5 sample messages, tagged as test data |
+| `dev clean` | Delete the test data and dev tool output in this channel |
+
+- Any setting word switches dev mode on first if it is off
+- The pinned panel has **+1 hour**, **Reset** and **Disable** buttons
+- The bot's status shows **🛠️ Dev mode** while it is on
+
+---
+
 ## Claude Code
 
 **Starting**
@@ -263,6 +306,6 @@ mstsc                    # Remote Desktop (enter: hive)
 1. `nssm stop assistant-bot` (Admin)
 2. `git pull` (if you've worked elsewhere)
 3. Ask Claude Code for the change (plan mode)
-4. `python main.py` to test, **Ctrl + C** when done
+4. `python -m pytest`, then `python main.py` to test by hand, **Ctrl + C** when done
 5. `git status` → `git add .` → `git commit -m "..."` → `git push`
 6. `nssm start assistant-bot` (Admin)

@@ -156,6 +156,26 @@ A short log of key decisions and why. Newest at the bottom.
   removing the reaction within that window; after it, archived copies have
   a Restore button instead. Alerts that must notify may post a new message,
   deleted once acknowledged. Lab tests are exempt from the clean-up rules.
+- **Dev mode is held in memory and split in two:** a test setting must not
+  outlive the session it was for, so nothing is stored, a restart means off,
+  and it expires by itself after an hour. The state is in `core/devmode.py`
+  because the registry, scheduler and timers read it; the words, panel and
+  tools are a skill (`skills/dev/`) because `help` is generated from skills
+  and the core never imports from `skills/`. Callers ask for a value
+  (`devmode.reaction_debounce()`) and get the normal one when it is off.
+- **Dev speed changes the real wait, not the stated length:** a `25m` timer
+  at 60x still says 25m and ends in 25 seconds. Focus rounds finished at any
+  speed other than 1x are left out of the stats.
+- **pytest runs the tests:** this replaces "unit tests use the standard
+  library's `unittest`" above. pytest is one development-only dependency
+  (`requirements-dev.txt`, so the server's `requirements.txt` is unchanged),
+  and gives parametrised cases, fixtures and plain `assert`. The existing
+  `unittest` classes were not rewritten, since pytest runs them as they are.
+  No pytest-asyncio: async code is run with `asyncio.run` in the test.
+- **Decisions are kept apart from Discord calls:** what can be decided
+  without Discord lives in modules that don't call it and is unit tested;
+  manual tests in `docs/TESTING.md` are only for what shows in Discord.
+  Archive was split into `rules.py`, `store.py` and `messages.py` for this.
 - **Two chart renderers kept side by side in the lab:** QuickChart needs no
   heavy dependency but sends the numbers to a third party and can be down;
   matplotlib is local and private but large. Pick one when a real skill

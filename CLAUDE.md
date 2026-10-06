@@ -31,7 +31,13 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
     `job_handlers()`. Jobs missed while offline run at startup with
     `job.is_late`. The nightly backup is a job that books its own successor
   - `debounce.py`: `Debouncer(delay, callback)`, one global quiet-period timer
-    that hands over all collected events together
+    that hands over all collected events together. `delay` may be a function
+  - `devmode.py`: dev mode's in-memory state (off after a restart). Other code
+    asks it for values and gets the normal one when it is off:
+    `reaction_debounce()`, `speed()`, `real_seconds()`, `is_verbose()`,
+    `quiet_hours_ignored()`. `await devmode.debug(title, lines)` posts a debug
+    card to #bot-log only when verbose is on; `register_task(name, fn)` makes
+    a background task runnable with `dev run <name>`
   - `instance_lock.py`: the single-instance lock, taken first thing at startup
   - `llm.py`: Claude client, system prompt (with the registry's capability list
     passed in by `main.py`), conversation history, cost estimates
@@ -72,7 +78,9 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
     and `help [skill or word]`, which is generated from the registry at request
     time and filtered by enabled skills, channel and permission
   - `archive/`: reply `archive` / `delete`, the 📦 and 🗑️ reactions and the
-    "Archive message" context menu. Reposts through a webhook, then deletes;
+    "Archive message" context menu. The rules (what may be archived or
+    deleted, names, embeds, wording) are in `rules.py` and the records in
+    `store.py`, both without Discord calls; `messages.py` does the Discord work. Reposts through a webhook, then deletes;
     every way in asks first if the message is protected. Archived copies
     carry a persistent Restore button (`archive_items` table) that reposts
     to the original channel and removes the copy
@@ -105,6 +113,13 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
     the database; one pinned "Active timers" board per channel. Uses
     discord.py directly for cards and buttons, like `lab` and `archive`. See
     "Timers and Pomodoro" in `docs/DEVELOPMENT.md`
+  - `dev/`: dev mode's words (all start with `dev`, typed only, permission
+    `dev`), its pinned panel with persistent buttons (`dev:panel:*`), the
+    "🛠️ Dev mode" status and the tools (`dev inspect` as a reply, `dev jobs`,
+    `dev run`, `dev fire next`, `dev seed`, `dev clean`). Uses discord.py
+    directly, like `lab`, `archive` and `timers`. Quiet hours, the sweep and
+    the summary don't exist yet, so `dev quiet` changes nothing and `dev run
+    sweep|summary` report "not built". See "Dev mode" in `docs/DEVELOPMENT.md`
   - Reply actions can have a `pattern` (for `+10m`) and an `applies_to` check
     (so `cancel` only acts on timer messages). Arguments keep their capitals
   - Hooks wired: `keywords`, `reply_actions`, `reactions`, `migrations`,
@@ -194,10 +209,30 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   bot shows as two `python.exe` processes (the `.venv` launcher and its child)
 - Prefer checks that import the code without starting the bot. Never start
   `main.py` while the user's own copy or the service is running
-- Unit tests live in `tests/` (standard `unittest`): run `python -m unittest`.
-  Put logic that can be tested without Discord in pure modules (as
-  `skills/timers/durations.py` and `pomodoro.py` do) and add tests with it.
+- Unit tests live in `tests/` and run with `python -m pytest` (pytest is in
+  `requirements-dev.txt`). New tests are plain pytest functions; the older
+  `unittest` classes stay as they are and pytest runs them too. Fixtures are
+  in `tests/conftest.py` (`make_db`, `db`, `dev_off`, `owner`, `stranger`).
   Tests use a temporary database and made-up settings, never the real ones
+- Keep decisions apart from Discord calls so they can be unit tested: put
+  the logic in a module that doesn't call Discord (as `core/reactions.py`,
+  `core/protection.py`, `skills/archive/rules.py` and `store.py`,
+  `skills/timers/durations.py` and `pomodoro.py` do) and have the
+  Discord-facing code call it. New logic needs tests in the same change
+- Run `python -m pytest` before suggesting a commit, and report the result
+  (passed, failed and skipped counts, and any failure) in the end-of-task
+  summary. Don't suggest a commit over a failing run without saying so
+- Tests are tracked in `docs/TESTING.md` (grouped by feature, each with an
+  ID such as A1, a type, a status and a summary table at the top). 🤖 Auto
+  rows are logic covered by pytest; 👤 Manual rows are only for
+  Discord-facing behaviour:
+  - New features add their tests to `docs/TESTING.md`: 🤖 rows for the logic,
+    👤 rows as ⬜ Untested
+  - When a change affects an existing feature, reset its 👤 tests to
+    ⬜ Untested, and set its 🤖 rows from the pytest run
+  - When I report results (e.g. "A1 pass, A2 fail: reason"), update the
+    table (status, date, notes) and the summary, and copy failures into
+    `docs/BACKLOG.md` (create it if it doesn't exist)
 
 - At the end of every task, finish with a suggested commit message in
   a code block, ready to copy:

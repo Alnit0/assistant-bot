@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 import discord
 
-from core import scheduler
+from core import devmode, scheduler
 from core.config import POMO_AUTO_CONTINUE, TIMEZONE, now_nz
 from core.context import Context
 from core.discord_utils import report_interaction_error
@@ -33,6 +33,7 @@ from skills.timers.pomodoro import (
     phase_length,
     remaining_seconds,
     resumed_end,
+    starts_by_itself,
     summarise_focus,
     week_start,
 )
@@ -135,7 +136,8 @@ async def _begin_phase(session: store.Session, seconds: float | None = None) -> 
     if seconds is None:
         seconds = phase_length(session.plan, session.phase)
     session.state = store.RUNNING
-    session.ends_at = utc_now() + timedelta(seconds=seconds)
+    # Dev mode can make the clock run faster; the phase keeps its stated length
+    session.ends_at = utc_now() + timedelta(seconds=devmode.real_seconds(seconds))
     session.remaining_s = None
     session.job_id = await scheduler.add_job(
         SKILL, JOB_KIND, session.ends_at, {"session_id": session.id}, session.user_id
@@ -159,7 +161,9 @@ async def on_due(job: scheduler.Job) -> None:
     if counts_as_focus(session.phase, completed=True):
         session.focus_rounds += 1
         session.focus_seconds += session.focus_s
-        await store.log_focus(session, session.focus_s)
+        # A sped-up round isn't real focus time: keep it out of the stats
+        if devmode.speed() == 1:
+            await store.log_focus(session, session.focus_s)
     finished_round = session.round
     left = _advance(session)
     session.job_id = None
@@ -167,8 +171,7 @@ async def on_due(job: scheduler.Job) -> None:
     length = format_duration(phase_length(session.plan, session.phase))
     headline = f"**{left} done** (round {finished_round} of {session.rounds})."
 
-    # After downtime nothing starts by itself: the user may not be there
-    if session.auto_continue and not job.is_late:
+    if starts_by_itself(session.auto_continue, job.is_late):
         await _begin_phase(session)
         await _notify(
             session, f"{headline} {upcoming} ({length}) has started, ends {stamp(session.ends_at)}.", ["ok", "skip"]
@@ -244,7 +247,7 @@ async def pause(session: store.Session) -> str:
     if session.state != store.RUNNING:
         raise UserError("The session isn't running, so it can't be paused.")
     await scheduler.cancel_job(session.job_id)
-    session.remaining_s = remaining_seconds(session.ends_at, utc_now())
+    session.remaining_s = devmode.nominal_seconds(remaining_seconds(session.ends_at, utc_now()))
     session.state, session.ends_at, session.job_id = store.PAUSED, None, None
     await _changed(session)
     return f"⏸️ Paused: {session.label} ({format_duration(session.remaining_s)} left)"
@@ -264,7 +267,7 @@ async def extend(session: store.Session, seconds: int) -> str:
     if session.state == store.PAUSED:
         session.remaining_s += seconds
     elif session.state == store.RUNNING:
-        session.ends_at = resumed_end(session.ends_at, seconds)
+        session.ends_at = resumed_end(session.ends_at, devmode.real_seconds(seconds))
         if not await scheduler.reschedule_job(session.job_id, session.ends_at):
             session.job_id = await scheduler.add_job(
                 SKILL, JOB_KIND, session.ends_at, {"session_id": session.id}, session.user_id

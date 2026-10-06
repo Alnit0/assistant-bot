@@ -4,7 +4,7 @@ from datetime import timedelta
 
 import discord
 
-from core import scheduler
+from core import devmode, scheduler
 from core.context import Context
 from core.discord_utils import report_interaction_error
 from core.errors import UserError
@@ -64,7 +64,8 @@ async def _run(timer: store.Timer, seconds: float) -> None:
     """Set a timer running for `seconds` from now, with a job for when it ends."""
     await scheduler.cancel_job(timer.job_id)
     timer.status = store.RUNNING
-    timer.ends_at = utc_now() + timedelta(seconds=seconds)
+    # Dev mode can make the clock run faster; the timer keeps its stated length
+    timer.ends_at = utc_now() + timedelta(seconds=devmode.real_seconds(seconds))
     timer.remaining_s = None
     timer.job_id = await scheduler.add_job(SKILL, JOB_KIND, timer.ends_at, {"timer_id": timer.id}, timer.user_id)
 
@@ -140,7 +141,7 @@ async def pause(timer: store.Timer) -> str:
     if timer.status != store.RUNNING:
         raise UserError(f"**{timer.label}** isn't running, so it can't be paused.")
     await scheduler.cancel_job(timer.job_id)
-    timer.remaining_s = remaining_seconds(timer.ends_at, utc_now())
+    timer.remaining_s = devmode.nominal_seconds(remaining_seconds(timer.ends_at, utc_now()))
     timer.status, timer.ends_at, timer.job_id = store.PAUSED, None, None
     await _changed(timer)
     return f"⏸️ Paused: {timer.label} ({format_duration(timer.remaining_s)} left)"
@@ -149,16 +150,17 @@ async def pause(timer: store.Timer) -> str:
 async def resume(timer: store.Timer) -> str:
     if timer.status != store.PAUSED:
         raise UserError(f"**{timer.label}** isn't paused.")
-    await _run(timer, timer.remaining_s)
+    timer_left = timer.remaining_s
+    await _run(timer, timer_left)
     await _changed(timer)
-    return f"▶️ Resumed: {timer.label} ({format_duration(remaining_seconds(timer.ends_at, utc_now()))} left)"
+    return f"▶️ Resumed: {timer.label} ({format_duration(timer_left)} left)"
 
 
 async def extend(timer: store.Timer, seconds: int) -> str:
     if timer.status == store.PAUSED:
         timer.remaining_s += seconds
     elif timer.status == store.RUNNING:
-        timer.ends_at = resumed_end(timer.ends_at, seconds)
+        timer.ends_at = resumed_end(timer.ends_at, devmode.real_seconds(seconds))
         if not await scheduler.reschedule_job(timer.job_id, timer.ends_at):
             # Its job has just run or gone: book a fresh one
             timer.job_id = await scheduler.add_job(SKILL, JOB_KIND, timer.ends_at, {"timer_id": timer.id}, timer.user_id)

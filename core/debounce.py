@@ -11,19 +11,26 @@ class Debouncer:
     Global: there is one timer for everything passed to trigger(), whatever it
     is about. Each new event restarts the timer; after `delay` seconds with no
     new events the callback gets the whole batch, in the order they arrived.
+
+    `delay` can be a function returning the seconds, for a delay that can
+    change while the bot runs; it is asked each time the timer restarts.
     """
 
     def __init__(
         self,
-        delay: float,
+        delay: float | Callable[[], float],
         callback: Callable[[list], Awaitable[None]],
         name: str = "debouncer",
     ):
-        self.delay = delay
+        self._delay = delay
         self.name = name
         self._callback = callback
         self._events: list = []
         self._timer: asyncio.Task | None = None
+
+    @property
+    def delay(self) -> float:
+        return self._delay() if callable(self._delay) else self._delay
 
     @property
     def pending(self) -> int:

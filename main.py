@@ -6,7 +6,7 @@ import anthropic
 import discord
 from discord import app_commands
 
-from core import backup, instance_lock, interactions, scheduler
+from core import backup, devmode, instance_lock, interactions, scheduler
 from core.config import (
     CLAUDE_MODEL,
     DB_PATH,
@@ -57,6 +57,8 @@ INTERACTION_GRACE = 2.0
 session_stats = {"messages": 0, "cost": 0.0}
 
 scheduler.register_handler(backup.JOB_SKILL, backup.JOB_KIND, backup.nightly_backup_job)
+# What `dev run <name>` can run (the sweep and summary register theirs when they exist)
+devmode.register_task("backup", backup.run_nightly_backup)
 
 
 # ---------------------------------------------------------------------------

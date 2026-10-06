@@ -1,14 +1,11 @@
 import logging
 import re
-import sqlite3
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
-from datetime import datetime
 
 import discord
 from discord import app_commands
 
-from core import confirmations, database, interactions
+from core import confirmations, interactions
 from core.config import ARCHIVE_CHANNEL_ID, BOT_LOG_CHANNEL_ID
 from core.context import Context
 from core.database import log_received, log_result
@@ -16,8 +13,8 @@ from core.discord_utils import log_simple, report_interaction_error, safe_reply
 from core.errors import UserError
 from core.permissions import is_allowed
 from core.protection import protection
-from core.scheduler import from_db, to_db, utc_now
 from core.users import User, get_user_by_discord_id
+from skills.archive import rules, store
 
 log = logging.getLogger("assistant")
 
@@ -42,132 +39,17 @@ def bind(client: discord.Client) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Where each archived copy came from, so it can be restored (even after a restart)
+# Checks: the rules are in rules.py; these supply the settings
 # ---------------------------------------------------------------------------
-def create_items(conn: sqlite3.Connection) -> None:
-    conn.execute(
-        """
-        CREATE TABLE archive_items (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER REFERENCES users(id),
-            original_channel_id INTEGER NOT NULL,
-            original_message_id INTEGER NOT NULL,
-            archive_channel_id INTEGER NOT NULL,
-            archive_message_id INTEGER,
-            button_message_id INTEGER,
-            author_name TEXT NOT NULL,
-            author_avatar_url TEXT,
-            original_created_at TEXT NOT NULL,
-            archived_at TEXT NOT NULL,
-            restored_at TEXT
-        )
-        """
-    )
-
-
-MIGRATIONS = [
-    create_items,
-]
-
-
-@dataclass
-class Item:
-    id: int
-    user_id: int | None
-    original_channel_id: int
-    original_message_id: int
-    archive_channel_id: int
-    archive_message_id: int | None
-    button_message_id: int | None
-    author_name: str
-    author_avatar_url: str | None
-    original_created_at: datetime
-
-
-def _db_create(conn: sqlite3.Connection, user_id, message: discord.Message, archive_channel_id: int) -> int:
-    cursor = conn.execute(
-        """
-        INSERT INTO archive_items (user_id, original_channel_id, original_message_id, archive_channel_id,
-                                   author_name, author_avatar_url, original_created_at, archived_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            user_id,
-            message.channel.id,
-            message.id,
-            archive_channel_id,
-            message.author.display_name,
-            message.author.display_avatar.url,
-            to_db(message.created_at),
-            to_db(utc_now()),
-        ),
-    )
-    return cursor.lastrowid
-
-
-def _db_set_copy(conn: sqlite3.Connection, item_id: int, archive_message_id: int, button_message_id) -> None:
-    conn.execute(
-        "UPDATE archive_items SET archive_message_id = ?, button_message_id = ? WHERE id = ?",
-        (archive_message_id, button_message_id, item_id),
-    )
-
-
-def _db_discard(conn: sqlite3.Connection, item_id: int) -> None:
-    conn.execute("DELETE FROM archive_items WHERE id = ?", (item_id,))
-
-
-def _db_restored(conn: sqlite3.Connection, item_id: int) -> None:
-    conn.execute("UPDATE archive_items SET restored_at = ? WHERE id = ?", (to_db(utc_now()), item_id))
-
-
-def _db_get(conn: sqlite3.Connection, item_id: int) -> Item | None:
-    row = conn.execute(
-        """
-        SELECT id, user_id, original_channel_id, original_message_id, archive_channel_id, archive_message_id,
-               button_message_id, author_name, author_avatar_url, original_created_at
-        FROM archive_items WHERE id = ? AND restored_at IS NULL
-        """,
-        (item_id,),
-    ).fetchone()
-    return Item(*row[:9], from_db(row[9])) if row else None
-
-
-# ---------------------------------------------------------------------------
-# Checks
-# ---------------------------------------------------------------------------
-def safe_username(name: str) -> str:
-    """Webhook names can't contain "discord" or "clyde", and must be 1 to 80 characters."""
-    name = re.sub(r"discord", "d*scord", name, flags=re.IGNORECASE)
-    name = re.sub(r"clyde", "cl*de", name, flags=re.IGNORECASE)
-    return name.strip()[:80] or "Unknown"
-
-
 def check_archivable(message: discord.Message) -> None:
     """Raise UserError if this message shouldn't or can't be archived."""
-    if ARCHIVE_CHANNEL_ID is None:
-        raise UserError("ARCHIVE_CHANNEL_ID isn't set in .env, so there's nowhere to archive to.")
-    if message.channel.id == ARCHIVE_CHANNEL_ID:
-        raise UserError("That message is already in the archive.")
-    if BOT_LOG_CHANNEL_ID is not None and message.channel.id == BOT_LOG_CHANNEL_ID:
-        raise UserError("Messages in #bot-log stay where they are.")
-    if not (message.content or message.attachments or message.embeds):
-        raise UserError("There's nothing in that message I can copy (no text, files or embeds).")
-
-    limit = message.guild.filesize_limit if message.guild else 10 * 1024 * 1024
-    for attachment in message.attachments:
-        if attachment.size > limit:
-            raise UserError(
-                f"`{attachment.filename}` is too big for me to re-upload "
-                f"({attachment.size / 1_048_576:.1f} MB), so I've left the message where it is."
-            )
+    limit = message.guild.filesize_limit if message.guild else rules.DEFAULT_SIZE_LIMIT
+    rules.check_archivable(message, ARCHIVE_CHANNEL_ID, BOT_LOG_CHANNEL_ID, limit)
 
 
 def check_deletable(message: discord.Message) -> None:
     """Raise UserError if this message shouldn't be deleted on request."""
-    if ARCHIVE_CHANNEL_ID is not None and message.channel.id == ARCHIVE_CHANNEL_ID:
-        raise UserError("Messages in the archive stay there. Delete it by hand if you're sure.")
-    if BOT_LOG_CHANNEL_ID is not None and message.channel.id == BOT_LOG_CHANNEL_ID:
-        raise UserError("Messages in #bot-log stay where they are.")
+    rules.check_deletable(message, ARCHIVE_CHANNEL_ID, BOT_LOG_CHANNEL_ID)
 
 
 # ---------------------------------------------------------------------------
@@ -229,11 +111,11 @@ async def archive_message(message: discord.Message, user_id: int | None = None) 
     files = await _download(message)
 
     # Keep the original's own embeds (not link previews, which Discord rebuilds)
-    embeds = [embed for embed in message.embeds if embed.type == "rich"][: MAX_EMBEDS - 1]
+    embeds = rules.own_embeds(message.embeds, MAX_EMBEDS - 1)
     embeds.append(build_info_embed(message))
     copy_fields = dict(
         content=message.content,
-        username=safe_username(message.author.display_name),
+        username=rules.safe_username(message.author.display_name),
         avatar_url=message.author.display_avatar.url,
         embeds=embeds,
         # Don't ping anyone a second time
@@ -242,7 +124,15 @@ async def archive_message(message: discord.Message, user_id: int | None = None) 
     )
 
     # The record comes first: the Restore button carries its id
-    item_id = await database.run(_db_create, user_id, message, channel.id)
+    item_id = await store.add(
+        user_id,
+        message.channel.id,
+        message.id,
+        channel.id,
+        message.author.display_name,
+        message.author.display_avatar.url,
+        message.created_at,
+    )
     try:
         try:
             copy = await webhook.send(files=files, view=restore_view(item_id), **copy_fields)
@@ -257,7 +147,7 @@ async def archive_message(message: discord.Message, user_id: int | None = None) 
             log.info("Archive copy sent without a button (%s)", error)
             copy = await webhook.send(files=await _download(message), **copy_fields)
     except BaseException:
-        await database.run(_db_discard, item_id)
+        await store.discard(item_id)
         raise
 
     button_message_id = None
@@ -269,7 +159,7 @@ async def archive_message(message: discord.Message, user_id: int | None = None) 
             button_message_id = button.id
         except discord.HTTPException as error:
             log.warning("Could not add a Restore button under the archived copy: %s", error)
-    await database.run(_db_set_copy, item_id, copy.id, button_message_id)
+    await store.set_copy(item_id, copy.id, button_message_id)
 
     # Only now that the copy exists is it safe to remove the original
     summary = (
@@ -291,7 +181,7 @@ async def archive_message(message: discord.Message, user_id: int | None = None) 
 async def delete_message(message: discord.Message) -> str:
     """Delete a message for good. Returns a one-line summary."""
     check_deletable(message)
-    preview = (message.content or "(no text)").replace("\n", " ")[:80]
+    preview = rules.delete_preview(message.content)
     summary = (
         f"deleted a message by {message.author.display_name} from #{message.channel.name} "
         f"({len(message.attachments)} file(s)): {preview}"
@@ -331,7 +221,7 @@ async def _run_or_ask(
     async def confirmed() -> str:
         return (await perform(message, user))[1]
 
-    await confirmations.ask(message.channel, user, f"⚠️ That message is {reason}. {verb} it anyway?", confirmed)
+    await confirmations.ask(message.channel, user, rules.confirm_question(reason, verb), confirmed)
     return None
 
 
@@ -416,7 +306,7 @@ archive_menu.add_check(menu_check)
 # ---------------------------------------------------------------------------
 async def restore(item_id: int) -> str:
     """Repost an archived message to its original channel, then remove the archived copy."""
-    item = await database.run(_db_get, item_id)
+    item = await store.get(item_id)
     if item is None:
         raise UserError("I have no record of where that came from, or it was already restored.")
     archive_channel = _client.get_channel(item.archive_channel_id)
@@ -435,15 +325,14 @@ async def restore(item_id: int) -> str:
         timestamp=item.original_created_at,
     )
     note.set_footer(text="Originally posted")
-    # The copy's last embed is our "archived from" note: swap it for the "restored" one
-    embeds = [embed for embed in copy.embeds if embed.type == "rich"][:-1] + [note]
+    embeds = rules.restored_embeds(copy.embeds, note)
     quiet = discord.AllowedMentions.none()
 
     try:
         webhook = await _get_webhook(origin)
         restored = await webhook.send(
             content=copy.content,
-            username=safe_username(item.author_name),
+            username=rules.safe_username(item.author_name),
             avatar_url=item.author_avatar_url,
             files=await _download(copy),
             embeds=embeds,
@@ -453,7 +342,7 @@ async def restore(item_id: int) -> str:
     except (UserError, discord.Forbidden, discord.NotFound):
         # No webhook allowed there: post it ourselves, saying whose it was
         _webhooks.pop(origin.id, None)
-        text = f"**{item.author_name}** wrote:\n{copy.content or ''}"[:2000]
+        text = rules.fallback_text(item.author_name, copy.content)
         restored = await origin.send(text, files=await _download(copy), embeds=embeds, allowed_mentions=quiet)
 
     # Only now that it is back is it safe to remove the archived copy
@@ -463,7 +352,7 @@ async def restore(item_id: int) -> str:
                 await archive_channel.get_partial_message(message_id).delete()
             except discord.HTTPException as error:
                 log.info("Could not remove archived message %s: %s", message_id, error)
-    await database.run(_db_restored, item.id)
+    await store.mark_restored(item.id)
     return f"{RESTORE_EMOJI} Restored to {origin.mention}: {restored.jump_url}"
 
 

@@ -2,15 +2,16 @@ import asyncio
 import importlib
 import logging
 import pkgutil
+import time
 from dataclasses import dataclass
 
 import discord
 
 import skills
 from core import scheduler
-from core.config import CHANNELS, ENABLED_SKILLS, REACTION_DEBOUNCE_SECONDS
+from core.config import CHANNELS, ENABLED_SKILLS
 from core.context import Context
-from core import database, discord_utils, reactions
+from core import database, devmode, discord_utils, reactions
 from core.database import log_received, log_result
 from core.debounce import Debouncer
 from core.discord_utils import log_error, log_simple
@@ -283,8 +284,17 @@ async def _run(
       details go to #bot-log, not the channel.
     """
     row_id = await log_received(ctx.text, kind, ctx.message_id, ctx.channel_id, user_id=ctx.user.id)
+    started = time.perf_counter()
 
     async def finished(status: str, reply: str = "", command_deleted: bool = False) -> None:
+        await devmode.debug(
+            f"{kind}: {name}",
+            [
+                f"Trigger: `{ctx.text}` in <#{ctx.channel_id}>",
+                f"Outcome: {status} in {time.perf_counter() - started:.2f}s",
+                f"Command message: {'deleted' if command_deleted else 'kept'}",
+            ],
+        )
         await emit(
             "action_finished",
             ActionResult(kind, name, status, ctx.user.id, ctx.channel_id, command_deleted, reply),
@@ -424,29 +434,63 @@ async def _reactions_quiet(events: list[tuple[discord.RawReactionActionEvent, bo
     changes: list[tuple[reactions.Key, bool]] = []
     payloads: dict[reactions.Key, discord.RawReactionActionEvent] = {}
     users: dict[reactions.Key, User] = {}
+    people = {
+        discord_id: await get_user_by_discord_id(discord_id)
+        for discord_id in {payload.user_id for payload, _ in events}
+    }
+
+    def works_here(emoji: str, channel_id: int) -> bool:
+        entry = _reactions.get(emoji)
+        return entry is not None and works_in(entry[1], channel_id)
+
+    def user_id_for(emoji: str, discord_user_id: int) -> int | None:
+        user = people[discord_user_id]
+        return user.id if is_allowed(user, _reactions[emoji][1].permission) else None
+
     for payload, added in events:
-        entry = _reactions.get(_emoji_key(payload.emoji))
-        if entry is None or not works_in(entry[1], payload.channel_id):
+        change = reactions.Change(
+            payload.message_id, payload.channel_id, _emoji_key(payload.emoji), payload.user_id
+        )
+        # Which changes count is decided in core/reactions.py
+        key = reactions.key_for(change, works_here, user_id_for)
+        if key is None:
             continue
-        # Reactions from anyone who isn't allowed are ignored without comment
-        user = await get_user_by_discord_id(payload.user_id)
-        if not is_allowed(user, entry[1].permission):
-            continue
-        key = (payload.message_id, _emoji_key(payload.emoji), user.id)
         changes.append((key, added))
-        payloads[key], users[key] = payload, user
+        payloads[key], users[key] = payload, people[payload.user_id]
 
     final = reactions.final_states(changes)
     applied = await database.run(reactions.db_applied, sorted({key[0] for key in final}))
     to_apply, to_undo = reactions.plan_changes(final, applied)
+
+    def emojis(keys) -> str:
+        return ", ".join(f"{key[1]} on {key[0]}" for key in keys) or "none"
+
+    await devmode.debug(
+        "Reactions settled",
+        [
+            f"Trigger: {len(events)} change(s), quiet for {_reaction_debouncer.delay:g}s",
+            "Final state: "
+            + (", ".join(f"{key[1]} on {key[0]} {'there' if there else 'gone'}" for key, there in final.items()) or "nothing of ours"),
+            f"Already applied: {emojis(applied)}",
+            f"To apply: {emojis(to_apply)}",
+            f"To undo: {emojis(to_undo)}",
+        ],
+    )
+    started = time.perf_counter()
     for key in to_undo:
         await _undo_reaction(key, payloads[key], users[key])
     for key in to_apply:
         await _apply_reaction(key, payloads[key], users[key])
+    if to_apply or to_undo:
+        await devmode.debug(
+            "Reactions handled",
+            [f"{len(to_apply)} applied, {len(to_undo)} undone in {time.perf_counter() - started:.2f}s"],
+        )
 
 
-# One timer for all reactions: any change to a registered emoji restarts it
-_reaction_debouncer = Debouncer(REACTION_DEBOUNCE_SECONDS, _reactions_quiet, name="reactions")
+# One timer for all reactions: any change to a registered emoji restarts it. The
+# delay is REACTION_DEBOUNCE, unless dev mode has shortened it
+_reaction_debouncer = Debouncer(devmode.reaction_debounce, _reactions_quiet, name="reactions")
 
 
 def reaction_changed(payload: discord.RawReactionActionEvent, added: bool) -> None:

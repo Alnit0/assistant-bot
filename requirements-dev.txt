@@ -1,0 +1,4 @@
+# For development machines only: what the tests need, on top of the bot's own packages.
+# Install with: pip install -r requirements-dev.txt
+-r requirements.txt
+pytest==9.1.1

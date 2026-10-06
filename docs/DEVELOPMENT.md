@@ -36,6 +36,7 @@ automatically in new terminals. Check the prompt starts with `(.venv)`.
   - `scheduler.py`: stored jobs that run at a moment in the future, with catch-up
   - `backup.py`: nightly backup (a scheduler job) and pre-migration snapshots
   - `debounce.py`: waits for a quiet period, then handles events together
+  - `devmode.py`: dev mode's state, and the values other code reads from it
   - `reactions.py`: what to apply or undo once reactions have settled
   - `protection.py`, `confirmations.py`: pinned and 📌-marked messages, and
     asking before acting on them
@@ -50,7 +51,8 @@ automatically in new terminals. Check the prompt starts with `(.venv)`.
     menu), with a Restore button on archived copies
   - `lab/`: `lab …` words for trying out Discord features
   - `timers/`: short timers and Pomodoro sessions
-- `tests/`: unit tests (`python -m unittest`)
+  - `dev/`: the `dev …` words, the dev panel and the dev tools
+- `tests/`: unit tests (`python -m pytest`)
 
 Always run `main.py` (not the files in `core/` or `skills/`). Paths are
 worked out from the project root, so it runs correctly from any working
@@ -357,7 +359,80 @@ in auto mode.
   and #bot-log says so.
 - **`10 min walk`** is read as ten minutes labelled "walk", because "min"
   is a unit.
-- **For a quick try-out** use seconds: `timer 10s tea`, `pomo 30s/10s`.
+- **For a quick try-out** use seconds: `timer 10s tea`, `pomo 30s/10s`, or
+  speed the clock up with `dev speed 60` (see "Dev mode").
+
+## Dev mode
+
+A switch for testing: shorter waits, debug cards in #bot-log, and tools for
+looking inside the bot. Owner only (permission `dev`), typed in any channel,
+no slash commands. `help dev` lists the words.
+
+| Type | What happens |
+|---|---|
+| `dev on` | Switches it on with the dev defaults, for 1 hour |
+| `dev off` | Switches it off and restores normal settings |
+| `dev` | Shows the panel again, at the bottom of the channel you are in |
+| `dev reset` | Dev settings back to the dev defaults, with a fresh hour |
+| `dev debounce <seconds>` | Quiet time before reactions are acted on. 0 acts at once |
+| `dev speed <n>` | Timers and Pomodoro phases run n times faster |
+| `dev verbose on\|off` | Debug cards in #bot-log |
+| `dev quiet on\|off` | `on`: quiet hours apply as normal. `off`: alerts ignore them |
+| `dev expire <duration>` | Switches itself off after this long (`30m`, `2h`) |
+| reply `dev inspect` | What the bot knows about the message you replied to |
+| `dev jobs` | The scheduler's pending jobs |
+| `dev run backup\|sweep\|summary` | Runs a background task now |
+| `dev fire next` | Runs the next pending job now, whenever it was due |
+| `dev seed <n>` | Posts n sample messages (up to 20), tagged as test data |
+| `dev clean` | Deletes the tagged messages in this channel |
+
+| Setting | Normal | Dev default |
+|---|---|---|
+| Reaction debounce | `REACTION_DEBOUNCE` (30s) | 2s |
+| Speed | 1x | 1x |
+| Verbose log | off | on |
+| Quiet hours | respected | ignored |
+| Expiry | none | 1 hour |
+
+- **Each setting word switches dev mode on first** if it is off, with the
+  other settings at their dev defaults.
+- **The panel** is one pinned message in the channel where dev mode was
+  switched on. It shows each setting against its normal value and a live
+  expiry time, and is edited in place on every change. Its buttons are
+  **+1 hour**, **Reset** and **Disable**. On `dev off`, Disable or expiry it
+  is unpinned and deleted, and #bot-log says why dev mode ended.
+- **In memory only.** A restart always comes back with dev mode off. A panel
+  left pinned by the restart is removed at startup.
+- **The bot's status** reads "🛠️ Dev mode" while it is on.
+- **Speed applies when a clock is set.** A timer already running keeps its
+  end time when the speed changes or dev mode ends. Cards still show the
+  stated length (`25m`) with the real end time. Focus rounds that finish
+  while the speed isn't 1x are not counted in `pomo stats`.
+- **Verbose cards** (titles start with 🛠️) cover every word and reply action
+  (trigger, outcome, time taken), every settled batch of reactions (where
+  each ended up, what was applied or undone) and every scheduler job.
+- **`dev inspect`** shows: pinned, protected from clean-up (pinned or 📌),
+  the reactions on the message, the reaction actions applied to it
+  (`reaction_state`) and its archive record, if it was archived or is an
+  archived copy. "Kept" reads "not built yet" until there is a keep action.
+- **`dev fire next`** takes the earliest pending job, which may be the
+  nightly backup (it books its successor as usual).
+- **Test data** is anything the bot posted ending `-# 🧪 dev test data`:
+  seeded messages and the output of `dev inspect` and `dev jobs`. `dev clean`
+  looks through the last 200 messages of the channel and never removes one
+  that is pinned or 📌-marked.
+- **Not built yet:** quiet hours, the sweep and the summary. `dev quiet` is
+  stored and shown and changes nothing so far; `dev run sweep` and `dev run
+  summary` fail with "not built" on the #bot-log card.
+
+**In code.** `core/devmode.py` holds the state and is what other code asks:
+`reaction_debounce()`, `speed()`, `real_seconds()`, `nominal_seconds()`,
+`is_verbose()`, `quiet_hours_ignored()`. Each gives the normal value when
+dev mode is off, so callers never check whether it is on. Add a debug card
+with `await devmode.debug(title, lines)`; it does nothing unless verbose is
+on. A background task becomes runnable with `dev run <name>` by calling
+`devmode.register_task(name, function)` (names are listed in `TASK_NAMES`).
+The words, panel and tools are in `skills/dev/`.
 
 ## Lab commands
 
@@ -525,15 +600,34 @@ One bot shows as **two** `python.exe` lines with the same start time: the
 ## Tests
 
 ```powershell
-python -m unittest
+pip install -r requirements-dev.txt   # once: adds pytest
+python -m pytest                      # everything
+python -m pytest tests/test_router.py # one file
+python -m pytest -k archive           # tests with "archive" in the name
 ```
 
-The tests in `tests/` cover the pure logic: duration parsing, Pomodoro
-phase order and pause arithmetic, the word router, and the scheduler
-(including catch-up and the nightly backup). They never start the bot or
-talk to Discord or Claude, they use made-up settings instead of `.env`, and
-anything that needs a database gets a temporary one, so they are safe to
-run while the bot is running.
+The tests in `tests/` cover the decision logic: the word router, duration
+parsing, Pomodoro phases and pause arithmetic, which reactions count and
+what to apply or undo, the debounce timer, protection, archive and delete
+rules and records, permissions, the registry and `help`, lab arguments, dev
+mode, and the scheduler (including catch-up and the nightly backup). They
+never start the bot or talk to Discord or Claude, they use made-up settings
+instead of `.env`, and anything that needs a database gets a temporary one,
+so they are safe to run while the bot is running.
+
+- **Write logic so it can be tested.** A decision ("may this be archived?",
+  "which reactions count?") goes in a module with no Discord calls and gets
+  tests; the Discord-facing code calls it. `skills/archive/` is the pattern:
+  `rules.py` decides, `store.py` remembers, `messages.py` talks to Discord.
+- **New tests are plain pytest functions** with `assert`. The older
+  `unittest` classes are left as they are; pytest runs both.
+- **Fixtures** are in `tests/conftest.py`: `make_db` / `db` (a temporary
+  database), `dev_off`, `owner` and `stranger`. Stand-ins for Discord
+  objects are `types.SimpleNamespace`.
+- **Async code** is run with `asyncio.run(...)` inside the test, or from a
+  `tests.helpers.DatabaseTestCase`. There is no pytest-asyncio.
+- **`docs/TESTING.md`** lists every test: 🤖 Auto rows for what pytest
+  covers, 👤 Manual rows for what only shows in Discord.
 
 ## Service commands (Terminal as Admin)
 

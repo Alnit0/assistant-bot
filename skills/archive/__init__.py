@@ -1,7 +1,7 @@
 import discord
 
 from core.config import REACTION_DEBOUNCE_SECONDS
-from skills.archive import messages
+from skills.archive import messages, store
 from skills.base import Reaction, ReplyAction, Skill
 
 WAIT = f"{REACTION_DEBOUNCE_SECONDS:g} seconds"
@@ -56,7 +56,7 @@ class ArchiveSkill(Skill):
         return [messages.archive_menu]
 
     def migrations(self) -> list:
-        return list(messages.MIGRATIONS)
+        return list(store.MIGRATIONS)
 
     def setup(self, client: discord.Client) -> None:
         # Before connecting, so Restore buttons on old archived copies still work

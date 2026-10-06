@@ -1,4 +1,6 @@
 import sqlite3
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime, timezone
 
 # ---------------------------------------------------------------------------
@@ -20,6 +22,36 @@ FAILED_EMOJI = "⚠️"
 def emoji_key(emoji) -> str:
     """An emoji as we compare it. Discord sometimes drops the invisible "emoji style" character."""
     return str(emoji).replace("️", "")
+
+
+@dataclass(frozen=True)
+class Change:
+    """One reaction being added or removed, as Discord reported it."""
+
+    message_id: int
+    channel_id: int
+    emoji: str  # as emoji_key gives it
+    discord_user_id: int
+
+
+def key_for(
+    change: Change,
+    works_here: Callable[[str, int], bool],
+    user_id_for: Callable[[str, int], int | None],
+) -> Key | None:
+    """The reaction action a change is about, or None if it is to be ignored.
+
+    `works_here(emoji, channel_id)` says whether that emoji is registered and
+    works in that channel. `user_id_for(emoji, discord_user_id)` gives our id
+    for the person if they are allowed to use it, else None: reactions from
+    anyone else are ignored without comment.
+    """
+    if not works_here(change.emoji, change.channel_id):
+        return None
+    user_id = user_id_for(change.emoji, change.discord_user_id)
+    if user_id is None:
+        return None
+    return (change.message_id, change.emoji, user_id)
 
 
 def final_states(events: list[tuple[Key, bool]]) -> dict[Key, bool]:
