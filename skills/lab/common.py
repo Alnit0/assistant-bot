@@ -112,6 +112,18 @@ async def fail(interaction: discord.Interaction, error: Exception) -> None:
         log.warning("Could not tell the user about a failed lab command")
 
 
+async def report_component_error(
+    interaction: discord.Interaction, error: Exception, label: str
+) -> None:
+    """A button, select or form handler failed: log it everywhere and tell the user."""
+    log.error("Lab component failed: %s", label, exc_info=error)
+    await log_error(f"Lab component failed: {label}", repr(error))
+    try:
+        await say(interaction, explain(error))
+    except discord.HTTPException:
+        log.warning("Could not tell the user about a failed lab component")
+
+
 async def record(
     label: str,
     summary: str,

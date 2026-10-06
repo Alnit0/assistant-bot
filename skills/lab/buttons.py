@@ -1,3 +1,4 @@
+import logging
 import re
 
 import discord
@@ -8,8 +9,11 @@ from skills.lab.common import (
     lab,
     note,
     record_press,
+    report_component_error,
     target_channel,
 )
+
+log = logging.getLogger("assistant")
 
 DEMO_TIMEOUT = 900  # seconds before the interactive message stops responding
 DOCS_URL = "https://discordpy.readthedocs.io/en/stable/interactions/api.html"
@@ -37,6 +41,9 @@ class LabForm(discord.ui.Modal, title="Lab form"):
     def __init__(self, demo: "DemoView"):
         super().__init__()
         self.demo = demo
+
+    async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
+        await report_component_error(interaction, error, "buttons: form")
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
         if not await check_owner(interaction):
@@ -85,6 +92,9 @@ class DemoView(discord.ui.View):
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         return await check_owner(interaction)
+
+    async def on_error(self, interaction: discord.Interaction, error: Exception, item) -> None:
+        await report_component_error(interaction, error, "buttons: component test")
 
     async def refresh(self, interaction: discord.Interaction, label: str, summary: str) -> None:
         await interaction.response.edit_message(content=self.render(), view=self)
@@ -187,6 +197,9 @@ class PersistentPanel(discord.ui.View):
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         return await check_owner(interaction)
 
+    async def on_error(self, interaction: discord.Interaction, error: Exception, item) -> None:
+        await report_component_error(interaction, error, "buttons: persistent panel")
+
     @discord.ui.button(
         label="Uptime", emoji="🕒", style=discord.ButtonStyle.secondary, custom_id="lab:uptime"
     )
@@ -223,20 +236,40 @@ class VoteButton(
         return cls(int(match["count"]))
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        return await check_owner(interaction)
+        # discord.py treats an error in a dynamic item's check as a silent "no"
+        try:
+            return await check_owner(interaction)
+        except Exception as error:
+            await report_component_error(interaction, error, "buttons: persistent vote")
+            return False
 
     async def callback(self, interaction: discord.Interaction) -> None:
-        self.count += 1
-        self.item.label = f"Votes: {self.count}"
-        self.custom_id = f"lab:vote:{self.count}"
-        await interaction.response.edit_message(view=self.view)
-        await record_press(interaction, "buttons: persistent vote", f"votes: {self.count}")
+        try:
+            count = self.count + 1
+            # Send back a complete, freshly built panel. self.view is discord.py's
+            # bare copy of the message: its other buttons have no handlers, and
+            # passing it back would make them the ones registered for this message
+            await interaction.response.edit_message(view=build_panel(count))
+            await record_press(interaction, "buttons: persistent vote", f"votes: {count}")
+        except Exception as error:
+            await report_component_error(interaction, error, "buttons: persistent vote")
+
+
+def build_panel(votes: int = 0) -> PersistentPanel:
+    """The persistent message's buttons, with every handler attached."""
+    panel = PersistentPanel()
+    panel.add_item(VoteButton(votes))
+    return panel
 
 
 def register(client: discord.Client) -> None:
-    """Tell the client about the persistent buttons, so old messages keep working."""
+    """Tell the client about the persistent buttons, so old messages keep working.
+
+    Must run before the bot connects, so no press can arrive unregistered.
+    """
     client.add_view(PersistentPanel())
     client.add_dynamic_items(VoteButton)
+    log.info("Registered persistent lab buttons: lab:uptime, lab:vote:<n>")
 
 
 @lab.command(name="buttons", description="Buttons, selects, a form, and buttons that survive restarts")
@@ -247,11 +280,9 @@ async def buttons(interaction: discord.Interaction):
     demo = DemoView()
     demo.message = await channel.send(demo.render(), view=demo)
 
-    panel = PersistentPanel()
-    panel.add_item(VoteButton())
     await channel.send(
         "♾️ **Persistent buttons**\nRestart the bot, then press these again: they still work.",
-        view=panel,
+        view=build_panel(),
     )
 
     note(interaction, "posted the component test and the persistent buttons")

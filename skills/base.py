@@ -89,5 +89,9 @@ class Skill:
         """
         return {}
 
+    def setup(self, client: discord.Client) -> None:
+        """Runs once just before the bot connects. Register persistent views here
+        (client.add_view), so buttons on old messages work from the first moment."""
+
     async def startup(self, client: discord.Client) -> None:
         """Runs once when the bot is connected and ready."""

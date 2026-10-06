@@ -132,6 +132,16 @@ def app_commands() -> list:
     return list(_app_commands)
 
 
+def setup(client: discord.Client) -> None:
+    """Let each skill register persistent views before the bot connects. Never fatal."""
+    for skill in _skills:
+        try:
+            skill.setup(client)
+        except Exception as error:
+            log.exception("Skill setup failed: %s", skill.name)
+            _problems.append(f"{skill.name}: setup failed: {error!r}")
+
+
 async def startup(client: discord.Client) -> None:
     """Give each skill its turn once the bot is connected. A failure is reported, not fatal."""
     for skill in _skills:

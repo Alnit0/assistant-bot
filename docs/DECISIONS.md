@@ -70,6 +70,13 @@ A short log of key decisions and why. Newest at the bottom.
   only way to show the original author's name and avatar. The gesture (menu
   item or 📦 from the owner) counts as the confirmation for the delete, and
   the delete only happens once the copy, with every attachment, is posted.
+- **A watchdog for unanswered buttons:** discord.py silently drops a press
+  it has no handler for, and Discord just says "interaction failed". After
+  2 seconds without an answer we log it, post a card and tell the user,
+  so a dead button is never a mystery.
+- **Persistent views are registered in `setup_hook`, not `on_ready`:** it
+  runs before the bot connects, and does not depend on the slash command
+  sync succeeding first.
 - **Two chart renderers kept side by side in the lab:** QuickChart needs no
   heavy dependency but sends the numbers to a third party and can be down;
   matplotlib is local and private but large. Pick one when a real skill

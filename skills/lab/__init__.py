@@ -35,11 +35,14 @@ class LabSkill(Skill):
     def migrations(self) -> list:
         return list(state.MIGRATIONS)
 
+    def setup(self, client: discord.Client) -> None:
+        # Before connecting, so a press on an old message can never arrive too early
+        buttons.register(client)
+
     async def startup(self, client: discord.Client) -> None:
         ratelimits.install()
         react.bind(client)
         archive.bind(client)
-        buttons.register(client)
         await status.resume(client)
 
 

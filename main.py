@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import time
 
@@ -48,6 +49,10 @@ bind_client(client)
 tree = app_commands.CommandTree(client)
 slash_status = "not set up yet"
 
+# Seconds a button, select or form handler gets to answer before we step in
+# (Discord gives up at 3)
+INTERACTION_GRACE = 2.0
+
 # Running totals since the bot started
 session_stats = {"messages": 0, "cost": 0.0}
 
@@ -97,6 +102,53 @@ async def on_app_command_error(
 # ---------------------------------------------------------------------------
 # Discord events
 # ---------------------------------------------------------------------------
+@client.event
+async def setup_hook():
+    # Runs once after login, before connecting: persistent buttons get registered here
+    registry.setup(client)
+
+
+@client.event
+async def on_interaction(interaction: discord.Interaction):
+    """Catch button, select and form presses that nothing answered.
+
+    Discord shows "interaction failed" after 3 seconds, and discord.py drops a
+    press it has no handler for without a word (an expired button, or one from
+    before a restart). Slash commands report their own failures.
+    """
+    if interaction.type not in (
+        discord.InteractionType.component,
+        discord.InteractionType.modal_submit,
+    ):
+        return
+    await asyncio.sleep(INTERACTION_GRACE)
+    if interaction.response.is_done():
+        return
+
+    custom_id = (interaction.data or {}).get("custom_id", "unknown")
+    message_id = interaction.message.id if interaction.message else None
+    log.warning(
+        "Interaction not answered within %ss: custom_id=%s user=%s message=%s",
+        INTERACTION_GRACE,
+        custom_id,
+        interaction.user.id,
+        message_id,
+    )
+    try:
+        await interaction.response.send_message(
+            "⌛ That button or form no longer works. It expired, or the bot has "
+            "restarted since it was posted. Run the command again.",
+            ephemeral=True,
+        )
+    except discord.HTTPException:
+        pass
+    await log_error(
+        "Interaction not answered",
+        f"Nothing handled `{custom_id}` within {INTERACTION_GRACE}s "
+        f"(user {interaction.user.id}, message {message_id}).",
+    )
+
+
 @client.event
 async def on_ready():
     global slash_status

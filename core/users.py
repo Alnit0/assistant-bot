@@ -19,6 +19,14 @@ class User:
     created_at: str
 
 
+# Users already looked up, by Discord id. Cleared whenever the table changes.
+_cache: dict[int, User] = {}
+
+
+def clear_user_cache() -> None:
+    _cache.clear()
+
+
 def ensure_owner() -> None:
     """Make sure the owner from OWNER_ID exists with the owner role.
 
@@ -42,6 +50,7 @@ def ensure_owner() -> None:
         conn.commit()
     finally:
         conn.close()
+    _cache.clear()
 
 
 def _get_user_by_discord_id(discord_id: int) -> User | None:
@@ -61,5 +70,15 @@ def _get_user_by_discord_id(discord_id: int) -> User | None:
 
 
 async def get_user_by_discord_id(discord_id: int) -> User | None:
-    """Look up a user by their Discord id, or None if we don't know them."""
-    return await asyncio.to_thread(_get_user_by_discord_id, discord_id)
+    """Look up a user by their Discord id, or None if we don't know them.
+
+    Known users are remembered, so permission checks on buttons and commands
+    answer at once and never wait on the database. Anything that changes the
+    users table must clear the cache.
+    """
+    user = _cache.get(discord_id)
+    if user is None:
+        user = await asyncio.to_thread(_get_user_by_discord_id, discord_id)
+        if user is not None:
+            _cache[discord_id] = user
+    return user

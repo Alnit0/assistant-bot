@@ -38,8 +38,13 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
     one skill allowed to use discord.py directly. See "Lab commands" in
     `docs/DEVELOPMENT.md`
   - Hooks wired so far: `commands`, `migrations`, `jobs`, `reactions`,
-    `app_commands` (slash commands and context menus), `events` and `startup`.
+    `app_commands` (slash commands and context menus), `events`, `setup`
+    (before connecting: persistent views) and `startup` (once ready).
     `tools()` is declared but nothing calls it yet
+  - Buttons, selects and forms must be answered first, logged second.
+    `on_interaction` in `main.py` logs and reports any left unanswered after
+    2 seconds. Known users are cached in `core/users.py`, so permission
+    checks don't wait on the database
   - Slash commands live in an `app_commands.CommandTree` in `main.py` and are
     synced at startup to the server the inbox channel is in
   - Commands match the whole message exactly; anything else goes to Claude

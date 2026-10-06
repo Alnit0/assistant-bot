@@ -93,6 +93,17 @@ Things to know:
   from `app_commands()`. They are synced to our server at startup.
 - **Other Discord events:** return `{"raw_reaction_add": handler, ...}` from
   `events()`. `startup(client)` runs once when the bot is connected.
+- **Buttons that must survive a restart:** give them a fixed `custom_id`, no
+  timeout, and register the view with `client.add_view(...)` in
+  `setup(client)`, which runs before the bot connects.
+- **Answer every button, select and form within 3 seconds**, as the first
+  thing the handler does; log to the database afterwards. Anything left
+  unanswered after 2 seconds is logged, reported in #bot-log, and the user
+  is told the button no longer works.
+- **Don't pass `self.view` back from a `DynamicItem`.** It is discord.py's
+  bare copy of the message, and its other buttons have no handlers. Build
+  the full view again and send that (see `build_panel` in
+  `skills/lab/buttons.py`).
 - **`tools()`** exists on the base class but is not used yet.
 - **Turning skills on and off:** `ENABLED_SKILLS=builtin,greeter` in `.env`.
   Leave it empty to load everything. A disabled skill keeps its data.
@@ -150,9 +161,11 @@ Polls, Manage Messages, Pin Messages, Manage Webhooks.
   never message text. Use `renderer: matplotlib` if it is down.
 - **`/lab react` message never updates:** it only watches messages posted
   since the bot last started, and only counts the owner's reactions.
-- **The interactive `/lab buttons` message says "interaction failed":** it
-  expired (15 minutes) or the bot restarted. Only the second, persistent
-  message is meant to survive.
+- **The interactive `/lab buttons` message stops working:** it expired
+  (15 minutes) or the bot restarted. Only the second, persistent message is
+  meant to survive. You now get "⌛ That button or form no longer works"
+  and an "Interaction not answered" card in #bot-log, rather than Discord's
+  silent "interaction failed".
 
 ## Day-to-day workflow
 

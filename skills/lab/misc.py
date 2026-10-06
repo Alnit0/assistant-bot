@@ -17,6 +17,7 @@ from skills.lab.common import (
     lab,
     note,
     record_press,
+    report_component_error,
     target_channel,
 )
 from skills.lab.ratelimits import monitor
@@ -244,6 +245,9 @@ def build_layout(avatar_url: str) -> "discord.ui.LayoutView":
     class LabLayout(ui.LayoutView):
         async def interaction_check(self, interaction: discord.Interaction) -> bool:
             return await check_owner(interaction)
+
+        async def on_error(self, interaction: discord.Interaction, error: Exception, item) -> None:
+            await report_component_error(interaction, error, "layout")
 
     async def pressed(interaction: discord.Interaction) -> None:
         reply = "🧩 Pressed a button inside a components v2 layout."
