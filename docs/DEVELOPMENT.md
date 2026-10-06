@@ -23,26 +23,61 @@ automatically in new terminals. Check the prompt starts with `(.venv)`.
 
 - `main.py`: entry point. Creates the Discord client, wires events, starts the bot
 - `core/`: shared building blocks. Never imports from `skills/`
-  - `config.py`: paths, settings from `.env`, validation, constants
+  - `config.py`: paths, settings from `.env`, validation, constants, channel names
   - `logging_setup.py`: terminal and rotating file logging
+  - `instance_lock.py`: makes sure only one copy of the bot runs
   - `database.py`: connections and the async database helpers
   - `migrations.py`: schema migrations, applied at startup
   - `users.py`, `permissions.py`: users and the `is_allowed` check
+  - `router.py`: decides whether a message is a registered word (with typo tolerance)
   - `context.py`: the `Context` object handed to skills
+  - `interactions.py`: permission check and logging for slash commands and menus
+  - `errors.py`: `UserError`, for problems the user can fix
   - `backup.py`, `scheduler.py`: nightly backup and daily jobs
   - `debounce.py`: waits for a quiet period, then handles events together
-  - `instance_lock.py`: makes sure only one copy of the bot runs
   - `llm.py`: Claude client, system prompt, history, cost estimates
-  - `discord_utils.py`: #bot-log embeds and message helpers
+  - `discord_utils.py`: #bot-log embeds, message helpers, safe replies
 - `skills/`: one folder per feature
-  - `base.py`: the `Skill` base class
-  - `registry.py`: finds, loads and dispatches to skills
+  - `base.py`: the `Skill` base class and the `Keyword`, `ReplyAction`, `Reaction` records
+  - `registry.py`: finds and loads skills, dispatches to them, and knows everything
+    the bot can do (for `help` and for Claude)
   - `builtin/`: ping, reset, buttons, stats, help
-  - `lab/`: `/lab` slash commands for trying out Discord features
+  - `archive/`: archive or delete a message (reply action, 📦 reaction, context menu)
+  - `lab/`: `lab …` words for trying out Discord features
 
 Always run `main.py` (not the files in `core/` or `skills/`). Paths are
 worked out from the project root, so it runs correctly from any working
 directory.
+
+## How to talk to the bot
+
+There are three main ways in, and one fallback. `help` lists what works in
+the channel you are in; `help <skill or word>` gives details.
+
+| Way in | Example | Where |
+|---|---|---|
+| **A word on its own** | `stats`, `clear chat`, `lab chart 30` | Mostly #inbox; `lab …` and `help` anywhere |
+| **Reply to a message with a word** | reply `archive` or `delete` | Anywhere |
+| **A reaction** | 📦 on a message | Anywhere |
+| Slash command (fallback) | `/lab chart`, Apps > Archive message | Anywhere |
+
+- **The whole message must be the word or phrase.** `stats` runs stats;
+  `stats please` is a message for Claude. Case and a full stop at the end
+  don't matter.
+- **Small typos are forgiven:** one wrong, missing, extra or swapped letter,
+  in words of five letters or more (`statss`, `lab buttns`). The bot says
+  `Read as: stats` when it has corrected something. Destructive words
+  (`reset` and its aliases, `delete`) must be spelled exactly.
+- **Anything else in #inbox goes to Claude.** Outside #inbox the bot only
+  reacts to registered words, reply actions and reactions.
+- **Reply actions tidy up after themselves:** when one works, your reply
+  (the word) is deleted too. If it fails, the bot says why and leaves
+  everything in place.
+- **Reactions wait 15 seconds** (`REACTION_DEBOUNCE_SECONDS` in
+  `core/config.py`). Remove the reaction before then and nothing happens.
+- **Claude knows the list too.** The same list `help` shows is added to its
+  instructions, so "what can you do?" gets an accurate answer. Claude can't
+  run them itself; it tells you what to type.
 
 ## How to add a skill
 
@@ -53,7 +88,7 @@ directory.
 
 ```python
 from core.context import Context
-from skills.base import Command, Skill
+from skills.base import Keyword, Skill
 
 
 async def hello(ctx: Context) -> None:
@@ -64,34 +99,78 @@ class GreeterSkill(Skill):
     name = "greeter"
     description = "Says hello"
 
-    def commands(self) -> list[Command]:
-        return [Command("hello", "say hello", hello)]
+    def keywords(self) -> list[Keyword]:
+        return [
+            Keyword(
+                ["hello", "hi there"],          # the word, then any aliases
+                "say hello",                    # description: required
+                hello,
+                examples=["hello"],
+            ),
+        ]
 
 
 skill = GreeterSkill()
 ```
 
 3. Restart the bot. The terminal and the "🟢 Bot started" card in #bot-log
-   list the skills that loaded, and anything that was skipped and why.
-   `help` picks up the new command automatically.
+   list the skills that loaded, anything that was skipped and why, and any
+   registration with no description. `help` picks up the new word
+   automatically, and so does Claude.
+
+**What a skill can register.** Each one must describe itself:
+
+| Hook | Record | The user… |
+|---|---|---|
+| `keywords()` | `Keyword(words, description, handler)` | types the word on its own. `handler(ctx)` |
+| `reply_actions()` | `ReplyAction(words, description, handler)` | replies to a message with the word. `handler(ctx, target)` |
+| `reactions()` | `Reaction(emoji, description, handler)` | adds the emoji to a message. `handler(payload, user)` |
+
+Fields they share:
+
+- **`description`** (required) and **`examples`**: shown by `help` and given
+  to Claude. A missing description is reported in #bot-log at startup.
+- **`channels`**: where it works. `"inbox"` (the default for keywords),
+  `"any"` (the default for reply actions and reactions), or a list of names
+  from `.env`: inbox, bot-log, archive, reminders, gym, admin, documents.
+- **`permission`**: the action name passed to `is_allowed`. Defaults to
+  `keyword:<word>`, `reply:<word>` or `reaction:<emoji>`.
+
+Keywords and reply actions also take:
+
+- **`takes_args=True`** and **`usage="[days]"`**: accept extra words after
+  the phrase; they arrive as `ctx.args`. Without it the message must be the
+  phrase and nothing else.
+- **`exact=True`**: no typo correction. Use it for anything destructive.
+- **`accepts=`** (keywords): a function that looks at the arguments and can
+  say "not mine", so the message goes to Claude instead. `help` uses it so
+  that "help me write an email" isn't treated as a help request.
+- **`remove_trigger=False`** (reply actions): keep the user's reply instead
+  of deleting it after a successful action.
 
 Things to know:
 
-- **Commands** match the whole message (`hello`, not `hello there`). The
-  registry logs the input, checks `is_allowed` and posts the #bot-log card;
-  the handler only does the work.
+- **The registry does the bookkeeping.** It logs the input, checks
+  `is_allowed`, posts the #bot-log card and records the result. The handler
+  only does the work. What it returns is recorded as the reply; return
+  `None` to record what was sent.
+- **Raise `UserError("…")`** (`core/errors.py`) for problems the user can
+  fix, such as bad arguments. The message is shown to them as written.
 - **Use the context**, not Discord: `ctx.reply(text)`,
-  `ctx.reply_card(title, fields)`, `ctx.log(title, description)`, `ctx.user`.
+  `ctx.reply_card(title, fields)`, `ctx.log(title, description)`,
+  `ctx.user`, `ctx.args`, `ctx.channel_name`.
 - **Database:** return migration functions from `migrations()`, in order,
   and only ever add to the end. Prefix table names with the skill's name
   (`greeter_...`) and give every record a `user_id`. Query with
   `await ctx.db.run(func)`, where `func(conn)` does the SQLite work; it runs
   in a worker thread so the bot is never blocked.
 - **Scheduled jobs:** return `DailyJob(name, at, func)` items from `jobs()`.
-- **Reactions:** return `Reaction(emoji, handler)` items from `reactions()`.
-  The handler runs when an allowed user adds that emoji to any message.
-- **Slash commands:** return `app_commands.Group` or context menu objects
-  from `app_commands()`. They are synced to our server at startup.
+- **Slash commands are a fallback.** Return `app_commands.Group` or context
+  menu objects from `app_commands()`; they are synced to our server at
+  startup. In the command's check, call `interactions.check_allowed` and
+  `interactions.begin` (`core/interactions.py`); the core then logs how it
+  ended. Have the typed word and the slash command call the same function
+  (see `Run` in `skills/lab/common.py`).
 - **Other Discord events:** return `{"raw_reaction_add": handler, ...}` from
   `events()`. `startup(client)` runs once when the bot is connected.
 - **Buttons that must survive a restart:** give them a fixed `custom_id`, no
@@ -107,32 +186,58 @@ Things to know:
   `skills/lab/buttons.py`).
 - **`tools()`** exists on the base class but is not used yet.
 - **Turning skills on and off:** `ENABLED_SKILLS=builtin,greeter` in `.env`.
-  Leave it empty to load everything. A disabled skill keeps its data.
-- A command name can only belong to one skill; the second one to claim it
-  is skipped and reported at startup.
+  Leave it empty to load everything. A disabled skill keeps its data, and
+  its words, slash commands and help entries disappear.
+- A word, reply word or emoji can only belong to one skill; the second one
+  to claim it is skipped and reported at startup.
+
+## Archive and delete
+
+`skills/archive/` moves messages out of the way. It only works for the
+owner.
+
+| Way in | What happens |
+|---|---|
+| Reply `archive` (or `box`, `file away`) | The message is copied to the archive channel under its author's name and avatar, with attachments, the original time and a link to where it was. Then the original and your reply are deleted |
+| Reply `delete` (or `remove`) | The message and your reply are deleted for good. Must be spelled exactly |
+| React 📦 | Same as replying `archive`, after 15 seconds. Remove the 📦 in time to cancel |
+| Apps > **Archive message** | Same as replying `archive` (fallback) |
+
+- **There is no "are you sure?".** The word or the 📦 is the confirmation.
+  Archive only deletes the original after the copy, with every attachment,
+  has been posted; if anything fails it stays where it is and the bot says
+  why. A failed 📦 leaves a note in the channel for 20 seconds.
+- **It refuses** messages already in the archive channel, messages in
+  #bot-log, and (for archive) messages with nothing to copy or a file too
+  big to re-upload.
+- **It needs** `ARCHIVE_CHANNEL_ID` in `.env`, Manage Webhooks in the archive
+  channel, and Manage Messages wherever the original is.
 
 ## Lab commands
 
-`skills/lab/` is a test bench for Discord features. Everything is under the
-`/lab` slash command, only works for the owner, and is logged to
-`message_log` (kind `lab`) and #bot-log. To switch it off, leave `lab` out
-of `ENABLED_SKILLS`; the slash commands disappear at the next start.
+`skills/lab/` is a test bench for Discord features. Type `lab …` in any
+channel, or use `/lab …` as a fallback: both run the same code. It only
+works for the owner, and every use is logged to `message_log` and #bot-log.
+To switch it off, leave `lab` out of `ENABLED_SKILLS`.
 
-| Command | What it shows |
+| Type | What it shows |
 |---|---|
-| `/lab react` | Posts a message with 📌 ⭐ 🔁 🗑️. React on it; after 15 quiet seconds it shows the final state and a timeline, then adds ✅ |
-| `/lab buttons` | A counter, toggles, single and multi selects, a modal form, an ephemeral reply and a link button; plus persistent buttons that still work after a restart |
-| `/lab pin [action:]` | `start` pins a status message that updates every minute (and resumes after a restart); `stop` unpins it. Pin changes anywhere are logged to #bot-log |
-| `/lab chart [renderer:] [days:]` | Messages per day and cost per day as two charts, drawn by QuickChart (a web service) or matplotlib (on the server) |
-| Archive | Right-click a message > Apps > **Archive message**, or react with 📦. Copies it to the archive channel under the author's name and avatar, with attachments, the original time and a link to where it was, then deletes the original |
-| `/lab notify mode:` | A normal, silent, @mention or direct message |
-| `/lab time` | Every dynamic timestamp style |
-| `/lab thread` | A message with a thread started on it |
-| `/lab poll [multiple:]` | A native poll that runs for an hour |
-| `/lab file [days:]` | Daily stats from `message_log` as a CSV file |
-| `/lab format` | Markdown, spoilers, ANSI colours, long message splitting |
-| `/lab layout` | Components v2 (containers, sections, thumbnails) |
-| `/lab countdown [seconds:] [step:]` | A self-editing message; reports rate limits |
+| `lab react` | Posts a message with 📌 ⭐ 🔁 🗑️. React on it; after 15 quiet seconds it shows the final state and a timeline, then adds ✅ |
+| `lab buttons` | A counter, toggles, single and multi selects, a modal form, an ephemeral reply and a link button; plus persistent buttons that still work after a restart |
+| `lab pin [start\|stop]` | Pins a status message that updates every minute (and resumes after a restart); `stop` unpins it. Pin changes anywhere are logged to #bot-log |
+| `lab chart [quickchart\|matplotlib] [days]` | Messages per day and cost per day as two charts, drawn by QuickChart (a web service) or matplotlib (on the server) |
+| `lab notify <normal\|silent\|mention\|dm>` | A normal, silent, @mention or direct message |
+| `lab time` | Every dynamic timestamp style |
+| `lab thread` | A message with a thread started on it |
+| `lab poll [multiple]` | A native poll that runs for an hour |
+| `lab file [days]` | Daily stats from `message_log` as a CSV file |
+| `lab format` | Markdown, spoilers, ANSI colours, long message splitting |
+| `lab layout` | Components v2 (containers, sections, thumbnails) |
+| `lab countdown [seconds] [step]` | A self-editing message; reports rate limits |
+
+Arguments in square brackets are optional; a wrong one gets a one-line
+usage reply. The slash versions take the same options by name
+(`/lab chart renderer: days:`) and add a private "done" note.
 
 Slash commands are synced to the server the inbox channel is in, every time
 the bot starts. The "🟢 Bot started" card shows how many were synced.
@@ -144,29 +249,26 @@ Polls, Manage Messages, Pin Messages, Manage Webhooks.
 
 **Troubleshooting:**
 
+- **A word does nothing:** check `help` in that channel. Plain words such as
+  `stats` only work in #inbox; the message must be the word and nothing
+  else; and only the owner is listened to.
+- **A word went to Claude instead:** it wasn't an exact match or a
+  one-letter typo of a word with five or more letters.
 - **`/lab` doesn't appear:** check the "Slash commands" line on the start
   card. If the sync failed with "Missing Access", re-invite the bot with the
   `applications.commands` scope. Restarting Discord refreshes its list.
 - **"The lab isn't for you":** your Discord ID isn't `OWNER_ID`.
-- **`/lab countdown step:1`** is the easy way to see rate limiting: watch
-  for "🚦 Rate limited" cards and the slow-edit count in the summary.
-- **Archive does nothing or complains:** `ARCHIVE_CHANNEL_ID` must be set in
-  `.env`, and the bot needs Manage Webhooks in the archive channel and
-  Manage Messages where the original is. The original is only deleted after
-  the copy has been posted; if anything fails it stays where it is. A failed
-  📦 leaves a note in the channel for 20 seconds.
-- **Archiving has no "are you sure?":** choosing the menu item or adding 📦
-  is the confirmation. Only the owner's 📦 counts.
+- **`lab countdown 30 1`** is the easy way to see rate limiting: watch for
+  "🚦 Rate limited" cards and the slow-edit count in the summary.
 - **QuickChart fails:** it is a third-party web service
   (`quickchart.io`). It is sent dates, daily counts and daily cost only,
-  never message text. Use `renderer: matplotlib` if it is down.
-- **`/lab react` message never updates:** it only watches messages posted
+  never message text. Use `lab chart matplotlib` if it is down.
+- **`lab react` message never updates:** it only watches messages posted
   since the bot last started, and only counts the owner's reactions.
-- **The interactive `/lab buttons` message stops working:** it expired
+- **The interactive `lab buttons` message stops working:** it expired
   (15 minutes) or the bot restarted. Only the second, persistent message is
-  meant to survive. You now get "⌛ That button or form no longer works"
-  and an "Interaction not answered" card in #bot-log, rather than Discord's
-  silent "interaction failed".
+  meant to survive. You get "⌛ That button or form no longer works" and an
+  "Interaction not answered" card in #bot-log.
 
 ## Day-to-day workflow
 

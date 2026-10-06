@@ -12,12 +12,16 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 
 - Entry point: `main.py` (creates the Discord client, wires events, starts the bot)
 - `core/` package (shared building blocks; never imports from `skills/`):
-  - `config.py`: paths, settings from `.env`, validation, constants, `now_nz()`
+  - `config.py`: paths, settings from `.env`, validation, constants, the
+    `CHANNELS` name-to-id map, `now_nz()`
   - `logging_setup.py`: terminal and rotating file logging
   - `database.py`: `connect()`, the async `message_log` helpers, and `run()`
   - `migrations.py`: numbered schema migrations (core and skills), applied at startup
-  - `context.py`: the `Context` passed to skills (user, channel, reply helpers,
-    database access, #bot-log), so skills don't see `discord.Message`
+  - `context.py`: the `Context` passed to skills (user, channel, arguments, reply
+    helpers, database access, #bot-log), so skills don't see `discord.Message`
+  - `router.py`: matches typed words and phrases, with typo tolerance
+  - `interactions.py`: permission check and logging for slash commands and menus
+  - `errors.py`: `UserError`
   - `users.py`: the `User` record, `ensure_owner()`, lookup by Discord id
   - `permissions.py`: `is_allowed(user, action)`, the one permission check
   - `backup.py`: nightly database backup and pre-migration snapshots
@@ -25,33 +29,62 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   - `debounce.py`: `Debouncer(delay, callback)`, one global quiet-period timer
     that hands over all collected events together
   - `instance_lock.py`: the single-instance lock, taken first thing at startup
-  - `llm.py`: Claude client, system prompt, conversation history, cost estimates
+  - `llm.py`: Claude client, system prompt (with the registry's capability list
+    passed in by `main.py`), conversation history, cost estimates
   - `discord_utils.py`: #bot-log embeds, `split_message`, `truncate`
-- `skills/` package (stage 3; see "How to add a skill" in `docs/DEVELOPMENT.md`):
-  - `base.py`: the `Skill` base class with its hooks (`commands`, `tools`, `jobs`,
-    `migrations`, `reactions`) and the `Command` / `Tool` / `Reaction` records
-  - `registry.py`: discovers the packages in `skills/`, loads the enabled ones at
-    startup, dispatches commands and checks `is_allowed` for each
-  - `builtin/`: the first skill (ping, reset, buttons, stats, help). `help` lists
-    the commands of every loaded skill
-  - `lab/`: test bench for Discord features behind `/lab` slash commands
-    (owner only), plus an "Archive message" context menu and 📦 reaction. The
-    one skill allowed to use discord.py directly. See "Lab commands" in
-    `docs/DEVELOPMENT.md`
-  - Hooks wired so far: `commands`, `migrations`, `jobs`, `reactions`,
-    `app_commands` (slash commands and context menus), `events`, `setup`
-    (before connecting: persistent views) and `startup` (once ready).
-    `tools()` is declared but nothing calls it yet
+- `skills/` package (see "How to talk to the bot" and "How to add a skill" in
+  `docs/DEVELOPMENT.md`):
+  - How the user reaches a skill, in order of preference: a **word** typed on
+    its own (`stats`, `lab chart 30`), a **reply action** (reply to a message
+    with `archive` or `delete`), a **reaction** (📦). Slash commands and
+    context menus stay registered as a fallback only
+  - `base.py`: the `Skill` base class and the self-describing records
+    `Keyword`, `ReplyAction` and `Reaction`. Every registration needs a
+    `description`; it also carries `examples`, `channels` and `permission`. A
+    missing description is reported in #bot-log at startup
+  - `registry.py`: discovers the packages in `skills/`, loads the enabled ones,
+    dispatches words, reply actions and reactions (channel and `is_allowed`
+    checks, logging), and is the single source of what the bot can do:
+    `catalogue()`, `find()` and `capabilities_text()` feed `help` and Claude's
+    system prompt. Never hard-code a list of commands anywhere
+  - `core/router.py` matches words: the whole message must be the phrase
+    (extra words only with `takes_args`); one-letter typos are forgiven in
+    words of 5+ letters unless the registration is `exact` (use `exact` for
+    anything destructive). Everything else in #inbox goes to Claude
+  - Keywords default to #inbox; reply actions and reactions to any channel.
+    Chat with Claude only happens in #inbox
+  - Reactions are acted on through one core `Debouncer` after
+    `REACTION_DEBOUNCE_SECONDS` (15) of quiet; removing the reaction in time
+    cancels it
+  - `builtin/`: ping, reset (clear, clear chat, wipe), buttons, stats (stat),
+    and `help [skill or word]`, which is generated from the registry at request
+    time and filtered by enabled skills, channel and permission
+  - `archive/`: reply `archive` / `delete`, the 📦 reaction and the "Archive
+    message" context menu. Reposts through a webhook, then deletes
+  - `lab/`: test bench for Discord features. Each command is one `run_*`
+    function reached by a typed word (`lab chart`) and by `/lab chart`
+    through the `Run` adapters in `skills/lab/common.py`. See "Lab commands"
+    in `docs/DEVELOPMENT.md`
+  - `lab` and `archive` are the only skills allowed to use discord.py
+    directly (`ctx.channel`, `ctx.author`, raw messages); that goes behind the
+    gateway layer later
+  - Raise `UserError` (`core/errors.py`) for problems the user can fix; the
+    message is shown as written
+  - Hooks wired: `keywords`, `reply_actions`, `reactions`, `migrations`,
+    `jobs`, `app_commands`, `events`, `setup` (before connecting: persistent
+    views) and `startup` (once ready). `tools()` is declared but nothing calls
+    it yet
+  - Slash commands and menus are logged by `core/interactions.py`
+    (`check_allowed`, `begin`, then `finish` / `fail` from `main.py`). They
+    live in an `app_commands.CommandTree` in `main.py`, synced at startup to
+    the server the inbox channel is in
   - Buttons, selects and forms must be answered first, logged second.
     `on_interaction` in `main.py` logs and reports any left unanswered after
-    2 seconds. Known users are cached in `core/users.py`, so permission
-    checks don't wait on the database
+    2 seconds. User lookups are cached in `core/users.py` (including "not one
+    of ours"), so permission checks don't wait on the database
   - Reply from error handlers with `safe_reply` and report failures with
     `report_interaction_error` (both in `core/discord_utils.py`): they never
     raise, and treat Discord codes 10062 and 40060 as a warning, not an error
-  - Slash commands live in an `app_commands.CommandTree` in `main.py` and are
-    synced at startup to the server the inbox channel is in
-  - Commands match the whole message exactly; anything else goes to Claude
   - `ENABLED_SKILLS` in `.env` picks which skills load (empty = all). A skill that
     fails to load is skipped and reported at startup, not fatal
   - The Claude chat path is still in `main.py` and still uses `discord.Message`;
@@ -80,7 +113,7 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 
 - `core/`: config, database and migrations, Claude client and tool loop,
   Discord gateway, scheduler, confirmations, logging
-- `skills/`: self-contained features that register tools, commands,
+- `skills/`: self-contained features that register tools, words, reply actions,
   scheduled jobs and database tables with the core
 - Skills never call Discord directly; they go through the gateway
 - Every record has a `user_id`; permissions go through one central check

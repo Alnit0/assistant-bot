@@ -85,6 +85,28 @@ A short log of key decisions and why. Newest at the bottom.
 - **10062 and 40060 are warnings, not errors:** they mean an interaction
   expired or was answered elsewhere, not that our code is broken. Error
   handlers reply through `safe_reply`, which cannot raise.
+- **Words first, slash commands as a fallback:** the `/` key is awkward on
+  a phone and the Apps menu is hard to find on desktop. Plain words, reply
+  actions and reactions are the main ways in; slash commands stay
+  registered and run the same code.
+- **The whole message must be the word:** so chat is never mistaken for a
+  command ("ping me tomorrow" goes to Claude). This replaces the earlier
+  "commands match exactly" rule, adding aliases and arguments.
+- **Typos: one letter, words of five or more, never for destructive
+  words:** forgiving enough for a phone keyboard, strict enough that `rest`
+  can't become `reset`. A corrected match always says what it was read as.
+- **Registrations describe themselves; help and Claude read the registry:**
+  one source of truth, so `help`, "what can you do?" and the code can't
+  drift apart. The cost is a few hundred extra input tokens per chat
+  message for the capability list.
+- **Reactions are debounced at 15 seconds, not 45:** this supersedes the
+  45s in "Inbox hygiene" above. Long enough to undo a mis-tap by removing
+  the reaction, short enough that 📦 doesn't feel broken.
+- **Archive is its own skill, and delete has no confirmation prompt:** they
+  are real features, so they shouldn't vanish when the lab is switched off.
+  A typed reply or a 📦 from the owner is the confirmation; `delete` must be
+  spelled exactly. The skill uses discord.py directly until the gateway
+  layer exists.
 - **Two chart renderers kept side by side in the lab:** QuickChart needs no
   heavy dependency but sends the numbers to a third party and can be down;
   matplotlib is local and private but large. Pick one when a real skill
