@@ -186,3 +186,51 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   Put logic that can be tested without Discord in pure modules (as
   `skills/timers/durations.py` and `pomodoro.py` do) and add tests with it.
   Tests use a temporary database and made-up settings, never the real ones
+
+## Interaction rules (apply to every skill)
+
+Input
+- Typed plain words are the main way in; no slash needed. Unmatched
+  messages go to Claude. Slash commands are a hidden fallback only.
+- Replying to a message with an action word (archive, keep, save,
+  delete, remind <when>) applies it to that message.
+- Help is generated from the registry; every keyword, reply action and
+  reaction must have a description, examples, channels and permission.
+
+Reactions
+- Only the owner's reactions count; the bot ignores its own.
+- Every reaction action is reversible: removing the reaction undoes it.
+  Destructive actions (archive, delete) are reversible only within the
+  debounce window. After that, archived copies carry a persistent
+  "Restore" button that reposts to the original channel.
+- Reaction actions are debounced globally (REACTION_DEBOUNCE, default
+  30s); the bot acts once on the final state of MY reactions compared
+  with what was last applied, then adds ✅. When nothing is active on a
+  message, the ✅ is removed.
+- Archive and delete (by reply, reaction or menu) ask for confirmation
+  if the message is pinned, 📌-reacted or saved.
+- A failed reaction action adds ⚠️ to the message, with details in
+  #bot-log; no temporary notes in the channel.
+- Everything else (messages, buttons, jobs) acts immediately.
+
+Cleanliness
+- Edit messages in place rather than posting new ones. Exception:
+  anything that must notify me (timer done, Pomodoro phase changes,
+  reminders) posts a new message; that alert is deleted once
+  acknowledged (button or reply), and the original is updated.
+- On success, delete the user's command or reply message and show a
+  brief confirmation that deletes itself; on failure, keep it and add ⚠️.
+- Pinned or 📌-reacted messages are exempt from cleanup and sweeps.
+- Delete Discord's "pinned a message" system notices.
+- Lab skill tests are exempt from these cleanup rules.
+
+Notifications
+- Levels: silent, normal, urgent (@mention in channel), critical (DM).
+- DMs only for critical alerts and ignored high-priority nudges; they
+  are short pointers with a jump link back into the server.
+- Quiet hours hold non-critical alerts; repeats are grouped.
+
+Interactions
+- Acknowledge every interaction within 3 seconds (defer first if slow).
+- Persistent buttons use stable custom_ids and survive restarts.
+- Error handlers check whether the interaction was already answered.

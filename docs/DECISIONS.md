@@ -146,6 +146,16 @@ A short log of key decisions and why. Newest at the bottom.
   messages as well as 📌-reacted ones.
 - **Unit tests use the standard library's `unittest`:** no new dependency,
   and logic worth testing is kept in modules that don't need Discord.
+- **Interaction rules written down once, for every skill:** `CLAUDE.md` now
+  has an "Interaction rules" section (input, reactions, cleanliness,
+  notifications, interactions). New work follows it, and it wins over
+  earlier entries here where they differ.
+- **Rules amended after auditing the existing skills:** the reaction
+  debounce is 30 seconds by default (not the 15 or 45 above), as a
+  `REACTION_DEBOUNCE` setting. Archive and delete can only be undone by
+  removing the reaction within that window; after it, archived copies have
+  a Restore button instead. Alerts that must notify may post a new message,
+  deleted once acknowledged. Lab tests are exempt from the clean-up rules.
 - **Two chart renderers kept side by side in the lab:** QuickChart needs no
   heavy dependency but sends the numbers to a third party and can be down;
   matplotlib is local and private but large. Pick one when a real skill
