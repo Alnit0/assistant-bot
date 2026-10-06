@@ -1,10 +1,10 @@
 import discord
 
 from skills.base import Skill
-from skills.lab import common, ratelimits
+from skills.lab import common, ratelimits, state
 
 # Importing these adds their subcommands to the /lab group
-from skills.lab import misc  # noqa: F401  isort: skip
+from skills.lab import buttons, misc, react, status  # noqa: F401  isort: skip
 
 
 class LabSkill(Skill):
@@ -24,10 +24,19 @@ class LabSkill(Skill):
         return {
             "app_command_completion": common.finish,
             "app_command_error": common.fail,
+            "raw_reaction_add": react.on_reaction_add,
+            "raw_reaction_remove": react.on_reaction_remove,
+            "guild_channel_pins_update": status.on_pins_update,
         }
+
+    def migrations(self) -> list:
+        return list(state.MIGRATIONS)
 
     async def startup(self, client: discord.Client) -> None:
         ratelimits.install()
+        react.bind(client)
+        buttons.register(client)
+        await status.resume(client)
 
 
 skill = LabSkill()

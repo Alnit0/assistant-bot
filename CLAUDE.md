@@ -49,8 +49,8 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 - Runs as a Windows service via NSSM, named `assistant-bot`
 - Logs: `logs/bot.log` (rotating), `logs/service-*.log` (service output)
 - Database: `data/assistant.db`
-  - Tables: `users`, `message_log` (records every input, with a `user_id`) and
-    `skill_migrations`
+  - Tables: `users`, `message_log` (records every input, with a `user_id`),
+    `skill_migrations`, and `lab_state` (the lab skill's own key/value table)
   - Schema version is `PRAGMA user_version`. To change the schema, append a
     function to `MIGRATIONS` in `core/migrations.py`; never edit an old one
   - Skills keep their own migration lists (`Skill.migrations()`), tracked per

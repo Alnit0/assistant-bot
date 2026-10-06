@@ -108,6 +108,9 @@ of `ENABLED_SKILLS`; the slash commands disappear at the next start.
 
 | Command | What it shows |
 |---|---|
+| `/lab react` | Posts a message with 📌 ⭐ 🔁 🗑️. React on it; after 15 quiet seconds it shows the final state and a timeline, then adds ✅ |
+| `/lab buttons` | A counter, toggles, single and multi selects, a modal form, an ephemeral reply and a link button; plus persistent buttons that still work after a restart |
+| `/lab pin [action:]` | `start` pins a status message that updates every minute (and resumes after a restart); `stop` unpins it. Pin changes anywhere are logged to #bot-log |
 | `/lab notify mode:` | A normal, silent, @mention or direct message |
 | `/lab time` | Every dynamic timestamp style |
 | `/lab thread` | A message with a thread started on it |
@@ -133,6 +136,11 @@ Polls, Manage Messages, Pin Messages, Manage Webhooks.
 - **"The lab isn't for you":** your Discord ID isn't `OWNER_ID`.
 - **`/lab countdown step:1`** is the easy way to see rate limiting: watch
   for "🚦 Rate limited" cards and the slow-edit count in the summary.
+- **`/lab react` message never updates:** it only watches messages posted
+  since the bot last started, and only counts the owner's reactions.
+- **The interactive `/lab buttons` message says "interaction failed":** it
+  expired (15 minutes) or the bot restarted. Only the second, persistent
+  message is meant to survive.
 
 ## Day-to-day workflow
 
