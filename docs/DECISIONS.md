@@ -126,6 +126,26 @@ A short log of key decisions and why. Newest at the bottom.
 - **The lab tour and channel test are typed only:** they are driven from a
   phone, where the `/` key is the awkward part, so they get no slash
   command.
+- **The scheduler stores its jobs and catches up:** this replaces the
+  "small in-memory scheduler" above. Jobs are rows in `scheduled_jobs`, a
+  ticker checks every 15 seconds and also wakes exactly for the next due
+  job (so a 90-second timer isn't up to 15 seconds late), and anything that
+  came due while the bot was off runs at the next start, flagged late. The
+  nightly backup is now such a job, so a backup missed at 3am runs at the
+  next start. Recurrence is done by a job booking its successor; proper
+  recurrence rules wait for the reminders skill.
+- **Pomodoro phases wait for Start by default:** a break or focus round
+  shouldn't be counted while you're away from the desk. `pomo auto` and
+  `POMO_AUTO_CONTINUE` change that; after downtime it always waits.
+- **Only completed focus rounds are logged:** a skipped round isn't focus
+  time. Stats use NZ days, with weeks starting on Monday.
+- **Timers use Discord's live timestamps, not per-second edits:** no rate
+  limits to fight, and nothing to keep running between changes.
+- **The timers board is exempt from the sweep by being pinned and carrying
+  📌:** the sweep doesn't exist yet. When it does it must skip pinned
+  messages as well as 📌-reacted ones.
+- **Unit tests use the standard library's `unittest`:** no new dependency,
+  and logic worth testing is kept in modules that don't need Discord.
 - **Two chart renderers kept side by side in the lab:** QuickChart needs no
   heavy dependency but sends the numbers to a third party and can be down;
   matplotlib is local and private but large. Pick one when a real skill

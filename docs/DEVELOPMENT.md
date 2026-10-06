@@ -33,7 +33,8 @@ automatically in new terminals. Check the prompt starts with `(.venv)`.
   - `context.py`: the `Context` object handed to skills
   - `interactions.py`: permission check and logging for slash commands and menus
   - `errors.py`: `UserError`, for problems the user can fix
-  - `backup.py`, `scheduler.py`: nightly backup and daily jobs
+  - `scheduler.py`: stored jobs that run at a moment in the future, with catch-up
+  - `backup.py`: nightly backup (a scheduler job) and pre-migration snapshots
   - `debounce.py`: waits for a quiet period, then handles events together
   - `llm.py`: Claude client, system prompt, history, cost estimates
   - `discord_utils.py`: #bot-log embeds, message helpers, safe replies
@@ -44,6 +45,8 @@ automatically in new terminals. Check the prompt starts with `(.venv)`.
   - `builtin/`: ping, reset, buttons, stats, help
   - `archive/`: archive or delete a message (reply action, 📦 reaction, context menu)
   - `lab/`: `lab …` words for trying out Discord features
+  - `timers/`: short timers and Pomodoro sessions
+- `tests/`: unit tests (`python -m unittest`)
 
 Always run `main.py` (not the files in `core/` or `skills/`). Paths are
 worked out from the project root, so it runs correctly from any working
@@ -178,7 +181,20 @@ Things to know:
   (`greeter_...`) and give every record a `user_id`. Query with
   `await ctx.db.run(func)`, where `func(conn)` does the SQLite work; it runs
   in a worker thread so the bot is never blocked.
-- **Scheduled jobs:** return `DailyJob(name, at, func)` items from `jobs()`.
+- **Doing something later:** book a job with
+  `await scheduler.add_job(self.name, "kind", due_at, payload, user_id)`
+  (`core/scheduler.py`) and return `{"kind": handler}` from `job_handlers()`.
+  The handler gets a `Job` (`payload`, `user_id`, `due_at`, `is_late`).
+  Jobs are stored in `scheduled_jobs`, so they survive a restart; one that
+  came due while the bot was off runs at the next start with `job.is_late`
+  set, and the handler decides what to say about that. `cancel_job` and
+  `reschedule_job` change a job that hasn't run. Keep the job's id with your
+  own record and ignore a job that no longer matches it.
+- **Replies that aren't fixed words:** give a `ReplyAction` a `pattern`
+  (a regular expression; its groups become `ctx.args`), as `+10m` does.
+- **Reply words that only sometimes apply:** give a `ReplyAction` an
+  `applies_to` check. The timers skill uses it so that `cancel` replied to
+  an ordinary message is not treated as a command.
 - **Slash commands are a fallback.** Return `app_commands.Group` or context
   menu objects from `app_commands()`; they are synced to our server at
   startup. In the command's check, call `interactions.check_allowed` and
@@ -234,6 +250,70 @@ owner.
   big to re-upload.
 - **It needs** `ARCHIVE_CHANNEL_ID` in `.env`, Manage Webhooks in the archive
   channel, and Manage Messages wherever the original is.
+
+## Timers and Pomodoro
+
+`skills/timers/` is for short timers and focus sessions. Everything is
+typed (there are no slash commands), works in any channel, and survives a
+restart. Date-based reminders are a separate, future skill.
+
+| Type | What happens |
+|---|---|
+| `timer 25m`, `timer 1h30 laundry`, `timer 2 hours` | Starts a timer. The label is optional and defaults to "Timer" |
+| `timers` (or `timer` on its own) | Lists your active timers and the current Pomodoro, in every channel |
+| `pomo` | Starts a session: 25 minutes of focus, 5-minute breaks, a 15-minute break after 4 rounds |
+| `pomo 50/10`, `pomo 50/10/30` | Custom focus/break lengths; the third number sets the long break (otherwise 15) |
+| `pomo deep work`, `pomo 50/10 writing` | Anything else is the label |
+| `pomo auto`, `pomo manual` | Whether phases start by themselves, for this session |
+| `pomo stats` | Completed focus time today and this week |
+
+**Durations** are read by code, not by Claude: `90s`, `25m`, `1h30`,
+`1h 30m`, `1.5h`, `2 hours`, `45 min`, `1:30` (hours and minutes). A bare
+number is minutes. From 5 seconds to 24 hours.
+
+**A timer** posts one message with a live "ends in…" time. Reply to it with
+`pause`, `resume`, `cancel` or `+10m` (also `+ 10 min`, `extend 10m`). When
+it finishes, that message is edited to say so and you are @mentioned in a
+new message with **+5 min**, **Restart** and **Dismiss**.
+
+**A Pomodoro session** is one card, edited in place, showing the phase,
+round, label and a live time, with **Pause/Resume**, **Skip** and **Stop**.
+
+- **At each phase end** you are @mentioned with **Start** and **Skip**, and
+  the next phase's clock only starts when you press **Start**. `pomo auto`
+  (or `POMO_AUTO_CONTINUE=true` in `.env`) starts phases by themselves.
+- **Skip** moves straight on to the next phase. A skipped focus round is
+  not counted in the stats; only ones that run to the end are.
+- **One session at a time.** Stop the current one before starting another.
+- **The same reply words work on the card:** `pause`, `resume`, `stop`,
+  `+10m` (adds to the current phase).
+- **After a long break** the rounds start again from 1.
+
+**The board.** Each channel where a timer has been started has one pinned
+"Active timers" message, rewritten on every change and reading "No active
+timers" when empty. Discord's "pinned a message" notice is deleted. The
+board carries a 📌 reaction, which marks it as exempt from the (future)
+nightly sweep.
+
+**Restarts and downtime.** Timers, sessions and their due moments are in
+the database, and the buttons are found again by their ids. If something
+finished while the bot was off, you are told at the next start that it
+finished late. After downtime a session always waits for **Start**, even
+in auto mode.
+
+**Things to know:**
+
+- **Times use Discord's live timestamps**, so messages are only edited when
+  something changes, not every second.
+- **Nothing visible happens for `cancel`, `pause` and the like replied to a
+  message that isn't a timer:** those words are only commands on timer
+  messages, so elsewhere they are ordinary chat.
+- **The bot needs Pin Messages** (or Manage Messages) to pin the board and
+  to remove the pin notice. Without it the board still works, unpinned,
+  and #bot-log says so.
+- **`10 min walk`** is read as ten minutes labelled "walk", because "min"
+  is a unit.
+- **For a quick try-out** use seconds: `timer 10s tea`, `pomo 30s/10s`.
 
 ## Lab commands
 
@@ -397,6 +477,19 @@ Get-CimInstance Win32_Process -Filter "Name like 'python%'" |
 
 One bot shows as **two** `python.exe` lines with the same start time: the
 `.venv` launcher and the real Python it starts. That is one copy, not two.
+
+## Tests
+
+```powershell
+python -m unittest
+```
+
+The tests in `tests/` cover the pure logic: duration parsing, Pomodoro
+phase order and pause arithmetic, the word router, and the scheduler
+(including catch-up and the nightly backup). They never start the bot or
+talk to Discord or Claude, they use made-up settings instead of `.env`, and
+anything that needs a database gets a temporary one, so they are safe to
+run while the bot is running.
 
 ## Service commands (Terminal as Admin)
 

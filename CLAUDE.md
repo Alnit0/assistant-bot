@@ -25,7 +25,11 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   - `users.py`: the `User` record, `ensure_owner()`, lookup by Discord id
   - `permissions.py`: `is_allowed(user, action)`, the one permission check
   - `backup.py`: nightly database backup and pre-migration snapshots
-  - `scheduler.py`: small in-memory scheduler for daily jobs (to be expanded)
+  - `scheduler.py`: database-backed scheduler. Jobs live in `scheduled_jobs`
+    (due moments in UTC); a ticker runs due ones every 15 seconds and wakes
+    exactly for the next one. Skills book jobs with `add_job` and provide
+    `job_handlers()`. Jobs missed while offline run at startup with
+    `job.is_late`. The nightly backup is a job that books its own successor
   - `debounce.py`: `Debouncer(delay, callback)`, one global quiet-period timer
     that hands over all collected events together
   - `instance_lock.py`: the single-instance lock, taken first thing at startup
@@ -84,6 +88,14 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
     typed in. Claude still only chats in #inbox
   - `lab tour` (guided, resumable test run) and `lab channels` (cross-channel
     notification test) are typed only, with no slash command
+  - `timers/`: short timers and Pomodoro, typed only (`timer`, `timers`,
+    `pomo`, `pomo stats`; reply `cancel`, `pause`, `resume`, `+10m`). Pure
+    logic is in `durations.py` and `pomodoro.py` (unit-tested); all state is in
+    the database; one pinned "Active timers" board per channel. Uses
+    discord.py directly for cards and buttons, like `lab` and `archive`. See
+    "Timers and Pomodoro" in `docs/DEVELOPMENT.md`
+  - Reply actions can have a `pattern` (for `+10m`) and an `applies_to` check
+    (so `cancel` only acts on timer messages). Arguments keep their capitals
   - Hooks wired: `keywords`, `reply_actions`, `reactions`, `migrations`,
     `jobs`, `app_commands`, `events`, `setup` (before connecting: persistent
     views) and `startup` (once ready). `tools()` is declared but nothing calls
@@ -108,7 +120,9 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 - Database: `data/assistant.db`
   - Tables: `users`, `message_log` (records every input, with a `user_id`),
     `skill_migrations`, and the lab skill's own `lab_state` (key/value),
-    `lab_tour_runs` and `lab_tour_results`
+    `lab_tour_runs` and `lab_tour_results`, `scheduled_jobs`, and the timers
+    skill's `timers_timers`, `timers_pomodoros`, `timers_focus_log` and
+    `timers_boards`
   - Schema version is `PRAGMA user_version`. To change the schema, append a
     function to `MIGRATIONS` in `core/migrations.py`; never edit an old one
   - Skills keep their own migration lists (`Skill.migrations()`), tracked per
@@ -168,3 +182,7 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   bot shows as two `python.exe` processes (the `.venv` launcher and its child)
 - Prefer checks that import the code without starting the bot. Never start
   `main.py` while the user's own copy or the service is running
+- Unit tests live in `tests/` (standard `unittest`): run `python -m unittest`.
+  Put logic that can be tested without Discord in pure modules (as
+  `skills/timers/durations.py` and `pomodoro.py` do) and add tests with it.
+  Tests use a temporary database and made-up settings, never the real ones
