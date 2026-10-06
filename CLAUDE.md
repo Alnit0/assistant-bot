@@ -68,8 +68,13 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   - `lab` and `archive` are the only skills allowed to use discord.py
     directly (`ctx.channel`, `ctx.author`, raw messages); that goes behind the
     gateway layer later
-  - Raise `UserError` (`core/errors.py`) for problems the user can fix; the
-    message is shown as written
+  - The registry decides how every word and reply action ends. Success: the
+    user's command message is deleted (unless `keep_command=True`); lasting
+    output uses `ctx.reply`, a "done" uses `ctx.confirm`, which deletes itself
+    after `CONFIRMATION_SECONDS` (`.env`, default 5). Failure: the message
+    stays and gets a ⚠️ reaction; details go to #bot-log, never the channel
+  - Raise `UserError` (`core/errors.py`) for problems the user can fix; its
+    message goes on the #bot-log card
   - Hooks wired: `keywords`, `reply_actions`, `reactions`, `migrations`,
     `jobs`, `app_commands`, `events`, `setup` (before connecting: persistent
     views) and `startup` (once ready). `tools()` is declared but nothing calls

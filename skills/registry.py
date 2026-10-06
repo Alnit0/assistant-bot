@@ -253,47 +253,51 @@ def where(item) -> str:
 # ---------------------------------------------------------------------------
 # Dispatch: typed words and reply actions
 # ---------------------------------------------------------------------------
-async def _tell(ctx: Context, text: str) -> None:
-    """Reply from an error path, where a second failure must not hide the first."""
-    try:
-        await ctx.reply(text)
-    except discord.HTTPException as error:
-        log.warning("Could not reply in channel %s: %s", ctx.channel_id, error)
+async def _run(
+    ctx: Context, *, kind: str, name: str, title: str, permission: str, call, keep_command: bool
+) -> None:
+    """Log the input, check permission, run the handler, record what happened.
 
-
-async def _run(ctx: Context, *, kind: str, name: str, title: str, permission: str, call, after=None) -> None:
-    """Log the input, check permission, run the handler, record what happened."""
+    How it ends is the same for every word and reply action:
+    - Worked: the user's command message is deleted (unless the registration
+      keeps it), and if the handler showed nothing a short confirmation is
+      posted that deletes itself.
+    - Didn't work: the command message stays and gets a ⚠️ reaction. The
+      details go to #bot-log, not the channel.
+    """
     row_id = await log_received(ctx.text, kind, ctx.message_id, ctx.channel_id, user_id=ctx.user.id)
 
     if not is_allowed(ctx.user, permission):
-        reply = "You're not allowed to do that."
-        await _tell(ctx, reply)
-        await log_result(row_id, reply=reply, status="denied")
+        await log_result(row_id, reply="not allowed", status="denied")
+        await ctx.mark_failed()
+        await ctx.log_error(f"Command refused: {name}", f"Needs permission `{permission}`.", ctx.text)
         return
 
     try:
         reply = await call()
     except UserError as error:
-        # The user can fix this one: say what's wrong, no traceback
-        message = f"⚠️ {error}"
+        # The user can fix this one: no traceback needed
         log.info("%s not done: %s", name, error)
-        await log_result(row_id, reply=message, status="error", error=str(error))
-        await _tell(ctx, message)
+        await log_result(row_id, status="error", error=str(error))
+        await ctx.mark_failed()
         await ctx.log_error(f"Command failed: {name}", str(error), ctx.text)
         return
     except Exception as error:
         log.exception("Command failed: %s", name)
         await log_result(row_id, status="error", error=repr(error))
-        await _tell(ctx, "⚠️ Command failed. Check #bot-log.")
+        await ctx.mark_failed()
         await ctx.log_error(f"Command failed: {name}", repr(error), ctx.text)
         return
 
+    if not ctx.replies:
+        # The handler showed nothing in the channel, so say that it happened
+        await ctx.confirm(f"✅ Done: {name}")
     if reply is None:
-        reply = "\n".join(ctx.replies) or "done"
+        reply = "\n".join(ctx.replies)
     await log_result(row_id, reply=reply, status="ok")
     await ctx.log(title, reply)
-    if after is not None:
-        await after()
+    if not keep_command:
+        await ctx.delete_command()
 
 
 async def dispatch_keyword(ctx: Context) -> bool:
@@ -320,6 +324,7 @@ async def dispatch_keyword(ctx: Context) -> bool:
         title=f"⌨️ Command: {keyword.name}",
         permission=keyword.permission,
         call=call,
+        keep_command=keyword.keep_command,
     )
     return True
 
@@ -351,7 +356,7 @@ async def dispatch_reply_action(ctx: Context) -> bool:
         title=f"↩️ Reply action: {action.name}",
         permission=action.permission,
         call=call,
-        after=ctx.delete_trigger if action.remove_trigger else None,
+        keep_command=action.keep_command,
     )
     return True
 

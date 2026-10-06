@@ -14,7 +14,6 @@ from skills.lab.common import (
     LabError,
     Run,
     SlashRun,
-    TypedRun,
     lab,
     lab_keyword,
     record,
@@ -136,9 +135,6 @@ async def run_pin(run: Run, action: str) -> None:
     if action == "stop":
         stopped = await stop_status(f"⏹️ **Hive status** stopped <t:{stamp}:R>.")
         run.note("stopped the status message" if stopped else "nothing was running")
-        if not stopped and isinstance(run, TypedRun):
-            # Nothing visible happens in this case, so say so
-            await run.channel.send("No status message is running.")
         await run.done("Stopped and unpinned." if stopped else "No status message is running.")
         return
 

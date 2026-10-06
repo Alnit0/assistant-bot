@@ -65,6 +65,12 @@ CHANNELS: dict[str, int] = {
     if value
 }
 
+# How long a "done" confirmation stays in the channel before deleting itself
+try:
+    CONFIRMATION_SECONDS = float(os.getenv("CONFIRMATION_SECONDS") or 5)
+except ValueError:
+    sys.exit("CONFIRMATION_SECONDS in .env must be a number of seconds, e.g. 5")
+
 # Skills to load: comma-separated names in .env, or None (empty or missing) for all
 ENABLED_SKILLS = [
     name.strip().lower() for name in os.getenv("ENABLED_SKILLS", "").split(",") if name.strip()

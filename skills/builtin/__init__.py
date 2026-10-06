@@ -14,7 +14,7 @@ async def ping(ctx: Context) -> None:
 
 async def reset(ctx: Context) -> None:
     history.clear()
-    await ctx.reply("🧹 Conversation memory cleared.")
+    await ctx.confirm("🧹 Conversation memory cleared.")
 
 
 async def buttons(ctx: Context) -> None:

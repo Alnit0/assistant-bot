@@ -31,6 +31,13 @@ class Keyword:
     forgiven unless `exact` is set (use that for anything destructive). The
     handler replies through the context; what it returns is recorded as the
     reply in message_log and #bot-log (None records what was sent).
+
+    When the handler succeeds, the core deletes the user's command message
+    (unless `keep_command` is set). An action with nothing lasting to show
+    should call ctx.confirm("📦 Archived: ..."), which deletes itself after a
+    few seconds; if the handler shows nothing at all, the core posts a plain
+    "Done" confirmation. When it fails, the command message stays and gets a
+    ⚠️ reaction, with the details in #bot-log.
     """
 
     words: list[str] | str
@@ -43,6 +50,7 @@ class Keyword:
     usage: str = ""  # the arguments, for help, e.g. "[days]"
     exact: bool = False  # never match by typo
     accepts: Callable[[list[str]], bool] | None = None  # say no to arguments that aren't ours
+    keep_command: bool = False  # leave the user's message in place after it works
 
     def __post_init__(self):
         self.words = _as_list(self.words)
@@ -62,9 +70,8 @@ class Keyword:
 class ReplyAction:
     """A word the user sends as a reply to a message, to act on that message.
 
-    The handler gets the context and the message that was replied to. After a
-    successful action the user's own reply is deleted when `remove_trigger` is
-    set, so the channel isn't left with stray command words.
+    The handler gets the context and the message that was replied to. It ends
+    the same way a keyword does (see Keyword).
     """
 
     words: list[str] | str
@@ -76,7 +83,7 @@ class ReplyAction:
     takes_args: bool = False
     usage: str = ""
     exact: bool = False
-    remove_trigger: bool = True
+    keep_command: bool = False  # leave the user's reply in place after it works
 
     def __post_init__(self):
         self.words = _as_list(self.words)

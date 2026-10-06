@@ -80,13 +80,17 @@ class SlashRun(Run):
 
 
 class TypedRun(Run):
-    """Started by typing "lab ...": the output in the channel is the acknowledgement."""
+    """Started by typing "lab ...": acknowledged with a confirmation that deletes itself."""
 
     def __init__(self, ctx: Context):
+        self.ctx = ctx
         self.channel = ctx.channel
         self.user_id = ctx.user.id
         self.member = ctx.author
         self.client = discord_utils.client
+
+    async def done(self, text: str) -> None:
+        await self.ctx.confirm(text)
 
 
 class Args:

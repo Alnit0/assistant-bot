@@ -107,6 +107,11 @@ A short log of key decisions and why. Newest at the bottom.
   A typed reply or a 📦 from the owner is the confirmation; `delete` must be
   spelled exactly. The skill uses discord.py directly until the gateway
   layer exists.
+- **Commands clean up after themselves, and failures are quiet:** a typed
+  word or reply that works is deleted, with a confirmation that removes
+  itself, so channels hold content rather than commands. A failure keeps
+  the message and marks it ⚠️, with the reason in #bot-log; the cost is
+  that a usage mistake has to be looked up there.
 - **Two chart renderers kept side by side in the lab:** QuickChart needs no
   heavy dependency but sends the numbers to a third party and can be down;
   matplotlib is local and private but large. Pick one when a real skill

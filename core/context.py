@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 import discord
 
 from core import database
-from core.config import CHANNELS, now_nz
+from core.config import CHANNELS, CONFIRMATION_SECONDS, now_nz
 from core.discord_utils import COLOUR_INFO, log_error, log_simple, split_message
 from core.users import User
 
@@ -76,9 +76,30 @@ class Context:
         self.replies.append(f"card: {title}")
         return await self._channel.send(embed=embed)
 
+    async def confirm(self, text: str) -> None:
+        """Say briefly that something was done, e.g. "📦 Archived: <link>".
+
+        For actions with nothing lasting to show. The message deletes itself
+        after CONFIRMATION_SECONDS, so the channel stays tidy.
+        """
+        self.replies.append(text)
+        await self._channel.send(text, delete_after=CONFIRMATION_SECONDS)
+
     async def note(self, text: str) -> None:
-        """Send a small aside that isn't part of the reply (not recorded in the log)."""
-        await self._channel.send(text)
+        """Send a small aside that isn't part of the reply (not recorded in the log).
+
+        It deletes itself like a confirmation.
+        """
+        await self._channel.send(text, delete_after=CONFIRMATION_SECONDS)
+
+    async def mark_failed(self) -> None:
+        """Flag the user's message with ⚠️ to show it didn't work. Best effort."""
+        if self._message is None:
+            return
+        try:
+            await self._message.add_reaction("⚠️")
+        except discord.HTTPException as error:
+            log.info("Could not add the failure reaction: %s", error)
 
     async def log(self, title: str, description: str | None = None) -> None:
         """Post an activity card to #bot-log."""
@@ -114,7 +135,7 @@ class Context:
         except discord.HTTPException:
             return None
 
-    async def delete_trigger(self) -> None:
+    async def delete_command(self) -> None:
         """Remove the user's own message (the command word). Best effort."""
         if self._message is None:
             return

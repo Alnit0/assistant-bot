@@ -87,11 +87,11 @@ async def _get_webhook(channel: discord.TextChannel) -> discord.Webhook:
     return _webhook
 
 
-async def archive_message(message: discord.Message) -> str:
+async def archive_message(message: discord.Message) -> tuple[str, str]:
     """Copy a message to the archive channel, then delete the original.
 
-    Returns a one-line summary. Raises UserError, leaving the original alone,
-    if the copy can't be made in full.
+    Returns a one-line summary and a link to the archived copy. Raises
+    UserError, leaving the original alone, if the copy can't be made in full.
     """
     global _webhook
     check_archivable(message)
@@ -144,7 +144,7 @@ async def archive_message(message: discord.Message) -> str:
             f"Archived to {copy.jump_url}, but I couldn't delete the original. "
             "I need Manage Messages in that channel."
         )
-    return summary
+    return summary, copy.jump_url
 
 
 def check_deletable(message: discord.Message) -> None:
@@ -176,11 +176,15 @@ async def delete_message(message: discord.Message) -> str:
 # Way in 1: reply to a message with "archive" or "delete"
 # ---------------------------------------------------------------------------
 async def archive_reply(ctx: Context, target: discord.Message) -> str:
-    return await archive_message(target)
+    summary, link = await archive_message(target)
+    await ctx.confirm(f"{ARCHIVE_EMOJI} Archived: {link}")
+    return summary
 
 
 async def delete_reply(ctx: Context, target: discord.Message) -> str:
-    return await delete_message(target)
+    summary = await delete_message(target)
+    await ctx.confirm("🗑️ Deleted")
+    return summary
 
 
 # ---------------------------------------------------------------------------
@@ -192,7 +196,8 @@ async def on_archive_reaction(payload: discord.RawReactionActionEvent, user: Use
         raise UserError("I can't see the channel that message is in.")
     message = await channel.fetch_message(payload.message_id)
     try:
-        return await archive_message(message)
+        summary, _ = await archive_message(message)
+        return summary
     except UserError as error:
         # A reaction has nowhere private to reply, so leave a note that tidies itself away
         try:
@@ -217,7 +222,7 @@ async def menu_check(interaction: discord.Interaction) -> bool:
 
 async def archive_menu_callback(interaction: discord.Interaction, message: discord.Message):
     await interaction.response.defer(ephemeral=True)
-    summary = await archive_message(message)
+    summary, _ = await archive_message(message)
     interactions.note(interaction, summary)
     await interaction.followup.send(f"{ARCHIVE_EMOJI} Done: {summary}.", ephemeral=True)
 

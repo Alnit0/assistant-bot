@@ -70,9 +70,14 @@ the channel you are in; `help <skill or word>` gives details.
   (`reset` and its aliases, `delete`) must be spelled exactly.
 - **Anything else in #inbox goes to Claude.** Outside #inbox the bot only
   reacts to registered words, reply actions and reactions.
-- **Reply actions tidy up after themselves:** when one works, your reply
-  (the word) is deleted too. If it fails, the bot says why and leaves
-  everything in place.
+- **Words and reply actions tidy up after themselves.** When one works, the
+  message you typed is deleted. If it had nothing lasting to show, you get a
+  short confirmation ("📦 Archived: link") that deletes itself after 5
+  seconds (`CONFIRMATION_SECONDS` in `.env`). Lasting output, such as the
+  stats card or the help text, stays.
+- **When one fails, your message stays and gets a ⚠️ reaction.** Nothing is
+  said in the channel; the reason (including "Usage: …" for a wrong
+  argument) is on a card in #bot-log.
 - **Reactions wait 15 seconds** (`REACTION_DEBOUNCE_SECONDS` in
   `core/config.py`). Remove the reaction before then and nothing happens.
 - **Claude knows the list too.** The same list `help` shows is added to its
@@ -145,8 +150,8 @@ Keywords and reply actions also take:
 - **`accepts=`** (keywords): a function that looks at the arguments and can
   say "not mine", so the message goes to Claude instead. `help` uses it so
   that "help me write an email" isn't treated as a help request.
-- **`remove_trigger=False`** (reply actions): keep the user's reply instead
-  of deleting it after a successful action.
+- **`keep_command=True`**: leave the user's message in place after the
+  action works. By default the core deletes it.
 
 Things to know:
 
@@ -154,8 +159,17 @@ Things to know:
   `is_allowed`, posts the #bot-log card and records the result. The handler
   only does the work. What it returns is recorded as the reply; return
   `None` to record what was sent.
+- **How a handler ends is decided by the core**, the same for every word
+  and reply action. On success the user's message is deleted (unless
+  `keep_command`). If the result is something to keep, send it with
+  `ctx.reply`. If there is nothing lasting to show, call
+  `ctx.confirm("📦 Archived: <link>")`: it deletes itself after
+  `CONFIRMATION_SECONDS`. A handler that shows nothing at all gets a plain
+  "✅ Done: <word>" confirmation.
 - **Raise `UserError("…")`** (`core/errors.py`) for problems the user can
-  fix, such as bad arguments. The message is shown to them as written.
+  fix, such as bad arguments. Any failure leaves the user's message in
+  place with a ⚠️ reaction; the message you raised goes on the #bot-log
+  card, not in the channel.
 - **Use the context**, not Discord: `ctx.reply(text)`,
   `ctx.reply_card(title, fields)`, `ctx.log(title, description)`,
   `ctx.user`, `ctx.args`, `ctx.channel_name`.
@@ -198,15 +212,16 @@ owner.
 
 | Way in | What happens |
 |---|---|
-| Reply `archive` (or `box`, `file away`) | The message is copied to the archive channel under its author's name and avatar, with attachments, the original time and a link to where it was. Then the original and your reply are deleted |
-| Reply `delete` (or `remove`) | The message and your reply are deleted for good. Must be spelled exactly |
+| Reply `archive` (or `box`, `file away`) | The message is copied to the archive channel under its author's name and avatar, with attachments, the original time and a link to where it was. Then the original and your reply are deleted, and "📦 Archived: link" shows for 5 seconds |
+| Reply `delete` (or `remove`) | The message and your reply are deleted for good, and "🗑️ Deleted" shows for 5 seconds. Must be spelled exactly |
 | React 📦 | Same as replying `archive`, after 15 seconds. Remove the 📦 in time to cancel |
 | Apps > **Archive message** | Same as replying `archive` (fallback) |
 
 - **There is no "are you sure?".** The word or the 📦 is the confirmation.
   Archive only deletes the original after the copy, with every attachment,
-  has been posted; if anything fails it stays where it is and the bot says
-  why. A failed 📦 leaves a note in the channel for 20 seconds.
+  has been posted; if anything fails it stays where it is, your reply gets
+  a ⚠️ reaction and the reason is in #bot-log. A failed 📦 leaves a note in
+  the channel for 20 seconds.
 - **It refuses** messages already in the archive channel, messages in
   #bot-log, and (for archive) messages with nothing to copy or a file too
   big to re-upload.
@@ -226,7 +241,7 @@ To switch it off, leave `lab` out of `ENABLED_SKILLS`.
 | `lab buttons` | A counter, toggles, single and multi selects, a modal form, an ephemeral reply and a link button; plus persistent buttons that still work after a restart |
 | `lab pin [start\|stop]` | Pins a status message that updates every minute (and resumes after a restart); `stop` unpins it. Pin changes anywhere are logged to #bot-log |
 | `lab chart [quickchart\|matplotlib] [days]` | Messages per day and cost per day as two charts, drawn by QuickChart (a web service) or matplotlib (on the server) |
-| `lab notify <normal\|silent\|mention\|dm>` | A normal, silent, @mention or direct message |
+| `lab notify <normal\|silent\|mention\|dm\|all> [delay <seconds>]` | A normal, silent, @mention or direct message. `all` sends the four in that order, 5 seconds apart. `delay 90` waits first (up to an hour), so you can lock your phone: `lab notify all delay 90` |
 | `lab time` | Every dynamic timestamp style |
 | `lab thread` | A message with a thread started on it |
 | `lab poll [multiple]` | A native poll that runs for an hour |
@@ -235,9 +250,14 @@ To switch it off, leave `lab` out of `ENABLED_SKILLS`.
 | `lab layout` | Components v2 (containers, sections, thumbnails) |
 | `lab countdown [seconds] [step]` | A self-editing message; reports rate limits |
 
-Arguments in square brackets are optional; a wrong one gets a one-line
-usage reply. The slash versions take the same options by name
-(`/lab chart renderer: days:`) and add a private "done" note.
+Arguments in square brackets are optional; a wrong one gets a ⚠️ on your
+message and the usage line in #bot-log. The slash versions take the same
+options by name (`/lab chart renderer: days:`) and add a private "done"
+note; the typed versions show the same note for 5 seconds.
+
+A delayed `lab notify` is answered straight away and sent in the
+background. It is held in memory only, so restarting the bot before it
+fires cancels it. What was sent is logged when it finishes.
 
 Slash commands are synced to the server the inbox channel is in, every time
 the bot starts. The "🟢 Bot started" card shows how many were synced.
@@ -249,6 +269,8 @@ Polls, Manage Messages, Pin Messages, Manage Webhooks.
 
 **Troubleshooting:**
 
+- **Your message got a ⚠️:** it was understood but failed. The reason is on
+  the latest "Command failed" card in #bot-log.
 - **A word does nothing:** check `help` in that channel. Plain words such as
   `stats` only work in #inbox; the message must be the word and nothing
   else; and only the owner is listened to.

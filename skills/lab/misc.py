@@ -18,6 +18,7 @@ from skills.lab.common import (
     check_owner,
     lab,
     lab_keyword,
+    record,
     record_press,
     report_component_error,
 )
@@ -28,44 +29,115 @@ SLOW_EDIT = 1.5  # seconds; an edit slower than this was probably held back by a
 # Each command below is one run_* function, reached two ways: a typed word
 # (collected in KEYWORDS at the bottom) and a /lab slash command.
 
-NOTIFY_MODES = ["normal", "silent", "mention", "dm"]
+NOTIFY_KINDS = ["normal", "silent", "mention", "dm"]
+NOTIFY_MODES = [*NOTIFY_KINDS, "all"]
+NOTIFY_GAP = 5  # seconds between messages when sending all four
+NOTIFY_MAX_DELAY = 3600  # seconds
+
+# Notifications waiting to go out. Kept here so the tasks aren't garbage-collected;
+# in memory only, so a restart forgets them.
+_pending_notifications: set[asyncio.Task] = set()
 
 
 # ---------------------------------------------------------------------------
 # lab notify
 # ---------------------------------------------------------------------------
-async def run_notify(run: Run, mode: str) -> None:
-    await run.start()
-    if mode == "normal":
-        await run.channel.send("🔔 **Normal** message: notifies according to your channel settings.")
-    elif mode == "silent":
+async def send_notification(run: Run, kind: str, label: str = "") -> None:
+    """Send one test notification. `label` numbers it when it is part of a sequence."""
+    if kind == "normal":
         await run.channel.send(
-            "🔕 **Silent** message: arrives without a sound or a push notification.", silent=True
+            f"🔔 **{label}Normal** message: notifies according to your channel settings."
         )
-    elif mode == "mention":
+    elif kind == "silent":
         await run.channel.send(
-            f"📣 **Mention**: {run.member.mention}, this one pings you directly.",
+            f"🔕 **{label}Silent** message: arrives without a sound or a push notification.",
+            silent=True,
+        )
+    elif kind == "mention":
+        await run.channel.send(
+            f"📣 **{label}Mention**: {run.member.mention}, this one pings you directly.",
             allowed_mentions=discord.AllowedMentions(users=True),
         )
     else:
         try:
-            await run.member.send("✉️ **Direct message** from the lab.")
+            await run.member.send(f"✉️ **{label}Direct message** from the lab.")
         except discord.Forbidden:
             raise LabError(
                 "I can't DM you. Allow direct messages from server members in this "
                 "server's privacy settings."
             )
 
-    run.note(f"sent a {mode} notification")
-    await run.done(f"Sent ({mode}).")
+
+def describe_wait(seconds: int) -> str:
+    return f"{seconds}s" if seconds < 120 else f"{seconds // 60}m {seconds % 60}s"
 
 
-@lab.command(name="notify", description="Send a test notification: normal, silent, @mention or DM")
-@app_commands.describe(mode="How the message should be delivered")
+async def _send_later(run: Run, kinds: list[str], delay: int) -> None:
+    """Wait, then send the notifications a few seconds apart. Runs in the background."""
+    label = f"notify: {', '.join(kinds)} after {describe_wait(delay)}"
+    sent, problems = [], []
+    try:
+        await asyncio.sleep(delay)
+        for position, kind in enumerate(kinds, start=1):
+            if position > 1:
+                await asyncio.sleep(NOTIFY_GAP)
+            numbering = f"{position}/{len(kinds)} " if len(kinds) > 1 else ""
+            try:
+                await send_notification(run, kind, numbering)
+                sent.append(kind)
+            except (LabError, discord.HTTPException) as error:
+                # One failing (DMs closed, say) shouldn't stop the rest
+                problems.append(f"{kind}: {error}")
+    except Exception as error:
+        problems.append(repr(error))
+
+    summary = f"sent: {', '.join(sent) or 'none'}"
+    if problems:
+        summary += f"; failed: {'; '.join(problems)}"
+    await record(label, summary, channel_id=getattr(run.channel, "id", None), user_id=run.user_id)
+
+
+async def run_notify(run: Run, mode: str, delay: int = 0) -> None:
+    await run.start()
+    kinds = NOTIFY_KINDS if mode == "all" else [mode]
+
+    if mode != "all" and delay == 0:
+        await send_notification(run, mode)
+        run.note(f"sent a {mode} notification")
+        await run.done(f"Sent ({mode}).")
+        return
+
+    # A sequence or a delay: answer now, send in the background
+    task = asyncio.create_task(_send_later(run, kinds, delay), name="lab notify")
+    _pending_notifications.add(task)
+    task.add_done_callback(_pending_notifications.discard)
+
+    what = f"all four, {NOTIFY_GAP} seconds apart" if mode == "all" else f"a {mode} notification"
+    when = f"in {describe_wait(delay)}" if delay else "now"
+    run.note(f"scheduled {what} {when}")
+    await run.done(f"⏱️ Sending {what}, starting {when}.")
+
+
+@lab.command(name="notify", description="Send a test notification, or all four, now or after a delay")
+@app_commands.describe(
+    mode="How the message should be delivered; 'all' sends each kind in turn",
+    delay="Seconds to wait first, so you can lock your phone",
+)
 async def notify(
-    interaction: discord.Interaction, mode: Literal["normal", "silent", "mention", "dm"]
+    interaction: discord.Interaction,
+    mode: Literal["normal", "silent", "mention", "dm", "all"],
+    delay: app_commands.Range[int, 0, NOTIFY_MAX_DELAY] = 0,
 ):
-    await run_notify(SlashRun(interaction), mode)
+    await run_notify(SlashRun(interaction), mode, delay)
+
+
+def parse_notify(args) -> tuple[str, int]:
+    """`<mode> [delay] [seconds]`: "all delay 90" and "all 90" both work."""
+    mode = args.choice(NOTIFY_MODES)
+    said_delay = args.flag("delay")
+    if said_delay and not (args.words and args.words[0].isdigit()):
+        raise args.error()
+    return mode, args.number("delay", 0, 0, NOTIFY_MAX_DELAY)
 
 
 # ---------------------------------------------------------------------------
@@ -389,11 +461,12 @@ async def countdown(
 KEYWORDS = [
     lab_keyword(
         "lab notify",
-        "send a test notification: normal, silent, @mention or DM",
+        "send a test notification (normal, silent, @mention, DM, or all four in turn), "
+        "now or after a delay in seconds",
         run_notify,
-        usage="<normal|silent|mention|dm>",
-        parse=lambda args: (args.choice(NOTIFY_MODES),),
-        examples=["lab notify silent", "lab notify dm"],
+        usage="<normal|silent|mention|dm|all> [delay <seconds>]",
+        parse=parse_notify,
+        examples=["lab notify silent", "lab notify all delay 90"],
     ),
     lab_keyword("lab time", "show every dynamic timestamp style", run_time),
     lab_keyword("lab thread", "post a message and start a thread on it", run_thread),
