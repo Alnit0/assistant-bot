@@ -47,6 +47,11 @@ OWNER_ID = int(OWNER_ID)
 INBOX_CHANNEL_ID = int(INBOX_CHANNEL_ID)
 BOT_LOG_CHANNEL_ID = int(BOT_LOG_CHANNEL_ID) if BOT_LOG_CHANNEL_ID else None
 
+# Skills to load: comma-separated names in .env, or None (empty or missing) for all
+ENABLED_SKILLS = [
+    name.strip().lower() for name in os.getenv("ENABLED_SKILLS", "").split(",") if name.strip()
+] or None
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------

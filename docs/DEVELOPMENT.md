@@ -22,17 +22,75 @@ automatically in new terminals. Check the prompt starts with `(.venv)`.
 ## Project layout
 
 - `main.py`: entry point. Creates the Discord client, wires events, starts the bot
-- `core/`: shared building blocks imported by `main.py`
+- `core/`: shared building blocks. Never imports from `skills/`
   - `config.py`: paths, settings from `.env`, validation, constants
   - `logging_setup.py`: terminal and rotating file logging
-  - `database.py`: SQLite setup and the `message_log` helpers
+  - `database.py`: connections and the async database helpers
+  - `migrations.py`: schema migrations, applied at startup
+  - `users.py`, `permissions.py`: users and the `is_allowed` check
+  - `context.py`: the `Context` object handed to skills
+  - `backup.py`, `scheduler.py`: nightly backup and daily jobs
   - `llm.py`: Claude client, system prompt, history, cost estimates
   - `discord_utils.py`: #bot-log embeds and message helpers
-  - `views.py`: button views
-  - `commands.py`: built-in commands (ping, reset, buttons, stats, help)
+- `skills/`: one folder per feature
+  - `base.py`: the `Skill` base class
+  - `registry.py`: finds, loads and dispatches to skills
+  - `builtin/`: ping, reset, buttons, stats, help
 
-Always run `main.py` (not the files in `core/`). Paths are worked out from
-the project root, so it runs correctly from any working directory.
+Always run `main.py` (not the files in `core/` or `skills/`). Paths are
+worked out from the project root, so it runs correctly from any working
+directory.
+
+## How to add a skill
+
+1. Create a folder `skills/<name>/` with an `__init__.py`. The folder name
+   is the skill's name (lower case, no spaces).
+2. In it, subclass `Skill`, set `name` (same as the folder) and
+   `description`, and expose one instance called `skill`:
+
+```python
+from core.context import Context
+from skills.base import Command, Skill
+
+
+async def hello(ctx: Context) -> None:
+    await ctx.reply(f"👋 Hello, {ctx.user.display_name}!")
+
+
+class GreeterSkill(Skill):
+    name = "greeter"
+    description = "Says hello"
+
+    def commands(self) -> list[Command]:
+        return [Command("hello", "say hello", hello)]
+
+
+skill = GreeterSkill()
+```
+
+3. Restart the bot. The terminal and the "🟢 Bot started" card in #bot-log
+   list the skills that loaded, and anything that was skipped and why.
+   `help` picks up the new command automatically.
+
+Things to know:
+
+- **Commands** match the whole message (`hello`, not `hello there`). The
+  registry logs the input, checks `is_allowed` and posts the #bot-log card;
+  the handler only does the work.
+- **Use the context**, not Discord: `ctx.reply(text)`,
+  `ctx.reply_card(title, fields)`, `ctx.log(title, description)`, `ctx.user`.
+- **Database:** return migration functions from `migrations()`, in order,
+  and only ever add to the end. Prefix table names with the skill's name
+  (`greeter_...`) and give every record a `user_id`. Query with
+  `await ctx.db.run(func)`, where `func(conn)` does the SQLite work; it runs
+  in a worker thread so the bot is never blocked.
+- **Scheduled jobs:** return `DailyJob(name, at, func)` items from `jobs()`.
+- **`tools()` and `reactions()`** exist on the base class but are not used
+  yet.
+- **Turning skills on and off:** `ENABLED_SKILLS=builtin,greeter` in `.env`.
+  Leave it empty to load everything. A disabled skill keeps its data.
+- A command name can only belong to one skill; the second one to claim it
+  is skipped and reported at startup.
 
 ## Day-to-day workflow
 

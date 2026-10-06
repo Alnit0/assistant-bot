@@ -17,6 +17,9 @@ log = logging.getLogger("assistant")
 # To change the schema, write a new function and add it to the END of the list.
 # Never edit, reorder or remove a migration that has already run somewhere, and
 # keep each one self-contained (plain SQL, no helpers that may change later).
+#
+# Skills have their own lists (Skill.migrations()), tracked separately per skill
+# in the skill_migrations table and applied after the core ones.
 # ---------------------------------------------------------------------------
 
 
@@ -77,18 +80,55 @@ def _add_user_id_to_message_log(conn: sqlite3.Connection) -> None:
     conn.execute("UPDATE message_log SET user_id = ?", (owner_user_id,))
 
 
+def _create_skill_migrations(conn: sqlite3.Connection) -> None:
+    # How many of each skill's own migrations have been applied
+    conn.execute(
+        """
+        CREATE TABLE skill_migrations (
+            skill TEXT PRIMARY KEY,
+            version INTEGER NOT NULL
+        )
+        """
+    )
+
+
 MIGRATIONS = [
     _create_message_log,
     _create_users,
     _add_user_id_to_message_log,
+    _create_skill_migrations,
 ]
 
 
-def migrate() -> None:
-    """Apply any migrations the database hasn't had yet.
+def _apply(conn: sqlite3.Connection, migration, record_sql: str, record_values: tuple = ()) -> None:
+    """Run one migration and record its new version, together or not at all."""
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        migration(conn)
+        conn.execute(record_sql, record_values)
+        conn.execute("COMMIT")
+    except BaseException:
+        conn.execute("ROLLBACK")
+        raise
 
-    Blocking: runs at startup, before the event loop.
+
+def _skill_versions(conn: sqlite3.Connection) -> dict[str, int]:
+    # The table itself arrives with core migration 4
+    exists = conn.execute(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'skill_migrations'"
+    ).fetchone()[0]
+    if not exists:
+        return {}
+    return dict(conn.execute("SELECT skill, version FROM skill_migrations").fetchall())
+
+
+def migrate(skill_migrations: dict[str, list] | None = None) -> None:
+    """Apply any core and skill migrations the database hasn't had yet.
+
+    skill_migrations maps each loaded skill's name to its ordered list of
+    migrations. Blocking: runs at startup, before the event loop.
     """
+    skill_migrations = skill_migrations or {}
     conn = connect()
     try:
         # Manage transactions by hand, so schema changes can be rolled back too
@@ -100,7 +140,19 @@ def migrate() -> None:
                 f"Database is at version {current} but this code only knows "
                 f"{len(MIGRATIONS)} migrations. Is the code out of date?"
             )
-        if current == len(MIGRATIONS):
+        skill_versions = _skill_versions(conn)
+        for name, migrations in skill_migrations.items():
+            if skill_versions.get(name, 0) > len(migrations):
+                raise RuntimeError(
+                    f"Skill {name} is at version {skill_versions[name]} in the database but "
+                    f"its code only has {len(migrations)} migrations. Is the code out of date?"
+                )
+
+        pending = current < len(MIGRATIONS) or any(
+            skill_versions.get(name, 0) < len(migrations)
+            for name, migrations in skill_migrations.items()
+        )
+        if not pending:
             return
 
         has_tables = conn.execute(
@@ -112,14 +164,23 @@ def migrate() -> None:
 
         for version in range(current + 1, len(MIGRATIONS) + 1):
             migration = MIGRATIONS[version - 1]
-            conn.execute("BEGIN IMMEDIATE")
-            try:
-                migration(conn)
-                conn.execute(f"PRAGMA user_version = {version}")
-                conn.execute("COMMIT")
-            except BaseException:
-                conn.execute("ROLLBACK")
-                raise
+            _apply(conn, migration, f"PRAGMA user_version = {version}")
             log.info("Applied migration %s: %s", version, migration.__name__.lstrip("_"))
+
+        for name, migrations in skill_migrations.items():
+            for version in range(skill_versions.get(name, 0) + 1, len(migrations) + 1):
+                migration = migrations[version - 1]
+                _apply(
+                    conn,
+                    migration,
+                    """
+                    INSERT INTO skill_migrations (skill, version) VALUES (?, ?)
+                    ON CONFLICT(skill) DO UPDATE SET version = excluded.version
+                    """,
+                    (name, version),
+                )
+                log.info(
+                    "Applied %s migration %s: %s", name, version, migration.__name__.lstrip("_")
+                )
     finally:
         conn.close()

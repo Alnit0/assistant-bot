@@ -42,3 +42,17 @@ A short log of key decisions and why. Newest at the bottom.
 - **Small in-memory scheduler for now:** daily jobs at a fixed NZ time, no
   catch-up for runs missed while the bot is down. To be replaced by stored
   schedules with recurrence rules when reminders arrive.
+- **A skill is a package in `skills/` exposing a `skill` object:** found by
+  scanning the folder, so adding a feature needs no edits to the core.
+  `ENABLED_SKILLS` in `.env` narrows the list; empty means all.
+- **A skill that fails to load is skipped, not fatal:** the bot runs 24/7,
+  so one broken feature should not take the rest down. Problems are shown
+  in the terminal and on the start card in #bot-log.
+- **Per-skill migration versions in a `skill_migrations` table:**
+  `PRAGMA user_version` can only hold one number, which stays with the core.
+  Skill tables are prefixed with the skill's name.
+- **Skills get a `Context`, not a `discord.Message`:** first step towards
+  the gateway layer. Buttons still use Discord's view class directly until
+  the confirmations work.
+- **Commands match the whole message exactly, for now:** keeps "ping me
+  tomorrow" going to Claude. Arguments wait for the tool-calling stage.

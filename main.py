@@ -6,7 +6,6 @@ import discord
 
 from core import scheduler
 from core.backup import run_nightly_backup
-from core.commands import handle_command
 from core.config import (
     BACKUP_TIME,
     CLAUDE_MODEL,
@@ -16,6 +15,7 @@ from core.config import (
     TOKEN,
     now_nz,
 )
+from core.context import Context
 from core.database import log_received, log_result
 from core.discord_utils import (
     COLOUR_INFO,
@@ -31,6 +31,7 @@ from core.logging_setup import setup_logging
 from core.migrations import migrate
 from core.permissions import is_allowed
 from core.users import ensure_owner, get_user_by_discord_id
+from skills import registry
 
 log = logging.getLogger("assistant")
 
@@ -66,6 +67,11 @@ async def on_ready():
     embed.add_field(name="Model", value=CLAUDE_MODEL, inline=True)
     embed.add_field(name="History limit", value=f"{MAX_HISTORY} messages", inline=True)
     embed.add_field(name="Database", value=DB_PATH.name, inline=True)
+    embed.add_field(name="Skills", value=truncate(registry.summary()), inline=False)
+    if registry.problems():
+        embed.add_field(
+            name="⚠️ Skipped", value=truncate("\n".join(registry.problems())), inline=False
+        )
     await send_log(embed)
 
 
@@ -86,8 +92,9 @@ async def on_message(message: discord.Message):
 
     log.info("Received: %s", text)
 
-    # Built-in commands first
-    if await handle_command(message, text.lower(), user):
+    # Skill commands first
+    ctx = Context.from_message(message, user)
+    if await registry.dispatch(ctx):
         return
 
     # Everything else goes to Claude. Log the raw input before processing.
@@ -168,6 +175,7 @@ async def on_message(message: discord.Message):
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
     setup_logging()
-    migrate()
+    registry.load()
+    migrate(registry.skill_migrations())
     ensure_owner()
     client.run(TOKEN, log_handler=None)

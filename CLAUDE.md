@@ -11,25 +11,43 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 ## Current state
 
 - Entry point: `main.py` (creates the Discord client, wires events, starts the bot)
-- `core/` package (stages 1 and 2 of the refactor; `skills/` is still planned):
+- `core/` package (shared building blocks; never imports from `skills/`):
   - `config.py`: paths, settings from `.env`, validation, constants, `now_nz()`
   - `logging_setup.py`: terminal and rotating file logging
-  - `database.py`: `connect()` and the async `message_log` helpers
-  - `migrations.py`: numbered schema migrations, applied at startup
+  - `database.py`: `connect()`, the async `message_log` helpers, and `run()`
+  - `migrations.py`: numbered schema migrations (core and skills), applied at startup
+  - `context.py`: the `Context` passed to skills (user, channel, reply helpers,
+    database access, #bot-log), so skills don't see `discord.Message`
   - `users.py`: the `User` record, `ensure_owner()`, lookup by Discord id
   - `permissions.py`: `is_allowed(user, action)`, the one permission check
   - `backup.py`: nightly database backup and pre-migration snapshots
   - `scheduler.py`: small in-memory scheduler for daily jobs (to be expanded)
   - `llm.py`: Claude client, system prompt, conversation history, cost estimates
   - `discord_utils.py`: #bot-log embeds, `split_message`, `truncate`
-  - `views.py`: the `TestButtons` view
-  - `commands.py`: ping, reset, buttons, stats, help
+- `skills/` package (stage 3; see "How to add a skill" in `docs/DEVELOPMENT.md`):
+  - `base.py`: the `Skill` base class with its hooks (`commands`, `tools`, `jobs`,
+    `migrations`, `reactions`) and the `Command` / `Tool` / `Reaction` records
+  - `registry.py`: discovers the packages in `skills/`, loads the enabled ones at
+    startup, dispatches commands and checks `is_allowed` for each
+  - `builtin/`: the first skill (ping, reset, buttons, stats, help). `help` lists
+    the commands of every loaded skill
+  - Wired so far: commands, migrations and jobs. `tools()` and `reactions()` are
+    declared but nothing calls them yet
+  - Commands match the whole message exactly; anything else goes to Claude
+  - `ENABLED_SKILLS` in `.env` picks which skills load (empty = all). A skill that
+    fails to load is skipped and reported at startup, not fatal
+  - The Claude chat path is still in `main.py` and still uses `discord.Message`;
+    `builtin` still uses a `discord.ui.View` for its buttons (gateway stage)
 - Runs as a Windows service via NSSM, named `assistant-bot`
 - Logs: `logs/bot.log` (rotating), `logs/service-*.log` (service output)
 - Database: `data/assistant.db`
-  - Tables: `users`, and `message_log` (records every input, with a `user_id`)
+  - Tables: `users`, `message_log` (records every input, with a `user_id`) and
+    `skill_migrations`
   - Schema version is `PRAGMA user_version`. To change the schema, append a
     function to `MIGRATIONS` in `core/migrations.py`; never edit an old one
+  - Skills keep their own migration lists (`Skill.migrations()`), tracked per
+    skill in the `skill_migrations` table. Skill tables are prefixed with the
+    skill's name
   - Database calls from the event loop are `async` (run in a worker thread
     with `asyncio.to_thread`, one connection per call). Always `await` them
 - Backups: `data/backups/`, nightly at 3am NZ time, newest 7 kept

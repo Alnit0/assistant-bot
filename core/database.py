@@ -95,6 +95,24 @@ def _get_stats() -> dict:
     }
 
 
+def _run(func, args: tuple):
+    conn = connect()
+    try:
+        result = func(conn, *args)
+        conn.commit()
+        return result
+    finally:
+        conn.close()
+
+
+async def run(func, *args):
+    """Run func(conn, *args) in a worker thread with its own connection, then commit.
+
+    For skills' own tables: func does the blocking SQLite work and returns the result.
+    """
+    return await asyncio.to_thread(_run, func, args)
+
+
 async def log_received(
     content: str,
     kind: str,
