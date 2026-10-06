@@ -1,0 +1,293 @@
+# QA run sheet
+
+One pass through the 103 👤 Manual tests in `docs/TESTING.md` that are
+⬜ Untested (as of 2026-10-07). Blocks share setup and each one leaves things
+ready for the next, so run them in order.
+
+**Time:** about 2 hours at the keyboard, plus two nights for the backup
+tests (block 12).
+
+| Block | What | Dev mode | Tests | Minutes |
+|---|---|---|---|---|
+| 1 | Start-up | off | 3 | 5 |
+| 2 | Builtin words and chat | off | 11 | 8 |
+| 3 | Reactions at the real 30 seconds | off | 4 | 4 |
+| 4 | Pins | off | 4 | 5 |
+| 5 | Dev mode switch and panel | on and off | 10 | 8 |
+| 6 | Archive, delete and protection | on, debounce 2s | 19 | 20 |
+| 7 | Timers and dev tools | on, speed 1x then 60x | 15 | 15 |
+| 8 | Pomodoro | on, speed 60x then 1x | 12 | 10 |
+| 9 | Lab tour and restarts | on, then off (restart) | 11 | 25 |
+| 10 | Rest of the lab | off | 8 | 8 |
+| 11 | Phone notifications | off | 4 | 10 |
+| 12 | Overnight backups | off | 2 | 2 nights |
+| | **Total** | | **103** (F2 is split over blocks 4 and 7, counted in 7) | **about 2 hours** |
+
+## Before you start
+
+- **Run a test copy, not the service**, so restarts are quick. Terminal as
+  Admin: `nssm stop assistant-bot`. Leave the bot stopped; block 1 starts it.
+- **`.env`:** `REACTION_DEBOUNCE=30`, `CONFIRMATION_SECONDS=5`,
+  `POMO_AUTO_CONTINUE=false`, and `ARCHIVE_CHANNEL_ID`, `REMINDERS_CHANNEL_ID`,
+  `GYM_CHANNEL_ID` and `ADMIN_CHANNEL_ID` all set.
+- **Discord on the desktop** with #inbox, #bot-log and #archive to hand.
+- **A scratch channel:** any channel that isn't #inbox, #bot-log or #archive
+  (#documents is free). Called **#scratch** below. Ordinary messages there
+  don't go to Claude, so they make clean targets.
+- **Also needed:** an image and a small file (D2), a second Discord account
+  in the server (K3, otherwise skip it), and your phone for block 11.
+- **Marking:** tick the Tests column as you go, then report to Claude Code,
+  e.g. `A1 pass, A2 fail: reply came twice, K3 skip: no second account`.
+- "Log card" means a card in #bot-log. "Within 5 seconds" confirmations
+  delete themselves.
+
+## 1. Start-up
+
+Dev mode: off (it always is after a start).
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | In the project folder: `python main.py` | "👋 Online and ready" in #inbox; "🟢 Bot started" log card listing skills and synced slash commands, no ⚠️ fields | K1 |
+| 2 | In a second terminal: `python main.py` | It logs "Another copy of the bot is already running (PID …)" and exits. Step 1 of block 2 then gets one reply, not two | K2 |
+| 3 | From the second account: type `ping` in #inbox and react 📦 on any message. Wait 35 seconds | No reply, no archive, nothing from Claude. Remove that 📦 afterwards | K3 |
+
+## 2. Builtin words and chat
+
+Dev mode: off. In #inbox unless it says otherwise.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | `ping` | "🏓 Pong!" stays; your `ping` is deleted; log card | A1 |
+| 2 | `stats`, then `stat` | All-time stats card stays each time; your word is deleted | A2 |
+| 3 | `help` | What works in #inbox, grouped by skill, including Dev | A3 |
+| 4 | `buttons`, tap one | Button test message appears and answers the tap | A11 |
+| 5 | `My test word is kiwifruit.` then `What was my test word?` | Both answered; the second says kiwifruit; "Message handled" log card with tokens and cost | A9 |
+| 6 | Reply `cancel` to Claude's last answer | Not a command: Claude answers it as chat; no ⚠️ | G13 |
+| 7 | `archive` (not as a reply) | Not an action: Claude answers | D10 |
+| 8 | `reset`, then `What was my test word?` | "🧹 Conversation memory cleared." for 5 seconds; Claude no longer knows | A10 |
+| 9 | `timer banana` | Your message stays and gets ⚠️; the reason is only on the log card | K4 |
+| 10 | Reply `delete` to that `timer banana` message | It and your reply are deleted; "🗑️ Deleted" for 5 seconds | E1 |
+| 11 | In #scratch: `ping` | Nothing: no reply, no Claude. **Leave the message there** (target for block 6) | A12 |
+
+## 3. Reactions at the real 30 seconds
+
+Dev mode: off, so the debounce is the real `REACTION_DEBOUNCE`. In #scratch,
+type three messages first: `one`, `two`, `three`.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | React 📦 on `one` and time it | Nothing for 30 seconds, then it is archived | C1 |
+| 2 | Look at the copy in #archive | Your name and avatar, original time, link back; original gone | D4 |
+| 3 | React 📦 on `two`, and about 5 seconds later on `three` | Both archived together, 30 seconds after the second reaction | C4 |
+| 4 | React 📦 on any card in #bot-log, wait 30 seconds | The card gets ⚠️; reason on a new log card; nothing said in the channel. Remove your 📦 | C6 |
+
+Leaves three archived copies in #archive (used in blocks 6 and 9).
+
+## 4. Pins
+
+Dev mode: off.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | In #scratch: `lab pin`. Note the time | Status message pinned; no "pinned a message" notice left behind | F2 (first half) |
+| 2 | In #inbox: pin the "🏓 Pong!" by hand, then unpin it | The pin notice is deleted; both changes on log cards | F1, F4 |
+| 3 | In #scratch: type `pin me` and pin it by hand. **Leave it pinned** (target for block 6) | The notice is deleted there too; log card | F3 |
+| 4 | A minute after step 1, look at the status message, then `lab pin stop` | It was updated on the minute; `stop` unpins it; the unpin is logged | B4 |
+
+## 5. Dev mode switch and panel
+
+In #scratch. Starts and ends with dev mode off. Watch the bot's status in
+the member list.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | `dev` | ⚠️ on your message; log card says dev mode is off. Delete the message by hand | J5 |
+| 2 | `dev on` | Panel posted and pinned: debounce 2s, speed 1x, verbose on, quiet hours ignored, each against its normal value, live expiry an hour away; no pin notice; "Dev mode on" log card | J1 |
+| 3 | Look at the bot's status | "🛠️ Dev mode" | J2 |
+| 4 | Type `a`, then `b`, then `dev` | Panel moves to the bottom, still pinned; only one panel | J4 |
+| 5 | `dev quiet on`, then `dev quiet off` | Panel shows "respected", then "ignored" | J13 |
+| 6 | `dev debounce 9`, `dev verbose off`, then `dev reset` | Panel back to 2s, 1x, verbose on, ignored, with a fresh hour | J15 |
+| 7 | `dev speed 5`, then on the panel: **+1 hour**, **Reset**, **Disable** | Expiry moves out an hour; speed back to 1x; then panel unpinned and deleted, status cleared, "Dev mode off" log card | J16 |
+| 8 | `dev speed 10` | Dev mode switches on; panel shows 10x and the other settings at dev defaults | J6 |
+| 9 | `dev off` | Panel unpinned and deleted; status cleared; "Dev mode off" log card with the reason | J3 |
+| 10 | `dev expire 1m`, wait a minute | Panel shows the new expiry; then dev mode switches itself off as in step 9, reason "expired" | J14 |
+
+## 6. Archive, delete and protection
+
+In #scratch. Dev mode: **`dev on`** (debounce 2s, verbose on); the steps
+change the debounce where a test needs it.
+
+Targets already there: your `ping` (block 2) and the pinned `pin me`
+(block 4).
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | `dev on` | Panel as before | |
+| 2 | Reply `archive` to your `ping` | Copy in #archive under your name and avatar, original time, link back; original and reply deleted; "📦 Archived: link" for 5 seconds | D1 |
+| 3 | Post a message with the image and the file attached; reply `archive` to it | Both attachments are on the archived copy | D2 |
+| 4 | In #archive: press **Restore** on that copy | Reposted to #scratch with name, avatar, attachments and time; the archived copy is removed | D6 |
+| 5 | `dev seed 6` | Six sample messages tagged "🧪 dev test data" (oat milk, weekly review, dentist, article link, car registration, gym) | |
+| 6 | Reply `box` to "Buy oat milk…" | Archived like any other, though it is the bot's own message | D3, D9 |
+| 7 | Reply `file away` to "Idea: a weekly review…" | Archived | D3 |
+| 8 | Right-click "Dentist said…" > Apps > **Archive message** | Archived, with a private confirmation | D5 |
+| 9 | In #archive: reply `dev inspect` to one of the copies | Card's "Archive record" line says where it came from and when | J18 |
+| 10 | `dev debounce 0`, then react 📦 on "https://example.com…" | Panel edited in place; the message is archived at once | J7 |
+| 11 | `dev debounce 5`; react 📦 on "Remember to renew…" and remove it within 5 seconds | Nothing happens | J8 |
+| 12 | `dev debounce 10`; react 🗑️ on the same message and remove it within 10 seconds | Nothing happens (the 30-second window, shortened) | E4 |
+| 13 | `dev debounce 2`; react 🗑️ on it again and wait | Deleted after 2 seconds | E3 |
+| 14 | Reply `delete` to the pinned `pin me` | "⚠️ That message is pinned. Delete it anyway?" with Confirm and Cancel; nothing deleted | E5 |
+| 15 | Press **Cancel** | Question removed; message untouched | E7 (first half) |
+| 16 | Right-click `pin me` > Apps > **Archive message**, then **Cancel** | Asks for confirmation first | E9 |
+| 17 | Add 📌 to `pin me`; reply `dev inspect` to it | Pinned: yes; protected, with the reason; "Reactions on it" lists 📌; archive record: none. "Reactions applied" will read **none**: see the note below | J17 |
+| 18 | Reply `delete` to `pin me` again and **don't answer**. Note the time | Question appears | |
+| 19 | Meanwhile: add 📌 to "Gym: 3 x 8 squats…"; reply `archive` to it, **Cancel**; then react 🗑️ on it, wait 2 seconds, **Cancel**. Remove the 🗑️ | Both ask for confirmation first; message untouched | E8 |
+| 20 | Two minutes after step 18, look at the question | Removed by itself; `pin me` untouched | E7 (second half) |
+| 21 | Reply `delete` to `pin me` once more, press **Confirm** | Message deleted; the question shows the outcome, then removes itself | E6 |
+| 22 | `dev seed 3`, then `dev clean` | Three tagged samples appear; clean removes them and the `dev inspect` card. The 📌-marked "Gym…" stays | J22 |
+| 23 | `dev seed 2`, pin one by hand, `dev clean` | The pinned one stays; the other goes | J23 |
+| 24 | Tidy up: unpin that one, remove the 📌 from "Gym…", `dev clean`; in #archive, `dev clean` | #scratch has no test data; the `dev inspect` card in #archive is gone | |
+
+**Note on J17.** The test asks for a message "with an applied reaction", but
+the only registered reactions (📦, 🗑️) are destructive and never recorded as
+applied, so that line can only read "none" today. Pass it on the other
+lines and say so in the report.
+
+Leaves dev mode on, and archived copies in #archive (needed for block 9).
+
+## 7. Timers and dev tools
+
+In #scratch. Dev mode: on, debounce 2s, verbose on, speed 1x to start.
+First press **+1 hour** on the panel so it lasts through block 9.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | `timers` | "No active timers" | G9 (first half) |
+| 2 | `timer 10s tea` | Timer message with a live "ends in…"; your word is deleted; pinned "Active timers" board lists it; no pin notice | G1, F2 (second half) |
+| 3 | Wait 10 seconds | Original edited to "finished"; a new message @mentions you with +5 min, Restart and Dismiss; board updated | G2 |
+| 4 | Press **Dismiss** | Alert deleted; original stays | G3 |
+| 5 | `timer 10s a`, then `timer 10s b`; let both finish | Two alerts | |
+| 6 | On a's alert press **+5 min**; on b's press **Restart** | Each alert cleared; a runs for 5 minutes, b for its full 10 seconds. When b finishes, reply `ok` to its alert: alert deleted | G4, G3 |
+| 7 | Reply `pause` to timer a, then `resume` | "paused with … left", then running again with the same time left | G5 |
+| 8 | Reply `+10m` to it, then `extend 5m` | End time moves out by 10, then 5 more minutes | G6 |
+| 9 | `timer` | Lists timer a | G9 (second half) |
+| 10 | Reply `cancel` to timer a | Marked cancelled; off the board; no alert later | G7 |
+| 11 | `timer 10m`, then `dev jobs` | Pending jobs with id, skill/kind and due time: the timer and the nightly backup | J19 |
+| 12 | `dev fire next` | The timer finishes at once; "🔥 Fired job #…" names it. Dismiss the alert | J21 |
+| 13 | `dev run backup`, then `dev run sweep` | "💾 Backup saved" log card and a new file in `data\backups\`; the sweep gets ⚠️ with "not built" on the log card. Delete the ⚠️ message by hand | J20 |
+| 14 | `dev speed 60`, then `timer 5m` | Timer says 5m and finishes in about 5 seconds; a 🛠️ debug card for the job in #bot-log. Dismiss the alert | J9, J11 (job) |
+| 15 | `ping` in #inbox; in #scratch `dev seed 2` and react 📦 on one | 🛠️ debug cards: the word with trigger and timing; the reaction batch with where it ended up | J11 |
+| 16 | `dev verbose off`; `ping` in #inbox, react 📦 on the other seeded message, `timer 5m` | Panel shows verbose off; no 🛠️ cards for any of the three. Dismiss the alert, `dev clean` | J12 |
+
+Step 12 only fires the timer if nothing else is pending sooner: make sure
+no other timer or Pomodoro is running.
+
+Leaves dev mode on at speed 60x, verbose off.
+
+## 8. Pomodoro
+
+In #scratch. Dev mode: on. Speed 60x for step 2 only, then 1x, because
+focus rounds only count in the stats at 1x.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | `pomo stats` | Note today's figure | |
+| 2 | `pomo 25/5`; let focus end; `pomo stats` | Card says 25m; phase ends in about 25 seconds; stats unchanged. Reply `ok` to the alert, press **Stop** | J10 |
+| 3 | `dev speed 1` | Panel shows 1x | |
+| 4 | `pomo 50/10/30 writing` | Card shows the label "writing" and the 50/10/30 lengths | H10 |
+| 5 | `pomo` | ⚠️; log card says the current one is still going. Delete the ⚠️ message by hand | H9 |
+| 6 | Reply to the card: `pause`, `resume`, `+10m`, `stop` | Same as the buttons; `+10m` adds 10 minutes to the current phase; `stop` ends it | H8 |
+| 7 | `pomo 30s/10s` | One card with phase, round, label, live time and Pause, Skip, Stop; listed on the board | H1 |
+| 8 | Wait 30 seconds | @mention alert with Start and Skip; the break doesn't start; card says it is waiting | H2 |
+| 9 | `pomo stats` | Today and this week now include that round | H11 |
+| 10 | Press **Start** | Alert cleared; break running on the card | H3 |
+| 11 | When the break ends, press **Start**; then **Pause**, then **Resume** | Card shows the time left while paused, then carries on | H5 |
+| 12 | Press **Skip** during that focus round; `pomo stats` | Moves to the break; stats unchanged | H6 |
+| 13 | Press **Stop** | "stopped after 1 focus rounds", no buttons; off the board | H7 |
+| 14 | `pomo auto 30s/10s`; let focus end | The break starts by itself; alert has OK and Skip; **OK** clears it. Then **Stop** | H4 |
+
+Leaves dev mode on at 1x, nothing running.
+
+## 9. Lab tour and restarts
+
+Two restarts cover every restart test. Dev mode is on going in and is
+switched off by the first restart, which is itself a test.
+
+**Before the first restart**
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | In #inbox: `lab tour` | One card with Pass, Fail, Skip, Back and Stop | B15 |
+| 2 | Tour step 1: `ping` | Step ticks itself | |
+| 3 | Tour step 2: `lab buttons`; press Count, flip a toggle, use both selects, submit the Form, try the ephemeral reply | Each answers at once and the message updates in place; step ticks itself. **Leave both messages** | B2 |
+| 4 | Tour step 3: `lab react`; add and remove some colours; wait 15 seconds | Message shows the final state and a timeline, then gets ✅; step ticks itself | B1 |
+| 5 | Check the dev panel is still pinned in #scratch (`dev on` there if it expired) | | |
+| 6 | In #scratch: `timer 2m`, then straight away stop the bot (`Ctrl + C`) and start it (`python main.py`) | Start card as in K1 | |
+
+**After the first restart** (dev mode off)
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 7 | Look at #scratch and the bot's status | Dev mode is off: no status, the old panel is gone. (If a panel was left behind, any button on it removes it) | J24 |
+| 8 | Wait for the 2 minutes to be up; press **Dismiss** | The timer fires on time; the button works | G11 |
+| 9 | Press a button on the persistent `lab buttons` message, then one on the other | Persistent one still works; the other says "⌛ That button or form no longer works" | B3 |
+| 10 | In #archive: press **Restore** on a copy made before the restart | Still works: reposted to #scratch, copy removed | D7 |
+| 11 | In #inbox: `lab tour` | Carries on at step 4; the buttons still work | B16 |
+| 12 | Tour step 4: reply `archive` to any message you don't need | Step ticks itself | |
+| 13 | Tour step 5: react 📦 on another | Archived after the full 30 seconds (the normal debounce is back, which completes J24); step ticks itself | |
+| 14 | Tour step 6: press **Skip**, then **Back**; then `lab pin`, wait a minute, `lab pin stop`, **Pass** | Skip and Back work; boxes tick; Pass moves on | |
+| 15 | Tour step 7: `lab chart`; press **Fail** and enter a note; then **Back** and **Pass** | The note shows on the card; Back reopens the step | |
+| 16 | Tour step 8: send Claude a message, then `reset` | Step ticks itself; the card becomes a summary, also posted to #bot-log | B15 |
+
+**Second restart: three minutes of downtime**
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 17 | In #scratch: type `offline`, then `timer 1m`, then `pomo auto 1m/30s`. Stop the bot (`Ctrl + C`) | | |
+| 18 | While it is stopped: react 📦 on `offline`. Wait 3 minutes. Start the bot | | |
+| 19 | Look at #scratch | Timer alert says it finished while the bot was offline | G12 |
+| 20 | Look at the Pomodoro | Alert says the phase ended while offline; the next phase waits for **Start**, even though it is auto | H12 |
+| 21 | Wait 35 seconds, look at `offline` | Not archived. Remove the 📦, dismiss the alert, **Stop** the session | C8 |
+
+## 10. Rest of the lab
+
+In #scratch. Dev mode: off. Each is one word and a look.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | `lab time` | Every dynamic timestamp style, in local time | B8 |
+| 2 | `lab thread` | A message with a thread started on it and a first message inside | B9 |
+| 3 | `lab poll`, then `lab poll multiple` | Native polls; the second allows several answers | B10 |
+| 4 | `lab file` | A CSV of daily stats is attached | B11 |
+| 5 | `lab format` | Markdown, spoilers and ANSI colours render; the long message is split cleanly | B12 |
+| 6 | `lab layout` | Components v2 layout renders (containers, sections, thumbnails) | B13 |
+| 7 | `lab countdown 30 1` | Counts down by editing itself; summary reports edits and any rate limiting | B14 |
+| 8 | `/lab chart`, then `lab chart abc` | Slash version posts the charts with a private "done" note; the bad argument gets ⚠️ and a usage line on the log card | B18 |
+
+## 11. Phone notifications
+
+Dev mode: off. **Close Discord on the desktop** (or let it go idle): Discord
+holds back phone notifications while the desktop app is active. Type
+everything from the phone, in #scratch.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | `lab chart`, then `lab chart matplotlib 14` | Two charts each time (messages per day, cost per day), readable on the phone | B5 |
+| 2 | `lab notify all` | Normal, silent, @mention and DM arrive in that order, 5 seconds apart; the DM is a short pointer with a link back | B6 |
+| 3 | `lab notify mention delay 30`, lock the phone | Answered at once; about 30 seconds later the @mention arrives and the phone notifies | B7 |
+| 4 | `lab channels delay 30`, lock the phone; then reply with anything in #reminders, #gym, #admin and #inbox | One test message per channel: normal, @mention, silent, and a link to the #reminders one. Each reply gets ✅; a results card with response times appears in #scratch | B17 |
+
+## 12. Overnight backups
+
+Two separate nights. Dev mode: off.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Night one: leave the bot running past 3am NZ. Check in the morning | "💾 Backup saved" log card; the newest 7 `assistant-*.db` kept in `data\backups\` | K5 |
+| 2 | Night two: stop the bot before 3am, start it in the morning | The missed backup runs at startup, with its own log card | K6 |
+
+## When you finish
+
+- Stop the test copy (`Ctrl + C`) and check nothing is left running:
+  `Get-CimInstance Win32_Process -Filter "Name like 'python%'"`
+- Start the service (Terminal as Admin): `nssm start assistant-bot`
+- Report the results to Claude Code so `docs/TESTING.md` gets updated.
