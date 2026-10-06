@@ -112,6 +112,20 @@ A short log of key decisions and why. Newest at the bottom.
   itself, so channels hold content rather than commands. A failure keeps
   the message and marks it ⚠️, with the reason in #bot-log; the cost is
   that a usage mistake has to be looked up there.
+- **DMs are reserved for critical alerts and escalation:** a DM is only
+  sent for a critical alert, or when a high-priority nudge in the server
+  has been ignored. Urgent items use an @mention in their own channel
+  instead. A DM is a short pointer with a jump link to the related server
+  message, never the content itself, so actions and history stay in the
+  server. This refines "Notifications" above; no skill sends real
+  notifications yet, so it applies from the reminders work onwards.
+- **Claude's conversation history is per channel:** it was one shared list,
+  which only worked because Claude chats in a single channel. Keyed by
+  channel now, so a future channel with its own chat can't leak into
+  another, and `reset` clears just the channel it is typed in.
+- **The lab tour and channel test are typed only:** they are driven from a
+  phone, where the `/` key is the awkward part, so they get no slash
+  command.
 - **Two chart renderers kept side by side in the lab:** QuickChart needs no
   heavy dependency but sends the numbers to a third party and can be down;
   matplotlib is local and private but large. Pick one when a real skill

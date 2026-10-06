@@ -21,8 +21,41 @@ def create_lab_state(conn: sqlite3.Connection) -> None:
     )
 
 
+def create_tour_tables(conn: sqlite3.Connection) -> None:
+    # One row per run of "lab tour", and one per step that was given a result
+    conn.execute(
+        """
+        CREATE TABLE lab_tour_runs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER REFERENCES users(id),
+            channel_id INTEGER NOT NULL,
+            message_id INTEGER,
+            current_step INTEGER NOT NULL DEFAULT 0,
+            detected TEXT NOT NULL DEFAULT '[]',
+            started_at TEXT NOT NULL,
+            finished_at TEXT
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE lab_tour_results (
+            run_id INTEGER NOT NULL REFERENCES lab_tour_runs(id),
+            step TEXT NOT NULL,
+            status TEXT NOT NULL,
+            auto INTEGER NOT NULL DEFAULT 0,
+            note TEXT,
+            user_id INTEGER REFERENCES users(id),
+            recorded_at TEXT NOT NULL,
+            PRIMARY KEY (run_id, step)
+        )
+        """
+    )
+
+
 MIGRATIONS = [
     create_lab_state,
+    create_tour_tables,
 ]
 
 

@@ -75,6 +75,15 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
     stays and gets a ⚠️ reaction; details go to #bot-log, never the channel
   - Raise `UserError` (`core/errors.py`) for problems the user can fix; its
     message goes on the #bot-log card
+  - The registry emits `action_finished` (a `registry.ActionResult`) to skills
+    after every word, reply action, reaction and chat, and
+    `registry.expect_message(...)` lets a skill claim a user's next message
+    in a channel (after words and reply actions, before Claude)
+  - Claude's conversation history is one list per channel
+    (`llm.history_for(channel_id)`); `reset` clears only the channel it is
+    typed in. Claude still only chats in #inbox
+  - `lab tour` (guided, resumable test run) and `lab channels` (cross-channel
+    notification test) are typed only, with no slash command
   - Hooks wired: `keywords`, `reply_actions`, `reactions`, `migrations`,
     `jobs`, `app_commands`, `events`, `setup` (before connecting: persistent
     views) and `startup` (once ready). `tools()` is declared but nothing calls
@@ -98,7 +107,8 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 - Logs: `logs/bot.log` (rotating), `logs/service-*.log` (service output)
 - Database: `data/assistant.db`
   - Tables: `users`, `message_log` (records every input, with a `user_id`),
-    `skill_migrations`, and `lab_state` (the lab skill's own key/value table)
+    `skill_migrations`, and the lab skill's own `lab_state` (key/value),
+    `lab_tour_runs` and `lab_tour_results`
   - Schema version is `PRAGMA user_version`. To change the schema, append a
     function to `MIGRATIONS` in `core/migrations.py`; never edit an old one
   - Skills keep their own migration lists (`Skill.migrations()`), tracked per
@@ -134,6 +144,10 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 - Log raw input before processing it
 - Anything outward-facing (sending emails, deleting data) needs user confirmation
 - Never block the async event loop with slow synchronous work
+- Notifications stay in the server. Urgent items @mention the user in their
+  own channel. DMs are only for critical alerts and for escalating a
+  high-priority nudge that was ignored, and are short pointers with a jump
+  link to the server message: no content, buttons or actions in DMs
 
 ## Secrets and data
 

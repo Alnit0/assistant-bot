@@ -187,6 +187,13 @@ Things to know:
   (see `Run` in `skills/lab/common.py`).
 - **Other Discord events:** return `{"raw_reaction_add": handler, ...}` from
   `events()`. `startup(client)` runs once when the bot is connected.
+- **Knowing what just happened:** ask for the `action_finished` event to be
+  told after every word, reply action, reaction and chat, with a
+  `registry.ActionResult` (kind, name, status, user, channel).
+- **Waiting for an answer:** `registry.expect_message(channel_id, user_id,
+  handler, timeout)` hands that user's next message in that channel to
+  `handler(ctx)`, once, and keeps it away from Claude. Words and reply
+  actions are still tried first. It is forgotten at restart.
 - **Buttons that must survive a restart:** give them a fixed `custom_id`, no
   timeout, and register the view with `client.add_view(...)` in
   `setup(client)`, which runs before the bot connects.
@@ -241,7 +248,7 @@ To switch it off, leave `lab` out of `ENABLED_SKILLS`.
 | `lab buttons` | A counter, toggles, single and multi selects, a modal form, an ephemeral reply and a link button; plus persistent buttons that still work after a restart |
 | `lab pin [start\|stop]` | Pins a status message that updates every minute (and resumes after a restart); `stop` unpins it. Pin changes anywhere are logged to #bot-log |
 | `lab chart [quickchart\|matplotlib] [days]` | Messages per day and cost per day as two charts, drawn by QuickChart (a web service) or matplotlib (on the server) |
-| `lab notify <normal\|silent\|mention\|dm\|all> [delay <seconds>]` | A normal, silent, @mention or direct message. `all` sends the four in that order, 5 seconds apart. `delay 90` waits first (up to an hour), so you can lock your phone: `lab notify all delay 90` |
+| `lab notify <normal\|silent\|mention\|dm\|all> [delay <seconds>]` | A normal, silent, @mention or direct message (the DM is a short pointer with a link back to a marker message in the channel, as real DMs will be). `all` sends the four in that order, 5 seconds apart. `delay 90` waits first (up to an hour), so you can lock your phone: `lab notify all delay 90` |
 | `lab time` | Every dynamic timestamp style |
 | `lab thread` | A message with a thread started on it |
 | `lab poll [multiple]` | A native poll that runs for an hour |
@@ -249,6 +256,8 @@ To switch it off, leave `lab` out of `ENABLED_SKILLS`.
 | `lab format` | Markdown, spoilers, ANSI colours, long message splitting |
 | `lab layout` | Components v2 (containers, sections, thumbnails) |
 | `lab countdown [seconds] [step]` | A self-editing message; reports rate limits |
+| `lab tour [new\|stop]` | A guided run through the interactive tests on one card. Typed only; see below |
+| `lab channels [delay <seconds>]` | Test messages across four channels, timing your reply in each. Typed only; see below |
 
 Arguments in square brackets are optional; a wrong one gets a ⚠️ on your
 message and the usage line in #bot-log. The slash versions take the same
@@ -258,6 +267,66 @@ note; the typed versions show the same note for 5 seconds.
 A delayed `lab notify` is answered straight away and sent in the
 background. It is held in memory only, so restarting the bot before it
 fires cancels it. What was sent is logged when it finishes.
+
+### `lab tour`: the guided test run
+
+Type `lab tour` (best in #inbox, since two steps need it). One card appears
+and is edited in place as you go, with **Pass**, **Fail**, **Skip**,
+**Back** and **Stop** buttons.
+
+| Step | What you do | Passes by itself when… |
+|---|---|---|
+| 1. Plain-word shortcut | Type `ping` or `stats` in #inbox | a plain word runs |
+| 2. Buttons | `lab buttons`, then press Count, flip a toggle, use a select, submit the Form | all four have been used |
+| 3. Reactions and debounce | `lab react`, react, wait 15 seconds | the quiet period ends and the summary is posted |
+| 4. Reply "archive" | Reply `archive` to a message | the archive worked and your reply was cleaned up |
+| 5. 📦 reaction | React 📦 to a message | it is archived after the wait |
+| 6. Pinned dashboard | `lab pin`, watch a minute tick, `lab pin stop` | never: it ticks the boxes, you press **Pass** |
+| 7. Chart | `lab chart` | never: you judge whether it reads well |
+| 8. Claude chat and reset | Message Claude in #inbox, then `reset` | Claude answered and then memory was cleared |
+
+- **Steps tick themselves** as the bot notices each thing happen. Steps
+  that are a matter of judgement (6 and 7) tick their boxes but wait for
+  your verdict. **Back** reopens the previous step if you disagree with an
+  automatic pass.
+- **Fail** opens a small form for a short note; the note appears on the
+  card and in the results.
+- **The card gets buried** as you type test messages. Type `lab tour` again
+  to bring it back down to the bottom.
+- **It is resumable.** The run is saved after every change, so after a
+  restart the buttons still work and `lab tour` carries on at the same
+  step. `lab tour new` abandons the current run and starts again;
+  `lab tour stop` ends it early.
+- **Results** are saved in `lab_tour_runs` and `lab_tour_results`, the card
+  turns into a summary, and the same summary is posted to #bot-log.
+
+### `lab channels`: notifications across channels
+
+`lab channels delay 60` waits a minute (lock your phone), then posts one
+test message in each of four channels, 5 seconds apart, each asking you to
+reply there:
+
+| Channel | Style |
+|---|---|
+| #reminders | normal |
+| #gym | @mention |
+| #admin | silent |
+| #inbox | cross-channel link: a link to the #reminders test, to tap and come back from |
+
+- **Reply with anything in each channel.** Your next message there is the
+  reply being timed: it gets a ✅ and is not passed on to Claude. Words such
+  as `help` still work and don't count as the reply.
+- **Results:** when you have replied everywhere, or 10 minutes after the
+  last message, a card is posted where you typed the command (and logged to
+  #bot-log) with each channel's response time, or "no reply".
+- **Claude history check:** the card also reports whether Claude's
+  conversation history is kept separately per channel. It is checked on the
+  real history store. Claude only chats in #inbox today, so the other
+  channels' histories are empty.
+- **A channel that isn't set in `.env`** or that the bot can't see is
+  reported on the card; the others still run.
+- **One test at a time, and it is held in memory:** restarting the bot
+  cancels a test in progress.
 
 Slash commands are synced to the server the inbox channel is in, every time
 the bot starts. The "🟢 Bot started" card shows how many were synced.

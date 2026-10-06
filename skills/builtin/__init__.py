@@ -1,5 +1,5 @@
 from core.context import Context
-from core.llm import format_cost, history
+from core.llm import clear_history, format_cost
 from skills import registry
 from skills.base import ANY, Keyword, Skill
 from skills.builtin.views import TestButtons
@@ -13,7 +13,7 @@ async def ping(ctx: Context) -> None:
 
 
 async def reset(ctx: Context) -> None:
-    history.clear()
+    clear_history(ctx.channel_id)
     await ctx.confirm("🧹 Conversation memory cleared.")
 
 

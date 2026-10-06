@@ -15,8 +15,19 @@ log = logging.getLogger("assistant")
 
 claude = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
 
-# Short-term conversation memory (cleared when the bot restarts)
-history: list[dict] = []
+# Short-term conversation memory, one separate history per channel, so a chat
+# in one channel never leaks into another. Cleared when the bot restarts.
+_histories: dict[int | None, list[dict]] = {}
+
+
+def history_for(channel_id: int | None) -> list[dict]:
+    """The conversation history for one channel (created empty on first use)."""
+    return _histories.setdefault(channel_id, [])
+
+
+def clear_history(channel_id: int | None) -> None:
+    """Forget the conversation in one channel. Other channels are untouched."""
+    history_for(channel_id).clear()
 
 
 def build_system_prompt(capabilities: str = "") -> str:
@@ -56,11 +67,15 @@ def format_cost(cost: float | None) -> str:
     return f"US${cost:.4f}" if cost is not None else "Unknown"
 
 
-async def ask_claude(user_text: str, capabilities: str = "") -> tuple[str, int, int]:
+async def ask_claude(
+    user_text: str, capabilities: str = "", channel_id: int | None = None
+) -> tuple[str, int, int]:
     """Send the message plus recent history to Claude. Returns (reply, input tokens, output tokens).
 
     `capabilities` describes the bot's own shortcuts; see build_system_prompt.
+    `channel_id` picks which channel's conversation this belongs to.
     """
+    history = history_for(channel_id)
     # Keep only recent history; trimming before adding keeps it starting with a user message
     del history[:-MAX_HISTORY]
     history.append({"role": "user", "content": user_text})

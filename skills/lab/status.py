@@ -14,6 +14,7 @@ from skills.lab.common import (
     LabError,
     Run,
     SlashRun,
+    announce,
     lab,
     lab_keyword,
     record,
@@ -76,6 +77,7 @@ async def _run(channel_id: int, message_id: int) -> None:
         await asyncio.sleep(60 - now.second - now.microsecond / 1_000_000 + 0.5)
         try:
             await message.edit(content=await render_status())
+            await announce("status: updated")
         except discord.NotFound:
             await state.clear(STATE_KEY)
             await record(

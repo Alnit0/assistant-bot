@@ -59,8 +59,13 @@ async def send_notification(run: Run, kind: str, label: str = "") -> None:
             allowed_mentions=discord.AllowedMentions(users=True),
         )
     else:
+        # DMs are short pointers back to a message in the server (see DECISIONS.md),
+        # so the test posts something to point at
+        marker = await run.channel.send(
+            f"✉️ **{label}DM test**: a pointer to this message was sent to your DMs.", silent=True
+        )
         try:
-            await run.member.send(f"✉️ **{label}Direct message** from the lab.")
+            await run.member.send(f"✉️ **{label}Test alert** from the lab: {marker.jump_url}")
         except discord.Forbidden:
             raise LabError(
                 "I can't DM you. Allow direct messages from server members in this "
@@ -134,10 +139,7 @@ async def notify(
 def parse_notify(args) -> tuple[str, int]:
     """`<mode> [delay] [seconds]`: "all delay 90" and "all 90" both work."""
     mode = args.choice(NOTIFY_MODES)
-    said_delay = args.flag("delay")
-    if said_delay and not (args.words and args.words[0].isdigit()):
-        raise args.error()
-    return mode, args.number("delay", 0, 0, NOTIFY_MAX_DELAY)
+    return mode, args.delay(NOTIFY_MAX_DELAY)
 
 
 # ---------------------------------------------------------------------------

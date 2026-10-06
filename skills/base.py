@@ -182,6 +182,9 @@ class Skill:
         Available: raw_reaction_add, raw_reaction_remove, guild_channel_pins_update,
         app_command_completion, app_command_error. The handler gets the same
         arguments as discord.py's event.
+
+        Also "action_finished", which is ours rather than Discord's: sent after
+        every word, reply action, reaction and chat, with a registry.ActionResult.
         """
         return {}
 

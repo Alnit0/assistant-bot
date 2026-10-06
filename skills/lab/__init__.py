@@ -4,7 +4,7 @@ from skills.base import Keyword, Skill
 from skills.lab import common, ratelimits, state
 
 # Importing these adds their subcommands to the /lab group
-from skills.lab import buttons, charts, misc, react, status  # noqa: F401  isort: skip
+from skills.lab import buttons, channels, charts, misc, react, status, tour  # noqa: F401  isort: skip
 
 
 class LabSkill(Skill):
@@ -24,6 +24,9 @@ class LabSkill(Skill):
             *status.KEYWORDS,
             *charts.KEYWORDS,
             *misc.KEYWORDS,
+            # Typed only: these two have no slash command
+            *tour.KEYWORDS,
+            *channels.KEYWORDS,
         ]
 
     def app_commands(self) -> list:
@@ -34,6 +37,7 @@ class LabSkill(Skill):
             "raw_reaction_add": react.on_reaction_add,
             "raw_reaction_remove": react.on_reaction_remove,
             "guild_channel_pins_update": status.on_pins_update,
+            "action_finished": tour.on_action,
         }
 
     def migrations(self) -> list:
@@ -42,11 +46,13 @@ class LabSkill(Skill):
     def setup(self, client: discord.Client) -> None:
         # Before connecting, so a press on an old message can never arrive too early
         buttons.register(client)
+        tour.register(client)
 
     async def startup(self, client: discord.Client) -> None:
         ratelimits.install()
         react.bind(client)
         await status.resume(client)
+        await tour.resume(client)
 
 
 skill = LabSkill()

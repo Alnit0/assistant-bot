@@ -119,6 +119,13 @@ class Args:
             raise LabError(f"{name} must be between {low} and {high}. Usage: `{self.usage}`")
         return value
 
+    def delay(self, maximum: int) -> int:
+        """An optional wait in seconds: "delay 90" or just "90". 0 if not given."""
+        said_delay = self.flag("delay")
+        if said_delay and not (self.words and self.words[0].isdigit()):
+            raise self.error()
+        return self.number("delay", 0, 0, maximum)
+
     def flag(self, word: str) -> bool:
         if self.words and self.words[0] == word:
             self.words.pop(0)
@@ -172,6 +179,20 @@ async def report_component_error(
     )
 
 
+# Parts of the lab that want to hear what the rest of it is doing (the tour
+# uses this to notice a test has been completed). Each is `async (label)`.
+observers: list = []
+
+
+async def announce(label: str) -> None:
+    """Tell the observers something happened, without logging it."""
+    for observer in observers:
+        try:
+            await observer(label)
+        except Exception:
+            log.exception("A lab observer failed on %r", label)
+
+
 async def record(
     label: str,
     summary: str,
@@ -185,6 +206,7 @@ async def record(
     row_id = await log_received(label, "lab", message_id, channel_id, user_id=user_id)
     await log_result(row_id, reply=summary, status="ok")
     await log_simple(f"🧪 Lab: {label}", summary)
+    await announce(label)
 
 
 async def record_press(interaction: discord.Interaction, label: str, summary: str) -> None:

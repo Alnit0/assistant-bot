@@ -1,3 +1,4 @@
+import asyncio
 import importlib
 import logging
 import pkgutil
@@ -236,6 +237,19 @@ async def emit(event: str, *args) -> None:
             await log_error(f"Skill event failed: {skill.name} / {event}", repr(error))
 
 
+@dataclass(frozen=True)
+class ActionResult:
+    """How one input ended. Sent to skills as the "action_finished" event."""
+
+    kind: str  # "command", "reply_action", "reaction" or "chat"
+    name: str  # the keyword, reply word or emoji ("chat" for a chat with Claude)
+    status: str  # "ok", "error" or "denied"
+    user_id: int  # our users.id
+    channel_id: int
+    command_deleted: bool = False  # the user's command message was tidied away
+    reply: str = ""  # what was recorded as the reply
+
+
 # ---------------------------------------------------------------------------
 # Where and for whom a registration works
 # ---------------------------------------------------------------------------
@@ -267,10 +281,17 @@ async def _run(
     """
     row_id = await log_received(ctx.text, kind, ctx.message_id, ctx.channel_id, user_id=ctx.user.id)
 
+    async def finished(status: str, reply: str = "", command_deleted: bool = False) -> None:
+        await emit(
+            "action_finished",
+            ActionResult(kind, name, status, ctx.user.id, ctx.channel_id, command_deleted, reply),
+        )
+
     if not is_allowed(ctx.user, permission):
         await log_result(row_id, reply="not allowed", status="denied")
         await ctx.mark_failed()
         await ctx.log_error(f"Command refused: {name}", f"Needs permission `{permission}`.", ctx.text)
+        await finished("denied")
         return
 
     try:
@@ -281,12 +302,14 @@ async def _run(
         await log_result(row_id, status="error", error=str(error))
         await ctx.mark_failed()
         await ctx.log_error(f"Command failed: {name}", str(error), ctx.text)
+        await finished("error")
         return
     except Exception as error:
         log.exception("Command failed: %s", name)
         await log_result(row_id, status="error", error=repr(error))
         await ctx.mark_failed()
         await ctx.log_error(f"Command failed: {name}", repr(error), ctx.text)
+        await finished("error")
         return
 
     if not ctx.replies:
@@ -296,8 +319,8 @@ async def _run(
         reply = "\n".join(ctx.replies)
     await log_result(row_id, reply=reply, status="ok")
     await ctx.log(title, reply)
-    if not keep_command:
-        await ctx.delete_command()
+    command_deleted = False if keep_command else await ctx.delete_command()
+    await finished("ok", reply, command_deleted)
 
 
 async def dispatch_keyword(ctx: Context) -> bool:
@@ -423,6 +446,65 @@ async def dispatch_reaction(payload: discord.RawReactionActionEvent) -> bool:
     reply = reply or "done"
     await log_result(row_id, reply=reply, status="ok")
     await log_simple(f"{reaction.emoji} Reaction: {skill.name}", reply)
+    await emit(
+        "action_finished",
+        ActionResult("reaction", reaction.emoji, "ok", user.id, payload.channel_id, reply=reply),
+    )
+    return True
+
+
+# ---------------------------------------------------------------------------
+# Dispatch: a message a skill is waiting for
+# ---------------------------------------------------------------------------
+@dataclass
+class _Expected:
+    user_id: int  # our users.id
+    handler: object  # async (ctx) -> str | None
+    expires_at: float  # event loop time
+
+
+_expected: dict[int, _Expected] = {}
+
+
+def expect_message(channel_id: int, user_id: int, handler, timeout: float) -> None:
+    """Hand this user's next message in this channel to `handler(ctx)`, once.
+
+    For a skill that has asked a question and is waiting for the answer. The
+    message is still offered to reply actions and keywords first; if it is
+    neither, the handler gets it and it does not go to Claude. One waiter per
+    channel: a new one replaces the old. Held in memory, so a restart forgets it.
+    """
+    _expected[channel_id] = _Expected(user_id, handler, asyncio.get_running_loop().time() + timeout)
+
+
+def cancel_expected(channel_id: int) -> None:
+    _expected.pop(channel_id, None)
+
+
+async def dispatch_expected(ctx: Context) -> bool:
+    """Give the message to a waiting skill. Returns False if nobody is waiting for it."""
+    waiting = _expected.get(ctx.channel_id)
+    if waiting is None:
+        return False
+    if waiting.expires_at < asyncio.get_running_loop().time():
+        del _expected[ctx.channel_id]
+        return False
+    if waiting.user_id != ctx.user.id:
+        return False
+    del _expected[ctx.channel_id]
+
+    row_id = await log_received(
+        ctx.text, "expected", ctx.message_id, ctx.channel_id, user_id=ctx.user.id
+    )
+    try:
+        reply = await waiting.handler(ctx)
+    except Exception as error:
+        log.exception("Handler for an expected message failed")
+        await log_result(row_id, status="error", error=repr(error))
+        await ctx.mark_failed()
+        await ctx.log_error("Expected message failed", repr(error), ctx.text)
+        return True
+    await log_result(row_id, reply=reply or "received", status="ok")
     return True
 
 

@@ -135,11 +135,22 @@ class Context:
         except discord.HTTPException:
             return None
 
-    async def delete_command(self) -> None:
-        """Remove the user's own message (the command word). Best effort."""
+    async def delete_command(self) -> bool:
+        """Remove the user's own message (the command word). Best effort; True if it went."""
         if self._message is None:
-            return
+            return False
         try:
             await self._message.delete()
         except discord.HTTPException as error:
-            log.info("Could not remove the trigger message: %s", error)
+            log.info("Could not remove the command message: %s", error)
+            return False
+        return True
+
+    async def acknowledge(self, emoji: str = "✅") -> None:
+        """React to the user's message, to show it was received. Best effort."""
+        if self._message is None:
+            return
+        try:
+            await self._message.add_reaction(emoji)
+        except discord.HTTPException as error:
+            log.info("Could not add a reaction: %s", error)

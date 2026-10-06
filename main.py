@@ -30,7 +30,7 @@ from core.discord_utils import (
     split_message,
     truncate,
 )
-from core.llm import ask_claude, estimate_cost, format_cost, history
+from core.llm import ask_claude, estimate_cost, format_cost, history_for
 from core.logging_setup import setup_logging
 from core.migrations import migrate
 from core.permissions import is_allowed
@@ -217,6 +217,9 @@ async def on_message(message: discord.Message):
         return
     if await registry.dispatch_keyword(ctx):
         return
+    # A skill may be waiting for this user's next message in this channel
+    if await registry.dispatch_expected(ctx):
+        return
 
     # Chatting with Claude only happens in the inbox
     if message.channel.id != INBOX_CHANNEL_ID:
@@ -231,7 +234,9 @@ async def on_message(message: discord.Message):
         try:
             # Tell Claude what the bot itself can do here, so it can point the user to it
             capabilities = registry.capabilities_text(user, message.channel.id)
-            reply, input_tokens, output_tokens = await ask_claude(text, capabilities)
+            reply, input_tokens, output_tokens = await ask_claude(
+                text, capabilities, channel_id=message.channel.id
+            )
         except anthropic.APIStatusError as error:
             duration = time.perf_counter() - started
             log.error("Claude API error %s: %s", error.status_code, error.message)
@@ -289,13 +294,19 @@ async def on_message(message: discord.Message):
     embed.add_field(name="Tokens", value=f"{input_tokens} in / {output_tokens} out", inline=True)
     embed.add_field(name="Est. cost", value=format_cost(cost), inline=True)
     embed.add_field(name="Time", value=f"{duration:.1f}s", inline=True)
-    embed.add_field(name="History", value=f"{len(history)} messages", inline=True)
+    embed.add_field(
+        name="History", value=f"{len(history_for(message.channel.id))} messages", inline=True
+    )
     embed.add_field(
         name="Session total",
         value=f"{session_stats['messages']} msgs · {format_cost(session_stats['cost'])}",
         inline=True,
     )
     await send_log(embed)
+    await registry.emit(
+        "action_finished",
+        registry.ActionResult("chat", "chat", "ok", user.id, message.channel.id, reply=reply),
+    )
 
 
 @client.event
