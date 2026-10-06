@@ -55,6 +55,83 @@ async def send_log(embed: discord.Embed) -> None:
         log.exception("Failed to send to bot-log")
 
 
+# ---------------------------------------------------------------------------
+# Replying to interactions (slash commands, buttons, forms) without ever raising
+# ---------------------------------------------------------------------------
+# 10062: Unknown interaction (it expired, or was never ours to answer)
+# 40060: Interaction has already been acknowledged
+INTERACTION_GONE_CODES = {10062, 40060}
+
+
+def interaction_gone(error: BaseException) -> bool:
+    """True if the error only means the interaction can no longer be answered."""
+    error = getattr(error, "original", error)
+    if isinstance(error, discord.InteractionResponded):
+        return True
+    return isinstance(error, discord.HTTPException) and error.code in INTERACTION_GONE_CODES
+
+
+def describe_interaction(interaction: discord.Interaction) -> str:
+    """A short name for an interaction, for log lines."""
+    command = getattr(interaction, "command", None)
+    if command is not None:
+        name = command.qualified_name
+    else:
+        name = (getattr(interaction, "data", None) or {}).get("custom_id", "unknown")
+    return f"{name} (user {interaction.user.id})"
+
+
+async def safe_reply(interaction: discord.Interaction, text: str, ephemeral: bool = True) -> bool:
+    """Reply to an interaction whether or not it has been answered already.
+
+    Never raises: if Discord refuses, that is logged as a warning and False is
+    returned. Safe to use from error handlers.
+    """
+    try:
+        if interaction.response.is_done():
+            await interaction.followup.send(text, ephemeral=ephemeral)
+        else:
+            try:
+                await interaction.response.send_message(text, ephemeral=ephemeral)
+            except discord.InteractionResponded:
+                # Something answered between our check and our reply
+                await interaction.followup.send(text, ephemeral=ephemeral)
+    except discord.HTTPException as error:
+        if interaction_gone(error):
+            log.warning(
+                "Could not reply to %s: the interaction expired or was already answered (code %s)",
+                describe_interaction(interaction),
+                error.code,
+            )
+        else:
+            log.warning("Could not reply to %s: %s", describe_interaction(interaction), error)
+        return False
+    return True
+
+
+async def report_interaction_error(
+    interaction: discord.Interaction,
+    error: Exception,
+    title: str,
+    reply: str = "⚠️ That didn't work. Check #bot-log.",
+) -> None:
+    """A button, select or form handler failed: log it, post a card, tell the user.
+
+    An interaction that merely expired or was already answered gets a warning
+    in the log and nothing else. Never raises.
+    """
+    if interaction_gone(error):
+        log.warning(
+            "%s: the interaction expired or was already answered (%s)",
+            title,
+            getattr(error, "original", error),
+        )
+        return
+    log.error("%s", title, exc_info=error)
+    await log_error(title, repr(error))
+    await safe_reply(interaction, reply)
+
+
 async def log_simple(title: str, description: str | None = None) -> None:
     embed = discord.Embed(title=title, colour=COLOUR_INFO, timestamp=now_nz())
     if description:

@@ -31,6 +31,7 @@ automatically in new terminals. Check the prompt starts with `(.venv)`.
   - `context.py`: the `Context` object handed to skills
   - `backup.py`, `scheduler.py`: nightly backup and daily jobs
   - `debounce.py`: waits for a quiet period, then handles events together
+  - `instance_lock.py`: makes sure only one copy of the bot runs
   - `llm.py`: Claude client, system prompt, history, cost estimates
   - `discord_utils.py`: #bot-log embeds and message helpers
 - `skills/`: one folder per feature
@@ -182,7 +183,27 @@ Polls, Manage Messages, Pin Messages, Manage Webhooks.
 6. Start the service: `nssm start assistant-bot`
 
 **Never run the service and a test copy at the same time**, or every
-message gets two replies.
+message gets two replies. The bot now refuses: a second copy logs "Another
+copy of the bot is already running (PID …)" and exits with code 3. The lock
+is `data/bot.lock`; it frees itself when the bot stops, even after a crash,
+so the file never needs deleting.
+
+Run this once (Terminal as Admin), so the service stops instead of retrying
+every few seconds when a test copy is already running:
+
+```powershell
+nssm set assistant-bot AppExit 3 Exit
+```
+
+To see what is running:
+
+```powershell
+Get-CimInstance Win32_Process -Filter "Name like 'python%'" |
+  Select-Object ProcessId, ParentProcessId, CreationDate, CommandLine
+```
+
+One bot shows as **two** `python.exe` lines with the same start time: the
+`.venv` launcher and the real Python it starts. That is one copy, not two.
 
 ## Service commands (Terminal as Admin)
 
@@ -207,7 +228,13 @@ pip freeze > requirements.txt
   or run `python -c "import sys; print(sys.executable)"`
 - **Scripts disabled when activating:**
   `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`
-- **Double replies:** the service and a test copy are both running
+- **Double replies:** the service and a test copy are both running (only
+  possible if one of them is older code from before the instance lock)
+- **"Another copy of the bot is already running":** stop the other one first
+  (`Ctrl + C` in its terminal, or `nssm stop assistant-bot`)
+- **Errors 10062 "Unknown interaction" or 40060 "already been
+  acknowledged":** two copies answered the same button or command, or the
+  bot took over 3 seconds to answer. They are logged as warnings
 - **Service won't start:**
   `Get-Content logs\service-err.log -Tail 30`
 - **Stuck in a Git viewer (`less`):** press `q`; `Esc` cancels prompts

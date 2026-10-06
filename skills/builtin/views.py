@@ -5,7 +5,7 @@ import discord
 
 from core.config import BUTTON_TIMEOUT, INBOX_CHANNEL_ID
 from core.database import log_received, log_result
-from core.discord_utils import log_simple
+from core.discord_utils import log_simple, report_interaction_error, safe_reply
 from core.permissions import is_allowed
 from core.users import get_user_by_discord_id
 
@@ -26,13 +26,14 @@ class TestButtons(discord.ui.View):
         # Only you can press the buttons
         user = await get_user_by_discord_id(interaction.user.id)
         if not is_allowed(user, "button"):
-            await interaction.response.send_message(
-                "These buttons aren't for you.", ephemeral=True
-            )
+            await safe_reply(interaction, "These buttons aren't for you.")
             return False
         # Remember who pressed it, for the log
         interaction.extras["user_id"] = user.id
         return True
+
+    async def on_error(self, interaction: discord.Interaction, error: Exception, item) -> None:
+        await report_interaction_error(interaction, error, "Button failed")
 
     async def record(self, interaction: discord.Interaction, label: str, reply: str) -> None:
         row_id = await log_received(

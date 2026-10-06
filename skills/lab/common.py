@@ -5,7 +5,13 @@ from discord import app_commands
 
 from core.config import now_nz
 from core.database import log_received, log_result
-from core.discord_utils import log_error, log_simple
+from core.discord_utils import (
+    interaction_gone,
+    log_error,
+    log_simple,
+    report_interaction_error,
+    safe_reply,
+)
 from core.permissions import is_allowed
 from core.users import get_user_by_discord_id
 
@@ -26,7 +32,7 @@ async def check_owner(interaction: discord.Interaction) -> bool:
     """The lab's permission check, for slash commands, menus, buttons and forms."""
     user = await get_user_by_discord_id(interaction.user.id)
     if not is_allowed(user, "lab"):
-        await interaction.response.send_message("The lab isn't for you.", ephemeral=True)
+        await safe_reply(interaction, "The lab isn't for you.")
         return False
     # Remember who it was, for the log
     interaction.extras["user_id"] = user.id
@@ -88,11 +94,8 @@ def explain(error: Exception) -> str:
 
 
 async def say(interaction: discord.Interaction, text: str) -> None:
-    """Reply privately, whether or not the interaction has been answered already."""
-    if interaction.response.is_done():
-        await interaction.followup.send(text, ephemeral=True)
-    else:
-        await interaction.response.send_message(text, ephemeral=True)
+    """Reply privately, whether or not the interaction has been answered already. Never raises."""
+    await safe_reply(interaction, text)
 
 
 async def fail(interaction: discord.Interaction, error: Exception) -> None:
@@ -101,27 +104,31 @@ async def fail(interaction: discord.Interaction, error: Exception) -> None:
     if row_id is None:
         return
     original = getattr(error, "original", error)
+
+    if interaction_gone(error):
+        # Nothing to tell the user and nothing broken: close the log row and move on
+        await log_result(
+            row_id,
+            status="error",
+            error=f"interaction expired or was already answered: {original}",
+        )
+        return
+
     message = explain(error)
     await log_result(row_id, status="error", error=repr(original))
     await log_error(
         f"Lab failed: {interaction.extras['lab_text']}", f"{message}\n{original!r}"
     )
-    try:
-        await say(interaction, message)
-    except discord.HTTPException:
-        log.warning("Could not tell the user about a failed lab command")
+    await say(interaction, message)
 
 
 async def report_component_error(
     interaction: discord.Interaction, error: Exception, label: str
 ) -> None:
     """A button, select or form handler failed: log it everywhere and tell the user."""
-    log.error("Lab component failed: %s", label, exc_info=error)
-    await log_error(f"Lab component failed: {label}", repr(error))
-    try:
-        await say(interaction, explain(error))
-    except discord.HTTPException:
-        log.warning("Could not tell the user about a failed lab component")
+    await report_interaction_error(
+        interaction, error, f"Lab component failed: {label}", reply=explain(error)
+    )
 
 
 async def record(

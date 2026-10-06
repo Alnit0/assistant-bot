@@ -6,7 +6,7 @@ import anthropic
 import discord
 from discord import app_commands
 
-from core import scheduler
+from core import instance_lock, scheduler
 from core.backup import run_nightly_backup
 from core.config import (
     BACKUP_TIME,
@@ -23,7 +23,9 @@ from core.discord_utils import (
     COLOUR_INFO,
     COLOUR_OK,
     bind_client,
+    interaction_gone,
     log_error,
+    safe_reply,
     send_log,
     split_message,
     truncate,
@@ -86,17 +88,29 @@ async def setup_slash_commands() -> str:
 async def on_app_command_error(
     interaction: discord.Interaction, error: app_commands.AppCommandError
 ):
-    # A failed check has already told the user why
-    if isinstance(error, app_commands.CheckFailure):
-        return
-    command = interaction.command.qualified_name if interaction.command else "unknown"
-    log.error("Slash command failed: %s", command, exc_info=error)
-    # Skills get first go at explaining what went wrong
-    await registry.emit("app_command_error", interaction, error)
-    if not interaction.response.is_done():
-        await interaction.response.send_message(
-            "⚠️ Command failed. Check #bot-log.", ephemeral=True
-        )
+    # An error handler must never raise: discord.py would only report "Task exception"
+    try:
+        # A failed check has already told the user why
+        if isinstance(error, app_commands.CheckFailure):
+            return
+        command = interaction.command.qualified_name if interaction.command else "unknown"
+        gone = interaction_gone(error)
+        if gone:
+            # Too late to answer (10062) or something already did (40060): nothing is broken
+            log.warning(
+                "Slash command %s: the interaction expired or was already answered (%s)",
+                command,
+                getattr(error, "original", error),
+            )
+        else:
+            log.error("Slash command failed: %s", command, exc_info=error)
+
+        # Skills get first go at explaining what went wrong (and close their log rows)
+        await registry.emit("app_command_error", interaction, error)
+        if not gone and not interaction.response.is_done():
+            await safe_reply(interaction, "⚠️ Command failed. Check #bot-log.")
+    except Exception:
+        log.exception("The slash command error handler itself failed")
 
 
 # ---------------------------------------------------------------------------
@@ -134,14 +148,11 @@ async def on_interaction(interaction: discord.Interaction):
         interaction.user.id,
         message_id,
     )
-    try:
-        await interaction.response.send_message(
-            "⌛ That button or form no longer works. It expired, or the bot has "
-            "restarted since it was posted. Run the command again.",
-            ephemeral=True,
-        )
-    except discord.HTTPException:
-        pass
+    await safe_reply(
+        interaction,
+        "⌛ That button or form no longer works. It expired, or the bot has "
+        "restarted since it was posted. Run the command again.",
+    )
     await log_error(
         "Interaction not answered",
         f"Nothing handled `{custom_id}` within {INTERACTION_GRACE}s "
@@ -305,6 +316,8 @@ async def on_app_command_completion(interaction: discord.Interaction, command):
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
     setup_logging()
+    # Before anything touches the database or Discord: only one copy may run
+    instance_lock.acquire()
     registry.load()
     migrate(registry.skill_migrations())
     ensure_owner()

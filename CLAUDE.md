@@ -24,6 +24,7 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   - `scheduler.py`: small in-memory scheduler for daily jobs (to be expanded)
   - `debounce.py`: `Debouncer(delay, callback)`, one global quiet-period timer
     that hands over all collected events together
+  - `instance_lock.py`: the single-instance lock, taken first thing at startup
   - `llm.py`: Claude client, system prompt, conversation history, cost estimates
   - `discord_utils.py`: #bot-log embeds, `split_message`, `truncate`
 - `skills/` package (stage 3; see "How to add a skill" in `docs/DEVELOPMENT.md`):
@@ -45,6 +46,9 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
     `on_interaction` in `main.py` logs and reports any left unanswered after
     2 seconds. Known users are cached in `core/users.py`, so permission
     checks don't wait on the database
+  - Reply from error handlers with `safe_reply` and report failures with
+    `report_interaction_error` (both in `core/discord_utils.py`): they never
+    raise, and treat Discord codes 10062 and 40060 as a warning, not an error
   - Slash commands live in an `app_commands.CommandTree` in `main.py` and are
     synced at startup to the server the inbox channel is in
   - Commands match the whole message exactly; anything else goes to Claude
@@ -104,3 +108,11 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 - See `docs/DEVELOPMENT.md` for commands and the day-to-day workflow
 - See `docs/DECISIONS.md` before changing architecture or tools
 - Commit messages: short, present tense, describing what and why
+- Only one copy of the bot may run at a time. `core/instance_lock.py` enforces
+  it with a lock on `data/bot.lock`; a second copy logs an error and exits
+- When testing, never leave a bot process running in the background after you
+  finish. Stop anything you started and confirm nothing is left:
+  `Get-CimInstance Win32_Process -Filter "Name like 'python%'"`. One running
+  bot shows as two `python.exe` processes (the `.venv` launcher and its child)
+- Prefer checks that import the code without starting the bot. Never start
+  `main.py` while the user's own copy or the service is running

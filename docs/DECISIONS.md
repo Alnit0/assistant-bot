@@ -77,6 +77,14 @@ A short log of key decisions and why. Newest at the bottom.
 - **Persistent views are registered in `setup_hook`, not `on_ready`:** it
   runs before the bot connects, and does not depend on the slash command
   sync succeeding first.
+- **Single-instance lock is an OS file lock, not a PID file or a port:** the
+  system releases it when the process ends, however it ends, so there is
+  never a stale lock to clean up and a reused PID can't fool it. A port
+  could clash with other software. Exit code 3 lets NSSM be told not to
+  retry.
+- **10062 and 40060 are warnings, not errors:** they mean an interaction
+  expired or was answered elsewhere, not that our code is broken. Error
+  handlers reply through `safe_reply`, which cannot raise.
 - **Two chart renderers kept side by side in the lab:** QuickChart needs no
   heavy dependency but sends the numbers to a third party and can be down;
   matplotlib is local and private but large. Pick one when a real skill
