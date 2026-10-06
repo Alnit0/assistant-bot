@@ -4,6 +4,7 @@ from core.config import now_nz
 from core.database import get_stats, log_received, log_result
 from core.discord_utils import COLOUR_INFO, log_simple
 from core.llm import format_cost, history
+from core.users import User
 from core.views import TestButtons
 
 HELP_TEXT = (
@@ -20,12 +21,14 @@ HELP_TEXT = (
 # ---------------------------------------------------------------------------
 # Commands
 # ---------------------------------------------------------------------------
-async def handle_command(message: discord.Message, command: str) -> bool:
+async def handle_command(message: discord.Message, command: str, user: User) -> bool:
     """Handle built-in commands. Returns True if the message was a command."""
     if command not in {"ping", "reset", "buttons", "stats", "help"}:
         return False
 
-    row_id = log_received(message.content, "command", message.id, message.channel.id)
+    row_id = await log_received(
+        message.content, "command", message.id, message.channel.id, user_id=user.id
+    )
 
     if command == "ping":
         reply = "🏓 Pong!"
@@ -42,7 +45,7 @@ async def handle_command(message: discord.Message, command: str) -> bool:
         view.message = await message.channel.send(reply, view=view)
 
     elif command == "stats":
-        stats = get_stats()
+        stats = await get_stats()
         embed = discord.Embed(title="📊 All-time stats", colour=COLOUR_INFO, timestamp=now_nz())
         embed.add_field(name="Inputs logged", value=str(stats["total"]), inline=True)
         embed.add_field(name="Claude replies", value=str(stats["chats"]), inline=True)
@@ -60,6 +63,6 @@ async def handle_command(message: discord.Message, command: str) -> bool:
         reply = HELP_TEXT
         await message.channel.send(reply)
 
-    log_result(row_id, reply=reply, status="ok")
+    await log_result(row_id, reply=reply, status="ok")
     await log_simple(f"⌨️ Command: {command}", reply)
     return True

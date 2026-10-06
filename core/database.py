@@ -1,9 +1,14 @@
+import asyncio
 import sqlite3
 
 from core.config import DB_PATH, now_nz
 
 # ---------------------------------------------------------------------------
 # Database (raw input log)
+#
+# The schema lives in core/migrations.py. The functions starting with an
+# underscore block while they talk to SQLite; the async wrappers run them in a
+# worker thread so the event loop is never held up.
 # ---------------------------------------------------------------------------
 LOG_COLUMNS = {
     "reply",
@@ -17,51 +22,29 @@ LOG_COLUMNS = {
 }
 
 
-def init_db() -> None:
-    """Create the database table if it doesn't exist yet."""
+def connect() -> sqlite3.Connection:
+    """Open a new connection. One per call, so it is safe to use from worker threads."""
     conn = sqlite3.connect(DB_PATH)
-    try:
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS message_log (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                received_at TEXT NOT NULL,
-                kind TEXT NOT NULL,
-                content TEXT NOT NULL,
-                discord_message_id INTEGER,
-                channel_id INTEGER,
-                reply TEXT,
-                model TEXT,
-                input_tokens INTEGER,
-                output_tokens INTEGER,
-                cost_usd REAL,
-                duration_s REAL,
-                status TEXT NOT NULL,
-                error TEXT
-            )
-            """
-        )
-        conn.commit()
-    finally:
-        conn.close()
+    conn.execute("PRAGMA foreign_keys = ON")
+    return conn
 
 
-def log_received(
+def _log_received(
     content: str,
     kind: str,
-    discord_message_id: int | None = None,
-    channel_id: int | None = None,
+    discord_message_id: int | None,
+    channel_id: int | None,
+    user_id: int | None,
 ) -> int:
-    """Record raw input before processing. Returns the new row's id."""
-    conn = sqlite3.connect(DB_PATH)
+    conn = connect()
     try:
         cursor = conn.execute(
             """
             INSERT INTO message_log
-                (received_at, kind, content, discord_message_id, channel_id, status)
-            VALUES (?, ?, ?, ?, ?, 'received')
+                (received_at, kind, content, discord_message_id, channel_id, user_id, status)
+            VALUES (?, ?, ?, ?, ?, ?, 'received')
             """,
-            (now_nz().isoformat(), kind, content, discord_message_id, channel_id),
+            (now_nz().isoformat(), kind, content, discord_message_id, channel_id, user_id),
         )
         conn.commit()
         return cursor.lastrowid
@@ -69,14 +52,13 @@ def log_received(
         conn.close()
 
 
-def log_result(row_id: int, **fields) -> None:
-    """Fill in the outcome of a logged input (reply, tokens, status and so on)."""
+def _log_result(row_id: int, fields: dict) -> None:
     columns = [name for name in fields if name in LOG_COLUMNS]
     if not columns:
         return
     assignments = ", ".join(f"{name} = ?" for name in columns)
     values = [fields[name] for name in columns] + [row_id]
-    conn = sqlite3.connect(DB_PATH)
+    conn = connect()
     try:
         conn.execute(f"UPDATE message_log SET {assignments} WHERE id = ?", values)
         conn.commit()
@@ -84,9 +66,8 @@ def log_result(row_id: int, **fields) -> None:
         conn.close()
 
 
-def get_stats() -> dict:
-    """All-time totals from the database."""
-    conn = sqlite3.connect(DB_PATH)
+def _get_stats() -> dict:
+    conn = connect()
     try:
         chats, input_tokens, output_tokens, cost = conn.execute(
             """
@@ -112,3 +93,26 @@ def get_stats() -> dict:
         "cost": cost,
         "errors": errors,
     }
+
+
+async def log_received(
+    content: str,
+    kind: str,
+    discord_message_id: int | None = None,
+    channel_id: int | None = None,
+    user_id: int | None = None,
+) -> int:
+    """Record raw input before processing. Returns the new row's id."""
+    return await asyncio.to_thread(
+        _log_received, content, kind, discord_message_id, channel_id, user_id
+    )
+
+
+async def log_result(row_id: int, **fields) -> None:
+    """Fill in the outcome of a logged input (reply, tokens, status and so on)."""
+    await asyncio.to_thread(_log_result, row_id, fields)
+
+
+async def get_stats() -> dict:
+    """All-time totals from the database."""
+    return await asyncio.to_thread(_get_stats)

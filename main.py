@@ -4,17 +4,19 @@ import time
 import anthropic
 import discord
 
+from core import scheduler
+from core.backup import run_nightly_backup
 from core.commands import handle_command
 from core.config import (
+    BACKUP_TIME,
     CLAUDE_MODEL,
     DB_PATH,
     INBOX_CHANNEL_ID,
     MAX_HISTORY,
-    OWNER_ID,
     TOKEN,
     now_nz,
 )
-from core.database import init_db, log_received, log_result
+from core.database import log_received, log_result
 from core.discord_utils import (
     COLOUR_INFO,
     COLOUR_OK,
@@ -26,6 +28,9 @@ from core.discord_utils import (
 )
 from core.llm import ask_claude, estimate_cost, format_cost, history
 from core.logging_setup import setup_logging
+from core.migrations import migrate
+from core.permissions import is_allowed
+from core.users import ensure_owner, get_user_by_discord_id
 
 log = logging.getLogger("assistant")
 
@@ -40,6 +45,8 @@ bind_client(client)
 # Running totals since the bot started
 session_stats = {"messages": 0, "cost": 0.0}
 
+scheduler.add_daily_job("nightly backup", BACKUP_TIME, run_nightly_backup)
+
 
 # ---------------------------------------------------------------------------
 # Discord events
@@ -47,6 +54,7 @@ session_stats = {"messages": 0, "cost": 0.0}
 @client.event
 async def on_ready():
     log.info("Logged in as %s (id %s)", client.user, client.user.id)
+    scheduler.start()
 
     channel = client.get_channel(INBOX_CHANNEL_ID)
     if channel:
@@ -63,12 +71,13 @@ async def on_ready():
 
 @client.event
 async def on_message(message: discord.Message):
-    # Ignore bots (including itself), anyone who isn't you, and other channels
+    # Ignore bots (including itself), other channels, and anyone who isn't allowed
     if message.author.bot:
         return
-    if message.author.id != OWNER_ID:
-        return
     if message.channel.id != INBOX_CHANNEL_ID:
+        return
+    user = await get_user_by_discord_id(message.author.id)
+    if not is_allowed(user, "message"):
         return
 
     text = message.content.strip()
@@ -78,11 +87,11 @@ async def on_message(message: discord.Message):
     log.info("Received: %s", text)
 
     # Built-in commands first
-    if await handle_command(message, text.lower()):
+    if await handle_command(message, text.lower(), user):
         return
 
     # Everything else goes to Claude. Log the raw input before processing.
-    row_id = log_received(text, "chat", message.id, message.channel.id)
+    row_id = await log_received(text, "chat", message.id, message.channel.id, user_id=user.id)
     started = time.perf_counter()
 
     async with message.channel.typing():
@@ -91,7 +100,7 @@ async def on_message(message: discord.Message):
         except anthropic.APIStatusError as error:
             duration = time.perf_counter() - started
             log.error("Claude API error %s: %s", error.status_code, error.message)
-            log_result(
+            await log_result(
                 row_id,
                 status="error",
                 error=f"{error.status_code}: {error.message}",
@@ -104,14 +113,14 @@ async def on_message(message: discord.Message):
         except anthropic.APIConnectionError as error:
             duration = time.perf_counter() - started
             log.exception("Could not reach the Claude API")
-            log_result(row_id, status="error", error=repr(error), model=CLAUDE_MODEL, duration_s=duration)
+            await log_result(row_id, status="error", error=repr(error), model=CLAUDE_MODEL, duration_s=duration)
             await message.channel.send("⚠️ Couldn't reach Claude. Check the internet connection.")
             await log_error("Connection error", repr(error), text)
             return
         except Exception as error:
             duration = time.perf_counter() - started
             log.exception("Unexpected error while asking Claude")
-            log_result(row_id, status="error", error=repr(error), model=CLAUDE_MODEL, duration_s=duration)
+            await log_result(row_id, status="error", error=repr(error), model=CLAUDE_MODEL, duration_s=duration)
             await message.channel.send("⚠️ Something went wrong. Check #bot-log.")
             await log_error("Unexpected error", repr(error), text)
             return
@@ -122,7 +131,7 @@ async def on_message(message: discord.Message):
         await message.channel.send(chunk)
 
     cost = estimate_cost(CLAUDE_MODEL, input_tokens, output_tokens)
-    log_result(
+    await log_result(
         row_id,
         reply=reply,
         model=CLAUDE_MODEL,
@@ -159,5 +168,6 @@ async def on_message(message: discord.Message):
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
     setup_logging()
-    init_db()
+    migrate()
+    ensure_owner()
     client.run(TOKEN, log_handler=None)

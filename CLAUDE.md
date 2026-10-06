@@ -11,17 +11,31 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 ## Current state
 
 - Entry point: `main.py` (creates the Discord client, wires events, starts the bot)
-- `core/` package (stage 1 of the refactor; `skills/` is still planned):
+- `core/` package (stages 1 and 2 of the refactor; `skills/` is still planned):
   - `config.py`: paths, settings from `.env`, validation, constants, `now_nz()`
   - `logging_setup.py`: terminal and rotating file logging
-  - `database.py`: SQLite setup and the `message_log` helpers
+  - `database.py`: `connect()` and the async `message_log` helpers
+  - `migrations.py`: numbered schema migrations, applied at startup
+  - `users.py`: the `User` record, `ensure_owner()`, lookup by Discord id
+  - `permissions.py`: `is_allowed(user, action)`, the one permission check
+  - `backup.py`: nightly database backup and pre-migration snapshots
+  - `scheduler.py`: small in-memory scheduler for daily jobs (to be expanded)
   - `llm.py`: Claude client, system prompt, conversation history, cost estimates
   - `discord_utils.py`: #bot-log embeds, `split_message`, `truncate`
   - `views.py`: the `TestButtons` view
   - `commands.py`: ping, reset, buttons, stats, help
 - Runs as a Windows service via NSSM, named `assistant-bot`
 - Logs: `logs/bot.log` (rotating), `logs/service-*.log` (service output)
-- Database: `data/assistant.db` (`message_log` table records every input)
+- Database: `data/assistant.db`
+  - Tables: `users`, and `message_log` (records every input, with a `user_id`)
+  - Schema version is `PRAGMA user_version`. To change the schema, append a
+    function to `MIGRATIONS` in `core/migrations.py`; never edit an old one
+  - Database calls from the event loop are `async` (run in a worker thread
+    with `asyncio.to_thread`, one connection per call). Always `await` them
+- Backups: `data/backups/`, nightly at 3am NZ time, newest 7 kept
+  (`assistant-*.db`). `pre-migration-*.db` snapshots are never auto-deleted
+- Permissions: only the owner (`OWNER_ID`, role `owner`) is allowed anything.
+  Check with `is_allowed`, never by comparing against `OWNER_ID`
 - Discord channels: #inbox (main), #bot-log (activity cards), plus reserved
   channels for future skills (#reminders, #gym, #admin, #documents)
 

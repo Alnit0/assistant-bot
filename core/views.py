@@ -3,9 +3,11 @@ import random
 
 import discord
 
-from core.config import BUTTON_TIMEOUT, INBOX_CHANNEL_ID, OWNER_ID
+from core.config import BUTTON_TIMEOUT, INBOX_CHANNEL_ID
 from core.database import log_received, log_result
 from core.discord_utils import log_simple
+from core.permissions import is_allowed
+from core.users import get_user_by_discord_id
 
 log = logging.getLogger("assistant")
 
@@ -22,16 +24,24 @@ class TestButtons(discord.ui.View):
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         # Only you can press the buttons
-        if interaction.user.id != OWNER_ID:
+        user = await get_user_by_discord_id(interaction.user.id)
+        if not is_allowed(user, "button"):
             await interaction.response.send_message(
                 "These buttons aren't for you.", ephemeral=True
             )
             return False
+        # Remember who pressed it, for the log
+        interaction.extras["user_id"] = user.id
         return True
 
-    async def record(self, label: str, reply: str) -> None:
-        row_id = log_received(f"button: {label}", "button", channel_id=INBOX_CHANNEL_ID)
-        log_result(row_id, reply=reply, status="ok")
+    async def record(self, interaction: discord.Interaction, label: str, reply: str) -> None:
+        row_id = await log_received(
+            f"button: {label}",
+            "button",
+            channel_id=INBOX_CHANNEL_ID,
+            user_id=interaction.extras.get("user_id"),
+        )
+        await log_result(row_id, reply=reply, status="ok")
         log.info("Button pressed: %s", label)
         await log_simple(f"🔘 Button: {label}", reply)
 
@@ -42,7 +52,7 @@ class TestButtons(discord.ui.View):
         reply = "✅ Confirmed. Buttons disabled."
         await interaction.response.edit_message(content=reply, view=self)
         self.stop()
-        await self.record("Confirm", reply)
+        await self.record(interaction, "Confirm", reply)
 
     @discord.ui.button(label="Roll", emoji="🎲", style=discord.ButtonStyle.primary)
     async def roll(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -50,13 +60,13 @@ class TestButtons(discord.ui.View):
         reply = f"🎲 You rolled a **{result}**."
         # Ephemeral: only you can see it, and it can be dismissed
         await interaction.response.send_message(reply, ephemeral=True)
-        await self.record("Roll", reply)
+        await self.record(interaction, "Roll", reply)
 
     @discord.ui.button(label="Wave", emoji="👋", style=discord.ButtonStyle.secondary)
     async def wave(self, interaction: discord.Interaction, button: discord.ui.Button):
         reply = "👋 Hello from Hive!"
         await interaction.response.send_message(reply)
-        await self.record("Wave", reply)
+        await self.record(interaction, "Wave", reply)
 
     async def on_timeout(self) -> None:
         for item in self.children:

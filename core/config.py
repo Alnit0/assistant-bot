@@ -1,6 +1,6 @@
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, time
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -13,6 +13,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 LOG_DIR = BASE_DIR / "logs"
 DATA_DIR = BASE_DIR / "data"
 DB_PATH = DATA_DIR / "assistant.db"
+BACKUP_DIR = DATA_DIR / "backups"
 
 LOG_DIR.mkdir(exist_ok=True)
 DATA_DIR.mkdir(exist_ok=True)
@@ -49,12 +50,15 @@ BOT_LOG_CHANNEL_ID = int(BOT_LOG_CHANNEL_ID) if BOT_LOG_CHANNEL_ID else None
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-TIMEZONE = ZoneInfo("Pacific/Auckland")
+TIMEZONE_NAME = "Pacific/Auckland"
+TIMEZONE = ZoneInfo(TIMEZONE_NAME)
 MAX_HISTORY = 10  # number of recent messages (yours and the bot's) sent to Claude
 MAX_TOKENS = 1024  # maximum length of each Claude reply
 DISCORD_LIMIT = 2000  # Discord's maximum message length
 EMBED_FIELD_LIMIT = 1000  # Discord allows 1024 characters per embed field
 BUTTON_TIMEOUT = 300  # seconds before test buttons expire
+BACKUP_TIME = time(3, 0)  # nightly database backup, NZ local time
+BACKUP_KEEP = 7  # number of nightly backups to keep
 
 # Approximate prices in USD per million tokens: (input, output).
 # Check Anthropic's pricing page and update if they change.
