@@ -1,4 +1,5 @@
 import logging
+import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 
@@ -21,8 +22,9 @@ claude = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
 
 # Short-term conversation memory, one separate history per channel, so a chat
 # in one channel never leaks into another. Cleared when the bot restarts.
-# Only plain text is kept: tool calls live within one turn and are summed up
-# in a line, so trimming can never split a call from its result.
+# Only plain text is kept, exactly as it was said: tool calls live within one
+# turn, so trimming can never split a call from its result, and nothing is
+# added to a reply that Claude could take for its own words and copy.
 _histories: dict[int | None, list[dict]] = {}
 
 # Cached input is cheaper to read and dearer to write than ordinary input
@@ -76,16 +78,23 @@ def _stable_prompt(capabilities: str, has_tools: bool) -> str:
             "- When you are suggesting something they did not ask for, call the tool with propose "
             "set to true, tell them briefly what you propose and that they can reply ok. Nothing "
             "happens until they do.\n"
-            "- Never say that something has been done unless a tool result says so. A result that "
-            "says it is waiting (for ok, for Confirm, or for the user to pick a message) means it "
-            "has not happened yet: say so.\n"
+            "- Never say that something has been done, started, changed or cancelled unless a tool "
+            "you called for this very message returned success. Earlier messages are not evidence: "
+            "if you did not call the tool this time, it has not happened. A result that says it is "
+            "waiting (for ok, for Confirm, or for the user to pick a message) means it has not "
+            "happened yet: say so.\n"
+            "- To act, call the tool. Never write a tool call, a tool result or a bracketed note "
+            "about tools as text in a reply.\n"
+            "- For anything that changes by itself (what is running, how long is left), call the "
+            "tool that reads it, every time. Never answer it from the conversation.\n"
             "- Never claim or offer to do something you have no tool for. If a word the user can "
             "type would do it, tell them what to type; otherwise say you can't.\n"
             "- If a tool fails, explain why in plain words and what they could do about it.\n"
             "- Tools that act on a message: if the user's message is a reply, leave targets empty "
             "and the message they replied to is used. Otherwise call recent_messages, then give "
             "the ref of the message they mean; if more than one fits, give each and the user is "
-            "asked to pick. Never guess between them.\n"
+            "asked to pick. Never guess between them. If it is not among those, call "
+            "search_messages to look further back.\n"
             f"- You may make at most {MAX_TOOL_CALLS} tool calls for one message.\n"
             "The tool has usually shown its own result in the channel, so keep your reply to a "
             "line and do not repeat what it showed."
@@ -197,6 +206,9 @@ class ToolCall:
 @dataclass
 class ChatResult:
     reply: str
+    # Set when the reply said something was done and no tool had done it: what
+    # Claude first wrote, before it was told so and answered again
+    unbacked_claim: str = ""
     input_tokens: int = 0  # not counting what was read from or written to the cache
     output_tokens: int = 0
     cache_read_tokens: int = 0
@@ -212,10 +224,40 @@ def _text_of(response) -> str:
     return "".join(block.text for block in response.content if block.type == "text").strip()
 
 
-def _actions_note(calls: list[ToolCall]) -> str:
-    """One line for the history, so a later message knows what was done in this one."""
-    parts = [f"{call.name} ({'failed' if call.is_error else 'result'}: {call.result[:120]})" for call in calls]
-    return f"\n[Tool calls this turn: {'; '.join(parts)}]"
+# ---------------------------------------------------------------------------
+# Honesty. Claude must not say a thing was done when no tool did it. The
+# prompt says so; these catch it when it happens anyway.
+# ---------------------------------------------------------------------------
+# A bracketed note about tools, written as if it were part of the reply
+_TOOL_NOTE = re.compile(r"[ \t]*\[\s*tools?\b[^\]\n]*\]?[ \t]*", re.IGNORECASE)
+# A reply that opens by saying it is done: "Done.", "✅ Done", "All done", "That's done"
+_DONE_CLAIM = re.compile(r"^\W*(?:(?:all|that'?s|it'?s|that is|it is)\s+)?done\b|^\s*✅", re.IGNORECASE)
+
+NOTHING_RAN = (
+    "Check before this reaches the user: no tool has succeeded for this message, so nothing has "
+    "been done. If the user asked for an action, call the tool for it now. Otherwise answer again "
+    "without saying or implying that anything was done, and without bracketed notes."
+)
+NOT_DONE = "I haven't done that: no action ran. Tell me again what you'd like and I'll do it properly."
+
+
+def scrub(reply: str) -> tuple[str, bool]:
+    """A reply without any bracketed tool note ("[Tool calls this turn: ...]").
+    Returns (the clean text, whether there was one to remove)."""
+    cleaned = _TOOL_NOTE.sub("", reply)
+    if cleaned == reply:
+        return reply, False
+    return re.sub(r"\n{3,}", "\n\n", cleaned).strip(), True
+
+
+def claims_done(reply: str) -> bool:
+    """Whether a reply says, in so many words, that an action was carried out.
+
+    Deliberately narrow (it opens with "Done" or ✅, or carries a made-up tool
+    note): it only matters when nothing ran, and a wrong guess costs one more
+    request.
+    """
+    return bool(_DONE_CLAIM.search(reply)) or scrub(reply)[1]
 
 
 async def ask_claude(
@@ -224,6 +266,7 @@ async def ask_claude(
     channel_id: int | None = None,
     tools: list[dict] | None = None,
     run_tool: ToolRunner | None = None,
+    acted: Callable[[], bool] | None = None,
 ) -> ChatResult:
     """Send the message plus recent history to Claude, running any tools it calls.
 
@@ -232,6 +275,10 @@ async def ask_claude(
     `tools` are the API tool definitions it may use and `run_tool` runs one
     call. Claude may call several, over several rounds, up to MAX_TOOL_CALLS
     for the message; every result, failures included, goes back to it.
+    `acted` says whether a tool has carried out an action for this message
+    (looking something up doesn't count); without it, any call that didn't
+    fail counts. A reply that says "done" when nothing was is sent back to
+    Claude once, to act or to answer again (see ChatResult.unbacked_claim).
     """
     history = history_for(channel_id)
     # Keep only recent history; trimming before adding keeps it starting with a user message
@@ -248,8 +295,16 @@ async def ask_claude(
         request["tools"] = tools
 
     result = ChatResult(reply="")
+
+    def nothing_done() -> bool:
+        if acted is not None:
+            return not acted()
+        return all(call.is_error for call in result.tool_calls)
+
     # One round per call at most, plus the reply that closes the turn
-    for _ in range(MAX_TOOL_CALLS + 2):
+    rounds = MAX_TOOL_CALLS + 2
+    while rounds > 0:
+        rounds -= 1
         response = await claude.messages.create(messages=messages, **request)
         usage = response.usage
         result.input_tokens += usage.input_tokens
@@ -261,6 +316,15 @@ async def ask_claude(
         # Only a clean "tool_use" stop is acted on: a reply cut short (max_tokens)
         # or refused may carry half a call, which must never run
         if not use_tools or response.stop_reason != "tool_use" or not wanted:
+            said = _text_of(response)
+            if use_tools and not result.unbacked_claim and said and claims_done(said) and nothing_done():
+                # It says it is done and nothing was: tell it so, once
+                result.unbacked_claim = said
+                log.warning("Claude said it was done with no tool run: %s", said)
+                messages.append({"role": "assistant", "content": said})
+                messages.append({"role": "user", "content": NOTHING_RAN})
+                rounds += 1  # the reply that was sent back doesn't use up a round
+                continue
             break
 
         messages.append({"role": "assistant", "content": response.content})
@@ -283,16 +347,18 @@ async def ask_claude(
         # Every result of the round goes back in one message
         messages.append({"role": "user", "content": results})
 
-    result.reply = _text_of(response)
+    result.reply, _ = scrub(_text_of(response))
+    if result.unbacked_claim and claims_done(result.reply) and nothing_done():
+        # Told once and it still says so: the user gets the truth instead
+        result.reply = NOT_DONE
     if not result.reply:
         if response.stop_reason == "tool_use":
             result.reply = "I ran out of steps for that message. Tell me what is still left to do."
         else:
-            result.reply = "✅ Done." if result.tool_calls else "(No reply from Claude.)"
+            result.reply = "(No reply from Claude.)" if nothing_done() else "✅ Done."
 
     history.append({"role": "user", "content": user_text})
-    remembered = result.reply + (_actions_note(result.tool_calls) if result.tool_calls else "")
-    history.append({"role": "assistant", "content": remembered})
+    history.append({"role": "assistant", "content": result.reply})
 
     log.info(
         "Claude usage: %s in, %s out, cache %s read / %s written, %s tool call(s) (%s)",

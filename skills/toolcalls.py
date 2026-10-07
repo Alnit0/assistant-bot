@@ -1,7 +1,8 @@
 import logging
 from dataclasses import dataclass, field
+from datetime import datetime
 
-from core import confirmations, llm, pending, tools
+from core import confirmations, database, llm, pending, tools
 from core.config import ASSISTANT_NAME
 from core.context import Context
 from core.database import log_received, log_result
@@ -9,6 +10,7 @@ from core.discord_utils import log_error
 from core.protection import protection
 from core.scheduler import utc_now
 from skills import registry
+from skills.base import Param
 
 log = logging.getLogger("assistant")
 
@@ -21,6 +23,8 @@ log = logging.getLogger("assistant")
 #   - a proposal (something Claude suggests unasked) waits for a short "ok"
 #   - an action on a message the user didn't reply to shows that message
 #     quoted, with an Undo button if it can be taken back
+#   - an action on a message found further back (search_messages) shows it
+#     quoted and asks first: a match from weeks ago is easier to get wrong
 #   - several messages that could be meant are offered as buttons
 #   - everything else runs at once
 # Running is the registry's job (registry.run_tool), down the same path as a
@@ -30,6 +34,7 @@ log = logging.getLogger("assistant")
 # registry because, unlike core/, it may use it.
 # ---------------------------------------------------------------------------
 RECENT = "recent_messages"
+SEARCH = "search_messages"
 PREVIEW_SECONDS = 15  # how long a confirmation that quotes its target stays
 
 RECENT_SPEC = tools.ToolSpec(
@@ -37,10 +42,28 @@ RECENT_SPEC = tools.ToolSpec(
     description=(
         f"List the last {tools.LISTING_LIMIT} messages in this channel, newest first, each with a ref. "
         "Use it to find the message the user means when they did not reply to it, then pass its ref "
-        "as a target. Only these messages can be acted on."
+        f"as a target. If the message is not among them, {SEARCH} looks further back."
     ),
     schema=tools.build_schema(),
     kind=tools.HELPER,
+    reads_only=True,
+)
+SEARCH_SPEC = tools.ToolSpec(
+    name=SEARCH,
+    description=(
+        f"Look further back than {RECENT} for a message the user sent in this channel: their last "
+        f"{tools.SEARCH_ROWS} messages, up to {tools.SEARCH_DAYS} days old. Use it when the message is not in "
+        f"{RECENT}, or the user says to look further back. Give the words the message would contain, "
+        'e.g. "capital Spain". It returns the best matches with refs to pass as a target; the user is '
+        "shown the message quoted and asked to confirm before anything is done to it. Only the user's "
+        "own messages are found, not the bot's replies."
+    ),
+    schema=tools.build_schema(
+        [Param("query", "Words the message would contain, e.g. capital Spain. Not a sentence about it.")]
+    ),
+    kind=tools.HELPER,
+    has_arguments=True,
+    reads_only=True,
 )
 
 WAITING_FOR_CONFIRM = (
@@ -62,6 +85,8 @@ class Turn:
     definitions: list[dict]  # as sent to the API
     strict: set[str]
     listing: dict[str, object] = field(default_factory=dict)  # ref -> message, from recent_messages
+    older: set[str] = field(default_factory=set)  # the refs that came from search_messages
+    acted: bool = False  # a tool has carried something out for this message (reading doesn't count)
 
     @property
     def names(self) -> list[str]:
@@ -76,6 +101,7 @@ class Call:
     value: dict
     target: object = None  # the message a reply action acts on
     explicit: bool = True  # False if the user did not reply to the target themselves
+    older: bool = False  # the target was found further back: ask before acting on it
 
 
 _warned: set[tuple] = set()
@@ -86,7 +112,7 @@ async def prepare(ctx: Context) -> Turn:
     specs = registry.tools_for(ctx.user, ctx.channel_id)
     if any(spec.kind == tools.REPLY_ACTION for spec in specs):
         # Message actions need a way to find the message when the user didn't reply to it
-        specs = [*specs, RECENT_SPEC]
+        specs = [*specs, SEARCH_SPEC, RECENT_SPEC]
     strict, overflow = tools.choose_strict(specs)
     definitions = [tools.api_definition(spec, spec.name in strict) for spec in specs]
     if definitions:
@@ -134,23 +160,63 @@ async def _tags(message) -> tuple[str, ...]:
 
 async def _list_recent(turn: Turn) -> str:
     messages = await turn.ctx.recent_messages(tools.LISTING_LIMIT)
-    turn.listing = {f"m{number}": message for number, message in enumerate(messages, start=1)}
+    recent = {f"m{number}": message for number, message in enumerate(messages, start=1)}
+    # Anything already found further back keeps its ref
+    turn.listing = {**recent, **{ref: turn.listing[ref] for ref in turn.older}}
+    entries = [
+        tools.Listed(ref, message.author.display_name, message.created_at, message.content, await _tags(message))
+        for ref, message in recent.items()
+    ]
+    return tools.listing_text(entries, utc_now())
+
+
+async def _search(turn: Turn, query: str) -> str:
+    """Look through the user's logged messages in this channel for ones the query
+    fits, keep those that still exist, and list them with refs (s1, s2, ...)."""
+    ctx = turn.ctx
+    rows = [
+        tools.Logged(message_id, content or "", datetime.fromisoformat(received_at))
+        for message_id, content, received_at in await database.recent_log(ctx.channel_id, ctx.user.id, tools.SEARCH_ROWS)
+    ]
+    skip = frozenset({ctx.message_id} if ctx.message_id is not None else ())
+    matches = tools.find_logged(rows, query, utc_now(), skip=skip)
+
+    found = []
+    # A logged message may have been archived or deleted since: only offer what is there.
+    # A few more than are shown get looked up, to allow for that
+    for row in matches[: tools.SEARCH_RESULTS * 2]:
+        message = await ctx.fetch_message(row.message_id)
+        if message is not None:
+            found.append(message)
+        if len(found) == tools.SEARCH_RESULTS:
+            break
+    if not found:
+        return (
+            f"Nothing the user sent in this channel in the last {tools.SEARCH_DAYS} days fits those words "
+            "(or it has since been archived or deleted). Say so; they can reply to the message itself instead."
+        )
+    turn.listing = {ref: message for ref, message in turn.listing.items() if ref not in turn.older}
+    turn.older = {f"s{number}" for number in range(1, len(found) + 1)}
+    turn.listing.update({f"s{number}": message for number, message in enumerate(found, start=1)})
     entries = [
         tools.Listed(ref, message.author.display_name, message.created_at, message.content, await _tags(message))
         for ref, message in turn.listing.items()
+        if ref in turn.older
     ]
-    return tools.listing_text(entries, utc_now())
+    return tools.listing_text(entries, utc_now(), tools.OLDER_HEADER)
 
 
 # ---------------------------------------------------------------------------
 # Running a call, with whatever has to come first
 # ---------------------------------------------------------------------------
-async def _perform(ctx: Context, call: Call) -> tuple[str, bool]:
+async def _perform(ctx: Context, call: Call, turn: Turn | None = None) -> tuple[str, bool]:
     """Run a call now. Returns (what happened, whether it failed)."""
     quoted = call.target is not None and not call.explicit
     outcome = await registry.run_tool(ctx, call.spec, call.value, call.target, collect=quoted)
     if outcome.status != "ok":
         return outcome.text, True
+    if turn is not None and not call.spec.reads_only:
+        turn.acted = True
     if quoted:
         # The user didn't point at the message themselves: show which one it was
         shown = outcome.confirmations[-1] if outcome.confirmations else f"✅ Done: {call.spec.item.name}"
@@ -175,13 +241,14 @@ async def _confirmed(ctx: Context, call: Call) -> str:
     return f"✅ Done: {describe(call)}"
 
 
-async def _dispatch(ctx: Context, call: Call) -> tuple[str, bool]:
+async def _dispatch(ctx: Context, call: Call, turn: Turn | None = None) -> tuple[str, bool]:
     """Decide how a valid call ends: buttons, a proposal, or straight away."""
     item = call.spec.item
-    if call.spec.destructive:
+    if call.spec.destructive or call.older:
         quoted, link = _quote(call.target) if call.target is not None else (None, None)
+        found = "" if call.spec.destructive else "Found further back. "
         question = tools.question_text(
-            f"{ASSISTANT_NAME} wants to run {describe(call)} ({item.description}).", quoted, link
+            f"{found}{ASSISTANT_NAME} wants to run {describe(call)} ({item.description}).", quoted, link
         )
 
         async def confirmed() -> str:
@@ -198,7 +265,7 @@ async def _dispatch(ctx: Context, call: Call) -> tuple[str, bool]:
             "they can reply ok.",
             False,
         )
-    return await _perform(ctx, call)
+    return await _perform(ctx, call, turn)
 
 
 async def _ask_which(turn: Turn, spec: tools.ToolSpec, value: dict, refs: list[str]) -> None:
@@ -237,9 +304,11 @@ async def execute(turn: Turn, name: str, value: dict) -> tuple[str, bool]:
     if problems:
         return await _refused(ctx, name, value, "Invalid input: " + "; ".join(problems) + ".")
     if spec.kind == tools.HELPER:
+        if name == SEARCH:
+            return await _search(turn, value["query"]), False
         return await _list_recent(turn), False
 
-    target, explicit = None, True
+    target, explicit, older = None, True, False
     if spec.kind == tools.REPLY_ACTION:
         resolution = tools.resolve_targets(ctx.is_reply, value.get(tools.TARGETS, []), set(turn.listing))
         if resolution.kind == tools.ERROR:
@@ -253,8 +322,9 @@ async def execute(turn: Turn, name: str, value: dict) -> tuple[str, bool]:
             if target is None:
                 return await _refused(ctx, name, value, "I can't find the message the user replied to.")
         else:
-            target, explicit = turn.listing[resolution.refs[0]], False
-    return await _dispatch(ctx, Call(spec, value, target, explicit))
+            ref = resolution.refs[0]
+            target, explicit, older = turn.listing[ref], False, ref in turn.older
+    return await _dispatch(ctx, Call(spec, value, target, explicit, older), turn)
 
 
 async def _refused(ctx: Context, name: str, value: dict, reason: str) -> tuple[str, bool]:
@@ -285,13 +355,14 @@ async def answer_pending(ctx: Context) -> bool:
     if answer == pending.NO:
         await ctx.note(f"👌 Left it: {proposal.summary}")
         await log_result(row_id, reply=f"declined: {proposal.summary}", status="ok")
-        llm.remember(ctx.channel_id, ctx.text, f"[The user declined, so this was not done: {proposal.summary}]")
+        # Plain sentences: a bracketed note in its own voice is something Claude copies
+        llm.remember(ctx.channel_id, ctx.text, f"Left it: I have not run {proposal.summary}.")
         return True
 
     text, failed = await _perform(ctx, proposal.call)
     if failed:
         await ctx.reply(f"⚠️ {text}")
     await log_result(row_id, reply=f"agreed: {proposal.summary}: {text}", status="error" if failed else "ok")
-    outcome = "failed" if failed else "done"
-    llm.remember(ctx.channel_id, ctx.text, f"[The user agreed. {proposal.summary}: {outcome}: {text[:200]}]")
+    said = f"That didn't work: {text[:200]}" if failed else f"That ran when you said ok: {proposal.summary}."
+    llm.remember(ctx.channel_id, ctx.text, said)
     return True

@@ -18,6 +18,20 @@ in `docs/TESTING.md` are ⬜ Untested until they are run in Discord.
 | `pomo` while a session runs was an error | It re-shows the card (or points to it from another channel); `dev off` when off and a second `lab channels` no longer fail either | H9, H17, J30, B21 |
 | Claude offered to do things it has no tool for | Its instructions always say it has no tools and must never offer to act | A17 |
 
+From the first run of tool calling against the real API (2026-10-07,
+18:34 to 18:51):
+
+| Finding | What changed | Retest |
+|---|---|---|
+| Claude couldn't say what was running or how long was left ("check the channel above") | `list_timers` and `get_pomodoro_status` read the live state from the database | N29 |
+| Pause, resume, cancel and extend searched the last 20 messages for the timer ("I don't see a Pomodoro session" while one ran); no `unpause` | `timer_control` and `pomodoro_control` act by the id the read tools give; the reply actions are no longer offered to Claude; `unpause` added as a reply word | N30 |
+| "✅ Done." with no tool call and no timer; "Done." twice to `dev mode off` / `on` | Nothing is added to Claude's replies in the history (it was copying the note); a "done" with nothing run is sent back to it once, then overruled, with a #bot-log card | N31 |
+| "[Tool calls this turn: …]" at the end of replies | The note is gone from the history, and any that Claude writes is taken out before sending | N32 |
+| `dev mode on` / `dev mode off` were not words | `dev mode on\|off` added | J32 |
+| Claude couldn't switch dev mode on | The switch is offered to it always (owner only); the other dev tools still only while dev mode is on | N33 |
+| "Look further back" could only see the last 20 messages | `search_messages` looks through your logged messages in the channel (500, 30 days) and asks before acting on a match | N34 |
+| A Pomodoro asked for while one was going: card again, a note, the alert and Claude's reply; the lengths asked for ignored | Through Claude: one reply, nothing posted, and an offer to restart at those lengths. Typed: the card and one Restart question | H19, H21 |
+
 ## Left for later
 
 - **"Alex" and "Auckland, New Zealand" are still hard-coded** in Claude's
@@ -45,22 +59,43 @@ in `docs/TESTING.md` are ⬜ Untested until they are run in Discord.
 - **The nightly sweep is not built.** Kept messages are never removed
   automatically until it is; when built it must skip Protected ones.
 
+## Found in that run, left for later
+
+- **Bulk and cross-channel actions** ("archive all messages in #dev"):
+  Claude can only act on one message at a time, in the channel it is
+  chatting in. Wanted: it works out which messages, says how many, and
+  nothing happens until a Confirm that shows the count.
+- **An old paused timer never draws attention to itself.** Timer 3
+  ("tea", started 13:41 on 2026-10-07) was paused by a reply at 13:47
+  with 4s left, given `+10m`, and never resumed: it sat on the board all
+  day and was taken for the evening's "tea" timer, which had finished. It
+  is still paused. Timers 7, 8 and 9 have finished with their alerts
+  never dismissed. Something should nudge about these, or expire them.
+- **Two timers with the same label** look alike in a reply; Claude is
+  told to ask which when a label fits more than one.
+- **`search_messages` only finds your own messages that the bot handled**
+  (chat, typed words that stayed). The bot's replies have no row of their
+  own in `message_log`, so "archive what you said about Spain" finds
+  nothing further back than the last 20. A fallback to Discord's own
+  history (slower: 100 messages a request) would cover it.
+- **Refs from a listing last for one message.** "yes" to "delete m3?"
+  costs a refused call and a second listing before it works.
+- **Claude no longer remembers what it ran**, only what it said. It reads
+  timers afresh each time; for anything else ("undo that pin") it has
+  its own words to go on, or a new listing.
+- **The "done" check goes by wording** (a reply opening with "Done" or
+  ✅, or carrying a made-up tool note). "Your timer is running" with
+  nothing run would get through; the #bot-log card for the check shows
+  how often the narrow one fires, which says whether to widen it.
+- **Timer actions through Claude have no Undo button** now that they go
+  by id; ask it to resume or pause again instead.
+
 ## Tool calling: left for later
 
-Built on 2026-10-07 and unit tested with a mocked Claude. Not yet run
-against the real API or in Discord: the N rows in `docs/TESTING.md` are
-⬜ Untested.
+Built on 2026-10-07 and unit tested with a mocked Claude. First run against
+the real API the same day: the schemas were accepted and the cache was
+read on every message after the first (4,973 tokens, 6,996 with the dev tools).
 
-- **The tool schemas have not been sent to the real API.** They follow the
-  documented rules for `strict` (all required, no unions, nothing extra),
-  and a test checks that, but only a real request proves they compile. The
-  first chat message after the restart is that check: an API error card
-  naming a schema means one needs changing.
-- **Prompt caching may not take effect.** Haiku 4.5 only caches a prefix of
-  4096 tokens or more, and the normal tool set plus system prompt may be
-  smaller. The "Cache" field on the "Message handled" card shows whether
-  anything was read; if it stays at 0 the breakpoints cost nothing but
-  save nothing either.
 - **Every chat message now carries the tools**, used or not ("Tool tokens"
   on the card). If that cost matters, the next step is to send them only
   when the message looks like a request.
@@ -68,14 +103,11 @@ against the real API or in Discord: the N rows in `docs/TESTING.md` are
   Confirm / Cancel, then the existing "That message is pinned" question.
 - **Proposals and button questions are held in memory.** A restart forgets
   a pending "ok", an Undo button and a "Which message?" question.
-- **Undo exists only where an action declares one**: pin, unpin, archive,
-  pause and resume. Cancelling a timer or extending one cannot be undone.
+- **Undo exists only where an action declares one**: pin, unpin and
+  archive. Cancelling a timer or extending one cannot be undone.
 - **Claude only chats in #inbox**, so the "dev tools in the dev channel"
   rule has no effect until chat is enabled there.
-- **`Skill.tools()` and `Tool` are still unused.** Every tool is generated
-  from a word or reply action; `recent_messages` is built into
-  `skills/toolcalls.py`.
 - **Reactions are not tools.** Claude tells you which one to add.
 - **Recent messages go to the API when Claude looks for a target**: up to
-  20 one-line previews from the channel, only when it calls
-  `recent_messages`.
+  20 one-line previews from the channel when it calls `recent_messages`,
+  and up to 5 older ones when it calls `search_messages`.

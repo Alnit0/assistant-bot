@@ -343,3 +343,23 @@ def test_help_for_a_reaction():
 )
 def test_help_with_other_words_is_a_message_for_claude(words, is_help):
     assert builtin._help_accepts(words) is is_help
+
+
+# --- words added after QA ----------------------------------------------------
+@pytest.mark.parametrize("typed, args", [("dev mode on", ["on"]), ("Dev mode off", ["off"])])
+def test_dev_mode_on_and_off_are_typed_words(typed, args):
+    match = registry._keyword_router.match(typed)
+    keyword = match.entry[1]
+    assert keyword.name == "dev mode" and match.args == args and keyword.accepts(match.args)
+    assert not keyword.exact and keyword.tool_always
+
+
+@pytest.mark.parametrize("typed", ["dev mode", "dev mode please", "dev mode on now"])
+def test_dev_mode_with_anything_else_is_not_the_switch(typed):
+    match = registry._keyword_router.match(typed)
+    assert match is None or match.entry[1].name != "dev mode" or not match.entry[1].accepts(match.args)
+
+
+def test_unpause_is_another_word_for_resume():
+    assert registry._reply_router.match("unpause").entry[1].name == "resume"
+

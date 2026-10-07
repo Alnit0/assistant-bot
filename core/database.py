@@ -131,6 +131,29 @@ async def log_result(row_id: int, **fields) -> None:
     await asyncio.to_thread(_log_result, row_id, fields)
 
 
+# What the user sent as a message of their own (not a tool call or a reaction,
+# which are logged against someone else's message or as a second row)
+OWN_MESSAGE_KINDS = ("chat", "command", "reply_action", "expected", "confirmation")
+
+
+def _recent_log(conn: sqlite3.Connection, channel_id: int, user_id: int, limit: int) -> list[tuple[int, str, str]]:
+    marks = ", ".join("?" for _ in OWN_MESSAGE_KINDS)
+    return conn.execute(
+        f"""
+        SELECT discord_message_id, content, received_at FROM message_log
+        WHERE channel_id = ? AND user_id = ? AND discord_message_id IS NOT NULL AND kind IN ({marks})
+        ORDER BY id DESC LIMIT ?
+        """,
+        (channel_id, user_id, *OWN_MESSAGE_KINDS, limit),
+    ).fetchall()
+
+
+async def recent_log(channel_id: int, user_id: int, limit: int) -> list[tuple[int, str, str]]:
+    """The user's latest logged messages in a channel, newest first, as
+    (Discord message id, content, when received as ISO text)."""
+    return await run(_recent_log, channel_id, user_id, limit)
+
+
 async def get_stats() -> dict:
     """All-time totals from the database."""
     return await asyncio.to_thread(_get_stats)

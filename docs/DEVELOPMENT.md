@@ -149,10 +149,25 @@ the channel you are in; `help <skill or word>` gives details.
     rent") and Claude looks through the last 20 messages of the channel;
     the confirmation then quotes the message with a link, and has an
     **Undo** button for 30 seconds where the action can be taken back
-    (pin, unpin, archive, pause, resume). If more than one message fits you
-    get a button for each instead of a guess.
+    (pin, unpin, archive). If more than one message fits you get a button
+    for each instead of a guess.
+  - **Further back:** if it isn't in the last 20, say "look further
+    back". It searches your own earlier messages in that channel (the
+    last 500, up to 30 days), and before acting on one it shows it quoted
+    with Confirm and Cancel. The bot's own replies can't be found this
+    way: reply to those.
+  - **Timers and the Pomodoro:** it reads them live ("show my timers",
+    "how long left on my Pomodoro?") and acts on the one you name ("pause
+    the tea timer", "unpause it", "skip this break", "10 more minutes on
+    the eggs"), wherever its message is. If a label fits two timers it
+    asks which. A Pomodoro asked for while one is going gets one reply,
+    with an offer to restart at the lengths you asked for.
+  - **It only says "done" when something ran.** A reply claiming it with
+    nothing run is caught before you see it, and a "⚠️ Claude said
+    "done" with nothing run" card in #bot-log records each time.
   - **Limits:** at most 5 actions per message; the lab is never available
-    to it, and dev tools only while dev mode is on; reactions are yours to
+    to it, and dev tools only while dev mode is on (it can always switch
+    dev mode on or off for you); reactions are yours to
     add. It is told never to claim or offer something it has no tool for.
   - **What it costs:** the tools are sent with every chat message. The
     "💬 Message handled" card in #bot-log shows which were sent, about how
@@ -344,8 +359,17 @@ Things to know:
     arguments; override `Skill.tools_available` to offer a whole skill only
     sometimes (as `dev` does), or set `exposes_tools = False` (as `lab`
     does).
-- **`tools()`** on the base class, for a tool that isn't a word, is still
-  unused.
+  - `tool_always=True` offers one word even while its skill is holding
+    the rest back (the `dev mode` switch).
+- **`tools()`** returns `Tool`s: tools for Claude that aren't words. Use
+  one to report state (`reads_only=True`: `list_timers`) or to act on a
+  record by id (`timer_control`). The handler is `async (ctx, value)`
+  with the input as `{param: text}`; it returns the result for Claude and
+  posts nothing in the channel. Write the description for Claude, with
+  examples. Prefer a word or reply action whenever the user could type
+  it.
+- **`ctx.via_tool`** is true when Claude is running the handler: use it
+  when a typed word would show something Claude is about to say anyway.
 - **Turning skills on and off:** `ENABLED_SKILLS=builtin,greeter` in `.env`.
   Leave it empty to load everything. A disabled skill keeps its data, and
   its words, slash commands and help entries disappear.
@@ -413,7 +437,8 @@ restart. Date-based reminders are a separate, future skill.
 number is minutes. From 5 seconds to 24 hours.
 
 **A timer** posts one message with a live "ends in…" time. Reply to it with
-`pause`, `resume`, `cancel` or `+10m` (also `+ 10 min`, `extend 10m`). When
+`pause`, `resume` (or `unpause`), `cancel` or `+10m` (also `+ 10 min`,
+`extend 10m`). When
 it finishes, that message is edited to say so and you are @mentioned in a
 new message with **+5 min**, **Restart** and **Dismiss**. Pressing any of
 them, or replying `ok` (or `done`, `dismiss`) to the alert, clears the alert
@@ -432,7 +457,10 @@ round, label and a live time, with **Pause/Resume**, **Skip** and **Stop**.
   not counted in the stats; only ones that run to the end are.
 - **One session at a time.** Stop the current one before starting another.
   `pomo` while one is going shows its card again at the bottom of its
-  channel (or, from another channel, a short pointer to it).
+  channel (or, from another channel, a short pointer to it). With other
+  lengths (`pomo 25/5` while 50/10 is going) it also asks "Restart it as
+  `25/5`?": Confirm stops the session and starts one with those lengths
+  and the same label.
 - **The same reply words work on the card:** `pause`, `resume`, `stop`,
   `+10m` (adds to the current phase).
 - **After a long break** the rounds start again from 1.
@@ -474,6 +502,7 @@ no slash commands. `help dev` lists the words.
 |---|---|
 | `dev on` | Switches it on with the dev defaults, for 1 hour |
 | `dev off` | Switches it off and restores normal settings |
+| `dev mode on`, `dev mode off` | The same two, by their longer name; this is also what Claude runs when asked |
 | `dev` | Shows the panel again, at the bottom of the channel you are in |
 | `dev reset` | Dev settings back to the dev defaults, with a fresh hour |
 | `dev debounce <seconds>` | Quiet time before reactions are acted on. 0 acts at once |

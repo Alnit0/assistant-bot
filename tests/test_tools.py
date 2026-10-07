@@ -178,7 +178,7 @@ def test_the_real_tool_sets_fit_within_the_limit(owner, dev_off):
             devmode.enable()
         strict, overflow = tools.choose_strict(registry.tools_for(owner, INBOX))
         assert len(strict) <= tools.STRICT_LIMIT and overflow == []
-    assert {"timer", "pomo", "help", "reply_extend"} <= strict
+    assert {"timer", "pomo", "help", "timer_control", "pomodoro_control"} <= strict
 
 
 def test_strict_is_only_put_on_the_chosen_ones():
@@ -280,16 +280,26 @@ def test_the_lab_is_never_offered(owner, dev_off):
 
 
 def test_dev_tools_are_only_offered_while_dev_mode_is_on(owner, dev_off):
-    assert not [spec for spec in registry.tools_for(owner, INBOX) if spec.skill == "dev"]
+    switch = ["dev_mode"]  # the one that is always there, or dev mode could never be asked for
+    assert [spec.name for spec in registry.tools_for(owner, INBOX) if spec.skill == "dev"] == switch
     devmode.enable()
     names = {spec.name for spec in registry.tools_for(owner, INBOX) if spec.skill == "dev"}
-    assert {"dev_off", "dev_speed", "dev_jobs", "reply_dev_inspect"} <= names
+    assert {"dev_mode", "dev_speed", "dev_jobs", "reply_dev_inspect"} <= names
+    assert not {"dev_on", "dev_off"} & names, "one switch, not three"
+
+
+def test_the_dev_switch_is_for_the_owner_in_any_channel(owner, stranger, dev_off):
+    for channel in (INBOX, ELSEWHERE):
+        spec = by_name(registry.tools_for(owner, channel))["dev_mode"]
+        assert spec.schema["properties"]["state"]["enum"] == ["on", "off"]
+        assert not spec.destructive, "it runs when asked: switching dev mode off loses nothing"
+    assert registry.tools_for(stranger, INBOX) == []
 
 
 def test_dev_tools_are_offered_in_the_dev_channel(owner, dev_off, monkeypatch):
     monkeypatch.setitem(registry.CHANNELS, "dev", 555)
-    assert [spec for spec in registry.tools_for(owner, 555) if spec.skill == "dev"]
-    assert not [spec for spec in registry.tools_for(owner, ELSEWHERE) if spec.skill == "dev"]
+    assert len([spec for spec in registry.tools_for(owner, 555) if spec.skill == "dev"]) > 1
+    assert [spec.name for spec in registry.tools_for(owner, ELSEWHERE) if spec.skill == "dev"] == ["dev_mode"]
 
 
 def test_the_order_is_the_same_every_time(owner):
@@ -314,7 +324,83 @@ def test_a_tool_says_what_typing_it_would_do(owner):
 
 def test_reversible_message_actions_can_be_undone(owner):
     specs = by_name(registry.tools_for(owner, INBOX))
-    for name in ("reply_archive", "reply_pin", "reply_unpin", "reply_pause", "reply_resume"):
+    for name in ("reply_archive", "reply_pin", "reply_unpin"):
         assert specs[name].item.undo is not None, name
-    for name in ("reply_delete", "reply_cancel", "reply_ok"):
+    for name in ("reply_delete", "reply_ok"):
         assert specs[name].item.undo is None, name
+
+
+def test_timers_are_controlled_by_id_not_by_finding_a_message(owner):
+    specs = by_name(registry.tools_for(owner, INBOX))
+    assert not {"reply_pause", "reply_resume", "reply_cancel", "reply_extend"} & set(specs)
+    for name, actions in (
+        ("timer_control", ["pause", "resume", "cancel", "extend"]),
+        ("pomodoro_control", ["pause", "resume", "start", "skip", "stop", "extend"]),
+    ):
+        schema = specs[name].schema
+        assert list(schema["properties"]) == ["id", "action", "duration", "propose"]
+        assert schema["properties"]["action"]["enum"] == actions
+        assert tools.TARGETS not in schema["properties"], "no message to look for"
+        assert specs[name].kind == tools.BESPOKE and not specs[name].reads_only
+
+
+def test_the_tools_that_read_state_take_nothing_and_do_nothing(owner):
+    specs = by_name(registry.tools_for(owner, INBOX))
+    for name in ("list_timers", "get_pomodoro_status"):
+        assert specs[name].reads_only and specs[name].schema["properties"] == {}
+    assert {"list_timers", "get_pomodoro_status", "timer_control"} <= set(by_name(registry.tools_for(owner, ELSEWHERE)))
+
+
+# --- looking further back ----------------------------------------------------
+def logged(message_id: int, content: str, days_ago: float = 0) -> tools.Logged:
+    return tools.Logged(message_id, content, NOW - timedelta(days=days_ago))
+
+
+LOG = [
+    logged(5, "Show my timers", 0.01),
+    logged(4, "What's the capital of Spain", 0.2),
+    logged(3, "I'm getting distracted", 0.3),
+    logged(2, "What's the capitol of France", 1),
+    logged(1, "Spain trip: book flights", 40),
+]
+
+
+def test_the_words_worth_matching_on():
+    assert tools.search_terms("the message about the asking for the capital of Spain") == ["capital", "spain"]
+    assert tools.search_terms("geting distracted") == ["geting", "distracted"]
+    assert tools.search_terms("the one about it") == []
+
+
+def test_the_best_match_comes_first_then_the_newest():
+    found = tools.find_logged(LOG, "capital Spain", NOW)
+    assert [row.message_id for row in found] == [4, 2], "both words, then one (a letter out); too old is left out"
+
+
+def test_a_typo_of_one_letter_still_finds_it():
+    assert [row.message_id for row in tools.find_logged(LOG, "geting distracted", NOW)] == [3]
+
+
+def test_only_the_last_thirty_days_are_searched():
+    assert tools.find_logged(LOG, "flights", NOW) == []
+    assert [row.message_id for row in tools.find_logged(LOG, "flights", NOW, days=60)] == [1]
+
+
+def test_the_message_doing_the_asking_is_never_a_match():
+    asking = logged(9, "Archive the message about the capital of Spain")
+    found = tools.find_logged([asking, *LOG], "capital Spain", NOW, skip=frozenset({9}))
+    assert 9 not in [row.message_id for row in found]
+
+
+def test_a_message_logged_twice_is_found_once():
+    assert len(tools.find_logged([LOG[1], LOG[1]], "Spain", NOW)) == 1
+
+
+def test_nothing_to_match_on_finds_nothing():
+    assert tools.find_logged(LOG, "the one about it", NOW) == []
+
+
+def test_an_older_listing_says_the_user_will_be_asked():
+    entry = tools.Listed("s1", "Alex", NOW - timedelta(days=3), "What's the capital of Spain")
+    text = tools.listing_text([entry], NOW, tools.OLDER_HEADER)
+    assert "asked to confirm" in text.splitlines()[0]
+    assert text.splitlines()[1] == "s1: Alex, 3d ago: What's the capital of Spain"

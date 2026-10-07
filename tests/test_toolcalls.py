@@ -4,10 +4,12 @@ import asyncio
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
+import discord
 import pytest
 
 from core import confirmations, llm, pending, tools
 from core.context import Context
+from core.database import log_received
 from skills import registry, toolcalls
 
 INBOX = 100
@@ -20,10 +22,16 @@ def loaded():
 
 
 class FakeChannel:
-    def __init__(self, messages=()):
+    def __init__(self, messages=(), older=()):
         self.id = INBOX
         self.sent = []
         self._messages = list(messages)
+        self._by_id = {message.id: message for message in (*messages, *older)}
+
+    async def fetch_message(self, message_id):
+        if message_id not in self._by_id:
+            raise discord.HTTPException(SimpleNamespace(status=404, reason="Not Found"), "Unknown Message")
+        return self._by_id[message_id]
 
     async def send(self, text, **options):
         self.sent.append(text)
@@ -90,8 +98,8 @@ def world(db, dev_off, owner, monkeypatch):
     monkeypatch.setattr(toolcalls, "_warned", set())
     pending.clear()
 
-    def make(text="Set a timer", reply_to=None, recent=(RENT, MILK, TEA)):
-        seen.channel = FakeChannel(recent)
+    def make(text="Set a timer", reply_to=None, recent=(RENT, MILK, TEA), older=()):
+        seen.channel = FakeChannel(recent, older)
         reference = None if reply_to is None else SimpleNamespace(resolved=None, message_id=reply_to.id)
         message = SimpleNamespace(id=99, reference=reference, author=SimpleNamespace(id=1))
         seen.ctx = Context(owner, INBOX, 99, text, seen.channel, _message=message)
@@ -116,10 +124,13 @@ def execute(seen, name, **value):
 def test_the_tools_are_ready_for_the_api(world):
     turn = world().turn
     names = [definition["name"] for definition in turn.definitions]
-    assert names == turn.names and names[-1] == toolcalls.RECENT
-    assert {"timer", "pomo", "reply_archive", "reply_pin", "reset"} <= set(names)
-    assert not [name for name in names if name.startswith(("lab", "dev"))], "no lab, and no dev while dev mode is off"
-    assert turn.strict == {"timer", "pomo", "help", "reply_extend"}
+    assert names == turn.names and names[-2:] == [toolcalls.SEARCH, toolcalls.RECENT]
+    assert {"timer", "pomo", "reply_archive", "reply_pin", "reset", "list_timers", "timer_control"} <= set(names)
+    assert not [name for name in names if name.startswith("lab")], "never the lab"
+    assert [name for name in names if name.startswith("dev")] == ["dev_mode"], "of dev, only the switch while it is off"
+    assert turn.strict == {
+        "timer", "pomo", "help", "dev_mode", "timer_control", "pomodoro_control", toolcalls.SEARCH,
+    }
     for definition in turn.definitions:
         assert bool(definition.get("strict")) == (definition["name"] in turn.strict)
     assert turn.definitions[-1]["cache_control"] == {"type": "ephemeral"}, "the cache covers every tool"
@@ -145,7 +156,7 @@ def test_too_many_strict_tools_is_warned_about_once(world, monkeypatch):
         turn = asyncio.run(toolcalls.prepare(seen.ctx))
     assert len(turn.strict) == 2
     assert len(warnings) == 1 and warnings[0][0] == "Too many strict tools"
-    assert "help" in warnings[0][1] or "reply_extend" in warnings[0][1]
+    assert "help" in warnings[0][1] or "dev_mode" in warnings[0][1]
 
 
 # --- a clear request runs at once --------------------------------------------
@@ -208,7 +219,7 @@ def test_a_proposal_waits_for_ok(world):
     seen.ctx.text = "ok"
     assert asyncio.run(toolcalls.answer_pending(seen.ctx)) is True
     assert [name for name, *_ in seen.ran] == ["pomo"]
-    assert llm.history_for(INBOX)[-1]["content"].startswith("[The user agreed. `pomo writing`: done")
+    assert llm.history_for(INBOX)[-1]["content"] == "That ran when you said ok: `pomo writing`."
 
 
 def test_no_drops_the_proposal(world):
@@ -342,6 +353,76 @@ def test_only_the_last_twenty_messages_can_be_reached(world):
     assert len(seen.turn.listing) == tools.LISTING_LIMIT == 20
 
 
+# --- looking further back ----------------------------------------------------
+SPAIN = a_message(21, "What's the capital of Spain")
+
+
+def log_chat(message_id: int, content: str) -> None:
+    asyncio.run(log_received(content, "chat", message_id, INBOX, user_id=1))
+
+
+def test_search_finds_an_older_message_of_the_users_that_still_exists(world):
+    seen = world("look further back", older=[SPAIN])
+    log_chat(SPAIN.id, SPAIN.content)
+    log_chat(22, "Spain trip: book flights")  # logged, but archived since: not in the channel any more
+    log_chat(99, "Archive the message about the capital of Spain")  # the message doing the asking
+    text, is_error = execute(seen, toolcalls.SEARCH, query="capital Spain")
+    assert not is_error
+    assert text.splitlines()[1:] == ["s1: Alex, just now: What's the capital of Spain"]
+    assert seen.turn.listing["s1"] is SPAIN and seen.turn.older == {"s1"}
+
+
+def test_search_that_finds_nothing_says_so(world):
+    seen = world("look further back")
+    text, is_error = execute(seen, toolcalls.SEARCH, query="capital Spain")
+    assert not is_error and text.startswith("Nothing the user sent in this channel in the last 30 days fits")
+    assert seen.turn.older == set()
+
+
+def test_an_older_match_is_shown_quoted_and_asked_about_first(world):
+    seen = world("pin the one about Spain", older=[SPAIN])
+    log_chat(SPAIN.id, SPAIN.content)
+    execute(seen, toolcalls.SEARCH, query="capital Spain")
+    assert execute(seen, "reply_pin", targets=["s1"], propose=False) == (toolcalls.WAITING_FOR_CONFIRM, False)
+    assert seen.ran == [] and not seen.turn.acted, "nothing happens until Confirm"
+    question, on_confirm = seen.asked[0]
+    assert question.startswith("⚠️ Found further back. Hive wants to run `pin` that message")
+    assert "> What's the capital of Spain" in question and SPAIN.jump_url in question
+
+    assert asyncio.run(on_confirm()) == "✅ Done: `pin` that message"
+    assert seen.ran == [("reply_pin", {"targets": ["s1"], "propose": False}, SPAIN.id, True)]
+
+
+def test_a_recent_message_is_still_acted_on_at_once(world):
+    seen = world("pin the one about rent", older=[SPAIN])
+    log_chat(SPAIN.id, SPAIN.content)
+    execute(seen, toolcalls.SEARCH, query="capital Spain")
+    execute(seen, toolcalls.RECENT)
+    assert set(seen.turn.listing) == {"m1", "m2", "m3", "s1"}, "listing the recent ones keeps what was found further back"
+    assert execute(seen, "reply_pin", targets=["m1"], propose=False) == ("done", False)
+    assert seen.asked == [] and len(seen.undo_offers) == 1
+
+
+# --- has anything been done? (what the "done" check goes by) -------------------
+def test_running_an_action_counts_as_acting(world):
+    seen = world()
+    assert not seen.turn.acted
+    execute(seen, "timer", duration="5m", label="", propose=False)
+    assert seen.turn.acted
+
+
+def test_reading_proposing_asking_and_failing_do_not(world):
+    seen = world("clear our chat")
+    execute(seen, toolcalls.RECENT)
+    execute(seen, "list_timers")
+    execute(seen, "pomo", lengths="", mode="", label="", propose=True)
+    execute(seen, "reset")
+    seen.outcome = ("error", "I can't read “banana” as a length of time.", [])
+    execute(seen, "timer", duration="banana", label="", propose=False)
+    assert not seen.turn.acted
+    assert [name for name, *_ in seen.ran] == ["list_timers", "timer"]
+
+
 # --- typed words never reach Claude ------------------------------------------
 def test_a_typed_word_runs_directly_without_calling_claude(owner, monkeypatch):
     import main
@@ -432,6 +513,106 @@ def test_someone_not_allowed_cannot_run_a_tool(real, monkeypatch):
     outcome = asyncio.run(registry.run_tool(real.ctx, real.specs["ping"], {"propose": False}))
     assert outcome.status == "denied" and real.channel.sent == []
     assert logged_tools()[0][1] == "denied"
+
+
+# --- the real runner: timers by id, from the live state ------------------------
+def run(real, name, **value):
+    return asyncio.run(registry.run_tool(real.ctx, real.specs[name], value))
+
+
+def test_claude_reads_the_timers_and_acts_on_one_by_its_id(real):
+    assert run(real, "list_timers").text == "No timers are running or paused."
+    started = run(real, "timer", duration="5m", label="tea", propose=False)
+    assert started.text == "started timer 1: tea, 5m"
+    sent_before = list(real.channel.sent)
+
+    listed = run(real, "list_timers").text.splitlines()
+    assert listed[0] == "Timers going now. Use the id with timer_control:"
+    assert listed[1].startswith('t1: "tea" · running, ') and listed[1].endswith("left · <#100> (this channel)")
+
+    paused = run(real, "timer_control", id="t1", action="pause", duration="", propose=False)
+    assert paused.status == "ok" and paused.text.startswith("⏸️ Paused: tea (")
+    assert 't1: "tea" · paused with ' in run(real, "list_timers").text
+    assert run(real, "timer_control", id="t1", action="resume", duration="", propose=False).text.startswith("▶️ Resumed: tea")
+    assert run(real, "timer_control", id="t1", action="extend", duration="10m", propose=False).text == "➕ Added 10m to tea"
+    assert run(real, "timer_control", id="t1", action="cancel", duration="", propose=False).text == "🚫 Cancelled: tea"
+    assert 't1: "tea" · cancelled' in run(real, "list_timers").text
+    assert real.channel.sent == sent_before, "reading and controlling post nothing: Claude does the talking"
+
+
+def test_a_timer_id_that_is_wrong_or_in_the_wrong_state_is_explained(real):
+    missing = run(real, "timer_control", id="t99", action="pause", duration="", propose=False)
+    assert missing.status == "error" and "Call list_timers" in missing.text
+    run(real, "timer", duration="5m", label="tea", propose=False)
+    assert run(real, "timer_control", id="t1", action="resume", duration="", propose=False).text == "**tea** isn't paused."
+    no_length = run(real, "timer_control", id="t1", action="extend", duration="", propose=False)
+    assert no_length.status == "error" and "how much time to add" in no_length.text
+
+
+def test_tool_calls_that_read_are_logged_like_any_other(real):
+    run(real, "list_timers")
+    assert logged_tools() == [("tool: list_timers {}", "ok", "No timers are running or paused.", None)]
+
+
+def test_claude_reads_and_controls_the_pomodoro_by_its_id(real):
+    assert run(real, "get_pomodoro_status").text == "No Pomodoro session is going."
+    assert run(real, "pomo", lengths="50/10/30", mode="", label="writing", propose=False).status == "ok"
+    status_text = run(real, "get_pomodoro_status").text
+    assert status_text.startswith('p1: "writing" · Focus, round 1 of 4 · running, ')
+    assert "lengths 50m/10m/30m (focus/break/long break) · each phase waits for Start" in status_text
+
+    assert run(real, "pomodoro_control", id="p1", action="pause", duration="", propose=False).text.startswith("⏸️ Paused: writing")
+    assert "paused with " in run(real, "get_pomodoro_status").text
+    assert run(real, "pomodoro_control", id="p1", action="resume", duration="", propose=False).text == "▶️ Resumed: writing"
+    assert run(real, "pomodoro_control", id="p1", action="skip", duration="", propose=False).status == "ok"
+    assert "Short break, round 1 of 4" in run(real, "get_pomodoro_status").text
+    assert run(real, "pomodoro_control", id="p1", action="stop", duration="", propose=False).text == "⏹️ Stopped: writing"
+    assert run(real, "get_pomodoro_status").text == "No Pomodoro session is going."
+    assert run(real, "pomodoro_control", id="t1", action="pause", duration="", propose=False).status == "error"
+
+
+def test_asking_for_a_pomodoro_while_one_is_going_posts_nothing_new(real):
+    run(real, "pomo", lengths="50/10/30", mode="", label="writing", propose=False)
+    sent_before = list(real.channel.sent)
+
+    again = run(real, "pomo", lengths="", mode="", label="", propose=False)
+    assert again.status == "error", "nothing was started, so it is not a success for Claude to report"
+    assert again.text.startswith("Not started: a Pomodoro session is already going")
+    assert 'p1: "writing" · Focus, round 1 of 4 · running' in again.text
+    assert "offer to restart" not in again.text
+    assert real.channel.sent == sent_before, "no second card, no note: Claude's one reply says it"
+
+    other = run(real, "pomo", lengths="25/5", mode="", label="", propose=False)
+    assert "The user asked for 25/5" in other.text and "offer to restart it with those lengths" in other.text
+    assert "pomodoro_control with action stop for p1" in other.text
+    assert real.channel.sent == sent_before
+    assert 'p1: "writing"' in run(real, "get_pomodoro_status").text, "still the same session"
+
+
+def test_typing_pomo_with_other_lengths_offers_to_restart_with_them(real, monkeypatch):
+    from skills.timers import sessions, store
+
+    asked = []
+
+    async def ask(channel, user, question, on_confirm):
+        asked.append((question, on_confirm))
+
+    monkeypatch.setattr(confirmations, "ask", ask)
+
+    def typed(*words):
+        ctx = Context(real.ctx.user, INBOX, 99, "pomo " + " ".join(words), real.channel, args=list(words), _message=real.message)
+        return asyncio.run(sessions.start(ctx))
+
+    typed("50/10/30", "writing")
+    assert "card shown again" in typed() and asked == [], "the same again just shows it"
+    assert "asked whether to restart as 25/5" in typed("25/5")
+    question, on_confirm = asked[0]
+    assert question == "🍅 **writing** is already going at 50m/10m/30m. Restart it as `25/5`?"
+    assert "Already going" not in real.channel.sent[-1], "the question stands in for the note: one message, not two"
+
+    assert asyncio.run(on_confirm()) == "🍅 Restarted as 25/5"
+    going = asyncio.run(store.active_sessions(user_id=real.ctx.user.id))
+    assert [(s.label, s.focus_s, s.short_s) for s in going] == [("writing", 1500, 300)], "one session, new lengths, same label"
 
 
 def test_confirmations_can_be_collected_instead_of_posted(real):

@@ -74,6 +74,9 @@ class Keyword:
     params: list[Param] | tuple = ()
     tool: bool = True  # False keeps this word from Claude; typing it still works
     tool_priority: int = 0  # higher is likelier to be used, and gets a strict schema first
+    # Offered to Claude even while the skill is holding its tools back
+    # (Skill.tools_available): the dev mode switch, when dev mode is off
+    tool_always: bool = False
 
     def __post_init__(self):
         self.words = _as_list(self.words)
@@ -194,13 +197,35 @@ class Reaction:
         return self.emoji
 
 
-@dataclass(frozen=True)
+@dataclass
 class Tool:
-    """A bespoke tool for Claude that is not a word. Not used yet: every tool so
-    far is generated from a Keyword or ReplyAction (see Param)."""
+    """A tool for Claude that is not a word the user types: reading live state
+    (which timers are running), or acting on a record by its id.
 
-    definition: dict
-    handler: Callable[..., Awaitable[str]]
+    Most tools are generated from a Keyword or ReplyAction; use this only for
+    what has no typed form. The handler gets the context and the input as
+    {param name: text} and returns the result for Claude, which does the
+    talking: the handler posts nothing in the channel. Raise UserError for a
+    problem Claude should explain. It runs through `registry.run_tool`, so it
+    is logged and permission-checked like every other tool call.
+    """
+
+    name: str  # as Claude sees it: snake_case, unique
+    description: str  # written for Claude: what it does, when to use it, examples
+    handler: Callable[[Context, dict], Awaitable[str]]
+    params: list[Param] | tuple = ()
+    channels: list[str] | str = ANY
+    permission: str = ""  # defaults to "tool:<name>"
+    reads_only: bool = False  # only reports; never counts as having done something
+    tool_priority: int = 0
+
+    # What the tool machinery asks of every action; a bespoke tool is none of these
+    destructive = False
+    undo = None
+
+    def __post_init__(self):
+        self.params = list(self.params)
+        self.permission = self.permission or f"tool:{self.name}"
 
 
 class Skill:
@@ -233,7 +258,7 @@ class Skill:
         return []
 
     def tools(self) -> list[Tool]:
-        """Bespoke Claude tools. Not used yet (see Tool)."""
+        """Tools for Claude that aren't words: reading state, acting by id (see Tool)."""
         return []
 
     def job_handlers(self) -> dict[str, Callable[[Job], Awaitable[None]]]:

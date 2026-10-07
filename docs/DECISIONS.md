@@ -251,3 +251,53 @@ A short log of key decisions and why. Newest at the bottom.
 - **A manual loop, not the SDK's tool runner:** the runner is a beta helper
   and the loop here is thirty lines; owning it keeps the cap, the logging
   and the "never run a truncated call" rule in plain sight.
+- **The history holds what was said and nothing else:** this amends "tool
+  exchanges stay out of the history" above, which kept a one-line note of
+  the calls on the end of Claude's reply. Claude took the note for its own
+  words: it began writing "[Tool calls this turn: …]" itself instead of
+  calling the tool, and saying "Done" for things that never ran. Nothing
+  is added now, in brackets or otherwise. The cost is that Claude knows
+  what it said earlier, not what it ran; it is told to read anything that
+  changes with a tool rather than trust the conversation.
+- **"Done" is checked in code, not only asked for:** the instruction not to
+  claim an action without a tool result was there when the false "Done"s
+  happened. So a reply that opens by saying it is done, in a turn where no
+  tool carried anything out, goes back to Claude once (to call the tool or
+  answer again) and is replaced if it insists. Reading, proposing, waiting
+  for a button and failing don't count as doing. The check is deliberately
+  narrow, costs a request only when it fires, and each time it fires there
+  is a card in #bot-log.
+- **Skills may give Claude tools that aren't words:** `Skill.tools()` is in
+  use, for two things a typed word can't do: report state for Claude to put
+  into words (posting it in the channel as well would say it twice), and
+  act on a record by id. They run through `registry.run_tool` like every
+  other call. A word or reply action is still the first choice.
+- **Timers and the Pomodoro are found by id, never in the chat:** Claude
+  reads them with `list_timers` / `get_pomodoro_status` and acts with
+  `timer_control` / `pomodoro_control` (one tool each, with an action,
+  rather than a tool per action: fewer strict schemas and less to choose
+  between). The timer reply actions are no longer offered to it, because
+  finding a timer's message among the last 20 failed whenever it had
+  scrolled away. This is an exception to "a message is only acted on if you
+  replied to it or Claude named it from a listing", which still holds for
+  messages.
+- **Looking further back uses `message_log`, and asks first:** when the
+  message isn't in the last 20, `search_messages` matches words against
+  the user's own logged messages in that channel (500 rows, 30 days) and
+  checks each match still exists. A recent message is acted on at once and
+  shown quoted with Undo; an older match is shown quoted with Confirm /
+  Cancel before anything happens, since a match from weeks ago is easier to
+  get wrong. Only the user's messages are logged with their ids, so the
+  bot's own replies can't be found this way.
+- **Claude always has the dev mode switch, and it runs without a Confirm:**
+  with every dev tool hidden while dev mode is off, it could never be
+  asked to switch it on. `dev mode on|off` is one word, typed or as a tool,
+  offered whatever the mode; typed `dev off` stays exact against typos,
+  but switching dev mode off loses nothing, so it isn't treated as
+  destructive.
+- **A Pomodoro asked for while one is going is a "not done" for Claude:**
+  the typed word shows the card again, which suits typing. Through Claude
+  that made four messages (card, note, alert, reply), so the tool posts
+  nothing and returns the session's state as a failure: nothing was
+  started, and Claude says so once, offering a restart if other lengths
+  were asked for.

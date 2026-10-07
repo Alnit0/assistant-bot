@@ -93,6 +93,18 @@ def where_to_show(session_channel_id: int, typed_channel_id: int) -> str:
     return RESHOW if session_channel_id == typed_channel_id else POINT
 
 
+def different_lengths(words: list[str], current: Plan) -> str | None:
+    """The lengths asked for, as typed ("25/5"), if they aren't the ones the
+    session that is already going has. None if none were given or they match.
+    (`words` have been through parse_session, so they are known to be readable.)"""
+    for word in words:
+        if "/" in word and word[0].isdigit():
+            asked = [parse_duration(part) for part in word.split("/")]
+            going = [current.focus_s, current.short_s, current.long_s][: len(asked)]
+            return word if asked != going else None
+    return None
+
+
 def remaining_seconds(ends_at: datetime, now: datetime) -> float:
     """Time left on a running clock, never negative."""
     return max(0.0, (ends_at - now).total_seconds())

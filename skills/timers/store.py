@@ -249,6 +249,18 @@ async def active_timers(user_id: int | None = None, channel_id: int | None = Non
     return await database.run(_select, "timers_timers", Timer, where, tuple(values))
 
 
+async def ended_timers(user_id: int, since: datetime, limit: int = 5) -> list[Timer]:
+    """Timers started since `since` that are over (finished, dismissed or cancelled), newest first."""
+    found = await database.run(
+        _select,
+        "timers_timers",
+        Timer,
+        "user_id = ? AND status IN (?, ?, ?) AND created_at >= ?",
+        (user_id, FINISHED, DISMISSED, CANCELLED, to_db(since)),
+    )
+    return found[::-1][:limit]
+
+
 # --- sessions ---------------------------------------------------------------
 async def add_session(session: Session) -> Session:
     return await _add("timers_pomodoros", session)

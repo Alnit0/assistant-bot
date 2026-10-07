@@ -256,7 +256,12 @@ async def on_message(message: discord.Message):
                 return await toolcalls.execute(turn, name, value)
 
             result = await ask_claude(
-                text, capabilities, channel_id=message.channel.id, tools=turn.definitions, run_tool=run_tool
+                text,
+                capabilities,
+                channel_id=message.channel.id,
+                tools=turn.definitions,
+                run_tool=run_tool,
+                acted=lambda: turn.acted,
             )
             reply, input_tokens, output_tokens = result.reply, result.input_tokens, result.output_tokens
         except anthropic.APIStatusError as error:
@@ -356,6 +361,15 @@ async def on_message(message: discord.Message):
             inline=False,
         )
     await send_log(embed)
+    if result.unbacked_claim:
+        # Claude said it was done when no tool had done anything, and was sent back
+        await log_error(
+            "Claude said \"done\" with nothing run",
+            f"First reply (not sent): {truncate(result.unbacked_claim, 300)}\n"
+            f"Sent instead: {truncate(reply, 300)}\n"
+            f"Tool calls after the check: {called or 'none'}",
+            text,
+        )
     await registry.emit(
         "action_finished",
         registry.ActionResult("chat", "chat", "ok", user.id, message.channel.id, reply=reply),

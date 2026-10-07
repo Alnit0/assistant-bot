@@ -16,6 +16,12 @@ LISTING_LIMIT = 20  # how many recent messages Claude may choose a target from
 PREVIEW_LENGTH = 80
 
 KEYWORD, REPLY_ACTION, HELPER = "keyword", "reply_action", "helper"
+BESPOKE = "tool"  # a skill's own tool that is not a word (skills/base.py: Tool)
+
+# Looking further back than the listing: the user's own logged messages
+SEARCH_ROWS = 500  # how many logged messages are looked through
+SEARCH_DAYS = 30  # and how far back
+SEARCH_RESULTS = 5  # how many matches Claude is shown
 
 PROPOSE = "propose"
 TARGETS = "targets"
@@ -39,9 +45,10 @@ class ToolSpec:
     name: str  # as sent to the API
     description: str
     schema: dict
-    kind: str  # KEYWORD, REPLY_ACTION or HELPER
+    kind: str  # KEYWORD, REPLY_ACTION, BESPOKE or HELPER
     skill: str = ""
-    item: object = None  # the Keyword or ReplyAction it runs
+    item: object = None  # the Keyword, ReplyAction or Tool it runs
+    reads_only: bool = False  # only reports: running it is not "doing something"
     has_arguments: bool = False  # takes something beyond `propose` and `targets`
     priority: int = 0  # higher gets `strict` first
     destructive: bool = False
@@ -177,8 +184,8 @@ def resolve_targets(is_reply: bool, refs: list[str], listed: set[str]) -> Resolu
     if unknown:
         return Resolution(
             ERROR,
-            error=f"Unknown message ref: {', '.join(unknown)}. Use refs from recent_messages in this turn "
-            f"(only the last {LISTING_LIMIT} messages of this channel can be acted on).",
+            error=f"Unknown message ref: {', '.join(unknown)}. Refs only last for one message from the user: "
+            "call recent_messages again (or search_messages to look further back) and use a ref from that.",
         )
     if len(wanted) > MAX_CANDIDATES:
         return Resolution(
@@ -241,12 +248,86 @@ class Listed:
     tags: tuple[str, ...] = ()
 
 
-def listing_text(entries: list[Listed], now: datetime) -> str:
-    """The recent messages of a channel, newest first, one per line."""
+RECENT_HEADER = "Recent messages in this channel, newest first. Use the ref to act on one:"
+OLDER_HEADER = (
+    "Older messages from the user in this channel that fit, best match first. Use the ref to act "
+    "on one: the user is shown it quoted and asked to confirm before anything happens."
+)
+
+
+def listing_text(entries: list[Listed], now: datetime, header: str = RECENT_HEADER) -> str:
+    """Messages Claude may choose from, one per line."""
     if not entries:
         return "There are no recent messages in this channel to act on."
-    lines = ["Recent messages in this channel, newest first. Use the ref to act on one:"]
+    lines = [header]
     for entry in entries:
         tags = f" [{', '.join(entry.tags)}]" if entry.tags else ""
         lines.append(f"{entry.ref}: {entry.author}, {age(entry.created_at, now)}{tags}: {preview(entry.content)}")
     return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Looking further back: the user's own messages in message_log, matched on
+# the words Claude gives. Code does the matching; Claude chose the words.
+# ---------------------------------------------------------------------------
+# Words that say nothing about which message is meant
+_COMMON = frozenset(
+    "the a an and or of to in on for about with from that this it is was my me i you your "
+    "message messages note notes one asking asked said saying".split()
+)
+
+
+@dataclass(frozen=True)
+class Logged:
+    """One logged message of the user's: where it is and what it said."""
+
+    message_id: int
+    content: str
+    received_at: datetime
+
+
+def search_terms(query: str) -> list[str]:
+    """The words of a query worth matching on, lower case, in order, once each."""
+    words = re.findall(r"[a-z0-9']+", query.lower())
+    return list(dict.fromkeys(word for word in words if len(word) > 1 and word not in _COMMON))
+
+
+def _close(typed: str, real: str) -> bool:
+    """The same word, give or take one letter ("geting" for "getting"). Long words only."""
+    if typed == real:
+        return True
+    if min(len(typed), len(real)) < 5 or abs(len(typed) - len(real)) > 1:
+        return False
+    if len(typed) > len(real):
+        typed, real = real, typed
+    for index in range(len(real)):
+        if len(typed) == len(real):
+            if typed[:index] + typed[index + 1 :] == real[:index] + real[index + 1 :]:
+                return True
+        elif typed == real[:index] + real[index + 1 :]:
+            return True
+    return False
+
+
+def find_logged(
+    rows: list[Logged], query: str, now: datetime, *, days: int = SEARCH_DAYS, skip: frozenset[int] = frozenset()
+) -> list[Logged]:
+    """The logged messages a query fits, best first: most of its words, then newest.
+
+    Only messages from the last `days` count, each once, and never one in
+    `skip` (the message asking the question).
+    """
+    terms = search_terms(query)
+    if not terms:
+        return []
+    scored, seen = [], set(skip)
+    for row in rows:
+        if row.message_id in seen or (now - row.received_at).days >= days:
+            continue
+        seen.add(row.message_id)
+        words = re.findall(r"[a-z0-9']+", row.content.lower())
+        score = sum(1 for term in terms if any(_close(term, word) for word in words))
+        if score:
+            scored.append((score, row))
+    scored.sort(key=lambda entry: (-entry[0], -entry[1].received_at.timestamp()))
+    return [row for _, row in scored]

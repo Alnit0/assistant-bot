@@ -219,6 +219,7 @@ only, any channel, no slash. It is off after every restart.
 |---|---|
 | `dev on` | On, with the dev defaults: debounce 2s, speed 1x, verbose on, quiet hours ignored, off again after 1 hour |
 | `dev off` | Off: normal settings back, panel removed |
+| `dev mode on` / `dev mode off` | The same, typed or asked of Claude |
 | `dev` | Show the panel again at the bottom of the channel |
 | `dev reset` | Dev settings back to the dev defaults |
 | `dev debounce 0` | Seconds before reactions are acted on (0 = at once) |

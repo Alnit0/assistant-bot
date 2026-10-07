@@ -20,7 +20,7 @@ from core.errors import UserError
 from core.permissions import is_allowed
 from core.router import Router
 from core.users import User, get_user_by_discord_id
-from skills.base import ANY, Keyword, Reaction, ReplyAction, Skill
+from skills.base import ANY, Keyword, Reaction, ReplyAction, Skill, Tool
 
 log = logging.getLogger("assistant")
 
@@ -38,6 +38,7 @@ _skills: list[Skill] = []
 _keywords: list[tuple[Skill, Keyword]] = []
 _reply_actions: list[tuple[Skill, ReplyAction]] = []
 _reactions: dict[str, tuple[Skill, Reaction]] = {}
+_tools: list[tuple[Skill, Tool]] = []
 _events: dict[str, list[tuple[Skill, object]]] = {}
 _app_commands: list = []
 _problems: list[str] = []
@@ -105,6 +106,7 @@ def load() -> None:
     _keywords.clear()
     _reply_actions.clear()
     _reactions.clear()
+    _tools.clear()
     _events.clear()
     _app_commands.clear()
     _problems.clear()
@@ -132,6 +134,7 @@ def load() -> None:
             keywords = skill.keywords()
             reply_actions = skill.reply_actions()
             reactions = skill.reactions()
+            bespoke_tools = skill.tools()
             job_handlers = skill.job_handlers()
             events = skill.events()
             slash_commands = skill.app_commands()
@@ -157,6 +160,12 @@ def load() -> None:
                 _problem(f"{name}: reaction {reaction.emoji} already belongs to {_reactions[key][0].name}")
                 continue
             _reactions[key] = (skill, reaction)
+        for tool in bespoke_tools:
+            _check_registration(skill, "tool", tool)
+            if any(tool.name == other.name for _, other in _tools):
+                _problem(f"{name}: tool `{tool.name}` is already registered")
+                continue
+            _tools.append((skill, tool))
         for kind, handler in job_handlers.items():
             scheduler.register_handler(skill.name, kind, handler)
         for event, handler in events.items():
@@ -439,7 +448,8 @@ async def dispatch_reply_action(ctx: Context) -> bool:
 
 # ---------------------------------------------------------------------------
 # Tools for Claude: every word and reply action, generated from what it says
-# about itself (core/tools.py builds the schemas). skills/toolcalls.py decides
+# about itself (core/tools.py builds the schemas), and each skill's bespoke
+# tools (Skill.tools: reading state, acting by id). skills/toolcalls.py decides
 # when a call may run; when it may, it runs here, down the same path as a
 # typed word, so it is logged and permission-checked in exactly the same way.
 # ---------------------------------------------------------------------------
@@ -471,23 +481,52 @@ def _spec(skill: Skill, kind: str, item) -> tools.ToolSpec:
     )
 
 
+def _tool_spec(skill: Skill, item: Tool) -> tools.ToolSpec:
+    return tools.ToolSpec(
+        name=item.name,
+        description=item.description,
+        # Something that only reports can't be proposed: there is nothing to agree to
+        schema=tools.build_schema(item.params, propose=not item.reads_only),
+        kind=tools.BESPOKE,
+        skill=skill.name,
+        item=item,
+        has_arguments=bool(item.params),
+        priority=item.tool_priority,
+        reads_only=item.reads_only,
+    )
+
+
 def tools_for(user: User | None, channel_id: int | None) -> list[tools.ToolSpec]:
     """The tools Claude may be given for this user in this channel, in a fixed order.
 
     Filtered the way `help` is (channel and permission), then by each skill's
     own say (the lab never offers any; dev only while dev mode is on) and by
-    registrations that opt out with `tool=False`.
+    registrations that opt out with `tool=False`. A word marked `tool_always`
+    is offered even while its skill holds the rest back.
     """
     if user is None:
         # catalogue() reads "no user" as "don't filter"; for tools it means nobody is asking
         return []
     channel_name = _channel_name(channel_id)
+    words = {entry.skill.name: entry for entry in catalogue(user, channel_id)}
     specs = []
-    for entry in catalogue(user, channel_id):
-        if not entry.skill.tools_available(channel_name):
-            continue
-        specs += [_spec(entry.skill, tools.KEYWORD, item) for item in entry.keywords if item.tool]
-        specs += [_spec(entry.skill, tools.REPLY_ACTION, item) for item in entry.reply_actions if item.tool]
+    for skill in _skills:
+        available = skill.tools_available(channel_name)
+        entry = words.get(skill.name)
+        if entry is not None:
+            specs += [
+                _spec(skill, tools.KEYWORD, item)
+                for item in entry.keywords
+                if item.tool and (available or item.tool_always)
+            ]
+            if available:
+                specs += [_spec(skill, tools.REPLY_ACTION, item) for item in entry.reply_actions if item.tool]
+        if available:
+            specs += [
+                _tool_spec(skill, item)
+                for owner, item in _tools
+                if owner is skill and works_in(item, channel_id) and is_allowed(user, item.permission)
+            ]
     return specs
 
 
@@ -506,7 +545,9 @@ async def run_tool(
     `ctx` is the user's chat message; the call gets its own context, whose text
     is the call itself (that is what is logged as the input). `target` is the
     message a reply action acts on. With `collect`, confirmations are handed
-    back instead of posted, for the caller to show with a preview.
+    back instead of posted, for the caller to show with a preview. A bespoke
+    tool posts nothing: what it returns is the result, for Claude to put
+    into words.
     """
     item = spec.item
     args = tools.to_args(item.params, value)
@@ -518,10 +559,13 @@ async def run_tool(
         _channel=ctx._channel,
         args=args,
         _message=ctx._message,
-        collect_confirmations=collect,
+        collect_confirmations=collect or spec.kind == tools.BESPOKE,
+        via_tool=True,
     )
 
     async def call():
+        if spec.kind == tools.BESPOKE:
+            return await item.handler(call_ctx, value)
         if spec.kind == tools.REPLY_ACTION:
             if target is None:
                 raise UserError("I can't find the message to act on.")

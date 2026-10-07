@@ -203,7 +203,7 @@ def test_the_history_stays_plain_text(claude):
     assert [entry["role"] for entry in history] == ["user", "assistant"]
     assert all(isinstance(entry["content"], str) for entry in history), "no tool blocks to be split by trimming"
     assert history[0]["content"] == "Set a timer for 5 minutes"
-    assert history[1]["content"].startswith("Timer started.\n[Tool calls this turn: timer (result: started a 5m timer)")
+    assert history[1]["content"] == "Timer started.", "the reply as it was said: no note of the tool calls"
 
 
 def test_the_next_message_carries_the_history(claude):
@@ -224,8 +224,134 @@ def test_a_failed_request_leaves_the_history_alone(claude, monkeypatch):
 
 
 def test_an_agreed_proposal_is_remembered_without_asking_claude(claude):
-    llm.remember(CHANNEL, "ok", "[The user agreed. `timer 5m`: done]")
+    llm.remember(CHANNEL, "ok", "That ran when you said ok: `timer 5m`.")
     assert [entry["role"] for entry in llm.history_for(CHANNEL)] == ["user", "assistant"]
+
+
+# --- honesty: "done" only when a tool did it ----------------------------------
+def test_done_with_no_tool_call_is_sent_back_and_claude_then_acts(claude):
+    fake = claude(
+        response(text("✅ Done.\n[Tool calls this turn: timer (result: started timer 13: testing, 20m)]")),
+        response(call("timer", duration="20m", label="testing"), stop="tool_use"),
+        response(text("Your 20-minute testing timer is running.")),
+    )
+    runner = Runner()
+    result = ask("Start a timer for 20 minutes called testing", runner)
+
+    assert runner.calls == [("timer", {"duration": "20m", "label": "testing"})], "the timer really was started"
+    assert result.reply == "Your 20-minute testing timer is running."
+    assert result.unbacked_claim.startswith("✅ Done."), "kept for the #bot-log card"
+    check = fake.requests[1]["messages"][-1]
+    assert check == {"role": "user", "content": llm.NOTHING_RAN}
+    assert [entry["content"] for entry in llm.history_for(CHANNEL)] == [
+        "Start a timer for 20 minutes called testing",
+        "Your 20-minute testing timer is running.",
+    ], "neither the false reply nor the check is remembered"
+
+
+def test_done_with_no_tool_call_may_be_corrected_in_words(claude):
+    fake = claude(response(text("Done.")), response(text("I can't switch that from here: type `dev on`.")))
+    result = ask("dev mode on", Runner())
+    assert result.reply == "I can't switch that from here: type `dev on`."
+    assert result.unbacked_claim == "Done." and result.tool_calls == []
+    assert len(fake.requests) == 2, "sent back once, no more"
+
+
+def test_a_claude_that_insists_it_is_done_is_overruled(claude):
+    fake = claude(response(text("Done.")))  # the same answer, however often it is asked
+    result = ask("dev mode off", Runner())
+    assert result.reply == llm.NOT_DONE
+    assert len(fake.requests) == 2
+    assert llm.history_for(CHANNEL)[-1]["content"] == llm.NOT_DONE
+
+
+def test_done_after_a_tool_that_worked_is_left_alone(claude):
+    fake = claude(response(call("timer", duration="5m"), stop="tool_use"), response(text("Done.")))
+    result = ask(runner=Runner())
+    assert result.reply == "Done." and result.unbacked_claim == ""
+    assert len(fake.requests) == 2
+
+
+def test_done_after_a_tool_that_failed_is_sent_back(claude):
+    claude(
+        response(call("timer", duration="banana"), stop="tool_use"),
+        response(text("Done.")),
+        response(text("That isn't a length of time I can read.")),
+    )
+    result = ask(runner=Runner(("I can't read “banana” as a length of time.", True)))
+    assert result.unbacked_claim == "Done."
+    assert result.reply == "That isn't a length of time I can read."
+
+
+def test_looking_something_up_is_not_doing_it(claude):
+    # The caller knows which tools only read: here the one call made was a listing
+    claude(
+        response(call("list_timers"), stop="tool_use"),
+        response(text("Done, the tea timer is paused.")),
+        response(text("The tea timer is still running; I haven't paused it.")),
+    )
+    result = asyncio.run(
+        llm.ask_claude("Pause the tea timer", "", CHANNEL, tools=TOOLS, run_tool=Runner(), acted=lambda: False)
+    )
+    assert result.unbacked_claim and result.reply == "The tea timer is still running; I haven't paused it."
+
+
+def test_an_ordinary_answer_is_never_sent_back(claude):
+    fake = claude(response(text("Madrid is the capital of Spain.")))
+    result = ask("What's the capital of Spain?", Runner())
+    assert result.unbacked_claim == "" and len(fake.requests) == 1
+
+
+def test_without_tools_there_is_nothing_to_check(claude):
+    fake = claude(response(text("Done.")))
+    assert ask("Say done", None, tools=None).reply == "Done."
+    assert len(fake.requests) == 1
+
+
+@pytest.mark.parametrize(
+    "reply",
+    ["Done.", "✅ Done.", "Done—your tea timer is running.", "All done!", "That's done.", "✅ Timer started.",
+     "Sure.\n[Tool calls this turn: (none: this is a built-in shortcut you can type yourself)]"],
+)
+def test_replies_that_say_it_was_done(reply):
+    assert llm.claims_done(reply)
+
+
+@pytest.mark.parametrize(
+    "reply",
+    ["How long for this one?", "I can't do that, but you can type `dev on`.", "Waiting for you to confirm with the buttons.",
+     "Your last message was “Pin the last message”. Want me to delete it?", "Have you done the washing?"],
+)
+def test_replies_that_do_not(reply):
+    assert not llm.claims_done(reply)
+
+
+# --- no debug text in a reply --------------------------------------------------
+@pytest.mark.parametrize(
+    "reply, clean",
+    [
+        ("✅ Done.\n[Tool calls this turn: timer (result: started timer 13: testing, 20m)]", "✅ Done."),
+        ("Timer started. [tools: timer]", "Timer started."),
+        ("Done.\n[Tool calls this turn: (none: this is a built-in shortcut", "Done."),
+        ("One.\n\n[tool: x]\n\nTwo.", "One.\n\nTwo."),
+    ],
+)
+def test_a_bracketed_tool_note_is_taken_out_of_a_reply(reply, clean):
+    assert llm.scrub(reply) == (clean, True)
+
+
+@pytest.mark.parametrize("reply", ["It's sunny.", "Use [square brackets] for a link.", "- [ ] buy milk", "The toolbox is in the shed."])
+def test_ordinary_text_is_left_alone(reply):
+    assert llm.scrub(reply) == (reply, False)
+
+
+def test_a_note_claude_writes_never_reaches_the_user_or_the_history(claude):
+    claude(
+        response(call("timer", duration="5m"), stop="tool_use"),
+        response(text("Timer started.\n[Tool calls this turn: timer (result: started a 5m timer)]")),
+    )
+    assert ask(runner=Runner()).reply == "Timer started."
+    assert llm.history_for(CHANNEL)[-1]["content"] == "Timer started."
 
 
 # --- caching and cost --------------------------------------------------------

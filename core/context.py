@@ -32,6 +32,9 @@ class Context:
     # target): confirmations are kept here instead of being posted
     collect_confirmations: bool = False
     collected: list[str] = field(default_factory=list)
+    # True when Claude is running this as a tool: it will say what happened, so a
+    # handler can hand it the facts instead of posting them as well
+    via_tool: bool = False
 
     # Database access: the async helpers in core/database.py, including run()
     db = database
@@ -160,6 +163,16 @@ class Context:
             return None
         try:
             return await self._channel.fetch_message(reference.message_id)
+        except discord.HTTPException:
+            return None
+
+    async def fetch_message(self, message_id: int) -> discord.Message | None:
+        """One message in this channel by its id, or None if it has gone or can't be read."""
+        fetch = getattr(self._channel, "fetch_message", None)
+        if fetch is None:
+            return None
+        try:
+            return await fetch(message_id)
         except discord.HTTPException:
             return None
 

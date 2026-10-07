@@ -6,6 +6,20 @@ backfilled from the git log.
 
 ## 2026-10-07
 
+- **Claude tells the truth about what it did.** It was copying a
+  "[Tool calls this turn: …]" note that the bot added to its own earlier
+  replies, and saying "Done" without doing anything. The note is gone, any
+  it writes is removed, and a "done" with nothing run is sent back to it
+  (and logged in #bot-log) before you see it.
+- **It can see your timers.** "Show my timers" and "how long left on my
+  Pomodoro?" are answered from the live state, and "pause the tea timer",
+  "unpause it", "skip this break" act on the right one wherever its
+  message is. Asking for a Pomodoro while one is going gets one reply and
+  an offer to restart at the lengths you asked for (typed `pomo 25/5`
+  asks the same with a button).
+- `dev mode on` / `dev mode off` work, typed or asked for. "Look further
+  back" searches your older messages in the channel and asks before
+  acting on what it finds. Reply `unpause` works like `resume`.
 - **Claude can now do things.** Ask in plain words ("set a timer for 5
   minutes", "file that away") and it runs the same actions you can type:
   every word and reply action is offered to it as a tool, filtered by

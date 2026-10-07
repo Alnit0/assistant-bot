@@ -37,6 +37,20 @@ async def dev_off(ctx: Context) -> str:
     return outcome
 
 
+MODE_USAGE = "dev mode on|off"
+
+
+def _is_on_or_off(args: list[str]) -> bool:
+    return len(args) == 1 and args[0].lower() in ("on", "off")
+
+
+async def dev_mode(ctx: Context) -> str:
+    """`dev mode on` / `dev mode off`: the switch by its longer name, and the one
+    way Claude can turn dev mode on."""
+    on = devmode.parse_on_off(ctx.args, MODE_USAGE)
+    return await (dev_on(ctx) if on else dev_off(ctx))
+
+
 async def dev_show(ctx: Context) -> str:
     if not devmode.enabled:
         raise UserError("Dev mode is off. Type `dev on` to start it.")
@@ -123,7 +137,8 @@ class DevSkill(Skill):
     description = "Dev mode for testing: shorter waits, debug lines in #bot-log, and inspection tools"
 
     def tools_available(self, channel_name: str | None) -> bool:
-        # Claude only gets the dev tools while testing: dev mode on, or in the dev channel
+        # Claude only gets the dev tools while testing: dev mode on, or in the dev
+        # channel. The switch itself (`dev mode`, tool_always) is the exception
         return devmode.enabled or channel_name == DEV_CHANNEL
 
     def keywords(self) -> list[Keyword]:
@@ -142,8 +157,29 @@ class DevSkill(Skill):
                 "switch dev mode on: debounce 2s, speed 1x, verbose on, quiet hours ignored, for 1 hour",
                 dev_on,
                 ["dev on"],
+                tool=False,  # Claude has `dev mode` for both directions
             ),
-            word("dev off", "switch dev mode off and restore normal settings", dev_off, ["dev off"], exact=True),
+            word(
+                "dev off",
+                "switch dev mode off and restore normal settings",
+                dev_off,
+                ["dev off"],
+                exact=True,
+                tool=False,
+            ),
+            word(
+                "dev mode",
+                "switch dev mode on or off, the same as `dev on` and `dev off`",
+                dev_mode,
+                ["dev mode on", "dev mode off"],
+                takes_args=True,
+                usage="on|off",
+                accepts=_is_on_or_off,
+                params=[Param("state", "on to switch dev mode on, off to switch it off.", choices=("on", "off"))],
+                # The one dev tool Claude always has: without it dev mode could
+                # never be switched on by asking
+                tool_always=True,
+            ),
             word("dev reset", "put the dev settings back to the dev defaults", dev_reset, ["dev reset"], exact=True),
             setting(
                 "dev debounce",

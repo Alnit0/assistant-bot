@@ -1,10 +1,10 @@
 # QA run sheet
 
-One pass through the 138 👤 Manual tests in `docs/TESTING.md` that are
+One pass through the 147 👤 Manual tests in `docs/TESTING.md` that are
 ⬜ Untested (as of 2026-10-07). Blocks share setup and each one leaves things
 ready for the next, so run them in order.
 
-**Time:** about 2¾ hours at the keyboard, plus two nights for the backup
+**Time:** about 3 hours at the keyboard, plus two nights for the backup
 tests (block 12).
 
 | Block | What | Dev mode | Tests | Minutes |
@@ -13,16 +13,16 @@ tests (block 12).
 | 2 | Builtin words and chat | off | 12 | 9 |
 | 3 | Reactions at the real 30 seconds | off | 6 | 5 |
 | 4 | Pins | off | 4 | 5 |
-| 5 | Dev mode switch and panel | on and off | 12 | 10 |
+| 5 | Dev mode switch and panel | on and off | 13 | 11 |
 | 6 | Archive, delete, keep and protection | on, debounce 2s | 28 | 27 |
 | 7 | Timers and dev tools | on, speed 1x then 60x | 16 | 16 |
-| 8 | Pomodoro | on, speed 60x then 1x | 13 | 11 |
+| 8 | Pomodoro | on, speed 60x then 1x | 14 | 13 |
 | 9 | Lab tour and restarts | on, then off (restart) | 13 | 27 |
 | 10 | Rest of the lab | off | 8 | 8 |
 | 11 | Phone notifications | off | 5 | 11 |
 | 12 | Overnight backups | off | 2 | 2 nights |
-| 13 | Tool calling (Claude runs things) | off, then on | 16 | 25 |
-| | **Total** | | **138** (F2 is split over blocks 4 and 7, counted in 7) | **about 2¾ hours** |
+| 13 | Tool calling (Claude runs things) | off, then on, then off | 23 | 37 |
+| | **Total** | | **147** (F2 is split over blocks 4 and 7, counted in 7) | **about 3 hours** |
 
 Block 13 needs nothing from the others: run it any time after block 1, and
 before the overnight block if that suits.
@@ -124,6 +124,7 @@ the member list.
 | 10 | `dev expire 1m`, wait a minute | Panel shows the new expiry; then dev mode switches itself off as in step 9, reason "expired" | J14 |
 | 11 | `dev cleanup off`, then `dev debounce 3` | Dev mode switches on; panel shows clean-up off; both of your words and their confirmations stay on screen | J28 (first half) |
 | 12 | `dev cleanup on`, then `dev off`, then `dev off` again | Words are tidied away again as normal. The second `dev off`: "🛠️ Dev mode is already off." for 5 seconds, your word deleted, no ⚠️. Delete what step 11 left behind by hand | J28 (second half), J30 |
+| 13 | `dev mode on`, then `dev mode off` | Same as `dev on` and `dev off`: the panel is posted and pinned, then unpinned and deleted, with the status and log cards as in steps 2 and 9. No "Message handled" card: Claude is not called | J32 |
 
 ## 6. Archive, delete, keep and protection
 
@@ -212,15 +213,16 @@ focus rounds only count in the stats at 1x.
 | 3 | `dev speed 1` | Panel shows 1x | |
 | 4 | `pomo 50/10/30 writing` | Card shows the label "writing" and the 50/10/30 lengths | H10 |
 | 5 | `pomo`; then in #inbox: `pomo` | In #scratch the card is shown again at the bottom and the old one is removed, with an "Already going" note for 5 seconds; your word is deleted and the session is unchanged. In #inbox: a pointer with a link to the card for 5 seconds; the card stays in #scratch | H9, H17 |
-| 6 | Reply to the card: `pause`, `resume`, `+10m`, `stop` | Same as the buttons; `+10m` adds 10 minutes to the current phase; `stop` ends it | H8 |
-| 7 | `pomo 30s/10s` | One card with phase, round, label, live time and Pause, Skip, Stop; listed on the board | H1 |
-| 8 | Wait 30 seconds | @mention alert with Start and Skip; the break doesn't start; card says it is waiting | H2 |
-| 9 | `pomo stats` | Today and this week now include that round | H11 |
-| 10 | Press **Start** | Alert cleared; break running on the card | H3 |
-| 11 | When the break ends, press **Start**; then **Pause**, then **Resume** | Card shows the time left while paused, then carries on | H5 |
-| 12 | Press **Skip** during that focus round; `pomo stats` | Moves to the break; stats unchanged | H6 |
-| 13 | Press **Stop** | "stopped after 1 focus rounds", no buttons; off the board | H7 |
-| 14 | `pomo auto 30s/10s`; let focus end | The break starts by itself; alert has OK and Skip; **OK** clears it. Then **Stop** | H4 |
+| 6 | `pomo 25/5`; press **Cancel**; type it again and press **Confirm** | The card is shown again with one question under it: "**writing** is already going at 50m/10m/30m. Restart it as `25/5`?" (no "Already going" note as well). Cancel leaves the session alone; Confirm stops it and starts "writing" at 25/5 | H21 |
+| 7 | Reply to the card: `pause`, `resume`, `+10m`, `stop` | Same as the buttons; `+10m` adds 10 minutes to the current phase; `stop` ends it | H8 |
+| 8 | `pomo 30s/10s` | One card with phase, round, label, live time and Pause, Skip, Stop; listed on the board | H1 |
+| 9 | Wait 30 seconds | @mention alert with Start and Skip; the break doesn't start; card says it is waiting | H2 |
+| 10 | `pomo stats` | Today and this week now include that round | H11 |
+| 11 | Press **Start** | Alert cleared; break running on the card | H3 |
+| 12 | When the break ends, press **Start**; then **Pause**, then **Resume** | Card shows the time left while paused, then carries on | H5 |
+| 13 | Press **Skip** during that focus round; `pomo stats` | Moves to the break; stats unchanged | H6 |
+| 14 | Press **Stop** | "stopped after 1 focus rounds", no buttons; off the board | H7 |
+| 15 | `pomo auto 30s/10s`; let focus end | The break starts by itself; alert has OK and Skip; **OK** clears it. Then **Stop** | H4 |
 
 Leaves dev mode on at 1x, nothing running.
 
@@ -307,7 +309,7 @@ Two separate nights. Dev mode: off.
 ## 13. Tool calling (Claude runs things)
 
 In #inbox, in plain sentences: none of these is a typed word. Dev mode: off
-until step 12. Claude's wording varies from run to run, so judge what
+until step 12, and off again from step 17. Claude's wording varies from run to run, so judge what
 happens, not the exact words. Cancel or stop anything a step starts.
 
 | # | Do | Expect | Tests |
@@ -328,6 +330,13 @@ happens, not the exact words. Cancel or stop anything a step starts.
 | 14 | `run the lab chart` | It tells you to type `lab chart`; no chart is posted | N25 |
 | 15 | `dev speed 1`, then: `Start six one-minute timers called a, b, c, d, e and f` | Five start; Claude says the sixth was not done. Cancel them | N27 |
 | 16 | `Set a timer for three days` | No timer; Claude explains the 24-hour limit; no ⚠️ on your message; a "Command failed" log card. Then `dev off` | N28 |
+| 17 | `Set a timer for 20 minutes called tea`, then type `timer 5m eggs` and `pomo 50/10/30 writing`. Then: `Show my timers`, and `How long left on my Pomodoro?` | Claude answers from the live state: each timer's label and time left, and the session's phase, round and time left (or that it is waiting for Start). It does not say "check the channel above" | N29 |
+| 18 | Send a dozen short chat messages so the timers are off screen, then, without replying: `Pause the tea timer`, `Unpause the tea timer`, `Pause my pomodoro`, `Carry on with the pomodoro`, and `Pause the laundry timer` | Each acts on the right one (its message or card changes); nothing is said about not finding a message. For laundry it says there is no such timer | N30 |
+| 19 | `Start a Pomodoro timer for 25 minutes`, then `no` | One reply and nothing else new in the channel: it says a session is already going, with its lengths and where it is up to, and offers to restart it as 25/5. The session is unchanged | H19 |
+| 20 | `Start a timer for 3 minutes called testing`, then `Cancel the eggs timer`. Check each against the channel and the log cards | Whenever Claude says something was done, a "🔧 Tool" card shows it ran, and the timer is there (or gone). If a "⚠️ Claude said "done" with nothing run" card appears, the reply you got must still be true | N31 |
+| 21 | Read back over Claude's replies from steps 17 to 20 | No bracketed debug text ("[Tool calls this turn: …]") in any reply; what was called is only on the "Message handled" cards | N32 |
+| 22 | `Switch dev mode on`, then `Turn dev mode off` | Dev mode goes on (panel posted), then off, each at once with no Confirm. Then `speed the timers up 60 times`: it can't, as in step 12 | N33 |
+| 23 | `Pin the message about rent` (step 9's, now more than 20 messages back); if it doesn't look by itself, `Look further back`. Press **Confirm** | It finds "Rent is due on the 1st" and asks first: "Found further back…" with the message quoted, a link, and Confirm / Cancel. Nothing is pinned until Confirm. Then reply `unpin` to it, cancel the timers and stop the session | N34 |
 
 Each sentence costs an API call with the tools attached (see the Tool tokens
 field in step 13), so this block costs a little more than ordinary chat.

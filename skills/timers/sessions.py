@@ -4,14 +4,14 @@ from datetime import datetime, timedelta, timezone
 
 import discord
 
-from core import devmode, scheduler
+from core import confirmations, devmode, scheduler
 from core.config import POMO_AUTO_CONTINUE, TIMEZONE, now_nz
 from core.context import Context
 from core.discord_utils import report_interaction_error
 from core.errors import UserError
 from core.lifecycle import MessageClass
 from core.scheduler import utc_now
-from skills.timers import board, store
+from skills.timers import board, status, store
 from skills.timers.board import stamp
 from skills.timers.common import (
     PING,
@@ -25,11 +25,13 @@ from skills.timers.common import (
 )
 from skills.timers.durations import DurationError, format_duration
 from skills.timers.pomodoro import (
+    DEFAULT_LABEL,
     FOCUS,
     PHASE_NAMES,
     POINT,
     FocusTotals,
     counts_as_focus,
+    different_lengths,
     next_phase,
     parse_session,
     phase_length,
@@ -189,13 +191,26 @@ async def on_due(job: scheduler.Job) -> None:
 # ---------------------------------------------------------------------------
 # pomo [...]
 # ---------------------------------------------------------------------------
-async def show_again(ctx: Context, session: store.Session) -> str:
+async def show_again(ctx: Context, session: store.Session, restart=None, asked: str | None = None) -> str:
     """`pomo` while a session is going: bring its card to the bottom of its channel,
-    or point to it from another channel. Nothing about the session changes."""
+    or point to it from another channel. Nothing about the session changes.
+
+    If other lengths were asked for (`asked`, as typed), the note under the
+    card becomes a question: Confirm runs `restart`, which stops this session
+    and starts one with those lengths."""
+
+    async def offer() -> None:
+        going = status.lengths_text(session)
+        await confirmations.ask(
+            ctx.channel, ctx.user, f"🍅 **{session.label}** is already going at {going}. Restart it as `{asked}`?", restart
+        )
+
     if where_to_show(session.channel_id, ctx.channel_id) == POINT:
         guild_id = getattr(getattr(ctx.channel, "guild", None), "id", "@me")
         link = f"https://discord.com/channels/{guild_id}/{session.channel_id}/{session.message_id}"
         await ctx.confirm(f"🍅 **{session.label}** is already going in <#{session.channel_id}>: {link}")
+        if asked:
+            await offer()
         return f"pomodoro {session.id} already going; pointed to its card"
 
     old_card = session.message_id
@@ -204,8 +219,28 @@ async def show_again(ctx: Context, session: store.Session) -> str:
     await store.save_session(session)
     # The old card's information is all on the new one
     await delete_message(session.channel_id, old_card, MessageClass.LIVE)
+    if asked:
+        await offer()
+        return f"pomodoro {session.id} already going; card shown again, and asked whether to restart as {asked}"
     await ctx.note("-# Already going: here it is again. Stop it first to start a new one.")
     return f"pomodoro {session.id} already going; card shown again"
+
+
+def already_going(session: store.Session, asked: str | None, here: int | None) -> str:
+    """What Claude is told when it asks for a session while one is going. Nothing
+    is posted: it has the facts and says them once."""
+    text = (
+        "Not started: a Pomodoro session is already going, and it has been left as it is. "
+        f"{status.session_text(session, utc_now(), here=here, nominal=devmode.nominal_seconds)}. "
+        "Nothing was posted, so tell the user this yourself, in a line."
+    )
+    if asked:
+        text += (
+            f" The user asked for {asked}, which is not what this session has: offer to restart it "
+            f"with those lengths. Only if they say yes, call pomodoro_control with action stop for "
+            f"{status.ref(status.SESSION, session.id)}, then pomo again."
+        )
+    return text
 
 
 async def start(ctx: Context) -> str:
@@ -215,9 +250,26 @@ async def start(ctx: Context) -> str:
         raise UserError(f"{error} {USAGE}")
     running = await store.active_sessions(user_id=ctx.user.id)
     if running:
-        # One session at a time, and asking again isn't a mistake: show the one there is
-        return await show_again(ctx, running[0])
+        session = running[0]
+        asked = different_lengths(ctx.args, session.plan)
+        if ctx.via_tool:
+            # Claude is answering: one reply from it, not a second card and a note as well
+            raise UserError(already_going(session, asked, ctx.channel_id))
 
+        async def restart() -> str:
+            # The same session under new lengths: it keeps its label unless a new one was typed
+            stopped = await store.get_session(session.id)
+            if stopped is not None and stopped.active:
+                await stop(stopped)
+            await _start_new(ctx, plan, session.label if label == DEFAULT_LABEL else label, auto)
+            return f"🍅 Restarted as {asked}"
+
+        # One session at a time, and asking again isn't a mistake: show the one there is
+        return await show_again(ctx, session, restart, asked)
+    return await _start_new(ctx, plan, label, auto)
+
+
+async def _start_new(ctx: Context, plan, label: str, auto: bool | None) -> str:
     session = await store.add_session(
         store.Session(
             user_id=ctx.user.id,
