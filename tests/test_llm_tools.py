@@ -1,0 +1,272 @@
+"""The Claude loop, with a scripted stand-in for the API: nothing here goes near the network."""
+import asyncio
+import copy
+from types import SimpleNamespace
+
+import pytest
+
+from core import llm
+from core.config import MAX_TOOL_CALLS
+
+CHANNEL = 100
+TOOLS = [{"name": "timer", "description": "start a timer", "input_schema": {"type": "object"}}]
+
+
+def text(words: str):
+    return SimpleNamespace(type="text", text=words)
+
+
+def call(name: str, call_id: str = "t1", **value):
+    return SimpleNamespace(type="tool_use", id=call_id, name=name, input=value)
+
+
+def response(*blocks, stop="end_turn", tokens=(100, 20), cache=(0, 0)):
+    return SimpleNamespace(
+        content=list(blocks),
+        stop_reason=stop,
+        usage=SimpleNamespace(
+            input_tokens=tokens[0],
+            output_tokens=tokens[1],
+            cache_read_input_tokens=cache[0],
+            cache_creation_input_tokens=cache[1],
+        ),
+    )
+
+
+class FakeClaude:
+    """Gives the scripted responses in turn, and remembers what it was sent."""
+
+    def __init__(self, *responses):
+        self.responses = list(responses)
+        self.requests = []
+        self.messages = SimpleNamespace(create=self.create)
+
+    async def create(self, **request):
+        # A copy: the loop goes on adding to the same list
+        self.requests.append({**request, "messages": copy.deepcopy(request["messages"])})
+        return self.responses.pop(0) if len(self.responses) > 1 else self.responses[0]
+
+
+@pytest.fixture
+def claude(monkeypatch):
+    monkeypatch.setattr(llm, "_histories", {})
+
+    def install(*responses) -> FakeClaude:
+        fake = FakeClaude(*responses)
+        monkeypatch.setattr(llm, "claude", fake)
+        return fake
+
+    return install
+
+
+class Runner:
+    """Stands in for the tools: answers every call, and remembers them."""
+
+    def __init__(self, result=("started a 5m timer", False)):
+        self.result = result
+        self.calls = []
+
+    async def __call__(self, name, value):
+        self.calls.append((name, value))
+        if isinstance(self.result, Exception):
+            raise self.result
+        return self.result
+
+
+def ask(words="Set a timer for 5 minutes", runner=None, tools=TOOLS):
+    return asyncio.run(llm.ask_claude(words, "", CHANNEL, tools=tools, run_tool=runner))
+
+
+# --- answering without a tool ------------------------------------------------
+def test_a_plain_answer_calls_nothing(claude):
+    fake, runner = claude(response(text("It's sunny."))), Runner()
+    result = ask("How's the weather?", runner)
+    assert result.reply == "It's sunny." and result.tool_calls == [] and runner.calls == []
+    assert len(fake.requests) == 1
+    assert fake.requests[0]["tools"] == TOOLS
+
+
+def test_with_no_tools_none_are_sent(claude):
+    fake = claude(response(text("Hello.")))
+    assert ask("Hi", None, tools=None).reply == "Hello."
+    assert "tools" not in fake.requests[0]
+    assert "You have no tools yet." in fake.requests[0]["system"][0]["text"]
+
+
+# --- calling tools -----------------------------------------------------------
+def test_a_tool_call_is_run_and_its_result_goes_back(claude):
+    fake = claude(
+        response(text("On it."), call("timer", duration="5m"), stop="tool_use"),
+        response(text("Timer started.")),
+    )
+    runner = Runner()
+    result = ask(runner=runner)
+
+    assert runner.calls == [("timer", {"duration": "5m"})]
+    assert result.reply == "Timer started."
+    assert [(done.name, done.result, done.is_error) for done in result.tool_calls] == [
+        ("timer", "started a 5m timer", False)
+    ]
+    second = fake.requests[1]["messages"]
+    assert second[-2]["role"] == "assistant", "Claude's own turn, tool call included, is sent back as it came"
+    assert second[-1] == {
+        "role": "user",
+        "content": [{"type": "tool_result", "tool_use_id": "t1", "content": "started a 5m timer"}],
+    }
+
+
+def test_several_calls_in_one_turn_are_answered_in_one_message(claude):
+    fake = claude(
+        response(call("timer", "t1", duration="5m"), call("pomo", "t2"), stop="tool_use"),
+        response(text("Both started.")),
+    )
+    runner = Runner()
+    result = ask(runner=runner)
+    assert [name for name, _ in runner.calls] == ["timer", "pomo"]
+    results = fake.requests[1]["messages"][-1]["content"]
+    assert [entry["tool_use_id"] for entry in results] == ["t1", "t2"]
+    assert len(result.tool_calls) == 2
+
+
+def test_a_failure_goes_back_to_claude_to_explain(claude):
+    fake = claude(response(call("timer", duration="banana"), stop="tool_use"), response(text("That isn't a length of time.")))
+    result = ask(runner=Runner(("I can't read “banana” as a length of time.", True)))
+    assert fake.requests[1]["messages"][-1]["content"][0] == {
+        "type": "tool_result",
+        "tool_use_id": "t1",
+        "content": "I can't read “banana” as a length of time.",
+        "is_error": True,
+    }
+    assert result.reply == "That isn't a length of time."
+    assert result.tool_calls[0].is_error
+
+
+def test_a_tool_that_blows_up_is_an_error_result_not_a_crash(claude):
+    fake = claude(response(call("timer"), stop="tool_use"), response(text("Something went wrong.")))
+    result = ask(runner=Runner(RuntimeError("boom")))
+    sent = fake.requests[1]["messages"][-1]["content"][0]
+    assert sent["is_error"] is True and "boom" in sent["content"]
+    assert result.reply == "Something went wrong."
+
+
+def test_at_most_five_tool_calls_run_for_one_message(claude):
+    assert MAX_TOOL_CALLS == 5
+    greedy = response(call("timer", "a"), call("timer", "b"), call("timer", "c"), stop="tool_use")
+    fake = claude(greedy, greedy, response(text("That's all I can do in one go.")))
+    runner = Runner()
+    result = ask(runner=runner)
+
+    assert len(runner.calls) == 5 and len(result.tool_calls) == 5
+    refused = fake.requests[2]["messages"][-1]["content"][-1]
+    assert refused["is_error"] is True and "at most 5 tool calls" in refused["content"]
+    assert result.reply == "That's all I can do in one go."
+
+
+def test_a_claude_that_never_stops_calling_is_stopped(claude):
+    fake = claude(response(call("timer"), stop="tool_use"))  # the same answer, for ever
+    runner = Runner()
+    result = ask(runner=runner)
+    assert len(runner.calls) == 5
+    assert len(fake.requests) == MAX_TOOL_CALLS + 2
+    assert result.reply.startswith("I ran out of steps")
+
+
+@pytest.mark.parametrize("stop", ["max_tokens", "refusal"])
+def test_a_reply_that_was_cut_short_runs_nothing(claude, stop):
+    claude(response(text("I'll just"), call("timer", duration="5"), stop=stop))
+    runner = Runner()
+    result = ask(runner=runner)
+    assert runner.calls == [] and result.tool_calls == []
+    assert result.reply == "I'll just"
+
+
+def test_a_silent_finish_after_a_tool_still_says_something(claude):
+    claude(response(call("timer"), stop="tool_use"), response())
+    assert ask(runner=Runner()).reply == "✅ Done."
+
+
+# --- what is counted and remembered ------------------------------------------
+def test_usage_is_added_up_over_the_rounds(claude):
+    claude(
+        response(call("timer"), stop="tool_use", tokens=(100, 20), cache=(0, 3000)),
+        response(text("Done."), tokens=(150, 10), cache=(3000, 0)),
+    )
+    result = ask(runner=Runner())
+    assert (result.input_tokens, result.output_tokens) == (250, 30)
+    assert (result.cache_read_tokens, result.cache_write_tokens) == (3000, 3000)
+
+
+def test_the_history_stays_plain_text(claude):
+    claude(response(call("timer", duration="5m"), stop="tool_use"), response(text("Timer started.")))
+    ask(runner=Runner())
+    history = llm.history_for(CHANNEL)
+    assert [entry["role"] for entry in history] == ["user", "assistant"]
+    assert all(isinstance(entry["content"], str) for entry in history), "no tool blocks to be split by trimming"
+    assert history[0]["content"] == "Set a timer for 5 minutes"
+    assert history[1]["content"].startswith("Timer started.\n[Tool calls this turn: timer (result: started a 5m timer)")
+
+
+def test_the_next_message_carries_the_history(claude):
+    fake = claude(response(text("Hello.")))
+    ask("Hi", Runner())
+    ask("And again", Runner())
+    assert [entry["content"] for entry in fake.requests[1]["messages"]] == ["Hi", "Hello.", "And again"]
+
+
+def test_a_failed_request_leaves_the_history_alone(claude, monkeypatch):
+    async def broken(**request):
+        raise RuntimeError("no connection")
+
+    monkeypatch.setattr(llm, "claude", SimpleNamespace(messages=SimpleNamespace(create=broken)))
+    with pytest.raises(RuntimeError):
+        ask("Hi", Runner())
+    assert llm.history_for(CHANNEL) == []
+
+
+def test_an_agreed_proposal_is_remembered_without_asking_claude(claude):
+    llm.remember(CHANNEL, "ok", "[The user agreed. `timer 5m`: done]")
+    assert [entry["role"] for entry in llm.history_for(CHANNEL)] == ["user", "assistant"]
+
+
+# --- caching and cost --------------------------------------------------------
+def test_the_stable_prompt_is_cached_and_the_time_is_kept_out_of_it(claude):
+    fake = claude(response(text("Hello.")))
+    ask("Hi", Runner())
+    stable, time_line = fake.requests[0]["system"]
+    assert stable["cache_control"] == {"type": "ephemeral"}
+    assert "current date and time" not in stable["text"], "it changes every minute and would spoil the cache"
+    assert "cache_control" not in time_line and "current date and time in Auckland" in time_line["text"]
+
+
+def test_the_stable_prompt_does_not_change_between_messages():
+    assert llm.build_system_blocks("- stats", True)[0] == llm.build_system_blocks("- stats", True)[0]
+
+
+def test_cached_tokens_are_priced_differently():
+    plain = llm.estimate_cost("claude-haiku-4-5", 1_000_000, 0)
+    assert llm.estimate_cost("claude-haiku-4-5", 0, 0, cache_read_tokens=1_000_000) == pytest.approx(plain * 0.1)
+    assert llm.estimate_cost("claude-haiku-4-5", 0, 0, cache_write_tokens=1_000_000) == pytest.approx(plain * 1.25)
+
+
+def test_tool_tokens_are_counted_once_per_set_of_tools(monkeypatch):
+    asked = []
+
+    async def count_tokens(**request):
+        asked.append("tools" in request)
+        return SimpleNamespace(input_tokens=900 if "tools" in request else 10)
+
+    monkeypatch.setattr(llm, "claude", SimpleNamespace(messages=SimpleNamespace(count_tokens=count_tokens)))
+    monkeypatch.setattr(llm, "_tool_tokens", {})
+    assert asyncio.run(llm.count_tool_tokens(TOOLS)) == 890
+    assert asyncio.run(llm.count_tool_tokens(TOOLS)) == 890
+    assert asked == [True, False], "the second time it is remembered"
+    assert asyncio.run(llm.count_tool_tokens([])) == 0
+
+
+def test_tool_tokens_that_cannot_be_counted_are_unknown(monkeypatch):
+    async def count_tokens(**request):
+        raise RuntimeError("offline")
+
+    monkeypatch.setattr(llm, "claude", SimpleNamespace(messages=SimpleNamespace(count_tokens=count_tokens)))
+    monkeypatch.setattr(llm, "_tool_tokens", {})
+    assert asyncio.run(llm.count_tool_tokens(TOOLS)) is None

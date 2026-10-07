@@ -18,6 +18,23 @@ def _as_list(value) -> list[str]:
     return [value] if isinstance(value, str) else list(value)
 
 
+@dataclass(frozen=True)
+class Param:
+    """One argument of a word or reply action, as Claude is told about it.
+
+    Claude can run registered actions as tools (core/tools.py), and a tool
+    needs to know its arguments: list them in the order they are typed. Each is
+    a string; one that may be left out is `required=False`. The values are
+    turned back into the words after the command, so the handler reads
+    `ctx.args` exactly as it does for a typed word.
+    """
+
+    name: str  # snake_case, e.g. "duration"
+    description: str  # what to put here, with an example
+    choices: tuple[str, ...] | list[str] = ()  # the only values allowed, if it is a fixed set
+    required: bool = True
+
+
 # ---------------------------------------------------------------------------
 # The three things a user can do to reach a skill. Each describes itself, so
 # `help` and Claude's knowledge of what the bot can do are generated from
@@ -52,11 +69,23 @@ class Keyword:
     exact: bool = False  # never match by typo
     accepts: Callable[[list[str]], bool] | None = None  # say no to arguments that aren't ours
     keep_command: bool = False  # leave the user's message in place after it works
+    # For Claude, which can run this as a tool. A word that takes arguments must
+    # list them (the registry reports one that doesn't)
+    params: list[Param] | tuple = ()
+    tool: bool = True  # False keeps this word from Claude; typing it still works
+    tool_priority: int = 0  # higher is likelier to be used, and gets a strict schema first
 
     def __post_init__(self):
         self.words = _as_list(self.words)
         self.examples = list(self.examples)
+        self.params = list(self.params)
         self.permission = self.permission or f"keyword:{self.name}"
+
+    @property
+    def destructive(self) -> bool:
+        """Destructive words are the exact ones. Claude may only run one after the
+        user presses Confirm."""
+        return self.exact
 
     @property
     def name(self) -> str:
@@ -96,11 +125,23 @@ class ReplyAction:
     # with the reason. Asked before the handler; the user's reply gets ⚠️ and the
     # reason is shown briefly. Must be quick and change nothing
     validate: Callable[[discord.Message], None] | None = None
+    # For Claude (see Keyword): its arguments, whether it is offered, and how likely
+    params: list[Param] | tuple = ()
+    tool: bool = True
+    tool_priority: int = 0
+    # How to take it back: `async (ctx, message) -> str` (what to show). Set it when
+    # the action can be reversed; Claude's confirmation then carries an Undo button
+    undo: Callable[[Context, discord.Message], Awaitable[str]] | None = None
 
     def __post_init__(self):
         self.words = _as_list(self.words)
         self.examples = list(self.examples)
+        self.params = list(self.params)
         self.permission = self.permission or f"reply:{self.name}"
+
+    @property
+    def destructive(self) -> bool:
+        return self.exact
 
     @property
     def name(self) -> str:
@@ -155,7 +196,8 @@ class Reaction:
 
 @dataclass(frozen=True)
 class Tool:
-    """A tool Claude can call. Not used yet: wired up in the tool-calling stage."""
+    """A bespoke tool for Claude that is not a word. Not used yet: every tool so
+    far is generated from a Keyword or ReplyAction (see Param)."""
 
     definition: dict
     handler: Callable[..., Awaitable[str]]
@@ -169,6 +211,14 @@ class Skill:
 
     name: str = ""
     description: str = ""
+    # False for a skill whose words are never offered to Claude as tools (the lab)
+    exposes_tools: bool = True
+
+    def tools_available(self, channel_name: str | None) -> bool:
+        """Whether this skill's words are offered to Claude right now, in this
+        channel (our name for it, or None). Channel and permission are checked
+        separately; override this for anything else, as dev does."""
+        return self.exposes_tools
 
     def keywords(self) -> list[Keyword]:
         """Words and phrases the user can type."""
@@ -183,7 +233,7 @@ class Skill:
         return []
 
     def tools(self) -> list[Tool]:
-        """Claude tool definitions and their handlers."""
+        """Bespoke Claude tools. Not used yet (see Tool)."""
         return []
 
     def job_handlers(self) -> dict[str, Callable[[Job], Awaitable[None]]]:

@@ -109,3 +109,26 @@ def test_the_assistant_is_named_from_the_setting(monkeypatch):
 def test_the_system_prompt_asks_for_uk_spelling_and_short_replies():
     prompt = llm.build_system_prompt()
     assert "UK spelling" in prompt and "short" in prompt
+
+
+# --- what Claude is told when it has tools ------------------------------------
+def test_with_tools_claude_is_told_how_to_use_them():
+    prompt = llm.build_system_prompt("- stats: totals", has_tools=True)
+    assert "You have no tools yet." not in prompt
+    for rule in (
+        "decide whether to simply answer, call one or more tools, ask a clarifying question, or propose",
+        "call it straight away with propose set to false",
+        "ask a short question instead of guessing",
+        "Never say that something has been done unless a tool result says so",
+        "Never claim or offer to do something you have no tool for",
+        "If a tool fails, explain why",
+        "at most 5 tool calls",
+        "Never guess between them",
+    ):
+        assert rule in prompt, rule
+    assert "- stats: totals" in prompt and "Reactions are theirs alone" in prompt
+
+
+def test_the_time_comes_last_so_the_rest_can_be_cached():
+    prompt = llm.build_system_prompt("- stats: totals", has_tools=True)
+    assert prompt.splitlines()[-1].startswith("The current date and time in Auckland is ")

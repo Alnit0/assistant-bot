@@ -1,7 +1,7 @@
 from core.context import Context
 from core.llm import clear_history, format_cost
 from skills import registry
-from skills.base import ANY, Keyword, Skill
+from skills.base import ANY, Keyword, Param, Skill
 from skills.builtin.views import TestButtons
 
 # A skill with more words than this is summarised in the overview
@@ -145,6 +145,10 @@ class BuiltinSkill(Skill):
                 takes_args=True,
                 usage="[skill or word]",
                 accepts=_help_accepts,
+                params=[
+                    Param("topic", "A skill or word to explain, e.g. timers or pomo. Empty shows the whole list.", required=False)
+                ],
+                tool_priority=5,
             ),
         ]
 

@@ -108,6 +108,14 @@ def _db_get(conn: sqlite3.Connection, item_id: int) -> Item | None:
     return Item(*row[:9], from_db(row[9])) if row else None
 
 
+def _db_by_original(conn: sqlite3.Connection, original_message_id: int) -> Item | None:
+    row = conn.execute(
+        "SELECT id FROM archive_items WHERE original_message_id = ? AND restored_at IS NULL ORDER BY id DESC LIMIT 1",
+        (original_message_id,),
+    ).fetchone()
+    return _db_get(conn, row[0]) if row else None
+
+
 def _db_describe(conn: sqlite3.Connection, message_id: int) -> str | None:
     row = conn.execute(
         """
@@ -172,6 +180,11 @@ async def mark_restored(item_id: int) -> None:
 async def get(item_id: int) -> Item | None:
     """A record that can still be restored, or None (unknown, or already restored)."""
     return await database.run(_db_get, item_id)
+
+
+async def by_original(original_message_id: int) -> Item | None:
+    """The record for a message that was archived and can still be restored, by the original's id."""
+    return await database.run(_db_by_original, original_message_id)
 
 
 async def describe_record(message_id: int) -> str | None:

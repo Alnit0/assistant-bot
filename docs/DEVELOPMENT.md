@@ -134,9 +134,31 @@ the channel you are in; `help <skill or word>` gives details.
 - **Reactions made while the bot is off are not seen.**
 - **"X pinned a message" notices are deleted** wherever they appear.
 - **Claude knows the list too.** The same list `help` shows is added to its
-  instructions, so "what can you do?" gets an accurate answer. Claude can't
-  run them itself and has no tools yet: it is told never to offer to do
-  something, and to say what to type instead.
+  instructions, so "what can you do?" gets an accurate answer.
+- **Claude can run them for you.** In #inbox, ask in plain words ("set a
+  timer for 5 minutes", "start a 50/10 pomodoro for writing") and it runs
+  the same action the typed word does. Typed words still run directly and
+  never go to Claude.
+  - **A clear request runs at once.** If it isn't sure what you want it
+    asks. If it is only suggesting something, it says so and waits: reply
+    `ok` (or `yes`, `do it`) within 2 minutes to run it, `no` to drop it.
+  - **Destructive actions always ask** with Confirm and Cancel (`reset`,
+    `delete`, `dev off` and the other words that must be spelled exactly).
+  - **Acting on a message:** reply to it ("file this away") and that
+    message is used. Without a reply, describe it ("pin the message about
+    rent") and Claude looks through the last 20 messages of the channel;
+    the confirmation then quotes the message with a link, and has an
+    **Undo** button for 30 seconds where the action can be taken back
+    (pin, unpin, archive, pause, resume). If more than one message fits you
+    get a button for each instead of a guess.
+  - **Limits:** at most 5 actions per message; the lab is never available
+    to it, and dev tools only while dev mode is on; reactions are yours to
+    add. It is told never to claim or offer something it has no tool for.
+  - **What it costs:** the tools are sent with every chat message. The
+    "💬 Message handled" card in #bot-log shows which were sent, about how
+    many tokens they add, what the cache saved, and each call's outcome.
+    Every call also gets its own "🔧 Tool: …" card and a `tool` row in
+    `message_log`.
 - **The assistant's name** is `ASSISTANT_NAME` in `.env` (default Hive). It
   is what Claude calls itself and what the archive webhook and lab messages
   show. Restart the bot after changing it.
@@ -302,7 +324,28 @@ Things to know:
   bare copy of the message, and its other buttons have no handlers. Build
   the full view again and send that (see `build_panel` in
   `skills/lab/buttons.py`).
-- **`tools()`** exists on the base class but is not used yet.
+- **Every word and reply action is also a tool for Claude**, generated from
+  the registration (`registry.tools_for`, `core/tools.py`). To make one work
+  well as a tool:
+  - Write the `description` so it says what the action does; it is what
+    Claude reads.
+  - A word with `takes_args=True` must list its arguments as `params`, in
+    the order they are typed: `Param("duration", "How long, e.g. 25m.")`,
+    with `required=False` for one that can be left out and `choices=(...)`
+    for a fixed set. The registry reports a word that doesn't. The values
+    come back to the handler as `ctx.args`, exactly as if typed, so there
+    is nothing else to write.
+  - `exact=True` makes it destructive: Claude can only run it after you
+    press Confirm.
+  - Give a reversible reply action an `undo(ctx, message)` that returns the
+    text to show; Claude's confirmation then has an Undo button.
+  - `tool=False` keeps a registration from Claude; `tool_priority` decides
+    which get a strict schema if there are ever more than 20 with
+    arguments; override `Skill.tools_available` to offer a whole skill only
+    sometimes (as `dev` does), or set `exposes_tools = False` (as `lab`
+    does).
+- **`tools()`** on the base class, for a tool that isn't a word, is still
+  unused.
 - **Turning skills on and off:** `ENABLED_SKILLS=builtin,greeter` in `.env`.
   Leave it empty to load everything. A disabled skill keeps its data, and
   its words, slash commands and help entries disappear.

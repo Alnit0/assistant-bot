@@ -3,7 +3,7 @@ import discord
 from core.context import Context
 from core.errors import UserError
 from core.lifecycle import MessageClass
-from skills.base import ANY, Keyword, ReplyAction, Skill
+from skills.base import ANY, Keyword, Param, ReplyAction, Skill
 from skills.timers import sessions, store, timers
 from skills.timers.board import session_line, timer_line
 from skills.timers.common import PERMISSION
@@ -69,6 +69,17 @@ async def resume_reply(ctx: Context, target: discord.Message) -> None:
     await ctx.confirm(await module.resume(record))
 
 
+async def undo_pause(ctx: Context, target: discord.Message) -> str:
+    """Take back a pause (the Undo button on Claude's confirmation): set it going again."""
+    module, record = await _target(target)
+    return await module.resume(record)
+
+
+async def undo_resume(ctx: Context, target: discord.Message) -> str:
+    module, record = await _target(target)
+    return await module.pause(record)
+
+
 async def extend_reply(ctx: Context, target: discord.Message) -> None:
     try:
         seconds = parse_duration(" ".join(ctx.args))
@@ -103,6 +114,11 @@ class TimersSkill(Skill):
                 permission=PERMISSION,
                 takes_args=True,
                 usage="<duration> [label]",
+                params=[
+                    Param("duration", "How long, e.g. 25m, 90s, 1h30. Leave empty to list the timers instead.", required=False),
+                    Param("label", "A short name for the timer, e.g. laundry.", required=False),
+                ],
+                tool_priority=10,
             ),
             Keyword(
                 "timers",
@@ -121,6 +137,22 @@ class TimersSkill(Skill):
                 permission=PERMISSION,
                 takes_args=True,
                 usage="[focus/break[/long break]] [auto|manual] [label]",
+                params=[
+                    Param(
+                        "lengths",
+                        "Focus and break lengths in minutes as focus/break or focus/break/long break, "
+                        "e.g. 50/10 or 50/10/30. Empty means 25/5.",
+                        required=False,
+                    ),
+                    Param(
+                        "mode",
+                        "auto starts each phase by itself; manual waits for Start. Empty uses the default.",
+                        choices=("auto", "manual"),
+                        required=False,
+                    ),
+                    Param("label", "What the session is for, e.g. writing.", required=False),
+                ],
+                tool_priority=9,
             ),
             Keyword(
                 ["pomo stats", "pomodoro stats"],
@@ -151,6 +183,7 @@ class TimersSkill(Skill):
                 examples=["pause"],
                 permission=PERMISSION,
                 applies_to=_is_ours,
+                undo=undo_pause,
             ),
             ReplyAction(
                 "resume",
@@ -159,6 +192,7 @@ class TimersSkill(Skill):
                 examples=["resume"],
                 permission=PERMISSION,
                 applies_to=_is_ours,
+                undo=undo_resume,
             ),
             ReplyAction(
                 ["ok", "done", "dismiss", "got it"],
@@ -178,6 +212,8 @@ class TimersSkill(Skill):
                 usage="<duration>",
                 pattern=r"\+\s*(.+)",
                 applies_to=_is_ours,
+                params=[Param("duration", "How much time to add, e.g. 10m.")],
+                tool_priority=8,
             ),
         ]
 

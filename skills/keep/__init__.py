@@ -40,6 +40,17 @@ async def unpin_reply(ctx: Context, target: discord.Message) -> str:
     return f"unpinned a message in <#{target.channel.id}>"
 
 
+# Taking them back (the Undo button on a confirmation of Claude's)
+async def undo_pin(ctx: Context, target: discord.Message) -> str:
+    await pins.set_pinned(target.channel.id, target.id, False, "Pin undone")
+    return f"{KEEP_EMOJI} Unpinned again"
+
+
+async def undo_unpin(ctx: Context, target: discord.Message) -> str:
+    await pins.set_pinned(target.channel.id, target.id, True, "Unpin undone")
+    return f"{KEEP_EMOJI} Pinned again"
+
+
 class KeepSkill(Skill):
     """Keeping messages: pinned, and safe from clean-ups, archive and delete."""
 
@@ -53,12 +64,14 @@ class KeepSkill(Skill):
                 "pin that message at once: clean-ups leave it alone, and archiving or deleting it asks first",
                 pin_reply,
                 examples=["pin", "pin this", "keep"],
+                undo=undo_pin,
             ),
             ReplyAction(
                 ["unpin", "unkeep"],
                 "unpin that message, so it is no longer protected",
                 unpin_reply,
                 examples=["unpin"],
+                undo=undo_unpin,
             ),
         ]
 

@@ -6,6 +6,18 @@ backfilled from the git log.
 
 ## 2026-10-07
 
+- **Claude can now do things.** Ask in plain words ("set a timer for 5
+  minutes", "file that away") and it runs the same actions you can type:
+  every word and reply action is offered to it as a tool, filtered by
+  channel and permission (never the lab; dev tools only in dev mode).
+  Typed words still run directly, without Claude.
+- It acts at once on a clear request, asks when unsure, and when it is
+  only suggesting it waits for your `ok` (2 minutes). Destructive actions
+  always ask with Confirm / Cancel. A message you describe rather than
+  reply to is shown quoted, with Undo where possible, and if several fit
+  you pick with buttons. At most 5 tool calls per message.
+- Every tool call is logged, and the "Message handled" card shows the
+  tools sent, their token cost, cache use and each call's outcome.
 - **QA findings.** Every message now has a lifecycle class (Kept, Live,
   Consumed, Transient, Alert, Protected) and one policy decides what is
   deleted; `dev cleanup off` stops all automatic deletion and `dev inspect`

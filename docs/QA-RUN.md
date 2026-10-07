@@ -1,10 +1,10 @@
 # QA run sheet
 
-One pass through the 122 👤 Manual tests in `docs/TESTING.md` that are
+One pass through the 138 👤 Manual tests in `docs/TESTING.md` that are
 ⬜ Untested (as of 2026-10-07). Blocks share setup and each one leaves things
 ready for the next, so run them in order.
 
-**Time:** about 2¼ hours at the keyboard, plus two nights for the backup
+**Time:** about 2¾ hours at the keyboard, plus two nights for the backup
 tests (block 12).
 
 | Block | What | Dev mode | Tests | Minutes |
@@ -21,7 +21,11 @@ tests (block 12).
 | 10 | Rest of the lab | off | 8 | 8 |
 | 11 | Phone notifications | off | 5 | 11 |
 | 12 | Overnight backups | off | 2 | 2 nights |
-| | **Total** | | **122** (F2 is split over blocks 4 and 7, counted in 7) | **about 2¼ hours** |
+| 13 | Tool calling (Claude runs things) | off, then on | 16 | 25 |
+| | **Total** | | **138** (F2 is split over blocks 4 and 7, counted in 7) | **about 2¾ hours** |
+
+Block 13 needs nothing from the others: run it any time after block 1, and
+before the overnight block if that suits.
 
 ## Before you start
 
@@ -71,7 +75,7 @@ Dev mode: off. In #inbox unless it says otherwise.
 | 9 | `timer banana` | Your message stays and gets ⚠️; the reason is only on the log card | K4 |
 | 10 | Reply `delete` to that `timer banana` message | It and your reply are deleted; "🗑️ Deleted" for 5 seconds | E1 |
 | 11 | In #scratch: `ping` | Nothing: no reply, no Claude. **Leave the message there** (target for block 6) | A12 |
-| 12 | Back in #inbox: `Set a timer for 5 minutes` | Claude doesn't claim or offer to do it: it tells you to type `timer 5m`. No timer starts | A17 |
+| 12 | Back in #inbox: `Set a timer for 5 minutes` | A 5-minute timer starts, exactly as `timer 5m` would; your message stays; Claude adds one short line. A "🔧 Tool: timer" log card as well as "Message handled". Reply `cancel` to the timer | A17 |
 
 ## 3. Reactions at the real 30 seconds
 
@@ -299,6 +303,34 @@ Two separate nights. Dev mode: off.
 |---|---|---|---|
 | 1 | Night one: leave the bot running past 3am NZ. Check in the morning | "💾 Backup saved" log card; the newest 7 `assistant-*.db` kept in `data\backups\` | K5 |
 | 2 | Night two: stop the bot before 3am, start it in the morning | The missed backup runs at startup, with its own log card | K6 |
+
+## 13. Tool calling (Claude runs things)
+
+In #inbox, in plain sentences: none of these is a typed word. Dev mode: off
+until step 12. Claude's wording varies from run to run, so judge what
+happens, not the exact words. Cancel or stop anything a step starts.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | `timer 10s` (the typed word) | Runs as always: your word is deleted, and there is no "Message handled" card, because Claude was not called. Dismiss the alert | N14 |
+| 2 | `Set a timer` | Claude asks how long, and starts nothing | N15 |
+| 3 | `Email my landlord about the rent` | It says it can't do that; it does not claim or offer to. Nothing runs | A18 |
+| 4 | `Would a pomodoro help? Suggest one but wait for my ok`, then `ok` | It proposes and nothing starts; after `ok` a session starts. No "Message handled" card for the `ok`. Stop the session | N16 |
+| 5 | Ask the same again, then `no` | "👌 Left it: …" for 5 seconds; nothing starts | N17 |
+| 6 | Ask the same again, wait over 2 minutes, then `ok` | Nothing starts: the `ok` goes to Claude as ordinary chat | N18 |
+| 7 | `Clear our conversation`; press **Cancel**; ask again and press **Confirm** | A question naming `reset` with Confirm and Cancel, nothing cleared yet; Cancel removes it; Confirm clears the memory and the question shows "✅ Done" | N19 |
+| 8 | Type `file me away`, then reply to it: `can you file this away for me?` | That message is archived, as reply `archive` does, with the usual "📦 Archived: link" for 5 seconds | N20 |
+| 9 | Type `Rent is due on the 1st`. Then, without replying: `pin the message about rent`. Press **Undo** | It is pinned; a confirmation quotes it with a link and an Undo button for 30 seconds; Undo unpins it | N21 |
+| 10 | Without replying: `delete the message about rent`; press **Cancel** | Confirm / Cancel question that quotes the message; nothing deleted | N23 |
+| 11 | Type `Buy oat milk`, then `Milk for the neighbours`. Then: `archive the note about milk` | "Which message should I `archive`?" with both quoted and numbered buttons, plus "None of these"; pressing **1** archives that one only | N22 |
+| 12 | `speed the timers up 60 times`. Then `dev on`, and ask again | First it says it can't (or to type `dev speed 60`) and nothing changes. With dev mode on it runs and the panel shows 60x | N24 |
+| 13 | Look at the "Message handled" card for that last message | Fields for Tools sent (count, how many strict, names), Tool tokens, Cache (read / written) and Tool calls with each outcome | N26 |
+| 14 | `run the lab chart` | It tells you to type `lab chart`; no chart is posted | N25 |
+| 15 | `dev speed 1`, then: `Start six one-minute timers called a, b, c, d, e and f` | Five start; Claude says the sixth was not done. Cancel them | N27 |
+| 16 | `Set a timer for three days` | No timer; Claude explains the 24-hour limit; no ⚠️ on your message; a "Command failed" log card. Then `dev off` | N28 |
+
+Each sentence costs an API call with the tools attached (see the Tool tokens
+field in step 13), so this block costs a little more than ordinary chat.
 
 ## When you finish
 

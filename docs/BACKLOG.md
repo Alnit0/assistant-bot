@@ -44,3 +44,38 @@ in `docs/TESTING.md` are ⬜ Untested until they are run in Discord.
   `dev cleanup off` reads as Kept after a restart.
 - **The nightly sweep is not built.** Kept messages are never removed
   automatically until it is; when built it must skip Protected ones.
+
+## Tool calling: left for later
+
+Built on 2026-10-07 and unit tested with a mocked Claude. Not yet run
+against the real API or in Discord: the N rows in `docs/TESTING.md` are
+⬜ Untested.
+
+- **The tool schemas have not been sent to the real API.** They follow the
+  documented rules for `strict` (all required, no unions, nothing extra),
+  and a test checks that, but only a real request proves they compile. The
+  first chat message after the restart is that check: an API error card
+  naming a schema means one needs changing.
+- **Prompt caching may not take effect.** Haiku 4.5 only caches a prefix of
+  4096 tokens or more, and the normal tool set plus system prompt may be
+  smaller. The "Cache" field on the "Message handled" card shows whether
+  anything was read; if it stays at 0 the breakpoints cost nothing but
+  save nothing either.
+- **Every chat message now carries the tools**, used or not ("Tool tokens"
+  on the card). If that cost matters, the next step is to send them only
+  when the message looks like a request.
+- **A protected message deleted through Claude asks twice**: Claude's
+  Confirm / Cancel, then the existing "That message is pinned" question.
+- **Proposals and button questions are held in memory.** A restart forgets
+  a pending "ok", an Undo button and a "Which message?" question.
+- **Undo exists only where an action declares one**: pin, unpin, archive,
+  pause and resume. Cancelling a timer or extending one cannot be undone.
+- **Claude only chats in #inbox**, so the "dev tools in the dev channel"
+  rule has no effect until chat is enabled there.
+- **`Skill.tools()` and `Tool` are still unused.** Every tool is generated
+  from a word or reply action; `recent_messages` is built into
+  `skills/toolcalls.py`.
+- **Reactions are not tools.** Claude tells you which one to add.
+- **Recent messages go to the API when Claude looks for a target**: up to
+  20 one-line previews from the channel, only when it calls
+  `recent_messages`.

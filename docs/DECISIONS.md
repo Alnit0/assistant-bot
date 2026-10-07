@@ -215,3 +215,39 @@ A short log of key decisions and why. Newest at the bottom.
   set a timer or pin something. Until tool calling exists the system
   prompt says so whether or not there is a capability list, and tells it
   to say what to type instead.
+- **Tools are generated from the registry, one per action:** this replaces
+  "Claude is told it has no tools" above. Every word and reply action
+  already describes itself, so each becomes a tool with no second list to
+  keep in step; a word adds `params` to say what its arguments are. A tool
+  call is turned back into the words a typed command would have and runs
+  the same handler through the same `_run`, so logging, permissions and the
+  lifecycle rules apply without being written twice.
+- **Strict schemas only where they matter, and checked in code anyway:**
+  the API takes at most 20 strict tools per request, 24 optional
+  parameters and 16 union-typed ones across them. So every argument is a
+  required string (empty means "not given"), `strict` goes on the tools
+  that take arguments, by `tool_priority`, and every input is validated
+  against its schema before it runs whether or not it was strict.
+- **Fewer tools per request, by filtering:** the lab is never offered (a
+  test bench), dev tools only while dev mode is on or in the dev channel,
+  and the rest by channel and permission as `help` is. Fewer tools cost
+  less on every message and give Claude less to confuse.
+- **Act on a clear request; propose only when suggesting; buttons for
+  anything destructive:** two messages for every action would make plain
+  speech slower than typing the word. A proposal is a flag on the tool call
+  (`propose`), remembered for two minutes and run by a short "ok" without
+  another API call. Destructive actions (the `exact` ones) never run on
+  Claude's say or on an "ok": only on a Confirm button.
+- **A message is only acted on if you replied to it or Claude named it from
+  a listing:** a reply always wins. Otherwise Claude must call
+  `recent_messages` (the last 20 in the channel) and pass a ref from it, so
+  it can't invent a message id; the action then shows the message quoted,
+  with Undo where the action declares one, and several possible messages
+  become buttons rather than a guess.
+- **Five tool calls per message, and tool exchanges stay out of the
+  history:** the cap bounds cost and runaway loops. Only plain text is kept
+  between messages (with a one-line note of what was done), so trimming the
+  history can never separate a call from its result.
+- **A manual loop, not the SDK's tool runner:** the runner is a beta helper
+  and the loop here is thirty lines; owning it keeps the cap, the logging
+  and the "never run a truncated call" rule in plain sight.

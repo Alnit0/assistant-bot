@@ -29,12 +29,12 @@ from core.discord_utils import (
     truncate,
 )
 from core.lifecycle import MessageClass
-from core.llm import ask_claude, estimate_cost, format_cost, history_for
+from core.llm import ask_claude, count_tool_tokens, estimate_cost, format_cost, history_for
 from core.logging_setup import setup_logging
 from core.migrations import migrate
 from core.permissions import is_allowed
 from core.users import ensure_owner, get_user_by_discord_id
-from skills import registry
+from skills import registry, toolcalls
 
 log = logging.getLogger("assistant")
 
@@ -237,17 +237,28 @@ async def on_message(message: discord.Message):
         return
     log.info("Received: %s", text)
 
+    # A short "ok" (or "no") to something Claude proposed is dealt with here
+    if await toolcalls.answer_pending(ctx):
+        return
+
     # Everything else goes to Claude. Log the raw input before processing.
     row_id = await log_received(text, "chat", message.id, message.channel.id, user_id=user.id)
     started = time.perf_counter()
 
     async with message.channel.typing():
         try:
-            # Tell Claude what the bot itself can do here, so it can point the user to it
+            # Tell Claude what the bot itself can do here, and give it the same
+            # actions as tools so it can do them when asked
             capabilities = registry.capabilities_text(user, message.channel.id)
-            reply, input_tokens, output_tokens = await ask_claude(
-                text, capabilities, channel_id=message.channel.id
+            turn = await toolcalls.prepare(ctx)
+
+            async def run_tool(name: str, value: dict) -> tuple[str, bool]:
+                return await toolcalls.execute(turn, name, value)
+
+            result = await ask_claude(
+                text, capabilities, channel_id=message.channel.id, tools=turn.definitions, run_tool=run_tool
             )
+            reply, input_tokens, output_tokens = result.reply, result.input_tokens, result.output_tokens
         except anthropic.APIStatusError as error:
             duration = time.perf_counter() - started
             log.error("Claude API error %s: %s", error.status_code, error.message)
@@ -281,10 +292,13 @@ async def on_message(message: discord.Message):
     for chunk in split_message(reply):
         await message.channel.send(chunk)
 
-    cost = estimate_cost(CLAUDE_MODEL, input_tokens, output_tokens)
+    cost = estimate_cost(
+        CLAUDE_MODEL, input_tokens, output_tokens, result.cache_read_tokens, result.cache_write_tokens
+    )
+    called = ", ".join(f"{call.name}{' (failed)' if call.is_error else ''}" for call in result.tool_calls)
     await log_result(
         row_id,
-        reply=reply,
+        reply=reply + (f"\n[tools: {called}]" if called else ""),
         model=CLAUDE_MODEL,
         input_tokens=input_tokens,
         output_tokens=output_tokens,
@@ -313,6 +327,34 @@ async def on_message(message: discord.Message):
         value=f"{session_stats['messages']} msgs · {format_cost(session_stats['cost'])}",
         inline=True,
     )
+    # What the tools cost: they are sent with every message, used or not
+    tool_tokens = await count_tool_tokens(turn.definitions)
+    embed.add_field(
+        name="Tool tokens",
+        value="none sent" if not turn.definitions else ("unknown" if tool_tokens is None else f"about {tool_tokens}"),
+        inline=True,
+    )
+    embed.add_field(
+        name="Cache",
+        value=f"{result.cache_read_tokens} read / {result.cache_write_tokens} written",
+        inline=True,
+    )
+    if turn.definitions:
+        strict = f", {len(turn.strict)} strict" if turn.strict else ""
+        embed.add_field(
+            name=f"Tools sent ({len(turn.definitions)}{strict})", value=truncate(", ".join(turn.names)), inline=False
+        )
+    if result.tool_calls:
+        embed.add_field(
+            name=f"Tool calls ({len(result.tool_calls)})",
+            value=truncate(
+                "\n".join(
+                    f"{'⚠️' if call.is_error else '🔧'} `{call.name}` {truncate(call.result, 120)}"
+                    for call in result.tool_calls
+                )
+            ),
+            inline=False,
+        )
     await send_log(embed)
     await registry.emit(
         "action_finished",

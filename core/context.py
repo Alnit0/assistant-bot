@@ -28,6 +28,10 @@ class Context:
     replies: list[str] = field(default_factory=list)  # what has been sent so far
     args: list[str] = field(default_factory=list)  # words after the keyword, if it takes any
     _message: discord.Message | None = field(default=None, repr=False)
+    # Set when the caller will show the outcome itself (a tool call that quotes its
+    # target): confirmations are kept here instead of being posted
+    collect_confirmations: bool = False
+    collected: list[str] = field(default_factory=list)
 
     # Database access: the async helpers in core/database.py, including run()
     db = database
@@ -92,11 +96,15 @@ class Context:
         the user will want to read again is Kept: use reply().
         """
         self.replies.append(text)
+        if self.collect_confirmations:
+            self.collected.append(text)
+            return
         await self._send_transient(text)
 
-    async def _send_transient(self, text: str) -> None:
+    async def _send_transient(self, text: str, seconds: float | None = None) -> None:
         """Send a note that deletes itself (unless clean-up is switched off)."""
-        message = await self._channel.send(text, delete_after=lifecycle.delete_after())
+        lifetime = lifecycle.delete_after() if seconds is None else lifecycle.delete_after(seconds)
+        message = await self._channel.send(text, delete_after=lifetime)
         lifecycle.note_transient(getattr(message, "id", None))
 
     def shown(self, text: str) -> None:
@@ -104,12 +112,13 @@ class Context:
         with buttons, say), so no "Done" confirmation is added on top of it."""
         self.replies.append(text)
 
-    async def note(self, text: str) -> None:
+    async def note(self, text: str, seconds: float | None = None) -> None:
         """Send a small aside that isn't part of the reply (not recorded in the log).
 
-        It deletes itself like a confirmation.
+        It deletes itself like a confirmation, or after `seconds` if it needs
+        longer to be read.
         """
-        await self._send_transient(text)
+        await self._send_transient(text, seconds)
 
     async def mark_failed(self) -> None:
         """Flag the user's message with ⚠️ to show it didn't work. Best effort."""
@@ -153,6 +162,19 @@ class Context:
             return await self._channel.fetch_message(reference.message_id)
         except discord.HTTPException:
             return None
+
+    async def recent_messages(self, limit: int) -> list[discord.Message]:
+        """The latest messages in this channel before the user's own, newest first.
+        Empty if the history can't be read."""
+        history = getattr(self._channel, "history", None)
+        if history is None:
+            return []
+        try:
+            before = self._message if self._message is not None else None
+            return [message async for message in history(limit=limit, before=before)]
+        except discord.HTTPException as error:
+            log.info("Could not read the channel's recent messages: %s", error)
+            return []
 
     async def delete_command(self) -> bool:
         """Remove the user's own message (the command word). Best effort; True if it went."""

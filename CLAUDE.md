@@ -27,8 +27,13 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 ## Architecture rules
 
 - `core/` never imports from `skills/`
-- `skills/registry.py` is the single source of what the bot can do (`help`
-  and Claude's system prompt read it). Never hard-code a list of commands
+- `skills/registry.py` is the single source of what the bot can do (`help`,
+  Claude's system prompt and Claude's tools all read it). Never hard-code a
+  list of commands or a tool definition
+- Claude runs words and reply actions as tools generated from their
+  registrations. A word that takes arguments lists them as `params`; a
+  reversible reply action sets `undo`. Tool calls run through
+  `registry.run_tool`, never by calling a handler directly
 - Ways in, in order of preference: a typed word, a reply action, a
   reaction. Slash commands and context menus are a fallback only
 - Every keyword, reply action and reaction needs a description, examples,
@@ -92,6 +97,13 @@ Input
 - Replying to a message with an action word (archive, pin, keep, save,
   unpin, delete, remind <when>) applies it to that message. Filler words
   are fine on a reply ("pin this", "please archive it").
+- Asking Claude in plain words works too (#inbox): it runs the same
+  actions as tools. It acts on a clear request, asks when unsure, and waits
+  for "ok" (2 minutes) when it is only suggesting. Destructive actions always
+  ask with Confirm / Cancel. A message it picks without my reply is shown
+  quoted with a jump link, with Undo if reversible; if several fit, it
+  offers buttons instead of guessing. At most 5 tool calls per message.
+  Typed words never go through Claude.
 - Commands are idempotent: asking for a single-instance thing that
   already exists shows it again instead of failing (`pomo` while a
   session runs re-shows its card; `dev off` when off just says so).

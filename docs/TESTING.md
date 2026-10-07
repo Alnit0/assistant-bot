@@ -28,7 +28,7 @@ Last updated: 2026-10-07
 
 | Group | Feature | Tests | 🤖 | 👤 | ⬜ | ✅ | ❌ | ⏭️ |
 |---|---|---|---|---|---|---|---|---|
-| A | Builtin words and chat | 17 | 9 | 8 | 8 | 9 | 0 | 0 |
+| A | Builtin words and chat | 18 | 9 | 9 | 9 | 9 | 0 | 0 |
 | B | Lab | 21 | 2 | 19 | 19 | 2 | 0 | 0 |
 | C | Reactions | 12 | 7 | 5 | 5 | 7 | 0 | 0 |
 | D | Archive and restore | 15 | 4 | 11 | 11 | 4 | 0 | 0 |
@@ -40,7 +40,8 @@ Last updated: 2026-10-07
 | K | Startup and housekeeping | 10 | 3 | 7 | 7 | 3 | 0 | 0 |
 | L | Keep | 12 | 4 | 8 | 8 | 4 | 0 | 0 |
 | M | Message lifecycle | 3 | 3 | 0 | 0 | 3 | 0 | 0 |
-| | **Total** | **170** | **48** | **122** | **122** | **48** | **0** | **0** |
+| N | Tool calling | 28 | 13 | 15 | 15 | 13 | 0 | 0 |
+| | **Total** | **199** | **61** | **138** | **138** | **61** | **0** | **0** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off. "Log card" means a card in #bot-log.
@@ -64,8 +65,9 @@ off. "Log card" means a card in #bot-log.
 | A13 | 🤖 Auto | `help me write an email` | Not a help request: goes to Claude | ✅ Pass | 2026-10-07 | `tests/test_registry.py` |
 | A14 | 🤖 Auto | Long replies, embed fields and cost estimates | Split at line breaks within 2000 characters; long fields cut with …; cost per million tokens, "Unknown" for an unpriced model | ✅ Pass | 2026-10-07 | `tests/test_text.py` |
 | A15 | 🤖 Auto | Conversation memory per channel | `reset` clears only the channel it is typed in | ✅ Pass | 2026-10-07 | `tests/test_text.py` |
-| A16 | 🤖 Auto | Claude's instructions | Named from `ASSISTANT_NAME` (default Hive); include the registry's list; always say it has no tools, can't act and must never offer to | ✅ Pass | 2026-10-07 | `tests/test_text.py` |
-| A17 | 👤 Manual | Ask Claude: `Set a timer for 5 minutes` | It doesn't claim or offer to do it: it tells you to type `timer 5m`. No timer starts | ⬜ Untested | |  |
+| A16 | 🤖 Auto | Claude's instructions | Named from `ASSISTANT_NAME` (default Hive); include the registry's list. With tools: act when clearly asked, ask when unsure, propose when suggesting, never say something is done unless a tool result says so, never claim or offer what it has no tool for. With no tools: says it cannot act. The time comes last, outside the cached part | ✅ Pass | 2026-10-07 | `tests/test_text.py, test_llm_tools.py` |
+| A17 | 👤 Manual | Ask Claude: `Set a timer for 5 minutes` | A 5-minute timer starts, exactly as `timer 5m` would; your message stays; Claude adds one short line. A "🔧 Tool: timer" log card as well as "Message handled" | ⬜ Untested | |  |
+| A18 | 👤 Manual | Ask Claude for something no tool does: `Email my landlord about the rent` | It says it can't do that; it does not claim or offer to. Nothing runs | ⬜ Untested | | Wording varies |
 
 ## B. Lab
 
@@ -283,3 +285,41 @@ by J28 and J29.
 | M1 | 🤖 Auto | The policy and which class a message is | Kept and Protected are never auto-deleted; the others may be once their information lives elsewhere; protection wins, then what a skill declares, then transient, then command; anything else is Kept | ✅ Pass | 2026-10-07 | `tests/test_lifecycle.py` |
 | M2 | 🤖 Auto | Confirmations, notes and command messages | Self-delete after `CONFIRMATION_SECONDS` and the command is removed; with clean-up off they all stay; lasting replies never get a lifetime | ✅ Pass | 2026-10-07 | `tests/test_lifecycle.py` |
 | M3 | 🤖 Auto | What the timers skill declares | A running timer or session is Live, its alert is an Alert, and a finished one's summary is ordinary Kept content | ✅ Pass | 2026-10-07 | `tests/test_lifecycle.py` |
+
+## N. Tool calling
+
+Claude can run the bot's registered words and reply actions as tools, in
+#inbox. Typed words are unchanged and never go to Claude. The lab is never
+offered; dev tools only while dev mode is on. Claude's wording varies from
+run to run: judge what happens, not the exact words.
+
+| ID | Type | Test | Expected result | Status | Date | Notes |
+|---|---|---|---|---|---|---|
+| N1 | 🤖 Auto | Tool names and schemas | One tool per word and reply action; names the API accepts, all unique; every property required, no unions or optional properties, nothing else allowed; message actions take `targets`; everything but destructive tools takes `propose` | ✅ Pass | 2026-10-07 | `tests/test_tools.py` |
+| N2 | 🤖 Auto | Checking a tool input | Wrong types, values outside the choices, missing and unknown arguments are each named; checked for every call, strict or not | ✅ Pass | 2026-10-07 | `tests/test_tools.py, test_toolcalls.py` |
+| N3 | 🤖 Auto | A tool call reads as the typed word does | `timer`, `pomo` and the dev settings turn their arguments back into the same words the typed command has, and the real parsers accept them | ✅ Pass | 2026-10-07 | `tests/test_tools.py` |
+| N4 | 🤖 Auto | Which tools are strict | Only tools with arguments; past the API's 20, the likeliest first and one warning in #bot-log; the real tool sets fit within the limit | ✅ Pass | 2026-10-07 | `tests/test_tools.py, test_toolcalls.py` |
+| N5 | 🤖 Auto | Which tools are offered | Filtered by channel and permission; the lab never; dev only while dev mode is on or in the dev channel; nobody without permission gets any; the order never changes | ✅ Pass | 2026-10-07 | `tests/test_tools.py, test_toolcalls.py` |
+| N6 | 🤖 Auto | Which message a message action acts on | A reply always wins; one listed ref acts; two to five are offered; none, an unlisted one or more than five is an error for Claude; only the last 20 messages can be reached | ✅ Pass | 2026-10-07 | `tests/test_tools.py, test_toolcalls.py` |
+| N7 | 🤖 Auto | Previews, confirmations and the listing | One-line 80-character quotes; a confirmation quotes its target and links to it; the listing gives each message a ref, age and tags | ✅ Pass | 2026-10-07 | `tests/test_tools.py` |
+| N8 | 🤖 Auto | Pending proposals | ok, yes, do it and the like agree; no, cancel, never mind decline; anything longer is neither; a proposal lasts 2 minutes, is taken once, is replaced by a newer one, and belongs to one user in one channel | ✅ Pass | 2026-10-07 | `tests/test_pending.py` |
+| N9 | 🤖 Auto | The Claude loop (mocked Claude) | A plain answer calls nothing; a call is run and its result returned; several calls in a turn are answered in one message; failures and crashes go back as errors; at most 5 calls per message; a reply cut short runs nothing; history stays plain text | ✅ Pass | 2026-10-07 | `tests/test_llm_tools.py` |
+| N10 | 🤖 Auto | Caching and cost | The stable prompt and the tools are marked for caching, the time is not; usage is summed over rounds; cached tokens are priced at 0.1x read and 1.25x written; tool tokens are counted once per set of tools | ✅ Pass | 2026-10-07 | `tests/test_llm_tools.py, test_toolcalls.py` |
+| N11 | 🤖 Auto | What becomes of a call | A clear request runs at once; a proposal waits for ok; a destructive one asks with Confirm / Cancel and quotes its target; several candidates are offered as buttons; a described message is shown quoted, with Undo if it can be taken back | ✅ Pass | 2026-10-07 | `tests/test_toolcalls.py` |
+| N12 | 🤖 Auto | Running and logging | A tool call runs the same handler as the typed word and is logged as `tool` with its input and outcome; refused calls are logged too; permission is checked again when it runs; your chat message is neither deleted nor marked ⚠️ | ✅ Pass | 2026-10-07 | `tests/test_toolcalls.py` |
+| N13 | 🤖 Auto | Typed words never reach Claude | A typed word is dispatched by the registry and Claude is not called | ✅ Pass | 2026-10-07 | `tests/test_toolcalls.py` |
+| N14 | 👤 Manual | Type `timer 10s` | Runs as always: your word is deleted, and there is no "Message handled" card (Claude was not called) | ⬜ Untested | |  |
+| N15 | 👤 Manual | Ask Claude: `Set a timer` | It asks how long, and starts nothing | ⬜ Untested | |  |
+| N16 | 👤 Manual | Ask Claude: `Would a pomodoro help? Suggest one but wait for my ok`, then reply `ok` | It proposes and nothing starts; after `ok` a session starts. No "Message handled" card for the `ok` | ⬜ Untested | | Wording varies |
+| N17 | 👤 Manual | Get a proposal as in N16, then reply `no` | "👌 Left it: …" for 5 seconds; nothing starts | ⬜ Untested | |  |
+| N18 | 👤 Manual | Get a proposal, wait over 2 minutes, then reply `ok` | Nothing starts: the `ok` goes to Claude as ordinary chat | ⬜ Untested | |  |
+| N19 | 👤 Manual | Ask Claude: `Clear our conversation`; press **Cancel**; ask again and press **Confirm** | A question naming `reset` with Confirm and Cancel, nothing cleared yet; Cancel removes it; Confirm clears the memory and the question shows "✅ Done" | ⬜ Untested | |  |
+| N20 | 👤 Manual | Reply to one of your own messages: `can you file this away for me?` | That message is archived, as reply `archive` does, with the usual "📦 Archived: link" for 5 seconds | ⬜ Untested | |  |
+| N21 | 👤 Manual | Type a message about rent. Then, without replying: `pin the message about rent`. Press **Undo** | It is pinned; a confirmation quotes it with a link and an Undo button for 30 seconds; Undo unpins it | ⬜ Untested | |  |
+| N22 | 👤 Manual | Type two messages about milk. Then: `archive the note about milk` | "Which message should I `archive`?" with both quoted and numbered buttons, plus "None of these"; pressing a number archives that one only | ⬜ Untested | |  |
+| N23 | 👤 Manual | Without replying: `delete the message about rent`; press **Cancel** | Confirm / Cancel question that quotes the message; nothing deleted | ⬜ Untested | |  |
+| N24 | 👤 Manual | Dev mode off: ask Claude `speed the timers up 60 times`. Then `dev on` and ask again | First it says it can't (or to type `dev speed 60`) and nothing changes. With dev mode on it runs and the panel shows 60x | ⬜ Untested | |  |
+| N25 | 👤 Manual | Ask Claude: `run the lab chart` | It tells you to type `lab chart`; no chart is posted | ⬜ Untested | |  |
+| N26 | 👤 Manual | Look at the "Message handled" card after N24 | Fields for Tools sent (count, how many strict, names), Tool tokens, Cache (read / written) and Tool calls with each outcome | ⬜ Untested | |  |
+| N27 | 👤 Manual | Ask Claude: `Start six one-minute timers called a, b, c, d, e and f` | Five start; Claude says the sixth was not done | ⬜ Untested | |  |
+| N28 | 👤 Manual | Ask Claude: `Set a timer for three days` | No timer; Claude explains the 24-hour limit; no ⚠️ on your message; a "Command failed" log card | ⬜ Untested | |  |

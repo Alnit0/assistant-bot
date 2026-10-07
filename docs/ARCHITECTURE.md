@@ -11,7 +11,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 
 | Path | Responsibility |
 |---|---|
-| `main.py` | Entry point: creates the Discord client, wires Discord events to the registry, holds the Claude chat path and the slash command tree |
+| `main.py` | Entry point: creates the Discord client, wires Discord events to the registry, holds the Claude chat path (which hands Claude its tools) and the slash command tree |
 | `core/` | Shared building blocks. Never imports from `skills/` |
 | `skills/` | One folder per feature, loaded by `skills/registry.py` |
 | `tests/` | Unit tests (pytest); never start the bot or touch real data |
@@ -42,19 +42,22 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `debounce.py` | `Debouncer(delay, callback)`: one quiet-period timer that hands over all collected events together |
 | `protection.py` | Pure: is a message protected (pinned or 📌), is it kept, and the wording when Discord refuses a pin |
 | `pins.py` | `set_pinned(...)`: native pin and unpin for skills that may not call Discord |
-| `confirmations.py` | Confirm / Cancel question before acting on a protected message (in memory, two-minute timeout) |
+| `confirmations.py` | Buttons under a short message: `ask` (Confirm / Cancel), `choose` (which of a few), `offer_undo` (done, with Undo). In memory, with timeouts |
+| `tools.py` | Pure: Claude's tools from registrations: names, strict-safe input schemas, input checking, which are sent as strict, which message a message action is aimed at, previews and the listing text |
+| `pending.py` | Proposals waiting for a short "ok": what counts as yes or no, two-minute expiry, one per user and channel (in memory) |
 | `scheduler.py` | Database-backed jobs: `add_job`, a ticker that runs due ones, catch-up at startup (`job.is_late`) |
 | `devmode.py` | Dev mode's in-memory state; other code asks it for values (`reaction_debounce()`, `speed()`, `is_verbose()`, `cleanup_enabled()`, `debug()`, `register_task()`) |
 | `interactions.py` | Permission check and logging for slash commands and context menus |
-| `llm.py` | Claude client, system prompt (the assistant's name, the registry's capability list, and that it has no tools), per-channel history, cost estimates |
+| `llm.py` | Claude client; the system prompt (cached part, then the time); the tool loop (`ask_claude` runs the calls Claude makes, up to `MAX_TOOL_CALLS`); per-channel plain-text history; cost estimates including cache and tool tokens |
 | `discord_utils.py` | #bot-log cards, `split_message`, `truncate`, `safe_reply`, `report_interaction_error` |
 
 ## `skills/`
 
 | Path | Responsibility |
 |---|---|
-| `base.py` | The `Skill` base class with its hooks (including `message_class`), and the self-describing `Keyword`, `ReplyAction`, `Reaction` records (the last two with an optional `validate`) |
-| `registry.py` | Discovers and loads skills; dispatches words, reply actions and reactions; refuses invalid ones at once; decides how each ends; asks skills what a message is (`declared_class()`); the single source of what the bot can do (`catalogue()`, `find()`, `capabilities_text()`) |
+| `base.py` | The `Skill` base class with its hooks (including `message_class` and `tools_available`), and the self-describing `Keyword`, `ReplyAction`, `Reaction` records (the last two with an optional `validate`); `Param` describes an argument for Claude |
+| `registry.py` | Discovers and loads skills; dispatches words, reply actions and reactions; refuses invalid ones at once; decides how each ends; asks skills what a message is (`declared_class()`); the single source of what the bot can do (`catalogue()`, `find()`, `capabilities_text()`, and `tools_for()` for Claude); `run_tool()` runs a tool call down the same path as a typed word |
+| `toolcalls.py` | Not a skill: what becomes of a tool call from Claude. Gathers the tools for a message, then decides per call: run now, wait for "ok", Confirm / Cancel, which-message buttons, quoted preview with Undo. Also the `recent_messages` tool |
 | `builtin/__init__.py` | `ping`, `reset`, `buttons`, `stats`, and `help` generated from the registry |
 | `builtin/views.py` | The `buttons` test view |
 | `archive/__init__.py` | Registers reply `archive` / `delete`, the 📦 and 🗑️ reactions, the context menu |
@@ -84,7 +87,8 @@ settings before `core` loads. One `test_*.py` per area: `router`,
 `registry` (loading, help, capabilities), `reactions`, `reaction_keys`,
 `debounce`, `keep`, `archive_rules`, `archive_store`, `durations`,
 `pomodoro`, `timer_text`, `devmode`, `dev_parsing`, `lab`, `lifecycle`,
-`permissions`, `scheduler`, `text`.
+`permissions`, `scheduler`, `text`, `tools`, `pending`, `llm_tools` (the
+Claude loop against a scripted stand-in), `toolcalls`.
 
 ## Data flows
 
@@ -109,8 +113,27 @@ settings before `core` loads. One `test_*.py` per area: `router`,
    puts the reason in #bot-log. A reply action's `validate` runs first: if
    the message can't be acted on, the reason is also shown briefly.
 4. If neither matched: `registry.dispatch_expected` (a skill waiting for
-   this user's next message), then, in #inbox only, Claude (`core/llm.py`).
+   this user's next message), then, in #inbox only, Claude (see below). A
+   typed word never gets this far, so it never costs an API call.
 5. Every outcome is emitted to skills as `action_finished`.
+
+**Chat → Claude → tools**
+
+1. `toolcalls.answer_pending`: a short "ok" or "no" to something Claude
+   proposed is settled here, without calling Claude.
+2. `toolcalls.prepare`: `registry.tools_for(user, channel)` (channel,
+   permission, each skill's `tools_available`), `core/tools.py` picks the
+   strict ones, and the definitions are marked for caching.
+3. `llm.ask_claude` sends the message with the tools. For each call Claude
+   makes, `toolcalls.execute` checks the input, finds the target message
+   for a message action (the reply, or a ref from `recent_messages`), and
+   decides: destructive → `confirmations.ask`; `propose` →
+   `core/pending.py`; several candidates → `confirmations.choose`;
+   otherwise `registry.run_tool`, which goes through `_run` like a typed
+   word (logged as `tool`, permission checked, #bot-log card).
+4. Every result, failures included, goes back to Claude, which writes the
+   reply. The "Message handled" card lists the tools sent, their tokens,
+   cache use and the calls.
 
 **Reaction → debouncer → actions**
 
@@ -170,6 +193,7 @@ kept); `pre-migration-*.db` snapshots are never auto-deleted.
 ## Not built yet
 
 The gateway layer (the Claude chat path in `main.py` and `builtin`'s view
-still use discord.py directly), Claude tool calling (`Skill.tools()` is
-declared, nothing calls it), quiet hours, the sweep and the summary (`dev
+still use discord.py directly), bespoke Claude tools (`Skill.tools()` is
+declared, nothing calls it; every tool so far is a word or reply action),
+quiet hours, the sweep and the summary (`dev
 quiet` changes nothing; `dev run sweep|summary` report "not built").

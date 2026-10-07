@@ -4,10 +4,13 @@ from core import devmode
 from core.context import Context
 from core.errors import UserError
 from core.lifecycle import MessageClass
-from skills.base import ANY, Keyword, ReplyAction, Skill
+from skills.base import ANY, Keyword, Param, ReplyAction, Skill
 from skills.dev import panel, tools
 from skills.dev.panel import PERMISSION
 from skills.timers.durations import DurationError, format_duration, parse_duration
+
+
+DEV_CHANNEL = "dev"  # our name for the scratch channel (DEV_CHANNEL_ID)
 
 
 # ---------------------------------------------------------------------------
@@ -119,14 +122,18 @@ class DevSkill(Skill):
     name = "dev"
     description = "Dev mode for testing: shorter waits, debug lines in #bot-log, and inspection tools"
 
+    def tools_available(self, channel_name: str | None) -> bool:
+        # Claude only gets the dev tools while testing: dev mode on, or in the dev channel
+        return devmode.enabled or channel_name == DEV_CHANNEL
+
     def keywords(self) -> list[Keyword]:
         def word(words, description, handler, examples, **options) -> Keyword:
             return Keyword(
                 words, description, handler, examples=examples, channels=ANY, permission=PERMISSION, **options
             )
 
-        def setting(words, description, handler, examples, usage) -> Keyword:
-            return word(words, description, handler, examples, takes_args=True, usage=usage)
+        def setting(words, description, handler, examples, usage, param) -> Keyword:
+            return word(words, description, handler, examples, takes_args=True, usage=usage, params=[param])
 
         return [
             word("dev", "show the dev panel again, at the bottom of this channel", dev_show, ["dev"]),
@@ -144,6 +151,7 @@ class DevSkill(Skill):
                 dev_debounce,
                 ["dev debounce 0", "dev debounce 5"],
                 "<seconds>",
+                Param("seconds", "Seconds of quiet, from 0 to 600, e.g. 2."),
             ),
             setting(
                 "dev speed",
@@ -151,6 +159,7 @@ class DevSkill(Skill):
                 dev_speed,
                 ["dev speed 60"],
                 "<n>",
+                Param("multiplier", "How many times faster, e.g. 60."),
             ),
             setting(
                 "dev verbose",
@@ -158,6 +167,7 @@ class DevSkill(Skill):
                 dev_verbose,
                 ["dev verbose off"],
                 "on|off",
+                Param("state", "on or off.", choices=("on", "off")),
             ),
             setting(
                 "dev quiet",
@@ -165,6 +175,7 @@ class DevSkill(Skill):
                 dev_quiet,
                 ["dev quiet on"],
                 "on|off",
+                Param("state", "on: quiet hours apply. off: alerts ignore them.", choices=("on", "off")),
             ),
             setting(
                 "dev cleanup",
@@ -173,6 +184,7 @@ class DevSkill(Skill):
                 dev_cleanup,
                 ["dev cleanup off"],
                 "on|off",
+                Param("state", "off stops all automatic deletion; on brings it back.", choices=("on", "off")),
             ),
             setting(
                 "dev expire",
@@ -180,6 +192,7 @@ class DevSkill(Skill):
                 dev_expire,
                 ["dev expire 30m", "dev expire 2h"],
                 "<duration>",
+                Param("duration", "How long from now, e.g. 30m or 2h."),
             ),
             word("dev jobs", "list the scheduler's pending jobs", tools.jobs, ["dev jobs"]),
             setting(
@@ -188,6 +201,7 @@ class DevSkill(Skill):
                 tools.run,
                 ["dev run backup"],
                 "|".join(devmode.TASK_NAMES),
+                Param("task", "Which background task to run.", choices=devmode.TASK_NAMES),
             ),
             word(
                 "dev fire next",
@@ -202,6 +216,7 @@ class DevSkill(Skill):
                 tools.seed,
                 ["dev seed 5"],
                 "<n>",
+                Param("count", f"How many sample messages, from 1 to {tools.MAX_SEED}."),
             ),
             word(
                 "dev clean",

@@ -95,6 +95,7 @@ TIMEZONE_NAME = "Pacific/Auckland"
 TIMEZONE = ZoneInfo(TIMEZONE_NAME)
 MAX_HISTORY = 10  # number of recent messages (yours and the bot's) sent to Claude
 MAX_TOKENS = 1024  # maximum length of each Claude reply
+MAX_TOOL_CALLS = 5  # how many tools Claude may run in answer to one message
 DISCORD_LIMIT = 2000  # Discord's maximum message length
 EMBED_FIELD_LIMIT = 1000  # Discord allows 1024 characters per embed field
 BUTTON_TIMEOUT = 300  # seconds before test buttons expire

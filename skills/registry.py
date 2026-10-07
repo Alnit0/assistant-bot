@@ -1,5 +1,6 @@
 import asyncio
 import importlib
+import json
 import logging
 import pkgutil
 import time
@@ -11,7 +12,7 @@ import skills
 from core import scheduler
 from core.config import CHANNELS, ENABLED_SKILLS
 from core.context import Context
-from core import database, devmode, discord_utils, lifecycle, reactions
+from core import database, devmode, discord_utils, lifecycle, reactions, tools
 from core.database import log_received, log_result
 from core.debounce import Debouncer
 from core.discord_utils import log_error, log_simple
@@ -77,6 +78,9 @@ def _check_registration(skill: Skill, kind: str, item) -> None:
     for name in _channel_names(item):
         if name != ANY and name not in CHANNELS:
             _problem(f"{skill.name}: {kind} {item.name} names channel '{name}', which isn't set in .env")
+    # Claude runs words as tools, and a tool has to know its arguments
+    if skill.exposes_tools and getattr(item, "tool", False) and getattr(item, "takes_args", False) and not item.params:
+        _problem(f"{skill.name}: {kind} {item.name} takes arguments but lists no `params` for Claude")
 
 
 def _register_words(router: Router, skill: Skill, kind: str, item) -> None:
@@ -286,9 +290,11 @@ def where(item) -> str:
 # Dispatch: typed words and reply actions
 # ---------------------------------------------------------------------------
 async def _run(
-    ctx: Context, *, kind: str, name: str, title: str, permission: str, call, keep_command: bool
-) -> None:
+    ctx: Context, *, kind: str, name: str, title: str, permission: str, call, keep_command: bool,
+    mark_failure: bool = True,
+) -> tuple[str, str]:
     """Log the input, check permission, run the handler, record what happened.
+    Returns (status, what was recorded): status is "ok", "error" or "denied".
 
     How it ends is the same for every word and reply action:
     - Worked: the user's command message is deleted (unless the registration
@@ -296,6 +302,10 @@ async def _run(
       posted that deletes itself.
     - Didn't work: the command message stays and gets a ⚠️ reaction. The
       details go to #bot-log, not the channel.
+
+    A tool call from Claude comes through here too, with `mark_failure` off:
+    the user's message was chat, not a command, so it gets no ⚠️, and the
+    reason goes back to Claude to explain.
     """
     row_id = await log_received(ctx.text, kind, ctx.message_id, ctx.channel_id, user_id=ctx.user.id)
     started = time.perf_counter()
@@ -314,12 +324,16 @@ async def _run(
             ActionResult(kind, name, status, ctx.user.id, ctx.channel_id, command_deleted, reply),
         )
 
+    async def failed() -> None:
+        if mark_failure:
+            await ctx.mark_failed()
+
     if not is_allowed(ctx.user, permission):
         await log_result(row_id, reply="not allowed", status="denied")
-        await ctx.mark_failed()
+        await failed()
         await ctx.log_error(f"Command refused: {name}", f"Needs permission `{permission}`.", ctx.text)
         await finished("denied")
-        return
+        return "denied", "The user is not allowed to do that."
 
     try:
         reply = await call()
@@ -327,17 +341,17 @@ async def _run(
         # The user can fix this one: no traceback needed
         log.info("%s not done: %s", name, error)
         await log_result(row_id, status="error", error=str(error))
-        await ctx.mark_failed()
+        await failed()
         await ctx.log_error(f"Command failed: {name}", str(error), ctx.text)
         await finished("error")
-        return
+        return "error", str(error)
     except Exception as error:
         log.exception("Command failed: %s", name)
         await log_result(row_id, status="error", error=repr(error))
-        await ctx.mark_failed()
+        await failed()
         await ctx.log_error(f"Command failed: {name}", repr(error), ctx.text)
         await finished("error")
-        return
+        return "error", repr(error)
 
     if not ctx.replies:
         # The handler showed nothing in the channel, so say that it happened
@@ -348,6 +362,7 @@ async def _run(
     await ctx.log(title, reply)
     command_deleted = False if keep_command else await ctx.delete_command()
     await finished("ok", reply, command_deleted)
+    return "ok", reply
 
 
 async def dispatch_keyword(ctx: Context) -> bool:
@@ -420,6 +435,144 @@ async def dispatch_reply_action(ctx: Context) -> bool:
         keep_command=action.keep_command,
     )
     return True
+
+
+# ---------------------------------------------------------------------------
+# Tools for Claude: every word and reply action, generated from what it says
+# about itself (core/tools.py builds the schemas). skills/toolcalls.py decides
+# when a call may run; when it may, it runs here, down the same path as a
+# typed word, so it is logged and permission-checked in exactly the same way.
+# ---------------------------------------------------------------------------
+def _channel_name(channel_id: int | None) -> str | None:
+    for name, known_id in CHANNELS.items():
+        if known_id == channel_id:
+            return name
+    return None
+
+
+def _spec(skill: Skill, kind: str, item) -> tools.ToolSpec:
+    is_reply = kind == tools.REPLY_ACTION
+    if is_reply:
+        description = f"Message action: {item.description}."
+    else:
+        description = f"Same as the user typing `{describe_words(item)}`: {item.description}."
+    if item.destructive:
+        description += " The user is asked to confirm with buttons before it runs."
+    return tools.ToolSpec(
+        name=tools.tool_name(kind, item.name),
+        description=description,
+        schema=tools.build_schema(item.params, propose=not item.destructive, targets=is_reply),
+        kind=kind,
+        skill=skill.name,
+        item=item,
+        has_arguments=bool(item.params),
+        priority=item.tool_priority,
+        destructive=item.destructive,
+    )
+
+
+def tools_for(user: User | None, channel_id: int | None) -> list[tools.ToolSpec]:
+    """The tools Claude may be given for this user in this channel, in a fixed order.
+
+    Filtered the way `help` is (channel and permission), then by each skill's
+    own say (the lab never offers any; dev only while dev mode is on) and by
+    registrations that opt out with `tool=False`.
+    """
+    if user is None:
+        # catalogue() reads "no user" as "don't filter"; for tools it means nobody is asking
+        return []
+    channel_name = _channel_name(channel_id)
+    specs = []
+    for entry in catalogue(user, channel_id):
+        if not entry.skill.tools_available(channel_name):
+            continue
+        specs += [_spec(entry.skill, tools.KEYWORD, item) for item in entry.keywords if item.tool]
+        specs += [_spec(entry.skill, tools.REPLY_ACTION, item) for item in entry.reply_actions if item.tool]
+    return specs
+
+
+@dataclass(frozen=True)
+class ToolOutcome:
+    status: str  # "ok", "error" or "denied"
+    text: str  # what was recorded, or why it failed
+    confirmations: list[str]  # what the handler would have confirmed, if they were collected
+
+
+async def run_tool(
+    ctx: Context, spec: tools.ToolSpec, value: dict, target: discord.Message | None = None, *, collect: bool = False
+) -> ToolOutcome:
+    """Run one tool call that has been cleared to run.
+
+    `ctx` is the user's chat message; the call gets its own context, whose text
+    is the call itself (that is what is logged as the input). `target` is the
+    message a reply action acts on. With `collect`, confirmations are handed
+    back instead of posted, for the caller to show with a preview.
+    """
+    item = spec.item
+    args = tools.to_args(item.params, value)
+    call_ctx = Context(
+        user=ctx.user,
+        channel_id=ctx.channel_id,
+        message_id=ctx.message_id,
+        text=f"tool: {spec.name} {json.dumps(value, ensure_ascii=False, sort_keys=True)}",
+        _channel=ctx._channel,
+        args=args,
+        _message=ctx._message,
+        collect_confirmations=collect,
+    )
+
+    async def call():
+        if spec.kind == tools.REPLY_ACTION:
+            if target is None:
+                raise UserError("I can't find the message to act on.")
+            if item.validate is not None:
+                item.validate(target)
+            return await item.handler(call_ctx, target)
+        return await item.handler(call_ctx)
+
+    status, text = await _run(
+        call_ctx,
+        kind="tool",
+        name=tools.command_text(item.name, args),
+        title=f"🔧 Tool: {item.name}",
+        permission=item.permission,
+        call=call,
+        # The user's message was chat with Claude (Kept), not a command to tidy away
+        keep_command=True,
+        mark_failure=False,
+    )
+    return ToolOutcome(status, text, list(call_ctx.collected))
+
+
+async def run_undo(ctx: Context, spec: tools.ToolSpec, target: discord.Message) -> ToolOutcome:
+    """Take back a reply action Claude ran (the Undo button), logged like the call was."""
+    item = spec.item
+    call_ctx = Context(
+        user=ctx.user,
+        channel_id=ctx.channel_id,
+        message_id=ctx.message_id,
+        text=f"undo: {spec.name} on message {target.id}",
+        _channel=ctx._channel,
+        _message=ctx._message,
+        collect_confirmations=True,
+    )
+
+    async def call():
+        shown = await item.undo(call_ctx, target)
+        call_ctx.shown(shown)
+        return shown
+
+    status, text = await _run(
+        call_ctx,
+        kind="tool",
+        name=f"undo {item.name}",
+        title=f"↩️ Undo: {item.name}",
+        permission=item.permission,
+        call=call,
+        keep_command=True,
+        mark_failure=False,
+    )
+    return ToolOutcome(status, text, list(call_ctx.collected))
 
 
 # ---------------------------------------------------------------------------

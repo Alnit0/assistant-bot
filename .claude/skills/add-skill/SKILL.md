@@ -18,7 +18,10 @@ complete example, `skills/archive/` the pattern for anything with logic.
    `ReplyAction`, a `Reaction`. Slash commands and menus are a fallback only.
    Every registration needs `description`, `examples`, `channels` and a
    `permission` (the default is fine). Use `exact=True` for anything
-   destructive.
+   destructive. Claude runs words and reply actions as tools, so write the
+   description for it too, list the arguments of a word that takes any as
+   `params` (`Param`, in typed order), and give a reversible reply action
+   an `undo`.
 3. **Split the logic from Discord:** decisions go in a module with no
    Discord calls (`rules.py`), records in `store.py`, and the handler calls
    them. Only `lab`, `archive`, `timers` and `dev` may use discord.py
