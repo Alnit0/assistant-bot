@@ -6,7 +6,7 @@ import anthropic
 import discord
 from discord import app_commands
 
-from core import backup, devmode, instance_lock, interactions, scheduler
+from core import backup, devmode, instance_lock, interactions, lifecycle, scheduler
 from core.config import (
     CLAUDE_MODEL,
     DB_PATH,
@@ -28,6 +28,7 @@ from core.discord_utils import (
     split_message,
     truncate,
 )
+from core.lifecycle import MessageClass
 from core.llm import ask_claude, estimate_cost, format_cost, history_for
 from core.logging_setup import setup_logging
 from core.migrations import migrate
@@ -203,10 +204,11 @@ async def on_ready():
 async def on_message(message: discord.Message):
     # Discord's "X pinned a message" notices are clutter: remove every one
     if message.type is discord.MessageType.pins_add:
-        try:
-            await message.delete()
-        except discord.HTTPException as error:
-            log.info("Could not delete a pin notice: %s", error)
+        if lifecycle.deletes(MessageClass.TRANSIENT):
+            try:
+                await message.delete()
+            except discord.HTTPException as error:
+                log.info("Could not delete a pin notice: %s", error)
         return
     # Ignore bots (including itself) and anyone who isn't allowed
     if message.author.bot:
@@ -324,8 +326,9 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
     if payload.user_id == client.user.id:
         return
     await registry.emit("raw_reaction_add", payload)
-    # Registered reactions are acted on after a quiet period, so they can be undone
-    registry.reaction_changed(payload, added=True)
+    # Registered reactions are checked at once, then acted on after a quiet period,
+    # so they can be undone
+    await registry.reaction_changed(payload, added=True)
 
 
 @client.event
@@ -333,7 +336,7 @@ async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent):
     if payload.user_id == client.user.id:
         return
     await registry.emit("raw_reaction_remove", payload)
-    registry.reaction_changed(payload, added=False)
+    await registry.reaction_changed(payload, added=False)
 
 
 @client.event

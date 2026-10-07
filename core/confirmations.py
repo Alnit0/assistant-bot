@@ -3,10 +3,12 @@ from collections.abc import Awaitable, Callable
 
 import discord
 
+from core import lifecycle
 from core.config import CONFIRMATION_SECONDS
 from core.database import log_received, log_result
 from core.discord_utils import log_error, report_interaction_error, safe_reply
 from core.errors import UserError
+from core.lifecycle import MessageClass
 from core.users import User, get_user_by_discord_id
 
 log = logging.getLogger("assistant")
@@ -42,7 +44,11 @@ class _Prompt(discord.ui.View):
         self.stop()
         if self.message is not None:
             try:
-                await self.message.delete()
+                if lifecycle.deletes(MessageClass.TRANSIENT):
+                    await self.message.delete()
+                else:
+                    # Clean-up is off: leave the question, without its buttons
+                    await self.message.edit(view=None)
             except discord.HTTPException:
                 pass
 
@@ -60,10 +66,10 @@ class _Prompt(discord.ui.View):
         except UserError as error:
             await log_result(row_id, status="error", error=str(error))
             await log_error("Confirmed action failed", str(error), self.question)
-            await interaction.message.edit(content=f"⚠️ {error}", view=None, delete_after=CONFIRMATION_SECONDS * 3)
+            await interaction.message.edit(content=f"⚠️ {error}", view=None, delete_after=lifecycle.delete_after(CONFIRMATION_SECONDS * 3))
             return
         await log_result(row_id, reply=outcome, status="ok")
-        await interaction.message.edit(content=outcome, view=None, delete_after=CONFIRMATION_SECONDS)
+        await interaction.message.edit(content=outcome, view=None, delete_after=lifecycle.delete_after())
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary)
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):

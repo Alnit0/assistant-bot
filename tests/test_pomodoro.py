@@ -189,3 +189,15 @@ class StatsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AlreadyGoingTest(unittest.TestCase):
+    def test_in_its_own_channel_the_card_is_shown_again(self):
+        from skills.timers.pomodoro import RESHOW, where_to_show
+
+        self.assertEqual(where_to_show(100, 100), RESHOW)
+
+    def test_from_another_channel_it_is_pointed_to(self):
+        from skills.timers.pomodoro import POINT, where_to_show
+
+        self.assertEqual(where_to_show(100, 300), POINT)

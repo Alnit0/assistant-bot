@@ -207,7 +207,10 @@ async def run_channels(run: Run, delay: int) -> None:
     global _task
     await run.start()
     if _task is not None and not _task.done():
-        raise LabError("A channel test is already running. Wait for its results card.")
+        # Asking again isn't a mistake: say that it is under way
+        run.note("a channel test was already running")
+        await run.done("⏱️ A channel test is already running. Its results card appears here when it finishes.")
+        return
 
     probes = build_probes(run.client)
     usable = [probe for probe in probes if probe.problem is None]

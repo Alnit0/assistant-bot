@@ -3,9 +3,10 @@ from dataclasses import dataclass, field
 
 import discord
 
-from core import database
-from core.config import CHANNELS, CONFIRMATION_SECONDS, now_nz
+from core import database, lifecycle
+from core.config import CHANNELS, now_nz
 from core.discord_utils import COLOUR_INFO, log_error, log_simple, split_message
+from core.lifecycle import MessageClass
 from core.users import User
 
 log = logging.getLogger("assistant")
@@ -86,11 +87,17 @@ class Context:
     async def confirm(self, text: str) -> None:
         """Say briefly that something was done, e.g. "📦 Archived: <link>".
 
-        For actions with nothing lasting to show. The message deletes itself
-        after CONFIRMATION_SECONDS, so the channel stays tidy.
+        For actions with nothing lasting to show (a Transient message): it deletes
+        itself after CONFIRMATION_SECONDS, so the channel stays tidy. Anything
+        the user will want to read again is Kept: use reply().
         """
         self.replies.append(text)
-        await self._channel.send(text, delete_after=CONFIRMATION_SECONDS)
+        await self._send_transient(text)
+
+    async def _send_transient(self, text: str) -> None:
+        """Send a note that deletes itself (unless clean-up is switched off)."""
+        message = await self._channel.send(text, delete_after=lifecycle.delete_after())
+        lifecycle.note_transient(getattr(message, "id", None))
 
     def shown(self, text: str) -> None:
         """Record that the user has been shown something by other means (a question
@@ -102,7 +109,7 @@ class Context:
 
         It deletes itself like a confirmation.
         """
-        await self._channel.send(text, delete_after=CONFIRMATION_SECONDS)
+        await self._send_transient(text)
 
     async def mark_failed(self) -> None:
         """Flag the user's message with ⚠️ to show it didn't work. Best effort."""
@@ -149,7 +156,7 @@ class Context:
 
     async def delete_command(self) -> bool:
         """Remove the user's own message (the command word). Best effort; True if it went."""
-        if self._message is None:
+        if self._message is None or not lifecycle.deletes(MessageClass.CONSUMED):
             return False
         try:
             await self._message.delete()

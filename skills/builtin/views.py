@@ -3,7 +3,7 @@ import random
 
 import discord
 
-from core.config import BUTTON_TIMEOUT, INBOX_CHANNEL_ID
+from core.config import ASSISTANT_NAME, BUTTON_TIMEOUT, INBOX_CHANNEL_ID
 from core.database import log_received, log_result
 from core.discord_utils import log_simple, report_interaction_error, safe_reply
 from core.permissions import is_allowed
@@ -65,7 +65,7 @@ class TestButtons(discord.ui.View):
 
     @discord.ui.button(label="Wave", emoji="👋", style=discord.ButtonStyle.secondary)
     async def wave(self, interaction: discord.Interaction, button: discord.ui.Button):
-        reply = "👋 Hello from Hive!"
+        reply = f"👋 Hello from {ASSISTANT_NAME}!"
         await interaction.response.send_message(reply)
         await self.record(interaction, "Wave", reply)
 

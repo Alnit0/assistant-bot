@@ -2,9 +2,10 @@ import logging
 
 import discord
 
-from core import discord_utils
+from core import discord_utils, lifecycle
 from core.database import log_received, log_result
 from core.discord_utils import safe_reply
+from core.lifecycle import MessageClass
 from core.permissions import is_allowed
 from core.users import get_user_by_discord_id
 
@@ -43,10 +44,13 @@ async def edit_message(channel_id: int, message_id: int | None, **changes) -> bo
     return True
 
 
-async def delete_message(channel_id: int, message_id: int | None) -> None:
-    """Delete one of our messages, if it is still there."""
+async def delete_message(
+    channel_id: int, message_id: int | None, message_class: MessageClass = MessageClass.ALERT
+) -> None:
+    """Delete one of our messages, if it is still there: an alert that has been
+    dealt with, unless told it is something else. Left alone while clean-up is off."""
     channel = channel_for(channel_id)
-    if channel is None or message_id is None:
+    if channel is None or message_id is None or not lifecycle.deletes(message_class):
         return
     try:
         await channel.get_partial_message(message_id).delete()

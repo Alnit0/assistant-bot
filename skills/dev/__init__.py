@@ -3,6 +3,7 @@ import discord
 from core import devmode
 from core.context import Context
 from core.errors import UserError
+from core.lifecycle import MessageClass
 from skills.base import ANY, Keyword, ReplyAction, Skill
 from skills.dev import panel, tools
 from skills.dev.panel import PERMISSION
@@ -25,7 +26,9 @@ async def dev_on(ctx: Context) -> str:
 
 async def dev_off(ctx: Context) -> str:
     if not devmode.enabled:
-        raise UserError("Dev mode is already off.")
+        # Asking for what is already so isn't a mistake
+        await ctx.confirm("🛠️ Dev mode is already off.")
+        return "already off"
     outcome = await panel.stop("`dev off`")
     await ctx.confirm("🛠️ Dev mode off. Normal settings are back.")
     return outcome
@@ -88,6 +91,15 @@ async def dev_quiet(ctx: Context) -> str:
         ctx,
         lambda: devmode.set_ignore_quiet_hours(not on),
         f"Quiet hours: {'respected' if on else 'ignored'}.",
+    )
+
+
+async def dev_cleanup(ctx: Context) -> str:
+    on = devmode.parse_on_off(ctx.args, "dev cleanup on|off")
+    return await _set(
+        ctx,
+        lambda: devmode.set_cleanup(on),
+        "Clean-up: on." if on else "Clean-up: off. Nothing is deleted automatically until `dev cleanup on` or `dev off`.",
     )
 
 
@@ -155,6 +167,14 @@ class DevSkill(Skill):
                 "on|off",
             ),
             setting(
+                "dev cleanup",
+                "whether messages are tidied away by themselves (off keeps every command, "
+                "confirmation and alert on screen)",
+                dev_cleanup,
+                ["dev cleanup off"],
+                "on|off",
+            ),
+            setting(
                 "dev expire",
                 "switch dev mode off by itself after this long",
                 dev_expire,
@@ -196,13 +216,16 @@ class DevSkill(Skill):
         return [
             ReplyAction(
                 "dev inspect",
-                "show what the bot knows about that message: pinned, protected, reactions "
-                "applied, archive record",
+                "show what the bot knows about that message: its lifecycle class, pinned, "
+                "protected, reactions applied, archive record",
                 tools.inspect,
                 examples=["dev inspect"],
                 permission=PERMISSION,
             ),
         ]
+
+    async def message_class(self, message_id: int) -> MessageClass | None:
+        return MessageClass.LIVE if panel.is_panel(message_id) else None
 
     def setup(self, client: discord.Client) -> None:
         panel.bind(client)

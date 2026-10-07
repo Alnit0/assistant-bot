@@ -28,18 +28,19 @@ Last updated: 2026-10-07
 
 | Group | Feature | Tests | 🤖 | 👤 | ⬜ | ✅ | ❌ | ⏭️ |
 |---|---|---|---|---|---|---|---|---|
-| A | Builtin words and chat | 15 | 8 | 7 | 7 | 8 | 0 | 0 |
-| B | Lab | 20 | 2 | 18 | 18 | 2 | 0 | 0 |
-| C | Reactions | 10 | 6 | 4 | 4 | 6 | 0 | 0 |
-| D | Archive and restore | 12 | 3 | 9 | 9 | 3 | 0 | 0 |
-| E | Delete and protection | 11 | 3 | 8 | 8 | 3 | 0 | 0 |
+| A | Builtin words and chat | 17 | 9 | 8 | 8 | 9 | 0 | 0 |
+| B | Lab | 21 | 2 | 19 | 19 | 2 | 0 | 0 |
+| C | Reactions | 12 | 7 | 5 | 5 | 7 | 0 | 0 |
+| D | Archive and restore | 15 | 4 | 11 | 11 | 4 | 0 | 0 |
+| E | Delete and protection | 12 | 3 | 9 | 9 | 3 | 0 | 0 |
 | F | Pins | 4 | 0 | 4 | 4 | 0 | 0 | 0 |
 | G | Timers | 15 | 4 | 11 | 11 | 4 | 0 | 0 |
-| H | Pomodoro | 16 | 4 | 12 | 12 | 4 | 0 | 0 |
-| J | Dev mode | 27 | 3 | 24 | 24 | 3 | 0 | 0 |
-| K | Startup and housekeeping | 9 | 3 | 6 | 6 | 3 | 0 | 0 |
-| L | Keep | 8 | 3 | 5 | 5 | 3 | 0 | 0 |
-| | **Total** | **147** | **39** | **108** | **108** | **39** | **0** | **0** |
+| H | Pomodoro | 18 | 5 | 13 | 13 | 5 | 0 | 0 |
+| J | Dev mode | 31 | 4 | 27 | 27 | 4 | 0 | 0 |
+| K | Startup and housekeeping | 10 | 3 | 7 | 7 | 3 | 0 | 0 |
+| L | Keep | 12 | 4 | 8 | 8 | 4 | 0 | 0 |
+| M | Message lifecycle | 3 | 3 | 0 | 0 | 3 | 0 | 0 |
+| | **Total** | **170** | **48** | **122** | **122** | **48** | **0** | **0** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off. "Log card" means a card in #bot-log.
@@ -63,6 +64,8 @@ off. "Log card" means a card in #bot-log.
 | A13 | 🤖 Auto | `help me write an email` | Not a help request: goes to Claude | ✅ Pass | 2026-10-07 | `tests/test_registry.py` |
 | A14 | 🤖 Auto | Long replies, embed fields and cost estimates | Split at line breaks within 2000 characters; long fields cut with …; cost per million tokens, "Unknown" for an unpriced model | ✅ Pass | 2026-10-07 | `tests/test_text.py` |
 | A15 | 🤖 Auto | Conversation memory per channel | `reset` clears only the channel it is typed in | ✅ Pass | 2026-10-07 | `tests/test_text.py` |
+| A16 | 🤖 Auto | Claude's instructions | Named from `ASSISTANT_NAME` (default Hive); include the registry's list; always say it has no tools, can't act and must never offer to | ✅ Pass | 2026-10-07 | `tests/test_text.py` |
+| A17 | 👤 Manual | Ask Claude: `Set a timer for 5 minutes` | It doesn't claim or offer to do it: it tells you to type `timer 5m`. No timer starts | ⬜ Untested | |  |
 
 ## B. Lab
 
@@ -88,6 +91,7 @@ off. "Log card" means a card in #bot-log.
 | B18 | 👤 Manual | `/lab chart`, and `lab chart abc` | Slash version does the same with a private "done" note; the bad argument gets ⚠️ and a usage line on the log card | ⬜ Untested | | |
 | B19 | 🤖 Auto | Lab arguments: choices, numbers in range, `delay 90`, leftovers | Read correctly; a wrong one gives the usage line | ✅ Pass | 2026-10-07 | `tests/test_lab.py` |
 | B20 | 🤖 Auto | Daily stats and the CSV | One line per day, zeros for days with nothing logged | ✅ Pass | 2026-10-07 | `tests/test_lab.py` |
+| B21 | 👤 Manual | `lab channels delay 30`, then `lab channels` again straight away | The second says a channel test is already running (for 5 seconds); no ⚠️, and only one test runs | ⬜ Untested | |  |
 
 ## C. Reactions
 
@@ -98,11 +102,13 @@ off. "Log card" means a card in #bot-log.
 | C3 | 🤖 Auto | Reaction added, removed, added again | Applied once, on where it ended up | ✅ Pass | 2026-10-07 | `tests/test_reactions.py` |
 | C4 | 👤 Manual | React 📦 on two messages a few seconds apart | Both handled together, 30 seconds after the last reaction | ⬜ Untested | | |
 | C5 | 🤖 Auto | Someone who isn't allowed reacts 📦 | Ignored before any decision is made | ✅ Pass | 2026-10-07 | `tests/test_reaction_keys.py` |
-| C6 | 👤 Manual | React 📦 on a message that can't be archived (e.g. in #bot-log) | Message gets ⚠️; reason on a log card; nothing said in the channel | ⬜ Untested | | |
+| C6 | 👤 Manual | React 📦 on a message that can't be archived (e.g. in #bot-log) | At once, with no 30-second wait: the message gets ⚠️, the reason shows in the channel for 5 seconds, and there is a "Reaction refused" log card. Nothing more happens later | ⬜ Untested | | |
 | C7 | 🤖 Auto | An emoji nothing is registered for (👍), or one that doesn't work in that channel | Ignored | ✅ Pass | 2026-10-07 | `tests/test_reaction_keys.py` |
 | C8 | 👤 Manual | React 📦 while the bot is stopped, then start it | Not acted on (reactions made while off are not seen) | ⬜ Untested | | |
 | C9 | 🤖 Auto | Debounce timer | One batch after the quiet period; each change restarts the wait; cancel drops the batch; a change during handling starts a new batch | ✅ Pass | 2026-10-07 | `tests/test_debounce.py, test_devmode.py` |
 | C10 | 🤖 Auto | Applied reactions and undo | Removing an applied reaction undoes it; what is applied survives a restart; emoji compared without the invisible style character | ✅ Pass | 2026-10-07 | `tests/test_reactions.py` |
+| C11 | 🤖 Auto | Checking a reaction the moment it is added | An invalid one is refused and never debounced; valid ones, ones with no check, unknown emoji and other people's go on as before; removing a refused one clears its ⚠️ | ✅ Pass | 2026-10-07 | `tests/test_registry.py, test_reaction_keys.py` |
+| C12 | 👤 Manual | Remove the 📦 from C6 | The ⚠️ is removed; nothing else happens | ⬜ Untested | |  |
 
 ## D. Archive and restore
 
@@ -120,6 +126,9 @@ off. "Log card" means a card in #bot-log.
 | D10 | 👤 Manual | Type `archive` on its own (not as a reply) | Not an action; goes to Claude in #inbox | ⬜ Untested | | |
 | D11 | 🤖 Auto | Archive record life cycle | Created, copy noted, found by original, copy or button message; restored once only; discarded if the copy fails | ✅ Pass | 2026-10-07 | `tests/test_archive_store.py` |
 | D12 | 🤖 Auto | Webhook names, copied embeds, restore fallback text | "discord" and "clyde" masked, 80 characters at most; only the message's own embeds; "**Name** wrote:" within 2000 characters | ✅ Pass | 2026-10-07 | `tests/test_archive_rules.py` |
+| D13 | 👤 Manual | Reply `archive` to an archived copy in #archive | At once: your reply stays with ⚠️, "That message is already in the archive." shows for 5 seconds, and there is a log card | ⬜ Untested | |  |
+| D14 | 🤖 Auto | Filler words on a reply | `pin this`, `pin me`, `please archive it`, `delete this` are read as the action; `delet this` and `pin this to the wall` are not; typed words are unchanged (`ping me` is chat) | ✅ Pass | 2026-10-07 | `tests/test_router.py, test_registry.py` |
+| D15 | 👤 Manual | Reply `please archive this` to a message | Archived, as `archive` does | ⬜ Untested | |  |
 
 ## E. Delete and protection
 
@@ -136,6 +145,7 @@ off. "Log card" means a card in #bot-log.
 | E9 | 👤 Manual | Apps > **Archive message** on a pinned message | Asks for confirmation first | ⬜ Untested | | |
 | E10 | 🤖 Auto | Protection rules | Pinned or 📌 by anyone protects; a removed 📌 doesn't | ✅ Pass | 2026-10-07 | `tests/test_reactions.py` |
 | E11 | 🤖 Auto | Delete refusals and the confirmation question | Archive and #bot-log messages aren't deleted on request; the question names the reason and the action | ✅ Pass | 2026-10-07 | `tests/test_archive_rules.py` |
+| E12 | 👤 Manual | React 🗑️ on an archived copy in #archive | At once: ⚠️ on the copy and "Messages in the archive stay there…" for 5 seconds; nothing is deleted. Removing the 🗑️ removes the ⚠️ | ⬜ Untested | |  |
 
 ## F. Pins
 
@@ -178,7 +188,7 @@ off. "Log card" means a card in #bot-log.
 | H6 | 👤 Manual | Press **Skip** during focus | Moves to the break; that focus round is not counted | ⬜ Untested | | |
 | H7 | 👤 Manual | Press **Stop** | Card shows "stopped after n focus rounds", no buttons; removed from the board | ⬜ Untested | | |
 | H8 | 👤 Manual | Reply `pause`, `resume`, `+10m`, `stop` to the card | Same as the buttons; `+10m` adds to the current phase | ⬜ Untested | | |
-| H9 | 👤 Manual | `pomo` while a session is running | ⚠️; log card says the current one is still going | ⬜ Untested | | |
+| H9 | 👤 Manual | `pomo` while a session is running (same channel) | The running session's card is shown again at the bottom and the old one is removed; "Already going" note for 5 seconds; your word is deleted; the session itself is unchanged | ⬜ Untested | | |
 | H10 | 👤 Manual | `pomo 50/10/30 writing`, then stop it | Card shows the label "writing" and the custom lengths | ⬜ Untested | | |
 | H11 | 👤 Manual | Complete a focus round, then `pomo stats` | Today and this week include that round | ⬜ Untested | | |
 | H12 | 👤 Manual | Stop the bot during a phase until after it ends, start it | Alert says it ended while offline; the next phase waits for Start, even in auto | ⬜ Untested | | |
@@ -186,6 +196,8 @@ off. "Log card" means a card in #bot-log.
 | H14 | 🤖 Auto | `pomo` arguments | `50/10`, `50/10/30`, `auto` / `manual`, units, label; bad lengths refused | ✅ Pass | 2026-10-07 | `tests/test_pomodoro.py` |
 | H15 | 🤖 Auto | Whether the next phase starts by itself | Only in auto mode, and never after downtime | ✅ Pass | 2026-10-07 | `tests/test_timer_text.py` |
 | H16 | 🤖 Auto | Focus stats | Only completed focus rounds count; NZ days; weeks start on Monday | ✅ Pass | 2026-10-07 | `tests/test_pomodoro.py` |
+| H17 | 👤 Manual | `pomo` in another channel while a session is running | A pointer with a link to the card for 5 seconds; the card stays where it is | ⬜ Untested | |  |
+| H18 | 🤖 Auto | Where an already-running session is shown | Its card again in its own channel; a pointer from anywhere else | ✅ Pass | 2026-10-07 | `tests/test_pomodoro.py` |
 
 ## J. Dev mode
 
@@ -193,7 +205,7 @@ Any channel. Check the bot's status in the member list.
 
 | ID | Type | Test | Expected result | Status | Date | Notes |
 |---|---|---|---|---|---|---|
-| J1 | 👤 Manual | `dev on` | Panel posted and pinned with debounce 2s, speed 1x, verbose on, quiet hours ignored, each against its normal value, and a live expiry an hour away; no pin notice; "Dev mode on" log card | ⬜ Untested | | |
+| J1 | 👤 Manual | `dev on` | Panel posted and pinned with debounce 2s, speed 1x, verbose on, quiet hours ignored, clean-up on, each against its normal value, and a live expiry an hour away; no pin notice; "Dev mode on" log card | ⬜ Untested | | |
 | J2 | 👤 Manual | Look at the bot's status | Shows "🛠️ Dev mode" | ⬜ Untested | | |
 | J3 | 👤 Manual | `dev off` | Panel unpinned and deleted; status cleared; "Dev mode off" log card with the reason | ⬜ Untested | | |
 | J4 | 👤 Manual | With dev mode on, type some messages, then `dev` | Panel moves to the bottom of the channel, still pinned; one panel only | ⬜ Untested | | |
@@ -209,17 +221,21 @@ Any channel. Check the bot's status in the member list.
 | J14 | 👤 Manual | `dev expire 1m` and wait | Panel shows the new expiry; after a minute dev mode switches itself off as in J3, reason "expired" | ⬜ Untested | | |
 | J15 | 👤 Manual | `dev reset` after changing settings | Panel back to the dev defaults with a fresh hour | ⬜ Untested | | |
 | J16 | 👤 Manual | Panel buttons: **+1 hour**, **Reset**, **Disable** | Expiry moves out an hour; settings reset; dev mode off as in J3 | ⬜ Untested | | |
-| J17 | 👤 Manual | Add 📌 to a message, wait for its ✅, then reply `dev inspect` to it | Pinned: yes; Protected from clean-up: pinned; Kept: yes; "Reactions on it" lists 📌 and ✅; Reactions applied: 📌; Archive record: none | ⬜ Untested | | |
+| J17 | 👤 Manual | Add 📌 to a message, wait for its ✅, then reply `dev inspect` to it | Lifecycle: Protected…; Pinned: yes; Protected from clean-up: pinned; Kept: yes; "Reactions on it" lists 📌 and ✅; Reactions applied: 📌; Archive record: none | ⬜ Untested | | |
 | J18 | 👤 Manual | Reply `dev inspect` to an archived copy in #archive | Archive record line shows where it came from and when | ⬜ Untested | | |
 | J19 | 👤 Manual | `dev jobs` | Pending jobs with id, skill/kind and due time, including the nightly backup | ⬜ Untested | | |
 | J20 | 👤 Manual | `dev run backup`; then `dev run sweep` | "💾 Backup saved" log card and a new file in `data/backups/`; sweep gets ⚠️ with "not built" on the log card | ⬜ Untested | | |
 | J21 | 👤 Manual | `timer 10m`, then `dev fire next` | The timer finishes at once; confirmation names the job | ⬜ Untested | | |
-| J22 | 👤 Manual | `dev seed 3`, then `dev clean` | Three sample messages tagged "🧪 dev test data"; clean removes them and any `dev inspect` / `dev jobs` output | ⬜ Untested | | |
+| J22 | 👤 Manual | `dev seed 3`, then `dev clean` | Three sample messages tagged "🧪 dev test data", and a "🌱 Seeded 3…" line that stays (it is not a 5-second confirmation); clean removes them all, with any `dev inspect` / `dev jobs` output | ⬜ Untested | | |
 | J23 | 👤 Manual | `dev seed 2`, pin one, `dev clean` | The pinned one stays | ⬜ Untested | | |
 | J24 | 👤 Manual | `dev on`, restart the bot | Dev mode is off: normal debounce, no status; the old panel is removed at startup; a button on any panel left behind removes it | ⬜ Untested | | |
 | J25 | 🤖 Auto | Dev defaults, on / off / reset, expiry | Off gives normal values; on gives 2s, 1x, verbose, quiet ignored for 1 hour; settings only count while on | ✅ Pass | 2026-10-07 | `tests/test_devmode.py` |
 | J26 | 🤖 Auto | Dev setting values | `60`, `2.5`, `2s`, `60x`, `on`, `off` read correctly; out-of-range and nonsense refused with the usage, changing nothing | ✅ Pass | 2026-10-07 | `tests/test_devmode.py, test_dev_parsing.py` |
 | J27 | 🤖 Auto | Speed arithmetic and `dev run` tasks | 25m at 60x is 25 real seconds, and back; unknown and unbuilt tasks refused | ✅ Pass | 2026-10-07 | `tests/test_devmode.py` |
+| J28 | 👤 Manual | `dev cleanup off`, then a setting word such as `dev debounce 3`; then `dev cleanup on` | Panel shows clean-up off; your words and their confirmations stay on screen; after `dev cleanup on` they are tidied away again as normal | ⬜ Untested | |  |
+| J29 | 👤 Manual | Reply `dev inspect` to a timer's alert, and to a running timer's message | The card's Lifecycle line says Alert for the first and Live for the second, each with what happens to it | ⬜ Untested | |  |
+| J30 | 👤 Manual | `dev off` when dev mode is already off | "🛠️ Dev mode is already off." for 5 seconds; your word is deleted; no ⚠️ | ⬜ Untested | |  |
+| J31 | 🤖 Auto | The clean-up setting | On by default and whenever dev mode is off; `dev cleanup off` stops every automatic deletion | ✅ Pass | 2026-10-07 | `tests/test_devmode.py, test_lifecycle.py` |
 
 ## K. Startup and housekeeping
 
@@ -234,11 +250,12 @@ Any channel. Check the bot's status in the member list.
 | K7 | 🤖 Auto | Permissions | Only the owner is allowed anything; someone else marked owner is demoted at startup; lookups are cached | ✅ Pass | 2026-10-07 | `tests/test_permissions.py` |
 | K8 | 🤖 Auto | Registrations | Every skill loads; every word, reply action and reaction has a description, an example, a channel and a permission | ✅ Pass | 2026-10-07 | `tests/test_registry.py` |
 | K9 | 🤖 Auto | Scheduler | Jobs run when due, late ones at startup flagged late, interrupted ones recovered; the nightly backup books its successor | ✅ Pass | 2026-10-07 | `tests/test_scheduler.py` |
+| K10 | 👤 Manual | Set `ASSISTANT_NAME=Marvin` in `.env`, restart, `buttons` and press **Wave** | "👋 Hello from Marvin!"; Claude also gives that name when asked | ⬜ Untested | | Needs a restart with the setting changed; skip otherwise |
 
 ## L. Keep
 
 Any channel. 📌 from you keeps a message: it is pinned, clean-ups leave it
-alone, and archive and delete ask first (E8).
+alone, and archive and delete ask first (E8). Replying `pin` pins at once.
 
 | ID | Type | Test | Expected result | Status | Date | Notes |
 |---|---|---|---|---|---|---|
@@ -250,3 +267,19 @@ alone, and archive and delete ask first (E8).
 | L6 | 🤖 Auto | The 📌 registration | A reaction of the keep skill, any channel, not destructive, with an undo; every reaction that leaves its message can be undone | ✅ Pass | 2026-10-07 | `tests/test_keep.py, test_registry.py` |
 | L7 | 🤖 Auto | Keeping and unkeeping | Keeping pins, unkeeping unpins; unkeeping a message that has gone is fine; a message counts as kept once 📌 is applied | ✅ Pass | 2026-10-07 | `tests/test_keep.py` |
 | L8 | 🤖 Auto | Discord refuses to pin or unpin | Pin limit, message gone, kind of message that can't be pinned, no permission: each fails with a reason the user can act on | ✅ Pass | 2026-10-07 | `tests/test_keep.py` |
+| L9 | 👤 Manual | Reply `pin` to a message | Pinned at once (no wait); your reply is deleted; "📌 Pinned" for 5 seconds; no "pinned a message" notice left behind | ⬜ Untested | |  |
+| L10 | 👤 Manual | Reply `pin this`, and `pin me`, to a message | Each pins it, as `pin` does | ⬜ Untested | |  |
+| L11 | 👤 Manual | Reply `unpin` to a pinned message | Unpinned at once; "📌 Unpinned" for 5 seconds | ⬜ Untested | |  |
+| L12 | 🤖 Auto | Pinning by reply | `pin`, `keep`, `save` pin and `unpin`, `unkeep` unpin, in any channel; a refusal by Discord confirms nothing | ✅ Pass | 2026-10-07 | `tests/test_keep.py` |
+
+## M. Message lifecycle
+
+Every message has a class (Kept, Live, Consumed, Transient, Alert,
+Protected; the table is in `CLAUDE.md`). What shows in Discord is covered
+by J28 and J29.
+
+| ID | Type | Test | Expected result | Status | Date | Notes |
+|---|---|---|---|---|---|---|
+| M1 | 🤖 Auto | The policy and which class a message is | Kept and Protected are never auto-deleted; the others may be once their information lives elsewhere; protection wins, then what a skill declares, then transient, then command; anything else is Kept | ✅ Pass | 2026-10-07 | `tests/test_lifecycle.py` |
+| M2 | 🤖 Auto | Confirmations, notes and command messages | Self-delete after `CONFIRMATION_SECONDS` and the command is removed; with clean-up off they all stay; lasting replies never get a lifetime | ✅ Pass | 2026-10-07 | `tests/test_lifecycle.py` |
+| M3 | 🤖 Auto | What the timers skill declares | A running timer or session is Live, its alert is an Alert, and a finished one's summary is ordinary Kept content | ✅ Pass | 2026-10-07 | `tests/test_lifecycle.py` |

@@ -47,6 +47,18 @@ class DevModeTest(unittest.TestCase):
         devmode.disable()
         self.assertEqual(devmode.current(), devmode.NORMAL)
 
+    def test_cleanup_is_on_by_default_and_only_off_while_dev_mode_says_so(self):
+        self.assertTrue(devmode.cleanup_enabled())
+        devmode.enable(NOW)
+        self.assertTrue(devmode.cleanup_enabled())
+        devmode.set_cleanup(False)
+        self.assertFalse(devmode.cleanup_enabled())
+        devmode.set_cleanup(True)
+        self.assertTrue(devmode.cleanup_enabled())
+        devmode.set_cleanup(False)
+        devmode.disable()
+        self.assertTrue(devmode.cleanup_enabled())
+
     def test_switching_on_again_starts_from_the_defaults(self):
         devmode.enable(NOW)
         devmode.set_speed(60)

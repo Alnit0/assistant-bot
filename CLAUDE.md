@@ -37,8 +37,10 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   Only `lab`, `archive`, `timers` and `dev` may use discord.py, until the
   gateway layer exists
 - The registry decides how every action ends; handlers use `ctx.reply`
-  (lasting) or `ctx.confirm` (self-deleting) and raise `UserError` for
-  problems the user can fix
+  (lasting: Kept) or `ctx.confirm` (self-deleting: Transient) and raise
+  `UserError` for problems the user can fix. Code that deletes a message
+  by itself checks `lifecycle.deletes(...)` first
+- The assistant's name comes from `ASSISTANT_NAME`; never hard-code it
 - Permissions go through `is_allowed(user, action)`, never a comparison
   with `OWNER_ID`. Only the owner is allowed anything
 - Every record has a `user_id`. Skill tables are prefixed with the skill's
@@ -87,8 +89,12 @@ Input
 - Typed plain words are the main way in; no slash needed. Unmatched
   messages go to Claude (in #inbox only). Slash commands are a hidden
   fallback only.
-- Replying to a message with an action word (archive, keep, save,
-  delete, remind <when>) applies it to that message.
+- Replying to a message with an action word (archive, pin, keep, save,
+  unpin, delete, remind <when>) applies it to that message. Filler words
+  are fine on a reply ("pin this", "please archive it").
+- Commands are idempotent: asking for a single-instance thing that
+  already exists shows it again instead of failing (`pomo` while a
+  session runs re-shows its card; `dev off` when off just says so).
 - Help is generated from the registry; every keyword, reply action and
   reaction must have a description, examples, channels and permission.
 
@@ -98,17 +104,35 @@ Reactions
   Destructive actions (archive, delete) are reversible only within the
   debounce window. After that, archived copies carry a persistent
   "Restore" button that reposts to the original channel.
+- Eligibility is checked at once, for reactions and reply actions alike
+  (e.g. archiving in #bot-log): an invalid action gets ⚠️ plus a short
+  self-deleting reason, with no wait. Only valid actions are debounced.
 - Reaction actions are debounced globally (REACTION_DEBOUNCE, default
   30s); the bot acts once on the final state of MY reactions compared
   with what was last applied, then adds ✅. When nothing is active on a
   message, the ✅ is removed.
 - Archive and delete (by reply, reaction or menu) ask for confirmation
   if the message is pinned, 📌-reacted or saved.
-- A failed reaction action adds ⚠️ to the message, with details in
-  #bot-log; no temporary notes in the channel.
+- A reaction action that fails when it runs adds ⚠️ to the message, with
+  details in #bot-log; no temporary notes in the channel.
 - Everything else (messages, buttons, jobs) acts immediately.
 
 Cleanliness
+- Every message, the bot's or mine, has a lifecycle class
+  (`core/lifecycle.py`). Anything that deletes a message by itself asks
+  the policy first:
+
+  | Class | Examples | What happens |
+  |---|---|---|
+  | Kept | Chats with Claude and its replies, help, explanations, lists, stats, seed instructions, results you'll want to read | Never auto-deleted (until the future nightly sweep); only removed by me (archive, delete) |
+  | Live | Dev panel, timer board, Pomodoro card | Edited in place; when finished, collapses to a one-line summary (becomes Kept), or is removed if it has no lasting value (e.g. the dev panel) |
+  | Consumed | My command words: reply actions (archive, pin), settings (dev debounce 1), shortcuts whose result is posted | Deleted once actioned successfully; kept with ⚠️ if it failed |
+  | Transient | Short confirmations ("📦 Archived"), invalid-action reasons | Delete themselves after a few seconds |
+  | Alert | Timer done, Pomodoro phase change, reminders | Stay until acknowledged, then deleted, with the original updated |
+  | Protected | 📌-reacted or pinned messages | Never auto-deleted; archive/delete ask for confirmation |
+
+- Rule of thumb: only delete a message when its information now lives
+  somewhere else. `dev cleanup off` disables all auto-deletion.
 - Edit messages in place rather than posting new ones. Exception:
   anything that must notify me (timer done, Pomodoro phase changes,
   reminders) posts a new message; that alert is deleted once

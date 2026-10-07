@@ -1,27 +1,27 @@
 # QA run sheet
 
-One pass through the 108 👤 Manual tests in `docs/TESTING.md` that are
+One pass through the 122 👤 Manual tests in `docs/TESTING.md` that are
 ⬜ Untested (as of 2026-10-07). Blocks share setup and each one leaves things
 ready for the next, so run them in order.
 
-**Time:** about 2 hours at the keyboard, plus two nights for the backup
+**Time:** about 2¼ hours at the keyboard, plus two nights for the backup
 tests (block 12).
 
 | Block | What | Dev mode | Tests | Minutes |
 |---|---|---|---|---|
 | 1 | Start-up | off | 3 | 5 |
-| 2 | Builtin words and chat | off | 11 | 8 |
-| 3 | Reactions at the real 30 seconds | off | 5 | 5 |
+| 2 | Builtin words and chat | off | 12 | 9 |
+| 3 | Reactions at the real 30 seconds | off | 6 | 5 |
 | 4 | Pins | off | 4 | 5 |
-| 5 | Dev mode switch and panel | on and off | 10 | 8 |
-| 6 | Archive, delete, keep and protection | on, debounce 2s | 22 | 23 |
-| 7 | Timers and dev tools | on, speed 1x then 60x | 15 | 15 |
-| 8 | Pomodoro | on, speed 60x then 1x | 12 | 10 |
-| 9 | Lab tour and restarts | on, then off (restart) | 12 | 26 |
+| 5 | Dev mode switch and panel | on and off | 12 | 10 |
+| 6 | Archive, delete, keep and protection | on, debounce 2s | 28 | 27 |
+| 7 | Timers and dev tools | on, speed 1x then 60x | 16 | 16 |
+| 8 | Pomodoro | on, speed 60x then 1x | 13 | 11 |
+| 9 | Lab tour and restarts | on, then off (restart) | 13 | 27 |
 | 10 | Rest of the lab | off | 8 | 8 |
-| 11 | Phone notifications | off | 4 | 10 |
+| 11 | Phone notifications | off | 5 | 11 |
 | 12 | Overnight backups | off | 2 | 2 nights |
-| | **Total** | | **108** (F2 is split over blocks 4 and 7, counted in 7) | **about 2 hours** |
+| | **Total** | | **122** (F2 is split over blocks 4 and 7, counted in 7) | **about 2¼ hours** |
 
 ## Before you start
 
@@ -40,6 +40,9 @@ tests (block 12).
   e.g. `A1 pass, A2 fail: reply came twice, K3 skip: no second account`.
 - "Log card" means a card in #bot-log. "Within 5 seconds" confirmations
   delete themselves.
+- **If you want to see everything that was sent**, `dev cleanup off` stops
+  all automatic deletion until `dev cleanup on` or `dev off`. Leave it on
+  for this sheet: the expected results assume the normal tidying.
 
 ## 1. Start-up
 
@@ -68,6 +71,7 @@ Dev mode: off. In #inbox unless it says otherwise.
 | 9 | `timer banana` | Your message stays and gets ⚠️; the reason is only on the log card | K4 |
 | 10 | Reply `delete` to that `timer banana` message | It and your reply are deleted; "🗑️ Deleted" for 5 seconds | E1 |
 | 11 | In #scratch: `ping` | Nothing: no reply, no Claude. **Leave the message there** (target for block 6) | A12 |
+| 12 | Back in #inbox: `Set a timer for 5 minutes` | Claude doesn't claim or offer to do it: it tells you to type `timer 5m`. No timer starts | A17 |
 
 ## 3. Reactions at the real 30 seconds
 
@@ -79,8 +83,9 @@ type four messages first: `one`, `two`, `three`, `keep me`.
 | 1 | React 📦 on `one` and time it | Nothing for 30 seconds, then it is archived | C1 |
 | 2 | Look at the copy in #archive | Your name and avatar, original time, link back; original gone | D4 |
 | 3 | React 📦 on `two`, and about 5 seconds later on `three` | Both archived together, 30 seconds after the second reaction | C4 |
-| 4 | React 📦 on any card in #bot-log, wait 30 seconds | The card gets ⚠️; reason on a new log card; nothing said in the channel. Remove your 📦 | C6 |
-| 5 | React 📌 on `keep me` and time it | Nothing for 30 seconds, then it is pinned and gets ✅; no "pinned a message" notice left behind; "📌 Reaction: keep" log card. **Leave it kept** (target for block 9) | L1 |
+| 4 | React 📦 on any card in #bot-log | At once, with no 30-second wait: the card gets ⚠️, the reason shows in the channel for 5 seconds, and there is a "Reaction refused" log card. Nothing more happens later | C6 |
+| 5 | Remove your 📦 from that card | The ⚠️ is removed; nothing else happens | C12 |
+| 6 | React 📌 on `keep me` and time it | Nothing for 30 seconds, then it is pinned and gets ✅; no "pinned a message" notice left behind; "📌 Reaction: keep" log card. **Leave it kept** (target for block 9) | L1 |
 
 Leaves three archived copies in #archive (used in blocks 6 and 9) and the
 kept `keep me` (used in block 9).
@@ -104,7 +109,7 @@ the member list.
 | # | Do | Expect | Tests |
 |---|---|---|---|
 | 1 | `dev` | ⚠️ on your message; log card says dev mode is off. Delete the message by hand | J5 |
-| 2 | `dev on` | Panel posted and pinned: debounce 2s, speed 1x, verbose on, quiet hours ignored, each against its normal value, live expiry an hour away; no pin notice; "Dev mode on" log card | J1 |
+| 2 | `dev on` | Panel posted and pinned: debounce 2s, speed 1x, verbose on, quiet hours ignored, clean-up on, each against its normal value, live expiry an hour away; no pin notice; "Dev mode on" log card | J1 |
 | 3 | Look at the bot's status | "🛠️ Dev mode" | J2 |
 | 4 | Type `a`, then `b`, then `dev` | Panel moves to the bottom, still pinned; only one panel | J4 |
 | 5 | `dev quiet on`, then `dev quiet off` | Panel shows "respected", then "ignored" | J13 |
@@ -113,6 +118,8 @@ the member list.
 | 8 | `dev speed 10` | Dev mode switches on; panel shows 10x and the other settings at dev defaults | J6 |
 | 9 | `dev off` | Panel unpinned and deleted; status cleared; "Dev mode off" log card with the reason | J3 |
 | 10 | `dev expire 1m`, wait a minute | Panel shows the new expiry; then dev mode switches itself off as in step 9, reason "expired" | J14 |
+| 11 | `dev cleanup off`, then `dev debounce 3` | Dev mode switches on; panel shows clean-up off; both of your words and their confirmations stay on screen | J28 (first half) |
+| 12 | `dev cleanup on`, then `dev off`, then `dev off` again | Words are tidied away again as normal. The second `dev off`: "🛠️ Dev mode is already off." for 5 seconds, your word deleted, no ⚠️. Delete what step 11 left behind by hand | J28 (second half), J30 |
 
 ## 6. Archive, delete, keep and protection
 
@@ -141,16 +148,22 @@ Targets already there: your `ping` (block 2) and the pinned `pin me`
 | 15 | Reply `delete` to the pinned `pin me` | "⚠️ That message is pinned. Delete it anyway?" with Confirm and Cancel; nothing deleted | E5 |
 | 16 | Press **Cancel** | Question removed; message untouched | E7 (first half) |
 | 17 | Right-click `pin me` > Apps > **Archive message**, then **Cancel** | Asks for confirmation first | E9 |
-| 18 | Add 📌 to `pin me` and wait for its ✅ (2 seconds); reply `dev inspect` to it | Pinned: yes; Protected from clean-up: pinned; Kept: yes; "Reactions on it" lists 📌 and ✅; Reactions applied: 📌; Archive record: none | J17 |
+| 18 | Add 📌 to `pin me` and wait for its ✅ (2 seconds); reply `dev inspect` to it | Lifecycle: Protected…; Pinned: yes; Protected from clean-up: pinned; Kept: yes; "Reactions on it" lists 📌 and ✅; Reactions applied: 📌; Archive record: none | J17 |
 | 19 | Reply `delete` to `pin me` again and **don't answer**. Note the time | Question appears | |
 | 20 | Meanwhile: add 📌 to "Gym: 3 x 8 squats…" (it is pinned and gets ✅ after 2 seconds); reply `archive` to it, **Cancel**; then react 🗑️ on it, wait 2 seconds, **Cancel**. Remove the 🗑️ | Both ask for confirmation first; message untouched | E8 |
 | 21 | Two minutes after step 19, look at the question | Removed by itself; `pin me` untouched | E7 (second half) |
 | 22 | Reply `delete` to `pin me` once more, press **Confirm** | Message deleted; the question shows the outcome, then removes itself | E6 |
-| 23 | `dev seed 3`, then `dev clean` | Three tagged samples appear; clean removes them and the `dev inspect` card. The kept "Gym…" stays | J22 |
+| 23 | `dev seed 3`, then `dev clean` | Three tagged samples appear, and a "🌱 Seeded 3…" line that stays (not a 5-second confirmation); clean removes them all and the `dev inspect` card. The kept "Gym…" stays | J22 |
 | 24 | `dev seed 2`, pin one by hand, `dev clean` | The pinned one stays; the other goes | J23 |
 | 25 | Remove your 📌 from "Gym…" and wait 2 seconds | It is unpinned and its ✅ is removed; "📌 Reaction removed: keep" log card | L2 |
-| 26 | Tidy up: unpin the one from step 24, `dev clean`; in #archive, `dev clean` | #scratch has no test data; the `dev inspect` card in #archive is gone | |
-| 27 | Only if you have a channel that is at Discord's pin limit (otherwise report `L5 skip`): react 📌 on a message there. Then unpin one, take the 📌 off and add it again | The message gets ⚠️, isn't pinned and nothing is said in the channel; the log card says the channel is full and what to do. The second time it is pinned, and ✅ replaces the ⚠️ | L5 |
+| 26 | `dev seed 2`; reply `please archive this` to "Buy oat milk…" | Archived, as `archive` does | D15 |
+| 27 | Reply `pin` to "Idea: a weekly review…" | Pinned at once (no wait); your reply is deleted; "📌 Pinned" for 5 seconds; no "pinned a message" notice left behind | L9 |
+| 28 | Reply `unpin` to it | Unpinned at once; "📌 Unpinned" for 5 seconds | L11 |
+| 29 | Reply `pin this` to it, then `unpin`; then `pin me`, then `unpin` | Each `pin …` pins it, as `pin` does | L10 |
+| 30 | In #archive: reply `archive` to one of the copies | At once: your reply stays with ⚠️, "That message is already in the archive." shows for 5 seconds, and there is a log card. Delete your reply by hand | D13 |
+| 31 | Still in #archive: react 🗑️ on that copy, then remove the 🗑️ | At once: ⚠️ on the copy and "Messages in the archive stay there…" for 5 seconds; nothing is deleted. Removing the 🗑️ removes the ⚠️ | E12 |
+| 32 | Tidy up: unpin the one from step 24, `dev clean`; in #archive, `dev clean` | #scratch has no test data; the `dev inspect` card in #archive is gone | |
+| 33 | Only if you have a channel that is at Discord's pin limit (otherwise report `L5 skip`): react 📌 on a message there. Then unpin one, take the 📌 off and add it again | The message gets ⚠️, isn't pinned and nothing is said in the channel; the log card says the channel is full and what to do. The second time it is pinned, and ✅ replaces the ⚠️ | L5 |
 
 Leaves dev mode on, and archived copies in #archive (needed for block 9).
 
@@ -165,11 +178,11 @@ First press **+1 hour** on the panel so it lasts through block 9.
 | 2 | `timer 10s tea` | Timer message with a live "ends in…"; your word is deleted; pinned "Active timers" board lists it; no pin notice | G1, F2 (second half) |
 | 3 | Wait 10 seconds | Original edited to "finished"; a new message @mentions you with +5 min, Restart and Dismiss; board updated | G2 |
 | 4 | Press **Dismiss** | Alert deleted; original stays | G3 |
-| 5 | `timer 10s a`, then `timer 10s b`; let both finish | Two alerts | |
+| 5 | `timer 10s a`, then `timer 10s b`; let both finish. Reply `dev inspect` to a's alert | Two alerts; the inspect card's Lifecycle line says Alert, with what happens to it | J29 (first half) |
 | 6 | On a's alert press **+5 min**; on b's press **Restart** | Each alert cleared; a runs for 5 minutes, b for its full 10 seconds. When b finishes, reply `ok` to its alert: alert deleted | G4, G3 |
 | 7 | Reply `pause` to timer a, then `resume` | "paused with … left", then running again with the same time left | G5 |
 | 8 | Reply `+10m` to it, then `extend 5m` | End time moves out by 10, then 5 more minutes | G6 |
-| 9 | `timer` | Lists timer a | G9 (second half) |
+| 9 | `timer`; then reply `dev inspect` to timer a's message | Lists timer a; the inspect card's Lifecycle line says Live | G9 (second half), J29 (second half) |
 | 10 | Reply `cancel` to timer a | Marked cancelled; off the board; no alert later | G7 |
 | 11 | `timer 10m`, then `dev jobs` | Pending jobs with id, skill/kind and due time: the timer and the nightly backup | J19 |
 | 12 | `dev fire next` | The timer finishes at once; "🔥 Fired job #…" names it. Dismiss the alert | J21 |
@@ -194,7 +207,7 @@ focus rounds only count in the stats at 1x.
 | 2 | `pomo 25/5`; let focus end; `pomo stats` | Card says 25m; phase ends in about 25 seconds; stats unchanged. Reply `ok` to the alert, press **Stop** | J10 |
 | 3 | `dev speed 1` | Panel shows 1x | |
 | 4 | `pomo 50/10/30 writing` | Card shows the label "writing" and the 50/10/30 lengths | H10 |
-| 5 | `pomo` | ⚠️; log card says the current one is still going. Delete the ⚠️ message by hand | H9 |
+| 5 | `pomo`; then in #inbox: `pomo` | In #scratch the card is shown again at the bottom and the old one is removed, with an "Already going" note for 5 seconds; your word is deleted and the session is unchanged. In #inbox: a pointer with a link to the card for 5 seconds; the card stays in #scratch | H9, H17 |
 | 6 | Reply to the card: `pause`, `resume`, `+10m`, `stop` | Same as the buttons; `+10m` adds 10 minutes to the current phase; `stop` ends it | H8 |
 | 7 | `pomo 30s/10s` | One card with phase, round, label, live time and Pause, Skip, Stop; listed on the board | H1 |
 | 8 | Wait 30 seconds | @mention alert with Start and Skip; the break doesn't start; card says it is waiting | H2 |
@@ -244,10 +257,11 @@ switched off by the first restart, which is itself a test.
 | # | Do | Expect | Tests |
 |---|---|---|---|
 | 18 | In #scratch: type `offline`, then `timer 1m`, then `pomo auto 1m/30s`. Stop the bot (`Ctrl + C`) | | |
-| 19 | While it is stopped: react 📦 on `offline`. Wait 3 minutes. Start the bot | | |
+| 19 | While it is stopped: react 📦 on `offline`. Optional: set `ASSISTANT_NAME=Marvin` in `.env` (for step 23). Wait 3 minutes. Start the bot | | |
 | 20 | Look at #scratch | Timer alert says it finished while the bot was offline | G12 |
 | 21 | Look at the Pomodoro | Alert says the phase ended while offline; the next phase waits for **Start**, even though it is auto | H12 |
 | 22 | Wait 35 seconds, look at `offline` | Not archived. Remove the 📦, dismiss the alert, **Stop** the session | C8 |
+| 23 | Only if you set the name in step 19 (otherwise report `K10 skip`): in #inbox, `buttons` and press **Wave**; ask Claude its name | "👋 Hello from Marvin!"; Claude says Marvin. Put `.env` back afterwards (it takes effect at the next start) | K10 |
 
 ## 10. Rest of the lab
 
@@ -275,7 +289,7 @@ everything from the phone, in #scratch.
 | 1 | `lab chart`, then `lab chart matplotlib 14` | Two charts each time (messages per day, cost per day), readable on the phone | B5 |
 | 2 | `lab notify all` | Normal, silent, @mention and DM arrive in that order, 5 seconds apart; the DM is a short pointer with a link back | B6 |
 | 3 | `lab notify mention delay 30`, lock the phone | Answered at once; about 30 seconds later the @mention arrives and the phone notifies | B7 |
-| 4 | `lab channels delay 30`, lock the phone; then reply with anything in #reminders, #gym, #admin and #inbox | One test message per channel: normal, @mention, silent, and a link to the #reminders one. Each reply gets ✅; a results card with response times appears in #scratch | B17 |
+| 4 | `lab channels delay 30`, then `lab channels` again straight away; lock the phone; then reply with anything in #reminders, #gym, #admin and #inbox | The second says a channel test is already running (for 5 seconds), with no ⚠️. One test message per channel: normal, @mention, silent, and a link to the #reminders one. Each reply gets ✅; one results card with response times appears in #scratch | B17, B21 |
 
 ## 12. Overnight backups
 

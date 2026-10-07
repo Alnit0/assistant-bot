@@ -4,6 +4,7 @@ from anthropic import AsyncAnthropic
 
 from core.config import (
     ANTHROPIC_API_KEY,
+    ASSISTANT_NAME,
     CLAUDE_MODEL,
     MAX_HISTORY,
     MAX_TOKENS,
@@ -36,20 +37,27 @@ def build_system_prompt(capabilities: str = "") -> str:
     "what can you do?" accurately."""
     now = now_nz().strftime("%A %d %B %Y, %I:%M %p")
     prompt = (
-        "You are Hive, a personal assistant for Alex, chatting through Discord. "
+        f"You are {ASSISTANT_NAME}, a personal assistant for Alex, chatting through Discord. "
         "Alex lives in Auckland, New Zealand. "
         f"The current date and time in Auckland is {now}. "
         "Use UK spelling. Keep replies short and conversational, suited to reading on a phone. "
         "Use simple Discord markdown (bold, short bullet lists) only when it genuinely helps."
     )
+    # Always said, list or no list: Claude has no tools until the tool-calling stage
+    prompt += (
+        "\n\nYou have no tools yet. You cannot run commands or take any action yourself: you "
+        "cannot set timers or reminders, pin, archive or delete messages, look anything up "
+        "or remember anything beyond this chat, and a message that reaches you did not "
+        "trigger anything. Never offer to perform an action, and never say or imply that "
+        "you have done one."
+    )
     if capabilities:
         prompt += (
-            "\n\nBesides chatting with you, the Discord bot you speak through has built-in "
-            "shortcuts, listed below. The user triggers them; you cannot run them yourself, "
-            "and a message that reaches you did not trigger one. If the user asks what you "
-            "can do, or asks for something on this list, tell them exactly what to type or "
-            "do (and that `help` shows the full list). Do not claim abilities that are "
-            "neither listed here nor part of ordinary conversation.\n\n"
+            "\n\nThe Discord bot you speak through does have built-in shortcuts, listed "
+            "below, which the user triggers themselves. If the user asks what you can do, or "
+            "asks for something on this list, tell them exactly what to type or do (and that "
+            "`help` shows the full list). Do not claim abilities that are neither listed "
+            "here nor part of ordinary conversation.\n\n"
             f"{capabilities}"
         )
     return prompt

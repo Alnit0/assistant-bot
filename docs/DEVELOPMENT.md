@@ -68,7 +68,7 @@ the channel you are in; `help <skill or word>` gives details.
 | Way in | Example | Where |
 |---|---|---|
 | **A word on its own** | `stats`, `clear chat`, `lab chart 30` | Mostly #inbox; `lab …` and `help` anywhere |
-| **Reply to a message with a word** | reply `archive` or `delete` | Anywhere |
+| **Reply to a message with a word** | reply `archive`, `pin` or `delete` | Anywhere |
 | **A reaction** | 📦, 🗑️ or 📌 on a message | Anywhere |
 | Slash command (fallback) | `/lab chart`, Apps > Archive message | Anywhere |
 
@@ -79,6 +79,12 @@ the channel you are in; `help <skill or word>` gives details.
   in words of five letters or more (`statss`, `lab buttns`). The bot says
   `Read as: stats` when it has corrected something. Destructive words
   (`reset` and its aliases, `delete`) must be spelled exactly.
+- **A reply may carry filler words:** `pin this`, `pin me`, `please archive
+  it` and `delete this` are read as the action, since a reply is already
+  aimed at a message. A word typed on its own still has to be the whole
+  message.
+- **Asking for what already exists shows it.** `pomo` while a session is
+  running shows its card again; `dev off` when it is off just says so.
 - **Anything else in #inbox goes to Claude.** Outside #inbox the bot only
   reacts to registered words, reply actions and reactions.
 - **Words and reply actions tidy up after themselves.** When one works, the
@@ -89,6 +95,25 @@ the channel you are in; `help <skill or word>` gives details.
 - **When one fails, your message stays and gets a ⚠️ reaction.** Nothing is
   said in the channel; the reason (including "Usage: …" for a wrong
   argument) is on a card in #bot-log.
+- **What can't work is refused at once.** A reaction or reply action on a
+  message it can't apply to (archiving something in #bot-log or already in
+  the archive, say) gets ⚠️ and a one-line reason that deletes itself after
+  5 seconds, with no 30-second wait. Take the reaction off and the ⚠️ goes.
+- **Every message has a lifecycle class**, which decides whether it is
+  ever tidied away:
+
+  | Class | Examples | What happens |
+  |---|---|---|
+  | Kept | Chats with Claude and its replies, help, explanations, lists, stats, seed instructions | Never auto-deleted; only removed by you (archive, delete) |
+  | Live | Dev panel, timer board, Pomodoro card | Edited in place; ends as a one-line summary (then Kept), or is removed if it has no lasting value |
+  | Consumed | Your command words and reply actions | Deleted once actioned; kept with ⚠️ if it failed |
+  | Transient | Short confirmations, invalid-action reasons | Delete themselves after a few seconds |
+  | Alert | Timer done, Pomodoro phase change | Stay until acknowledged, then deleted, with the original updated |
+  | Protected | 📌-reacted or pinned messages | Never auto-deleted; archive and delete ask first |
+
+  A message is only deleted when its information now lives somewhere else.
+  `dev cleanup off` stops all automatic deletion, and replying `dev
+  inspect` to a message shows its class.
 - **Reactions wait 30 seconds** (`REACTION_DEBOUNCE` in `.env`). The bot
   then acts once, on where your reactions ended up: add one and remove it
   in time and nothing happens. Only your reactions count.
@@ -103,11 +128,18 @@ the channel you are in; `help <skill or word>` gives details.
   it was pinned by hand before you kept it). If the channel has as many
   pins as Discord allows, the message gets ⚠️ instead: unpin something
   there, then take your 📌 off and add it again.
+- **Reply `pin` to pin at once** (also `keep`, `save`; `unpin` or `unkeep`
+  to undo). No 📌 and no wait: the message is pinned natively, which
+  protects it in the same way.
 - **Reactions made while the bot is off are not seen.**
 - **"X pinned a message" notices are deleted** wherever they appear.
 - **Claude knows the list too.** The same list `help` shows is added to its
   instructions, so "what can you do?" gets an accurate answer. Claude can't
-  run them itself; it tells you what to type.
+  run them itself and has no tools yet: it is told never to offer to do
+  something, and to say what to type instead.
+- **The assistant's name** is `ASSISTANT_NAME` in `.env` (default Hive). It
+  is what Claude calls itself and what the archive webhook and lab messages
+  show. Restart the bot after changing it.
 
 ## How to add a skill
 
@@ -230,6 +262,20 @@ Things to know:
 - **Reply words that only sometimes apply:** give a `ReplyAction` an
   `applies_to` check. The timers skill uses it so that `cancel` replied to
   an ordinary message is not treated as a command.
+- **Messages an action can't be done to:** give a `ReplyAction` or a
+  `Reaction` a `validate(message)` that raises `UserError` with the reason.
+  The core runs it the moment the reply arrives or the reaction is added,
+  marks ⚠️ and shows the reason briefly; a refused reaction is never
+  debounced. Keep it quick and free of side effects, and still check in the
+  handler (archive does both with `rules.check_archivable`).
+- **Deleting a message by itself:** ask `core.lifecycle.deletes(MessageClass.X)`
+  first, or pass `delete_after=lifecycle.delete_after()` for a note, so
+  `dev cleanup off` is respected. `ctx.confirm`, `ctx.note` and the
+  command clean-up already do. If your skill owns a card edited in place or
+  an alert, say so from `Skill.message_class(message_id)` (Live or Alert),
+  as timers does; `dev inspect` shows it.
+- **The assistant's name** is `core.config.ASSISTANT_NAME`. Don't type it
+  into a string.
 - **Slash commands are a fallback.** Return `app_commands.Group` or context
   menu objects from `app_commands()`; they are synced to our server at
   startup. In the command's check, call `interactions.check_allowed` and
@@ -342,6 +388,8 @@ round, label and a live time, with **Pause/Resume**, **Skip** and **Stop**.
 - **Skip** moves straight on to the next phase. A skipped focus round is
   not counted in the stats; only ones that run to the end are.
 - **One session at a time.** Stop the current one before starting another.
+  `pomo` while one is going shows its card again at the bottom of its
+  channel (or, from another channel, a short pointer to it).
 - **The same reply words work on the card:** `pause`, `resume`, `stop`,
   `+10m` (adds to the current phase).
 - **After a long break** the rounds start again from 1.
@@ -389,6 +437,7 @@ no slash commands. `help dev` lists the words.
 | `dev speed <n>` | Timers and Pomodoro phases run n times faster |
 | `dev verbose on\|off` | Debug cards in #bot-log |
 | `dev quiet on\|off` | `on`: quiet hours apply as normal. `off`: alerts ignore them |
+| `dev cleanup on\|off` | `off`: nothing is deleted automatically, so every command, confirmation and alert stays on screen |
 | `dev expire <duration>` | Switches itself off after this long (`30m`, `2h`) |
 | reply `dev inspect` | What the bot knows about the message you replied to |
 | `dev jobs` | The scheduler's pending jobs |
@@ -403,6 +452,7 @@ no slash commands. `help dev` lists the words.
 | Speed | 1x | 1x |
 | Verbose log | off | on |
 | Quiet hours | respected | ignored |
+| Clean-up | on | on |
 | Expiry | none | 1 hour |
 
 - **Each setting word switches dev mode on first** if it is off, with the
@@ -422,14 +472,21 @@ no slash commands. `help dev` lists the words.
 - **Verbose cards** (titles start with 🛠️) cover every word and reply action
   (trigger, outcome, time taken), every settled batch of reactions (where
   each ended up, what was applied or undone) and every scheduler job.
-- **`dev inspect`** shows: pinned, protected from clean-up (pinned or 📌),
+- **`dev cleanup off`** is for seeing exactly what was sent: confirmations
+  and "Read as" notes stay, your command words stay, acknowledged alerts
+  and pin notices stay, and a removed dev panel is only unpinned. It ends
+  with `dev cleanup on`, `dev off` or the expiry. Deleting because you
+  asked (`delete`, `archive`, `dev clean`) still works.
+- **`dev inspect`** shows: the message's lifecycle class and what happens to
+  it, pinned, protected from clean-up (pinned or 📌),
   the reactions on the message, the reaction actions applied to it
   (`reaction_state`) and its archive record, if it was archived or is an
   archived copy. "Kept" is yes once your 📌 on it has been acted on.
 - **`dev fire next`** takes the earliest pending job, which may be the
   nightly backup (it books its successor as usual).
 - **Test data** is anything the bot posted ending `-# 🧪 dev test data`:
-  seeded messages and the output of `dev inspect` and `dev jobs`. `dev clean`
+  seeded messages, the "Seeded…" line that says how to remove them, and the
+  output of `dev inspect` and `dev jobs`. `dev clean`
   looks through the last 200 messages of the channel and never removes one
   that is pinned or 📌-marked.
 - **Not built yet:** quiet hours, the sweep and the summary. `dev quiet` is

@@ -9,6 +9,7 @@ from core.config import POMO_AUTO_CONTINUE, TIMEZONE, now_nz
 from core.context import Context
 from core.discord_utils import report_interaction_error
 from core.errors import UserError
+from core.lifecycle import MessageClass
 from core.scheduler import utc_now
 from skills.timers import board, store
 from skills.timers.board import stamp
@@ -26,6 +27,7 @@ from skills.timers.durations import DurationError, format_duration
 from skills.timers.pomodoro import (
     FOCUS,
     PHASE_NAMES,
+    POINT,
     FocusTotals,
     counts_as_focus,
     next_phase,
@@ -36,6 +38,7 @@ from skills.timers.pomodoro import (
     starts_by_itself,
     summarise_focus,
     week_start,
+    where_to_show,
 )
 
 log = logging.getLogger("assistant")
@@ -186,6 +189,25 @@ async def on_due(job: scheduler.Job) -> None:
 # ---------------------------------------------------------------------------
 # pomo [...]
 # ---------------------------------------------------------------------------
+async def show_again(ctx: Context, session: store.Session) -> str:
+    """`pomo` while a session is going: bring its card to the bottom of its channel,
+    or point to it from another channel. Nothing about the session changes."""
+    if where_to_show(session.channel_id, ctx.channel_id) == POINT:
+        guild_id = getattr(getattr(ctx.channel, "guild", None), "id", "@me")
+        link = f"https://discord.com/channels/{guild_id}/{session.channel_id}/{session.message_id}"
+        await ctx.confirm(f"🍅 **{session.label}** is already going in <#{session.channel_id}>: {link}")
+        return f"pomodoro {session.id} already going; pointed to its card"
+
+    old_card = session.message_id
+    message = await ctx.reply(render_card(session), view=card_view(session))
+    session.message_id = message.id
+    await store.save_session(session)
+    # The old card's information is all on the new one
+    await delete_message(session.channel_id, old_card, MessageClass.LIVE)
+    await ctx.note("-# Already going: here it is again. Stop it first to start a new one.")
+    return f"pomodoro {session.id} already going; card shown again"
+
+
 async def start(ctx: Context) -> str:
     try:
         plan, label, auto = parse_session(ctx.args)
@@ -193,9 +215,8 @@ async def start(ctx: Context) -> str:
         raise UserError(f"{error} {USAGE}")
     running = await store.active_sessions(user_id=ctx.user.id)
     if running:
-        raise UserError(
-            f"**{running[0].label}** is still going. Press Stop on its card (or reply `stop` to it) first."
-        )
+        # One session at a time, and asking again isn't a mistake: show the one there is
+        return await show_again(ctx, running[0])
 
     session = await store.add_session(
         store.Session(

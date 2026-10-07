@@ -225,8 +225,9 @@ only, any channel, no slash. It is off after every restart.
 | `dev speed 60` | Timers and Pomodoro run 60 times faster (`timer 5m` takes 5s) |
 | `dev verbose on` / `off` | Debug cards in #bot-log |
 | `dev quiet on` / `off` | Quiet hours apply / are ignored |
+| `dev cleanup off` / `on` | Stop / resume all automatic deletion (commands, confirmations, alerts) |
 | `dev expire 30m` | Switch itself off after this long |
-| reply `dev inspect` | What the bot knows about that message |
+| reply `dev inspect` | What the bot knows about that message, including its lifecycle class |
 | `dev jobs` | Pending scheduler jobs |
 | `dev run backup` | Run a background task now (`sweep` and `summary` aren't built yet) |
 | `dev fire next` | Run the next pending job now |

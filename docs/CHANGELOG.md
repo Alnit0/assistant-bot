@@ -6,6 +6,17 @@ backfilled from the git log.
 
 ## 2026-10-07
 
+- **QA findings.** Every message now has a lifecycle class (Kept, Live,
+  Consumed, Transient, Alert, Protected) and one policy decides what is
+  deleted; `dev cleanup off` stops all automatic deletion and `dev inspect`
+  shows a message's class. Seed instructions now stay.
+- Reactions and reply actions that can't work (archiving in #bot-log, say)
+  are refused at once with ⚠️ and a short reason, instead of after the
+  30-second wait. Reply `pin` / `unpin` are new, and replies accept filler
+  words ("pin this", "please archive it").
+- `pomo` while a session runs shows its card again instead of failing. The
+  assistant's name is the `ASSISTANT_NAME` setting, and Claude is told it
+  has no tools and must never offer to do something itself.
 - Add `DEV_CHANNEL_ID`: a scratch channel for manual testing, known to the
   bot as `dev`. The QA run sheet now uses it instead of #documents.
 - Add `docs/ARCHITECTURE.md` (a map of every file and the main data flows),

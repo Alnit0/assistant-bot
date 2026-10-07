@@ -58,6 +58,59 @@ def test_the_pin_emoji_is_a_reaction_that_can_be_undone():
     assert registry.works_in(reaction, 999), "any channel"
 
 
+def test_pin_and_unpin_are_reply_actions_anywhere():
+    registry.load()
+    for word, name, handler in (
+        ("pin", "pin", keep.pin_reply),
+        ("keep", "pin", keep.pin_reply),
+        ("save", "pin", keep.pin_reply),
+        ("unpin", "unpin", keep.unpin_reply),
+        ("unkeep", "unpin", keep.unpin_reply),
+    ):
+        skill, action = registry._reply_router.match(word).entry
+        assert (skill.name, action.name) == ("keep", name)
+        assert action.handler is handler
+        assert action.validate is None and not action.exact
+        assert registry.works_in(action, 999), "any channel"
+    assert registry.find("pin")[0] == "reply action"
+
+
+# --- pinning by reply --------------------------------------------------------
+class FakeContext:
+    def __init__(self):
+        self.confirmed = []
+
+    async def confirm(self, text):
+        self.confirmed.append(text)
+
+
+TARGET = SimpleNamespace(id=MESSAGE, channel=SimpleNamespace(id=CHANNEL))
+
+
+def test_replying_pin_pins_at_once(discord_message):
+    message, ctx = discord_message(), FakeContext()
+    reply = asyncio.run(keep.pin_reply(ctx, TARGET))
+    assert [call[0] for call in message.calls] == ["pin"]
+    assert ctx.confirmed == ["📌 Pinned"]
+    assert reply == "pinned a message in <#300>"
+
+
+def test_replying_unpin_unpins(discord_message):
+    message, ctx = discord_message(), FakeContext()
+    reply = asyncio.run(keep.unpin_reply(ctx, TARGET))
+    assert [call[0] for call in message.calls] == ["unpin"]
+    assert ctx.confirmed == ["📌 Unpinned"]
+    assert reply == "unpinned a message in <#300>"
+
+
+def test_a_refused_pin_by_reply_confirms_nothing(discord_message):
+    discord_message(refusal(400, 30003))
+    ctx = FakeContext()
+    with pytest.raises(UserError, match="as many pinned messages as Discord allows"):
+        asyncio.run(keep.pin_reply(ctx, TARGET))
+    assert ctx.confirmed == []
+
+
 # --- keeping and unkeeping -------------------------------------------------
 def test_keeping_pins_the_message(discord_message):
     message = discord_message()

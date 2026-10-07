@@ -82,6 +82,17 @@ def parse_session(words: list[str]) -> tuple[Plan, str, bool | None]:
 # ---------------------------------------------------------------------------
 # Pausing, resuming and extending. The same arithmetic serves simple timers.
 # ---------------------------------------------------------------------------
+# `pomo` while a session is already going shows that session instead of failing
+RESHOW, POINT = "reshow", "point"
+
+
+def where_to_show(session_channel_id: int, typed_channel_id: int) -> str:
+    """How to show a session that is already going: its card again at the bottom
+    of its own channel, or a pointer to it when asked from somewhere else (the
+    card, its alerts and the board all stay in the channel it was started in)."""
+    return RESHOW if session_channel_id == typed_channel_id else POINT
+
+
 def remaining_seconds(ends_at: datetime, now: datetime) -> float:
     """Time left on a running clock, never negative."""
     return max(0.0, (ends_at - now).total_seconds())

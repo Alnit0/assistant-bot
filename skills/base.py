@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import discord
 
 from core.context import Context
+from core.lifecycle import MessageClass
 from core.scheduler import Job
 from core.users import User
 
@@ -91,6 +92,10 @@ class ReplyAction:
     # logged or done. Use ctx.reply_target_id. If it says no, the message is treated
     # as if it weren't a reply action at all (so it can still reach Claude)
     applies_to: Callable[[Context], Awaitable[bool]] | None = None
+    # Refuse a message this can't be done to: `(message) -> None`, raising UserError
+    # with the reason. Asked before the handler; the user's reply gets ⚠️ and the
+    # reason is shown briefly. Must be quick and change nothing
+    validate: Callable[[discord.Message], None] | None = None
 
     def __post_init__(self):
         self.words = _as_list(self.words)
@@ -121,6 +126,10 @@ class Reaction:
 
     If the handler fails, the message gets ⚠️ and the details go to #bot-log.
     Don't post notes in the channel about it.
+
+    `validate` is asked the moment the reaction is added, before the quiet
+    period: if it raises UserError the message gets ⚠️ and the reason is shown
+    briefly, and nothing is waited for. Only valid reactions are debounced.
     """
 
     emoji: str
@@ -131,6 +140,9 @@ class Reaction:
     permission: str = ""  # defaults to "reaction:<emoji>"
     undo: Callable[[discord.RawReactionActionEvent, User], Awaitable[str | None]] | None = None
     destructive: bool = False
+    # `(message) -> None`, raising UserError if this can't be done to that message.
+    # Must be quick and change nothing
+    validate: Callable[[discord.Message], None] | None = None
 
     def __post_init__(self):
         self.examples = list(self.examples)
@@ -210,6 +222,13 @@ class Skill:
         word, reply action, reaction and chat with a registry.ActionResult.
         """
         return {}
+
+    async def message_class(self, message_id: int) -> MessageClass | None:
+        """What kind of message this is, if it is one of this skill's own and not
+        plain content: MessageClass.LIVE for a card edited in place, ALERT for a
+        notification waiting to be acknowledged. None for anything else
+        (core/lifecycle.py has the classes; `dev inspect` shows the answer)."""
+        return None
 
     def setup(self, client: discord.Client) -> None:
         """Runs once just before the bot connects. Register persistent views here

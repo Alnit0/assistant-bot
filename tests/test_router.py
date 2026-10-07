@@ -1,6 +1,6 @@
 import unittest
 
-from core.router import Router
+from core.router import Router, filler_span, strip_fillers
 
 
 class RouterTest(unittest.TestCase):
@@ -47,6 +47,27 @@ class RouterTest(unittest.TestCase):
         self.assertEqual(self.match("extend 5m"), ("extend", ["5m"], False))
         self.assertIsNone(self.match("+"))
         self.assertIsNone(self.match("10m"))
+
+    def test_filler_words_are_set_aside_when_asked(self):
+        self.router.add("pin", "pin")
+        for text in ("pin this", "pin me", "Pin it please", "please pin this message", "pin that one, thanks"):
+            self.assertEqual(self.router.match(text.replace(",", ""), fillers=True).entry, "pin", text)
+        # Something that matches as it stands is left alone: the label keeps its last word
+        self.assertEqual(self.router.match("Timer 5m Roast please", fillers=True).args, ["5m", "Roast", "please"])
+
+    def test_fillers_are_only_for_those_who_ask(self):
+        self.router.add("pin", "pin")
+        self.assertIsNone(self.router.match("pin this"), "a typed word must be the whole message")
+        self.assertIsNone(self.router.match("pin this to the wall", fillers=True))
+        self.assertIsNone(self.router.match("this", fillers=True))
+        self.assertIsNone(self.router.match("resett this", fillers=True), "exact entries never match by typo")
+        self.assertEqual(self.router.match("reset it", fillers=True).entry, "reset")
+
+    def test_at_least_one_word_is_always_left(self):
+        self.assertEqual(strip_fillers(["please"]), ["please"])
+        self.assertEqual(strip_fillers(["this", "it"]), ["this"])
+        self.assertEqual(strip_fillers(["please", "pin", "this", "message"]), ["pin"])
+        self.assertEqual(filler_span(["stats"]), (0, 1))
 
     def test_duplicate_phrases_are_refused(self):
         with self.assertRaises(ValueError):

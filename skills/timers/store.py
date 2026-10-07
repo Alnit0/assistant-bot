@@ -3,6 +3,7 @@ from dataclasses import asdict, dataclass, fields
 from datetime import datetime
 
 from core import database
+from core.lifecycle import MessageClass
 from core.scheduler import from_db, to_db, utc_now
 from skills.timers.pomodoro import Plan
 
@@ -144,6 +145,19 @@ class Session:
     @property
     def active(self) -> bool:
         return self.state in (RUNNING, PAUSED, WAITING)
+
+
+def message_class_of(record: Timer | Session | None, message_id: int) -> MessageClass | None:
+    """What one of a timer's or session's messages is, for the lifecycle rules.
+
+    Its notice is an Alert. Its own message is Live while it is going; once it
+    has ended that message is a one-line summary, which is ordinary Kept content.
+    """
+    if record is None:
+        return None
+    if message_id == record.notice_message_id:
+        return MessageClass.ALERT
+    return MessageClass.LIVE if record.active else None
 
 
 _MOMENTS = {"ends_at", "created_at"}

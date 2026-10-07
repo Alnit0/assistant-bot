@@ -6,7 +6,7 @@ from typing import Literal
 import discord
 from discord import app_commands
 
-from core.config import now_nz
+from core.config import ASSISTANT_NAME, now_nz
 from core.discord_utils import log_simple
 from skills.lab import data, state
 from skills.lab.common import (
@@ -50,7 +50,7 @@ def format_uptime(uptime: timedelta) -> str:
 
 def build_status(now: datetime, uptime: timedelta, messages_today: int) -> str:
     return (
-        "📊 **Hive status**\n"
+        f"📊 **{ASSISTANT_NAME} status**\n"
         f"🕒 {now:%A %d %B, %I:%M %p}\n"
         f"⏱️ Uptime: {format_uptime(uptime)}\n"
         f"💬 Messages today: {messages_today}\n"
@@ -135,13 +135,13 @@ async def run_pin(run: Run, action: str) -> None:
     stamp = int(now_nz().timestamp())
 
     if action == "stop":
-        stopped = await stop_status(f"⏹️ **Hive status** stopped <t:{stamp}:R>.")
+        stopped = await stop_status(f"⏹️ **{ASSISTANT_NAME} status** stopped <t:{stamp}:R>.")
         run.note("stopped the status message" if stopped else "nothing was running")
         await run.done("Stopped and unpinned." if stopped else "No status message is running.")
         return
 
     channel = run.channel
-    await stop_status(f"⏹️ **Hive status** replaced by a newer one <t:{stamp}:R>.")
+    await stop_status(f"⏹️ **{ASSISTANT_NAME} status** replaced by a newer one <t:{stamp}:R>.")
     await _remember_pins(channel)
 
     message = await channel.send(await render_status())

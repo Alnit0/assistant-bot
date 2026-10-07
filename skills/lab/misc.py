@@ -8,7 +8,7 @@ import discord
 from discord import app_commands
 
 from core import scheduler
-from core.config import BACKUP_TIME, now_nz
+from core.config import ASSISTANT_NAME, BACKUP_TIME, now_nz
 from core.discord_utils import split_message
 from skills.lab import data
 from skills.lab.common import (
@@ -212,7 +212,7 @@ async def thread(interaction: discord.Interaction):
 # ---------------------------------------------------------------------------
 def build_poll(multiple: bool) -> discord.Poll:
     poll = discord.Poll(
-        question="Which Discord feature should Hive lean on most?",
+        question=f"Which Discord feature should {ASSISTANT_NAME} lean on most?",
         duration=timedelta(hours=1),
         multiple=multiple,
     )

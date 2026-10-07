@@ -92,6 +92,20 @@ def test_the_system_prompt_includes_the_capabilities_when_there_are_some():
     assert "built-in" not in llm.build_system_prompt("")
 
 
+@pytest.mark.parametrize("capabilities", ["", "- stats: totals"])
+def test_claude_is_always_told_it_cannot_act(capabilities):
+    prompt = llm.build_system_prompt(capabilities)
+    assert "You have no tools yet." in prompt
+    assert "cannot run commands or take any action yourself" in prompt
+    assert "Never offer to perform an action" in prompt
+
+
+def test_the_assistant_is_named_from_the_setting(monkeypatch):
+    assert llm.build_system_prompt().startswith("You are Hive, "), "the default name"
+    monkeypatch.setattr(llm, "ASSISTANT_NAME", "Marvin")
+    assert llm.build_system_prompt().startswith("You are Marvin, ")
+
+
 def test_the_system_prompt_asks_for_uk_spelling_and_short_replies():
     prompt = llm.build_system_prompt()
     assert "UK spelling" in prompt and "short" in prompt

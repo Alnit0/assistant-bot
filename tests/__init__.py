@@ -19,6 +19,7 @@ for name, value in {
     "ANTHROPIC_API_KEY": "test-key",
     # Optional settings too, so a test never passes or fails because of the real .env
     "CLAUDE_MODEL": "claude-haiku-4-5",
+    "ASSISTANT_NAME": "",
     "ENABLED_SKILLS": "",
     "CONFIRMATION_SECONDS": "",
     "REACTION_DEBOUNCE": "",

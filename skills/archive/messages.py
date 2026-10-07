@@ -6,7 +6,7 @@ import discord
 from discord import app_commands
 
 from core import confirmations, interactions
-from core.config import ARCHIVE_CHANNEL_ID, BOT_LOG_CHANNEL_ID
+from core.config import ARCHIVE_CHANNEL_ID, ASSISTANT_NAME, BOT_LOG_CHANNEL_ID
 from core.context import Context
 from core.database import log_received, log_result
 from core.discord_utils import log_simple, report_interaction_error, safe_reply
@@ -25,7 +25,7 @@ ARCHIVE_EMOJI = "📦"
 DELETE_EMOJI = "🗑️"
 RESTORE_EMOJI = "↩️"
 PERMISSION = "reply:archive"
-WEBHOOK_NAME = "Hive Archive"
+WEBHOOK_NAME = f"{ASSISTANT_NAME} Archive"
 MAX_EMBEDS = 10  # Discord's limit per message; one is used for the "archived from" note
 ASKED = "asked for confirmation first (the message is protected)"
 

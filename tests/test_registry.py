@@ -1,7 +1,9 @@
+import asyncio
 from types import SimpleNamespace
 
 import pytest
 
+from core.errors import UserError
 from skills import builtin, registry
 from skills.base import ANY
 
@@ -138,6 +140,123 @@ def test_a_skill_name_wins_over_a_word_of_the_same_name():
 def test_describe_words_shows_arguments_and_aliases():
     assert registry.describe_words(registry.find("stats")[2]) == "stats (also: stat)"
     assert registry.describe_words(registry.find("dev speed")[2]) == "dev speed <n>"
+
+
+# --- replies in ordinary words -----------------------------------------------
+@pytest.mark.parametrize(
+    "text, name",
+    [
+        ("pin", "pin"),
+        ("pin this", "pin"),
+        ("pin me", "pin"),
+        ("Please archive it", "archive"),
+        ("delete this", "delete"),
+        ("unpin that one", "unpin"),
+    ],
+)
+def test_a_reply_may_carry_filler_words(text, name):
+    assert registry._reply_router.match(text, fillers=True).entry[1].name == name
+
+
+def test_filler_words_do_not_loosen_anything_else():
+    assert registry._reply_router.match("delet this", fillers=True) is None, "delete is still exact"
+    assert registry._reply_router.match("pin this to the wall", fillers=True) is None
+    assert registry._keyword_router.match("ping me") is None, "typed words are unchanged"
+
+
+# --- refusing at once --------------------------------------------------------
+ARCHIVE = 200  # the test settings' archive channel
+
+
+def message_in(channel_id: int):
+    return SimpleNamespace(
+        channel=SimpleNamespace(id=channel_id), content="text", attachments=[], embeds=[], guild=None
+    )
+
+
+def test_archive_and_delete_can_be_checked_before_anything_is_done():
+    # "box" because `archive` on its own finds the skill of that name
+    for term in ("box", "delete", "📦", "🗑️"):
+        item = registry.find(term)[2]
+        assert item.validate is not None, term
+        item.validate(message_in(ELSEWHERE))
+        with pytest.raises(UserError):
+            item.validate(message_in(ARCHIVE))
+
+
+@pytest.fixture
+def reactions_watched(owner, monkeypatch):
+    """Stand-ins around registry.reaction_changed: what was debounced, refused and marked."""
+    seen = SimpleNamespace(debounced=[], refused=[], marks=[], message=message_in(ARCHIVE))
+
+    async def user(discord_id):
+        return owner
+
+    async def fetch(channel_id, message_id):
+        return seen.message
+
+    async def refuse(skill, reaction, payload, user, reason):
+        seen.refused.append((reaction.emoji, reason))
+
+    async def mark(channel_id, message_id, emoji, add=True):
+        seen.marks.append((emoji, add))
+
+    monkeypatch.setattr(registry, "_reaction_debouncer", SimpleNamespace(trigger=seen.debounced.append))
+    monkeypatch.setattr(registry, "get_user_by_discord_id", user)
+    monkeypatch.setattr(registry, "_fetch_message", fetch)
+    monkeypatch.setattr(registry, "_refuse_reaction", refuse)
+    monkeypatch.setattr(registry, "_mark", mark)
+    monkeypatch.setattr(registry, "_refused", set())
+    return seen
+
+
+def reaction(emoji: str, user_id: int = 1):
+    return SimpleNamespace(emoji=emoji, channel_id=ARCHIVE, message_id=5, user_id=user_id)
+
+
+def test_an_invalid_reaction_is_refused_at_once_and_never_debounced(reactions_watched):
+    asyncio.run(registry.reaction_changed(reaction("📦"), True))
+    assert reactions_watched.refused == [("📦", "That message is already in the archive.")]
+    assert reactions_watched.debounced == []
+
+
+def test_taking_a_refused_reaction_off_clears_its_warning(reactions_watched):
+    payload = reaction("📦")
+    asyncio.run(registry.reaction_changed(payload, True))
+    asyncio.run(registry.reaction_changed(payload, False))
+    assert reactions_watched.marks == [("⚠️", False)]
+    assert reactions_watched.debounced == [], "nothing was pending, so there is nothing to cancel"
+
+
+def test_a_valid_reaction_waits_out_the_quiet_period(reactions_watched):
+    reactions_watched.message = message_in(ELSEWHERE)
+    added, removed = reaction("📦"), reaction("📦")
+    asyncio.run(registry.reaction_changed(added, True))
+    asyncio.run(registry.reaction_changed(removed, False))
+    assert reactions_watched.refused == []
+    assert reactions_watched.debounced == [(added, True), (removed, False)]
+
+
+def test_a_reaction_with_no_check_goes_straight_to_the_debouncer(reactions_watched):
+    payload = reaction("📌")
+    asyncio.run(registry.reaction_changed(payload, True))
+    assert reactions_watched.debounced == [(payload, True)]
+
+
+def test_an_unregistered_emoji_is_ignored(reactions_watched):
+    asyncio.run(registry.reaction_changed(reaction("👍"), True))
+    assert reactions_watched.debounced == [] and reactions_watched.refused == []
+
+
+def test_someone_who_is_not_allowed_is_not_told_why(reactions_watched, stranger, monkeypatch):
+    async def user(discord_id):
+        return stranger
+
+    monkeypatch.setattr(registry, "get_user_by_discord_id", user)
+    payload = reaction("📦", user_id=22)
+    asyncio.run(registry.reaction_changed(payload, True))
+    assert reactions_watched.refused == [], "ignored without comment, as before"
+    assert reactions_watched.debounced == [(payload, True)]
 
 
 # --- what Claude is told ---------------------------------------------------

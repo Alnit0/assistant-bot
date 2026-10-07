@@ -20,7 +20,8 @@ class ArchiveSkill(Skill):
                 "move that message to the archive channel (author, files and time kept; "
                 "the copy has a Restore button)",
                 messages.archive_reply,
-                examples=["archive"],
+                examples=["archive", "archive this"],
+                validate=messages.check_archivable,
             ),
             ReplyAction(
                 ["delete", "remove"],
@@ -29,12 +30,14 @@ class ArchiveSkill(Skill):
                 examples=["delete"],
                 # Destructive, so no typo correction: it must be spelled exactly
                 exact=True,
+                validate=messages.check_deletable,
             ),
         ]
 
     def reactions(self) -> list[Reaction]:
         # Destructive: once done, the message is gone, so these can only be cancelled
-        # by removing the reaction within the quiet period
+        # by removing the reaction within the quiet period. A message that can't be
+        # archived or deleted is refused at once (validate), with no wait
         return [
             Reaction(
                 messages.ARCHIVE_EMOJI,
@@ -42,6 +45,7 @@ class ArchiveSkill(Skill):
                 messages.on_archive_reaction,
                 examples=[f"react {messages.ARCHIVE_EMOJI} to a message"],
                 destructive=True,
+                validate=messages.check_archivable,
             ),
             Reaction(
                 messages.DELETE_EMOJI,
@@ -49,6 +53,7 @@ class ArchiveSkill(Skill):
                 messages.on_delete_reaction,
                 examples=[f"react {messages.DELETE_EMOJI} to a message"],
                 destructive=True,
+                validate=messages.check_deletable,
             ),
         ]
 

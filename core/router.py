@@ -25,6 +25,27 @@ def normalise(text: str) -> list[str]:
     return text.strip().rstrip(".!?").lower().split()
 
 
+# Words that add nothing to an action word: "pin this", "please archive it"
+LEADING_FILLERS = frozenset({"please", "pls"})
+TRAILING_FILLERS = frozenset({"this", "that", "it", "me", "one", "the", "message", "please", "pls", "thanks"})
+
+
+def filler_span(words: list[str]) -> tuple[int, int]:
+    """Where the words that matter start and end, once filler words at either end
+    are set aside. At least one word is always left."""
+    start, end = 0, len(words)
+    while end - start > 1 and words[start] in LEADING_FILLERS:
+        start += 1
+    while end - start > 1 and words[end - 1] in TRAILING_FILLERS:
+        end -= 1
+    return start, end
+
+
+def strip_fillers(words: list[str]) -> list[str]:
+    start, end = filler_span(words)
+    return words[start:end]
+
+
 def within_one_edit(typed: str, real: str) -> bool:
     """True if one changed, missing, extra or swapped letter turns `typed` into `real`."""
     if typed == real:
@@ -114,13 +135,27 @@ class Router:
     def phrases(self) -> list[str]:
         return [" ".join(route.words) for route in self._routes]
 
-    def match(self, text: str) -> Match | None:
+    def match(self, text: str, fillers: bool = False) -> Match | None:
+        """The entry this text is, if any.
+
+        With `fillers`, a message that matches nothing is tried again without
+        filler words at either end ("pin this", "please archive it"). For
+        reply actions only: a typed word must still be the whole message.
+        """
         typed = normalise(text)
         if not typed:
             return None
         # Matching ignores case, but arguments keep theirs ("timer 5m Roast chicken")
         original = text.strip().rstrip(".!?").split()
 
+        found = self._match(typed, original)
+        if found is None and fillers:
+            start, end = filler_span(typed)
+            if (start, end) != (0, len(typed)):
+                found = self._match(typed[start:end], original[start:end])
+        return found
+
+    def _match(self, typed: list[str], original: list[str]) -> Match | None:
         exact_matches: list[_Route] = []
         typo_matches: list[_Route] = []
         for route in self._routes:

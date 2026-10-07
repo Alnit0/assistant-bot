@@ -2,9 +2,10 @@ import discord
 
 from core import pins
 from core.config import REACTION_DEBOUNCE_SECONDS
+from core.context import Context
 from core.protection import PROTECT_EMOJI
 from core.users import User
-from skills.base import Reaction, Skill
+from skills.base import Reaction, ReplyAction, Skill
 
 KEEP_EMOJI = PROTECT_EMOJI
 WAIT = f"{REACTION_DEBOUNCE_SECONDS:g} seconds"
@@ -24,11 +25,42 @@ async def unkeep(payload: discord.RawReactionActionEvent, user: User) -> str:
     return f"unkept and unpinned a message in <#{payload.channel_id}>"
 
 
+# The same by reply: "pin" pins the message straight away, and a pinned message
+# is protected just as a 📌-marked one is. No 📌 is involved, so there is nothing
+# to wait for and nothing recorded as a reaction.
+async def pin_reply(ctx: Context, target: discord.Message) -> str:
+    await pins.set_pinned(target.channel.id, target.id, True, "Pinned by reply")
+    await ctx.confirm(f"{KEEP_EMOJI} Pinned")
+    return f"pinned a message in <#{target.channel.id}>"
+
+
+async def unpin_reply(ctx: Context, target: discord.Message) -> str:
+    await pins.set_pinned(target.channel.id, target.id, False, "Unpinned by reply")
+    await ctx.confirm(f"{KEEP_EMOJI} Unpinned")
+    return f"unpinned a message in <#{target.channel.id}>"
+
+
 class KeepSkill(Skill):
     """Keeping messages: pinned, and safe from clean-ups, archive and delete."""
 
     name = "keep"
     description = "Keep a message: pinned, left alone by clean-ups, and asked about before archiving or deleting"
+
+    def reply_actions(self) -> list[ReplyAction]:
+        return [
+            ReplyAction(
+                ["pin", "keep", "save"],
+                "pin that message at once: clean-ups leave it alone, and archiving or deleting it asks first",
+                pin_reply,
+                examples=["pin", "pin this", "keep"],
+            ),
+            ReplyAction(
+                ["unpin", "unkeep"],
+                "unpin that message, so it is no longer protected",
+                unpin_reply,
+                examples=["unpin"],
+            ),
+        ]
 
     def reactions(self) -> list[Reaction]:
         return [

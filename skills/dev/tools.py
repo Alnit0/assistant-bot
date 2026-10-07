@@ -2,11 +2,12 @@ import sqlite3
 
 import discord
 
-from core import devmode, reactions, scheduler
+from core import devmode, lifecycle, reactions, scheduler
 from core.context import Context
 from core.errors import UserError
 from core.protection import is_kept, is_protected, protection
 from core.scheduler import utc_now
+from skills import registry
 from skills.archive import store as archive
 
 # ---------------------------------------------------------------------------
@@ -37,6 +38,15 @@ def _stamp(moment, style: str = "R") -> str:
 # ---------------------------------------------------------------------------
 # dev inspect (as a reply)
 # ---------------------------------------------------------------------------
+def _ran_a_command(conn: sqlite3.Connection, message_id: int) -> bool:
+    """Whether that message was a typed word or a reply action (from message_log)."""
+    row = conn.execute(
+        "SELECT 1 FROM message_log WHERE discord_message_id = ? AND kind IN ('command', 'reply_action') LIMIT 1",
+        (message_id,),
+    ).fetchone()
+    return row is not None
+
+
 async def inspect(ctx: Context, target: discord.Message) -> str:
     try:
         # The copy that came with the reply can be out of date: reactions change
@@ -54,8 +64,16 @@ async def inspect(ctx: Context, target: discord.Message) -> str:
     except sqlite3.OperationalError:
         record = "the archive skill has no table (not loaded yet?)"
 
+    message_class = lifecycle.classify(
+        protected=is_protected(target),
+        declared=await registry.declared_class(target.id),
+        transient=lifecycle.is_transient(target.id),
+        command=await ctx.db.run(_ran_a_command, target.id),
+    )
+
     lines = [
         f"🔎 **Message** `{target.id}` · {target.author.display_name} · sent {_stamp(target.created_at)}",
+        f"Lifecycle: {lifecycle.describe(message_class)}",
         f"Pinned: {'yes' if target.pinned else 'no'}",
         f"Protected from clean-up: {protection(target) or 'no'}",
         f"Kept: {'yes' if is_kept(applied) else 'no'}",
@@ -120,7 +138,8 @@ async def seed(ctx: Context) -> str:
     for number in range(count):
         sample = SAMPLES[number % len(SAMPLES)]
         await ctx.channel.send(f"{sample}\n{TAG}", silent=True)
-    await ctx.confirm(f"🌱 Seeded {count} test message{'' if count == 1 else 's'}. `dev clean` removes them.")
+    # Instructions are Kept, not a passing confirmation; tagged, so `dev clean` takes them too
+    await ctx.reply(f"🌱 Seeded {count} test message{'' if count == 1 else 's'}. `dev clean` removes them.\n{TAG}")
     return f"seeded {count} test message(s)"
 
 

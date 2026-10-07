@@ -28,11 +28,12 @@ class DevSettings:
     speed: float  # timers and Pomodoro run this many times faster
     verbose: bool  # debug cards in #bot-log
     ignore_quiet_hours: bool  # for the notifier, when there is one
+    cleanup: bool = True  # messages are tidied away by themselves (core/lifecycle.py)
 
 
-DEFAULTS = DevSettings(debounce_s=2.0, speed=1.0, verbose=True, ignore_quiet_hours=True)
+DEFAULTS = DevSettings(debounce_s=2.0, speed=1.0, verbose=True, ignore_quiet_hours=True, cleanup=True)
 NORMAL = DevSettings(
-    debounce_s=REACTION_DEBOUNCE_SECONDS, speed=1.0, verbose=False, ignore_quiet_hours=False
+    debounce_s=REACTION_DEBOUNCE_SECONDS, speed=1.0, verbose=False, ignore_quiet_hours=False, cleanup=True
 )
 
 enabled = False
@@ -75,6 +76,11 @@ def is_verbose() -> bool:
 
 def quiet_hours_ignored() -> bool:
     return current().ignore_quiet_hours
+
+
+def cleanup_enabled() -> bool:
+    """False while `dev cleanup off` is in force: nothing is deleted automatically."""
+    return current().cleanup
 
 
 # ---------------------------------------------------------------------------
@@ -123,6 +129,10 @@ def set_verbose(on: bool) -> None:
 
 def set_ignore_quiet_hours(ignore: bool) -> None:
     _change(ignore_quiet_hours=ignore)
+
+
+def set_cleanup(on: bool) -> None:
+    _change(cleanup=on)
 
 
 def set_expiry(seconds: float, now: datetime | None = None) -> None:

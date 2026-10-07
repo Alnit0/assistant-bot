@@ -2,6 +2,7 @@ import discord
 
 from core.context import Context
 from core.errors import UserError
+from core.lifecycle import MessageClass
 from skills.base import ANY, Keyword, ReplyAction, Skill
 from skills.timers import sessions, store, timers
 from skills.timers.board import session_line, timer_line
@@ -188,6 +189,12 @@ class TimersSkill(Skill):
 
     def migrations(self) -> list:
         return list(store.MIGRATIONS)
+
+    async def message_class(self, message_id: int) -> MessageClass | None:
+        if await store.is_board(message_id):
+            return MessageClass.LIVE
+        record = await store.timer_by_message(message_id) or await store.session_by_message(message_id)
+        return store.message_class_of(record, message_id)
 
     def setup(self, client: discord.Client) -> None:
         # Before connecting, so buttons on messages from before a restart still work

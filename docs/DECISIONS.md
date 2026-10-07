@@ -180,3 +180,38 @@ A short log of key decisions and why. Newest at the bottom.
   heavy dependency but sends the numbers to a third party and can be down;
   matplotlib is local and private but large. Pick one when a real skill
   needs charts. Two measures get two charts, never one chart with two axes.
+- **One lifecycle policy decides what is deleted:** deletion was scattered
+  (confirmations, command messages, alerts, the panel), so text worth
+  keeping could vanish and there was no way to see what had been sent.
+  Every message now has one of six classes (`core/lifecycle.py`; the table
+  is in `CLAUDE.md`), and the rule is to delete only when the information
+  lives somewhere else. Code that deletes by itself asks the policy, which
+  is what lets `dev cleanup off` stop all of it. Classes are worked out
+  when asked (protection, what the owning skill declares, a short in-memory
+  list of transient notes, `message_log`) rather than stored per message:
+  no new table, at the cost of `dev inspect` forgetting Transient after a
+  restart.
+- **Invalid actions are refused at once, with the reason in the channel:**
+  this amends "failures are quiet" above. Waiting 30 seconds to learn that
+  a 📦 in #bot-log can never work felt broken, and the reason was a trip to
+  #bot-log away. A registration may carry a `validate` check; it runs when
+  the reaction is added or the reply arrives, and a refusal gets ⚠️ plus a
+  short self-deleting reason. Only valid actions are debounced. Failures
+  when the action actually runs are still quiet, with the reason in
+  #bot-log. The handler checks again, since things can change in the wait.
+- **Replies accept filler words; typed words don't:** a reply is already
+  aimed at a message, so "pin this" or "please archive it" can only mean
+  the action. A word typed on its own must still be the whole message, so
+  "ping me tomorrow" keeps going to Claude. Fillers are only tried when the
+  message matches nothing as it stands, and never loosen an exact word.
+- **Reply `pin` pins natively, without the 📌:** a pinned message is
+  already Protected, so nothing more is needed, and a reply should act at
+  once rather than wait out a debounce. The 📌 reaction stays as the
+  undoable, recorded way to keep a message.
+- **Asking for what already exists shows it:** `pomo` with a session
+  running re-shows its card rather than failing. An error taught nothing
+  the card doesn't, and left a ⚠️ message to clear up by hand.
+- **Claude is told it has no tools, every time:** it sometimes offered to
+  set a timer or pin something. Until tool calling exists the system
+  prompt says so whether or not there is a capability list, and tells it
+  to say what to type instead.

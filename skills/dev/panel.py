@@ -4,10 +4,11 @@ import re
 
 import discord
 
-from core import devmode
+from core import devmode, lifecycle
 from core.config import CHANNELS
 from core.database import log_received, log_result
 from core.discord_utils import log_error, log_simple, report_interaction_error, safe_reply
+from core.lifecycle import MessageClass
 from core.permissions import is_allowed
 from core.scheduler import utc_now
 from core.users import get_user_by_discord_id
@@ -61,6 +62,7 @@ def render() -> str:
             f"Speed: **{now.speed:g}x** (normal: {normal.speed:g}x)",
             f"Verbose log: **{_on_off(now.verbose)}** (normal: {_on_off(normal.verbose)})",
             f"Quiet hours: **{_quiet(now.ignore_quiet_hours)}** (normal: {_quiet(normal.ignore_quiet_hours)})",
+            f"Clean-up: **{_on_off(now.cleanup)}** (normal: {_on_off(normal.cleanup)})",
             "-# `dev off` to finish · `help dev` lists the words",
         ]
     )
@@ -138,11 +140,15 @@ def _channel(channel_id: int | None):
 
 
 async def _delete(channel, message_id: int | None) -> None:
-    """Unpin and delete a panel. Best effort: it may already be gone."""
+    """Unpin and delete a panel. Best effort: it may already be gone.
+
+    The panel is Live with no lasting value, so it goes; while clean-up is off
+    it is only unpinned."""
     if channel is None or message_id is None:
         return
     message = channel.get_partial_message(message_id)
-    for step in (message.unpin, message.delete):
+    steps = (message.unpin, message.delete) if lifecycle.deletes(MessageClass.LIVE) else (message.unpin,)
+    for step in steps:
         try:
             await step()
         except discord.HTTPException:
@@ -214,6 +220,11 @@ async def changed() -> None:
         await _post(_channel_id)  # someone deleted it: put it back
     except discord.HTTPException as error:
         log.warning("Could not update the dev panel: %s", error)
+
+
+def is_panel(message_id: int) -> bool:
+    """Whether a message is the current dev panel."""
+    return devmode.enabled and message_id == _message_id
 
 
 async def reshow(channel_id: int) -> None:

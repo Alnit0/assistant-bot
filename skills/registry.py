@@ -11,7 +11,7 @@ import skills
 from core import scheduler
 from core.config import CHANNELS, ENABLED_SKILLS
 from core.context import Context
-from core import database, devmode, discord_utils, reactions
+from core import database, devmode, discord_utils, lifecycle, reactions
 from core.database import log_received, log_result
 from core.debounce import Debouncer
 from core.discord_utils import log_error, log_simple
@@ -241,6 +241,20 @@ async def emit(event: str, *args) -> None:
             await log_error(f"Skill event failed: {skill.name} / {event}", repr(error))
 
 
+async def declared_class(message_id: int) -> lifecycle.MessageClass | None:
+    """What a skill says one of its own messages is (Live, Alert), or None if
+    no skill claims it. For `dev inspect`."""
+    for skill in _skills:
+        try:
+            found = await skill.message_class(message_id)
+        except Exception:
+            log.exception("Skill %s failed classifying message %s", skill.name, message_id)
+            continue
+        if found is not None:
+            return found
+    return None
+
+
 @dataclass(frozen=True)
 class ActionResult:
     """How one input ended. Sent to skills as the "action_finished" event."""
@@ -369,7 +383,8 @@ async def dispatch_reply_action(ctx: Context) -> bool:
     """Run the reply action this input is. Returns False if it isn't a reply, or not an action."""
     if not ctx.is_reply:
         return False
-    match = _reply_router.match(ctx.text)
+    # Filler words are fine on a reply: "pin this", "please archive it"
+    match = _reply_router.match(ctx.text, fillers=True)
     if match is None:
         return False
     _, action = match.entry
@@ -384,6 +399,13 @@ async def dispatch_reply_action(ctx: Context) -> bool:
         target = await ctx.fetch_reply_target()
         if target is None:
             raise UserError("I can't find the message you replied to.")
+        if action.validate is not None:
+            try:
+                action.validate(target)
+            except UserError as error:
+                # Can't be done to that message: say why, briefly, as well as the ⚠️
+                await ctx.note(f"{reactions.FAILED_EMOJI} {error}")
+                raise
         if match.corrected:
             await ctx.note(f"-# Read as: {match.phrase}")
         return await action.handler(ctx, target)
@@ -403,7 +425,9 @@ async def dispatch_reply_action(ctx: Context) -> bool:
 # ---------------------------------------------------------------------------
 # Dispatch: reactions, after a quiet period
 #
-# Every add and remove of a registered emoji restarts one shared timer. When
+# A reaction that can't be done to its message (Reaction.validate) is refused
+# the moment it is added: ⚠️ and a brief reason, no waiting. For the rest,
+# every add and remove of a registered emoji restarts one shared timer. When
 # things go quiet we look at where each reaction ended up and compare it with
 # what is already applied (core/reactions.py): apply what is new, undo what
 # has been taken away. An applied action gets ✅ on the message; when the last
@@ -493,10 +517,90 @@ async def _reactions_quiet(events: list[tuple[discord.RawReactionActionEvent, bo
 _reaction_debouncer = Debouncer(devmode.reaction_debounce, _reactions_quiet, name="reactions")
 
 
-def reaction_changed(payload: discord.RawReactionActionEvent, added: bool) -> None:
-    """Note a reaction being added or removed. Handlers run once things go quiet."""
-    if _emoji_key(payload.emoji) in _reactions:
-        _reaction_debouncer.trigger((payload, added))
+# Reactions refused on the spot, as (message id, emoji, Discord user id), so that
+# taking one off again clears its ⚠️. In memory: a restart forgets them
+_refused: set[tuple[int, str, int]] = set()
+
+
+async def _fetch_message(channel_id: int, message_id: int) -> discord.Message | None:
+    client = discord_utils.client
+    channel = client.get_channel(channel_id) if client else None
+    if channel is None:
+        return None
+    try:
+        return await channel.fetch_message(message_id)
+    except discord.HTTPException:
+        return None
+
+
+async def _refuse_reaction(
+    skill: Skill, reaction: Reaction, payload: discord.RawReactionActionEvent, user: User, reason: str
+) -> None:
+    """An invalid reaction: ⚠️ on the message and the reason shown briefly, with no wait."""
+    text = f"reaction: {reaction.emoji}"
+    row_id = await log_received(text, "reaction", payload.message_id, payload.channel_id, user_id=user.id)
+    log.info("Reaction %s refused: %s", reaction.emoji, reason)
+    await log_result(row_id, status="error", error=reason)
+    await _mark(payload.channel_id, payload.message_id, reactions.FAILED_EMOJI)
+    message = _partial_message(payload.channel_id, payload.message_id)
+    if message is not None:
+        try:
+            note = await message.channel.send(
+                f"{reactions.FAILED_EMOJI} {reason}", delete_after=lifecycle.delete_after(), silent=True
+            )
+            lifecycle.note_transient(note.id)
+        except discord.HTTPException as error:
+            log.info("Could not say why a reaction was refused: %s", error)
+    await log_error(f"Reaction refused: {reaction.emoji}", reason, text)
+    await emit(
+        "action_finished",
+        ActionResult("reaction", reaction.emoji, "error", user.id, payload.channel_id),
+    )
+
+
+async def _reaction_is_valid(payload: discord.RawReactionActionEvent) -> bool:
+    """Check a reaction the moment it is added. False if it was refused (and dealt with)."""
+    skill, reaction = _reactions[_emoji_key(payload.emoji)]
+    user = await get_user_by_discord_id(payload.user_id)
+    if not reactions.should_validate(
+        True,
+        reaction.validate is not None,
+        works_in(reaction, payload.channel_id),
+        is_allowed(user, reaction.permission),
+    ):
+        return True
+    message = await _fetch_message(payload.channel_id, payload.message_id)
+    if message is None:
+        return True  # can't look at it now: the handler will say what is wrong
+    try:
+        reaction.validate(message)
+    except UserError as error:
+        _refused.add((payload.message_id, _emoji_key(payload.emoji), payload.user_id))
+        await _refuse_reaction(skill, reaction, payload, user, str(error))
+        return False
+    return True
+
+
+async def reaction_changed(payload: discord.RawReactionActionEvent, added: bool) -> None:
+    """Note a reaction being added or removed.
+
+    One that can't be done to that message is refused straight away. Only
+    valid ones wait out the quiet period, after which their handlers run.
+    """
+    emoji = _emoji_key(payload.emoji)
+    if emoji not in _reactions:
+        return
+    refused = (payload.message_id, emoji, payload.user_id)
+    if added:
+        if not await _reaction_is_valid(payload):
+            return
+    elif refused in _refused:
+        # Taking a refused reaction off again: nothing was pending, so just clear the ⚠️
+        _refused.discard(refused)
+        if not any(message_id == payload.message_id for message_id, _, _ in _refused):
+            await _mark(payload.channel_id, payload.message_id, reactions.FAILED_EMOJI, add=False)
+        return
+    _reaction_debouncer.trigger((payload, added))
 
 
 async def _apply_reaction(key: reactions.Key, payload: discord.RawReactionActionEvent, user: User) -> None:

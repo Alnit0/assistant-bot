@@ -64,3 +64,14 @@ def test_only_the_owners_changes_reach_the_decision():
     to_apply, to_undo = plan_changes(final_states(changes), set())
     assert to_apply == [(10, "📦", OWNER_ID)]
     assert to_undo == []
+
+
+# --- checked on the spot, or left to the quiet period -------------------------
+def test_only_an_allowed_add_with_a_check_is_validated_at_once():
+    from core.reactions import should_validate
+
+    assert should_validate(True, True, True, True)
+    assert not should_validate(False, True, True, True), "a removal has nothing to refuse"
+    assert not should_validate(True, False, True, True), "no check registered"
+    assert not should_validate(True, True, False, True), "doesn't work in that channel"
+    assert not should_validate(True, True, True, False), "someone else: ignored without comment"

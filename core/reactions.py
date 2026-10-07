@@ -54,6 +54,16 @@ def key_for(
     return (change.message_id, change.emoji, user_id)
 
 
+def should_validate(added: bool, has_validator: bool, works_here: bool, allowed: bool) -> bool:
+    """Whether a reaction change is checked on the spot, before the quiet period.
+
+    Only a reaction being added, that has a check, where it works, by someone
+    allowed to use it. Everything else goes on as before: a removal has nothing
+    to refuse, and reactions from anyone else are ignored without comment.
+    """
+    return added and has_validator and works_here and allowed
+
+
 def final_states(events: list[tuple[Key, bool]]) -> dict[Key, bool]:
     """Where each reaction ended up: True if it is there after the last change to it.
 
