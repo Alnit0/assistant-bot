@@ -1,7 +1,9 @@
 import logging
+import time
 
 import discord
 
+from core import timing
 from core.config import BOT_LOG_CHANNEL_ID, DISCORD_LIMIT, EMBED_FIELD_LIMIT, now_nz
 
 log = logging.getLogger("assistant")
@@ -18,6 +20,28 @@ def bind_client(discord_client: discord.Client) -> None:
     """Tell this module which Discord client to post through."""
     global client
     client = discord_client
+    _time_requests(discord_client)
+
+
+def _time_requests(discord_client: discord.Client) -> None:
+    """Time every call the client makes to Discord's API (core/timing.py), by
+    wrapping the one method they all go through. A rate-limit wait happens
+    inside it, so it is part of the time."""
+    http = getattr(discord_client, "http", None)
+    if http is None or getattr(http.request, "timed", False):
+        return
+    request = http.request
+
+    async def timed_request(*args, **kwargs):
+        started = time.perf_counter()
+        try:
+            return await request(*args, **kwargs)
+        finally:
+            timing.record_discord(time.perf_counter() - started)
+
+    timed_request.timed = True
+    http.request = timed_request
+    timing.watch_logs()
 
 
 def split_message(text: str, limit: int = DISCORD_LIMIT) -> list[str]:

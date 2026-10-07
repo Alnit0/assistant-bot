@@ -162,6 +162,10 @@ the channel you are in; `help <skill or word>` gives details.
     the eggs"), wherever its message is. If a label fits two timers it
     asks which. A Pomodoro asked for while one is going gets one reply,
     with an offer to restart at the lengths you asked for.
+  - **What happened and when:** every start, pause, resume, extension,
+    cancel and finish is recorded with the time left, so you can ask
+    "what was on dinner when I paused it?" or "when did I resume tea?".
+    The record starts from the restart that brought this in.
   - **It only says "done" when something ran.** A reply claiming it with
     nothing run is caught before you see it, and a "⚠️ Claude said
     "done" with nothing run" card in #bot-log records each time.
@@ -425,7 +429,8 @@ restart. Date-based reminders are a separate, future skill.
 | Type | What happens |
 |---|---|
 | `timer 25m`, `timer 1h30 laundry`, `timer 2 hours` | Starts a timer. The label is optional and defaults to "Timer" |
-| `timers` (or `timer` on its own) | Lists your active timers and the current Pomodoro, in every channel |
+| `timers` (or `timer` on its own) | Lists your active timers and the current Pomodoro, in every channel. The list is live: it updates whenever a timer changes, and asking again replaces it |
+| `pause all`, `resume all` | Pauses (or sets going again) every timer and the Pomodoro, and lists each with its time left. `pause all except pomodoro` or `pause all timers only` leaves the Pomodoro alone. A timer that has already run out is left alone |
 | `pomo` | Starts a session: 25 minutes of focus, 5-minute breaks, a 15-minute break after 4 rounds |
 | `pomo 50/10`, `pomo 50/10/30` | Custom focus/break lengths; the third number sets the long break (otherwise 15) |
 | `pomo deep work`, `pomo 50/10 writing` | Anything else is the label |

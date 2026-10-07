@@ -1,10 +1,9 @@
-from collections.abc import Callable
 from datetime import datetime
 
 from core.tools import age
 from skills.timers import store
 from skills.timers.durations import format_duration
-from skills.timers.pomodoro import PHASE_NAMES, phase_length, remaining_seconds
+from skills.timers.pomodoro import PHASE_NAMES, phase_length
 
 # ---------------------------------------------------------------------------
 # The live state of timers and the Pomodoro session, in words for Claude.
@@ -19,6 +18,13 @@ TIMER, SESSION = "t", "p"
 
 NO_TIMERS = "No timers are running or paused."
 NO_SESSION = "No Pomodoro session is going."
+NO_EVENTS = (
+    "Nothing is recorded for that. What happens to timers has only been kept since the record "
+    "was added, so anything earlier is not here."
+)
+# Put after everything a read tool returns: Claude once read the list and then
+# said the timer was running again
+ONLY_READ = "(This only read the state. Nothing was changed by this call.)"
 
 
 def ref(kind: str, record_id: int) -> str:
@@ -37,15 +43,11 @@ def _where(channel_id: int, here: int | None) -> str:
     return f"<#{channel_id}>" + (" (this channel)" if channel_id == here else "")
 
 
-def _same(seconds: float) -> float:
-    return seconds
-
-
-def timer_state(timer: store.Timer, now: datetime, nominal: Callable[[float], float] = _same) -> str:
-    """What a timer is doing and how long it has left. `nominal` turns real
-    seconds into the timer's own (dev mode can run the clock faster)."""
+def timer_state(timer: store.Timer, now: datetime) -> str:
+    """What a timer is doing and how long it has left, in its own time (dev
+    mode can run a clock faster; the timer knows its speed)."""
     if timer.status == store.RUNNING:
-        return f"running, {format_duration(nominal(remaining_seconds(timer.ends_at, now)))} left"
+        return f"running, {format_duration(timer.left(now))} left"
     if timer.status == store.PAUSED:
         return f"paused with {format_duration(timer.remaining_s)} left"
     if timer.status == store.CANCELLED:
@@ -63,7 +65,6 @@ def timers_text(
     *,
     here: int | None = None,
     replied_to: int | None = None,
-    nominal: Callable[[float], float] = _same,
 ) -> str:
     """Every timer that is going, then the ones that ended lately (so "the tea
     timer" that has already finished can be told apart from one that never
@@ -71,7 +72,7 @@ def timers_text(
     timer it belongs to is pointed out."""
 
     def line(timer: store.Timer) -> str:
-        parts = [f'{ref(TIMER, timer.id)}: "{timer.label}"', timer_state(timer, now, nominal)]
+        parts = [f'{ref(TIMER, timer.id)}: "{timer.label}"', timer_state(timer, now)]
         if timer.active:
             parts.append(_where(timer.channel_id, here))
         else:
@@ -107,14 +108,13 @@ def session_text(
     now: datetime,
     *,
     here: int | None = None,
-    nominal: Callable[[float], float] = _same,
 ) -> str:
     """The session that is going: phase, round, time left or what it is waiting for."""
     if session is None:
         return NO_SESSION
     phase = PHASE_NAMES[session.phase]
     if session.state == store.RUNNING:
-        state = f"running, {format_duration(nominal(remaining_seconds(session.ends_at, now)))} left in this phase"
+        state = f"running, {format_duration(session.left(now))} left in this phase"
     elif session.state == store.PAUSED:
         state = f"paused with {format_duration(session.remaining_s)} left in this phase"
     else:
@@ -130,3 +130,47 @@ def session_text(
             _where(session.channel_id, here),
         ]
     )
+
+
+def phase_text(session: store.Session) -> str:
+    return f"{PHASE_NAMES[session.phase]}, round {session.round}"
+
+
+# ---------------------------------------------------------------------------
+# What happened: the events of a timer or session, oldest first
+# ---------------------------------------------------------------------------
+def events_text(events: list[store.Event], zone) -> str:
+    """One line per event with the local time and what was left on the clock then."""
+    if not events:
+        return NO_EVENTS
+    lines = ["What happened, oldest first (times are local):"]
+    for event in events:
+        kind = TIMER if event.kind == store.TIMER else SESSION
+        text = f'{event.at.astimezone(zone):%a %H:%M:%S} · {ref(kind, event.record_id)} "{event.label}" · {event.event}'
+        if event.detail:
+            text += f" ({event.detail})"
+        if event.remaining_s is not None and event.event not in (store.WAS_FINISHED, store.PHASE_FINISHED):
+            text += f" · {format_duration(event.remaining_s)} left"
+        lines.append(text)
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# `pause all` / `resume all`: exactly what was done
+# ---------------------------------------------------------------------------
+def bulk_line(label: str, left: float, where: str = "") -> str:
+    return f"{label} · " + (f"{where} · " if where else "") + f"{format_duration(left)} left"
+
+
+def bulk_text(pausing: bool, done: list[str], left_alone: list[str], note: str = "") -> str:
+    """What `pause all` or `resume all` did: each one by name with the time left on it."""
+    icon, verb, nothing = ("⏸️", "Paused", "running") if pausing else ("▶️", "Resumed", "paused")
+    if done:
+        lines = [f"{icon} **{verb} {len(done)}**", *(f"• {line}" for line in done)]
+    else:
+        lines = [f"{icon} Nothing was {nothing}, so nothing was {verb.lower()}."]
+    if left_alone:
+        lines.append("Left alone: " + "; ".join(left_alone))
+    if note:
+        lines.append(note)
+    return "\n".join(lines)

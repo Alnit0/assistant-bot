@@ -32,6 +32,18 @@ From the first run of tool calling against the real API (2026-10-07,
 | "Look further back" could only see the last 20 messages | `search_messages` looks through your logged messages in the channel (500, 30 days) and asks before acting on a match | N34 |
 | A Pomodoro asked for while one was going: card again, a note, the alert and Claude's reply; the lengths asked for ignored | Through Claude: one reply, nothing posted, and an offer to restart at those lengths. Typed: the card and one Restart question | H19, H21 |
 
+From the run of 2026-10-07, 22:53 to 22:58 (reported as "paused timers
+gained time"):
+
+| Finding | What changed | Retest |
+|---|---|---|
+| Paused timers seemed to gain time (dinner 24s, then 2m 50s) | Nothing gained time: both were frozen at the right figures (dinner paused at 22:55:21 with 2m 50s, breakfast at 22:55:23 with 3m 36s). The 22:54 "Your timers" message was a snapshot whose countdowns ran on to the old end times. The list is now live: one per channel, rewritten on every change | G16 |
+| Was dev speed involved? | Not that evening: the bot restarted at 22:52 and dev mode was never on. But the check found a real fault: pausing read dev mode's speed of the moment, so a timer started at 1x and paused at 60x would have gained 60 times its time left. Each clock now keeps the speed it was started at | G17 |
+| A timer whose time was up could be paused at 0s | It is finished instead, and `pause all` leaves it alone and says so | G17, G19 |
+| "Resume my tea timer": "Tea's running again – 9m 21s left", but tea stayed paused | `timer_control` was never called: Claude read the list and reported a change. The check only knew replies opening with "Done". It now also catches a change reported as news with nothing run; read tools end by saying nothing was changed; control tools report the state read back after saving | N41 |
+| "Pause all timers" asked which, took four calls and left the Pomodoro | `pause all` / `resume all` are typed words (so no Claude call when typed) and tools; they include the Pomodoro unless told otherwise and list what was done | G21, N40 |
+| "I don't have a record of what the times were" | `timers_events` records every change with the time left; `timer_history` reads it | N42 |
+
 ## Left for later
 
 - **"Alex" and "Auckland, New Zealand" are still hard-coded** in Claude's
@@ -83,10 +95,27 @@ From the first run of tool calling against the real API (2026-10-07,
 - **Claude no longer remembers what it ran**, only what it said. It reads
   timers afresh each time; for anything else ("undo that pin") it has
   its own words to go on, or a new listing.
-- **The "done" check goes by wording** (a reply opening with "Done" or
-  ✅, or carrying a made-up tool note). "Your timer is running" with
-  nothing run would get through; the #bot-log card for the check shows
-  how often the narrow one fires, which says whether to widen it.
+- **The "done" check still goes by wording.** It knows a reply that
+  opens with "Done" or ✅, a made-up tool note, and a change reported as
+  news ("running again", "I've paused", "is now", "has been", "all
+  three paused"). "Your tea timer is running, 9m left" after only a
+  look reads like a description and gets through. The lasting answer is
+  fewer chances to slip: the state given to Claude with each message, so
+  the action is its first call (item 3 of the speed plan below).
+- **Natural-language requests are slow, and the plan is waiting on four
+  answers.** Proposed: timings on the card, state in the user turn, no
+  second Claude call when the result is already shown, 👀 on receipt.
+  Open: harness or manual timing; whether skipping the last call may cut
+  a multi-step request short; lasting or self-deleting result line; 👀
+  as well as typing. Since then, typed `pause all` / `resume all` need
+  no Claude call at all.
+- **Lists posted before this change are still snapshots.** Old "Your
+  timers" messages aren't tracked and go on counting down; delete them.
+- **Events start with this change.** Nothing before it is in
+  `timers_events`, and Claude says so when asked.
+- **Discord rate-limited the board** during the four-call pause (a 429
+  on its edit, retried after 3s). `pause all` now refreshes once; a card,
+  the board and each live list are still one edit each per change.
 - **Timer actions through Claude have no Undo button** now that they go
   by id; ask it to resume or pause again instead.
 
@@ -111,3 +140,12 @@ read on every message after the first (4,973 tokens, 6,996 with the dev tools).
 - **Recent messages go to the API when Claude looks for a target**: up to
   20 one-line previews from the channel when it calls `recent_messages`,
   and up to 5 older ones when it calls `search_messages`.
+- **Strict tool schemas make every request to Claude slow** (benchmark,
+  2026-10-07, real tools, canned handlers): about 3.3s a request with the
+  10 strict tools against 1.2s without, and about 40s for the first request
+  after the set of tools changes in any way (a restart with a new word,
+  `dev mode on`). Agreed fix, waiting for the "before" measurement: send no
+  tool as strict (input is checked in code anyway) and record why in
+  `DECISIONS.md`. Then the rest of the speed-up: live messages updated in
+  the background, 👀 on receipt, a short API timeout, live state in the
+  user turn, and no closing request when the tool has already confirmed.

@@ -34,14 +34,14 @@ Last updated: 2026-10-07
 | D | Archive and restore | 15 | 4 | 11 | 11 | 4 | 0 | 0 |
 | E | Delete and protection | 12 | 3 | 9 | 9 | 3 | 0 | 0 |
 | F | Pins | 4 | 0 | 4 | 4 | 0 | 0 | 0 |
-| G | Timers | 15 | 4 | 11 | 11 | 4 | 0 | 0 |
+| G | Timers | 21 | 8 | 13 | 13 | 8 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
 | J | Dev mode | 32 | 4 | 28 | 28 | 4 | 0 | 0 |
 | K | Startup and housekeeping | 10 | 3 | 7 | 7 | 3 | 0 | 0 |
 | L | Keep | 12 | 4 | 8 | 8 | 4 | 0 | 0 |
 | M | Message lifecycle | 3 | 3 | 0 | 0 | 3 | 0 | 0 |
-| N | Tool calling | 39 | 18 | 21 | 21 | 18 | 0 | 0 |
-| | **Total** | **214** | **67** | **147** | **147** | **67** | **0** | **0** |
+| N | Tool calling | 46 | 21 | 25 | 25 | 21 | 0 | 0 |
+| | **Total** | **227** | **74** | **153** | **153** | **74** | **0** | **0** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off. "Log card" means a card in #bot-log.
@@ -170,13 +170,19 @@ off. "Log card" means a card in #bot-log.
 | G6 | 👤 Manual | Reply `+10m` (and `extend 5m`) to a running timer | End time moves out by that much | ⬜ Untested | | |
 | G7 | 👤 Manual | Reply `cancel` to a running timer | Marked cancelled; no alert later; removed from the board | ⬜ Untested | | |
 | G8 | 🤖 Auto | Durations: `1h30`, `2 hours`, `1:30`, `25`, `90s`, `1.5h`, with a label | Each reads as the right length; the rest is the label | ✅ Pass | 2026-10-07 | `tests/test_durations.py` |
-| G9 | 👤 Manual | `timer` on its own, and `timers` | Lists your active timers across channels, or "No active timers" | ⬜ Untested | | |
+| G9 | 👤 Manual | `timer` on its own, and `timers` | Lists your active timers across channels, marked as live, or "No active timers" | ⬜ Untested | | |
 | G10 | 🤖 Auto | Bad durations: `banana`, `2s`, more than 24 hours | Refused with a reason (shortest is 5 seconds, longest 24 hours) | ✅ Pass | 2026-10-07 | `tests/test_durations.py` |
 | G11 | 👤 Manual | Start `timer 2m`, restart the bot before it ends | Still fires on time; buttons work | ⬜ Untested | | |
 | G12 | 👤 Manual | Start `timer 1m`, stop the bot for 3 minutes, start it | Alert at startup says it finished while the bot was offline | ⬜ Untested | | |
 | G13 | 👤 Manual | Reply `cancel` to a message that isn't a timer | Not a command: treated as ordinary chat | ⬜ Untested | | |
 | G14 | 🤖 Auto | Pause, resume and extend arithmetic | Time left is kept across pauses; extending adds to it | ✅ Pass | 2026-10-07 | `tests/test_pomodoro.py` |
 | G15 | 🤖 Auto | Timer message and board text for each state | Running, paused, cancelled, finished; empty board says "No active timers" | ✅ Pass | 2026-10-07 | `tests/test_timer_text.py` |
+| G16 | 👤 Manual | With two timers running, type `timers`; reply `pause` to one timer; look at the list. Then `timers` again | The list changes by itself: that timer reads "paused, … left" with no countdown, and stays so. The second `timers` puts a new list at the bottom and removes the old one: one list per channel | ⬜ Untested | | Failed 2026-10-07; fixed in code: the 22:54 list went on counting down after `pause all`, so dinner read 24s and breakfast about 1m while they were frozen at 2m 50s and 3m 36s |
+| G17 | 🤖 Auto | Pausing freezes, resuming carries on | Time left is the same however long the pause; resume ends exactly that much later; pausing twice and `+` while paused add up. At dev speed too, and when the speed changes while a timer is going (each clock keeps the speed it started at). A timer whose time is already up is finished, never paused at 0s | ✅ Pass | 2026-10-07 | `tests/test_timer_freeze.py` |
+| G18 | 🤖 Auto | What happened is recorded | Started, paused, resumed, extended, cancelled, finished, dismissed (and a session's phases, skips and stop), each with the time and what was left on the clock | ✅ Pass | 2026-10-07 | `tests/test_timer_freeze.py, test_timer_status.py` |
+| G19 | 🤖 Auto | `pause all` / `resume all` | Every running (or paused) timer and the Pomodoro; `except pomodoro` or `timers only` leaves it out; a timer that has run out is left alone and named; the reply lists each one with the time left as saved; with nothing to do it says so and changes nothing | ✅ Pass | 2026-10-07 | `tests/test_timer_freeze.py, test_timer_status.py` |
+| G20 | 🤖 Auto | The live "Your timers" list | A paused timer shows as paused with its time, not a countdown; one list per channel, the newest; it is a Live message; an empty one is not kept live | ✅ Pass | 2026-10-07 | `tests/test_timer_freeze.py` |
+| G21 | 👤 Manual | With two timers and a Pomodoro running, type `pause all`; wait two minutes; `timers`; then `resume all` | "⏸️ Paused 3" naming each with its time left. Two minutes later the list shows the same times. "▶️ Resumed 3" with those same times, and each then counts down from there | ⬜ Untested | | |
 
 ## H. Pomodoro
 
@@ -340,3 +346,10 @@ run to run: judge what happens, not the exact words.
 | N37 | 🤖 Auto | Reading state and acting by id | `list_timers` gives each timer's id, label, state, time left and channel, and the ones that ended in the last day; `get_pomodoro_status` gives phase, round, time left or "waiting for Start", and lengths. `timer_control` and `pomodoro_control` take that id and an action; a wrong id or state is explained. None of them posts in the channel or takes a message; the timer reply actions are not offered to Claude | ✅ Pass | 2026-10-07 | `tests/test_timer_status.py, test_tools.py, test_toolcalls.py` |
 | N38 | 🤖 Auto | Looking further back | `search_messages` matches the words given against your last 500 logged messages in the channel, up to 30 days old: most words first, then newest, one letter out still matches; messages that have gone are left out. Acting on a match asks with Confirm / Cancel and the message quoted; a recent message is still acted on at once with Undo | ✅ Pass | 2026-10-07 | `tests/test_tools.py, test_toolcalls.py` |
 | N39 | 🤖 Auto | The dev mode switch | `dev mode on` and `dev mode off` are typed words; anything else after `dev mode` is not. Claude is offered that one dev tool in every channel, to the owner only, and it runs without a Confirm | ✅ Pass | 2026-10-07 | `tests/test_tools.py, test_registry.py` |
+| N40 | 👤 Manual | With two timers and a Pomodoro running, ask Claude: `Pause all timers` | It acts at once, without asking which. One "⏸️ Paused 3" message names each timer and the Pomodoro with the time left; Claude adds at most a line | ⬜ Untested | | Failed 2026-10-07; fixed in code: it asked "which would you like me to pause first?", then paused the three timers one call each and left the Pomodoro running |
+| N41 | 👤 Manual | With a paused `tea` timer, ask Claude: `Resume my tea timer`; then type `timers` | The timer's own message and the list show tea running, and the time Claude gives matches them | ⬜ Untested | | Failed 2026-10-07; fixed in code: it read the list, replied "Tea's running again – 9m 21s left" and resumed nothing |
+| N42 | 👤 Manual | Pause a timer, then ask Claude: `What was left on it when I paused it?` | It answers from the record: the time of the pause and what was left | ⬜ Untested | | Failed 2026-10-07; fixed in code: "I don't have a record" |
+| N43 | 🤖 Auto | A control tool reports what was saved | The result of `timer_control` and `pomodoro_control` ends with the state read back from the database; a change that didn't take is a failure for Claude to report, not a success | ✅ Pass | 2026-10-07 | `tests/test_timer_freeze.py, test_toolcalls.py` |
+| N44 | 🤖 Auto | A change reported after only looking (mocked Claude) | "Tea's running again", "I've paused it", "all three paused" with no action run are sent back to Claude once, and it then makes the call; describing how things are ("tea is paused, 9m left") is not sent back; a true account of an earlier message is asked about once and never overruled. Every read tool's result ends by saying nothing was changed | ✅ Pass | 2026-10-07 | `tests/test_llm_tools.py, test_toolcalls.py` |
+| N45 | 🤖 Auto | Where the time went | Each request to Claude (time, model, tokens in, out, cache read and written, retries), each tool's time, the calls to Discord and their total, rate-limit waits and Claude retries (read from the libraries' logs) are recorded for the message being answered and nothing else; the card and the log line give the same numbers | ✅ Pass | 2026-10-07 | `tests/test_timing.py` |
+| N46 | 👤 Manual | Ask Claude: `Set a timer for 5 minutes`, then look at its "Message handled" log card | A Timing field: the seconds to the reply and the number of round trips, one line per request to Claude, one per tool, the Discord time and call count, rate-limit waits and retries. `logs/bot.log` has a matching `Timing:` line | ⬜ Untested | | |

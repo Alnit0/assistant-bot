@@ -6,6 +6,23 @@ backfilled from the git log.
 
 ## 2026-10-07
 
+- **The log card says where the time went.** "Message handled" has a
+  Timing field: the seconds until the reply, each request to Claude (time,
+  tokens, cache), each tool, the time spent calling Discord, rate-limit
+  waits and retries. `bot.log` gets the same on a `Timing:` line. Nothing
+  is faster yet: this is the measurement the speed-up work starts from.
+- **The "Your timers" list is live.** It was a snapshot whose countdowns
+  ran on after a pause, which made paused timers look as if they had
+  gained time (they hadn't). There is now one list per channel, rewritten
+  whenever a timer changes.
+- **`pause all` and `resume all`**, typed or asked for: every timer and the
+  Pomodoro (add `except pomodoro` to leave it), with a reply naming each
+  one and its time left. Claude can also tell you what happened to a
+  timer and when ("what was left on dinner when I paused it?").
+- Fixes: a timer keeps the speed it was started at, so changing `dev
+  speed` mid-run no longer changes its time left; a timer whose time is up
+  can't be paused; Claude saying "running again" without resuming
+  anything is caught, and its timer tools report what was actually saved.
 - **Claude tells the truth about what it did.** It was copying a
   "[Tool calls this turn: …]" note that the bot added to its own earlier
   replies, and saying "Done" without doing anything. The note is gone, any

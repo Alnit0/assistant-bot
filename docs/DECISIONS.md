@@ -301,3 +301,35 @@ A short log of key decisions and why. Newest at the bottom.
   nothing and returns the session's state as a failure: nothing was
   started, and Claude says so once, offering a restart if other lengths
   were asked for.
+- **Each clock keeps the speed it was started at:** this amends "dev speed
+  changes the real wait" above. Pausing and extending converted with dev
+  mode's speed of the moment, so a timer started at 1x and paused at 60x
+  gained sixty times its time left (and lost it the other way round).
+  `speed` is now a column on the timer and the session, set when the clock
+  is set going; time left is always (end - now) x that speed. Resuming
+  takes the speed in force then, as starting does.
+- **A tool reports what was saved, not what it meant to do:** after a
+  control tool changes a timer or session it reads the record back, and the
+  result ends with that state; if the state isn't what the action should
+  leave, the call fails. Claude is told to report that line. A wrong
+  "running again" then has to contradict the result in front of it.
+- **The honesty check has a second, softer pattern:** a reply that reports
+  a change as news ("running again", "I've paused", "has been stopped")
+  when nothing ran goes back to Claude once, like "Done". But a true
+  account of an earlier message reads the same, so unlike "Done" it is
+  never replaced if Claude repeats it. Read tools also end their result by
+  saying nothing was changed, since the false report followed a read.
+- **`timers_events`, not `timer_events`:** skill tables carry the skill's
+  name. One table for timers and sessions (`kind`, `record_id`), with the
+  label and the time left copied in, so the history reads on its own after
+  the timer has gone. Appended to, never edited; nothing prunes it yet.
+- **The "Your timers" list is Live, one per channel:** Discord's countdown
+  timestamps keep running whatever happens to the timer, so a list left
+  behind after a pause was wrong and looked right. It is tracked like the
+  board and rewritten on every change; asking again replaces it. When
+  nothing is left it says so and stops being tracked.
+- **`pause all` and `resume all` are words:** a clear request for all of
+  them shouldn't need one call per timer, or Claude at all when typed. They
+  include the Pomodoro unless told `except pomodoro`, skip a timer that has
+  already run out, and reply with each one's saved time left. They are not
+  destructive: nothing is lost by pausing.

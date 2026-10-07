@@ -130,6 +130,7 @@ def test_the_tools_are_ready_for_the_api(world):
     assert [name for name in names if name.startswith("dev")] == ["dev_mode"], "of dev, only the switch while it is off"
     assert turn.strict == {
         "timer", "pomo", "help", "dev_mode", "timer_control", "pomodoro_control", toolcalls.SEARCH,
+        "pause_all", "resume_all", "timer_history",
     }
     for definition in turn.definitions:
         assert bool(definition.get("strict")) == (definition["name"] in turn.strict)
@@ -520,8 +521,18 @@ def run(real, name, **value):
     return asyncio.run(registry.run_tool(real.ctx, real.specs[name], value))
 
 
+ONLY_READ = "(This only read the state. Nothing was changed by this call.)"
+
+
+def read(real, name) -> str:
+    """What a read tool reports, having checked it says that reading changed nothing."""
+    *lines, last = run(real, name).text.splitlines()
+    assert last == ONLY_READ
+    return "\n".join(lines)
+
+
 def test_claude_reads_the_timers_and_acts_on_one_by_its_id(real):
-    assert run(real, "list_timers").text == "No timers are running or paused."
+    assert read(real, "list_timers") == "No timers are running or paused."
     started = run(real, "timer", duration="5m", label="tea", propose=False)
     assert started.text == "started timer 1: tea, 5m"
     sent_before = list(real.channel.sent)
@@ -534,8 +545,10 @@ def test_claude_reads_the_timers_and_acts_on_one_by_its_id(real):
     assert paused.status == "ok" and paused.text.startswith("⏸️ Paused: tea (")
     assert 't1: "tea" · paused with ' in run(real, "list_timers").text
     assert run(real, "timer_control", id="t1", action="resume", duration="", propose=False).text.startswith("▶️ Resumed: tea")
-    assert run(real, "timer_control", id="t1", action="extend", duration="10m", propose=False).text == "➕ Added 10m to tea"
-    assert run(real, "timer_control", id="t1", action="cancel", duration="", propose=False).text == "🚫 Cancelled: tea"
+    extended = run(real, "timer_control", id="t1", action="extend", duration="10m", propose=False).text.splitlines()
+    assert extended[0] == "➕ Added 10m to tea" and extended[1].startswith('Now saved as: t1: "tea" · running, ')
+    cancelled = run(real, "timer_control", id="t1", action="cancel", duration="", propose=False).text.splitlines()
+    assert cancelled == ["🚫 Cancelled: tea", 'Now saved as: t1: "tea" · cancelled']
     assert 't1: "tea" · cancelled' in run(real, "list_timers").text
     assert real.channel.sent == sent_before, "reading and controlling post nothing: Claude does the talking"
 
@@ -551,11 +564,11 @@ def test_a_timer_id_that_is_wrong_or_in_the_wrong_state_is_explained(real):
 
 def test_tool_calls_that_read_are_logged_like_any_other(real):
     run(real, "list_timers")
-    assert logged_tools() == [("tool: list_timers {}", "ok", "No timers are running or paused.", None)]
+    assert logged_tools() == [("tool: list_timers {}", "ok", f"No timers are running or paused.\n{ONLY_READ}", None)]
 
 
 def test_claude_reads_and_controls_the_pomodoro_by_its_id(real):
-    assert run(real, "get_pomodoro_status").text == "No Pomodoro session is going."
+    assert read(real, "get_pomodoro_status") == "No Pomodoro session is going."
     assert run(real, "pomo", lengths="50/10/30", mode="", label="writing", propose=False).status == "ok"
     status_text = run(real, "get_pomodoro_status").text
     assert status_text.startswith('p1: "writing" · Focus, round 1 of 4 · running, ')
@@ -563,11 +576,12 @@ def test_claude_reads_and_controls_the_pomodoro_by_its_id(real):
 
     assert run(real, "pomodoro_control", id="p1", action="pause", duration="", propose=False).text.startswith("⏸️ Paused: writing")
     assert "paused with " in run(real, "get_pomodoro_status").text
-    assert run(real, "pomodoro_control", id="p1", action="resume", duration="", propose=False).text == "▶️ Resumed: writing"
+    resumed = run(real, "pomodoro_control", id="p1", action="resume", duration="", propose=False).text.splitlines()
+    assert resumed[0].startswith("▶️ Resumed: writing (") and resumed[1].startswith('Now saved as: p1: "writing" · Focus')
     assert run(real, "pomodoro_control", id="p1", action="skip", duration="", propose=False).status == "ok"
     assert "Short break, round 1 of 4" in run(real, "get_pomodoro_status").text
     assert run(real, "pomodoro_control", id="p1", action="stop", duration="", propose=False).text == "⏹️ Stopped: writing"
-    assert run(real, "get_pomodoro_status").text == "No Pomodoro session is going."
+    assert read(real, "get_pomodoro_status") == "No Pomodoro session is going."
     assert run(real, "pomodoro_control", id="t1", action="pause", duration="", propose=False).status == "error"
 
 

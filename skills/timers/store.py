@@ -88,9 +88,56 @@ def create_tables(conn: sqlite3.Connection) -> None:
     )
 
 
+def add_speed_events_and_lists(conn: sqlite3.Connection) -> None:
+    # The speed a clock is running at (dev mode can start one faster). It was read
+    # from dev mode's setting of the moment, so a clock started at one speed and
+    # paused at another gained or lost time
+    conn.execute("ALTER TABLE timers_timers ADD COLUMN speed REAL NOT NULL DEFAULT 1")
+    conn.execute("ALTER TABLE timers_pomodoros ADD COLUMN speed REAL NOT NULL DEFAULT 1")
+    # What happened to each timer and session, and when: the answer to "what was
+    # on it when I paused?"
+    conn.execute(
+        """
+        CREATE TABLE timers_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            kind TEXT NOT NULL,
+            record_id INTEGER NOT NULL,
+            label TEXT NOT NULL,
+            event TEXT NOT NULL,
+            remaining_s REAL,
+            detail TEXT NOT NULL DEFAULT '',
+            at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute("CREATE INDEX timers_events_user ON timers_events (user_id, id)")
+    # The "Your timers" list: one live message per channel, like the board
+    conn.execute(
+        """
+        CREATE TABLE timers_lists (
+            channel_id INTEGER PRIMARY KEY,
+            message_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+
+
 MIGRATIONS = [
     create_tables,
+    add_speed_events_and_lists,
 ]
+
+# What a timers_events row is about, and what happened
+TIMER, SESSION = "timer", "pomodoro"
+STARTED, WAS_PAUSED, RESUMED, EXTENDED, WAS_CANCELLED, WAS_FINISHED = (
+    "started", "paused", "resumed", "extended", "cancelled", "finished",
+)
+RESTARTED, WAS_DISMISSED, PHASE_STARTED, PHASE_FINISHED, SKIPPED, WAS_STOPPED = (
+    "restarted", "dismissed", "phase started", "phase finished", "skipped", "stopped",
+)
 
 
 @dataclass
@@ -108,10 +155,19 @@ class Timer:
     job_id: int | None = None
     created_at: datetime | None = None
     id: int | None = None
+    speed: float = 1.0  # how fast its clock runs: 1 unless dev mode started it faster
 
     @property
     def active(self) -> bool:
         return self.status in (RUNNING, PAUSED)
+
+    def left(self, now: datetime) -> float:
+        """Seconds left, in the timer's own time: frozen while paused, never negative."""
+        if self.status == PAUSED:
+            return self.remaining_s or 0.0
+        if self.status == RUNNING and self.ends_at is not None:
+            return max(0.0, (self.ends_at - now).total_seconds()) * self.speed
+        return 0.0
 
 
 @dataclass
@@ -137,10 +193,19 @@ class Session:
     focus_seconds: int = 0
     created_at: datetime | None = None
     id: int | None = None
+    speed: float = 1.0  # how fast the current phase's clock runs
 
     @property
     def plan(self) -> Plan:
         return Plan(self.focus_s, self.short_s, self.long_s, self.rounds)
+
+    def left(self, now: datetime) -> float:
+        """Seconds left in the current phase, in the session's own time."""
+        if self.state == PAUSED:
+            return self.remaining_s or 0.0
+        if self.state == RUNNING and self.ends_at is not None:
+            return max(0.0, (self.ends_at - now).total_seconds()) * self.speed
+        return 0.0
 
     @property
     def active(self) -> bool:
@@ -292,6 +357,49 @@ async def active_sessions(user_id: int | None = None, channel_id: int | None = N
     return await database.run(_select, "timers_pomodoros", Session, where, tuple(values))
 
 
+# --- events -----------------------------------------------------------------
+@dataclass(frozen=True)
+class Event:
+    kind: str  # TIMER or SESSION
+    record_id: int
+    label: str
+    event: str
+    remaining_s: float | None
+    detail: str
+    at: datetime
+
+
+def _add_event(conn: sqlite3.Connection, record, kind: str, event: str, remaining_s, detail: str) -> None:
+    conn.execute(
+        "INSERT INTO timers_events (user_id, kind, record_id, label, event, remaining_s, detail, at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (record.user_id, kind, record.id, record.label, event, remaining_s, detail, to_db(utc_now())),
+    )
+
+
+async def log_event(record: Timer | Session, event: str, remaining_s: float | None = None, detail: str = "") -> None:
+    """Note something that happened to a timer or session, with the time left on it then."""
+    kind = TIMER if isinstance(record, Timer) else SESSION
+    await database.run(_add_event, record, kind, event, remaining_s, detail)
+
+
+def _events(conn: sqlite3.Connection, user_id: int, kind: str | None, record_id: int | None, limit: int) -> list[Event]:
+    where, values = "user_id = ?", [user_id]
+    if kind is not None:
+        where, values = where + " AND kind = ? AND record_id = ?", [*values, kind, record_id]
+    rows = conn.execute(
+        f"SELECT kind, record_id, label, event, remaining_s, detail, at FROM timers_events WHERE {where} "
+        "ORDER BY id DESC LIMIT ?",
+        (*values, limit),
+    ).fetchall()
+    return [Event(*row[:6], from_db(row[6])) for row in rows][::-1]
+
+
+async def events(user_id: int, kind: str | None = None, record_id: int | None = None, limit: int = 30) -> list[Event]:
+    """The latest events, oldest first: for one timer or session, or for all of the user's."""
+    return await database.run(_events, user_id, kind, record_id, limit)
+
+
 # --- focus log --------------------------------------------------------------
 def _log_focus(conn: sqlite3.Connection, session: Session, seconds: int) -> None:
     conn.execute(
@@ -346,3 +454,43 @@ async def save_board(channel_id: int, message_id: int, user_id: int | None) -> N
 
 async def is_board(message_id: int) -> bool:
     return await database.run(_is_board, message_id)
+
+
+# --- "Your timers" lists -----------------------------------------------------
+def _lists(conn: sqlite3.Connection, user_id: int) -> list[tuple[int, int]]:
+    return conn.execute("SELECT channel_id, message_id FROM timers_lists WHERE user_id = ?", (user_id,)).fetchall()
+
+
+def _save_list(conn: sqlite3.Connection, channel_id: int, message_id: int, user_id: int) -> None:
+    conn.execute(
+        """
+        INSERT INTO timers_lists (channel_id, message_id, user_id, created_at) VALUES (?, ?, ?, ?)
+        ON CONFLICT(channel_id) DO UPDATE SET message_id = excluded.message_id, user_id = excluded.user_id
+        """,
+        (channel_id, message_id, user_id, to_db(utc_now())),
+    )
+
+
+def _forget_list(conn: sqlite3.Connection, channel_id: int) -> None:
+    conn.execute("DELETE FROM timers_lists WHERE channel_id = ?", (channel_id,))
+
+
+def _is_list(conn: sqlite3.Connection, message_id: int) -> bool:
+    return conn.execute("SELECT 1 FROM timers_lists WHERE message_id = ?", (message_id,)).fetchone() is not None
+
+
+async def lists(user_id: int) -> list[tuple[int, int]]:
+    """The user's live "Your timers" lists, as (channel id, message id)."""
+    return await database.run(_lists, user_id)
+
+
+async def save_list(channel_id: int, message_id: int, user_id: int) -> None:
+    await database.run(_save_list, channel_id, message_id, user_id)
+
+
+async def forget_list(channel_id: int) -> None:
+    await database.run(_forget_list, channel_id)
+
+
+async def is_list(message_id: int) -> bool:
+    return await database.run(_is_list, message_id)

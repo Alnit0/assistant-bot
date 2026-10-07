@@ -22,7 +22,7 @@ from skills.timers.common import (
     owner_pressed,
 )
 from skills.timers.durations import DurationError, format_duration, split_duration
-from skills.timers.pomodoro import remaining_seconds, resumed_end
+from skills.timers.pomodoro import resumed_end
 
 log = logging.getLogger("assistant")
 
@@ -53,19 +53,24 @@ def render_timer(timer: store.Timer) -> str:
     return f"✅ **{timer.label}** · {length} · finished"
 
 
-async def _changed(timer: store.Timer) -> None:
-    """Save a timer and bring its message and the channel's board up to date."""
+async def _changed(timer: store.Timer, refresh: bool = True) -> None:
+    """Save a timer and bring its message, the channel's board and the user's
+    lists up to date. `refresh=False` leaves the board and lists to the caller,
+    who is changing several timers and will refresh once at the end."""
     await store.save_timer(timer)
     await edit_message(timer.channel_id, timer.message_id, content=render_timer(timer))
-    await board.refresh(timer.channel_id, timer.user_id)
+    if refresh:
+        await board.refresh(timer.channel_id, timer.user_id)
 
 
 async def _run(timer: store.Timer, seconds: float) -> None:
     """Set a timer running for `seconds` from now, with a job for when it ends."""
     await scheduler.cancel_job(timer.job_id)
     timer.status = store.RUNNING
-    # Dev mode can make the clock run faster; the timer keeps its stated length
-    timer.ends_at = utc_now() + timedelta(seconds=devmode.real_seconds(seconds))
+    # Dev mode can make the clock run faster; the timer keeps its stated length,
+    # and remembers the speed it was set going at
+    timer.speed = devmode.speed()
+    timer.ends_at = utc_now() + timedelta(seconds=seconds / timer.speed)
     timer.remaining_s = None
     timer.job_id = await scheduler.add_job(SKILL, JOB_KIND, timer.ends_at, {"timer_id": timer.id}, timer.user_id)
 
@@ -94,6 +99,7 @@ async def start(ctx: Context) -> str:
     message = await ctx.reply(render_timer(timer))
     timer.message_id = message.id
     await store.save_timer(timer)
+    await store.log_event(timer, store.STARTED, seconds)
     await board.refresh(timer.channel_id, timer.user_id)
     return f"started timer {timer.id}: {timer.label}, {format_duration(seconds)}"
 
@@ -106,12 +112,16 @@ async def on_due(job: scheduler.Job) -> None:
     # Cancelled, paused or extended since this job was booked: nothing to do
     if timer is None or timer.status != store.RUNNING or timer.job_id != job.id:
         return
+    late = f"\n-# It finished {stamp(job.due_at)}, while I was offline." if job.is_late else ""
+    await _finish(timer, late)
 
+
+async def _finish(timer: store.Timer, note: str = "") -> None:
+    """A running timer's time is up: mark it finished and tell the user."""
+    await scheduler.cancel_job(timer.job_id)
     timer.status = store.FINISHED
     timer.job_id = None
-    text = f"⏰ {mention(timer.discord_user_id)} **{timer.label}** is done ({format_duration(timer.duration_s)})."
-    if job.is_late:
-        text += f"\n-# It finished {stamp(job.due_at)}, while I was offline."
+    text = f"⏰ {mention(timer.discord_user_id)} **{timer.label}** is done ({format_duration(timer.duration_s)}).{note}"
 
     channel = channel_for(timer.channel_id)
     if channel is not None:
@@ -120,6 +130,7 @@ async def on_due(job: scheduler.Job) -> None:
             timer.notice_message_id = notice.id
         except discord.HTTPException as error:
             log.warning("Could not announce that timer %s finished: %s", timer.id, error)
+    await store.log_event(timer, store.WAS_FINISHED, 0)
     await _changed(timer)
 
 
@@ -131,28 +142,39 @@ async def cancel(timer: store.Timer) -> str:
         return await dismiss(timer)
     if not timer.active:
         raise UserError(f"**{timer.label}** has already ended.")
+    left = timer.left(utc_now())
     await scheduler.cancel_job(timer.job_id)
     timer.status, timer.job_id = store.CANCELLED, None
+    await store.log_event(timer, store.WAS_CANCELLED, left)
     await _changed(timer)
     return f"🚫 Cancelled: {timer.label}"
 
 
-async def pause(timer: store.Timer) -> str:
+async def pause(timer: store.Timer, refresh: bool = True) -> str:
     if timer.status != store.RUNNING:
         raise UserError(f"**{timer.label}** isn't running, so it can't be paused.")
+    left = timer.left(utc_now())
+    if left <= 0:
+        # Its time is up and the scheduler just hasn't said so yet: that is a
+        # finished timer, not one to freeze at nothing
+        await _finish(timer)
+        raise UserError(f"**{timer.label}** has already finished, so there is nothing to pause.")
     await scheduler.cancel_job(timer.job_id)
-    timer.remaining_s = devmode.nominal_seconds(remaining_seconds(timer.ends_at, utc_now()))
+    # Frozen in the timer's own seconds, by the speed it was running at
+    timer.remaining_s = left
     timer.status, timer.ends_at, timer.job_id = store.PAUSED, None, None
-    await _changed(timer)
+    await store.log_event(timer, store.WAS_PAUSED, left)
+    await _changed(timer, refresh)
     return f"⏸️ Paused: {timer.label} ({format_duration(timer.remaining_s)} left)"
 
 
-async def resume(timer: store.Timer) -> str:
+async def resume(timer: store.Timer, refresh: bool = True) -> str:
     if timer.status != store.PAUSED:
         raise UserError(f"**{timer.label}** isn't paused.")
     timer_left = timer.remaining_s
     await _run(timer, timer_left)
-    await _changed(timer)
+    await store.log_event(timer, store.RESUMED, timer_left)
+    await _changed(timer, refresh)
     return f"▶️ Resumed: {timer.label} ({format_duration(timer_left)} left)"
 
 
@@ -160,7 +182,7 @@ async def extend(timer: store.Timer, seconds: int) -> str:
     if timer.status == store.PAUSED:
         timer.remaining_s += seconds
     elif timer.status == store.RUNNING:
-        timer.ends_at = resumed_end(timer.ends_at, devmode.real_seconds(seconds))
+        timer.ends_at = resumed_end(timer.ends_at, seconds / timer.speed)
         if not await scheduler.reschedule_job(timer.job_id, timer.ends_at):
             # Its job has just run or gone: book a fresh one
             timer.job_id = await scheduler.add_job(SKILL, JOB_KIND, timer.ends_at, {"timer_id": timer.id}, timer.user_id)
@@ -169,6 +191,7 @@ async def extend(timer: store.Timer, seconds: int) -> str:
         return f"➕ {timer.label}: {format_duration(seconds)} more"
     else:
         raise UserError(f"**{timer.label}** has already ended.")
+    await store.log_event(timer, store.EXTENDED, timer.left(utc_now()), f"+{format_duration(seconds)}")
     await _changed(timer)
     return f"➕ Added {format_duration(seconds)} to {timer.label}"
 
@@ -178,6 +201,7 @@ async def restart(timer: store.Timer, seconds: float) -> None:
     await delete_message(timer.channel_id, timer.notice_message_id)
     timer.notice_message_id = None
     await _run(timer, seconds)
+    await store.log_event(timer, store.RESTARTED, seconds)
     await _changed(timer)
 
 
@@ -188,6 +212,7 @@ async def dismiss(timer: store.Timer) -> str:
     await delete_message(timer.channel_id, timer.notice_message_id)
     timer.status, timer.notice_message_id = store.DISMISSED, None
     await store.save_timer(timer)
+    await store.log_event(timer, store.WAS_DISMISSED)
     await edit_message(timer.channel_id, timer.message_id, content=render_timer(timer))
     return f"👍 Dismissed: {timer.label}"
 

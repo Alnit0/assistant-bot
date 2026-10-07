@@ -74,8 +74,9 @@ def test_the_timer_the_user_replied_to_is_pointed_out():
 
 
 def test_a_sped_up_clock_is_reported_in_the_timers_own_time():
-    text = status.timers_text([timer()], [], None, NOW, nominal=lambda real: real * 60)
+    text = status.timers_text([timer(speed=60)], [], None, NOW)  # 80 real seconds to go, at 60x
     assert "running, 1h 20m left" in text
+    assert "running, 1h left" in status.session_text(session(speed=60, ends_at=NOW + timedelta(minutes=1)), NOW)
 
 
 def test_the_timer_list_mentions_a_session_without_describing_it():
@@ -125,3 +126,59 @@ def test_other_lengths_than_the_session_has_are_noticed(typed, asked):
     words = typed.split()
     parse_session(words)  # what the handler has already done: they are readable
     assert different_lengths(words, GOING) == asked
+
+
+# --- what happened ------------------------------------------------------------
+NZ = timezone(timedelta(hours=13))
+
+
+def event(name, remaining=None, detail="", minutes=0, kind=store.TIMER, record_id=3, label="tea") -> store.Event:
+    return store.Event(kind, record_id, label, name, remaining, detail, NOW + timedelta(minutes=minutes))
+
+
+def test_events_are_listed_with_the_local_time_and_what_was_left():
+    text = status.events_text(
+        [
+            event(store.RESUMED, 604),
+            event(store.WAS_PAUSED, 561.2, minutes=1),
+            event(store.EXTENDED, 1161, "+10m", minutes=2),
+            event(store.WAS_FINISHED, 0, minutes=30),
+            event(store.WAS_PAUSED, 1348, "Focus, round 1", minutes=31, kind=store.SESSION, record_id=5, label="Pomodoro"),
+        ],
+        NZ,
+    )
+    assert text.splitlines() == [
+        "What happened, oldest first (times are local):",
+        'Thu 01:00:00 · t3 "tea" · resumed · 10m 4s left',
+        'Thu 01:01:00 · t3 "tea" · paused · 9m 21s left',
+        'Thu 01:02:00 · t3 "tea" · extended (+10m) · 19m 21s left',
+        'Thu 01:30:00 · t3 "tea" · finished',
+        'Thu 01:31:00 · p5 "Pomodoro" · paused (Focus, round 1) · 22m 28s left',
+    ]
+
+
+def test_no_events_says_the_record_is_new():
+    assert status.events_text([], NZ) == status.NO_EVENTS
+
+
+# --- pause all / resume all: exactly what was done -----------------------------
+def test_pause_all_names_each_one_with_the_time_left():
+    text = status.bulk_text(
+        True,
+        [status.bulk_line("tea", 561), status.bulk_line("🍅 Pomodoro", 1348, "Focus, round 1")],
+        ["eggs (**eggs** has already finished, so there is nothing to pause.)"],
+    )
+    assert text.splitlines() == [
+        "⏸️ **Paused 2**",
+        "• tea · 9m 21s left",
+        "• 🍅 Pomodoro · Focus, round 1 · 22m 28s left",
+        "Left alone: eggs (**eggs** has already finished, so there is nothing to pause.)",
+    ]
+
+
+def test_nothing_to_pause_or_resume_says_so():
+    assert status.bulk_text(True, [], []) == "⏸️ Nothing was running, so nothing was paused."
+    assert status.bulk_text(False, [], [], "The Pomodoro was left as it is.").splitlines() == [
+        "▶️ Nothing was paused, so nothing was resumed.",
+        "The Pomodoro was left as it is.",
+    ]

@@ -46,8 +46,60 @@ def render_board(timers: list[store.Timer], sessions: list[store.Session]) -> st
     return "\n".join([TITLE, *(lines or ["No active timers"])])
 
 
+# ---------------------------------------------------------------------------
+# The "Your timers" list (`timers`): every timer of the user's, whatever the
+# channel. One live message per channel it was asked for in, rewritten on every
+# change like the board, so its countdowns never go on running for a timer
+# that has since been paused. When nothing is left it says so and is forgotten.
+# ---------------------------------------------------------------------------
+LIST_TITLE = "📋 **Your timers**"
+LIST_EMPTY = "📋 No active timers."
+LIST_FOOTER = "-# Live: this updates whenever a timer changes"
+
+
+def render_list(timers: list[store.Timer], sessions: list[store.Session]) -> str:
+    if not timers and not sessions:
+        return LIST_EMPTY
+    lines = [f"{session_line(session)} · <#{session.channel_id}>" for session in sessions]
+    lines += [f"{timer_line(timer)} · <#{timer.channel_id}>" for timer in timers]
+    return "\n".join([LIST_TITLE, *lines, LIST_FOOTER])
+
+
+async def refresh_lists(user_id: int) -> None:
+    """Rewrite every live "Your timers" list of this user with how things stand now."""
+    client = discord_utils.client
+    shown = await store.lists(user_id)
+    if client is None or not shown:
+        return
+    timers = await store.active_timers(user_id=user_id)
+    sessions = await store.active_sessions(user_id=user_id)
+    text = render_list(timers, sessions)
+    for channel_id, message_id in shown:
+        channel = client.get_channel(channel_id)
+        if channel is None:
+            continue
+        try:
+            await channel.get_partial_message(message_id).edit(content=text)
+        except discord.NotFound:
+            await store.forget_list(channel_id)  # deleted or archived by hand
+            continue
+        except discord.HTTPException as error:
+            log.warning("Could not update a timers list: %s", error)
+            continue
+        if not timers and not sessions:
+            # Nothing left to follow: it stays as a one-line record
+            await store.forget_list(channel_id)
+
+
 async def refresh(channel_id: int, user_id: int | None = None) -> None:
-    """Bring a channel's board up to date. Creates and pins it the first time it is needed."""
+    """Bring a channel's board up to date, and the user's "Your timers" lists with it."""
+    await _refresh_board(channel_id, user_id)
+    if user_id is not None:
+        await refresh_lists(user_id)
+
+
+async def _refresh_board(channel_id: int, user_id: int | None = None) -> None:
+    """Rewrite a channel's board. Creates and pins it the first time it is needed."""
     client = discord_utils.client
     channel = client.get_channel(channel_id) if client else None
     if channel is None:

@@ -35,7 +35,6 @@ from skills.timers.pomodoro import (
     next_phase,
     parse_session,
     phase_length,
-    remaining_seconds,
     resumed_end,
     starts_by_itself,
     summarise_focus,
@@ -141,11 +140,19 @@ async def _begin_phase(session: store.Session, seconds: float | None = None) -> 
     if seconds is None:
         seconds = phase_length(session.plan, session.phase)
     session.state = store.RUNNING
-    # Dev mode can make the clock run faster; the phase keeps its stated length
-    session.ends_at = utc_now() + timedelta(seconds=devmode.real_seconds(seconds))
+    # Dev mode can make the clock run faster; the phase keeps its stated length,
+    # and the session remembers the speed this phase was set going at
+    session.speed = devmode.speed()
+    session.ends_at = utc_now() + timedelta(seconds=seconds / session.speed)
     session.remaining_s = None
     session.job_id = await scheduler.add_job(
         SKILL, JOB_KIND, session.ends_at, {"session_id": session.id}, session.user_id
+    )
+
+
+async def _log_phase(session: store.Session, event: str = store.PHASE_STARTED) -> None:
+    await store.log_event(
+        session, event, session.left(utc_now()), f"{PHASE_NAMES[session.phase]}, round {session.round}"
     )
 
 
@@ -167,9 +174,10 @@ async def on_due(job: scheduler.Job) -> None:
         session.focus_rounds += 1
         session.focus_seconds += session.focus_s
         # A sped-up round isn't real focus time: keep it out of the stats
-        if devmode.speed() == 1:
+        if session.speed == 1:
             await store.log_focus(session, session.focus_s)
     finished_round = session.round
+    await store.log_event(session, store.PHASE_FINISHED, 0, f"{PHASE_NAMES[session.phase]}, round {session.round}")
     left = _advance(session)
     session.job_id = None
     upcoming = PHASE_NAMES[session.phase]
@@ -178,6 +186,7 @@ async def on_due(job: scheduler.Job) -> None:
 
     if starts_by_itself(session.auto_continue, job.is_late):
         await _begin_phase(session)
+        await _log_phase(session)
         await _notify(
             session, f"{headline} {upcoming} ({length}) has started, ends {stamp(session.ends_at)}.", ["ok", "skip"]
         )
@@ -231,7 +240,7 @@ def already_going(session: store.Session, asked: str | None, here: int | None) -
     is posted: it has the facts and says them once."""
     text = (
         "Not started: a Pomodoro session is already going, and it has been left as it is. "
-        f"{status.session_text(session, utc_now(), here=here, nominal=devmode.nominal_seconds)}. "
+        f"{status.session_text(session, utc_now(), here=here)}. "
         "Nothing was posted, so tell the user this yourself, in a line."
     )
     if asked:
@@ -288,6 +297,7 @@ async def _start_new(ctx: Context, plan, label: str, auto: bool | None) -> str:
     message = await ctx.reply(render_card(session), view=card_view(session))
     session.message_id = message.id
     await store.save_session(session)
+    await _log_phase(session, store.STARTED)
     await board.refresh(session.channel_id, session.user_id)
     lengths = "/".join(format_duration(s) for s in (plan.focus_s, plan.short_s, plan.long_s))
     return f"started pomodoro {session.id}: {session.label}, {lengths}, {'auto' if session.auto_continue else 'manual'}"
@@ -301,6 +311,7 @@ async def press_start(session: store.Session) -> str:
         raise UserError("That phase has already started.")
     await _clear_notice(session)
     await _begin_phase(session)
+    await _log_phase(session)
     await _changed(session)
     return f"▶️ {PHASE_NAMES[session.phase]} started"
 
@@ -309,9 +320,11 @@ async def skip(session: store.Session) -> str:
     """Skip the phase that is running (it isn't logged), or the one waiting to start."""
     if not session.active:
         raise UserError("That session has ended.")
+    await store.log_event(session, store.SKIPPED, session.left(utc_now()), f"{PHASE_NAMES[session.phase]}, round {session.round}")
     left = _advance(session)
     await _clear_notice(session)
     await _begin_phase(session)
+    await _log_phase(session)
     await _changed(session)
     return f"⏭️ Skipped {left.lower()}; {PHASE_NAMES[session.phase].lower()} started"
 
@@ -320,8 +333,10 @@ async def pause(session: store.Session) -> str:
     if session.state != store.RUNNING:
         raise UserError("The session isn't running, so it can't be paused.")
     await scheduler.cancel_job(session.job_id)
-    session.remaining_s = devmode.nominal_seconds(remaining_seconds(session.ends_at, utc_now()))
+    # Frozen in the session's own seconds, by the speed the phase was running at
+    session.remaining_s = session.left(utc_now())
     session.state, session.ends_at, session.job_id = store.PAUSED, None, None
+    await store.log_event(session, store.WAS_PAUSED, session.remaining_s, f"{PHASE_NAMES[session.phase]}, round {session.round}")
     await _changed(session)
     return f"⏸️ Paused: {session.label} ({format_duration(session.remaining_s)} left)"
 
@@ -331,22 +346,25 @@ async def resume(session: store.Session) -> str:
         return await press_start(session)
     if session.state != store.PAUSED:
         raise UserError("The session isn't paused.")
-    await _begin_phase(session, session.remaining_s)
+    left = session.remaining_s
+    await _begin_phase(session, left)
+    await store.log_event(session, store.RESUMED, left, f"{PHASE_NAMES[session.phase]}, round {session.round}")
     await _changed(session)
-    return f"▶️ Resumed: {session.label}"
+    return f"▶️ Resumed: {session.label} ({format_duration(left)} left)"
 
 
 async def extend(session: store.Session, seconds: int) -> str:
     if session.state == store.PAUSED:
         session.remaining_s += seconds
     elif session.state == store.RUNNING:
-        session.ends_at = resumed_end(session.ends_at, devmode.real_seconds(seconds))
+        session.ends_at = resumed_end(session.ends_at, seconds / session.speed)
         if not await scheduler.reschedule_job(session.job_id, session.ends_at):
             session.job_id = await scheduler.add_job(
                 SKILL, JOB_KIND, session.ends_at, {"session_id": session.id}, session.user_id
             )
     else:
         raise UserError("Press Start first: there is no phase running to add time to.")
+    await store.log_event(session, store.EXTENDED, session.left(utc_now()), f"+{format_duration(seconds)}")
     await _changed(session)
     return f"➕ Added {format_duration(seconds)} to this {PHASE_NAMES[session.phase].lower()}"
 
@@ -356,6 +374,7 @@ async def stop(session: store.Session) -> str:
         raise UserError("That session has already ended.")
     await scheduler.cancel_job(session.job_id)
     await _clear_notice(session)
+    await store.log_event(session, store.WAS_STOPPED, session.left(utc_now()))
     session.state, session.ends_at, session.remaining_s, session.job_id = store.STOPPED, None, None, None
     await _changed(session)
     return f"⏹️ Stopped: {session.label}"

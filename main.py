@@ -6,7 +6,7 @@ import anthropic
 import discord
 from discord import app_commands
 
-from core import backup, devmode, instance_lock, interactions, lifecycle, scheduler
+from core import backup, devmode, instance_lock, interactions, lifecycle, scheduler, timing
 from core.config import (
     CLAUDE_MODEL,
     DB_PATH,
@@ -244,6 +244,7 @@ async def on_message(message: discord.Message):
     # Everything else goes to Claude. Log the raw input before processing.
     row_id = await log_received(text, "chat", message.id, message.channel.id, user_id=user.id)
     started = time.perf_counter()
+    spent = timing.start()
 
     async with message.channel.typing():
         try:
@@ -292,10 +293,13 @@ async def on_message(message: discord.Message):
             await log_error("Unexpected error", repr(error), text)
             return
 
-    duration = time.perf_counter() - started
-
     for chunk in split_message(reply):
         await message.channel.send(chunk)
+    # The whole wait, as the user saw it: until the reply was in the channel
+    timing.mark_replied()
+    timing.stop()
+    duration = time.perf_counter() - started
+    log.info("Timing: %s", timing.log_line(spent))
 
     cost = estimate_cost(
         CLAUDE_MODEL, input_tokens, output_tokens, result.cache_read_tokens, result.cache_write_tokens
@@ -344,6 +348,7 @@ async def on_message(message: discord.Message):
         value=f"{result.cache_read_tokens} read / {result.cache_write_tokens} written",
         inline=True,
     )
+    embed.add_field(name="Timing", value=truncate("\n".join(timing.summary_lines(spent))), inline=False)
     if turn.definitions:
         strict = f", {len(turn.strict)} strict" if turn.strict else ""
         embed.add_field(

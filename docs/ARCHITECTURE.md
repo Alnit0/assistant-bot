@@ -48,8 +48,9 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `scheduler.py` | Database-backed jobs: `add_job`, a ticker that runs due ones, catch-up at startup (`job.is_late`) |
 | `devmode.py` | Dev mode's in-memory state; other code asks it for values (`reaction_debounce()`, `speed()`, `is_verbose()`, `cleanup_enabled()`, `debug()`, `register_task()`) |
 | `interactions.py` | Permission check and logging for slash commands and context menus |
-| `llm.py` | Claude client; the system prompt (cached part, then the time); the tool loop (`ask_claude` runs the calls Claude makes, up to `MAX_TOOL_CALLS`); the honesty checks (`claims_done`, `scrub`: a "done" with nothing run is sent back once, a bracketed tool note is removed); per-channel history of what was said and nothing else; cost estimates including cache and tool tokens |
-| `discord_utils.py` | #bot-log cards, `split_message`, `truncate`, `safe_reply`, `report_interaction_error` |
+| `llm.py` | Claude client; the system prompt (cached part, then the time); the tool loop (`ask_claude` runs the calls Claude makes, up to `MAX_TOOL_CALLS`); the honesty checks (`claims_done`, `claims_change`, `scrub`: a "done" or a reported change with nothing run is sent back once, a bracketed tool note is removed); per-channel history of what was said and nothing else; cost estimates including cache and tool tokens |
+| `timing.py` | Where the time goes while one message is answered: each request to Claude, each tool, the calls to Discord, rate-limit waits and retries (read from the libraries' logs). One `Turn` per message, found through a context variable; `summary_lines` is the breakdown on the "Message handled" card |
+| `discord_utils.py` | Binds the client and times every call it makes to Discord; #bot-log cards, `split_message`, `truncate`, `safe_reply`, `report_interaction_error` |
 
 ## `skills/`
 
@@ -65,11 +66,12 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `archive/store.py` | The `archive_items` records |
 | `archive/messages.py` | The Discord work: webhook repost, delete, confirmation, Restore button |
 | `keep/__init__.py` | The 📌 reaction: keep (pin) and unkeep (unpin); reply `pin` / `unpin`, which act at once. All through `core/pins.py` |
-| `timers/__init__.py` | Registers `timer`, `timers`, `pomo`, `pomo stats`, the reply actions and job handlers, and Claude's tools: `list_timers`, `get_pomodoro_status`, `timer_control`, `pomodoro_control` |
-| `timers/status.py` | Pure: the live state of timers and the session in words for Claude, and the ids (`t12`, `p4`) the control tools take |
+| `timers/__init__.py` | Registers `timer`, `timers`, `pause all`, `resume all`, `pomo`, `pomo stats`, the reply actions and job handlers, and Claude's tools: `list_timers`, `get_pomodoro_status`, `timer_history`, `timer_control`, `pomodoro_control` |
+| `timers/control.py` | The handlers of those tools, and `pause all` / `resume all`. What they report is read back from the database after the change |
+| `timers/status.py` | Pure: the live state of timers and the session in words for Claude, the ids (`t12`, `p4`) the control tools take, the event history and what `pause all` did |
 | `timers/durations.py`, `pomodoro.py` | Pure: duration parsing; Pomodoro phases, pause arithmetic, stats |
-| `timers/store.py` | Everything timers remember (`timers_*` tables) |
-| `timers/timers.py`, `sessions.py`, `board.py`, `common.py` | Timer messages, Pomodoro session cards, the pinned "Active timers" board, shared message helpers |
+| `timers/store.py` | Everything timers remember (`timers_*` tables), including each clock's own speed, the events of every timer and session, and the live lists |
+| `timers/timers.py`, `sessions.py`, `board.py`, `common.py` | Timer messages, Pomodoro session cards, the pinned "Active timers" board and the live "Your timers" lists (both rewritten on every change), shared message helpers |
 | `dev/__init__.py` | Registers the `dev …` words; `dev mode on\|off` is the one Claude is always offered |
 | `dev/panel.py` | The pinned dev panel, its persistent buttons, the "🛠️ Dev mode" status |
 | `dev/tools.py` | `dev inspect`, `dev jobs`, `dev run`, `dev fire next`, `dev seed`, `dev clean` |
@@ -87,7 +89,8 @@ core helpers.
 settings before `core` loads. One `test_*.py` per area: `router`,
 `registry` (loading, help, capabilities), `reactions`, `reaction_keys`,
 `debounce`, `keep`, `archive_rules`, `archive_store`, `durations`,
-`pomodoro`, `timer_text`, `timer_status`, `devmode`, `dev_parsing`, `lab`, `lifecycle`,
+`pomodoro`, `timer_text`, `timing`, `timer_status`, `timer_freeze` (pause, resume and events against a
+database with the clock under test control), `devmode`, `dev_parsing`, `lab`, `lifecycle`,
 `permissions`, `scheduler`, `text`, `tools`, `pending`, `llm_tools` (the
 Claude loop against a scripted stand-in), `toolcalls`.
 
@@ -139,7 +142,7 @@ Claude loop against a scripted stand-in), `toolcalls`.
    (`Turn.acted`), it goes back to Claude once before the user sees it,
    and a card in #bot-log records it. Only the reply's text is kept in
    the history. The "Message handled" card lists the tools sent, their
-   tokens, cache use and the calls.
+   tokens, cache use, the calls and where the time went (`core/timing.py`).
 
 **Reaction → debouncer → actions**
 
@@ -190,7 +193,7 @@ seconds.
 |---|---|
 | `users`, `message_log`, `scheduled_jobs`, `reaction_state`, `skill_migrations` | core (`core/migrations.py`, version in `PRAGMA user_version`) |
 | `archive_items` | archive |
-| `timers_timers`, `timers_pomodoros`, `timers_focus_log`, `timers_boards` | timers |
+| `timers_timers`, `timers_pomodoros`, `timers_focus_log`, `timers_boards`, `timers_events`, `timers_lists` | timers |
 | `lab_state`, `lab_tour_runs`, `lab_tour_results` | lab |
 
 Backups go to `data/backups/` nightly at 3am NZ (newest 7 `assistant-*.db`

@@ -1,16 +1,11 @@
-from datetime import timedelta
-
 import discord
 
-from core import devmode
 from core.context import Context
 from core.errors import UserError
 from core.lifecycle import MessageClass
-from core.scheduler import utc_now
 from skills.base import ANY, Keyword, Param, ReplyAction, Skill, Tool
-from skills.timers import sessions, status, store, timers
-from skills.timers.board import session_line, timer_line
-from skills.timers.common import PERMISSION
+from skills.timers import board, control, sessions, store, timers
+from skills.timers.common import PERMISSION, delete_message
 from skills.timers.durations import DurationError, parse_duration
 
 
@@ -25,15 +20,19 @@ async def timer_word(ctx: Context) -> str:
 
 
 async def list_timers(ctx: Context) -> str:
+    """Show the "Your timers" list. It is live: one per channel, kept up to date
+    (skills/timers/board.py), so an old one never goes on counting down wrongly."""
     active = await store.active_timers(user_id=ctx.user.id)
     running = await store.active_sessions(user_id=ctx.user.id)
+    # The list already in this channel is replaced by the new one at the bottom
+    previous = dict(await store.lists(ctx.user.id)).get(ctx.channel_id)
+    message = await ctx.reply(board.render_list(active, running))
+    if previous is not None:
+        await delete_message(ctx.channel_id, previous, MessageClass.LIVE)
     if not active and not running:
-        await ctx.reply("📋 No active timers.")
+        await store.forget_list(ctx.channel_id)
         return "no active timers"
-    lines = ["📋 **Your timers**"]
-    lines += [f"{session_line(session)} · <#{session.channel_id}>" for session in running]
-    lines += [f"{timer_line(timer)} · <#{timer.channel_id}>" for timer in active]
-    await ctx.reply("\n".join(lines))
+    await store.save_list(ctx.channel_id, message.id, ctx.user.id)
     return f"{len(active)} timer(s), {len(running)} pomodoro"
 
 
@@ -101,67 +100,14 @@ async def acknowledge_reply(ctx: Context, target: discord.Message) -> None:
     await ctx.confirm(await (timers.dismiss(record) if module is timers else sessions.acknowledge(record)))
 
 
-# ---------------------------------------------------------------------------
-# Tools for Claude: the live state, and acting on a timer or session by the id
-# that state gives. Claude never looks for a timer in the chat.
-# ---------------------------------------------------------------------------
-ENDED_WITHIN = timedelta(hours=24)  # how long an ended timer is still mentioned
-TIMER_ACTIONS = ("pause", "resume", "cancel", "extend")
-POMODORO_ACTIONS = ("pause", "resume", "start", "skip", "stop", "extend")
-
-
-async def list_timers_tool(ctx: Context, value: dict) -> str:
-    now = utc_now()
-    active = await store.active_timers(user_id=ctx.user.id)
-    ended = await store.ended_timers(ctx.user.id, now - ENDED_WITHIN)
-    running = await store.active_sessions(user_id=ctx.user.id)
-    return status.timers_text(
-        active,
-        ended,
-        running[0] if running else None,
-        now,
-        here=ctx.channel_id,
-        replied_to=ctx.reply_target_id,
-        nominal=devmode.nominal_seconds,
-    )
-
-
-async def pomodoro_status_tool(ctx: Context, value: dict) -> str:
-    running = await store.active_sessions(user_id=ctx.user.id)
-    return status.session_text(
-        running[0] if running else None, utc_now(), here=ctx.channel_id, nominal=devmode.nominal_seconds
-    )
-
-
-def _extra_time(value: dict) -> int:
-    try:
-        return parse_duration(value.get("duration", ""))
-    except DurationError as error:
-        raise UserError(f"{error} `duration` says how much time to add, e.g. 10m.")
-
-
-async def timer_control_tool(ctx: Context, value: dict) -> str:
-    timer_id = status.parse_ref(value["id"], status.TIMER)
-    timer = await store.get_timer(timer_id) if timer_id is not None else None
-    if timer is None or timer.user_id != ctx.user.id:
-        raise UserError(f"There is no timer `{value['id']}`. Call list_timers and use an id from it, such as t12.")
-    action = value["action"]
-    if action == "extend":
-        return await timers.extend(timer, _extra_time(value))
-    return await {"pause": timers.pause, "resume": timers.resume, "cancel": timers.cancel}[action](timer)
-
-
-async def pomodoro_control_tool(ctx: Context, value: dict) -> str:
-    session_id = status.parse_ref(value["id"], status.SESSION)
-    session = await store.get_session(session_id) if session_id is not None else None
-    if session is None or session.user_id != ctx.user.id:
-        raise UserError(
-            f"There is no Pomodoro session `{value['id']}`. Call get_pomodoro_status and use the id from it, such as p4."
-        )
-    action = value["action"]
-    if action == "extend":
-        return await sessions.extend(session, _extra_time(value))
-    return await sessions.ACTIONS[action](session)
+# For Claude: "pause all timers" means everything, the Pomodoro included
+SCOPE = Param(
+    "scope",
+    "Leave empty to include the Pomodoro session: that is what \"all\", \"everything\" and \"all "
+    "timers\" mean. Use \"except pomodoro\" only when the user says to leave the Pomodoro alone.",
+    choices=("except pomodoro",),
+    required=False,
+)
 
 
 class TimersSkill(Skill):
@@ -194,6 +140,34 @@ class TimersSkill(Skill):
                 examples=["timers"],
                 channels=ANY,
                 permission=PERMISSION,
+            ),
+            Keyword(
+                ["pause all", "pause everything"],
+                "pause every running timer, and the Pomodoro too unless you add `except pomodoro`",
+                control.pause_all,
+                examples=["pause all", "pause all timers", "pause all except pomodoro"],
+                channels=ANY,
+                permission=PERMISSION,
+                takes_args=True,
+                usage="[timers] [except pomodoro]",
+                accepts=control.scope_is_ours,
+                keep_command=True,
+                params=[SCOPE],
+                tool_priority=9,
+            ),
+            Keyword(
+                ["resume all", "unpause all", "resume everything"],
+                "set every paused timer going again, and the Pomodoro too unless you add `except pomodoro`",
+                control.resume_all,
+                examples=["resume all", "resume all timers", "resume all except pomodoro"],
+                channels=ANY,
+                permission=PERMISSION,
+                takes_args=True,
+                usage="[timers] [except pomodoro]",
+                accepts=control.scope_is_ours,
+                keep_command=True,
+                params=[SCOPE],
+                tool_priority=9,
             ),
             Keyword(
                 ["pomo", "pomodoro"],
@@ -296,7 +270,7 @@ class TimersSkill(Skill):
                 'last day. Call it whenever the user asks about their timers ("show my timers", '
                 '"how long is left on the tea timer?") and before every timer_control call, to '
                 "get the id. It posts nothing: put the answer in your reply.",
-                list_timers_tool,
+                control.list_timers_tool,
                 permission=PERMISSION,
                 reads_only=True,
             ),
@@ -307,7 +281,26 @@ class TimersSkill(Skill):
                 'it whenever the user asks about their Pomodoro ("how long left in this round?") '
                 "and before every pomodoro_control call, to get the id. It posts nothing: put the "
                 "answer in your reply.",
-                pomodoro_status_tool,
+                control.pomodoro_status_tool,
+                permission=PERMISSION,
+                reads_only=True,
+            ),
+            Tool(
+                "timer_history",
+                "Read what has happened to the user's timers and Pomodoro, with the time of each "
+                "event and what was left on the clock then: started, paused, resumed, extended, "
+                "cancelled, finished. Call it for questions about the past (\"what was on dinner "
+                "when I paused it?\", \"when did I resume the tea timer?\", \"what happened to my "
+                "timers?\"). It posts nothing: put the answer in your reply.",
+                control.timer_history_tool,
+                params=[
+                    Param(
+                        "id",
+                        "One timer (t12) or session (p4) from list_timers or get_pomodoro_status, "
+                        "or empty for the latest events of all of them.",
+                        required=False,
+                    )
+                ],
                 permission=PERMISSION,
                 reads_only=True,
             ),
@@ -317,12 +310,13 @@ class TimersSkill(Skill):
                 'Examples: "pause the tea timer" -> id t12, action pause. "unpause it" or '
                 '"carry on" -> action resume. "stop the laundry timer" -> action cancel. '
                 '"give the tea timer 5 more minutes" -> action extend, duration 5m. If the '
-                "label fits more than one timer, ask which. The timer's own message is updated; "
-                "say in a line what was done.",
-                timer_control_tool,
+                "label fits more than one timer, ask which. For all of them at once use pause_all "
+                "or resume_all: never one call each, and never ask which. The result ends with "
+                "the state as it was saved: report that, not what you expected.",
+                control.timer_control_tool,
                 params=[
                     Param("id", "The timer's id exactly as list_timers gave it, e.g. t12."),
-                    Param("action", "What to do to it.", choices=TIMER_ACTIONS),
+                    Param("action", "What to do to it.", choices=control.TIMER_ACTIONS),
                     Param("duration", "For extend only: how much time to add, e.g. 10m.", required=False),
                 ],
                 permission=PERMISSION,
@@ -334,12 +328,12 @@ class TimersSkill(Skill):
                 'Examples: "pause my pomodoro" -> id p4, action pause. "carry on" -> action '
                 'resume. "start the break" when it is waiting for Start -> action start. "skip '
                 'this break" -> action skip. "end the session" -> action stop. "10 more minutes '
-                'on this round" -> action extend, duration 10m. The session card is updated; say '
-                "in a line what was done.",
-                pomodoro_control_tool,
+                'on this round" -> action extend, duration 10m. The result ends with the state '
+                "as it was saved: report that, not what you expected.",
+                control.pomodoro_control_tool,
                 params=[
                     Param("id", "The session's id exactly as get_pomodoro_status gave it, e.g. p4."),
-                    Param("action", "What to do to it.", choices=POMODORO_ACTIONS),
+                    Param("action", "What to do to it.", choices=control.POMODORO_ACTIONS),
                     Param("duration", "For extend only: how much time to add, e.g. 10m.", required=False),
                 ],
                 permission=PERMISSION,
@@ -357,7 +351,7 @@ class TimersSkill(Skill):
         return list(store.MIGRATIONS)
 
     async def message_class(self, message_id: int) -> MessageClass | None:
-        if await store.is_board(message_id):
+        if await store.is_board(message_id) or await store.is_list(message_id):
             return MessageClass.LIVE
         record = await store.timer_by_message(message_id) or await store.session_by_message(message_id)
         return store.message_class_of(record, message_id)

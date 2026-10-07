@@ -1,10 +1,10 @@
 # QA run sheet
 
-One pass through the 147 👤 Manual tests in `docs/TESTING.md` that are
+One pass through the 153 👤 Manual tests in `docs/TESTING.md` that are
 ⬜ Untested (as of 2026-10-07). Blocks share setup and each one leaves things
 ready for the next, so run them in order.
 
-**Time:** about 3 hours at the keyboard, plus two nights for the backup
+**Time:** about 3¼ hours at the keyboard, plus two nights for the backup
 tests (block 12).
 
 | Block | What | Dev mode | Tests | Minutes |
@@ -21,8 +21,8 @@ tests (block 12).
 | 10 | Rest of the lab | off | 8 | 8 |
 | 11 | Phone notifications | off | 5 | 11 |
 | 12 | Overnight backups | off | 2 | 2 nights |
-| 13 | Tool calling (Claude runs things) | off, then on, then off | 23 | 37 |
-| | **Total** | | **147** (F2 is split over blocks 4 and 7, counted in 7) | **about 3 hours** |
+| 13 | Tool calling (Claude runs things) | off, then on, then off | 29 | 48 |
+| | **Total** | | **153** (F2 is split over blocks 4 and 7, counted in 7) | **about 3¼ hours** |
 
 Block 13 needs nothing from the others: run it any time after block 1, and
 before the overnight block if that suits.
@@ -336,7 +336,13 @@ happens, not the exact words. Cancel or stop anything a step starts.
 | 20 | `Start a timer for 3 minutes called testing`, then `Cancel the eggs timer`. Check each against the channel and the log cards | Whenever Claude says something was done, a "🔧 Tool" card shows it ran, and the timer is there (or gone). If a "⚠️ Claude said "done" with nothing run" card appears, the reply you got must still be true | N31 |
 | 21 | Read back over Claude's replies from steps 17 to 20 | No bracketed debug text ("[Tool calls this turn: …]") in any reply; what was called is only on the "Message handled" cards | N32 |
 | 22 | `Switch dev mode on`, then `Turn dev mode off` | Dev mode goes on (panel posted), then off, each at once with no Confirm. Then `speed the timers up 60 times`: it can't, as in step 12 | N33 |
-| 23 | `Pin the message about rent` (step 9's, now more than 20 messages back); if it doesn't look by itself, `Look further back`. Press **Confirm** | It finds "Rent is due on the 1st" and asks first: "Found further back…" with the message quoted, a link, and Confirm / Cancel. Nothing is pinned until Confirm. Then reply `unpin` to it, cancel the timers and stop the session | N34 |
+| 23 | `Pin the message about rent` (step 9's, now more than 20 messages back); if it doesn't look by itself, `Look further back`. Press **Confirm** | It finds "Rent is due on the 1st" and asks first: "Found further back…" with the message quoted, a link, and Confirm / Cancel. Nothing is pinned until Confirm. Then reply `unpin` to it | N34 |
+| 24 | Cancel what is left from step 17, then type `timer 10m tea`, `timer 5m dinner` and `pomo`. Type `timers`; reply `pause` to the dinner timer and watch the list; then `timers` again | The list changes by itself: dinner reads "paused, … left" with no countdown, and stays so. The second `timers` puts a new list at the bottom and removes the old one | G16 |
+| 25 | Reply `resume` to dinner. Type `pause all`; wait two minutes; look at the list; then `resume all` | "⏸️ Paused 3" naming tea, dinner and the Pomodoro, each with its time left. Two minutes later the list shows the same times. "▶️ Resumed 3" with those same times, and each counts down from there. Neither word shows a "Message handled" card | G21 |
+| 26 | Ask: `Pause all timers` | It acts at once, without asking which. One "⏸️ Paused 3" message names each timer and the Pomodoro with the time left; Claude adds at most a line | N40 |
+| 27 | Ask: `Resume my tea timer`; then type `timers` | Tea's own message and the list show it running, and the time Claude gives matches them. If a "⚠️ Claude said "done" with nothing run" card appears, tea must still be running | N41 |
+| 28 | Ask: `What was left on dinner when I paused it?` | It answers from the record: the time of the pause and what was left (it matches step 26's message). Then `resume all`, cancel the timers and stop the session | N42 |
+| 29 | Ask: `Set a timer for 5 minutes`, then look at its "Message handled" log card | A Timing field: the seconds to the reply and the number of round trips, one line per request to Claude, one per tool, the Discord time and call count, rate-limit waits and retries. `logs/bot.log` has a matching `Timing:` line. Cancel the timer | N46 |
 
 Each sentence costs an API call with the tools attached (see the Tool tokens
 field in step 13), so this block costs a little more than ordinary chat.

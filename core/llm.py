@@ -1,10 +1,12 @@
 import logging
 import re
+import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 
 from anthropic import AsyncAnthropic
 
+from core import timing
 from core.config import (
     ANTHROPIC_API_KEY,
     ASSISTANT_NAME,
@@ -233,10 +235,27 @@ _TOOL_NOTE = re.compile(r"[ \t]*\[\s*tools?\b[^\]\n]*\]?[ \t]*", re.IGNORECASE)
 # A reply that opens by saying it is done: "Done.", "✅ Done", "All done", "That's done"
 _DONE_CLAIM = re.compile(r"^\W*(?:(?:all|that'?s|it'?s|that is|it is)\s+)?done\b|^\s*✅", re.IGNORECASE)
 
+# A reply that says a change was made: in the first person ("I've paused"), or as
+# news ("running again", "is now paused", "has been stopped", "all three paused").
+# Saying how things are ("tea is paused, 9m left") is not one
+_ACTIONS = (
+    "paused|resumed|unpaused|started|restarted|cancelled|canceled|stopped|pinned|unpinned|archived|"
+    "deleted|extended|added|dismissed|skipped|switched|turned|set|cleared|reset"
+)
+_CHANGE_CLAIM = re.compile(
+    rf"\bI(?:'ve|’ve| have)? (?:just |now |already )?(?:{_ACTIONS})\b"
+    r"|\b(?:running|going|paused|started|pinned|on|off) again\b"
+    r"|(?:\b(?:is|are)|'s|’s|'re|’re) now (?:running|paused|going|pinned|unpinned|archived|cancelled|stopped|on|off)\b"
+    rf"|(?:\b(?:has|have)|'s|’s|'ve|’ve) been (?:{_ACTIONS})\b"
+    r"|\ball (?:\w+ )?(?:paused|resumed|cancelled|stopped|started)\b",
+    re.IGNORECASE,
+)
+
 NOTHING_RAN = (
-    "Check before this reaches the user: no tool has succeeded for this message, so nothing has "
-    "been done. If the user asked for an action, call the tool for it now. Otherwise answer again "
-    "without saying or implying that anything was done, and without bracketed notes."
+    "Check before this reaches the user: no tool has changed anything for this message. Reading "
+    "the state is not changing it. If the user asked for an action, call the tool for it now. If "
+    "you were describing something from an earlier message, say that it was earlier. Otherwise "
+    "answer again without saying or implying that anything was done, and without bracketed notes."
 )
 NOT_DONE = "I haven't done that: no action ran. Tell me again what you'd like and I'll do it properly."
 
@@ -258,6 +277,17 @@ def claims_done(reply: str) -> bool:
     request.
     """
     return bool(_DONE_CLAIM.search(reply)) or scrub(reply)[1]
+
+
+def claims_change(reply: str) -> bool:
+    """Whether a reply reports a change as made ("Tea's running again", "I've
+    paused it"), as opposed to describing how things stand.
+
+    Wider than claims_done and so less sure: a true account of an earlier
+    message reads the same. It is worth asking Claude about once, but never
+    grounds for replacing what it says.
+    """
+    return bool(_CHANGE_CLAIM.search(reply))
 
 
 async def ask_claude(
@@ -305,19 +335,32 @@ async def ask_claude(
     rounds = MAX_TOOL_CALLS + 2
     while rounds > 0:
         rounds -= 1
+        asked, retried = time.perf_counter(), timing.claude_retries()
         response = await claude.messages.create(messages=messages, **request)
         usage = response.usage
+        cache_read = getattr(usage, "cache_read_input_tokens", None) or 0
+        cache_write = getattr(usage, "cache_creation_input_tokens", None) or 0
+        timing.record_claude(
+            time.perf_counter() - asked,
+            CLAUDE_MODEL,
+            usage.input_tokens,
+            usage.output_tokens,
+            cache_read,
+            cache_write,
+            retries=timing.claude_retries() - retried,
+        )
         result.input_tokens += usage.input_tokens
         result.output_tokens += usage.output_tokens
-        result.cache_read_tokens += getattr(usage, "cache_read_input_tokens", None) or 0
-        result.cache_write_tokens += getattr(usage, "cache_creation_input_tokens", None) or 0
+        result.cache_read_tokens += cache_read
+        result.cache_write_tokens += cache_write
 
         wanted = [block for block in response.content if block.type == "tool_use"]
         # Only a clean "tool_use" stop is acted on: a reply cut short (max_tokens)
         # or refused may carry half a call, which must never run
         if not use_tools or response.stop_reason != "tool_use" or not wanted:
             said = _text_of(response)
-            if use_tools and not result.unbacked_claim and said and claims_done(said) and nothing_done():
+            claimed = said and (claims_done(said) or claims_change(said))
+            if use_tools and not result.unbacked_claim and claimed and nothing_done():
                 # It says it is done and nothing was: tell it so, once
                 result.unbacked_claim = said
                 log.warning("Claude said it was done with no tool run: %s", said)
@@ -334,11 +377,13 @@ async def ask_claude(
             if len(result.tool_calls) >= MAX_TOOL_CALLS:
                 text, is_error = LIMIT_REACHED, True
             else:
+                ran = time.perf_counter()
                 try:
                     text, is_error = await run_tool(block.name, call_input)
                 except Exception as error:
                     log.exception("Tool call failed: %s", block.name)
                     text, is_error = f"The tool failed unexpectedly: {error!r}", True
+                timing.record_tool(block.name, time.perf_counter() - ran, is_error)
                 result.tool_calls.append(ToolCall(block.name, call_input, text, is_error))
             entry = {"type": "tool_result", "tool_use_id": block.id, "content": text or "done"}
             if is_error:

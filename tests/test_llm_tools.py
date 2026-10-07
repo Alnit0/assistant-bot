@@ -326,6 +326,71 @@ def test_replies_that_do_not(reply):
     assert not llm.claims_done(reply)
 
 
+# --- saying a change was made, after only looking ------------------------------
+def test_a_change_reported_after_only_reading_is_sent_back(claude):
+    # 22:56:55 on 2026-10-07: "resume my tea timer" -> list_timers, then this reply. Nothing was resumed
+    fake = claude(
+        response(call("list_timers"), stop="tool_use"),
+        response(text("Tea's running again – 9m 21s left.")),
+        response(call("timer_control", "t2", id="t3", action="resume"), stop="tool_use"),
+        response(text("Tea's running again – 9m 21s left.")),
+    )
+    runner, did = Runner(), []
+
+    async def run_tool(name, value):
+        did.append(name)
+        return await runner(name, value)
+
+    result = asyncio.run(
+        llm.ask_claude(
+            "resume my tea timer", "", CHANNEL, tools=TOOLS, run_tool=run_tool, acted=lambda: "timer_control" in did
+        )
+    )
+    assert did == ["list_timers", "timer_control"], "sent back, it made the call it had skipped"
+    assert result.unbacked_claim == "Tea's running again – 9m 21s left."
+    assert result.reply == "Tea's running again – 9m 21s left."
+    assert fake.requests[2]["messages"][-1] == {"role": "user", "content": llm.NOTHING_RAN}
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        "Tea's running again – 9m 21s left.",
+        "All three paused.",
+        "I've paused the tea timer.",
+        "I paused it for you.",
+        "The tea timer is now paused.",
+        "Your Pomodoro has been stopped.",
+        "Dev mode is switched off again.",
+    ],
+)
+def test_replies_that_say_something_was_changed(reply):
+    assert llm.claims_change(reply)
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        "Dinner has 2m 50s left, breakfast has 3m 36s left.",
+        "You've got three running:\n- **tea** – paused, 10m 4s left",
+        "Your Pomodoro is already running – 22m 28s left in the focus round.",
+        "The tea timer is paused with 9m 21s left. Want me to resume it?",
+        "Which would you like me to pause first?",
+    ],
+)
+def test_replies_that_only_describe_how_things_are(reply):
+    assert not llm.claims_change(reply)
+
+
+def test_an_account_of_earlier_is_asked_about_once_but_never_overruled(claude):
+    # "I paused all three when you asked" is true of an earlier message: checking it costs a
+    # request, but the reply must not be replaced by "I haven't done that"
+    said = "I paused all three timers when you asked, a minute ago."
+    fake = claude(response(text(said)))
+    result = ask("I thought my timers were paused?", Runner())
+    assert len(fake.requests) == 2 and result.reply == said
+
+
 # --- no debug text in a reply --------------------------------------------------
 @pytest.mark.parametrize(
     "reply, clean",
