@@ -29,11 +29,11 @@ tests (block 12).
   Admin: `nssm stop assistant-bot`. Leave the bot stopped; block 1 starts it.
 - **`.env`:** `REACTION_DEBOUNCE=30`, `CONFIRMATION_SECONDS=5`,
   `POMO_AUTO_CONTINUE=false`, and `ARCHIVE_CHANNEL_ID`, `REMINDERS_CHANNEL_ID`,
-  `GYM_CHANNEL_ID` and `ADMIN_CHANNEL_ID` all set.
+  `GYM_CHANNEL_ID`, `ADMIN_CHANNEL_ID` and `DEV_CHANNEL_ID` all set.
 - **Discord on the desktop** with #inbox, #bot-log and #archive to hand.
-- **A scratch channel:** any channel that isn't #inbox, #bot-log or #archive
-  (#documents is free). Called **#scratch** below. Ordinary messages there
-  don't go to Claude, so they make clean targets.
+- **The scratch channel:** the one set as `DEV_CHANNEL_ID` in `.env`. Called
+  **#scratch** below. Ordinary messages there don't go to Claude, so they
+  make clean targets.
 - **Also needed:** an image and a small file (D2), a second Discord account
   in the server (K3, otherwise skip it), and your phone for block 11.
 - **Marking:** tick the Tests column as you go, then report to Claude Code,

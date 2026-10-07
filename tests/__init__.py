@@ -28,5 +28,6 @@ for name, value in {
     "GYM_CHANNEL_ID": "",
     "ADMIN_CHANNEL_ID": "",
     "DOCUMENTS_CHANNEL_ID": "",
+    "DEV_CHANNEL_ID": "",
 }.items():
     os.environ[name] = value

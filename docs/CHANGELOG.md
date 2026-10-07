@@ -6,6 +6,8 @@ backfilled from the git log.
 
 ## 2026-10-07
 
+- Add `DEV_CHANNEL_ID`: a scratch channel for manual testing, known to the
+  bot as `dev`. The QA run sheet now uses it instead of #documents.
 - Add `docs/ARCHITECTURE.md` (a map of every file and the main data flows),
   trim `CLAUDE.md` to the essentials and move the procedures into project
   skills (`add-skill`, `qa`, `end-of-task`). Add this changelog.

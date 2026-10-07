@@ -162,7 +162,7 @@ Fields they share:
   to Claude. A missing description is reported in #bot-log at startup.
 - **`channels`**: where it works. `"inbox"` (the default for keywords),
   `"any"` (the default for reply actions and reactions), or a list of names
-  from `.env`: inbox, bot-log, archive, reminders, gym, admin, documents.
+  from `.env`: inbox, bot-log, archive, reminders, gym, admin, documents, dev.
 - **`permission`**: the action name passed to `is_allowed`. Defaults to
   `keyword:<word>`, `reply:<word>` or `reaction:<emoji>`.
 

@@ -61,6 +61,7 @@ CHANNELS: dict[str, int] = {
         "gym": os.getenv("GYM_CHANNEL_ID"),
         "admin": os.getenv("ADMIN_CHANNEL_ID"),
         "documents": os.getenv("DOCUMENTS_CHANNEL_ID"),
+        "dev": os.getenv("DEV_CHANNEL_ID"),
     }.items()
     if value
 }
