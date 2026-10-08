@@ -1,10 +1,10 @@
 # QA run sheet
 
-One pass through the 156 👤 Manual tests in `docs/TESTING.md` that are
+One pass through the 170 👤 Manual tests in `docs/TESTING.md` that are
 ⬜ Untested (as of 2026-10-09). Blocks share setup and each one leaves things
 ready for the next, so run them in order.
 
-**Time:** about 3¼ hours at the keyboard, plus two nights for the backup
+**Time:** about 3½ hours at the keyboard, plus two nights for the backup
 tests (block 12).
 
 | Block | What | Dev mode | Tests | Minutes |
@@ -22,18 +22,25 @@ tests (block 12).
 | 11 | Phone notifications | off | 5 | 11 |
 | 12 | Overnight backups | off | 2 | 2 nights |
 | 13 | Tool calling (Claude runs things) | off, then on, then off | 32 | 53 |
-| | **Total** | | **156** (F2 is split over blocks 4 and 7, counted in 7) | **about 3¼ hours** |
+| 14 | Bugs and kept confirmations | off (two restarts) | 14 | 18 |
+| | **Total** | | **170** (F2 is split over blocks 4 and 7, counted in 7) | **about 3½ hours** |
 
-Block 13 needs nothing from the others: run it any time after block 1, and
-before the overnight block if that suits.
+Blocks 13 and 14 need nothing from the others: run them any time after
+block 1, and before the overnight block if that suits.
 
 ## Before you start
 
 - **Run a test copy, not the service**, so restarts are quick. Terminal as
   Admin: `nssm stop assistant-bot`. Leave the bot stopped; block 1 starts it.
 - **`.env`:** `REACTION_DEBOUNCE=30`, `CONFIRMATION_SECONDS=5`,
-  `POMO_AUTO_CONTINUE=false`, and `ARCHIVE_CHANNEL_ID`, `REMINDERS_CHANNEL_ID`,
-  `GYM_CHANNEL_ID`, `ADMIN_CHANNEL_ID` and `DEV_CHANNEL_ID` all set.
+  `POMO_AUTO_CONTINUE=false`, `KEEP_CONFIRMATIONS=false` (the expected
+  results assume confirmations tidy themselves away; block 14 switches it
+  on at the end), and `ARCHIVE_CHANNEL_ID`, `REMINDERS_CHANNEL_ID`,
+  `GYM_CHANNEL_ID`, `ADMIN_CHANNEL_ID`, `DEV_CHANNEL_ID` and
+  `BUGS_CHANNEL_ID` all set.
+- **#bugs** is a forum channel where the bot may Create Posts, Send
+  Messages in Threads, Manage Threads and Manage Channels (the last only
+  to make its tags).
 - **Discord on the desktop** with #inbox, #bot-log and #archive to hand.
 - **The scratch channel:** the one set as `DEV_CHANNEL_ID` in `.env`. Called
   **#scratch** below. Ordinary messages there don't go to Claude, so they
@@ -349,6 +356,26 @@ happens, not the exact words. Cancel or stop anything a step starts.
 
 Each sentence costs an API call with the tools attached (see the Tool tokens
 field in step 13), so this block costs a little more than ordinary chat.
+
+## 14. Bugs and kept confirmations
+
+Dev mode off. "The post" is the bug's post in #bugs. Each 🐞 or `bug` makes
+a real post: close them as you go (steps 10 and 11) or afterwards.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Ask Claude `Set a timer for 5 minutes`, then react 🐞 to the timer's message | At once, with no 30-second wait: "🐞 Logged as B<n>" in the channel, and it stays. B<n> is a link that opens the post. No ✅ is added to the message | P12 |
+| 2 | Open that post | Title "B<n> · ⏱️ …"; tag Open; the timer's message quoted with a jump link; the messages before it; "That turn" with your request, the tool call and a Timings line; "Related errors"; the commit; then the three questions. **Fixed** and **Won't fix** buttons under the first message | P13 |
+| 3 | Take the 🐞 off, then add it again | Taking it off does nothing. Adding it again: "🐞 Already logged as B<n>", and no second post. Cancel the timer | P14 |
+| 4 | Reply `bug` to another message | Your reply is deleted; "🐞 Logged as B<n>" stays; the post is about the message you replied to | P15 |
+| 5 | In #scratch, send a message, then type `bug` | Your `bug` is deleted; the post is about the message before it, from #scratch | P16 |
+| 6 | In #inbox, type `bug: the timer was wrong` | Not a command: it goes to Claude as chat, and no bug is logged | P17 |
+| 7 | In step 1's post, answer the questions in one or two messages | Each message gets ✅ and stays. The bot says nothing, and #bot-log has no "Message handled" card | P18 |
+| 8 | React 🐞 to one of your messages in that post | ⚠️ on it at once and "That is already in a bug's post…"; no new bug. Take the 🐞 off | P23 |
+| 9 | In #inbox, type `bugs`; then `bugs export`, open `docs/BUGS.md` and run `git status` | "Open bugs (3)", one line each with a link, where it came from, the date and the number of notes; it stays. The file has every open bug in full with its notes, and git does not list it | P19, P20 |
+| 10 | Press **Won't fix** on step 5's post, then type `bugs` | "✅ B<n> closed as Won't fix" in the post; the tag changes from Open; the post is archived (closed); `bugs` no longer lists it | P21 |
+| 11 | Delete the forum's Fixed tag (Edit Channel, Tags). Restart the bot (`Ctrl + C`, `python main.py`). Look at the forum's tags, then press **Fixed** on step 4's post | The tag is back (or, without Manage Channels, an error card in #bot-log says which tag to add). The button from before the restart works: closed as Fixed, tagged and archived | P24, P22 |
+| 12 | Set `KEEP_CONFIRMATIONS=true` in `.env` (or remove the line) and restart. Reply `pin` to a message, and react 📦 to a message in #archive | "📌 Pinned" stays in the channel and your `pin` is still deleted; the ⚠️ reason for the 📦 stays too. Reply `unpin` afterwards, and press Fixed or Won't fix on step 1's post | M5 |
 
 ## When you finish
 

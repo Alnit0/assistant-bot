@@ -16,7 +16,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `tasks/` | One folder per feature, loaded by `tasks/registry.py` |
 | `tests/` | Unit tests (pytest); never start the bot or touch real data |
 | `docs/` | `ARCHITECTURE` (this), `DEVELOPMENT` (how to use and extend), `DECISIONS` (why), `TESTING` (test tracker), `QA-RUN` (manual run sheet), `BACKLOG` (found and not yet finished), `CHANGELOG` (what changed, by date), `CHEATSHEET` (commands) |
-| `.claude/skills/` | Procedures for Claude Code: `add-task`, `qa`, `end-of-task` |
+| `.claude/skills/` | Procedures for Claude Code: `add-task`, `qa`, `end-of-task`, `bug` (fix a reported bug from its id) |
 | `.env`, `.env.example` | Secrets and settings (`.env` is gitignored); every setting has a placeholder in `.env.example` |
 | `data/` | `assistant.db`, `bot.lock`, `backups/` (gitignored) |
 | `logs/` | `bot.log` (rotating), `service-*.log` (gitignored) |
@@ -35,8 +35,8 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `users.py` | The `User` record, `ensure_owner()`, cached lookup by Discord id |
 | `permissions.py` | `is_allowed(user, action)`: the one permission check |
 | `errors.py` | `UserError`: a problem the user can fix |
-| `context.py` | `Context` handed to tasks: user, channel, args, `reply` (Kept) / `confirm` / `note` (Transient), database, #bot-log; `via_tool` says Claude is running it; `posted` counts what a handler put in the channel |
-| `lifecycle.py` | The message lifecycle: the six classes and their policy, `classify(...)`, and `deletes(...)` / `delete_after()`, which everything that deletes a message by itself asks first (`dev cleanup off` says no) |
+| `context.py` | `Context` handed to tasks: user, channel, args, `reply` (Kept) / `confirm` / `note` (Transient), database, #bot-log; `via_tool` says Claude is running it; `posted` counts what a handler put in the channel; `parent_channel_id` is the forum or channel a post or thread hangs off |
+| `lifecycle.py` | The message lifecycle: the six classes and their policy, `classify(...)`, and `deletes(...)` / `delete_after()`, which everything that deletes a message by itself asks first (`dev cleanup off` says no). `KEEP_CONFIRMATIONS` makes `delete_after()` leave every Transient message in place |
 | `router.py` | Matches typed words and phrases, with typo tolerance; sets filler words aside for reply actions ("pin this") |
 | `reactions.py` | Pure: which reaction changes count, which are checked at once, where they ended up, what to apply or undo; the `reaction_state` queries |
 | `debounce.py` | `Debouncer(delay, callback)`: one quiet-period timer that hands over all collected events together |
@@ -49,7 +49,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `devmode.py` | Dev mode's in-memory state; other code asks it for values (`reaction_debounce()`, `speed()`, `is_verbose()`, `cleanup_enabled()`, `debug()`, `register_task()`) |
 | `interactions.py` | Permission check and logging for slash commands and context menus |
 | `llm.py` | Claude client (short timeout, two retries); the system prompt (one cached block, the same for every message); `turn_note` (the time and the tasks' live state, sent after the user's words in the latest turn only); the tool loop (`ask_claude` runs the calls Claude makes, up to `MAX_TOOL_CALLS`, and ends the turn without a closing request when `closing` says the tools have already told the user); the honesty checks (`claims_done`, `claims_change`, `scrub`: a "done" with nothing done, or a reported change with no tool having succeeded, is sent back once; a bracketed tool note is removed); per-channel history of what was said and nothing else; cost estimates including cache and tool tokens |
-| `timing.py` | Where the time goes while one message is answered: each request to Claude, each tool, the calls to Discord, rate-limit waits and retries (read from the libraries' logs). One `Turn` per message, found through a context variable; `summary_lines` is the breakdown on the "Message handled" card
+| `timing.py` | Where the time goes while one message is answered: each request to Claude, each tool, the calls to Discord, rate-limit waits and retries (read from the libraries' logs). One `Turn` per message, found through a context variable; `summary_lines` is the breakdown on the "Message handled" card, and `as_dict` the same as plain values, kept in `message_log.timing` |
 | `live.py` | Work nobody should wait for: `schedule(key, refresh)` brings one Live message up to date in the background, one edit however many changes asked for it and at most one every 2 seconds per message; `background(...)` runs anything else after the reply. What they do is not counted in the turn's timing |
 | `discord_utils.py` | Binds the client and times every call it makes to Discord; #bot-log cards, `split_message`, `truncate`, `safe_reply`, `report_interaction_error` |
 
@@ -57,8 +57,8 @@ for why things are the way they are, `docs/DECISIONS.md`.
 
 | Path | Responsibility |
 |---|---|
-| `base.py` | The `Task` base class with its hooks (including `message_class` and `tools_available`), and the self-describing `Keyword`, `ReplyAction`, `Reaction` records (the last two with an optional `validate`); `Param` describes an argument for Claude; `Tool` is a tool that isn't a word (reading state, acting by id). `Task.live_state(ctx)` is what a task tells Claude about its state with every message |
-| `registry.py` | Discovers and loads tasks; dispatches words, reply actions and reactions; refuses invalid ones at once; decides how each ends; asks tasks what a message is (`declared_class()`); the single source of what the bot can do (`catalogue()`, `find()`, `capabilities_text()`, and `tools_for()` for Claude, which adds each task's `tools()`); `run_tool()` runs a tool call down the same path as a typed word. `live_state(ctx)` gathers the tasks' state for Claude; a tool call's #bot-log card follows in the background |
+| `base.py` | The `Task` base class with its hooks (including `message_class` and `tools_available`), and the self-describing `Keyword`, `ReplyAction`, `Reaction` records (the last two with an optional `validate`); `Param` describes an argument for Claude; `Tool` is a tool that isn't a word (reading state, acting by id). `Task.live_state(ctx)` is what a task tells Claude about its state with every message. `Reaction.instant` skips the quiet period (🐞 only); `Task.claim(ctx)` takes a message because of where it was sent |
+| `registry.py` | Discovers and loads tasks; dispatches words, reply actions and reactions; refuses invalid ones at once; decides how each ends; asks tasks what a message is (`declared_class()`); the single source of what the bot can do (`catalogue()`, `find()`, `capabilities_text()`, and `tools_for()` for Claude, which adds each task's `tools()`); `run_tool()` runs a tool call down the same path as a typed word. `live_state(ctx)` gathers the tasks' state for Claude; a tool call's #bot-log card follows in the background. `dispatch_claimed` hands an unmatched message to the task that claims it; an `instant` reaction is applied the moment it is added |
 | `toolcalls.py` | Not a task: what becomes of a tool call from Claude. Gathers the tools for a message, then decides per call: run now, wait for "ok", Confirm / Cancel, which-message buttons, quoted preview with Undo, or (for a message found further back) quoted and asked first. Also the `recent_messages` and `search_messages` tools, and whether anything was actually done this turn (`Turn.acted`). `closing(turn)` says after each round whether every call acted and showed the user its own confirmation, so the turn can end there |
 | `builtin/__init__.py` | `ping`, `reset`, `buttons`, `stats`, and `help` generated from the registry |
 | `builtin/views.py` | The `buttons` test view |
@@ -66,6 +66,12 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `archive/rules.py` | Pure: what may be archived or deleted, names, embeds, wording |
 | `archive/store.py` | The `archive_items` records |
 | `archive/messages.py` | The Discord work: webhook repost, delete, confirmation, Restore button |
+| `bugs/__init__.py` | Registers `bug` (word and reply), the instant 🐞 reaction, `bugs`, `bugs export`; files a report; claims what is written in a bug's post and saves it as a note |
+| `bugs/rules.py` | Pure: ids, what may be reported, a message as plain values (`Snapshot`, `Report`), which logged turn it belongs to, which log lines go with it, and all the wording (post, title, tags, list, `docs/BUGS.md`) |
+| `bugs/store.py` | The `bugs_items` and `bugs_notes` records, and the channel's recent `message_log` rows for finding the turn |
+| `bugs/capture.py` | Puts a report together: the turn, the errors from the tail of `logs/bot.log`, the commit the bot started on. No Discord |
+| `bugs/posts.py` | The Discord work, and the only discord.py in the task: reading the reported message, the forum post with its tags, the persistent Fixed / Won't fix buttons (tag and archive) |
+| `bugs/cli.py` | `python -m tasks.bugs.cli list \| show B4 \| note B4 "…"` for Claude Code's `bug` skill: reads and adds notes straight from the database, never closes a bug |
 | `keep/__init__.py` | The 📌 reaction: keep (pin) and unkeep (unpin); reply `pin` / `unpin`, which act at once. All through `core/pins.py` |
 | `timers/__init__.py` | Registers `timer`, `timers`, `pause all`, `resume all`, `pomo`, `pomo stats`, the reply actions and job handlers, and Claude's tools: `list_timers`, `get_pomodoro_status`, `timer_history`, `timer_control`, `pomodoro_control` |
 | `timers/control.py` | The handlers of those tools, and `pause all` / `resume all`. What they report is read back from the database after the change. `timer_control` takes one id, several, or `all` (with an optional label), so a bulk request is one call; `live_state` is what Claude is told with every message |
@@ -79,8 +85,8 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `lab/__init__.py`, `common.py` | The `lab …` test bench; `common.py` has the `Run` adapters that let one `run_*` function serve a typed word and `/lab` |
 | `lab/buttons.py`, `react.py`, `status.py`, `charts.py`, `data.py`, `misc.py`, `channels.py`, `tour.py`, `state.py`, `ratelimits.py` | One Discord feature each: components, reaction timeline, pinned status, charts and their data, notifications / polls / formatting, cross-channel test, the guided tour, the lab's key/value table, rate-limit watching |
 
-Only `lab`, `archive`, `timers` and `dev` use discord.py directly; that
-moves behind a gateway layer later. Other tasks go through `Context` and
+Only `lab`, `archive`, `timers`, `dev` and `bugs` (in `posts.py` alone)
+use discord.py directly; that moves behind a gateway layer later. Other tasks go through `Context` and
 core helpers.
 
 ## `tests/`
@@ -93,7 +99,7 @@ settings before `core` loads. One `test_*.py` per area: `router`,
 `pomodoro`, `timer_text`, `timing`, `timer_status`, `timer_freeze` (pause, resume and events against a
 database with the clock under test control), `devmode`, `dev_parsing`, `lab`, `lifecycle`,
 `permissions`, `scheduler`, `text`, `tools`, `pending`, `llm_tools` (the
-Claude loop against a scripted stand-in), `toolcalls`.
+Claude loop against a scripted stand-in), `toolcalls`, `bugs`.
 
 ## Data flows
 
@@ -118,8 +124,10 @@ Claude loop against a scripted stand-in), `toolcalls`.
    puts the reason in #bot-log. A reply action's `validate` runs first: if
    the message can't be acted on, the reason is also shown briefly.
 4. If neither matched: `registry.dispatch_expected` (a task waiting for
-   this user's next message), then, in #inbox only, Claude (see below). A
-   typed word never gets this far, so it never costs an API call.
+   this user's next message), then `registry.dispatch_claimed` (a task
+   that takes the message because of where it was sent: a note in a bug's
+   post), then, in #inbox only, Claude (see below). A typed word never
+   gets this far, so it never costs an API call.
 5. Every outcome is emitted to tasks as `action_finished`.
 
 **Chat → Claude → tools**
@@ -167,6 +175,32 @@ Claude loop against a scripted stand-in), `toolcalls`.
    Applied, non-destructive actions are recorded and marked ✅; a failure
    marks ⚠️ with the reason in #bot-log. `destructive=True` (📦, 🗑️) leaves
    nothing to record.
+4. The exception: a `Reaction` with `instant=True` (🐞) never reaches the
+   debouncer. Once valid it runs straight away through
+   `dispatch_reaction`, nothing is recorded or marked ✅, and taking it
+   away does nothing.
+
+**Bug report → forum post → notes**
+
+1. 🐞 on a message, `bug` as a reply to it, or `bug` alone (the latest
+   message in the channel): `tasks/bugs` takes the message and the five
+   before it as plain `Snapshot`s. A message that already has an open bug
+   is pointed to instead.
+2. `capture.build` finds the turn in `message_log` (`rules.pick_turn`:
+   the user's message by id, the bot's by time; the tool calls are rows
+   against the same message, the timings are in `message_log.timing`),
+   reads the warnings and errors around it from `logs/bot.log`, and adds
+   the commit the bot started on.
+3. The record is saved (`bugs_items`; its id is the number in "B4"), then
+   `posts.create_post` opens a post in the #bugs forum (`BUGS_CHANNEL_ID`)
+   tagged Open, with the context, the three questions and the Fixed /
+   Won't fix buttons. The channel gets "🐞 Logged as B4" (Kept), linking
+   to the post, and a typed `bug` is deleted (Consumed).
+4. Anything the owner writes in that post is claimed by `Task.claim`,
+   saved in `bugs_notes` and ticked ✅. Nothing there reaches Claude.
+5. Fixed or Won't fix sets the status and the tag and archives the post.
+   Claude Code's `bug` skill reads a bug with `tasks/bugs/cli.py` and adds
+   a "fix ready, needs retest" note; it never closes one.
 
 **Message lifecycle**
 
@@ -201,6 +235,7 @@ seconds.
 |---|---|
 | `users`, `message_log`, `scheduled_jobs`, `reaction_state`, `skill_migrations` | core (`core/migrations.py`, version in `PRAGMA user_version`) |
 | `archive_items` | archive |
+| `bugs_items`, `bugs_notes` | bugs |
 | `timers_timers`, `timers_pomodoros`, `timers_focus_log`, `timers_boards`, `timers_events`, `timers_lists` | timers |
 | `lab_state`, `lab_tour_runs`, `lab_tour_results` | lab |
 

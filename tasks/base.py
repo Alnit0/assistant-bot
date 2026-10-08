@@ -174,6 +174,11 @@ class Reaction:
     `validate` is asked the moment the reaction is added, before the quiet
     period: if it raises UserError the message gets ⚠️ and the reason is shown
     briefly, and nothing is waited for. Only valid reactions are debounced.
+
+    `instant=True` is the exception to the quiet period (🐞): the handler runs
+    the moment the reaction is added, nothing is recorded as applied, no ✅ is
+    added, and taking the reaction away does nothing. Only for an action that
+    is safe to do at once and has its own way of being closed.
     """
 
     emoji: str
@@ -187,6 +192,7 @@ class Reaction:
     # `(message) -> None`, raising UserError if this can't be done to that message.
     # Must be quick and change nothing
     validate: Callable[[discord.Message], None] | None = None
+    instant: bool = False  # act at once, with no quiet period and no undo
 
     def __post_init__(self):
         self.examples = list(self.examples)
@@ -260,6 +266,13 @@ class Task:
     def tools(self) -> list[Tool]:
         """Tools for Claude that aren't words: reading state, acting by id (see Tool)."""
         return []
+
+    def claim(self, ctx: Context) -> Callable[[Context], Awaitable[str | None]] | None:
+        """Take a message that is no word, reply action or awaited answer, because
+        of where it was sent: return `async (ctx) -> what to record`, or None if
+        it isn't this task's. Asked before Claude, so a claimed message never
+        costs an API call. The bugs task claims what is written in a bug's post."""
+        return None
 
     async def live_state(self, ctx) -> str:
         """What Claude should know about this task's state right now, in a few

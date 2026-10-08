@@ -19,6 +19,7 @@ LOG_COLUMNS = {
     "duration_s",
     "status",
     "error",
+    "timing",
 }
 
 

@@ -222,3 +222,18 @@ def test_the_log_line_has_the_same_numbers():
     assert line.startswith("total 8.50s | claude 3.41s + 3.62s (2 round trips, 1 retries)")
     assert "tools timer 1.35s, pin 0.20s" in line
     assert line.endswith("discord 1.20s over 6 calls, 1 rate-limit waits (2.95s)")
+
+
+def test_the_breakdown_is_kept_as_plain_values():
+    import json
+
+    kept = json.loads(json.dumps(timing.as_dict(_turn())))
+    assert kept["total_s"] == 8.5
+    assert [call["seconds"] for call in kept["claude"]] == [3.41, 3.62]
+    assert kept["claude"][1]["retries"] == 1 and kept["claude"][0]["cache_read_tokens"] == 5593
+    assert kept["tools"] == [
+        {"name": "timer", "seconds": 1.35, "failed": False},
+        {"name": "pin", "seconds": 0.2, "failed": True},
+    ]
+    assert (kept["discord_calls"], kept["discord_s"]) == (6, 1.2)
+    assert (kept["rate_limits"], kept["rate_limit_s"], kept["claude_retries"]) == (1, 2.95, 1)

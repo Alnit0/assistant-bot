@@ -74,6 +74,34 @@ gained time"):
 - **The nightly sweep is not built.** Kept messages are never removed
   automatically until it is; when built it must skip Protected ones.
 
+## Bugs: left for later
+
+Built on 2026-10-09 and unit tested; not yet run in Discord (P12 to P24,
+M5).
+
+- **Promote forum handling to core when another task needs it.** Posts,
+  tags and persistent buttons live in `tasks/bugs/posts.py`, the only
+  place in that task allowed to use discord.py.
+- **Screenshots in a bug's post aren't recorded.** A note is the text of
+  a message; one with only a picture has no text and is skipped. The
+  picture stays in the post.
+- **Writing in a closed post reopens it in Discord only.** Discord
+  unarchives the post, and the note is saved, but the bug stays Fixed or
+  Won't fix with its tag. There is no way to reopen a bug yet.
+- **A report whose post can't be made leaves a record without a post**
+  (Discord refusing after the forum was found). `bugs` lists it without a
+  link.
+- **Errors are read from `bot.log` only**, not the rotated files, so a
+  report made just after the log rolled over (about every 1MB) may miss
+  them.
+- **A hand-made post in #bugs is ignored**: what is written there is
+  neither saved nor sent to Claude.
+- **Typed words wait for the post.** `bug` answers once the forum post
+  and its four follow-up messages are sent (a few seconds).
+- **`KEEP_CONFIRMATIONS` makes channels busier**, and most manual tests
+  expect confirmations to vanish: run QA with it off (the run sheet says
+  so).
+
 ## Found in that run, left for later
 
 - **Bulk and cross-channel actions** ("archive all messages in #dev"):

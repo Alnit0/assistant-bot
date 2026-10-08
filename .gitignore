@@ -14,3 +14,6 @@ logs/
 *.sqlite
 *.sqlite3
 *.log
+
+# The bug export: it holds Discord messages (`bugs export`)
+docs/BUGS.md

@@ -114,6 +114,23 @@ the channel you are in; `help <task or word>` gives details.
   A message is only deleted when its information now lives somewhere else.
   `dev cleanup off` stops all automatic deletion, and replying `dev
   inspect` to a message shows its class.
+  `KEEP_CONFIRMATIONS` in `.env` (on by default) leaves every Transient
+  message in the channel, so you can read back what the bot did. Your
+  command words are still deleted. Set it to `false` to have confirmations
+  tidy themselves away again.
+- **Reporting a bug.** React 🐞 to a message, reply `bug` to it, or type
+  `bug` on its own (the latest thing in that channel). It is logged at
+  once and the channel gets "🐞 Logged as B4", a link to the bug's post in
+  the #bugs forum (`BUGS_CHANNEL_ID`, a forum channel where the bot may
+  Create Posts, Send Messages in Threads and Manage Threads). The post has
+  the message, the five before it, that turn's tool calls, timings and log
+  errors, and the commit, then three questions. Whatever you write in the
+  post is saved as a note and ticked ✅; the bot never answers there and
+  nothing is sent to Claude. **Fixed** and **Won't fix** tag the post and
+  archive it. `bugs` lists the open ones, and `bugs export` writes them in
+  full to `docs/BUGS.md` (not in git). `bug: some text` is not a command.
+  In Claude Code, "fix B4" runs the `bug` skill, which leaves a "fix
+  ready, needs retest" note; pressing Fixed stays with you.
 - **Reactions wait 30 seconds** (`REACTION_DEBOUNCE` in `.env`). The bot
   then acts once, on where your reactions ended up: add one and remove it
   in time and nothing happens. Only your reactions count.
@@ -121,7 +138,8 @@ the channel you are in; `help <task or word>` gives details.
   reaction away later undoes it and removes the ✅. Archive and delete are
   the exception: the message is gone, so they can only be cancelled within
   the 30 seconds. If a reaction fails, the message gets ⚠️ and the reason is
-  in #bot-log.
+  in #bot-log. 🐞 is the one reaction that doesn't wait: it acts at once,
+  adds no ✅, and taking it off does nothing.
 - **📌 keeps a message.** After the 30 seconds it is pinned and gets ✅.
   Clean-ups leave it alone, and archiving or deleting it asks first. Take
   your 📌 off and, after the 30 seconds, it is unkept and unpinned (even if
@@ -235,7 +253,7 @@ Fields they share:
   to Claude. A missing description is reported in #bot-log at startup.
 - **`channels`**: where it works. `"inbox"` (the default for keywords),
   `"any"` (the default for reply actions and reactions), or a list of names
-  from `.env`: inbox, bot-log, archive, reminders, gym, admin, documents, dev.
+  from `.env`: inbox, bot-log, archive, reminders, gym, admin, documents, dev, bugs.
 - **`permission`**: the action name passed to `is_allowed`. Defaults to
   `keyword:<word>`, `reply:<word>` or `reaction:<emoji>`.
 
@@ -332,6 +350,14 @@ Things to know:
   handler, timeout)` hands that user's next message in that channel to
   `handler(ctx)`, once, and keeps it away from Claude. Words and reply
   actions are still tried first. It is forgotten at restart.
+- **Messages that are yours because of where they are:** override
+  `Task.claim(ctx)` to return a handler for a message that is no word,
+  reply action or awaited answer (`ctx.parent_channel_id` is the forum a
+  post belongs to). It is asked before Claude, logged as `claimed`, and
+  needs the permission `message:<task>`. `bugs` uses it for notes.
+- **A reaction that can't wait:** `instant=True` on a `Reaction` skips the
+  quiet period, the ✅ and the undo. 🐞 is the only one, by decision
+  (`docs/DECISIONS.md`); a test fails if another appears.
 - **Buttons that must survive a restart:** give them a fixed `custom_id`, no
   timeout, and register the view with `client.add_view(...)` in
   `setup(client)`, which runs before the bot connects.

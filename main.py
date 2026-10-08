@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import time
 
@@ -250,6 +251,9 @@ async def on_message(message: discord.Message):
     # A task may be waiting for this user's next message in this channel
     if await registry.dispatch_expected(ctx):
         return
+    # Or take it because of where it was sent (a note in a bug's post)
+    if await registry.dispatch_claimed(ctx):
+        return
 
     # Chatting with Claude only happens in the inbox
     if message.channel.id != INBOX_CHANNEL_ID:
@@ -342,6 +346,7 @@ async def on_message(message: discord.Message):
         cost_usd=cost,
         duration_s=duration,
         status="ok",
+        timing=json.dumps(timing.as_dict(spent)),
     )
 
     session_stats["messages"] += 1

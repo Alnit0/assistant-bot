@@ -6,6 +6,24 @@ backfilled from the git log.
 
 ## 2026-10-09
 
+- **Report a bug with 🐞 or `bug`.** React 🐞 to a message, reply `bug` to
+  it, or type `bug` on its own for the latest thing in the channel. It is
+  logged at once (no 30-second wait) and the channel gets "🐞 Logged as
+  B4", linking to the bug's post in the new #bugs forum. The post holds
+  the message, the five before it, that turn's tool calls, timings and
+  log errors, and the commit, then asks three questions. What you write
+  there is saved as a note and ticked ✅; nothing in #bugs goes to
+  Claude. Press **Fixed** or **Won't fix** to tag and archive it. `bugs`
+  lists the open ones; `bugs export` writes them to `docs/BUGS.md`. Needs
+  `BUGS_CHANNEL_ID` (a forum channel) in `.env`.
+- **Confirmations now stay.** `KEEP_CONFIRMATIONS` (on by default) leaves
+  "📦 Archived" and the other self-deleting notes in the channel, so you
+  can see what the bot did. Your command words are still tidied away. Set
+  it to `false` for the old behaviour.
+- **Claude Code can fix a bug from its id** (the `bug` skill: "fix B4").
+  It reads what was captured, reproduces it with a failing test, fixes
+  it, and leaves "fix ready, needs retest" on the bug, which `bugs`
+  shows. Closing it stays with you.
 - **The bot's features are now called tasks, not skills.** `skills/` is
   `tasks/`, the base class is `Task`, the setting is `ENABLED_TASKS` (an
   `.env` that still says `ENABLED_SKILLS` goes on working). "Skill" now

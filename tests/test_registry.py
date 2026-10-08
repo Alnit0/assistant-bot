@@ -34,7 +34,9 @@ def names(entries, attribute="keywords"):
 # --- loading ---------------------------------------------------------------
 def test_every_task_loads_without_problems():
     assert registry.problems() == []
-    assert [task.name for task in registry.loaded_tasks()] == ["builtin", "archive", "dev", "keep", "lab", "timers"]
+    assert [task.name for task in registry.loaded_tasks()] == [
+        "builtin", "archive", "bugs", "dev", "keep", "lab", "timers"
+    ]
 
 
 def test_every_registration_describes_itself():
@@ -61,7 +63,15 @@ def test_destructive_words_must_be_spelled_exactly():
 def test_reactions_that_leave_the_message_can_be_undone():
     for entry in registry.catalogue():
         for reaction in entry.reactions:
-            assert reaction.destructive or reaction.undo is not None, f"{reaction.emoji} can't be undone"
+            # An instant one (🐞) is the stated exception: it is closed another way
+            assert reaction.destructive or reaction.instant or reaction.undo is not None, (
+                f"{reaction.emoji} can't be undone"
+            )
+
+
+def test_only_the_bug_reaction_skips_the_quiet_period():
+    instant = [reaction.emoji for entry in registry.catalogue() for reaction in entry.reactions if reaction.instant]
+    assert instant == ["🐞"]
 
 
 # --- where and for whom ----------------------------------------------------
@@ -166,6 +176,7 @@ def test_filler_words_do_not_loosen_anything_else():
 
 # --- refusing at once --------------------------------------------------------
 ARCHIVE = 200  # the test settings' archive channel
+BUGS = 300  # and their #bugs forum
 
 
 def message_in(channel_id: int):
@@ -243,6 +254,127 @@ def test_a_reaction_with_no_check_goes_straight_to_the_debouncer(reactions_watch
     assert reactions_watched.debounced == [(payload, True)]
 
 
+def test_an_instant_reaction_runs_at_once_and_is_never_debounced(reactions_watched, monkeypatch):
+    applied = []
+
+    async def apply(key, payload, user):
+        applied.append(key)
+
+    monkeypatch.setattr(registry, "_apply_reaction", apply)
+    reactions_watched.message = message_in(ELSEWHERE)
+    payload = reaction("🐞")
+    asyncio.run(registry.reaction_changed(payload, True))
+    assert applied == [(5, "🐞", 1)]
+    assert reactions_watched.debounced == []
+
+
+def test_taking_an_instant_reaction_away_does_nothing(reactions_watched, monkeypatch):
+    applied = []
+
+    async def apply(key, payload, user):
+        applied.append(key)
+
+    monkeypatch.setattr(registry, "_apply_reaction", apply)
+    asyncio.run(registry.reaction_changed(reaction("🐞"), False))
+    assert applied == [] and reactions_watched.debounced == [] and reactions_watched.marks == []
+
+
+def test_an_instant_reaction_from_someone_else_does_nothing(reactions_watched, stranger, monkeypatch):
+    applied = []
+
+    async def apply(key, payload, user):
+        applied.append(key)
+
+    async def user(discord_id):
+        return stranger
+
+    monkeypatch.setattr(registry, "_apply_reaction", apply)
+    monkeypatch.setattr(registry, "get_user_by_discord_id", user)
+    reactions_watched.message = message_in(ELSEWHERE)
+    asyncio.run(registry.reaction_changed(reaction("🐞", user_id=22), True))
+    assert applied == []
+
+
+def test_a_reaction_inside_a_bugs_post_is_refused_at_once(reactions_watched):
+    reactions_watched.message = SimpleNamespace(channel=SimpleNamespace(id=7, parent_id=BUGS))
+    asyncio.run(registry.reaction_changed(reaction("🐞"), True))
+    assert reactions_watched.refused == [("🐞", "That is already in a bug's post: write the note there instead.")]
+
+
+# --- a message taken because of where it was sent ------------------------------
+class ClaimCtx:
+    def __init__(self, user, parent_channel_id):
+        self.user, self.parent_channel_id = user, parent_channel_id
+        self.text, self.message_id, self.channel_id = "it said 5m, not 50m", 9, 7
+        self.failed, self.errors = False, []
+
+    async def mark_failed(self):
+        self.failed = True
+
+    async def log_error(self, title, details, text=None):
+        self.errors.append((title, details))
+
+
+@pytest.fixture
+def claims_logged(monkeypatch):
+    rows = []
+
+    async def received(content, kind, *ids, **more):
+        rows.append([kind, None])
+        return len(rows) - 1
+
+    async def result(row_id, **fields):
+        rows[row_id][1] = fields.get("status")
+
+    monkeypatch.setattr(registry, "log_received", received)
+    monkeypatch.setattr(registry, "log_result", result)
+    return rows
+
+
+def test_a_message_in_a_bugs_post_is_claimed_before_claude(owner, claims_logged, monkeypatch):
+    from tasks import bugs
+
+    saved = []
+
+    async def save(ctx):
+        saved.append(ctx.text)
+        return "note saved for B1"
+
+    monkeypatch.setattr(bugs, "save_note", save)
+    assert asyncio.run(registry.dispatch_claimed(ClaimCtx(owner, BUGS))) is True
+    assert saved == ["it said 5m, not 50m"] and claims_logged == [["claimed", "ok"]]
+
+
+def test_a_message_anywhere_else_is_nobodys(owner, claims_logged):
+    assert asyncio.run(registry.dispatch_claimed(ClaimCtx(owner, None))) is False
+    assert asyncio.run(registry.dispatch_claimed(ClaimCtx(owner, ELSEWHERE))) is False
+    assert claims_logged == []
+
+
+def test_a_claimed_message_from_someone_else_is_dropped(stranger, claims_logged, monkeypatch):
+    from tasks import bugs
+
+    async def save(ctx):
+        raise AssertionError("a stranger's message must not be saved")
+
+    monkeypatch.setattr(bugs, "save_note", save)
+    assert asyncio.run(registry.dispatch_claimed(ClaimCtx(stranger, BUGS))) is True
+    assert claims_logged == [["claimed", "denied"]]
+
+
+def test_a_claimed_message_that_fails_is_flagged(owner, claims_logged, monkeypatch):
+    from tasks import bugs
+
+    async def save(ctx):
+        raise UserError("no")
+
+    monkeypatch.setattr(bugs, "save_note", save)
+    ctx = ClaimCtx(owner, BUGS)
+    assert asyncio.run(registry.dispatch_claimed(ctx)) is True
+    assert ctx.failed and ctx.errors == [("Message for bugs failed", "no")]
+    assert claims_logged == [["claimed", "error"]]
+
+
 def test_an_unregistered_emoji_is_ignored(reactions_watched):
     asyncio.run(registry.reaction_changed(reaction("👍"), True))
     assert reactions_watched.debounced == [] and reactions_watched.refused == []
@@ -283,7 +415,7 @@ def ctx(user, channel_id=INBOX):
 def test_help_overview_groups_by_task(owner):
     text = builtin.build_overview(ctx(owner))
     assert text.startswith("**What I understand here**")
-    for heading in ("**Builtin**", "**Archive**", "**Dev**", "**Keep**", "**Lab**", "**Timers**"):
+    for heading in ("**Builtin**", "**Archive**", "**Bugs**", "**Dev**", "**Keep**", "**Lab**", "**Timers**"):
         assert heading in text
     assert "• `ping`: check the bot is alive" in text
     assert text.endswith("Anything else goes to Claude. `help <task or word>` shows details.")

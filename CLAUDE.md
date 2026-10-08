@@ -33,6 +33,7 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   - `add-task`: adding or extending anything under `tasks/`
   - `qa`: test tracker, run sheet, and recording reported results
   - `end-of-task`: the closing checklist and commit command
+  - `bug`: fixing a reported bug from its id (B4) or a pasted exchange
 - Runtime: Windows service `assistant-bot` (NSSM); logs in `logs/`;
   database `data/assistant.db`; backups in `data/backups/`
 
@@ -51,8 +52,8 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 - Every keyword, reply action and reaction needs a description, examples,
   channels and permission. Destructive words are `exact`
 - Tasks don't call Discord directly; they use `Context` and core helpers.
-  Only `lab`, `archive`, `timers` and `dev` may use discord.py, until the
-  gateway layer exists
+  Only `lab`, `archive`, `timers`, `dev` and `bugs` (in `bugs/posts.py`
+  only) may use discord.py, until the gateway layer exists
 - The registry decides how every action ends; handlers use `ctx.reply`
   (lasting: Kept) or `ctx.confirm` (self-deleting: Transient) and raise
   `UserError` for problems the user can fix. Code that deletes a message
@@ -119,6 +120,12 @@ Input
 - Commands are idempotent: asking for a single-instance thing that
   already exists shows it again instead of failing (`pomo` while a
   session runs re-shows its card; `dev off` when off just says so).
+- Bugs are reported with 🐞 on a message or the word `bug` (as a reply:
+  that message; alone: the latest exchange in the channel). No note is
+  taken in the channel (`bug: text` is not a command): each bug gets a
+  post in the #bugs forum, and what I write there is saved as a note
+  with ✅. Nothing in #bugs is sent to Claude. Claude Code never closes
+  a bug: I press Fixed or Won't fix on the post.
 - Help is generated from the registry; every keyword, reply action and
   reaction must have a description, examples, channels and permission.
 
@@ -139,6 +146,10 @@ Reactions
   if the message is pinned, 📌-reacted or saved.
 - A reaction action that fails when it runs adds ⚠️ to the message, with
   details in #bot-log; no temporary notes in the channel.
+- Exception: 🐞 (report a bug) is instant (`Reaction.instant`). It is not
+  debounced, adds no ✅, and removing it does nothing: the report gets a
+  post in #bugs and is closed there with Fixed or Won't fix. No other
+  reaction may skip the debounce.
 - Everything else (messages, buttons, jobs) acts immediately.
 
 Cleanliness
@@ -151,12 +162,17 @@ Cleanliness
   | Kept | Chats with Claude and its replies, help, explanations, lists, stats, seed instructions, results you'll want to read | Never auto-deleted (until the future nightly sweep); only removed by me (archive, delete) |
   | Live | Dev panel, timer board, Pomodoro card | Edited in place; when finished, collapses to a one-line summary (becomes Kept), or is removed if it has no lasting value (e.g. the dev panel) |
   | Consumed | My command words: reply actions (archive, pin), settings (dev debounce 1), shortcuts whose result is posted | Deleted once actioned successfully; kept with ⚠️ if it failed |
-  | Transient | Short confirmations ("📦 Archived"), invalid-action reasons | Delete themselves after a few seconds |
+  | Transient | Short confirmations ("📦 Archived"), invalid-action reasons | Delete themselves after a few seconds; stay while `KEEP_CONFIRMATIONS` is on (the default) |
   | Alert | Timer done, Pomodoro phase change, reminders | Stay until acknowledged, then deleted, with the original updated |
   | Protected | 📌-reacted or pinned messages | Never auto-deleted; archive/delete ask for confirmation |
 
 - Rule of thumb: only delete a message when its information now lives
   somewhere else. `dev cleanup off` disables all auto-deletion.
+- `KEEP_CONFIRMATIONS` (`.env`, default true) keeps every Transient
+  message in place, so what the bot did can be read back. It changes
+  nothing else: command messages are still Consumed, and a question left
+  unanswered still goes. Send them through `ctx.confirm`, `ctx.note` or
+  `lifecycle.delete_after()`, which ask the setting.
 - Edit messages in place rather than posting new ones. Exception:
   anything that must notify me (timer done, Pomodoro phase changes,
   reminders) posts a new message; that alert is deleted once

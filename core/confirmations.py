@@ -30,6 +30,10 @@ MAX_CHOICES = 5
 class _OwnedView(discord.ui.View):
     """Buttons only one user may press, on a message that tidies itself away."""
 
+    # True for a message that says something was done (Undo): KEEP_CONFIRMATIONS
+    # leaves it in place, without its buttons. A question nobody answered still goes
+    confirmation = False
+
     def __init__(self, user: User, timeout: float):
         super().__init__(timeout=timeout)
         self.user = user
@@ -49,7 +53,8 @@ class _OwnedView(discord.ui.View):
         self.stop()
         if self.message is not None:
             try:
-                if lifecycle.deletes(MessageClass.TRANSIENT):
+                kept = self.confirmation and lifecycle.keeps_confirmations()
+                if lifecycle.deletes(MessageClass.TRANSIENT) and not kept:
                     await self.message.delete()
                 else:
                     # Clean-up is off: leave the message, without its buttons
@@ -154,6 +159,8 @@ async def choose(
 
 
 class _Undo(_OwnedView):
+    confirmation = True
+
     def __init__(self, user: User, text: str, on_undo: Callable[[], Awaitable[str]], seconds: float):
         super().__init__(user, seconds)
         self.text = text

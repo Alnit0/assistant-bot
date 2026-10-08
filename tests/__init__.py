@@ -31,5 +31,7 @@ for name, value in {
     "ADMIN_CHANNEL_ID": "",
     "DOCUMENTS_CHANNEL_ID": "",
     "DEV_CHANNEL_ID": "",
+    "BUGS_CHANNEL_ID": "300",
+    "KEEP_CONFIRMATIONS": "false",  # the tests check that notes tidy themselves away
 }.items():
     os.environ[name] = value

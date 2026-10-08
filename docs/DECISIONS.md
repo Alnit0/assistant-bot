@@ -383,3 +383,47 @@ A short log of key decisions and why. Newest at the bottom.
   include the Pomodoro unless told `except pomodoro`, skip a timer that has
   already run out, and reply with each one's saved time left. They are not
   destructive: nothing is lost by pausing.
+- **A bug gets a forum post, not a note in the channel:** the first design
+  took the note where the bug was reported (`bug: text`, or a prompt after
+  🐞). That put the report's detail in the channel it was about and needed
+  a waiter that could swallow the next message. Now the channel gets one
+  line with a link, and everything else (context, notes, closing) lives in
+  the bug's own post in a forum channel, where tags and archiving come
+  free. `bug: text` is not a command.
+- **🐞 is instant, and removing it does nothing:** a report destroys
+  nothing, and waiting 30 seconds to learn it was logged is worse than a
+  report made by mistake, which costs one press of Won't fix. So
+  `Reaction.instant` skips the debounce, records nothing in
+  `reaction_state` and adds no ✅ (the "Logged as" line says it). It is the
+  one stated exception to "debounced" and "reversible"; a test holds that
+  no other reaction is instant.
+- **No Claude in #bugs:** the questions are a fixed template and a reply
+  is saved and ticked. A bug post is a record for later, and an assistant
+  answering in it would put its own guesses among the facts, at an API
+  call a message. `Task.claim` takes those messages before Claude is
+  reached.
+- **Claude Code never closes a bug:** it leaves a "fix ready, needs
+  retest" note (`tasks/bugs/cli.py` has `show`, `list` and `note`, and no
+  `close`). A fix is only known to work once it has been tried in Discord,
+  so Fixed and Won't fix are buttons on the post, pressed by the owner.
+- **A turn's timings are stored (`message_log.timing`):** they were only
+  on the #bot-log card and in `bot.log`. A report quotes the turn it is
+  about, perhaps much later, so the breakdown is kept as JSON with the
+  chat row. Tool calls were already rows of their own against the same
+  message.
+- **Which turn a bot message belongs to goes by time:** the bot's replies
+  have no row in `message_log`, so a reported bot message is matched to
+  the latest thing the user sent in that channel before it (5 seconds'
+  grace for the two clocks). The user's own messages are matched by id.
+- **The commit in a report is the one the bot started on:** read once at
+  startup, because that is the code that is running, whatever has been
+  checked out since.
+- **`KEEP_CONFIRMATIONS` is on by default:** while the bot is being
+  built, seeing what it did matters more than a tidy channel. It is asked
+  in `lifecycle.delete_after()`, so every Transient message obeys it and
+  nothing else changes (commands are still Consumed). Unlike `dev cleanup
+  off` it survives a restart and leaves the rest of the tidying alone.
+- **`bugs` uses discord.py, in `posts.py` only:** forum posts, tags and
+  persistent buttons have no core helper yet, and one user of them is not
+  enough to design one. To be promoted to core when a second task needs a
+  forum (in the backlog).

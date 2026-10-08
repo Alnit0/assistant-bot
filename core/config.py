@@ -64,6 +64,8 @@ CHANNELS: dict[str, int] = {
         "admin": os.getenv("ADMIN_CHANNEL_ID"),
         "documents": os.getenv("DOCUMENTS_CHANNEL_ID"),
         "dev": os.getenv("DEV_CHANNEL_ID"),
+        # A forum channel: one post per reported bug (tasks/bugs)
+        "bugs": os.getenv("BUGS_CHANNEL_ID"),
     }.items()
     if value
 }
@@ -73,6 +75,16 @@ try:
     CONFIRMATION_SECONDS = float(os.getenv("CONFIRMATION_SECONDS") or 5)
 except ValueError:
     sys.exit("CONFIRMATION_SECONDS in .env must be a number of seconds, e.g. 5")
+
+# Leave confirmations and other self-deleting notes in the channel, so what the
+# bot did can be read back. On unless switched off
+def flag(value: str | None, default: bool) -> bool:
+    """An on/off setting as written in .env; empty or missing is the default."""
+    value = (value or "").strip().lower()
+    return value in ("1", "true", "yes", "on") if value else default
+
+
+KEEP_CONFIRMATIONS = flag(os.getenv("KEEP_CONFIRMATIONS"), True)
 
 # Quiet time before reactions are acted on. Removing a reaction within it cancels
 try:

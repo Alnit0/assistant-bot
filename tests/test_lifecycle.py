@@ -60,7 +60,10 @@ def test_a_note_still_on_screen_is_transient_and_a_command_is_consumed():
 
 
 def test_describe_names_the_class_and_what_happens():
-    assert lifecycle.describe(MessageClass.TRANSIENT) == "Transient: deletes itself after a few seconds"
+    assert (
+        lifecycle.describe(MessageClass.TRANSIENT)
+        == "Transient: deletes itself after a few seconds (stays while KEEP_CONFIRMATIONS is on)"
+    )
     assert lifecycle.describe(MessageClass.KEPT).startswith("Kept: never auto-deleted")
 
 
@@ -128,6 +131,28 @@ def test_with_cleanup_off_they_stay(dev_off, owner):
     assert channel.sent == [("📦 Archived", {"delete_after": None})]
     assert asyncio.run(ctx.delete_command()) is False
     assert not message.deleted
+
+
+# --- KEEP_CONFIRMATIONS ------------------------------------------------------
+def test_the_setting_is_on_unless_switched_off():
+    from core import config
+
+    for value, expected in ((None, True), ("", True), ("true", True), (" On ", True), ("false", False), ("0", False)):
+        assert config.flag(value, True) is expected, value
+    assert config.flag("", False) is False
+    assert config.KEEP_CONFIRMATIONS is False, "the test settings switch it off"
+
+
+def test_kept_confirmations_stay_and_commands_are_still_tidied_away(dev_off, owner, monkeypatch):
+    monkeypatch.setattr(lifecycle, "KEEP_CONFIRMATIONS", True)
+    assert lifecycle.delete_after() is None and lifecycle.delete_after(15) is None
+    assert lifecycle.deletes(MessageClass.CONSUMED) and lifecycle.deletes(MessageClass.TRANSIENT)
+
+    ctx, channel, message = make_ctx(owner)
+    asyncio.run(ctx.confirm("📦 Archived"))
+    asyncio.run(ctx.note("-# Read as: stats"))
+    assert [options for _, options in channel.sent] == [{"delete_after": None}] * 2
+    assert asyncio.run(ctx.delete_command()) is True, "the command word is Consumed, not a confirmation"
 
 
 def test_lasting_replies_are_never_given_a_lifetime(dev_off, owner):

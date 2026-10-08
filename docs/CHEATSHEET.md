@@ -241,6 +241,42 @@ only, any channel, no slash. It is off after every restart.
 
 ---
 
+## Seeing what the bot did (`.env`)
+
+| Setting | What it does |
+|---|---|
+| `KEEP_CONFIRMATIONS=true` (the default) | Confirmations ("📦 Archived"), "Read as: …" notes and ⚠️ reasons stay in the channel instead of deleting themselves |
+| `KEEP_CONFIRMATIONS=false` | They delete themselves after `CONFIRMATION_SECONDS`, as before |
+
+- Your command words are deleted either way; only the bot's notes stay
+- Restart the bot after changing it
+- `dev cleanup off` is the stronger, temporary switch: nothing at all is
+  deleted until dev mode ends
+
+---
+
+## Bugs (typed in Discord)
+
+| Do | What happens |
+|---|---|
+| React 🐞 to a message | Logged at once: "🐞 Logged as B4" with a link to its post in #bugs. Removing the 🐞 does nothing |
+| Reply `bug` to a message | The same, for that message |
+| Type `bug` on its own | The same, for the latest thing in that channel |
+| Write in the bug's post | Saved as a note, ticked ✅. The bot doesn't answer |
+| Press **Fixed** / **Won't fix** on the post | Tags it and archives the post |
+| `bugs` | The open bugs, with links |
+| `bugs export` | Writes them in full to `docs/BUGS.md` (not in git) |
+
+- `bug: some text` is not a command; notes go in the post
+- Needs `BUGS_CHANNEL_ID` in `.env`: a **forum** channel where the bot may
+  Create Posts, Send Messages in Threads and Manage Threads (and Manage
+  Channels, once, to make the tags Open, Fixed and Won't fix)
+- In Claude Code: `fix B4` (or `/bug B4`) reads the bug, writes a failing
+  test, fixes it and notes "fix ready, needs retest". You still press Fixed
+- By hand: `python -m tasks.bugs.cli list` and `python -m tasks.bugs.cli show B4`
+
+---
+
 ## Claude Code
 
 **Starting**

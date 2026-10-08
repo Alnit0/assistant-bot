@@ -39,12 +39,15 @@ Last updated: 2026-10-09
 | J | Dev mode | 32 | 4 | 28 | 28 | 4 | 0 | 0 |
 | K | Startup and housekeeping | 11 | 4 | 7 | 7 | 4 | 0 | 0 |
 | L | Keep | 12 | 4 | 8 | 8 | 4 | 0 | 0 |
-| M | Message lifecycle | 3 | 3 | 0 | 0 | 3 | 0 | 0 |
+| M | Message lifecycle | 5 | 4 | 1 | 1 | 4 | 0 | 0 |
 | N | Tool calling | 52 | 24 | 28 | 28 | 24 | 0 | 0 |
-| | **Total** | **234** | **78** | **156** | **156** | **78** | **0** | **0** |
+| P | Bugs | 24 | 11 | 13 | 13 | 11 | 0 | 0 |
+| | **Total** | **260** | **90** | **170** | **170** | **90** | **0** | **0** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
-off. "Log card" means a card in #bot-log.
+off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
+tidy themselves away; M5 covers the setting). "Log card" means a card in
+#bot-log.
 
 ## A. Builtin words and chat
 
@@ -296,6 +299,8 @@ by J28 and J29.
 | M1 | 🤖 Auto | The policy and which class a message is | Kept and Protected are never auto-deleted; the others may be once their information lives elsewhere; protection wins, then what a task declares, then transient, then command; anything else is Kept | ✅ Pass | 2026-10-07 | `tests/test_lifecycle.py` |
 | M2 | 🤖 Auto | Confirmations, notes and command messages | Self-delete after `CONFIRMATION_SECONDS` and the command is removed; with clean-up off they all stay; lasting replies never get a lifetime | ✅ Pass | 2026-10-07 | `tests/test_lifecycle.py` |
 | M3 | 🤖 Auto | What the timers task declares | A running timer or session is Live, its alert is an Alert, and a finished one's summary is ordinary Kept content | ✅ Pass | 2026-10-07 | `tests/test_lifecycle.py` |
+| M4 | 🤖 Auto | `KEEP_CONFIRMATIONS` | On unless switched off; while on, confirmations and notes get no lifetime, and the command message is still removed | ✅ Pass | 2026-10-09 | `tests/test_lifecycle.py` |
+| M5 | 👤 Manual | Set `KEEP_CONFIRMATIONS=true` (or remove the line), restart, then reply `pin` to a message, and react 📦 to a message in #archive | "📌 Pinned" stays in the channel and your `pin` is still deleted; the ⚠️ reason for the 📦 stays too. Reply `unpin` afterwards | ⬜ Untested | | |
 
 ## N. Tool calling
 
@@ -360,3 +365,35 @@ run to run: judge what happens, not the exact words.
 | N50 | 👤 Manual | Ask Claude: `Set a timer for 5 minutes`, watching the clock; then `Pause the timer` | 👀 appears on your message at once and goes when it is answered. The timer's message is there in under 4 seconds and Claude adds no line of its own. The pause is confirmed in one short message, also in under 4 seconds. Each log card's Timing shows 1 round trip | ⬜ Untested | | |
 | N51 | 👤 Manual | Start timers `tea`, `Tea 2` and `dinner`, then ask: `Stop all timers called tea` | One message: "🚫 Cancelled 2" naming tea and Tea 2. Dinner is still running. The board and the timers' own messages show it within a few seconds | ⬜ Untested | | |
 | N52 | 👤 Manual | Start six timers, then ask: `Cancel all timers` | One message naming all six; none is left and you are not asked to repeat the request. The log card shows one tool call and no rate-limit waits | ⬜ Untested | | |
+
+## P. Bugs
+
+Needs `BUGS_CHANNEL_ID` set to a forum channel. "The post" is the bug's
+post in #bugs.
+
+| ID | Type | Test | Expected result | Status | Date | Notes |
+|---|---|---|---|---|---|---|
+| P1 | 🤖 Auto | Ids and where a report may be made | `B4`, `b4` and `4` are bug 4; a message inside a bug's post can't be reported; a channel is named if known | ✅ Pass | 2026-10-09 | `tests/test_bugs.py` |
+| P2 | 🤖 Auto | Which turn a reported message belongs to | Your own message by its id; a message of the bot's to what you sent before it (5 seconds' grace); its tool calls and timings with it; never the `bug` command itself; none if nothing was logged | ✅ Pass | 2026-10-09 | `tests/test_bugs.py` |
+| P3 | 🤖 Auto | Related errors from the log | Only warnings and errors inside the turn's window, with their tracebacks; a long run is cut short and says so; a half line at the start of the tail is dropped | ✅ Pass | 2026-10-09 | `tests/test_bugs.py` |
+| P4 | 🤖 Auto | What the post says | Title "B4 · start of the message"; the message, the ones before it, that turn, the errors, then the three questions; each part fits a Discord message; tags swap on closing and other tags are kept | ✅ Pass | 2026-10-09 | `tests/test_bugs.py` |
+| P5 | 🤖 Auto | The records | Numbered in order and open; found by post and by message; a closed one leaves the list; notes kept in order with who wrote them | ✅ Pass | 2026-10-09 | `tests/test_bugs.py` |
+| P6 | 🤖 Auto | Filing a report | Recorded with its post and link; the same message is not logged twice; nothing is recorded when there is no forum; the turn, errors and commit are captured | ✅ Pass | 2026-10-09 | `tests/test_bugs.py` |
+| P7 | 🤖 Auto | `bug` alone, as a reply, and 🐞 | Alone: the latest message with the five before it; reply: that message; 🐞: that message, with the line sent to its channel; the line is a lasting reply | ✅ Pass | 2026-10-09 | `tests/test_bugs.py` |
+| P8 | 🤖 Auto | Notes, `bugs` and `bugs export` | A message in a bug's post is saved and ticked with no reply; a post that isn't a bug's is left alone; the list links to posts; the export has everything in full | ✅ Pass | 2026-10-09 | `tests/test_bugs.py` |
+| P9 | 🤖 Auto | The instant reaction and claimed messages | 🐞 runs at once and is never debounced; taking it away does nothing; only 🐞 is instant; a message in #bugs is claimed before Claude; a stranger's is dropped | ✅ Pass | 2026-10-09 | `tests/test_registry.py` |
+| P10 | 🤖 Auto | Owner only, and the command line | Every word, the reaction, notes and closing need the owner; `cli show` and `note` work and nothing closes a bug | ✅ Pass | 2026-10-09 | `tests/test_bugs.py` |
+| P11 | 🤖 Auto | A turn's timings are kept | The breakdown on the log card is stored as plain values with the message | ✅ Pass | 2026-10-09 | `tests/test_timing.py` |
+| P12 | 👤 Manual | Ask Claude `Set a timer for 5 minutes`, then react 🐞 to the timer's message | At once, with no 30-second wait: "🐞 Logged as B<n>" in the channel, and it stays. B<n> is a link that opens the post. No ✅ is added to the message | ⬜ Untested | | |
+| P13 | 👤 Manual | Open that post | Title "B<n> · ⏱️ …"; tag Open; the timer's message quoted with a jump link; the messages before it; "That turn" with your request, the tool call and a Timings line; "Related errors"; the commit; then the three questions. **Fixed** and **Won't fix** buttons under the first message | ⬜ Untested | | |
+| P14 | 👤 Manual | Take the 🐞 off, then add it again | Taking it off does nothing. Adding it again: "🐞 Already logged as B<n>", and no second post | ⬜ Untested | | |
+| P15 | 👤 Manual | Reply `bug` to another message | Your reply is deleted; "🐞 Logged as B<n>" stays; the post is about the message you replied to | ⬜ Untested | | |
+| P16 | 👤 Manual | In #scratch, send a message, then type `bug` | Your `bug` is deleted; the post is about the message before it, from #scratch | ⬜ Untested | | |
+| P17 | 👤 Manual | In #inbox, type `bug: the timer was wrong` | Not a command: it goes to Claude as chat, and no bug is logged | ⬜ Untested | | |
+| P18 | 👤 Manual | In a bug's post, answer the questions in one or two messages | Each message gets ✅ and stays. The bot says nothing, and #bot-log has no "Message handled" card | ⬜ Untested | | |
+| P19 | 👤 Manual | In #inbox, type `bugs` | "Open bugs (n)", one line each with a link, where it came from, the date and the number of notes. It stays | ⬜ Untested | | |
+| P20 | 👤 Manual | Type `bugs export`, open `docs/BUGS.md`, run `git status` | The file has every open bug in full with its notes. Git does not list it | ⬜ Untested | | |
+| P21 | 👤 Manual | Press **Won't fix** on a post | "✅ B<n> closed as Won't fix" in the post; the tag changes from Open; the post is archived (closed); `bugs` no longer lists it | ⬜ Untested | | |
+| P22 | 👤 Manual | Restart the bot, then press **Fixed** on a post made before the restart | It works: closed as Fixed, tagged and archived | ⬜ Untested | | |
+| P23 | 👤 Manual | React 🐞 to a message inside a bug's post | ⚠️ on it at once and "That is already in a bug's post…"; no new bug | ⬜ Untested | | |
+| P24 | 👤 Manual | Delete the forum's Fixed tag, restart the bot | The tag is back, or (without Manage Channels) an error card in #bot-log says which tag to add | ⬜ Untested | | |

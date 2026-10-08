@@ -130,6 +130,11 @@ def _create_reaction_state(conn: sqlite3.Connection) -> None:
     )
 
 
+def _add_timing_to_message_log(conn: sqlite3.Connection) -> None:
+    # Where the time went while a chat message was answered, as JSON (core/timing.py)
+    conn.execute("ALTER TABLE message_log ADD COLUMN timing TEXT")
+
+
 MIGRATIONS = [
     _create_message_log,
     _create_users,
@@ -137,6 +142,7 @@ MIGRATIONS = [
     _create_skill_migrations,
     _create_scheduled_jobs,
     _create_reaction_state,
+    _add_timing_to_message_log,
 ]
 
 

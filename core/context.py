@@ -60,6 +60,11 @@ class Context:
         return None
 
     @property
+    def parent_channel_id(self) -> int | None:
+        """The channel this one hangs off, if it is a thread or a forum post."""
+        return getattr(self._channel, "parent_id", None)
+
+    @property
     def is_reply(self) -> bool:
         """True if the input was sent as a reply to another message."""
         return self._message is not None and self._message.reference is not None

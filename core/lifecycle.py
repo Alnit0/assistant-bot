@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from core import devmode
-from core.config import CONFIRMATION_SECONDS
+from core.config import CONFIRMATION_SECONDS, KEEP_CONFIRMATIONS
 
 # ---------------------------------------------------------------------------
 # Message lifecycle: what becomes of each message, the bot's or the user's.
@@ -52,7 +52,7 @@ POLICY: dict[MessageClass, Policy] = {
     ),
     MessageClass.TRANSIENT: Policy(
         "short confirmations, invalid-action reasons",
-        "deletes itself after a few seconds",
+        "deletes itself after a few seconds (stays while KEEP_CONFIRMATIONS is on)",
         auto_delete=True,
     ),
     MessageClass.ALERT: Policy(
@@ -112,8 +112,16 @@ def deletes(message_class: MessageClass) -> bool:
     return may_auto_delete(message_class, devmode.cleanup_enabled())
 
 
+def keeps_confirmations() -> bool:
+    """True while KEEP_CONFIRMATIONS is on: Transient messages stay where they are,
+    so what the bot did can be read back. Nothing else is affected."""
+    return KEEP_CONFIRMATIONS
+
+
 def delete_after(seconds: float = CONFIRMATION_SECONDS) -> float | None:
     """How long a Transient message stays (for discord.py's `delete_after`), or None to leave it."""
+    if keeps_confirmations():
+        return None
     return seconds if deletes(MessageClass.TRANSIENT) else None
 
 

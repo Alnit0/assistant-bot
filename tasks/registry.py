@@ -832,6 +832,12 @@ async def reaction_changed(payload: discord.RawReactionActionEvent, added: bool)
         if not any(message_id == payload.message_id for message_id, _, _ in _refused):
             await _mark(payload.channel_id, payload.message_id, reactions.FAILED_EMOJI, add=False)
         return
+    if _reactions[emoji][1].instant:
+        # The exception to the quiet period: done the moment it is added, and
+        # taking it away again does nothing
+        if added:
+            await dispatch_reaction(payload)
+        return
     _reaction_debouncer.trigger((payload, added))
 
 
@@ -862,7 +868,7 @@ async def _apply_reaction(key: reactions.Key, payload: discord.RawReactionAction
     reply = reply or "done"
     await log_result(row_id, reply=reply, status="ok")
     await log_simple(f"{reaction.emoji} Reaction: {task.name}", reply)
-    if not reaction.destructive:
+    if not reaction.destructive and not reaction.instant:
         # Remember it, so taking the reaction away later can undo it
         await database.run(reactions.db_mark_applied, key, payload.channel_id)
         await _mark(payload.channel_id, payload.message_id, reactions.FAILED_EMOJI, add=False)
@@ -964,6 +970,42 @@ async def dispatch_expected(ctx: Context) -> bool:
         return True
     await log_result(row_id, reply=reply or "received", status="ok")
     return True
+
+
+# ---------------------------------------------------------------------------
+# Dispatch: a message a task takes because of where it was sent
+# ---------------------------------------------------------------------------
+async def dispatch_claimed(ctx: Context) -> bool:
+    """Give the message to the first task that claims it (Task.claim). Returns
+    False if none does. Words, reply actions and awaited answers come first."""
+    for task in _tasks:
+        try:
+            handler = task.claim(ctx)
+        except Exception:
+            log.exception("Task %s failed deciding whether a message is its own", task.name)
+            continue
+        if handler is None:
+            continue
+        row_id = await log_received(ctx.text, "claimed", ctx.message_id, ctx.channel_id, user_id=ctx.user.id)
+        permission = f"message:{task.name}"
+        if not is_allowed(ctx.user, permission):
+            await log_result(row_id, reply="not allowed", status="denied")
+            return True
+        try:
+            reply = await handler(ctx)
+        except Exception as error:
+            detail = str(error) if isinstance(error, UserError) else repr(error)
+            if isinstance(error, UserError):
+                log.info("Message for %s not taken: %s", task.name, error)
+            else:
+                log.exception("Task %s failed handling a message it claimed", task.name)
+            await log_result(row_id, status="error", error=detail)
+            await ctx.mark_failed()
+            await ctx.log_error(f"Message for {task.name} failed", detail, ctx.text)
+            return True
+        await log_result(row_id, reply=reply or "received", status="ok")
+        return True
+    return False
 
 
 # ---------------------------------------------------------------------------

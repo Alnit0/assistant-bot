@@ -24,7 +24,7 @@ complete example, `tasks/archive/` the pattern for anything with logic.
    an `undo`.
 3. **Split the logic from Discord:** decisions go in a module with no
    Discord calls (`rules.py`), records in `store.py`, and the handler calls
-   them. Only `lab`, `archive`, `timers` and `dev` may use discord.py
+   them. Only `lab`, `archive`, `timers`, `dev` and `bugs` may use discord.py
    directly; other tasks use `Context` and core helpers such as
    `core/pins.py`.
 4. **Handlers:** lasting output with `ctx.reply`, a "done" with

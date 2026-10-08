@@ -170,6 +170,38 @@ def watch_logs() -> None:
 
 
 # ---------------------------------------------------------------------------
+# The breakdown as plain values, kept with the message in message_log so it
+# can be read back later (a bug report quotes the turn it is about)
+# ---------------------------------------------------------------------------
+def as_dict(turn: Turn, total: float | None = None) -> dict:
+    if total is None:
+        total = turn.replied_after if turn.replied_after is not None else turn.elapsed()
+    return {
+        "total_s": round(total, 3),
+        "claude": [
+            {
+                "seconds": round(call.seconds, 3),
+                "model": call.model,
+                "input_tokens": call.input_tokens,
+                "output_tokens": call.output_tokens,
+                "cache_read_tokens": call.cache_read_tokens,
+                "cache_write_tokens": call.cache_write_tokens,
+                "retries": call.retries,
+            }
+            for call in turn.claude_calls
+        ],
+        "tools": [
+            {"name": run.name, "seconds": round(run.seconds, 3), "failed": run.failed} for run in turn.tool_runs
+        ],
+        "discord_calls": turn.discord_calls,
+        "discord_s": round(turn.discord_seconds, 3),
+        "rate_limits": turn.rate_limits,
+        "rate_limit_s": round(turn.rate_limit_seconds, 3),
+        "claude_retries": turn.claude_retries,
+    }
+
+
+# ---------------------------------------------------------------------------
 # The breakdown in words
 # ---------------------------------------------------------------------------
 def _seconds(value: float) -> str:
