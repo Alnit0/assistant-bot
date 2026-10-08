@@ -83,7 +83,7 @@ def classify(
     """The class of one message, from what is known about it.
 
     `protected`: pinned or marked 📌, which overrides everything else.
-    `declared`: what the skill that owns the message says it is (Live, Alert).
+    `declared`: what the task that owns the message says it is (Live, Alert).
     `transient`: a self-deleting note of ours that is still on screen.
     `command`: a message of the user's that ran a word or a reply action.
     Anything else is content, and content is Kept.

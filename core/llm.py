@@ -156,7 +156,7 @@ NOTE_OPENS = "[Note from the bot, not written by the user and not shown to them]
 
 def turn_note(state: str = "") -> str:
     """What changes from message to message, sent after the user's words in the
-    latest turn only: the time, and the skills' live state (registry.live_state).
+    latest turn only: the time, and the tasks' live state (registry.live_state).
     It is never part of the system prompt or the history, so those stay the
     same, byte for byte, and cached."""
     lines = [NOTE_OPENS, _time_line()]
@@ -173,7 +173,7 @@ def build_system_blocks(capabilities: str = "", has_tools: bool = False) -> list
 
 def build_system_prompt(capabilities: str = "", has_tools: bool = False) -> str:
     """The system prompt as one text. `capabilities` is the list of things the bot
-    itself can do for this user in this channel (from the skill registry), so Claude
+    itself can do for this user in this channel (from the task registry), so Claude
     can answer "what can you do?" accurately. `has_tools` says whether it has been
     given tools to act with."""
     return "\n\n".join(block["text"] for block in build_system_blocks(capabilities, has_tools))

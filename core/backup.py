@@ -13,7 +13,7 @@ log = logging.getLogger("assistant")
 NIGHTLY_PREFIX = "assistant-"
 
 # How the nightly backup is known to the scheduler
-JOB_SKILL = "core"
+JOB_TASK = "core"
 JOB_KIND = "nightly_backup"
 
 
@@ -72,10 +72,10 @@ async def run_nightly_backup() -> None:
 # ---------------------------------------------------------------------------
 async def schedule_next_backup() -> None:
     """Make sure a nightly backup is booked, for the next BACKUP_TIME on the NZ clock."""
-    if await scheduler.pending_jobs(JOB_SKILL, JOB_KIND):
+    if await scheduler.pending_jobs(JOB_TASK, JOB_KIND):
         return
     due_at = scheduler.next_run(BACKUP_TIME, now_nz())
-    await scheduler.add_job(JOB_SKILL, JOB_KIND, due_at)
+    await scheduler.add_job(JOB_TASK, JOB_KIND, due_at)
     log.info("Next nightly backup: %s", due_at.isoformat())
 
 

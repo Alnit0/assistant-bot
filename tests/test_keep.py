@@ -7,7 +7,7 @@ import pytest
 from core import discord_utils, pins
 from core.errors import UserError
 from core.protection import PROTECT_EMOJI, is_kept, pin_problem
-from skills import keep, registry
+from tasks import keep, registry
 
 CHANNEL, MESSAGE = 300, 10
 PAYLOAD = SimpleNamespace(channel_id=CHANNEL, message_id=MESSAGE)
@@ -51,8 +51,8 @@ def discord_message(monkeypatch):
 # --- the registration ------------------------------------------------------
 def test_the_pin_emoji_is_a_reaction_that_can_be_undone():
     registry.load()
-    kind, skill, reaction = registry.find(PROTECT_EMOJI)
-    assert (kind, skill.name) == ("reaction", "keep")
+    kind, task, reaction = registry.find(PROTECT_EMOJI)
+    assert (kind, task.name) == ("reaction", "keep")
     assert reaction.handler is keep.keep and reaction.undo is keep.unkeep
     assert not reaction.destructive, "a kept message is still there, so it is marked ✅ and can be undone"
     assert registry.works_in(reaction, 999), "any channel"
@@ -67,8 +67,8 @@ def test_pin_and_unpin_are_reply_actions_anywhere():
         ("unpin", "unpin", keep.unpin_reply),
         ("unkeep", "unpin", keep.unpin_reply),
     ):
-        skill, action = registry._reply_router.match(word).entry
-        assert (skill.name, action.name) == ("keep", name)
+        task, action = registry._reply_router.match(word).entry
+        assert (task.name, action.name) == ("keep", name)
         assert action.handler is handler
         assert action.validate is None and not action.exact
         assert registry.works_in(action, 999), "any channel"

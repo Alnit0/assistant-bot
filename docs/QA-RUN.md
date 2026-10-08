@@ -54,7 +54,7 @@ Dev mode: off (it always is after a start).
 
 | # | Do | Expect | Tests |
 |---|---|---|---|
-| 1 | In the project folder: `python main.py` | "👋 Online and ready" in #inbox; "🟢 Bot started" log card listing skills and synced slash commands, no ⚠️ fields | K1 |
+| 1 | In the project folder: `python main.py` | "👋 Online and ready" in #inbox; "🟢 Bot started" log card listing tasks and synced slash commands, no ⚠️ fields | K1 |
 | 2 | In a second terminal: `python main.py` | It logs "Another copy of the bot is already running (PID …)" and exits. Step 1 of block 2 then gets one reply, not two | K2 |
 | 3 | From the second account: type `ping` in #inbox and react 📦 on any message. Wait 35 seconds | No reply, no archive, nothing from Claude. Remove that 📦 afterwards | K3 |
 
@@ -66,7 +66,7 @@ Dev mode: off. In #inbox unless it says otherwise.
 |---|---|---|---|
 | 1 | `ping` | "🏓 Pong!" stays; your `ping` is deleted; log card | A1 |
 | 2 | `stats`, then `stat` | All-time stats card stays each time; your word is deleted | A2 |
-| 3 | `help` | What works in #inbox, grouped by skill, including Dev | A3 |
+| 3 | `help` | What works in #inbox, grouped by task, including Dev | A3 |
 | 4 | `buttons`, tap one | Button test message appears and answers the tap | A11 |
 | 5 | `My test word is kiwifruit.` then `What was my test word?` | Both answered; the second says kiwifruit; "Message handled" log card with tokens and cost | A9 |
 | 6 | Reply `cancel` to Claude's last answer | Not a command: Claude answers it as chat; no ⚠️ | G13 |
@@ -189,7 +189,7 @@ First press **+1 hour** on the panel so it lasts through block 9.
 | 8 | Reply `+10m` to it, then `extend 5m` | End time moves out by 10, then 5 more minutes | G6 |
 | 9 | `timer`; then reply `dev inspect` to timer a's message | Lists timer a; the inspect card's Lifecycle line says Live | G9 (second half), J29 (second half) |
 | 10 | Reply `cancel` to timer a | Marked cancelled; off the board; no alert later | G7 |
-| 11 | `timer 10m`, then `dev jobs` | Pending jobs with id, skill/kind and due time: the timer and the nightly backup | J19 |
+| 11 | `timer 10m`, then `dev jobs` | Pending jobs with id, task/kind and due time: the timer and the nightly backup | J19 |
 | 12 | `dev fire next` | The timer finishes at once; "🔥 Fired job #…" names it. Dismiss the alert | J21 |
 | 13 | `dev run backup`, then `dev run sweep` | "💾 Backup saved" log card and a new file in `data\backups\`; the sweep gets ⚠️ with "not built" on the log card. Delete the ⚠️ message by hand | J20 |
 | 14 | `dev speed 60`, then `timer 5m` | Timer says 5m and finishes in about 5 seconds; a 🛠️ debug card for the job in #bot-log. Dismiss the alert | J9, J11 (job) |

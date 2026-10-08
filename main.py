@@ -34,7 +34,7 @@ from core.logging_setup import setup_logging
 from core.migrations import migrate
 from core.permissions import is_allowed
 from core.users import ensure_owner, get_user_by_discord_id
-from skills import registry, toolcalls
+from tasks import registry, toolcalls
 
 log = logging.getLogger("assistant")
 
@@ -46,7 +46,7 @@ intents.message_content = True
 client = discord.Client(intents=intents)
 bind_client(client)
 
-# Slash commands and context menus from skills, synced to our server at startup
+# Slash commands and context menus from tasks, synced to our server at startup
 tree = app_commands.CommandTree(client)
 slash_status = "not set up yet"
 
@@ -57,16 +57,16 @@ INTERACTION_GRACE = 2.0
 # Running totals since the bot started
 session_stats = {"messages": 0, "cost": 0.0}
 
-scheduler.register_handler(backup.JOB_SKILL, backup.JOB_KIND, backup.nightly_backup_job)
+scheduler.register_handler(backup.JOB_TASK, backup.JOB_KIND, backup.nightly_backup_job)
 # What `dev run <name>` can run (the sweep and summary register theirs when they exist)
-devmode.register_task("backup", backup.run_nightly_backup)
+devmode.register_routine("backup", backup.run_nightly_backup)
 
 
 # ---------------------------------------------------------------------------
 # Slash commands
 # ---------------------------------------------------------------------------
 async def setup_slash_commands() -> str:
-    """Register skills' slash commands with our server. Returns a line for the start card."""
+    """Register tasks' slash commands with our server. Returns a line for the start card."""
     channel = client.get_channel(INBOX_CHANNEL_ID)
     if channel is None:
         return "not synced (inbox channel not found)"
@@ -75,7 +75,7 @@ async def setup_slash_commands() -> str:
     for command in registry.app_commands():
         tree.add_command(command, guild=guild)
     try:
-        # Replaces whatever was there before, so commands of disabled skills disappear
+        # Replaces whatever was there before, so commands of disabled tasks disappear
         synced = await tree.sync(guild=guild)
     except discord.HTTPException as error:
         log.exception("Could not sync slash commands")
@@ -172,7 +172,7 @@ async def on_ready():
         slash_status = await setup_slash_commands()
         await registry.startup(client)
         await backup.schedule_next_backup()
-    # After the skills are ready: jobs that came due while we were off run now
+    # After the tasks are ready: jobs that came due while we were off run now
     scheduler.start()
 
     channel = client.get_channel(INBOX_CHANNEL_ID)
@@ -185,7 +185,7 @@ async def on_ready():
     embed.add_field(name="Model", value=CLAUDE_MODEL, inline=True)
     embed.add_field(name="History limit", value=f"{MAX_HISTORY} messages", inline=True)
     embed.add_field(name="Database", value=DB_PATH.name, inline=True)
-    embed.add_field(name="Skills", value=truncate(registry.summary()), inline=False)
+    embed.add_field(name="Tasks", value=truncate(registry.summary()), inline=False)
     embed.add_field(name="Slash commands", value=truncate(slash_status), inline=False)
     if registry.problems():
         embed.add_field(
@@ -241,13 +241,13 @@ async def on_message(message: discord.Message):
         return
 
     # A reply with an action word acts on the message replied to; a registered
-    # word or phrase runs its skill. Each decides for itself where it works.
+    # word or phrase runs its task. Each decides for itself where it works.
     ctx = Context.from_message(message, user)
     if await registry.dispatch_reply_action(ctx):
         return
     if await registry.dispatch_keyword(ctx):
         return
-    # A skill may be waiting for this user's next message in this channel
+    # A task may be waiting for this user's next message in this channel
     if await registry.dispatch_expected(ctx):
         return
 
@@ -447,6 +447,6 @@ if __name__ == "__main__":
     # Before anything touches the database or Discord: only one copy may run
     instance_lock.acquire()
     registry.load()
-    migrate(registry.skill_migrations())
+    migrate(registry.task_migrations())
     ensure_owner()
     client.run(TOKEN, log_handler=None)

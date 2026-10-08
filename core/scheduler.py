@@ -16,7 +16,7 @@ log = logging.getLogger("assistant")
 # ---------------------------------------------------------------------------
 # Scheduler
 #
-# Jobs live in the scheduled_jobs table, so they survive a restart. A skill
+# Jobs live in the scheduled_jobs table, so they survive a restart. A task
 # adds a job ("call my handler for kind X at this moment, with this payload")
 # and registers a handler for each kind it uses. One loop looks for due jobs
 # every TICK_SECONDS, and also wakes at the exact moment of the next due job
@@ -38,7 +38,7 @@ PENDING, RUNNING, DONE, FAILED, CANCELLED = "pending", "running", "done", "faile
 class Job:
     id: int
     user_id: int | None
-    skill: str
+    task: str
     kind: str
     payload: dict
     due_at: datetime  # UTC
@@ -52,7 +52,7 @@ class Job:
 JobHandler = Callable[[Job], Awaitable[None]]
 
 _handlers: dict[tuple[str, str], JobHandler] = {}
-_task: asyncio.Task | None = None
+_ticker: asyncio.Task | None = None
 _wake: asyncio.Event | None = None
 _warned_unhandled: set[tuple[str, str]] = set()
 
@@ -81,7 +81,7 @@ def seconds_late(due_at: datetime, now: datetime) -> float:
 def seconds_until_next_look(now: datetime, next_due: datetime | None) -> float:
     """How long the loop should sleep: until the next job is due, at most one tick.
 
-    A job that is already due and still pending (its skill isn't loaded) must
+    A job that is already due and still pending (its task isn't loaded) must
     not make the loop spin, so that waits a full tick too.
     """
     if next_due is None or next_due <= now:
@@ -111,13 +111,13 @@ def _job(row: tuple, now: datetime | None = None) -> Job:
     return Job(row[0], row[1], row[2], row[3], json.loads(row[4]), due_at, late_by)
 
 
-def _db_add(conn: sqlite3.Connection, user_id, skill: str, kind: str, payload: dict, due_at: datetime) -> int:
+def _db_add(conn: sqlite3.Connection, user_id, task: str, kind: str, payload: dict, due_at: datetime) -> int:
     cursor = conn.execute(
         """
         INSERT INTO scheduled_jobs (user_id, skill, kind, payload, due_at, status, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
-        (user_id, skill, kind, json.dumps(payload), to_db(due_at), PENDING, to_db(utc_now())),
+        (user_id, task, kind, json.dumps(payload), to_db(due_at), PENDING, to_db(utc_now())),
     )
     return cursor.lastrowid
 
@@ -174,9 +174,9 @@ def _db_recover(conn: sqlite3.Connection) -> int:
     return cursor.rowcount
 
 
-def _db_pending(conn: sqlite3.Connection, skill: str, kind: str | None) -> list[Job]:
+def _db_pending(conn: sqlite3.Connection, task: str, kind: str | None) -> list[Job]:
     sql = f"SELECT {_COLUMNS} FROM scheduled_jobs WHERE status = ? AND skill = ?"
-    values: list = [PENDING, skill]
+    values: list = [PENDING, task]
     if kind is not None:
         sql += " AND kind = ?"
         values.append(kind)
@@ -191,18 +191,18 @@ def _db_all_pending(conn: sqlite3.Connection) -> list[Job]:
 
 
 # ---------------------------------------------------------------------------
-# For skills and the core
+# For tasks and the core
 # ---------------------------------------------------------------------------
-def register_handler(skill: str, kind: str, handler: JobHandler) -> None:
-    """Say which function runs jobs of this kind for this skill."""
-    _handlers[(skill, kind)] = handler
+def register_handler(task: str, kind: str, handler: JobHandler) -> None:
+    """Say which function runs jobs of this kind for this task."""
+    _handlers[(task, kind)] = handler
 
 
 async def add_job(
-    skill: str, kind: str, due_at: datetime, payload: dict | None = None, user_id: int | None = None
+    task: str, kind: str, due_at: datetime, payload: dict | None = None, user_id: int | None = None
 ) -> int:
     """Ask for `kind` to be handled at `due_at`. Returns the job's id."""
-    job_id = await database.run(_db_add, user_id, skill, kind, payload or {}, due_at)
+    job_id = await database.run(_db_add, user_id, task, kind, payload or {}, due_at)
     if _wake is not None:
         _wake.set()  # it might be due before the loop's next look
     return job_id
@@ -225,8 +225,8 @@ async def reschedule_job(job_id: int | None, due_at: datetime) -> bool:
     return moved
 
 
-async def pending_jobs(skill: str, kind: str | None = None) -> list[Job]:
-    return await database.run(_db_pending, skill, kind)
+async def pending_jobs(task: str, kind: str | None = None) -> list[Job]:
+    return await database.run(_db_pending, task, kind)
 
 
 async def all_pending() -> list[Job]:
@@ -242,30 +242,30 @@ async def run_due(now: datetime | None = None) -> int:
     now = now or utc_now()
     ran = 0
     for job in await database.run(_db_due, now):
-        handler = _handlers.get((job.skill, job.kind))
+        handler = _handlers.get((job.task, job.kind))
         if handler is None:
-            # Its skill isn't loaded: leave it for when it is
-            if (job.skill, job.kind) not in _warned_unhandled:
-                _warned_unhandled.add((job.skill, job.kind))
-                log.warning("No handler for %s/%s jobs; they will wait", job.skill, job.kind)
+            # Its task isn't loaded: leave it for when it is
+            if (job.task, job.kind) not in _warned_unhandled:
+                _warned_unhandled.add((job.task, job.kind))
+                log.warning("No handler for %s/%s jobs; they will wait", job.task, job.kind)
             continue
         if not await database.run(_db_claim, job.id):
             continue
         if job.is_late:
-            log.info("Running %s/%s job %s late by %.0fs", job.skill, job.kind, job.id, job.late_by)
+            log.info("Running %s/%s job %s late by %.0fs", job.task, job.kind, job.id, job.late_by)
         started = perf_counter()
         try:
             await handler(job)
         except Exception as error:
-            log.exception("Scheduled job %s (%s/%s) failed", job.id, job.skill, job.kind)
+            log.exception("Scheduled job %s (%s/%s) failed", job.id, job.task, job.kind)
             await database.run(_db_finish, job.id, FAILED, job.late_by, repr(error))
-            await log_error(f"Scheduled job failed: {job.skill}/{job.kind}", repr(error))
+            await log_error(f"Scheduled job failed: {job.task}/{job.kind}", repr(error))
             outcome = "failed"
         else:
             await database.run(_db_finish, job.id, DONE, job.late_by, None)
             outcome = "done"
         await devmode.debug(
-            f"Job {job.id}: {job.skill}/{job.kind}",
+            f"Job {job.id}: {job.task}/{job.kind}",
             [
                 f"Outcome: {outcome} in {perf_counter() - started:.2f}s",
                 f"Due: {job.due_at.isoformat(timespec='seconds')} · late by {job.late_by:.1f}s",
@@ -297,8 +297,8 @@ async def _loop() -> None:
 
 def start() -> None:
     """Start the loop. Safe to call again (on_ready fires after reconnects)."""
-    global _task, _wake
-    if _task is not None and not _task.done():
+    global _ticker, _wake
+    if _ticker is not None and not _ticker.done():
         return
     _wake = asyncio.Event()
-    _task = asyncio.create_task(_loop(), name="scheduler")
+    _ticker = asyncio.create_task(_loop(), name="scheduler")

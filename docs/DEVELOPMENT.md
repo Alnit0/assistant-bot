@@ -22,7 +22,7 @@ automatically in new terminals. Check the prompt starts with `(.venv)`.
 ## Project layout
 
 - `main.py`: entry point. Creates the Discord client, wires events, starts the bot
-- `core/`: shared building blocks. Never imports from `skills/`
+- `core/`: shared building blocks. Never imports from `tasks/`
   - `config.py`: paths, settings from `.env`, validation, constants, channel names
   - `logging_setup.py`: terminal and rotating file logging
   - `instance_lock.py`: makes sure only one copy of the bot runs
@@ -30,7 +30,7 @@ automatically in new terminals. Check the prompt starts with `(.venv)`.
   - `migrations.py`: schema migrations, applied at startup
   - `users.py`, `permissions.py`: users and the `is_allowed` check
   - `router.py`: decides whether a message is a registered word (with typo tolerance)
-  - `context.py`: the `Context` object handed to skills
+  - `context.py`: the `Context` object handed to tasks
   - `interactions.py`: permission check and logging for slash commands and menus
   - `errors.py`: `UserError`, for problems the user can fix
   - `scheduler.py`: stored jobs that run at a moment in the future, with catch-up
@@ -40,12 +40,12 @@ automatically in new terminals. Check the prompt starts with `(.venv)`.
   - `reactions.py`: what to apply or undo once reactions have settled
   - `protection.py`, `confirmations.py`: pinned and 📌-marked messages, and
     asking before acting on them
-  - `pins.py`: pinning and unpinning a message for skills
+  - `pins.py`: pinning and unpinning a message for tasks
   - `llm.py`: Claude client, system prompt, history, cost estimates
   - `discord_utils.py`: #bot-log embeds, message helpers, safe replies
-- `skills/`: one folder per feature
-  - `base.py`: the `Skill` base class and the `Keyword`, `ReplyAction`, `Reaction` records
-  - `registry.py`: finds and loads skills, dispatches to them, and knows everything
+- `tasks/`: one folder per feature
+  - `base.py`: the `Task` base class and the `Keyword`, `ReplyAction`, `Reaction` records
+  - `registry.py`: finds and loads tasks, dispatches to them, and knows everything
     the bot can do (for `help` and for Claude)
   - `builtin/`: ping, reset, buttons, stats, help
   - `archive/`: archive or delete a message (reply, 📦 / 🗑️ reaction, context
@@ -56,14 +56,14 @@ automatically in new terminals. Check the prompt starts with `(.venv)`.
   - `dev/`: the `dev …` words, the dev panel and the dev tools
 - `tests/`: unit tests (`python -m pytest`)
 
-Always run `main.py` (not the files in `core/` or `skills/`). Paths are
+Always run `main.py` (not the files in `core/` or `tasks/`). Paths are
 worked out from the project root, so it runs correctly from any working
 directory.
 
 ## How to talk to the bot
 
 There are three main ways in, and one fallback. `help` lists what works in
-the channel you are in; `help <skill or word>` gives details.
+the channel you are in; `help <task or word>` gives details.
 
 | Way in | Example | Where |
 |---|---|---|
@@ -182,23 +182,23 @@ the channel you are in; `help <skill or word>` gives details.
   is what Claude calls itself and what the archive webhook and lab messages
   show. Restart the bot after changing it.
 
-## How to add a skill
+## How to add a task
 
-1. Create a folder `skills/<name>/` with an `__init__.py`. The folder name
-   is the skill's name (lower case, no spaces).
-2. In it, subclass `Skill`, set `name` (same as the folder) and
-   `description`, and expose one instance called `skill`:
+1. Create a folder `tasks/<name>/` with an `__init__.py`. The folder name
+   is the task's name (lower case, no spaces).
+2. In it, subclass `Task`, set `name` (same as the folder) and
+   `description`, and expose one instance called `task`:
 
 ```python
 from core.context import Context
-from skills.base import Keyword, Skill
+from tasks.base import Keyword, Task
 
 
 async def hello(ctx: Context) -> None:
     await ctx.reply(f"👋 Hello, {ctx.user.display_name}!")
 
 
-class GreeterSkill(Skill):
+class GreeterTask(Task):
     name = "greeter"
     description = "Says hello"
 
@@ -213,15 +213,15 @@ class GreeterSkill(Skill):
         ]
 
 
-skill = GreeterSkill()
+task = GreeterTask()
 ```
 
 3. Restart the bot. The terminal and the "🟢 Bot started" card in #bot-log
-   list the skills that loaded, anything that was skipped and why, and any
+   list the tasks that loaded, anything that was skipped and why, and any
    registration with no description. `help` picks up the new word
    automatically, and so does Claude.
 
-**What a skill can register.** Each one must describe itself:
+**What a task can register.** Each one must describe itself:
 
 | Hook | Record | The user… |
 |---|---|---|
@@ -272,7 +272,7 @@ Things to know:
   `ctx.reply_card(title, fields)`, `ctx.log(title, description)`,
   `ctx.user`, `ctx.args`, `ctx.channel_name`.
 - **Database:** return migration functions from `migrations()`, in order,
-  and only ever add to the end. Prefix table names with the skill's name
+  and only ever add to the end. Prefix table names with the task's name
   (`greeter_...`) and give every record a `user_id`. Query with
   `await ctx.db.run(func)`, where `func(conn)` does the SQLite work; it runs
   in a worker thread so the bot is never blocked.
@@ -301,7 +301,7 @@ Things to know:
 - **Replies that aren't fixed words:** give a `ReplyAction` a `pattern`
   (a regular expression; its groups become `ctx.args`), as `+10m` does.
 - **Reply words that only sometimes apply:** give a `ReplyAction` an
-  `applies_to` check. The timers skill uses it so that `cancel` replied to
+  `applies_to` check. The timers task uses it so that `cancel` replied to
   an ordinary message is not treated as a command.
 - **Messages an action can't be done to:** give a `ReplyAction` or a
   `Reaction` a `validate(message)` that raises `UserError` with the reason.
@@ -312,8 +312,8 @@ Things to know:
 - **Deleting a message by itself:** ask `core.lifecycle.deletes(MessageClass.X)`
   first, or pass `delete_after=lifecycle.delete_after()` for a note, so
   `dev cleanup off` is respected. `ctx.confirm`, `ctx.note` and the
-  command clean-up already do. If your skill owns a card edited in place or
-  an alert, say so from `Skill.message_class(message_id)` (Live or Alert),
+  command clean-up already do. If your task owns a card edited in place or
+  an alert, say so from `Task.message_class(message_id)` (Live or Alert),
   as timers does; `dev inspect` shows it.
 - **The assistant's name** is `core.config.ASSISTANT_NAME`. Don't type it
   into a string.
@@ -322,7 +322,7 @@ Things to know:
   startup. In the command's check, call `interactions.check_allowed` and
   `interactions.begin` (`core/interactions.py`); the core then logs how it
   ended. Have the typed word and the slash command call the same function
-  (see `Run` in `skills/lab/common.py`).
+  (see `Run` in `tasks/lab/common.py`).
 - **Other Discord events:** return `{"raw_reaction_add": handler, ...}` from
   `events()`. `startup(client)` runs once when the bot is connected.
 - **Knowing what just happened:** ask for the `action_finished` event to be
@@ -342,7 +342,7 @@ Things to know:
 - **Don't pass `self.view` back from a `DynamicItem`.** It is discord.py's
   bare copy of the message, and its other buttons have no handlers. Build
   the full view again and send that (see `build_panel` in
-  `skills/lab/buttons.py`).
+  `tasks/lab/buttons.py`).
 - **Every word and reply action is also a tool for Claude**, generated from
   the registration (`registry.tools_for`, `core/tools.py`). To make one work
   well as a tool:
@@ -360,10 +360,10 @@ Things to know:
     text to show; Claude's confirmation then has an Undo button.
   - `tool=False` keeps a registration from Claude; `tool_priority` decides
     which get a strict schema if there are ever more than 20 with
-    arguments; override `Skill.tools_available` to offer a whole skill only
+    arguments; override `Task.tools_available` to offer a whole task only
     sometimes (as `dev` does), or set `exposes_tools = False` (as `lab`
     does).
-  - `tool_always=True` offers one word even while its skill is holding
+  - `tool_always=True` offers one word even while its task is holding
     the rest back (the `dev mode` switch).
 - **`tools()`** returns `Tool`s: tools for Claude that aren't words. Use
   one to report state (`reads_only=True`: `list_timers`) or to act on a
@@ -374,15 +374,15 @@ Things to know:
   it.
 - **`ctx.via_tool`** is true when Claude is running the handler: use it
   when a typed word would show something Claude is about to say anyway.
-- **Turning skills on and off:** `ENABLED_SKILLS=builtin,greeter` in `.env`.
-  Leave it empty to load everything. A disabled skill keeps its data, and
+- **Turning tasks on and off:** `ENABLED_TASKS=builtin,greeter` in `.env`.
+  Leave it empty to load everything. A disabled task keeps its data, and
   its words, slash commands and help entries disappear.
-- A word, reply word or emoji can only belong to one skill; the second one
+- A word, reply word or emoji can only belong to one task; the second one
   to claim it is skipped and reported at startup.
 
 ## Archive and delete
 
-`skills/archive/` moves messages out of the way. It only works for the
+`tasks/archive/` moves messages out of the way. It only works for the
 owner.
 
 | Way in | What happens |
@@ -422,9 +422,9 @@ owner.
 
 ## Timers and Pomodoro
 
-`skills/timers/` is for short timers and focus sessions. Everything is
+`tasks/timers/` is for short timers and focus sessions. Everything is
 typed (there are no slash commands), works in any channel, and survives a
-restart. Date-based reminders are a separate, future skill.
+restart. Date-based reminders are a separate, future task.
 
 | Type | What happens |
 |---|---|
@@ -518,7 +518,7 @@ no slash commands. `help dev` lists the words.
 | `dev expire <duration>` | Switches itself off after this long (`30m`, `2h`) |
 | reply `dev inspect` | What the bot knows about the message you replied to |
 | `dev jobs` | The scheduler's pending jobs |
-| `dev run backup\|sweep\|summary` | Runs a background task now |
+| `dev run backup\|sweep\|summary` | Runs a maintenance routine now |
 | `dev fire next` | Runs the next pending job now, whenever it was due |
 | `dev seed <n>` | Posts n sample messages (up to 20), tagged as test data |
 | `dev clean` | Deletes the tagged messages in this channel |
@@ -575,16 +575,16 @@ no slash commands. `help dev` lists the words.
 `is_verbose()`, `quiet_hours_ignored()`. Each gives the normal value when
 dev mode is off, so callers never check whether it is on. Add a debug card
 with `await devmode.debug(title, lines)`; it does nothing unless verbose is
-on. A background task becomes runnable with `dev run <name>` by calling
+on. A maintenance routine becomes runnable with `dev run <name>` by calling
 `devmode.register_task(name, function)` (names are listed in `TASK_NAMES`).
-The words, panel and tools are in `skills/dev/`.
+The words, panel and tools are in `tasks/dev/`.
 
 ## Lab commands
 
-`skills/lab/` is a test bench for Discord features. Type `lab …` in any
+`tasks/lab/` is a test bench for Discord features. Type `lab …` in any
 channel, or use `/lab …` as a fallback: both run the same code. It only
 works for the owner, and every use is logged to `message_log` and #bot-log.
-To switch it off, leave `lab` out of `ENABLED_SKILLS`.
+To switch it off, leave `lab` out of `ENABLED_TASKS`.
 
 | Type | What it shows |
 |---|---|
@@ -762,7 +762,7 @@ so they are safe to run while the bot is running.
 
 - **Write logic so it can be tested.** A decision ("may this be archived?",
   "which reactions count?") goes in a module with no Discord calls and gets
-  tests; the Discord-facing code calls it. `skills/archive/` is the pattern:
+  tests; the Discord-facing code calls it. `tasks/archive/` is the pattern:
   `rules.py` decides, `store.py` remembers, `messages.py` talks to Discord.
 - **New tests are plain pytest functions** with `assert`. The older
   `unittest` classes are left as they are; pytest runs both.

@@ -6,7 +6,7 @@ from datetime import datetime
 # Tools for Claude: the decisions, with no Discord and no API calls.
 #
 # Every registered word and reply action becomes one tool, generated from what
-# the registration says about itself (skills/registry.py does the gathering).
+# the registration says about itself (tasks/registry.py does the gathering).
 # This file names them, builds their input schemas, checks what Claude sends
 # against those schemas, and decides which message a reply action is aimed at.
 # ---------------------------------------------------------------------------
@@ -16,7 +16,7 @@ LISTING_LIMIT = 20  # how many recent messages Claude may choose a target from
 PREVIEW_LENGTH = 80
 
 KEYWORD, REPLY_ACTION, HELPER = "keyword", "reply_action", "helper"
-BESPOKE = "tool"  # a skill's own tool that is not a word (skills/base.py: Tool)
+BESPOKE = "tool"  # a task's own tool that is not a word (tasks/base.py: Tool)
 
 # Looking further back than the listing: the user's own logged messages
 SEARCH_ROWS = 500  # how many logged messages are looked through
@@ -46,7 +46,7 @@ class ToolSpec:
     description: str
     schema: dict
     kind: str  # KEYWORD, REPLY_ACTION, BESPOKE or HELPER
-    skill: str = ""
+    task: str = ""
     item: object = None  # the Keyword, ReplyAction or Tool it runs
     reads_only: bool = False  # only reports: running it is not "doing something"
     has_arguments: bool = False  # takes something beyond `propose` and `targets`

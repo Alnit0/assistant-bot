@@ -83,15 +83,15 @@ def background(coroutine: Awaitable) -> asyncio.Task:
 
 def _spawn(coroutine) -> asyncio.Task:
     async def detached() -> None:
-        # This task's own copy of the context: what it does is no longer part
+        # Its own copy of the context: what it does is no longer part
         # of the time the user waited
         timing.stop()
         await coroutine
 
-    task = asyncio.get_running_loop().create_task(detached())
-    _background.add(task)  # the loop only keeps a weak reference
-    task.add_done_callback(_background.discard)
-    return task
+    spawned = asyncio.get_running_loop().create_task(detached())
+    _background.add(spawned)  # the loop only keeps a weak reference
+    spawned.add_done_callback(_background.discard)
+    return spawned
 
 
 async def settle() -> None:

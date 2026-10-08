@@ -6,6 +6,12 @@ backfilled from the git log.
 
 ## 2026-10-09
 
+- **The bot's features are now called tasks, not skills.** `skills/` is
+  `tasks/`, the base class is `Task`, the setting is `ENABLED_TASKS` (an
+  `.env` that still says `ENABLED_SKILLS` goes on working). "Skill" now
+  only means a Claude Code Skill in `.claude/skills/`; the planned list
+  of things to do will be "to-dos". `dev run` runs "routines". Nothing
+  you type has changed. Earlier entries below keep the old word.
 - **Asking in plain words is fast.** "Set a timer for 5 minutes" took 7
   to 10 seconds, and 30 or more after a restart; Claude's part is now
   about 1.5 seconds. Your message gets 👀 the moment it arrives. Claude

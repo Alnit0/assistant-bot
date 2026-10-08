@@ -9,8 +9,8 @@ import pytest
 from core import devmode
 from core.context import Context
 from core.errors import UserError
-from skills import registry
-from skills.timers import board, control, sessions, status, store, timers
+from tasks import registry
+from tasks.timers import board, control, sessions, status, store, timers
 
 T0 = datetime(2026, 10, 7, 9, 53, 12, tzinfo=timezone.utc)
 CHANNEL = 100
@@ -389,7 +389,7 @@ def test_the_list_shows_a_paused_timer_as_paused_not_counting_down(world):
 
 
 def test_there_is_one_list_per_channel_and_it_is_the_newest(world):
-    from skills.timers import list_timers, skill
+    from tasks.timers import list_timers, task
 
     start_timer(world, "10m", "tea")
     run(list_timers(world.typed()))
@@ -398,12 +398,12 @@ def test_there_is_one_list_per_channel_and_it_is_the_newest(world):
     second = run(store.lists(world.owner.id))
     assert len(first) == len(second) == 1 and first[0][0] == second[0][0] == CHANNEL
     assert first[0][1] != second[0][1], "the new one replaces the old one"
-    assert run(skill.message_class(second[0][1])).value == "Live"
-    assert run(skill.message_class(first[0][1])) is None
+    assert run(task.message_class(second[0][1])).value == "Live"
+    assert run(task.message_class(first[0][1])) is None
 
 
 def test_a_list_with_nothing_on_it_is_not_kept_live(world):
-    from skills.timers import list_timers
+    from tasks.timers import list_timers
 
     assert run(list_timers(world.typed())) == "no active timers"
     assert world.channel.sent[-1] == "📋 No active timers." and run(store.lists(world.owner.id)) == []

@@ -2,8 +2,8 @@ import unittest
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-from skills.timers.durations import DurationError
-from skills.timers.pomodoro import (
+from tasks.timers.durations import DurationError
+from tasks.timers.pomodoro import (
     DEFAULT_LABEL,
     FOCUS,
     LONG_BREAK,
@@ -193,11 +193,11 @@ if __name__ == "__main__":
 
 class AlreadyGoingTest(unittest.TestCase):
     def test_in_its_own_channel_the_card_is_shown_again(self):
-        from skills.timers.pomodoro import RESHOW, where_to_show
+        from tasks.timers.pomodoro import RESHOW, where_to_show
 
         self.assertEqual(where_to_show(100, 100), RESHOW)
 
     def test_from_another_channel_it_is_pointed_to(self):
-        from skills.timers.pomodoro import POINT, where_to_show
+        from tasks.timers.pomodoro import POINT, where_to_show
 
         self.assertEqual(where_to_show(100, 300), POINT)

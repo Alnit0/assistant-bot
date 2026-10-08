@@ -122,7 +122,7 @@ class SchedulerDatabaseTest(DatabaseTestCase):
         self.assertEqual(self.query("SELECT error FROM scheduled_jobs WHERE kind = 'broken'"), [("RuntimeError('kaboom')",)])
         self.assertEqual(len(self.ran), 1)
 
-    async def test_a_job_for_a_skill_that_is_not_loaded_waits(self):
+    async def test_a_job_for_a_task_that_is_not_loaded_waits(self):
         now = scheduler.utc_now()
         await scheduler.add_job("absent", "thing", now - timedelta(minutes=1))
         self.assertEqual(await scheduler.run_due(now), 0)
@@ -158,8 +158,8 @@ class SchedulerDatabaseTest(DatabaseTestCase):
         self.assertEqual(await scheduler.run_due(now), 1)
 
     async def test_the_loop_wakes_for_a_job_due_sooner_than_the_next_tick(self):
-        task, wake = scheduler._task, scheduler._wake
-        scheduler._task = None
+        task, wake = scheduler._ticker, scheduler._wake
+        scheduler._ticker = None
         scheduler.start()
         try:
             await asyncio.sleep(0.05)  # the loop is now asleep for a whole tick
@@ -167,8 +167,8 @@ class SchedulerDatabaseTest(DatabaseTestCase):
             await asyncio.sleep(0.8)
             self.assertEqual(len(self.ran), 1, "ran at its due time, not at the next 15-second tick")
         finally:
-            scheduler._task.cancel()
-            scheduler._task, scheduler._wake = task, wake
+            scheduler._ticker.cancel()
+            scheduler._ticker, scheduler._wake = task, wake
 
     async def test_pending_jobs_lists_only_what_is_still_to_run(self):
         now = scheduler.utc_now()
@@ -191,7 +191,7 @@ class NightlyBackupTest(DatabaseTestCase):
             self.backups += 1
 
         backup.run_nightly_backup = fake_backup
-        scheduler.register_handler(backup.JOB_SKILL, backup.JOB_KIND, backup.nightly_backup_job)
+        scheduler.register_handler(backup.JOB_TASK, backup.JOB_KIND, backup.nightly_backup_job)
 
     def tearDown(self):
         backup.run_nightly_backup = self._real_run
@@ -200,7 +200,7 @@ class NightlyBackupTest(DatabaseTestCase):
     async def test_exactly_one_backup_is_booked_at_3am_nz(self):
         await backup.schedule_next_backup()
         await backup.schedule_next_backup()  # a second start must not book a second one
-        jobs = await scheduler.pending_jobs(backup.JOB_SKILL, backup.JOB_KIND)
+        jobs = await scheduler.pending_jobs(backup.JOB_TASK, backup.JOB_KIND)
         self.assertEqual(len(jobs), 1)
         local = jobs[0].due_at.astimezone(TIMEZONE)
         self.assertEqual((local.hour, local.minute), (3, 0))
@@ -208,26 +208,26 @@ class NightlyBackupTest(DatabaseTestCase):
 
     async def test_running_the_backup_books_the_next_one(self):
         await backup.schedule_next_backup()
-        first = (await scheduler.pending_jobs(backup.JOB_SKILL))[0]
+        first = (await scheduler.pending_jobs(backup.JOB_TASK))[0]
         await scheduler.run_due(first.due_at + timedelta(seconds=1))
         self.assertEqual(self.backups, 1)
-        following = await scheduler.pending_jobs(backup.JOB_SKILL)
+        following = await scheduler.pending_jobs(backup.JOB_TASK)
         self.assertEqual(len(following), 1)
         self.assertNotEqual(following[0].id, first.id)
 
     async def test_a_backup_missed_while_offline_runs_at_the_next_start(self):
-        await scheduler.add_job(backup.JOB_SKILL, backup.JOB_KIND, scheduler.utc_now() - timedelta(hours=9))
+        await scheduler.add_job(backup.JOB_TASK, backup.JOB_KIND, scheduler.utc_now() - timedelta(hours=9))
         await scheduler.run_due()
         self.assertEqual(self.backups, 1)
         self.assertEqual(self.query("SELECT status, late_by_s > 32000 FROM scheduled_jobs ORDER BY id LIMIT 1"), [("done", 1)])
-        self.assertEqual(len(await scheduler.pending_jobs(backup.JOB_SKILL)), 1, "and tomorrow's is booked")
+        self.assertEqual(len(await scheduler.pending_jobs(backup.JOB_TASK)), 1, "and tomorrow's is booked")
 
     async def test_the_next_backup_is_booked_even_if_this_one_fails(self):
         async def broken():
             raise OSError("disk full")
 
         backup.run_nightly_backup = broken
-        await scheduler.add_job(backup.JOB_SKILL, backup.JOB_KIND, scheduler.utc_now() - timedelta(seconds=1))
+        await scheduler.add_job(backup.JOB_TASK, backup.JOB_KIND, scheduler.utc_now() - timedelta(seconds=1))
         await scheduler.run_due()
         self.assertEqual(self.query("SELECT status FROM scheduled_jobs ORDER BY id"), [("failed",), ("pending",)])
 

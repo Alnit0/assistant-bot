@@ -37,11 +37,11 @@ Last updated: 2026-10-09
 | G | Timers | 21 | 8 | 13 | 13 | 8 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
 | J | Dev mode | 32 | 4 | 28 | 28 | 4 | 0 | 0 |
-| K | Startup and housekeeping | 10 | 3 | 7 | 7 | 3 | 0 | 0 |
+| K | Startup and housekeeping | 11 | 4 | 7 | 7 | 4 | 0 | 0 |
 | L | Keep | 12 | 4 | 8 | 8 | 4 | 0 | 0 |
 | M | Message lifecycle | 3 | 3 | 0 | 0 | 3 | 0 | 0 |
 | N | Tool calling | 52 | 24 | 28 | 28 | 24 | 0 | 0 |
-| | **Total** | **233** | **77** | **156** | **156** | **77** | **0** | **0** |
+| | **Total** | **234** | **78** | **156** | **156** | **78** | **0** | **0** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off. "Log card" means a card in #bot-log.
@@ -52,8 +52,8 @@ off. "Log card" means a card in #bot-log.
 |---|---|---|---|---|---|---|
 | A1 | 👤 Manual | Type `ping` | "🏓 Pong!" stays; your `ping` is deleted; log card | ⬜ Untested | | |
 | A2 | 👤 Manual | Type `stats` (and `stat`) | All-time stats card stays; your word is deleted | ⬜ Untested | | |
-| A3 | 👤 Manual | Type `help` | List of what works in this channel, grouped by skill, including Dev | ⬜ Untested | | |
-| A4 | 🤖 Auto | `help <skill>` and `help <word>` | The skill in full; one word with aliases, examples, where it works and its permission | ✅ Pass | 2026-10-07 | `tests/test_registry.py` |
+| A3 | 👤 Manual | Type `help` | List of what works in this channel, grouped by task, including Dev | ⬜ Untested | | |
+| A4 | 🤖 Auto | `help <task>` and `help <word>` | The task in full; one word with aliases, examples, where it works and its permission | ✅ Pass | 2026-10-07 | `tests/test_registry.py` |
 | A5 | 🤖 Auto | `help` outside #inbox | Lists only what works in that channel; no #inbox-only words | ✅ Pass | 2026-10-07 | `tests/test_registry.py` |
 | A6 | 🤖 Auto | `statss` (one-letter typo, 5+ letters) | Read as `stats`, and flagged as corrected | ✅ Pass | 2026-10-07 | `tests/test_router.py, test_registry.py` |
 | A7 | 🤖 Auto | `stats please` | Not a command: the whole message must be the phrase | ✅ Pass | 2026-10-07 | `tests/test_router.py` |
@@ -234,7 +234,7 @@ Any channel. Check the bot's status in the member list.
 | J16 | 👤 Manual | Panel buttons: **+1 hour**, **Reset**, **Disable** | Expiry moves out an hour; settings reset; dev mode off as in J3 | ⬜ Untested | | |
 | J17 | 👤 Manual | Add 📌 to a message, wait for its ✅, then reply `dev inspect` to it | Lifecycle: Protected…; Pinned: yes; Protected from clean-up: pinned; Kept: yes; "Reactions on it" lists 📌 and ✅; Reactions applied: 📌; Archive record: none | ⬜ Untested | | |
 | J18 | 👤 Manual | Reply `dev inspect` to an archived copy in #archive | Archive record line shows where it came from and when | ⬜ Untested | | |
-| J19 | 👤 Manual | `dev jobs` | Pending jobs with id, skill/kind and due time, including the nightly backup | ⬜ Untested | | |
+| J19 | 👤 Manual | `dev jobs` | Pending jobs with id, task/kind and due time, including the nightly backup | ⬜ Untested | | |
 | J20 | 👤 Manual | `dev run backup`; then `dev run sweep` | "💾 Backup saved" log card and a new file in `data/backups/`; sweep gets ⚠️ with "not built" on the log card | ⬜ Untested | | |
 | J21 | 👤 Manual | `timer 10m`, then `dev fire next` | The timer finishes at once; confirmation names the job | ⬜ Untested | | |
 | J22 | 👤 Manual | `dev seed 3`, then `dev clean` | Three sample messages tagged "🧪 dev test data", and a "🌱 Seeded 3…" line that stays (it is not a 5-second confirmation); clean removes them all, with any `dev inspect` / `dev jobs` output | ⬜ Untested | | |
@@ -242,7 +242,7 @@ Any channel. Check the bot's status in the member list.
 | J24 | 👤 Manual | `dev on`, restart the bot | Dev mode is off: normal debounce, no status; the old panel is removed at startup; a button on any panel left behind removes it | ⬜ Untested | | |
 | J25 | 🤖 Auto | Dev defaults, on / off / reset, expiry | Off gives normal values; on gives 2s, 1x, verbose, quiet ignored for 1 hour; settings only count while on | ✅ Pass | 2026-10-07 | `tests/test_devmode.py` |
 | J26 | 🤖 Auto | Dev setting values | `60`, `2.5`, `2s`, `60x`, `on`, `off` read correctly; out-of-range and nonsense refused with the usage, changing nothing | ✅ Pass | 2026-10-07 | `tests/test_devmode.py, test_dev_parsing.py` |
-| J27 | 🤖 Auto | Speed arithmetic and `dev run` tasks | 25m at 60x is 25 real seconds, and back; unknown and unbuilt tasks refused | ✅ Pass | 2026-10-07 | `tests/test_devmode.py` |
+| J27 | 🤖 Auto | Speed arithmetic and `dev run` routines | 25m at 60x is 25 real seconds, and back; unknown and unbuilt routines refused | ✅ Pass | 2026-10-07 | `tests/test_devmode.py` |
 | J28 | 👤 Manual | `dev cleanup off`, then a setting word such as `dev debounce 3`; then `dev cleanup on` | Panel shows clean-up off; your words and their confirmations stay on screen; after `dev cleanup on` they are tidied away again as normal | ⬜ Untested | |  |
 | J29 | 👤 Manual | Reply `dev inspect` to a timer's alert, and to a running timer's message | The card's Lifecycle line says Alert for the first and Live for the second, each with what happens to it | ⬜ Untested | |  |
 | J30 | 👤 Manual | `dev off` when dev mode is already off | "🛠️ Dev mode is already off." for 5 seconds; your word is deleted; no ⚠️ | ⬜ Untested | |  |
@@ -253,16 +253,17 @@ Any channel. Check the bot's status in the member list.
 
 | ID | Type | Test | Expected result | Status | Date | Notes |
 |---|---|---|---|---|---|---|
-| K1 | 👤 Manual | Start the bot | "👋 Online and ready" in #inbox; "🟢 Bot started" log card listing skills and synced slash commands, with no ⚠️ fields | ⬜ Untested | | |
+| K1 | 👤 Manual | Start the bot | "👋 Online and ready" in #inbox; "🟢 Bot started" log card listing tasks and synced slash commands, with no ⚠️ fields | ⬜ Untested | | |
 | K2 | 👤 Manual | Start a second copy while one is running | The second logs an error and exits; no double replies | ⬜ Untested | | |
 | K3 | 👤 Manual | Have another account message the bot and react 📦 | Ignored completely | ⬜ Untested | | |
 | K4 | 👤 Manual | Make a word fail (e.g. `timer banana`) | Your message stays with ⚠️; details only on the log card | ⬜ Untested | | |
 | K5 | 👤 Manual | Leave the bot running past 3am NZ | "💾 Backup saved" log card; newest 7 `assistant-*.db` kept | ⬜ Untested | | |
 | K6 | 👤 Manual | Stop the bot over 3am, start it later | The missed backup runs at startup | ⬜ Untested | | |
 | K7 | 🤖 Auto | Permissions | Only the owner is allowed anything; someone else marked owner is demoted at startup; lookups are cached | ✅ Pass | 2026-10-07 | `tests/test_permissions.py` |
-| K8 | 🤖 Auto | Registrations | Every skill loads; every word, reply action and reaction has a description, an example, a channel and a permission | ✅ Pass | 2026-10-07 | `tests/test_registry.py` |
+| K8 | 🤖 Auto | Registrations | Every task loads; every word, reply action and reaction has a description, an example, a channel and a permission | ✅ Pass | 2026-10-07 | `tests/test_registry.py` |
 | K9 | 🤖 Auto | Scheduler | Jobs run when due, late ones at startup flagged late, interrupted ones recovered; the nightly backup books its successor | ✅ Pass | 2026-10-07 | `tests/test_scheduler.py` |
 | K10 | 👤 Manual | Set `ASSISTANT_NAME=Marvin` in `.env`, restart, `buttons` and press **Wave** | "👋 Hello from Marvin!"; Claude also gives that name when asked | ⬜ Untested | | Needs a restart with the setting changed; skip otherwise |
+| K11 | 🤖 Auto | Which tasks are loaded | `ENABLED_TASKS` lists them (any case, spaces ignored); if it is empty the old `ENABLED_SKILLS` is read instead, so an `.env` from before the rename still works; the new name wins; neither set loads them all | ✅ Pass | 2026-10-09 | `tests/test_registry.py` |
 
 ## L. Keep
 
@@ -276,7 +277,7 @@ alone, and archive and delete ask first (E8). Replying `pin` pins at once.
 | L3 | 👤 Manual | React 📌 and remove it within the wait | Nothing happens: not pinned, no ✅ | ⬜ Untested | | |
 | L4 | 👤 Manual | Keep a message, restart the bot, then remove your 📌 | Unpinned and its ✅ removed after the wait | ⬜ Untested | | |
 | L5 | 👤 Manual | React 📌 in a channel that is at Discord's pin limit; then unpin one, take the 📌 off and add it again | The message gets ⚠️, isn't pinned and nothing is said in the channel; the log card says the channel is full and what to do. The second time it is pinned, and ✅ replaces the ⚠️ | ⬜ Untested | | Needs a full channel; skip if there isn't one |
-| L6 | 🤖 Auto | The 📌 registration | A reaction of the keep skill, any channel, not destructive, with an undo; every reaction that leaves its message can be undone | ✅ Pass | 2026-10-07 | `tests/test_keep.py, test_registry.py` |
+| L6 | 🤖 Auto | The 📌 registration | A reaction of the keep task, any channel, not destructive, with an undo; every reaction that leaves its message can be undone | ✅ Pass | 2026-10-07 | `tests/test_keep.py, test_registry.py` |
 | L7 | 🤖 Auto | Keeping and unkeeping | Keeping pins, unkeeping unpins; unkeeping a message that has gone is fine; a message counts as kept once 📌 is applied | ✅ Pass | 2026-10-07 | `tests/test_keep.py` |
 | L8 | 🤖 Auto | Discord refuses to pin or unpin | Pin limit, message gone, kind of message that can't be pinned, no permission: each fails with a reason the user can act on | ✅ Pass | 2026-10-07 | `tests/test_keep.py` |
 | L9 | 👤 Manual | Reply `pin` to a message | Pinned at once (no wait); your reply is deleted; "📌 Pinned" for 5 seconds; no "pinned a message" notice left behind | ⬜ Untested | |  |
@@ -292,9 +293,9 @@ by J28 and J29.
 
 | ID | Type | Test | Expected result | Status | Date | Notes |
 |---|---|---|---|---|---|---|
-| M1 | 🤖 Auto | The policy and which class a message is | Kept and Protected are never auto-deleted; the others may be once their information lives elsewhere; protection wins, then what a skill declares, then transient, then command; anything else is Kept | ✅ Pass | 2026-10-07 | `tests/test_lifecycle.py` |
+| M1 | 🤖 Auto | The policy and which class a message is | Kept and Protected are never auto-deleted; the others may be once their information lives elsewhere; protection wins, then what a task declares, then transient, then command; anything else is Kept | ✅ Pass | 2026-10-07 | `tests/test_lifecycle.py` |
 | M2 | 🤖 Auto | Confirmations, notes and command messages | Self-delete after `CONFIRMATION_SECONDS` and the command is removed; with clean-up off they all stay; lasting replies never get a lifetime | ✅ Pass | 2026-10-07 | `tests/test_lifecycle.py` |
-| M3 | 🤖 Auto | What the timers skill declares | A running timer or session is Live, its alert is an Alert, and a finished one's summary is ordinary Kept content | ✅ Pass | 2026-10-07 | `tests/test_lifecycle.py` |
+| M3 | 🤖 Auto | What the timers task declares | A running timer or session is Live, its alert is an Alert, and a finished one's summary is ordinary Kept content | ✅ Pass | 2026-10-07 | `tests/test_lifecycle.py` |
 
 ## N. Tool calling
 

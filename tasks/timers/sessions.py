@@ -1,0 +1,476 @@
+import logging
+import re
+from datetime import datetime, timedelta, timezone
+
+import discord
+
+from core import confirmations, devmode, live, scheduler
+from core.config import POMO_AUTO_CONTINUE, TIMEZONE, now_nz
+from core.context import Context
+from core.discord_utils import report_interaction_error
+from core.errors import UserError
+from core.lifecycle import MessageClass
+from core.scheduler import utc_now
+from tasks.timers import board, status, store
+from tasks.timers.board import stamp
+from tasks.timers.common import (
+    PING,
+    TASK,
+    channel_for,
+    delete_message,
+    edit_message,
+    log_press,
+    mention,
+    owner_pressed,
+)
+from tasks.timers.durations import DurationError, format_duration
+from tasks.timers.pomodoro import (
+    DEFAULT_LABEL,
+    FOCUS,
+    PHASE_NAMES,
+    POINT,
+    FocusTotals,
+    counts_as_focus,
+    different_lengths,
+    next_phase,
+    parse_session,
+    phase_length,
+    resumed_end,
+    starts_by_itself,
+    summarise_focus,
+    week_start,
+    where_to_show,
+)
+
+log = logging.getLogger("assistant")
+
+JOB_KIND = "pomo_phase_due"
+USAGE = "Usage: `pomo [focus/break[/long break]] [auto|manual] [label]`, e.g. `pomo 50/10 writing`."
+
+
+# ---------------------------------------------------------------------------
+# The session card: one message per session, edited in place
+# ---------------------------------------------------------------------------
+def _where(session: store.Session) -> str:
+    return f"{PHASE_NAMES[session.phase]} · round {session.round} of {session.rounds}"
+
+
+def render_card(session: store.Session) -> str:
+    title = f"**{session.label}**"
+    if session.state == store.RUNNING:
+        return (
+            f"🍅 {title} · {_where(session)}\n"
+            f"Ends {stamp(session.ends_at)} ({stamp(session.ends_at, 't')})"
+        )
+    if session.state == store.PAUSED:
+        return f"⏸️ {title} · {_where(session)}\nPaused with {format_duration(session.remaining_s)} left"
+    if session.state == store.WAITING:
+        length = format_duration(phase_length(session.plan, session.phase))
+        return f"🍅 {title} · {_where(session)}\n{PHASE_NAMES[session.phase]} ({length}) is next. Press **Start** when you're ready."
+    done = f"{session.focus_rounds} focus round{'' if session.focus_rounds == 1 else 's'}"
+    return f"⏹️ {title} · stopped after {done} ({format_duration(session.focus_seconds)} of focus)"
+
+
+BUTTONS = {
+    "ok": ("OK", "👍", discord.ButtonStyle.secondary),
+    "pause": ("Pause", "⏸️", discord.ButtonStyle.secondary),
+    "resume": ("Resume", "▶️", discord.ButtonStyle.success),
+    "start": ("Start", "▶️", discord.ButtonStyle.success),
+    "skip": ("Skip", "⏭️", discord.ButtonStyle.secondary),
+    "stop": ("Stop", "⏹️", discord.ButtonStyle.danger),
+}
+
+
+def _view(session_id: int, actions: list[str]) -> discord.ui.View:
+    view = discord.ui.View(timeout=None)
+    for action in actions:
+        view.add_item(SessionButton(session_id, action))
+    return view
+
+
+def card_view(session: store.Session) -> discord.ui.View | None:
+    """The card's buttons for the state it is in. Always the complete set."""
+    first = {store.RUNNING: "pause", store.PAUSED: "resume", store.WAITING: "start"}.get(session.state)
+    if first is None:
+        return None  # stopped: no buttons
+    return _view(session.id, [first, "skip", "stop"])
+
+
+async def _update_card(session: store.Session) -> None:
+    await edit_message(
+        session.channel_id, session.message_id, content=render_card(session), view=card_view(session)
+    )
+
+
+def _show_soon(session_id: int) -> None:
+    """Rewrite a session's card in the background, from what is saved by then
+    (core/live.py)."""
+
+    async def show() -> None:
+        session = await store.get_session(session_id)
+        if session is not None:
+            await _update_card(session)
+
+    live.schedule(("session", session_id), show)
+
+
+async def _changed(session: store.Session) -> None:
+    """Save a session and bring its card and the channel's board up to date."""
+    await store.save_session(session)
+    _show_soon(session.id)
+    await board.refresh(session.channel_id, session.user_id)
+
+
+# ---------------------------------------------------------------------------
+# Moving through the phases
+# ---------------------------------------------------------------------------
+async def _clear_notice(session: store.Session) -> None:
+    await delete_message(session.channel_id, session.notice_message_id)
+    session.notice_message_id = None
+
+
+async def _notify(session: store.Session, text: str, actions: list[str]) -> None:
+    """@mention the user about a phase change, replacing the previous notice."""
+    await _clear_notice(session)
+    channel = channel_for(session.channel_id)
+    if channel is None:
+        return
+    try:
+        notice = await channel.send(
+            f"🍅 {mention(session.discord_user_id)} {text}",
+            view=_view(session.id, actions),
+            allowed_mentions=PING,
+        )
+        session.notice_message_id = notice.id
+    except discord.HTTPException as error:
+        log.warning("Could not post the phase notice for session %s: %s", session.id, error)
+
+
+async def _begin_phase(session: store.Session, seconds: float | None = None) -> None:
+    """Start the clock on the session's current phase, with a job for when it ends."""
+    await scheduler.cancel_job(session.job_id)
+    if seconds is None:
+        seconds = phase_length(session.plan, session.phase)
+    session.state = store.RUNNING
+    # Dev mode can make the clock run faster; the phase keeps its stated length,
+    # and the session remembers the speed this phase was set going at
+    session.speed = devmode.speed()
+    session.ends_at = utc_now() + timedelta(seconds=seconds / session.speed)
+    session.remaining_s = None
+    session.job_id = await scheduler.add_job(
+        TASK, JOB_KIND, session.ends_at, {"session_id": session.id}, session.user_id
+    )
+
+
+async def _log_phase(session: store.Session, event: str = store.PHASE_STARTED) -> None:
+    await store.log_event(
+        session, event, session.left(utc_now()), f"{PHASE_NAMES[session.phase]}, round {session.round}"
+    )
+
+
+def _advance(session: store.Session) -> str:
+    """Move the session on to its next phase. Returns the name of the one just left."""
+    left = PHASE_NAMES[session.phase]
+    session.phase, session.round = next_phase(session.plan, session.phase, session.round)
+    return left
+
+
+async def on_due(job: scheduler.Job) -> None:
+    """A phase ran to its end (called by the scheduler)."""
+    session = await store.get_session(job.payload["session_id"])
+    # Paused, skipped or stopped since this job was booked: nothing to do
+    if session is None or session.state != store.RUNNING or session.job_id != job.id:
+        return
+
+    if counts_as_focus(session.phase, completed=True):
+        session.focus_rounds += 1
+        session.focus_seconds += session.focus_s
+        # A sped-up round isn't real focus time: keep it out of the stats
+        if session.speed == 1:
+            await store.log_focus(session, session.focus_s)
+    finished_round = session.round
+    await store.log_event(session, store.PHASE_FINISHED, 0, f"{PHASE_NAMES[session.phase]}, round {session.round}")
+    left = _advance(session)
+    session.job_id = None
+    upcoming = PHASE_NAMES[session.phase]
+    length = format_duration(phase_length(session.plan, session.phase))
+    headline = f"**{left} done** (round {finished_round} of {session.rounds})."
+
+    if starts_by_itself(session.auto_continue, job.is_late):
+        await _begin_phase(session)
+        await _log_phase(session)
+        await _notify(
+            session, f"{headline} {upcoming} ({length}) has started, ends {stamp(session.ends_at)}.", ["ok", "skip"]
+        )
+    else:
+        session.state, session.ends_at = store.WAITING, None
+        late = f"\n-# It ended {stamp(job.due_at)}, while I was offline." if job.is_late else ""
+        await _notify(session, f"{headline} {upcoming} ({length}) is next.{late}", ["start", "skip"])
+    await _changed(session)
+
+
+# ---------------------------------------------------------------------------
+# pomo [...]
+# ---------------------------------------------------------------------------
+async def show_again(ctx: Context, session: store.Session, restart=None, asked: str | None = None) -> str:
+    """`pomo` while a session is going: bring its card to the bottom of its channel,
+    or point to it from another channel. Nothing about the session changes.
+
+    If other lengths were asked for (`asked`, as typed), the note under the
+    card becomes a question: Confirm runs `restart`, which stops this session
+    and starts one with those lengths."""
+
+    async def offer() -> None:
+        going = status.lengths_text(session)
+        await confirmations.ask(
+            ctx.channel, ctx.user, f"🍅 **{session.label}** is already going at {going}. Restart it as `{asked}`?", restart
+        )
+
+    if where_to_show(session.channel_id, ctx.channel_id) == POINT:
+        guild_id = getattr(getattr(ctx.channel, "guild", None), "id", "@me")
+        link = f"https://discord.com/channels/{guild_id}/{session.channel_id}/{session.message_id}"
+        await ctx.confirm(f"🍅 **{session.label}** is already going in <#{session.channel_id}>: {link}")
+        if asked:
+            await offer()
+        return f"pomodoro {session.id} already going; pointed to its card"
+
+    old_card = session.message_id
+    message = await ctx.reply(render_card(session), view=card_view(session))
+    session.message_id = message.id
+    await store.save_session(session)
+    # The old card's information is all on the new one
+    await delete_message(session.channel_id, old_card, MessageClass.LIVE)
+    if asked:
+        await offer()
+        return f"pomodoro {session.id} already going; card shown again, and asked whether to restart as {asked}"
+    await ctx.note("-# Already going: here it is again. Stop it first to start a new one.")
+    return f"pomodoro {session.id} already going; card shown again"
+
+
+def already_going(session: store.Session, asked: str | None, here: int | None) -> str:
+    """What Claude is told when it asks for a session while one is going. Nothing
+    is posted: it has the facts and says them once."""
+    text = (
+        "Not started: a Pomodoro session is already going, and it has been left as it is. "
+        f"{status.session_text(session, utc_now(), here=here)}. "
+        "Nothing was posted, so tell the user this yourself, in a line."
+    )
+    if asked:
+        text += (
+            f" The user asked for {asked}, which is not what this session has: offer to restart it "
+            f"with those lengths. Only if they say yes, call pomodoro_control with action stop for "
+            f"{status.ref(status.SESSION, session.id)}, then pomo again."
+        )
+    return text
+
+
+async def start(ctx: Context) -> str:
+    try:
+        plan, label, auto = parse_session(ctx.args)
+    except DurationError as error:
+        raise UserError(f"{error} {USAGE}")
+    running = await store.active_sessions(user_id=ctx.user.id)
+    if running:
+        session = running[0]
+        asked = different_lengths(ctx.args, session.plan)
+        if ctx.via_tool:
+            # Claude is answering: one reply from it, not a second card and a note as well
+            raise UserError(already_going(session, asked, ctx.channel_id))
+
+        async def restart() -> str:
+            # The same session under new lengths: it keeps its label unless a new one was typed
+            stopped = await store.get_session(session.id)
+            if stopped is not None and stopped.active:
+                await stop(stopped)
+            await _start_new(ctx, plan, session.label if label == DEFAULT_LABEL else label, auto)
+            return f"🍅 Restarted as {asked}"
+
+        # One session at a time, and asking again isn't a mistake: show the one there is
+        return await show_again(ctx, session, restart, asked)
+    return await _start_new(ctx, plan, label, auto)
+
+
+async def _start_new(ctx: Context, plan, label: str, auto: bool | None) -> str:
+    session = await store.add_session(
+        store.Session(
+            user_id=ctx.user.id,
+            discord_user_id=ctx.author.id,
+            channel_id=ctx.channel_id,
+            label=label[:80],
+            focus_s=plan.focus_s,
+            short_s=plan.short_s,
+            long_s=plan.long_s,
+            rounds=plan.rounds,
+            auto_continue=POMO_AUTO_CONTINUE if auto is None else auto,
+            phase=FOCUS,
+        )
+    )
+    await _begin_phase(session)
+    message = await ctx.reply(render_card(session), view=card_view(session))
+    session.message_id = message.id
+    await store.save_session(session)
+    await _log_phase(session, store.STARTED)
+    await board.refresh(session.channel_id, session.user_id)
+    lengths = "/".join(format_duration(s) for s in (plan.focus_s, plan.short_s, plan.long_s))
+    return f"started pomodoro {session.id}: {session.label}, {lengths}, {'auto' if session.auto_continue else 'manual'}"
+
+
+# ---------------------------------------------------------------------------
+# Changing a session (buttons and reply actions)
+# ---------------------------------------------------------------------------
+async def press_start(session: store.Session) -> str:
+    if session.state != store.WAITING:
+        raise UserError("That phase has already started.")
+    await _clear_notice(session)
+    await _begin_phase(session)
+    await _log_phase(session)
+    await _changed(session)
+    return f"▶️ {PHASE_NAMES[session.phase]} started"
+
+
+async def skip(session: store.Session) -> str:
+    """Skip the phase that is running (it isn't logged), or the one waiting to start."""
+    if not session.active:
+        raise UserError("That session has ended.")
+    await store.log_event(session, store.SKIPPED, session.left(utc_now()), f"{PHASE_NAMES[session.phase]}, round {session.round}")
+    left = _advance(session)
+    await _clear_notice(session)
+    await _begin_phase(session)
+    await _log_phase(session)
+    await _changed(session)
+    return f"⏭️ Skipped {left.lower()}; {PHASE_NAMES[session.phase].lower()} started"
+
+
+async def pause(session: store.Session) -> str:
+    if session.state != store.RUNNING:
+        raise UserError("The session isn't running, so it can't be paused.")
+    await scheduler.cancel_job(session.job_id)
+    # Frozen in the session's own seconds, by the speed the phase was running at
+    session.remaining_s = session.left(utc_now())
+    session.state, session.ends_at, session.job_id = store.PAUSED, None, None
+    await store.log_event(session, store.WAS_PAUSED, session.remaining_s, f"{PHASE_NAMES[session.phase]}, round {session.round}")
+    await _changed(session)
+    return f"⏸️ Paused: {session.label} ({format_duration(session.remaining_s)} left)"
+
+
+async def resume(session: store.Session) -> str:
+    if session.state == store.WAITING:
+        return await press_start(session)
+    if session.state != store.PAUSED:
+        raise UserError("The session isn't paused.")
+    left = session.remaining_s
+    await _begin_phase(session, left)
+    await store.log_event(session, store.RESUMED, left, f"{PHASE_NAMES[session.phase]}, round {session.round}")
+    await _changed(session)
+    return f"▶️ Resumed: {session.label} ({format_duration(left)} left)"
+
+
+async def extend(session: store.Session, seconds: int) -> str:
+    if session.state == store.PAUSED:
+        session.remaining_s += seconds
+    elif session.state == store.RUNNING:
+        session.ends_at = resumed_end(session.ends_at, seconds / session.speed)
+        if not await scheduler.reschedule_job(session.job_id, session.ends_at):
+            session.job_id = await scheduler.add_job(
+                TASK, JOB_KIND, session.ends_at, {"session_id": session.id}, session.user_id
+            )
+    else:
+        raise UserError("Press Start first: there is no phase running to add time to.")
+    await store.log_event(session, store.EXTENDED, session.left(utc_now()), f"+{format_duration(seconds)}")
+    await _changed(session)
+    return f"➕ Added {format_duration(seconds)} to this {PHASE_NAMES[session.phase].lower()}"
+
+
+async def stop(session: store.Session) -> str:
+    if not session.active:
+        raise UserError("That session has already ended.")
+    await scheduler.cancel_job(session.job_id)
+    await _clear_notice(session)
+    await store.log_event(session, store.WAS_STOPPED, session.left(utc_now()))
+    session.state, session.ends_at, session.remaining_s, session.job_id = store.STOPPED, None, None, None
+    await _changed(session)
+    return f"⏹️ Stopped: {session.label}"
+
+
+async def acknowledge(session: store.Session) -> str:
+    """The phase-change alert has been seen: clear it away. The card carries on as it is."""
+    if session.notice_message_id is None:
+        raise UserError("There is no alert to acknowledge.")
+    await _clear_notice(session)
+    await _changed(session)
+    return "👍 Noted"
+
+
+ACTIONS = {
+    "ok": acknowledge,
+    "pause": pause,
+    "resume": resume,
+    "start": press_start,
+    "skip": skip,
+    "stop": stop,
+}
+
+
+class SessionButton(
+    discord.ui.DynamicItem[discord.ui.Button],
+    template=r"timers:p:(?P<id>\d+):(?P<action>ok|pause|resume|start|skip|stop)",
+):
+    """A button on a session card or phase notice. Its id carries the session's id,
+    so it works after a restart."""
+
+    def __init__(self, session_id: int, action: str):
+        label, emoji, style = BUTTONS[action]
+        super().__init__(
+            discord.ui.Button(label=label, emoji=emoji, style=style, custom_id=f"timers:p:{session_id}:{action}")
+        )
+        self.session_id = session_id
+        self.action = action
+
+    @classmethod
+    async def from_custom_id(cls, interaction: discord.Interaction, item, match: re.Match[str], /):
+        return cls(int(match["id"]), match["action"])
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        try:
+            session = await store.get_session(self.session_id)
+            if session is None or not await owner_pressed(interaction, session.user_id):
+                return
+            # Answer straight away; the action edits the card and notices itself
+            await interaction.response.defer()
+            try:
+                outcome = await ACTIONS[self.action](session)
+            except UserError as error:
+                # A stale button (the state moved on): just put the card right
+                outcome = f"not done: {error}"
+                await _update_card(session)
+                if interaction.message.id != session.message_id:
+                    await delete_message(session.channel_id, interaction.message.id)
+            await log_press(interaction, f"pomodoro button: {self.action}", outcome)
+        except Exception as error:
+            await report_interaction_error(interaction, error, f"Pomodoro button failed: {self.action}")
+
+
+# ---------------------------------------------------------------------------
+# pomo stats
+# ---------------------------------------------------------------------------
+def _totals_lines(title: str, totals: FocusTotals) -> list[str]:
+    if totals.sessions == 0:
+        return [f"**{title}:** nothing yet"]
+    rounds = f"{totals.sessions} round{'' if totals.sessions == 1 else 's'}"
+    lines = [f"**{title}:** {format_duration(totals.seconds)} of focus in {rounds}"]
+    lines += [f"• {label}: {format_duration(seconds)}" for label, seconds in totals.by_label[:5]]
+    return lines
+
+
+def render_stats(today: FocusTotals, week: FocusTotals) -> str:
+    return "\n".join(["🍅 **Focus stats**", *_totals_lines("Today", today), *_totals_lines("This week", week)])
+
+
+async def stats(ctx: Context) -> str:
+    today = now_nz().date()
+    # Midnight on Monday in NZ, as a moment
+    since = datetime.combine(week_start(today), datetime.min.time(), tzinfo=TIMEZONE).astimezone(timezone.utc)
+    log_rows = await store.focus_log(ctx.user.id, since)
+    today_totals, week_totals = summarise_focus(log_rows, today, TIMEZONE)
+    await ctx.reply(render_stats(today_totals, week_totals))
+    return f"focus today {format_duration(today_totals.seconds)}, this week {format_duration(week_totals.seconds)}"

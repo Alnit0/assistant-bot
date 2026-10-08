@@ -13,7 +13,7 @@ log = logging.getLogger("assistant")
 
 # ---------------------------------------------------------------------------
 # Shared plumbing for slash commands and context menus: who may use them, and
-# logging each use to message_log and #bot-log. A skill calls check_allowed and
+# logging each use to message_log and #bot-log. A task calls check_allowed and
 # begin from its command check; main.py calls finish or fail when the command
 # ends. Slash commands are the fallback way in: most things are keywords.
 # ---------------------------------------------------------------------------

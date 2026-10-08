@@ -18,7 +18,7 @@ log = logging.getLogger("assistant")
 # Never edit, reorder or remove a migration that has already run somewhere, and
 # keep each one self-contained (plain SQL, no helpers that may change later).
 #
-# Skills have their own lists (Skill.migrations()), tracked separately per skill
+# Tasks have their own lists (Task.migrations()), tracked separately per task
 # in the skill_migrations table and applied after the core ones.
 # ---------------------------------------------------------------------------
 
@@ -81,7 +81,7 @@ def _add_user_id_to_message_log(conn: sqlite3.Connection) -> None:
 
 
 def _create_skill_migrations(conn: sqlite3.Connection) -> None:
-    # How many of each skill's own migrations have been applied
+    # How many of each task's own migrations have been applied
     conn.execute(
         """
         CREATE TABLE skill_migrations (
@@ -152,7 +152,7 @@ def _apply(conn: sqlite3.Connection, migration, record_sql: str, record_values: 
         raise
 
 
-def _skill_versions(conn: sqlite3.Connection) -> dict[str, int]:
+def _task_versions(conn: sqlite3.Connection) -> dict[str, int]:
     # The table itself arrives with core migration 4
     exists = conn.execute(
         "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'skill_migrations'"
@@ -162,13 +162,13 @@ def _skill_versions(conn: sqlite3.Connection) -> dict[str, int]:
     return dict(conn.execute("SELECT skill, version FROM skill_migrations").fetchall())
 
 
-def migrate(skill_migrations: dict[str, list] | None = None) -> None:
-    """Apply any core and skill migrations the database hasn't had yet.
+def migrate(task_migrations: dict[str, list] | None = None) -> None:
+    """Apply any core and task migrations the database hasn't had yet.
 
-    skill_migrations maps each loaded skill's name to its ordered list of
+    task_migrations maps each loaded task's name to its ordered list of
     migrations. Blocking: runs at startup, before the event loop.
     """
-    skill_migrations = skill_migrations or {}
+    task_migrations = task_migrations or {}
     conn = connect()
     try:
         # Manage transactions by hand, so schema changes can be rolled back too
@@ -180,17 +180,17 @@ def migrate(skill_migrations: dict[str, list] | None = None) -> None:
                 f"Database is at version {current} but this code only knows "
                 f"{len(MIGRATIONS)} migrations. Is the code out of date?"
             )
-        skill_versions = _skill_versions(conn)
-        for name, migrations in skill_migrations.items():
-            if skill_versions.get(name, 0) > len(migrations):
+        task_versions = _task_versions(conn)
+        for name, migrations in task_migrations.items():
+            if task_versions.get(name, 0) > len(migrations):
                 raise RuntimeError(
-                    f"Skill {name} is at version {skill_versions[name]} in the database but "
+                    f"Task {name} is at version {task_versions[name]} in the database but "
                     f"its code only has {len(migrations)} migrations. Is the code out of date?"
                 )
 
         pending = current < len(MIGRATIONS) or any(
-            skill_versions.get(name, 0) < len(migrations)
-            for name, migrations in skill_migrations.items()
+            task_versions.get(name, 0) < len(migrations)
+            for name, migrations in task_migrations.items()
         )
         if not pending:
             return
@@ -207,8 +207,8 @@ def migrate(skill_migrations: dict[str, list] | None = None) -> None:
             _apply(conn, migration, f"PRAGMA user_version = {version}")
             log.info("Applied migration %s: %s", version, migration.__name__.lstrip("_"))
 
-        for name, migrations in skill_migrations.items():
-            for version in range(skill_versions.get(name, 0) + 1, len(migrations) + 1):
+        for name, migrations in task_migrations.items():
+            for version in range(task_versions.get(name, 0) + 1, len(migrations) + 1):
                 migration = migrations[version - 1]
                 _apply(
                     conn,

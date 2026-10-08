@@ -20,7 +20,8 @@ for name, value in {
     # Optional settings too, so a test never passes or fails because of the real .env
     "CLAUDE_MODEL": "claude-haiku-4-5",
     "ASSISTANT_NAME": "",
-    "ENABLED_SKILLS": "",
+    "ENABLED_TASKS": "",
+    "ENABLED_SKILLS": "",  # the old name, still read as a fallback
     "CONFIRMATION_SECONDS": "",
     "REACTION_DEBOUNCE": "",
     "POMO_AUTO_CONTINUE": "",

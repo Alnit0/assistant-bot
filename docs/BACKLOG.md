@@ -1,7 +1,7 @@
 # Backlog
 
 Things found and not yet finished: failed manual tests (copied here by the
-`qa` skill), and anything noticed during a task and left for later. Remove
+`qa` skill), and anything noticed while working on something else and left for later. Remove
 an item once it is fixed and its tests pass.
 
 ## Fixed in code, waiting for a manual retest

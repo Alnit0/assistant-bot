@@ -12,7 +12,7 @@ A short log of key decisions and why. Newest at the bottom.
 - **Self-hosted on a home mini PC:** free, private, always on. Docker and a
   VPS are the path if it ever needs to move.
 - **NSSM for the Windows service:** simple, auto-start, auto-restart.
-- **Core + skills architecture (modular monolith):** scales in features
+- **Core + tasks architecture (modular monolith):** scales in features
   without distributed-system complexity.
 - **Multi-user ready, single-user deployed:** `user_id` everywhere and one
   permission check, nothing more until real users arrive.
@@ -42,16 +42,25 @@ A short log of key decisions and why. Newest at the bottom.
 - **Small in-memory scheduler for now:** daily jobs at a fixed NZ time, no
   catch-up for runs missed while the bot is down. To be replaced by stored
   schedules with recurrence rules when reminders arrive.
-- **A skill is a package in `skills/` exposing a `skill` object:** found by
+- **A task is a package in `tasks/` exposing a `task` object:** found by
   scanning the folder, so adding a feature needs no edits to the core.
-  `ENABLED_SKILLS` in `.env` narrows the list; empty means all.
-- **A skill that fails to load is skipped, not fatal:** the bot runs 24/7,
+  `ENABLED_TASKS` in `.env` narrows the list; empty means all.
+- **Features are "tasks", not "skills" (2026-10-09):** "skill" now means
+  one thing only, a Claude Code Skill in `.claude/skills/`; the two were
+  being confused. So `tasks/`, the `Task` base class, `ENABLED_TASKS` (the
+  old `ENABLED_SKILLS` is still read when the new one is empty). The
+  planned list of things to do is "to-dos", never "tasks". What `dev run`
+  runs became "routines", and nothing that holds an `asyncio.Task` is
+  named `task`. Names already in the database (`skill_migrations`, the
+  `skill` column of `scheduled_jobs`) stay: renaming them means a
+  migration for no change in behaviour.
+- **A task that fails to load is skipped, not fatal:** the bot runs 24/7,
   so one broken feature should not take the rest down. Problems are shown
   in the terminal and on the start card in #bot-log.
-- **Per-skill migration versions in a `skill_migrations` table:**
+- **Per-task migration versions in a `skill_migrations` table:**
   `PRAGMA user_version` can only hold one number, which stays with the core.
-  Skill tables are prefixed with the skill's name.
-- **Skills get a `Context`, not a `discord.Message`:** first step towards
+  Task tables are prefixed with the task's name.
+- **Tasks get a `Context`, not a `discord.Message`:** first step towards
   the gateway layer. Buttons still use Discord's view class directly until
   the confirmations work.
 - **Commands match the whole message exactly, for now:** keeps "ping me
@@ -59,10 +68,10 @@ A short log of key decisions and why. Newest at the bottom.
 - **Slash commands synced to one server, found from the inbox channel:**
   server commands update instantly (global ones can take an hour) and no
   extra setting is needed. Each start replaces the full list, so a disabled
-  skill's commands disappear.
-- **The lab skill may use discord.py directly:** its job is to try out what
+  task's commands disappear.
+- **The lab task may use discord.py directly:** its job is to try out what
   Discord can do before the gateway layer is designed, so hiding Discord
-  from it would defeat the point. Real skills still go through the context.
+  from it would defeat the point. Real tasks still go through the context.
 - **One global debouncer per use, not one timer per message:** matches how
   reactions come in (a burst across several messages) and lets the handler
   see the whole burst at once. The delay is set where it is created.
@@ -102,10 +111,10 @@ A short log of key decisions and why. Newest at the bottom.
 - **Reactions are debounced at 15 seconds, not 45:** this supersedes the
   45s in "Inbox hygiene" above. Long enough to undo a mis-tap by removing
   the reaction, short enough that 📦 doesn't feel broken.
-- **Archive is its own skill, and delete has no confirmation prompt:** they
+- **Archive is its own task, and delete has no confirmation prompt:** they
   are real features, so they shouldn't vanish when the lab is switched off.
   A typed reply or a 📦 from the owner is the confirmation; `delete` must be
-  spelled exactly. The skill uses discord.py directly until the gateway
+  spelled exactly. The task uses discord.py directly until the gateway
   layer exists.
 - **Commands clean up after themselves, and failures are quiet:** a typed
   word or reply that works is deleted, with a confirmation that removes
@@ -117,7 +126,7 @@ A short log of key decisions and why. Newest at the bottom.
   has been ignored. Urgent items use an @mention in their own channel
   instead. A DM is a short pointer with a jump link to the related server
   message, never the content itself, so actions and history stay in the
-  server. This refines "Notifications" above; no skill sends real
+  server. This refines "Notifications" above; no task sends real
   notifications yet, so it applies from the reminders work onwards.
 - **Claude's conversation history is per channel:** it was one shared list,
   which only worked because Claude chats in a single channel. Keyed by
@@ -133,7 +142,7 @@ A short log of key decisions and why. Newest at the bottom.
   came due while the bot was off runs at the next start, flagged late. The
   nightly backup is now such a job, so a backup missed at 3am runs at the
   next start. Recurrence is done by a job booking its successor; proper
-  recurrence rules wait for the reminders skill.
+  recurrence rules wait for the reminders task.
 - **Pomodoro phases wait for Start by default:** a break or focus round
   shouldn't be counted while you're away from the desk. `pomo auto` and
   `POMO_AUTO_CONTINUE` change that; after downtime it always waits.
@@ -146,11 +155,11 @@ A short log of key decisions and why. Newest at the bottom.
   messages as well as 📌-reacted ones.
 - **Unit tests use the standard library's `unittest`:** no new dependency,
   and logic worth testing is kept in modules that don't need Discord.
-- **Interaction rules written down once, for every skill:** `CLAUDE.md` now
+- **Interaction rules written down once, for every task:** `CLAUDE.md` now
   has an "Interaction rules" section (input, reactions, cleanliness,
   notifications, interactions). New work follows it, and it wins over
   earlier entries here where they differ.
-- **Rules amended after auditing the existing skills:** the reaction
+- **Rules amended after auditing the existing tasks:** the reaction
   debounce is 30 seconds by default (not the 15 or 45 above), as a
   `REACTION_DEBOUNCE` setting. Archive and delete can only be undone by
   removing the reaction within that window; after it, archived copies have
@@ -160,8 +169,8 @@ A short log of key decisions and why. Newest at the bottom.
   outlive the session it was for, so nothing is stored, a restart means off,
   and it expires by itself after an hour. The state is in `core/devmode.py`
   because the registry, scheduler and timers read it; the words, panel and
-  tools are a skill (`skills/dev/`) because `help` is generated from skills
-  and the core never imports from `skills/`. Callers ask for a value
+  tools are a task (`tasks/dev/`) because `help` is generated from tasks
+  and the core never imports from `tasks/`. Callers ask for a value
   (`devmode.reaction_debounce()`) and get the normal one when it is off.
 - **Dev speed changes the real wait, not the stated length:** a `25m` timer
   at 60x still says 25m and ends in 25 seconds. Focus rounds finished at any
@@ -178,7 +187,7 @@ A short log of key decisions and why. Newest at the bottom.
   Archive was split into `rules.py`, `store.py` and `messages.py` for this.
 - **Two chart renderers kept side by side in the lab:** QuickChart needs no
   heavy dependency but sends the numbers to a third party and can be down;
-  matplotlib is local and private but large. Pick one when a real skill
+  matplotlib is local and private but large. Pick one when a real task
   needs charts. Two measures get two charts, never one chart with two axes.
 - **One lifecycle policy decides what is deleted:** deletion was scattered
   (confirmations, command messages, alerts, the panel), so text worth
@@ -187,7 +196,7 @@ A short log of key decisions and why. Newest at the bottom.
   is in `CLAUDE.md`), and the rule is to delete only when the information
   lives somewhere else. Code that deletes by itself asks the policy, which
   is what lets `dev cleanup off` stop all of it. Classes are worked out
-  when asked (protection, what the owning skill declares, a short in-memory
+  when asked (protection, what the owning task declares, a short in-memory
   list of transient notes, `message_log`) rather than stored per message:
   no new table, at the cost of `dev inspect` forgetting Transient after a
   restart.
@@ -237,7 +246,7 @@ A short log of key decisions and why. Newest at the bottom.
   validated in code, so nothing is lost. `STRICT_TOOLS` in
   `core/config.py` turns it back on; the choosing code stays.
 - **What changes goes in the user turn, not the system prompt:** the
-  time and each skill's live state (`Skill.live_state`) are a note after
+  time and each task's live state (`Task.live_state`) are a note after
   the user's words, in the latest turn only and never in the history.
   The system prompt and tools are then the same bytes for every message
   (cached), and "pause the tea timer" needs no read first: the ids are
@@ -308,7 +317,7 @@ A short log of key decisions and why. Newest at the bottom.
   for a button and failing don't count as doing. The check is deliberately
   narrow, costs a request only when it fires, and each time it fires there
   is a card in #bot-log.
-- **Skills may give Claude tools that aren't words:** `Skill.tools()` is in
+- **Tasks may give Claude tools that aren't words:** `Task.tools()` is in
   use, for two things a typed word can't do: report state for Claude to put
   into words (posting it in the channel as well would say it twice), and
   act on a record by id. They run through `registry.run_tool` like every
@@ -360,7 +369,7 @@ A short log of key decisions and why. Newest at the bottom.
   account of an earlier message reads the same, so unlike "Done" it is
   never replaced if Claude repeats it. Read tools also end their result by
   saying nothing was changed, since the false report followed a read.
-- **`timers_events`, not `timer_events`:** skill tables carry the skill's
+- **`timers_events`, not `timer_events`:** task tables carry the task's
   name. One table for timers and sessions (`kind`, `record_id`), with the
   label and the time left copied in, so the history reads on its own after
   the timer has gone. Appended to, never edited; nothing prunes it yet.

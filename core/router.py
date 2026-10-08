@@ -7,7 +7,7 @@ from typing import Any
 #
 # Decides whether a message is one of the registered words or phrases (such as
 # "stats" or "lab chart") rather than something to chat about. Pure text
-# matching: it knows nothing about Discord or skills.
+# matching: it knows nothing about Discord or tasks.
 #
 # The rules, chosen so ordinary chat is never mistaken for a command:
 # - The whole message must be the phrase. Extra words are only accepted for

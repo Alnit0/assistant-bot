@@ -108,7 +108,7 @@ def _run(func, args: tuple):
 async def run(func, *args):
     """Run func(conn, *args) in a worker thread with its own connection, then commit.
 
-    For skills' own tables: func does the blocking SQLite work and returns the result.
+    For tasks' own tables: func does the blocking SQLite work and returns the result.
     """
     return await asyncio.to_thread(_run, func, args)
 

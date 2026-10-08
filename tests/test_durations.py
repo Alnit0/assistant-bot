@@ -1,6 +1,6 @@
 import unittest
 
-from skills.timers.durations import (
+from tasks.timers.durations import (
     DurationError,
     format_duration,
     parse_duration,

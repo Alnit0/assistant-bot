@@ -83,10 +83,19 @@ except ValueError:
 # Pomodoro: start each phase by itself (true), or wait for Start to be pressed (false)
 POMO_AUTO_CONTINUE = (os.getenv("POMO_AUTO_CONTINUE") or "").strip().lower() in ("1", "true", "yes", "on")
 
-# Skills to load: comma-separated names in .env, or None (empty or missing) for all
-ENABLED_SKILLS = [
-    name.strip().lower() for name in os.getenv("ENABLED_SKILLS", "").split(",") if name.strip()
-] or None
+def names_in(*values: str | None) -> list[str] | None:
+    """The comma-separated names in the first of `values` that has any, or None."""
+    for value in values:
+        names = [name.strip().lower() for name in (value or "").split(",") if name.strip()]
+        if names:
+            return names
+    return None
+
+
+# Tasks to load: comma-separated names in .env, or None (empty or missing) for all.
+# Tasks were called skills until 2026-10-09: the old setting is still read if the
+# new one is empty, so an existing .env goes on working
+ENABLED_TASKS = names_in(os.getenv("ENABLED_TASKS"), os.getenv("ENABLED_SKILLS"))
 
 # ---------------------------------------------------------------------------
 # Constants

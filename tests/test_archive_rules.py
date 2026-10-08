@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import pytest
 
 from core.errors import UserError
-from skills.archive import rules
+from tasks.archive import rules
 
 ARCHIVE, BOT_LOG, INBOX = 200, 300, 100
 MB = 1024 * 1024

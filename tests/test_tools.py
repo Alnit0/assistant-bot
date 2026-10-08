@@ -4,10 +4,10 @@ import pytest
 
 from core import devmode, tools
 from core.tools import ERROR, MANY, ONE, REPLY, ToolSpec
-from skills import registry
-from skills.base import Param
-from skills.timers.durations import split_duration
-from skills.timers.pomodoro import parse_session
+from tasks import registry
+from tasks.base import Param
+from tasks.timers.durations import split_duration
+from tasks.timers.pomodoro import parse_session
 
 INBOX, ELSEWHERE = 100, 999
 NOW = datetime(2026, 10, 7, 12, 0, tzinfo=timezone.utc)
@@ -152,7 +152,7 @@ def test_dev_settings_read_as_the_typed_word_does(owner, dev_off):
     specs = by_name(registry.tools_for(owner, INBOX))
     assert devmode.parse_number(tools.to_args(specs["dev_speed"].item.params, {"multiplier": "60"}), "") == 60
     assert devmode.parse_on_off(tools.to_args(specs["dev_cleanup"].item.params, {"state": "off"}), "") is False
-    assert specs["dev_run"].schema["properties"]["task"]["enum"] == list(devmode.TASK_NAMES)
+    assert specs["dev_run"].schema["properties"]["routine"]["enum"] == list(devmode.ROUTINE_NAMES)
 
 
 # --- which tools are strict --------------------------------------------------
@@ -276,14 +276,14 @@ def test_the_lab_is_never_offered(owner, dev_off):
         if dev:
             devmode.enable()
         specs = registry.tools_for(owner, INBOX)
-        assert not [spec.name for spec in specs if spec.skill == "lab" or spec.name.startswith("lab")]
+        assert not [spec.name for spec in specs if spec.task == "lab" or spec.name.startswith("lab")]
 
 
 def test_dev_tools_are_only_offered_while_dev_mode_is_on(owner, dev_off):
     switch = ["dev_mode"]  # the one that is always there, or dev mode could never be asked for
-    assert [spec.name for spec in registry.tools_for(owner, INBOX) if spec.skill == "dev"] == switch
+    assert [spec.name for spec in registry.tools_for(owner, INBOX) if spec.task == "dev"] == switch
     devmode.enable()
-    names = {spec.name for spec in registry.tools_for(owner, INBOX) if spec.skill == "dev"}
+    names = {spec.name for spec in registry.tools_for(owner, INBOX) if spec.task == "dev"}
     assert {"dev_mode", "dev_speed", "dev_jobs", "reply_dev_inspect"} <= names
     assert not {"dev_on", "dev_off"} & names, "one switch, not three"
 
@@ -298,8 +298,8 @@ def test_the_dev_switch_is_for_the_owner_in_any_channel(owner, stranger, dev_off
 
 def test_dev_tools_are_offered_in_the_dev_channel(owner, dev_off, monkeypatch):
     monkeypatch.setitem(registry.CHANNELS, "dev", 555)
-    assert len([spec for spec in registry.tools_for(owner, 555) if spec.skill == "dev"]) > 1
-    assert [spec.name for spec in registry.tools_for(owner, ELSEWHERE) if spec.skill == "dev"] == ["dev_mode"]
+    assert len([spec for spec in registry.tools_for(owner, 555) if spec.task == "dev"]) > 1
+    assert [spec.name for spec in registry.tools_for(owner, ELSEWHERE) if spec.task == "dev"] == ["dev_mode"]
 
 
 def test_the_order_is_the_same_every_time(owner):

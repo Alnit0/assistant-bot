@@ -14,9 +14,9 @@ log = logging.getLogger("assistant")
 
 @dataclass
 class Context:
-    """Everything a skill needs to handle one input, without touching discord.Message.
+    """Everything a task needs to handle one input, without touching discord.Message.
 
-    Groundwork for the gateway layer: skills talk to this, and only this file
+    Groundwork for the gateway layer: tasks talk to this, and only this file
     and main.py know the input came from Discord.
     """
 
@@ -145,7 +145,7 @@ class Context:
         await log_error(title, details, user_text)
 
     # --- Discord-specific escape hatches -------------------------------------
-    # For the few skills allowed to use discord.py directly (lab, archive).
+    # For the few tasks allowed to use discord.py directly (lab, archive).
     # Everything here goes away when the gateway layer exists.
 
     @property

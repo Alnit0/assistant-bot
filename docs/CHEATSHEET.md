@@ -230,7 +230,7 @@ only, any channel, no slash. It is off after every restart.
 | `dev expire 30m` | Switch itself off after this long |
 | reply `dev inspect` | What the bot knows about that message, including its lifecycle class |
 | `dev jobs` | Pending scheduler jobs |
-| `dev run backup` | Run a background task now (`sweep` and `summary` aren't built yet) |
+| `dev run backup` | Run a maintenance routine now (`sweep` and `summary` aren't built yet) |
 | `dev fire next` | Run the next pending job now |
 | `dev seed 5` | Post 5 sample messages, tagged as test data |
 | `dev clean` | Delete the test data and dev tool output in this channel |
@@ -269,7 +269,7 @@ claude --version     # check it's installed
 - Stop the service before asking for changes that need testing
 - Plan mode for anything multi-file
 - One stage at a time, commit after each
-- `/clear` between unrelated tasks
+- `/clear` between unrelated pieces of work
 - It reads `CLAUDE.md` automatically
 
 **If you get `529 Overloaded`:** wait a minute, then type `continue`.

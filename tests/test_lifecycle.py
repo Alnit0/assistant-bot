@@ -7,7 +7,7 @@ from core import devmode, lifecycle
 from core.config import CONFIRMATION_SECONDS
 from core.context import Context
 from core.lifecycle import MessageClass
-from skills.timers import store
+from tasks.timers import store
 
 EVERY_CLASS = list(MessageClass)
 
@@ -49,7 +49,7 @@ def test_protection_overrides_everything():
     )
 
 
-def test_what_a_skill_declares_comes_next():
+def test_what_a_task_declares_comes_next():
     assert lifecycle.classify(declared=MessageClass.LIVE, transient=True, command=True) is MessageClass.LIVE
     assert lifecycle.classify(declared=MessageClass.ALERT) is MessageClass.ALERT
 
@@ -136,7 +136,7 @@ def test_lasting_replies_are_never_given_a_lifetime(dev_off, owner):
     assert channel.sent == [("📋 No active timers.", {})]
 
 
-# --- what the timers skill declares ------------------------------------------
+# --- what the timers task declares ------------------------------------------
 def timer(**values) -> store.Timer:
     return store.Timer(user_id=1, discord_user_id=1, channel_id=100, label="Tea", duration_s=60, **values)
 

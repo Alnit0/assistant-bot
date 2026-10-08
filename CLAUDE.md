@@ -8,17 +8,29 @@ A personal AI assistant, used through Discord, running 24/7 on a home server
 (Windows 11 mini PC). Python bot using discord.py and the Anthropic API, with
 SQLite for storage. Single user for now, designed to be multi-user ready.
 
+## Words
+
+- **Task**: one of the bot's features, a folder under `tasks/` (timers,
+  archive, keep, …) with a `Task` object. Called "skills" until 2026-10-09
+- **Skill**: only a Claude Code Skill, a procedure in `.claude/skills/`
+- **To-dos**: the planned list of things to do. Never "tasks"
+- **Job**: something the scheduler runs later. **Routine**: what `dev run`
+  runs (backup). An asyncio task is always written `asyncio.Task`; don't
+  name a variable holding one `task`
+- The database keeps two old names, which no migration has renamed: the
+  `skill_migrations` table and the `skill` column of `scheduled_jobs`
+
 ## Where things are
 
 - **`docs/ARCHITECTURE.md` is the map:** every folder and key file with its
   responsibility, the main data flows and the database tables. Read it
   before exploring the code. Update it in the same change whenever a file
   is added, moved, renamed or changes responsibility
-- `docs/DEVELOPMENT.md`: how to use and extend the bot, skill by skill
+- `docs/DEVELOPMENT.md`: how to use and extend the bot, task by task
 - `docs/DECISIONS.md`: read before changing architecture or tools
 - `docs/TESTING.md` (test tracker) and `docs/QA-RUN.md` (manual run sheet)
 - Procedures are project skills in `.claude/skills/`:
-  - `add-skill`: adding or extending anything under `skills/`
+  - `add-task`: adding or extending anything under `tasks/`
   - `qa`: test tracker, run sheet, and recording reported results
   - `end-of-task`: the closing checklist and commit command
 - Runtime: Windows service `assistant-bot` (NSSM); logs in `logs/`;
@@ -26,8 +38,8 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 
 ## Architecture rules
 
-- `core/` never imports from `skills/`
-- `skills/registry.py` is the single source of what the bot can do (`help`,
+- `core/` never imports from `tasks/`
+- `tasks/registry.py` is the single source of what the bot can do (`help`,
   Claude's system prompt and Claude's tools all read it). Never hard-code a
   list of commands or a tool definition
 - Claude runs words and reply actions as tools generated from their
@@ -38,7 +50,7 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   reaction. Slash commands and context menus are a fallback only
 - Every keyword, reply action and reaction needs a description, examples,
   channels and permission. Destructive words are `exact`
-- Skills don't call Discord directly; they use `Context` and core helpers.
+- Tasks don't call Discord directly; they use `Context` and core helpers.
   Only `lab`, `archive`, `timers` and `dev` may use discord.py, until the
   gateway layer exists
 - The registry decides how every action ends; handlers use `ctx.reply`
@@ -48,9 +60,9 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 - The assistant's name comes from `ASSISTANT_NAME`; never hard-code it
 - Permissions go through `is_allowed(user, action)`, never a comparison
   with `OWNER_ID`. Only the owner is allowed anything
-- Every record has a `user_id`. Skill tables are prefixed with the skill's
+- Every record has a `user_id`. Task tables are prefixed with the task's
   name
-- Schema changes: append a migration (`core/migrations.py`, or the skill's
+- Schema changes: append a migration (`core/migrations.py`, or the task's
   `migrations()`); never edit an old one
 - Database calls from the event loop are `async`. Always `await` them
 - Keep decisions apart from Discord calls so they can be unit tested: logic
@@ -85,10 +97,10 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   shows as two `python.exe` processes)
 - Routine test run: `python -m pytest -q`. Tests use a temporary database
   and made-up settings, never the real ones
-- At the end of every task, follow the `end-of-task` skill: tests, docs,
+- At the end of every piece of work, follow the `end-of-task` skill: tests, docs,
   then the suggested commit command. Do not commit unless asked
 
-## Interaction rules (apply to every skill)
+## Interaction rules (apply to every task)
 
 Input
 - Typed plain words are the main way in; no slash needed. Unmatched
@@ -153,7 +165,7 @@ Cleanliness
   brief confirmation that deletes itself; on failure, keep it and add ⚠️.
 - Pinned or 📌-reacted messages are exempt from cleanup and sweeps.
 - Delete Discord's "pinned a message" system notices.
-- Lab skill tests are exempt from these cleanup rules.
+- Lab task tests are exempt from these cleanup rules.
 
 Notifications
 - Levels: silent, normal, urgent (@mention in channel), critical (DM).

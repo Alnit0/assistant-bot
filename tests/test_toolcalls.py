@@ -10,7 +10,7 @@ import pytest
 from core import confirmations, llm, pending, tools
 from core.context import Context
 from core.database import log_received
-from skills import registry, toolcalls
+from tasks import registry, toolcalls
 
 INBOX = 100
 NOW = datetime(2026, 10, 7, 12, 0, tzinfo=timezone.utc)
@@ -480,7 +480,7 @@ class UserMessage:
 
 @pytest.fixture
 def real(make_db, dev_off, owner):
-    make_db(registry.skill_migrations())
+    make_db(registry.task_migrations())
     channel, message = FakeChannel(), UserMessage()
     ctx = Context(owner, INBOX, 99, "is the bot alive?", channel, _message=message)
     specs = {spec.name: spec for spec in registry.tools_for(owner, INBOX)}
@@ -615,7 +615,7 @@ def test_asking_for_a_pomodoro_while_one_is_going_posts_nothing_new(real):
 
 
 def test_typing_pomo_with_other_lengths_offers_to_restart_with_them(real, monkeypatch):
-    from skills.timers import sessions, store
+    from tasks.timers import sessions, store
 
     asked = []
 
@@ -723,7 +723,7 @@ def test_a_proposal_or_a_question_with_buttons_is_not_an_ending(real):
     assert asked is None or asked.remember, "a destructive word asks first; whatever ran says so"
 
 
-def test_the_skills_live_state_is_gathered_for_the_note(real):
+def test_the_tasks_live_state_is_gathered_for_the_note(real):
     assert asyncio.run(registry.live_state(real.ctx)).splitlines() == [
         "No timers are running or paused.",
         "No Pomodoro session is going.",

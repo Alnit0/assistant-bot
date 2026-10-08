@@ -105,25 +105,25 @@ class DevModeTest(unittest.TestCase):
 
 class TasksTest(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
-        saved = dict(devmode._tasks)
-        self.addCleanup(lambda: (devmode._tasks.clear(), devmode._tasks.update(saved)))
-        devmode._tasks.clear()
+        saved = dict(devmode._routines)
+        self.addCleanup(lambda: (devmode._routines.clear(), devmode._routines.update(saved)))
+        devmode._routines.clear()
 
-    async def test_a_registered_task_runs(self):
+    async def test_a_registered_routine_runs(self):
         ran = []
 
-        async def task():
+        async def routine():
             ran.append(True)
 
-        devmode.register_task("backup", task)
-        await devmode.run_task("backup")
+        devmode.register_routine("backup", routine)
+        await devmode.run_routine("backup")
         self.assertEqual(ran, [True])
 
-    async def test_unknown_and_unbuilt_tasks_are_refused(self):
+    async def test_unknown_and_unbuilt_routines_are_refused(self):
         with self.assertRaises(UserError):
-            await devmode.run_task("nonsense")
+            await devmode.run_routine("nonsense")
         with self.assertRaises(UserError):
-            await devmode.run_task("sweep")
+            await devmode.run_routine("sweep")
 
 
 class DebouncerDelayTest(unittest.IsolatedAsyncioTestCase):

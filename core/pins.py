@@ -5,7 +5,7 @@ from core.errors import UserError
 from core.protection import message_gone, pin_problem
 
 # ---------------------------------------------------------------------------
-# Native Discord pins, for skills that may not call Discord themselves. The
+# Native Discord pins, for tasks that may not call Discord themselves. The
 # wording of a refusal is decided in core/protection.py. Discord's "pinned a
 # message" notice is deleted by main.py, like every other one.
 # ---------------------------------------------------------------------------

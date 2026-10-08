@@ -12,7 +12,7 @@ log = logging.getLogger("assistant")
 # ---------------------------------------------------------------------------
 # Dev mode: a switch for testing that shortens the waits and says more in
 # #bot-log. This file is only the state and the values the rest of the code
-# reads; the words, the panel and the tools are in skills/dev/.
+# reads; the words, the panel and the tools are in tasks/dev/.
 #
 # Held in memory on purpose: a restart always comes back with dev mode off,
 # so a forgotten test setting can't outlive the session it was meant for.
@@ -180,22 +180,22 @@ async def debug(title: str, lines: list[str]) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Things `dev run <name>` can run. Whatever owns the task registers it; a name
+# Things `dev run <name>` can run. Whatever owns the routine registers it; a name
 # listed here with nothing registered is a feature that isn't built yet.
 # ---------------------------------------------------------------------------
-TASK_NAMES = ("backup", "sweep", "summary")
+ROUTINE_NAMES = ("backup", "sweep", "summary")
 
-_tasks: dict[str, Callable[[], Awaitable[None]]] = {}
-
-
-def register_task(name: str, task: Callable[[], Awaitable[None]]) -> None:
-    _tasks[name] = task
+_routines: dict[str, Callable[[], Awaitable[None]]] = {}
 
 
-async def run_task(name: str) -> None:
-    if name not in TASK_NAMES:
-        raise UserError(f"I don't know “{name}”. Try: {', '.join(TASK_NAMES)}.")
-    task = _tasks.get(name)
-    if task is None:
+def register_routine(name: str, routine: Callable[[], Awaitable[None]]) -> None:
+    _routines[name] = routine
+
+
+async def run_routine(name: str) -> None:
+    if name not in ROUTINE_NAMES:
+        raise UserError(f"I don't know “{name}”. Try: {', '.join(ROUTINE_NAMES)}.")
+    routine = _routines.get(name)
+    if routine is None:
         raise UserError(f"There is nothing to run for “{name}” yet: it isn't built.")
-    await task()
+    await routine()

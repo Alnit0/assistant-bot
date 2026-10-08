@@ -3,8 +3,8 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from skills.timers import status, store
-from skills.timers.pomodoro import FOCUS, SHORT_BREAK, Plan, different_lengths, parse_session
+from tasks.timers import status, store
+from tasks.timers.pomodoro import FOCUS, SHORT_BREAK, Plan, different_lengths, parse_session
 
 NOW = datetime(2026, 10, 7, 12, 0, tzinfo=timezone.utc)
 HERE, THERE = 100, 200

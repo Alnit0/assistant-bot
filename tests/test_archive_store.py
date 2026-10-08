@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from skills.archive import store
+from tasks.archive import store
 
 POSTED = datetime(2026, 10, 1, 8, 30, tzinfo=timezone.utc)
 INBOX, ARCHIVE = 100, 200

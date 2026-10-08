@@ -2,8 +2,8 @@ from datetime import date
 
 import pytest
 
-from skills.lab.common import Args, LabError
-from skills.lab.data import build_csv, fill_days
+from tasks.lab.common import Args, LabError
+from tasks.lab.data import build_csv, fill_days
 
 USAGE = "lab chart [quickchart|matplotlib] [days]"
 

@@ -2,9 +2,9 @@ from datetime import datetime, timezone
 
 import pytest
 
-from skills.timers import board, store
-from skills.timers.pomodoro import FOCUS, SHORT_BREAK, starts_by_itself
-from skills.timers.timers import render_timer
+from tasks.timers import board, store
+from tasks.timers.pomodoro import FOCUS, SHORT_BREAK, starts_by_itself
+from tasks.timers.timers import render_timer
 
 ENDS = datetime(2026, 10, 7, 12, 0, tzinfo=timezone.utc)
 STAMP = int(ENDS.timestamp())

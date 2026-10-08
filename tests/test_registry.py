@@ -4,8 +4,8 @@ from types import SimpleNamespace
 import pytest
 
 from core.errors import UserError
-from skills import builtin, registry
-from skills.base import ANY
+from tasks import builtin, registry
+from tasks.base import ANY
 
 INBOX, ELSEWHERE = 100, 999  # the test settings only name #inbox (and #archive)
 
@@ -16,7 +16,7 @@ def loaded():
 
 
 def everything():
-    """Every registration of every loaded skill, as (skill name, kind, item)."""
+    """Every registration of every loaded task, as (task name, kind, item)."""
     for entry in registry.catalogue():
         for kind, items in (
             ("keyword", entry.keywords),
@@ -24,7 +24,7 @@ def everything():
             ("reaction", entry.reactions),
         ):
             for item in items:
-                yield entry.skill.name, kind, item
+                yield entry.task.name, kind, item
 
 
 def names(entries, attribute="keywords"):
@@ -32,21 +32,21 @@ def names(entries, attribute="keywords"):
 
 
 # --- loading ---------------------------------------------------------------
-def test_every_skill_loads_without_problems():
+def test_every_task_loads_without_problems():
     assert registry.problems() == []
-    assert [skill.name for skill in registry.loaded_skills()] == ["builtin", "archive", "dev", "keep", "lab", "timers"]
+    assert [task.name for task in registry.loaded_tasks()] == ["builtin", "archive", "dev", "keep", "lab", "timers"]
 
 
 def test_every_registration_describes_itself():
     assert registry.missing_descriptions() == []
-    for skill, kind, item in everything():
-        assert item.description.strip(), f"{skill}: {kind} {item.name} has no description"
-        assert item.permission, f"{skill}: {kind} {item.name} has no permission"
-        assert item.channels, f"{skill}: {kind} {item.name} doesn't say where it works"
+    for task, kind, item in everything():
+        assert item.description.strip(), f"{task}: {kind} {item.name} has no description"
+        assert item.permission, f"{task}: {kind} {item.name} has no permission"
+        assert item.channels, f"{task}: {kind} {item.name} doesn't say where it works"
 
 
 def test_every_registration_has_an_example():
-    missing = [f"{skill}: {kind} {item.name}" for skill, kind, item in everything() if not item.examples]
+    missing = [f"{task}: {kind} {item.name}" for task, kind, item in everything() if not item.examples]
     assert missing == []
 
 
@@ -94,9 +94,9 @@ def test_the_catalogue_is_filtered_by_permission(owner, stranger):
     assert registry.catalogue(stranger) == []
 
 
-def test_the_catalogue_can_show_one_skill(owner):
-    entries = registry.catalogue(owner, skill_name="archive")
-    assert [entry.skill.name for entry in entries] == ["archive"]
+def test_the_catalogue_can_show_one_task(owner):
+    entries = registry.catalogue(owner, task_name="archive")
+    assert [entry.task.name for entry in entries] == ["archive"]
     assert names(entries, "reply_actions") == {"archive", "delete"}
     assert names(entries, "reactions") == {"📦", "🗑️"}
 
@@ -105,7 +105,7 @@ def test_the_catalogue_can_show_one_skill(owner):
 @pytest.mark.parametrize(
     "term, kind, name",
     [
-        ("lab", "skill", None),
+        ("lab", "task", None),
         ("stats", "keyword", "stats"),
         ("stat", "keyword", "stats"),  # an alias
         ("STATS", "keyword", "stats"),
@@ -133,8 +133,8 @@ def test_find_knows_what_it_does_not_know(term):
     assert registry.find(term) is None
 
 
-def test_a_skill_name_wins_over_a_word_of_the_same_name():
-    assert registry.find("timers")[0] == "skill"
+def test_a_task_name_wins_over_a_word_of_the_same_name():
+    assert registry.find("timers")[0] == "task"
 
 
 def test_describe_words_shows_arguments_and_aliases():
@@ -175,7 +175,7 @@ def message_in(channel_id: int):
 
 
 def test_archive_and_delete_can_be_checked_before_anything_is_done():
-    # "box" because `archive` on its own finds the skill of that name
+    # "box" because `archive` on its own finds the task of that name
     for term in ("box", "delete", "📦", "🗑️"):
         item = registry.find(term)[2]
         assert item.validate is not None, term
@@ -195,7 +195,7 @@ def reactions_watched(owner, monkeypatch):
     async def fetch(channel_id, message_id):
         return seen.message
 
-    async def refuse(skill, reaction, payload, user, reason):
+    async def refuse(task, reaction, payload, user, reason):
         seen.refused.append((reaction.emoji, reason))
 
     async def mark(channel_id, message_id, emoji, add=True):
@@ -280,16 +280,16 @@ def ctx(user, channel_id=INBOX):
     return SimpleNamespace(user=user, channel_id=channel_id)
 
 
-def test_help_overview_groups_by_skill(owner):
+def test_help_overview_groups_by_task(owner):
     text = builtin.build_overview(ctx(owner))
     assert text.startswith("**What I understand here**")
     for heading in ("**Builtin**", "**Archive**", "**Dev**", "**Keep**", "**Lab**", "**Timers**"):
         assert heading in text
     assert "• `ping`: check the bot is alive" in text
-    assert text.endswith("Anything else goes to Claude. `help <skill or word>` shows details.")
+    assert text.endswith("Anything else goes to Claude. `help <task or word>` shows details.")
 
 
-def test_help_overview_summarises_a_skill_with_many_words(owner):
+def test_help_overview_summarises_a_task_with_many_words(owner):
     text = builtin.build_overview(ctx(owner))
     assert "-# `help dev` explains each one" in text
     assert "• `dev on`" not in text
@@ -301,21 +301,21 @@ def test_help_overview_only_lists_what_works_in_the_channel(owner):
     assert "`timer <duration> [label]`" in text
 
 
-def test_help_for_a_skill_lists_every_word_wherever_it_works(owner):
-    text = builtin.build_skill_help(ctx(owner, ELSEWHERE), registry.find("dev")[1])
+def test_help_for_a_task_lists_every_word_wherever_it_works(owner):
+    text = builtin.build_task_help(ctx(owner, ELSEWHERE), registry.find("dev")[1])
     assert text.startswith("**Dev**\n-# Dev mode for testing")
     assert "• `dev debounce <seconds>`: " in text
     assert "↩️ Reply to a message with:" in text and "`dev inspect`" in text
 
 
-def test_help_for_a_skill_someone_cannot_use(stranger):
-    text = builtin.build_skill_help(ctx(stranger), registry.find("dev")[1])
+def test_help_for_a_task_someone_cannot_use(stranger):
+    text = builtin.build_task_help(ctx(stranger), registry.find("dev")[1])
     assert text == "**Dev** has nothing you can use."
 
 
 def test_help_for_one_word():
-    kind, skill, item = registry.find("reset")
-    text = builtin.build_item_help(kind, skill, item)
+    kind, task, item = registry.find("reset")
+    text = builtin.build_item_help(kind, task, item)
     assert text.splitlines()[0] == "**`reset`** · Builtin · a word to send on its own"
     assert "Also: `clear`, `clear chat`, `wipe`" in text
     assert "Examples: `reset`, `clear chat`" in text
@@ -324,8 +324,8 @@ def test_help_for_one_word():
 
 
 def test_help_for_a_reaction():
-    kind, skill, item = registry.find("📦")
-    assert builtin.build_item_help(kind, skill, item).startswith(
+    kind, task, item = registry.find("📦")
+    assert builtin.build_item_help(kind, task, item).startswith(
         "**📦** · Archive · a reaction to add to a message"
     )
 
@@ -362,4 +362,23 @@ def test_dev_mode_with_anything_else_is_not_the_switch(typed):
 
 def test_unpause_is_another_word_for_resume():
     assert registry._reply_router.match("unpause").entry[1].name == "resume"
+
+
+# --- which tasks are loaded: ENABLED_TASKS, or the old ENABLED_SKILLS ------------
+@pytest.mark.parametrize(
+    "new, old, expected",
+    [
+        ("builtin, Timers", "", ["builtin", "timers"]),
+        ("", "builtin,keep", ["builtin", "keep"]),  # an .env from before the rename still works
+        (None, "keep", ["keep"]),
+        ("timers", "keep", ["timers"]),  # the new name wins
+        ("", "", None),  # neither: load them all
+        (None, None, None),
+        (" , ", "", None),
+    ],
+)
+def test_the_old_setting_is_read_when_the_new_one_is_empty(new, old, expected):
+    from core import config
+
+    assert config.names_in(new, old) == expected
 

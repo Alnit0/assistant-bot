@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 # how long they took, and the #bot-log card shows the breakdown.
 #
 # One Turn per message, found through a context variable, so nothing has to
-# be passed down through the tool loop and the skills. Outside a turn (jobs,
+# be passed down through the tool loop and the tasks. Outside a turn (jobs,
 # buttons, tests) every `record_*` does nothing.
 # ---------------------------------------------------------------------------
 CLAUDE_LOGGER = "anthropic._base_client"  # logs "Retrying request to %s in %f seconds"
@@ -64,7 +64,7 @@ _current: ContextVar[Turn | None] = ContextVar("timing_turn", default=None)
 
 
 def start() -> Turn:
-    """Begin timing the message being answered in this task."""
+    """Begin timing the message being answered here (each asyncio task has its own turn)."""
     turn = Turn()
     _current.set(turn)
     return turn
