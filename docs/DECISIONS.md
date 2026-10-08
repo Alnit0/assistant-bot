@@ -228,6 +228,47 @@ A short log of key decisions and why. Newest at the bottom.
   required string (empty means "not given"), `strict` goes on the tools
   that take arguments, by `tool_priority`, and every input is validated
   against its schema before it runs whether or not it was strict.
+- **No tool is sent as strict (2026-10-09), which replaces the choice
+  above:** measured with the real tools and prompt on 2026-10-07, ten
+  strict tools made every request about 3.3s against 1.2s without, and
+  the first request after the set of tools changed in any way (a new
+  word, `dev mode on`) took about 40s while the API compiled the
+  schemas. That was the "30 seconds to set a timer". Input was always
+  validated in code, so nothing is lost. `STRICT_TOOLS` in
+  `core/config.py` turns it back on; the choosing code stays.
+- **What changes goes in the user turn, not the system prompt:** the
+  time and each skill's live state (`Skill.live_state`) are a note after
+  the user's words, in the latest turn only and never in the history.
+  The system prompt and tools are then the same bytes for every message
+  (cached), and "pause the tea timer" needs no read first: the ids are
+  already there. This replaces "read anything that changes with a tool,
+  every time"; the read tools stay for looking again within a turn.
+- **A confirmed action ends the turn:** when every call of a round acted
+  and the user has been shown its confirmation (the tool's own message,
+  or what a control tool confirmed, sent as the reply), Claude is not
+  asked for a closing line. One request instead of two. The cost: a
+  request whose second step needs the first one's result ("start a timer
+  and pin it") stops after the first. Claude is told to put every action
+  in one response. A read, a failure, a proposal or a question with
+  buttons still goes back to Claude to put into words.
+- **Live messages are updated after the reply, not before it:** board,
+  lists, timer messages and session cards go through `core/live.py`:
+  one edit per message however many changes asked for it, at most one
+  every 2 seconds, written from the database when it runs. Editing them
+  first made every action wait 2 to 4 seconds and got rate-limited when
+  several timers changed at once. The card may trail the reply by a
+  moment; the database is always right.
+- **One call for many timers:** `timer_control` takes several ids or
+  `all`, with an optional label, instead of one call per timer. A bulk
+  request can then never run into the limit of 5 calls per message, and
+  "all timers called tea" is matched in code (whole words, any case),
+  not by Claude picking from a list.
+- **The wider honesty check gives way after a successful read:** a flat
+  "Done" or ✅ still needs an action behind it. Wording such as "is now
+  paused" is only sent back when no tool succeeded at all, because a
+  true account of what a tool had just read was being questioned and
+  cost a request each time. The cost: a false "it's running again"
+  straight after a read is no longer caught (see `BACKLOG.md`).
 - **Fewer tools per request, by filtering:** the lab is never offered (a
   test bench), dev tools only while dev mode is on or in the dev channel,
   and the rest by channel and permission as `help` is. Fewer tools cost

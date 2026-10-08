@@ -16,6 +16,9 @@ in `docs/TESTING.md` are ⬜ Untested until they are run in Discord.
 | Replying `pin` (or `pin me`, `pin this`) did nothing | There was no `pin` reply action: `pin` / `unpin` added, and filler words accepted on every reply action | L9, L10, L11, D15 |
 | "Hive" was hard-coded | `ASSISTANT_NAME` setting | K10 |
 | `pomo` while a session runs was an error | It re-shows the card (or points to it from another channel); `dev off` when off and a second `lab channels` no longer fail either | H9, H17, J30, B21 |
+| "Stop all timers called tea" got "I don't have a timer called tea" (2026-10-07) | Claude answered from memory without looking. The live state now comes with every message, and `timer_control` with `all` and a label matches in code, any case, every match; `stop` is cancel | N51 |
+| "Cancel all timers" cancelled four and asked for the rest again (2026-10-07) | One call each ran into the limit of 5 per message. `timer_control` takes several ids or `all` in one call | N52 |
+| Plain-word requests took 7 to 10 seconds, 30 or more after a restart | Strict tool schemas off; state sent with the message; no closing request after a confirmed action; Live edits and log cards in the background; 👀 on receipt | N50 |
 | Claude offered to do things it has no tool for | Its instructions always say it has no tools and must never offer to act | A17 |
 
 From the first run of tool calling against the real API (2026-10-07,
@@ -140,12 +143,24 @@ read on every message after the first (4,973 tokens, 6,996 with the dev tools).
 - **Recent messages go to the API when Claude looks for a target**: up to
   20 one-line previews from the channel when it calls `recent_messages`,
   and up to 5 older ones when it calls `search_messages`.
-- **Strict tool schemas make every request to Claude slow** (benchmark,
-  2026-10-07, real tools, canned handlers): about 3.3s a request with the
-  10 strict tools against 1.2s without, and about 40s for the first request
-  after the set of tools changes in any way (a restart with a new word,
-  `dev mode on`). Agreed fix, waiting for the "before" measurement: send no
-  tool as strict (input is checked in code anyway) and record why in
-  `DECISIONS.md`. Then the rest of the speed-up: live messages updated in
-  the background, 👀 on receipt, a short API timeout, live state in the
-  user turn, and no closing request when the tool has already confirmed.
+- **A false "it's running again" straight after a read is no longer
+  caught** (2026-10-09). The wider honesty check now only questions a
+  reply when no tool succeeded at all, so a true account after
+  `timer_history` is not sent back; the price is the 22:56 case of
+  2026-10-07 (`list_timers`, then "Tea's running again" with nothing
+  resumed). Less likely now that the state comes with the message and
+  the read tools are rarely called. A flat "Done" is still caught.
+- **A request whose second step needs the first one's result stops
+  after the first** ("start a timer and pin it"): a confirmed action
+  ends the turn. Ask for the second step separately.
+- **The speed-up is measured on Claude's side only** (benchmark with
+  canned tools: 1.3 to 1.5s, one round trip). The live numbers in
+  Discord, with the real sends, are N50 to N52.
+- **Typed words still wait for their #bot-log card** and Live edits
+  made from buttons are unchanged; only tool calls moved theirs to the
+  background.
+- **The prompt cache lasts 5 minutes**, so a message after a quiet
+  spell rewrites it (about 1.7s instead of 1.3s). A 1-hour cache would
+  cost double to write.
+- **`pause all` through Claude and `timer_control` with `all` overlap**:
+  the first includes the Pomodoro, the second is timers only.

@@ -327,10 +327,10 @@ def test_replies_that_do_not(reply):
 
 
 # --- saying a change was made, after only looking ------------------------------
-def test_a_change_reported_after_only_reading_is_sent_back(claude):
-    # 22:56:55 on 2026-10-07: "resume my tea timer" -> list_timers, then this reply. Nothing was resumed
+def test_a_change_reported_with_nothing_run_is_sent_back(claude):
+    # 22:56:55 on 2026-10-07: "resume my tea timer" -> this reply, and nothing was resumed. The
+    # state now comes with the message, so the claim is made without any call at all
     fake = claude(
-        response(call("list_timers"), stop="tool_use"),
         response(text("Tea's running again – 9m 21s left.")),
         response(call("timer_control", "t2", id="t3", action="resume"), stop="tool_use"),
         response(text("Tea's running again – 9m 21s left.")),
@@ -346,10 +346,37 @@ def test_a_change_reported_after_only_reading_is_sent_back(claude):
             "resume my tea timer", "", CHANNEL, tools=TOOLS, run_tool=run_tool, acted=lambda: "timer_control" in did
         )
     )
-    assert did == ["list_timers", "timer_control"], "sent back, it made the call it had skipped"
+    assert did == ["timer_control"], "sent back, it made the call it had skipped"
     assert result.unbacked_claim == "Tea's running again – 9m 21s left."
     assert result.reply == "Tea's running again – 9m 21s left."
-    assert fake.requests[2]["messages"][-1] == {"role": "user", "content": llm.NOTHING_RAN}
+    assert fake.requests[1]["messages"][-1] == {"role": "user", "content": llm.NOTHING_RAN}
+
+
+def test_an_account_given_after_a_successful_read_is_not_questioned(claude):
+    # 23:17:46 on 2026-10-07: "what happened with the tea timers" -> timer_history, then a true
+    # account ("got paused at 23:14, resumed at 23:15"), which was sent back and cost a request.
+    # The wider wording is only questioned when no tool succeeded at all
+    fake = claude(
+        response(call("timer_history"), stop="tool_use"),
+        response(text("t16 was paused at 23:14 and has been resumed since.")),
+    )
+    result = asyncio.run(
+        llm.ask_claude("what happened", "", CHANNEL, tools=TOOLS, run_tool=Runner(), acted=lambda: False)
+    )
+    assert result.unbacked_claim == "" and len(fake.requests) == 2
+    assert result.reply == "t16 was paused at 23:14 and has been resumed since."
+
+
+def test_a_flat_done_after_only_reading_is_still_sent_back(claude):
+    fake = claude(
+        response(call("list_timers"), stop="tool_use"),
+        response(text("Done.")),
+        response(text("Nothing was changed: tea is still paused.")),
+    )
+    result = asyncio.run(
+        llm.ask_claude("resume tea", "", CHANNEL, tools=TOOLS, run_tool=Runner(), acted=lambda: False)
+    )
+    assert result.unbacked_claim == "Done." and len(fake.requests) == 3
 
 
 @pytest.mark.parametrize(
@@ -420,13 +447,63 @@ def test_a_note_claude_writes_never_reaches_the_user_or_the_history(claude):
 
 
 # --- caching and cost --------------------------------------------------------
-def test_the_stable_prompt_is_cached_and_the_time_is_kept_out_of_it(claude):
+def test_the_system_prompt_is_one_cached_block_with_nothing_that_changes(claude):
     fake = claude(response(text("Hello.")))
     ask("Hi", Runner())
-    stable, time_line = fake.requests[0]["system"]
+    (stable,) = fake.requests[0]["system"]
     assert stable["cache_control"] == {"type": "ephemeral"}
     assert "current date and time" not in stable["text"], "it changes every minute and would spoil the cache"
-    assert "cache_control" not in time_line and "current date and time in Auckland" in time_line["text"]
+
+
+def test_the_time_and_live_state_go_after_the_users_words_in_the_latest_turn_only(claude):
+    fake = claude(response(text("Tea has 3m left.")))
+    note = llm.turn_note('t16: "tea" · running, 3m left')
+    asyncio.run(llm.ask_claude("how long on tea?", "", CHANNEL, tools=TOOLS, run_tool=Runner(), note=note))
+    asyncio.run(llm.ask_claude("thanks", "", CHANNEL, tools=TOOLS, run_tool=Runner(), note=llm.turn_note()))
+    first, second = fake.requests
+    assert first["messages"][-1]["content"] == [
+        {"type": "text", "text": "how long on tea?"},
+        {"type": "text", "text": note},
+    ]
+    assert note.startswith(llm.NOTE_OPENS) and "current date and time in Auckland" in note
+    assert note.endswith('Live state, read just now:\nt16: "tea" · running, 3m left')
+    # Remembered as plain words: last turn's state would be out of date
+    assert second["messages"][:2] == [
+        {"role": "user", "content": "how long on tea?"},
+        {"role": "assistant", "content": "Tea has 3m left."},
+    ]
+    assert first["system"] == second["system"] and first["tools"] == second["tools"], "byte for byte: the cache holds"
+
+
+# --- ending the turn when the tools have already said it -------------------------
+def test_a_confirmed_action_ends_the_turn_without_a_second_request(claude):
+    fake = claude(response(text("Starting it."), call("timer", duration="5m"), stop="tool_use"), response(text("Started.")))
+    result = asyncio.run(
+        llm.ask_claude(
+            "Set a timer for 5 minutes", "", CHANNEL, tools=TOOLS, run_tool=Runner(),
+            closing=lambda: llm.Closing("", "That ran: started timer 1: tea, 5m."),
+        )
+    )
+    assert len(fake.requests) == 1, "one round trip"
+    assert result.reply == "" and result.closed_by_tools, "nothing more to send: the tool's message is there"
+    assert llm.history_for(CHANNEL)[-1] == {"role": "assistant", "content": "That ran: started timer 1: tea, 5m."}
+
+
+def test_what_a_tool_confirmed_without_posting_is_the_reply(claude):
+    claude(response(call("timer_control", ids="t3", action="pause"), stop="tool_use"))
+    said = "⏸️ Paused: tea (3m left)"
+    result = asyncio.run(
+        llm.ask_claude("pause tea", "", CHANNEL, tools=TOOLS, run_tool=Runner(), closing=lambda: llm.Closing(said, said))
+    )
+    assert result.reply == said and llm.history_for(CHANNEL)[-1]["content"] == said
+
+
+def test_a_round_that_is_not_settled_goes_back_to_claude(claude):
+    fake = claude(response(call("list_timers"), stop="tool_use"), response(text("Tea has 3m left.")))
+    result = asyncio.run(
+        llm.ask_claude("how long on tea", "", CHANNEL, tools=TOOLS, run_tool=Runner(), closing=lambda: None)
+    )
+    assert len(fake.requests) == 2 and result.reply == "Tea has 3m left." and not result.closed_by_tools
 
 
 def test_the_stable_prompt_does_not_change_between_messages():

@@ -66,6 +66,8 @@ RENT, MILK, TEA = a_message(11, "Rent is due on the 1st"), a_message(12, "Buy oa
 def world(db, dev_off, owner, monkeypatch):
     """A chat message in #inbox, with everything a tool call can touch standing by."""
     seen = SimpleNamespace(ran=[], undone=[], asked=[], choices=[], undo_offers=[], outcome=("ok", "done", ["📌 Pinned"]))
+    # The messages are dated NOW: "just now" must not depend on the day the tests are run
+    monkeypatch.setattr(toolcalls, "utc_now", lambda: NOW)
 
     async def run_tool(ctx, spec, value, target=None, *, collect=False):
         seen.ran.append((spec.name, value, getattr(target, "id", None), collect))
@@ -121,8 +123,16 @@ def execute(seen, name, **value):
 
 
 # --- what Claude is given ----------------------------------------------------
-def test_the_tools_are_ready_for_the_api(world):
+def test_no_tool_is_sent_as_strict(world):
+    # Measured 2026-10-07: strict added about 2s to every request, and about 40s after any change of tools
     turn = world().turn
+    assert turn.strict == set() and not [definition for definition in turn.definitions if "strict" in definition]
+    assert turn.definitions[-1]["cache_control"] == {"type": "ephemeral"}
+
+
+def test_the_tools_are_ready_for_the_api(world, monkeypatch):
+    monkeypatch.setattr(toolcalls, "STRICT_TOOLS", True)
+    turn = asyncio.run(toolcalls.prepare(world().ctx))
     names = [definition["name"] for definition in turn.definitions]
     assert names == turn.names and names[-2:] == [toolcalls.SEARCH, toolcalls.RECENT]
     assert {"timer", "pomo", "reply_archive", "reply_pin", "reset", "list_timers", "timer_control"} <= set(names)
@@ -151,6 +161,7 @@ def test_too_many_strict_tools_is_warned_about_once(world, monkeypatch):
         warnings.append((title, details))
 
     monkeypatch.setattr(toolcalls, "log_error", log_error)
+    monkeypatch.setattr(toolcalls, "STRICT_TOOLS", True)
     monkeypatch.setattr(tools, "STRICT_LIMIT", 2)
     monkeypatch.setattr(tools.choose_strict, "__defaults__", (2,))
     for _ in range(2):
@@ -541,24 +552,24 @@ def test_claude_reads_the_timers_and_acts_on_one_by_its_id(real):
     assert listed[0] == "Timers going now. Use the id with timer_control:"
     assert listed[1].startswith('t1: "tea" · running, ') and listed[1].endswith("left · <#100> (this channel)")
 
-    paused = run(real, "timer_control", id="t1", action="pause", duration="", propose=False)
+    paused = run(real, "timer_control", ids="t1", action="pause", duration="", propose=False)
     assert paused.status == "ok" and paused.text.startswith("⏸️ Paused: tea (")
     assert 't1: "tea" · paused with ' in run(real, "list_timers").text
-    assert run(real, "timer_control", id="t1", action="resume", duration="", propose=False).text.startswith("▶️ Resumed: tea")
-    extended = run(real, "timer_control", id="t1", action="extend", duration="10m", propose=False).text.splitlines()
+    assert run(real, "timer_control", ids="t1", action="resume", duration="", propose=False).text.startswith("▶️ Resumed: tea")
+    extended = run(real, "timer_control", ids="t1", action="extend", duration="10m", propose=False).text.splitlines()
     assert extended[0] == "➕ Added 10m to tea" and extended[1].startswith('Now saved as: t1: "tea" · running, ')
-    cancelled = run(real, "timer_control", id="t1", action="cancel", duration="", propose=False).text.splitlines()
+    cancelled = run(real, "timer_control", ids="t1", action="cancel", duration="", propose=False).text.splitlines()
     assert cancelled == ["🚫 Cancelled: tea", 'Now saved as: t1: "tea" · cancelled']
     assert 't1: "tea" · cancelled' in run(real, "list_timers").text
     assert real.channel.sent == sent_before, "reading and controlling post nothing: Claude does the talking"
 
 
 def test_a_timer_id_that_is_wrong_or_in_the_wrong_state_is_explained(real):
-    missing = run(real, "timer_control", id="t99", action="pause", duration="", propose=False)
-    assert missing.status == "error" and "Call list_timers" in missing.text
+    missing = run(real, "timer_control", ids="t99", action="pause", duration="", propose=False)
+    assert missing.status == "error" and "There is no timer `t99`" in missing.text
     run(real, "timer", duration="5m", label="tea", propose=False)
-    assert run(real, "timer_control", id="t1", action="resume", duration="", propose=False).text == "**tea** isn't paused."
-    no_length = run(real, "timer_control", id="t1", action="extend", duration="", propose=False)
+    assert run(real, "timer_control", ids="t1", action="resume", duration="", propose=False).text == "**tea** isn't paused."
+    no_length = run(real, "timer_control", ids="t1", action="extend", duration="", propose=False)
     assert no_length.status == "error" and "how much time to add" in no_length.text
 
 
@@ -646,3 +657,76 @@ def test_a_message_action_is_checked_before_it_runs(real):
         registry.run_tool(real.ctx, real.specs["reply_archive"], {"targets": [], "propose": False}, in_archive)
     )
     assert (outcome.status, outcome.text) == ("error", "That message is already in the archive.")
+
+
+# --- can the turn end with the tools' own confirmations? --------------------------
+def a_round(real, *calls) -> tuple[toolcalls.Turn, object]:
+    """Run one round of calls as Claude would make them; what closing() then says."""
+    turn = asyncio.run(toolcalls.prepare(real.ctx))
+    return turn, next_round(turn, *calls)
+
+
+def next_round(turn, *calls):
+    async def go():
+        for name, value in calls:
+            await toolcalls.execute(turn, name, value)
+        return toolcalls.closing(turn)
+
+    return asyncio.run(go())
+
+
+START_TEA = ("timer", {"duration": "5m", "label": "tea", "propose": False})
+
+
+def pause_call(ids="t1", **value):
+    return ("timer_control", {"ids": ids, "action": "pause", "duration": "", "label": "", "propose": False, **value})
+
+
+def test_a_word_that_showed_its_own_message_ends_the_turn_with_nothing_more_to_say(real):
+    turn, closed = a_round(real, START_TEA)
+    assert closed == llm.Closing("", "That ran: started timer 1: tea, 5m.")
+    assert turn.acted and len(real.channel.sent) == 1, "the timer's own message, and no second one"
+
+
+def test_a_control_tool_posts_nothing_so_what_it_confirmed_is_the_reply(real):
+    turn, _ = a_round(real, START_TEA)
+    sent = list(real.channel.sent)
+    closed = next_round(turn, pause_call())
+    assert closed.say.startswith("⏸️ Paused: tea (") and closed.remember == closed.say
+    assert real.channel.sent == sent, "the chat path sends it, once"
+
+
+def test_two_actions_side_by_side_end_the_turn_together(real):
+    _, closed = a_round(real, START_TEA, ("timer", {"duration": "3m", "label": "toast", "propose": False}))
+    assert closed.say == "" and closed.remember.splitlines() == [
+        "That ran: started timer 1: tea, 5m.",
+        "That ran: started timer 2: toast, 3m.",
+    ]
+
+
+def test_a_read_leaves_the_answer_to_claude(real):
+    turn, closed = a_round(real, ("list_timers", {}))
+    assert closed is None and not turn.acted
+    assert next_round(turn, START_TEA) is not None, "the action in the next round can still end the turn"
+
+
+def test_a_failure_leaves_the_explaining_to_claude_for_the_rest_of_the_turn(real):
+    turn, closed = a_round(real, pause_call("t99"))
+    assert closed is None
+    assert next_round(turn, START_TEA) is None, "something went wrong earlier: Claude says what did and didn't happen"
+
+
+def test_a_proposal_or_a_question_with_buttons_is_not_an_ending(real):
+    _, proposed = a_round(real, ("timer", {"duration": "5m", "label": "tea", "propose": True}))
+    assert proposed is None
+    _, asked = a_round(real, ("reset", {"propose": False}))
+    assert asked is None or asked.remember, "a destructive word asks first; whatever ran says so"
+
+
+def test_the_skills_live_state_is_gathered_for_the_note(real):
+    assert asyncio.run(registry.live_state(real.ctx)).splitlines() == [
+        "No timers are running or paused.",
+        "No Pomodoro session is going.",
+    ]
+    a_round(real, START_TEA)
+    assert 't1: "tea" · running, ' in asyncio.run(registry.live_state(real.ctx))

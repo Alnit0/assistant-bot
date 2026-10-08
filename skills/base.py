@@ -261,6 +261,13 @@ class Skill:
         """Tools for Claude that aren't words: reading state, acting by id (see Tool)."""
         return []
 
+    async def live_state(self, ctx) -> str:
+        """What Claude should know about this skill's state right now, in a few
+        plain lines with the ids its tools take. Sent with every chat message
+        (never kept in the history), so a simple request needs one round trip
+        instead of a read first. Empty if there is nothing to say."""
+        return ""
+
     def job_handlers(self) -> dict[str, Callable[[Job], Awaitable[None]]]:
         """What to run when one of this skill's scheduled jobs comes due, by kind.
 

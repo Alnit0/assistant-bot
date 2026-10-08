@@ -182,3 +182,83 @@ def test_nothing_to_pause_or_resume_says_so():
         "▶️ Nothing was paused, so nothing was resumed.",
         "The Pomodoro was left as it is.",
     ]
+
+
+# --- several ids, and labels ---------------------------------------------------
+@pytest.mark.parametrize(
+    "text, ids, bad",
+    [
+        ("t12", [12], []),
+        ("t12 t14", [12, 14], []),
+        ("t12, t14 and T3", [12, 14, 3], []),
+        ("t12 t12", [12], []),
+        ("t12 tea", [12], ["tea"]),
+        ("p4", [], ["p4"]),
+        ("", [], []),
+    ],
+)
+def test_several_ids_are_read_from_one_argument(text, ids, bad):
+    assert status.parse_refs(text, status.TIMER) == (ids, bad)
+
+
+@pytest.mark.parametrize(
+    "label, wanted, fits",
+    [
+        ("tea", "tea", True),
+        ("Tea", "tea", True),
+        ("tea", "TEA", True),
+        ("tea 2", "tea", True),
+        ("Green Tea", "tea", True),
+        ("tea", "the tea timer", True),
+        ("tea", "timers called tea", True),
+        ("team", "tea", False),
+        ("steam", "tea", False),
+        ("dinner", "tea", False),
+        ("tea 2", "tea 2", True),
+        ("tea", "tea 2", False),
+        ("Timer", "timer", True),
+        ("anything", "", True),
+    ],
+)
+def test_a_label_is_matched_by_its_words_whatever_the_case(label, wanted, fits):
+    assert status.label_matches(label, wanted) is fits
+
+
+def test_all_timers_called_tea_is_every_one_with_that_word():
+    going = [timer(1, label="tea"), timer(2, label="Tea 2"), timer(3, label="dinner"), timer(4, label="team")]
+    assert [found.id for found in status.labelled(going, "tea")] == [1, 2]
+    assert [found.id for found in status.labelled(going, "")] == [1, 2, 3, 4]
+    assert status.labelled(going, "coffee") == []
+
+
+# --- what Claude is told with every message -------------------------------------
+def test_the_live_state_has_every_timer_and_the_session_in_full():
+    going = [
+        timer(1, label="tea"),
+        timer(2, label="tea", status=store.PAUSED, ends_at=None, remaining_s=95, channel_id=THERE),
+        timer(3, label="Tea 2"),
+    ]
+    ended = [timer(9, label="eggs", status=store.CANCELLED)]
+    lines = status.live_text(going, ended, session(), NOW, here=HERE, replied_to=503).splitlines()
+    assert lines == [
+        "Timers going now (the ids are for timer_control):",
+        't1: "tea" · running, 1m 20s left · <#100> (this channel)',
+        't2: "tea" · paused with 1m 35s left · <#200>',
+        't3: "Tea 2" · running, 1m 20s left · <#100> (this channel) · the user replied to this one',
+        "Ended in the last day (nothing more can be done to these):",
+        't9: "eggs" · cancelled',
+        "Pomodoro (the id is for pomodoro_control): " + status.session_text(session(), NOW, here=HERE),
+    ]
+
+
+def test_the_live_state_says_so_when_nothing_is_going():
+    assert status.live_text([], [], None, NOW).splitlines() == [status.NO_TIMERS, status.NO_SESSION]
+
+
+def test_what_was_done_to_several_timers_names_each():
+    assert status.control_text("cancel", ["tea", "Tea 2"], ["dinner (it has already ended)"]).splitlines() == [
+        "🚫 **Cancelled 2**",
+        "• tea",
+        "• Tea 2",
+        "Left alone: dinner (it has already ended)",
+    ]

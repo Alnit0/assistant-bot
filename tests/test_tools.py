@@ -334,11 +334,12 @@ def test_timers_are_controlled_by_id_not_by_finding_a_message(owner):
     specs = by_name(registry.tools_for(owner, INBOX))
     assert not {"reply_pause", "reply_resume", "reply_cancel", "reply_extend"} & set(specs)
     for name, actions in (
-        ("timer_control", ["pause", "resume", "cancel", "extend"]),
+        ("timer_control", ["pause", "resume", "cancel", "stop", "extend"]),
         ("pomodoro_control", ["pause", "resume", "start", "skip", "stop", "extend"]),
     ):
         schema = specs[name].schema
-        assert list(schema["properties"]) == ["id", "action", "duration", "propose"]
+        arguments = ["ids", "action", "duration", "label"] if name == "timer_control" else ["id", "action", "duration"]
+        assert list(schema["properties"]) == [*arguments, "propose"]
         assert schema["properties"]["action"]["enum"] == actions
         assert tools.TARGETS not in schema["properties"], "no message to look for"
         assert specs[name].kind == tools.BESPOKE and not specs[name].reads_only

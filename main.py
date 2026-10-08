@@ -6,7 +6,7 @@ import anthropic
 import discord
 from discord import app_commands
 
-from core import backup, devmode, instance_lock, interactions, lifecycle, scheduler, timing
+from core import backup, devmode, instance_lock, interactions, lifecycle, live, scheduler, timing
 from core.config import (
     CLAUDE_MODEL,
     DB_PATH,
@@ -29,7 +29,7 @@ from core.discord_utils import (
     truncate,
 )
 from core.lifecycle import MessageClass
-from core.llm import ask_claude, count_tool_tokens, estimate_cost, format_cost, history_for
+from core.llm import ask_claude, count_tool_tokens, estimate_cost, format_cost, history_for, turn_note
 from core.logging_setup import setup_logging
 from core.migrations import migrate
 from core.permissions import is_allowed
@@ -200,6 +200,25 @@ async def on_ready():
     await send_log(embed)
 
 
+SEEN = "👀"
+
+
+async def _mark_seen(message: discord.Message) -> None:
+    """Show at once that a chat message has arrived and is being worked on."""
+    try:
+        await message.add_reaction(SEEN)
+        await message.channel.typing()
+    except discord.HTTPException as error:
+        log.info("Could not mark a message as seen: %s", error)
+
+
+async def _unmark_seen(message: discord.Message) -> None:
+    try:
+        await message.remove_reaction(SEEN, client.user)
+    except discord.HTTPException as error:
+        log.info("Could not clear the seen mark: %s", error)
+
+
 @client.event
 async def on_message(message: discord.Message):
     # Discord's "X pinned a message" notices are clutter: remove every one
@@ -245,8 +264,10 @@ async def on_message(message: discord.Message):
     row_id = await log_received(text, "chat", message.id, message.channel.id, user_id=user.id)
     started = time.perf_counter()
     spent = timing.start()
+    # Seen: 👀 straight away, and "typing" with it. Neither is waited for
+    live.background(_mark_seen(message))
 
-    async with message.channel.typing():
+    try:
         try:
             # Tell Claude what the bot itself can do here, and give it the same
             # actions as tools so it can do them when asked
@@ -263,6 +284,9 @@ async def on_message(message: discord.Message):
                 tools=turn.definitions,
                 run_tool=run_tool,
                 acted=lambda: turn.acted,
+                # The time and what is running now, so a simple request needs no reading first
+                note=turn_note(await registry.live_state(ctx) if turn.definitions else ""),
+                closing=lambda: toolcalls.closing(turn),
             )
             reply, input_tokens, output_tokens = result.reply, result.input_tokens, result.output_tokens
         except anthropic.APIStatusError as error:
@@ -293,8 +317,12 @@ async def on_message(message: discord.Message):
             await log_error("Unexpected error", repr(error), text)
             return
 
-    for chunk in split_message(reply):
-        await message.channel.send(chunk)
+        # Nothing to send when the tools' own confirmations were the answer
+        for chunk in split_message(reply):
+            await message.channel.send(chunk)
+    finally:
+        live.background(_unmark_seen(message))
+
     # The whole wait, as the user saw it: until the reply was in the channel
     timing.mark_replied()
     timing.stop()
@@ -323,7 +351,7 @@ async def on_message(message: discord.Message):
     # Log card for #bot-log
     embed = discord.Embed(title="💬 Message handled", colour=COLOUR_OK, timestamp=now_nz())
     embed.add_field(name="Input", value=truncate(text), inline=False)
-    embed.add_field(name="Reply", value=truncate(reply), inline=False)
+    embed.add_field(name="Reply", value=truncate(reply) or "(the tool's own confirmation)", inline=False)
     embed.add_field(name="Model", value=CLAUDE_MODEL, inline=True)
     embed.add_field(name="Tokens", value=f"{input_tokens} in / {output_tokens} out", inline=True)
     embed.add_field(name="Est. cost", value=format_cost(cost), inline=True)

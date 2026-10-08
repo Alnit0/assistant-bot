@@ -265,22 +265,21 @@ class TimersSkill(Skill):
         return [
             Tool(
                 "list_timers",
-                "Read the user's timers as they are right now: each one's id, label, whether it is "
-                "running or paused, the time left and its channel, plus timers that ended in the "
-                'last day. Call it whenever the user asks about their timers ("show my timers", '
-                '"how long is left on the tea timer?") and before every timer_control call, to '
-                "get the id. It posts nothing: put the answer in your reply.",
+                "Read the user's timers again: each one's id, label, whether it is running or "
+                "paused, the time left and its channel, plus timers that ended in the last day. "
+                "The same is already given with every message as the live state, so this is "
+                "rarely needed: only to look again after something has changed in the same "
+                "turn. It posts nothing: put the answer in your reply.",
                 control.list_timers_tool,
                 permission=PERMISSION,
                 reads_only=True,
             ),
             Tool(
                 "get_pomodoro_status",
-                "Read the Pomodoro session as it is right now: its id, phase, round, time left, "
-                "whether it is paused or waiting for the user to press Start, and its lengths. Call "
-                'it whenever the user asks about their Pomodoro ("how long left in this round?") '
-                "and before every pomodoro_control call, to get the id. It posts nothing: put the "
-                "answer in your reply.",
+                "Read the Pomodoro session again: its id, phase, round, time left, whether it is "
+                "paused or waiting for the user to press Start, and its lengths. The same is "
+                "already given with every message as the live state, so this is rarely needed. "
+                "It posts nothing: put the answer in your reply.",
                 control.pomodoro_status_tool,
                 permission=PERMISSION,
                 reads_only=True,
@@ -296,7 +295,7 @@ class TimersSkill(Skill):
                 params=[
                     Param(
                         "id",
-                        "One timer (t12) or session (p4) from list_timers or get_pomodoro_status, "
+                        "One timer (t12) or session (p4) from the live state, "
                         "or empty for the latest events of all of them.",
                         required=False,
                     )
@@ -306,33 +305,49 @@ class TimersSkill(Skill):
             ),
             Tool(
                 "timer_control",
-                "Pause, resume, cancel or add time to one timer, by its id from list_timers. "
-                'Examples: "pause the tea timer" -> id t12, action pause. "unpause it" or '
-                '"carry on" -> action resume. "stop the laundry timer" -> action cancel. '
-                '"give the tea timer 5 more minutes" -> action extend, duration 5m. If the '
-                "label fits more than one timer, ask which. For all of them at once use pause_all "
-                "or resume_all: never one call each, and never ask which. The result ends with "
-                "the state as it was saved: report that, not what you expected.",
+                "Pause, resume, cancel or add time to one timer, several, or all of them, in ONE "
+                "call. Take the ids from the live state given with the message. Examples: "
+                '"pause the tea timer" -> ids t12, action pause. "unpause it" or "carry on" -> '
+                'action resume. "stop the laundry timer" -> ids t7, action cancel. "give tea 5 '
+                'more minutes" -> action extend, duration 5m. "cancel tea and dinner" -> ids '
+                '"t12 t14". "cancel all timers" or "stop everything" -> ids all, action cancel. '
+                '"stop all timers called tea" -> ids all, label tea, action cancel: that acts on '
+                "every timer whose label has that word (tea, Tea 2), whatever the case. Never "
+                "make one call per timer. If the user names one timer and the label fits more "
+                "than one, ask which. To pause or resume everything including the Pomodoro, use "
+                "pause_all or resume_all. The result names each timer it changed, as saved: "
+                "report that, not what you expected.",
                 control.timer_control_tool,
                 params=[
-                    Param("id", "The timer's id exactly as list_timers gave it, e.g. t12."),
-                    Param("action", "What to do to it.", choices=control.TIMER_ACTIONS),
+                    Param(
+                        "ids",
+                        'One or more ids from the live state, separated by spaces, e.g. "t12" or '
+                        '"t12 t14"; or "all" for every timer.',
+                    ),
+                    Param("action", "What to do to them. stop is the same as cancel.", choices=control.TIMER_ACTIONS),
                     Param("duration", "For extend only: how much time to add, e.g. 10m.", required=False),
+                    Param(
+                        "label",
+                        'With ids "all" only: act on just the timers whose label has these words, '
+                        "e.g. tea. Empty for every timer.",
+                        required=False,
+                    ),
                 ],
                 permission=PERMISSION,
                 tool_priority=8,
             ),
             Tool(
                 "pomodoro_control",
-                "Change the Pomodoro session that is going, by its id from get_pomodoro_status. "
-                'Examples: "pause my pomodoro" -> id p4, action pause. "carry on" -> action '
-                'resume. "start the break" when it is waiting for Start -> action start. "skip '
-                'this break" -> action skip. "end the session" -> action stop. "10 more minutes '
-                'on this round" -> action extend, duration 10m. The result ends with the state '
-                "as it was saved: report that, not what you expected.",
+                "Change the Pomodoro session that is going. Take its id from the live state given "
+                'with the message, or use "current": there is only ever one. Examples: "pause '
+                'my pomodoro" -> id current, action pause. "carry on" -> action resume. "start '
+                'the break" when it is waiting for Start -> action start. "skip this break" -> '
+                'action skip. "end the session" -> action stop. "10 more minutes on this round" '
+                "-> action extend, duration 10m. The result ends with the state as it was saved: "
+                "report that, not what you expected.",
                 control.pomodoro_control_tool,
                 params=[
-                    Param("id", "The session's id exactly as get_pomodoro_status gave it, e.g. p4."),
+                    Param("id", 'The session\'s id from the live state, e.g. p4, or "current".'),
                     Param("action", "What to do to it.", choices=control.POMODORO_ACTIONS),
                     Param("duration", "For extend only: how much time to add, e.g. 10m.", required=False),
                 ],
@@ -340,6 +355,9 @@ class TimersSkill(Skill):
                 tool_priority=7,
             ),
         ]
+
+    async def live_state(self, ctx: Context) -> str:
+        return await control.live_state(ctx)
 
     def job_handlers(self) -> dict:
         return {

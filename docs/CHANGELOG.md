@@ -4,6 +4,21 @@ What changed, newest first. One entry per task, as one to three bullets on
 what changed for the user. Entries before 2026-10-07's last one were
 backfilled from the git log.
 
+## 2026-10-09
+
+- **Asking in plain words is fast.** "Set a timer for 5 minutes" took 7
+  to 10 seconds, and 30 or more after a restart; Claude's part is now
+  about 1.5 seconds. Your message gets 👀 the moment it arrives. Claude
+  is told what is running with every message, so it acts in one step,
+  and when the action has shown its own confirmation it adds nothing.
+  The board, lists and cards catch up a moment after the reply.
+- **"Cancel all timers" and "stop all timers called tea" work in one
+  go.** Any number of timers, by name whatever the case (tea, Tea 2),
+  with one message naming each. "Stop" means cancel. Before, it stopped
+  after four and said there was no timer called tea.
+- A request to Claude that hangs is given up after 15 seconds and
+  retried twice, and retries show on the log card.
+
 ## 2026-10-07
 
 - **The log card says where the time went.** "Message handled" has a

@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from core import confirmations, database, llm, pending, tools
-from core.config import ASSISTANT_NAME
+from core.config import ASSISTANT_NAME, STRICT_TOOLS
 from core.context import Context
 from core.database import log_received, log_result
 from core.discord_utils import log_error
@@ -87,6 +87,13 @@ class Turn:
     listing: dict[str, object] = field(default_factory=dict)  # ref -> message, from recent_messages
     older: set[str] = field(default_factory=set)  # the refs that came from search_messages
     acted: bool = False  # a tool has carried something out for this message (reading doesn't count)
+    # Whether Claude still has to speak. A call that acted and showed the user its
+    # own confirmation is settled; anything else (a read, a failure, a question
+    # with buttons, a proposal) leaves the round open for Claude to put into words
+    settled: list[llm.Closing] = field(default_factory=list)
+    open: bool = False  # this round
+    troubled: bool = False  # a call has failed at some point in the turn: Claude explains
+    _shown: llm.Closing | None = None  # set by the call being run, if it settled itself
 
     @property
     def names(self) -> list[str]:
@@ -113,7 +120,8 @@ async def prepare(ctx: Context) -> Turn:
     if any(spec.kind == tools.REPLY_ACTION for spec in specs):
         # Message actions need a way to find the message when the user didn't reply to it
         specs = [*specs, SEARCH_SPEC, RECENT_SPEC]
-    strict, overflow = tools.choose_strict(specs)
+    # Strict schemas are slow (core/config.py); input is checked in execute() regardless
+    strict, overflow = tools.choose_strict(specs) if STRICT_TOOLS else (set(), [])
     definitions = [tools.api_definition(spec, spec.name in strict) for spec in specs]
     if definitions:
         # Cache everything up to and including the last tool definition
@@ -217,6 +225,12 @@ async def _perform(ctx: Context, call: Call, turn: Turn | None = None) -> tuple[
         return outcome.text, True
     if turn is not None and not call.spec.reads_only:
         turn.acted = True
+        if quoted or outcome.posted:
+            # The user can see what happened: nothing more needs saying
+            turn._shown = llm.Closing("", f"That ran: {outcome.text or describe(call)}.")
+        elif outcome.told:
+            # A skill's own tool posts nothing: what it confirmed is the reply
+            turn._shown = llm.Closing("\n".join(outcome.told), "\n".join(outcome.told))
     if quoted:
         # The user didn't point at the message themselves: show which one it was
         shown = outcome.confirmations[-1] if outcome.confirmations else f"✅ Done: {call.spec.item.name}"
@@ -294,8 +308,37 @@ async def execute(turn: Turn, name: str, value: dict) -> tuple[str, bool]:
     """Handle one tool call from Claude. Returns (the result for Claude, whether it is an error).
 
     Never raises for something Claude or the user can put right: the reason
-    is the result, so Claude can explain it.
+    is the result, so Claude can explain it. Also notes whether the call
+    settled itself or leaves Claude something to say (see closing()).
     """
+    turn._shown = None
+    text, failed = await _execute(turn, name, value)
+    if failed:
+        turn.troubled = True
+    if failed or turn._shown is None:
+        turn.open = True
+    else:
+        turn.settled.append(turn._shown)
+    return text, failed
+
+
+def closing(turn: Turn) -> llm.Closing | None:
+    """After a round of calls: can the turn end here, without asking Claude for a
+    closing reply? Only if every call of the round acted and showed the user its
+    own confirmation, and nothing has failed. Returns what to say (often
+    nothing: the tool's own message is there) and what to remember, or None to
+    carry on to Claude."""
+    settled, was_open = turn.settled, turn.open
+    turn.settled, turn.open = [], False
+    if was_open or turn.troubled or not settled:
+        return None
+    return llm.Closing(
+        "\n".join(entry.say for entry in settled if entry.say),
+        "\n".join(entry.remember for entry in settled),
+    )
+
+
+async def _execute(turn: Turn, name: str, value: dict) -> tuple[str, bool]:
     ctx = turn.ctx
     spec = turn.specs.get(name)
     if spec is None:

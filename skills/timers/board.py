@@ -3,7 +3,7 @@ from datetime import datetime
 
 import discord
 
-from core import discord_utils
+from core import discord_utils, live
 from core.discord_utils import log_error
 from skills.timers import store
 from skills.timers.durations import format_duration
@@ -92,10 +92,22 @@ async def refresh_lists(user_id: int) -> None:
 
 
 async def refresh(channel_id: int, user_id: int | None = None) -> None:
-    """Bring a channel's board up to date, and the user's "Your timers" lists with it."""
-    await _refresh_board(channel_id, user_id)
+    """Bring a channel's board up to date, and the user's "Your timers" lists with it.
+
+    Returns at once: the edits follow in the background, one per message
+    however many changes asked for it (core/live.py). Both are written from
+    what the database says when they run."""
+
+    async def board() -> None:
+        await _refresh_board(channel_id, user_id)
+
+    live.schedule(("timers board", channel_id), board)
     if user_id is not None:
-        await refresh_lists(user_id)
+
+        async def lists() -> None:
+            await refresh_lists(user_id)
+
+        live.schedule(("timers lists", user_id), lists)
 
 
 async def _refresh_board(channel_id: int, user_id: int | None = None) -> None:

@@ -35,7 +35,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `users.py` | The `User` record, `ensure_owner()`, cached lookup by Discord id |
 | `permissions.py` | `is_allowed(user, action)`: the one permission check |
 | `errors.py` | `UserError`: a problem the user can fix |
-| `context.py` | `Context` handed to skills: user, channel, args, `reply` (Kept) / `confirm` / `note` (Transient), database, #bot-log; `via_tool` says Claude is running it |
+| `context.py` | `Context` handed to skills: user, channel, args, `reply` (Kept) / `confirm` / `note` (Transient), database, #bot-log; `via_tool` says Claude is running it; `posted` counts what a handler put in the channel |
 | `lifecycle.py` | The message lifecycle: the six classes and their policy, `classify(...)`, and `deletes(...)` / `delete_after()`, which everything that deletes a message by itself asks first (`dev cleanup off` says no) |
 | `router.py` | Matches typed words and phrases, with typo tolerance; sets filler words aside for reply actions ("pin this") |
 | `reactions.py` | Pure: which reaction changes count, which are checked at once, where they ended up, what to apply or undo; the `reaction_state` queries |
@@ -48,17 +48,18 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `scheduler.py` | Database-backed jobs: `add_job`, a ticker that runs due ones, catch-up at startup (`job.is_late`) |
 | `devmode.py` | Dev mode's in-memory state; other code asks it for values (`reaction_debounce()`, `speed()`, `is_verbose()`, `cleanup_enabled()`, `debug()`, `register_task()`) |
 | `interactions.py` | Permission check and logging for slash commands and context menus |
-| `llm.py` | Claude client; the system prompt (cached part, then the time); the tool loop (`ask_claude` runs the calls Claude makes, up to `MAX_TOOL_CALLS`); the honesty checks (`claims_done`, `claims_change`, `scrub`: a "done" or a reported change with nothing run is sent back once, a bracketed tool note is removed); per-channel history of what was said and nothing else; cost estimates including cache and tool tokens |
-| `timing.py` | Where the time goes while one message is answered: each request to Claude, each tool, the calls to Discord, rate-limit waits and retries (read from the libraries' logs). One `Turn` per message, found through a context variable; `summary_lines` is the breakdown on the "Message handled" card |
+| `llm.py` | Claude client (short timeout, two retries); the system prompt (one cached block, the same for every message); `turn_note` (the time and the skills' live state, sent after the user's words in the latest turn only); the tool loop (`ask_claude` runs the calls Claude makes, up to `MAX_TOOL_CALLS`, and ends the turn without a closing request when `closing` says the tools have already told the user); the honesty checks (`claims_done`, `claims_change`, `scrub`: a "done" with nothing done, or a reported change with no tool having succeeded, is sent back once; a bracketed tool note is removed); per-channel history of what was said and nothing else; cost estimates including cache and tool tokens |
+| `timing.py` | Where the time goes while one message is answered: each request to Claude, each tool, the calls to Discord, rate-limit waits and retries (read from the libraries' logs). One `Turn` per message, found through a context variable; `summary_lines` is the breakdown on the "Message handled" card
+| `live.py` | Work nobody should wait for: `schedule(key, refresh)` brings one Live message up to date in the background, one edit however many changes asked for it and at most one every 2 seconds per message; `background(...)` runs anything else after the reply. What they do is not counted in the turn's timing |
 | `discord_utils.py` | Binds the client and times every call it makes to Discord; #bot-log cards, `split_message`, `truncate`, `safe_reply`, `report_interaction_error` |
 
 ## `skills/`
 
 | Path | Responsibility |
 |---|---|
-| `base.py` | The `Skill` base class with its hooks (including `message_class` and `tools_available`), and the self-describing `Keyword`, `ReplyAction`, `Reaction` records (the last two with an optional `validate`); `Param` describes an argument for Claude; `Tool` is a tool that isn't a word (reading state, acting by id) |
-| `registry.py` | Discovers and loads skills; dispatches words, reply actions and reactions; refuses invalid ones at once; decides how each ends; asks skills what a message is (`declared_class()`); the single source of what the bot can do (`catalogue()`, `find()`, `capabilities_text()`, and `tools_for()` for Claude, which adds each skill's `tools()`); `run_tool()` runs a tool call down the same path as a typed word |
-| `toolcalls.py` | Not a skill: what becomes of a tool call from Claude. Gathers the tools for a message, then decides per call: run now, wait for "ok", Confirm / Cancel, which-message buttons, quoted preview with Undo, or (for a message found further back) quoted and asked first. Also the `recent_messages` and `search_messages` tools, and whether anything was actually done this turn (`Turn.acted`) |
+| `base.py` | The `Skill` base class with its hooks (including `message_class` and `tools_available`), and the self-describing `Keyword`, `ReplyAction`, `Reaction` records (the last two with an optional `validate`); `Param` describes an argument for Claude; `Tool` is a tool that isn't a word (reading state, acting by id). `Skill.live_state(ctx)` is what a skill tells Claude about its state with every message |
+| `registry.py` | Discovers and loads skills; dispatches words, reply actions and reactions; refuses invalid ones at once; decides how each ends; asks skills what a message is (`declared_class()`); the single source of what the bot can do (`catalogue()`, `find()`, `capabilities_text()`, and `tools_for()` for Claude, which adds each skill's `tools()`); `run_tool()` runs a tool call down the same path as a typed word. `live_state(ctx)` gathers the skills' state for Claude; a tool call's #bot-log card follows in the background |
+| `toolcalls.py` | Not a skill: what becomes of a tool call from Claude. Gathers the tools for a message, then decides per call: run now, wait for "ok", Confirm / Cancel, which-message buttons, quoted preview with Undo, or (for a message found further back) quoted and asked first. Also the `recent_messages` and `search_messages` tools, and whether anything was actually done this turn (`Turn.acted`). `closing(turn)` says after each round whether every call acted and showed the user its own confirmation, so the turn can end there |
 | `builtin/__init__.py` | `ping`, `reset`, `buttons`, `stats`, and `help` generated from the registry |
 | `builtin/views.py` | The `buttons` test view |
 | `archive/__init__.py` | Registers reply `archive` / `delete`, the 📦 and 🗑️ reactions, the context menu |
@@ -67,11 +68,11 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `archive/messages.py` | The Discord work: webhook repost, delete, confirmation, Restore button |
 | `keep/__init__.py` | The 📌 reaction: keep (pin) and unkeep (unpin); reply `pin` / `unpin`, which act at once. All through `core/pins.py` |
 | `timers/__init__.py` | Registers `timer`, `timers`, `pause all`, `resume all`, `pomo`, `pomo stats`, the reply actions and job handlers, and Claude's tools: `list_timers`, `get_pomodoro_status`, `timer_history`, `timer_control`, `pomodoro_control` |
-| `timers/control.py` | The handlers of those tools, and `pause all` / `resume all`. What they report is read back from the database after the change |
-| `timers/status.py` | Pure: the live state of timers and the session in words for Claude, the ids (`t12`, `p4`) the control tools take, the event history and what `pause all` did |
+| `timers/control.py` | The handlers of those tools, and `pause all` / `resume all`. What they report is read back from the database after the change. `timer_control` takes one id, several, or `all` (with an optional label), so a bulk request is one call; `live_state` is what Claude is told with every message |
+| `timers/status.py` | Pure: the live state of timers and the session in words for Claude, the ids (`t12`, `p4`) the control tools take, the event history and what `pause all` did; several ids in one argument, label matching, and the live state text |
 | `timers/durations.py`, `pomodoro.py` | Pure: duration parsing; Pomodoro phases, pause arithmetic, stats |
 | `timers/store.py` | Everything timers remember (`timers_*` tables), including each clock's own speed, the events of every timer and session, and the live lists |
-| `timers/timers.py`, `sessions.py`, `board.py`, `common.py` | Timer messages, Pomodoro session cards, the pinned "Active timers" board and the live "Your timers" lists (both rewritten on every change), shared message helpers |
+| `timers/timers.py`, `sessions.py`, `board.py`, `common.py` | Timer messages, Pomodoro session cards, the pinned "Active timers" board and the live "Your timers" lists (both rewritten on every change, in the background through `core/live.py`), shared message helpers |
 | `dev/__init__.py` | Registers the `dev …` words; `dev mode on\|off` is the one Claude is always offered |
 | `dev/panel.py` | The pinned dev panel, its persistent buttons, the "🛠️ Dev mode" status |
 | `dev/tools.py` | `dev inspect`, `dev jobs`, `dev run`, `dev fire next`, `dev seed`, `dev clean` |
@@ -88,7 +89,7 @@ core helpers.
 `stranger`); `helpers.py` has `DatabaseTestCase`; `__init__.py` sets made-up
 settings before `core` loads. One `test_*.py` per area: `router`,
 `registry` (loading, help, capabilities), `reactions`, `reaction_keys`,
-`debounce`, `keep`, `archive_rules`, `archive_store`, `durations`,
+`debounce`, `live`, `keep`, `archive_rules`, `archive_store`, `durations`,
 `pomodoro`, `timer_text`, `timing`, `timer_status`, `timer_freeze` (pause, resume and events against a
 database with the clock under test control), `devmode`, `dev_parsing`, `lab`, `lifecycle`,
 `permissions`, `scheduler`, `text`, `tools`, `pending`, `llm_tools` (the
@@ -143,6 +144,13 @@ Claude loop against a scripted stand-in), `toolcalls`.
    and a card in #bot-log records it. Only the reply's text is kept in
    the history. The "Message handled" card lists the tools sent, their
    tokens, cache use, the calls and where the time went (`core/timing.py`).
+5. Speed: the message gets 👀 at once (removed when answered). The time
+   and `registry.live_state` go with the user's words as a note, so the
+   system prompt and tools stay byte-identical (cached) and a simple
+   request needs no read first. When every call of a round acted and
+   showed its own confirmation (`toolcalls.closing`), the turn ends
+   there: one request to Claude, not two. Board, list and card edits
+   and the tool's log card follow in the background (`core/live.py`).
 
 **Reaction → debouncer → actions**
 

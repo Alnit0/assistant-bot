@@ -35,6 +35,7 @@ class Context:
     # True when Claude is running this as a tool: it will say what happened, so a
     # handler can hand it the facts instead of posting them as well
     via_tool: bool = False
+    posted: int = 0  # how many messages this has put in the channel (asides don't count)
 
     # Database access: the async helpers in core/database.py, including run()
     db = database
@@ -76,6 +77,7 @@ class Context:
         Text too long for one message is split at line breaks.
         """
         self.replies.append(text)
+        self.posted += 1
         chunks = split_message(text) or [text]
         for chunk in chunks[:-1]:
             await self._channel.send(chunk)
@@ -89,6 +91,7 @@ class Context:
         for name, value in fields:
             embed.add_field(name=name, value=value, inline=True)
         self.replies.append(f"card: {title}")
+        self.posted += 1
         return await self._channel.send(embed=embed)
 
     async def confirm(self, text: str) -> None:
@@ -102,6 +105,7 @@ class Context:
         if self.collect_confirmations:
             self.collected.append(text)
             return
+        self.posted += 1
         await self._send_transient(text)
 
     async def _send_transient(self, text: str, seconds: float | None = None) -> None:

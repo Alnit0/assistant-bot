@@ -16,8 +16,12 @@ from skills.timers.durations import DurationError, parse_duration
 # running.
 # ---------------------------------------------------------------------------
 ENDED_WITHIN = timedelta(hours=24)  # how long an ended timer is still mentioned
-TIMER_ACTIONS = ("pause", "resume", "cancel", "extend")
+TIMER_ACTIONS = ("pause", "resume", "cancel", "stop", "extend")
 POMODORO_ACTIONS = ("pause", "resume", "start", "skip", "stop", "extend")
+_SAME_AS = {"stop": "cancel"}  # stopping a timer is cancelling it
+# With "all", which timers an action is about (the others are not a failure)
+_ALL_APPLIES_TO = {"pause": store.RUNNING, "resume": store.PAUSED}
+_THE_SESSION = {"", "current", "all", "it", "pomodoro", "session"}
 
 # The state each action must leave behind
 _TIMER_AFTER = {
@@ -37,6 +41,19 @@ _SESSION_AFTER = {
 
 
 # --- reading -----------------------------------------------------------------
+async def live_state(ctx: Context) -> str:
+    """Every timer and the session as they are now, sent to Claude with each
+    message so that a simple request needs no reading first."""
+    now = utc_now()
+    active = await store.active_timers(user_id=ctx.user.id)
+    ended = await store.ended_timers(ctx.user.id, now - ENDED_WITHIN)
+    running = await store.active_sessions(user_id=ctx.user.id)
+    return status.live_text(
+        active, ended, running[0] if running else None, now, here=ctx.channel_id, replied_to=ctx.reply_target_id
+    )
+
+
+
 async def list_timers_tool(ctx: Context, value: dict) -> str:
     now = utc_now()
     active = await store.active_timers(user_id=ctx.user.id)
@@ -75,31 +92,99 @@ def _extra_time(value: dict) -> int:
         raise UserError(f"{error} `duration` says how much time to add, e.g. 10m.")
 
 
-async def timer_control_tool(ctx: Context, value: dict) -> str:
-    timer_id = status.parse_ref(value["id"], status.TIMER)
-    timer = await store.get_timer(timer_id) if timer_id is not None else None
-    if timer is None or timer.user_id != ctx.user.id:
-        raise UserError(f"There is no timer `{value['id']}`. Call list_timers and use an id from it, such as t12.")
-    action = value["action"]
-    if action == "extend":
-        said = await timers.extend(timer, _extra_time(value))
-    else:
-        said = await {"pause": timers.pause, "resume": timers.resume, "cancel": timers.cancel}[action](timer)
+async def _chosen_timers(ctx: Context, value: dict, action: str) -> list[store.Timer]:
+    """The timers a timer_control call is about: the ids given, or with "all"
+    every one the action can apply to, narrowed to a label if one was given."""
+    wanted, label = value.get("ids", "").strip(), value.get("label", "").strip()
+    if wanted.lower() != status.ALL:
+        ids, bad = status.parse_refs(wanted, status.TIMER)
+        chosen = []
+        for timer_id in ids:
+            timer = await store.get_timer(timer_id)
+            if timer is None or timer.user_id != ctx.user.id:
+                bad.append(status.ref(status.TIMER, timer_id))
+            else:
+                chosen.append(timer)
+        if bad or not chosen:
+            named = ", ".join(f"`{piece}`" for piece in bad) or "that"
+            raise UserError(
+                f"There is no timer {named}. Use the ids in the live state (such as t12, several "
+                f'separated by spaces), or "{status.ALL}".'
+            )
+        return chosen
 
-    # What is in the database now is the result, not what the call said it did
-    saved = await store.get_timer(timer.id)
-    if saved is None or saved.status not in _TIMER_AFTER[action]:
-        state = "gone" if saved is None else f"still {saved.status}"
-        raise UserError(f"That did not take: **{timer.label}** is {state}. Nothing has changed; tell the user so.")
-    return f'{said}\nNow saved as: {status.ref(status.TIMER, saved.id)}: "{saved.label}" · {status.timer_state(saved, utc_now())}'
+    active = await store.active_timers(user_id=ctx.user.id)
+    if not active:
+        raise UserError("No timers are running or paused, so there is nothing to do that to.")
+    fitting = status.labelled(active, label)
+    if not fitting:
+        going = ", ".join(f'"{timer.label}"' for timer in active)
+        raise UserError(f'No timer going is called "{label}". The ones going are: {going}.')
+    # "Pause all" is about the ones running, "resume all" the ones paused
+    needs = _ALL_APPLIES_TO.get(action)
+    chosen = [timer for timer in fitting if needs is None or timer.status == needs]
+    if not chosen:
+        raise UserError(f"None of them is {needs}, so nothing was changed. Tell the user so.")
+    return chosen
+
+
+async def timer_control_tool(ctx: Context, value: dict) -> str:
+    action = _SAME_AS.get(value["action"], value["action"])
+    extra = _extra_time(value) if action == "extend" else 0
+    chosen = await _chosen_timers(ctx, value, action)
+
+    done, said_each, left_alone = [], [], []
+    for timer in chosen:
+        try:
+            if action == "extend":
+                said = await timers.extend(timer, extra)
+            else:
+                said = await {"pause": timers.pause, "resume": timers.resume, "cancel": timers.cancel}[action](timer)
+        except UserError as error:
+            if len(chosen) == 1:
+                raise  # the one that was asked for: its reason is the answer
+            left_alone.append(f"{timer.label} ({error})")
+            continue
+        # What is in the database now is the result, not what the call said it did
+        saved = await store.get_timer(timer.id)
+        if saved is None or saved.status not in _TIMER_AFTER[action]:
+            state = "gone" if saved is None else f"still {saved.status}"
+            left_alone.append(f"**{timer.label}** is {state}")
+        else:
+            done.append(saved)
+            said_each.append(said)
+
+    if not done:
+        if len(chosen) == 1 and left_alone[0].startswith("**"):
+            raise UserError(f"That did not take: {left_alone[0]}. Nothing has changed; tell the user so.")
+        raise UserError(f"Nothing has changed: {'; '.join(left_alone)}. Tell the user so.")
+
+    now = utc_now()
+    if len(chosen) == 1:
+        shown = said_each[0]
+    else:
+        lines = [saved.label if action == "cancel" else status.bulk_line(saved.label, saved.left(now)) for saved in done]
+        shown = status.control_text(action, lines, left_alone)
+    # For the user, if Claude adds nothing (skills/toolcalls.py)
+    await ctx.confirm(shown)
+    saved_as = [f'{status.ref(status.TIMER, saved.id)}: "{saved.label}" · {status.timer_state(saved, now)}' for saved in done]
+    return f"{shown}\nNow saved as: " + "\n".join(saved_as)
 
 
 async def pomodoro_control_tool(ctx: Context, value: dict) -> str:
-    session_id = status.parse_ref(value["id"], status.SESSION)
-    session = await store.get_session(session_id) if session_id is not None else None
+    wanted = value["id"].strip()
+    if wanted.lower() in _THE_SESSION:
+        # There is only ever one going: no id is needed to mean it
+        running = await store.active_sessions(user_id=ctx.user.id)
+        session = running[0] if running else None
+        if session is None:
+            raise UserError("No Pomodoro session is going, so there is nothing to do that to.")
+    else:
+        session_id = status.parse_ref(wanted, status.SESSION)
+        session = await store.get_session(session_id) if session_id is not None else None
     if session is None or session.user_id != ctx.user.id:
         raise UserError(
-            f"There is no Pomodoro session `{value['id']}`. Call get_pomodoro_status and use the id from it, such as p4."
+            f'There is no Pomodoro session `{value["id"]}`. Use the id in the live state, such as p4, or "current".'
         )
     action = value["action"]
     if action == "extend":
@@ -111,6 +196,7 @@ async def pomodoro_control_tool(ctx: Context, value: dict) -> str:
     if saved is None or saved.state not in _SESSION_AFTER[action]:
         state = "gone" if saved is None else f"still {saved.state}"
         raise UserError(f"That did not take: **{session.label}** is {state}. Nothing has changed; tell the user so.")
+    await ctx.confirm(said)
     if saved.state == store.STOPPED:
         return said
     return f"{said}\nNow saved as: {status.session_text(saved, utc_now(), here=ctx.channel_id)}"

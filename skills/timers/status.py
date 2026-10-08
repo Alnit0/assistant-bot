@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 
 from core.tools import age
@@ -37,6 +38,47 @@ def parse_ref(text: str, kind: str) -> int | None:
     if cleaned.startswith(kind):
         cleaned = cleaned[len(kind) :]
     return int(cleaned) if cleaned.isdigit() else None
+
+
+ALL = "all"
+# Words that say "a timer" rather than name one: "the tea timer" is the label "tea"
+_NOT_A_LABEL = {"the", "a", "my", "timer", "timers", "called", "named", "one", "ones", "all"}
+
+
+def parse_refs(text: str, kind: str) -> tuple[list[int], list[str]]:
+    """The record ids in "t12 t14" (or "t12, t14", "t12 and t14"), in order and
+    once each, and the pieces that are not ids of this kind."""
+    ids, bad = [], []
+    for piece in re.split(r"[\s,;]+", text.strip()):
+        if not piece or piece.lower() in ("and", "&"):
+            continue
+        record_id = parse_ref(piece, kind)
+        if record_id is None:
+            bad.append(piece)
+        elif record_id not in ids:
+            ids.append(record_id)
+    return ids, bad
+
+
+def _words(text: str) -> list[str]:
+    return re.findall(r"[^\W_]+", text.casefold())
+
+
+def label_matches(label: str, wanted: str) -> bool:
+    """Whether a timer's label is the one meant by `wanted`: every word asked
+    for is a word of the label, whatever the case. So "tea" is "Tea" and
+    "tea 2" (every timer called tea), but not "team" or "steam"; and "the
+    tea timer" is "tea". Nothing asked for fits every label."""
+    asked = [word for word in _words(wanted) if word not in _NOT_A_LABEL] or _words(wanted)
+    have = set(_words(label))
+    return all(word in have for word in asked)
+
+
+def labelled(timers: list[store.Timer], wanted: str) -> list[store.Timer]:
+    """The timers a label picks out: all of them if no label was given."""
+    if not wanted.strip():
+        return list(timers)
+    return [timer for timer in timers if label_matches(timer.label, wanted)]
 
 
 def _where(channel_id: int, here: int | None) -> str:
@@ -95,6 +137,44 @@ def timers_text(
         lines.append(
             f'Pomodoro: {ref(SESSION, session.id)} "{session.label}" is going; get_pomodoro_status has the details.'
         )
+    return "\n".join(lines)
+
+
+def live_text(
+    active: list[store.Timer],
+    ended: list[store.Timer],
+    session: store.Session | None,
+    now: datetime,
+    *,
+    here: int | None = None,
+    replied_to: int | None = None,
+) -> str:
+    """What Claude is told with every message: each timer that is going (every
+    one, however alike their labels), the ones that ended lately, and the
+    session in full. Complete, so nothing has to be read with a tool before
+    acting."""
+
+    def line(timer: store.Timer) -> str:
+        text = f'{ref(TIMER, timer.id)}: "{timer.label}" · {timer_state(timer, now)}'
+        if timer.active:
+            text += f" · {_where(timer.channel_id, here)}"
+        if replied_to is not None and replied_to in (timer.message_id, timer.notice_message_id):
+            text += " · the user replied to this one"
+        return text
+
+    lines = []
+    if active:
+        lines.append("Timers going now (the ids are for timer_control):")
+        lines += [line(timer) for timer in active]
+    else:
+        lines.append(NO_TIMERS)
+    if ended:
+        lines.append("Ended in the last day (nothing more can be done to these):")
+        lines += [line(timer) for timer in ended]
+    if session is None:
+        lines.append(NO_SESSION)
+    else:
+        lines.append(f"Pomodoro (the id is for pomodoro_control): {session_text(session, now, here=here)}")
     return "\n".join(lines)
 
 
@@ -160,6 +240,23 @@ def events_text(events: list[store.Event], zone) -> str:
 # ---------------------------------------------------------------------------
 def bulk_line(label: str, left: float, where: str = "") -> str:
     return f"{label} · " + (f"{where} · " if where else "") + f"{format_duration(left)} left"
+
+
+CONTROL_WORDS = {
+    "pause": ("⏸️", "Paused"),
+    "resume": ("▶️", "Resumed"),
+    "cancel": ("🚫", "Cancelled"),
+    "extend": ("➕", "Added time to"),
+}
+
+
+def control_text(action: str, done: list[str], left_alone: list[str]) -> str:
+    """What timer_control did to several timers at once: each one by name."""
+    icon, verb = CONTROL_WORDS[action]
+    lines = [f"{icon} **{verb} {len(done)}**", *(f"• {line}" for line in done)]
+    if left_alone:
+        lines.append("Left alone: " + "; ".join(left_alone))
+    return "\n".join(lines)
 
 
 def bulk_text(pausing: bool, done: list[str], left_alone: list[str], note: str = "") -> str:

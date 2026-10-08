@@ -205,11 +205,11 @@ def tool(world):
 def test_the_control_tool_reports_the_state_that_was_saved(world, tool):
     tea = start_timer(world, "10m", "tea")
     world.clock.wait(39)
-    paused = tool("timer_control", id=f"t{tea.id}", action="pause", duration="", propose=False)
+    paused = tool("timer_control", ids=f"t{tea.id}", action="pause", duration="", propose=False)
     assert paused.status == "ok"
     assert paused.text == f'⏸️ Paused: tea (9m 21s left)\nNow saved as: t{tea.id}: "tea" · paused with 9m 21s left'
     world.clock.wait(95)
-    resumed = tool("timer_control", id=f"t{tea.id}", action="resume", duration="", propose=False)
+    resumed = tool("timer_control", ids=f"t{tea.id}", action="resume", duration="", propose=False)
     assert resumed.text.endswith(f't{tea.id}: "tea" · running, 9m 21s left')
     assert saved(tea).status == store.RUNNING
 
@@ -222,7 +222,7 @@ def test_a_resume_that_was_not_saved_is_a_failure_not_a_success(world, tool, mon
         return None
 
     monkeypatch.setattr(store, "save_timer", lost)
-    outcome = tool("timer_control", id=f"t{tea.id}", action="resume", duration="", propose=False)
+    outcome = tool("timer_control", ids=f"t{tea.id}", action="resume", duration="", propose=False)
     assert outcome.status == "error" and "still paused" in outcome.text
 
 
@@ -407,3 +407,109 @@ def test_a_list_with_nothing_on_it_is_not_kept_live(world):
 
     assert run(list_timers(world.typed())) == "no active timers"
     assert world.channel.sent[-1] == "📋 No active timers." and run(store.lists(world.owner.id)) == []
+
+
+# --- several timers in one call: by ids, all of them, or all with a label ---------
+def control_call(tool, **value):
+    return tool("timer_control", **{"duration": "", "label": "", "propose": False, **value})
+
+
+def statuses(world) -> dict[str, str]:
+    def read(conn):
+        return dict(conn.execute("SELECT label, status FROM timers_timers ORDER BY id").fetchall())
+
+    from core import database
+
+    return run(database.run(read))
+
+
+def test_cancel_all_cancels_every_timer_in_one_call(world, tool):
+    # 23:46:42 on 2026-10-07: "cancel all timers" took one call each, hit the cap of 5 and left D and E going
+    for label in ("tea", "dinner", "C", "D", "E", "F", "G"):
+        start_timer(world, "30m", label)
+    outcome = control_call(tool, ids="all", action="cancel")
+    assert outcome.status == "ok" and outcome.text.splitlines()[0] == "🚫 **Cancelled 7**"
+    assert set(statuses(world).values()) == {store.CANCELLED}
+    assert outcome.told == (outcome.text.split("\nNow saved as: ")[0],), "what the user is shown"
+
+
+def test_all_timers_called_tea_acts_on_every_match_and_nothing_else(world, tool):
+    # 23:46:24 on 2026-10-07: "stop all timers called tea" -> "I don't have a timer called tea running"
+    for label in ("Tea", "tea 2", "dinner", "team"):
+        start_timer(world, "30m", label)
+    outcome = control_call(tool, ids="all", action="stop", label="tea")
+    assert outcome.status == "ok", outcome.text
+    assert outcome.text.splitlines()[:3] == ["🚫 **Cancelled 2**", "• Tea", "• tea 2"]
+    assert statuses(world) == {
+        "Tea": store.CANCELLED, "tea 2": store.CANCELLED, "dinner": store.RUNNING, "team": store.RUNNING,
+    }
+
+
+def test_stop_is_cancel(world, tool):
+    tea = start_timer(world, "10m", "tea")
+    outcome = control_call(tool, ids=f"t{tea.id}", action="stop")
+    assert outcome.text.splitlines()[0] == "🚫 Cancelled: tea" and saved(tea).status == store.CANCELLED
+
+
+def test_several_ids_in_one_call(world, tool):
+    tea, dinner, eggs = (start_timer(world, "10m", label) for label in ("tea", "dinner", "eggs"))
+    world.clock.wait(60)
+    outcome = control_call(tool, ids=f"t{tea.id} t{eggs.id}", action="pause")
+    assert outcome.text.splitlines()[:3] == ["⏸️ **Paused 2**", "• tea · 9m left", "• eggs · 9m left"]
+    assert (saved(tea).status, saved(dinner).status, saved(eggs).status) == (store.PAUSED, store.RUNNING, store.PAUSED)
+
+
+def test_pause_all_is_about_the_running_ones_and_resume_all_the_paused(world, tool):
+    tea, dinner = start_timer(world, "10m", "tea"), start_timer(world, "10m", "dinner")
+    run(timers.pause(saved(tea)))
+    assert control_call(tool, ids="all", action="pause").text.splitlines()[0] == "⏸️ Paused: dinner (10m left)"
+    again = control_call(tool, ids="all", action="pause")
+    assert again.status == "error" and "None of them is running" in again.text
+    resumed = control_call(tool, ids="all", action="resume")
+    assert resumed.text.splitlines()[0] == "▶️ **Resumed 2**"
+    assert (saved(tea).status, saved(dinner).status) == (store.RUNNING, store.RUNNING)
+
+
+def test_one_that_cannot_be_changed_is_named_and_the_rest_still_are(world, tool):
+    tea, dinner = start_timer(world, "10m", "tea"), start_timer(world, "10m", "dinner")
+    run(timers.pause(saved(tea)))
+    outcome = control_call(tool, ids=f"t{tea.id} t{dinner.id}", action="pause")
+    lines = outcome.text.splitlines()
+    assert outcome.status == "ok" and lines[0] == "⏸️ **Paused 1**" and lines[1].startswith("• dinner")
+    assert lines[2].startswith("Left alone: tea (") and "isn't running" in lines[2]
+
+
+def test_a_label_nothing_has_or_an_id_that_is_not_there_is_explained(world, tool):
+    start_timer(world, "10m", "tea")
+    nobody = control_call(tool, ids="all", action="cancel", label="coffee")
+    assert nobody.status == "error" and 'No timer going is called "coffee"' in nobody.text and '"tea"' in nobody.text
+    missing = control_call(tool, ids="t1 t99", action="cancel")
+    assert missing.status == "error" and "`t99`" in missing.text
+    assert statuses(world) == {"tea": store.RUNNING}, "nothing is done when part of the request is wrong"
+
+
+def test_the_pomodoro_can_be_named_as_the_current_one(world, tool):
+    run(sessions.start(world.typed()))
+    paused = tool("pomodoro_control", id="current", action="pause", duration="", propose=False)
+    assert paused.status == "ok", paused.text
+    assert run(store.active_sessions(user_id=world.owner.id))[0].state == store.PAUSED
+    assert paused.told and paused.told[0].startswith("⏸️")
+
+
+def test_the_live_state_is_complete_and_current(world):
+    for label in ("tea", "tea", "Tea 2", "dinner"):
+        start_timer(world, "10m", label)
+    tea = run(store.active_timers(user_id=world.owner.id))[0]
+    world.clock.wait(60)
+    run(timers.pause(saved(tea)))
+    world.clock.wait(60)
+    lines = run(control.live_state(world.typed("stop all timers called tea"))).splitlines()
+    assert lines[1:5] == [
+        't1: "tea" · paused with 9m left · <#100> (this channel)',
+        't2: "tea" · running, 8m left · <#100> (this channel)',
+        't3: "Tea 2" · running, 8m left · <#100> (this channel)',
+        't4: "dinner" · running, 8m left · <#100> (this channel)',
+    ]
+    run(timers.cancel(saved(tea)))
+    after = run(control.live_state(world.typed("and now?")))
+    assert 't1: "tea" · cancelled' in after and 't1: "tea" · paused' not in after

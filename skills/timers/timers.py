@@ -4,7 +4,7 @@ from datetime import timedelta
 
 import discord
 
-from core import devmode, scheduler
+from core import devmode, live, scheduler
 from core.context import Context
 from core.discord_utils import report_interaction_error
 from core.errors import UserError
@@ -58,9 +58,21 @@ async def _changed(timer: store.Timer, refresh: bool = True) -> None:
     lists up to date. `refresh=False` leaves the board and lists to the caller,
     who is changing several timers and will refresh once at the end."""
     await store.save_timer(timer)
-    await edit_message(timer.channel_id, timer.message_id, content=render_timer(timer))
+    show_soon(timer.id)
     if refresh:
         await board.refresh(timer.channel_id, timer.user_id)
+
+
+def show_soon(timer_id: int) -> None:
+    """Rewrite a timer's own message in the background, from what is saved by
+    then (core/live.py): nobody waits for it, and several changes are one edit."""
+
+    async def show() -> None:
+        timer = await store.get_timer(timer_id)
+        if timer is not None:
+            await edit_message(timer.channel_id, timer.message_id, content=render_timer(timer))
+
+    live.schedule(("timer", timer_id), show)
 
 
 async def _run(timer: store.Timer, seconds: float) -> None:

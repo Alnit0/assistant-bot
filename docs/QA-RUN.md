@@ -1,7 +1,7 @@
 # QA run sheet
 
-One pass through the 153 👤 Manual tests in `docs/TESTING.md` that are
-⬜ Untested (as of 2026-10-07). Blocks share setup and each one leaves things
+One pass through the 156 👤 Manual tests in `docs/TESTING.md` that are
+⬜ Untested (as of 2026-10-09). Blocks share setup and each one leaves things
 ready for the next, so run them in order.
 
 **Time:** about 3¼ hours at the keyboard, plus two nights for the backup
@@ -21,8 +21,8 @@ tests (block 12).
 | 10 | Rest of the lab | off | 8 | 8 |
 | 11 | Phone notifications | off | 5 | 11 |
 | 12 | Overnight backups | off | 2 | 2 nights |
-| 13 | Tool calling (Claude runs things) | off, then on, then off | 29 | 48 |
-| | **Total** | | **153** (F2 is split over blocks 4 and 7, counted in 7) | **about 3¼ hours** |
+| 13 | Tool calling (Claude runs things) | off, then on, then off | 32 | 53 |
+| | **Total** | | **156** (F2 is split over blocks 4 and 7, counted in 7) | **about 3¼ hours** |
 
 Block 13 needs nothing from the others: run it any time after block 1, and
 before the overnight block if that suits.
@@ -343,6 +343,9 @@ happens, not the exact words. Cancel or stop anything a step starts.
 | 27 | Ask: `Resume my tea timer`; then type `timers` | Tea's own message and the list show it running, and the time Claude gives matches them. If a "⚠️ Claude said "done" with nothing run" card appears, tea must still be running | N41 |
 | 28 | Ask: `What was left on dinner when I paused it?` | It answers from the record: the time of the pause and what was left (it matches step 26's message). Then `resume all`, cancel the timers and stop the session | N42 |
 | 29 | Ask: `Set a timer for 5 minutes`, then look at its "Message handled" log card | A Timing field: the seconds to the reply and the number of round trips, one line per request to Claude, one per tool, the Discord time and call count, rate-limit waits and retries. `logs/bot.log` has a matching `Timing:` line. Cancel the timer | N46 |
+| 30 | Ask: `Set a timer for 5 minutes`, watching the clock; then `Pause the timer` | 👀 appears on your message at once and goes when it is answered. The timer's message is there in under 4 seconds and Claude adds no line of its own. The pause is confirmed in one short message, also in under 4 seconds. Each log card's Timing shows 1 round trip | N50 |
+| 31 | Cancel the timer. Start timers `tea`, `Tea 2` and `dinner`, then ask: `Stop all timers called tea` | One message: "🚫 Cancelled 2" naming tea and Tea 2. Dinner is still running. The board and the timers' own messages show it within a few seconds | N51 |
+| 32 | Start five more timers (six with dinner), then ask: `Cancel all timers` | One message naming all six; none is left and you are not asked to repeat the request. The log card shows one tool call and no rate-limit waits | N52 |
 
 Each sentence costs an API call with the tools attached (see the Tool tokens
 field in step 13), so this block costs a little more than ordinary chat.

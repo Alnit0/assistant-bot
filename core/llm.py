@@ -4,13 +4,16 @@ import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 
-from anthropic import AsyncAnthropic
+from anthropic import AsyncAnthropic, Timeout
 
 from core import timing
 from core.config import (
     ANTHROPIC_API_KEY,
     ASSISTANT_NAME,
+    CLAUDE_CONNECT_TIMEOUT,
     CLAUDE_MODEL,
+    CLAUDE_RETRIES,
+    CLAUDE_TIMEOUT,
     MAX_HISTORY,
     MAX_TOKENS,
     MAX_TOOL_CALLS,
@@ -20,7 +23,13 @@ from core.config import (
 
 log = logging.getLogger("assistant")
 
-claude = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
+# A short timeout: a request that hangs is given up and retried, not waited ten
+# minutes for (the SDK's default). Retries show in the log and on the #bot-log card
+claude = AsyncAnthropic(
+    api_key=ANTHROPIC_API_KEY,
+    timeout=Timeout(CLAUDE_TIMEOUT, connect=CLAUDE_CONNECT_TIMEOUT),
+    max_retries=CLAUDE_RETRIES,
+)
 
 # Short-term conversation memory, one separate history per channel, so a chat
 # in one channel never leaks into another. Cleared when the bot restarts.
@@ -87,8 +96,17 @@ def _stable_prompt(capabilities: str, has_tools: bool) -> str:
             "happened yet: say so.\n"
             "- To act, call the tool. Never write a tool call, a tool result or a bracketed note "
             "about tools as text in a reply.\n"
-            "- For anything that changes by itself (what is running, how long is left), call the "
-            "tool that reads it, every time. Never answer it from the conversation.\n"
+            "- Each message from the user ends with a note from the bot, which the user did not "
+            "write and cannot see: the time now, and the live state (what is running, how long is "
+            "left, with ids), read at that moment. For anything that changes by itself, use that "
+            "note: answer from it and take ids from it. Never use an earlier message for this, "
+            "it is out of date. If what you need is not in the note, call the tool that reads it. "
+            "Do not mention the note, or bring up what is in it, unless the user's message is "
+            "about that; ids are for your tool calls, not for the user.\n"
+            "- Put every action the user asked for in ONE response, as tool calls side by side. "
+            "When they succeed, the user is shown each tool's own confirmation and the turn ends "
+            "there: you get no further say and no further calls. Only if a call fails, waits, or "
+            "just read something are you asked to reply.\n"
             "- Never claim or offer to do something you have no tool for. If a word the user can "
             "type would do it, tell them what to type; otherwise say you can't.\n"
             "- If a tool fails, explain why in plain words and what they could do about it.\n"
@@ -133,13 +151,24 @@ def _time_line() -> str:
     return f"The current date and time in Auckland is {now_nz().strftime('%A %d %B %Y, %I:%M %p')}."
 
 
+NOTE_OPENS = "[Note from the bot, not written by the user and not shown to them]"
+
+
+def turn_note(state: str = "") -> str:
+    """What changes from message to message, sent after the user's words in the
+    latest turn only: the time, and the skills' live state (registry.live_state).
+    It is never part of the system prompt or the history, so those stay the
+    same, byte for byte, and cached."""
+    lines = [NOTE_OPENS, _time_line()]
+    if state:
+        lines += ["Live state, read just now:", state]
+    return "\n".join(lines)
+
+
 def build_system_blocks(capabilities: str = "", has_tools: bool = False) -> list[dict]:
-    """The system prompt as the API takes it: the stable part, marked for caching,
-    then the time (which would otherwise spoil the cache every minute)."""
-    return [
-        {"type": "text", "text": _stable_prompt(capabilities, has_tools), "cache_control": CACHED},
-        {"type": "text", "text": _time_line()},
-    ]
+    """The system prompt as the API takes it: one block, the same for every
+    message, marked for caching. Nothing that changes goes in it (see turn_note)."""
+    return [{"type": "text", "text": _stable_prompt(capabilities, has_tools), "cache_control": CACHED}]
 
 
 def build_system_prompt(capabilities: str = "", has_tools: bool = False) -> str:
@@ -216,6 +245,18 @@ class ChatResult:
     cache_read_tokens: int = 0
     cache_write_tokens: int = 0
     tool_calls: list[ToolCall] = field(default_factory=list)
+
+
+    # The turn ended with the tools' own confirmations, without a closing reply from Claude
+    closed_by_tools: bool = False
+
+
+@dataclass(frozen=True)
+class Closing:
+    """How a turn ends when the tools have already told the user what happened."""
+
+    say: str  # anything still to send (empty when the tool's own message is in the channel)
+    remember: str  # what goes in the history as the assistant's turn, in plain words
 
 
 # `async (name, input) -> (text for Claude, is it an error)`
@@ -297,6 +338,8 @@ async def ask_claude(
     tools: list[dict] | None = None,
     run_tool: ToolRunner | None = None,
     acted: Callable[[], bool] | None = None,
+    note: str = "",
+    closing: Callable[[], Closing | None] | None = None,
 ) -> ChatResult:
     """Send the message plus recent history to Claude, running any tools it calls.
 
@@ -309,11 +352,17 @@ async def ask_claude(
     (looking something up doesn't count); without it, any call that didn't
     fail counts. A reply that says "done" when nothing was is sent back to
     Claude once, to act or to answer again (see ChatResult.unbacked_claim).
+    `note` is what the bot adds for this turn only (turn_note: the time and
+    the live state); it is sent after the user's words and never remembered.
+    `closing` is asked after each round of calls whether the turn can end
+    there: if the tools have shown the user what happened, no closing reply
+    is requested (one round trip instead of two).
     """
     history = history_for(channel_id)
     # Keep only recent history; trimming before adding keeps it starting with a user message
     del history[:-MAX_HISTORY]
-    messages = [*history, {"role": "user", "content": user_text}]
+    content = [{"type": "text", "text": user_text}, {"type": "text", "text": note}] if note else user_text
+    messages = [*history, {"role": "user", "content": content}]
     use_tools = bool(tools) and run_tool is not None
 
     request = dict(
@@ -326,11 +375,21 @@ async def ask_claude(
 
     result = ChatResult(reply="")
 
+    def none_succeeded() -> bool:
+        return all(call.is_error for call in result.tool_calls)
+
     def nothing_done() -> bool:
         if acted is not None:
             return not acted()
-        return all(call.is_error for call in result.tool_calls)
+        return none_succeeded()
 
+    def unbacked(said: str) -> bool:
+        """A flat "Done" needs an action behind it. The wider wording ("is now
+        paused") also fits a true account of what a tool just read, so it is
+        only questioned when no tool succeeded at all."""
+        return (claims_done(said) and nothing_done()) or (claims_change(said) and none_succeeded())
+
+    closed: Closing | None = None
     # One round per call at most, plus the reply that closes the turn
     rounds = MAX_TOOL_CALLS + 2
     while rounds > 0:
@@ -359,8 +418,7 @@ async def ask_claude(
         # or refused may carry half a call, which must never run
         if not use_tools or response.stop_reason != "tool_use" or not wanted:
             said = _text_of(response)
-            claimed = said and (claims_done(said) or claims_change(said))
-            if use_tools and not result.unbacked_claim and claimed and nothing_done():
+            if use_tools and not result.unbacked_claim and said and unbacked(said):
                 # It says it is done and nothing was: tell it so, once
                 result.unbacked_claim = said
                 log.warning("Claude said it was done with no tool run: %s", said)
@@ -391,19 +449,30 @@ async def ask_claude(
             results.append(entry)
         # Every result of the round goes back in one message
         messages.append({"role": "user", "content": results})
+        # If every call acted and showed the user its own confirmation, that is
+        # the answer: asking Claude to say it again would double the wait
+        closed = closing() if closing is not None and len(result.tool_calls) < MAX_TOOL_CALLS else None
+        if closed is not None:
+            break
 
-    result.reply, _ = scrub(_text_of(response))
-    if result.unbacked_claim and claims_done(result.reply) and nothing_done():
-        # Told once and it still says so: the user gets the truth instead
-        result.reply = NOT_DONE
-    if not result.reply:
-        if response.stop_reason == "tool_use":
-            result.reply = "I ran out of steps for that message. Tell me what is still left to do."
-        else:
-            result.reply = "(No reply from Claude.)" if nothing_done() else "✅ Done."
+    if closed is not None:
+        result.reply, result.closed_by_tools = closed.say, True
+        remembered = closed.remember or closed.say
+    else:
+        result.reply, _ = scrub(_text_of(response))
+        if result.unbacked_claim and claims_done(result.reply) and nothing_done():
+            # Told once and it still says so: the user gets the truth instead
+            result.reply = NOT_DONE
+        if not result.reply:
+            if response.stop_reason == "tool_use":
+                result.reply = "I ran out of steps for that message. Tell me what is still left to do."
+            else:
+                result.reply = "(No reply from Claude.)" if nothing_done() else "✅ Done."
+        remembered = result.reply
 
+    # Only the words: the note for this turn is out of date by the next one
     history.append({"role": "user", "content": user_text})
-    history.append({"role": "assistant", "content": result.reply})
+    history.append({"role": "assistant", "content": remembered})
 
     log.info(
         "Claude usage: %s in, %s out, cache %s read / %s written, %s tool call(s) (%s)",

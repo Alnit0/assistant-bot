@@ -12,7 +12,7 @@ import skills
 from core import scheduler
 from core.config import CHANNELS, ENABLED_SKILLS
 from core.context import Context
-from core import database, devmode, discord_utils, lifecycle, reactions, tools
+from core import database, devmode, discord_utils, lifecycle, live, reactions, tools
 from core.database import log_received, log_result
 from core.debounce import Debouncer
 from core.discord_utils import log_error, log_simple
@@ -368,6 +368,15 @@ async def _run(
     if reply is None:
         reply = "\n".join(ctx.replies)
     await log_result(row_id, reply=reply, status="ok")
+    if ctx.via_tool:
+        # Claude is waiting for this result and the user for its answer: the
+        # #bot-log card and the rest follow in the background
+        async def afterwards() -> None:
+            await ctx.log(title, reply)
+            await finished("ok", reply, False)
+
+        live.background(afterwards())
+        return "ok", reply
     await ctx.log(title, reply)
     command_deleted = False if keep_command else await ctx.delete_command()
     await finished("ok", reply, command_deleted)
@@ -530,11 +539,32 @@ def tools_for(user: User | None, channel_id: int | None) -> list[tools.ToolSpec]
     return specs
 
 
+async def live_state(ctx: Context) -> str:
+    """What the skills whose tools are on offer here say about their state right
+    now, for Claude to read with the message (Skill.live_state). A skill that
+    fails is left out and logged: the message is still answered."""
+    channel_name = _channel_name(ctx.channel_id)
+    parts = []
+    for skill in _skills:
+        if not skill.tools_available(channel_name):
+            continue
+        try:
+            text = await skill.live_state(ctx)
+        except Exception:
+            log.exception("Skill %s could not give its live state", skill.name)
+            continue
+        if text:
+            parts.append(text)
+    return "\n".join(parts)
+
+
 @dataclass(frozen=True)
 class ToolOutcome:
     status: str  # "ok", "error" or "denied"
     text: str  # what was recorded, or why it failed
     confirmations: list[str]  # what the handler would have confirmed, if they were collected
+    posted: bool = False  # the handler put something in the channel itself
+    told: tuple[str, ...] = ()  # a bespoke tool's own confirmation, not posted: for the user
 
 
 async def run_tool(
@@ -563,9 +593,14 @@ async def run_tool(
         via_tool=True,
     )
 
+    told: list[str] = []
+
     async def call():
         if spec.kind == tools.BESPOKE:
-            return await item.handler(call_ctx, value)
+            result = await item.handler(call_ctx, value)
+            # Before _run adds its own "Done": only what the handler chose to say
+            told.extend(call_ctx.collected)
+            return result
         if spec.kind == tools.REPLY_ACTION:
             if target is None:
                 raise UserError("I can't find the message to act on.")
@@ -585,7 +620,7 @@ async def run_tool(
         keep_command=True,
         mark_failure=False,
     )
-    return ToolOutcome(status, text, list(call_ctx.collected))
+    return ToolOutcome(status, text, list(call_ctx.collected), call_ctx.posted > 0, tuple(told))
 
 
 async def run_undo(ctx: Context, spec: tools.ToolSpec, target: discord.Message) -> ToolOutcome:

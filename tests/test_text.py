@@ -122,7 +122,9 @@ def test_with_tools_claude_is_told_how_to_use_them():
         "unless a tool you called for this very message returned success",
         "Earlier messages are not evidence",
         "Never write a tool call, a tool result or a bracketed note",
-        "call the tool that reads it, every time",
+        "use that note: answer from it and take ids from it",
+        "Never use an earlier message for this",
+        "Put every action the user asked for in ONE response",
         "call search_messages to look further back",
         "Never claim or offer to do something you have no tool for",
         "If a tool fails, explain why",
@@ -133,6 +135,7 @@ def test_with_tools_claude_is_told_how_to_use_them():
     assert "- stats: totals" in prompt and "Reactions are theirs alone" in prompt
 
 
-def test_the_time_comes_last_so_the_rest_can_be_cached():
+def test_the_time_is_not_in_the_system_prompt_so_all_of_it_can_be_cached():
     prompt = llm.build_system_prompt("- stats: totals", has_tools=True)
-    assert prompt.splitlines()[-1].startswith("The current date and time in Auckland is ")
+    assert "current date and time" not in prompt
+    assert llm.turn_note().splitlines()[1].startswith("The current date and time in Auckland is ")

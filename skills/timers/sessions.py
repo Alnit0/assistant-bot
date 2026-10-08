@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 import discord
 
-from core import confirmations, devmode, scheduler
+from core import confirmations, devmode, live, scheduler
 from core.config import POMO_AUTO_CONTINUE, TIMEZONE, now_nz
 from core.context import Context
 from core.discord_utils import report_interaction_error
@@ -102,10 +102,22 @@ async def _update_card(session: store.Session) -> None:
     )
 
 
+def _show_soon(session_id: int) -> None:
+    """Rewrite a session's card in the background, from what is saved by then
+    (core/live.py)."""
+
+    async def show() -> None:
+        session = await store.get_session(session_id)
+        if session is not None:
+            await _update_card(session)
+
+    live.schedule(("session", session_id), show)
+
+
 async def _changed(session: store.Session) -> None:
     """Save a session and bring its card and the channel's board up to date."""
     await store.save_session(session)
-    await _update_card(session)
+    _show_soon(session.id)
     await board.refresh(session.channel_id, session.user_id)
 
 
