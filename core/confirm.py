@@ -2,7 +2,7 @@ import json
 import logging
 import re
 import sqlite3
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 
 from core import actions, cards, database, lifecycle, llm, scheduler
@@ -84,6 +84,7 @@ class Stored:
 def render(entry: Entry, proposal: Proposal, card_id: int) -> Card:
     """The card for a proposal: what kind of change, every interpretation,
     the warnings, and the buttons."""
+    proposal = _checked_kind(proposal)
     lines = [f"{entry.icon} {entry.title} · {proposal.kind}", *proposal.lines]
     lines += [f"{actions.WARNING_MARK} {warning}" for warning in proposal.warnings]
     lines.append(FOOTER)
@@ -265,6 +266,15 @@ def said_so_far(replaces: Stored | None, text: str, undone: bool = False) -> str
     if replaces.task and text and text not in lines[-1:]:
         lines.append(text)
     return "\n".join(lines) or text
+
+
+def _checked_kind(proposal: Proposal) -> Proposal:
+    """A card's kind is one of the three every task uses. Anything else is a
+    mistake in the task's code: it is logged and shown as a change."""
+    if proposal.kind in actions.KINDS:
+        return proposal
+    log.error("A card was given the kind %r; the kinds are %s", proposal.kind, ", ".join(actions.KINDS))
+    return replace(proposal, kind="change")
 
 
 async def show(

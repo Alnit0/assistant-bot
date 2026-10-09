@@ -247,7 +247,7 @@ async def edit_card(request: Request, data: dict, guessed: frozenset) -> Proposa
         raise UserError("; ".join(warning.removeprefix("Not included: ") for warning in warnings) or "Nothing to change.")
     lines.append("-# Applies from the next dose. What is already recorded stays as it is.")
     last = resolved[-1]["pill"] if resolved else (request.previous or {}).get(LAST)
-    return Proposal(lines=tuple(lines), data={"pills": kept, LAST: last}, warnings=tuple(warnings), kind="edit", guessed=tuple(own_guesses))
+    return Proposal(lines=tuple(lines), data={"pills": kept, LAST: last}, warnings=tuple(warnings), kind="change", guessed=tuple(own_guesses))
 
 
 async def edit_save(request: Request, data: dict) -> str:
@@ -376,7 +376,7 @@ async def pause_card(request: Request, data: dict, guessed: frozenset) -> Propos
     if not kept:
         raise _none_left(warnings, "No pill to pause.")
     lines.append("-# It won't be asked for while paused, and its streak is unaffected.")
-    return Proposal(lines=tuple(lines), data={"pills": kept}, warnings=tuple(warnings), kind="pause")
+    return Proposal(lines=tuple(lines), data={"pills": kept}, warnings=tuple(warnings), kind="change")
 
 
 async def pause_save(request: Request, data: dict) -> str:
@@ -401,7 +401,7 @@ async def resume_card(request: Request, data: dict, guessed: frozenset) -> Propo
         kept.append({"pill": pill.ref})
     if not kept:
         raise _none_left(warnings, "No pill to resume.")
-    return Proposal(lines=tuple(lines), data={"pills": kept}, warnings=tuple(warnings), kind="resume")
+    return Proposal(lines=tuple(lines), data={"pills": kept}, warnings=tuple(warnings), kind="change")
 
 
 async def resume_save(request: Request, data: dict) -> str:
@@ -447,7 +447,7 @@ async def delete_card(request: Request, data: dict, guessed: frozenset) -> Propo
     return Proposal(
         lines=lines, data={"pills": [{"pill": pill.ref} for _, pill in chosen]},
         warnings=(*warnings, "This deletes the history too and can't be undone"),
-        kind="delete", destructive=True, confirm_label="Delete for good",
+        kind="remove", destructive=True, confirm_label="Delete for good",
     )
 
 

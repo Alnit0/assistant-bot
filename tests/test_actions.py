@@ -523,3 +523,48 @@ def test_a_reference_with_nothing_it_could_mean_is_said_never_guessed():
 )
 def test_a_value_said_in_so_many_words_is_never_a_guess(data, guess, said, still_a_guess):
     assert (guess in actions.unstated(data, frozenset({guess}), said)) is still_a_guess
+
+
+# ---------------------------------------------------------------------------
+# A name Claude works out for a pronoun is put back for the code (gap G8)
+# ---------------------------------------------------------------------------
+WHICH = Action(
+    "thing_change", "Change a thing.",
+    (Field("which", "Which.", required=True), Field("action", "What.", choices=("pause", "cancel"), required=True)),
+    needs_card=False, run=run,
+)
+TIMERS = 'Timers now:\n- t12: "tea" · running, 4m left · in this channel\n- t14: "dinner" · paused with 12m left'
+
+
+@pytest.mark.parametrize(
+    "said, which, expected",
+    [
+        ("give it 2 more", "t12", "@that"),
+        ("pause that one", "t14", "@that"),
+        ("pause the tea timer, it is boiling over", "t12", "t12"),
+        ("pause dinner", "t14", "t14"),
+        ("pause t14, I need it later", "t14", "t14"),
+        ("cancel them", "all", "all"),
+        ("cancel it", "@that", "@that"),
+        ("cancel tea and dinner, both of them", "t12 t14", "t12 t14"),
+    ],
+)
+def test_an_id_is_kept_only_if_the_message_names_what_it_is(said, which, expected):
+    data, back = actions.as_references(WHICH, {"which": which, "action": "pause"}, said, TIMERS)
+    assert data["which"] == expected and data["action"] == "pause"
+    assert back == ([which] if expected != which else [])
+
+
+def test_in_a_list_the_one_item_the_message_does_not_name_is_the_pronoun():
+    bread = {"items": [{"item": "bread rolls", "quantity": 2, "change": "set"}]}
+    assert actions.as_references(BUY, bread, "make it 2")[0] == {"items": [{"item": "@that", "quantity": 2, "change": "set"}]}
+    both = {"items": [{"item": "bread rolls", "quantity": 2}, {"item": "jam"}]}
+    assert actions.as_references(BUY, both, "make it 2 and add jam")[0]["items"] == [{"item": "@that", "quantity": 2}, {"item": "jam"}]
+    assert actions.as_references(BUY, both, "make the bread rolls 2 and add jam, I like it")[0] == both, "everything is named"
+    assert actions.as_references(BUY, bread, "make the bread roll 2") == (bread, []), "no pronoun: nothing to put back"
+    two = {"items": [{"item": "milk"}, {"item": "eggs"}]}
+    assert actions.as_references(BUY, two, "add those") == (two, []), "two unnamed things: not plain which, so neither is touched"
+
+
+def test_a_cards_kind_is_one_of_three_words_for_every_task():
+    assert actions.KINDS == ("new", "change", "remove")

@@ -129,9 +129,15 @@ def _elsewhere(name: str, tasks, chat_part: str) -> str:
     return "; ".join(parts)
 
 
+NOT_UNDERSTOOD = "🤔 I didn't understand that."
+RECEIVED = "✅"  # on a message that needs nothing done: seen, and nothing to say
+
+
 def nothing_fitted(entry: Entry) -> str:
-    """Said when extraction found no action: Python's words, with the task's own hint."""
-    return f"{entry.icon} I couldn't work that out for {entry.name}." + (f" {entry.hint}" if entry.hint else "")
+    """Said when extraction found no action. Neutral: no task is named and no
+    task's way of asking is suggested, since the message may not have been
+    for that task at all."""
+    return NOT_UNDERSTOOD
 
 
 async def _state(entry: Entry, request: Request, turn: Turn | None = None) -> str:
@@ -299,6 +305,18 @@ def _carried_over(card: confirm.Stored, target: Entry) -> Extracted | None:
     return Extracted(target, action, {field_.name: items}, frozenset())
 
 
+def _same_request_moved(card: confirm.Stored | None, found: Extracted) -> bool:
+    """Whether what was found for another task is the open card's request over
+    again: a card would be made, for a different task, holding every item the
+    open card holds. Then the old card is replaced, not left beside the new."""
+    if card is None or not found.fitted or not found.action.needs_card or found.entry.name == card.task:
+        return False
+    entry = actions.entry(card.task)
+    before = {name.lower() for name in _item_names(entry.action(card.action) if entry else None, card.data)}
+    after = {name.lower() for name in _item_names(found.action, found.data)}
+    return bool(before) and before <= after
+
+
 def _items_lost(card: confirm.Stored, found: Extracted) -> list[str]:
     """The items of a card that did not make it onto what replaces it for
     another task. Checked in code, whatever extraction returned."""
@@ -350,6 +368,14 @@ async def handle(ctx: Context, capabilities: str = "", chat_here: bool = True) -
     turn.checks = trace.start()
     try:
         open_card = await confirm.latest_open(ctx.user.id, ctx.channel_id)
+        if ctx.reply_target_id is not None:
+            # Where I point beats what is newest: a reply to a card means that card,
+            # however many newer ones are open
+            replied = await database.run(confirm.db_by_message, ctx.reply_target_id)
+            if replied is not None and replied.is_open and replied.kind == confirm.CARD and replied.user_id == ctx.user.id:
+                if open_card is None or replied.id != open_card.id:
+                    trace.note(f"reply check: card {replied.id} was replied to, so it is the one meant, not the newest")
+                open_card = replied
         if open_card is not None and actions.entry(open_card.task) not in entries:
             open_card = None
         if open_card is None:
@@ -501,8 +527,9 @@ async def handle(ctx: Context, capabilities: str = "", chat_here: bool = True) -
                     trace.note(f"named destination: the router said {list(routed.tasks) or 'no task'}, overruled by what was stated")
                 routed = settled_by_name
             if routed.nothing:
-                # Nothing was asked and nothing needs doing: no reply at all
+                # Nothing was asked and nothing needs doing: no reply, only a tick to say it was seen
                 turn.why.append("the message asks nothing and needs nothing done: no reply")
+                await ctx.acknowledge(RECEIVED)
             elif routed.chat:
                 if not chat_here:
                     return Handled(False, row_id)
@@ -551,6 +578,11 @@ async def handle(ctx: Context, capabilities: str = "", chat_here: bool = True) -
                     found = uncovered(found, everything, routed.chat_part)
                     if about_card:
                         await act_on_card(found)
+                    elif earlier and _same_request_moved(open_card, found):
+                        # "Actually that belongs on the shopping list": the request on the open
+                        # card, made again for another task. The new card takes the old one's place
+                        trace.note(f"redirect check: card {open_card.id} holds the same items, so the new card replaces it")
+                        await act(request, found, turn, replaces=open_card, moved=True)
                     else:
                         await act(request, found, turn)
     except Exception as error:

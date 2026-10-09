@@ -715,6 +715,23 @@ A short log of key decisions and why. Newest at the bottom.
   B on the live one, D with `--dev`, and a dev post also gets a "dev"
   forum tag, created at start-up by a bot on the dev database. Live
   numbers never restart; dev numbers may.
+- **A pronoun Claude resolves is put back, in code** (2026-10-10, G8).
+  Told to return `@that` for "it", Claude still named the thing itself
+  in two of five golden steps. Rather than tighten the prompt (and pay
+  for a full live run to check it), the code looks at what came back:
+  if the message points ("it", "that", "this") and doesn't name the
+  thing (by its own words, or, for an id, by a word of that id's line in
+  the state, such as its label), the name is replaced by the reference
+  and resolved by the usual rule. A thing the message names is left
+  alone. Not applied when the message only redirects an earlier request.
+- **A looser redirect replaces the old card only when it holds the same
+  items** (G12): "actually that belongs with the things to buy" made
+  for another task with every item of the open card is that request
+  moved; anything else is a request of its own and both cards stay.
+- **Card kinds are three words** (G10): new, change, remove. Pause,
+  resume and edit are "change"; cancel, clear and delete are "remove"
+  (a destructive one still has its own button and warning). A task that
+  gives another word is shown as "change" and logged.
 - **Two demo tasks, on the dev database only,** so the core can be tried
   before any real task depends on it. The live bot's router never hears
   of them.

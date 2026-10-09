@@ -263,7 +263,7 @@ async def shop_clear_card(request: Request, data: dict, guessed: frozenset) -> P
     return Proposal(
         lines=(f"Clear the whole shopping list: {_count(len(items))}.", "**This can't be undone.**"),
         data={},
-        kind="clear",
+        kind="remove",
         destructive=True,
         confirm_label="Clear for good",
     )

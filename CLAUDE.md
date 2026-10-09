@@ -22,6 +22,10 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 
 ## Where things are
 
+- **`docs/STATUS.md` is where the work stands** (branch and state, the
+  current goal, the scope freeze, what was just done, what is next, open
+  decisions). Read it at the start of every session, before anything
+  else. The `end-of-task` skill updates it at the end of every task
 - **`docs/ARCHITECTURE.md` is the map:** every folder and key file with its
   responsibility, the main data flows and the database tables. Read it
   before exploring the code. Update it in the same change whenever a file
@@ -45,9 +49,8 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 
 ## How the bot talks
 
-- **`docs/specs/conversation.md` is the standard for how the bot talks**
-  (private, like the other specs: read it, never quote it in public docs).
-  Every change must follow it: its principles in their priority order,
+- **`docs/CONVERSATION.md` is the standard for how the bot talks.** Every
+  change must follow it: its principles in their priority order,
   its context rules, its card rules and its always / never list. On how
   the bot converses it outranks this file, the routing spec and every
   task spec. If one of them conflicts with it, it wins: say so, and list
@@ -217,7 +220,9 @@ Input
   ignored.
 - What "it", "that" or "this one" points at is worked out by Python,
   never by Claude, which only says that a reference was used
-  (`actions.REFERENCE`). A Discord reply says it outright: the message
+  (`actions.REFERENCE`). If Claude names the thing anyway and the message
+  doesn't, the name is put back for the code to resolve
+  (`actions.as_references`). A Discord reply says it outright: the message
   replied to is what I mean, for everything (a card, a timer, "make it
   2", and `dev why 3` as a reply is the 3 messages up to and including
   that one). Without a reply it is the last thing I mentioned (a card
@@ -229,7 +234,12 @@ Input
   amount, a note) is used exactly and never marked ❓
   (`actions.unstated`). Context only fills in what I left out.
 - A message that asks nothing and needs nothing done ("note one",
-  "thanks", "ok") gets no reply at all.
+  "thanks", "ok") gets no reply: only ✅ on it, so I know it was received.
+- When a message isn't understood the reply is neutral ("🤔 I didn't
+  understand that."): it names no task and suggests no task's wording.
+- A card's first line says the kind of change in one of three words, the
+  same for every task: new, change, remove (`actions.KINDS`).
+- A reply to a card means that card, however many newer ones are open.
 - One format for a change on every card: `field · old → new` ("eggs · 5 →
   7", "schedule · daily at `8:00 pm` → daily at `9:00 pm`", "Iron · active
   → paused until 20 Oct", "jam · × 1 → removed").

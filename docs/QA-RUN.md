@@ -1,6 +1,6 @@
 # QA run sheet
 
-One pass through 215 of the 237 👤 Manual tests in `docs/TESTING.md` that are
+One pass through 211 of the 233 👤 Manual tests in `docs/TESTING.md` that are
 ⬜ Untested (as of 2026-10-10); the other 22 are pills tests (group R) for
 stages not built yet, and join as each is. Blocks share setup and each one leaves things
 ready for the next, so run them in order.
@@ -27,7 +27,7 @@ tests (block 12).
 | 15 | Dev database and clock | `--dev`, on and off (three restarts) | 10 | 13 |
 | 16 | Pills: setting up | `--dev`, off (one restart) | 15 | 16 |
 | 17 | Traces: `dev why` and bug reports | `--dev`, off (one restart) | 3 | 5 |
-| 18 | Retest: the fixes of 2026-10-10 | `--dev`, off (one restart) | 14 | 22 |
+| 18 | Retest: batch 1 of the conversation gaps | `--dev`, off (one restart) | 11 | 15 |
 | | **Total** | | **213** (F2 is split over blocks 4 and 7, counted in 7) | **about 4¼ hours** |
 
 Blocks 13 to 18 need nothing from the others: run them any time after
@@ -472,7 +472,7 @@ Restart the bot first: it adds a column to the message log.
 | 2 | React 🐞 to the card the bot posted; open the new post in #bugs. Then press **Cancel** on the card | The post in #bugs has a **Trace** section between "That turn" and "Related errors": the same block `dev why` shows for the message of mine that the card answered | P31 |
 | 3 | Type `dev cost` | The card ends with "-# List context sent to extraction this month: … of … lines over … messages, … (at most 20 a task a message)" | J48 |
 
-## 18. Retest: the fixes of 2026-10-10
+## 18. Retest: batch 1 of the conversation gaps
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -483,20 +483,16 @@ message with `dev why` and paste the block when you report it.
 
 | # | Do | Expect | Tests |
 |---|---|---|---|
-| 1 | Say `add zinc`; press **Save**. Then `delete zinc and its history`; press **Delete for good**. Then send `note one`, and say `show all my pills`. Press nothing more | After the first Save zinc is added. Then a card "💊 Pills · delete" with "**Zinc** · … → deleted, with its history", "⚠️ This deletes the history too and can't be undone" and a red **Delete for good**; pressed: "🗑️ Deleted **Zinc** and its history." Send `note one` next: no reply. `show all my pills` has no Zinc | T13 |
-| 2 | Send `note one`; then `thanks`. Press nothing | No reply to either: a message that asks nothing gets nothing | T21 |
-| 3 | Say `add milk and bread rolls`; then, pressing nothing, `make it 2`; press **Cancel** | The card is replaced: "milk · × 1" and "bread rolls · × 2", with no ❓: "it" is the item mentioned last, worked out by the bot's code | T22 |
-| 4 | Say `set a timer for 5 minutes called tea`, then `set a timer for 9 minutes called dinner`. Reply to the **tea** timer's message with `pause this`; then, with no reply, say `give it 5 more minutes`. Press nothing | The reply pauses tea (not dinner, the newer one). "it" then means tea, the timer you did something to last: tea gets 5 more minutes | T23 |
-| 5 | Say `cancel all my timers`; press **Cancel 2 timers** | A card "⏱️ Timers · cancel" with a line for each timer ending "→ cancelled" and a red **Cancel 2 timers**; pressed: "🚫 **Cancelled 2**" | T4 |
-| 6 | Reply to an earlier message of yours (three or more back) with `dev why 2`. Press nothing | Two blocks: the message you replied to and the one of yours before it, oldest first; nothing newer | T24 |
-| 7 | Straight after any reply from the bot say `that's a bug: it was slow`; open the post in #bugs. Press nothing | "🐞 Logged as B<n> · 📝 your note is saved with it", linking to the post; the post is about your own message before this one (what you asked, never the bot's reply), has "it was slow" as a note and a **Trace** section. | T7 |
-| 8 | Say `add iron at 8pm`; press **Save**. Then `move iron to 9pm`; press **Save** | A card "💊 Pills · edit": "**Iron**", then "schedule · daily at `8:00 pm` → daily at `9:00 pm`". Save: "✅ Updated · 💊 **Iron** · daily at `9:00 pm`" | T10 |
-| 9 | Say `pause iron until the 20th`; press **Save**. Then `resume iron`; press **Save** | A card "💊 Pills · pause" with "**Iron** · active → paused until 20 Oct" (or the next 20th); Save: "⏸️ **Iron** paused until …". Then a card "💊 Pills · resume" with "**Iron** · paused → active"; Save: "▶️ **Iron** resumed." | T11 |
-| 10 | Say `show all my pills`; then `remove iron`; press **Remove** | The list, with no buttons. Then a card "💊 Pills · remove" with "**Iron** · … → removed" that says its history is kept; Remove: "🗑️ Removed **Iron**. Its history is kept." and the list above loses Iron, edited in place | T12 |
-| 11 | Say `add butter`; then, pressing nothing, `add zinc to my pills`; press **Cancel** on both cards | The shopping card for butter stays as it is, and a "💊 Pills · new" card for zinc appears: zinc is not added to the shopping card | T25 |
-| 12 | Say `add magnesium, 2 tablets at 9pm with food`; press **Cancel** | One card: "**magnesium** (2 tablets) · daily at `9:00 pm` · *with food*" with no ❓ anywhere: what was stated is used exactly | T26 |
-| 13 | Send `keep me`; say `pin that`. Then react 📌 to `keep me` and wait for ✅. Press nothing | Nothing is pinned by the words (a short plain answer, or none). The reaction pins it as always | T27 |
-| 14 | React 🐞 to any message; open the post in #bugs; type `bugs`. Press nothing | "🐞 Logged as D<n>" (a D, not a B); the post's title starts "D<n> ·" and it carries the tags Open and dev. `bugs` lists it as D<n> | P33 |
+| 1 | Say `add milk to the shopping list`; then `add socks to the packing list`. Reply to the **shopping** card (the older one) with `make it 2`; press **Cancel** on both cards | The shopping card is replaced by one with "milk · × 2"; the packing card, though newer, is untouched | S36 |
+| 2 | Send `note one`. Press nothing | No reply; a ✅ appears on your message | S37, T21 |
+| 3 | Say `shopping is boring`. Press nothing | If the bot answers that it can't act on it, the words are "🤔 I didn't understand that." and nothing about any task (a plain chat answer, or ✅ and nothing, is fine too) | S38 |
+| 4 | Say `add milk and bread rolls`; then `make it 2`; type `dev why`; press **Cancel** | "bread rolls · × 2", "milk · × 1". In the `dev why` block the extraction line shows `@that` for the item, or a line "python: reference check: Claude named … for a pronoun; put back for the code to resolve" | S39 |
+| 5 | Say `add socks to the packing list`; then `actually that belongs with the things to buy`; press **Cancel** | The packing card is deleted and a "🛒 Shopping · new" card with socks takes its place: one card on screen, not two | S40 |
+| 6 | Say `add iron at 8pm`; press **Save**. Then `move iron to 9pm`; press **Save** | A card "💊 Pills · change": "**Iron**", then "schedule · daily at `8:00 pm` → daily at `9:00 pm`". Save: "✅ Updated · 💊 **Iron** · daily at `9:00 pm`" | T10 |
+| 7 | Say `pause iron until the 20th`; press **Save**. Then `resume iron`; press **Save** | A card "💊 Pills · change" with "**Iron** · active → paused until 20 Oct" (or the next 20th); Save: "⏸️ **Iron** paused until …". Then a card "💊 Pills · change" with "**Iron** · paused → active"; Save: "▶️ **Iron** resumed." | T11 |
+| 8 | Say `add zinc`; press **Save**. Then `delete zinc and its history`; press **Delete for good**. Then send `note one`. Press nothing more | After the first Save zinc is added. Then a card "💊 Pills · remove" with "**Zinc** · … → deleted, with its history", "⚠️ This deletes the history too and can't be undone" and a red **Delete for good**; pressed: "🗑️ Deleted **Zinc** and its history." Send `note one` next: no reply, only ✅ on it. | T13 |
+| 9 | Say `set a timer for 5 minutes called a`, then `set a timer for 5 minutes called b`; then `cancel all my timers`; press **Cancel 2 timers** | A card "⏱️ Timers · remove" with a line for each timer ending "→ cancelled" and a red **Cancel 2 timers**; pressed: "🚫 **Cancelled 2**" | T4 |
+| 10 | React 🐞 to any reply of the bot's; open the post in #bugs; then reply to one of your messages with `dev why`. Press nothing | In the post, the times beside the messages read like "2:00 pm", never "14:00", and so does the first line of its Trace and of the `dev why` block | P31 |
 
 ## When you finish
 

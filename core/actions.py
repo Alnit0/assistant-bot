@@ -44,6 +44,8 @@ RESERVED = (NONE, NOT_THIS)
 MIN_EXAMPLES, MAX_EXAMPLES = 2, 3
 GUESS_MARK = "❓"
 WARNING_MARK = "⚠️"
+# The kind of change a card says on its first line: the same three words for every task
+KINDS = ("new", "change", "remove")
 STATE_LINES = 20  # the most of a task's state that goes to extraction with one message
 
 
@@ -116,7 +118,7 @@ class Proposal:
     lines: tuple[str, ...]  # the card's body, one interpretation a line
     data: dict  # exactly what Save will apply (fixes included)
     warnings: tuple[str, ...] = ()  # shown with ⚠️
-    kind: str = "new"  # the kind of change, for the first line: new, edit, pause, remove…
+    kind: str = "new"  # the kind of change, for the first line: one of KINDS
     destructive: bool = False  # can't be undone: a card of its own kind
     confirm_label: str = "Save"
     # What the task's own code guessed in `data` (a time taken as the morning),
@@ -257,6 +259,71 @@ LAST = "_last"  # in a card's data: what the user mentioned last, for the next "
 
 def is_reference(value) -> bool:
     return isinstance(value, str) and value.strip().lower() in (REFERENCE, "@it", "@this", "@them", "@those")
+
+
+_POINTING = re.compile(r"\b(?:it|that|this|them|those|these)\b", re.IGNORECASE)
+_POINTING_AT_ONE = re.compile(r"\b(?:it|that|this)\b", re.IGNORECASE)
+# Words a line of state and a message can share without the message naming the thing
+_SMALL_WORDS = frozenset(
+    "it that this them those these the a an to in on at of for and or with from left right now my is are be one more "
+    "running paused active daily channel bag list timer pill item make give add put set stop start pause resume "
+    "cancel remove delete change".split()
+)
+
+
+def _content_words(text: str) -> set[str]:
+    words = re.findall(r"[^\W\d_]{3,}", str(text).lower())
+    return {word[:-1] if word.endswith("s") and len(word) > 3 else word for word in words} - _SMALL_WORDS
+
+
+def _named_by(value: str, said: str, state: str) -> bool:
+    """Whether the message names this thing: by its own words, or, for an id
+    taken from the state ("t12"), by a word of that id's line ("tea")."""
+    heard = _content_words(said)
+    if re.search(rf"(?<!\w){re.escape(value.strip().lower())}(?!\w)", said.lower()):
+        return True
+    if _content_words(value) and _content_words(value) <= heard:
+        return True
+    for line in state.splitlines():
+        if re.match(rf"\W*{re.escape(value.strip())}\s*:", line, re.IGNORECASE):
+            return bool(_content_words(line) & heard)
+    return False
+
+
+def as_references(action: "Action", data: dict, said: str, state: str = "") -> tuple[dict, list[str]]:
+    """What extraction returned, with any name Claude worked out from a pronoun
+    put back as a reference: (the data, what was put back).
+
+    Claude is told to return REFERENCE for "it" and sometimes names the thing
+    itself. Whether it was right is not for it to say: when the message
+    points ("it", "that") and does not name the thing, the name is replaced
+    by REFERENCE and the code resolves it by its own rule. Applies to what
+    names a thing: a required text field with no choices, and the first
+    required field of each item in a list. A thing the message names keeps
+    its name. Pure."""
+    if not _POINTING.search(said):
+        return data, []
+    changed, back = dict(data), []
+    for entry_field in action.fields:
+        value = data.get(entry_field.name)
+        if entry_field.type == STRING and entry_field.required and not entry_field.choices and isinstance(value, str):
+            # One thing, pointed at as one: "cancel them" with "all" is no single thing to resolve
+            one = _POINTING_AT_ONE.search(said) and len(value.split()) == 1
+            if one and not is_reference(value) and not _named_by(value, said, state):
+                changed[entry_field.name] = REFERENCE
+                back.append(value)
+        elif entry_field.type == ITEMS and isinstance(value, list):
+            key = next((inner.name for inner in entry_field.item_fields if inner.required), None)
+            unnamed = [
+                item for item in value
+                if key and isinstance(item.get(key), str) and not is_reference(item[key]) and not _named_by(item[key], said, state)
+            ]
+            # One thing pointed at: a message that points and names nothing else. With
+            # several unnamed things it is not plain which the pronoun is, so none is touched
+            if len(unnamed) == 1:
+                changed[entry_field.name] = [{**item, key: REFERENCE} if item is unnamed[0] else item for item in value]
+                back.append(unnamed[0][key])
+    return changed, back
 
 
 def point_at(changes: list[dict], key: str, last: str | None) -> list[dict]:

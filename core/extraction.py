@@ -254,6 +254,14 @@ async def extract(
         max_tokens=MAX_TOKENS,
     )
     found = read(entry, called, follow_up)
+    if found.fitted and not earlier:
+        # A pronoun is the code's to resolve: a name Claude worked out for one is put back.
+        # (Not when the message only redirects an earlier request: "that" is then that
+        # request, and its items are named there, not here.)
+        data, back = actions.as_references(found.action, found.data, message, state)
+        if back:
+            trace.note(f"reference check: Claude named {', '.join(back)} for a pronoun; put back for the code to resolve")
+            found = replace(found, data=data)
     if found.fitted and found.guessed:
         # Checked in code as well: what was said in so many words is never flagged
         kept = actions.unstated(found.data, found.guessed, message)

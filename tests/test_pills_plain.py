@@ -153,7 +153,7 @@ def test_an_edit_shows_now_and_new_and_save_changes_only_what_was_said(world):
         "**Evening pill**",
         "schedule · daily at `8:00 pm` → daily at `9:00 pm`",
         "-# Applies from the next dose. What is already recorded stays as it is.",
-    ) and proposal.kind == "edit", "one format for an edit: field · old → new, and only what changes"
+    ) and proposal.kind == "change", "one format for an edit: field · old → new, and only what changes"
     assert pills(world)[0].plan.times == (time(20, 0),), "nothing until Save"
     assert run(plain.edit_save(world.request(), proposal.data)) == "✅ Updated · 💊 **Evening pill** · daily at `9:00 pm` · *with food*"
     assert pills(world)[0].plan.times == (time(21, 0),) and pills(world)[0].plan.notes == "with food"
@@ -193,7 +193,7 @@ def test_a_pause_is_a_card_and_save_pauses_until_the_day_said(world):
         f"**Iron** · active → paused until {timeinput.format_date(tomorrow)}",
         "**Zinc** · active → paused until you resume it",
         "-# It won't be asked for while paused, and its streak is unaffected.",
-    ) and proposal.kind == "pause"
+    ) and proposal.kind == "change"
     assert all(pill.status == ACTIVE for pill in pills(world)), "nothing until Save"
     assert run(plain.pause_save(world.request(), proposal.data)) == f"⏸️ **Iron** paused until {timeinput.format_date(tomorrow)}, **Zinc** paused."
     assert [(pill.plan.name, pill.status, pill.paused_until) for pill in pills(world)] == [("Iron", PAUSED, tomorrow), ("Zinc", PAUSED, None)]
@@ -209,7 +209,7 @@ def test_resume_is_a_card_for_the_paused_ones_only(world):
     add(world, {"name": "Iron"}, {"name": "Zinc"})
     run(plain.pause_save(world.request(), {"pills": [{"pill": "iron"}]}))
     proposal = card(world, plain.resume_card, {"pill": "iron"}, {"pill": "zinc"})
-    assert proposal.lines == ("**Iron** · paused → active",) and proposal.warnings == ("Zinc isn't paused",) and proposal.kind == "resume"
+    assert proposal.lines == ("**Iron** · paused → active",) and proposal.warnings == ("Zinc isn't paused",) and proposal.kind == "change"
     assert run(plain.resume_save(world.request(), proposal.data)) == "▶️ **Iron** resumed."
     assert all(pill.status == ACTIVE for pill in pills(world))
 
@@ -226,7 +226,7 @@ def test_remove_keeps_the_history_and_says_so_on_the_card(world):
 def test_delete_is_a_card_of_its_own_kind_that_cannot_be_undone(world):
     add(world, {"name": "Iron"})
     proposal = card(world, plain.delete_card, {"pill": "iron"})
-    assert (proposal.kind, proposal.destructive, proposal.confirm_label) == ("delete", True, "Delete for good")
+    assert (proposal.kind, proposal.destructive, proposal.confirm_label) == ("remove", True, "Delete for good")
     assert proposal.warnings == ("This deletes the history too and can't be undone",)
     assert run(plain.delete_save(world.request(), proposal.data)) == "🗑️ Deleted **Iron** and its history."
     assert run(store.pill(1)) is None

@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from core.config import CHANNELS, DEV_DATABASE, TIMEZONE
 from core.database import OWN_MESSAGE_KINDS
 from core.errors import UserError
+from core.timeinput import format_time
 
 # ---------------------------------------------------------------------------
 # Bug reports: what may be reported, which logged turn a message belongs to,
@@ -290,10 +291,20 @@ def _local(at: str) -> datetime:
     return datetime.fromisoformat(at).astimezone(TIMEZONE)
 
 
+def _time(at: str) -> str:
+    """The time of day of a moment, in NZ time, as it is always shown: "2:00 pm"."""
+    return format_time(_local(at).time())
+
+
+def _stamp(at: str) -> str:
+    """A date and time for the record: "2026-10-09 2:00 pm"."""
+    return f"{_local(at):%Y-%m-%d} {_time(at)}"
+
+
 def clock(at: str) -> str:
-    """A moment as the card shows it, in NZ time: "1:25pm, 9 Oct"."""
+    """A moment as the card shows it, in NZ time: "1:25 pm, 9 Oct"."""
     local = _local(at)
-    return f"{local.hour % 12 or 12}:{local:%M}{'am' if local.hour < 12 else 'pm'}, {local.day} {local:%b}"
+    return f"{_time(at)}, {local.day} {local:%b}"
 
 
 def notes_text(count: int) -> str:
@@ -364,9 +375,9 @@ def sections(report: Report, brief: bool = False) -> list[tuple[str, str]]:
     cut = (lambda text: clip(text)) if brief else (lambda text: text)
     target = report.target
     link = f" · [jump]({target.url})" if target.url else ""
-    message = f"{target.author}, {_local(target.at):%H:%M}{link}\n{_quote(cut(target.content))}"
+    message = f"{target.author}, {_time(target.at)}{link}\n{_quote(cut(target.content))}"
     before = "\n".join(
-        f"`{_local(item.at):%H:%M}` **{item.author}**: {cut(item.content)}" for item in report.preceding
+        f"`{_time(item.at)}` **{item.author}**: {cut(item.content)}" for item in report.preceding
     )
     found = [
         ("Message", message),
@@ -446,7 +457,7 @@ def list_text(items: list) -> str:
 def history_lines(created_at: str, events=()) -> list[str]:
     """A bug's history, oldest first: reported, then each closing and re-opening."""
     moments = [(created_at, "Reported")] + [(event.created_at, EVENTS[event.event]) for event in events]
-    return [f"- {_local(at):%Y-%m-%d %H:%M}: {what}" for at, what in moments]
+    return [f"- {_stamp(at)}: {what}" for at, what in moments]
 
 
 def detail_text(item, notes: list, events=()) -> str:
@@ -456,7 +467,7 @@ def detail_text(item, notes: list, events=()) -> str:
         f"## {bug_id(item.id)} · {item.summary}",
         "",
         f"- Status: {TAGS[item.status]}",
-        f"- Reported: {_local(item.created_at):%Y-%m-%d %H:%M} (NZ) from {report.channel} by {SOURCES[report.source]}",
+        f"- Reported: {_stamp(item.created_at)} (NZ) from {report.channel} by {SOURCES[report.source]}",
         f"- Commit: `{report.commit}`",
     ]
     if item.post_url:
@@ -465,7 +476,7 @@ def detail_text(item, notes: list, events=()) -> str:
         lines += ["", f"### {heading}", "", text]
     lines += ["", "### Notes", ""]
     lines += [
-        f"- {_local(note.created_at):%Y-%m-%d %H:%M} ({note.author}): {note.content}" for note in notes
+        f"- {_stamp(note.created_at)} ({note.author}): {note.content}" for note in notes
     ] or ["None yet."]
     lines += ["", "### History", ""] + history_lines(item.created_at, events)
     return "\n".join(lines)
@@ -477,7 +488,7 @@ def export_text(entries: list[tuple], now: datetime) -> str:
     head = [
         "# Open bugs",
         "",
-        f"Written by `bugs export` on {now.astimezone(TIMEZONE):%Y-%m-%d %H:%M} (NZ): "
+        f"Written by `bugs export` on {now.astimezone(TIMEZONE):%Y-%m-%d} {format_time(now.astimezone(TIMEZONE).time())} (NZ): "
         f"{count} open bug{'' if count == 1 else 's'}. Not in git: it holds Discord messages.",
     ]
     return "\n".join(head) + "".join(f"\n\n{detail_text(*entry)}" for entry in entries) + "\n"

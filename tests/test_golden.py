@@ -141,7 +141,7 @@ def test_2b_straight_after_save_a_correction_is_a_change_card_for_what_was_just_
     bot.claude(ROUTED["2b"], EXTRACTED["2b"])
     bot.say(SAID["2b"])
     lines, buttons = card(bot)
-    assert lines[:3] == ["💊 Pills · edit", "**Iron**", "schedule · daily at `8:00 pm` → daily at `9:00 pm`"]
+    assert lines[:3] == ["💊 Pills · change", "**Iron**", "schedule · daily at `8:00 pm` → daily at `9:00 pm`"]
     assert buttons == ["Save", "Cancel"]
 
 
@@ -177,7 +177,6 @@ def test_6_several_things_are_one_card(bot):
 
 
 # --- 7, 8, 9: where I point beats what is newest ---------------------------------------------------------------
-@gap("a reply to a card that is not the newest open one is not found: only the latest open card can be replied to")
 def test_7_a_reply_to_an_older_card_changes_that_card_not_the_newest(bot):
     bot.claude(route("shopping"), shop_add_all("milk"))
     bot.say("add milk to the shopping list")
@@ -286,6 +285,7 @@ def test_14_a_message_with_nothing_to_do_gets_no_reply(bot):
     bot.claude(ROUTED["14"])
     ctx, _ = bot.say(SAID["14"])
     assert bot.sent == [] and ctx.replies == [] and open_cards() == []
+    assert bot.reactions == [(SAID["14"], "✅")], "a tick, so I know it was received"
 
 
 # --- the list itself ---------------------------------------------------------------------------------------------------

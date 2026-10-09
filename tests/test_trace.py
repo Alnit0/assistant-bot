@@ -48,7 +48,7 @@ ROW = {
 
 def test_a_message_in_lines_has_everything_needed_to_see_why():
     assert trace.lines(ROW) == [
-        "#41 · 2026-10-10 21:15:07 · chat · ok",
+        "#41 · 2026-10-10 9:15:07 pm · chat · ok",
         "said: and jam",
         "route: follow-up (card 7 (shopping) is open and the message sticks to it: it is the bot's latest message and under 5 minutes old)",
         "tasks: shopping",
@@ -77,7 +77,7 @@ def test_a_message_from_before_traces_or_on_the_old_way_still_reads():
         "extracted": None, "trace": None, "calls": [], "parts": [("tool", "tool: timer 5m", "ok", "timer started")],
     }
     assert trace.lines(old) == [
-        "#3 · 2026-10-01 09:00:00 · chat · ok",
+        "#3 · 2026-10-01 9:00:00 am · chat · ok",
         "said: set a timer for 5 minutes",
         "route: tools",
         "tasks: timers",

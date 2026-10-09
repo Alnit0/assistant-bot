@@ -1,6 +1,6 @@
 ---
 name: end-of-task
-description: The closing checklist for every task that changed code or docs in this repository - run the tests, update CHANGELOG, TESTING and BACKLOG, and give the suggested commit command. Use at the end of every task, before the final summary.
+description: The closing checklist for every task that changed code or docs in this repository - run the tests, update STATUS, CHANGELOG, TESTING and BACKLOG, and give the suggested commit command. Use at the end of every task, before the final summary.
 ---
 
 # End of task
@@ -31,6 +31,11 @@ start is the user's own: leave it running and say so.
 - **`docs/ARCHITECTURE.md`**: update it if a file was added, moved, renamed
   or changed responsibility.
 - **`docs/DECISIONS.md`**: add an entry if an architectural choice was made.
+- **`docs/STATUS.md`**: bring it up to date, every task: the date, branch
+  and state (what is committed, what is in hand), what was just done
+  (keep the list to the last five or so), what is next, and any decision
+  now open or settled. Keep it under a page: move detail to the backlog
+  or the changelog instead of letting it grow.
 - UK spelling in all of them.
 
 ## 3. Summary and commit command

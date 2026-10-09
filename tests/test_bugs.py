@@ -209,8 +209,8 @@ def test_the_post_opens_with_the_message_and_ends_with_the_questions():
     turn = rules.pick_turn(ROWS, 5001, AT, exclude_message_id=4100)
     parts = rules.post_sections(4, report(turn=turn, errors=["2026-10-09 14:00:28,200 ERROR assistant: boom"]))
     assert parts[0].startswith("🐞 **B4** · from #inbox · <t:1791507660:f> · by a 🐞 reaction · commit `03c7d23`")
-    assert "**Message**\nHive, 14:00 · [jump](https://discord.com/channels/1/100/5001)\n> ⏱️ Timer set for 50m" in parts[0]
-    assert parts[1] == "**Before it**\n`14:00` **Alex**: set a timer for 5 minutes"
+    assert "**Message**\nHive, 2:00 pm · [jump](https://discord.com/channels/1/100/5001)\n> ⏱️ Timer set for 50m" in parts[0]
+    assert parts[1] == "**Before it**\n`2:00 pm` **Alex**: set a timer for 5 minutes"
     assert parts[2].startswith("**That turn**\nInput (chat): `set a timer for 5 minutes`\nOutcome: ok in 2.5s")
     assert '🔧 `timer {"duration": "50m"}` (ok) timer 1 started for 50m' in parts[2]
     assert "Timings: 2.50s to the reply" in parts[2]
@@ -328,7 +328,7 @@ def test_the_export_has_everything_captured_and_the_notes(bugs_db):
     asyncio.run(store.set_post(number, 7000, URL))
     asyncio.run(store.add_note(number, 1, rules.OWNER, "I asked for 5 minutes"))
     text = rules.export_text(asyncio.run(store.in_full(1)), AT)
-    assert text.startswith("# Open bugs\n\nWritten by `bugs export` on 2026-10-09 14:00 (NZ): 1 open bug.")
+    assert text.startswith("# Open bugs\n\nWritten by `bugs export` on 2026-10-09 2:00 pm (NZ): 1 open bug.")
     assert "## B1 · " in text and f"- Post: {URL}" in text and "- Commit: `03c7d23`" in text
     assert "> " + "x" * 900 in text, "nothing is shortened in the file"
     for heading in ("### Message", "### Before it", "### That turn", "### Related errors", "### Notes"):
@@ -646,10 +646,10 @@ CLOSED_AT = "2026-10-09T00:25:00.000000+00:00"  # 1:25pm in Auckland
 @pytest.mark.parametrize(
     "at, shown",
     [
-        (CLOSED_AT, "1:25pm, 9 Oct"),
-        ("2026-10-08T11:05:00+00:00", "12:05am, 9 Oct"),
-        ("2026-10-08T23:00:00+00:00", "12:00pm, 9 Oct"),
-        ("2026-10-09T08:59:00+00:00", "9:59pm, 9 Oct"),
+        (CLOSED_AT, "1:25 pm, 9 Oct"),
+        ("2026-10-08T11:05:00+00:00", "12:05 am, 9 Oct"),
+        ("2026-10-08T23:00:00+00:00", "12:00 pm, 9 Oct"),
+        ("2026-10-09T08:59:00+00:00", "9:59 pm, 9 Oct"),
     ],
 )
 def test_the_card_gives_the_time_as_it_is_said(at, shown):
@@ -659,9 +659,9 @@ def test_the_card_gives_the_time_as_it_is_said(at, shown):
 def test_the_foot_of_the_card_has_the_status_and_the_note_count():
     assert rules.status_line(rules.OPEN) == "-# 🟢 Open · 📝 No notes yet"
     assert rules.status_line(rules.OPEN, None, 1) == "-# 🟢 Open · 📝 1 note"
-    assert rules.status_line(rules.FIXED, CLOSED_AT, 2) == "-# ✅ Fixed · 1:25pm, 9 Oct · 📝 2 notes"
-    assert rules.status_line(rules.WONTFIX, CLOSED_AT) == "-# 🚫 Won't fix · 1:25pm, 9 Oct · 📝 No notes yet"
-    assert rules.status_line(rules.OPEN, CLOSED_AT, 2) == "-# 🟢 Open · 1:25pm, 9 Oct · 📝 2 notes", "re-opened then"
+    assert rules.status_line(rules.FIXED, CLOSED_AT, 2) == "-# ✅ Fixed · 1:25 pm, 9 Oct · 📝 2 notes"
+    assert rules.status_line(rules.WONTFIX, CLOSED_AT) == "-# 🚫 Won't fix · 1:25 pm, 9 Oct · 📝 No notes yet"
+    assert rules.status_line(rules.OPEN, CLOSED_AT, 2) == "-# 🟢 Open · 1:25 pm, 9 Oct · 📝 2 notes", "re-opened then"
 
 
 def test_the_card_is_the_same_message_with_a_new_foot():
@@ -669,13 +669,13 @@ def test_the_card_is_the_same_message_with_a_new_foot():
     closed = rules.opening_text(4, report(), rules.FIXED, CLOSED_AT, 2)
     assert opened == rules.post_sections(4, report())[0], "a new post opens with the card"
     assert opened.endswith("\n\n-# 🟢 Open · 📝 No notes yet")
-    assert closed.endswith("\n\n-# ✅ Fixed · 1:25pm, 9 Oct · 📝 2 notes")
+    assert closed.endswith("\n\n-# ✅ Fixed · 1:25 pm, 9 Oct · 📝 2 notes")
     assert opened.rsplit("\n\n", 1)[0] == closed.rsplit("\n\n", 1)[0]
 
 
 def test_a_long_message_never_pushes_the_foot_off_the_card():
     text = rules.opening_text(4, report(target=snap(content="x\n" * 3000)), rules.WONTFIX, CLOSED_AT, 12)
-    assert len(text) <= rules.CARD_LIMIT and text.endswith("-# 🚫 Won't fix · 1:25pm, 9 Oct · 📝 12 notes")
+    assert len(text) <= rules.CARD_LIMIT and text.endswith("-# 🚫 Won't fix · 1:25 pm, 9 Oct · 📝 12 notes")
 
 
 def test_what_is_said_in_the_post_when_a_button_is_pressed():
@@ -723,7 +723,7 @@ def test_the_history_is_in_the_export_and_on_the_command_line(bugs_db):
     asyncio.run(store.set_status(number, rules.WONTFIX, 1))
     asyncio.run(store.set_status(number, rules.OPEN, 1))
     lines = rules.history_lines("2026-10-09T00:00:00+00:00", asyncio.run(store.events(number)))
-    assert lines[0] == "- 2026-10-09 13:00: Reported"
+    assert lines[0] == "- 2026-10-09 1:00 pm: Reported"
     assert [line.split(": ", 1)[1] for line in lines] == ["Reported", "Closed as Won't fix", "Re-opened"]
     for text in (rules.export_text(asyncio.run(store.in_full(1)), AT), cli.run(["show", "B1"])):
         assert "### History" in text and "Closed as Won't fix" in text and text.rstrip().endswith(": Re-opened")

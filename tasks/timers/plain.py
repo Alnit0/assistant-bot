@@ -175,7 +175,7 @@ async def cancel_card(request: Request, data: dict, guessed: frozenset) -> Propo
         lines=lines,
         data={"ids": [timer.id for timer in chosen]},
         warnings=(f"This cancels {len(chosen)} timers and can't be undone",),
-        kind="cancel",
+        kind="remove",
         destructive=True,
         confirm_label=f"Cancel {len(chosen)} timers",
     )

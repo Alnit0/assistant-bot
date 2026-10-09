@@ -191,7 +191,7 @@ def test_the_card_names_each_timer_and_confirm_cancels_exactly_those(world):
     tea, dinner = going(world)
     proposal = run(plain.cancel_card(world.request, {"which": "all", "action": "cancel"}, frozenset()))
     assert proposal.lines == ("**tea** · running, 5m left → cancelled", "**dinner** · running, 9m left → cancelled")
-    assert (proposal.kind, proposal.destructive, proposal.confirm_label) == ("cancel", True, "Cancel 2 timers")
+    assert (proposal.kind, proposal.destructive, proposal.confirm_label) == ("remove", True, "Cancel 2 timers")
     assert proposal.warnings == ("This cancels 2 timers and can't be undone",)
     assert proposal.data == {"ids": [tea.id, dinner.id]}
     assert len(going(world)) == 2, "nothing until it is confirmed"
@@ -234,7 +234,7 @@ def test_the_conversation_asks_with_a_card_only_when_the_action_says_so(world, m
     run(conversation.act(world.request, Extracted(entry, action, {"which": "all", "action": "cancel"}, frozenset()), turn))
     assert [name for name, _ in shown] == ["timer_change"] and said == [] and len(going(world)) == 2
     assert turn.said == [
-        "card: timers · cancel: **tea** · running, 5m left → cancelled / **dinner** · running, 9m left → cancelled / "
+        "card: timers · remove: **tea** · running, 5m left → cancelled / **dinner** · running, 9m left → cancelled / "
         "⚠️ This cancels 2 timers and can't be undone"
     ]
 

@@ -6,6 +6,15 @@ backfilled from the git log.
 
 ## 2026-10-10
 
+- **A reply to an older card changes that card**, not the newest one.
+- **A note or a thank-you gets ✅** on it and no words; a message the bot
+  can't make sense of gets one neutral line, with no task's instructions.
+- **Cards say new, change or remove** on their first line, for every
+  task; a loosely worded "that belongs on the shopping list" replaces
+  the old card instead of leaving two; times in bug posts and `dev why`
+  are 12-hour.
+- **The conversation standard is `docs/CONVERSATION.md`**, and
+  `docs/STATUS.md` says where the work stands.
 - **The conversation standard has an acceptance test.** Its golden
   conversations are replayed with every test run; nothing changed in how
   the bot behaves. What it can't do yet is listed in `docs/BACKLOG.md`.

@@ -132,7 +132,9 @@ def _short(value, limit: int = 300) -> str:
 
 def _clock(received_at: str) -> str:
     try:
-        return datetime.fromisoformat(received_at).strftime("%Y-%m-%d %H:%M:%S")
+        at = datetime.fromisoformat(received_at)
+        # 12-hour, as every time the bot shows; the seconds are kept: order matters in a trace
+        return f"{at:%Y-%m-%d} {at.hour % 12 or 12}:{at:%M:%S} {'am' if at.hour < 12 else 'pm'}"
     except (TypeError, ValueError):
         return str(received_at)
 
