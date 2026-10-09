@@ -130,56 +130,103 @@ async def create_post(number: int, report: rules.Report) -> tuple[int, str]:
     return created.thread.id, created.thread.jump_url
 
 
-# --- closing ------------------------------------------------------------------
-async def _close(interaction: discord.Interaction, status: str) -> None:
+# --- the opening card, and closing and re-opening ----------------------------
+def card(item: store.Item) -> str:
+    """The opening card as it should read now: status, when it changed, note count."""
+    return rules.opening_text(item.id, item.report, item.status, item.changed_at, item.note_count)
+
+
+def view_for(status: str) -> discord.ui.View:
+    """The buttons under the opening card: Fixed and Won't fix on an open bug,
+    Re-open on a closed one."""
+    return CloseButtons() if status == rules.OPEN else ReopenButton()
+
+
+async def refresh_card(item: store.Item) -> None:
+    """Rewrite a post's opening card in place (a note was added). Never raises:
+    the note is saved whether or not the card can be brought up to date."""
+    if item.thread_id is None:
+        return
+    try:
+        thread = await _channel(item.thread_id)
+        # A forum post's opening message has the post's own id
+        opening = thread.get_partial_message(item.thread_id)
+        await opening.edit(content=card(item), view=view_for(item.status), allowed_mentions=QUIET)
+    except (discord.HTTPException, UserError) as error:
+        log.info("Could not update the card of %s: %s", rules.bug_id(item.id), error)
+
+
+async def _change(interaction: discord.Interaction, status: str) -> None:
+    """A button on the opening card: close the bug (Fixed, Won't fix) or re-open it."""
     user = await get_user_by_discord_id(interaction.user.id)
     if not is_allowed(user, PERMISSION):
-        await safe_reply(interaction, "Closing bugs isn't for you.")
+        await safe_reply(interaction, "Closing and re-opening bugs isn't for you.")
         return
-    # Answer first; the database and the tag change follow
+    # Answer first; the database, the card and the tag follow
     await interaction.response.defer()
     item = await store.by_thread(interaction.channel_id)
     if item is None:
         await safe_reply(interaction, "I have no bug on record for this post.")
         return
+    name = rules.bug_id(item.id)
     row_id = await log_received(
-        f"close {rules.bug_id(item.id)} as {status}", "bugs", interaction.message.id, interaction.channel_id,
-        user_id=user.id,
+        f"set {name} to {status}", "bugs", interaction.message.id, interaction.channel_id, user_id=user.id
     )
     already = item.status == status
     if not already:
-        await store.set_status(item.id, status)
-    text = rules.closed_text(item.id, status, already)
-    # Said before archiving: a message sent to an archived post would reopen it
-    await interaction.followup.send(text)
+        await store.set_status(item.id, status, user.id)
+        item = await store.get(item.id)
+    text = rules.changed_text(item.id, status, already)
     thread = interaction.channel
     try:
+        if getattr(thread, "archived", False):
+            # Nothing in an archived post can be edited or added to: open it first
+            await thread.edit(archived=False)
+        # The card: the buttons swapped, with the status and when it changed
+        await interaction.edit_original_response(content=card(item), view=view_for(item.status), allowed_mentions=QUIET)
+        await interaction.followup.send(text)
+        # Last, because a message sent to an archived post would open it again
         names = rules.tags_after([tag.name for tag in thread.applied_tags], status)
-        await thread.edit(applied_tags=_tags(thread.parent, names), archived=True)
-    except discord.HTTPException as error:
-        log.warning("Could not tag and archive the post of %s: %s", rules.bug_id(item.id), error)
+        await thread.edit(applied_tags=_tags(forum(), names), archived=status != rules.OPEN)
+    except (discord.HTTPException, UserError) as error:
+        log.warning("Could not bring the post of %s up to date: %s", name, error)
         await log_error(
-            f"Bugs: {rules.bug_id(item.id)} is closed, but its post isn't",
-            f"The bot needs Manage Threads in #bugs to set the tag and archive the post. ({error})",
+            f"Bugs: {name} is {rules.TAGS[status]}, but its post doesn't show it",
+            f"The bot needs Manage Threads in #bugs to set the tag and archive or re-open the post. ({error})",
         )
     await log_result(row_id, reply=text, status="ok")
-    await log_simple(f"{rules.BUG_EMOJI} Bug closed", text)
+    await log_simple(f"{rules.BUG_EMOJI} Bug {'re-opened' if status == rules.OPEN else 'closed'}", text)
 
 
+# The ids are fixed and the bug is found from the post the button is in, so both
+# views work on every post, old or new, after a restart (registered in setup)
 class CloseButtons(discord.ui.View):
-    """Fixed and Won't fix, under the first message of every bug's post. The ids
-    are fixed and the bug is found from the post, so they work after a restart."""
+    """Fixed and Won't fix, under the opening card of an open bug's post."""
 
     def __init__(self):
         super().__init__(timeout=None)
 
     @discord.ui.button(label="Fixed", emoji="✅", style=discord.ButtonStyle.success, custom_id="bugs:fixed")
     async def fixed(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await _close(interaction, rules.FIXED)
+        await _change(interaction, rules.FIXED)
 
     @discord.ui.button(label="Won't fix", style=discord.ButtonStyle.secondary, custom_id="bugs:wontfix")
     async def wontfix(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await _close(interaction, rules.WONTFIX)
+        await _change(interaction, rules.WONTFIX)
 
     async def on_error(self, interaction: discord.Interaction, error: Exception, item) -> None:
         await report_interaction_error(interaction, error, "Closing a bug failed")
+
+
+class ReopenButton(discord.ui.View):
+    """Re-open, which takes the place of the other two once a bug is closed."""
+
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="Re-open", emoji="🔄", style=discord.ButtonStyle.secondary, custom_id="bugs:reopen")
+    async def reopen(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await _change(interaction, rules.OPEN)
+
+    async def on_error(self, interaction: discord.Interaction, error: Exception, item) -> None:
+        await report_interaction_error(interaction, error, "Re-opening a bug failed")

@@ -126,8 +126,9 @@ the channel you are in; `help <task or word>` gives details.
   the message, the five before it, that turn's tool calls, timings and log
   errors, and the commit, then three questions. Whatever you write in the
   post is saved as a note and ticked ✅; the bot never answers there and
-  nothing is sent to Claude. **Fixed** and **Won't fix** tag the post and
-  archive it. `bugs` lists the open ones, and `bugs export` writes them in
+  nothing is sent to Claude. The opening card counts the notes. **Fixed**
+  and **Won't fix** tag the post and archive it, and leave a **Re-open**
+  button on the card with the status and time. `bugs` lists the open ones, and `bugs export` writes them in
   full to `docs/BUGS.md` (not in git). `bug: some text` is not a command.
   In Claude Code, "fix B4" runs the `bug` skill, which leaves a "fix
   ready, needs retest" note; pressing Fixed stays with you.

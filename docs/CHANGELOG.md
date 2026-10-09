@@ -6,6 +6,14 @@ backfilled from the git log.
 
 ## 2026-10-09
 
+- **A closed bug can be re-opened.** Pressing Fixed or Won't fix swaps
+  both buttons on the post's opening card for one **Re-open** button, and
+  the card's foot shows the status and when it changed ("✅ Fixed ·
+  1:25pm, 9 Oct"). Re-open unarchives the post, puts the Open tag and the
+  two buttons back, and is kept in the bug's history with every closing
+  (shown by `bugs export`).
+- **The opening card counts the notes** ("📝 2 notes"), updated in place
+  each time you write one.
 - **Dev mode starts again with a #bugs forum set.** Its start-up sweep
   for an old panel read the pins of every channel in `.env` and failed on
   the forum, which has none. Forum, voice and category channels are now

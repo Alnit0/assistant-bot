@@ -54,9 +54,26 @@ def create_notes(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX bugs_notes_bug ON bugs_notes (bug_id)")
 
 
+def create_events(conn: sqlite3.Connection) -> None:
+    # A bug's history after it was reported: each closing and re-opening
+    conn.execute(
+        """
+        CREATE TABLE bugs_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bug_id INTEGER NOT NULL REFERENCES bugs_items(id),
+            user_id INTEGER REFERENCES users(id),
+            event TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute("CREATE INDEX bugs_events_bug ON bugs_events (bug_id)")
+
+
 MIGRATIONS = [
     create_items,
     create_notes,
+    create_events,
 ]
 
 
@@ -73,6 +90,7 @@ class Item:
     closed_at: str | None
     note_count: int = 0
     fix_ready: bool = False  # Claude Code has left a note since the bug was reported
+    changed_at: str | None = None  # when it was last closed or re-opened, if ever
 
 
 @dataclass(frozen=True)
@@ -82,10 +100,17 @@ class Note:
     created_at: str
 
 
+@dataclass(frozen=True)
+class Event:
+    event: str  # rules.FIXED, rules.WONTFIX or rules.REOPENED
+    created_at: str
+
+
 _ITEM = """
     SELECT id, user_id, status, summary, report, thread_id, post_url, created_at, closed_at,
            (SELECT COUNT(*) FROM bugs_notes WHERE bug_id = bugs_items.id),
-           EXISTS (SELECT 1 FROM bugs_notes WHERE bug_id = bugs_items.id AND author = ?)
+           EXISTS (SELECT 1 FROM bugs_notes WHERE bug_id = bugs_items.id AND author = ?),
+           (SELECT created_at FROM bugs_events WHERE bug_id = bugs_items.id ORDER BY id DESC LIMIT 1)
     FROM bugs_items
 """
 
@@ -94,7 +119,10 @@ def _item(row: tuple | None) -> Item | None:
     if row is None:
         return None
     return Item(
-        row[0], row[1], row[2], row[3], rules.Report.from_json(row[4]), row[5], row[6], row[7], row[8], row[9], bool(row[10])
+        row[0], row[1], row[2], row[3], rules.Report.from_json(row[4]), row[5], row[6], row[7], row[8], row[9],
+        bool(row[10]),
+        # A bug closed before the history was kept has only the time it was closed
+        row[11] or row[8],
     )
 
 
@@ -148,9 +176,22 @@ def _db_open(conn: sqlite3.Connection, user_id: int | None = None) -> list[Item]
     return [_item(row) for row in conn.execute(f"{sql} ORDER BY id", values).fetchall()]
 
 
-def _db_set_status(conn: sqlite3.Connection, bug_id: int, status: str) -> None:
-    closed_at = None if status == rules.OPEN else to_db(utc_now())
+def _db_set_status(conn: sqlite3.Connection, bug_id: int, status: str, user_id: int | None = None) -> None:
+    """Close or re-open a bug, and add that to its history."""
+    now = to_db(utc_now())
+    closed_at = None if status == rules.OPEN else now
     conn.execute("UPDATE bugs_items SET status = ?, closed_at = ? WHERE id = ?", (status, closed_at, bug_id))
+    conn.execute(
+        "INSERT INTO bugs_events (bug_id, user_id, event, created_at) VALUES (?, ?, ?, ?)",
+        (bug_id, user_id, rules.REOPENED if status == rules.OPEN else status, now),
+    )
+
+
+def _db_events(conn: sqlite3.Connection, bug_id: int) -> list[Event]:
+    rows = conn.execute(
+        "SELECT event, created_at FROM bugs_events WHERE bug_id = ? ORDER BY id", (bug_id,)
+    ).fetchall()
+    return [Event(*row) for row in rows]
 
 
 def _db_add_note(
@@ -173,8 +214,8 @@ def _db_notes(conn: sqlite3.Connection, bug_id: int) -> list[Note]:
     return [Note(*row) for row in rows]
 
 
-def _db_with_notes(conn: sqlite3.Connection, user_id: int | None = None) -> list[tuple[Item, list[Note]]]:
-    return [(item, _db_notes(conn, item.id)) for item in _db_open(conn, user_id)]
+def _db_in_full(conn: sqlite3.Connection, user_id: int | None = None) -> list[tuple[Item, list[Note], list[Event]]]:
+    return [(item, _db_notes(conn, item.id), _db_events(conn, item.id)) for item in _db_open(conn, user_id)]
 
 
 _LOG = ("id", "received_at", "kind", "content", "discord_message_id", "reply", "status", "error", "duration_s", "timing")
@@ -216,13 +257,17 @@ async def open_items(user_id: int) -> list[Item]:
     return await database.run(_db_open, user_id)
 
 
-async def with_notes(user_id: int) -> list[tuple[Item, list[Note]]]:
-    """Every open bug with its notes, for the export."""
-    return await database.run(_db_with_notes, user_id)
+async def in_full(user_id: int) -> list[tuple[Item, list[Note], list[Event]]]:
+    """Every open bug with its notes and history, for the export."""
+    return await database.run(_db_in_full, user_id)
 
 
-async def set_status(bug_id: int, status: str) -> None:
-    await database.run(_db_set_status, bug_id, status)
+async def set_status(bug_id: int, status: str, user_id: int | None = None) -> None:
+    await database.run(_db_set_status, bug_id, status, user_id)
+
+
+async def events(bug_id: int) -> list[Event]:
+    return await database.run(_db_events, bug_id)
 
 
 async def add_note(bug_id: int, user_id: int | None, author: str, content: str, message_id: int | None = None) -> int:

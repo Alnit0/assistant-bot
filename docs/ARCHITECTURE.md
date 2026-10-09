@@ -69,9 +69,9 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `archive/messages.py` | The Discord work: webhook repost, delete, confirmation, Restore button |
 | `bugs/__init__.py` | Registers `bug` (word and reply), the instant 🐞 reaction, `bugs`, `bugs export`; files a report; claims what is written in a bug's post and saves it as a note |
 | `bugs/rules.py` | Pure: ids, what may be reported, a message as plain values (`Snapshot`, `Report`), which logged turn it belongs to, which log lines go with it, and all the wording (post, title, tags, list, `docs/BUGS.md`) |
-| `bugs/store.py` | The `bugs_items` and `bugs_notes` records, and the channel's recent `message_log` rows for finding the turn |
+| `bugs/store.py` | The `bugs_items` and `bugs_notes` records, the history in `bugs_events`, and the channel's recent `message_log` rows for finding the turn |
 | `bugs/capture.py` | Puts a report together: the turn, the errors from the tail of `logs/bot.log`, the commit the bot started on. No Discord |
-| `bugs/posts.py` | The Discord work, and the only discord.py in the task: reading the reported message, the forum post with its tags, the persistent Fixed / Won't fix buttons (tag and archive) |
+| `bugs/posts.py` | The Discord work, and the only discord.py in the task: reading the reported message, the forum post with its tags, and the opening card: rewritten in place with the status, when it changed and the note count; persistent buttons under it, Fixed / Won't fix on an open bug (tag and archive) and Re-open on a closed one (unarchive, tag Open) |
 | `bugs/cli.py` | `python -m tasks.bugs.cli list \| show B4 \| note B4 "…"` for Claude Code's `bug` skill: reads and adds notes straight from the database, never closes a bug |
 | `keep/__init__.py` | The 📌 reaction: keep (pin) and unkeep (unpin); reply `pin` / `unpin`, which act at once. All through `core/pins.py` |
 | `timers/__init__.py` | Registers `timer`, `timers`, `pause all`, `resume all`, `pomo`, `pomo stats`, the reply actions and job handlers, and Claude's tools: `list_timers`, `get_pomodoro_status`, `timer_history`, `timer_control`, `pomodoro_control` |
@@ -200,7 +200,11 @@ Claude loop against a scripted stand-in), `toolcalls`, `bugs`, `channels`
    to the post, and a typed `bug` is deleted (Consumed).
 4. Anything the owner writes in that post is claimed by `Task.claim`,
    saved in `bugs_notes` and ticked ✅. Nothing there reaches Claude.
-5. Fixed or Won't fix sets the status and the tag and archives the post.
+5. Fixed or Won't fix sets the status and the tag, archives the post, and
+   rewrites the opening card: status, time, and one Re-open button in
+   place of the two. Re-open undoes that (unarchive first, then the card,
+   then the Open tag). Each is a row in `bugs_events`. A note also
+   rewrites the card, for its count.
    Claude Code's `bug` skill reads a bug with `tasks/bugs/cli.py` and adds
    a "fix ready, needs retest" note; it never closes one.
 
@@ -237,7 +241,7 @@ seconds.
 |---|---|
 | `users`, `message_log`, `scheduled_jobs`, `reaction_state`, `skill_migrations` | core (`core/migrations.py`, version in `PRAGMA user_version`) |
 | `archive_items` | archive |
-| `bugs_items`, `bugs_notes` | bugs |
+| `bugs_items`, `bugs_notes`, `bugs_events` (each closing and re-opening) | bugs |
 | `timers_timers`, `timers_pomodoros`, `timers_focus_log`, `timers_boards`, `timers_events`, `timers_lists` | timers |
 | `lab_state`, `lab_tour_runs`, `lab_tour_results` | lab |
 

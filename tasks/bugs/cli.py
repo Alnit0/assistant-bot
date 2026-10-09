@@ -27,7 +27,7 @@ def run(args: list[str]) -> str:
             if item is None:
                 raise UserError(f"There is no bug {args[1]}.")
             if args[0] == "show" and len(args) == 2:
-                return rules.detail_text(item, store._db_notes(conn, item.id))
+                return rules.detail_text(item, store._db_notes(conn, item.id), store._db_events(conn, item.id))
             text = " ".join(args[2:]).strip()
             if args[0] == "note" and text:
                 store._db_add_note(conn, item.id, item.user_id, rules.CLAUDE_CODE, text)

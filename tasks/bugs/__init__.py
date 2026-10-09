@@ -72,7 +72,7 @@ async def list_bugs(ctx: Context) -> None:
 
 
 async def export(ctx: Context) -> str:
-    entries = await store.with_notes(ctx.user.id)
+    entries = await store.in_full(ctx.user.id)
     text = rules.export_text(entries, utc_now())
     await asyncio.to_thread(EXPORT_FILE.write_text, text, encoding="utf-8")
     count = len(entries)
@@ -87,6 +87,8 @@ async def save_note(ctx: Context) -> str:
         return "not a bug's post: left alone"
     await store.add_note(item.id, ctx.user.id, rules.OWNER, ctx.text, ctx.message_id)
     await ctx.acknowledge()
+    # The count on the post's opening card, in place
+    await posts.refresh_card(await store.get(item.id))
     return f"note saved for {rules.bug_id(item.id)}"
 
 
@@ -152,8 +154,9 @@ class BugsTask(Task):
         return list(store.MIGRATIONS)
 
     def setup(self, client: discord.Client) -> None:
-        # Before connecting, so Fixed and Won't fix on old posts still work
+        # Before connecting, so the buttons on old posts still work
         client.add_view(posts.CloseButtons())
+        client.add_view(posts.ReopenButton())
 
     async def startup(self, client: discord.Client) -> None:
         await capture.git_commit()

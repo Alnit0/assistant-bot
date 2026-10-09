@@ -263,7 +263,8 @@ only, any channel, no slash. It is off after every restart.
 | Reply `bug` to a message | The same, for that message |
 | Type `bug` on its own | The same, for the latest thing in that channel |
 | Write in the bug's post | Saved as a note, ticked ✅. The bot doesn't answer |
-| Press **Fixed** / **Won't fix** on the post | Tags it and archives the post |
+| Press **Fixed** / **Won't fix** on the post | Tags it and archives the post; the card shows the status and time, and a **Re-open** button |
+| Press **Re-open** | Unarchives the post, tag back to Open, the two buttons back |
 | `bugs` | The open bugs, with links |
 | `bugs export` | Writes them in full to `docs/BUGS.md` (not in git) |
 

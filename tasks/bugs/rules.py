@@ -18,6 +18,11 @@ BUG_EMOJI = "🐞"
 OPEN, FIXED, WONTFIX = "open", "fixed", "wontfix"
 # The forum's tags, by status
 TAGS = {OPEN: "Open", FIXED: "Fixed", WONTFIX: "Won't fix"}
+STATUS_MARKS = {OPEN: "🟢", FIXED: "✅", WONTFIX: "🚫"}
+# What happened to a bug after it was reported, as its history words it
+REOPENED = "reopened"
+EVENTS = {FIXED: "Closed as Fixed", WONTFIX: "Closed as Won't fix", REOPENED: "Re-opened"}
+CARD_LIMIT = 2000  # Discord's limit for one message
 
 # How a report was made
 REACTION, REPLY, WORD = "reaction", "reply", "word"
@@ -246,8 +251,36 @@ def closed_text(number: int, status: str, already: bool = False) -> str:
     return f"{'Already' if already else '✅'} {bug_id(number)} {'is ' if already else ''}closed as {TAGS[status]}"
 
 
+def reopened_text(number: int, already: bool = False) -> str:
+    return f"{bug_id(number)} is already open" if already else f"🔄 {bug_id(number)} re-opened"
+
+
+def changed_text(number: int, status: str, already: bool = False) -> str:
+    """What is said in the post when a button is pressed."""
+    return reopened_text(number, already) if status == OPEN else closed_text(number, status, already)
+
+
 def _local(at: str) -> datetime:
     return datetime.fromisoformat(at).astimezone(TIMEZONE)
+
+
+def clock(at: str) -> str:
+    """A moment as the card shows it, in NZ time: "1:25pm, 9 Oct"."""
+    local = _local(at)
+    return f"{local.hour % 12 or 12}:{local:%M}{'am' if local.hour < 12 else 'pm'}, {local.day} {local:%b}"
+
+
+def notes_text(count: int) -> str:
+    return "No notes yet" if count == 0 else f"{count} note{'' if count == 1 else 's'}"
+
+
+def status_line(status: str, changed_at: str | None = None, note_count: int = 0) -> str:
+    """The foot of a post's opening card: "✅ Fixed · 1:25pm, 9 Oct · 📝 2 notes".
+    `changed_at` is when it was last closed or re-opened, if it ever was."""
+    parts = [f"{STATUS_MARKS[status]} {TAGS[status]}"]
+    if changed_at:
+        parts.append(clock(changed_at))
+    return "-# " + " · ".join(parts + [f"📝 {notes_text(note_count)}"])
 
 
 def _quote(text: str) -> str:
@@ -310,20 +343,27 @@ def sections(report: Report, brief: bool = False) -> list[tuple[str, str]]:
     ]
 
 
-def post_sections(number: int, report: Report) -> list[str]:
-    """The forum post, a message at a time: the first opens the post, the last
-    is the questions."""
+def opening_text(
+    number: int, report: Report, status: str = OPEN, changed_at: str | None = None, note_count: int = 0
+) -> str:
+    """The post's opening card: where the bug came from, the message, and a foot
+    with its status and note count. Rewritten in place whenever either changes,
+    so it is built from the record every time and always fits one message."""
     when = int(datetime.fromisoformat(report.reported_at).timestamp())
     header = (
         f"{BUG_EMOJI} **{bug_id(number)}** · from {report.channel} · <t:{when}:f> · "
         f"by {SOURCES[report.source]} · commit `{report.commit}`"
     )
-    (first_heading, first), *rest = sections(report, brief=True)
-    return (
-        [f"{header}\n\n**{first_heading}**\n{first}"]
-        + [f"**{heading}**\n{text}" for heading, text in rest]
-        + [QUESTIONS]
-    )
+    heading, message = sections(report, brief=True)[0]
+    foot = "\n\n" + status_line(status, changed_at, note_count)
+    return clip(f"{header}\n\n**{heading}**\n{message}", CARD_LIMIT - len(foot)) + foot
+
+
+def post_sections(number: int, report: Report) -> list[str]:
+    """The forum post, a message at a time: the first is the opening card, the
+    last is the questions."""
+    rest = sections(report, brief=True)[1:]
+    return [opening_text(number, report)] + [f"**{heading}**\n{text}" for heading, text in rest] + [QUESTIONS]
 
 
 def missing_tags(existing: list[str]) -> list[str]:
@@ -366,7 +406,13 @@ def list_text(items: list) -> str:
     return "\n".join(lines)
 
 
-def detail_text(item, notes: list) -> str:
+def history_lines(created_at: str, events=()) -> list[str]:
+    """A bug's history, oldest first: reported, then each closing and re-opening."""
+    moments = [(created_at, "Reported")] + [(event.created_at, EVENTS[event.event]) for event in events]
+    return [f"- {_local(at):%Y-%m-%d %H:%M}: {what}" for at, what in moments]
+
+
+def detail_text(item, notes: list, events=()) -> str:
     """One bug in full, as Markdown: for docs/BUGS.md and for Claude Code."""
     report = item.report
     lines = [
@@ -384,6 +430,7 @@ def detail_text(item, notes: list) -> str:
     lines += [
         f"- {_local(note.created_at):%Y-%m-%d %H:%M} ({note.author}): {note.content}" for note in notes
     ] or ["None yet."]
+    lines += ["", "### History", ""] + history_lines(item.created_at, events)
     return "\n".join(lines)
 
 
@@ -396,4 +443,4 @@ def export_text(entries: list[tuple], now: datetime) -> str:
         f"Written by `bugs export` on {now.astimezone(TIMEZONE):%Y-%m-%d %H:%M} (NZ): "
         f"{count} open bug{'' if count == 1 else 's'}. Not in git: it holds Discord messages.",
     ]
-    return "\n".join(head) + "".join(f"\n\n{detail_text(item, notes)}" for item, notes in entries) + "\n"
+    return "\n".join(head) + "".join(f"\n\n{detail_text(*entry)}" for entry in entries) + "\n"

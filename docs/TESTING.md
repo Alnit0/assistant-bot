@@ -41,8 +41,8 @@ Last updated: 2026-10-09
 | L | Keep | 12 | 4 | 8 | 8 | 4 | 0 | 0 |
 | M | Message lifecycle | 5 | 4 | 1 | 1 | 4 | 0 | 0 |
 | N | Tool calling | 52 | 24 | 28 | 28 | 24 | 0 | 0 |
-| P | Bugs | 25 | 12 | 13 | 13 | 12 | 0 | 0 |
-| | **Total** | **262** | **92** | **170** | **170** | **92** | **0** | **0** |
+| P | Bugs | 29 | 14 | 15 | 15 | 14 | 0 | 0 |
+| | **Total** | **266** | **94** | **172** | **172** | **94** | **0** | **0** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -394,8 +394,12 @@ post in #bugs.
 | P18 | 👤 Manual | In a bug's post, answer the questions in one or two messages | Each message gets ✅ and stays. The bot says nothing, and #bot-log has no "Message handled" card | ⬜ Untested | | |
 | P19 | 👤 Manual | In #inbox, type `bugs` | "Open bugs (n)", one line each with a link, where it came from, the date and the number of notes. It stays | ⬜ Untested | | |
 | P20 | 👤 Manual | Type `bugs export`, open `docs/BUGS.md`, run `git status` | The file has every open bug in full with its notes. Git does not list it | ⬜ Untested | | |
-| P21 | 👤 Manual | Press **Won't fix** on a post | "✅ B<n> closed as Won't fix" in the post; the tag changes from Open; the post is archived (closed); `bugs` no longer lists it | ⬜ Untested | | |
-| P22 | 👤 Manual | Restart the bot, then press **Fixed** on a post made before the restart | It works: closed as Fixed, tagged and archived | ⬜ Untested | | |
+| P21 | 👤 Manual | Press **Won't fix** on a post | On the opening card the two buttons become one **Re-open** button and the foot reads "🚫 Won't fix · <time>, <date>". "✅ B<n> closed as Won't fix" in the post; the tag changes from Open; the post is archived (closed); `bugs` no longer lists it | ⬜ Untested | | |
+| P22 | 👤 Manual | Restart the bot, then press **Fixed** on a post made before the restart, and **Re-open** on one closed before it | Both work: the first is closed as Fixed, tagged and archived, with Re-open on its card; the second is open again | ⬜ Untested | | |
 | P23 | 👤 Manual | React 🐞 to a message inside a bug's post | ⚠️ on it at once and "That is already in a bug's post…"; no new bug | ⬜ Untested | | |
 | P24 | 👤 Manual | Delete the forum's Fixed tag, restart the bot | The tag is back. Without Manage Channels: one error card in #bot-log, naming that permission and the missing tags | ⬜ Untested | | |
 | P25 | 🤖 Auto | The forum's tags at start-up | Missing tags are asked for in one request at every start, keeping the forum's own; a missing permission is one warning naming Manage Channels, not one a tag; nothing is asked when all are there | ✅ Pass | 2026-10-09 | `tests/test_bugs.py` |
+| P26 | 🤖 Auto | The opening card | Its foot gives the status, when it last changed ("1:25pm, 9 Oct", NZ time) and the note count; the rest of the card is unchanged; a long message never pushes the foot off; a note rewrites the count in place, and a card that can't be reached doesn't lose the note | ✅ Pass | 2026-10-09 | `tests/test_bugs.py` |
+| P27 | 🤖 Auto | Closing, re-opening and history | Fixed / Won't fix: the press is answered first, the card gets Re-open, the tag is set and the post archived last. Re-open: unarchived first, the two buttons and the Open tag back. Each is added to the bug's history (export and command line). An old post's stale buttons are put right when pressed; fixed ids, no expiry, both views registered before connecting; someone else changes nothing | ✅ Pass | 2026-10-09 | `tests/test_bugs.py` |
+| P28 | 👤 Manual | Press **Re-open** on a closed post, then type `bugs` | The post is open again (no longer archived) with the tag Open; the card has **Fixed** and **Won't fix** back and its foot reads "🟢 Open · <time>, <date>"; "🔄 B<n> re-opened" in the post; `bugs` lists it again | ⬜ Untested | | |
+| P29 | 👤 Manual | Write two notes in an open bug's post, watching the opening card | The card's foot goes from "📝 No notes yet" to "📝 1 note", then "📝 2 notes", edited in place (no new message from the bot) | ⬜ Untested | | |

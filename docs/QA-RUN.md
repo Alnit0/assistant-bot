@@ -1,6 +1,6 @@
 # QA run sheet
 
-One pass through the 170 👤 Manual tests in `docs/TESTING.md` that are
+One pass through the 172 👤 Manual tests in `docs/TESTING.md` that are
 ⬜ Untested (as of 2026-10-09). Blocks share setup and each one leaves things
 ready for the next, so run them in order.
 
@@ -22,8 +22,8 @@ tests (block 12).
 | 11 | Phone notifications | off | 5 | 11 |
 | 12 | Overnight backups | off | 2 | 2 nights |
 | 13 | Tool calling (Claude runs things) | off, then on, then off | 32 | 53 |
-| 14 | Bugs and kept confirmations | off (two restarts) | 14 | 18 |
-| | **Total** | | **170** (F2 is split over blocks 4 and 7, counted in 7) | **about 3½ hours** |
+| 14 | Bugs and kept confirmations | off (two restarts) | 16 | 21 |
+| | **Total** | | **172** (F2 is split over blocks 4 and 7, counted in 7) | **about 3½ hours** |
 
 Blocks 13 and 14 need nothing from the others: run them any time after
 block 1, and before the overnight block if that suits.
@@ -360,7 +360,7 @@ field in step 13), so this block costs a little more than ordinary chat.
 ## 14. Bugs and kept confirmations
 
 Dev mode off. "The post" is the bug's post in #bugs. Each 🐞 or `bug` makes
-a real post: close them as you go (steps 10 and 11) or afterwards.
+a real post: close them as you go (steps 10 to 12) or afterwards.
 
 | # | Do | Expect | Tests |
 |---|---|---|---|
@@ -370,12 +370,13 @@ a real post: close them as you go (steps 10 and 11) or afterwards.
 | 4 | Reply `bug` to another message | Your reply is deleted; "🐞 Logged as B<n>" stays; the post is about the message you replied to | P15 |
 | 5 | In #scratch, send a message, then type `bug` | Your `bug` is deleted; the post is about the message before it, from #scratch | P16 |
 | 6 | In #inbox, type `bug: the timer was wrong` | Not a command: it goes to Claude as chat, and no bug is logged | P17 |
-| 7 | In step 1's post, answer the questions in one or two messages | Each message gets ✅ and stays. The bot says nothing, and #bot-log has no "Message handled" card | P18 |
+| 7 | In step 1's post, answer the questions in two messages, watching the opening card | Each message gets ✅ and stays. The bot says nothing, and #bot-log has no "Message handled" card. The card's foot goes from "📝 No notes yet" to "📝 1 note", then "📝 2 notes", edited in place (no new message from the bot) | P18, P29 |
 | 8 | React 🐞 to one of your messages in that post | ⚠️ on it at once and "That is already in a bug's post…"; no new bug. Take the 🐞 off | P23 |
 | 9 | In #inbox, type `bugs`; then `bugs export`, open `docs/BUGS.md` and run `git status` | "Open bugs (3)", one line each with a link, where it came from, the date and the number of notes; it stays. The file has every open bug in full with its notes, and git does not list it | P19, P20 |
-| 10 | Press **Won't fix** on step 5's post, then type `bugs` | "✅ B<n> closed as Won't fix" in the post; the tag changes from Open; the post is archived (closed); `bugs` no longer lists it | P21 |
-| 11 | Delete the forum's Fixed tag (Edit Channel, Tags). Restart the bot (`Ctrl + C`, `python main.py`). Look at the forum's tags, then press **Fixed** on step 4's post | The tag is back. Without Manage Channels: one error card in #bot-log, naming that permission and the missing tags. The button from before the restart works: closed as Fixed, tagged and archived | P24, P22 |
-| 12 | Set `KEEP_CONFIRMATIONS=true` in `.env` (or remove the line) and restart. Reply `pin` to a message, and react 📦 to a message in #archive | "📌 Pinned" stays in the channel and your `pin` is still deleted; the ⚠️ reason for the 📦 stays too. Reply `unpin` afterwards, and press Fixed or Won't fix on step 1's post | M5 |
+| 10 | Press **Won't fix** on step 5's post, then type `bugs` | On the opening card the two buttons become one **Re-open** button and the foot reads "🚫 Won't fix · <time>, <date>". "✅ B<n> closed as Won't fix" in the post; the tag changes from Open; the post is archived (closed); `bugs` no longer lists it | P21 |
+| 11 | Press **Re-open** on that post, then type `bugs`. Press **Won't fix** again | The post is open again (no longer archived) with the tag Open; the card has **Fixed** and **Won't fix** back and its foot reads "🟢 Open · <time>, <date>"; "🔄 B<n> re-opened" in the post; `bugs` lists it again | P28 |
+| 12 | Delete the forum's Fixed tag (Edit Channel, Tags). Restart the bot (`Ctrl + C`, `python main.py`). Look at the forum's tags, then press **Fixed** on step 4's post and **Re-open** on step 5's | The tag is back. Without Manage Channels: one error card in #bot-log, naming that permission and the missing tags. Both buttons from before the restart work: the first is closed as Fixed, tagged and archived, with Re-open on its card; the second is open again | P24, P22 |
+| 13 | Set `KEEP_CONFIRMATIONS=true` in `.env` (or remove the line) and restart. Reply `pin` to a message, and react 📦 to a message in #archive | "📌 Pinned" stays in the channel and your `pin` is still deleted; the ⚠️ reason for the 📦 stays too. Reply `unpin` afterwards, and press Fixed or Won't fix on step 1's post | M5 |
 
 ## When you finish
 

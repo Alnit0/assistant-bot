@@ -327,7 +327,7 @@ def test_the_export_has_everything_captured_and_the_notes(bugs_db):
     number = asyncio.run(store.add(1, report(target=snap(content="x" * 900))))
     asyncio.run(store.set_post(number, 7000, URL))
     asyncio.run(store.add_note(number, 1, rules.OWNER, "I asked for 5 minutes"))
-    text = rules.export_text(asyncio.run(store.with_notes(1)), AT)
+    text = rules.export_text(asyncio.run(store.in_full(1)), AT)
     assert text.startswith("# Open bugs\n\nWritten by `bugs export` on 2026-10-09 14:00 (NZ): 1 open bug.")
     assert "## B1 · " in text and f"- Post: {URL}" in text and "- Commit: `03c7d23`" in text
     assert "> " + "x" * 900 in text, "nothing is shortened in the file"
@@ -637,3 +637,300 @@ def test_no_forum_set_is_not_worth_a_warning_but_a_wrong_channel_is(tag_cards, m
     monkeypatch.setitem(posts.CHANNELS, "bugs", None)
     asyncio.run(posts.ensure_tags())
     assert tag_cards == []
+
+
+# --- the opening card: status, when it changed, note count ---------------------------
+CLOSED_AT = "2026-10-09T00:25:00.000000+00:00"  # 1:25pm in Auckland
+
+
+@pytest.mark.parametrize(
+    "at, shown",
+    [
+        (CLOSED_AT, "1:25pm, 9 Oct"),
+        ("2026-10-08T11:05:00+00:00", "12:05am, 9 Oct"),
+        ("2026-10-08T23:00:00+00:00", "12:00pm, 9 Oct"),
+        ("2026-10-09T08:59:00+00:00", "9:59pm, 9 Oct"),
+    ],
+)
+def test_the_card_gives_the_time_as_it_is_said(at, shown):
+    assert rules.clock(at) == shown
+
+
+def test_the_foot_of_the_card_has_the_status_and_the_note_count():
+    assert rules.status_line(rules.OPEN) == "-# 🟢 Open · 📝 No notes yet"
+    assert rules.status_line(rules.OPEN, None, 1) == "-# 🟢 Open · 📝 1 note"
+    assert rules.status_line(rules.FIXED, CLOSED_AT, 2) == "-# ✅ Fixed · 1:25pm, 9 Oct · 📝 2 notes"
+    assert rules.status_line(rules.WONTFIX, CLOSED_AT) == "-# 🚫 Won't fix · 1:25pm, 9 Oct · 📝 No notes yet"
+    assert rules.status_line(rules.OPEN, CLOSED_AT, 2) == "-# 🟢 Open · 1:25pm, 9 Oct · 📝 2 notes", "re-opened then"
+
+
+def test_the_card_is_the_same_message_with_a_new_foot():
+    opened = rules.opening_text(4, report())
+    closed = rules.opening_text(4, report(), rules.FIXED, CLOSED_AT, 2)
+    assert opened == rules.post_sections(4, report())[0], "a new post opens with the card"
+    assert opened.endswith("\n\n-# 🟢 Open · 📝 No notes yet")
+    assert closed.endswith("\n\n-# ✅ Fixed · 1:25pm, 9 Oct · 📝 2 notes")
+    assert opened.rsplit("\n\n", 1)[0] == closed.rsplit("\n\n", 1)[0]
+
+
+def test_a_long_message_never_pushes_the_foot_off_the_card():
+    text = rules.opening_text(4, report(target=snap(content="x\n" * 3000)), rules.WONTFIX, CLOSED_AT, 12)
+    assert len(text) <= rules.CARD_LIMIT and text.endswith("-# 🚫 Won't fix · 1:25pm, 9 Oct · 📝 12 notes")
+
+
+def test_what_is_said_in_the_post_when_a_button_is_pressed():
+    assert rules.changed_text(4, rules.FIXED) == "✅ B4 closed as Fixed"
+    assert rules.changed_text(4, rules.OPEN) == "🔄 B4 re-opened"
+    assert rules.changed_text(4, rules.OPEN, already=True) == "B4 is already open"
+
+
+# --- history ---------------------------------------------------------------------------
+def test_closing_and_reopening_are_kept_as_history(bugs_db):
+    number = asyncio.run(store.add(1, report()))
+    assert asyncio.run(store.get(number)).changed_at is None and asyncio.run(store.events(number)) == []
+    asyncio.run(store.set_status(number, rules.FIXED, 1))
+    closed = asyncio.run(store.get(number))
+    assert closed.status == rules.FIXED and closed.changed_at == closed.closed_at
+    asyncio.run(store.set_status(number, rules.OPEN, 1))
+    asyncio.run(store.set_status(number, rules.WONTFIX, 1))
+    events = asyncio.run(store.events(number))
+    assert [event.event for event in events] == [rules.FIXED, rules.REOPENED, rules.WONTFIX]
+    assert asyncio.run(store.get(number)).changed_at == events[-1].created_at
+
+
+def test_a_reopened_bug_is_open_again_with_the_time_it_was_reopened(bugs_db):
+    number = asyncio.run(store.add(1, report()))
+    asyncio.run(store.set_status(number, rules.FIXED, 1))
+    asyncio.run(store.set_status(number, rules.OPEN, 1))
+    item = asyncio.run(store.get(number))
+    assert (item.status, item.closed_at) == (rules.OPEN, None) and item.changed_at is not None
+    assert [entry.id for entry in asyncio.run(store.open_items(1))] == [number]
+    assert asyncio.run(store.open_for(1, INBOX, 5001)).id == number
+
+
+def test_a_bug_closed_before_history_was_kept_still_shows_when(bugs_db):
+    number = asyncio.run(store.add(1, report()))
+
+    def close_the_old_way(conn):
+        conn.execute("UPDATE bugs_items SET status = 'fixed', closed_at = ? WHERE id = ?", (CLOSED_AT, number))
+
+    asyncio.run(database.run(close_the_old_way))
+    assert asyncio.run(store.get(number)).changed_at == CLOSED_AT
+
+
+def test_the_history_is_in_the_export_and_on_the_command_line(bugs_db):
+    number = asyncio.run(store.add(1, report()))
+    asyncio.run(store.set_status(number, rules.WONTFIX, 1))
+    asyncio.run(store.set_status(number, rules.OPEN, 1))
+    lines = rules.history_lines("2026-10-09T00:00:00+00:00", asyncio.run(store.events(number)))
+    assert lines[0] == "- 2026-10-09 13:00: Reported"
+    assert [line.split(": ", 1)[1] for line in lines] == ["Reported", "Closed as Won't fix", "Re-opened"]
+    for text in (rules.export_text(asyncio.run(store.in_full(1)), AT), cli.run(["show", "B1"])):
+        assert "### History" in text and "Closed as Won't fix" in text and text.rstrip().endswith(": Re-opened")
+
+
+# --- the buttons ---------------------------------------------------------------------------
+class FakeThread:
+    def __init__(self, thread_id=7001, archived=False, tags=("Open",)):
+        self.id, self.archived = thread_id, archived
+        self.applied_tags = [SimpleNamespace(name=name) for name in tags]
+        self.steps: list = []  # shared with the interaction: what was done, in order
+
+    async def edit(self, **changes):
+        if "applied_tags" in changes:
+            changes["applied_tags"] = [tag.name for tag in changes["applied_tags"]]
+        self.steps.append(("thread", changes))
+        self.archived = changes.get("archived", self.archived)
+
+
+class FakeInteraction:
+    def __init__(self, thread: FakeThread, discord_user_id=1):
+        self.user = SimpleNamespace(id=discord_user_id)
+        self.channel, self.channel_id = thread, thread.id
+        self.message = SimpleNamespace(id=thread.id)
+        steps = thread.steps
+
+        async def defer():
+            steps.append(("answered", None))
+
+        async def send(text):
+            steps.append(("said", text))
+
+        self.response = SimpleNamespace(defer=defer)
+        self.followup = SimpleNamespace(send=send)
+
+    async def edit_original_response(self, content, view, allowed_mentions=None):
+        buttons = sorted(child.custom_id for child in view.children)
+        self.channel.steps.append(("card", content.rsplit("\n\n", 1)[1], buttons))
+
+
+@pytest.fixture
+def pressing(filing, owner, stranger, monkeypatch):
+    """A bug with its post (7001), and stand-ins around a button press."""
+    seen = SimpleNamespace(refused=[], cards=[], errors=[])
+    all_tags = [SimpleNamespace(name=name) for name in ("Open", "Fixed", "Won't fix", "timers")]
+
+    async def user(discord_id):
+        return owner if discord_id == 1 else stranger
+
+    async def refuse(interaction, text, ephemeral=True):
+        seen.refused.append(text)
+
+    async def card(title, description=None):
+        seen.cards.append(title)
+
+    async def error(title, details, user_text=None):
+        seen.errors.append(title)
+
+    monkeypatch.setattr(posts, "get_user_by_discord_id", user)
+    monkeypatch.setattr(posts, "safe_reply", refuse)
+    monkeypatch.setattr(posts, "log_simple", card)
+    monkeypatch.setattr(posts, "log_error", error)
+    monkeypatch.setattr(posts, "forum", lambda: SimpleNamespace(available_tags=all_tags))
+    asyncio.run(bugs._file(owner, INBOX, snap(), [], rules.REACTION))
+    return seen
+
+
+def press(status: str, thread: FakeThread, discord_user_id=1) -> list:
+    asyncio.run(posts._change(FakeInteraction(thread, discord_user_id), status))
+    return thread.steps
+
+
+def test_fixed_swaps_the_buttons_for_reopen_and_shows_when(pressing):
+    steps = press(rules.FIXED, FakeThread(tags=("Open", "timers")))
+    item = asyncio.run(store.get(1))
+    assert item.status == rules.FIXED
+    assert steps[0] == ("answered", None), "the press is answered before anything else"
+    assert steps[1] == ("card", rules.status_line(rules.FIXED, item.changed_at, 0), ["bugs:reopen"])
+    assert steps[1][1].startswith("-# ✅ Fixed · ")
+    assert steps[2] == ("said", "✅ B1 closed as Fixed")
+    assert steps[3] == ("thread", {"applied_tags": ["Fixed", "timers"], "archived": True}), "archived last"
+    assert pressing.cards == ["🐞 Bug closed"] and pressing.errors == []
+
+
+def test_wont_fix_does_the_same_with_its_own_tag(pressing):
+    steps = press(rules.WONTFIX, FakeThread())
+    assert steps[1][1].startswith("-# 🚫 Won't fix · ") and steps[1][2] == ["bugs:reopen"]
+    assert steps[-1] == ("thread", {"applied_tags": ["Won't fix"], "archived": True})
+
+
+def test_reopen_unarchives_first_then_restores_the_buttons_and_the_tag(pressing):
+    press(rules.FIXED, FakeThread())
+    asyncio.run(store.add_note(1, 1, rules.OWNER, "still happens"))
+    steps = press(rules.OPEN, FakeThread(archived=True, tags=("Fixed", "timers")))
+    item = asyncio.run(store.get(1))
+    assert item.status == rules.OPEN and item.closed_at is None
+    assert steps[:2] == [("answered", None), ("thread", {"archived": False})], "an archived post can't be edited"
+    assert steps[2] == ("card", rules.status_line(rules.OPEN, item.changed_at, 1), ["bugs:fixed", "bugs:wontfix"])
+    assert steps[3] == ("said", "🔄 B1 re-opened")
+    assert steps[4] == ("thread", {"applied_tags": ["Open", "timers"], "archived": False})
+    assert [event.event for event in asyncio.run(store.events(1))] == [rules.FIXED, rules.REOPENED]
+    assert pressing.cards == ["🐞 Bug closed", "🐞 Bug re-opened"]
+
+
+def test_an_old_post_still_showing_fixed_and_wont_fix_is_put_right_when_pressed(pressing):
+    # Closed before this change: archived, and its card still has the two buttons
+    press(rules.FIXED, FakeThread())
+    steps = press(rules.FIXED, FakeThread(archived=True, tags=("Fixed",)))
+    assert steps[1] == ("thread", {"archived": False})
+    assert steps[2][2] == ["bugs:reopen"] and steps[3] == ("said", "Already B1 is closed as Fixed")
+    assert steps[4] == ("thread", {"applied_tags": ["Fixed"], "archived": True})
+    assert len(asyncio.run(store.events(1))) == 1, "nothing new in the history"
+
+
+def test_someone_else_pressing_changes_nothing(pressing):
+    steps = press(rules.FIXED, FakeThread(), discord_user_id=22)
+    assert steps == [] and pressing.refused == ["Closing and re-opening bugs isn't for you."]
+    assert asyncio.run(store.get(1)).status == rules.OPEN
+
+
+def test_a_post_with_no_bug_says_so(pressing):
+    steps = press(rules.FIXED, FakeThread(thread_id=7999))
+    assert steps == [("answered", None)] and pressing.refused == ["I have no bug on record for this post."]
+
+
+def test_discord_refusing_is_reported_and_the_bug_is_still_changed(pressing, monkeypatch):
+    import discord
+
+    thread = FakeThread()
+
+    async def refuse(**changes):
+        raise discord.Forbidden(SimpleNamespace(status=403, reason="Forbidden"), "Missing Permissions")
+
+    monkeypatch.setattr(thread, "edit", refuse)
+    press(rules.FIXED, thread)
+    assert asyncio.run(store.get(1)).status == rules.FIXED
+    assert pressing.errors == ["Bugs: B1 is Fixed, but its post doesn't show it"]
+
+
+def test_the_buttons_have_fixed_ids_and_never_expire_so_they_survive_a_restart():
+    async def views():
+        return posts.CloseButtons(), posts.ReopenButton()
+
+    close, reopen = asyncio.run(views())
+    for view, ids in ((close, ["bugs:fixed", "bugs:wontfix"]), (reopen, ["bugs:reopen"])):
+        assert view.timeout is None and view.is_persistent()
+        assert sorted(child.custom_id for child in view.children) == ids
+
+
+def test_an_open_bug_gets_the_closing_buttons_and_a_closed_one_reopen():
+    async def kinds():
+        return [type(posts.view_for(status)) for status in (rules.OPEN, rules.FIXED, rules.WONTFIX)]
+
+    assert asyncio.run(kinds()) == [posts.CloseButtons, posts.ReopenButton, posts.ReopenButton]
+
+
+def test_both_sets_of_buttons_are_registered_before_the_bot_connects():
+    added = []
+
+    async def setup():
+        bugs.task.setup(SimpleNamespace(add_view=lambda view: added.append(type(view))))
+
+    asyncio.run(setup())
+    assert added == [posts.CloseButtons, posts.ReopenButton]
+
+
+# --- the note count on the card ----------------------------------------------------------
+def test_a_note_brings_the_cards_count_up_to_date(filing, owner, monkeypatch):
+    refreshed = []
+
+    async def refresh(item):
+        refreshed.append((item.id, posts.card(item).rsplit("\n\n", 1)[1]))
+
+    monkeypatch.setattr(posts, "refresh_card", refresh)
+    asyncio.run(bugs._file(owner, INBOX, snap(), [], rules.REACTION))
+    for text in ("I expected 5 minutes", "it set 50"):
+        asyncio.run(bugs.save_note(FakeCtx(owner, channel_id=7001, parent=BUGS, text=text)))
+    assert refreshed == [(1, "-# 🟢 Open · 📝 1 note"), (1, "-# 🟢 Open · 📝 2 notes")]
+
+
+def test_the_card_is_edited_in_place_with_the_buttons_for_its_status(filing, owner, monkeypatch):
+    edits = []
+
+    class Opening:
+        async def edit(self, content, view, allowed_mentions=None):
+            edits.append((content.rsplit("\n\n", 1)[1], sorted(child.custom_id for child in view.children)))
+
+    async def channel(channel_id):
+        return SimpleNamespace(get_partial_message=lambda message_id: Opening() if message_id == channel_id else None)
+
+    monkeypatch.setattr(posts, "_channel", channel)
+    asyncio.run(bugs._file(owner, INBOX, snap(), [], rules.REACTION))
+    asyncio.run(store.add_note(1, 1, rules.OWNER, "a note"))
+    asyncio.run(posts.refresh_card(asyncio.run(store.get(1))))
+    asyncio.run(store.set_status(1, rules.FIXED, 1))
+    closed = asyncio.run(store.get(1))
+    asyncio.run(posts.refresh_card(closed))
+    assert edits[0] == ("-# 🟢 Open · 📝 1 note", ["bugs:fixed", "bugs:wontfix"])
+    assert edits[1] == (rules.status_line(rules.FIXED, closed.changed_at, 1), ["bugs:reopen"])
+
+
+def test_a_card_that_cannot_be_updated_does_not_lose_the_note(filing, owner, monkeypatch):
+    async def unreachable(channel_id):
+        raise UserError("I can't see the channel that message is in.")
+
+    monkeypatch.setattr(posts, "_channel", unreachable)
+    asyncio.run(bugs._file(owner, INBOX, snap(), [], rules.REACTION))
+    ctx = FakeCtx(owner, channel_id=7001, parent=BUGS, text="still saved")
+    assert asyncio.run(bugs.save_note(ctx)) == "note saved for B1"
+    assert ctx.ticked == 1 and [note.content for note in asyncio.run(store.notes(1))] == ["still saved"]

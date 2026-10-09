@@ -76,8 +76,8 @@ gained time"):
 
 ## Bugs: left for later
 
-Built on 2026-10-09 and unit tested; not yet run in Discord (P12 to P24,
-M5).
+Built on 2026-10-09 and unit tested; the manual rows (P12 to P24, P28,
+P29, M5) are ⬜ Untested in `docs/TESTING.md`.
 
 - **Promote forum handling to core when another task needs it.** Posts,
   tags and persistent buttons live in `tasks/bugs/posts.py`, the only
@@ -87,7 +87,12 @@ M5).
   picture stays in the post.
 - **Writing in a closed post reopens it in Discord only.** Discord
   unarchives the post, and the note is saved, but the bug stays Fixed or
-  Won't fix with its tag. There is no way to reopen a bug yet.
+  Won't fix with its tag until you press Re-open.
+- **A note from Claude Code doesn't update the card's count.** The
+  command line writes to the database without the bot; the count catches
+  up the next time you write a note or press a button.
+- **Posts closed before Re-open existed keep their two buttons** until
+  one is pressed, which puts the card right (and says "Already closed").
 - **A report whose post can't be made leaves a record without a post**
   (Discord refusing after the forum was found). `bugs` lists it without a
   link.
