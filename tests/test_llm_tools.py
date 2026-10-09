@@ -538,3 +538,167 @@ def test_tool_tokens_that_cannot_be_counted_are_unknown(monkeypatch):
     monkeypatch.setattr(llm, "claude", SimpleNamespace(messages=SimpleNamespace(count_tokens=count_tokens)))
     monkeypatch.setattr(llm, "_tool_tokens", {})
     assert asyncio.run(llm.count_tool_tokens(TOOLS)) is None
+
+
+# --- a proposal written as words, with nothing waiting for the ok -------------------
+PILL_TOOLS = [
+    {"name": "pill_add", "description": "add a pill", "input_schema": {"type": "object"}},
+    {"name": "timer", "description": "start a timer", "input_schema": {"type": "object"}},
+]
+COURSE = "add course A, 3 times a day, at least 3 hours apart, with food, for 7 days starting tomorrow"
+
+
+def tool_use(tool: str, **value):
+    """A call whose input has a `name` of its own (call() keeps that word for the tool)."""
+    return SimpleNamespace(type="tool_use", id="t1", name=tool, input=value)
+
+
+def test_a_proposal_in_words_is_sent_back_and_claude_then_calls_the_tool(claude):
+    # 16:32 on 2026-10-09: this sentence got "I'm proposing: … Reply ok to save it." with no
+    # tool called, so "ok" had nothing to run
+    fake = claude(
+        response(text("I'm proposing: **Course A, 3 times a day**. Reply ok to save it.")),
+        response(tool_use("pill_add", name="Course A", per_day="3", min_gap="3 hours", notes="with food", start="tomorrow", days="7"), stop="tool_use"),
+        response(text("Have a look at the preview.")),
+    )
+    runner = Runner(("Preview shown", False))
+    result = asyncio.run(
+        llm.ask_claude(COURSE, "", CHANNEL, tools=PILL_TOOLS, run_tool=runner, acted=lambda: bool(runner.calls), proposed=lambda: False)
+    )
+    assert result.unbacked_claim.startswith("I'm proposing")
+    assert fake.requests[1]["messages"][-1]["content"] == llm.NOTHING_PROPOSED
+    assert runner.calls == [
+        ("pill_add", {"name": "Course A", "per_day": "3", "min_gap": "3 hours", "notes": "with food", "start": "tomorrow", "days": "7"})
+    ], "the structured call, not the sentence"
+    assert result.reply == "Have a look at the preview."
+
+
+def test_a_claude_that_insists_on_proposing_in_words_is_overruled(claude):
+    claude(response(text("I'm proposing: Course A. Reply ok to save it.")))
+    result = asyncio.run(llm.ask_claude(COURSE, "", CHANNEL, tools=PILL_TOOLS, run_tool=Runner(), proposed=lambda: False))
+    assert result.reply == llm.NOT_PROPOSED
+    assert llm.history_for(CHANNEL)[-1]["content"] == llm.NOT_PROPOSED, "nor is the empty offer remembered"
+
+
+def test_a_real_proposal_may_be_put_into_words(claude):
+    fake = claude(
+        response(call("timer", duration="5m", propose=True), stop="tool_use"),
+        response(text("I'd suggest a 5 minute timer. Reply ok and I'll start it.")),
+    )
+    result = asyncio.run(
+        llm.ask_claude("my tea is brewing", "", CHANNEL, tools=PILL_TOOLS, run_tool=Runner(("Proposed", False)), acted=lambda: False, proposed=lambda: True)
+    )
+    assert result.unbacked_claim == "" and len(fake.requests) == 2
+    assert result.reply.endswith("Reply ok and I'll start it.")
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        "I'm proposing: **Evening pill at 8:00 pm, once a day**. Reply ok to save it.",
+        "I am proposing a 5 minute timer.",
+        "Shall I add it? Say ok.",
+        "Reply `ok` to confirm.",
+        "Reply with “ok” and I'll do it.",
+    ],
+)
+def test_replies_that_offer_something_for_an_ok(reply):
+    assert llm.claims_proposal(reply)
+
+
+@pytest.mark.parametrize("reply", ["Have a look at the preview and press Save.", "Is 8am ok for you?", "Ok, which pill?", "That looks ok."])
+def test_replies_that_offer_nothing(reply):
+    assert not llm.claims_proposal(reply)
+
+
+# --- "ok" with nothing waiting: the made-up run -------------------------------------
+def test_ok_with_nothing_waiting_cannot_be_answered_with_a_made_up_run(claude):
+    # 16:32:55 on 2026-10-09: nothing was pending, and the reply was this, invented whole
+    made_up = f"That ran when you said ok: `pill_add Course A 3 times a day, at least 3 hours apart, with food, for 7 days starting tomorrow`."
+    fake = claude(
+        response(text(made_up)),
+        response(tool_use("pill_add", name="Course A", per_day="3", min_gap="3h", notes="with food", start="tomorrow", days="7"), stop="tool_use"),
+        response(text("The preview is above.")),
+    )
+    runner = Runner(("Preview shown", False))
+    result = asyncio.run(
+        llm.ask_claude("ok", "", CHANNEL, tools=PILL_TOOLS, run_tool=runner, acted=lambda: bool(runner.calls), proposed=lambda: False)
+    )
+    assert result.unbacked_claim == made_up, "caught: it says it ran and nothing did"
+    assert fake.requests[1]["messages"][-1]["content"] == llm.NOTHING_RAN
+    assert [name for name, _ in runner.calls] == ["pill_add"]
+    assert "pill_add" not in result.reply
+
+
+@pytest.mark.parametrize("reply", ["That ran when you said ok: `timer 5m`.", "That has run.", "You said ok, so I went ahead: add a pill."])
+def test_more_replies_that_say_it_was_done(reply):
+    assert llm.claims_done(reply)
+
+
+# --- tool names never reach the user ------------------------------------------------
+NAMES = ["pill_add", "pill_edit", "timer_control", "timer", "help"]
+
+
+@pytest.mark.parametrize(
+    "reply",
+    ["I ran `pill_add Course A 3` for you.", "Calling pill_add now.", "pill_add(name='Course A')", "Use timer_control to pause it."],
+)
+def test_replies_that_show_a_tool(reply):
+    assert llm.shows_tools(reply, NAMES)
+
+
+@pytest.mark.parametrize("reply", ["Type `timer 5m` to start one.", "`help` lists everything.", "The pill add button is on the list.", "I added a timer."])
+def test_words_the_user_can_type_are_not_tool_names(reply):
+    assert not llm.shows_tools(reply, NAMES)
+
+
+@pytest.mark.parametrize(
+    "reply, clean",
+    [
+        ("I ran `pill_add Course A 3 times a day` for you.", "I ran that for you."),
+        ("pill_add(name='Course A') is ready.", "that is ready."),
+        ("Calling pill_add now.", "Calling pill add now."),
+        ("Type `timer 5m`.", "Type `timer 5m`."),
+    ],
+)
+def test_a_tool_name_is_taken_out_of_a_reply(reply, clean):
+    assert llm.hide_tools(reply, NAMES) == clean
+
+
+def test_a_reply_that_names_a_tool_is_sent_back_once_then_cleaned(claude):
+    fake = claude(response(text("I used `pill_add Course A` to set it up.")), response(text("Sorry: pill_add is how I do that.")))
+    result = asyncio.run(llm.ask_claude("how did you do that?", "", CHANNEL, tools=PILL_TOOLS, run_tool=Runner(), proposed=lambda: False))
+    assert fake.requests[1]["messages"][-1]["content"] == llm.TOOL_SHOWN
+    assert result.reply == "Sorry: pill add is how I do that."
+    assert "pill_add" not in llm.history_for(CHANNEL)[-1]["content"]
+
+
+# --- times in a reply are never rewritten --------------------------------------------
+def test_a_timer_reply_with_times_on_the_clock_is_left_exactly_as_it_is(claude):
+    # "05:00 left" is a length of time, not five in the morning: a rewrite of 24-hour
+    # times in every reply would have made it "5:00 am left". Tools hand over times
+    # of day already formatted (8:00 pm) instead, so nothing here needs changing
+    said = "Tea has 05:00 left and the laundry timer 08:30; dinner finished at 20:00."
+    claude(response(call("timer_control"), stop="tool_use"), response(text(said)))
+    result = asyncio.run(llm.ask_claude("how long is left?", "", CHANNEL, tools=PILL_TOOLS, run_tool=Runner()))
+    assert result.reply == said
+    assert llm.history_for(CHANNEL)[-1]["content"] == said
+
+
+def test_the_prompt_states_the_rules(claude):
+    prompt = llm.build_system_prompt("", has_tools=True)
+    assert "One confirmation, never two" in prompt
+    assert "The candidate rule" in prompt and "do not guess" in prompt
+    assert "never name a tool or its arguments" in prompt
+    assert "8:00 pm, never 20:00" in prompt
+    assert 'never write "I\'m proposing"' in prompt
+
+
+def test_the_round_may_be_closed_by_a_coroutine(claude):
+    fake = claude(response(call("timer", duration="5m"), stop="tool_use"), response(text("unused")))
+
+    async def end_round():
+        return llm.Closing("", "That ran: started a timer.")
+
+    result = asyncio.run(llm.ask_claude("timer 5m please", "", CHANNEL, tools=TOOLS, run_tool=Runner(), closing=end_round))
+    assert result.closed_by_tools and len(fake.requests) == 1

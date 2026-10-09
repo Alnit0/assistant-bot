@@ -4,6 +4,11 @@ from tasks.base import INBOX, Keyword, Param, Task, Tool
 from tasks.pills import plans, store
 
 HUB = "hub"
+# What tells these tools apart from any other task's, for Claude to choose by
+ONLY_FOR = (
+    "Only for pills, vitamins, supplements and medicines the user takes: never for to-dos, shopping, "
+    "reminders, timers or anything else that could be added, changed or removed."
+)
 # Where the words work: #inbox, and the hub once it is set in .env
 WHERE = [INBOX] + ([HUB] if HUB in CHANNELS else [])
 
@@ -72,6 +77,9 @@ class PillsTask(Task):
                 ],
                 channels=WHERE,
                 tool_priority=6,
+                label="add a pill",
+                only_for=ONLY_FOR,
+                confirms_itself=True,
             ),
             Tool(
                 "pill_edit",
@@ -90,6 +98,9 @@ class PillsTask(Task):
                 ],
                 channels=WHERE,
                 tool_priority=5,
+                label="change a pill",
+                only_for=ONLY_FOR,
+                confirms_itself=True,
             ),
             Tool(
                 "pill_pause",
@@ -104,6 +115,8 @@ class PillsTask(Task):
                 ],
                 channels=WHERE,
                 tool_priority=4,
+                label="pause or resume a pill",
+                only_for=ONLY_FOR,
             ),
             Tool(
                 "pill_remove",
@@ -118,6 +131,9 @@ class PillsTask(Task):
                 ],
                 channels=WHERE,
                 tool_priority=3,
+                label="remove a pill",
+                only_for=ONLY_FOR,
+                confirms_itself=True,
             ),
         ]
 

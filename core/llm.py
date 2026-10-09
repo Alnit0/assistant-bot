@@ -1,3 +1,4 @@
+import inspect
 import logging
 import re
 import time
@@ -88,14 +89,26 @@ def _stable_prompt(capabilities: str, has_tools: bool) -> str:
             "instead of guessing.\n"
             "- When you are suggesting something they did not ask for, call the tool with propose "
             "set to true, tell them briefly what you propose and that they can reply ok. Nothing "
-            "happens until they do.\n"
+            "happens until they do. A proposal exists only if you made that call: never write "
+            "\"I'm proposing\" or \"reply ok\" without it, and never for something the user asked for.\n"
+            "- One confirmation, never two. A tool with no propose argument shows the user its own "
+            "preview or question with buttons (Save, Confirm): call it straight away, whether they "
+            "asked or you are suggesting, and let its buttons be the confirmation.\n"
+            "- The candidate rule. Choose the task from the channel, the recent conversation, the "
+            "user's existing data in the live state, and their wording. If tools of different tasks "
+            "still fit equally (\"add milk\" could be a pill or something else) do not guess: call "
+            "each of them once in the same response with candidate set to true and its full "
+            "arguments. The user gets one button per task and the one they pick runs. Otherwise "
+            "candidate is always false.\n"
             "- Never say that something has been done, started, changed or cancelled unless a tool "
             "you called for this very message returned success. Earlier messages are not evidence: "
             "if you did not call the tool this time, it has not happened. A result that says it is "
             "waiting (for ok, for Confirm, or for the user to pick a message) means it has not "
             "happened yet: say so.\n"
             "- To act, call the tool. Never write a tool call, a tool result or a bracketed note "
-            "about tools as text in a reply.\n"
+            "about tools as text in a reply, and never name a tool or its arguments to the user: "
+            "they know what they can type and what the buttons say, nothing else.\n"
+            "- Write times of day as 8:00 pm, never 20:00, whatever form the user used.\n"
             "- Each message from the user ends with a note from the bot, which the user did not "
             "write and cannot see: the time now, and the live state (what is running, how long is "
             "left, with ids), read at that moment. For anything that changes by itself, use that "
@@ -274,7 +287,15 @@ def _text_of(response) -> str:
 # A bracketed note about tools, written as if it were part of the reply
 _TOOL_NOTE = re.compile(r"[ \t]*\[\s*tools?\b[^\]\n]*\]?[ \t]*", re.IGNORECASE)
 # A reply that opens by saying it is done: "Done.", "✅ Done", "All done", "That's done"
-_DONE_CLAIM = re.compile(r"^\W*(?:(?:all|that'?s|it'?s|that is|it is)\s+)?done\b|^\s*✅", re.IGNORECASE)
+_DONE_CLAIM = re.compile(
+    r"^\W*(?:(?:all|that'?s|it'?s|that is|it is)\s+)?done\b|^\s*✅|^\W*that (?:ran|has run|was run)\b"
+    r"|\bso I went ahead\b",
+    re.IGNORECASE,
+)
+# A proposal written as words: "I'm proposing…", "Reply ok to save it"
+_PROPOSAL_CLAIM = re.compile(
+    r"\bI(?:'m|’m| am) proposing\b|\b(?:reply|say|answer|type|send)(?: with)? [`\"“'*]*ok\b", re.IGNORECASE
+)
 
 # A reply that says a change was made: in the first person ("I've paused"), or as
 # news ("running again", "is now paused", "has been stopped", "all three paused").
@@ -299,6 +320,46 @@ NOTHING_RAN = (
     "answer again without saying or implying that anything was done, and without bracketed notes."
 )
 NOT_DONE = "I haven't done that: no action ran. Tell me again what you'd like and I'll do it properly."
+NOTHING_PROPOSED = (
+    "Check before this reaches the user: you wrote a proposal as words, but nothing is waiting for "
+    "their ok, so replying ok would do nothing. If the user asked for this, call the tool now. A "
+    "tool with no propose argument shows its own preview with buttons: call it directly. Only if "
+    "you are suggesting something they did not ask for, call the tool with propose set to true. "
+    "Otherwise answer again without proposing anything."
+)
+NOT_PROPOSED = "I haven't set anything up to confirm, so “ok” wouldn't do anything. Tell me again what you'd like."
+TOOL_SHOWN = (
+    "Check before this reaches the user: your reply names a tool or shows a call. The user must "
+    "never see tool names or arguments. If you meant to act, call the tool now; otherwise answer "
+    "again in plain words."
+)
+
+
+def claims_proposal(reply: str) -> bool:
+    """Whether a reply offers something for the user's "ok" ("I'm proposing…",
+    "Reply ok to save it"). Only true to its word if a proposal is waiting."""
+    return bool(_PROPOSAL_CLAIM.search(reply))
+
+
+def _internal(names) -> list[str]:
+    """The tool names that are no ordinary word: a user never types pill_add."""
+    return sorted((name for name in names if "_" in name), key=len, reverse=True)
+
+
+def shows_tools(reply: str, names) -> bool:
+    """Whether a reply shows the user a tool's name ("`pill_add Course A …`")."""
+    return any(re.search(rf"(?<![\w]){re.escape(name)}(?![\w])", reply) for name in _internal(names))
+
+
+def hide_tools(reply: str, names) -> str:
+    """A reply with tool names taken out: a call written in backticks becomes
+    "that", a bare name becomes ordinary words. The last line of defence; Claude
+    is asked to answer again first."""
+    for name in _internal(names):
+        reply = re.sub(rf"`{re.escape(name)}\b[^`\n]*`", "that", reply)
+        reply = re.sub(rf"(?<![\w]){re.escape(name)}(?![\w])\s*\([^)\n]*\)", "that", reply)
+        reply = re.sub(rf"(?<![\w]){re.escape(name)}(?![\w])", name.replace("_", " "), reply)
+    return reply
 
 
 def scrub(reply: str) -> tuple[str, bool]:
@@ -340,6 +401,7 @@ async def ask_claude(
     acted: Callable[[], bool] | None = None,
     note: str = "",
     closing: Callable[[], Closing | None] | None = None,
+    proposed: Callable[[], bool] | None = None,
 ) -> ChatResult:
     """Send the message plus recent history to Claude, running any tools it calls.
 
@@ -356,7 +418,10 @@ async def ask_claude(
     the live state); it is sent after the user's words and never remembered.
     `closing` is asked after each round of calls whether the turn can end
     there: if the tools have shown the user what happened, no closing reply
-    is requested (one round trip instead of two).
+    is requested (one round trip instead of two). It may be a coroutine.
+    `proposed` says whether a proposal is waiting for the user's "ok": a reply
+    that offers one when none is ("I'm proposing… reply ok") is sent back
+    once, like an unbacked "done", and so is one that names a tool.
     """
     history = history_for(channel_id)
     # Keep only recent history; trimming before adding keeps it starting with a user message
@@ -389,6 +454,21 @@ async def ask_claude(
         only questioned when no tool succeeded at all."""
         return (claims_done(said) and nothing_done()) or (claims_change(said) and none_succeeded())
 
+    tool_names = [tool["name"] for tool in tools or []]
+
+    def empty_offer(said: str) -> bool:
+        return claims_proposal(said) and not (proposed is not None and proposed())
+
+    def wrong_with(said: str) -> str | None:
+        """What to tell Claude about a reply that must not reach the user as it is."""
+        if unbacked(said):
+            return NOTHING_RAN
+        if empty_offer(said):
+            return NOTHING_PROPOSED
+        if shows_tools(said, tool_names):
+            return TOOL_SHOWN
+        return None
+
     closed: Closing | None = None
     # One round per call at most, plus the reply that closes the turn
     rounds = MAX_TOOL_CALLS + 2
@@ -418,12 +498,14 @@ async def ask_claude(
         # or refused may carry half a call, which must never run
         if not use_tools or response.stop_reason != "tool_use" or not wanted:
             said = _text_of(response)
-            if use_tools and not result.unbacked_claim and said and unbacked(said):
-                # It says it is done and nothing was: tell it so, once
+            correction = wrong_with(said) if use_tools and not result.unbacked_claim and said else None
+            if correction is not None:
+                # It says it is done and nothing was (or offers an "ok" that would do
+                # nothing, or shows a tool's name): tell it so, once
                 result.unbacked_claim = said
-                log.warning("Claude said it was done with no tool run: %s", said)
+                log.warning("Claude's reply was sent back to it, not to the user: %s", said)
                 messages.append({"role": "assistant", "content": said})
-                messages.append({"role": "user", "content": NOTHING_RAN})
+                messages.append({"role": "user", "content": correction})
                 rounds += 1  # the reply that was sent back doesn't use up a round
                 continue
             break
@@ -452,6 +534,8 @@ async def ask_claude(
         # If every call acted and showed the user its own confirmation, that is
         # the answer: asking Claude to say it again would double the wait
         closed = closing() if closing is not None and len(result.tool_calls) < MAX_TOOL_CALLS else None
+        if inspect.isawaitable(closed):
+            closed = await closed
         if closed is not None:
             break
 
@@ -463,6 +547,11 @@ async def ask_claude(
         if result.unbacked_claim and claims_done(result.reply) and nothing_done():
             # Told once and it still says so: the user gets the truth instead
             result.reply = NOT_DONE
+        elif use_tools and empty_offer(result.reply):
+            result.reply = NOT_PROPOSED
+        # Never a tool's name. Times are not touched: "05:00 left" on a timer is a
+        # length of time, and tools hand over times of day already formatted (8:00 pm)
+        result.reply = hide_tools(result.reply, tool_names)
         if not result.reply:
             if response.stop_reason == "tool_use":
                 result.reply = "I ran out of steps for that message. Tell me what is still left to do."

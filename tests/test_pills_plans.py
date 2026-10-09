@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from core import cards, database, day, occurrences, scheduler
+from core import cards, database, day, live, occurrences, scheduler, timeinput
 from core.errors import UserError
 from tasks.pills import plans, rules, store
 from tasks.pills.rules import ACTIVE, FIXED, INTERVAL, PAUSED, REMOVED, Plan, Request
@@ -601,12 +601,12 @@ def test_claudes_call_shows_the_preview_and_ends_the_turn_without_another_word(w
     async def scenario():
         ctx = Context(world.owner, 100, 99, "add evening pill at 20:00", Channel(), _message=None)
         turn = await toolcalls.prepare(ctx)
-        added = await toolcalls.execute(turn, "pill_add", {**EMPTY, "name": "Evening pill", "times": "20:00", "propose": False})
-        after_add = toolcalls.closing(turn)
+        added = await toolcalls.execute(turn, "pill_add", {**EMPTY, "name": "Evening pill", "times": "20:00"})
+        after_add = await toolcalls.end_round(turn)
         pill = (await database.run(store.db_add, 1, Plan("Iron"))).ref
         paused = await toolcalls.execute(turn, "pill_pause", {"pill": pill, "action": "pause", "until": "", "propose": False})
         after_pause = toolcalls.closing(turn)
-        wrong = await toolcalls.execute(turn, "pill_edit", {**{k: v for k, v in EMPTY.items() if k != "draft"}, "pill": "zinc", "propose": False})
+        wrong = await toolcalls.execute(turn, "pill_edit", {**{k: v for k, v in EMPTY.items() if k != "draft"}, "pill": "zinc"})
         after_wrong = toolcalls.closing(turn)
         await live.settle()  # the log cards that follow in the background
         return added, after_add, paused, after_pause, wrong, after_wrong
@@ -627,3 +627,51 @@ def test_claudes_call_shows_the_preview_and_ends_the_turn_without_another_word(w
     # A problem goes back to Claude to put into words
     assert wrong[1] is True and "don't have a pill called “zinc”" in wrong[0]
     assert after_wrong is None
+
+
+def test_the_course_sentence_gives_the_course_preview_in_one_step(world, monkeypatch):
+    """"add course A, 3 times a day, at least 3 hours apart, with food, for 7 days starting
+    tomorrow": Claude's structured call, straight to the preview. No proposal, no "ok"."""
+    from core import llm, pending
+    from core.context import Context
+    from tasks import registry, toolcalls
+
+    registry.load()
+    monkeypatch.setattr(llm, "_histories", {})
+    pending.clear()
+    sent = []
+
+    class Channel:
+        id = 100
+
+        async def send(self, text, **options):
+            sent.append(text)
+            return SimpleNamespace(id=7000 + len(sent))
+
+    said = {**EMPTY, "name": "Course A", "per_day": "3", "min_gap": "3 hours", "notes": "with food", "start": "tomorrow", "days": "7"}
+
+    async def scenario():
+        sentence = "add course A, 3 times a day, at least 3 hours apart, with food, for 7 days starting tomorrow"
+        ctx = Context(world.owner, 100, 99, sentence, Channel(), _message=None)
+        turn = await toolcalls.prepare(ctx)
+        assert "propose" not in turn.specs["pill_add"].schema["properties"], "it can't be proposed at all"
+        result = await toolcalls.execute(turn, "pill_add", said)
+        closed = await toolcalls.end_round(turn)
+        await live.settle()
+        return result, closed
+
+    (text, failed), closed = run(scenario())
+    first = day.today() + timedelta(days=1)
+    dates = timeinput.format_dates(first, first + timedelta(days=6))
+    assert not failed
+    assert sent == [f"💊 **Course A** · 3× daily, ≥3h apart · *with food* · {dates} · first dose when ready"]
+    assert closed.say == "", "the preview is the whole answer"
+    assert not pending.waiting(100, 1), "and nothing is waiting for an ok"
+    assert "pill_add" not in closed.remember and "NOT saved" in closed.remember
+    assert saved_pills() == []
+
+    draft = run(store.drafts(1))[0]
+    run(plans.on_save(press := world.Press(draft.id)))
+    plan = saved_pills()[0].plan
+    assert (plan.per_day, plan.gap_minutes, plan.notes, plan.start, plan.end) == (3, 180, "with food", first, first + timedelta(days=6))
+    assert "20:00" not in press.cards[-1].text and "Course A" in press.cards[-1].text

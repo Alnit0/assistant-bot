@@ -26,7 +26,15 @@ log = logging.getLogger("assistant")
 #   - an action on a message found further back (search_messages) shows it
 #     quoted and asks first: a match from weeks ago is easier to get wrong
 #   - several messages that could be meant are offered as buttons
+#   - calls marked as candidates (tools of different tasks that fit the request
+#     equally) are held until the round ends, then offered as one button per
+#     task; the one picked runs with the input Claude gave it
 #   - everything else runs at once
+#
+# What is kept to run later (a proposal, a button) is always the call itself:
+# the tool and its structured input, never the user's words. And the user is
+# never shown a tool's name or its arguments: a word is shown as it would be
+# typed (`timer 5m tea`), a task's own tool by its label ("add a pill").
 # Running is the registry's job (registry.run_tool), down the same path as a
 # typed word, so every call is logged the same way.
 #
@@ -94,6 +102,8 @@ class Turn:
     open: bool = False  # this round
     troubled: bool = False  # a call has failed at some point in the turn: Claude explains
     _shown: llm.Closing | None = None  # set by the call being run, if it settled itself
+    # Calls Claude marked as candidates this round: held, then offered as buttons (end_round)
+    candidates: list = field(default_factory=list)
 
     @property
     def names(self) -> list[str]:
@@ -144,9 +154,18 @@ async def prepare(ctx: Context) -> Turn:
 # What the user is shown
 # ---------------------------------------------------------------------------
 def describe(call: Call) -> str:
-    """A call in words: "`timer 5m tea`", or "`archive` that message"."""
+    """A call in words the user knows: "`timer 5m tea`" (what they could type),
+    "`archive` that message", or a task's own tool by its label ("add a pill").
+    Never a tool's name or its arguments."""
+    if call.spec.kind == tools.BESPOKE:
+        return call.spec.item.label
     command = tools.command_text(call.spec.item.name, tools.to_args(call.spec.item.params, call.value))
     return f"`{command}`" + (" that message" if call.target is not None else "")
+
+
+def candidate_label(call: Call) -> str:
+    """A candidate on its button: the task, and what it would do ("Pills: add a pill")."""
+    return f"{call.spec.task.capitalize()}: {describe(call).strip('`')}"[:80]
 
 
 def _quote(message) -> tuple[str, str | None]:
@@ -304,6 +323,13 @@ async def _ask_which(turn: Turn, spec: tools.ToolSpec, value: dict, refs: list[s
     await confirmations.choose(turn.ctx.channel, turn.ctx.user, "\n".join(lines), options)
 
 
+HELD = (
+    "Held, not done: once you have named every candidate, the user is shown a button for each task "
+    "and the one they pick runs. Say nothing has been done."
+)
+ASKED_WHICH_TASK = "Asked which was meant: {names}. Nothing has been done; the one picked from the buttons runs."
+
+
 async def execute(turn: Turn, name: str, value: dict) -> tuple[str, bool]:
     """Handle one tool call from Claude. Returns (the result for Claude, whether it is an error).
 
@@ -312,7 +338,10 @@ async def execute(turn: Turn, name: str, value: dict) -> tuple[str, bool]:
     settled itself or leaves Claude something to say (see closing()).
     """
     turn._shown = None
+    held = len(turn.candidates)
     text, failed = await _execute(turn, name, value)
+    if len(turn.candidates) > held:
+        return text, failed  # decided when the round ends (end_round)
     if failed:
         turn.troubled = True
     if failed or turn._shown is None:
@@ -338,12 +367,57 @@ def closing(turn: Turn) -> llm.Closing | None:
     )
 
 
+async def end_round(turn: Turn) -> llm.Closing | None:
+    """After a round of calls: deal with any candidates, then say whether the turn
+    can end here (closing()).
+
+    Two or more candidates become one question, a button per task; the pick
+    runs that call with the input Claude gave it. A single one was no choice at
+    all, so it simply runs.
+    """
+    held, turn.candidates = turn.candidates, []
+    if len(held) == 1:
+        turn._shown = None
+        text, failed = await _dispatch(turn.ctx, held[0], turn)
+        if failed:
+            turn.troubled = True
+            turn.settled.append(llm.Closing(f"⚠️ {text}", f"That didn't work: {text[:200]}"))
+        else:
+            turn.settled.append(turn._shown or llm.Closing(text, text))
+    elif held:
+        options = []
+        for call in held:
+
+            async def picked(call: Call = call) -> str:
+                text, failed = await _dispatch(turn.ctx, call)
+                if failed:
+                    return f"⚠️ {text}"
+                return "Asked you to confirm below." if call.spec.destructive else f"✅ {describe(call).strip('`')}"
+
+            options.append((candidate_label(call), picked))
+        names = " or ".join(label for label, _ in options)
+        await confirmations.choose(turn.ctx.channel, turn.ctx.user, "Which do you mean?", options)
+        turn.settled.append(llm.Closing("", ASKED_WHICH_TASK.format(names=names)))
+    return closing(turn)
+
+
 async def _execute(turn: Turn, name: str, value: dict) -> tuple[str, bool]:
     ctx = turn.ctx
     spec = turn.specs.get(name)
     if spec is None:
         return await _refused(ctx, name, value, f"There is no tool called `{name}` here.")
-    problems = tools.validate(spec.schema, value)
+    if isinstance(value, dict):
+        # A flag the tool doesn't take, set to "no", says nothing: a tool that asks
+        # the user itself has no `propose` to be false
+        value = {
+            key: given
+            for key, given in value.items()
+            if not (key in (tools.PROPOSE, tools.CANDIDATE) and key not in spec.schema["properties"] and given is False)
+        }
+    checked = value
+    if isinstance(value, dict) and tools.CANDIDATE in spec.schema["properties"]:
+        checked = {tools.CANDIDATE: False, **value}  # left out means no
+    problems = tools.validate(spec.schema, checked)
     if problems:
         return await _refused(ctx, name, value, "Invalid input: " + "; ".join(problems) + ".")
     if spec.kind == tools.HELPER:
@@ -367,7 +441,12 @@ async def _execute(turn: Turn, name: str, value: dict) -> tuple[str, bool]:
         else:
             ref = resolution.refs[0]
             target, explicit, older = turn.listing[ref], False, ref in turn.older
-    return await _dispatch(ctx, Call(spec, value, target, explicit, older), turn)
+    call = Call(spec, value, target, explicit, older)
+    if value.get(tools.CANDIDATE):
+        # Kept as it is, structured input and all, with the flag put down: picking it is the go-ahead
+        turn.candidates.append(Call(spec, {**value, tools.CANDIDATE: False}, target, explicit, older))
+        return HELD, False
+    return await _dispatch(ctx, call, turn)
 
 
 async def _refused(ctx: Context, name: str, value: dict, reason: str) -> tuple[str, bool]:
@@ -406,6 +485,6 @@ async def answer_pending(ctx: Context) -> bool:
     if failed:
         await ctx.reply(f"⚠️ {text}")
     await log_result(row_id, reply=f"agreed: {proposal.summary}: {text}", status="error" if failed else "ok")
-    said = f"That didn't work: {text[:200]}" if failed else f"That ran when you said ok: {proposal.summary}."
+    said = f"That didn't work: {text[:200]}" if failed else f"You said ok, so I went ahead: {proposal.summary}."
     llm.remember(ctx.channel_id, ctx.text, said)
     return True

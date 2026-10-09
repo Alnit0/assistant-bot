@@ -476,8 +476,34 @@ A short log of key decisions and why. Newest at the bottom.
   lapse after 30 minutes so an old one can't be saved by accident.
 - **Editing a preview is done by saying what to change:** the Edit button
   asks, and the words go to Claude, which calls the tool again with the
-  draft's id. A form was the alternative; it would have needed its own
-  small language for schedules, which is what Claude is for.
+  draft's id. A form was built after the first QA (2026-10-09) and taken
+  out again the same day: setup is rare, it is to be by conversation
+  only, and no setup features are added until it is rebuilt.
+- **One confirmation, never two (2026-10-09):** in QA, "add evening pill
+  at 20:00" got "I'm proposing… reply ok", then the preview, then Save.
+  A tool that shows its own preview or Confirm card now sets
+  `confirms_itself` and simply has no `propose` argument. The "ok" is
+  only for actions with no preview, and only for Claude's own
+  suggestions.
+- **A proposal is a stored call, and Claude's words are checked against
+  it (2026-10-09):** for the course sentence Claude wrote the proposal as
+  text with no tool call, then on "ok" invented "That ran… `pill_add …`".
+  Nothing had run. A reply that offers an "ok" when none is waiting, says
+  "that ran" with nothing run, or names a tool is sent back once; what is
+  finally sent has tool names removed. What is remembered about a run
+  uses the tool's `label`, so the history gives it nothing to imitate.
+- **Shortcuts are namespaced, and Claude asks between tasks:** as tasks
+  multiply, "add milk" could be a pill, a to-do or shopping. No shortcut
+  may be a bare generic verb, every tool says what it is `only_for`, and
+  when tools of different tasks still fit equally Claude marks each call
+  `candidate`: they are held and offered as a button per task, and the
+  pick runs with the input Claude gave.
+- **Times in Claude's replies are not rewritten:** a rewrite of 24-hour
+  times in every reply was tried and dropped the same day (2026-10-09),
+  because "05:00 left" on a timer is a length of time and would have
+  become "5:00 am". Times of day are right at the source instead: every
+  tool and card formats them with `timeinput.format_time` (`8:00 pm`), and
+  the prompt tells Claude to write them that way.
 - **Claude passes times and dates as they were said:** `pill_add` gets
   "8", not "8pm", and "tomorrow", not a date. Code reads them
   (`core/timeinput.py`) and asks "8am or 8pm?" with buttons. That keeps

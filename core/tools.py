@@ -25,10 +25,15 @@ SEARCH_RESULTS = 5  # how many matches Claude is shown
 
 PROPOSE = "propose"
 TARGETS = "targets"
+CANDIDATE = "candidate"
 
 PROPOSE_DESCRIPTION = (
     "false when the user has clearly asked for this. true only when you are suggesting it "
     "yourself: nothing is done until the user replies ok."
+)
+CANDIDATE_DESCRIPTION = (
+    "false normally. true only under the candidate rule: tools of different tasks fit the request "
+    "equally and nothing settles it."
 )
 TARGETS_DESCRIPTION = (
     "Which message to act on. Leave empty if the user's message is a reply: the message they "
@@ -65,7 +70,7 @@ def tool_name(kind: str, name: str) -> str:
 # may be left out is a string that may be empty. That keeps clear of the API's
 # limits on optional and union-typed parameters across strict tools.
 # ---------------------------------------------------------------------------
-def build_schema(params=(), *, propose: bool = False, targets: bool = False) -> dict:
+def build_schema(params=(), *, propose: bool = False, targets: bool = False, candidate: bool = False) -> dict:
     properties: dict[str, dict] = {}
     for param in params:
         description = param.description
@@ -79,6 +84,8 @@ def build_schema(params=(), *, propose: bool = False, targets: bool = False) -> 
         properties[TARGETS] = {"type": "array", "items": {"type": "string"}, "description": TARGETS_DESCRIPTION}
     if propose:
         properties[PROPOSE] = {"type": "boolean", "description": PROPOSE_DESCRIPTION}
+    if candidate:
+        properties[CANDIDATE] = {"type": "boolean", "description": CANDIDATE_DESCRIPTION}
     return {
         "type": "object",
         "properties": properties,

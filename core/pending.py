@@ -59,5 +59,11 @@ def take(channel_id: int, user_id: int, now: datetime | None = None) -> Proposal
     return proposal
 
 
+def waiting(channel_id: int, user_id: int, now: datetime | None = None) -> bool:
+    """Whether a proposal is waiting for this user's "ok" here."""
+    proposal = _pending.get((channel_id, user_id))
+    return proposal is not None and proposal.expires_at > (now or _now())
+
+
 def clear() -> None:
     _pending.clear()

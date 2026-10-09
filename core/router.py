@@ -19,6 +19,21 @@ from typing import Any
 # ---------------------------------------------------------------------------
 FUZZY_MIN_LENGTH = 5
 
+# Verbs that could belong to any task. A typed shortcut is never one of these on
+# its own: it carries its task's name ("pill add", "timer 5m"), and a bare "add
+# milk" goes to Claude, which works out the task or asks which is meant
+GENERIC_VERBS = frozenset(
+    {
+        "add", "new", "create", "make", "edit", "change", "update", "set", "remove", "delete", "pause", "resume",
+        "list", "show", "start", "stop", "cancel", "skip", "take", "took", "taken", "done", "save", "undo", "log",
+    }
+)
+
+
+def is_generic(phrase: str) -> bool:
+    """Whether a shortcut's phrase is a bare generic verb."""
+    return " ".join(phrase.lower().split()) in GENERIC_VERBS
+
 
 def normalise(text: str) -> list[str]:
     """Lower-case words, ignoring extra spaces and punctuation at the end."""

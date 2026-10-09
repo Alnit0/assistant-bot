@@ -347,7 +347,7 @@ def test_timers_are_controlled_by_id_not_by_finding_a_message(owner):
     ):
         schema = specs[name].schema
         arguments = ["ids", "action", "duration", "label"] if name == "timer_control" else ["id", "action", "duration"]
-        assert list(schema["properties"]) == [*arguments, "propose"]
+        assert list(schema["properties"]) == [*arguments, "propose", "candidate"]
         assert schema["properties"]["action"]["enum"] == actions
         assert tools.TARGETS not in schema["properties"], "no message to look for"
         assert specs[name].kind == tools.BESPOKE and not specs[name].reads_only
@@ -413,3 +413,33 @@ def test_an_older_listing_says_the_user_will_be_asked():
     text = tools.listing_text([entry], NOW, tools.OLDER_HEADER)
     assert "asked to confirm" in text.splitlines()[0]
     assert text.splitlines()[1] == "s1: Alex, 3d ago: What's the capital of Spain"
+
+
+# --- one confirmation only, and the ambiguity rule -----------------------------
+def test_a_tool_that_asks_the_user_itself_cannot_be_proposed(owner):
+    specs = by_name(registry.tools_for(owner, INBOX))
+    for name in ("pill_add", "pill_edit", "pill_remove"):
+        assert tools.PROPOSE not in specs[name].schema["properties"], f"{name} shows its own preview"
+        assert "never propose it" in specs[name].description
+    # One with no preview of its own keeps the generic ok
+    assert tools.PROPOSE in specs["pill_pause"].schema["properties"]
+    assert tools.PROPOSE in specs["timer_control"].schema["properties"]
+
+
+def test_every_tool_that_acts_can_be_a_candidate_and_nothing_that_only_reads(owner):
+    for spec in registry.tools_for(owner, INBOX):
+        expected = spec.kind != tools.REPLY_ACTION and not spec.reads_only
+        assert (tools.CANDIDATE in spec.schema["properties"]) is expected, spec.name
+
+
+def test_every_tool_of_a_task_says_what_it_is_only_for():
+    for task in registry.loaded_tasks():
+        for tool in task.tools():
+            assert tool.only_for.startswith("Only for "), f"{task.name}: {tool.name}"
+            assert tool.label and "_" not in tool.label, f"{task.name}: {tool.name} needs words the user can be shown"
+
+
+def test_what_a_tool_is_only_for_is_part_of_what_claude_reads(owner):
+    specs = by_name(registry.tools_for(owner, INBOX))
+    assert "never for to-dos, shopping, reminders, timers" in specs["pill_add"].description
+    assert "not pills, reminders" in specs["timer_control"].description

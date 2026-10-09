@@ -15,7 +15,12 @@ complete example, `tasks/archive/` the pattern for anything with logic.
    equal to the folder name, a `description`) and one instance called
    `task`.
 2. **Ways in**, in order of preference: a `Keyword` (typed word), a
-   `ReplyAction`, a `Reaction`. Slash commands and menus are a fallback only.
+   `ReplyAction`, a `Reaction`. A typed word carries the task's name
+   ("pill add", never a bare "add": the registry refuses generic verbs),
+   and every `Tool` needs a `label` (plain words the user can be shown)
+   and `only_for` (what tells it apart from similar tools in other
+   tasks). A tool that shows its own preview or Confirm card sets
+   `confirms_itself=True`, so it is never put behind an "ok" as well. Slash commands and menus are a fallback only.
    Every registration needs `description`, `examples`, `channels` and a
    `permission` (the default is fine). Use `exact=True` for anything
    destructive. Claude runs words and reply actions as tools, so write the

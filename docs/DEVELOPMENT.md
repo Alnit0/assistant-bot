@@ -434,6 +434,29 @@ Things to know:
     does).
   - `tool_always=True` offers one word even while its task is holding
     the rest back (the `dev mode` switch).
+- **Which task Claude picks, and one confirmation only** (the task
+  contract for anything Claude can run):
+  - A typed word carries its task's name: `pill add`, `timer 5m`. A bare
+    generic verb (`core/router.py` `GENERIC_VERBS`: add, edit, remove,
+    pause, list…) is refused at load, so "add milk" always reaches Claude.
+  - Every `Tool` has `only_for`: one sentence starting "Only for …" that
+    says what tells it apart from similar tools in other tasks. It is
+    appended to the description Claude reads; the registry reports a
+    tool without one.
+  - Every `Tool` has a `label` in plain words ("add a pill"). That, never
+    the tool's name or its arguments, is what the user is shown and what
+    the conversation history remembers.
+  - A tool that shows its own preview or Confirm card sets
+    `confirms_itself=True`. It then has no `propose` argument and Claude
+    is told to call it directly: the preview's button is the one
+    confirmation. Only tools with no preview of their own can wait for
+    "ok".
+  - When tools of different tasks fit a request equally, Claude calls
+    each with `candidate: true`; they are held and the user gets one
+    button per task (`toolcalls.end_round`). You don't write anything for
+    this, but your `label` is what the button says.
+  - What waits for an "ok" or a button is the call itself, with the
+    structured input Claude gave: never rebuild it from the user's text.
 - **`tools()`** returns `Tool`s: tools for Claude that aren't words. Use
   one to report state (`reads_only=True`: `list_timers`) or to act on a
   record by id (`timer_control`). The handler is `async (ctx, value)`
@@ -516,10 +539,12 @@ plain words needs Claude, so that works in #inbox.
   It is listed with 🗓️ and "starts 10 Oct" until then, and under 🏁 Ended
   from the day after its last. A pill with no end has no dates: none are
   asked for or shown.
-- **Nothing is saved until you press Save.** The preview is a draft. Press
-  **Edit** and say what to change ("make it 9pm", "add: with food"): a new
-  preview replaces the old one. A preview nobody saves disappears after 30
-  minutes. Once saved it becomes one line, "✅ Saved · …".
+- **Nothing is saved until you press Save.** The preview is a draft, and
+  its Save is the only confirmation there is: the bot never asks "reply
+  ok" first. Press **Edit** and say what to change ("make it 9pm", "add:
+  with food"): a new preview replaces the old one. A preview nobody saves
+  disappears after 30 minutes. Once saved it becomes one line, "✅ Saved ·
+  …".
 - **Times and dates are never guessed.** "At 8" gets "8am or 8pm?" with a
   button for each; a gap of "3" is asked to be `3h` or `3m`. Times are
   always shown as `8:00 pm`, whatever you typed.
@@ -533,7 +558,8 @@ plain words needs Claude, so that works in #inbox.
   that, and has its own question.
 - **The list's buttons** rewrite the same message: pick a pill, then
   **Edit** (tells you to say what to change), **Pause** / **Resume**,
-  **Remove** (asks), **Back**.
+  **Remove** (asks), **Back**. The list is not rewritten when a pill
+  changes by another route: type `pills` again.
 
 **In code.** `tasks/pills/rules.py` is pure: `build(request, today, base)`
 turns what was said into a `Plan` or raises (`TimeQuestion` for an unclear

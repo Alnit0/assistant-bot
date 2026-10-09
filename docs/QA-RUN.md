@@ -1,6 +1,6 @@
 # QA run sheet
 
-One pass through 196 of the 218 👤 Manual tests in `docs/TESTING.md` that are
+One pass through 197 of the 219 👤 Manual tests in `docs/TESTING.md` that are
 ⬜ Untested (as of 2026-10-09); the other 22 are pills tests (group R) for
 stages not built yet, and join as each is. Blocks share setup and each one leaves things
 ready for the next, so run them in order.
@@ -25,8 +25,8 @@ tests (block 12).
 | 13 | Tool calling (Claude runs things) | off, then on, then off | 32 | 53 |
 | 14 | Bugs and kept confirmations | off (two restarts) | 16 | 21 |
 | 15 | Dev database and clock | `--dev`, on and off (three restarts) | 9 | 12 |
-| 16 | Pills: setting up | `--dev`, off (one restart) | 14 | 15 |
-| | **Total** | | **196** (F2 is split over blocks 4 and 7, counted in 7) | **about 4 hours** |
+| 16 | Pills: setting up | `--dev`, off (one restart) | 15 | 16 |
+| | **Total** | | **197** (F2 is split over blocks 4 and 7, counted in 7) | **about 4 hours** |
 
 Blocks 13 to 16 need nothing from the others: run them any time after
 block 1, and before the overnight block if that suits.
@@ -409,10 +409,10 @@ run it.
 | # | Do | Expect | Tests |
 |---|---|---|---|
 | 1 | `pills` with no pills yet | "## 💊 Pills" and how to add one; no dropdown; your word is deleted | R28 |
-| 2 | Say: `add vitamin D, once a day`; press **Save** | No dates are asked for or shown | R19 |
-| 3 | Say: `add evening pill at 20:00`; press **Save**, then `pills` | The preview and the saved pill show `8:00 pm` | R17 |
+| 2 | Say: `add vitamin D, once a day`; press **Save** | The preview at once; no dates are asked for or shown | R19 |
+| 3 | Say: `add evening pill at 20:00`; press **Save**, then `pills` | The preview at once (no “I'm proposing… reply ok” first), and it and the saved pill show `8:00 pm` | R17 |
 | 4 | Say: `add iron at 8`; look, then press **8:00 am** and **Save** | Asked whether 8am or 8pm; nothing saved until answered | R18 |
-| 5 | Say: `add course A, 3 times a day, at least 3 hours apart, with food, for 7 days starting tomorrow`; press **Save** | Preview "💊 **Course A** · 3× daily, ≥3h apart · *with food* · <tomorrow> to <6 days later> · first dose when ready" with Save and Edit, and no extra line from Claude. After Save the same message reads "✅ Saved · 🗓️ **Course A** … · starts <tomorrow>" with no buttons | R29 |
+| 5 | Say: `add course A, 3 times a day, at least 3 hours apart, with food, for 7 days starting tomorrow`; press **Save** | One step: the preview "💊 **Course A** · 3× daily, ≥3h apart · *with food* · <tomorrow> to <6 days later> · first dose when ready" with Save and Edit, no proposal, no "reply ok" and no extra line from Claude. After Save the same message reads "✅ Saved · 🗓️ **Course A** … · starts <tomorrow>" with no buttons | R29 |
 | 6 | Say `add night pill at 8pm`; press **Edit**; say `make it 9pm` | Edit adds a line saying to say what to change, buttons still there. After "make it 9pm" the old preview is gone and a new one shows `9:00 pm`; `pills` still doesn't list it | R30 |
 | 7 | With `--dev`: say `add zinc`, don't save, `dev clock +31m` | The preview disappears; `pills` doesn't list Zinc | R31 |
 | 8 | With a saved Evening pill: say `move the evening pill to 9pm`; press **Save** | "✏️ **Evening pill**" with "Now: … `8:00 pm`" and "New: … `9:00 pm`"; `pills` shows 8:00 pm until Save, then "✅ Updated · …" and 9:00 pm | R32 |
@@ -422,6 +422,7 @@ run it.
 | 12 | Say `remove vitamin D`; press **Remove**, then `pills` | Asked to confirm; then gone from every list, with its history kept | R24 |
 | 13 | Say `delete iron and its history`; press **Delete for good** | A question that says its history goes too and can't be undone; then "🗑️ Deleted **Iron** and its history."; gone from `pills` | R35 |
 | 14 | Say `add magnesium`, restart the bot, then press **Save** on that preview | It is saved as if nothing had happened; `pills` lists it | R36 |
+| 15 | Look back over every reply from the bot in this block | No reply says "I'm proposing" or "reply ok" for a pill; none shows a tool's name or how it was called (`pill_add …`); every time of day on a preview or list is written like `8:00 pm` | R39 |
 
 ## When you finish
 

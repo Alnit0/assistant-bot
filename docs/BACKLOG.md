@@ -52,9 +52,18 @@ gained time"):
 - **`tasks/timers/durations.py` is used by `dev` and `pills` as well.**
   It belongs in core now that three tasks read durations (found
   2026-10-09, stage 2 of pills). Its longest duration is 24 hours.
+- **`reset` is a bare verb that is still a shortcut** (it clears the chat
+  memory). It predates the rule that shortcuts carry their task's name
+  and is not in `GENERIC_VERBS`; rename it when a second task wants a
+  reset (noted 2026-10-09).
+- **Pills setup and the way Claude is handed tools are due to be
+  rebuilt** (2026-10-09). Until then the reply guards, the
+  single-confirmation rule (`confirms_itself`) and the candidate buttons
+  are interim, and the `pills` list with its dropdown stays as it is: it
+  is not rewritten when a pill changes, so type `pills` again to see the
+  current state. No setup features are to be added meanwhile.
 - **The Edit buttons on a pill need Claude**, so they only lead anywhere
-  in a channel where plain words reach it (#inbox until stage 3 opens
-  the hub).
+  in a channel where plain words reach it (#inbox).
 - **More than 25 pills:** the list's dropdown shows the first 25 by name.
 - **`python -m tasks.bugs.cli` always reads the live database.** It has
   no `--dev`, so a bug reported while testing on the dev database can't

@@ -231,7 +231,7 @@ def test_a_proposal_waits_for_ok(world):
     seen.ctx.text = "ok"
     assert asyncio.run(toolcalls.answer_pending(seen.ctx)) is True
     assert [name for name, *_ in seen.ran] == ["pomo"]
-    assert llm.history_for(INBOX)[-1]["content"] == "That ran when you said ok: `pomo writing`."
+    assert llm.history_for(INBOX)[-1]["content"] == "You said ok, so I went ahead: `pomo writing`."
 
 
 def test_no_drops_the_proposal(world):
@@ -730,3 +730,140 @@ def test_the_tasks_live_state_is_gathered_for_the_note(real):
     ]
     a_round(real, START_TEA)
     assert 't1: "tea" · running, ' in asyncio.run(registry.live_state(real.ctx))
+
+
+# --- one confirmation only -------------------------------------------------------
+def test_a_tool_with_its_own_preview_runs_at_once_even_if_claude_tries_to_propose_it(world):
+    seen = world()
+    spec = seen.turn.specs["pill_add"]
+    assert tools.PROPOSE not in spec.schema["properties"]
+    value = {name: "" for name in spec.schema["properties"] if name != tools.CANDIDATE}
+    value.update(name="Vitamin D", candidate=False)
+
+    # propose: false is simply dropped; the call runs, and nothing waits for an ok
+    text, is_error = asyncio.run(toolcalls.execute(seen.turn, "pill_add", {**value, "propose": False}))
+    assert not is_error and [name for name, *_ in seen.ran] == ["pill_add"]
+    assert not pending.waiting(INBOX, 1)
+
+    # propose: true is refused, so it can never become "reply ok"
+    text, is_error = asyncio.run(toolcalls.execute(seen.turn, "pill_add", {**value, "propose": True}))
+    assert is_error and "`propose` is not an argument" in text
+    assert not pending.waiting(INBOX, 1) and len(seen.ran) == 1
+
+
+# --- an agreed proposal replays the call itself ----------------------------------
+def test_ok_replays_the_original_structured_input_never_the_users_words(world):
+    seen = world("pause vitamin d until friday maybe?")
+    proposed = {"pill": "pl3", "action": "pause", "until": "friday", "propose": True}
+    asyncio.run(toolcalls.execute(seen.turn, "pill_pause", dict(proposed)))
+    assert seen.ran == [] and pending.waiting(INBOX, 1)
+
+    seen.ctx.text = "ok"
+    assert asyncio.run(toolcalls.answer_pending(seen.ctx)) is True
+    name, value, target, _ = seen.ran[0]
+    assert (name, target) == ("pill_pause", None)
+    assert value == proposed, "the very input Claude gave, field by field"
+    assert "ok" not in value.values() and "maybe" not in str(value)
+
+
+def test_what_is_remembered_and_shown_never_names_a_tool(world):
+    seen = world()
+    asyncio.run(toolcalls.execute(seen.turn, "pill_pause", {"pill": "pl3", "action": "pause", "until": "", "propose": True}))
+    proposal = pending.take(INBOX, 1)
+    assert proposal.summary == "pause or resume a pill", "the tool's label, not its name or arguments"
+    pending.propose(INBOX, 1, proposal.call, proposal.summary)
+    seen.ctx.text = "ok"
+    asyncio.run(toolcalls.answer_pending(seen.ctx))
+    remembered = llm.history_for(INBOX)[-1]["content"]
+    assert remembered == "You said ok, so I went ahead: pause or resume a pill."
+    assert "pill_pause" not in remembered and "pl3" not in remembered
+
+
+def test_a_word_is_still_shown_as_it_would_be_typed(world):
+    seen = world()
+    call = toolcalls.Call(seen.turn.specs["timer"], {"duration": "5m", "label": "tea"})
+    assert toolcalls.describe(call) == "`timer 5m tea`"
+    assert toolcalls.describe(toolcalls.Call(seen.turn.specs["pill_add"], {"name": "Course A"})) == "add a pill"
+
+
+# --- the ambiguity rule: Claude asks which task, with buttons ----------------------
+def two_tasks_that_add(seen):
+    """Two tasks whose tools both accept "add <item>", offered side by side."""
+    from tasks.base import Param, Task, Tool
+
+    async def handler(ctx, value):
+        return ""
+
+    class Pillbox(Task):
+        name = "pillbox"
+
+    class Shopping(Task):
+        name = "shopping"
+
+    item = [Param("item", "What to add.")]
+    pill = Tool("pillbox_add", "Add a pill.", handler, params=item, label="add a pill", only_for="Only for pills the user takes.")
+    shop = Tool("shopping_add", "Add to the shopping list.", handler, params=item, label="add to the shopping list", only_for="Only for things to buy.")
+    seen.turn.specs = {
+        **seen.turn.specs,
+        "pillbox_add": registry._tool_spec(Pillbox(), pill),
+        "shopping_add": registry._tool_spec(Shopping(), shop),
+    }
+    return seen
+
+
+def test_when_two_tasks_fit_the_user_is_asked_which_with_a_button_for_each(world):
+    seen = two_tasks_that_add(world("add magnesium"))
+
+    async def scenario():
+        first = await toolcalls.execute(seen.turn, "pillbox_add", {"item": "magnesium", "propose": False, "candidate": True})
+        second = await toolcalls.execute(seen.turn, "shopping_add", {"item": "magnesium", "propose": False, "candidate": True})
+        return first, second, await toolcalls.end_round(seen.turn)
+
+    first, second, closed = asyncio.run(scenario())
+    assert first == (toolcalls.HELD, False) and second == (toolcalls.HELD, False)
+    assert seen.ran == [], "nothing is guessed and nothing runs"
+
+    (question, options), = seen.choices
+    assert question == "Which do you mean?"
+    assert [label for label, _ in options] == ["Pillbox: add a pill", "Shopping: add to the shopping list"]
+    # The question is the answer for now: Claude adds nothing, and remembers it is not done
+    assert closed.say == "" and "Nothing has been done" in closed.remember
+    assert not seen.turn.acted
+
+    # Picking one runs that tool with the input Claude gave it
+    shown = asyncio.run(options[1][1]())
+    assert seen.ran == [("shopping_add", {"item": "magnesium", "propose": False, "candidate": False}, None, False)]
+    assert shown == "✅ add to the shopping list"
+
+
+def test_a_single_candidate_is_no_choice_and_simply_runs(world):
+    seen = two_tasks_that_add(world("add magnesium to my pills"))
+
+    async def scenario():
+        held = await toolcalls.execute(seen.turn, "pillbox_add", {"item": "magnesium", "propose": False, "candidate": True})
+        return held, await toolcalls.end_round(seen.turn)
+
+    held, closed = asyncio.run(scenario())
+    assert held == (toolcalls.HELD, False)
+    assert [name for name, *_ in seen.ran] == ["pillbox_add"] and seen.choices == []
+    assert closed is not None
+
+
+def test_candidates_do_not_hold_up_an_ordinary_call_in_the_same_round(world):
+    seen = two_tasks_that_add(world("start a 5m timer and add magnesium"))
+
+    async def scenario():
+        await toolcalls.execute(seen.turn, "timer", {"duration": "5m", "label": "", "propose": False})
+        await toolcalls.execute(seen.turn, "pillbox_add", {"item": "magnesium", "propose": False, "candidate": True})
+        await toolcalls.execute(seen.turn, "shopping_add", {"item": "magnesium", "propose": False, "candidate": True})
+        return await toolcalls.end_round(seen.turn)
+
+    asyncio.run(scenario())
+    assert [name for name, *_ in seen.ran] == ["timer"]
+    assert len(seen.choices) == 1 and len(seen.choices[0][1]) == 2
+
+
+def test_the_candidate_flag_left_out_means_no(world):
+    seen = world()
+    text, is_error = execute(seen, "timer", duration="5m", label="tea", propose=False)
+    assert not is_error and seen.ran[0][1] == {"duration": "5m", "label": "tea", "propose": False}

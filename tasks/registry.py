@@ -18,7 +18,7 @@ from core.debounce import Debouncer
 from core.discord_utils import log_error, log_simple
 from core.errors import UserError
 from core.permissions import is_allowed
-from core.router import Router
+from core.router import Router, is_generic
 from core.users import User, get_user_by_discord_id
 from tasks.base import ANY, Keyword, Reaction, ReplyAction, Task, Tool
 
@@ -79,6 +79,9 @@ def _check_registration(task: Task, kind: str, item) -> None:
     for name in _channel_names(item):
         if name != ANY and name not in CHANNELS:
             _problem(f"{task.name}: {kind} {item.name} names channel '{name}', which isn't set in .env")
+    # Claude picks between tasks by what each tool says it is for
+    if kind == "tool" and not (getattr(item, "only_for", "") or "").strip():
+        _problem(f"{task.name}: tool {item.name} doesn't say what it is `only_for` (what tells it apart from other tasks' tools)")
     # Claude runs words as tools, and a tool has to know its arguments
     if task.exposes_tools and getattr(item, "tool", False) and getattr(item, "takes_args", False) and not item.params:
         _problem(f"{task.name}: {kind} {item.name} takes arguments but lists no `params` for Claude")
@@ -87,6 +90,10 @@ def _check_registration(task: Task, kind: str, item) -> None:
 def _register_words(router: Router, task: Task, kind: str, item) -> None:
     entry = (task, item)
     for word in item.words:
+        if kind == "keyword" and is_generic(word):
+            # "add" could be any task's: a shortcut carries its task's name ("pill add")
+            _problem(f"{task.name}: keyword `{word}` is a bare generic verb; put the task's name in it")
+            continue
         owner = router.owner(word)
         if owner is not None:
             _problem(f"{task.name}: {kind} `{word}` already belongs to {owner[0].name}")
@@ -482,7 +489,9 @@ def _spec(task: Task, kind: str, item) -> tools.ToolSpec:
     return tools.ToolSpec(
         name=tools.tool_name(kind, item.name),
         description=description,
-        schema=tools.build_schema(item.params, propose=not item.destructive, targets=is_reply),
+        schema=tools.build_schema(
+            item.params, propose=not item.destructive, targets=is_reply, candidate=not is_reply
+        ),
         kind=kind,
         task=task.name,
         item=item,
@@ -492,12 +501,28 @@ def _spec(task: Task, kind: str, item) -> tools.ToolSpec:
     )
 
 
+SHOWS_ITS_OWN = (
+    " It shows the user its own preview or question with buttons, so call it directly: never "
+    "propose it, never ask for an ok first, and never describe the preview yourself."
+)
+
+
 def _tool_spec(task: Task, item: Tool) -> tools.ToolSpec:
+    description = item.description
+    if item.only_for:
+        description += f" {item.only_for}"
+    if item.confirms_itself:
+        description += SHOWS_ITS_OWN
     return tools.ToolSpec(
         name=item.name,
-        description=item.description,
-        # Something that only reports can't be proposed: there is nothing to agree to
-        schema=tools.build_schema(item.params, propose=not item.reads_only),
+        description=description,
+        # Something that only reports can't be proposed: there is nothing to agree to.
+        # Nor can something that asks the user itself: one confirmation, never two
+        schema=tools.build_schema(
+            item.params,
+            propose=not item.reads_only and not item.confirms_itself,
+            candidate=not item.reads_only,
+        ),
         kind=tools.BESPOKE,
         task=task.name,
         item=item,

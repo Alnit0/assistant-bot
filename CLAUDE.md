@@ -49,6 +49,18 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 - `tasks/registry.py` is the single source of what the bot can do (`help`,
   Claude's system prompt and Claude's tools all read it). Never hard-code a
   list of commands or a tool definition
+- A typed shortcut carries its task's name ("pill add", `timer 5m`): a
+  bare generic verb (add, edit, remove, pause, list…; `core/router.py`
+  `GENERIC_VERBS`) is never registered as a word, so "add milk" always
+  goes to Claude. Every `Tool` says what it is `only_for` (what tells it
+  apart from similar tools in other tasks) and has a `label` in plain
+  words; the registry reports one that doesn't
+- A tool that shows its own preview or Confirm card sets
+  `confirms_itself`: it then has no `propose` argument and can never be
+  put behind an "ok". What waits for a button or an "ok" is the call
+  itself (tool and structured input), never the user's words
+- The user is never shown a tool's name or arguments: a word is shown as
+  it would be typed, a `Tool` by its `label`
 - Claude runs words and reply actions as tools generated from their
   registrations. A word that takes arguments lists them as `params`; a
   reversible reply action sets `undo`. Tool calls run through
@@ -77,6 +89,7 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 - The assistant's name comes from `ASSISTANT_NAME`; never hard-code it
 - A pill's plan never changes unseen: adding or editing makes a draft and a
   preview (Save / Edit), and only Save writes it. Removing asks first.
+  Keep setup simple: it is rare, and due to be rebuilt
   Claude's pill tools hand over times and dates as the user said them;
   code reads them, and asks rather than guesses
 - Permissions go through `is_allowed(user, action)`, never a comparison
@@ -152,7 +165,21 @@ Input
 - Asking Claude in plain words works too (#inbox): it runs the same
   actions as tools. It acts on a clear request, asks when unsure, and waits
   for "ok" (2 minutes) when it is only suggesting. Destructive actions always
-  ask with Confirm / Cancel. A message it picks without my reply is shown
+  ask with Confirm / Cancel.
+- One confirmation only. An action that shows its own preview or question
+  (a pill's Save / Edit preview, a Confirm card) is called directly: no
+  "I'm proposing… reply ok" first. The "ok" is only for actions with no
+  preview of their own, and only when Claude is suggesting something I
+  didn't ask for. Saying "ok" runs exactly what was proposed.
+- Which task is meant: Claude decides from the channel, the recent
+  conversation, what I already have and my wording. If more than one
+  task fits equally it asks with a button per task and never guesses.
+  A typed shortcut names its task ("pill add"); a bare "add …" is never
+  a shortcut.
+- Replies never show tool names or how a tool was called. Times of day
+  are written `8:00 pm`, never `20:00`: every tool and card formats them
+  that way itself, and replies are not rewritten afterwards (a timer's
+  "05:00 left" is a length of time). A message it picks without my reply is shown
   quoted with a jump link, with Undo if reversible; if several fit, it
   offers buttons instead of guessing. At most 5 tool calls per message.
   Typed words never go through Claude.

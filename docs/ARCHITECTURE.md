@@ -42,7 +42,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `errors.py` | `UserError`: a problem the user can fix |
 | `context.py` | `Context` handed to tasks: user, channel, args, `reply` (Kept) / `confirm` / `note` (Transient), database, #bot-log; `via_tool` says Claude is running it; `posted` counts what a handler put in the channel; `parent_channel_id` is the forum or channel a post or thread hangs off |
 | `lifecycle.py` | The message lifecycle: the six classes and their policy, `classify(...)`, and `deletes(...)` / `delete_after()`, which everything that deletes a message by itself asks first (`dev cleanup off` says no). `KEEP_CONFIRMATIONS` makes `delete_after()` leave every Transient message in place |
-| `router.py` | Matches typed words and phrases, with typo tolerance; sets filler words aside for reply actions ("pin this") |
+| `router.py` | Matches typed words and phrases, with typo tolerance; sets filler words aside for reply actions ("pin this"); `GENERIC_VERBS` are the verbs no shortcut may be on its own (add, edit, remove, pause…) |
 | `reactions.py` | Pure: which reaction changes count, which are checked at once, where they ended up, what to apply or undo; the `reaction_state` queries |
 | `debounce.py` | `Debouncer(delay, callback)`: one quiet-period timer that hands over all collected events together |
 | `protection.py` | Pure: is a message protected (pinned or 📌), is it kept, and the wording when Discord refuses a pin |
@@ -51,7 +51,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `cards.py` | Buttons, dropdowns and forms for tasks that may not use discord.py: a task writes a `Card` of plain records (`Button`, `Select`, `Form`) and registers what each action does; the component's id (`card.b:<task>:<action>:<arg>`) carries everything, so cards work after a restart. `handle` answers every press first, checks `is_allowed`, logs it in `message_log` (kind `card`), shows a `UserError` to the presser alone and reports anything else. `post` / `send` / `edit` / `delete` put cards in channels |
 | `confirmations.py` | Buttons under a short message: `ask` (Confirm / Cancel), `choose` (which of a few), `offer_undo` (done, with Undo). In memory, with timeouts |
 | `tools.py` | Pure: Claude's tools from registrations: names, strict-safe input schemas, input checking, which are sent as strict, which message a message action is aimed at, previews and the listing text, and matching a query against logged messages (`find_logged`) |
-| `pending.py` | Proposals waiting for a short "ok": what counts as yes or no, two-minute expiry, one per user and channel (in memory) |
+| `pending.py` | Proposals waiting for a short "ok" (only ever for actions with no preview of their own): what counts as yes or no, two-minute expiry, one per user and channel (in memory) |
 | `scheduler.py` | Database-backed jobs: `add_job`, a ticker that runs due ones until none is left (`run_all_due`), catch-up at startup (`job.is_late`). Its time is the clock's: when the dev clock jumps, `wake()` runs what came due in order, and time jumped over is not lateness |
 | `devmode.py` | Dev mode's in-memory state (the dev clock is not part of it: `clock.py`); other code asks it for values (`reaction_debounce()`, `speed()`, `is_verbose()`, `cleanup_enabled()`, `debug()`, `register_task()`) |
 | `interactions.py` | Permission check and logging for slash commands and context menus |
@@ -66,7 +66,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 |---|---|
 | `base.py` | The `Task` base class with its hooks (including `message_class`, `tools_available` and `new_day`), and the self-describing `Keyword`, `ReplyAction`, `Reaction` records (the last two with an optional `validate`); `Param` describes an argument for Claude; `Tool` is a tool that isn't a word (reading state, acting by id). `Task.live_state(ctx)` is what a task tells Claude about its state with every message. `Reaction.instant` skips the quiet period (🐞 only); `Task.claim(ctx)` takes a message because of where it was sent |
 | `registry.py` | Discovers and loads tasks; dispatches words, reply actions and reactions; refuses invalid ones at once; decides how each ends; asks tasks what a message is (`declared_class()`); the single source of what the bot can do (`catalogue()`, `find()`, `capabilities_text()`, and `tools_for()` for Claude, which adds each task's `tools()`); `run_tool()` runs a tool call down the same path as a typed word. `live_state(ctx)` gathers the tasks' state for Claude; a tool call's #bot-log card follows in the background. `dispatch_claimed` hands an unmatched message to the task that claims it; an `instant` reaction is applied the moment it is added |
-| `toolcalls.py` | Not a task: what becomes of a tool call from Claude. Gathers the tools for a message, then decides per call: run now, wait for "ok", Confirm / Cancel, which-message buttons, quoted preview with Undo, or (for a message found further back) quoted and asked first. Also the `recent_messages` and `search_messages` tools, and whether anything was actually done this turn (`Turn.acted`). `closing(turn)` says after each round whether every call acted and showed the user its own confirmation, so the turn can end there |
+| `toolcalls.py` | Not a task: what becomes of a tool call from Claude. Gathers the tools for a message, then decides per call: run now, wait for "ok", Confirm / Cancel, which-message buttons, quoted preview with Undo, (for a message found further back) quoted and asked first, or, for calls Claude marked `candidate` because tools of different tasks fit equally, held until the round ends and offered as one button per task (`end_round`). What waits is always the call with its structured input; the user is shown a word as typed or a tool's `label`, never its name. Also the `recent_messages` and `search_messages` tools, and whether anything was actually done this turn (`Turn.acted`). `closing(turn)` says after each round whether every call acted and showed the user its own confirmation, so the turn can end there |
 | `builtin/__init__.py` | `ping`, `reset`, `buttons`, `stats`, and `help` generated from the registry |
 | `builtin/views.py` | The `buttons` test view |
 | `archive/__init__.py` | Registers reply `archive` / `delete`, the 📦 and 🗑️ reactions, the context menu |
@@ -165,7 +165,10 @@ and hands the clock its stored offset → logging → `instance_lock.acquire()`
    #bot-log card). A task's own tool (`Task.tools()`) runs the same way
    and posts nothing: its result is for Claude to put into words.
 4. Every result, failures included, goes back to Claude, which writes the
-   reply. If that reply says "done" and no tool has done anything
+   reply. A reply that offers an "ok" with no proposal waiting, or names
+   a tool, is sent back once like an unbacked "done"; whatever is sent
+   has tool names taken out. Times are not rewritten: tools give them
+   already formatted (`8:00 pm`). If that reply says "done" and no tool has done anything
    (`Turn.acted`), it goes back to Claude once before the user sees it,
    and a card in #bot-log records it. Only the reply's text is kept in
    the history. The "Message handled" card lists the tools sent, their
@@ -227,7 +230,8 @@ and hands the clock its stored offset → logging → `instance_lock.acquire()`
 **Setting up a pill**
 
 1. "add evening pill at 20:00" (in #inbox) reaches Claude, which calls
-   `pill_add` with the name and the time as it was said. `plans.add_tool`
+   `pill_add` directly (it has no `propose`: the preview is the one
+   confirmation) with the name and the time as it was said. `plans.add_tool`
    has `rules.build` turn that `Request` into a `Plan`; anything that
    can't be one is refused with a reason for Claude to pass on.
 2. The request is kept as a draft (`pills_drafts`) and the preview is

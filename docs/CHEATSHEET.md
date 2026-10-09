@@ -275,7 +275,7 @@ only, any channel, no slash. It is off after every restart.
 | Type or say | What it does |
 |---|---|
 | `pills` | List every pill; pick one from the dropdown to edit, pause or remove it |
-| "add vitamin D, once a day" | Preview with **Save** / **Edit**; nothing is added until Save |
+| "add vitamin D, once a day" | Preview with **Save** / **Edit** straight away; nothing is added until Save |
 | "add evening pill at 20:00" | A pill at a fixed time (shown as `8:00 pm`) |
 | "add course A, 3 times a day, at least 3 hours apart, with food, for 7 days starting tomorrow" | A course with a minimum gap and dates |
 | "move the evening pill to 9pm" | Old and new plan to save |
@@ -285,6 +285,7 @@ only, any channel, no slash. It is off after every restart.
 
 - "At 8" gets the question "8am or 8pm?" with a button for each
 - A preview nobody saves disappears after 30 minutes
+- There is never an "ok" step for pills: the preview's **Save** is the one confirmation
 - Saying things needs Claude, so it works in #inbox; `pills` and the buttons work in the hub too
 
 ## Seeing what the bot did (`.env`)

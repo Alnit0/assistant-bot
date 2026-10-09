@@ -225,6 +225,17 @@ class Tool:
     permission: str = ""  # defaults to "tool:<name>"
     reads_only: bool = False  # only reports; never counts as having done something
     tool_priority: int = 0
+    # What it does in a few plain words ("add a pill"): how the call is named to the
+    # user, who must never be shown the tool's name or its arguments
+    label: str = ""
+    # What tells this apart from similar tools in other tasks ("Only for pills,
+    # vitamins and medicines the user takes; not for to-dos or reminders"). Claude
+    # reads it to pick the right task, so every tool must have one
+    only_for: str = ""
+    # True for a tool that shows the user its own preview or question with buttons
+    # before anything changes (a Save / Edit preview, a Confirm card). Claude then
+    # calls it directly and can never propose it: one confirmation, not two
+    confirms_itself: bool = False
 
     # What the tool machinery asks of every action; a bespoke tool is none of these
     destructive = False
@@ -233,6 +244,7 @@ class Tool:
     def __post_init__(self):
         self.params = list(self.params)
         self.permission = self.permission or f"tool:{self.name}"
+        self.label = self.label or self.name.replace("_", " ")
 
 
 class Task:

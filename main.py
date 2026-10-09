@@ -7,7 +7,7 @@ import anthropic
 import discord
 from discord import app_commands
 
-from core import backup, cards, clock, day, devmode, instance_lock, interactions, lifecycle, live, scheduler, timing
+from core import backup, cards, clock, day, pending, devmode, instance_lock, interactions, lifecycle, live, scheduler, timing
 from core.config import (
     CLAUDE_MODEL,
     DB_PATH,
@@ -300,7 +300,8 @@ async def on_message(message: discord.Message):
                 acted=lambda: turn.acted,
                 # The time and what is running now, so a simple request needs no reading first
                 note=turn_note(await registry.live_state(ctx) if turn.definitions else ""),
-                closing=lambda: toolcalls.closing(turn),
+                closing=lambda: toolcalls.end_round(turn),
+                proposed=lambda: pending.waiting(message.channel.id, user.id),
             )
             reply, input_tokens, output_tokens = result.reply, result.input_tokens, result.output_tokens
         except anthropic.APIStatusError as error:

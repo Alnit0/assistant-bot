@@ -514,3 +514,61 @@ def test_the_old_setting_is_read_when_the_new_one_is_empty(new, old, expected):
 
     assert config.names_in(new, old) == expected
 
+
+# --- the ambiguity rule: shortcuts carry their task's name ----------------------
+def test_no_typed_shortcut_is_a_bare_generic_verb():
+    from core.router import GENERIC_VERBS, is_generic
+
+    for task, kind, item in everything():
+        if kind == "keyword":
+            for word in item.words:
+                assert not is_generic(word), f"{task}: `{word}` could be any task's; put the task's name in it"
+    assert {"add", "edit", "remove", "delete", "pause", "resume", "list"} <= GENERIC_VERBS
+    assert is_generic("Add") and is_generic(" add ") and not is_generic("pill add") and not is_generic("timer")
+
+
+@pytest.mark.parametrize("typed", ["add milk", "add vitamin D", "remove iron", "pause", "list", "edit the evening pill"])
+def test_a_bare_generic_verb_matches_no_shortcut(typed):
+    assert registry._keyword_router.match(typed) is None, "it goes to Claude, which works out the task or asks"
+
+
+def test_two_tasks_that_both_want_add_can_claim_it_only_with_their_name(monkeypatch):
+    from core.router import Router
+    from tasks.base import Keyword, Task, Tool
+
+    async def handler(ctx):
+        return None
+
+    async def tool_handler(ctx, value):
+        return ""
+
+    class Pills(Task):
+        name = "pillbox"
+
+    class Shopping(Task):
+        name = "shopping"
+
+    router = Router()
+    monkeypatch.setattr(registry, "_problems", [])
+    for task, phrase in ((Pills(), "pill add"), (Shopping(), "shop add")):
+        # Each tries the bare verb as well as its own namespaced phrase
+        keyword = Keyword(["add", phrase], "add an item", handler, examples=[phrase], takes_args=True, params=[])
+        registry._register_words(router, task, "keyword", keyword)
+
+    assert router.match("add milk") is None, "the bare verb belongs to neither"
+    assert router.match("pill add milk").entry[0].name == "pillbox"
+    assert router.match("shop add milk").entry[0].name == "shopping"
+    assert registry._problems == [
+        "pillbox: keyword `add` is a bare generic verb; put the task's name in it",
+        "shopping: keyword `add` is a bare generic verb; put the task's name in it",
+    ]
+
+    # And a tool that doesn't say what tells it apart from the other task's is reported
+    monkeypatch.setattr(registry, "_problems", [])
+    registry._check_registration(Shopping(), "tool", Tool("shopping_add", "Add an item.", tool_handler))
+    registry._check_registration(
+        Shopping(), "tool", Tool("shopping_add", "Add an item.", tool_handler, only_for="Only for the shopping list.")
+    )
+    assert registry._problems == [
+        "shopping: tool shopping_add doesn't say what it is `only_for` (what tells it apart from other tasks' tools)"
+    ]

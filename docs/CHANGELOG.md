@@ -6,6 +6,15 @@ backfilled from the git log.
 
 ## 2026-10-09
 
+- **Adding a pill is one step again.** Asking for one shows its preview
+  straight away: no more "I'm proposing… reply ok" before it. That "ok"
+  is now only for things the bot suggests that have no preview of their
+  own. Replies no longer show how the bot did something, and the bot is
+  told to write times of day as `8:00 pm` (its cards and previews always
+  do).
+- **"Add …" is never guessed between tasks.** A bare "add" is not a
+  shortcut; when more than one kind of thing could be meant you get a
+  button for each.
 - **Set up your pills by saying so.** In #inbox: "add vitamin D, once a
   day", "add evening pill at 20:00", "add course A, 3 times a day, at
   least 3 hours apart, with food, for 7 days starting tomorrow". You get
