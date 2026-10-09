@@ -311,7 +311,7 @@ Two separate nights. Dev mode: off.
 
 | # | Do | Expect | Tests |
 |---|---|---|---|
-| 1 | Night one: leave the bot running past 3am NZ. Check in the morning | "💾 Backup saved" log card; the newest 7 `assistant-*.db` kept in `data\backups\` | K5 |
+| 1 | Night one: leave the bot running past 3am NZ. Check in the morning | "💾 Backup saved" log card naming the database copy and the specs zip; the newest 7 `assistant-*.db` and `specs-*.zip` kept in `data\backups\` | K5 |
 | 2 | Night two: stop the bot before 3am, start it in the morning | The missed backup runs at startup, with its own log card | K6 |
 
 ## 13. Tool calling (Claude runs things)

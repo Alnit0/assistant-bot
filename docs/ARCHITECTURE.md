@@ -15,6 +15,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `core/` | Shared building blocks. Never imports from `tasks/` |
 | `tasks/` | One folder per feature, loaded by `tasks/registry.py` |
 | `tests/` | Unit tests (pytest); never start the bot or touch real data |
+| `docs/specs/` | Private task specs (gitignored, never committed or quoted in public docs); zipped by the nightly backup |
 | `docs/` | `ARCHITECTURE` (this), `DEVELOPMENT` (how to use and extend), `DECISIONS` (why), `TESTING` (test tracker), `QA-RUN` (manual run sheet), `BACKLOG` (found and not yet finished), `CHANGELOG` (what changed, by date), `CHEATSHEET` (commands) |
 | `.claude/skills/` | Procedures for Claude Code: `add-task`, `qa`, `end-of-task`, `bug` (fix a reported bug from its id) |
 | `.env`, `.env.example` | Secrets and settings (`.env` is gitignored); every setting has a placeholder in `.env.example` |
@@ -26,12 +27,12 @@ for why things are the way they are, `docs/DECISIONS.md`.
 
 | File | Responsibility |
 |---|---|
-| `config.py` | Paths, settings from `.env` and their validation, constants, the `CHANNELS` name-to-id map, `now_nz()` |
+| `config.py` | Paths, settings from `.env` and their validation, constants, the `CHANNELS` name-to-id map (with `hub`, from `HUB_CHANNEL_ID`), `now_nz()` |
 | `logging_setup.py` | Terminal and rotating file logging |
 | `instance_lock.py` | Single-instance lock on `data/bot.lock`, taken first thing at startup, and the source of truth for what is running: `holder()` asks the lock, `instances()` counts bot processes without the `.venv` launcher, `status()` puts both into words (`python -m core.instance_lock`, `dev status`) |
 | `database.py` | `connect()`, the async `message_log` helpers (`log_received`, `log_result`, `recent_log` for looking further back), `run(func)` in a worker thread |
 | `migrations.py` | Numbered schema migrations, core and per task, applied at startup |
-| `backup.py` | Nightly backup (a scheduler job that books its successor) and pre-migration snapshots |
+| `backup.py` | Nightly backup (a scheduler job that books its successor): the database, and `docs/specs/` as a zip beside it; pre-migration snapshots |
 | `users.py` | The `User` record, `ensure_owner()`, cached lookup by Discord id |
 | `permissions.py` | `is_allowed(user, action)`: the one permission check |
 | `errors.py` | `UserError`: a problem the user can fix |
@@ -100,7 +101,7 @@ settings before `core` loads. One `test_*.py` per area: `router`,
 `pomodoro`, `timer_text`, `timing`, `timer_status`, `timer_freeze` (pause, resume and events against a
 database with the clock under test control), `devmode`, `dev_parsing`, `lab`, `lifecycle`,
 `permissions`, `scheduler`, `text`, `tools`, `pending`, `llm_tools` (the
-Claude loop against a scripted stand-in), `toolcalls`, `bugs`, `instance_lock`, `channels`
+Claude loop against a scripted stand-in), `toolcalls`, `bugs`, `instance_lock`, `backup` (the specs zip), `channels`
 (channel types, the dev panel's start-up sweep, a task failing to start).
 
 ## Data flows
@@ -246,7 +247,8 @@ seconds.
 | `lab_state`, `lab_tour_runs`, `lab_tour_results` | lab |
 
 Backups go to `data/backups/` nightly at 3am NZ (newest 7 `assistant-*.db`
-kept); `pre-migration-*.db` snapshots are never auto-deleted.
+kept, and the newest 7 `specs-*.zip` of `docs/specs/` taken with them);
+`pre-migration-*.db` snapshots are never auto-deleted.
 
 ## Not built yet
 

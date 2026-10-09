@@ -37,12 +37,12 @@ Last updated: 2026-10-09
 | G | Timers | 21 | 8 | 13 | 13 | 8 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
 | J | Dev mode | 33 | 4 | 29 | 29 | 4 | 0 | 0 |
-| K | Startup and housekeeping | 13 | 6 | 7 | 7 | 6 | 0 | 0 |
+| K | Startup and housekeeping | 14 | 7 | 7 | 7 | 7 | 0 | 0 |
 | L | Keep | 12 | 4 | 8 | 8 | 4 | 0 | 0 |
 | M | Message lifecycle | 5 | 4 | 1 | 1 | 4 | 0 | 0 |
 | N | Tool calling | 52 | 24 | 28 | 28 | 24 | 0 | 0 |
 | P | Bugs | 29 | 14 | 15 | 15 | 14 | 0 | 0 |
-| | **Total** | **268** | **95** | **173** | **173** | **95** | **0** | **0** |
+| | **Total** | **269** | **96** | **173** | **173** | **96** | **0** | **0** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -261,7 +261,7 @@ Any channel. Check the bot's status in the member list.
 | K2 | 👤 Manual | Start a second copy while one is running | The second logs an error and exits; no double replies | ⬜ Untested | | |
 | K3 | 👤 Manual | Have another account message the bot and react 📦 | Ignored completely | ⬜ Untested | | |
 | K4 | 👤 Manual | Make a word fail (e.g. `timer banana`) | Your message stays with ⚠️; details only on the log card | ⬜ Untested | | |
-| K5 | 👤 Manual | Leave the bot running past 3am NZ | "💾 Backup saved" log card; newest 7 `assistant-*.db` kept | ⬜ Untested | | |
+| K5 | 👤 Manual | Leave the bot running past 3am NZ | "💾 Backup saved" log card naming the database copy and the specs zip; newest 7 `assistant-*.db` and newest 7 `specs-*.zip` kept | ⬜ Untested | | |
 | K6 | 👤 Manual | Stop the bot over 3am, start it later | The missed backup runs at startup | ⬜ Untested | | |
 | K7 | 🤖 Auto | Permissions | Only the owner is allowed anything; someone else marked owner is demoted at startup; lookups are cached | ✅ Pass | 2026-10-07 | `tests/test_permissions.py` |
 | K8 | 🤖 Auto | Registrations | Every task loads; every word, reply action and reaction has a description, an example, a channel and a permission | ✅ Pass | 2026-10-07 | `tests/test_registry.py` |
@@ -270,6 +270,7 @@ Any channel. Check the bot's status in the member list.
 | K11 | 🤖 Auto | Which tasks are loaded | `ENABLED_TASKS` lists them (any case, spaces ignored); if it is empty the old `ENABLED_SKILLS` is read instead, so an `.env` from before the rename still works; the new name wins; neither set loads them all | ✅ Pass | 2026-10-09 | `tests/test_registry.py` |
 | K12 | 🤖 Auto | Start-up with a forum among the channels | Only text channels, threads and DMs are read for pins or history; forum, voice and category channels are skipped (the dev panel's sweep crashed on #bugs, 2026-10-09); a task that fails to start is reported and the rest still start | ✅ Pass | 2026-10-09 | `tests/test_channels.py` |
 | K13 | 🤖 Auto | How many bots are running | The lock decides: held means one bot (with its PID and start time), a file left by a stopped bot means none, and looking never keeps the lock or turns a start away. Among processes, the `.venv` launcher and its child are one bot; a copy without the lock is flagged; `dev status` reports it | ✅ Pass | 2026-10-09 | `tests/test_instance_lock.py` |
+| K14 | 🤖 Auto | Specs in the nightly backup | `docs/specs/` is zipped beside the database backup with its subfolders; no folder or an empty one makes no zip; the newest 7 zips are kept, counted apart from the database's; a specs copy that fails is reported and the database backup still is | ✅ Pass | 2026-10-09 | `tests/test_backup.py` |
 
 ## L. Keep
 

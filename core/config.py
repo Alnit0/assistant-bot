@@ -14,6 +14,8 @@ LOG_DIR = BASE_DIR / "logs"
 DATA_DIR = BASE_DIR / "data"
 DB_PATH = DATA_DIR / "assistant.db"
 BACKUP_DIR = DATA_DIR / "backups"
+# Private spec sheets: gitignored, so the nightly backup is their only copy
+SPECS_DIR = BASE_DIR / "docs" / "specs"
 
 LOG_DIR.mkdir(exist_ok=True)
 DATA_DIR.mkdir(exist_ok=True)
@@ -50,6 +52,8 @@ OWNER_ID = int(OWNER_ID)
 INBOX_CHANNEL_ID = int(INBOX_CHANNEL_ID)
 BOT_LOG_CHANNEL_ID = int(BOT_LOG_CHANNEL_ID) if BOT_LOG_CHANNEL_ID else None
 ARCHIVE_CHANNEL_ID = int(ARCHIVE_CHANNEL_ID) if ARCHIVE_CHANNEL_ID else None
+# The hub: where the day's regular cards and prompts are posted (pills first)
+HUB_CHANNEL_ID = int(os.getenv("HUB_CHANNEL_ID")) if os.getenv("HUB_CHANNEL_ID") else None
 
 # Every channel we know by name, for "where does this work?" rules. Only the
 # ones set in .env appear.
@@ -66,6 +70,7 @@ CHANNELS: dict[str, int] = {
         "dev": os.getenv("DEV_CHANNEL_ID"),
         # A forum channel: one post per reported bug (tasks/bugs)
         "bugs": os.getenv("BUGS_CHANNEL_ID"),
+        "hub": os.getenv("HUB_CHANNEL_ID"),
     }.items()
     if value
 }

@@ -36,6 +36,10 @@ A short log of key decisions and why. Newest at the bottom.
 - **`message_log.user_id` is nullable in the schema:** SQLite cannot add a
   `NOT NULL` foreign key column without rebuilding the table. The code
   always fills it, and existing rows were backfilled with the owner.
+- **Specs are private, and the backup is their second copy:** `docs/specs/`
+  is gitignored, so nothing else holds it. The nightly backup zips it
+  beside the database copy and keeps the newest 7; a failed specs copy is
+  reported without undoing the database's.
 - **Backups with SQLite's backup API, nightly at 3am NZ, keep 7:** safe
   while the bot is running, unlike copying the file. Same disk only, so it
   protects against mistakes and corruption, not against losing the server.

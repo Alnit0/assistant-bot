@@ -29,6 +29,9 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 - `docs/DEVELOPMENT.md`: how to use and extend the bot, task by task
 - `docs/DECISIONS.md`: read before changing architecture or tools
 - `docs/TESTING.md` (test tracker) and `docs/QA-RUN.md` (manual run sheet)
+- `docs/specs/` holds the task specs and is private (gitignored; the nightly
+  backup is its other copy). Read them, but never commit them, and never
+  quote them in commit messages or public docs (everything else in `docs/`)
 - Procedures are project skills in `.claude/skills/`:
   - `add-task`: adding or extending anything under `tasks/`
   - `qa`: test tracker, run sheet, and recording reported results
@@ -93,7 +96,7 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 
 - All secrets live in `.env` (gitignored). Never hardcode or print them
 - When adding a setting, add a placeholder to `.env.example` too
-- Never commit `.env`, `data/`, `logs/` or `.venv/`
+- Never commit `.env`, `data/`, `logs/`, `.venv/` or `docs/specs/`
 
 ## Running and testing
 

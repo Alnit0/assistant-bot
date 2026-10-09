@@ -6,6 +6,12 @@ backfilled from the git log.
 
 ## 2026-10-09
 
+- **Specs are private and backed up.** `docs/specs/` stays out of git, so
+  the nightly backup now zips it beside the database copy
+  (`specs-*.zip`, newest 7 kept) and names both on the log card.
+  `dev run backup` does the same.
+- **A hub channel can be set** with `HUB_CHANNEL_ID` in `.env`; nothing
+  posts there yet.
 - **One bot is counted as one.** `python -m core.instance_lock` (and
   `dev status` in Discord) says how many bots are running by asking the
   lock, and no longer takes the `.venv` launcher and the Python it starts
