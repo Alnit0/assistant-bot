@@ -528,6 +528,34 @@ A short log of key decisions and why. Newest at the bottom.
   `dev cost` on the dev database reports the dev database.
 - **A message for two tasks is charged half to each**, and one for no
   task (chat) to "no task", so the tasks add up to the total.
+- **Claude understands; Python does the work and the talking
+  (2026-10-09):** a small router request picks the task from a catalogue
+  of names, "only for" lines and examples; one extraction request fills
+  in one of that task's actions; the task's own code validates, builds
+  the card or the reply from its templates, and saves only on Save.
+  Nothing Claude writes is shown except plain chat. It replaces sending
+  every tool with every message, whose cost grows with every task, and
+  the guards that policed what Claude said it had done.
+- **Schemas are checked in code; `strict` stays off for now:** measured
+  on 2026-10-09 with the eight shopping fixtures, extraction took 1.0s a
+  request without strict and 4.6s with it (12.8s for the first). What
+  comes back is validated against the schema either way.
+- **The router rarely calls a tie:** asked "add socks" with a shopping and
+  a packing list, claude-haiku-4-5 picked one list both times it was
+  tried, even with the rule spelled out. The buttons are there for when
+  it does; what makes the wrong pick cheap is the card, and "no,
+  shopping" replacing it. The two fixtures are kept as known misses.
+- **A plain message sticks to an open card only while that card is the
+  bot's latest message there and under five minutes old;** a Discord
+  reply to the card always does. Otherwise the router decides, with the
+  card as context, and extraction can still say `not_this`.
+- **Both ways exist on this branch until every task has moved:** the
+  router is asked first; what it calls chat is handed to the old way in
+  #inbox with the same log row, so a message is still logged once and
+  its router request is counted in its cost.
+- **Two demo tasks, on the dev database only,** so the core can be tried
+  before any real task depends on it. The live bot's router never hears
+  of them.
 - **`bugs` uses discord.py, in `posts.py` only:** forum posts, tags and
   persistent buttons have no core helper yet, and one user of them is not
   enough to design one. To be promoted to core when a second task needs a

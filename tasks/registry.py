@@ -12,7 +12,7 @@ import tasks
 from core import day, scheduler
 from core.config import CHANNELS, ENABLED_TASKS
 from core.context import Context
-from core import database, devmode, discord_utils, lifecycle, live, reactions, tools
+from core import actions, confirm, database, devmode, discord_utils, lifecycle, live, reactions, tools
 from core.database import log_received, log_result
 from core.debounce import Debouncer
 from core.discord_utils import log_error, log_simple
@@ -121,6 +121,7 @@ def load() -> None:
     _keyword_router = Router()
     _reply_router = Router()
 
+    routed: list = []
     available = discover()
     if ENABLED_TASKS is None:
         wanted = available
@@ -146,12 +147,14 @@ def load() -> None:
             events = task.events()
             slash_commands = task.app_commands()
             task.migrations()
+            entries = task.entries()
         except Exception as error:
             log.exception("Could not load task %s", name)
             _problems.append(f"{name}: {error!r}")
             continue
 
         _tasks.append(task)
+        routed += entries
         for keyword in keywords:
             _check_registration(task, "keyword", keyword)
             _register_words(_keyword_router, task, "keyword", keyword)
@@ -180,6 +183,14 @@ def load() -> None:
         for event, handler in events.items():
             _events.setdefault(event, []).append((task, handler))
         _app_commands.extend(slash_commands)
+
+    # The tasks the router may choose from. One that doesn't meet the contract
+    # (no "only for" line, an action with no code behind it) is reported, and
+    # nothing is routed to it
+    for problem in actions.problems(routed):
+        _problem(f"routing: {problem}")
+    broken = {problem.split(":")[0] for problem in actions.problems(routed)}
+    actions.set_catalogue([entry for entry in routed if entry.name not in broken])
 
     log.info("Tasks loaded: %s", summary())
     if _undocumented:
@@ -274,7 +285,8 @@ async def declared_class(message_id: int) -> lifecycle.MessageClass | None:
             continue
         if found is not None:
             return found
-    return None
+    # Not a task's: an open confirm card is the core's own
+    return await confirm.message_class(message_id)
 
 
 @dataclass(frozen=True)

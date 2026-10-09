@@ -243,6 +243,35 @@ def _add_cost_logging(conn: sqlite3.Connection) -> None:
     )
 
 
+def _create_confirm_cards(conn: sqlite3.Connection) -> None:
+    # Confirm cards waiting for Save, and the question asked on a tie between
+    # tasks (see core/confirm.py). `data` is exactly what Save applies
+    conn.execute(
+        """
+        CREATE TABLE confirm_cards (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            channel_id INTEGER NOT NULL,
+            message_id INTEGER,
+            kind TEXT NOT NULL,
+            task TEXT NOT NULL DEFAULT '',
+            action TEXT NOT NULL DEFAULT '',
+            data TEXT NOT NULL DEFAULT '{}',
+            guessed TEXT NOT NULL DEFAULT '[]',
+            said TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL,
+            job_id INTEGER,
+            created_at TEXT NOT NULL,
+            closed_at TEXT
+        )
+        """
+    )
+    conn.execute("CREATE INDEX confirm_cards_open ON confirm_cards (user_id, channel_id, status)")
+    conn.execute("CREATE INDEX confirm_cards_message ON confirm_cards (message_id)")
+    # What extraction made of a message, as JSON: the task, the action, its data and what was guessed
+    conn.execute("ALTER TABLE message_log ADD COLUMN extracted TEXT")
+
+
 MIGRATIONS = [
     _create_message_log,
     _create_users,
@@ -253,6 +282,7 @@ MIGRATIONS = [
     _add_timing_to_message_log,
     _create_occurrences,
     _add_cost_logging,
+    _create_confirm_cards,
 ]
 
 

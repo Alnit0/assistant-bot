@@ -1,0 +1,100 @@
+{
+  "router": [
+    {
+      "message": "what's the capital of France?",
+      "chat": true,
+      "note": "a general question is for no task",
+      "recorded": {
+        "kind": "chat",
+        "tasks": [],
+        "confidence": "high"
+      }
+    },
+    {
+      "message": "thanks, that's great",
+      "chat": true,
+      "recorded": {
+        "kind": "chat",
+        "tasks": [],
+        "confidence": "high"
+      }
+    },
+    {
+      "message": "add toothpaste to my list",
+      "tasks": [
+        "packing",
+        "shopping"
+      ],
+      "tie": true,
+      "note": "a genuine tie: which list isn't said, and toothpaste could be bought or packed",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "shopping"
+        ],
+        "confidence": "high"
+      },
+      "known_miss": "claude-haiku-4-5 settles on the likelier list instead of calling a tie (2026-10-09)"
+    },
+    {
+      "message": "add milk to the shopping list and pack my passport",
+      "tasks": [
+        "packing",
+        "shopping"
+      ],
+      "note": "two tasks, both wanted: not a tie",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "shopping",
+          "packing"
+        ],
+        "confidence": "high"
+      }
+    },
+    {
+      "message": "don't forget to put the charger in my bag",
+      "tasks": [
+        "packing"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "packing"
+        ],
+        "confidence": "high"
+      }
+    },
+    {
+      "message": "I need to pick up sunscreen at the shop for the trip",
+      "tasks": [
+        "shopping"
+      ],
+      "note": "mentions the trip, but it is something to buy",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "shopping"
+        ],
+        "confidence": "high"
+      }
+    },
+    {
+      "message": "add socks",
+      "tasks": [
+        "packing",
+        "shopping"
+      ],
+      "tie": true,
+      "note": "a bare add that names no list",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "packing"
+        ],
+        "confidence": "high"
+      },
+      "known_miss": "claude-haiku-4-5 settles on the likelier list instead of calling a tie (2026-10-09)"
+    }
+  ]
+}

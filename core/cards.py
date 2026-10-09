@@ -207,6 +207,7 @@ class Press:
     fields: dict[str, str] | None = None  # what was typed in a form; None unless it is one
     _interaction: discord.Interaction | None = field(default=None, repr=False)
     shown: list[str] = field(default_factory=list)  # what the presser was shown, for the log
+    row_id: int | None = None  # this press's row in message_log, for a handler with a cost to record on it
 
     # Database access, as on Context
     db = database
@@ -301,6 +302,7 @@ async def handle(
         row_id = await log_received(
             f"card: {task}/{action}{detail}", "card", press.message_id, press.channel_id, user_id=user.id
         )
+        press.row_id = row_id
         started = time.perf_counter()
         try:
             reply = await registered.handler(press)

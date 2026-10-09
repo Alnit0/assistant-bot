@@ -44,7 +44,8 @@ Last updated: 2026-10-09
 | P | Bugs | 29 | 14 | 15 | 15 | 14 | 0 | 0 |
 | Q | Time, days, the occurrence log and cards | 9 | 8 | 1 | 1 | 8 | 0 | 0 |
 | R | Pills | 39 | 2 | 37 | 37 | 2 | 0 | 0 |
-| | **Total** | **332** | **112** | **220** | **220** | **112** | **0** | **0** |
+| S | Routing and confirm cards | 15 | 3 | 12 | 12 | 3 | 0 | 0 |
+| | **Total** | **347** | **115** | **232** | **232** | **115** | **0** | **0** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -491,3 +492,28 @@ are added with it.
 | R37 | 🤖 Auto | Building a plan from what was said | Untimed, fixed and interval pills and courses with inclusive dates, each in its one-line wording; unclear times asked about one at a time and a bare gap never taken for hours; twenty kinds of nonsense refused with a short reason; an edit changes only what it names, `none` takes a value away, and changing the kind of schedule drops what belonged to the old one; active, upcoming, paused (ending by itself) and ended worked out from the day; the list in its three groups; a pill found by id, name or part of one, asked about when two fit | ✅ Pass | 2026-10-09 | `tests/test_pills_rules.py` |
 | R38 | 🤖 Auto | Previews, the list and their buttons | Nothing is saved before Save, and Save can't be made to work while a time is unasked; the course sentence gives the course preview in one step, with nothing waiting for an ok; a changed preview replaces the old one and books one lapse; an unsaved preview lapses (deleted, or marked while clean-up is off); an edit shows old and new and changes nothing until Save; pause and resume act at once and tolerate repeats; remove asks and keeps the history, delete for good takes the doses of that pill only; buttons for a pill that has gone or is someone else's do nothing; every button on every card has an action; a tool call from Claude ends the turn on the preview with no closing line | ✅ Pass | 2026-10-09 | `tests/test_pills_plans.py` |
 | R39 | 👤 Manual | Through block 16, read every reply from the bot | No reply says "I'm proposing" or "reply ok" for a pill; none shows a tool's name or how it was called (`pill_add …`); every time of day on a preview or list is written like `8:00 pm` | ⬜ Untested | | Stage 2. Failed 2026-10-09 on all three; fixed, retest. Claude's own wording of a time is asked for in the prompt, not enforced |
+
+## S. Routing and confirm cards
+
+The bot-wide way of handling plain words: the router, extraction, and
+confirm cards. Until the real tasks move to it, the manual tests use the two
+demo tasks (a shopping list and a packing list), which are only offered on
+the dev database (`python main.py --dev`), in #inbox.
+
+| ID | Type | Test | Expected result | Status | Date | Notes |
+|---|---|---|---|---|---|---|
+| S1 | 🤖 Auto | The contract for what a task can be asked to do | An action's schema is strict and always has `guessed`; what Claude returns is checked in code whatever the API promised (thirteen kinds of wrong input refused with the reason); an optional field left empty is left out; fifteen ways a task can break the contract are each named (no icon, no "only for" line, too few examples, a card action without both halves, a shared action name…); a task that breaks it is reported and not routed to; on the live database no demo task is offered | ✅ Pass | 2026-10-09 | `tests/test_actions.py` |
+| S2 | 🤖 Auto | The router and extraction | The router sees names, "only for" lines and examples and never an action; its answer is read in code (a made-up task is dropped, nonsense is chat, a tie of one is no tie); extraction is given one task's actions and `none` (and `not_this` in a follow-up), is told to guess and flag and never to ask or write; a call that doesn't fit is "nothing fitted" with the reason kept. Every fixture in `evals/fixtures/` is replayed from what the real API last returned | ✅ Pass | 2026-10-09 | `tests/test_routing.py` |
+| S3 | 🤖 Auto | A message end to end, and confirm cards | A setup change is two requests and a card, and nothing is saved before Save; Save applies exactly the card's data and the task's own code says so; a problem is shown with its fix applied; logging and questions answer without a card; a destructive action gets a card of its own kind; a message after a fresh card goes to its task without the router and replaces the card; a reply to a card always sticks, a plain message only while the card is the bot's latest and under five minutes old; "no, shopping" re-routes and replaces; a tie asks with a button per task and runs nothing until one is picked; a general question is a plain reply with no tools; a card left 30 minutes is deleted; cards survive a restart; route, tasks, what was extracted and each request are logged | ✅ Pass | 2026-10-09 | `tests/test_conversation.py` |
+| S4 | 👤 Manual | Say `add milk to the shopping list` | One card, with no question first and no line from Claude: "🛒 Shopping · new", "**milk** · × 1 ❓", "-# or tell me what to change", with **Save** and **Cancel**. `what do I need to buy?` right after (press Cancel first) shows the list is still empty | ⬜ Untested | | |
+| S5 | 👤 Manual | Say `add milk`, then, with the card the last thing on screen, say `make it 3` | The first card is deleted and a fresh one shows "**milk** · × 3" with no ❓. Press **Save**: the card becomes "✅ Saved · 🛒 **milk** × 3 is on the shopping list" with no buttons | ⬜ Untested | | |
+| S6 | 👤 Manual | Say `add 144 eggs`; press **Save** | The card shows "**eggs** · × 20" and "⚠️ 144 is more than the list takes: 20 at most"; Save saves 20 | ⬜ Untested | | |
+| S7 | 👤 Manual | Say `what do I need to buy?`, then `got the milk` | The list as a message with no buttons; then "☑️ Ticked off **milk** · 1 left to buy" at once, with no card | ⬜ Untested | | |
+| S8 | 👤 Manual | Say `clear my shopping list`; press **Clear for good** | A card "🛒 Shopping · clear" that says it can't be undone, with a red **Clear for good**; then "🗑️ The shopping list is cleared." | ⬜ Untested | | |
+| S9 | 👤 Manual | Say `add socks`. Whichever list the card is for, say `no, the other list` (name it: `no, shopping` or `no, packing`) | A card for one list, or the question "Which is “add socks” for?" with a button per list (press one). After "no, …" the first card is deleted and a card for the other list takes its place | ⬜ Untested | | |
+| S10 | 👤 Manual | Say `add bread`, then `dev clock +31m` | The card disappears; `what do I need to buy?` doesn't list bread | ⬜ Untested | | |
+| S11 | 👤 Manual | Say `pack my passport`, restart the bot (`python main.py --dev`), then press **Save** on that card | Saved as if nothing had happened: "✅ Saved · 🧳 **passport** goes in the checked bag" | ⬜ Untested | | |
+| S12 | 👤 Manual | Say `what's the capital of France?` in #inbox, and again in the hub | A plain answer in both; no card | ⬜ Untested | | |
+| S13 | 👤 Manual | In #inbox say `set a timer for 1 minute` | A timer starts, as before: timers have not moved yet, so this still goes the old way | ⬜ Untested | | |
+| S14 | 👤 Manual | Type `dev cost` | The routes of today include `router`, `follow-up` and `chat` beside `shortcut` and `button`; "Requests this month" lists `router` and `extraction`; shopping or packing is among the tasks | ⬜ Untested | | |
+| S15 | 👤 Manual | Read every reply from the bot in this block | No "reply ok" or "I'm proposing"; no tool or action names (`demo_shop_add`); every confirmation ("✅ Saved…", "☑️ Ticked off…") in the same fixed wording each time | ⬜ Untested | | |

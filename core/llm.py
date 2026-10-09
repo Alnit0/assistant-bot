@@ -231,6 +231,56 @@ async def count_tool_tokens(tools: list[dict]) -> int | None:
 
 
 # ---------------------------------------------------------------------------
+# One request that must come back as a tool call (the router, extraction)
+# ---------------------------------------------------------------------------
+async def call_tool(
+    system: list[dict],
+    user: str,
+    tools: list[dict],
+    *,
+    choice: dict,
+    purpose: str,
+    task: str = "",
+    max_tokens: int = 600,
+) -> tuple[str, dict] | None:
+    """Send one message with tools Claude must choose from, and return the call
+    it made as (tool name, input). None if it made none (cut short, refused).
+
+    Nothing Claude writes as text is read, kept or shown. The request is
+    timed and counted under `purpose` (and `task`), for the cost log.
+    """
+    asked, retried = time.perf_counter(), timing.claude_retries()
+    response = await claude.messages.create(
+        model=CLAUDE_MODEL,
+        max_tokens=max_tokens,
+        system=system,
+        messages=[{"role": "user", "content": user}],
+        tools=tools,
+        tool_choice=choice,
+    )
+    usage = response.usage
+    timing.record_claude(
+        time.perf_counter() - asked,
+        CLAUDE_MODEL,
+        usage.input_tokens,
+        usage.output_tokens,
+        getattr(usage, "cache_read_input_tokens", None) or 0,
+        getattr(usage, "cache_creation_input_tokens", None) or 0,
+        retries=timing.claude_retries() - retried,
+        purpose=purpose,
+        task=task,
+    )
+    if response.stop_reason != "tool_use":
+        # Cut short or refused: half a call must never be acted on
+        log.warning("A %s request ended with %s and no tool call", purpose, response.stop_reason)
+        return None
+    for block in response.content:
+        if block.type == "tool_use":
+            return block.name, dict(block.input) if isinstance(block.input, dict) else {}
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Asking Claude, and running the tools it calls
 # ---------------------------------------------------------------------------
 @dataclass(frozen=True)
@@ -396,6 +446,7 @@ async def ask_claude(
     note: str = "",
     closing: Callable[[], Closing | None] | None = None,
     proposed: Callable[[], bool] | None = None,
+    purpose: str = "",
 ) -> ChatResult:
     """Send the message plus recent history to Claude, running any tools it calls.
 
@@ -481,6 +532,7 @@ async def ask_claude(
             cache_read,
             cache_write,
             retries=timing.claude_retries() - retried,
+            purpose=purpose,
         )
         result.input_tokens += usage.input_tokens
         result.output_tokens += usage.output_tokens

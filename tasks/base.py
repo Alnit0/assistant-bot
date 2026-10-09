@@ -5,6 +5,7 @@ from datetime import date
 
 import discord
 
+from core.actions import Action, Entry, Request
 from core.context import Context
 from core.lifecycle import MessageClass
 from core.scheduler import Job
@@ -258,6 +259,16 @@ class Task:
     # False for a task whose words are never offered to Claude as tools (the lab)
     exposes_tools: bool = True
 
+    # --- for the router (core/routing.py). A task that takes plain words sets
+    # these three and returns its actions; the registry refuses one that is
+    # missing any of them
+    icon: str = ""  # "💊"
+    # What it is for and what it is not, in a sentence or two. The router reads
+    # this, and nothing else about the task but the examples, to choose it
+    only_for: str = ""
+    examples: tuple[str, ...] = ()  # two or three things one might say to it
+    hint: str = ""  # said when nothing fits: how to ask
+
     def tools_available(self, channel_name: str | None) -> bool:
         """Whether this task's words are offered to Claude right now, in this
         channel (our name for it, or None). Channel and permission are checked
@@ -279,6 +290,26 @@ class Task:
     def tools(self) -> list[Tool]:
         """Tools for Claude that aren't words: reading state, acting by id (see Tool)."""
         return []
+
+    def actions(self) -> list[Action]:
+        """What this task can be asked to do in plain words (core/actions.py): for
+        each, the fields Claude fills in and the code that does it and writes
+        the answer. Setup changes need a card; logging and questions don't."""
+        return []
+
+    async def action_state(self, request: Request) -> str:
+        """What extraction should know about this task's state right now: names
+        and ids of what exists, in a few plain lines. Sent with the message to
+        this task's extraction only. Empty if there is nothing to say."""
+        return ""
+
+    def entries(self) -> list[Entry]:
+        """This task as the router knows it. One entry, built from the fields
+        above, if it has actions; override only to offer more than one."""
+        found = tuple(self.actions())
+        if not found:
+            return []
+        return [Entry(self.name, self.icon, self.only_for, tuple(self.examples), found, self.hint, self.action_state)]
 
     def claim(self, ctx: Context) -> Callable[[Context], Awaitable[str | None]] | None:
         """Take a message that is no word, reply action or awaited answer, because

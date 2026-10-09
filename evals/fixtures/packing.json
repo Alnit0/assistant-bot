@@ -1,0 +1,84 @@
+{
+  "router": [
+    {
+      "message": "pack my passport in the carry-on",
+      "tasks": [
+        "packing"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "packing"
+        ],
+        "confidence": "high"
+      }
+    },
+    {
+      "message": "what am I packing?",
+      "tasks": [
+        "packing"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "packing"
+        ],
+        "confidence": "high"
+      }
+    }
+  ],
+  "extraction": [
+    {
+      "task": "packing",
+      "message": "pack my passport in my hand luggage",
+      "action": "demo_pack_add",
+      "data": {
+        "item": "passport",
+        "bag": "carry-on"
+      },
+      "guessed": [],
+      "recorded": [
+        "demo_pack_add",
+        {
+          "item": "passport",
+          "bag": "carry-on",
+          "guessed": []
+        }
+      ]
+    },
+    {
+      "task": "packing",
+      "message": "pack socks",
+      "action": "demo_pack_add",
+      "data": {
+        "item": "socks",
+        "bag": "checked"
+      },
+      "guessed": [
+        "bag"
+      ],
+      "note": "no bag said: checked, flagged as a guess",
+      "recorded": [
+        "demo_pack_add",
+        {
+          "item": "socks",
+          "bag": "checked",
+          "guessed": [
+            "bag"
+          ]
+        }
+      ]
+    },
+    {
+      "task": "packing",
+      "message": "what am I packing?",
+      "action": "demo_pack_list",
+      "recorded": [
+        "demo_pack_list",
+        {
+          "guessed": []
+        }
+      ]
+    }
+  ]
+}

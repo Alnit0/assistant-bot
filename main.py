@@ -7,7 +7,7 @@ import anthropic
 import discord
 from discord import app_commands
 
-from core import backup, cards, clock, costs, database, day, pending, devmode, instance_lock, interactions, lifecycle, live, scheduler, timing
+from core import backup, cards, clock, conversation, costs, database, day, pending, devmode, instance_lock, interactions, lifecycle, live, scheduler, timing
 from core.config import (
     CLAUDE_MODEL,
     DB_PATH,
@@ -126,6 +126,7 @@ async def on_app_command_error(
 async def setup_hook():
     # Runs once after login, before connecting: persistent buttons get registered here
     cards.setup(client)
+    conversation.setup()
     registry.setup(client)
 
 
@@ -265,21 +266,40 @@ async def on_message(message: discord.Message):
     if await registry.dispatch_claimed(ctx):
         return
 
-    # Chatting with Claude only happens in the inbox
-    if message.channel.id != INBOX_CHANNEL_ID:
+    # Plain words are read in the inbox and the hub
+    if not conversation.listens_in(message.channel.id):
         return
+    in_inbox = message.channel.id == INBOX_CHANNEL_ID
     log.info("Received: %s", text)
 
     # A short "ok" (or "no") to something Claude proposed is dealt with here
-    if await toolcalls.answer_pending(ctx):
+    if in_inbox and await toolcalls.answer_pending(ctx):
         return
 
-    # Everything else goes to Claude. Log the raw input before processing.
-    row_id = await log_received(text, "chat", message.id, message.channel.id, user_id=user.id)
     started = time.perf_counter()
     spent = timing.start()
     # Seen: 👀 straight away, and "typing" with it. Neither is waited for
     live.background(_mark_seen(message))
+
+    # The router's way first: tasks that have moved to it are handled there, by
+    # their own code. What it says is for no such task carries on below, the old
+    # way, while there are tasks that haven't moved (the inbox only)
+    try:
+        routed = await conversation.handle(
+            ctx, registry.capabilities_text(user, message.channel.id), chat_here=not in_inbox
+        )
+    except Exception as error:
+        log.exception("The router's way failed")
+        await log_error("Routing failed", repr(error), text)
+        routed = conversation.Handled(False)
+    if routed.done or not in_inbox:
+        live.background(_unmark_seen(message))
+        timing.stop()
+        return
+
+    # Everything else goes to Claude. Log the raw input before processing
+    # (the router has already, if it looked at this message).
+    row_id = routed.row_id or await log_received(text, "chat", message.id, message.channel.id, user_id=user.id)
 
     turn = None
 

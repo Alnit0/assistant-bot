@@ -135,6 +135,10 @@ MAX_TOOL_CALLS = 5  # how many tools Claude may run in answer to one message
 # added about 2 seconds to every request and about 40 to the first one after
 # the set of tools changed. Every input is checked in code either way
 STRICT_TOOLS = False
+# Whether the action schemas of the router's way are sent to the API as `strict`.
+# Off until measured as cheap for the small per-task sets: what comes back is
+# checked in code either way (core/actions.py)
+STRICT_SCHEMAS = False
 CLAUDE_TIMEOUT = 15.0  # seconds one request to Claude may take before it is given up (and retried)
 CLAUDE_CONNECT_TIMEOUT = 3.0
 CLAUDE_RETRIES = 2  # so the worst case is three attempts

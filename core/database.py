@@ -23,6 +23,7 @@ LOG_COLUMNS = {
     "timing",
     "route",
     "tasks",
+    "extracted",
 }
 
 

@@ -6,6 +6,17 @@ backfilled from the git log.
 
 ## 2026-10-09
 
+- **A new way of handling plain words, ready to try on the dev database.**
+  A small "router" works out which task a message is for; the task's own
+  code then shows a card with its best reading (guesses marked ❓, problems
+  ⚠️ with the fix applied) and saves only when you press Save. Say what to
+  change and the card is replaced. Every confirmation is written by the
+  bot's code, never by Claude. Two demo lists (shopping 🛒 and packing 🧳)
+  exist on the dev database to try it with; timers, bugs and pills move
+  to it next. Nothing changes on the live bot yet.
+- If your `data\dev.db` is from before this evening, delete it once: it
+  remembers a pills table that no longer exists and the dev bot won't
+  start with it.
 - **`dev cost` shows what the bot costs.** Today and this month: the
   total, how many messages went to Claude and how many were handled
   without it (shortcuts, buttons, reactions), the average cost, requests

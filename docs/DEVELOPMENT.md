@@ -570,6 +570,54 @@ handlers and the cards, with no discord.py (`core/cards.py`). Doses will be
 occurrences (`core/occurrences.py`) with task `pills` and the pill's id as
 the item.
 
+## Routing and confirm cards (being built)
+
+The way every task will take plain words. Nothing real uses it yet; two
+demo tasks do, on the dev database only (`python main.py --dev`, #inbox or
+the hub): a shopping list and a packing list.
+
+| Say | What happens |
+|---|---|
+| "add milk to the shopping list" | A card: "🛒 Shopping · new", "**milk** · × 1 ❓", **Save** / **Cancel**. Nothing is saved until Save |
+| "make it 3" (straight after) | That card is deleted and a new one shows × 3 |
+| "add 144 eggs" | The card shows × 20 and "⚠️ 144 is more than the list takes: 20 at most" |
+| "got the milk", "what do I need to buy?" | Done or answered at once: these change no setup, so no card |
+| "clear my shopping list" | A card that says it can't be undone, with **Clear for good** |
+| "pack my passport" | The packing list's card |
+| "no, shopping" (after a card for the wrong list) | That card is replaced by one for the shopping list |
+| "what's the capital of France?" | A plain answer |
+
+- **How a message is handled, cheapest first:** a button or a shortcut
+  never reaches Claude. A message about the open card costs one request
+  (extraction). Anything else costs two: the router, then extraction for
+  the task it chose (or a plain reply, if it is for no task).
+- **A message is "about the open card"** if it is a Discord reply to it,
+  or if the card is the last thing the bot said in the channel and is
+  under five minutes old.
+- **A card left for 30 minutes is deleted** and nothing is saved.
+- **Real tasks still go the old way** until they move: "set a timer for 5
+  minutes" works as before (the router is asked first and says it is
+  none of its tasks).
+
+**In code.** `core/actions.py` is the contract: a task sets `icon`,
+`only_for` and `examples` and returns `Action`s from `actions()`. An action
+that changes setup has `prepare(request, data, guessed) -> Proposal` (the
+card) and `apply(request, data) -> str` (Save: do it and return what to
+say); any other has `needs_card=False` and `run(request, data, guessed) ->
+str`. `tasks/lab/demo.py` is the example. `core/routing.py` and
+`core/extraction.py` make the two requests, `core/confirm.py` keeps the
+cards, `core/conversation.py` ties them together. The full write-up of the
+contract comes when the real tasks have moved.
+
+**Fixtures and the live eval.** `evals/fixtures/*.json` holds, per task,
+sentences for the router (which task, a tie, or chat) and for extraction
+(which action, what data, what was guessed). `python -m pytest` replays
+what the real API last returned for each through the checking code, with no
+network. `python -m evals.live --live --dev` asks the real API (a few
+cents; it prints the cost) and says how many it got right; add `--record`
+to keep the answers for the tests, `--strict` to time strict schemas.
+Add a fixture for every example in a task's spec and every bug QA finds.
+
 ## Timers and Pomodoro
 
 `tasks/timers/` is for short timers and focus sessions. Everything is

@@ -1,0 +1,202 @@
+{
+  "router": [
+    {
+      "message": "add two cartons of oat milk",
+      "tasks": [
+        "shopping"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "shopping"
+        ],
+        "confidence": "high"
+      }
+    },
+    {
+      "message": "what do I need to buy?",
+      "tasks": [
+        "shopping"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "shopping"
+        ],
+        "confidence": "high"
+      }
+    },
+    {
+      "message": "got the bread",
+      "tasks": [
+        "shopping"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "shopping"
+        ],
+        "confidence": "high"
+      }
+    },
+    {
+      "message": "make it three",
+      "tasks": [
+        "shopping"
+      ],
+      "on_screen": "a Shopping card (demo_shop_add) from the user saying: add milk",
+      "note": "a reply to what is on screen",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "shopping"
+        ],
+        "confidence": "high"
+      }
+    }
+  ],
+  "extraction": [
+    {
+      "task": "shopping",
+      "message": "add 3 lemons",
+      "action": "demo_shop_add",
+      "data": {
+        "item": "lemons",
+        "quantity": 3
+      },
+      "guessed": [],
+      "recorded": [
+        "demo_shop_add",
+        {
+          "item": "lemons",
+          "quantity": 3,
+          "guessed": []
+        }
+      ]
+    },
+    {
+      "task": "shopping",
+      "message": "add milk to the shopping list",
+      "action": "demo_shop_add",
+      "data": {
+        "item": "milk",
+        "quantity": 1
+      },
+      "guessed": [
+        "quantity"
+      ],
+      "note": "no amount said: one, flagged as a guess",
+      "recorded": [
+        "demo_shop_add",
+        {
+          "item": "milk",
+          "quantity": 1,
+          "guessed": [
+            "quantity"
+          ]
+        }
+      ]
+    },
+    {
+      "task": "shopping",
+      "message": "what do I need to buy?",
+      "action": "demo_shop_list",
+      "recorded": [
+        "demo_shop_list",
+        {
+          "guessed": []
+        }
+      ]
+    },
+    {
+      "task": "shopping",
+      "message": "got the bread",
+      "action": "demo_shop_tick",
+      "data": {
+        "item": "bread"
+      },
+      "recorded": [
+        "demo_shop_tick",
+        {
+          "item": "bread",
+          "guessed": []
+        }
+      ]
+    },
+    {
+      "task": "shopping",
+      "message": "clear my shopping list",
+      "action": "demo_shop_clear",
+      "recorded": [
+        "demo_shop_clear",
+        {
+          "guessed": []
+        }
+      ]
+    },
+    {
+      "task": "shopping",
+      "message": "make it 3",
+      "action": "demo_shop_add",
+      "data": {
+        "item": "milk",
+        "quantity": 3
+      },
+      "guessed": [],
+      "card": {
+        "action": "demo_shop_add",
+        "data": {
+          "item": "milk",
+          "quantity": 1
+        },
+        "guessed": [
+          "quantity"
+        ],
+        "said": "add milk"
+      },
+      "note": "a correction keeps the rest of the card and clears the guess",
+      "recorded": [
+        "demo_shop_add",
+        {
+          "item": "milk",
+          "quantity": 3,
+          "guessed": []
+        }
+      ]
+    },
+    {
+      "task": "shopping",
+      "message": "what's the weather like tomorrow?",
+      "action": "not_this",
+      "card": {
+        "action": "demo_shop_add",
+        "data": {
+          "item": "milk",
+          "quantity": 1
+        },
+        "guessed": [
+          "quantity"
+        ],
+        "said": "add milk"
+      },
+      "note": "nothing to do with the open card",
+      "recorded": [
+        "not_this",
+        {
+          "reason": "User asking about weather, not about shopping list"
+        }
+      ]
+    },
+    {
+      "task": "shopping",
+      "message": "the sky is blue",
+      "action": "none",
+      "recorded": [
+        "none",
+        {
+          "reason": "message not about shopping list"
+        }
+      ]
+    }
+  ]
+}

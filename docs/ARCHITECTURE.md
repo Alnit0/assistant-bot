@@ -15,6 +15,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `core/` | Shared building blocks. Never imports from `tasks/` |
 | `tasks/` | One folder per feature, loaded by `tasks/registry.py` |
 | `tests/` | Unit tests (pytest); never start the bot or touch real data |
+| `evals/` | Fixtures for the router and extraction (`fixtures/*.json`: a sentence and what it must come out as, with what the real API last returned), the code that judges them (`fixtures.py`), and the live eval that asks the real API and reports accuracy, time and cost (`python -m evals.live --live`) |
 | `docs/specs/` | Private task specs (gitignored, never committed or quoted in public docs); zipped by the nightly backup |
 | `docs/` | `ARCHITECTURE` (this), `DEVELOPMENT` (how to use and extend), `DECISIONS` (why), `TESTING` (test tracker), `QA-RUN` (manual run sheet), `BACKLOG` (found and not yet finished), `CHANGELOG` (what changed, by date), `CHEATSHEET` (commands) |
 | `.claude/skills/` | Procedures for Claude Code: `add-task`, `qa`, `end-of-task`, `bug` (fix a reported bug from its id) |
@@ -49,6 +50,11 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `protection.py` | Pure: is a message protected (pinned or 📌), is it kept, and the wording when Discord refuses a pin |
 | `channels.py` | Which channels hold messages: `holds_messages(channel)` (text, news, threads, DMs; not forum, voice or category) and `named()`, the channels from `.env` that do. Asked before reading pins or history from a channel no message came from |
 | `pins.py` | `set_pinned(...)`: native pin and unpin for tasks that may not call Discord |
+| `actions.py` | The contract for plain words: an `Entry` (a task as the router knows it: name, icon, "only for", examples), its `Action`s (the fields Claude fills in; `prepare` + `apply` for one that needs a card, `run` for one that acts at once) and the `Proposal` a card shows. Builds each action's strict schema, checks what Claude returned against it (`validate`), and names what is missing from a task's contract (`problems`). Holds the catalogue the registry sets. Pure |
+| `routing.py` | The router: one request that says which task a message is for, from the message, what is on screen and the catalogue (never an action or schema). `parse` reads its answer in code: task(s), a tie, or chat |
+| `extraction.py` | Extraction: one request for one task, given only that task's actions, which must call exactly one (or `none`; in a follow-up, `not_this`) with a `guessed` list. `read` turns the call into the action, its data and its guesses, or "nothing fitted" with the reason |
+| `confirm.py` | Confirm cards: guess, show, confirm. Renders a `Proposal` (task and kind of change, every line, ❓ and ⚠️, Save / Cancel), keeps it as a row (`confirm_cards`) so it survives a restart, replaces one card with its correction, expires it after 30 minutes, and runs the task's `apply` on Save. Also the question asked on a tie, and the rule for when a message sticks to the open card (`sticks`) |
+| `conversation.py` | A message in plain words, cheapest first: about the open card (extraction only), anything else (router, then extraction per task), or chat (a plain reply, no tools). Hands what was extracted to the task's own code, which writes every word shown; logs the route, tasks, what was extracted, the outcome and each request's cost |
 | `cards.py` | Buttons, dropdowns and forms for tasks that may not use discord.py: a task writes a `Card` of plain records (`Button`, `Select`, `Form`) and registers what each action does; the component's id (`card.b:<task>:<action>:<arg>`) carries everything, so cards work after a restart. `handle` answers every press first, checks `is_allowed`, logs it in `message_log` (kind `card`), shows a `UserError` to the presser alone and reports anything else. `post` / `send` / `edit` / `delete` put cards in channels |
 | `confirmations.py` | Buttons under a short message: `ask` (Confirm / Cancel), `choose` (which of a few), `offer_undo` (done, with Undo). In memory, with timeouts |
 | `tools.py` | Pure: Claude's tools from registrations: names, strict-safe input schemas, input checking, which are sent as strict, which message a message action is aimed at, previews and the listing text, and matching a query against logged messages (`find_logged`) |
@@ -95,6 +101,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `dev/panel.py` | The pinned dev panel (with the clock, and "DEV DATABASE" when started with `--dev`), its persistent buttons, the bot's status ("🛠️ Dev mode", "🧪 DEV DATABASE") |
 | `dev/clockwords.py` | Pure: what `dev clock <time> \| +<duration> \| reset` moves the clock to (a time is the next moment the clock reads it), and the clock in words |
 | `dev/tools.py` | `dev inspect`, `dev status`, `dev jobs`, `dev run`, `dev fire next`, `dev seed`, `dev clean`, `dev cost`, `dev reset-db` (asks, then wipes the dev database and rebuilds it empty) |
+| `lab/demo.py` | Two demo tasks, a shopping list and a packing list, offered to the router on the dev database only: for trying confirm cards, corrections, ties and chat before a real task uses them |
 | `lab/__init__.py`, `common.py` | The `lab …` test bench; `common.py` has the `Run` adapters that let one `run_*` function serve a typed word and `/lab` |
 | `lab/buttons.py`, `react.py`, `status.py`, `charts.py`, `data.py`, `misc.py`, `channels.py`, `tour.py`, `state.py`, `ratelimits.py` | One Discord feature each: components, reaction timeline, pinned status, charts and their data, notifications / polls / formatting, cross-channel test, the guided tour, the lab's key/value table, rate-limit watching |
 
@@ -114,7 +121,7 @@ database with the clock under test control), `devmode`, `dev_parsing`, `lab`, `l
 `permissions`, `scheduler`, `text`, `tools`, `pending`, `llm_tools` (the
 Claude loop against a scripted stand-in), `toolcalls`, `bugs`, `instance_lock`, `backup` (the specs zip), `clock`,
 `day` (the boundary and the rollover job), `timeinput`, `occurrences`,
-`dev_clock` (`dev clock`, `dev reset-db` and their guards), `costs` (routes, prices, the roll-up and `dev cost`), `cards`,
+`dev_clock` (`dev clock`, `dev reset-db` and their guards), `actions` (the contract and the checking), `routing` (the router, extraction and the replayed fixtures), `conversation` (a message end to end, confirm cards), `costs` (routes, prices, the roll-up and `dev cost`), `cards`,
 `pills_rules`, `pills_plans` (records, previews, buttons, and a tool call
 all the way through the registry), `channels`
 (channel types, the dev panel's start-up sweep, a task failing to start).
@@ -149,7 +156,34 @@ and hands the clock its stored offset → logging → `instance_lock.acquire()`
    gets this far, so it never costs an API call.
 5. Every outcome is emitted to tasks as `action_finished`.
 
-**Chat → Claude → tools**
+**Plain words → router → extraction → the task's code** (the new way; no
+real task uses it yet, see "Not built yet")
+
+1. `main.on_message`, for a message that is no shortcut, in #inbox or the
+   hub: `conversation.handle`. With nothing in the catalogue it does
+   nothing and the old way below carries on.
+2. **Follow-up?** If there is an open confirm card and the message is a
+   reply to it, or the card is the bot's latest message there and under
+   five minutes old (`confirm.sticks`), the message goes straight to that
+   task's extraction with the card's data: one request. `not_this` sends
+   it on to the router instead.
+3. **Router** (`routing.route`): one request with the catalogue. It
+   answers with the task(s), a tie, or chat.
+4. **Chat:** a plain reply from Claude with no tools. While tasks remain
+   on the old way, a chat verdict in #inbox is handed to the old way
+   instead, with the same log row.
+5. **A tie:** `confirm.ask_which` posts a button per task; the pick runs
+   extraction for that task on what was said (`conversation.on_pick`).
+6. **Extraction** (`extraction.extract`), one request per task chosen.
+   What comes back is checked against the action's schema in code.
+7. **The task's code** (`conversation.act`): an action that needs a card
+   has `prepare` build a `Proposal` and `confirm.show` post it; Save runs
+   `apply` on exactly that data. Any other action has `run` do it and
+   return the reply. Nothing Claude wrote is shown.
+8. The log row gets the route (`follow-up`, `router`, `chat`), the tasks,
+   what was extracted, the outcome, and one `llm_calls` row per request.
+
+**Chat → Claude → tools** (the old way, until every task has moved)
 
 1. `toolcalls.answer_pending`: a short "ok" or "no" to something Claude
    proposed is settled here, without calling Claude.
@@ -303,7 +337,7 @@ seconds.
 
 | Tables | Owner |
 |---|---|
-| `users`, `message_log` (every input, with its route, tasks, requests, tokens, cost and time), `llm_calls` (one row per request to Claude), `scheduled_jobs`, `reaction_state`, `skill_migrations`, `occurrences`, `occurrence_events` | core (`core/migrations.py`, version in `PRAGMA user_version`) |
+| `users`, `message_log` (every input, with its route, tasks, what was extracted, requests, tokens, cost and time), `llm_calls` (one row per request to Claude), `confirm_cards` (open confirm cards and tie questions), `scheduled_jobs`, `reaction_state`, `skill_migrations`, `occurrences`, `occurrence_events` | core (`core/migrations.py`, version in `PRAGMA user_version`) |
 | `archive_items` | archive |
 | `bugs_items`, `bugs_notes`, `bugs_events` (each closing and re-opening) | bugs |
 | `pills_pills`, `pills_drafts` (previews waiting for Save), `pills_changes` (every plan and status change); doses will be rows of `occurrences` with task `pills` | pills |
@@ -316,6 +350,11 @@ kept, and the newest 7 `specs-*.zip` of `docs/specs/` taken with them);
 go to `data/dev-backups/`, so they never push a real backup out.
 
 ## Not built yet
+
+No real task is on the router's way yet: timers, bugs, pills setup and
+archive / keep / delete move to it next, and the old way (every tool with
+every message, `tasks/toolcalls.py`, the reply guards) goes once they have.
+Until then both exist, and this branch is not to be merged.
 
 The gateway layer (the Claude chat path in `main.py` and `builtin`'s view
 still use discord.py directly), bulk and cross-channel actions for Claude,
