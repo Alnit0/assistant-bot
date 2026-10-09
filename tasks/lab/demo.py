@@ -108,7 +108,8 @@ def _changes(request: Request, data: dict, saved: list[dict], amount: str | None
     the names it was asked to remove that are nowhere."""
     pending = request.previous["items"] if request.previous else []
     return merge_items(
-        pending, data["items"], amount=amount, same=same_item, exists=lambda name: _find(saved, name) is not None
+        pending, data["items"], amount=amount, same=same_item, exists=lambda name: _find(saved, name) is not None,
+        said=request.text,
     )
 
 

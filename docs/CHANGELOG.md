@@ -4,6 +4,12 @@ What changed, newest first. One entry per task, as one to three bullets on
 what changed for the user. Entries before 2026-10-07's last one were
 backfilled from the git log.
 
+## 2026-10-10
+
+- **"And jam" no longer adds the butter again.** After "add butter", a
+  follow-up such as "and jam", "also jam" or "plus jam" adds only what it
+  names; what is already on the card stays as it was.
+
 ## 2026-10-09
 
 - **Set, add and remove.** "Make the eggs 7" sets the amount and "add 3

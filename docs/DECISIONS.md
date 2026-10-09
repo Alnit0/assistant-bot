@@ -620,9 +620,19 @@ A short log of key decisions and why. Newest at the bottom.
   now carries add, set or remove and the number as said, a follow-up
   holds only the items it is about, and `actions.merge_items` applies
   them to the card. Cards show before → after so a wrong sum would be
-  seen before Save. (This replaces "the whole list comes back" above. If
-  a whole card does come back, it is read as a restatement, never as one
-  more of each.)
+  seen before Save. (This replaces "the whole list comes back" above.)
+- **A follow-up is shown the card's lines as kept, not as data to send
+  back** (2026-10-10). After "add butter", "and jam" came back as butter
+  and jam, and butter was added twice. The lines are now listed as
+  already on the card and kept by the code, the rule is repeated after
+  the message, and only the changes are asked for. The safety net behind
+  it is in code (`actions._restated`): a line of the card that comes back
+  beside other changes, without the message naming it, is left as it is
+  (or takes the amount given, never more on top), for a card of one line
+  as for many. A line the message does name is a real change. Its one
+  blind spot: "two more, and jam", where the item is only pointed at and
+  something else is added in the same breath; the card shows the result
+  before Save.
 - **A correction undoes the change before it:** a card keeps what it was
   before its last change (`previous`). "No, 2 bread rolls" is read
   against that earlier card, so the mistaken change leaves nothing

@@ -393,3 +393,37 @@ def test_a_card_sent_back_whole_is_a_restatement_not_one_more_of_each():
 
 def test_one_item_coming_back_is_never_a_restatement():
     assert actions.merge_items([item("milk", 2, "add")], [item("milk", 2)])[0] == [item("milk", 4, "add")]
+
+
+def test_a_one_line_card_coming_back_beside_something_new_is_a_restatement_too():
+    # QA 2026-10-10: a card of butter, "and jam" came back as butter and jam, and butter was added twice
+    pending = [item("butter", 1, "add")]
+    assert actions.merge_items(pending, [item("butter", 1), item("jam")], said="and jam")[0] == [item("butter", 1, "add"), item("jam", change="add")]
+    assert actions.merge_items(pending, [item("butter", 1, "add"), item("jam")])[0] == [item("butter", 1, "add"), item("jam", change="add")], "with no message to go by as well"
+    # a total worked out by Claude is the amount it should be, not more on top
+    assert actions.merge_items([item("milk", 3, "add")], [item("milk", 3), item("lemons", 2)], said="plus 2 lemons")[0] == [
+        item("milk", 3, "add"), item("lemons", 2, "add"),
+    ]
+
+
+def test_what_the_message_names_is_never_taken_as_a_restatement():
+    pending = [item("butter", 1, "add")]
+    assert actions.merge_items(pending, [item("butter", 1), item("jam")], said="and another butter and jam")[0] == [
+        item("butter", 2, "add"), item("jam", change="add"),
+    ]
+    both = [item("milk", 1, "add"), item("eggs", 5, "add")]
+    assert actions.merge_items(both, [item("milk", 3), item("eggs", 2)], said="add 3 milk and 2 more eggs")[0] == [
+        item("milk", 4, "add"), item("eggs", 7, "add"),
+    ]
+    same = lambda one, other: one.rstrip("s") == other.rstrip("s")  # noqa: E731
+    assert actions.merge_items([item("eggs", 5, "add")], [item("eggs", 1), item("jam")], same=same, said="another egg, and jam")[0][0] == item("eggs", 6, "add")
+
+
+def test_a_set_or_a_removal_that_comes_back_with_others_still_counts():
+    pending = [item("milk", 1, "add"), item("bread rolls", 1, "add")]
+    assert actions.merge_items(pending, [item("milk", 1), item("bread rolls", 2, "set")], said="make it 2")[0] == [
+        item("milk", 1, "add"), item("bread rolls", 2, "set"),
+    ]
+    assert actions.merge_items(pending, [item("milk", change="remove"), item("jam")], said="jam instead of that", exists=lambda name: False)[0] == [
+        item("bread rolls", 1, "add"), item("jam", change="add"),
+    ]

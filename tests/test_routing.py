@@ -150,8 +150,9 @@ def test_extraction_is_told_to_guess_and_flag_never_to_ask_and_to_write_nothing(
     assert "A card is open" not in text
     follow_up = extraction.system_blocks(SHOPPING, follow_up=True)[0]["text"]
     assert "A card is open" in follow_up and "`not_this`" in follow_up
-    assert "give ONLY the items this message is about" in follow_up and "do not do any sums" in follow_up
-    assert "\"add milk too\" is milk alone" in follow_up
+    assert "return ONLY the changes THIS message makes" in follow_up and "Do no sums" in follow_up
+    assert "They are KEPT by the bot's code: they are not yours to send back" in follow_up
+    assert '"and jam", "also jam", "plus jam", "jam too" and "jam as well" are jam alone' in follow_up
     assert "goes back as it stands on the card" in follow_up, "every field that is not a list of items"
     assert "mean what the user mentioned LAST" in text and "take the last one named and list it" in text, "pronouns"
     after_list = extraction.system_blocks(SHOPPING, after_list=True)[0]["text"]
@@ -163,9 +164,12 @@ def test_the_state_and_the_open_card_go_in_the_user_turn():
     card = OpenCard("demo_shop_change", {"items": [{"item": "eggs", "quantity": 3}]}, ("items[0].quantity",), "add a few eggs")
     turn = extraction.user_turn("make it 6", "On the list: bread", card)
     assert "The task's state, read just now:\nOn the list: bread" in turn
-    assert '- data: {"items": [{"item": "eggs", "quantity": 3}]}' in turn and "- still guessed: items[0].quantity" in turn
+    assert "- `items`, the lines already on the card (kept by the bot's code: do NOT send them back):\n  1. item: eggs, quantity: 3\n" in turn
+    assert "- data:" not in turn and "- still guessed: items[0].quantity" in turn
     assert "- what the user has said about it, oldest first: add a few eggs" in turn
-    assert turn.endswith("The message:\nmake it 6")
+    assert "The message:\nmake it 6\n\nAnswer with the changes this message makes and nothing else." in turn, "said last"
+    plain = extraction.user_turn("make it 9pm", card=OpenCard("thing_set", {"name": "alarm", "time": "9:00 am"}))
+    assert '- data: {"name": "alarm", "time": "9:00 am"}' in plain and plain.endswith("The message:\nmake it 9pm"), "no list: as before"
     assert extraction.user_turn("add milk") == "The message:\nadd milk"
     redirected = extraction.user_turn("actually the shopping list", earlier="add socks")
     assert "Just before this, the user asked: add socks" in redirected

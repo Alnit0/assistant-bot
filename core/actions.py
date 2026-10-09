@@ -186,6 +186,7 @@ def merge_items(
     amount: str | None = "quantity",
     same=None,
     exists=None,
+    said: str | None = None,
 ) -> tuple[list[dict], list[str]]:
     """An open card's items with a message's changes applied: (the items as
     they now stand, the names it was asked to remove that aren't anywhere).
@@ -200,23 +201,23 @@ def merge_items(
 
     Code does the sums: adding 3 to a card that adds 2 adds 5; setting
     replaces whatever was pending. The name is kept as typed last.
+
+    `said` is the message the changes came from. Claude is asked for the
+    changes only; as a safety net, a line of the card that comes back beside
+    other changes, without the message naming it, is taken as the card
+    restated and not as more of it (see `_restated`).
     """
     same = same or (lambda one, other: str(one).strip().lower() == str(other).strip().lower())
     merged = [dict(item) for item in pending]
     missing: list[str] = []
-    # Claude is asked for the changes only, and sometimes sends the whole card back
-    # with the change in it. Every item of a card of two or more coming back is
-    # that, not "one more of each": what is as it was is left alone, and what
-    # differs is taken as the amount it should now be, never added on top
-    restated = len(pending) >= 2 and all(any(same(change[key], item[key]) for change in changes) for item in pending)
     for change in changes:
-        if restated and change.get(CHANGE, ADD) != REMOVE:
-            was = next((item for item in merged if same(item[key], change[key])), None)
-            if was is not None:
-                if amount is not None and change.get(amount, was.get(amount, 1)) != was.get(amount, 1):
-                    was[amount] = change[amount]
-                was.update({field: value for field, value in change.items() if field not in (amount, CHANGE)})
-                continue
+        was = next((item for item in merged if same(item[key], change[key])), None)
+        if _restated(change, was, changes, key, amount, same, said):
+            # As it was: left alone. With another amount: that is what it should be, never added on top
+            if amount is not None and amount in change:
+                was[amount] = change[amount]
+            was.update({field: value for field, value in change.items() if field not in (amount, CHANGE, key)})
+            continue
         name, what = change[key], change.get(CHANGE, ADD)
         at = next((index for index, item in enumerate(merged) if same(item[key], name)), None)
         was = merged[at] if at is not None else None
@@ -243,6 +244,35 @@ def merge_items(
         else:
             merged.append(now)
     return merged, missing
+
+
+def _restated(change: dict, was: dict | None, changes: list[dict], key: str, amount: str | None, same, said: str | None) -> bool:
+    """Whether a change is only a line of the open card sent back, not something
+    the message asked for. The safety net for when Claude repeats the card
+    ("and jam" coming back as butter and jam): without it the butter would be
+    added a second time.
+
+    It is, when the item is on the card, something else came back with it (a
+    message about this item alone is a real change, pronoun or not: "two
+    more"), the message doesn't name it, and it is an add, or a set to what
+    the card already has. Works for a card of one line as for many."""
+    if was is None or len(changes) < 2:
+        return False
+    kind = change.get(CHANGE, ADD)
+    if kind == REMOVE or was.get(CHANGE) == REMOVE:
+        return False
+    if said is not None and _named(change[key], said, same):
+        return False
+    unchanged = amount is None or change.get(amount, was.get(amount, 1)) == was.get(amount, 1)
+    return kind == ADD or unchanged
+
+
+def _named(name: str, said: str, same) -> bool:
+    """Whether a message names an item: every word of the name is in it,
+    by the task's own rule for the same name ("egg" names "eggs")."""
+    heard = re.findall(r"[^\W_]+(?:['’-][^\W_]+)*", said.lower())
+    words = re.findall(r"[^\W_]+(?:['’-][^\W_]+)*", str(name).lower())
+    return bool(words) and all(any(same(word, other) for other in heard) for word in words)
 
 
 def path(name: str, index: int | None = None, sub: str = "") -> str:

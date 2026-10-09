@@ -85,11 +85,15 @@ def rules(entry: Entry) -> str:
 FOLLOW_UP_RULES = (
     "\n- A card is open, waiting for the user to accept it or say what to change. If the message is a "
     "correction or an addition to that card, call the card's action again.\n"
-    "- For a field that is a list of items, give ONLY the items this message is about: the one it "
-    "changes, the one it removes, the ones it adds. Do not repeat the other items on the card and do "
-    "not do any sums: the bot's code keeps the rest of the card and works out the totals. \"Make the eggs "
-    "6\" is eggs alone, set to 6; \"remove the jam\" is jam alone, removed; \"add 3 milk\" is milk "
-    "alone, 3 more; \"add milk too\" is milk alone: \"too\" and \"as well\" do not mean repeat the card.\n"
+    "- The lines already on the card are shown to you so that you know what \"it\" or \"the eggs\" "
+    "means. They are KEPT by the bot's code: they are not yours to send back. For a field that is a list "
+    "of items, return ONLY the changes THIS message makes: the item it changes, the one it removes, the "
+    "ones it adds. An item this message does not name or point at must not be in your answer at all: "
+    "sending a line back unchanged would add it a second time. Do no sums: the code works out the "
+    "totals. \"Make the eggs 6\" is eggs alone, set to 6; \"remove the jam\" is jam alone, removed; "
+    "\"add 3 milk\" is milk alone, 3 more. \"and jam\", \"also jam\", \"plus jam\", \"jam too\" and "
+    "\"jam as well\" are jam alone, whatever is on the card: \"and\", \"also\", \"plus\" and \"too\" "
+    "never mean repeat the card.\n"
     "- Every other field of the card goes back as it stands on the card, changed only where the message "
     f"changes it. A field the user has now stated is no longer a guess: leave it out of `{actions.GUESSED}`.\n"
     "- If the message asks for a different action of this task, call that action.\n"
@@ -158,18 +162,25 @@ def user_turn(
     if state:
         parts.append(f"The task's state, read just now:\n{state}")
     if card is not None:
-        lines = [
-            "The open card:",
-            f"- action: {card.action}",
-            f"- data: {json.dumps(card.data, ensure_ascii=False, sort_keys=True)}",
-            f"- still guessed: {', '.join(card.guessed) or 'nothing'}",
-        ]
+        lines = ["The open card:", f"- action: {card.action}"]
+        # A list of items is shown as the card's lines, to be read and not sent
+        # back: only this message's changes are wanted, and code applies them
+        rest = {}
+        for name, value in sorted(card.data.items()):
+            if isinstance(value, list) and value and all(isinstance(item, dict) for item in value):
+                lines.append(f"- `{name}`, the lines already on the card (kept by the bot's code: do NOT send them back):")
+                lines += [f"  {place}. " + ", ".join(f"{key}: {item[key]}" for key in item) for place, item in enumerate(value, 1)]
+            else:
+                rest[name] = value
+        if rest:
+            lines.append(f"- data: {json.dumps(rest, ensure_ascii=False, sort_keys=True)}")
+        lines.append(f"- still guessed: {', '.join(card.guessed) or 'nothing'}")
         said = [line for line in card.said.split("\n") if line.strip()]
         if said:
             lines.append("- what the user has said about it, oldest first: " + " | ".join(said))
         if card.undone:
             lines.append(
-                f"- the user's last change (\"{card.undone}\") was a mistake and has been UNDONE: the data above "
+                f"- the user's last change (\"{card.undone}\") was a mistake and has been UNDONE: what is above "
                 "is the card as it was before it. The message below says what they meant instead: apply that, "
                 "and nothing of the undone change."
             )
@@ -189,6 +200,12 @@ def user_turn(
             "ignore the earlier one."
         )
     parts.append(f"The message:\n{message}")
+    if card is not None and any("do NOT send them back" in line for line in parts[1 if state else 0].split("\n")):
+        # Last, where it is read last: the commonest slip is the card coming back with the change
+        parts.append(
+            "Answer with the changes this message makes and nothing else. A line of the card that the message "
+            "does not name or point at stays out of your answer."
+        )
     return "\n\n".join(parts)
 
 

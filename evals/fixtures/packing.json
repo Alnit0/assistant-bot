@@ -262,12 +262,11 @@
               "item": "rubbish bags"
             },
             {
-              "item": "eggs"
+              "item": "eggs",
+              "quantity": 5
             }
           ],
-          "guessed": [
-            "items[4].quantity"
-          ],
+          "guessed": [],
           "not_included": []
         }
       ],
@@ -308,7 +307,7 @@
       "recorded": [
         "not_this",
         {
-          "reason": "User is asking to set a timer, not about the packing list"
+          "reason": "Request is for a timer, not packing list task"
         }
       ]
     }

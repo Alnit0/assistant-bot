@@ -1,7 +1,7 @@
 # QA run sheet
 
-One pass through 208 of the 230 👤 Manual tests in `docs/TESTING.md` that are
-⬜ Untested (as of 2026-10-09); the other 22 are pills tests (group R) for
+One pass through 199 of the 221 👤 Manual tests in `docs/TESTING.md` that are
+⬜ Untested (as of 2026-10-10); the other 22 are pills tests (group R) for
 stages not built yet, and join as each is. Blocks share setup and each one leaves things
 ready for the next, so run them in order.
 
@@ -26,7 +26,7 @@ tests (block 12).
 | 14 | Bugs and kept confirmations | off (two restarts) | 16 | 21 |
 | 15 | Dev database and clock | `--dev`, on and off (three restarts) | 10 | 13 |
 | 16 | Pills: setting up | `--dev`, off (one restart) | 15 | 16 |
-| 17 | Routing and confirm cards: retest | `--dev`, off, fresh `dev.db` | 10 | 15 |
+| 17 | Routing and confirm cards: retest | `--dev`, off | 1 | 3 |
 | | **Total** | | **213** (F2 is split over blocks 4 and 7, counted in 7) | **about 4¼ hours** |
 
 Blocks 13 to 17 need nothing from the others: run them any time after
@@ -428,25 +428,13 @@ run it.
 
 ## 17. Routing and confirm cards: retest
 
-Start from a fresh dev database: stop the bot, delete `data\dev.db`, start
-it with `python main.py --dev`. In #inbox, dev mode off. Every step ends by
-saying what to press, so that no card is left open for the next step. The
-steps follow on from each other: the amounts expected depend on what the
-earlier steps saved.
+On the dev database (`python main.py --dev`), in #inbox, dev mode off.
+Restart the bot first so it runs the new code. No fresh database is needed.
 
 | # | Do | Expect | Tests |
 |---|---|---|---|
-| 1 | Say `add 5 eggs and 2 milk`; press **Save**. Then `what do I need to buy?` (nothing to press) | One card, "eggs · × 5" and "milk · × 2"; "✅ Saved · 🛒 2 items added to the shopping list"; the list shows both | (setup) |
-| 2 | Say `make the eggs 7`; press **Save** | A card "🛒 Shopping · change" with "eggs · 5 → 7"; Save: "✅ Saved · 🛒 **eggs** × 7 is on the shopping list". Seven, not twelve: "make" sets the amount. The list from step 1 changes in place | S29 |
-| 3 | Say `add 3 milk`; press **Save** | The card shows "milk · 2 → 5"; Save: "✅ Saved · 🛒 **milk** × 5 is on the shopping list" | S30 |
-| 4 | Say `add jam`; press **Save**. Then `remove the jam`; press **Save** | A card "🛒 Shopping · change" with "jam · × 1 → removed"; nothing changes until Save, then "✅ Saved · 🛒 **jam** removed from the shopping list" and the list on screen loses jam | S31 |
-| 5 | Say `Add honey, jam, peanut butter, rubbish bags and 5 eggs`; then, pressing nothing: `make the eggs 6`; then `remove the jam`; then `add milk too`; then press **Cancel** | The first card shows "eggs · 7 → 12". Each reply deletes the card and posts a fresh one: the eggs line becomes "eggs · 7 → 6" with the rest unchanged; the jam line goes and the rest stay; "milk · 5 → 6" is added as a last line. Nothing is doubled | S23 |
-| 6 | Say `add jam to the shopping list and pack sunscreen and a hat`; press **Cancel** on both cards | Two cards, one per task: a shopping card with jam, a packing card with sunscreen and hat. Neither card has a "Not included" line: each part is on the other card | S25 |
-| 7 | Say `add butter and bread rolls`; then, pressing nothing, `make it 2`. Press nothing: step 8 uses this card | The card is replaced: "butter · × 1" and "bread rolls · × 2", perhaps with ❓ on the bread rolls line. "It" is the last thing mentioned: butter stays at 1 | S32 |
-| 8 | Say `No, 2 butter`; press **Cancel** | The card is replaced: "butter · × 2" and "bread rolls · × 1". The change the "no" corrects is undone, so bread rolls is back to 1 | S33 |
-| 9 | Say `add bread`; then `what's the capital of France?`; then `make it 2`; press **Save** | The bread card; a plain answer; then the bread card is deleted and a fresh one shows "**bread** · × 2" with no ❓, although the bot had said something else in between. Press **Save**: "✅ Saved · 🛒 **bread** × 2 is on the shopping list" | S5 |
-| 10 | Say `add 2 apples`; press **Save**. Then `add 3 apple`; press **Save** | The card shows "🛒 Shopping · change" and "apple · 2 → 5". After Save there is one item, **apple** × 5: named as typed this time, singular and plural counted as the same thing, and the sum done by the bot | S17 |
-| 11 | Say `add butter`, then straight away `add jam too`; press **Cancel** | One card: the butter card is replaced by one listing "butter · × 1" and "jam · × 1" | S18 |
+| 1 | Say `clear my shopping list` and press **Clear for good** (skip if the list is empty). Then `add 2 butter`; press **Save** | "✅ Saved · 🛒 **butter** × 2 is on the shopping list" | (setup) |
+| 2 | Say `Add butter`; then, pressing nothing, `and jam`; then `and honey`; press **Save** | "butter · 2 → 3"; after "and jam" the card is replaced by "butter · 2 → 3" and "jam · × 1"; after "and honey" a "honey · × 1" line is added and butter is still 2 → 3. Save: "✅ Saved · 🛒 shopping list updated: 2 added, 1 changed", and the list has butter × 3 | S34 |
 
 ## When you finish
 

@@ -632,7 +632,7 @@ not place arrives as "Not included" on the card without the task doing
 anything. A task that keeps a list adds `change_field()` to its item
 fields, and in `prepare` merges the message into the open card with
 `merge_items(request.previous["items"] if request.previous else [],
-data["items"], same=…, exists=…)`: `request.previous` is the open card's
+data["items"], same=…, exists=…, said=request.text)`: `request.previous` is the open card's
 data when the message corrects one. `prepare` shows before → after for
 what is already saved and `apply` does the sum against the list as it is
 at Save. An action

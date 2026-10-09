@@ -356,7 +356,7 @@ def test_a_message_straight_after_a_card_goes_to_its_task_without_the_router(wor
     assert [(request.purpose, request.task) for request in world.requests[2:]] == [("extraction", "shopping")], "one request"
     follow_up = world.requests[2]
     assert follow_up.tools[-2:] == ["none", "not_this"]
-    assert '"quantity": 1' in follow_up.user and "what the user has said about it, oldest first: add milk" in follow_up.user
+    assert "1. item: milk, quantity: 1, change: add" in follow_up.user and "what the user has said about it, oldest first: add milk" in follow_up.user
 
     assert world.deleted == [first], "the old card is deleted"
     assert world.sent[-1][1].text.splitlines()[1] == "milk · × 3", "and a fresh one posted"
@@ -829,7 +829,7 @@ def test_a_correction_after_the_bot_has_said_something_else_still_reaches_the_ca
     router, extraction_request = world.requests[2:]
     assert router.purpose == "router" and "a Shopping card (demo_shop_change) from the user saying: add bread" in router.user
     assert extraction_request.tools[-2:] == ["none", "not_this"], "extraction is told about the card"
-    assert '"item": "bread"' in extraction_request.user
+    assert "1. item: bread, quantity: 1, change: add" in extraction_request.user
     assert world.deleted == [bread_card] and world.sent[-1][1].text.splitlines()[1] == "bread · × 2"
     assert [card.status for card in open_cards()] == ["replaced", "open"]
 
@@ -1027,7 +1027,7 @@ def test_a_reply_changes_one_item_and_the_card_is_replaced(world):
     assert world.deleted == [first]
     assert world.sent[-1][1].text.splitlines()[1:6] == ["honey · × 1", "jam · × 1", "peanut butter · × 1", "rubbish bags · × 1", "eggs · × 6"]
     assert [card.status for card in open_cards()] == ["replaced", "open"]
-    assert '"item": "jam"' in world.requests[-1].user, "extraction is shown the card"
+    assert "2. item: jam, quantity: 1, change: add" in world.requests[-1].user, "extraction is shown the card's lines"
 
 
 def test_a_reply_removes_one_item_and_the_card_is_replaced(world):
@@ -1424,7 +1424,7 @@ def test_no_2_bread_rolls_undoes_the_wrong_change_and_applies_the_right_one(worl
     assert card_lines(world) == ["🛒 Shopping · new", "milk · × 1", "bread rolls · × 2"], "milk is back to 1"
     asked = world.requests[-1].user
     assert 'the user\'s last change ("make it 2") was a mistake and has been UNDONE' in asked
-    assert '"item": "milk", "quantity": 1' in asked, "extraction is shown the card as it was before the mistake"
+    assert "1. item: milk, quantity: 1, change: add" in asked, "extraction is shown the card as it was before the mistake"
     card = open_cards()[-1]
     assert card.said == "add milk and bread rolls\nNo, 2 bread rolls", "the mistake is no longer part of what was said"
     assert card.previous == SAVED(("milk", 1, "add"), ("bread rolls", 1, "add")), "still the card before the mistake"
@@ -1467,3 +1467,50 @@ def test_a_change_that_is_not_a_correction_keeps_the_one_before_it(world):
 )
 def test_what_counts_as_a_correction(said, expected):
     assert confirm.is_correction(said) is expected
+
+
+# ---------------------------------------------------------------------------
+# A follow-up returns only its changes; a card sent back with them is not added again
+# ---------------------------------------------------------------------------
+def test_and_jam_then_and_honey_leave_the_butter_as_it_was(world):
+    # QA 2026-10-10: butter × 2 on the list. "Add butter" 2 → 3; "and jam" came back as
+    # butter and jam and made it 2 → 4; "and honey" left it at 4
+    run(demo._save("shopping", 1, [{"item": "butter", "quantity": 2}]))
+    world.claude(route("shopping"), shop_add("butter"))
+    world.say("Add butter")
+    assert card_lines(world) == ["🛒 Shopping · change", "butter · 2 → 3"]
+
+    world.claude(shop_add("jam"))  # what is asked for: jam alone
+    world.say("and jam")
+    assert card_lines(world) == ["🛒 Shopping · change", "butter · 2 → 3", "jam · × 1"]
+    asked = world.requests[-1].user
+    assert "the lines already on the card (kept by the bot's code: do NOT send them back):\n  1. item: butter, quantity: 1, change: add" in asked
+    assert asked.endswith("A line of the card that the message does not name or point at stays out of your answer.")
+
+    world.claude(shop_add("honey"))
+    world.say("and honey")
+    assert card_lines(world) == ["🛒 Shopping · change", "butter · 2 → 3", "jam · × 1", "honey · × 1"]
+    assert save(world) == "✅ Saved · 🛒 shopping list updated: 2 added, 1 changed"
+    assert shopping_list() == [{"item": "butter", "quantity": 3}, {"item": "jam", "quantity": 1}, {"item": "honey", "quantity": 1}]
+
+
+@pytest.mark.parametrize("said", ["and jam", "also jam", "plus jam", "jam too"])
+def test_a_one_line_card_sent_back_with_the_new_item_is_not_added_again(world, said):
+    # The safety net: what was seen on 2026-10-10, whatever the wording
+    run(demo._save("shopping", 1, [{"item": "butter", "quantity": 2}]))
+    world.claude(route("shopping"), shop_add("butter"))
+    world.say("Add butter")
+    world.claude(shop_add_all(("butter", 1, "add"), "jam"))
+    world.say(said)
+    assert card_lines(world) == ["🛒 Shopping · change", "butter · 2 → 3", "jam · × 1"], "butter stays 2 → 3"
+    world.claude(shop_add_all("butter", "jam", "honey"))
+    world.say("and honey")
+    assert card_lines(world) == ["🛒 Shopping · change", "butter · 2 → 3", "jam · × 1", "honey · × 1"]
+
+
+def test_an_item_on_the_card_that_the_message_names_again_is_a_real_change(world):
+    world.claude(route("shopping"), shop_add("butter"))
+    world.say("Add butter")
+    world.claude(shop_add_all("butter", "jam"))
+    world.say("and another butter and jam")
+    assert card_lines(world) == ["🛒 Shopping · new", "butter · × 2", "jam · × 1"]
