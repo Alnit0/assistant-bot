@@ -572,6 +572,21 @@ the item.
 
 ## Routing and confirm cards (being built)
 
+**What is on it now.** Timers and the Pomodoro ("set a timer for 5
+minutes", "pause the tea timer", "cancel all my timers", "start a
+pomodoro"), bugs ("that's a bug", "show my open bugs"), pills setup ("add
+iron at 8", "move iron to 9pm", "pause iron until the 20th", "remove
+iron", "show all my pills") and tidying messages ("pin that", "archive
+that", "delete my last message"). Each task's actions are in its
+`plain.py` (bugs: `__init__.py`). What acts at once and what asks first:
+
+| | At once | Asks first (a card) |
+|---|---|---|
+| Timers | start, pause, resume, add time, cancel one, the Pomodoro | cancelling several timers |
+| Bugs | report, list | |
+| Pills | the list | add, edit, pause, resume, remove, delete |
+| Messages | pin, unpin, archive | delete; archiving a pinned or 📌 message |
+
 The way every task will take plain words. Nothing real uses it yet; two
 demo tasks do, on the dev database only (`python main.py --dev`, #inbox or
 the hub): a shopping list and a packing list.
@@ -760,6 +775,7 @@ no slash commands. `help dev` lists the words.
 | `dev clock +<duration>` | Dev database only. Moves it ahead by that much (`+2h`, `+15m`; up to 24h a go) |
 | `dev clock reset` | Back to the real time |
 | `dev cost` | What the messages in this database cost: today, this month, the average per message and the most expensive task |
+| `dev why [n]` | The trace of my last message, or my last n (up to 10), a copyable block each: said, route and why, the router's answer, each extraction, each check the code ran, the card before and after, what was shown, the cost per request. Leave a note from any code with `trace.note("…")` |
 | `dev reset-db` | Dev database only. Asks, then wipes `data/dev.db` and starts it empty, with the clock back at the real time |
 
 | Setting | Normal | Dev default |

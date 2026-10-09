@@ -4,6 +4,7 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
+from core import database, trace
 from core.config import BASE_DIR, LOG_DIR
 from core.clock import real_now
 from core.scheduler import to_db
@@ -77,6 +78,9 @@ async def build(
     turn = rules.pick_turn(await store.recent_log(channel_id), target.message_id, target_at, exclude_message_id)
     start, end = rules.log_window(turn, target_at)
     lines = await asyncio.to_thread(read_log_tail)
+    # The turn's trace, as `dev why` shows it. A 🐞 on one of the bot's messages
+    # gets the trace of the message of mine that it answered
+    logged = await database.run(trace.db_get, turn["id"]) if turn and turn.get("id") else None
     return rules.Report(
         source=source,
         channel_id=channel_id,
@@ -87,4 +91,5 @@ async def build(
         errors=rules.related_errors(lines, _log_clock(start), _log_clock(end)),
         commit=await git_commit(),
         reported_at=to_db(real_now()),
+        trace=trace.lines(logged) if logged else [],
     )

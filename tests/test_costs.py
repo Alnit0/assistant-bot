@@ -358,3 +358,14 @@ def test_dev_cost_is_a_typed_word():
 
     registry.load()
     assert registry._keyword_router.match("dev cost").entry[1].name == "dev cost"
+
+
+def test_the_report_says_how_much_list_context_went_to_extraction():
+    month = costs.add_up([Row(NOW, ROUTER, ("shopping",), 2, 3000, 100, 0, 0, 0.004, 2.0)])
+    text = costs.report(month, month, [], "dev.db", (3, 45, 190), 20)
+    assert text.splitlines()[-1] == (
+        "-# List context sent to extraction this month: 45 of 190 lines over 3 messages, 145 held back by the cap "
+        "(at most 20 a task a message)"
+    )
+    assert "nothing held back" in costs.report(month, month, [], "dev.db", (1, 4, 4), 20)
+    assert "List context" not in costs.report(month, month, [], "dev.db")

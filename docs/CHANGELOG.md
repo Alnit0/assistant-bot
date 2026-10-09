@@ -6,6 +6,22 @@ backfilled from the git log.
 
 ## 2026-10-10
 
+- **Timers, bugs, pills and tidying messages work in plain words the new
+  way.** One small request works out which task a message is for, one
+  fills in the details, and the bot's own code does it and writes every
+  word: "set a timer for 5 minutes", "that's a bug", "add iron at 8",
+  "pin that". A single timer action happens at once; cancelling several
+  timers, any change to a pill, and deleting a message ask first with a
+  card.
+- **Pills never ask before the card.** "Add iron at 8" shows `8:00 am` ❓;
+  say "8pm" and the card is replaced.
+- **`dev why` says why.** `dev why` (or `dev why 3`) posts a copyable
+  block for each of your last messages: the route and why, what the
+  router and extraction returned, each check the bot ran, the card before
+  and after, and the cost. A 🐞 report now carries the same trace.
+- **A long list no longer makes every message dearer.** At most 20 lines
+  of a list go to Claude with a message, the ones it could mean first;
+  `dev cost` shows how much was sent and held back.
 - **"And jam" no longer adds the butter again.** After "add butter", a
   follow-up such as "and jam", "also jam" or "plus jam" adds only what it
   names; what is already on the card stays as it was.

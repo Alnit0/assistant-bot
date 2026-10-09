@@ -1,7 +1,7 @@
 import discord
 
 from core.config import REACTION_DEBOUNCE_SECONDS
-from tasks.archive import messages, store
+from tasks.archive import messages, plain, store
 from tasks.base import Reaction, ReplyAction, Task
 
 WAIT = f"{REACTION_DEBOUNCE_SECONDS:g} seconds"
@@ -57,6 +57,11 @@ class ArchiveTask(Task):
                 validate=messages.check_deletable,
             ),
         ]
+
+    def entries(self) -> list:
+        # In plain words (tasks/archive/plain.py): archive, pin, unpin and delete are
+        # one entry, "messages", so the router has one place for tidying a message
+        return [plain.ENTRY]
 
     def app_commands(self) -> list:
         return [messages.archive_menu]

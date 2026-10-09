@@ -152,6 +152,8 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   and made-up settings, never the real ones
 - At the end of every piece of work, follow the `end-of-task` skill: tests, docs,
   then the suggested commit command. Do not commit unless asked
+- A suggested commit message never contains a double quote: it breaks the
+  command in PowerShell. Use plain words, or a single quote doubled (`''`)
 
 ## Interaction rules (apply to every task)
 

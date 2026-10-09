@@ -307,7 +307,7 @@
       "recorded": [
         "not_this",
         {
-          "reason": "Request is for a timer, not packing list task"
+          "reason": "Request is for a timer, not a packing task"
         }
       ]
     }

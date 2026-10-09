@@ -934,3 +934,127 @@ def test_a_card_that_cannot_be_updated_does_not_lose_the_note(filing, owner, mon
     ctx = FakeCtx(owner, channel_id=7001, parent=BUGS, text="still saved")
     assert asyncio.run(bugs.save_note(ctx)) == "note saved for B1"
     assert ctx.ticked == 1 and [note.content for note in asyncio.run(store.notes(1))] == ["still saved"]
+
+
+def test_the_trace_of_the_turn_is_a_section_of_the_report_when_there_is_one():
+    filed = report()
+    assert [heading for heading, _ in rules.sections(filed)] == ["Message", "Before it", "That turn", "Related errors"]
+    filed.trace = ["#41 · 2026-10-10 21:15:07 · chat · ok", "route: follow-up", "python: merge: jam add ```"]
+    found = dict(rules.sections(filed, brief=True))
+    assert list(found) == ["Message", "Before it", "That turn", "Trace", "Related errors"]
+    assert found["Trace"] == "```\n#41 · 2026-10-10 21:15:07 · chat · ok\nroute: follow-up\npython: merge: jam add '''\n```"
+    assert rules.Report.from_json(filed.to_json()).trace == filed.trace
+    assert rules.Report.from_json(json.dumps({**json.loads(report().to_json()), "trace": []})).trace == []
+    filed.trace = ["x" * 3000]
+    brief = dict(rules.sections(filed, brief=True))["Trace"]
+    assert len(brief) < 1900 and "the rest is in `bugs export`" in brief
+    assert len(dict(rules.sections(filed))["Trace"]) > 3000, "the export has all of it"
+
+
+def test_a_bug_on_one_of_the_bots_messages_gets_the_trace_of_the_message_it_answered(filing, owner):
+    async def scenario():
+        row_id = await database.log_received("and jam", "chat", 4000, INBOX, user_id=owner.id)
+        await database.log_result(
+            row_id, reply="card: shopping", status="ok", duration_s=1.0,
+            trace=json.dumps({"checks": ["merge: jam add (new to the card)"]}),
+        )
+        # 4050 is the bot's card, posted just after: it has no row of its own
+        card = snap(message_id=4050, content="🛒 Shopping · change", at=datetime.now(timezone.utc) + timedelta(seconds=2))
+        await bugs._file(owner, INBOX, card, [], rules.REACTION)
+
+    asyncio.run(scenario())
+    filed = filing.posts[-1][1]
+    assert filed.turn["input"] == "and jam"
+    assert filed.trace[1] == "said: and jam" and "python: merge: jam add (new to the card)" in filed.trace
+
+
+def test_a_report_with_no_logged_turn_has_no_trace(filing, owner):
+    asyncio.run(bugs._file(owner, INBOX, snap(message_id=4051), [], rules.REACTION))
+    assert filing.posts[-1][1].trace == []
+
+
+# --- in plain words: "that's a bug", "show my open bugs" ------------------------------------
+@pytest.fixture
+def said(filing, owner, monkeypatch):
+    """`bug_report` and `bug_list` with Discord stood in for: the channel's last message, a reply's target."""
+    from core.actions import Request
+
+    world = SimpleNamespace(latest=discord_message(5001, "⏱️ Timer set for 50m"), asked=[], refreshed=[])
+
+    async def latest_before(channel_id, message_id):
+        world.asked.append(("latest", channel_id, message_id))
+        return world.latest
+
+    async def fetch_message(channel_id, message_id):
+        world.asked.append(("reply", channel_id, message_id))
+        return discord_message(message_id, "the one replied to")
+
+    async def preceding(target):
+        return [snap(message_id=4999, content="set a timer for 5 minutes", author="Me")]
+
+    async def refresh_card(item):
+        world.refreshed.append(item.id)
+
+    monkeypatch.setattr(posts, "latest_before", latest_before)
+    monkeypatch.setattr(posts, "fetch_message", fetch_message)
+    monkeypatch.setattr(posts, "preceding", preceding)
+    monkeypatch.setattr(posts, "refresh_card", refresh_card)
+    world.request = lambda text="that's a bug", **more: Request(owner, INBOX, text, message_id=4100, **more)
+    world.report = lambda note=None, **more: asyncio.run(bugs.report_said(world.request(**more), {"note": note} if note else {}, frozenset()))
+    world.filing = filing
+    return world
+
+
+def test_the_bugs_task_meets_the_contract_and_neither_action_needs_a_card():
+    from core import actions
+    from tasks import registry
+
+    registry.load()
+    entry = actions.entry("bugs")
+    assert entry is not None and entry.icon == rules.BUG_EMOJI and "Only when the user says bug or report" in entry.only_for
+    assert [(action.name, action.needs_card) for action in entry.actions] == [("bug_report", False), ("bug_list", False)]
+    assert actions.problems([entry]) == [] and registry.problems() == []
+
+
+def test_thats_a_bug_reports_the_last_thing_before_my_message(said):
+    assert said.report() == f"🐞 Logged as [B1]({URL}1)"
+    assert said.asked == [("latest", INBOX, 4100)], "the message before mine, not my own words"
+    number, filed = said.filing.posts[0]
+    assert (number, filed.source, filed.target.message_id) == (1, rules.WORD, 5001)
+    assert [item.content for item in filed.preceding] == ["set a timer for 5 minutes"]
+    assert asyncio.run(store.notes(1)) == [] and said.refreshed == []
+
+
+def test_what_i_said_was_wrong_is_kept_as_the_bugs_first_note(said, owner):
+    assert said.report("it started two timers") == f"🐞 Logged as [B1]({URL}1) · 📝 your note is saved with it"
+    (note,) = asyncio.run(store.notes(1))
+    assert (note.author, note.content) == (rules.OWNER, "it started two timers")
+    assert said.refreshed == [1], "the count on the post's card"
+
+
+def test_reporting_the_same_message_again_points_to_its_bug_and_adds_the_note(said):
+    said.report()
+    assert said.report() == f"🐞 Already logged as [B1]({URL}1)"
+    assert said.report("and it happened twice") == f"🐞 Already logged as [B1]({URL}1) · 📝 note added"
+    assert len(said.filing.posts) == 1 and [note.content for note in asyncio.run(store.notes(1))] == ["and it happened twice"]
+
+
+def test_said_as_a_reply_it_reports_the_message_replied_to(said):
+    said.report(replied_to=4321)
+    assert said.asked == [("reply", INBOX, 4321)]
+    assert said.filing.posts[0][1].source == rules.REPLY and said.filing.posts[0][1].target.message_id == 4321
+
+
+def test_a_message_inside_a_bugs_post_is_refused_in_plain_words_too(said, monkeypatch):
+    monkeypatch.setitem(rules.CHANNELS, "bugs", BUGS)
+    said.latest = discord_message(5002, "a note", channel=SimpleNamespace(id=7001, parent_id=BUGS))
+    with pytest.raises(UserError, match="already in a bug's post"):
+        said.report()
+    assert said.filing.posts == []
+
+
+def test_show_my_open_bugs_is_the_same_list_as_the_word(said):
+    assert asyncio.run(bugs.list_said(said.request("show my open bugs"), {}, frozenset())) == "🐞 No open bugs."
+    said.report()
+    listed = asyncio.run(bugs.list_said(said.request("show my open bugs"), {}, frozenset()))
+    assert listed.splitlines()[0] == "**Open bugs (1)**" and f"[B1]({URL}1)" in listed

@@ -1,0 +1,633 @@
+{
+  "router": [
+    {
+      "message": "add vitamin D once a day with food",
+      "tasks": [
+        "pills"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "move the evening pill to 9pm",
+      "tasks": [
+        "pills"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "pause iron until the 20th",
+      "tasks": [
+        "pills"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "show all my pills",
+      "tasks": [
+        "pills"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "add vitamin D tablets to the shopping list",
+      "tasks": [
+        "shopping"
+      ],
+      "note": "a trap: it names a pill, but it is about buying it",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "shopping"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "set a timer for 10 minutes to take my pill",
+      "tasks": [
+        "timers"
+      ],
+      "note": "a trap: it mentions a pill, but asks for a countdown",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "timers"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "what does vitamin D do?",
+      "chat": true,
+      "note": "a trap: a general question about a pill",
+      "recorded": {
+        "kind": "chat",
+        "tasks": [],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    }
+  ],
+  "extraction": [
+    {
+      "task": "pills",
+      "message": "add vitamin D once a day with food",
+      "state": "The user's pills now (use the id, or the name): none yet",
+      "action": "pill_add",
+      "data": {
+        "pills": [
+          {
+            "name": "Vitamin D",
+            "notes": "with food"
+          }
+        ]
+      },
+      "recorded": [
+        "pill_add",
+        {
+          "pills": [
+            {
+              "name": "vitamin D",
+              "per_day": 1,
+              "notes": "with food"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "make a new pill reminder called A, 3 times a day at 9am, 12pm and 3pm",
+      "state": "The user's pills now (use the id, or the name): none yet",
+      "action": "pill_add",
+      "data": {
+        "pills": [
+          {
+            "name": "A",
+            "times": "9am, 12pm, 3pm"
+          }
+        ]
+      },
+      "recorded": [
+        "pill_add",
+        {
+          "pills": [
+            {
+              "name": "A",
+              "times": "9am, 12pm, 3pm"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "add course A, 3 times a day, at least 3 hours apart, with food, for 7 days starting tomorrow",
+      "state": "The user's pills now (use the id, or the name): none yet",
+      "action": "pill_add",
+      "data": {
+        "pills": [
+          {
+            "name": "Course A",
+            "per_day": 3,
+            "min_gap": "3h",
+            "notes": "with food",
+            "start": "tomorrow",
+            "days": 7
+          }
+        ]
+      },
+      "recorded": [
+        "pill_add",
+        {
+          "pills": [
+            {
+              "name": "Course A",
+              "per_day": 3,
+              "min_gap": "3h",
+              "notes": "with food",
+              "start": "tomorrow",
+              "days": 7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "add iron at 8",
+      "state": "The user's pills now (use the id, or the name): none yet",
+      "action": "pill_add",
+      "data": {
+        "pills": [
+          {
+            "name": "Iron",
+            "times": "8"
+          }
+        ]
+      },
+      "note": "the time goes as said: the code reads it as the morning and flags it",
+      "recorded": [
+        "pill_add",
+        {
+          "pills": [
+            {
+              "name": "iron",
+              "times": "8"
+            }
+          ],
+          "guessed": [
+            "times[0]"
+          ],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "add magnesium and zinc, both twice a day",
+      "state": "The user's pills now (use the id, or the name): none yet",
+      "action": "pill_add",
+      "data": {
+        "pills": [
+          {
+            "name": "Magnesium",
+            "per_day": 2
+          },
+          {
+            "name": "Zinc",
+            "per_day": 2
+          }
+        ]
+      },
+      "note": "several in one message: one item each",
+      "recorded": [
+        "pill_add",
+        {
+          "pills": [
+            {
+              "name": "magnesium",
+              "per_day": 2
+            },
+            {
+              "name": "zinc",
+              "per_day": 2
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "8pm",
+      "state": "The user's pills now (use the id, or the name): none yet",
+      "action": "pill_add",
+      "data": {
+        "pills": [
+          {
+            "name": "Iron",
+            "times": "8pm"
+          }
+        ]
+      },
+      "note": "a follow-up to the card: the pill by its name, and only what changes",
+      "card": {
+        "action": "pill_add",
+        "data": {
+          "pills": [
+            {
+              "name": "Iron",
+              "times": "08:00"
+            }
+          ]
+        },
+        "guessed": [
+          "pills[0].times"
+        ],
+        "said": "add iron at 8"
+      },
+      "recorded": [
+        "pill_add",
+        {
+          "pills": [
+            {
+              "name": "Iron",
+              "times": "8pm"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "and zinc once a day",
+      "state": "The user's pills now (use the id, or the name): none yet",
+      "action": "pill_add",
+      "data": {
+        "pills": [
+          {
+            "name": "Zinc"
+          }
+        ]
+      },
+      "note": "another pill said after the card: zinc alone",
+      "card": {
+        "action": "pill_add",
+        "data": {
+          "pills": [
+            {
+              "name": "Iron",
+              "times": "08:00"
+            }
+          ]
+        },
+        "guessed": [],
+        "said": "add iron at 8"
+      },
+      "recorded": [
+        "pill_add",
+        {
+          "pills": [
+            {
+              "name": "Zinc",
+              "per_day": 1
+            }
+          ],
+          "guessed": [
+            "times[0]"
+          ],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "move the evening pill to 9pm",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Iron · daily at 8:00 am [active]\n- pl2: 💊 Evening pill · daily at 8:00 pm · with food [active]\n- pl3: ⏸️ Zinc · daily, untimed · paused [paused]\n- pl4: 💊 Vitamin D (1 tablet) · daily, untimed [active]",
+      "action": "pill_edit",
+      "data": {
+        "pills": [
+          {
+            "pill": "pl2",
+            "times": "9pm"
+          }
+        ]
+      },
+      "exact": false,
+      "recorded": [
+        "pill_edit",
+        {
+          "pills": [
+            {
+              "pill": "pl2",
+              "times": "9pm"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "vitamin D is 2 tablets now",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Iron · daily at 8:00 am [active]\n- pl2: 💊 Evening pill · daily at 8:00 pm · with food [active]\n- pl3: ⏸️ Zinc · daily, untimed · paused [paused]\n- pl4: 💊 Vitamin D (1 tablet) · daily, untimed [active]",
+      "action": "pill_edit",
+      "data": {
+        "pills": [
+          {
+            "dose": "2 tablets"
+          }
+        ]
+      },
+      "recorded": [
+        "pill_edit",
+        {
+          "pills": [
+            {
+              "pill": "pl4",
+              "dose": "2 tablets"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "iron no longer needs a time",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Iron · daily at 8:00 am [active]\n- pl2: 💊 Evening pill · daily at 8:00 pm · with food [active]\n- pl3: ⏸️ Zinc · daily, untimed · paused [paused]\n- pl4: 💊 Vitamin D (1 tablet) · daily, untimed [active]",
+      "action": "pill_edit",
+      "data": {
+        "pills": [
+          {
+            "times": "none"
+          }
+        ]
+      },
+      "recorded": [
+        "pill_edit",
+        {
+          "pills": [
+            {
+              "pill": "pl1",
+              "times": "none"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "pause iron until the 20th",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Iron · daily at 8:00 am [active]\n- pl2: 💊 Evening pill · daily at 8:00 pm · with food [active]\n- pl3: ⏸️ Zinc · daily, untimed · paused [paused]\n- pl4: 💊 Vitamin D (1 tablet) · daily, untimed [active]",
+      "action": "pill_pause",
+      "data": {
+        "pills": [
+          {
+            "until": "the 20th"
+          }
+        ]
+      },
+      "recorded": [
+        "pill_pause",
+        {
+          "pills": [
+            {
+              "pill": "pl1",
+              "until": "the 20th"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "pause iron and vitamin D",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Iron · daily at 8:00 am [active]\n- pl2: 💊 Evening pill · daily at 8:00 pm · with food [active]\n- pl3: ⏸️ Zinc · daily, untimed · paused [paused]\n- pl4: 💊 Vitamin D (1 tablet) · daily, untimed [active]",
+      "action": "pill_pause",
+      "data": {
+        "pills": [
+          {},
+          {}
+        ]
+      },
+      "note": "two pills, one card",
+      "recorded": [
+        "pill_pause",
+        {
+          "pills": [
+            {
+              "pill": "pl1"
+            },
+            {
+              "pill": "pl4"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "resume zinc",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Iron · daily at 8:00 am [active]\n- pl2: 💊 Evening pill · daily at 8:00 pm · with food [active]\n- pl3: ⏸️ Zinc · daily, untimed · paused [paused]\n- pl4: 💊 Vitamin D (1 tablet) · daily, untimed [active]",
+      "action": "pill_resume",
+      "data": {
+        "pills": [
+          {}
+        ]
+      },
+      "recorded": [
+        "pill_resume",
+        {
+          "pills": [
+            {
+              "pill": "pl3"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "start zinc again",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Iron · daily at 8:00 am [active]\n- pl2: 💊 Evening pill · daily at 8:00 pm · with food [active]\n- pl3: ⏸️ Zinc · daily, untimed · paused [paused]\n- pl4: 💊 Vitamin D (1 tablet) · daily, untimed [active]",
+      "action": "pill_resume",
+      "data": {
+        "pills": [
+          {}
+        ]
+      },
+      "recorded": [
+        "pill_resume",
+        {
+          "pills": [
+            {
+              "pill": "pl3"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "remove iron",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Iron · daily at 8:00 am [active]\n- pl2: 💊 Evening pill · daily at 8:00 pm · with food [active]\n- pl3: ⏸️ Zinc · daily, untimed · paused [paused]\n- pl4: 💊 Vitamin D (1 tablet) · daily, untimed [active]",
+      "action": "pill_remove",
+      "data": {
+        "pills": [
+          {}
+        ]
+      },
+      "recorded": [
+        "pill_remove",
+        {
+          "pills": [
+            {
+              "pill": "pl1"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "I've stopped taking vitamin D",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Iron · daily at 8:00 am [active]\n- pl2: 💊 Evening pill · daily at 8:00 pm · with food [active]\n- pl3: ⏸️ Zinc · daily, untimed · paused [paused]\n- pl4: 💊 Vitamin D (1 tablet) · daily, untimed [active]",
+      "action": "pill_remove",
+      "data": {
+        "pills": [
+          {}
+        ]
+      },
+      "recorded": [
+        "pill_remove",
+        {
+          "pills": [
+            {
+              "pill": "pl4"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "delete iron and its history",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Iron · daily at 8:00 am [active]\n- pl2: 💊 Evening pill · daily at 8:00 pm · with food [active]\n- pl3: ⏸️ Zinc · daily, untimed · paused [paused]\n- pl4: 💊 Vitamin D (1 tablet) · daily, untimed [active]",
+      "action": "pill_delete",
+      "data": {
+        "pills": [
+          {}
+        ]
+      },
+      "recorded": [
+        "pill_delete",
+        {
+          "pills": [
+            {
+              "pill": "pl1"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "show all my pills",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Iron · daily at 8:00 am [active]\n- pl2: 💊 Evening pill · daily at 8:00 pm · with food [active]\n- pl3: ⏸️ Zinc · daily, untimed · paused [paused]\n- pl4: 💊 Vitamin D (1 tablet) · daily, untimed [active]",
+      "action": "pill_list",
+      "data": {},
+      "recorded": [
+        "pill_list",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "what do I take?",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Iron · daily at 8:00 am [active]\n- pl2: 💊 Evening pill · daily at 8:00 pm · with food [active]\n- pl3: ⏸️ Zinc · daily, untimed · paused [paused]\n- pl4: 💊 Vitamin D (1 tablet) · daily, untimed [active]",
+      "action": "pill_list",
+      "data": {},
+      "recorded": [
+        "pill_list",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "took my iron",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Iron · daily at 8:00 am [active]\n- pl2: 💊 Evening pill · daily at 8:00 pm · with food [active]\n- pl3: ⏸️ Zinc · daily, untimed · paused [paused]\n- pl4: 💊 Vitamin D (1 tablet) · daily, untimed [active]",
+      "action": "none",
+      "data": {},
+      "note": "logging a dose is not built yet: nothing here fits",
+      "recorded": [
+        "none",
+        {
+          "reason": "User reporting they took their medication, not a pills task action (add, edit, pause, resume, remove, delete, or list)"
+        }
+      ]
+    }
+  ]
+}

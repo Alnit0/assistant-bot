@@ -37,6 +37,7 @@ TITLE_LIMIT = 100  # Discord's limit for a post's title
 SUMMARY_LENGTH = 60
 CLIP = 300  # how much of one message or result the post shows
 ERROR_CHARS = 1500  # how much of the log the post shows (all of it is kept)
+TRACE_CHARS = 1700  # and of the turn's trace: a section is one Discord message
 ERROR_LINES = 60  # how many log lines are kept with a report
 TURN_SLACK = timedelta(seconds=5)  # our clock and Discord's are not the same clock
 LOG_BEFORE, LOG_AFTER = timedelta(seconds=5), timedelta(seconds=30)
@@ -108,6 +109,9 @@ class Report:
     errors: list[str] = field(default_factory=list)  # lines from bot.log
     commit: str = "unknown"
     reported_at: str = ""  # UTC, ISO
+    # What `dev why` would show for that turn (core/trace.py): the route and why,
+    # what the router and extraction returned, what the code applied, the cost
+    trace: list[str] = field(default_factory=list)
 
     def to_json(self) -> str:
         return json.dumps(asdict(self), ensure_ascii=False)
@@ -169,6 +173,7 @@ def pick_turn(rows: list[dict], target_message_id: int, target_at: datetime, exc
         and row["discord_message_id"] == lead["discord_message_id"]
     ]
     return {
+        "id": lead["id"],  # the message_log row: its trace goes with the report
         "received_at": lead["received_at"],
         "kind": lead["kind"],
         "input": lead["content"],
@@ -325,6 +330,13 @@ def _error_block(errors: list[str], brief: bool) -> str:
     return f"```\n{text}\n```"
 
 
+def _trace_block(lines: list[str], brief: bool) -> str:
+    text = "\n".join(lines).replace("```", "'''")
+    if brief and len(text) > TRACE_CHARS:
+        text = text[:TRACE_CHARS] + "\n… (the rest is in `bugs export`)"
+    return f"```\n{text}\n```"
+
+
 def sections(report: Report, brief: bool = False) -> list[tuple[str, str]]:
     """Everything captured with a report, as (heading, text). `brief` shortens
     long messages and the log to what fits in a Discord message."""
@@ -335,12 +347,14 @@ def sections(report: Report, brief: bool = False) -> list[tuple[str, str]]:
     before = "\n".join(
         f"`{_local(item.at):%H:%M}` **{item.author}**: {cut(item.content)}" for item in report.preceding
     )
-    return [
+    found = [
         ("Message", message),
         ("Before it", before or "Nothing before it in the channel."),
         ("That turn", "\n".join(_turn_lines(report.turn, brief))),
-        ("Related errors", _error_block(report.errors, brief)),
     ]
+    if report.trace:
+        found.append(("Trace", _trace_block(report.trace, brief)))
+    return found + [("Related errors", _error_block(report.errors, brief))]
 
 
 def opening_text(

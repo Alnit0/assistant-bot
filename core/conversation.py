@@ -6,8 +6,8 @@ from dataclasses import dataclass, field, replace
 
 import discord
 
-from core import actions, cards, confirm, costs, database, extraction, livelists, llm, routing, timing
-from core.actions import LIST, ITEMS, Entry, LiveReply, Request
+from core import actions, cards, confirm, costs, database, extraction, livelists, llm, routing, timing, trace
+from core.actions import LIST, ITEMS, Entry, LiveReply, Request, Shown
 from core.cards import Card
 from core.config import CHANNELS, INBOX_CHANNEL_ID
 from core.context import Context
@@ -63,6 +63,18 @@ class Turn:
     extracted: list[dict] = field(default_factory=list)
     said: list[str] = field(default_factory=list)  # what the user was shown, in order
     failed: bool = False
+    # For `dev why` and bug reports (core/trace.py): why it went the way it did,
+    # what the router returned, the checks the code ran, the card before and
+    # after, and how much of each task's state was sent to extraction
+    why: list[str] = field(default_factory=list)
+    router: dict | None = None
+    checks: list[str] = field(default_factory=list)
+    card: dict | None = None
+    state: dict = field(default_factory=dict)
+
+    def as_trace(self) -> str:
+        kept = {"why": self.why, "router": self.router, "checks": self.checks, "card": self.card, "state": self.state}
+        return json.dumps({name: value for name, value in kept.items() if value}, ensure_ascii=False)
 
 
 def not_included(parts) -> str:
@@ -103,6 +115,9 @@ def uncovered(found: Extracted, others: list[Extracted], chat_part: str = "") ->
         by_the_answer = bool(words) and len(words & answered) / len(words) >= 0.6
         if not by_another_task and not by_the_answer:
             left.append(part)
+            trace.note(f"not-included check: \"{part}\" is covered by nothing: said to the user")
+        else:
+            trace.note(f"not-included check: \"{part}\" dropped, covered by {'another task' if by_another_task else 'the plain answer'}")
     return replace(found, not_included=tuple(left))
 
 
@@ -119,14 +134,31 @@ def nothing_fitted(entry: Entry) -> str:
     return f"{entry.icon} I couldn't work that out for {entry.name}." + (f" {entry.hint}" if entry.hint else "")
 
 
-async def _state(entry: Entry, request: Request) -> str:
+async def _state(entry: Entry, request: Request, turn: Turn | None = None) -> str:
+    """What the task has now, for extraction: capped (`actions.shown_state`), so
+    a long list costs no more than a short one, and counted for `dev cost`."""
     if entry.live_state is None:
         return ""
     try:
-        return await entry.live_state(request)
+        state = await entry.live_state(request)
     except Exception:
         log.exception("Task %s could not give its state for extraction", entry.name)
         return ""
+    text, sent, total = actions.shown_state(state, request.text)
+    if turn is not None and total:
+        turn.state[entry.name] = {"sent": sent, "total": total}
+    return text
+
+
+def _card_lines(data: dict | None) -> list[str]:
+    """A card's data in short lines, for the trace."""
+    lines = []
+    for name, value in (data or {}).items():
+        if isinstance(value, list) and value and all(isinstance(item, dict) for item in value):
+            lines += [" ".join(str(part) for part in item.values()) for item in value]
+        else:
+            lines.append(f"{name}={value}")
+    return lines
 
 
 async def act(
@@ -162,17 +194,32 @@ async def act(
         await say("⚠️ You're not allowed to do that.")
         return
     try:
-        if action.needs_card:
+        needs_card = action.needs_card
+        if action.card_if is not None:
+            # Some actions ask first only when a lot is at stake (cancelling several timers)
+            needs_card = await action.card_if(request, found.data)
+            trace.note(f"card check: {action.name} " + ("asks first with a card" if needs_card else "acts at once, no card"))
+        if needs_card:
             proposal = await action.prepare(request, found.data, found.guessed)
             if found.not_included:
                 proposal = replace(proposal, warnings=(*proposal.warnings, not_included(found.not_included)))
-            await confirm.show(request, entry, action.name, proposal, found.guessed, replaces, moved=moved, undone=undone)
+            guesses = frozenset(found.guessed) | frozenset(proposal.guessed)
+            await confirm.show(request, entry, action.name, proposal, guesses, replaces, moved=moved, undone=undone)
             shown = [*proposal.lines, *[f"{actions.WARNING_MARK} {warning}" for warning in proposal.warnings]]
+            turn.card = {"before": _card_lines(request.previous if replaces is not None and not moved else None), "after": shown}
+            if replaces is not None:
+                trace.note(f"card {replaces.id} replaced" + (" (moved from " + replaces.task + ")" if moved else "") + (" (last change undone first)" if undone else ""))
             turn.said.append(f"card: {entry.name} · {proposal.kind}: " + " / ".join(shown))
         else:
             result = await action.run(request, found.data, found.guessed)
             left_out = f"{actions.WARNING_MARK} {not_included(found.not_included)}" if found.not_included else ""
-            if isinstance(result, LiveReply):
+            if isinstance(result, Shown):
+                # The task put its own message up (a timer, a session card)
+                turn.said.append(result.summary)
+                also = "\n".join(part for part in (result.also, left_out) if part)
+                if also:
+                    await say(also)
+            elif isinstance(result, LiveReply):
                 # A list shown on request: this copy is now the one kept up to date, and
                 # what follows it is taken to be for this task
                 turn.said.append(result.text)
@@ -296,12 +343,15 @@ async def handle(ctx: Context, capabilities: str = "", chat_here: bool = True) -
     row_id = await log_received(ctx.text, "chat", ctx.message_id, ctx.channel_id, user_id=ctx.user.id)
     started = time.perf_counter()
     spent = timing.current() or timing.start()
-    request = Request(ctx.user, ctx.channel_id, ctx.text)
+    request = Request(ctx.user, ctx.channel_id, ctx.text, replied_to=ctx.reply_target_id, message_id=ctx.message_id)
     turn = Turn()
+    turn.checks = trace.start()
     try:
         open_card = await confirm.latest_open(ctx.user.id, ctx.channel_id)
         if open_card is not None and actions.entry(open_card.task) not in entries:
             open_card = None
+        if open_card is None:
+            trace.note("open card: none, so the sticky and correction checks were skipped")
         earlier = ""
         settled = False
 
@@ -351,19 +401,22 @@ async def handle(ctx: Context, capabilities: str = "", chat_here: bool = True) -
         target = confirm.redirect(ctx.text, entries, open_card.task) if open_card is not None else None
         if target is not None:
             turn.route = costs.FOLLOW_UP
+            turn.why.append(f"a bare redirect: card {open_card.id} moves from {open_card.task} to {target.name}")
             moved = Request(ctx.user, ctx.channel_id, open_card.said)
             # As it stands on the card, corrections included: everything on it moves.
             # By code when the other task takes the same kind of item (nothing can go
             # astray, and it costs no request); otherwise extraction reads it over
             found = _carried_over(open_card, target)
+            trace.note("move: items carried over in code, no request" if found is not None else "move: not the same kind of item, read over by extraction")
             if found is None:
                 standing = OpenCard(open_card.action, open_card.data, open_card.guessed, open_card.said)
-                found = await extraction.extract(target, extraction.standing(standing), await _state(target, moved))
+                found = await extraction.extract(target, extraction.standing(standing), await _state(target, moved, turn))
             if found.fitted:
                 # Whatever was on the card and is not on the new one is said, never lost
                 lost = _items_lost(open_card, found)
                 if lost:
                     found = replace(found, not_included=(*found.not_included, *lost))
+                trace.note("lost-in-the-move check: " + (", ".join(lost) if lost else "nothing lost"))
             takes_place = open_card if found.fitted and found.action.needs_card else None
             await act(moved, found, turn, replaces=takes_place, moved=True)
             settled = True
@@ -377,16 +430,24 @@ async def handle(ctx: Context, capabilities: str = "", chat_here: bool = True) -
                 open_card.id, open_card.message_id, "sticks" if sticky else "does not stick", ctx.reply_target_id, latest,
                 "; the last change is being undone" if undoing else "",
             )
+            how = "a reply to it" if ctx.reply_target_id == open_card.message_id else "it is the bot's latest message and under 5 minutes old"
+            trace.note(
+                f"sticky check: card {open_card.id} " + (f"sticks ({how})" if sticky else
+                f"does not stick (reply to {ctx.reply_target_id}, the bot's latest message is {latest}, the card is {open_card.message_id})")
+            )
+            trace.note("correction check: " + ("the last change is undone first" if undoing else "not a correction of the last change"))
             if sticky:
                 entry = actions.entry(open_card.task)
-                found = await extraction.extract(entry, ctx.text, await _state(entry, request), on_card)
+                found = await extraction.extract(entry, ctx.text, await _state(entry, request, turn), on_card)
                 if found.not_this:
                     # Not about the card after all: the router decides. The card stays as
                     # it is, and what it came from goes along in case this redirects it
                     turn.extracted.append(found.as_log())
+                    trace.note("extraction said the message is not about the card: on to the router")
                     earlier, on_card = open_card.said.split("\n")[0], None
                 else:
                     turn.route = costs.FOLLOW_UP
+                    turn.why.append(f"card {open_card.id} ({open_card.task}) is open and the message sticks to it: {how}")
                     await act_on_card(found)
                     settled = True
 
@@ -399,11 +460,13 @@ async def handle(ctx: Context, capabilities: str = "", chat_here: bool = True) -
             entry = actions.entry(shown_list.task) if shown_list is not None and shown_list.user_id == ctx.user.id else None
             if entry in entries and livelists.sticks(shown_list, ctx.text, utc_now(), latest):
                 log.info("The %s list (message %s) is on screen: this goes to %s", shown_list.key, latest, entry.name)
-                found = await extraction.extract(entry, ctx.text, await _state(entry, request), after_list=True)
+                found = await extraction.extract(entry, ctx.text, await _state(entry, request, turn), after_list=True)
                 if found.not_this:
                     turn.extracted.append(found.as_log())
+                    trace.note("extraction said the message is not for the list on screen: on to the router")
                 else:
                     turn.route = costs.FOLLOW_UP
+                    turn.why.append(f"the {shown_list.task} list is the bot's latest message, under 5 minutes old, and the message is short")
                     await act(request, found, turn)
                     settled = True
             else:
@@ -419,6 +482,8 @@ async def handle(ctx: Context, capabilities: str = "", chat_here: bool = True) -
                 on_screen=on_screen,
                 exchanges=_exchanges(ctx.channel_id),
             )
+            turn.router = {"tasks": list(routed.tasks), "tie": routed.tie, "chat": routed.chat, "chat_part": routed.chat_part, "problem": routed.problem}
+            turn.why.append("nothing on screen claimed it" + (f"; the router was shown {on_screen}" if on_screen else ""))
             if routed.chat:
                 if not chat_here:
                     return Handled(False, row_id)
@@ -449,7 +514,7 @@ async def handle(ctx: Context, capabilities: str = "", chat_here: bool = True) -
                 readings: list[tuple[Extracted, bool]] = []
                 for name in routed.tasks:
                     entry = actions.entry(name)
-                    state = await _state(entry, request)
+                    state = await _state(entry, request, turn)
                     elsewhere = _elsewhere(name, routed.tasks, routed.chat_part)
                     # The router had the open card in view. If it chose that card's
                     # task, extraction needs the card too: "make it 2" means nothing
@@ -459,6 +524,7 @@ async def handle(ctx: Context, capabilities: str = "", chat_here: bool = True) -
                     if found.not_this:
                         # A request of its own for the same task: read it afresh, and leave the card
                         turn.extracted.append(found.as_log())
+                        trace.note(f"extraction said the message is not about the open {name} card: read afresh, card left open")
                         card, found = None, await extraction.extract(entry, ctx.text, state, elsewhere=elsewhere)
                     readings.append((found, card is not None))
                 everything = [found for found, _ in readings]
@@ -474,6 +540,7 @@ async def handle(ctx: Context, capabilities: str = "", chat_here: bool = True) -
         await log_error("Message failed", repr(error), ctx.text)
         await cards.send(ctx.channel_id, Card(WENT_WRONG))
 
+    trace.stop()
     await _finish(ctx, row_id, turn, spent, time.perf_counter() - started)
     return Handled(True, row_id)
 
@@ -491,6 +558,7 @@ async def _finish(ctx_or_request, row_id: int, turn: Turn, spent: timing.Turn, d
         model=calls[0].model if calls else None,
         timing=json.dumps(timing.as_dict(spent, duration)),
         extracted=json.dumps(turn.extracted, ensure_ascii=False) if turn.extracted else None,
+        trace=turn.as_trace(),
     )
     await database.record_cost(row_id, turn.route, turn.tasks, calls)
     if turn.route != costs.CHAT and text:
@@ -528,14 +596,20 @@ async def on_pick(press: cards.Press) -> str | None:
     spent = timing.start()
     request = Request(press.user, card.channel_id, card.said)
     turn = Turn(route=costs.FOLLOW_UP)
-    found = await extraction.extract(entry, card.said, await _state(entry, request))
+    turn.checks = trace.start()
+    turn.why.append(f"{name} was picked on a tie question")
+    found = await extraction.extract(entry, card.said, await _state(entry, request, turn))
     await act(request, found, turn)
+    trace.stop()
     timing.stop()
     # The press is logged by core/cards.py; what it cost goes on that row
     if press.row_id is not None:
         calls = costs.calls_from(spent.claude_calls, costs.PURPOSE_EXTRACTION)
         await database.record_cost(press.row_id, turn.route, turn.tasks, calls)
-        await log_result(press.row_id, extracted=json.dumps(turn.extracted, ensure_ascii=False), duration_s=time.perf_counter() - started)
+        await log_result(
+            press.row_id, extracted=json.dumps(turn.extracted, ensure_ascii=False), duration_s=time.perf_counter() - started,
+            trace=turn.as_trace(),
+        )
     llm.remember(card.channel_id, card.said, "\n".join(turn.said) or "(nothing)")
     return f"picked {name}: " + "\n".join(turn.said)
 

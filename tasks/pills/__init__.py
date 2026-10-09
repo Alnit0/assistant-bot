@@ -1,7 +1,7 @@
 from core.config import CHANNELS
 from core.lifecycle import MessageClass
 from tasks.base import INBOX, Keyword, Param, Task, Tool
-from tasks.pills import plans, store
+from tasks.pills import plain, plans, store
 
 HUB = "hub"
 # What tells these tools apart from any other task's, for Claude to choose by
@@ -45,6 +45,17 @@ class PillsTask(Task):
 
     name = "pills"
     description = "Pills: set up what you take and when, and list, pause or remove them"
+    # In plain words (tasks/pills/plain.py): how the router knows this task
+    icon = plain.ICON
+    only_for = plain.ONLY_FOR
+    examples = plain.EXAMPLES
+    hint = plain.HINT
+
+    def actions(self) -> list:
+        return list(plain.ACTIONS)
+
+    async def action_state(self, request):
+        return await plain.state(request)
 
     def keywords(self) -> list[Keyword]:
         return [

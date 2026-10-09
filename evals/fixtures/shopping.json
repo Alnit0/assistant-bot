@@ -254,8 +254,7 @@
         {
           "items": [
             {
-              "item": "milk",
-              "change": "add"
+              "item": "milk"
             }
           ],
           "guessed": [],
@@ -556,7 +555,8 @@
           ],
           "guessed": [
             "items[0]"
-          ]
+          ],
+          "not_included": []
         }
       ]
     },
@@ -918,7 +918,8 @@
           "items": [
             {
               "item": "lemons",
-              "quantity": 2
+              "quantity": 2,
+              "change": "add"
             }
           ],
           "guessed": [],
@@ -1036,7 +1037,8 @@
         {
           "items": [
             {
-              "item": "bread"
+              "item": "bread",
+              "change": "add"
             }
           ],
           "guessed": [],
@@ -1097,7 +1099,8 @@
           "items": [
             {
               "item": "lemons",
-              "quantity": 2
+              "quantity": 2,
+              "change": "add"
             }
           ],
           "guessed": [],
@@ -1138,7 +1141,8 @@
           "items": [
             {
               "item": "butter",
-              "quantity": 1
+              "quantity": 1,
+              "change": "add"
             }
           ],
           "guessed": [],
@@ -1299,7 +1303,7 @@
       "recorded": [
         "none",
         {
-          "reason": "not related to shopping list task"
+          "reason": "Not about shopping list: observation unrelated to buying items"
         }
       ]
     },

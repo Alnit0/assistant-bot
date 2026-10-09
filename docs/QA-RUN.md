@@ -1,6 +1,6 @@
 # QA run sheet
 
-One pass through 199 of the 221 👤 Manual tests in `docs/TESTING.md` that are
+One pass through 217 of the 239 👤 Manual tests in `docs/TESTING.md` that are
 ⬜ Untested (as of 2026-10-10); the other 22 are pills tests (group R) for
 stages not built yet, and join as each is. Blocks share setup and each one leaves things
 ready for the next, so run them in order.
@@ -26,10 +26,11 @@ tests (block 12).
 | 14 | Bugs and kept confirmations | off (two restarts) | 16 | 21 |
 | 15 | Dev database and clock | `--dev`, on and off (three restarts) | 10 | 13 |
 | 16 | Pills: setting up | `--dev`, off (one restart) | 15 | 16 |
-| 17 | Routing and confirm cards: retest | `--dev`, off | 1 | 3 |
+| 17 | Traces: `dev why` and bug reports | `--dev`, off (one restart) | 3 | 5 |
+| 18 | Tasks in plain words | `--dev`, off (one restart) | 16 | 25 |
 | | **Total** | | **213** (F2 is split over blocks 4 and 7, counted in 7) | **about 4¼ hours** |
 
-Blocks 13 to 17 need nothing from the others: run them any time after
+Blocks 13 to 18 need nothing from the others: run them any time after
 block 1, and before the overnight block if that suits.
 
 ## Before you start
@@ -426,15 +427,42 @@ run it.
 | 14 | Say `add magnesium`, restart the bot, then press **Save** on that preview | It is saved as if nothing had happened; `pills` lists it | R36 |
 | 15 | Look back over every reply from the bot in this block | No reply says "I'm proposing" or "reply ok" for a pill; none shows a tool's name or how it was called (`pill_add …`); every time of day on a preview or list is written like `8:00 pm` | R39 |
 
-## 17. Routing and confirm cards: retest
+## 17. Traces: `dev why` and bug reports
 
 On the dev database (`python main.py --dev`), in #inbox, dev mode off.
-Restart the bot first so it runs the new code. No fresh database is needed.
+Restart the bot first: it adds a column to the message log.
 
 | # | Do | Expect | Tests |
 |---|---|---|---|
-| 1 | Say `clear my shopping list` and press **Clear for good** (skip if the list is empty). Then `add 2 butter`; press **Save** | "✅ Saved · 🛒 **butter** × 2 is on the shopping list" | (setup) |
-| 2 | Say `Add butter`; then, pressing nothing, `and jam`; then `and honey`; press **Save** | "butter · 2 → 3"; after "and jam" the card is replaced by "butter · 2 → 3" and "jam · × 1"; after "and honey" a "honey · × 1" line is added and butter is still 2 → 3. Save: "✅ Saved · 🛒 shopping list updated: 2 added, 1 changed", and the list has butter × 3 | S34 |
+| 1 | Say `add butter`; then, pressing nothing, `and jam`. Type `dev why`, then `dev why 3`. Press nothing | One block in a code box that can be copied whole: "#<n> · <time> · chat · ok", "said: and jam", "route: follow-up (card … is open and the message sticks to it…)", "router: not asked", an "extraction:" line with what came back, "python:" lines for each check (sticky, correction, restatement, merge), "card before:" and "card after:", "shown:", and "cost: US$… · 1 request(s)". `dev why 3` posts three blocks, oldest first; the `dev why` words themselves are never among them | J47 |
+| 2 | React 🐞 to the card the bot posted; open the new post in #bugs. Then press **Cancel** on the card | The post in #bugs has a **Trace** section between "That turn" and "Related errors": the same block `dev why` shows for the message of mine that the card answered | P31 |
+| 3 | Type `dev cost` | The card ends with "-# List context sent to extraction this month: … of … lines over … messages, … (at most 20 a task a message)" | J48 |
+
+## 18. Tasks in plain words
+
+On the dev database (`python main.py --dev`), in #inbox, dev mode off.
+Restart the bot first. Every step ends by saying what to press, so no card
+is left open for the next one. If a result looks wrong, type `dev why`
+before going on and paste the block when you report it.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Say `set a timer for 5 minutes called tea`. Press nothing | The timer's own message with its buttons, as `timer 5m tea` gives; no card, and no other line from the bot | T2 |
+| 2 | Say `pause the tea timer`; then `give it 5 more minutes`; then `carry on`. Press nothing | Each is done at once and said in a line (paused, time added, resumed), with no card; the timer's message changes in place | T3 |
+| 3 | Say `start two one-minute timers called a and b`; then `cancel all my timers`; press **Cancel 3 timers** | Two more timers start. Then a card "⏱️ Timers · cancel" with a line for each of the three, "⚠️ This cancels 3 timers and can't be undone" and a red **Cancel 3 timers**; nothing is cancelled until it is pressed, then "🚫 **Cancelled 3**" with each name | T4 |
+| 4 | Say `set a timer for a few minutes`; then `cancel it`. Press nothing | A timer starts, followed by "❓ I guessed the length: …". "cancel it" cancels that one timer at once, with no card | T5 |
+| 5 | Say `start a pomodoro`; then `how long left on my pomodoro?`; then `stop the pomodoro`. Press nothing | The session card; then a line such as "🍅 **Pomodoro** · Focus, round 1 of 4 · 25m left"; then the session stops and the card says so | T6 |
+| 6 | Straight after any reply from the bot say `that's a bug: it was slow`; open the post in #bugs; then say `show my open bugs`. Press nothing | "🐞 Logged as B<n> · 📝 your note is saved with it", linking to the post; the post is about the bot's reply (not your words), has "it was slow" as a note and a **Trace** section. Then the list of open bugs | T7 |
+| 7 | Say `add iron at 8`; then, pressing nothing, `8pm`; press **Save** | A card "💊 Pills · new" with "**Iron** · daily at `8:00 am` ❓" and no question first. After "8pm" it is replaced by one with `8:00 pm` and no ❓ (one dose, not two). Save: "✅ Saved · 💊 **Iron** · daily at `8:00 pm`" | T8 |
+| 8 | Say `add course A, 3 times a day, at least 3 hours apart, with food, for 7 days starting tomorrow`; press **Cancel** | One card: "**Course A** · 3× daily, ≥3h apart · *with food* · <tomorrow to six days later> · first dose when ready". Cancel: the card goes and nothing is saved | T9 |
+| 9 | Say `move iron to 9pm`; press **Save** | A card "💊 Pills · edit": "**Iron**", "Now: … `8:00 pm`", "New: … `9:00 pm`". Save: "✅ Updated · 💊 **Iron** · daily at `9:00 pm`" | T10 |
+| 10 | Say `pause iron until the 20th`; press **Save**. Then `resume iron`; press **Save** | A card "💊 Pills · pause" with "**Iron** · paused until 20 Oct" (or the next 20th); Save: "⏸️ **Iron** paused until …". Then a card "💊 Pills · resume"; Save: "▶️ **Iron** resumed." | T11 |
+| 11 | Say `show all my pills` and keep it in view; then `remove iron`; press **Remove** | The list, with no buttons. Then a card "💊 Pills · remove" that says its history is kept; Remove: "🗑️ Removed **Iron**. Its history is kept." and the list above loses Iron, edited in place | T12 |
+| 12 | Say `add zinc`; press **Save**. Then `delete zinc and its history`; press **Delete for good** | After the first Save zinc is added. Then a card "💊 Pills · delete" with "⚠️ This deletes the history too and can't be undone" and a red **Delete for good**; pressed: "🗑️ Deleted **Zinc** and its history." | T13 |
+| 13 | Send `note one`; then say `pin that`; then `unpin it`. Press nothing | "📌 Pinned" with "> note one" quoted and a jump link, and the message is pinned; then "📌 Unpinned" with the same quote | T14 |
+| 14 | Send `scrap`; then say `delete my last message`; press **Delete for good** | A card "🗂️ Messages · delete" quoting "scrap" (your message, not the bot's), "⚠️ Deleting can't be undone" and a red **Delete for good**; nothing goes until it is pressed, then "🗑️ Deleted" | T15 |
+| 15 | Send `old news`; then say `archive that`. Press nothing | "📦 Archived: <link>" with "> old news" quoted; the message is gone from the channel and its copy in the archive has a Restore button | T16 |
+| 16 | Pin a message by hand, send nothing after it, then say `archive that`; press **Cancel** | A card "🗂️ Messages · archive" quoting it, with "⚠️ … is pinned" and **Archive anyway**; Cancel leaves it where it is | T17 |
 
 ## When you finish
 

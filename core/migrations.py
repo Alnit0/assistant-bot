@@ -302,6 +302,13 @@ def _add_previous_to_confirm_cards(conn: sqlite3.Connection) -> None:
     conn.execute("ALTER TABLE confirm_cards ADD COLUMN previous TEXT")
 
 
+def _add_trace_to_message_log(conn: sqlite3.Connection) -> None:
+    # What happened to a message step by step (core/trace.py), as JSON: why it
+    # was routed as it was, what the router returned, the checks that fired,
+    # the card before and after, and how much of a task's state was sent
+    conn.execute("ALTER TABLE message_log ADD COLUMN trace TEXT")
+
+
 MIGRATIONS = [
     _create_message_log,
     _create_users,
@@ -316,6 +323,7 @@ MIGRATIONS = [
     _create_live_lists,
     _add_task_to_live_lists,
     _add_previous_to_confirm_cards,
+    _add_trace_to_message_log,
 ]
 
 

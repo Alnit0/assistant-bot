@@ -1,7 +1,7 @@
 import re
 
 from core import livelists
-from core.actions import ADD, CHANGE, INTEGER, ITEMS, REMOVE, SET, Action, Entry, Field, LiveReply, Proposal, Request
+from core.actions import ADD, CHANGE, INTEGER, ITEMS, REMOVE, SET, Action, Entry, Field, LiveReply, Proposal, Request, State
 from core.actions import change_field, flag, is_guessed, merge_items
 from core.errors import UserError
 from tasks.lab import state
@@ -248,14 +248,15 @@ _NAME = (
     "their spelling and their singular or plural (\"milks\" stays milks, \"an egg\" is egg, \"a hat\" is hat)."
 )
 
-async def _shopping_state(request: Request) -> str:
+async def _shopping_state(request: Request) -> State:
+    # A line an item: only what the message could mean is sent when the list is long
     items = await _items("shopping", request.user.id)
-    return "On the shopping list now: " + (", ".join(f"{item['item']} × {item['quantity']}" for item in items) or "nothing")
+    return State("On the shopping list now", tuple(f"{item['item']} × {item['quantity']}" for item in items))
 
 
-async def _packing_state(request: Request) -> str:
+async def _packing_state(request: Request) -> State:
     items = await _items("packing", request.user.id)
-    return "On the packing list now: " + (", ".join(f"{item['item']} ({item['bag']} bag)" for item in items) or "nothing")
+    return State("On the packing list now", tuple(f"{item['item']} ({item['bag']} bag)" for item in items))
 
 
 SHOPPING = Entry(

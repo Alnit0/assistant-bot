@@ -24,6 +24,7 @@ LOG_COLUMNS = {
     "route",
     "tasks",
     "extracted",
+    "trace",
 }
 
 

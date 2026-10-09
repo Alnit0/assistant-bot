@@ -4,7 +4,7 @@ import sqlite3
 import discord
 
 from core import backup, clock, confirmations, database, day, devmode, instance_lock, lifecycle, migrations
-from core import costs, reactions, scheduler, users
+from core import actions, costs, reactions, scheduler, trace, users
 from core.clock import real_now
 from core.config import DB_PATH, DEV_DATABASE
 from core.context import Context
@@ -141,8 +141,40 @@ async def cost(ctx: Context) -> str:
     rows = await ctx.db.run(costs.db_rows, since)
     purposes = await ctx.db.run(costs.db_purposes, since)
     today, month = costs.split(rows, now)
-    await ctx.reply(costs.report(today, month, purposes, database.DB_PATH.name))
+    state = await ctx.db.run(costs.db_state_sent, since)
+    await ctx.reply(costs.report(today, month, purposes, database.DB_PATH.name, state, actions.STATE_LINES))
     return f"today {costs.money(today.cost)} over {today.messages} message(s); this month {costs.money(month.cost)} over {month.messages}"
+
+
+# ---------------------------------------------------------------------------
+# dev why
+# ---------------------------------------------------------------------------
+WHY_USAGE = "dev why [<how many>]"
+WHY_MOST = 10
+# What counts as "a message from me": what I typed, and the buttons I pressed
+WHY_KINDS = (*database.OWN_MESSAGE_KINDS, "card")
+
+
+def why_count(args: list[str]) -> int:
+    """How many messages `dev why` shows: one, or the number given (up to WHY_MOST)."""
+    if not args:
+        return 1
+    if len(args) != 1 or not args[0].isdigit() or not 1 <= int(args[0]) <= WHY_MOST:
+        raise UserError(f"Usage: `{WHY_USAGE}`, from 1 to {WHY_MOST}.")
+    return int(args[0])
+
+
+async def why(ctx: Context) -> str:
+    """The last messages from the user, each as one block that can be copied
+    whole: what was said, the route and why, what the router and extraction
+    returned, what the code applied, the card before and after, the cost."""
+    count = why_count(ctx.args)
+    rows = await ctx.db.run(trace.db_recent, ctx.user.id, count, WHY_KINDS, "dev why")
+    if not rows:
+        raise UserError("Nothing is logged from you yet.")
+    for row in rows:
+        await ctx.reply(trace.block(row))
+    return f"showed the trace of message(s) {', '.join('#' + str(row['id']) for row in rows)}"
 
 
 # ---------------------------------------------------------------------------

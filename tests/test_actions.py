@@ -180,7 +180,8 @@ def test_on_the_live_database_the_router_is_offered_no_demo_task(monkeypatch):
     monkeypatch.setattr(actions, "_entries", {})
     monkeypatch.setattr(config, "DEV_DATABASE", False)
     registry.load()
-    assert actions.catalogue() == [], "no real task has moved to the router yet"
+    names = [found.name for found in actions.catalogue()]
+    assert "timers" in names and not {"shopping", "packing"} & set(names), "the real tasks, and never a demo one"
     assert registry.problems() == []
 
 
@@ -191,7 +192,8 @@ def test_on_the_dev_database_the_two_demo_tasks_are_in_the_catalogue(monkeypatch
     monkeypatch.setattr(actions, "_entries", {})
     monkeypatch.setattr(config, "DEV_DATABASE", True)
     registry.load()
-    assert [found.name for found in actions.catalogue()] == ["shopping", "packing"]
+    names = [found.name for found in actions.catalogue()]
+    assert {"shopping", "packing", "timers"} <= set(names), "the demo tasks beside the real ones"
     assert registry.problems() == []
     monkeypatch.setattr(config, "DEV_DATABASE", False)
     registry.load()
@@ -205,7 +207,8 @@ def test_a_task_that_breaks_the_contract_is_reported_and_not_routed_to(monkeypat
     monkeypatch.setattr(actions, "_entries", {})
     monkeypatch.setattr(type(lab), "entries", lambda self: [ENTRY, broken])
     registry.load()
-    assert [found.name for found in actions.catalogue()] == ["things"]
+    names = [found.name for found in actions.catalogue()]
+    assert "things" in names and "broken" not in names
     assert any(problem.startswith("routing: broken: needs an icon") for problem in registry.problems())
     monkeypatch.undo()
     registry.load()
@@ -427,3 +430,45 @@ def test_a_set_or_a_removal_that_comes_back_with_others_still_counts():
     assert actions.merge_items(pending, [item("milk", change="remove"), item("jam")], said="jam instead of that", exists=lambda name: False)[0] == [
         item("bread rolls", 1, "add"), item("jam", change="add"),
     ]
+
+
+# ---------------------------------------------------------------------------
+# A task's state for extraction is capped
+# ---------------------------------------------------------------------------
+def test_a_short_state_is_sent_whole_a_line_each():
+    state = actions.State("On the shopping list now", ("eggs × 5", "milk × 2"))
+    assert actions.shown_state(state, "make the eggs 7") == ("On the shopping list now:\n- eggs × 5\n- milk × 2", 2, 2)
+
+
+def test_an_empty_state_says_so_in_a_line():
+    assert actions.shown_state(actions.State("On the shopping list now"), "add milk") == ("On the shopping list now: nothing", 0, 0)
+
+
+def test_a_long_state_is_cut_to_the_limit_with_what_the_message_names_first():
+    lines = tuple(f"thing {number} × 1" for number in range(60)) + ("eggs × 5", "oat milk × 2")
+    text, sent, total = actions.shown_state(actions.State("On the list now", lines), "make the egg 7 and add milk", limit=5)
+    assert (sent, total) == (5, 62)
+    assert text.splitlines() == [
+        "On the list now:", "- thing 0 × 1", "- thing 1 × 1", "- thing 2 × 1", "- eggs × 5", "- oat milk × 2",
+        "(and 57 more not shown: what the message names is among the lines above if it is there at all)",
+    ], "the two it could mean, singular or plural, then the first of the rest, in the task's order"
+
+
+def test_the_limit_holds_however_many_lines_match():
+    lines = tuple(f"milk {number}" for number in range(50))
+    assert actions.shown_state(actions.State("Now", lines), "milk")[1:] == (actions.STATE_LINES, 50)
+
+
+def test_a_state_given_as_plain_text_is_capped_too():
+    assert actions.shown_state("t1: tea · running\nt2: eggs · paused", "stop the tea") == ("t1: tea · running\nt2: eggs · paused", 2, 2)
+    text, sent, total = actions.shown_state("Timers:\n" + "\n".join(f"t{number}: x" for number in range(30)), "stop t29", limit=3)
+    assert (sent, total) == (3, 30) and text.startswith("Timers:\n- t0: x") and "- t29: x" in text and "(and 27 more not shown" in text
+
+
+def test_a_guess_named_by_an_items_field_alone_is_put_on_the_item():
+    # Seen in the live eval on 2026-10-10: "a few minutes" came back with guessed ["duration"]
+    one = actions.validate(BUY, {"items": [{"item": "eggs", "quantity": 3}], "guessed": ["quantity"]})
+    assert one.guessed == frozenset({"items[0].quantity"})
+    several = actions.validate(BUY, {"items": [{"item": "eggs", "quantity": 3}, {"item": "jam"}, {"item": "milk", "quantity": 2}], "guessed": ["quantity"]})
+    assert several.guessed == frozenset({"items[0].quantity", "items[2].quantity"}), "each item that has it: which one is not known"
+    assert actions.validate(BUY, {"items": [{"item": "eggs"}], "guessed": ["nonsense"]}).guessed == frozenset()

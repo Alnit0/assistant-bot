@@ -291,11 +291,17 @@ async def start(ctx: Context) -> str:
 
 
 async def _start_new(ctx: Context, plan, label: str, auto: bool | None) -> str:
+    return await start_session(ctx.user.id, ctx.author.id, ctx.channel_id, plan, label, auto, ctx.reply)
+
+
+async def start_session(user_id: int, discord_user_id: int, channel_id: int, plan, label: str, auto: bool | None, send) -> str:
+    """Start a session and post its card with `send(text, view=…)`. For the
+    typed word and for plain words alike (tasks/timers/plain.py)."""
     session = await store.add_session(
         store.Session(
-            user_id=ctx.user.id,
-            discord_user_id=ctx.author.id,
-            channel_id=ctx.channel_id,
+            user_id=user_id,
+            discord_user_id=discord_user_id,
+            channel_id=channel_id,
             label=label[:80],
             focus_s=plan.focus_s,
             short_s=plan.short_s,
@@ -306,7 +312,7 @@ async def _start_new(ctx: Context, plan, label: str, auto: bool | None) -> str:
         )
     )
     await _begin_phase(session)
-    message = await ctx.reply(render_card(session), view=card_view(session))
+    message = await send(render_card(session), view=card_view(session))
     session.message_id = message.id
     await store.save_session(session)
     await _log_phase(session, store.STARTED)

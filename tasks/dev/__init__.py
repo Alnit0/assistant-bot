@@ -289,6 +289,18 @@ class DevTask(Task):
                 ["dev cost"],
             ),
             word(
+                "dev why",
+                "why the bot did what it did with my last message, or my last n (up to 10): one block each "
+                "that can be copied whole, with the route, what the router and extraction returned, what "
+                "the code applied, the card before and after, and the cost",
+                tools.why,
+                ["dev why", "dev why 3"],
+                takes_args=True,
+                usage="[<how many>]",
+                params=[Param("count", "How many of the latest messages, from 1 to 10. Leave out for the last one.", required=False)],
+                tool=False,  # for me while testing: Claude never needs it
+            ),
+            word(
                 "dev reset-db",
                 "wipe the dev database and start it empty, with the clock back at the real time "
                 "(dev database only; asks first)",

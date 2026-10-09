@@ -92,16 +92,16 @@ def _extra_time(value: dict) -> int:
         raise UserError(f"{error} `duration` says how much time to add, e.g. 10m.")
 
 
-async def _chosen_timers(ctx: Context, value: dict, action: str) -> list[store.Timer]:
-    """The timers a timer_control call is about: the ids given, or with "all"
-    every one the action can apply to, narrowed to a label if one was given."""
+async def chosen_timers(user_id: int, value: dict, action: str) -> list[store.Timer]:
+    """The timers a change is about: the ids given, or with "all" every one
+    the action can apply to, narrowed to a label if one was given."""
     wanted, label = value.get("ids", "").strip(), value.get("label", "").strip()
     if wanted.lower() != status.ALL:
         ids, bad = status.parse_refs(wanted, status.TIMER)
         chosen = []
         for timer_id in ids:
             timer = await store.get_timer(timer_id)
-            if timer is None or timer.user_id != ctx.user.id:
+            if timer is None or timer.user_id != user_id:
                 bad.append(status.ref(status.TIMER, timer_id))
             else:
                 chosen.append(timer)
@@ -113,7 +113,7 @@ async def _chosen_timers(ctx: Context, value: dict, action: str) -> list[store.T
             )
         return chosen
 
-    active = await store.active_timers(user_id=ctx.user.id)
+    active = await store.active_timers(user_id=user_id)
     if not active:
         raise UserError("No timers are running or paused, so there is nothing to do that to.")
     fitting = status.labelled(active, label)
@@ -129,9 +129,21 @@ async def _chosen_timers(ctx: Context, value: dict, action: str) -> list[store.T
 
 
 async def timer_control_tool(ctx: Context, value: dict) -> str:
+    shown, done = await change_timers(ctx.user.id, value)
+    # For the user, if Claude adds nothing (tasks/toolcalls.py)
+    await ctx.confirm(shown)
+    now = utc_now()
+    saved_as = [f'{status.ref(status.TIMER, saved.id)}: "{saved.label}" · {status.timer_state(saved, now)}' for saved in done]
+    return f"{shown}\nNow saved as: " + "\n".join(saved_as)
+
+
+async def change_timers(user_id: int, value: dict) -> tuple[str, list[store.Timer]]:
+    """Pause, resume, cancel or add time to the timers `value` names (`ids`,
+    `action`, and `duration` or `label` where they apply): (what to tell the
+    user, each timer as it is now saved). Raises UserError if nothing changed."""
     action = _SAME_AS.get(value["action"], value["action"])
     extra = _extra_time(value) if action == "extend" else 0
-    chosen = await _chosen_timers(ctx, value, action)
+    chosen = await chosen_timers(user_id, value, action)
 
     done, said_each, left_alone = [], [], []
     for timer in chosen:
@@ -165,26 +177,33 @@ async def timer_control_tool(ctx: Context, value: dict) -> str:
     else:
         lines = [saved.label if action == "cancel" else status.bulk_line(saved.label, saved.left(now)) for saved in done]
         shown = status.control_text(action, lines, left_alone)
-    # For the user, if Claude adds nothing (tasks/toolcalls.py)
-    await ctx.confirm(shown)
-    saved_as = [f'{status.ref(status.TIMER, saved.id)}: "{saved.label}" · {status.timer_state(saved, now)}' for saved in done]
-    return f"{shown}\nNow saved as: " + "\n".join(saved_as)
+    return shown, done
 
 
 async def pomodoro_control_tool(ctx: Context, value: dict) -> str:
-    wanted = value["id"].strip()
+    said, saved = await change_session(ctx.user.id, value)
+    await ctx.confirm(said)
+    if saved.state == store.STOPPED:
+        return said
+    return f"{said}\nNow saved as: {status.session_text(saved, utc_now(), here=ctx.channel_id)}"
+
+
+async def change_session(user_id: int, value: dict) -> tuple[str, store.Session]:
+    """Change the session `value` names (`id`, `action`, `duration` for
+    extend): (what to tell the user, the session as it is now saved)."""
+    wanted = value.get("id", "").strip()
     if wanted.lower() in _THE_SESSION:
         # There is only ever one going: no id is needed to mean it
-        running = await store.active_sessions(user_id=ctx.user.id)
+        running = await store.active_sessions(user_id=user_id)
         session = running[0] if running else None
         if session is None:
             raise UserError("No Pomodoro session is going, so there is nothing to do that to.")
     else:
         session_id = status.parse_ref(wanted, status.SESSION)
         session = await store.get_session(session_id) if session_id is not None else None
-    if session is None or session.user_id != ctx.user.id:
+    if session is None or session.user_id != user_id:
         raise UserError(
-            f'There is no Pomodoro session `{value["id"]}`. Use the id in the live state, such as p4, or "current".'
+            f'There is no Pomodoro session `{wanted}`. Use the id in the live state, such as p4, or "current".'
         )
     action = value["action"]
     if action == "extend":
@@ -196,10 +215,7 @@ async def pomodoro_control_tool(ctx: Context, value: dict) -> str:
     if saved is None or saved.state not in _SESSION_AFTER[action]:
         state = "gone" if saved is None else f"still {saved.state}"
         raise UserError(f"That did not take: **{session.label}** is {state}. Nothing has changed; tell the user so.")
-    await ctx.confirm(said)
-    if saved.state == store.STOPPED:
-        return said
-    return f"{said}\nNow saved as: {status.session_text(saved, utc_now(), here=ctx.channel_id)}"
+    return said, saved
 
 
 # --- all of them at once -------------------------------------------------------
@@ -220,15 +236,20 @@ def leaves_out_pomodoro(args: list[str]) -> bool:
 
 
 async def _all(ctx: Context, pausing: bool) -> str:
+    text = await change_all(ctx.user.id, pausing, with_session=not leaves_out_pomodoro(ctx.args))
+    await ctx.reply(text)
+    return text
+
+
+async def change_all(user_id: int, pausing: bool, with_session: bool = True) -> str:
     """Pause (or resume) every timer of the user's, and the Pomodoro unless it
     was left out. Says exactly what was done, from what was saved."""
-    with_session = not leaves_out_pomodoro(ctx.args)
     wanted, after = (store.RUNNING, store.PAUSED) if pausing else (store.PAUSED, store.RUNNING)
     change = timers.pause if pausing else timers.resume
     now = utc_now()
     done, left_alone, channels = [], [], set()
 
-    for timer in await store.active_timers(user_id=ctx.user.id):
+    for timer in await store.active_timers(user_id=user_id):
         if timer.status != wanted:
             continue
         try:
@@ -246,7 +267,7 @@ async def _all(ctx: Context, pausing: bool) -> str:
             done.append(status.bulk_line(saved.label, saved.left(utc_now())))
 
     session_note = ""
-    running = await store.active_sessions(user_id=ctx.user.id) if with_session else []
+    running = await store.active_sessions(user_id=user_id) if with_session else []
     if running:
         session = running[0]
         if session.state == wanted:
@@ -262,10 +283,8 @@ async def _all(ctx: Context, pausing: bool) -> str:
         session_note = "The Pomodoro was left as it is."
 
     for channel_id in channels:
-        await board.refresh(channel_id, ctx.user.id)
-    text = status.bulk_text(pausing, done, left_alone, session_note)
-    await ctx.reply(text)
-    return text
+        await board.refresh(channel_id, user_id)
+    return status.bulk_text(pausing, done, left_alone, session_note)
 
 
 async def pause_all(ctx: Context) -> str:

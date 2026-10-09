@@ -1,0 +1,190 @@
+{
+  "router": [
+    {
+      "message": "that's a bug",
+      "tasks": [
+        "bugs"
+      ],
+      "exchanges": [
+        [
+          "set a timer for 5 minutes",
+          "started 2 timer(s): Timer 5m, Timer 5m"
+        ]
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "bugs"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "log that as a bug: it started two timers",
+      "tasks": [
+        "bugs"
+      ],
+      "exchanges": [
+        [
+          "set a timer for 5 minutes",
+          "started 2 timer(s): Timer 5m, Timer 5m"
+        ]
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "bugs"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "show my open bugs",
+      "tasks": [
+        "bugs"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "bugs"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "no, I meant 15 minutes",
+      "tasks": [
+        "timers"
+      ],
+      "exchanges": [
+        [
+          "set a timer for 50 minutes",
+          "started 1 timer(s): Timer 50m"
+        ]
+      ],
+      "note": "a trap: a correction of a request is not a bug report",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "timers"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "there's a bug in my garden",
+      "chat": true,
+      "note": "a trap: the word bug, about nothing the bot did",
+      "recorded": {
+        "kind": "chat",
+        "tasks": [],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    }
+  ],
+  "extraction": [
+    {
+      "task": "bugs",
+      "message": "that's a bug",
+      "action": "bug_report",
+      "data": {},
+      "left_out": false,
+      "recorded": [
+        "bug_report",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "bugs",
+      "message": "log that as a bug",
+      "action": "bug_report",
+      "data": {},
+      "recorded": [
+        "bug_report",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "bugs",
+      "message": "bug: it started two timers",
+      "action": "bug_report",
+      "data": {
+        "note": "it started two timers"
+      },
+      "recorded": [
+        "bug_report",
+        {
+          "note": "it started two timers",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "bugs",
+      "message": "that's a bug, the timer never went off",
+      "action": "bug_report",
+      "data": {
+        "note": "the timer never went off"
+      },
+      "recorded": [
+        "bug_report",
+        {
+          "note": "the timer never went off",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "bugs",
+      "message": "show my open bugs",
+      "action": "bug_list",
+      "data": {},
+      "recorded": [
+        "bug_list",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "bugs",
+      "message": "what bugs have I reported?",
+      "action": "bug_list",
+      "data": {},
+      "recorded": [
+        "bug_list",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "bugs",
+      "message": "no, I meant 15 minutes",
+      "action": "none",
+      "data": {},
+      "note": "a correction is not a bug report",
+      "recorded": [
+        "none",
+        {
+          "reason": "Correction of user's own request, not a bug report"
+        }
+      ]
+    }
+  ]
+}

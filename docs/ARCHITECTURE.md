@@ -34,6 +34,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `day.py` | The day boundary for every task (`DAY_BOUNDARY`, midnight NZ): `today()`, `day_of(moment)`, `at(day, time)`, `start_of` / `end_of` (UTC, daylight-saving safe), and the rollover job, which tells every `on_new_day` listener (a task's `new_day`) the day that ended and the day it is now, then books the next |
 | `timeinput.py` | Pure: dates the user types (`parse_date`: tomorrow, friday, the 20th, 20 Oct; shown by `format_date` / `format_dates`) and times the user types (12-hour, 24-hour, noon / midnight), `AmbiguousTime` with both readings when it could be morning or evening, the checks on a time given for something already done (today, not in the future, not before the previous one), and the one way times are shown (`format_time`: "8:04 am") |
 | `occurrences.py` | The occurrence log: expected things on a day (`occurrences`) with their state (pending, done, skipped, missed), plan, due time, actual time and automatic-skip reason, and every change to them (`occurrence_events`, values before and after). Changes made together share a change id: `db_last_change` finds the user's last one and `db_revert` takes it back |
+| `trace.py` | What happened to one message, step by step, for `dev why` and bug reports: any code leaves a note while a message is handled (`note`: a check that fired or was skipped), `core/conversation.py` keeps them with the route's reason, the router's answer, the card before and after and how much state was sent (`message_log.trace`), and `lines` / `block` put a logged message into a few plain lines that can be copied whole. Imports nothing from core |
 | `logging_setup.py` | Terminal and rotating file logging |
 | `instance_lock.py` | Single-instance lock on `data/bot.lock`, taken first thing at startup, and the source of truth for what is running: `holder()` asks the lock, `instances()` counts bot processes without the `.venv` launcher, `status()` puts both into words (`python -m core.instance_lock`, `dev status`) |
 | `database.py` | `connect()`, `wipe_dev()` (deletes the dev database and refuses any other), the async `message_log` helpers (`log_received`, `log_result`, `recent_log` for looking further back), `run(func)` in a worker thread |
@@ -50,7 +51,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `protection.py` | Pure: is a message protected (pinned or 📌), is it kept, and the wording when Discord refuses a pin |
 | `channels.py` | Which channels hold messages: `holds_messages(channel)` (text, news, threads, DMs; not forum, voice or category) and `named()`, the channels from `.env` that do. Asked before reading pins or history from a channel no message came from |
 | `pins.py` | `set_pinned(...)`: native pin and unpin for tasks that may not call Discord |
-| `actions.py` | The contract for plain words: an `Entry` (a task as the router knows it: name, icon, "only for", examples), its `Action`s (the fields Claude fills in; `prepare` + `apply` for one that needs a card, `run` for one that acts at once) and the `Proposal` a card shows. A field may be a list of items (`ITEMS`, with `item_fields`), so one request can hold several things; an item says what to do with it (`change_field()`: add, set, remove) and `merge_items` applies a message's changes to an open card, doing the sums. Builds each action's strict schema (every one also has `guessed` and `not_included`), checks what Claude returned against it (`validate`: an item that doesn't fit is left out and named, never dropped unseen), and names what is missing from a task's contract (`problems`). Holds the catalogue the registry sets. Pure |
+| `actions.py` | The contract for plain words: an `Entry` (a task as the router knows it: name, icon, "only for", examples), its `Action`s (the fields Claude fills in; `prepare` + `apply` for one that needs a card, `run` for one that acts at once, all three with `card_if` for one that only sometimes asks first) and the `Proposal` a card shows. A direct action returns its reply, a `LiveReply`, or `Shown` when it posted its own message. A field may be a list of items (`ITEMS`, with `item_fields`), so one request can hold several things; an item says what to do with it (`change_field()`: add, set, remove) and `merge_items` applies a message's changes to an open card, doing the sums. Builds each action's strict schema (every one also has `guessed` and `not_included`), checks what Claude returned against it (`validate`: an item that doesn't fit is left out and named, never dropped unseen), and names what is missing from a task's contract (`problems`). A task's state for extraction is a `State` (a heading and a line a thing), cut by `shown_state` to `STATE_LINES`, the lines the message could mean first. Holds the catalogue the registry sets. Pure apart from leaving trace notes |
 | `routing.py` | The router: one request that says which task a message is for, from the message, what is on screen and the catalogue (never an action or schema). `parse` reads its answer in code: task(s), a tie, or chat |
 | `extraction.py` | Extraction: one request for one task, given only that task's actions, which must call exactly one (or `none`; in a follow-up, `not_this`) with a `guessed` list. In a follow-up it gives only the items the message is about, never a total. `read` turns the call into the action, its data and its guesses, or "nothing fitted" with the reason |
 | `confirm.py` | Confirm cards: guess, show, confirm. Renders a `Proposal` (task and kind of change, every line, ❓ and ⚠️, Save / Cancel), keeps it as a row (`confirm_cards`) so it survives a restart, replaces one card with its correction (keeping everything said about it and what it was before its last change, so "No, …" can undo that change: `is_correction`), expires it after 30 minutes, and runs the task's `apply` on Save. Also the question asked on a tie, and the rule for when a message sticks to the open card (`sticks`) |
@@ -78,10 +79,11 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `builtin/__init__.py` | `ping`, `reset`, `buttons`, `stats`, and `help` generated from the registry |
 | `builtin/views.py` | The `buttons` test view |
 | `archive/__init__.py` | Registers reply `archive` / `delete`, the 📦 and 🗑️ reactions, the context menu |
+| `archive/plain.py` | Tidying messages in plain words, the `messages` entry: archive, pin, unpin and delete. Claude says how a message was pointed at (the newest, my own last, or one named by its words) and the code finds it among the channel's last few; pin acts at once, archive too unless the message is protected (then a card), delete is always a card |
 | `archive/rules.py` | Pure: what may be archived or deleted, names, embeds, wording |
 | `archive/store.py` | The `archive_items` records |
 | `archive/messages.py` | The Discord work: webhook repost, delete, confirmation, Restore button |
-| `bugs/__init__.py` | Registers `bug` (word and reply), the instant 🐞 reaction, `bugs`, `bugs export`; files a report; claims what is written in a bug's post and saves it as a note |
+| `bugs/__init__.py` | Registers `bug` (word and reply), the instant 🐞 reaction, `bugs`, `bugs export`; files a report; claims what is written in a bug's post and saves it as a note. In plain words: `bug_report` ("that's a bug": the last thing before my message, with what I said was wrong as its first note) and `bug_list` |
 | `bugs/rules.py` | Pure: ids, what may be reported, a message as plain values (`Snapshot`, `Report`), which logged turn it belongs to, which log lines go with it, and all the wording (post, title, tags, list, `docs/BUGS.md`) |
 | `bugs/store.py` | The `bugs_items` and `bugs_notes` records, the history in `bugs_events`, and the channel's recent `message_log` rows for finding the turn |
 | `bugs/capture.py` | Puts a report together: the turn, the errors from the tail of `logs/bot.log`, the commit the bot started on. No Discord |
@@ -89,10 +91,12 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `bugs/cli.py` | `python -m tasks.bugs.cli list \| show B4 \| note B4 "…"` for Claude Code's `bug` skill: reads and adds notes straight from the database, never closes a bug |
 | `keep/__init__.py` | The 📌 reaction: keep (pin) and unkeep (unpin); reply `pin` / `unpin`, which act at once. All through `core/pins.py` |
 | `pills/__init__.py` | Registers `pills` (the list) and Claude's tools `pill_add`, `pill_edit`, `pill_pause`, `pill_remove`; works in #inbox and the hub |
+| `pills/plain.py` | Setting pills up in plain words: `pill_add`, `pill_edit`, `pill_pause`, `pill_resume`, `pill_remove`, `pill_delete` (each a confirm card, each taking a list of pills) and `pill_list` (read-only, Live). Reads what was said into a plan with `rules.build`, never asking: a time that could be morning or evening is taken as the morning and flagged. A reply's change is laid over the card in code (`overlay`). No discord.py, no Context |
 | `pills/rules.py` | Pure: a pill's `Plan` (untimed, fixed times, or so many a day with a minimum gap; optionally a course with dates), building one from a `Request` in the user's words (`build`, which raises `TimeQuestion` for a time that could be morning or evening), what a pill is on a day (`status_on`: active, upcoming, paused, ended), which pill a name means (`find`), and all the wording (one-line summary, old-and-new for an edit, the list, the live state for Claude) |
 | `pills/store.py` | The `pills_pills` records, the drafts behind open previews (`pills_drafts`) and every change to a plan or status (`pills_changes`) |
 | `pills/plans.py` | Setting pills up, with no discord.py: the tools' handlers, the preview, list, pill and remove cards (`core/cards.py`), what each button does, and the job that lets an unsaved preview lapse |
 | `timers/__init__.py` | Registers `timer`, `timers`, `pause all`, `resume all`, `pomo`, `pomo stats`, the reply actions and job handlers, and Claude's tools: `list_timers`, `get_pomodoro_status`, `timer_history`, `timer_control`, `pomodoro_control` |
+| `timers/plain.py` | Timers and the Pomodoro in plain words: `timer_start` (a list), `timer_change` (at once; cancelling several asks first with a card), `timer_all`, `timer_list`, `timer_history`, `pomo_start`, `pomo_change`, `pomo_status`, `pomo_stats`, and what extraction is told (every timer and the session with their ids). Posts through `sender(channel_id)`, so the same code runs for a message and a button |
 | `timers/control.py` | The handlers of those tools, and `pause all` / `resume all`. What they report is read back from the database after the change. `timer_control` takes one id, several, or `all` (with an optional label), so a bulk request is one call; `live_state` is what Claude is told with every message |
 | `timers/status.py` | Pure: the live state of timers and the session in words for Claude, the ids (`t12`, `p4`) the control tools take, the event history and what `pause all` did; several ids in one argument, label matching, and the live state text |
 | `timers/durations.py`, `pomodoro.py` | Pure: duration parsing; Pomodoro phases, pause arithmetic, stats |
@@ -101,7 +105,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `dev/__init__.py` | Registers the `dev …` words; `dev mode on\|off` is the one Claude is always offered |
 | `dev/panel.py` | The pinned dev panel (with the clock, and "DEV DATABASE" when started with `--dev`), its persistent buttons, the bot's status ("🛠️ Dev mode", "🧪 DEV DATABASE") |
 | `dev/clockwords.py` | Pure: what `dev clock <time> \| +<duration> \| reset` moves the clock to (a time is the next moment the clock reads it), and the clock in words |
-| `dev/tools.py` | `dev inspect`, `dev status`, `dev jobs`, `dev run`, `dev fire next`, `dev seed`, `dev clean`, `dev cost`, `dev reset-db` (asks, then wipes the dev database and rebuilds it empty) |
+| `dev/tools.py` | `dev inspect`, `dev status`, `dev jobs`, `dev run`, `dev fire next`, `dev seed`, `dev clean`, `dev cost`, `dev why` (the trace of my last messages), `dev reset-db` (asks, then wipes the dev database and rebuilds it empty) |
 | `lab/demo.py` | Two demo tasks, a shopping list and a packing list, offered to the router on the dev database only: for trying confirm cards, corrections, ties and chat before a real task uses them |
 | `lab/__init__.py`, `common.py` | The `lab …` test bench; `common.py` has the `Run` adapters that let one `run_*` function serve a typed word and `/lab` |
 | `lab/buttons.py`, `react.py`, `status.py`, `charts.py`, `data.py`, `misc.py`, `channels.py`, `tour.py`, `state.py`, `ratelimits.py` | One Discord feature each: components, reaction timeline, pinned status, charts and their data, notifications / polls / formatting, cross-channel test, the guided tour, the lab's key/value table, rate-limit watching |
@@ -122,9 +126,10 @@ database with the clock under test control), `devmode`, `dev_parsing`, `lab`, `l
 `permissions`, `scheduler`, `text`, `tools`, `pending`, `llm_tools` (the
 Claude loop against a scripted stand-in), `toolcalls`, `bugs`, `instance_lock`, `backup` (the specs zip), `clock`,
 `day` (the boundary and the rollover job), `timeinput`, `occurrences`,
-`dev_clock` (`dev clock`, `dev reset-db` and their guards), `actions` (the contract and the checking), `routing` (the router, extraction and the replayed fixtures), `conversation` (a message end to end, confirm cards, the demo lists), `livelists`, `costs` (routes, prices, the roll-up and `dev cost`), `cards`,
+`dev_clock` (`dev clock`, `dev reset-db` and their guards), `actions` (the contract and the checking), `routing` (the router, extraction and the replayed fixtures), `conversation` (a message end to end, confirm cards, the demo lists), `livelists`, `costs` (routes, prices, the roll-up and `dev cost`), `trace` (notes, a message in lines, `dev why`), `cards`,
 `pills_rules`, `pills_plans` (records, previews, buttons, and a tool call
-all the way through the registry), `channels`
+all the way through the registry), `timers_plain`, `pills_plain` and
+`messages_plain` (each task's actions in plain words), `channels`
 (channel types, the dev panel's start-up sweep, a task failing to start).
 
 ## Data flows
@@ -157,8 +162,9 @@ and hands the clock its stored offset → logging → `instance_lock.acquire()`
    gets this far, so it never costs an API call.
 5. Every outcome is emitted to tasks as `action_finished`.
 
-**Plain words → router → extraction → the task's code** (the new way; no
-real task uses it yet, see "Not built yet")
+**Plain words → router → extraction → the task's code** (the new way:
+timers, bugs, pills setup and tidying messages are on it; see "Not built
+yet" for what is left of the old way)
 
 1. `main.on_message`, for a message that is no shortcut, in #inbox or the
    hub: `conversation.handle`. With nothing in the catalogue it does
@@ -265,7 +271,8 @@ real task uses it yet, see "Not built yet")
    the user's message by id, the bot's by time; the tool calls are rows
    against the same message, the timings are in `message_log.timing`),
    reads the warnings and errors around it from `logs/bot.log`, and adds
-   the commit the bot started on.
+   the commit the bot started on and the turn's trace (`core/trace.py`:
+   what `dev why` shows for it).
 3. The record is saved (`bugs_items`; its id is the number in "B4"), then
    `posts.create_post` opens a post in the #bugs forum (`BUGS_CHANNEL_ID`)
    tagged Open, with the context, the three questions and the Fixed /
@@ -356,7 +363,7 @@ seconds.
 
 | Tables | Owner |
 |---|---|
-| `users`, `message_log` (every input, with its route, tasks, what was extracted, requests, tokens, cost and time), `llm_calls` (one row per request to Claude), `confirm_cards` (open confirm cards and tie questions), `live_lists` (where the latest copy of each list shown on request is), `scheduled_jobs`, `reaction_state`, `skill_migrations`, `occurrences`, `occurrence_events` | core (`core/migrations.py`, version in `PRAGMA user_version`) |
+| `users`, `message_log` (every input, with its route, tasks, what was extracted, its trace, requests, tokens, cost and time), `llm_calls` (one row per request to Claude), `confirm_cards` (open confirm cards and tie questions), `live_lists` (where the latest copy of each list shown on request is), `scheduled_jobs`, `reaction_state`, `skill_migrations`, `occurrences`, `occurrence_events` | core (`core/migrations.py`, version in `PRAGMA user_version`) |
 | `archive_items` | archive |
 | `bugs_items`, `bugs_notes`, `bugs_events` (each closing and re-opening) | bugs |
 | `pills_pills`, `pills_drafts` (previews waiting for Save), `pills_changes` (every plan and status change); doses will be rows of `occurrences` with task `pills` | pills |
@@ -370,10 +377,12 @@ go to `data/dev-backups/`, so they never push a real backup out.
 
 ## Not built yet
 
-No real task is on the router's way yet: timers, bugs, pills setup and
-archive / keep / delete move to it next, and the old way (every tool with
-every message, `tasks/toolcalls.py`, the reply guards) goes once they have.
-Until then both exist, and this branch is not to be merged.
+Timers, bugs, pills setup and tidying messages (archive, pin, delete) are
+on the router's way (each task's `plain.py`). The old way is still there
+beside it: a message the router calls chat in #inbox still gets every
+tool (`tasks/toolcalls.py`, the reply guards, the pills previews and
+drafts). Removing it is the next step; until then this branch is not to
+be merged.
 
 The gateway layer (the Claude chat path in `main.py` and `builtin`'s view
 still use discord.py directly), bulk and cross-channel actions for Claude,

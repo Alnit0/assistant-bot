@@ -259,6 +259,7 @@ only, any channel, no slash. It is off after every restart.
 | `dev clock +2h` | **Dev database only.** Move it ahead by a duration |
 | `dev clock reset` | Back to the real time (the only way back) |
 | `dev cost` | What the messages cost: today, this month, the average per message, the most expensive task |
+| `dev why`, `dev why 3` | Why the bot did what it did with my last message (or last n, up to 10): a copyable block each |
 | `dev reset-db` | **Dev database only.** Wipe `dev.db` after asking; the clock goes back too |
 
 - **Dev database:** stop the service, then `python main.py --dev`. Same

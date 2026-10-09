@@ -643,6 +643,45 @@ A short log of key decisions and why. Newest at the bottom.
   each extraction sees one task, so each reported the other's part. All
   tasks are extracted first; a part is dropped from the list when another
   task took something it names or the plain answer covers it.
+- **The state sent to extraction is capped in core, not by each task**
+  (2026-10-10): a task returns `actions.State` (a heading and a line a
+  thing) and `shown_state` sends at most 20 lines, first the ones that
+  share a word with the message, then the rest in the task's order, and
+  says how many were left out. The task's own code still works on the
+  whole list, so a cut can make Claude's reading poorer but never the
+  sum wrong. Each message's count is in its trace and `dev cost` adds
+  them up.
+- **Every message keeps a trace** (2026-10-10), so a wrong result can be
+  explained without reading the database by hand: `trace.note` from
+  anywhere, kept as JSON in `message_log.trace`. Checks say what they
+  did when they ran and when they were skipped. Shown by `dev why` and
+  attached to bug reports.
+- **A task's plain-words code takes no Context** (2026-10-10): the
+  actions of timers, bugs, pills and messages live in each task's
+  `plain.py` and get a `Request` (who, where, what was said, the message
+  replied to), so the same code runs for a message, a Save and a tie
+  pick. Timers were split so a timer or session can be started with a
+  `send` function instead of a Context; the typed words call the same
+  code.
+- **Three additions to the contract, each for a real task:** `Shown`
+  (a timer posts its own message, so nothing more is said), `card_if`
+  (cancelling one timer acts at once, several asks first; archiving a
+  protected message asks) and `Proposal.guessed` (a guess the code made,
+  kept with the card: without it "8pm" after "iron at 8" came back as
+  two doses, because 8:00 am looked as if it had been said).
+- **Pills guess instead of asking:** a time that could be morning or
+  evening is taken as the morning and marked ❓ on the card. The old
+  question with two buttons belongs to the old way and goes with it.
+- **Which message is meant: Claude says how it was pointed at, code
+  counts.** Given ids for the last messages, Claude picked the oldest for
+  "delete that" as often as the newest, whatever order or marking the
+  list had. It now says `newest`, `mine` or `named` (with ids only for a
+  message described by its words), and the code finds the newest ones.
+  Delete is always a card, and whatever is done to a message picked
+  without a reply is quoted.
+- **"That's a bug: it was slow" keeps the words as the bug's first note.**
+  Dropping them would break "nothing is dropped without a word", and a
+  note is exactly what they are. (The typed word `bug` still takes none.)
 - **Two demo tasks, on the dev database only,** so the core can be tried
   before any real task depends on it. The live bot's router never hears
   of them.

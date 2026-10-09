@@ -2,7 +2,7 @@ import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 
-from core import database
+from core import database, trace
 from core.users import User
 
 # ---------------------------------------------------------------------------
@@ -43,6 +43,53 @@ RESERVED = (NONE, NOT_THIS)
 MIN_EXAMPLES, MAX_EXAMPLES = 2, 3
 GUESS_MARK = "❓"
 WARNING_MARK = "⚠️"
+STATE_LINES = 20  # the most of a task's state that goes to extraction with one message
+
+
+@dataclass(frozen=True)
+class State:
+    """What a task has now, for extraction to read with a message: a heading
+    and a line for each thing. A task returns this from `live_state`, not one
+    long string, so that only what the message could be about is sent."""
+
+    heading: str  # "On the shopping list now"
+    lines: tuple[str, ...] = ()
+    empty: str = "nothing"
+
+
+def _stems(text: str) -> set[str]:
+    words = re.findall(r"[^\W_]+", str(text).lower())
+    return {word[:-1] if len(word) > 3 and word.endswith("s") else word for word in words if len(word) > 2}
+
+
+def shown_state(state: "State | str", said: str, limit: int = STATE_LINES) -> tuple[str, int, int]:
+    """A task's state as it is sent to extraction: (the text, lines sent, lines
+    there are). A long state is cut to `limit` lines: first the ones that
+    share a word with what was said (what the message could refer to), then
+    the others in the task's own order, and it says how many were left out."""
+    if isinstance(state, str):
+        every = [line for line in state.splitlines() if line.strip()]
+        heading, every, empty = (every[0].rstrip(":"), every[1:], "") if len(every) > limit else ("", every, "")
+    else:
+        heading, every, empty = state.heading, list(state.lines), state.empty
+    total = len(every)
+    if total <= limit:
+        sent = every
+    else:
+        heard = _stems(said)
+        about = [line for line in every if _stems(line) & heard]
+        chosen = set(map(id, about[:limit]))
+        for line in every:
+            if len(chosen) >= limit:
+                break
+            chosen.add(id(line))
+        sent = [line for line in every if id(line) in chosen]  # in the task's order
+    if not sent:
+        return (f"{heading}: {empty}" if heading and empty else heading), 0, total
+    left = total - len(sent)
+    more = f"\n(and {left} more not shown: what the message names is among the lines above if it is there at all)" if left else ""
+    body = "\n".join(f"- {line}" for line in sent) if heading else "\n".join(sent)
+    return (f"{heading}:\n{body}{more}" if heading else f"{body}{more}"), len(sent), total
 
 
 @dataclass(frozen=True)
@@ -71,6 +118,10 @@ class Proposal:
     kind: str = "new"  # the kind of change, for the first line: new, edit, pause, remove…
     destructive: bool = False  # can't be undone: a card of its own kind
     confirm_label: str = "Save"
+    # What the task's own code guessed in `data` (a time taken as the morning),
+    # named as Claude names a guess ("pills[0].times"). Kept with the card beside
+    # Claude's guesses, so a follow-up knows the value was never said
+    guessed: tuple[str, ...] = ()
 
 
 @dataclass
@@ -86,6 +137,10 @@ class Request:
     # message changes (see merge_items), so code, not Claude, carries the rest
     # of the card over and does any sums
     previous: dict | None = None
+    # The message the user replied to, if they replied to one ("pause this")
+    replied_to: int | None = None
+    # The user's own message (None for a press of a button)
+    message_id: int | None = None
 
     db = database
 
@@ -100,9 +155,21 @@ class LiveReply:
     text: str
 
 
+@dataclass(frozen=True)
+class Shown:
+    """What a direct action returns when it has put its own message in the
+    channel (a timer's message with its buttons, a session card): nothing more
+    is posted for it. `summary` is for the log; `also`, if there is any, is
+    said as well (a guess to point out, something that could not be done)."""
+
+    summary: str
+    also: str = ""
+
+
 Prepare = Callable[[Request, dict, frozenset], Awaitable[Proposal]]
 Apply = Callable[[Request, dict], Awaitable[str]]
-Run = Callable[[Request, dict, frozenset], Awaitable["str | LiveReply"]]
+Run = Callable[[Request, dict, frozenset], Awaitable["str | LiveReply | Shown"]]
+CardIf = Callable[[Request, dict], Awaitable[bool]]
 
 
 @dataclass(frozen=True)
@@ -114,6 +181,10 @@ class Action:
     prepare: Prepare | None = None  # needs_card: the data as a Proposal
     apply: Apply | None = None  # needs_card: Save was pressed; returns what to say
     run: Run | None = None  # direct: do it; returns what to say
+    # For an action that only sometimes needs a card (cancelling one timer acts
+    # at once, cancelling several asks first): `async (request, data) -> bool`.
+    # Such an action has all three of `prepare`, `apply` and `run`
+    card_if: CardIf | None = None
 
     def field(self, name: str) -> Field | None:
         return next((entry for entry in self.fields if entry.name == name), None)
@@ -132,7 +203,7 @@ class Entry:
     hint: str = ""
     # `async (request) -> str`: what extraction should know about this task's
     # state right now (names and ids). Goes in the user turn, never the cached part
-    live_state: Callable[[Request], Awaitable[str]] | None = None
+    live_state: Callable[[Request], Awaitable["State | str"]] | None = None
 
     @property
     def title(self) -> str:
@@ -213,6 +284,7 @@ def merge_items(
     for change in changes:
         was = next((item for item in merged if same(item[key], change[key])), None)
         if _restated(change, was, changes, key, amount, same, said):
+            trace.note(f"restatement check: {change[key]} came back with the card and the message doesn't name it: not added again")
             # As it was: left alone. With another amount: that is what it should be, never added on top
             if amount is not None and amount in change:
                 was[amount] = change[amount]
@@ -221,6 +293,9 @@ def merge_items(
         name, what = change[key], change.get(CHANGE, ADD)
         at = next((index for index, item in enumerate(merged) if same(item[key], name)), None)
         was = merged[at] if at is not None else None
+        if was is not None and what != REMOVE and len(changes) > 1:
+            trace.note(f"restatement check: {name} is on the card and came back, taken as a real change ({what})")
+        trace.note(f"merge: {name} {what}" + (f" {change[amount]}" if amount is not None and amount in change else "") + (" (on the card)" if was is not None else " (new to the card)"))
         if what == REMOVE:
             if at is not None:
                 merged.pop(at)
@@ -337,9 +412,12 @@ def problems(entries: list[Entry]) -> list[str]:
                 names[action.name] = who
             if not action.description.strip():
                 found.append(f"{where} has no description for Claude")
-            if action.needs_card and (action.prepare is None or action.apply is None):
+            if action.card_if is not None:
+                if action.prepare is None or action.apply is None or action.run is None:
+                    found.append(f"{where} needs a card only sometimes (`card_if`), so it needs `prepare`, `apply` and `run`")
+            elif action.needs_card and (action.prepare is None or action.apply is None):
                 found.append(f"{where} needs a card, so it needs both `prepare` (the card) and `apply` (Save)")
-            if not action.needs_card and action.run is None:
+            elif not action.needs_card and action.run is None:
                 found.append(f"{where} acts straight away, so it needs `run` (which writes the reply)")
             field_names = [entry_field.name for entry_field in action.fields]
             if len(set(field_names)) != len(field_names):
@@ -594,6 +672,19 @@ def validate(action: Action, raw) -> Checked:
     if not isinstance(not_included, list) or not all(isinstance(item, str) for item in not_included):
         raise Invalid(f"`{NOT_INCLUDED}` must be a list of the parts left out")
     left_out = [part.strip() for part in not_included if part.strip()] + left_out
+    # A guess named by an item's field alone ("duration" for "timers[0].duration"),
+    # seen from Claude on a list of one: it is put where it belongs, on each item that
+    # has that field, so the guess is still flagged rather than forgotten
+    lists = [entry_field for entry_field in action.fields if entry_field.type == ITEMS and entry_field.name in data]
+    placed: list[str] = []
+    for name in guessed:
+        if name in known or "[" in name or "." in name or len(lists) != 1 or lists[0].name in shifted:
+            placed.append(name)
+        elif any(inner.name == name for inner in lists[0].item_fields):
+            placed += [path(lists[0].name, index, name) for index, item in enumerate(data[lists[0].name]) if name in item]
+        else:
+            placed.append(name)
+    guessed = placed
     kept = frozenset(
         name for name in guessed if _guess_is_about(name, data) and not ("[" in name and name.split("[")[0] in shifted)
     )

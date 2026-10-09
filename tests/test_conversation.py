@@ -1247,7 +1247,7 @@ def test_make_the_eggs_7_sets_the_amount_and_the_card_shows_before_and_after(wor
     world.claude(route("shopping"), shop_add("eggs", 7, change="set"))
     world.say("make the eggs 7")
     assert card_lines(world) == ["🛒 Shopping · change", "eggs · 5 → 7"]
-    assert "On the shopping list now: eggs × 5" in world.requests[-1].user, "extraction is shown the list"
+    assert "On the shopping list now:\n- eggs × 5" in world.requests[-1].user, "extraction is shown the list"
     assert save(world) == "✅ Saved · 🛒 **eggs** × 7 is on the shopping list"
     assert shopping_list() == [{"item": "eggs", "quantity": 7}]
 
@@ -1514,3 +1514,72 @@ def test_an_item_on_the_card_that_the_message_names_again_is_a_real_change(world
     world.claude(shop_add_all("butter", "jam"))
     world.say("and another butter and jam")
     assert card_lines(world) == ["🛒 Shopping · new", "butter · × 2", "jam · × 1"]
+
+
+# ---------------------------------------------------------------------------
+# The trace of a message, and the cap on the state sent to extraction
+# ---------------------------------------------------------------------------
+def traces():
+    def read(conn):
+        return [json.loads(kept) if kept else {} for (kept,) in conn.execute("SELECT trace FROM message_log ORDER BY id")]
+
+    return run(database.run(read))
+
+
+def test_every_message_keeps_why_it_went_the_way_it_did_and_what_the_code_did(world):
+    run(demo._save("shopping", 1, [{"item": "butter", "quantity": 2}]))
+    world.claude(route("shopping"), shop_add("butter"))
+    world.say("Add butter")
+    world.claude(shop_add_all(("butter", 1, "add"), "jam"))
+    world.say("and jam")
+    first, second = traces()
+
+    assert first["router"] == {"tasks": ["shopping"], "tie": False, "chat": False, "chat_part": "", "problem": ""}
+    assert first["why"] == ["nothing on screen claimed it"]
+    assert "open card: none, so the sticky and correction checks were skipped" in first["checks"]
+    assert first["card"] == {"before": [], "after": ["butter · 2 → 3"]}
+    assert first["state"] == {"shopping": {"sent": 1, "total": 1}}
+
+    assert "router" not in second, "a follow-up never asks the router"
+    assert second["why"][0].startswith("card 1 (shopping) is open and the message sticks to it: it is the bot's latest message")
+    assert any(check.startswith("sticky check: card 1 sticks") for check in second["checks"])
+    assert "correction check: not a correction of the last change" in second["checks"]
+    assert "restatement check: butter came back with the card and the message doesn't name it: not added again" in second["checks"]
+    assert "merge: jam add (new to the card)" in second["checks"] and "card 1 replaced" in second["checks"]
+    assert second["card"] == {"before": ["butter 1 add"], "after": ["butter · 2 → 3", "jam · × 1"]}
+
+
+def test_the_trace_says_when_a_change_was_undone(world):
+    milk_and_bread_rolls(world)
+    world.claude(shop_add("milk", 2, change="set"))
+    world.say("make it 2")
+    world.claude(shop_add("bread rolls", 2, change="set"))
+    world.say("No, 2 bread rolls")
+    last = traces()[-1]
+    assert "correction check: the last change is undone first" in last["checks"]
+    assert "card 2 replaced (last change undone first)" in last["checks"]
+
+
+def test_the_trace_says_what_the_not_included_check_dropped_and_kept(world):
+    world.claude(
+        route("shopping", "packing"),
+        shop_add("jam", not_included=["pack a hat", "book the dentist"]),
+        pack("hat"),
+    )
+    world.say("add jam, pack a hat and book the dentist")
+    checks = traces()[-1]["checks"]
+    assert 'not-included check: "pack a hat" dropped, covered by another task' in checks
+    assert 'not-included check: "book the dentist" is covered by nothing: said to the user' in checks
+
+
+def test_a_long_list_is_capped_before_it_goes_to_extraction_and_the_count_is_kept(world):
+    many = [{"item": f"thing {number}", "quantity": 1} for number in range(60)] + [{"item": "eggs", "quantity": 5}]
+    run(demo._save("shopping", 1, many))
+    world.claude(route("shopping"), shop_add("eggs", 7, change="set"))
+    world.say("make the eggs 7")
+    asked = world.requests[-1].user
+    assert asked.count("\n- ") == actions.STATE_LINES and "- eggs × 5" in asked, "what the message names is among them"
+    assert "(and 41 more not shown" in asked
+    assert traces()[-1]["state"] == {"shopping": {"sent": 20, "total": 61}}
+    assert card_lines(world) == ["🛒 Shopping · change", "eggs · 5 → 7"], "the code still has the whole list"
+    assert run(database.run(costs.db_state_sent, "2000-01-01")) == (1, 20, 61)

@@ -2,6 +2,7 @@ import asyncio
 
 import discord
 
+from core.actions import Action, Field, Request
 from core.config import BASE_DIR
 from core.context import Context
 from core.errors import UserError
@@ -92,11 +93,77 @@ async def save_note(ctx: Context) -> str:
     return f"note saved for {rules.bug_id(item.id)}"
 
 
+# ---------------------------------------------------------------------------
+# In plain words (core/actions.py): "that's a bug", "show my open bugs".
+# Reporting logs something and changes no setup, so neither needs a card.
+# ---------------------------------------------------------------------------
+async def report_said(request: Request, data: dict, guessed: frozenset) -> str:
+    """Report the message replied to, or else the last thing in the channel
+    before the user's own message. What they said was wrong, if they said,
+    is kept as the bug's first note."""
+    if request.replied_to is not None:
+        target, source = await posts.fetch_message(request.channel_id, request.replied_to), rules.REPLY
+    else:
+        target, source = await posts.latest_before(request.channel_id, request.message_id), rules.WORD
+    rules.check_reportable(target)
+    already = await store.open_for(request.user.id, target.channel.id, target.id)
+    before = await posts.preceding(target)
+    text = await _file(request.user, target.channel.id, rules.snapshot(target), before, source, request.message_id)
+    note = (data.get("note") or "").strip()
+    item = await store.open_for(request.user.id, target.channel.id, target.id)
+    if note and item is not None:
+        await store.add_note(item.id, request.user.id, rules.OWNER, note, request.message_id)
+        await posts.refresh_card(await store.get(item.id))
+        text += " · 📝 your note is saved with it" if already is None else " · 📝 note added"
+    return text
+
+
+async def list_said(request: Request, data: dict, guessed: frozenset) -> str:
+    return rules.list_text(await store.open_items(request.user.id))
+
+
+ACTIONS = (
+    Action(
+        "bug_report",
+        "The user says the bot itself got something wrong and wants it logged as a bug: \"that's a bug\", "
+        "\"log that as a bug\", \"bug: it started two timers\" -> note \"it started two timers\". Only when "
+        "they say bug or report. A correction of what they asked for (\"no, I meant 5 minutes\") is not "
+        "a bug report: call `none`.",
+        (
+            Field(
+                "note",
+                "What the user said was wrong, in their words, if they said. Leave out if they only said it is a bug.",
+            ),
+        ),
+        needs_card=False,
+        run=report_said,
+    ),
+    Action(
+        "bug_list",
+        "The user asks which bugs are open (\"show my open bugs\", \"what bugs have I reported?\").",
+        needs_card=False,
+        run=list_said,
+    ),
+)
+
+
 class BugsTask(Task):
     """Reporting bugs: each one captured with its context and given a post in #bugs."""
 
     name = "bugs"
     description = "Report a bug with 🐞 or `bug`: it is captured with its context and gets a post in #bugs"
+    # In plain words: how the router knows this task
+    icon = rules.BUG_EMOJI
+    only_for = (
+        "Reporting that the bot itself did something wrong, as a bug report, and listing the bug reports "
+        "that are open. Only when the user says bug or report: not a correction of a request, not "
+        "something the bot should do, and not a problem with anything outside the bot."
+    )
+    examples = ("that's a bug", "log that as a bug: it started two timers", "show my open bugs")
+    hint = "Say “that's a bug” straight after what went wrong, or reply to it with `bug`."
+
+    def actions(self) -> list:
+        return list(ACTIONS)
 
     def keywords(self) -> list[Keyword]:
         return [

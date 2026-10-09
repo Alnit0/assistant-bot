@@ -1,0 +1,691 @@
+{
+  "router": [
+    {
+      "message": "set a timer for 5 minutes",
+      "tasks": [
+        "timers"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "timers"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "pause the tea timer",
+      "tasks": [
+        "timers"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "timers"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "start a pomodoro",
+      "tasks": [
+        "timers"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "timers"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "how long left on my pomodoro?",
+      "tasks": [
+        "timers"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "timers"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "cancel all my timers",
+      "tasks": [
+        "timers"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "timers"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "what's the capital of France, and set a timer for 5 minutes",
+      "tasks": [
+        "timers"
+      ],
+      "also_chat": true,
+      "note": "a question and a request: both parts are dealt with",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "timers"
+        ],
+        "confidence": "high",
+        "chat_part": "what's the capital of France"
+      }
+    },
+    {
+      "message": "how does a pomodoro timer work?",
+      "chat": true,
+      "note": "a trap: it mentions timers and pomodoro but asks a general question, not for one to be started",
+      "recorded": {
+        "kind": "chat",
+        "tasks": [],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    }
+  ],
+  "extraction": [
+    {
+      "task": "timers",
+      "message": "set a timer for 5 minutes",
+      "state": "Timers and the Pomodoro session now (use these ids): no timers and no Pomodoro session",
+      "action": "timer_start",
+      "data": {
+        "timers": [
+          {
+            "duration": "5m"
+          }
+        ]
+      },
+      "recorded": [
+        "timer_start",
+        {
+          "timers": [
+            {
+              "duration": "5m"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "timers",
+      "message": "timer 20 min for tea",
+      "state": "Timers and the Pomodoro session now (use these ids): no timers and no Pomodoro session",
+      "action": "timer_start",
+      "data": {
+        "timers": [
+          {
+            "duration": "20m",
+            "label": "tea"
+          }
+        ]
+      },
+      "recorded": [
+        "timer_start",
+        {
+          "timers": [
+            {
+              "duration": "20m",
+              "label": "tea"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "timers",
+      "message": "Start six one-minute timers called a, b, c, d, e and f",
+      "state": "Timers and the Pomodoro session now (use these ids): no timers and no Pomodoro session",
+      "action": "timer_start",
+      "data": {
+        "timers": [
+          {
+            "duration": "1m",
+            "label": "a"
+          },
+          {
+            "duration": "1m",
+            "label": "b"
+          },
+          {
+            "duration": "1m",
+            "label": "c"
+          },
+          {
+            "duration": "1m",
+            "label": "d"
+          },
+          {
+            "duration": "1m",
+            "label": "e"
+          },
+          {
+            "duration": "1m",
+            "label": "f"
+          }
+        ]
+      },
+      "note": "several in one message: every one, in order",
+      "recorded": [
+        "timer_start",
+        {
+          "timers": [
+            {
+              "duration": "1m",
+              "label": "a"
+            },
+            {
+              "duration": "1m",
+              "label": "b"
+            },
+            {
+              "duration": "1m",
+              "label": "c"
+            },
+            {
+              "duration": "1m",
+              "label": "d"
+            },
+            {
+              "duration": "1m",
+              "label": "e"
+            },
+            {
+              "duration": "1m",
+              "label": "f"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "timers",
+      "message": "set a timer for a few minutes",
+      "state": "Timers and the Pomodoro session now (use these ids): no timers and no Pomodoro session",
+      "action": "timer_start",
+      "data": {
+        "timers": [
+          {}
+        ]
+      },
+      "note": "a vague length is a guess, and is flagged",
+      "guessed": [
+        "timers[0].duration"
+      ],
+      "recorded": [
+        "timer_start",
+        {
+          "timers": [
+            {
+              "duration": "5m"
+            }
+          ],
+          "guessed": [
+            "timers[0].duration"
+          ],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "timers",
+      "message": "Set a timer for three days",
+      "state": "Timers and the Pomodoro session now (use these ids): no timers and no Pomodoro session",
+      "action": "timer_start",
+      "data": {
+        "timers": [
+          {}
+        ]
+      },
+      "note": "too long: the code refuses it in its own words, extraction still fills it in",
+      "recorded": [
+        "timer_start",
+        {
+          "timers": [
+            {
+              "duration": "72h"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "timers",
+      "message": "pause the tea timer",
+      "state": "Timers and the Pomodoro session now (use these ids):\n- t12: \"tea\" · running, 4m left · in this channel\n- t14: \"dinner\" · paused with 12m left · in this channel",
+      "action": "timer_change",
+      "data": {
+        "which": "t12",
+        "action": "pause"
+      },
+      "recorded": [
+        "timer_change",
+        {
+          "which": "t12",
+          "action": "pause",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "timers",
+      "message": "carry on with dinner",
+      "state": "Timers and the Pomodoro session now (use these ids):\n- t12: \"tea\" · running, 4m left · in this channel\n- t14: \"dinner\" · paused with 12m left · in this channel",
+      "action": "timer_change",
+      "data": {
+        "which": "t14",
+        "action": "resume"
+      },
+      "recorded": [
+        "timer_change",
+        {
+          "which": "t14",
+          "action": "resume",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "timers",
+      "message": "give tea 5 more minutes",
+      "state": "Timers and the Pomodoro session now (use these ids):\n- t12: \"tea\" · running, 4m left · in this channel\n- t14: \"dinner\" · paused with 12m left · in this channel",
+      "action": "timer_change",
+      "data": {
+        "which": "t12",
+        "action": "extend",
+        "duration": "5m"
+      },
+      "recorded": [
+        "timer_change",
+        {
+          "which": "t12",
+          "action": "extend",
+          "duration": "5m",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "timers",
+      "message": "stop the dinner timer",
+      "state": "Timers and the Pomodoro session now (use these ids):\n- t12: \"tea\" · running, 4m left · in this channel\n- t14: \"dinner\" · paused with 12m left · in this channel",
+      "action": "timer_change",
+      "data": {
+        "which": "t14",
+        "action": "cancel"
+      },
+      "recorded": [
+        "timer_change",
+        {
+          "which": "t14",
+          "action": "cancel",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "timers",
+      "message": "cancel tea and dinner",
+      "state": "Timers and the Pomodoro session now (use these ids):\n- t12: \"tea\" · running, 4m left · in this channel\n- t14: \"dinner\" · paused with 12m left · in this channel",
+      "action": "timer_change",
+      "data": {
+        "which": "t12 t14",
+        "action": "cancel"
+      },
+      "note": "two by name: one call, both ids",
+      "recorded": [
+        "timer_change",
+        {
+          "which": "t12 t14",
+          "action": "cancel",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "timers",
+      "message": "cancel all my timers",
+      "state": "Timers and the Pomodoro session now (use these ids):\n- t12: \"tea\" · running, 4m left · in this channel\n- t14: \"dinner\" · paused with 12m left · in this channel",
+      "action": "timer_change",
+      "data": {
+        "which": "all",
+        "action": "cancel"
+      },
+      "note": "a bulk stop: the code asks first with a card",
+      "recorded": [
+        "timer_change",
+        {
+          "which": "all",
+          "action": "cancel",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "timers",
+      "message": "stop all timers called tea",
+      "state": "Timers and the Pomodoro session now (use these ids):\n- t12: \"tea\" · running, 4m left · in this channel\n- t14: \"dinner\" · paused with 12m left · in this channel\n- t15: \"Tea 2\" · running, 9m left · in this channel",
+      "action": "timer_change",
+      "data": {
+        "which": "t12 t15",
+        "action": "cancel"
+      },
+      "recorded": [
+        "timer_change",
+        {
+          "which": "t12 t15",
+          "action": "cancel",
+          "guessed": [],
+          "not_included": []
+        }
+      ],
+      "note": "by label: the id of each timer called tea, and not dinner. Two of them, so the code asks first"
+    },
+    {
+      "task": "timers",
+      "message": "pause it",
+      "state": "Timers and the Pomodoro session now (use these ids):\n- t12: \"tea\" · running, 4m left · in this channel",
+      "action": "timer_change",
+      "data": {
+        "which": "t12",
+        "action": "pause"
+      },
+      "note": "one timer going: \"it\" is that one",
+      "recorded": [
+        "timer_change",
+        {
+          "which": "t12",
+          "action": "pause",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "timers",
+      "message": "pause everything",
+      "state": "Timers and the Pomodoro session now (use these ids):\n- t12: \"tea\" · running, 4m left · in this channel\n- Pomodoro session p4: \"writing\" · Focus, round 2 of 4 · running, 11m left in this phase · lengths 25m/5m/15m (focus/break/long break) · each phase waits for Start · <#100> (this channel)",
+      "action": "timer_all",
+      "data": {
+        "action": "pause"
+      },
+      "recorded": [
+        "timer_all",
+        {
+          "action": "pause",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "timers",
+      "message": "resume all",
+      "state": "Timers and the Pomodoro session now (use these ids):\n- t12: \"tea\" · running, 4m left · in this channel\n- Pomodoro session p4: \"writing\" · Focus, round 2 of 4 · running, 11m left in this phase · lengths 25m/5m/15m (focus/break/long break) · each phase waits for Start · <#100> (this channel)",
+      "action": "timer_all",
+      "data": {
+        "action": "resume"
+      },
+      "recorded": [
+        "timer_all",
+        {
+          "action": "resume",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "timers",
+      "message": "pause all except the pomodoro",
+      "state": "Timers and the Pomodoro session now (use these ids):\n- t12: \"tea\" · running, 4m left · in this channel\n- Pomodoro session p4: \"writing\" · Focus, round 2 of 4 · running, 11m left in this phase · lengths 25m/5m/15m (focus/break/long break) · each phase waits for Start · <#100> (this channel)",
+      "action": "timer_all",
+      "data": {
+        "action": "pause",
+        "leave_pomodoro": true
+      },
+      "recorded": [
+        "timer_all",
+        {
+          "action": "pause",
+          "leave_pomodoro": true,
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "timers",
+      "message": "show my timers",
+      "state": "Timers and the Pomodoro session now (use these ids):\n- t12: \"tea\" · running, 4m left · in this channel\n- t14: \"dinner\" · paused with 12m left · in this channel",
+      "action": "timer_list",
+      "data": {},
+      "recorded": [
+        "timer_list",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "timers",
+      "message": "how long left on tea?",
+      "state": "Timers and the Pomodoro session now (use these ids):\n- t12: \"tea\" · running, 4m left · in this channel\n- t14: \"dinner\" · paused with 12m left · in this channel",
+      "action": "timer_list",
+      "data": {},
+      "recorded": [
+        "timer_list",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "timers",
+      "message": "when did I pause dinner?",
+      "state": "Timers and the Pomodoro session now (use these ids):\n- t12: \"tea\" · running, 4m left · in this channel\n- t14: \"dinner\" · paused with 12m left · in this channel",
+      "action": "timer_history",
+      "data": {
+        "which": "t14"
+      },
+      "recorded": [
+        "timer_history",
+        {
+          "which": "t14",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "timers",
+      "message": "what happened to my timers?",
+      "state": "Timers and the Pomodoro session now (use these ids):\n- t12: \"tea\" · running, 4m left · in this channel\n- t14: \"dinner\" · paused with 12m left · in this channel",
+      "action": "timer_history",
+      "data": {},
+      "recorded": [
+        "timer_history",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "timers",
+      "message": "start a pomodoro",
+      "state": "Timers and the Pomodoro session now (use these ids): no timers and no Pomodoro session",
+      "action": "pomo_start",
+      "data": {},
+      "recorded": [
+        "pomo_start",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "timers",
+      "message": "pomodoro 50/10 for writing",
+      "state": "Timers and the Pomodoro session now (use these ids): no timers and no Pomodoro session",
+      "action": "pomo_start",
+      "data": {
+        "lengths": "50/10",
+        "label": "writing"
+      },
+      "recorded": [
+        "pomo_start",
+        {
+          "lengths": "50/10",
+          "label": "writing",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "timers",
+      "message": "pause my pomodoro",
+      "state": "Timers and the Pomodoro session now (use these ids):\n- t12: \"tea\" · running, 4m left · in this channel\n- Pomodoro session p4: \"writing\" · Focus, round 2 of 4 · running, 11m left in this phase · lengths 25m/5m/15m (focus/break/long break) · each phase waits for Start · <#100> (this channel)",
+      "action": "pomo_change",
+      "data": {
+        "action": "pause"
+      },
+      "recorded": [
+        "pomo_change",
+        {
+          "action": "pause",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "timers",
+      "message": "skip this break",
+      "state": "Timers and the Pomodoro session now (use these ids):\n- Pomodoro session p4: \"writing\" · Break, round 2 of 4 · running, 3m left in this phase · lengths 25m/5m/15m (focus/break/long break) · phases start by themselves · <#100> (this channel)",
+      "action": "pomo_change",
+      "data": {
+        "action": "skip"
+      },
+      "recorded": [
+        "pomo_change",
+        {
+          "action": "skip",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "timers",
+      "message": "end the session",
+      "state": "Timers and the Pomodoro session now (use these ids):\n- t12: \"tea\" · running, 4m left · in this channel\n- Pomodoro session p4: \"writing\" · Focus, round 2 of 4 · running, 11m left in this phase · lengths 25m/5m/15m (focus/break/long break) · each phase waits for Start · <#100> (this channel)",
+      "action": "pomo_change",
+      "data": {
+        "action": "stop"
+      },
+      "recorded": [
+        "pomo_change",
+        {
+          "action": "stop",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "timers",
+      "message": "10 more minutes on this round",
+      "state": "Timers and the Pomodoro session now (use these ids):\n- t12: \"tea\" · running, 4m left · in this channel\n- Pomodoro session p4: \"writing\" · Focus, round 2 of 4 · running, 11m left in this phase · lengths 25m/5m/15m (focus/break/long break) · each phase waits for Start · <#100> (this channel)",
+      "action": "pomo_change",
+      "data": {
+        "action": "extend",
+        "duration": "10m"
+      },
+      "recorded": [
+        "pomo_change",
+        {
+          "action": "extend",
+          "duration": "10m",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "timers",
+      "message": "how long left on my pomodoro?",
+      "state": "Timers and the Pomodoro session now (use these ids):\n- t12: \"tea\" · running, 4m left · in this channel\n- Pomodoro session p4: \"writing\" · Focus, round 2 of 4 · running, 11m left in this phase · lengths 25m/5m/15m (focus/break/long break) · each phase waits for Start · <#100> (this channel)",
+      "action": "pomo_status",
+      "data": {},
+      "recorded": [
+        "pomo_status",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "timers",
+      "message": "how much have I focused today?",
+      "state": "Timers and the Pomodoro session now (use these ids): no timers and no Pomodoro session",
+      "action": "pomo_stats",
+      "data": {},
+      "recorded": [
+        "pomo_stats",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "timers",
+      "message": "remind me at 5pm to call mum",
+      "state": "Timers and the Pomodoro session now (use these ids): no timers and no Pomodoro session",
+      "action": "none",
+      "data": {},
+      "note": "a time of day is not a countdown: nothing here fits",
+      "recorded": [
+        "none",
+        {
+          "reason": "Not a countdown timer or Pomodoro session: reminder at a time of day"
+        }
+      ]
+    }
+  ]
+}

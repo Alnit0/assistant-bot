@@ -95,25 +95,31 @@ async def start(ctx: Context) -> str:
         seconds, label = split_duration(ctx.args)
     except DurationError as error:
         raise UserError(f"{error} {USAGE}")
-    if len(await store.active_timers(user_id=ctx.user.id)) >= MAX_ACTIVE:
-        raise UserError(f"You already have {MAX_ACTIVE} timers running. Cancel one first.")
+    timer = await start_one(ctx.user.id, ctx.author.id, ctx.channel_id, seconds, label, ctx.reply)
+    return f"started timer {timer.id}: {timer.label}, {format_duration(seconds)}"
 
+
+async def start_one(user_id: int, discord_user_id: int, channel_id: int, seconds: int, label: str, send) -> store.Timer:
+    """Start one timer and post its message with `send(text)`. For the typed
+    word and for plain words alike (tasks/timers/plain.py)."""
+    if len(await store.active_timers(user_id=user_id)) >= MAX_ACTIVE:
+        raise UserError(f"You already have {MAX_ACTIVE} timers running. Cancel one first.")
     timer = await store.add_timer(
         store.Timer(
-            user_id=ctx.user.id,
-            discord_user_id=ctx.author.id,
-            channel_id=ctx.channel_id,
+            user_id=user_id,
+            discord_user_id=discord_user_id,
+            channel_id=channel_id,
             label=(label or DEFAULT_LABEL)[:80],
             duration_s=seconds,
         )
     )
     await _run(timer, seconds)
-    message = await ctx.reply(render_timer(timer))
+    message = await send(render_timer(timer))
     timer.message_id = message.id
     await store.save_timer(timer)
     await store.log_event(timer, store.STARTED, seconds)
     await board.refresh(timer.channel_id, timer.user_id)
-    return f"started timer {timer.id}: {timer.label}, {format_duration(seconds)}"
+    return timer
 
 
 # ---------------------------------------------------------------------------

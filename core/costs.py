@@ -1,3 +1,4 @@
+import json
 import sqlite3
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -215,6 +216,25 @@ def db_purposes(conn: sqlite3.Connection, since: str) -> list[tuple[str, int, fl
     ).fetchall()
 
 
+def db_state_sent(conn: sqlite3.Connection, since: str) -> tuple[int, int, int]:
+    """How much of the tasks' state went to extraction since `since`: (messages
+    that had some, lines sent, lines there were). The cap is
+    `actions.STATE_LINES` a task a message; the trace of each message has its own."""
+    messages = sent = total = 0
+    for (kept,) in conn.execute(
+        "SELECT trace FROM message_log WHERE received_at >= ? AND trace LIKE '%\"state\"%'", (since,)
+    ):
+        try:
+            states = json.loads(kept).get("state") or {}
+        except (TypeError, ValueError):
+            continue
+        if states:
+            messages += 1
+            sent += sum(state.get("sent", 0) for state in states.values())
+            total += sum(state.get("total", 0) for state in states.values())
+    return messages, sent, total
+
+
 # ---------------------------------------------------------------------------
 # Adding it up (pure)
 # ---------------------------------------------------------------------------
@@ -336,7 +356,10 @@ def _period_lines(title: str, period: Period) -> list[str]:
     return lines
 
 
-def report(today: Period, month: Period, purposes: list[tuple[str, int, float]], database_name: str) -> str:
+def report(
+    today: Period, month: Period, purposes: list[tuple[str, int, float]], database_name: str,
+    state: tuple[int, int, int] = (0, 0, 0), state_cap: int = 0,
+) -> str:
     """What `dev cost` shows: today, this month, the average per message, the
     most expensive task, and where the requests to Claude went."""
     lines = [f"## 💰 Cost · `{database_name}`", *_period_lines("Today", today), *_period_lines("This month", month)]
@@ -357,5 +380,12 @@ def report(today: Period, month: Period, purposes: list[tuple[str, int, float]],
         lines.append(
             "-# Requests this month: "
             + " · ".join(f"{purpose} {count} ({money(cost)})" for purpose, count, cost in purposes)
+        )
+    messages, sent, total = state
+    if messages:
+        held_back = f", {total - sent:,} held back by the cap" if total > sent else ", nothing held back"
+        lines.append(
+            f"-# List context sent to extraction this month: {sent:,} of {total:,} lines over "
+            f"{_plural(messages, 'message')}{held_back} (at most {state_cap} a task a message)"
         )
     return "\n".join(lines)

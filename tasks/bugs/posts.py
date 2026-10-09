@@ -70,6 +70,20 @@ async def fetch_message(channel_id: int, message_id: int) -> discord.Message:
         raise UserError("I can't find the message you reacted to.") from error
 
 
+async def latest_before(channel_id: int, message_id: int | None) -> discord.Message:
+    """The last message in a channel before this one (the latest of all if
+    none is given): what "that's a bug" is about."""
+    channel = await _channel(channel_id)
+    before = discord.Object(id=message_id) if message_id is not None else None
+    try:
+        found = [item async for item in channel.history(limit=1, before=before)]
+    except discord.HTTPException as error:
+        raise UserError("I can't read this channel to find what to report.") from error
+    if not found:
+        raise UserError("There is nothing in this channel to report yet.")
+    return found[0]
+
+
 async def send(channel_id: int, text: str) -> None:
     """Leave a lasting line in a channel (Kept): where the bug was logged."""
     channel = await _channel(channel_id)

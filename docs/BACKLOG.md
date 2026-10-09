@@ -49,6 +49,11 @@ gained time"):
 
 ## Left for later
 
+- **`dev qa <block>`: step through a QA block in Discord** (asked for
+  2026-10-10, not built). One step of `docs/QA-RUN.md` at a time with
+  Pass / Fail buttons; on Fail the trace of the last messages
+  (`core/trace.py`) is captured with a note; the results are recorded in
+  `docs/TESTING.md` (status, date, notes) and the summary recounted.
 - **The demo tasks go at step 4 of the router work.** `tasks/lab/demo.py`
   (the shopping and packing lists) exists only so the router's way could
   be tried before a real task used it. When the old way is removed, move

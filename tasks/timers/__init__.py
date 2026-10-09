@@ -4,7 +4,7 @@ from core.context import Context
 from core.errors import UserError
 from core.lifecycle import MessageClass
 from tasks.base import ANY, Keyword, Param, ReplyAction, Task, Tool
-from tasks.timers import board, control, sessions, store, timers
+from tasks.timers import board, control, plain, sessions, store, timers
 from tasks.timers.common import PERMISSION, delete_message
 from tasks.timers.durations import DurationError, parse_duration
 
@@ -115,6 +115,17 @@ class TimersTask(Task):
 
     name = "timers"
     description = "Short timers and Pomodoro focus sessions"
+    # In plain words (tasks/timers/plain.py): how the router knows this task
+    icon = plain.ICON
+    only_for = plain.ONLY_FOR
+    examples = plain.EXAMPLES
+    hint = plain.HINT
+
+    def actions(self) -> list:
+        return list(plain.ACTIONS)
+
+    async def action_state(self, request):
+        return await plain.state(request)
 
     def keywords(self) -> list[Keyword]:
         return [
