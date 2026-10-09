@@ -33,6 +33,8 @@ class Extracted:
     action: Action | None = None  # None: nothing fitted (see `reason`) or it wasn't about the card
     data: dict | None = None
     guessed: frozenset = frozenset()
+    # What the user asked for that is not in `data`: said on the card or in the reply
+    not_included: tuple[str, ...] = ()
     not_this: bool = False
     reason: str = ""  # why nothing fitted, or what was wrong with what came back. For the log
 
@@ -44,7 +46,10 @@ class Extracted:
         """What was extracted, for message_log."""
         if self.action is None:
             return {"task": self.entry.name, "action": NOT_THIS if self.not_this else NONE, "reason": self.reason}
-        return {"task": self.entry.name, "action": self.action.name, "data": self.data, "guessed": sorted(self.guessed)}
+        logged = {"task": self.entry.name, "action": self.action.name, "data": self.data, "guessed": sorted(self.guessed)}
+        if self.not_included:
+            logged["not_included"] = list(self.not_included)
+        return logged
 
 
 def rules(entry: Entry) -> str:
@@ -53,11 +58,25 @@ def rules(entry: Entry) -> str:
         f"{entry.name} task ({entry.only_for}). You answer only by calling exactly one tool. Write no text: "
         "nothing you write is read, and the bot's own code tells the user what happened.\n"
         "- Pick the one action that fits and fill in its fields from the user's words.\n"
+        "- A message can ask for several things at once (\"add honey, jam and 5 eggs\"). A field that is a "
+        "list of items takes ALL of them, each as its own item, in the order they were said. Never keep "
+        "only the first.\n"
+        f"- Nothing may be dropped. Anything the user asked of THIS task that you cannot put into the action "
+        f"goes in `{actions.NOT_INCLUDED}`, word for word, and the user is told. Leave it empty when "
+        "everything is covered. A part of the message that is plainly for something else is not yours to "
+        "report when you are told it is being handled elsewhere.\n"
         "- Never ask a question and never leave a detail out because it is unclear: give your best guess, "
-        f"and list the name of every field you guessed or assumed in `{actions.GUESSED}`. The user is shown "
-        "each guess marked for them to accept or correct, so a marked guess is always better than nothing.\n"
-        "- Do not list a field the user stated outright.\n"
+        f"and name what you guessed in `{actions.GUESSED}`. The user is shown each guess marked for them to "
+        "accept or correct, so a marked guess is always better than nothing.\n"
+        "- A guess is a value you chose between readings: a time that could be morning or evening, a "
+        "vague amount (\"a few\"), something implied but not said. A field the user simply didn't mention "
+        "is NOT a guess: leave it out and its default applies (no amount means one). Never list a default, "
+        "and never list a field the user stated outright.\n"
         "- Copy names and wording as the user gave them. Follow each field's description for its form.\n"
+        "- \"It\", \"that\", \"this one\" and \"them\" mean what the user mentioned LAST: the last thing they "
+        "named, not the first on a list. Use what they have said so far to find it. If you cannot tell "
+        f"which is meant, take the last one named and list it in `{actions.GUESSED}` (by its place, e.g. "
+        "`items[0]`), so the user sees the guess.\n"
         "- Take ids and existing names from the state given with the message, when there is one.\n"
         f"- Only if no action fits at all, or the message makes no sense for this task, call `{NONE}`."
     )
@@ -65,17 +84,30 @@ def rules(entry: Entry) -> str:
 
 FOLLOW_UP_RULES = (
     "\n- A card is open, waiting for the user to accept it or say what to change. If the message is a "
-    "correction or an addition to that card, call the card's action again with ALL of its data: every "
-    "field as it stands on the card, changed only where the message changes it. A field the user has now "
-    f"stated is no longer a guess: leave it out of `{actions.GUESSED}`; keep the ones still guessed.\n"
+    "correction or an addition to that card, call the card's action again.\n"
+    "- For a field that is a list of items, give ONLY the items this message is about: the one it "
+    "changes, the one it removes, the ones it adds. Do not repeat the other items on the card and do "
+    "not do any sums: the bot's code keeps the rest of the card and works out the totals. \"Make the eggs "
+    "6\" is eggs alone, set to 6; \"remove the jam\" is jam alone, removed; \"add 3 milk\" is milk "
+    "alone, 3 more; \"add milk too\" is milk alone: \"too\" and \"as well\" do not mean repeat the card.\n"
+    "- Every other field of the card goes back as it stands on the card, changed only where the message "
+    f"changes it. A field the user has now stated is no longer a guess: leave it out of `{actions.GUESSED}`.\n"
     "- If the message asks for a different action of this task, call that action.\n"
-    f"- If the message is not about the card or this task at all, call `{NOT_THIS}`."
+    f"- If the message is not about the card or this task at all, call `{NOT_THIS}`: the card is then "
+    "left as it is and the message is read afresh."
 )
 
 
-def system_blocks(entry: Entry, follow_up: bool = False) -> list[dict]:
+AFTER_LIST_RULES = (
+    "\n- The user has just been shown this task's list, and the message came straight after it, so a "
+    "short request that names no task (\"add milk\") is for this task: fill it in as usual.\n"
+    f"- If the message is plainly for something else, call `{NOT_THIS}` and it is read afresh."
+)
+
+
+def system_blocks(entry: Entry, follow_up: bool = False, after_list: bool = False) -> list[dict]:
     """The instructions for this task: fixed text, marked for caching."""
-    text = rules(entry) + (FOLLOW_UP_RULES if follow_up else "")
+    text = rules(entry) + (FOLLOW_UP_RULES if follow_up else "") + (AFTER_LIST_RULES if after_list else "")
     return [{"type": "text", "text": text, "cache_control": llm.CACHED}]
 
 
@@ -98,12 +130,30 @@ class OpenCard:
     action: str
     data: dict
     guessed: tuple[str, ...] = ()
-    said: str = ""  # what the user first asked for
+    said: str = ""  # everything the user has said about it, oldest first, one message a line
+    # The user's last message about it, when that change was a mistake they are
+    # now correcting ("No, …"): it has been undone, and `data` is the card before it
+    undone: str = ""
 
 
-def user_turn(message: str, state: str = "", card: OpenCard | None = None, earlier: str = "") -> str:
+def standing(card: OpenCard) -> str:
+    """A request as it stands on a card, corrections included, for the task it is
+    being moved to ("no, packing"): what was asked, and what it had become."""
+    first = card.said.split("\n")[0]
+    return (
+        f"{first}\n\n(That request was first put on a card of another task and corrected there. As it "
+        f"stood on that card: {json.dumps(card.data, ensure_ascii=False, sort_keys=True)}. Carry over "
+        "EVERY item on it. A detail this task has no place for (an amount, say) is left off the item; the "
+        "item itself is never left out.)"
+    )
+
+
+def user_turn(
+    message: str, state: str = "", card: OpenCard | None = None, earlier: str = "", elsewhere: str = ""
+) -> str:
     """What changes from message to message: the task's state, the open card
-    and the message. Never part of the cached blocks."""
+    and the message. Never part of the cached blocks. `elsewhere` says what
+    other parts of the message are being dealt with by something else."""
     parts = []
     if state:
         parts.append(f"The task's state, read just now:\n{state}")
@@ -114,11 +164,30 @@ def user_turn(message: str, state: str = "", card: OpenCard | None = None, earli
             f"- data: {json.dumps(card.data, ensure_ascii=False, sort_keys=True)}",
             f"- still guessed: {', '.join(card.guessed) or 'nothing'}",
         ]
-        if card.said:
-            lines.append(f"- it came from the user saying: {card.said}")
+        said = [line for line in card.said.split("\n") if line.strip()]
+        if said:
+            lines.append("- what the user has said about it, oldest first: " + " | ".join(said))
+        if card.undone:
+            lines.append(
+                f"- the user's last change (\"{card.undone}\") was a mistake and has been UNDONE: the data above "
+                "is the card as it was before it. The message below says what they meant instead: apply that, "
+                "and nothing of the undone change."
+            )
         parts.append("\n".join(lines))
+    if elsewhere:
+        parts.append(
+            f"Other parts of this message are being handled elsewhere ({elsewhere}). They are not this task's: "
+            f"do not act on them, and do not list them in `{actions.NOT_INCLUDED}`."
+        )
     if earlier:
-        parts.append(f"Just before this, the user said: {earlier}")
+        parts.append(
+            f"Just before this, the user asked: {earlier}\n"
+            "They were shown a card from a different task, and the message below came next. If it only says "
+            "which task or list the earlier request was meant for (\"no, shopping\", \"I meant the other "
+            "list\"), fill in the action from the EARLIER request: the words that redirect it are never an "
+            "item, a name or any other value. If the message below is a request of its own, use it and "
+            "ignore the earlier one."
+        )
     parts.append(f"The message:\n{message}")
     return "\n\n".join(parts)
 
@@ -138,20 +207,25 @@ def read(entry: Entry, called: tuple[str, dict] | None, follow_up: bool = False)
     if action is None:
         return Extracted(entry, reason=f"`{name}` is not an action of {entry.name}")
     try:
-        data, guessed = actions.validate(action, raw)
+        checked = actions.validate(action, raw)
     except Invalid as error:
         return Extracted(entry, reason=f"{name}: {error}")
-    return Extracted(entry, action, data, guessed)
+    return Extracted(entry, action, checked.data, checked.guessed, checked.not_included)
 
 
 async def extract(
-    entry: Entry, message: str, state: str = "", card: OpenCard | None = None, earlier: str = ""
+    entry: Entry, message: str, state: str = "", card: OpenCard | None = None, earlier: str = "",
+    after_list: bool = False, elsewhere: str = "",
 ) -> Extracted:
-    """Ask Claude to fill in one of this task's actions. One request."""
-    follow_up = card is not None
+    """Ask Claude to fill in one of this task's actions. One request.
+
+    With `card`, the message is a follow-up to that open card. With
+    `after_list`, it came straight after this task's list was shown. Either
+    way Claude may answer `not_this`."""
+    follow_up = card is not None or after_list
     called = await llm.call_tool(
-        system_blocks(entry, follow_up),
-        user_turn(message, state, card, earlier),
+        system_blocks(entry, card is not None, after_list),
+        user_turn(message, state, card, earlier, elsewhere),
         tools(entry, follow_up),
         choice={"type": "any"},
         purpose=costs.PURPOSE_EXTRACTION,

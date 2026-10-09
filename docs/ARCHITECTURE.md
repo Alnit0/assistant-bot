@@ -50,11 +50,12 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `protection.py` | Pure: is a message protected (pinned or 📌), is it kept, and the wording when Discord refuses a pin |
 | `channels.py` | Which channels hold messages: `holds_messages(channel)` (text, news, threads, DMs; not forum, voice or category) and `named()`, the channels from `.env` that do. Asked before reading pins or history from a channel no message came from |
 | `pins.py` | `set_pinned(...)`: native pin and unpin for tasks that may not call Discord |
-| `actions.py` | The contract for plain words: an `Entry` (a task as the router knows it: name, icon, "only for", examples), its `Action`s (the fields Claude fills in; `prepare` + `apply` for one that needs a card, `run` for one that acts at once) and the `Proposal` a card shows. Builds each action's strict schema, checks what Claude returned against it (`validate`), and names what is missing from a task's contract (`problems`). Holds the catalogue the registry sets. Pure |
+| `actions.py` | The contract for plain words: an `Entry` (a task as the router knows it: name, icon, "only for", examples), its `Action`s (the fields Claude fills in; `prepare` + `apply` for one that needs a card, `run` for one that acts at once) and the `Proposal` a card shows. A field may be a list of items (`ITEMS`, with `item_fields`), so one request can hold several things; an item says what to do with it (`change_field()`: add, set, remove) and `merge_items` applies a message's changes to an open card, doing the sums. Builds each action's strict schema (every one also has `guessed` and `not_included`), checks what Claude returned against it (`validate`: an item that doesn't fit is left out and named, never dropped unseen), and names what is missing from a task's contract (`problems`). Holds the catalogue the registry sets. Pure |
 | `routing.py` | The router: one request that says which task a message is for, from the message, what is on screen and the catalogue (never an action or schema). `parse` reads its answer in code: task(s), a tie, or chat |
-| `extraction.py` | Extraction: one request for one task, given only that task's actions, which must call exactly one (or `none`; in a follow-up, `not_this`) with a `guessed` list. `read` turns the call into the action, its data and its guesses, or "nothing fitted" with the reason |
-| `confirm.py` | Confirm cards: guess, show, confirm. Renders a `Proposal` (task and kind of change, every line, ❓ and ⚠️, Save / Cancel), keeps it as a row (`confirm_cards`) so it survives a restart, replaces one card with its correction, expires it after 30 minutes, and runs the task's `apply` on Save. Also the question asked on a tie, and the rule for when a message sticks to the open card (`sticks`) |
-| `conversation.py` | A message in plain words, cheapest first: about the open card (extraction only), anything else (router, then extraction per task), or chat (a plain reply, no tools). Hands what was extracted to the task's own code, which writes every word shown; logs the route, tasks, what was extracted, the outcome and each request's cost |
+| `extraction.py` | Extraction: one request for one task, given only that task's actions, which must call exactly one (or `none`; in a follow-up, `not_this`) with a `guessed` list. In a follow-up it gives only the items the message is about, never a total. `read` turns the call into the action, its data and its guesses, or "nothing fitted" with the reason |
+| `confirm.py` | Confirm cards: guess, show, confirm. Renders a `Proposal` (task and kind of change, every line, ❓ and ⚠️, Save / Cancel), keeps it as a row (`confirm_cards`) so it survives a restart, replaces one card with its correction (keeping everything said about it and what it was before its last change, so "No, …" can undo that change: `is_correction`), expires it after 30 minutes, and runs the task's `apply` on Save. Also the question asked on a tie, and the rule for when a message sticks to the open card (`sticks`) |
+| `livelists.py` | Live lists: the latest copy of a list a user asked to see is kept up to date in place. `show` (or a direct action returning `actions.LiveReply`) posts it and records where it is (`live_lists`); `changed(user_id, key, render)` rewrites that copy in the background through `core/live.py`. Older copies are left as they were. A list also remembers its task and when it was shown: while it is the bot's latest message and under five minutes old, a short message is for that task (`sticks`) |
+| `conversation.py` | A message in plain words, cheapest first: about the open card (extraction only), anything else (router, then extraction per task), or chat (a plain reply, no tools). Moves a card's items to another task in code on "no, packing", and drops from "Not included" what another card or the plain answer covers (`uncovered`). Hands what was extracted to the task's own code, which writes every word shown; logs the route, tasks, what was extracted, the outcome and each request's cost |
 | `cards.py` | Buttons, dropdowns and forms for tasks that may not use discord.py: a task writes a `Card` of plain records (`Button`, `Select`, `Form`) and registers what each action does; the component's id (`card.b:<task>:<action>:<arg>`) carries everything, so cards work after a restart. `handle` answers every press first, checks `is_allowed`, logs it in `message_log` (kind `card`), shows a `UserError` to the presser alone and reports anything else. `post` / `send` / `edit` / `delete` put cards in channels |
 | `confirmations.py` | Buttons under a short message: `ask` (Confirm / Cancel), `choose` (which of a few), `offer_undo` (done, with Undo). In memory, with timeouts |
 | `tools.py` | Pure: Claude's tools from registrations: names, strict-safe input schemas, input checking, which are sent as strict, which message a message action is aimed at, previews and the listing text, and matching a query against logged messages (`find_logged`) |
@@ -121,7 +122,7 @@ database with the clock under test control), `devmode`, `dev_parsing`, `lab`, `l
 `permissions`, `scheduler`, `text`, `tools`, `pending`, `llm_tools` (the
 Claude loop against a scripted stand-in), `toolcalls`, `bugs`, `instance_lock`, `backup` (the specs zip), `clock`,
 `day` (the boundary and the rollover job), `timeinput`, `occurrences`,
-`dev_clock` (`dev clock`, `dev reset-db` and their guards), `actions` (the contract and the checking), `routing` (the router, extraction and the replayed fixtures), `conversation` (a message end to end, confirm cards), `costs` (routes, prices, the roll-up and `dev cost`), `cards`,
+`dev_clock` (`dev clock`, `dev reset-db` and their guards), `actions` (the contract and the checking), `routing` (the router, extraction and the replayed fixtures), `conversation` (a message end to end, confirm cards, the demo lists), `livelists`, `costs` (routes, prices, the roll-up and `dev cost`), `cards`,
 `pills_rules`, `pills_plans` (records, previews, buttons, and a tool call
 all the way through the registry), `channels`
 (channel types, the dev panel's start-up sweep, a task failing to start).
@@ -162,7 +163,15 @@ real task uses it yet, see "Not built yet")
 1. `main.on_message`, for a message that is no shortcut, in #inbox or the
    hub: `conversation.handle`. With nothing in the catalogue it does
    nothing and the old way below carries on.
-2. **Follow-up?** If there is an open confirm card and the message is a
+2. **A redirect?** With a card open, a bare "no, shopping"
+   (`confirm.redirect`) sends the request on that card to the other
+   task's extraction, without the redirect's own words, and the new card
+   replaces the old: one request.
+2b. **Straight after a list?** If the bot's latest message is the Live copy
+   of a list shown in the last five minutes and the message is short
+   (`livelists.sticks`), it goes to that list's task's extraction, which
+   may still answer `not_this`.
+2a. **Follow-up?** If there is an open confirm card and the message is a
    reply to it, or the card is the bot's latest message there and under
    five minutes old (`confirm.sticks`), the message goes straight to that
    task's extraction with the card's data: one request. `not_this` sends
@@ -177,7 +186,15 @@ real task uses it yet, see "Not built yet")
 5. **A tie:** `confirm.ask_which` posts a button per task; the pick runs
    extraction for that task on what was said (`conversation.on_pick`).
 6. **Extraction** (`extraction.extract`), one request per task chosen.
-   What comes back is checked against the action's schema in code.
+   What comes back is checked against the action's schema in code. If
+   the router chose the open card's task, extraction is given the card
+   as well, so a correction is understood even when it didn't stick. A
+   correction (the same action, about the same thing) replaces its card;
+   anything else leaves it open.
+6a. **Nothing is dropped unseen.** Whatever extraction says it could not
+   put into the action (`not_included`), an item that failed validation,
+   and an item lost when a card moves to another task, is added to the
+   card as "⚠️ Not included: …" (or said after a reply).
 7. **The task's code** (`conversation.act`): an action that needs a card
    has `prepare` build a `Proposal` and `confirm.show` post it; Save runs
    `apply` on exactly that data. Any other action has `run` do it and
@@ -339,7 +356,7 @@ seconds.
 
 | Tables | Owner |
 |---|---|
-| `users`, `message_log` (every input, with its route, tasks, what was extracted, requests, tokens, cost and time), `llm_calls` (one row per request to Claude), `confirm_cards` (open confirm cards and tie questions), `scheduled_jobs`, `reaction_state`, `skill_migrations`, `occurrences`, `occurrence_events` | core (`core/migrations.py`, version in `PRAGMA user_version`) |
+| `users`, `message_log` (every input, with its route, tasks, what was extracted, requests, tokens, cost and time), `llm_calls` (one row per request to Claude), `confirm_cards` (open confirm cards and tie questions), `live_lists` (where the latest copy of each list shown on request is), `scheduled_jobs`, `reaction_state`, `skill_migrations`, `occurrences`, `occurrence_events` | core (`core/migrations.py`, version in `PRAGMA user_version`) |
 | `archive_items` | archive |
 | `bugs_items`, `bugs_notes`, `bugs_events` (each closing and re-opening) | bugs |
 | `pills_pills`, `pills_drafts` (previews waiting for Save), `pills_changes` (every plan and status change); doses will be rows of `occurrences` with task `pills` | pills |

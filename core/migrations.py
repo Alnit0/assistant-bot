@@ -272,6 +272,36 @@ def _create_confirm_cards(conn: sqlite3.Connection) -> None:
     conn.execute("ALTER TABLE message_log ADD COLUMN extracted TEXT")
 
 
+def _create_live_lists(conn: sqlite3.Connection) -> None:
+    # The latest copy of each list a user asked to see: the one kept up to date
+    # in place when its data changes (see core/livelists.py)
+    conn.execute(
+        """
+        CREATE TABLE live_lists (
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            key TEXT NOT NULL,
+            channel_id INTEGER NOT NULL,
+            message_id INTEGER NOT NULL,
+            PRIMARY KEY (user_id, key)
+        )
+        """
+    )
+    conn.execute("CREATE INDEX live_lists_message ON live_lists (message_id)")
+
+
+def _add_task_to_live_lists(conn: sqlite3.Connection) -> None:
+    # Which task a list belongs to and when it was shown: a message straight
+    # after a list is for that list's task (see core/livelists.py)
+    conn.execute("ALTER TABLE live_lists ADD COLUMN task TEXT NOT NULL DEFAULT ''")
+    conn.execute("ALTER TABLE live_lists ADD COLUMN shown_at TEXT")
+
+
+def _add_previous_to_confirm_cards(conn: sqlite3.Connection) -> None:
+    # What a card's data was before the change that made this card (JSON), so a
+    # "No, …" straight after can undo that change before applying the correction
+    conn.execute("ALTER TABLE confirm_cards ADD COLUMN previous TEXT")
+
+
 MIGRATIONS = [
     _create_message_log,
     _create_users,
@@ -283,6 +313,9 @@ MIGRATIONS = [
     _create_occurrences,
     _add_cost_logging,
     _create_confirm_cards,
+    _create_live_lists,
+    _add_task_to_live_lists,
+    _add_previous_to_confirm_cards,
 ]
 
 

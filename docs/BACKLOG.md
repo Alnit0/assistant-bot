@@ -55,9 +55,15 @@ gained time"):
   the two entries into `tests/` as fixtures for the tests that use them,
   or delete them; either way they leave `tasks/` and the lab's
   `entries()`. Their fixture files in `evals/fixtures/` go with them.
-- **The demo shopping list is a snapshot, not a Live card:** "what do I
-  need to buy?" posts the list as it is then and doesn't update it. Fine
-  for a demo; a real task must follow the rule in `CLAUDE.md`.
+- **A redirect in looser words leaves the old card open.** "Actually that
+  belongs on the shopping list" makes the shopping card but doesn't
+  delete the packing one; only a plain "no, shopping" does. Cancel the
+  old card by hand (noted 2026-10-09).
+- **Why one "make it 2" didn't stick on 2026-10-09 is not known.** At
+  21:20:41 a plain message straight after a card went to the router;
+  nothing in the log says why. It now works either way (the card goes
+  with the message), and the log says for every message whether the
+  open card stuck and what the bot's latest message was.
 - **`tasks/timers/durations.py` is used by `dev` and `pills` as well.**
   It belongs in core now that three tasks read durations (found
   2026-10-09, stage 2 of pills). Its longest duration is 24 hours.

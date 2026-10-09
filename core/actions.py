@@ -1,3 +1,4 @@
+import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 
@@ -27,10 +28,14 @@ from core.users import User
 # Discord, no API calls. core/routing.py and core/extraction.py make the
 # calls, core/confirm.py shows the cards, core/conversation.py ties them up.
 # ---------------------------------------------------------------------------
-STRING, INTEGER, LIST, BOOLEAN = "string", "integer", "list", "boolean"
-TYPES = (STRING, INTEGER, LIST, BOOLEAN)
+STRING, INTEGER, LIST, BOOLEAN, ITEMS = "string", "integer", "list", "boolean", "items"
+TYPES = (STRING, INTEGER, LIST, BOOLEAN, ITEMS)
 
 GUESSED = "guessed"  # the field of every action that lists what Claude guessed
+# The field of every action that lists what was asked for and could not be put
+# into it. Nothing is ever dropped without a word: the card or reply says so
+NOT_INCLUDED = "not_included"
+ADDED = (GUESSED, NOT_INCLUDED)  # in every action's schema; a task's field can't use these names
 NONE = "none"  # the action that says "nothing here fits"
 NOT_THIS = "not_this"  # in a follow-up: "this isn't about the open card"
 RESERVED = (NONE, NOT_THIS)
@@ -49,6 +54,10 @@ class Field:
     type: str = STRING
     choices: tuple[str, ...] = ()  # the only values allowed (a STRING, or each item of a LIST)
     required: bool = False
+    # For ITEMS: the fields of each item. One request can hold several things
+    # ("add honey, jam and 5 eggs"), so anything that can be asked for in the
+    # plural takes a list of items, never a single one
+    item_fields: tuple["Field", ...] = ()
 
 
 @dataclass(frozen=True)
@@ -72,13 +81,28 @@ class Request:
     user: User
     channel_id: int | None
     text: str = ""  # what the user said (empty when Save is pressed)
+    # When the message corrects an open card of this same action: that card's
+    # data, as it stood. `prepare` builds the new card from it and what the
+    # message changes (see merge_items), so code, not Claude, carries the rest
+    # of the card over and does any sums
+    previous: dict | None = None
 
     db = database
 
 
+@dataclass(frozen=True)
+class LiveReply:
+    """What a direct action returns when its reply is a list shown on request:
+    the message becomes the Live copy of that list, kept up to date in place
+    when the data changes (core/livelists.py). `key` names the list."""
+
+    key: str
+    text: str
+
+
 Prepare = Callable[[Request, dict, frozenset], Awaitable[Proposal]]
 Apply = Callable[[Request, dict], Awaitable[str]]
-Run = Callable[[Request, dict, frozenset], Awaitable[str]]
+Run = Callable[[Request, dict, frozenset], Awaitable["str | LiveReply"]]
 
 
 @dataclass(frozen=True)
@@ -119,8 +143,118 @@ class Entry:
 
 
 def flag(text: str, guessed: bool) -> str:
-    """Text with ❓ after it if it was a guess, for a card or a reply."""
+    """Text with ❓ after it if it was a guess, for a card or a reply.
+
+    ❓ is for a genuine guess: a time that could be morning or evening, a
+    field Claude wasn't sure of. A value simply left at its default (one of
+    something, when no amount was said) is not a guess and is never flagged,
+    so that ❓ still means something on a card with several lines."""
     return f"{text} {GUESS_MARK}" if guessed else text
+
+
+# ---------------------------------------------------------------------------
+# Changes to the items of a list: add, set, remove
+#
+# For any task that keeps a list of things with amounts. A request names the
+# items it is about and, for each, what to do: add more of it (or add it
+# new), set what it should be, or remove it. Claude says which; code does the
+# sum and shows before -> after. The same three work on a saved list and on
+# an open card that isn't saved yet.
+# ---------------------------------------------------------------------------
+ADD, SET, REMOVE = "add", "set", "remove"
+CHANGE = "change"  # the name of the item field that says which
+
+
+def change_field() -> Field:
+    """The `change` field of an item, the same for every list-like task."""
+    return Field(
+        CHANGE,
+        "What to do with this item. add: the user wants it added, or more of it (\"add 3 milk\", \"another "
+        "loaf\", \"milk too\"): any amount is how many MORE. set: the user says what it should be (\"make the "
+        "eggs 7\", \"make it 2\", \"change milk to 3\", \"I only need 2\"): the amount is the new total. "
+        "remove: take it off altogether (\"remove the jam\", \"no jam\", \"drop the eggs\"). Never work a "
+        "total out yourself: give what the user said and which of the three it is. Leave out for add.",
+        choices=(ADD, SET, REMOVE),
+    )
+
+
+def merge_items(
+    pending: list[dict],
+    changes: list[dict],
+    *,
+    key: str = "item",
+    amount: str | None = "quantity",
+    same=None,
+    exists=None,
+) -> tuple[list[dict], list[str]]:
+    """An open card's items with a message's changes applied: (the items as
+    they now stand, the names it was asked to remove that aren't anywhere).
+
+    `pending` is what the card holds, `changes` what the message is about,
+    each item with its `change` (add if left out). `key` names an item and
+    `amount` is the field that counts it (None if the task has no amounts).
+    `same(a, b)` says whether two names are the same item; `exists(name)`
+    whether one is in the saved list, so that removing something that is only
+    on the card takes it off the card, and removing something saved becomes a
+    removal to confirm.
+
+    Code does the sums: adding 3 to a card that adds 2 adds 5; setting
+    replaces whatever was pending. The name is kept as typed last.
+    """
+    same = same or (lambda one, other: str(one).strip().lower() == str(other).strip().lower())
+    merged = [dict(item) for item in pending]
+    missing: list[str] = []
+    # Claude is asked for the changes only, and sometimes sends the whole card back
+    # with the change in it. Every item of a card of two or more coming back is
+    # that, not "one more of each": what is as it was is left alone, and what
+    # differs is taken as the amount it should now be, never added on top
+    restated = len(pending) >= 2 and all(any(same(change[key], item[key]) for change in changes) for item in pending)
+    for change in changes:
+        if restated and change.get(CHANGE, ADD) != REMOVE:
+            was = next((item for item in merged if same(item[key], change[key])), None)
+            if was is not None:
+                if amount is not None and change.get(amount, was.get(amount, 1)) != was.get(amount, 1):
+                    was[amount] = change[amount]
+                was.update({field: value for field, value in change.items() if field not in (amount, CHANGE)})
+                continue
+        name, what = change[key], change.get(CHANGE, ADD)
+        at = next((index for index, item in enumerate(merged) if same(item[key], name)), None)
+        was = merged[at] if at is not None else None
+        if what == REMOVE:
+            if at is not None:
+                merged.pop(at)
+            if exists is not None and exists(name):
+                merged.append({key: name, CHANGE: REMOVE})
+            elif was is None or was.get(CHANGE) == REMOVE:
+                missing.append(name)
+            continue
+        now = {field: value for field, value in change.items() if field != CHANGE}
+        if what == SET or was is None or was.get(CHANGE) == REMOVE:
+            # Set replaces whatever was pending; a first mention, or one after a removal, stands as it is
+            now[CHANGE] = what
+        else:
+            # More of something the card already changes: the amounts add up, and it stays what it was
+            now = {**{field: value for field, value in was.items() if field != CHANGE}, **now}
+            if amount is not None:
+                now[amount] = was.get(amount, 1) + change.get(amount, 1)
+            now[CHANGE] = was.get(CHANGE, ADD)
+        if at is not None:
+            merged[at] = now
+        else:
+            merged.append(now)
+    return merged, missing
+
+
+def path(name: str, index: int | None = None, sub: str = "") -> str:
+    """How a guess is named: "times", "times[0]", "items[2].quantity"."""
+    return name + (f"[{index}]" if index is not None else "") + (f".{sub}" if sub else "")
+
+
+def is_guessed(guessed: frozenset, name: str, index: int | None = None, sub: str = "") -> bool:
+    """Whether this value was a guess: named itself, or as part of what holds it
+    ("items[2]" covers "items[2].quantity")."""
+    wanted = path(name, index, sub)
+    return wanted in guessed or (bool(sub) and path(name, index) in guessed) or (index is not None and name in guessed)
 
 
 # ---------------------------------------------------------------------------
@@ -183,12 +317,22 @@ def problems(entries: list[Entry]) -> list[str]:
             for entry_field in action.fields:
                 if entry_field.type not in TYPES:
                     found.append(f"{where}: field {entry_field.name} has an unknown type {entry_field.type!r}")
-                if entry_field.name == GUESSED:
-                    found.append(f"{where}: `{GUESSED}` is added to every action; a field can't be called that")
+                if entry_field.name in ADDED:
+                    found.append(f"{where}: `{entry_field.name}` is added to every action; a field can't be called that")
                 if entry_field.choices and entry_field.type not in (STRING, LIST):
                     found.append(f"{where}: field {entry_field.name} has choices, which only text can have")
                 if not entry_field.description.strip():
                     found.append(f"{where}: field {entry_field.name} has no description for Claude")
+                if entry_field.type == ITEMS:
+                    if not entry_field.item_fields:
+                        found.append(f"{where}: field {entry_field.name} is a list of items, so it needs `item_fields`")
+                    for inner in entry_field.item_fields:
+                        if inner.type not in (STRING, INTEGER, BOOLEAN):
+                            found.append(f"{where}: an item's field {inner.name} must be text, a number or yes/no")
+                        if not inner.description.strip():
+                            found.append(f"{where}: an item's field {inner.name} has no description for Claude")
+                elif entry_field.item_fields:
+                    found.append(f"{where}: field {entry_field.name} has `item_fields` but is not a list of items")
     return found
 
 
@@ -196,6 +340,17 @@ def problems(entries: list[Entry]) -> list[str]:
 # Schemas: what Claude is told an action takes
 # ---------------------------------------------------------------------------
 def _property(entry_field: Field) -> dict:
+    if entry_field.type == ITEMS:
+        return {
+            "type": "array",
+            "description": entry_field.description,
+            "items": {
+                "type": "object",
+                "properties": {inner.name: _property(inner) for inner in entry_field.item_fields},
+                "required": [inner.name for inner in entry_field.item_fields if inner.required],
+                "additionalProperties": False,
+            },
+        }
     if entry_field.type == LIST:
         items: dict = {"type": "string"}
         if entry_field.choices:
@@ -208,21 +363,32 @@ def _property(entry_field: Field) -> dict:
 
 
 def schema(action: Action) -> dict:
-    """The strict JSON schema of an action: its fields, and `guessed`, the
-    names of the fields Claude filled in without being told."""
+    """The strict JSON schema of an action: its fields, `guessed` (what Claude
+    filled in without being told) and `not_included` (what was asked for and
+    could not be put into the action)."""
     properties = {entry_field.name: _property(entry_field) for entry_field in action.fields}
     properties[GUESSED] = {
         "type": "array",
-        "items": {"type": "string", "enum": [entry_field.name for entry_field in action.fields]} if action.fields else {"type": "string"},
+        "items": {"type": "string"},
         "description": (
-            "The names of the fields above that you guessed or assumed rather than read from the user's words "
-            "(a time that could be morning or evening, a kind of schedule that wasn't stated). Empty if none."
+            "What you genuinely guessed rather than read from the user's words: a time that could be morning or "
+            "evening, a vague amount, a kind of schedule that wasn't stated. Name each by its field, with its "
+            "place in a list where it has one: `times[0]`, `items[2].quantity`. A field you left out because "
+            "the user didn't say (so its default applies) is not a guess: don't list it. Empty if none."
+        ),
+    }
+    properties[NOT_INCLUDED] = {
+        "type": "array",
+        "items": {"type": "string"},
+        "description": (
+            "Every part of what the user asked for that you could NOT put into this action, each copied "
+            "word for word. The user is told, so nothing is dropped unseen. Empty if all of it is covered."
         ),
     }
     return {
         "type": "object",
         "properties": properties,
-        "required": [entry_field.name for entry_field in action.fields if entry_field.required] + [GUESSED],
+        "required": [entry_field.name for entry_field in action.fields if entry_field.required] + [GUESSED, NOT_INCLUDED],
         "additionalProperties": False,
     }
 
@@ -250,7 +416,8 @@ NONE_TOOL = {
 NOT_THIS_TOOL = {
     "name": NOT_THIS,
     "description": (
-        "The user's message is not about the open card at all: it is a new request, or about something else."
+        "The user's message is not about the open card or this task's list at all: it is a new request for "
+        "something else."
     ),
     "input_schema": {
         "type": "object",
@@ -268,31 +435,112 @@ class Invalid(ValueError):
     """What Claude returned doesn't fit the action's schema. The message says how."""
 
 
+@dataclass(frozen=True)
+class Checked:
+    """What Claude returned, once it has been checked."""
+
+    data: dict
+    guessed: frozenset  # paths: "times", "times[0]", "items[2].quantity"
+    not_included: tuple[str, ...] = ()  # what was asked for and is not in `data`, to be told to the user
+
+    def __iter__(self):
+        # (data, guessed), for code that only wants those two
+        return iter((self.data, self.guessed))
+
+
 _PYTHON_TYPES = {STRING: str, INTEGER: int, BOOLEAN: bool}
+_GUESS_PATH = re.compile(r"(\w+)(?:\[(\d+)\])?(?:\.(\w+))?")
 
 
-def validate(action: Action, raw) -> tuple[dict, frozenset]:
-    """(the data, the names of the fields that were guessed), or Invalid.
+def _scalar(entry_field: Field, value, where: str):
+    """One text, number or yes/no value, checked. Returns it, or None if it is
+    an optional text left empty."""
+    expected = _PYTHON_TYPES[entry_field.type]
+    # bool is an int in Python: an INTEGER must not be True
+    if not isinstance(value, expected) or (entry_field.type == INTEGER and isinstance(value, bool)):
+        raise Invalid(f"`{where}` must be {entry_field.type}")
+    if entry_field.type != STRING:
+        return value
+    value = value.strip()
+    if not value:
+        if entry_field.required:
+            raise Invalid(f"`{where}` is empty")
+        return None
+    if entry_field.choices and value not in entry_field.choices:
+        raise Invalid(f"`{where}` is {value!r}, which is not one of {', '.join(entry_field.choices)}")
+    return value
+
+
+def _item(entry_field: Field, raw, where: str) -> dict:
+    """One item of a list of items, checked like a small action of its own."""
+    if not isinstance(raw, dict):
+        raise Invalid(f"`{where}` is not an object")
+    known = {inner.name: inner for inner in entry_field.item_fields}
+    unknown = sorted(set(raw) - set(known))
+    if unknown:
+        raise Invalid(f"`{where}` has what is not a field of an item: {', '.join(unknown)}")
+    item: dict = {}
+    for name, inner in known.items():
+        if name not in raw or raw[name] is None:
+            if inner.required:
+                raise Invalid(f"`{where}.{name}` is missing")
+            continue
+        value = _scalar(inner, raw[name], f"{where}.{name}")
+        if value is not None:
+            item[name] = value
+    return item
+
+
+def validate(action: Action, raw) -> Checked:
+    """What Claude returned, checked: the data, what was guessed, and what was
+    left out. Raises Invalid if it doesn't fit the action at all.
 
     Strict: every required field present, nothing that isn't a field, every
     value of its type and among its choices. Text is trimmed; an optional
     field left empty is left out, so code can tell "not said" from "said".
+
+    In a list of items, one item that doesn't fit is not allowed to sink the
+    rest, and is not dropped unseen either: it is left out of the data and
+    named in `not_included`, which the user is shown.
     """
     if not isinstance(raw, dict):
         raise Invalid("the input is not an object")
     known = {entry_field.name: entry_field for entry_field in action.fields}
-    unknown = sorted(set(raw) - set(known) - {GUESSED})
+    unknown = sorted(set(raw) - set(known) - set(ADDED))
     if unknown:
         raise Invalid(f"not fields of {action.name}: {', '.join(unknown)}")
 
     data: dict = {}
+    left_out: list[str] = []
+    shifted: set[str] = set()
     for name, entry_field in known.items():
         if name not in raw or raw[name] is None:
             if entry_field.required:
                 raise Invalid(f"`{name}` is missing")
             continue
         value = raw[name]
-        if entry_field.type == LIST:
+        if entry_field.type == ITEMS:
+            if not isinstance(value, list):
+                raise Invalid(f"`{name}` must be a list of items")
+            items = []
+            dropped: set[int] = set()
+            for index, each in enumerate(value):
+                try:
+                    items.append(_item(entry_field, each, f"{name}[{index}]"))
+                except Invalid:
+                    # In the user's terms: what the item was, not what was wrong with its form
+                    dropped.add(index)
+                    left_out.append(", ".join(str(part) for part in each.values()) if isinstance(each, dict) and each else str(each))
+            if not items:
+                if entry_field.required:
+                    raise Invalid(f"`{name}` has no item that can be used" if value else f"`{name}` is empty")
+                continue
+            if dropped:
+                # The places Claude named no longer line up: a guess about an item is forgotten
+                # rather than pinned on the wrong one
+                shifted.add(name)
+            value = items
+        elif entry_field.type == LIST:
             if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
                 raise Invalid(f"`{name}` must be a list of strings")
             value = [item.strip() for item in value if item.strip()]
@@ -304,22 +552,33 @@ def validate(action: Action, raw) -> tuple[dict, frozenset]:
                     raise Invalid(f"`{name}` is empty")
                 continue
         else:
-            expected = _PYTHON_TYPES[entry_field.type]
-            # bool is an int in Python: an INTEGER must not be True
-            if not isinstance(value, expected) or (entry_field.type == INTEGER and isinstance(value, bool)):
-                raise Invalid(f"`{name}` must be {entry_field.type}")
-            if entry_field.type == STRING:
-                value = value.strip()
-                if not value:
-                    if entry_field.required:
-                        raise Invalid(f"`{name}` is empty")
-                    continue
-                if entry_field.choices and value not in entry_field.choices:
-                    raise Invalid(f"`{name}` is {value!r}, which is not one of {', '.join(entry_field.choices)}")
+            value = _scalar(entry_field, value, name)
+            if value is None:
+                continue
         data[name] = value
 
     guessed = raw.get(GUESSED, [])
     if not isinstance(guessed, list) or not all(isinstance(item, str) for item in guessed):
         raise Invalid(f"`{GUESSED}` must be a list of field names")
-    # A guess about a field that isn't there says nothing
-    return data, frozenset(name for name in guessed if name in data)
+    not_included = raw.get(NOT_INCLUDED, [])
+    if not isinstance(not_included, list) or not all(isinstance(item, str) for item in not_included):
+        raise Invalid(f"`{NOT_INCLUDED}` must be a list of the parts left out")
+    left_out = [part.strip() for part in not_included if part.strip()] + left_out
+    kept = frozenset(
+        name for name in guessed if _guess_is_about(name, data) and not ("[" in name and name.split("[")[0] in shifted)
+    )
+    return Checked(data, kept, tuple(left_out))
+
+
+def _guess_is_about(guess: str, data: dict) -> bool:
+    """Whether a guess names something that is in the data: a guess about a
+    field that isn't there says nothing."""
+    match = _GUESS_PATH.fullmatch(guess.strip())
+    if not match or match[1] not in data:
+        return False
+    value = data[match[1]]
+    if match[2] is None:
+        return match[3] is None
+    if not isinstance(value, list) or int(match[2]) >= len(value):
+        return False
+    return match[3] is None or (isinstance(value[int(match[2])], dict) and match[3] in value[int(match[2])])

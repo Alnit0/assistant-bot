@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -62,10 +63,13 @@ class Stored:
     action: str
     data: dict  # what Save applies; for a tie, {"tasks": [...]}
     guessed: tuple[str, ...]
-    said: str  # what the user said that led to it
+    said: str  # everything the user said that led to it, oldest first, one message a line
     status: str
     job_id: int | None
     created_at: datetime
+    # The data of the card this one replaced, for the same action: what it was
+    # before the user's last change. None for a first card
+    previous: dict | None = None
 
     @property
     def is_open(self) -> bool:
@@ -111,38 +115,77 @@ def sticks(
     return fresh and latest_bot_message_id == card.message_id
 
 
+_NO = r"(?:no|nope|nah|not that|not that one|wrong|wrong one|wrong list|i meant|i mean|sorry)"
+_FOR = r"(?:i meant|i mean|it'?s for|it is for|for|to|on|in|put it on|put it in|make it)"
+
+
+def redirect(text: str, entries: list[Entry], current: str) -> Entry | None:
+    """The task a bare redirect names: "no, shopping", "nope, the packing list",
+    "I meant shopping", "shopping instead". None for anything else, including
+    the task the card is already for.
+
+    Only the exact shape counts, and only the words of the redirect are
+    looked at: it says where the request on the card belongs, and is never
+    part of that request. Looser wording is left to the router and extraction.
+    """
+    said = re.sub(r"[\s,.;:!-]+", " ", text.strip().lower()).strip()
+    for entry in entries:
+        if entry.name == current:
+            continue
+        name = rf"(?:the |my )?{re.escape(entry.name)}(?: list| one| task)?"
+        leading = re.fullmatch(rf"{_NO} (?:{_FOR} )?{name}(?: instead| please)?", said)
+        trailing = re.fullmatch(rf"(?:{_FOR} )?{name} instead", said)
+        if leading or trailing:
+            return entry
+    return None
+
+
+_CORRECTION = re.compile(rf"\s*{_NO}\b[\s,.;:!-]+\S", re.IGNORECASE)
+
+
+def is_correction(text: str) -> bool:
+    """Whether a message says the last change was wrong and what was meant
+    instead: "No, 2 bread rolls", "nope, the eggs", "sorry, I meant jam". A
+    bare "no" says nothing was meant instead, and is not one."""
+    return bool(_CORRECTION.match(text))
+
+
 def on_screen(card: Stored) -> str:
     """An open card in a line, for the router to read."""
     entry = actions.entry(card.task)
     name = entry.title if entry else card.task
-    return f"a {name} card ({card.action}) from the user saying: {card.said}"
+    said = " | ".join(line for line in card.said.split("\n") if line.strip())
+    return f"a {name} card ({card.action}) from the user saying: {said}"
 
 
 # ---------------------------------------------------------------------------
 # Database (blocking; called through database.run)
 # ---------------------------------------------------------------------------
-_COLUMNS = "id, user_id, channel_id, message_id, kind, task, action, data, guessed, said, status, job_id, created_at"
+_COLUMNS = "id, user_id, channel_id, message_id, kind, task, action, data, guessed, said, status, job_id, created_at, previous"
 
 
 def _stored(row: tuple) -> Stored:
     return Stored(
         row[0], row[1], row[2], row[3], row[4], row[5], row[6], json.loads(row[7]),
         tuple(json.loads(row[8])), row[9], row[10], row[11], from_db(row[12]),
+        json.loads(row[13]) if row[13] else None,
     )
 
 
 def db_add(
     conn: sqlite3.Connection, user_id: int, channel_id: int, kind: str, task: str, action: str,
-    data: dict, guessed, said: str, now: datetime | None = None,
+    data: dict, guessed, said: str, now: datetime | None = None, previous: dict | None = None,
 ) -> Stored:
     cursor = conn.execute(
         """
-        INSERT INTO confirm_cards (user_id, channel_id, kind, task, action, data, guessed, said, status, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO confirm_cards
+            (user_id, channel_id, kind, task, action, data, guessed, said, status, created_at, previous)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             user_id, channel_id, kind, task, action, json.dumps(data, ensure_ascii=False),
             json.dumps(sorted(guessed)), said, OPEN, to_db(now or utc_now()),
+            json.dumps(previous, ensure_ascii=False) if previous is not None else None,
         ),
     )
     return db_get(conn, cursor.lastrowid)
@@ -208,14 +251,43 @@ async def _take_away(card: Stored, status: str) -> None:
             await cards.delete(card.channel_id, card.message_id)
 
 
+def said_so_far(replaces: Stored | None, text: str, undone: bool = False) -> str:
+    """Everything said about a card, one message a line: what the card it
+    replaces came from, then this message. With `undone`, the last message
+    about the old card was a mistake being corrected, and is left out."""
+    if replaces is None:
+        return text
+    lines = [line for line in replaces.said.split("\n") if line.strip()]
+    if undone and len(lines) > 1:
+        lines = lines[:-1]
+    if replaces.task and text and text not in lines[-1:]:
+        lines.append(text)
+    return "\n".join(lines) or text
+
+
 async def show(
-    request: Request, entry: Entry, action_name: str, proposal: Proposal, guessed, replaces: Stored | None = None
+    request: Request, entry: Entry, action_name: str, proposal: Proposal, guessed, replaces: Stored | None = None,
+    *, moved: bool = False, undone: bool = False,
 ) -> Stored:
     """Post a confirm card for a proposal. `replaces` is the card this one
-    corrects: it is deleted, so there is only ever the latest to accept."""
+    corrects: it is deleted, so there is only ever the latest to accept.
+
+    The new card remembers what the old one held, so that a "No, …" straight
+    after can take this change back. With `moved` the old card belonged to
+    another task ("no, packing"): what was said stays as it was. With `undone`
+    this card corrects a mistaken change, which is forgotten."""
+    same_action = replaces is not None and not moved and replaces.task == entry.name and replaces.action == action_name
+    if replaces is None:
+        said = request.text
+    elif moved:
+        said = replaces.said
+    else:
+        said = said_so_far(replaces, request.text, undone)
+    # After a correction the card goes back to what the mistake was made on, not to the mistake
+    previous = (replaces.previous if undone else replaces.data) if same_action else None
     card = await database.run(
         db_add, request.user.id, request.channel_id, CARD, entry.name, action_name,
-        proposal.data, guessed, request.text if replaces is None else (replaces.said or request.text),
+        proposal.data, guessed, said, None, previous,
     )
     # Only the data is kept: Save applies that and nothing else
     placed = await _place(card, render(entry, proposal, card.id))

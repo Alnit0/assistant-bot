@@ -162,6 +162,53 @@ Input
 - Replying to a message with an action word (archive, pin, keep, save,
   unpin, delete, remind <when>) applies it to that message. Filler words
   are fine on a reply ("pin this", "please archive it").
+- "No, <task or list>" said to a card only re-routes that card: the
+  request on it is read again for the other task, and the words of the
+  redirect are never saved as anything. A correction replaces its card;
+  a request for another thing altogether gets a card of its own and
+  leaves the first one open.
+- One request can hold several things ("add honey, jam and 5 eggs"). An
+  action that could ever be asked for in the plural takes a list of items
+  (`actions.ITEMS`), never a single one. One card per task lists every
+  item, with one Save; different tasks in one message get one card each.
+  A reply replaces the card: "make the eggs 6", "remove the jam", "add
+  milk too", and "no, packing" moves every item to a packing card.
+- Set or add: "make the eggs 7" and "make it 2" set the amount; "add 3
+  milk" adds to it. Claude only says which (`actions.change_field()`:
+  add, set, remove) and the number I said; Python does every sum
+  (`actions.merge_items` on a card, the task's `apply` on Save). A card
+  that changes something already on the list shows before → after
+  ("eggs · 5 → 7").
+- Remove: any task that keeps a list takes "remove the jam", on an open
+  card (the line goes) and on the saved list (a card for the change,
+  "jam · × 1 → removed"). Removing what is nowhere is said, never
+  ignored.
+- "It", "that" and "them" mean the last thing mentioned. If that isn't
+  clear, Claude takes the last one named and the guess is flagged with ❓
+  on its line.
+- A correction undoes the mistake: "No, …" straight after a change to a
+  card reverts that change and then applies the correction, so nothing
+  of the wrong change is left. A card keeps what it was before its last
+  change (`confirm_cards.previous`) for this.
+- Nothing is ever dropped without a word. Whatever part of a message
+  can't be put on a card or done is said on it: "⚠️ Not included: …".
+  Only for a part that nothing covers: what another task's card or the
+  plain answer deals with is not listed (`conversation.uncovered`).
+  This holds in code too: an item that fails validation, or is lost when
+  a card moves to another task, is reported, never discarded.
+- ❓ marks a genuine guess only: a time that could be morning or evening,
+  a vague amount, a task or field Claude was unsure of. A value left at
+  its default (one of something, when no amount was said) is not a guess
+  and is never flagged, so ❓ still means something on a card with
+  several lines. Code flags with `actions.is_guessed`, never because a
+  field was absent.
+- A list shown on request counts as context, like an open card: while it
+  is the bot's latest message in the channel and under 5 minutes old, a
+  short message that follows goes to that list's task ("add milk" after
+  "what am I packing?" is for packing). The card names its task, so
+  "no, shopping" still corrects it.
+- Names are kept exactly as I typed them. Singular and plural of a name
+  are the same item when adding to or ticking off a list.
 - A message with several parts gets every part dealt with: each task's
   card or reply, and a plain answer for anything in it that is for no
   task ("what's the capital of France, and add milk").
@@ -242,12 +289,13 @@ Cleanliness
   nothing else: command messages are still Consumed, and a question left
   unanswered still goes. Send them through `ctx.confirm`, `ctx.note` or
   `lifecycle.delete_after()`, which ask the setting.
-- A list shown on request must not go stale while it looks current. If
-  the data behind it can change afterwards, the task either keeps that
-  message up to date in place (a Live card, through `core/live.py`) or
-  words it so it is plainly a snapshot of that moment and not the current
-  state (and posts a fresh one when asked again). Never leave an old list
-  on screen that reads as today's truth.
+- A list shown on request is a Live message (`core/livelists.py`): when
+  its data changes, by any route, the latest copy is edited in place.
+  Asking again posts a fresh copy, which becomes the Live one; older
+  copies are left as they were. A task shows the list with
+  `actions.LiveReply(key, text)` (or `livelists.show`) and calls
+  `livelists.changed(user_id, key, render)` wherever the data changes.
+  The pills checklist uses the same helper.
 - A reply that reports a change names what changed and what is left
   ("☑️ Ticked off milk × 3 · still to buy: eggs"), never a bare count
   that could be read as the item's own.

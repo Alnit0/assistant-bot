@@ -1,12 +1,13 @@
 import json
 import logging
+import re
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 import discord
 
-from core import actions, cards, confirm, costs, database, extraction, llm, routing, timing
-from core.actions import Entry, Request
+from core import actions, cards, confirm, costs, database, extraction, livelists, llm, routing, timing
+from core.actions import LIST, ITEMS, Entry, LiveReply, Request
 from core.cards import Card
 from core.config import CHANNELS, INBOX_CHANNEL_ID
 from core.context import Context
@@ -64,6 +65,55 @@ class Turn:
     failed: bool = False
 
 
+def not_included(parts) -> str:
+    """What the user asked for that couldn't be done, said in so many words: it
+    goes on the card, or after the reply. Nothing is dropped without one."""
+    return "Not included: " + ", ".join(parts)
+
+
+def _words(text: str) -> set[str]:
+    return {word for word in re.findall(r"[a-z0-9']+", text.lower()) if len(word) > 2}
+
+
+def _texts(value) -> list[str]:
+    """Every piece of text in what was extracted, however deep."""
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, dict):
+        return [text for inner in value.values() for text in _texts(inner)]
+    if isinstance(value, list):
+        return [text for inner in value for text in _texts(inner)]
+    return []
+
+
+def uncovered(found: Extracted, others: list[Extracted], chat_part: str = "") -> Extracted:
+    """What extraction reported as not included, less whatever something else
+    is dealing with: another task's card, or the plain answer to the part of
+    the message that was for no task. "Not included" is only for what nothing
+    covers. Checked in code: each extraction sees only its own task."""
+    if not found.not_included:
+        return found
+    handled = [text.lower() for other in others if other is not found and other.fitted for text in _texts(other.data)]
+    answered = _words(chat_part)
+    left = []
+    for part in found.not_included:
+        said = part.lower()
+        words = _words(part)
+        by_another_task = any(len(text) > 2 and text in said for text in handled)
+        by_the_answer = bool(words) and len(words & answered) / len(words) >= 0.6
+        if not by_another_task and not by_the_answer:
+            left.append(part)
+    return replace(found, not_included=tuple(left))
+
+
+def _elsewhere(name: str, tasks, chat_part: str) -> str:
+    """For one task's extraction: what else in the message is being dealt with, and by what."""
+    parts = [f"the {other} task" for other in tasks if other != name]
+    if chat_part:
+        parts.append(f"a plain answer to: {chat_part}")
+    return "; ".join(parts)
+
+
 def nothing_fitted(entry: Entry) -> str:
     """Said when extraction found no action: Python's words, with the task's own hint."""
     return f"{entry.icon} I couldn't work that out for {entry.name}." + (f" {entry.hint}" if entry.hint else "")
@@ -79,9 +129,22 @@ async def _state(entry: Entry, request: Request) -> str:
         return ""
 
 
-async def act(request: Request, found: Extracted, turn: Turn, replaces: confirm.Stored | None = None) -> None:
+async def act(
+    request: Request,
+    found: Extracted,
+    turn: Turn,
+    replaces: confirm.Stored | None = None,
+    *,
+    moved: bool = False,
+    undone: bool = False,
+) -> None:
     """Do what extraction found, in the task's own code, and show the result:
-    a confirm card for an action that needs one, otherwise the task's reply."""
+    a confirm card for an action that needs one, otherwise the task's reply.
+
+    `replaces` is the open card this corrects or takes the place of. With
+    `moved` it belonged to another task ("no, packing"); with `undone` the
+    user's last change to it was a mistake, and `request.previous` is the card
+    as it was before that change."""
     entry = found.entry
     turn.tasks.append(entry.name)
     turn.extracted.append(found.as_log())
@@ -101,10 +164,25 @@ async def act(request: Request, found: Extracted, turn: Turn, replaces: confirm.
     try:
         if action.needs_card:
             proposal = await action.prepare(request, found.data, found.guessed)
-            await confirm.show(request, entry, action.name, proposal, found.guessed, replaces)
-            turn.said.append(f"card: {entry.name} · {proposal.kind}: " + " / ".join(proposal.lines))
+            if found.not_included:
+                proposal = replace(proposal, warnings=(*proposal.warnings, not_included(found.not_included)))
+            await confirm.show(request, entry, action.name, proposal, found.guessed, replaces, moved=moved, undone=undone)
+            shown = [*proposal.lines, *[f"{actions.WARNING_MARK} {warning}" for warning in proposal.warnings]]
+            turn.said.append(f"card: {entry.name} · {proposal.kind}: " + " / ".join(shown))
         else:
-            await say(await action.run(request, found.data, found.guessed))
+            result = await action.run(request, found.data, found.guessed)
+            left_out = f"{actions.WARNING_MARK} {not_included(found.not_included)}" if found.not_included else ""
+            if isinstance(result, LiveReply):
+                # A list shown on request: this copy is now the one kept up to date, and
+                # what follows it is taken to be for this task
+                turn.said.append(result.text)
+                message_id = await cards.send(request.channel_id, Card(result.text))
+                await livelists.placed(request.user.id, result.key, request.channel_id, message_id, entry.name)
+                if left_out:
+                    # Not on the list itself: that message is rewritten whenever the list changes
+                    await say(left_out)
+            else:
+                await say(f"{result}\n{left_out}" if left_out else result)
     except UserError as error:
         # The task's own words for a problem the user can fix
         turn.failed = True
@@ -114,6 +192,71 @@ async def act(request: Request, found: Extracted, turn: Turn, replaces: confirm.
         log.exception("Action %s failed", action.name)
         await log_error(f"Action failed: {action.name}", repr(error), request.text)
         await say(WENT_WRONG)
+
+
+def _in_common(entry_field, new, old) -> bool:
+    """Whether a field's new value shares anything with the old: the same value,
+    or, for a list, at least one item that was already there."""
+    if entry_field.type not in (LIST, ITEMS) or not isinstance(new, list) or not isinstance(old, list):
+        return new == old
+    if entry_field.type == LIST:
+        return bool(set(new) & set(old))
+    # Items are the same thing if what names them (their required fields) matches
+    names = [inner.name for inner in entry_field.item_fields if inner.required] or [inner.name for inner in entry_field.item_fields]
+
+    def key(item: dict) -> tuple:
+        return tuple(str(item.get(name, "")).strip().lower() for name in names)
+
+    return bool({key(item) for item in new} & {key(item) for item in old})
+
+
+def _item_names(action, data: dict) -> list[str]:
+    """What each item in an action's lists of items is called (its required fields)."""
+    names = []
+    for entry_field in action.fields if action is not None else ():
+        if entry_field.type != ITEMS or not isinstance(data.get(entry_field.name), list):
+            continue
+        keys = [inner.name for inner in entry_field.item_fields if inner.required]
+        names += [" ".join(str(item.get(key, "")) for key in keys).strip() for item in data[entry_field.name]]
+    return [name for name in names if name]
+
+
+def _carried_over(card: confirm.Stored, target: Entry) -> Extracted | None:
+    """A card's items as the same request for another task ("no, packing"),
+    built in code: every item, by what names it. Only when it is plain how:
+    the card's action has one list of items, and exactly one action of the
+    other task that needs a card takes a list of items named the same way.
+    None otherwise, and extraction reads it over instead."""
+    source_entry = actions.entry(card.task)
+    source = source_entry.action(card.action) if source_entry else None
+    lists = [entry for entry in source.fields if entry.type == ITEMS] if source else []
+    if len(lists) != 1 or not isinstance(card.data.get(lists[0].name), list):
+        return None
+    names = [inner.name for inner in lists[0].item_fields if inner.required]
+    fits = [
+        (action, entry)
+        for action in target.actions
+        if action.needs_card
+        for entry in action.fields
+        if entry.type == ITEMS and names and [inner.name for inner in entry.item_fields if inner.required] == names
+    ]
+    if len(fits) != 1:
+        return None
+    action, field_ = fits[0]
+    # What was to be removed from the first list is not a thing to add to the other
+    items = [{name: item[name] for name in names} for item in card.data[lists[0].name] if item.get(actions.CHANGE) != actions.REMOVE]
+    if not items:
+        return None
+    return Extracted(target, action, {field_.name: items}, frozenset())
+
+
+def _items_lost(card: confirm.Stored, found: Extracted) -> list[str]:
+    """The items of a card that did not make it onto what replaces it for
+    another task. Checked in code, whatever extraction returned."""
+    entry = actions.entry(card.task)
+    before = _item_names(entry.action(card.action) if entry else None, card.data)
+    after = {name.lower() for name in _item_names(found.action, found.data)}
+    return [name for name in before if name.lower() not in after]
 
 
 def _exchanges(channel_id: int) -> list[tuple[str, str]]:
@@ -157,36 +300,123 @@ async def handle(ctx: Context, capabilities: str = "", chat_here: bool = True) -
     turn = Turn()
     try:
         open_card = await confirm.latest_open(ctx.user.id, ctx.channel_id)
-        replaces = None
+        if open_card is not None and actions.entry(open_card.task) not in entries:
+            open_card = None
         earlier = ""
         settled = False
 
+        # "No, 2 bread rolls" straight after a change: that change was the mistake.
+        # It is undone first (the card goes back to what it was before it), and
+        # the correction is applied to that, so nothing of the mistake is left
+        undoing = open_card is not None and open_card.previous is not None and confirm.is_correction(ctx.text)
+        on_card = None
+        if open_card is not None:
+            said = [line for line in open_card.said.split("\n") if line.strip()]
+            on_card = OpenCard(
+                open_card.action,
+                open_card.previous if undoing else open_card.data,
+                () if undoing else open_card.guessed,
+                "\n".join(said[:-1] if undoing and len(said) > 1 else said),
+                undone=said[-1] if undoing and said else "",
+            )
+
+        def corrects(found: Extracted) -> confirm.Stored | None:
+            """The open card, if what was found is a correction of it: the same
+            action again. That card is then replaced; anything else leaves it be."""
+            if not (found.fitted and found.action.needs_card and found.action.name == open_card.action):
+                return None
+            # A list of items is merged into the card by the task (add, set, remove):
+            # the same action again is always about that card
+            if any(entry.type == ITEMS for entry in found.action.fields):
+                return open_card
+            # Otherwise a correction keeps what the card is about ("make it 9pm"); the
+            # same action about something else altogether is a request of its own
+            about = [entry for entry in found.action.fields if entry.required]
+            if about and not any(_in_common(entry, found.data.get(entry.name), open_card.data.get(entry.name)) for entry in about):
+                return None
+            return open_card
+
+        async def act_on_card(found: Extracted) -> None:
+            """Act on what a message about the open card came to: a correction is
+            built on the card as it stood (before the mistake, if one is being undone)."""
+            card = corrects(found)
+            if card is None:
+                await act(request, found, turn)
+                return
+            await act(replace(request, previous=on_card.data), found, turn, replaces=card, undone=undoing)
+
+        # "No, shopping": the request on the card was meant for another task. Only
+        # the card is re-routed: the redirect's own words are never handed to
+        # extraction, so they can't be saved as anything
+        target = confirm.redirect(ctx.text, entries, open_card.task) if open_card is not None else None
+        if target is not None:
+            turn.route = costs.FOLLOW_UP
+            moved = Request(ctx.user, ctx.channel_id, open_card.said)
+            # As it stands on the card, corrections included: everything on it moves.
+            # By code when the other task takes the same kind of item (nothing can go
+            # astray, and it costs no request); otherwise extraction reads it over
+            found = _carried_over(open_card, target)
+            if found is None:
+                standing = OpenCard(open_card.action, open_card.data, open_card.guessed, open_card.said)
+                found = await extraction.extract(target, extraction.standing(standing), await _state(target, moved))
+            if found.fitted:
+                # Whatever was on the card and is not on the new one is said, never lost
+                lost = _items_lost(open_card, found)
+                if lost:
+                    found = replace(found, not_included=(*found.not_included, *lost))
+            takes_place = open_card if found.fitted and found.action.needs_card else None
+            await act(moved, found, turn, replaces=takes_place, moved=True)
+            settled = True
+
         # About the open card? Then its task's extraction alone, without the router
-        if open_card is not None and actions.entry(open_card.task) in entries:
-            sticky = confirm.sticks(
-                open_card,
-                utc_now(),
-                replied_to=ctx.reply_target_id,
-                latest_bot_message_id=None if ctx.is_reply else await _latest_bot_message_id(ctx),
+        if not settled and open_card is not None:
+            latest = None if ctx.is_reply else await _latest_bot_message_id(ctx)
+            sticky = confirm.sticks(open_card, utc_now(), replied_to=ctx.reply_target_id, latest_bot_message_id=latest)
+            log.info(
+                "Open card %s (message %s) %s: reply to %s, the bot's latest message is %s%s",
+                open_card.id, open_card.message_id, "sticks" if sticky else "does not stick", ctx.reply_target_id, latest,
+                "; the last change is being undone" if undoing else "",
             )
             if sticky:
                 entry = actions.entry(open_card.task)
-                card = OpenCard(open_card.action, open_card.data, open_card.guessed, open_card.said)
-                found = await extraction.extract(entry, ctx.text, await _state(entry, request), card)
+                found = await extraction.extract(entry, ctx.text, await _state(entry, request), on_card)
                 if found.not_this:
-                    # A different task after all ("no, shopping"): what comes next takes the card's place
+                    # Not about the card after all: the router decides. The card stays as
+                    # it is, and what it came from goes along in case this redirects it
                     turn.extracted.append(found.as_log())
-                    replaces, earlier = open_card, open_card.said
+                    earlier, on_card = open_card.said.split("\n")[0], None
                 else:
                     turn.route = costs.FOLLOW_UP
-                    await act(request, found, turn, replaces=open_card if found.fitted and found.action.needs_card else None)
+                    await act_on_card(found)
                     settled = True
 
+        # Straight after a list was shown? Then a short message is for that list's
+        # task, without the router. (A card on screen comes first: it is newer.)
+        shown_list = None
+        if not settled and not ctx.is_reply:
+            latest = await _latest_bot_message_id(ctx)
+            shown_list = await livelists.by_message(latest)
+            entry = actions.entry(shown_list.task) if shown_list is not None and shown_list.user_id == ctx.user.id else None
+            if entry in entries and livelists.sticks(shown_list, ctx.text, utc_now(), latest):
+                log.info("The %s list (message %s) is on screen: this goes to %s", shown_list.key, latest, entry.name)
+                found = await extraction.extract(entry, ctx.text, await _state(entry, request), after_list=True)
+                if found.not_this:
+                    turn.extracted.append(found.as_log())
+                else:
+                    turn.route = costs.FOLLOW_UP
+                    await act(request, found, turn)
+                    settled = True
+            else:
+                shown_list = None
+
         if not settled:
+            on_screen = confirm.on_screen(open_card) if open_card is not None else ""
+            if not on_screen and shown_list is not None:
+                on_screen = f"the {shown_list.task} list, just shown"
             routed = await routing.route(
                 ctx.text,
                 entries,
-                on_screen=confirm.on_screen(open_card) if open_card is not None else "",
+                on_screen=on_screen,
                 exchanges=_exchanges(ctx.channel_id),
             )
             if routed.chat:
@@ -214,11 +444,30 @@ async def handle(ctx: Context, capabilities: str = "", chat_here: bool = True) -
                 await confirm.ask_which(request, tied)
                 turn.said.append("asked which: " + " or ".join(entry.title for entry in tied))
             else:
-                for index, name in enumerate(routed.tasks):
+                # Every task's reading first, then the cards: what one task couldn't
+                # place may be exactly what another is dealing with
+                readings: list[tuple[Extracted, bool]] = []
+                for name in routed.tasks:
                     entry = actions.entry(name)
-                    found = await extraction.extract(entry, ctx.text, await _state(entry, request), earlier=earlier)
-                    takes_place = replaces if index == 0 and found.fitted and found.action.needs_card else None
-                    await act(request, found, turn, replaces=takes_place)
+                    state = await _state(entry, request)
+                    elsewhere = _elsewhere(name, routed.tasks, routed.chat_part)
+                    # The router had the open card in view. If it chose that card's
+                    # task, extraction needs the card too: "make it 2" means nothing
+                    # without it. (Not if extraction has already said it isn't about it.)
+                    card = on_card if open_card is not None and name == open_card.task else None
+                    found = await extraction.extract(entry, ctx.text, state, card, earlier=earlier, elsewhere=elsewhere)
+                    if found.not_this:
+                        # A request of its own for the same task: read it afresh, and leave the card
+                        turn.extracted.append(found.as_log())
+                        card, found = None, await extraction.extract(entry, ctx.text, state, elsewhere=elsewhere)
+                    readings.append((found, card is not None))
+                everything = [found for found, _ in readings]
+                for found, about_card in readings:
+                    found = uncovered(found, everything, routed.chat_part)
+                    if about_card:
+                        await act_on_card(found)
+                    else:
+                        await act(request, found, turn)
     except Exception as error:
         turn.failed = True
         log.exception("Could not handle a message")

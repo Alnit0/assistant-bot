@@ -578,14 +578,18 @@ the hub): a shopping list and a packing list.
 
 | Say | What happens |
 |---|---|
-| "add milk to the shopping list" | A card: "🛒 Shopping · new", "**milk** · × 1 ❓", **Save** / **Cancel**. Nothing is saved until Save |
-| "make it 3" (straight after) | That card is deleted and a new one shows × 3 |
-| "add 144 eggs" | The card shows × 20 and "⚠️ 144 is more than the list takes: 20 at most" |
+| "add milk to the shopping list" | A card: "🛒 Shopping · new", "milk · × 1", **Save** / **Cancel**. Nothing is saved until Save |
+| "add honey, jam and 5 eggs" | One card with a line for each item and one Save |
+| "make the eggs 6", "remove the jam", "add milk too" (with a card open) | That card is deleted and a new one shows the change |
+| "add 144 eggs" | The card shows × 20 and "⚠️ eggs: 144 is more than the list takes, 20 at most" |
+| "add a few eggs" | "eggs · × 3 ❓": a vague amount is a guess, and is marked. A plain "add eggs" is × 1 with no mark |
+| "add milk, and remind me to call mum at 5" | The card says "⚠️ Not included: remind me to call mum at 5" |
 | "got the milk", "what do I need to buy?" | Done or answered at once: these change no setup, so no card. The reply names what is left ("☑️ Ticked off **milk** × 3 · still to buy: eggs") |
 | "what's the capital of France, and add milk" | Both: a plain answer, then the card |
 | "clear my shopping list" | A card that says it can't be undone, with **Clear for good** |
 | "pack my passport" | The packing list's card |
-| "no, shopping" (after a card for the wrong list) | That card is replaced by one for the shopping list |
+| "no, shopping" (after a card for the wrong list) | That card is replaced by one for the shopping list, for the same thing. The words "no, shopping" are never saved as anything |
+| "what am I packing?" then "add milk" | A packing card: the list on screen says which task |
 | "what's the capital of France?" | A plain answer |
 
 - **How a message is handled, cheapest first:** a button or a shortcut
@@ -596,12 +600,42 @@ the hub): a shopping list and a packing list.
   or if the card is the last thing the bot said in the channel and is
   under five minutes old.
 - **A card left for 30 minutes is deleted** and nothing is saved.
+- **A list you ask for is Live.** "What do I need to buy?" posts the
+  list; saving, ticking off or clearing afterwards edits that message in
+  place. Ask again and the new copy is the one kept up to date; the older
+  one is left as it was. In code: return `actions.LiveReply(key, text)`
+  from the action that shows the list, and call
+  `livelists.changed(user_id, key, render)` wherever its data changes
+  (`tasks/lab/demo.py` does both).
+- **Set, add, remove.** "Make the eggs 7" sets the amount, "add 3 milk"
+  adds to it, "remove the jam" takes it off: on an open card or on the
+  saved list. A change to something already on the list shows before →
+  after ("eggs · 5 → 7", "jam · × 1 → removed"). The bot does the sums.
+- **"It" is the last thing mentioned**; when that isn't clear the guess is
+  marked ❓. **"No, …" undoes the change before it** and applies the
+  correction instead.
+- **Names are kept as typed**, and singular and plural are the same item
+  ("add 3 milk" adds to "milks", which then reads "milk").
 - **Real tasks still go the old way** until they move: "set a timer for 5
   minutes" works as before (the router is asked first and says it is
   none of its tasks).
 
 **In code.** `core/actions.py` is the contract: a task sets `icon`,
-`only_for` and `examples` and returns `Action`s from `actions()`. An action
+`only_for` and `examples` and returns `Action`s from `actions()`. Anything
+that could be asked for in the plural is a list of items:
+`Field("items", "…", ITEMS, required=True, item_fields=(Field("item", …,
+required=True), Field("quantity", …, INTEGER)))`; `prepare` writes a line
+for each and `apply` saves them all. Flag a value with
+`flag(text, is_guessed(guessed, "items", index, "quantity"))`, never
+because the field was absent: a default is not a guess. What Claude could
+not place arrives as "Not included" on the card without the task doing
+anything. A task that keeps a list adds `change_field()` to its item
+fields, and in `prepare` merges the message into the open card with
+`merge_items(request.previous["items"] if request.previous else [],
+data["items"], same=…, exists=…)`: `request.previous` is the open card's
+data when the message corrects one. `prepare` shows before → after for
+what is already saved and `apply` does the sum against the list as it is
+at Save. An action
 that changes setup has `prepare(request, data, guessed) -> Proposal` (the
 card) and `apply(request, data) -> str` (Save: do it and return what to
 say); any other has `needs_card=False` and `run(request, data, guessed) ->

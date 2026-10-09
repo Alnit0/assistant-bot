@@ -33,41 +33,145 @@
     {
       "task": "packing",
       "message": "pack my passport in my hand luggage",
-      "action": "demo_pack_add",
+      "action": "demo_pack_change",
       "data": {
-        "item": "passport",
-        "bag": "carry-on"
+        "items": [
+          {
+            "item": "passport",
+            "bag": "carry-on"
+          }
+        ]
       },
       "guessed": [],
       "recorded": [
-        "demo_pack_add",
+        "demo_pack_change",
         {
-          "item": "passport",
-          "bag": "carry-on",
-          "guessed": []
+          "items": [
+            {
+              "item": "passport",
+              "bag": "carry-on"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
         }
       ]
     },
     {
       "task": "packing",
       "message": "pack socks",
-      "action": "demo_pack_add",
+      "action": "demo_pack_change",
       "data": {
-        "item": "socks",
-        "bag": "checked"
+        "items": [
+          {
+            "item": "socks"
+          }
+        ]
       },
-      "guessed": [
-        "bag"
-      ],
-      "note": "no bag said: checked, flagged as a guess",
+      "guessed": [],
+      "note": "no bag said: checked is the default, and a default is not a guess",
       "recorded": [
-        "demo_pack_add",
+        "demo_pack_change",
         {
-          "item": "socks",
-          "bag": "checked",
-          "guessed": [
-            "bag"
-          ]
+          "items": [
+            {
+              "item": "socks",
+              "change": "add"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "packing",
+      "message": "pack sunscreen and a hat",
+      "action": "demo_pack_change",
+      "data": {
+        "items": [
+          {
+            "item": "sunscreen"
+          },
+          {
+            "item": "hat"
+          }
+        ]
+      },
+      "recorded": [
+        "demo_pack_change",
+        {
+          "items": [
+            {
+              "item": "sunscreen"
+            },
+            {
+              "item": "hat"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "packing",
+      "message": "add jam to the shopping list and pack sunscreen and a hat",
+      "elsewhere": "the shopping task",
+      "action": "demo_pack_change",
+      "data": {
+        "items": [
+          {
+            "item": "sunscreen"
+          },
+          {
+            "item": "hat"
+          }
+        ]
+      },
+      "left_out": false,
+      "note": "QA 2026-10-09: the packing card listed the shopping part as not included",
+      "recorded": [
+        "demo_pack_change",
+        {
+          "items": [
+            {
+              "item": "sunscreen"
+            },
+            {
+              "item": "hat"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "packing",
+      "message": "don't pack the hat after all",
+      "state": "On the packing list now: sunscreen (checked bag), hat (checked bag)",
+      "action": "demo_pack_change",
+      "data": {
+        "items": [
+          {
+            "item": "hat",
+            "change": "remove"
+          }
+        ]
+      },
+      "note": "remove, on the saved list",
+      "recorded": [
+        "demo_pack_change",
+        {
+          "items": [
+            {
+              "item": "hat",
+              "change": "remove"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
         }
       ]
     },
@@ -78,7 +182,133 @@
       "recorded": [
         "demo_pack_list",
         {
-          "guessed": []
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "packing",
+      "message": "no, packing",
+      "moved": {
+        "action": "demo_shop_change",
+        "data": {
+          "items": [
+            {
+              "item": "honey",
+              "quantity": 1,
+              "change": "add"
+            },
+            {
+              "item": "jam",
+              "quantity": 1,
+              "change": "add"
+            },
+            {
+              "item": "peanut butter",
+              "quantity": 1,
+              "change": "add"
+            },
+            {
+              "item": "rubbish bags",
+              "quantity": 1,
+              "change": "add"
+            },
+            {
+              "item": "eggs",
+              "quantity": 5,
+              "change": "add"
+            }
+          ]
+        },
+        "guessed": [],
+        "said": "Add honey, jam, peanut butter, rubbish bags and 5 eggs"
+      },
+      "action": "demo_pack_change",
+      "data": {
+        "items": [
+          {
+            "item": "honey"
+          },
+          {
+            "item": "jam"
+          },
+          {
+            "item": "peanut butter"
+          },
+          {
+            "item": "rubbish bags"
+          },
+          {
+            "item": "eggs"
+          }
+        ]
+      },
+      "note": "\"no, packing\" moves every item on the shopping card to a packing card; the redirect's words are never sent",
+      "recorded": [
+        "demo_pack_change",
+        {
+          "items": [
+            {
+              "item": "honey"
+            },
+            {
+              "item": "jam"
+            },
+            {
+              "item": "peanut butter"
+            },
+            {
+              "item": "rubbish bags"
+            },
+            {
+              "item": "eggs"
+            }
+          ],
+          "guessed": [
+            "items[4].quantity"
+          ],
+          "not_included": []
+        }
+      ],
+      "known_miss": "claude-haiku-4-5 sometimes leaves out the one item that had an amount. The bot now moves a card's items in code and only falls back to this (2026-10-09)"
+    },
+    {
+      "task": "packing",
+      "message": "add milk",
+      "after_list": true,
+      "action": "demo_pack_change",
+      "data": {
+        "items": [
+          {
+            "item": "milk"
+          }
+        ]
+      },
+      "note": "QA 2026-10-09: after \"what am I packing?\", \"add milk\" went to shopping. A list on screen is context",
+      "recorded": [
+        "demo_pack_change",
+        {
+          "items": [
+            {
+              "item": "milk"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "packing",
+      "message": "set a timer for 5 minutes",
+      "after_list": true,
+      "action": "not_this",
+      "note": "plainly for something else",
+      "recorded": [
+        "not_this",
+        {
+          "reason": "User is asking to set a timer, not about the packing list"
         }
       ]
     }

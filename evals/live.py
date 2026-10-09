@@ -77,9 +77,10 @@ def main() -> int:
             card = extraction.OpenCard(**fixture.card) if fixture.card else None
             began = time.perf_counter()
             called = await _call_extraction(entry, fixture, card, options.strict)
+            follow_up = card is not None or fixture.after_list
             times["extraction"].append(time.perf_counter() - began)
             fixture.recorded = list(called) if called else None
-            problem = fixtures.extraction_problem(fixture, extraction.read(entry, called, follow_up=card is not None))
+            problem = fixtures.extraction_problem(fixture, extraction.read(entry, called, follow_up=follow_up))
             print(_mark(problem, fixture) + f"extract  {fixture.message!r}" + (f"  -> {problem}" if problem else ""))
             if problem:
                 (known if fixture.known_miss else failures).append(fixture.name)
@@ -97,7 +98,7 @@ def main() -> int:
 
         return await llm.call_tool(
             routing.system_blocks(entries),
-            routing.user_turn(fixture.message, fixture.on_screen),
+            routing.user_turn(fixture.message, fixture.on_screen, [tuple(pair) for pair in fixture.exchanges or []]),
             [routing.tool(entries)],
             choice={"type": "tool", "name": routing.TOOL},
             purpose=costs.PURPOSE_ROUTER,
@@ -107,10 +108,12 @@ def main() -> int:
     async def _call_extraction(entry, fixture, card, strict):
         from core import llm
 
+        # A request moved from another task's card is read as it stood there
+        message = extraction.standing(extraction.OpenCard(**fixture.moved)) if fixture.moved else fixture.message
         return await llm.call_tool(
-            extraction.system_blocks(entry, card is not None),
-            extraction.user_turn(fixture.message, fixture.state, card),
-            extraction.tools(entry, card is not None, strict=strict),
+            extraction.system_blocks(entry, card is not None, fixture.after_list),
+            extraction.user_turn(message, fixture.state, card, fixture.earlier, fixture.elsewhere),
+            extraction.tools(entry, card is not None or fixture.after_list, strict=strict),
             choice={"type": "any"},
             purpose=costs.PURPOSE_EXTRACTION,
             task=entry.name,

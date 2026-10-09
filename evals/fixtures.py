@@ -33,10 +33,12 @@ class RouterFixture:
     # With tasks: whether part of the message is for no task and must be answered as chat too
     also_chat: bool = False
     on_screen: str = ""
+    exchanges: list | None = None  # the last (user, bot) exchanges the router is shown, oldest first
     note: str = ""
-    # Why the model is known to get this one wrong, if it does. It still counts
-    # against the accuracy; the ordinary tests check it is still a miss, so a
-    # model that starts getting it right is noticed
+    # Why the model is known to get this one wrong, at least some of the time.
+    # It still counts against the accuracy when it does; the ordinary tests
+    # replay it without judging it, since the same sentence can come back
+    # right on one run and wrong on the next
     known_miss: str = ""
     recorded: dict | None = None
 
@@ -55,6 +57,16 @@ class ExtractionFixture:
     guessed: list[str] | None = None  # exactly these, if given
     state: str = ""
     card: dict | None = None  # {"action":…, "data":…, "guessed":[…], "said":…} for a follow-up
+    earlier: str = ""  # what the user asked just before, which this message may only be redirecting
+    exact: bool = False  # text in `data` must come back letter for letter (case, singular or plural)
+    # A card of another task that "no, <this task>" is moving here: the message is then the
+    # request as it stood on that card ({"action":…, "data":…, "said":…})
+    moved: dict | None = None
+    after_list: bool = False  # the message came straight after this task's list was shown
+    elsewhere: str = ""  # what else in the message is being handled, and by what ("the packing task")
+    # Whether anything was asked for that can't go in the action: None doesn't check,
+    # False means nothing may be reported as left out, True means something must be
+    left_out: bool | None = None
     note: str = ""
     known_miss: str = ""
     recorded: list | None = None  # [tool name, input]
@@ -89,11 +101,17 @@ def save_recorded(routers: list[RouterFixture], extractions: list[ExtractionFixt
 # ---------------------------------------------------------------------------
 # Does what came back match what was expected? (pure)
 # ---------------------------------------------------------------------------
-def _same(expected, actual) -> bool:
+def _same(expected, actual, exact: bool = False) -> bool:
+    """Whether what came back is what was expected. Lists must match item for
+    item, in order and in number: an item dropped or added is a miss. In an
+    item, every expected key must be there with its value; what wasn't
+    expected (a default spelled out) is not judged."""
     if isinstance(expected, str) and isinstance(actual, str):
-        return expected.strip().lower() == actual.strip().lower()
+        return expected == actual if exact else expected.strip().lower() == actual.strip().lower()
     if isinstance(expected, list) and isinstance(actual, list):
-        return len(expected) == len(actual) and all(_same(a, b) for a, b in zip(expected, actual))
+        return len(expected) == len(actual) and all(_same(a, b, exact) for a, b in zip(expected, actual))
+    if isinstance(expected, dict) and isinstance(actual, dict):
+        return all(key in actual and _same(value, actual[key], exact) for key, value in expected.items())
     return expected == actual
 
 
@@ -124,8 +142,12 @@ def extraction_problem(fixture: ExtractionFixture, found) -> str:
     for name, expected in fixture.data.items():
         if name not in found.data:
             return f"`{name}` is missing (expected {expected!r})"
-        if not _same(expected, found.data[name]):
+        if not _same(expected, found.data[name], fixture.exact):
             return f"`{name}` is {found.data[name]!r}, expected {expected!r}"
     if fixture.guessed is not None and sorted(found.guessed) != sorted(fixture.guessed):
         return f"guessed {sorted(found.guessed)}, expected {sorted(fixture.guessed)}"
+    if fixture.left_out is False and found.not_included:
+        return f"reported as left out: {list(found.not_included)}, expected nothing"
+    if fixture.left_out is True and not found.not_included:
+        return "expected something reported as left out, got nothing"
     return ""

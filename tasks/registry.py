@@ -12,7 +12,7 @@ import tasks
 from core import day, scheduler
 from core.config import CHANNELS, ENABLED_TASKS
 from core.context import Context
-from core import actions, confirm, database, devmode, discord_utils, lifecycle, live, reactions, tools
+from core import actions, confirm, database, devmode, discord_utils, lifecycle, live, livelists, reactions, tools
 from core.database import log_received, log_result
 from core.debounce import Debouncer
 from core.discord_utils import log_error, log_simple
@@ -285,8 +285,8 @@ async def declared_class(message_id: int) -> lifecycle.MessageClass | None:
             continue
         if found is not None:
             return found
-    # Not a task's: an open confirm card is the core's own
-    return await confirm.message_class(message_id)
+    # Not a task's: an open confirm card and the latest copy of a list are the core's own
+    return await confirm.message_class(message_id) or await livelists.message_class(message_id)
 
 
 @dataclass(frozen=True)

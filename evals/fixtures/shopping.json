@@ -1,6 +1,35 @@
 {
   "router": [
     {
+      "message": "Add honey, jam, peanut butter, rubbish bags and 5 eggs",
+      "tasks": [
+        "shopping"
+      ],
+      "note": "QA 2026-10-09: several things to buy in one message",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "shopping"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "add butter and jam",
+      "tasks": [
+        "shopping"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "shopping"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
       "message": "add two cartons of oat milk",
       "tasks": [
         "shopping"
@@ -43,11 +72,46 @@
       }
     },
     {
+      "message": "Make the eggs 7",
+      "tasks": [
+        "shopping"
+      ],
+      "note": "QA 2026-10-09: a change to something on the list, with no card open. The last exchange says which list",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "shopping"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      },
+      "exchanges": [
+        [
+          "Add honey, jam, peanut butter, rubbish bags and 5 eggs",
+          "✅ Saved · 🛒 5 items added to the shopping list"
+        ]
+      ]
+    },
+    {
+      "message": "remove the jam from my shopping",
+      "tasks": [
+        "shopping"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "shopping"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
       "message": "make it three",
       "tasks": [
         "shopping"
       ],
-      "on_screen": "a Shopping card (demo_shop_add) from the user saying: add milk",
+      "on_screen": "a Shopping card (demo_shop_change) from the user saying: add milk",
       "note": "a reply to what is on screen",
       "recorded": {
         "kind": "task",
@@ -62,42 +126,651 @@
   "extraction": [
     {
       "task": "shopping",
-      "message": "add 3 lemons",
-      "action": "demo_shop_add",
+      "message": "Add honey, jam, peanut butter, rubbish bags and 5 eggs",
+      "action": "demo_shop_change",
       "data": {
-        "item": "lemons",
-        "quantity": 3
+        "items": [
+          {
+            "item": "honey"
+          },
+          {
+            "item": "jam"
+          },
+          {
+            "item": "peanut butter"
+          },
+          {
+            "item": "rubbish bags"
+          },
+          {
+            "item": "eggs",
+            "quantity": 5
+          }
+        ]
+      },
+      "guessed": [],
+      "left_out": false,
+      "note": "QA 2026-10-09: the card held only honey and four items were dropped. Every item, in order",
+      "recorded": [
+        "demo_shop_change",
+        {
+          "items": [
+            {
+              "item": "honey"
+            },
+            {
+              "item": "jam"
+            },
+            {
+              "item": "peanut butter"
+            },
+            {
+              "item": "rubbish bags"
+            },
+            {
+              "item": "eggs",
+              "quantity": 5
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "shopping",
+      "message": "add butter and jam",
+      "action": "demo_shop_change",
+      "data": {
+        "items": [
+          {
+            "item": "butter"
+          },
+          {
+            "item": "jam"
+          }
+        ]
+      },
+      "guessed": [],
+      "left_out": false,
+      "recorded": [
+        "demo_shop_change",
+        {
+          "items": [
+            {
+              "item": "butter"
+            },
+            {
+              "item": "jam"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "shopping",
+      "message": "add 3 lemons",
+      "action": "demo_shop_change",
+      "data": {
+        "items": [
+          {
+            "item": "lemons",
+            "quantity": 3
+          }
+        ]
       },
       "guessed": [],
       "recorded": [
-        "demo_shop_add",
+        "demo_shop_change",
         {
-          "item": "lemons",
-          "quantity": 3,
-          "guessed": []
+          "items": [
+            {
+              "item": "lemons",
+              "quantity": 3
+            }
+          ],
+          "guessed": [],
+          "not_included": []
         }
       ]
     },
     {
       "task": "shopping",
       "message": "add milk to the shopping list",
-      "action": "demo_shop_add",
+      "action": "demo_shop_change",
       "data": {
-        "item": "milk",
-        "quantity": 1
+        "items": [
+          {
+            "item": "milk"
+          }
+        ]
+      },
+      "guessed": [],
+      "note": "no amount said: one is the default, and a default is not a guess",
+      "recorded": [
+        "demo_shop_change",
+        {
+          "items": [
+            {
+              "item": "milk"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "shopping",
+      "message": "add a few eggs",
+      "action": "demo_shop_change",
+      "data": {
+        "items": [
+          {
+            "item": "eggs"
+          }
+        ]
       },
       "guessed": [
-        "quantity"
+        "items[0].quantity"
       ],
-      "note": "no amount said: one, flagged as a guess",
+      "note": "a vague amount is a genuine guess, and is flagged",
       "recorded": [
-        "demo_shop_add",
+        "demo_shop_change",
         {
-          "item": "milk",
-          "quantity": 1,
+          "items": [
+            {
+              "item": "eggs",
+              "quantity": 3
+            }
+          ],
           "guessed": [
-            "quantity"
+            "items[0].quantity"
+          ],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "shopping",
+      "message": "add milk, and remind me to call mum at 5",
+      "action": "demo_shop_change",
+      "data": {
+        "items": [
+          {
+            "item": "milk"
+          }
+        ]
+      },
+      "left_out": true,
+      "note": "what nothing else covers and can't go on the card is reported, never dropped",
+      "recorded": [
+        "demo_shop_change",
+        {
+          "items": [
+            {
+              "item": "milk"
+            }
+          ],
+          "guessed": [],
+          "not_included": [
+            "remind me to call mum at 5"
           ]
+        }
+      ]
+    },
+    {
+      "task": "shopping",
+      "message": "Make the eggs 7",
+      "state": "On the shopping list now: honey × 1, jam × 1, peanut butter × 1, rubbish bags × 1, eggs × 5",
+      "action": "demo_shop_change",
+      "data": {
+        "items": [
+          {
+            "item": "eggs",
+            "quantity": 7,
+            "change": "set"
+          }
+        ]
+      },
+      "note": "QA 2026-10-09, set vs add: with no card open this added 7 to 5. \"Make … 7\" sets the amount",
+      "recorded": [
+        "demo_shop_change",
+        {
+          "items": [
+            {
+              "item": "eggs",
+              "quantity": 7,
+              "change": "set"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "shopping",
+      "message": "add 3 milk",
+      "card": {
+        "action": "demo_shop_change",
+        "data": {
+          "items": [
+            {
+              "item": "milk",
+              "quantity": 2,
+              "change": "add"
+            }
+          ]
+        },
+        "guessed": [],
+        "said": "add milk\nmake it 2"
+      },
+      "action": "demo_shop_change",
+      "data": {
+        "items": [
+          {
+            "item": "milk",
+            "quantity": 3
+          }
+        ]
+      },
+      "note": "QA 2026-10-09, merge maths: with milk × 2 on the card this came back as milk × 3. Only what was said comes back (3 more); Python adds it to the 2",
+      "recorded": [
+        "demo_shop_change",
+        {
+          "items": [
+            {
+              "change": "add",
+              "item": "milk",
+              "quantity": 3
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "shopping",
+      "message": "remove the jam",
+      "card": {
+        "action": "demo_shop_change",
+        "data": {
+          "items": [
+            {
+              "item": "honey",
+              "quantity": 1,
+              "change": "add"
+            },
+            {
+              "item": "jam",
+              "quantity": 1,
+              "change": "add"
+            },
+            {
+              "item": "peanut butter",
+              "quantity": 1,
+              "change": "add"
+            },
+            {
+              "item": "rubbish bags",
+              "quantity": 1,
+              "change": "add"
+            },
+            {
+              "item": "eggs",
+              "quantity": 5,
+              "change": "add"
+            }
+          ]
+        },
+        "guessed": [],
+        "said": "Add honey, jam, peanut butter, rubbish bags and 5 eggs"
+      },
+      "action": "demo_shop_change",
+      "data": {
+        "items": [
+          {
+            "item": "jam",
+            "change": "remove"
+          }
+        ]
+      },
+      "note": "remove, on an open card: jam alone, removed",
+      "recorded": [
+        "demo_shop_change",
+        {
+          "items": [
+            {
+              "item": "jam",
+              "change": "remove"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "shopping",
+      "message": "remove the jam",
+      "state": "On the shopping list now: honey × 1, jam × 1, peanut butter × 1, rubbish bags × 1, eggs × 5",
+      "action": "demo_shop_change",
+      "data": {
+        "items": [
+          {
+            "item": "jam",
+            "change": "remove"
+          }
+        ]
+      },
+      "note": "QA 2026-10-09, remove on the saved list: this got \"I couldn't work that out\". Not the bought action: nothing was bought",
+      "recorded": [
+        "demo_shop_change",
+        {
+          "items": [
+            {
+              "item": "jam",
+              "change": "remove"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "shopping",
+      "message": "add jam to the shopping list and pack sunscreen and a hat",
+      "elsewhere": "the packing task",
+      "action": "demo_shop_change",
+      "data": {
+        "items": [
+          {
+            "item": "jam"
+          }
+        ]
+      },
+      "left_out": false,
+      "note": "QA 2026-10-09: the shopping card listed the packing part as not included. What another card covers is not left out",
+      "recorded": [
+        "demo_shop_change",
+        {
+          "items": [
+            {
+              "item": "jam"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "shopping",
+      "message": "Make it 2",
+      "card": {
+        "action": "demo_shop_change",
+        "data": {
+          "items": [
+            {
+              "item": "milk",
+              "quantity": 1,
+              "change": "add"
+            },
+            {
+              "item": "bread rolls",
+              "quantity": 1,
+              "change": "add"
+            }
+          ]
+        },
+        "guessed": [],
+        "said": "add milk\nadd bread rolls"
+      },
+      "action": "demo_shop_change",
+      "data": {
+        "items": [
+          {
+            "item": "bread rolls",
+            "quantity": 2,
+            "change": "set"
+          }
+        ]
+      },
+      "note": "QA 2026-10-09, pronouns: \"it\" is the item mentioned last (bread rolls), and this changed milk",
+      "recorded": [
+        "demo_shop_change",
+        {
+          "items": [
+            {
+              "change": "set",
+              "item": "bread rolls",
+              "quantity": 2
+            }
+          ],
+          "guessed": [
+            "items[0]"
+          ],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "shopping",
+      "message": "No, 2 bread rolls",
+      "card": {
+        "action": "demo_shop_change",
+        "data": {
+          "items": [
+            {
+              "item": "milk",
+              "quantity": 1,
+              "change": "add"
+            },
+            {
+              "item": "bread rolls",
+              "quantity": 1,
+              "change": "add"
+            }
+          ]
+        },
+        "guessed": [],
+        "said": "add milk\nadd bread rolls",
+        "undone": "Make it 2"
+      },
+      "action": "demo_shop_change",
+      "data": {
+        "items": [
+          {
+            "item": "bread rolls",
+            "quantity": 2,
+            "change": "set"
+          }
+        ]
+      },
+      "note": "QA 2026-10-09, corrections undo: the wrong \"make it 2\" has been undone in code; only the correction comes back, and nothing about milk",
+      "recorded": [
+        "demo_shop_change",
+        {
+          "items": [
+            {
+              "item": "bread rolls",
+              "change": "set",
+              "quantity": 2
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "shopping",
+      "message": "make the eggs 6",
+      "action": "demo_shop_change",
+      "card": {
+        "action": "demo_shop_change",
+        "data": {
+          "items": [
+            {
+              "item": "honey",
+              "quantity": 1,
+              "change": "add"
+            },
+            {
+              "item": "jam",
+              "quantity": 1,
+              "change": "add"
+            },
+            {
+              "item": "peanut butter",
+              "quantity": 1,
+              "change": "add"
+            },
+            {
+              "item": "rubbish bags",
+              "quantity": 1,
+              "change": "add"
+            },
+            {
+              "item": "eggs",
+              "quantity": 5,
+              "change": "add"
+            }
+          ]
+        },
+        "guessed": [],
+        "said": "Add honey, jam, peanut butter, rubbish bags and 5 eggs"
+      },
+      "left_out": false,
+      "data": {
+        "items": [
+          {
+            "item": "eggs",
+            "quantity": 6,
+            "change": "set"
+          }
+        ]
+      },
+      "note": "a reply names only the item it changes",
+      "recorded": [
+        "demo_shop_change",
+        {
+          "items": [
+            {
+              "change": "set",
+              "item": "eggs",
+              "quantity": 6
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "shopping",
+      "message": "add milk too",
+      "action": "demo_shop_change",
+      "card": {
+        "action": "demo_shop_change",
+        "data": {
+          "items": [
+            {
+              "item": "honey",
+              "quantity": 1,
+              "change": "add"
+            },
+            {
+              "item": "jam",
+              "quantity": 1,
+              "change": "add"
+            },
+            {
+              "item": "peanut butter",
+              "quantity": 1,
+              "change": "add"
+            },
+            {
+              "item": "rubbish bags",
+              "quantity": 1,
+              "change": "add"
+            },
+            {
+              "item": "eggs",
+              "quantity": 5,
+              "change": "add"
+            }
+          ]
+        },
+        "guessed": [],
+        "said": "Add honey, jam, peanut butter, rubbish bags and 5 eggs"
+      },
+      "data": {
+        "items": [
+          {
+            "item": "milk"
+          }
+        ]
+      },
+      "note": "a reply names only the item it adds",
+      "recorded": [
+        "demo_shop_change",
+        {
+          "items": [
+            {
+              "change": "add",
+              "item": "milk"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "shopping",
+      "message": "make it 3",
+      "action": "demo_shop_change",
+      "data": {
+        "items": [
+          {
+            "item": "milk",
+            "quantity": 3,
+            "change": "set"
+          }
+        ]
+      },
+      "card": {
+        "action": "demo_shop_change",
+        "data": {
+          "items": [
+            {
+              "item": "milk",
+              "quantity": 1,
+              "change": "add"
+            }
+          ]
+        },
+        "guessed": [],
+        "said": "add milk"
+      },
+      "recorded": [
+        "demo_shop_change",
+        {
+          "items": [
+            {
+              "change": "set",
+              "item": "milk",
+              "quantity": 3
+            }
+          ],
+          "guessed": [],
+          "not_included": []
         }
       ]
     },
@@ -108,7 +781,8 @@
       "recorded": [
         "demo_shop_list",
         {
-          "guessed": []
+          "guessed": [],
+          "not_included": []
         }
       ]
     },
@@ -117,13 +791,52 @@
       "message": "got the bread",
       "action": "demo_shop_tick",
       "data": {
-        "item": "bread"
+        "items": [
+          {
+            "item": "bread"
+          }
+        ]
       },
       "recorded": [
         "demo_shop_tick",
         {
-          "item": "bread",
-          "guessed": []
+          "items": [
+            {
+              "item": "bread"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "shopping",
+      "message": "got the milk and the eggs",
+      "action": "demo_shop_tick",
+      "data": {
+        "items": [
+          {
+            "item": "milk"
+          },
+          {
+            "item": "eggs"
+          }
+        ]
+      },
+      "recorded": [
+        "demo_shop_tick",
+        {
+          "items": [
+            {
+              "item": "milk"
+            },
+            {
+              "item": "eggs"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
         }
       ]
     },
@@ -134,37 +847,8 @@
       "recorded": [
         "demo_shop_clear",
         {
-          "guessed": []
-        }
-      ]
-    },
-    {
-      "task": "shopping",
-      "message": "make it 3",
-      "action": "demo_shop_add",
-      "data": {
-        "item": "milk",
-        "quantity": 3
-      },
-      "guessed": [],
-      "card": {
-        "action": "demo_shop_add",
-        "data": {
-          "item": "milk",
-          "quantity": 1
-        },
-        "guessed": [
-          "quantity"
-        ],
-        "said": "add milk"
-      },
-      "note": "a correction keeps the rest of the card and clears the guess",
-      "recorded": [
-        "demo_shop_add",
-        {
-          "item": "milk",
-          "quantity": 3,
-          "guessed": []
+          "guessed": [],
+          "not_included": []
         }
       ]
     },
@@ -173,21 +857,24 @@
       "message": "what's the weather like tomorrow?",
       "action": "not_this",
       "card": {
-        "action": "demo_shop_add",
+        "action": "demo_shop_change",
         "data": {
-          "item": "milk",
-          "quantity": 1
+          "items": [
+            {
+              "item": "milk",
+              "quantity": 1,
+              "change": "add"
+            }
+          ]
         },
-        "guessed": [
-          "quantity"
-        ],
+        "guessed": [],
         "said": "add milk"
       },
       "note": "nothing to do with the open card",
       "recorded": [
         "not_this",
         {
-          "reason": "Question about weather, not about shopping list"
+          "reason": "Message is about weather, not the shopping list"
         }
       ]
     },
@@ -198,7 +885,113 @@
       "recorded": [
         "none",
         {
-          "reason": "Not related to shopping list task"
+          "reason": "Not about shopping list: observation about the sky"
+        }
+      ]
+    },
+    {
+      "task": "shopping",
+      "message": "sorry, I meant the shopping list",
+      "earlier": "add 2 toothbrushes",
+      "action": "demo_shop_change",
+      "data": {
+        "items": [
+          {
+            "item": "toothbrushes",
+            "quantity": 2
+          }
+        ]
+      },
+      "note": "a redirect in looser words: the earlier request is what is meant",
+      "recorded": [
+        "demo_shop_change",
+        {
+          "items": [
+            {
+              "item": "toothbrushes",
+              "quantity": 2
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "shopping",
+      "message": "add bananas",
+      "earlier": "pack my passport",
+      "action": "demo_shop_change",
+      "data": {
+        "items": [
+          {
+            "item": "bananas"
+          }
+        ]
+      },
+      "note": "a request of its own: the earlier one is ignored",
+      "recorded": [
+        "demo_shop_change",
+        {
+          "items": [
+            {
+              "item": "bananas"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "shopping",
+      "message": "add milks to the shopping list",
+      "action": "demo_shop_change",
+      "data": {
+        "items": [
+          {
+            "item": "milks"
+          }
+        ]
+      },
+      "exact": true,
+      "note": "QA 2026-10-09: names stay as typed, plural included",
+      "recorded": [
+        "demo_shop_change",
+        {
+          "items": [
+            {
+              "item": "milks"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "shopping",
+      "message": "add an Egg",
+      "action": "demo_shop_change",
+      "data": {
+        "items": [
+          {
+            "item": "Egg"
+          }
+        ]
+      },
+      "exact": true,
+      "note": "singular and capital as typed",
+      "recorded": [
+        "demo_shop_change",
+        {
+          "items": [
+            {
+              "item": "Egg"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
         }
       ]
     }

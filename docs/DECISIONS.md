@@ -541,8 +541,8 @@ A short log of key decisions and why. Newest at the bottom.
   request without strict and 4.6s with it (12.8s for the first). What
   comes back is validated against the schema either way.
 - **The router rarely calls a tie:** asked "add socks" with a shopping and
-  a packing list, claude-haiku-4-5 picked one list both times it was
-  tried, even with the rule spelled out. The buttons are there for when
+  a packing list, claude-haiku-4-5 picked one list on four runs out of
+  five, even with the rule spelled out, and called the tie once. The buttons are there for when
   it does; what makes the wrong pick cheap is the card, and "no,
   shopping" replacing it. The two fixtures are kept as known misses.
 - **A plain message sticks to an open card only while that card is the
@@ -559,6 +559,80 @@ A short log of key decisions and why. Newest at the bottom.
   no task, copied from it; that part is answered as plain chat, first, so
   the card is still the last thing on screen and a correction finds it.
   It costs a third request, only for such messages.
+- **A list shown on request is Live, the latest copy only (2026-10-09):**
+  a list that goes stale while it looks current misleads, and keeping
+  every old copy up to date would mean editing messages far up the
+  channel for ever. `core/livelists.py` remembers one message per user
+  and list; asking again moves it. Pills' checklist will use it.
+- **"No, shopping" is recognised in code, and only re-routes (2026-10-09,
+  from QA):** it had been re-routed correctly and then handed to the
+  shopping extraction as the message, which made an item called
+  "shopping". A bare redirect is now matched by its shape while a card is
+  open; the request on the card goes to the other task and the redirect's
+  words go nowhere. It is the one place a message is read by pattern
+  before the router: a wrong save is worse than a missed shortcut, and
+  anything looser still goes by the router, with extraction told that a
+  redirect is never a value. A loose redirect leaves the old card open:
+  only the plain form is sure enough to delete it.
+- **A correction replaces its card; another thing altogether doesn't:**
+  when a follow-up comes back as the same action with every required
+  field changed ("add eggs too" on a milk card) it is a new request and
+  both cards stay. Deleting a card the user still wanted is worse than
+  leaving one to cancel.
+- **The open card goes to extraction whenever the router picks its
+  task:** stickiness only decides whether the router is skipped. Without
+  the card, "make it 2" after an unrelated answer meant nothing.
+- **Actions take lists of items (2026-10-09, from QA):** "add honey, jam,
+  peanut butter, rubbish bags and 5 eggs" came back as a card with only
+  honey, because the action held one item and Claude filled in the first.
+  A field can now be a list of items (`ITEMS`), and anything that can be
+  asked for in the plural must be one. One card per task lists them all.
+- **Nothing is dropped without a word, and code checks it:** every schema
+  has `not_included` for what Claude could not place; an item that fails
+  validation is left out and named instead of sinking the whole call; and
+  when "no, packing" moves a card, any item missing from the new card is
+  listed, whatever extraction returned (it lost the eggs once in the live
+  eval). All of it reaches the user as "⚠️ Not included: …".
+- **An addition joins the card:** for an action that takes a list of
+  items, the same action again while its card is open is always about
+  that card: "add milk too", or just "eggs", adds a line to it. (This
+  replaces the earlier rules that any other thing made a second card,
+  and that a list sharing no item with the card left it alone. For an
+  action without a list, something with nothing in common still gets a
+  card of its own.)
+- **❓ is for genuine guesses; a default is not one:** a card of five
+  items all marked ❓ says nothing. Extraction is told to leave a field
+  out when the user didn't mention it and to list only what it chose
+  between readings; tasks flag from `guessed`, never from absence.
+- **A list on screen is context, like a card:** after "what am I
+  packing?", "add milk" went to shopping. The Live copy of a list
+  remembers its task; while it is the bot's latest message, under five
+  minutes old, and the message is short (eight words), that task's
+  extraction is asked first, with `not_this` as the way out.
+- **"No, packing" sends the card as it stands,** corrections included, not
+  the first sentence, so "make the eggs 6" survives the move. When both
+  tasks take the same kind of item the move is done in code, with no
+  request (extraction once left out the one item that had an amount);
+  otherwise extraction reads the card over, and what is lost is said.
+- **Claude reports the change; Python merges it and does the sums**
+  (2026-10-09). Asked to send the whole card back after "make it 2" or
+  "add 3 milk", Claude added 7 to 5 and turned 2 + 3 into 3. Each item
+  now carries add, set or remove and the number as said, a follow-up
+  holds only the items it is about, and `actions.merge_items` applies
+  them to the card. Cards show before → after so a wrong sum would be
+  seen before Save. (This replaces "the whole list comes back" above. If
+  a whole card does come back, it is read as a restatement, never as one
+  more of each.)
+- **A correction undoes the change before it:** a card keeps what it was
+  before its last change (`previous`). "No, 2 bread rolls" is read
+  against that earlier card, so the mistaken change leaves nothing
+  behind. Only a message that starts with "no", "sorry", "I meant" and
+  the like, with something after it, counts; a plain further change
+  doesn't undo anything.
+- **"Not included" is settled in code after every task has been read:**
+  each extraction sees one task, so each reported the other's part. All
+  tasks are extracted first; a part is dropped from the list when another
+  task took something it names or the plain answer covers it.
 - **Two demo tasks, on the dev database only,** so the core can be tried
   before any real task depends on it. The live bot's router never hears
   of them.

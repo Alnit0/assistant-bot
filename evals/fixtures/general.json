@@ -29,6 +29,7 @@
       ],
       "tie": true,
       "note": "a genuine tie: which list isn't said, and toothpaste could be bought or packed",
+      "known_miss": "claude-haiku-4-5 usually settles on the likelier list instead of calling a tie, and sometimes calls it (2026-10-09)",
       "recorded": {
         "kind": "task",
         "tasks": [
@@ -36,8 +37,25 @@
         ],
         "confidence": "high",
         "chat_part": ""
-      },
-      "known_miss": "claude-haiku-4-5 settles on the likelier list instead of calling a tie (2026-10-09)"
+      }
+    },
+    {
+      "message": "add socks",
+      "tasks": [
+        "packing",
+        "shopping"
+      ],
+      "tie": true,
+      "note": "a bare add that names no list",
+      "known_miss": "claude-haiku-4-5 usually settles on the likelier list instead of calling a tie, and sometimes calls it (2026-10-09)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "packing"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
     },
     {
       "message": "add milk to the shopping list and pack my passport",
@@ -46,6 +64,23 @@
         "shopping"
       ],
       "note": "two tasks, both wanted: not a tie",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "shopping",
+          "packing"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "add jam to the shopping list and pack sunscreen and a hat",
+      "tasks": [
+        "packing",
+        "shopping"
+      ],
+      "note": "items across two tasks: one card each",
       "recorded": {
         "kind": "task",
         "tasks": [
@@ -84,24 +119,6 @@
         "confidence": "high",
         "chat_part": ""
       }
-    },
-    {
-      "message": "add socks",
-      "tasks": [
-        "packing",
-        "shopping"
-      ],
-      "tie": true,
-      "note": "a bare add that names no list",
-      "recorded": {
-        "kind": "task",
-        "tasks": [
-          "packing"
-        ],
-        "confidence": "high",
-        "chat_part": ""
-      },
-      "known_miss": "claude-haiku-4-5 settles on the likelier list instead of calling a tie (2026-10-09)"
     },
     {
       "message": "what's the capital of France, and add milk to the shopping list",

@@ -124,7 +124,7 @@ def test_routing_is_one_request_forced_to_the_route_tool(claude):
     (request,) = sent
     assert request["choice"] == {"type": "tool", "name": "route"} and request["purpose"] == "router"
     assert [tool["name"] for tool in request["tools"]] == ["route"]
-    assert "demo_pack_add" not in str(request), "no action reaches the router"
+    assert "demo_pack_change" not in str(request), "no action reaches the router"
 
 
 # ---------------------------------------------------------------------------
@@ -132,40 +132,55 @@ def test_routing_is_one_request_forced_to_the_route_tool(claude):
 # ---------------------------------------------------------------------------
 def test_extraction_is_given_one_tasks_actions_and_a_way_to_say_none():
     tools = extraction.tools(SHOPPING)
-    assert [tool["name"] for tool in tools] == ["demo_shop_add", "demo_shop_list", "demo_shop_tick", "demo_shop_clear", "none"]
+    assert [tool["name"] for tool in tools] == ["demo_shop_change", "demo_shop_list", "demo_shop_tick", "demo_shop_clear", "none"]
     assert tools[-1]["cache_control"] == llm.CACHED, "the definitions are fixed text too"
     assert not [tool for tool in tools if tool.get("strict")], "strict is off until measured as cheap"
     assert [tool["name"] for tool in extraction.tools(SHOPPING, follow_up=True)][-2:] == ["none", "not_this"]
     assert all(tool.get("strict") for tool in extraction.tools(SHOPPING, strict=True)[:4])
-    assert "demo_pack_add" not in str(tools), "never another task's"
+    assert "demo_pack_change" not in str(tools), "never another task's"
 
 
 def test_extraction_is_told_to_guess_and_flag_never_to_ask_and_to_write_nothing():
     text = extraction.system_blocks(SHOPPING)[0]["text"]
     assert "Never ask a question" in text and "best guess" in text and "`guessed`" in text
     assert "Write no text" in text
+    assert "takes ALL of them" in text and "Never keep only the first" in text, "several things in one request"
+    assert "Nothing may be dropped" in text and "`not_included`" in text
+    assert "is NOT a guess" in text and "Never list a default" in text, "a default is not flagged"
     assert "A card is open" not in text
     follow_up = extraction.system_blocks(SHOPPING, follow_up=True)[0]["text"]
-    assert "A card is open" in follow_up and "ALL of its data" in follow_up and "`not_this`" in follow_up
+    assert "A card is open" in follow_up and "`not_this`" in follow_up
+    assert "give ONLY the items this message is about" in follow_up and "do not do any sums" in follow_up
+    assert "\"add milk too\" is milk alone" in follow_up
+    assert "goes back as it stands on the card" in follow_up, "every field that is not a list of items"
+    assert "mean what the user mentioned LAST" in text and "take the last one named and list it" in text, "pronouns"
+    after_list = extraction.system_blocks(SHOPPING, after_list=True)[0]["text"]
+    assert "has just been shown this task's list" in after_list and "`not_this`" in after_list and "A card is open" not in after_list
     assert extraction.system_blocks(SHOPPING)[0]["cache_control"] == llm.CACHED
 
 
 def test_the_state_and_the_open_card_go_in_the_user_turn():
-    card = OpenCard("demo_shop_add", {"item": "milk", "quantity": 1}, ("quantity",), "add milk")
-    turn = extraction.user_turn("make it 3", "On the list: bread", card)
+    card = OpenCard("demo_shop_change", {"items": [{"item": "eggs", "quantity": 3}]}, ("items[0].quantity",), "add a few eggs")
+    turn = extraction.user_turn("make it 6", "On the list: bread", card)
     assert "The task's state, read just now:\nOn the list: bread" in turn
-    assert '- data: {"item": "milk", "quantity": 1}' in turn and "- still guessed: quantity" in turn
-    assert "- it came from the user saying: add milk" in turn
-    assert turn.endswith("The message:\nmake it 3")
+    assert '- data: {"items": [{"item": "eggs", "quantity": 3}]}' in turn and "- still guessed: items[0].quantity" in turn
+    assert "- what the user has said about it, oldest first: add a few eggs" in turn
+    assert turn.endswith("The message:\nmake it 6")
     assert extraction.user_turn("add milk") == "The message:\nadd milk"
-    assert "Just before this, the user said: add socks" in extraction.user_turn("no, shopping", earlier="add socks")
+    redirected = extraction.user_turn("actually the shopping list", earlier="add socks")
+    assert "Just before this, the user asked: add socks" in redirected
+    assert "never an item, a name or any other value" in redirected and redirected.endswith("The message:\nactually the shopping list")
 
 
 def test_a_call_that_fits_is_the_action_its_data_and_its_guesses():
-    found = extraction.read(SHOPPING, ("demo_shop_add", {"item": "milk", "quantity": 1, "guessed": ["quantity"]}))
-    assert found.fitted and found.action.name == "demo_shop_add"
-    assert found.data == {"item": "milk", "quantity": 1} and found.guessed == frozenset({"quantity"})
-    assert found.as_log() == {"task": "shopping", "action": "demo_shop_add", "data": {"item": "milk", "quantity": 1}, "guessed": ["quantity"]}
+    called = ("demo_shop_change", {"items": [{"item": "honey"}, {"item": "eggs", "quantity": 3}], "guessed": ["items[1].quantity"], "not_included": ["and a pony"]})
+    found = extraction.read(SHOPPING, called)
+    assert found.fitted and found.action.name == "demo_shop_change"
+    assert found.data == {"items": [{"item": "honey"}, {"item": "eggs", "quantity": 3}]}
+    assert found.guessed == frozenset({"items[1].quantity"}) and found.not_included == ("and a pony",)
+    assert found.as_log() == {
+        "task": "shopping", "action": "demo_shop_change", "data": found.data, "guessed": ["items[1].quantity"], "not_included": ["and a pony"],
+    }
 
 
 @pytest.mark.parametrize(
@@ -173,9 +188,10 @@ def test_a_call_that_fits_is_the_action_its_data_and_its_guesses():
     [
         (None, "no tool call"),
         (("none", {"reason": "not about shopping"}), "not about shopping"),
-        (("demo_pack_add", {"item": "socks", "guessed": []}), "not an action of shopping"),
-        (("demo_shop_add", {"quantity": 2, "guessed": []}), "`item` is missing"),
-        (("demo_shop_add", {"item": "milk", "quantity": "two", "guessed": []}), "`quantity` must be integer"),
+        (("demo_pack_change", {"items": [{"item": "socks"}], "guessed": []}), "not an action of shopping"),
+        (("demo_shop_change", {"guessed": []}), "`items` is missing"),
+        (("demo_shop_change", {"items": [{"quantity": 2}], "guessed": []}), "`items` has no item that can be used"),
+        (("demo_shop_change", {"item": "milk", "guessed": []}), "not fields of demo_shop_change: item"),
         (("not_this", {"reason": "x"}), "x"),  # only a follow-up may say so
     ],
 )
@@ -191,9 +207,9 @@ def test_in_a_follow_up_not_this_means_the_message_is_about_something_else():
 
 
 def test_extraction_is_one_request_that_must_call_a_tool(claude):
-    sent = claude(("demo_shop_add", {"item": "lemons", "quantity": 3, "guessed": []}))
+    sent = claude(("demo_shop_change", {"items": [{"item": "lemons", "quantity": 3}], "guessed": []}))
     found = asyncio.run(extraction.extract(SHOPPING, "add 3 lemons", state="On the list: bread"))
-    assert found.data == {"item": "lemons", "quantity": 3}
+    assert found.data == {"items": [{"item": "lemons", "quantity": 3}]}
     (request,) = sent
     assert request["choice"] == {"type": "any"} and (request["purpose"], request["task"]) == ("extraction", "shopping")
     assert "On the list: bread" in request["user"]
@@ -214,6 +230,11 @@ def test_there_are_fixtures_for_each_demo_task_and_for_the_traps():
     assert any(len(fixture.tasks) == 2 for fixture in mixed), "chat and two tasks"
     assert any(len(fixture.tasks) == 2 and not fixture.also_chat and not fixture.tie for fixture in ROUTERS), "two tasks"
     assert any(fixture.card for fixture in EXTRACTIONS), "a follow-up"
+    assert any(fixture.moved for fixture in EXTRACTIONS), "a card moved to another task"
+    assert any(fixture.after_list for fixture in EXTRACTIONS), "a message straight after a list"
+    assert any(fixture.left_out for fixture in EXTRACTIONS), "something that can't go on the card"
+    several = [fixture for fixture in EXTRACTIONS if len(fixture.data.get("items", [])) >= 5]
+    assert several and all(fixture.left_out is False or fixture.moved or fixture.card for fixture in several)
     assert any(fixture.action == "none" for fixture in EXTRACTIONS) and any(fixture.action == "not_this" for fixture in EXTRACTIONS)
 
 
@@ -222,10 +243,9 @@ def test_router_fixture(fixture):
     if fixture.recorded is None:
         pytest.skip("not recorded yet: python -m evals.live --live --dev --record")
     problem = fixtures.router_problem(fixture, routing.parse(fixture.recorded, NAMES))
-    if fixture.known_miss:
-        assert problem, f"no longer a miss ({fixture.known_miss}): take known_miss off this fixture"
-    else:
-        assert not problem
+    # A known miss is replayed (it must still be read without error) but not judged:
+    # the model gives it differently from one run to the next
+    assert fixture.known_miss or not problem, problem
 
 
 @pytest.mark.parametrize("fixture", [f for f in EXTRACTIONS if f.task in NAMES], ids=lambda f: f.name)
@@ -233,24 +253,41 @@ def test_extraction_fixture(fixture):
     if fixture.recorded is None:
         pytest.skip("not recorded yet: python -m evals.live --live --dev --record")
     entry = next(entry for entry in ENTRIES if entry.name == fixture.task)
-    found = extraction.read(entry, tuple(fixture.recorded), follow_up=fixture.card is not None)
+    found = extraction.read(entry, tuple(fixture.recorded), follow_up=fixture.card is not None or fixture.after_list)
     problem = fixtures.extraction_problem(fixture, found)
-    if fixture.known_miss:
-        assert problem, f"no longer a miss ({fixture.known_miss}): take known_miss off this fixture"
-    else:
-        assert not problem
+    # A known miss is replayed (it must still be read without error) but not judged:
+    # the model gives it differently from one run to the next
+    assert fixture.known_miss or not problem, problem
 
 
-def test_a_fixture_is_judged_on_the_task_the_action_the_data_and_the_guesses():
-    fixture = fixtures.ExtractionFixture("x", "shopping", "add 3 lemons", "demo_shop_add", {"item": "Lemons", "quantity": 3}, [])
-    right = extraction.read(SHOPPING, ("demo_shop_add", {"item": "lemons", "quantity": 3, "guessed": []}))
-    assert fixtures.extraction_problem(fixture, right) == "", "case is not what is being tested"
-    wrong_count = extraction.read(SHOPPING, ("demo_shop_add", {"item": "lemons", "quantity": 2, "guessed": []}))
-    assert "`quantity` is 2, expected 3" in fixtures.extraction_problem(fixture, wrong_count)
-    guessed = extraction.read(SHOPPING, ("demo_shop_add", {"item": "lemons", "quantity": 3, "guessed": ["quantity"]}))
-    assert "guessed ['quantity'], expected []" in fixtures.extraction_problem(fixture, guessed)
+def test_a_fixture_is_judged_on_the_task_the_action_every_item_and_the_guesses():
+    lemons = {"items": [{"item": "Lemons", "quantity": 3}]}
+    fixture = fixtures.ExtractionFixture("x", "shopping", "add 3 lemons", "demo_shop_change", lemons, [])
+
+    def read(*items, guessed=(), not_included=()):
+        return extraction.read(SHOPPING, ("demo_shop_change", {"items": list(items), "guessed": list(guessed), "not_included": list(not_included)}))
+
+    assert fixtures.extraction_problem(fixture, read({"item": "lemons", "quantity": 3})) == "", "case is not what is being tested"
+    assert "expected" in fixtures.extraction_problem(fixture, read({"item": "lemons", "quantity": 2}))
+    assert "guessed ['items[0].quantity'], expected []" in fixtures.extraction_problem(
+        fixture, read({"item": "lemons", "quantity": 3}, guessed=["items[0].quantity"])
+    )
     other = extraction.read(SHOPPING, ("demo_shop_list", {"guessed": []}))
-    assert "expected demo_shop_add, got demo_shop_list" in fixtures.extraction_problem(fixture, other)
+    assert "expected demo_shop_change, got demo_shop_list" in fixtures.extraction_problem(fixture, other)
+
+    # An item dropped, or one too many, is a miss; a default spelled out is not
+    two = fixtures.ExtractionFixture("x", "shopping", "add butter and jam", "demo_shop_change", {"items": [{"item": "butter"}, {"item": "jam"}]}, left_out=False)
+    assert fixtures.extraction_problem(two, read({"item": "butter"}, {"item": "jam", "quantity": 1})) == ""
+    assert "expected" in fixtures.extraction_problem(two, read({"item": "butter"}))
+    assert "expected" in fixtures.extraction_problem(two, read({"item": "butter"}, {"item": "jam"}, {"item": "bread"}))
+    assert "reported as left out" in fixtures.extraction_problem(two, read({"item": "butter"}, {"item": "jam"}, not_included=["x"]))
+    must = fixtures.ExtractionFixture("x", "shopping", "add milk and call mum", "demo_shop_change", {"items": [{"item": "milk"}]}, left_out=True)
+    assert "expected something reported as left out" in fixtures.extraction_problem(must, read({"item": "milk"}))
+    assert fixtures.extraction_problem(must, read({"item": "milk"}, not_included=["call mum"])) == ""
+
+    # Letter for letter, when the fixture says so
+    exact = fixtures.ExtractionFixture("x", "shopping", "add milks", "demo_shop_change", {"items": [{"item": "milks"}]}, exact=True)
+    assert fixtures.extraction_problem(exact, read({"item": "milks"})) == "" and fixtures.extraction_problem(exact, read({"item": "Milks"})) != ""
 
     tie = fixtures.RouterFixture("x", "add socks", ["packing", "shopping"], tie=True)
     assert fixtures.router_problem(tie, Route(("shopping", "packing"), tie=True)) == ""

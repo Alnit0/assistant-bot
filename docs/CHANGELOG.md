@@ -6,6 +6,38 @@ backfilled from the git log.
 
 ## 2026-10-09
 
+- **Set, add and remove.** "Make the eggs 7" sets the amount and "add 3
+  milk" adds to it; "remove the jam" works on a card and on the saved
+  list. A change to something already on the list shows before → after
+  ("eggs · 5 → 7"), and the bot does the sums itself (2 + 3 was coming
+  out as 3, and "make the eggs 7" as 12).
+- **"It" is the last thing mentioned,** marked ❓ when that is a guess;
+  and "No, 2 bread rolls" undoes the wrong change as well as making the
+  right one.
+- **"Not included" only for what nothing covers.** Two cards from one
+  message no longer list each other's part.
+- **Several things in one go.** "Add honey, jam, peanut butter, rubbish
+  bags and 5 eggs" makes one card with a line for each and one Save;
+  before, only the first was kept. Replies change the card: "make the
+  eggs 6", "remove the jam", "add milk too", and "no, packing" moves the
+  lot to a packing card.
+- **Nothing is dropped without a word.** What can't go on a card is said
+  on it: "⚠️ Not included: …".
+- **❓ only for real guesses.** One of something, when you gave no amount,
+  is no longer marked; "a few eggs" is.
+- **A list on screen sets the context.** Straight after "what am I
+  packing?", "add milk" is for the packing list.
+- **A list you ask for stays up to date.** The latest copy of a list
+  shown on request is edited in place whenever the list changes; ask
+  again and the new copy takes over. (On the demo lists for now; the
+  pills checklist will work the same way.)
+- **"No, shopping" only moves the card.** It was being saved as an item
+  called "shopping". A correction such as "make it 2" also reaches its
+  card when the bot has said something else in between, and "add jam
+  too" straight after a card makes a second card instead of replacing
+  the first.
+- **Names stay as you typed them**, and "milk" and "milks" are the same
+  item when adding or ticking off.
 - **A message with a question and a request gets both.** "What's the
   capital of France, and add milk to the shopping list" now answers the
   question and then shows the card; before, the question was dropped.

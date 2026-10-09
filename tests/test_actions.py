@@ -2,7 +2,7 @@
 import pytest
 
 from core import actions
-from core.actions import BOOLEAN, INTEGER, LIST, Action, Entry, Field, Invalid, Proposal
+from core.actions import BOOLEAN, INTEGER, ITEMS, LIST, Action, Entry, Field, Invalid, Proposal
 
 
 async def prepare(request, data, guessed):
@@ -41,18 +41,20 @@ ENTRY = Entry("things", "📦", "Only for things.", ("add a thing", "show my thi
 def test_an_actions_schema_is_strict_and_always_has_guessed():
     schema = actions.schema(ADD)
     assert schema["additionalProperties"] is False
-    assert list(schema["properties"]) == ["name", "count", "times", "kind", "days", "urgent", "guessed"]
-    assert schema["required"] == ["name", "guessed"]
+    assert list(schema["properties"]) == ["name", "count", "times", "kind", "days", "urgent", "guessed", "not_included"]
+    assert schema["required"] == ["name", "guessed", "not_included"]
     assert schema["properties"]["count"]["type"] == "integer"
     assert schema["properties"]["times"] == {"type": "array", "items": {"type": "string"}, "description": "When."}
     assert schema["properties"]["kind"]["enum"] == ["fixed", "interval"]
     assert schema["properties"]["days"]["items"]["enum"] == ["mon", "tue"]
-    assert schema["properties"]["guessed"]["items"]["enum"] == ["name", "count", "times", "kind", "days", "urgent"]
+    assert schema["properties"]["guessed"]["items"] == {"type": "string"}, "a guess may name a place in a list: items[2].quantity"
+    assert "not a guess" in schema["properties"]["guessed"]["description"], "a default is never listed"
+    assert "word for word" in schema["properties"]["not_included"]["description"]
 
 
 def test_an_action_with_no_fields_still_has_guessed():
     schema = actions.schema(SHOW)
-    assert list(schema["properties"]) == ["guessed"] and schema["required"] == ["guessed"]
+    assert list(schema["properties"]) == ["guessed", "not_included"] and schema["required"] == ["guessed", "not_included"]
 
 
 def test_an_action_as_a_tool_is_strict_only_when_asked():
@@ -104,7 +106,8 @@ def test_what_does_not_fit_the_schema_is_refused_whatever_the_api_promised(raw, 
 
 
 def test_guessed_may_be_left_out_altogether():
-    assert actions.validate(SHOW, {}) == ({}, frozenset())
+    assert tuple(actions.validate(SHOW, {})) == ({}, frozenset())
+    assert actions.validate(SHOW, {}).not_included == ()
 
 
 def test_a_guess_is_flagged_with_a_question_mark():
@@ -140,6 +143,10 @@ def entry(**changes):
         (entry(actions=(Action("none", "Nothing.", needs_card=False, run=run),)), "needs a name of its own"),
         (entry(actions=(Action("a", "A.", (Field("x", "X.", "date"),), needs_card=False, run=run),)), "unknown type 'date'"),
         (entry(actions=(Action("a", "A.", (Field("guessed", "G."),), needs_card=False, run=run),)), "a field can't be called that"),
+        (entry(actions=(Action("a", "A.", (Field("not_included", "N."),), needs_card=False, run=run),)), "a field can't be called that"),
+        (entry(actions=(Action("a", "A.", (Field("items", "I.", "items"),), needs_card=False, run=run),)), "needs `item_fields`"),
+        (entry(actions=(Action("a", "A.", (Field("x", "X.", item_fields=(Field("y", "Y."),)),), needs_card=False, run=run),)), "is not a list of items"),
+        (entry(actions=(Action("a", "A.", (Field("items", "I.", "items", item_fields=(Field("y", "Y.", "list"),)),), needs_card=False, run=run),)), "must be text, a number or yes/no"),
         (entry(actions=(Action("a", "A.", (Field("x", "X."), Field("x", "X again.")), needs_card=False, run=run),)), "two fields with the same name"),
         (entry(actions=(Action("a", "A.", (Field("n", "N.", INTEGER, choices=("1",)),), needs_card=False, run=run),)), "which only text can have"),
         (entry(actions=(Action("a", "A.", (Field("x", ""),), needs_card=False, run=run),)), "field x has no description"),
@@ -224,3 +231,165 @@ def test_a_task_with_actions_is_one_entry_built_from_its_own_fields():
     )
     assert found.actions == (SHOW,) and found.live_state is not None
     assert Task().entries() == [], "a task with no actions is not offered to the router"
+
+
+# ---------------------------------------------------------------------------
+# Lists of items: one request can hold several things
+# ---------------------------------------------------------------------------
+BUY = Action(
+    "thing_buy",
+    "Buy things.",
+    (
+        Field(
+            "items", "Everything to buy.", ITEMS, required=True,
+            item_fields=(Field("item", "What.", required=True), Field("quantity", "How many.", INTEGER), Field("shop", "Where.", choices=("a", "b"))),
+        ),
+    ),
+    needs_card=False,
+    run=run,
+)
+
+
+def test_a_list_of_items_is_an_array_of_strict_objects():
+    items = actions.schema(BUY)["properties"]["items"]
+    assert items["type"] == "array" and items["items"]["additionalProperties"] is False
+    assert list(items["items"]["properties"]) == ["item", "quantity", "shop"] and items["items"]["required"] == ["item"]
+    assert items["items"]["properties"]["shop"]["enum"] == ["a", "b"]
+
+
+def test_every_item_comes_back_in_order_with_what_was_left_out_left_out():
+    checked = actions.validate(BUY, {"items": [{"item": " honey "}, {"item": "jam", "quantity": None}, {"item": "eggs", "quantity": 5}], "guessed": [], "not_included": []})
+    assert checked.data == {"items": [{"item": "honey"}, {"item": "jam"}, {"item": "eggs", "quantity": 5}]}
+    assert checked.not_included == () and checked.guessed == frozenset()
+
+
+def test_a_guess_names_its_place_in_the_list():
+    checked = actions.validate(BUY, {"items": [{"item": "honey"}, {"item": "eggs", "quantity": 3}], "guessed": ["items[1].quantity", "items[0].quantity", "items[7].item", "nonsense"]})
+    assert checked.guessed == frozenset({"items[1].quantity"}), "a guess about what isn't there says nothing"
+    assert actions.is_guessed(checked.guessed, "items", 1, "quantity")
+    assert not actions.is_guessed(checked.guessed, "items", 0, "quantity") and not actions.is_guessed(checked.guessed, "items", 1, "item")
+    assert actions.is_guessed(frozenset({"items[1]"}), "items", 1, "quantity"), "the whole item covers its fields"
+    assert actions.is_guessed(frozenset({"times"}), "times", 0) and actions.is_guessed(frozenset({"times[0]"}), "times", 0)
+    assert actions.path("items", 2, "quantity") == "items[2].quantity" and actions.path("times", 0) == "times[0]" and actions.path("kind") == "kind"
+
+
+def test_an_item_that_does_not_fit_is_left_out_and_named_never_dropped_unseen_and_never_sinks_the_rest():
+    checked = actions.validate(
+        BUY,
+        {"items": [{"item": "honey"}, {"quantity": 2}, {"item": "jam", "quantity": "two"}, {"item": "eggs", "shop": "z"}, "bread", {"item": "milk", "colour": "white"}],
+         "guessed": ["items[0].quantity", "items[5].item"], "not_included": [" a pony "]},
+    )
+    assert checked.data == {"items": [{"item": "honey"}]}
+    assert checked.not_included == ("a pony", "2", "jam, two", "eggs, z", "bread", "milk, white"), "what the user asked for, in their terms"
+    assert checked.guessed == frozenset(), "the places no longer line up, so no guess is pinned on the wrong item"
+
+
+def test_what_claude_says_it_left_out_is_kept_for_the_user():
+    checked = actions.validate(BUY, {"items": [{"item": "milk"}], "guessed": [], "not_included": ["remind me to call mum at 5", "  "]})
+    assert checked.not_included == ("remind me to call mum at 5",)
+
+
+@pytest.mark.parametrize(
+    "raw, reason",
+    [
+        ({"guessed": []}, "`items` is missing"),
+        ({"items": [], "guessed": []}, "`items` is empty"),
+        ({"items": "honey", "guessed": []}, "`items` must be a list of items"),
+        ({"items": [{"quantity": 2}], "guessed": []}, "`items` has no item that can be used"),
+        ({"items": [{"item": "honey"}], "guessed": [], "not_included": "x"}, "`not_included` must be a list"),
+    ],
+)
+def test_a_list_with_nothing_usable_in_it_is_refused(raw, reason):
+    with pytest.raises(Invalid, match=reason):
+        actions.validate(BUY, raw)
+
+
+def test_a_default_is_not_a_guess_and_is_never_flagged():
+    assert "is not a guess and is never flagged" in actions.flag.__doc__
+    assert actions.flag("× 1", False) == "× 1"
+
+
+# ---------------------------------------------------------------------------
+# Changes to a list: add, set, remove. Code does the sums
+# ---------------------------------------------------------------------------
+def item(name, quantity=None, change=None):
+    made = {"item": name}
+    if quantity is not None:
+        made["quantity"] = quantity
+    if change:
+        made["change"] = change
+    return made
+
+
+def test_the_change_field_is_the_same_for_every_list_and_tells_claude_to_do_no_sums():
+    field = actions.change_field()
+    assert (field.name, field.choices, field.required) == ("change", ("add", "set", "remove"), False)
+    assert "Never work a total out yourself" in field.description
+
+
+def test_a_first_mention_stands_as_it_is_and_add_is_assumed():
+    assert actions.merge_items([], [item("milk", 3), item("eggs", 7, "set")]) == (
+        [item("milk", 3, "add"), item("eggs", 7, "set")], [],
+    )
+
+
+def test_adding_to_what_a_card_adds_is_the_sum_and_one_is_assumed_when_no_amount_is_given():
+    assert actions.merge_items([item("milk", 2, "add")], [item("milk", 3)])[0] == [item("milk", 5, "add")]
+    assert actions.merge_items([item("milk", 2, "add")], [item("milk")])[0] == [item("milk", 3, "add")]
+
+
+def test_adding_to_what_a_card_sets_is_still_a_set_of_the_sum():
+    assert actions.merge_items([item("eggs", 7, "set")], [item("eggs", 2)])[0] == [item("eggs", 9, "set")]
+
+
+def test_setting_replaces_whatever_was_pending():
+    assert actions.merge_items([item("milk", 5, "add"), item("jam", 1, "add")], [item("milk", 2, "set")])[0] == [
+        item("milk", 2, "set"), item("jam", 1, "add"),
+    ]
+
+
+def test_removing_what_is_only_on_the_card_takes_it_off_the_card():
+    assert actions.merge_items([item("milk", 1, "add"), item("jam", 1, "add")], [item("jam", change="remove")], exists=lambda name: False) == (
+        [item("milk", 1, "add")], [],
+    )
+
+
+def test_removing_what_is_saved_is_a_removal_to_confirm_whatever_the_card_was_doing_to_it():
+    saved = lambda name: name == "jam"  # noqa: E731
+    assert actions.merge_items([], [item("jam", change="remove")], exists=saved) == ([item("jam", change="remove")], [])
+    assert actions.merge_items([item("jam", 3, "add")], [item("jam", change="remove")], exists=saved) == ([item("jam", change="remove")], [])
+
+
+def test_removing_what_is_nowhere_is_reported_and_changes_nothing():
+    assert actions.merge_items([item("milk", 1, "add")], [item("tea", change="remove")], exists=lambda name: False) == (
+        [item("milk", 1, "add")], ["tea"],
+    )
+
+
+def test_adding_again_after_a_removal_stands_as_a_fresh_add():
+    assert actions.merge_items([item("jam", change="remove")], [item("jam", 2)])[0] == [item("jam", 2, "add")]
+
+
+def test_names_are_matched_by_the_tasks_own_rule_and_kept_as_typed_last():
+    same = lambda one, other: one.lower().rstrip("s") == other.lower().rstrip("s")  # noqa: E731
+    assert actions.merge_items([item("Eggs", 5, "add")], [item("egg", 1)], same=same)[0] == [item("egg", 6, "add")]
+
+
+def test_a_list_without_amounts_merges_its_other_fields():
+    pending = [{"item": "socks", "bag": "checked", "change": "add"}]
+    assert actions.merge_items(pending, [{"item": "socks", "bag": "carry-on", "change": "set"}], amount=None)[0] == [
+        {"item": "socks", "bag": "carry-on", "change": "set"},
+    ]
+    assert actions.merge_items(pending, [{"item": "hat"}], amount=None)[0] == [*pending, {"item": "hat", "change": "add"}]
+
+
+def test_a_card_sent_back_whole_is_a_restatement_not_one_more_of_each():
+    # Seen in the live eval on 2026-10-09: "add milk too" came back as the whole card and milk
+    pending = [item("honey", 1, "add"), item("eggs", 5, "add")]
+    assert actions.merge_items(pending, [item("honey", 1), item("eggs", 5), item("milk", 1)])[0] == [*pending, item("milk", 1, "add")]
+    # ...and with a change in it, what differs is the new amount, never added on top
+    assert actions.merge_items(pending, [item("honey", 1), item("eggs", 6)])[0] == [item("honey", 1, "add"), item("eggs", 6, "add")]
+
+
+def test_one_item_coming_back_is_never_a_restatement():
+    assert actions.merge_items([item("milk", 2, "add")], [item("milk", 2)])[0] == [item("milk", 4, "add")]

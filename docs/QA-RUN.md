@@ -1,6 +1,6 @@
 # QA run sheet
 
-One pass through 211 of the 233 👤 Manual tests in `docs/TESTING.md` that are
+One pass through 208 of the 230 👤 Manual tests in `docs/TESTING.md` that are
 ⬜ Untested (as of 2026-10-09); the other 22 are pills tests (group R) for
 stages not built yet, and join as each is. Blocks share setup and each one leaves things
 ready for the next, so run them in order.
@@ -26,8 +26,8 @@ tests (block 12).
 | 14 | Bugs and kept confirmations | off (two restarts) | 16 | 21 |
 | 15 | Dev database and clock | `--dev`, on and off (three restarts) | 10 | 13 |
 | 16 | Pills: setting up | `--dev`, off (one restart) | 15 | 16 |
-| 17 | Routing and confirm cards | `--dev`, off (one restart) | 13 | 16 |
-| | **Total** | | **211** (F2 is split over blocks 4 and 7, counted in 7) | **about 4¼ hours** |
+| 17 | Routing and confirm cards: retest | `--dev`, off, fresh `dev.db` | 10 | 15 |
+| | **Total** | | **213** (F2 is split over blocks 4 and 7, counted in 7) | **about 4¼ hours** |
 
 Blocks 13 to 17 need nothing from the others: run them any time after
 block 1, and before the overnight block if that suits.
@@ -426,28 +426,27 @@ run it.
 | 14 | Say `add magnesium`, restart the bot, then press **Save** on that preview | It is saved as if nothing had happened; `pills` lists it | R36 |
 | 15 | Look back over every reply from the bot in this block | No reply says "I'm proposing" or "reply ok" for a pill; none shows a tool's name or how it was called (`pill_add …`); every time of day on a preview or list is written like `8:00 pm` | R39 |
 
-## 17. Routing and confirm cards
+## 17. Routing and confirm cards: retest
 
-On the dev database (`python main.py --dev`), in #inbox, dev mode off. Delete
-`data\dev.db` first if it is from before 2026-10-09 evening (see the note in
-the changelog). The two demo tasks, a shopping list 🛒 and a packing list 🧳,
-exist only here.
+Start from a fresh dev database: stop the bot, delete `data\dev.db`, start
+it with `python main.py --dev`. In #inbox, dev mode off. Every step ends by
+saying what to press, so that no card is left open for the next step. The
+steps follow on from each other: the amounts expected depend on what the
+earlier steps saved.
 
 | # | Do | Expect | Tests |
 |---|---|---|---|
-| 1 | Say `add milk to the shopping list` | One card, with no question first and no line from Claude: "🛒 Shopping · new", "**milk** · × 1 ❓", "-# or tell me what to change", with **Save** and **Cancel**. `what do I need to buy?` right after (press Cancel first) shows the list is still empty | S4 |
-| 2 | Say `add milk`, then, with the card the last thing on screen, say `make it 3` | The first card is deleted and a fresh one shows "**milk** · × 3" with no ❓. Press **Save**: the card becomes "✅ Saved · 🛒 **milk** × 3 is on the shopping list" with no buttons | S5 |
-| 3 | Say `add 144 eggs`; press **Save** | The card shows "**eggs** · × 20" and "⚠️ 144 is more than the list takes: 20 at most"; Save saves 20 | S6 |
-| 4 | Say `what do I need to buy?`, then `got the milk` | The list as a message with no buttons; then "☑️ Ticked off **milk** × 3 · still to buy: eggs" at once, with no card (it names what is left; "nothing left to buy" when the list is empty) | S7 |
-| 5 | Say `clear my shopping list`; press **Clear for good** | A card "🛒 Shopping · clear" that says it can't be undone, with a red **Clear for good**; then "🗑️ The shopping list is cleared." | S8 |
-| 6 | Say `add socks`. Whichever list the card is for, say `no, the other list` (name it: `no, shopping` or `no, packing`) | A card for one list, or the question "Which is “add socks” for?" with a button per list (press one). After "no, …" the first card is deleted and a card for the other list takes its place | S9 |
-| 7 | Say `add bread`, then `dev clock +31m` | The card disappears; `what do I need to buy?` doesn't list bread | S10 |
-| 8 | Say `pack my passport`, restart the bot (`python main.py --dev`), then press **Save** on that card | Saved as if nothing had happened: "✅ Saved · 🧳 **passport** goes in the checked bag" | S11 |
-| 9 | Say `what's the capital of France?` in #inbox, and again in the hub | A plain answer in both; no card | S12 |
-| 10 | In #inbox say `set a timer for 1 minute` | A timer starts, as before: timers have not moved yet, so this still goes the old way | S13 |
-| 11 | Type `dev cost` | The routes of today include `router`, `follow-up` and `chat` beside `shortcut` and `button`; "Requests this month" lists `router` and `extraction`; shopping or packing is among the tasks | S14 |
-| 12 | Say `what's the capital of France, and add milk to the shopping list` | Both parts are dealt with: first a plain answer to the question, then the card "🛒 Shopping · new" / "**milk** · × 1 ❓" as the last thing on screen. Then say `make it 2`: the card is replaced, with no second answer about France | S16 |
-| 13 | Read every reply from the bot in this block | No "reply ok" or "I'm proposing"; no tool or action names (`demo_shop_add`); every confirmation ("✅ Saved…", "☑️ Ticked off…") in the same fixed wording each time | S15 |
+| 1 | Say `add 5 eggs and 2 milk`; press **Save**. Then `what do I need to buy?` (nothing to press) | One card, "eggs · × 5" and "milk · × 2"; "✅ Saved · 🛒 2 items added to the shopping list"; the list shows both | (setup) |
+| 2 | Say `make the eggs 7`; press **Save** | A card "🛒 Shopping · change" with "eggs · 5 → 7"; Save: "✅ Saved · 🛒 **eggs** × 7 is on the shopping list". Seven, not twelve: "make" sets the amount. The list from step 1 changes in place | S29 |
+| 3 | Say `add 3 milk`; press **Save** | The card shows "milk · 2 → 5"; Save: "✅ Saved · 🛒 **milk** × 5 is on the shopping list" | S30 |
+| 4 | Say `add jam`; press **Save**. Then `remove the jam`; press **Save** | A card "🛒 Shopping · change" with "jam · × 1 → removed"; nothing changes until Save, then "✅ Saved · 🛒 **jam** removed from the shopping list" and the list on screen loses jam | S31 |
+| 5 | Say `Add honey, jam, peanut butter, rubbish bags and 5 eggs`; then, pressing nothing: `make the eggs 6`; then `remove the jam`; then `add milk too`; then press **Cancel** | The first card shows "eggs · 7 → 12". Each reply deletes the card and posts a fresh one: the eggs line becomes "eggs · 7 → 6" with the rest unchanged; the jam line goes and the rest stay; "milk · 5 → 6" is added as a last line. Nothing is doubled | S23 |
+| 6 | Say `add jam to the shopping list and pack sunscreen and a hat`; press **Cancel** on both cards | Two cards, one per task: a shopping card with jam, a packing card with sunscreen and hat. Neither card has a "Not included" line: each part is on the other card | S25 |
+| 7 | Say `add butter and bread rolls`; then, pressing nothing, `make it 2`. Press nothing: step 8 uses this card | The card is replaced: "butter · × 1" and "bread rolls · × 2", perhaps with ❓ on the bread rolls line. "It" is the last thing mentioned: butter stays at 1 | S32 |
+| 8 | Say `No, 2 butter`; press **Cancel** | The card is replaced: "butter · × 2" and "bread rolls · × 1". The change the "no" corrects is undone, so bread rolls is back to 1 | S33 |
+| 9 | Say `add bread`; then `what's the capital of France?`; then `make it 2`; press **Save** | The bread card; a plain answer; then the bread card is deleted and a fresh one shows "**bread** · × 2" with no ❓, although the bot had said something else in between. Press **Save**: "✅ Saved · 🛒 **bread** × 2 is on the shopping list" | S5 |
+| 10 | Say `add 2 apples`; press **Save**. Then `add 3 apple`; press **Save** | The card shows "🛒 Shopping · change" and "apple · 2 → 5". After Save there is one item, **apple** × 5: named as typed this time, singular and plural counted as the same thing, and the sum done by the bot | S17 |
+| 11 | Say `add butter`, then straight away `add jam too`; press **Cancel** | One card: the butter card is replaced by one listing "butter · × 1" and "jam · × 1" | S18 |
 
 ## When you finish
 
