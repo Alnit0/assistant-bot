@@ -18,8 +18,11 @@ INBOX, HUB = 100, 400
 HAIKU = "claude-haiku-4-5"
 
 
-def route(*tasks, tie=False):
-    return ("route", {"kind": "task" if tasks else "chat", "tasks": list(tasks), "confidence": "tie" if tie else "high"})
+def route(*tasks, tie=False, chat_part=""):
+    return (
+        "route",
+        {"kind": "task" if tasks else "chat", "tasks": list(tasks), "confidence": "tie" if tie else "high", "chat_part": chat_part},
+    )
 
 
 def shop_add(item, quantity=None, guessed=()):
@@ -40,12 +43,13 @@ def world(make_db, monkeypatch, owner):
     monkeypatch.setattr(llm, "_histories", {})
     conversation.setup()
 
-    seen = SimpleNamespace(sent=[], deleted=[], edited=[], requests=[], chats=[], next_id=5000, bot_messages=[])
+    seen = SimpleNamespace(sent=[], deleted=[], edited=[], requests=[], chats=[], next_id=5000, bot_messages=[], order=[])
 
     async def send(channel_id, card, silent=False):
         cards.check(card)
         seen.next_id += 1
         seen.sent.append((seen.next_id, card))
+        seen.order.append("card")
         seen.bot_messages.append(seen.next_id)
         return seen.next_id
 
@@ -74,6 +78,9 @@ def world(make_db, monkeypatch, owner):
             seen.chats.append((text, options))
             timing.record_claude(0.9, HAIKU, 300, 40, purpose=options.get("purpose", ""))
             assert options.get("tools") is None, "chat has no tools"
+            # As the real one does: chat remembers its own exchange
+            llm.remember(channel_id, text, "Paris.")
+            seen.order.append("answer")
             return llm.ChatResult(reply="Paris.")
 
         monkeypatch.setattr(llm, "call_tool", call_tool)
@@ -236,7 +243,7 @@ def test_an_action_that_only_logs_or_answers_needs_no_card(world):
     run(demo._save("shopping", 1, [{"item": "bread", "quantity": 1}, {"item": "milk", "quantity": 2}]))
     world.claude(route("shopping"), ("demo_shop_tick", {"item": "bread", "guessed": []}))
     world.say("got the bread")
-    assert [card.text for _, card in world.sent] == ["☑️ Ticked off **bread** · 1 left to buy"]
+    assert [card.text for _, card in world.sent] == ["☑️ Ticked off **bread** × 1 · still to buy: milk"]
     assert world.sent[0][1].rows == () and open_cards() == []
     assert shopping_list() == [{"item": "milk", "quantity": 2}], "done straight away"
 
@@ -616,3 +623,91 @@ def test_a_crash_in_a_tasks_code_is_reported_and_the_user_is_told_it_did_not_wor
     world.say("what do I need to buy?")
     assert world.sent[0][1].text == conversation.WENT_WRONG and errors == ["Action failed: demo_shop_list"]
     assert rows()[0][5] == "error"
+
+
+# ---------------------------------------------------------------------------
+# Mixed messages: every part is dealt with
+# ---------------------------------------------------------------------------
+MIXED = "what's the capital of France, and add milk to the shopping list"
+
+
+def test_a_question_and_a_request_in_one_message_get_an_answer_and_a_card(world):
+    # QA 2026-10-09: this made the milk card and left the question unanswered
+    world.claude(route("shopping", chat_part="what's the capital of France"), shop_add("milk", 1, guessed=["quantity"]))
+    ctx, handled = world.say(MIXED)
+
+    assert handled.done
+    assert ctx.replies == ["Paris."], "the chat part is answered"
+    (text, options), = world.chats
+    assert text == "what's the capital of France", "only that part is put to Claude, with no tools"
+    assert options.get("tools") is None and options["purpose"] == "chat"
+    assert world.sent[0][1].text.splitlines()[:2] == ["🛒 Shopping · new", "**milk** · × 1 ❓"], "and the card is made"
+    assert world.order == ["answer", "card"], "the answer first, so the card stays the last thing on screen"
+    assert shopping_list() == []
+
+    (content, route_taken, tasks, calls, reply, status, _), = rows()
+    assert (route_taken, tasks, calls, status) == ("router", "shopping", 3, "ok")
+    assert reply == "Paris.\ncard: shopping · new: **milk** · × 1 ❓"
+    assert purposes() == [("router", ""), ("chat", ""), ("extraction", "shopping")]
+
+
+def test_a_correction_still_finds_the_card_after_a_mixed_message(world):
+    world.claude(route("shopping", chat_part="what's the capital of France"), shop_add("milk", 1, guessed=["quantity"]))
+    world.say(MIXED)
+    world.claude(shop_add("milk", 3))
+    world.say("make it 3")
+    assert world.requests[-1].purpose == "extraction" and len(world.requests) == 3, "a follow-up: no router"
+    assert world.sent[-1][1].text.splitlines()[1] == "**milk** · × 3"
+
+
+def test_a_question_and_two_requests_get_an_answer_and_two_cards(world):
+    world.claude(
+        route("packing", "shopping", chat_part="tell me a joke"),
+        ("demo_pack_add", {"item": "charger", "guessed": ["bag"]}),
+        shop_add("batteries", 1, guessed=["quantity"]),
+    )
+    ctx, _ = world.say("pack my charger, put batteries on the shopping list, and tell me a joke")
+    assert ctx.replies == ["Paris."] and world.chats[0][0] == "tell me a joke"
+    assert [card.text.splitlines()[0] for _, card in world.sent] == ["🧳 Packing · new", "🛒 Shopping · new"]
+    assert world.order == ["answer", "card", "card"]
+    assert rows()[0][2:4] == ("packing,shopping", 4)
+
+
+def test_a_request_with_no_chat_part_gets_no_chat_reply(world):
+    world.claude(route("shopping"), shop_add("eggs", 1, guessed=["quantity"]))
+    ctx, _ = world.say("hi, could you add eggs to the shopping list please?")
+    assert ctx.replies == [] and world.chats == [] and len(world.requests) == 2
+
+
+def test_a_mixed_message_with_a_tie_answers_then_asks_which(world):
+    world.claude(route("shopping", "packing", tie=True, chat_part="what's the capital of France"))
+    ctx, _ = world.say("what's the capital of France, and add socks")
+    assert ctx.replies == ["Paris."] and world.sent[0][1].text.startswith("Which is")
+    assert world.order == ["answer", "card"]
+
+
+def test_a_mixed_message_is_remembered_once_as_a_whole(world):
+    world.claude(route("shopping", chat_part="what's the capital of France"), shop_add("milk", 1))
+    world.say(MIXED)
+    assert llm.history_for(INBOX) == [
+        {"role": "user", "content": MIXED},
+        {"role": "assistant", "content": "Paris.\ncard: shopping · new: **milk** · × 1"},
+    ]
+
+
+def test_while_tasks_remain_on_the_old_way_a_mixed_message_is_still_dealt_with_here(world):
+    world.chat_here = False  # #inbox, before the old way has gone
+    world.claude(route("shopping", chat_part="what's the capital of France"), shop_add("milk", 1))
+    ctx, handled = world.say(MIXED)
+    assert handled.done and ctx.replies == ["Paris."] and len(world.sent) == 1
+
+
+def test_ticking_off_names_what_is_left_so_a_count_cannot_be_misread(world):
+    # QA 2026-10-09: "Ticked off milk · 1 left to buy" read as if milk went from 3 to 1
+    run(demo._save("shopping", 1, [{"item": "milk", "quantity": 3}, {"item": "eggs", "quantity": 20}]))
+    world.claude(route("shopping"), ("demo_shop_tick", {"item": "milk", "guessed": []}))
+    world.say("got the milk")
+    assert world.sent[-1][1].text == "☑️ Ticked off **milk** × 3 · still to buy: eggs"
+    world.claude(route("shopping"), ("demo_shop_tick", {"item": "eggs", "guessed": []}))
+    world.say("got the eggs")
+    assert world.sent[-1][1].text == "☑️ Ticked off **eggs** × 20 · nothing left to buy"

@@ -6,6 +6,9 @@ backfilled from the git log.
 
 ## 2026-10-09
 
+- **A message with a question and a request gets both.** "What's the
+  capital of France, and add milk to the shopping list" now answers the
+  question and then shows the card; before, the question was dropped.
 - **A new way of handling plain words, ready to try on the dev database.**
   A small "router" works out which task a message is for; the task's own
   code then shows a card with its best reading (guesses marked ❓, problems

@@ -28,6 +28,8 @@ log = logging.getLogger("assistant")
 #   about the open card                 extraction for its task       1
 #   anything else                       the router, then extraction   2
 #   not for a task                      the router, then plain chat   2
+#   a task and a general question too   all three: every part is      3
+#                                       dealt with
 #
 # The first two never get here. This file does the rest: it decides whether
 # the message is a follow-up, asks the router, asks extraction for each task
@@ -194,6 +196,18 @@ async def handle(ctx: Context, capabilities: str = "", chat_here: bool = True) -
                 result = await llm.ask_claude(ctx.text, capabilities, ctx.channel_id, purpose=costs.PURPOSE_CHAT)
                 turn.said.append(result.reply)
                 await ctx.reply(result.reply)
+            elif routed.chat_part:
+                # The message also asked something that is for no task: every part
+                # is dealt with. The answer goes first, so that a card stays the
+                # last thing on screen and a correction still finds it
+                result = await llm.ask_claude(routed.chat_part, capabilities, ctx.channel_id, purpose=costs.PURPOSE_CHAT)
+                # The whole exchange is remembered once, at the end, not this part twice
+                del llm.history_for(ctx.channel_id)[-2:]
+                turn.said.append(result.reply)
+                await ctx.reply(result.reply)
+
+            if routed.chat:
+                pass
             elif routed.tie:
                 tied = [actions.entry(name) for name in routed.tasks]
                 turn.tasks += [entry.name for entry in tied]

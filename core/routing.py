@@ -18,6 +18,9 @@ log = logging.getLogger("assistant")
 #   one task (or several, each wanted)   -> extraction for each
 #   a genuine tie between tasks          -> buttons naming them
 #   not for any task                     -> chat: a plain reply, no tools
+#   a task, and a part for no task too   -> both: every part of a message is
+#                                           dealt with ("what's the capital of
+#                                           France, and add milk")
 # ---------------------------------------------------------------------------
 TOOL = "route"
 HIGH, TIE = "high", "tie"
@@ -40,6 +43,11 @@ RULES = (
     "more usual.\n"
     "- If it is not for any task (a general question, conversation, something no task here does) give "
     "kind chat with no tasks.\n"
+    "- A message can hold both: a request for a task and, beside it, a general question or remark that "
+    "is for no task (\"what's the capital of France, and add milk to the shopping list\"). Then give "
+    "the task as usual and copy the part that is for no task into chat_part, word for word. Every part "
+    "of a message must be dealt with. Leave chat_part empty when the whole message is for the task(s); "
+    "a greeting or a please is not a part.\n"
     "- A reply to what is on screen usually belongs to the same task as that."
 )
 
@@ -49,6 +57,9 @@ class Route:
     tasks: tuple[str, ...] = ()  # the tasks to hand the message to, likeliest first
     tie: bool = False  # the user must say which of `tasks` they mean
     problem: str = ""  # what was wrong with what the router returned, if anything
+    # With tasks: the part of the message that is for none of them (a general
+    # question beside the request), to be answered as chat as well
+    chat_part: str = ""
 
     @property
     def chat(self) -> bool:
@@ -88,8 +99,15 @@ def tool(entries: list[Entry]) -> dict:
                     "enum": [HIGH, TIE],
                     "description": "tie only when two or more tasks fit equally and nothing settles it.",
                 },
+                "chat_part": {
+                    "type": "string",
+                    "description": (
+                        "With tasks only: the part of the message that is for no task (a general question "
+                        "beside the request), copied word for word. Empty if there is none."
+                    ),
+                },
             },
-            "required": ["kind", "tasks", "confidence"],
+            "required": ["kind", "tasks", "confidence", "chat_part"],
             "additionalProperties": False,
         },
     }
@@ -123,7 +141,13 @@ def parse(raw, names: list[str]) -> Route:
     problem = f"unknown task(s): {unknown}" if unknown else ""
     if raw.get("kind") == CHAT or not tasks:
         return Route(problem=problem)
-    return Route(tasks, tie=raw.get("confidence") == TIE and len(tasks) > 1, problem=problem)
+    aside = raw.get("chat_part")
+    return Route(
+        tasks,
+        tie=raw.get("confidence") == TIE and len(tasks) > 1,
+        problem=problem,
+        chat_part=aside.strip() if isinstance(aside, str) else "",
+    )
 
 
 async def route(message: str, entries: list[Entry], on_screen: str = "", exchanges=None) -> Route:

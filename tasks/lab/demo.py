@@ -91,7 +91,10 @@ async def shop_tick(request: Request, data: dict, guessed: frozenset) -> str:
         raise UserError(f"“{data['item']}” isn't on the shopping list. On it: {names}.")
     items.remove(found)
     await _save("shopping", request.user.id, items)
-    return f"☑️ Ticked off **{found['item']}** · {len(items)} left to buy"
+    # Name what is left: "1 left to buy" after "milk" read as if milk went from 3 to 1
+    left = ", ".join(item["item"] for item in items)
+    done = f"☑️ Ticked off **{found['item']}** × {found['quantity']}"
+    return f"{done} · still to buy: {left}" if items else f"{done} · nothing left to buy"
 
 
 async def shop_clear_card(request: Request, data: dict, guessed: frozenset) -> Proposal:

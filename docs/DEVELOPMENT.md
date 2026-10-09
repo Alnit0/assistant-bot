@@ -581,7 +581,8 @@ the hub): a shopping list and a packing list.
 | "add milk to the shopping list" | A card: "🛒 Shopping · new", "**milk** · × 1 ❓", **Save** / **Cancel**. Nothing is saved until Save |
 | "make it 3" (straight after) | That card is deleted and a new one shows × 3 |
 | "add 144 eggs" | The card shows × 20 and "⚠️ 144 is more than the list takes: 20 at most" |
-| "got the milk", "what do I need to buy?" | Done or answered at once: these change no setup, so no card |
+| "got the milk", "what do I need to buy?" | Done or answered at once: these change no setup, so no card. The reply names what is left ("☑️ Ticked off **milk** × 3 · still to buy: eggs") |
+| "what's the capital of France, and add milk" | Both: a plain answer, then the card |
 | "clear my shopping list" | A card that says it can't be undone, with **Clear for good** |
 | "pack my passport" | The packing list's card |
 | "no, shopping" (after a card for the wrong list) | That card is replaced by one for the shopping list |

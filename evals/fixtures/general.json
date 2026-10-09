@@ -7,7 +7,8 @@
       "recorded": {
         "kind": "chat",
         "tasks": [],
-        "confidence": "high"
+        "confidence": "high",
+        "chat_part": ""
       }
     },
     {
@@ -16,7 +17,8 @@
       "recorded": {
         "kind": "chat",
         "tasks": [],
-        "confidence": "high"
+        "confidence": "high",
+        "chat_part": ""
       }
     },
     {
@@ -32,7 +34,8 @@
         "tasks": [
           "shopping"
         ],
-        "confidence": "high"
+        "confidence": "high",
+        "chat_part": ""
       },
       "known_miss": "claude-haiku-4-5 settles on the likelier list instead of calling a tie (2026-10-09)"
     },
@@ -49,7 +52,8 @@
           "shopping",
           "packing"
         ],
-        "confidence": "high"
+        "confidence": "high",
+        "chat_part": ""
       }
     },
     {
@@ -62,7 +66,8 @@
         "tasks": [
           "packing"
         ],
-        "confidence": "high"
+        "confidence": "high",
+        "chat_part": ""
       }
     },
     {
@@ -76,7 +81,8 @@
         "tasks": [
           "shopping"
         ],
-        "confidence": "high"
+        "confidence": "high",
+        "chat_part": ""
       }
     },
     {
@@ -92,9 +98,74 @@
         "tasks": [
           "packing"
         ],
-        "confidence": "high"
+        "confidence": "high",
+        "chat_part": ""
       },
       "known_miss": "claude-haiku-4-5 settles on the likelier list instead of calling a tie (2026-10-09)"
+    },
+    {
+      "message": "what's the capital of France, and add milk to the shopping list",
+      "tasks": [
+        "shopping"
+      ],
+      "also_chat": true,
+      "note": "QA 2026-10-09: the card was made and the question went unanswered. Every part is dealt with",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "shopping"
+        ],
+        "confidence": "high",
+        "chat_part": "what's the capital of France"
+      }
+    },
+    {
+      "message": "add bread to the shopping list. also, how many grams are in an ounce?",
+      "tasks": [
+        "shopping"
+      ],
+      "also_chat": true,
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "shopping"
+        ],
+        "confidence": "high",
+        "chat_part": "how many grams are in an ounce?"
+      }
+    },
+    {
+      "message": "pack my charger, put batteries on the shopping list, and tell me a joke",
+      "tasks": [
+        "packing",
+        "shopping"
+      ],
+      "also_chat": true,
+      "note": "two tasks and a chat part",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "packing",
+          "shopping"
+        ],
+        "confidence": "high",
+        "chat_part": "tell me a joke"
+      }
+    },
+    {
+      "message": "hi, could you add eggs to the shopping list please?",
+      "tasks": [
+        "shopping"
+      ],
+      "note": "a greeting and a please are not a part to answer",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "shopping"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
     }
   ]
 }

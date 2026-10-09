@@ -49,6 +49,15 @@ gained time"):
 
 ## Left for later
 
+- **The demo tasks go at step 4 of the router work.** `tasks/lab/demo.py`
+  (the shopping and packing lists) exists only so the router's way could
+  be tried before a real task used it. When the old way is removed, move
+  the two entries into `tests/` as fixtures for the tests that use them,
+  or delete them; either way they leave `tasks/` and the lab's
+  `entries()`. Their fixture files in `evals/fixtures/` go with them.
+- **The demo shopping list is a snapshot, not a Live card:** "what do I
+  need to buy?" posts the list as it is then and doesn't update it. Fine
+  for a demo; a real task must follow the rule in `CLAUDE.md`.
 - **`tasks/timers/durations.py` is used by `dev` and `pills` as well.**
   It belongs in core now that three tasks read durations (found
   2026-10-09, stage 2 of pills). Its longest duration is 24 hours.

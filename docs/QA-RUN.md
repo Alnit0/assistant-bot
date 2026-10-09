@@ -1,6 +1,6 @@
 # QA run sheet
 
-One pass through 210 of the 232 👤 Manual tests in `docs/TESTING.md` that are
+One pass through 211 of the 233 👤 Manual tests in `docs/TESTING.md` that are
 ⬜ Untested (as of 2026-10-09); the other 22 are pills tests (group R) for
 stages not built yet, and join as each is. Blocks share setup and each one leaves things
 ready for the next, so run them in order.
@@ -26,8 +26,8 @@ tests (block 12).
 | 14 | Bugs and kept confirmations | off (two restarts) | 16 | 21 |
 | 15 | Dev database and clock | `--dev`, on and off (three restarts) | 10 | 13 |
 | 16 | Pills: setting up | `--dev`, off (one restart) | 15 | 16 |
-| 17 | Routing and confirm cards | `--dev`, off (one restart) | 12 | 15 |
-| | **Total** | | **210** (F2 is split over blocks 4 and 7, counted in 7) | **about 4¼ hours** |
+| 17 | Routing and confirm cards | `--dev`, off (one restart) | 13 | 16 |
+| | **Total** | | **211** (F2 is split over blocks 4 and 7, counted in 7) | **about 4¼ hours** |
 
 Blocks 13 to 17 need nothing from the others: run them any time after
 block 1, and before the overnight block if that suits.
@@ -438,7 +438,7 @@ exist only here.
 | 1 | Say `add milk to the shopping list` | One card, with no question first and no line from Claude: "🛒 Shopping · new", "**milk** · × 1 ❓", "-# or tell me what to change", with **Save** and **Cancel**. `what do I need to buy?` right after (press Cancel first) shows the list is still empty | S4 |
 | 2 | Say `add milk`, then, with the card the last thing on screen, say `make it 3` | The first card is deleted and a fresh one shows "**milk** · × 3" with no ❓. Press **Save**: the card becomes "✅ Saved · 🛒 **milk** × 3 is on the shopping list" with no buttons | S5 |
 | 3 | Say `add 144 eggs`; press **Save** | The card shows "**eggs** · × 20" and "⚠️ 144 is more than the list takes: 20 at most"; Save saves 20 | S6 |
-| 4 | Say `what do I need to buy?`, then `got the milk` | The list as a message with no buttons; then "☑️ Ticked off **milk** · 1 left to buy" at once, with no card | S7 |
+| 4 | Say `what do I need to buy?`, then `got the milk` | The list as a message with no buttons; then "☑️ Ticked off **milk** × 3 · still to buy: eggs" at once, with no card (it names what is left; "nothing left to buy" when the list is empty) | S7 |
 | 5 | Say `clear my shopping list`; press **Clear for good** | A card "🛒 Shopping · clear" that says it can't be undone, with a red **Clear for good**; then "🗑️ The shopping list is cleared." | S8 |
 | 6 | Say `add socks`. Whichever list the card is for, say `no, the other list` (name it: `no, shopping` or `no, packing`) | A card for one list, or the question "Which is “add socks” for?" with a button per list (press one). After "no, …" the first card is deleted and a card for the other list takes its place | S9 |
 | 7 | Say `add bread`, then `dev clock +31m` | The card disappears; `what do I need to buy?` doesn't list bread | S10 |
@@ -446,7 +446,8 @@ exist only here.
 | 9 | Say `what's the capital of France?` in #inbox, and again in the hub | A plain answer in both; no card | S12 |
 | 10 | In #inbox say `set a timer for 1 minute` | A timer starts, as before: timers have not moved yet, so this still goes the old way | S13 |
 | 11 | Type `dev cost` | The routes of today include `router`, `follow-up` and `chat` beside `shortcut` and `button`; "Requests this month" lists `router` and `extraction`; shopping or packing is among the tasks | S14 |
-| 12 | Read every reply from the bot in this block | No "reply ok" or "I'm proposing"; no tool or action names (`demo_shop_add`); every confirmation ("✅ Saved…", "☑️ Ticked off…") in the same fixed wording each time | S15 |
+| 12 | Say `what's the capital of France, and add milk to the shopping list` | Both parts are dealt with: first a plain answer to the question, then the card "🛒 Shopping · new" / "**milk** · × 1 ❓" as the last thing on screen. Then say `make it 2`: the card is replaced, with no second answer about France | S16 |
+| 13 | Read every reply from the bot in this block | No "reply ok" or "I'm proposing"; no tool or action names (`demo_shop_add`); every confirmation ("✅ Saved…", "☑️ Ticked off…") in the same fixed wording each time | S15 |
 
 ## When you finish
 

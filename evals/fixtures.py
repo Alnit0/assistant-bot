@@ -30,6 +30,8 @@ class RouterFixture:
     tasks: list[str] = field(default_factory=list)  # expected, in any order; empty with chat
     tie: bool = False
     chat: bool = False
+    # With tasks: whether part of the message is for no task and must be answered as chat too
+    also_chat: bool = False
     on_screen: str = ""
     note: str = ""
     # Why the model is known to get this one wrong, if it does. It still counts
@@ -105,6 +107,10 @@ def router_problem(fixture: RouterFixture, route) -> str:
         return f"expected {fixture.tasks}, got {list(route.tasks)}"
     if route.tie != fixture.tie:
         return f"expected {'a tie' if fixture.tie else 'no tie'}, got {'a tie' if route.tie else 'no tie'}"
+    if bool(route.chat_part) != fixture.also_chat:
+        if fixture.also_chat:
+            return "expected a chat part as well, got none"
+        return f"expected no chat part, got {route.chat_part!r}"
     return ""
 
 

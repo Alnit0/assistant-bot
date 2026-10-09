@@ -162,6 +162,9 @@ Input
 - Replying to a message with an action word (archive, pin, keep, save,
   unpin, delete, remind <when>) applies it to that message. Filler words
   are fine on a reply ("pin this", "please archive it").
+- A message with several parts gets every part dealt with: each task's
+  card or reply, and a plain answer for anything in it that is for no
+  task ("what's the capital of France, and add milk").
 - Asking Claude in plain words works too (#inbox): it runs the same
   actions as tools. It acts on a clear request, asks when unsure, and waits
   for "ok" (2 minutes) when it is only suggesting. Destructive actions always
@@ -239,6 +242,15 @@ Cleanliness
   nothing else: command messages are still Consumed, and a question left
   unanswered still goes. Send them through `ctx.confirm`, `ctx.note` or
   `lifecycle.delete_after()`, which ask the setting.
+- A list shown on request must not go stale while it looks current. If
+  the data behind it can change afterwards, the task either keeps that
+  message up to date in place (a Live card, through `core/live.py`) or
+  words it so it is plainly a snapshot of that moment and not the current
+  state (and posts a fresh one when asked again). Never leave an old list
+  on screen that reads as today's truth.
+- A reply that reports a change names what changed and what is left
+  ("☑️ Ticked off milk × 3 · still to buy: eggs"), never a bare count
+  that could be read as the item's own.
 - Edit messages in place rather than posting new ones. Exception:
   anything that must notify me (timer done, Pomodoro phase changes,
   reminders) posts a new message; that alert is deleted once

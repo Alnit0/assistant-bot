@@ -10,7 +10,8 @@
         "tasks": [
           "shopping"
         ],
-        "confidence": "high"
+        "confidence": "high",
+        "chat_part": ""
       }
     },
     {
@@ -23,7 +24,8 @@
         "tasks": [
           "shopping"
         ],
-        "confidence": "high"
+        "confidence": "high",
+        "chat_part": ""
       }
     },
     {
@@ -36,7 +38,8 @@
         "tasks": [
           "shopping"
         ],
-        "confidence": "high"
+        "confidence": "high",
+        "chat_part": ""
       }
     },
     {
@@ -51,7 +54,8 @@
         "tasks": [
           "shopping"
         ],
-        "confidence": "high"
+        "confidence": "high",
+        "chat_part": ""
       }
     }
   ],
@@ -183,7 +187,7 @@
       "recorded": [
         "not_this",
         {
-          "reason": "User asking about weather, not about shopping list"
+          "reason": "Question about weather, not about shopping list"
         }
       ]
     },
@@ -194,7 +198,7 @@
       "recorded": [
         "none",
         {
-          "reason": "message not about shopping list"
+          "reason": "Not related to shopping list task"
         }
       ]
     }

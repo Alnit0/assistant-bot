@@ -10,7 +10,8 @@
         "tasks": [
           "packing"
         ],
-        "confidence": "high"
+        "confidence": "high",
+        "chat_part": ""
       }
     },
     {
@@ -23,7 +24,8 @@
         "tasks": [
           "packing"
         ],
-        "confidence": "high"
+        "confidence": "high",
+        "chat_part": ""
       }
     }
   ],

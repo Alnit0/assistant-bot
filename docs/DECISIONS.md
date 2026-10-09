@@ -553,6 +553,12 @@ A short log of key decisions and why. Newest at the bottom.
   router is asked first; what it calls chat is handed to the old way in
   #inbox with the same log row, so a message is still logged once and
   its router request is counted in its cost.
+- **Every part of a message is dealt with (2026-10-09, from QA):** "what's
+  the capital of France, and add milk" made the card and dropped the
+  question. The router now also returns the part of a message that is for
+  no task, copied from it; that part is answered as plain chat, first, so
+  the card is still the last thing on screen and a correction finds it.
+  It costs a third request, only for such messages.
 - **Two demo tasks, on the dev database only,** so the core can be tried
   before any real task depends on it. The live bot's router never hears
   of them.

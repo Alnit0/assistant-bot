@@ -58,7 +58,7 @@ def test_the_router_can_only_name_tasks_in_the_catalogue():
     schema = routing.tool(ENTRIES)["input_schema"]
     assert schema["properties"]["tasks"]["items"]["enum"] == ["shopping", "packing"]
     assert schema["properties"]["confidence"]["enum"] == ["high", "tie"]
-    assert schema["required"] == ["kind", "tasks", "confidence"] and schema["additionalProperties"] is False
+    assert schema["required"] == ["kind", "tasks", "confidence", "chat_part"] and schema["additionalProperties"] is False
 
 
 def test_what_changes_goes_in_the_user_turn():
@@ -84,6 +84,19 @@ def test_what_changes_goes_in_the_user_turn():
 )
 def test_what_the_router_returned_is_read_in_code(raw, expected):
     assert routing.parse(raw, NAMES) == expected
+
+
+def test_a_message_for_a_task_may_also_hold_a_part_for_no_task():
+    raw = {"kind": "task", "tasks": ["shopping"], "confidence": "high", "chat_part": " what's the capital of France "}
+    route = routing.parse(raw, NAMES)
+    assert route.tasks == ("shopping",) and route.chat_part == "what's the capital of France" and not route.chat
+    # Left out, empty or not text: there is none
+    for aside in ("", "   ", None, 5):
+        assert routing.parse({**raw, "chat_part": aside}, NAMES).chat_part == ""
+    assert routing.parse({"kind": "task", "tasks": ["shopping"], "confidence": "high"}, NAMES).chat_part == ""
+    # A message that is all chat has no "part": the whole of it is answered
+    assert routing.parse({"kind": "chat", "tasks": [], "confidence": "high", "chat_part": "hello"}, NAMES) == Route()
+    assert "Every part of a message must be dealt with" in routing.RULES
 
 
 @pytest.mark.parametrize(
@@ -196,6 +209,10 @@ def test_there_are_fixtures_for_each_demo_task_and_for_the_traps():
     assert {fixture.file for fixture in ROUTERS} >= {"general", "shopping", "packing"}
     assert {fixture.task for fixture in EXTRACTIONS} >= {"shopping", "packing"}
     assert any(fixture.chat for fixture in ROUTERS) and any(fixture.tie for fixture in ROUTERS)
+    mixed = [fixture for fixture in ROUTERS if fixture.also_chat]
+    assert any(len(fixture.tasks) == 1 for fixture in mixed), "chat and a task"
+    assert any(len(fixture.tasks) == 2 for fixture in mixed), "chat and two tasks"
+    assert any(len(fixture.tasks) == 2 and not fixture.also_chat and not fixture.tie for fixture in ROUTERS), "two tasks"
     assert any(fixture.card for fixture in EXTRACTIONS), "a follow-up"
     assert any(fixture.action == "none" for fixture in EXTRACTIONS) and any(fixture.action == "not_this" for fixture in EXTRACTIONS)
 
@@ -239,5 +256,10 @@ def test_a_fixture_is_judged_on_the_task_the_action_the_data_and_the_guesses():
     assert fixtures.router_problem(tie, Route(("shopping", "packing"), tie=True)) == ""
     assert "got ['packing']" in fixtures.router_problem(tie, Route(("packing",)))
     assert "expected a tie" in fixtures.router_problem(tie, Route(("shopping", "packing")))
+    mixed = fixtures.RouterFixture("x", "capital of France, and add milk", ["shopping"], also_chat=True)
+    assert fixtures.router_problem(mixed, Route(("shopping",), chat_part="capital of France")) == ""
+    assert "expected a chat part as well" in fixtures.router_problem(mixed, Route(("shopping",)))
+    plain = fixtures.RouterFixture("x", "hi, add eggs please", ["shopping"])
+    assert "expected no chat part, got 'hi'" in fixtures.router_problem(plain, Route(("shopping",), chat_part="hi"))
     chat = fixtures.RouterFixture("x", "hello", chat=True)
     assert fixtures.router_problem(chat, Route()) == "" and "expected chat" in fixtures.router_problem(chat, Route(("shopping",)))

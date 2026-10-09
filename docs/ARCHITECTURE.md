@@ -168,7 +168,9 @@ real task uses it yet, see "Not built yet")
    task's extraction with the card's data: one request. `not_this` sends
    it on to the router instead.
 3. **Router** (`routing.route`): one request with the catalogue. It
-   answers with the task(s), a tie, or chat.
+   answers with the task(s), a tie, or chat, and, with a task, any part
+   of the message that is for no task (`chat_part`): that part gets a
+   plain answer first, then the task's card or reply.
 4. **Chat:** a plain reply from Claude with no tools. While tasks remain
    on the old way, a chat verdict in #inbox is handed to the old way
    instead, with the same log row.
