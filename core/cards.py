@@ -1,5 +1,6 @@
 import logging
 import re
+import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 
@@ -300,6 +301,7 @@ async def handle(
         row_id = await log_received(
             f"card: {task}/{action}{detail}", "card", press.message_id, press.channel_id, user_id=user.id
         )
+        started = time.perf_counter()
         try:
             reply = await registered.handler(press)
         except UserError as error:
@@ -310,7 +312,9 @@ async def handle(
             return
         if not interaction.response.is_done():
             await interaction.response.defer()
-        await log_result(row_id, reply=reply or "\n".join(press.shown) or "done", status="ok")
+        await log_result(
+            row_id, reply=reply or "\n".join(press.shown) or "done", status="ok", duration_s=time.perf_counter() - started
+        )
     except Exception as error:
         await report_interaction_error(interaction, error, f"Card action failed: {task}/{action}")
 

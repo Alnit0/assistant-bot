@@ -6,6 +6,12 @@ backfilled from the git log.
 
 ## 2026-10-09
 
+- **`dev cost` shows what the bot costs.** Today and this month: the
+  total, how many messages went to Claude and how many were handled
+  without it (shortcuts, buttons, reactions), the average cost, requests
+  and seconds per message, and the most expensive task. Every message is
+  now logged with how it was handled; what was already logged is counted
+  too.
 - **Adding a pill is one step again.** Asking for one shows its preview
   straight away: no more "I'm proposing… reply ok" before it. That "ok"
   is now only for things the bot suggests that have no preview of their

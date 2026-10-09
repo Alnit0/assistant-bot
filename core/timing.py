@@ -26,6 +26,8 @@ class ClaudeCall:
     cache_read_tokens: int = 0
     cache_write_tokens: int = 0
     retries: int = 0
+    purpose: str = ""  # what the request was for (core/costs.py): router, extraction, chat, tools
+    task: str = ""  # the task it was made for, if one
 
 
 @dataclass(frozen=True)
@@ -87,11 +89,15 @@ def record_claude(
     cache_read_tokens: int = 0,
     cache_write_tokens: int = 0,
     retries: int = 0,
+    purpose: str = "",
+    task: str = "",
 ) -> None:
     turn = _current.get()
     if turn is not None:
         turn.claude_calls.append(
-            ClaudeCall(seconds, model, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, retries)
+            ClaudeCall(
+                seconds, model, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, retries, purpose, task
+            )
         )
 
 

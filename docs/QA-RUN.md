@@ -1,6 +1,6 @@
 # QA run sheet
 
-One pass through 197 of the 219 👤 Manual tests in `docs/TESTING.md` that are
+One pass through 198 of the 220 👤 Manual tests in `docs/TESTING.md` that are
 ⬜ Untested (as of 2026-10-09); the other 22 are pills tests (group R) for
 stages not built yet, and join as each is. Blocks share setup and each one leaves things
 ready for the next, so run them in order.
@@ -24,9 +24,9 @@ tests (block 12).
 | 12 | Overnight backups | off | 2 | 2 nights |
 | 13 | Tool calling (Claude runs things) | off, then on, then off | 32 | 53 |
 | 14 | Bugs and kept confirmations | off (two restarts) | 16 | 21 |
-| 15 | Dev database and clock | `--dev`, on and off (three restarts) | 9 | 12 |
+| 15 | Dev database and clock | `--dev`, on and off (three restarts) | 10 | 13 |
 | 16 | Pills: setting up | `--dev`, off (one restart) | 15 | 16 |
-| | **Total** | | **197** (F2 is split over blocks 4 and 7, counted in 7) | **about 4 hours** |
+| | **Total** | | **198** (F2 is split over blocks 4 and 7, counted in 7) | **about 4 hours** |
 
 Blocks 13 to 16 need nothing from the others: run them any time after
 block 1, and before the overnight block if that suits.
@@ -384,7 +384,7 @@ a real post: close them as you go (steps 10 to 12) or afterwards.
 
 ## 15. Dev database and clock
 
-Stop the bot first (`Ctrl + C`). Steps 2 to 9 run on the dev database, so
+Stop the bot first (`Ctrl + C`). Steps 2 to 10 run on the dev database, so
 nothing here touches your real history. `dev verbose` on helps for step 8.
 
 | # | Do | Expect | Tests |
@@ -397,7 +397,8 @@ nothing here touches your real history. `dev verbose` on helps for step 8.
 | 6 | `dev off`, then `Ctrl + C` and `python main.py --dev` again, then `dev clock` | The clock is still as far ahead as before, through both; the start card has a Clock field | J40 |
 | 7 | `dev clock reset` | "🕰️ Clock: … (the real time)" | J41 |
 | 8 | `dev jobs`, then `dev clock 11:59pm`, `dev clock +2m`, `dev jobs` | First: a `core/day_rollover` job due at the coming midnight. After the two moves: it has run (a 🛠️ job card in #bot-log if verbose is on) and the next one is booked for the midnight after | Q7 |
-| 9 | `timer 10m`, then `dev reset-db`; press **Cancel**; again, press **Confirm** | Cancel: nothing changes (`timers` still lists it). Confirm: "🧹 `dev.db` wiped…"; `timers` and `stats` are empty; `dev jobs` shows only the backup and the day rollover; the clock is the real time. Delete the orphaned timer message by hand, then `dev off` and stop the bot | J42 |
+| 9 | In #inbox say `set a timer for 1 minute`, then type `dev cost` | A card that stays: "## 💰 Cost · `dev.db`"; **Today** with the cost, the number of messages and how many went to Claude; the averages per message; a line counting messages by route (`shortcut`, `button`, `tools` with its cost); **This month** the same; "Most expensive task this month: **timers**"; the tokens and requests of the month | J44 |
+| 10 | `timer 10m`, then `dev reset-db`; press **Cancel**; again, press **Confirm** | Cancel: nothing changes (`timers` still lists it). Confirm: "🧹 `dev.db` wiped…"; `timers` and `stats` are empty; `dev jobs` shows only the backup and the day rollover; the clock is the real time. Delete the orphaned timer message by hand, then `dev off` and stop the bot | J42 |
 
 ## 16. Pills: setting up
 

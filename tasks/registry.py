@@ -376,7 +376,7 @@ async def _run(
         await ctx.confirm(f"✅ Done: {name}")
     if reply is None:
         reply = "\n".join(ctx.replies)
-    await log_result(row_id, reply=reply, status="ok")
+    await log_result(row_id, reply=reply, status="ok", duration_s=time.perf_counter() - started)
     if ctx.via_tool:
         # Claude is waiting for this result and the user for its answer: the
         # #bot-log card and the rest follow in the background

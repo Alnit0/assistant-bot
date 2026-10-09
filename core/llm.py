@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 
 from anthropic import AsyncAnthropic, Timeout
 
-from core import timing
+from core import costs, timing
 from core.config import (
     ANTHROPIC_API_KEY,
     ASSISTANT_NAME,
@@ -40,7 +40,7 @@ claude = AsyncAnthropic(
 _histories: dict[int | None, list[dict]] = {}
 
 # Cached input is cheaper to read and dearer to write than ordinary input
-CACHE_READ_PRICE, CACHE_WRITE_PRICE = 0.1, 1.25
+CACHE_READ_PRICE, CACHE_WRITE_PRICE = costs.CACHE_READ_PRICE, costs.CACHE_WRITE_PRICE
 CACHED = {"type": "ephemeral"}
 
 LIMIT_REACHED = (
@@ -199,13 +199,7 @@ def estimate_cost(
     model: str, input_tokens: int, output_tokens: int, cache_read_tokens: int = 0, cache_write_tokens: int = 0
 ) -> float | None:
     """Estimate the cost of a request in USD, or None if the model's price is unknown."""
-    for name, (input_price, output_price) in MODEL_PRICING.items():
-        if model.startswith(name):
-            input_cost = (
-                input_tokens + cache_read_tokens * CACHE_READ_PRICE + cache_write_tokens * CACHE_WRITE_PRICE
-            ) * input_price
-            return (input_cost + output_tokens * output_price) / 1_000_000
-    return None
+    return costs.price(model, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens)
 
 
 def format_cost(cost: float | None) -> str:

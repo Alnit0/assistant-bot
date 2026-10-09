@@ -282,6 +282,13 @@ class DevTask(Task):
                 ],
             ),
             word(
+                "dev cost",
+                "what the messages cost: today, this month, the average per message, the most expensive "
+                "task, and how each message was handled (button, shortcut, or by Claude)",
+                tools.cost,
+                ["dev cost"],
+            ),
+            word(
                 "dev reset-db",
                 "wipe the dev database and start it empty, with the clock back at the real time "
                 "(dev database only; asks first)",

@@ -516,6 +516,18 @@ A short log of key decisions and why. Newest at the bottom.
 - **With dev mode on there are more tools with arguments than can be
   strict (20):** the dev words go without first, by priority. It only
   matters if `STRICT_TOOLS` is ever switched back on.
+- **Cost is logged per message before the way messages are handled is
+  changed (2026-10-09):** every logged input gets a route (how it was
+  handled), and every request to Claude a row of its own with what it was
+  for, so the old way (every tool with every message, route `tools`) can
+  be compared with what replaces it. What was already logged was given a
+  route by the migration. On 2026-10-09 the live database stood at
+  US$0.0032 and 5.5s a message to Claude this month (113 of them).
+- **Costs go by the real clock and the running database:** a day of
+  testing under the dev clock still cost what it cost today, and
+  `dev cost` on the dev database reports the dev database.
+- **A message for two tasks is charged half to each**, and one for no
+  task (chat) to "no task", so the tasks add up to the total.
 - **`bugs` uses discord.py, in `posts.py` only:** forum posts, tags and
   persistent buttons have no core helper yet, and one user of them is not
   enough to design one. To be promoted to core when a second task needs a

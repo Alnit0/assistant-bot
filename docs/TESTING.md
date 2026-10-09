@@ -36,7 +36,7 @@ Last updated: 2026-10-09
 | F | Pins | 4 | 0 | 4 | 4 | 0 | 0 | 0 |
 | G | Timers | 21 | 8 | 13 | 13 | 8 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
-| J | Dev mode | 43 | 6 | 37 | 37 | 6 | 0 | 0 |
+| J | Dev mode | 45 | 7 | 38 | 38 | 7 | 0 | 0 |
 | K | Startup and housekeeping | 14 | 7 | 7 | 7 | 7 | 0 | 0 |
 | L | Keep | 12 | 4 | 8 | 8 | 4 | 0 | 0 |
 | M | Message lifecycle | 5 | 4 | 1 | 1 | 4 | 0 | 0 |
@@ -44,7 +44,7 @@ Last updated: 2026-10-09
 | P | Bugs | 29 | 14 | 15 | 15 | 14 | 0 | 0 |
 | Q | Time, days, the occurrence log and cards | 9 | 8 | 1 | 1 | 8 | 0 | 0 |
 | R | Pills | 39 | 2 | 37 | 37 | 2 | 0 | 0 |
-| | **Total** | **330** | **111** | **219** | **219** | **111** | **0** | **0** |
+| | **Total** | **332** | **112** | **220** | **220** | **112** | **0** | **0** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -264,6 +264,8 @@ Any channel. Check the bot's status in the member list.
 | J41 | 👤 Manual | With `--dev`: `dev clock reset` | "🕰️ Clock: … (the real time)" | ⬜ Untested | | |
 | J42 | 👤 Manual | With `--dev`: `timer 10m`, then `dev reset-db`; press **Cancel**; again, press **Confirm** | Cancel: nothing changes (`timers` still lists it). Confirm: "🧹 `dev.db` wiped…"; `timers` and `stats` are empty; `dev jobs` shows only the backup and the day rollover; the clock is the real time | ⬜ Untested | | |
 | J43 | 👤 Manual | Without `--dev` (the live database): `dev clock`, `dev clock +1h`, `dev reset-db` | The first shows the real time and says it can only be moved on the dev database; the other two get ⚠️, with the reason on the log card; nothing changes and no question is asked | ⬜ Untested | | |
+| J44 | 👤 Manual | With `--dev`: say `set a timer for 1 minute`, then type `dev cost` | A card that stays: "## 💰 Cost · `dev.db`"; **Today** with the cost, the number of messages and how many went to Claude; the averages per message; a line counting messages by route (`shortcut`, `button`, `tools` with its cost); **This month** the same; "Most expensive task this month: **timers**"; the tokens and requests of the month | ⬜ Untested | | |
+| J45 | 🤖 Auto | What each message cost | Every logged input gets its route as it arrives (typed words are shortcuts, presses are buttons, reactions are reactions; a tool call is part of its message, not one of its own); cached tokens cost a tenth to read and a quarter more to write, and an unknown model costs "unknown", not nothing; a message is recorded with its tasks and one row per request; today and the month split at midnight NZ by the real clock; averages per message and per message to Claude, with older messages whose requests weren't counted left out of that average; a message for two tasks is charged half to each; the migration gives what was already logged a route and its cache tokens; `dev cost` reports the database that is running | ✅ Pass | 2026-10-09 | `tests/test_costs.py` |
 
 ## K. Startup and housekeeping
 

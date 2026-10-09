@@ -7,7 +7,7 @@ import anthropic
 import discord
 from discord import app_commands
 
-from core import backup, cards, clock, day, pending, devmode, instance_lock, interactions, lifecycle, live, scheduler, timing
+from core import backup, cards, clock, costs, database, day, pending, devmode, instance_lock, interactions, lifecycle, live, scheduler, timing
 from core.config import (
     CLAUDE_MODEL,
     DB_PATH,
@@ -281,6 +281,21 @@ async def on_message(message: discord.Message):
     # Seen: 👀 straight away, and "typing" with it. Neither is waited for
     live.background(_mark_seen(message))
 
+    turn = None
+
+    async def record_cost(called=()) -> None:
+        """How this message was handled and what it cost, whether or not it worked.
+        Every tool is sent with every message here: that is the "tools" route."""
+        with_tools = bool(turn and turn.definitions)
+        tasks = sorted({turn.specs[call.name].task for call in called if turn and call.name in turn.specs})
+        purpose = costs.PURPOSE_TOOLS if with_tools else costs.PURPOSE_CHAT
+        try:
+            await database.record_cost(
+                row_id, costs.TOOLS if with_tools else costs.CHAT, tasks, costs.calls_from(spent.claude_calls, purpose)
+            )
+        except Exception:
+            log.exception("Could not record what a message cost")
+
     try:
         try:
             # Tell Claude what the bot itself can do here, and give it the same
@@ -314,6 +329,7 @@ async def on_message(message: discord.Message):
                 model=CLAUDE_MODEL,
                 duration_s=duration,
             )
+            await record_cost()
             await message.channel.send(f"⚠️ Claude API error ({error.status_code}). Check #bot-log.")
             await log_error(f"Claude API error {error.status_code}", str(error.message), text)
             return
@@ -321,6 +337,7 @@ async def on_message(message: discord.Message):
             duration = time.perf_counter() - started
             log.exception("Could not reach the Claude API")
             await log_result(row_id, status="error", error=repr(error), model=CLAUDE_MODEL, duration_s=duration)
+            await record_cost()
             await message.channel.send("⚠️ Couldn't reach Claude. Check the internet connection.")
             await log_error("Connection error", repr(error), text)
             return
@@ -328,6 +345,7 @@ async def on_message(message: discord.Message):
             duration = time.perf_counter() - started
             log.exception("Unexpected error while asking Claude")
             await log_result(row_id, status="error", error=repr(error), model=CLAUDE_MODEL, duration_s=duration)
+            await record_cost()
             await message.channel.send("⚠️ Something went wrong. Check #bot-log.")
             await log_error("Unexpected error", repr(error), text)
             return
@@ -359,6 +377,8 @@ async def on_message(message: discord.Message):
         status="ok",
         timing=json.dumps(timing.as_dict(spent)),
     )
+    # After the result: this sets the route and the totals of every request made
+    await record_cost(result.tool_calls)
 
     session_stats["messages"] += 1
     if cost is not None:
@@ -372,6 +392,11 @@ async def on_message(message: discord.Message):
     embed.add_field(name="Tokens", value=f"{input_tokens} in / {output_tokens} out", inline=True)
     embed.add_field(name="Est. cost", value=format_cost(cost), inline=True)
     embed.add_field(name="Time", value=f"{duration:.1f}s", inline=True)
+    embed.add_field(
+        name="Route",
+        value=f"{costs.TOOLS if turn.definitions else costs.CHAT} · {len(spent.claude_calls)} request(s)",
+        inline=True,
+    )
     embed.add_field(
         name="History", value=f"{len(history_for(message.channel.id))} messages", inline=True
     )

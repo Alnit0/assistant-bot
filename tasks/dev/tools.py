@@ -4,7 +4,8 @@ import sqlite3
 import discord
 
 from core import backup, clock, confirmations, database, day, devmode, instance_lock, lifecycle, migrations
-from core import reactions, scheduler, users
+from core import costs, reactions, scheduler, users
+from core.clock import real_now
 from core.config import DB_PATH, DEV_DATABASE
 from core.context import Context
 from core.errors import UserError
@@ -126,6 +127,22 @@ async def fire_next(ctx: Context) -> str:
         raise UserError(f"Job {job.id} ran or was cancelled before I could fire it.")
     await ctx.confirm(f"🔥 Fired job #{job.id}: {job.task}/{job.kind}")
     return f"fired job {job.id} ({job.task}/{job.kind}), which was due {job.due_at.isoformat(timespec='seconds')}"
+
+
+# ---------------------------------------------------------------------------
+# dev cost
+# ---------------------------------------------------------------------------
+async def cost(ctx: Context) -> str:
+    """What the messages in this database cost: today, this month, the average
+    per message and the most expensive task. By the real clock: costs are real
+    whatever the dev clock says."""
+    now = real_now()
+    since = costs.month_start(now).isoformat()
+    rows = await ctx.db.run(costs.db_rows, since)
+    purposes = await ctx.db.run(costs.db_purposes, since)
+    today, month = costs.split(rows, now)
+    await ctx.reply(costs.report(today, month, purposes, database.DB_PATH.name))
+    return f"today {costs.money(today.cost)} over {today.messages} message(s); this month {costs.money(month.cost)} over {month.messages}"
 
 
 # ---------------------------------------------------------------------------

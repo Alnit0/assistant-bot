@@ -182,6 +182,67 @@ def _create_occurrences(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX occurrence_events_change ON occurrence_events (change_id)")
 
 
+def _add_cost_logging(conn: sqlite3.Connection) -> None:
+    # How each message was handled and what it cost (see core/costs.py). The
+    # token and cost columns were only ever filled for chat; they now hold the
+    # total of every request made for the message
+    conn.execute("ALTER TABLE message_log ADD COLUMN route TEXT")
+    conn.execute("ALTER TABLE message_log ADD COLUMN tasks TEXT")
+    conn.execute("ALTER TABLE message_log ADD COLUMN claude_calls INTEGER")
+    conn.execute("ALTER TABLE message_log ADD COLUMN cache_read_tokens INTEGER")
+    conn.execute("ALTER TABLE message_log ADD COLUMN cache_write_tokens INTEGER")
+    conn.execute("CREATE INDEX message_log_received ON message_log (received_at)")
+    # One row per request to Claude: what it was for, its tokens, cost and time
+    conn.execute(
+        """
+        CREATE TABLE llm_calls (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            message_log_id INTEGER REFERENCES message_log(id),
+            at TEXT NOT NULL,
+            purpose TEXT NOT NULL,
+            task TEXT NOT NULL DEFAULT '',
+            model TEXT NOT NULL,
+            input_tokens INTEGER NOT NULL DEFAULT 0,
+            output_tokens INTEGER NOT NULL DEFAULT 0,
+            cache_read_tokens INTEGER NOT NULL DEFAULT 0,
+            cache_write_tokens INTEGER NOT NULL DEFAULT 0,
+            cost_usd REAL,
+            seconds REAL,
+            retries INTEGER NOT NULL DEFAULT 0
+        )
+        """
+    )
+    conn.execute("CREATE INDEX llm_calls_at ON llm_calls (at)")
+
+    # What is already logged gets a route too, so "before" can be measured.
+    # Chat that ran tools was recorded with "[tools: …]" after its reply
+    conn.execute(
+        """
+        UPDATE message_log SET route = CASE
+            WHEN kind IN ('tool', 'undo') THEN NULL
+            WHEN kind = 'chat' AND reply LIKE '%[tools:%' THEN 'tools'
+            WHEN kind = 'chat' AND status = 'ok' THEN 'tools'
+            WHEN kind = 'chat' THEN 'chat'
+            WHEN kind IN ('command', 'reply_action', 'expected', 'claimed', 'slash', 'context_menu') THEN 'shortcut'
+            WHEN kind = 'reaction' THEN 'reaction'
+            ELSE 'button'
+        END
+        """
+    )
+    # The requests and cache tokens of each chat message, from its stored timings
+    conn.execute(
+        """
+        UPDATE message_log SET
+            claude_calls = json_array_length(timing, '$.claude'),
+            cache_read_tokens = (SELECT COALESCE(SUM(json_extract(value, '$.cache_read_tokens')), 0)
+                                 FROM json_each(message_log.timing, '$.claude')),
+            cache_write_tokens = (SELECT COALESCE(SUM(json_extract(value, '$.cache_write_tokens')), 0)
+                                  FROM json_each(message_log.timing, '$.claude'))
+        WHERE kind = 'chat' AND timing IS NOT NULL AND json_valid(timing)
+        """
+    )
+
+
 MIGRATIONS = [
     _create_message_log,
     _create_users,
@@ -191,6 +252,7 @@ MIGRATIONS = [
     _create_reaction_state,
     _add_timing_to_message_log,
     _create_occurrences,
+    _add_cost_logging,
 ]
 
 

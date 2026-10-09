@@ -1,6 +1,7 @@
 import asyncio
 import sqlite3
 
+from core import costs
 from core.config import DB_PATH, DEV_DATABASE, DEV_DB_NAME, real_now_nz
 
 # ---------------------------------------------------------------------------
@@ -20,6 +21,8 @@ LOG_COLUMNS = {
     "status",
     "error",
     "timing",
+    "route",
+    "tasks",
 }
 
 
@@ -49,13 +52,15 @@ def _log_received(
 ) -> int:
     conn = connect()
     try:
+        # How it was handled, for everything that never reaches Claude (core/costs.py);
+        # a chat message's route is recorded once it has been answered
         cursor = conn.execute(
             """
             INSERT INTO message_log
-                (received_at, kind, content, discord_message_id, channel_id, user_id, status)
-            VALUES (?, ?, ?, ?, ?, ?, 'received')
+                (received_at, kind, content, discord_message_id, channel_id, user_id, status, route)
+            VALUES (?, ?, ?, ?, ?, ?, 'received', ?)
             """,
-            (real_now_nz().isoformat(), kind, content, discord_message_id, channel_id, user_id),
+            (real_now_nz().isoformat(), kind, content, discord_message_id, channel_id, user_id, costs.route_for(kind)),
         )
         conn.commit()
         return cursor.lastrowid
@@ -163,6 +168,11 @@ async def recent_log(channel_id: int, user_id: int, limit: int) -> list[tuple[in
     """The user's latest logged messages in a channel, newest first, as
     (Discord message id, content, when received as ISO text)."""
     return await run(_recent_log, channel_id, user_id, limit)
+
+
+async def record_cost(row_id: int, route: str, tasks=(), calls=()) -> None:
+    """Note how a logged message was handled and what its requests to Claude cost."""
+    await run(costs.db_record, row_id, route, tuple(tasks), tuple(calls), real_now_nz().isoformat())
 
 
 async def get_stats() -> dict:

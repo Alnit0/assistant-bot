@@ -676,6 +676,7 @@ no slash commands. `help dev` lists the words.
 | `dev clock <time>` | Dev database only. Moves the clock ahead to the next time it reads that (`5:59am`, `20:00`, `noon`) |
 | `dev clock +<duration>` | Dev database only. Moves it ahead by that much (`+2h`, `+15m`; up to 24h a go) |
 | `dev clock reset` | Back to the real time |
+| `dev cost` | What the messages in this database cost: today, this month, the average per message and the most expensive task |
 | `dev reset-db` | Dev database only. Asks, then wipes `data/dev.db` and starts it empty, with the clock back at the real time |
 
 | Setting | Normal | Dev default |
@@ -748,6 +749,17 @@ no slash commands. `help dev` lists the words.
     6pm?": say which.
   - Times Discord renders itself (a timer's "ends in…") go by the real
     time and will look wrong after a move.
+- **`dev cost`** adds up the database the bot is running on (the live one
+  for real figures; the dev one has its own). Every logged message has a
+  route: `shortcut` (a typed word), `button`, `reaction`, or one that
+  went to Claude (`tools` today: every tool is sent with every message).
+  For those it shows the cost, the requests and the seconds per message.
+  A message that used tools of two tasks is charged half to each; chat
+  that used none is "no task". Days and months go by the real clock, not
+  the dev clock. In code: `core/costs.py`; a message's cost is recorded
+  with `database.record_cost(row_id, route, tasks, calls)`, and each
+  request to Claude says what it was for through
+  `timing.record_claude(..., purpose=, task=)`.
 - **Not built yet:** quiet hours, the sweep and the summary. `dev quiet` is
   stored and shown and changes nothing so far; `dev run sweep` and `dev run
   summary` fail with "not built" on the #bot-log card.
