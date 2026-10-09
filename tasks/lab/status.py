@@ -6,6 +6,7 @@ from typing import Literal
 import discord
 from discord import app_commands
 
+from core import channels
 from core.config import ASSISTANT_NAME, now_nz
 from core.discord_utils import log_simple
 from tasks.lab import data, state
@@ -192,7 +193,7 @@ async def _current_pins(channel) -> dict[int, str]:
 
 async def _remember_pins(channel) -> None:
     """Note what is pinned now, so the next change can be described."""
-    if channel.id in _pins:
+    if channel.id in _pins or not channels.holds_messages(channel):
         return
     try:
         _pins[channel.id] = set(await _current_pins(channel))
@@ -224,6 +225,8 @@ def describe_pin_change(
 
 
 async def on_pins_update(channel, last_pin: datetime | None) -> None:
+    if not channels.holds_messages(channel):
+        return  # a forum or voice channel has no pins to read
     try:
         current = await _current_pins(channel)
     except discord.HTTPException:

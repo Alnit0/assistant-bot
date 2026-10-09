@@ -558,3 +558,82 @@ def test_the_command_line_explains_itself(bugs_db, args):
 def test_the_command_line_says_when_there_is_no_such_bug(bugs_db):
     with pytest.raises(UserError, match="no bug B9"):
         cli.run(["show", "B9"])
+
+
+# --- the forum's tags at start-up ---------------------------------------------------
+class FakeForum:
+    def __init__(self, tags, error=None):
+        self.available_tags = [SimpleNamespace(name=name) for name in tags]
+        self.error, self.edits = error, []
+
+    async def edit(self, available_tags):
+        self.edits.append([tag.name for tag in available_tags])
+        if self.error:
+            raise self.error
+
+
+@pytest.fixture
+def tag_cards(monkeypatch):
+    cards = []
+
+    async def card(title, details, user_text=None):
+        cards.append((title, details))
+
+    monkeypatch.setattr(posts, "log_error", card)
+    return cards
+
+
+def use_forum(monkeypatch, found: FakeForum) -> FakeForum:
+    monkeypatch.setattr(posts, "forum", lambda: found)
+    return found
+
+
+def test_missing_tags_are_created_in_one_request_at_every_start(tag_cards, monkeypatch):
+    found = use_forum(monkeypatch, FakeForum(["Urgent", "open"]))
+    asyncio.run(posts.ensure_tags())
+    assert found.edits == [["Urgent", "open", "Fixed", "Won't fix"]], "the forum's own tags are kept"
+    assert tag_cards == []
+    # Still missing at the next start (the request was refused, say): asked again
+    asyncio.run(posts.ensure_tags())
+    assert len(found.edits) == 2
+
+
+def test_nothing_is_asked_when_the_tags_are_all_there(tag_cards, monkeypatch):
+    found = use_forum(monkeypatch, FakeForum(["Open", "Fixed", "Won't fix"]))
+    asyncio.run(posts.ensure_tags())
+    assert found.edits == [] and tag_cards == []
+
+
+def test_a_missing_permission_is_one_warning_that_names_it(tag_cards, monkeypatch):
+    import discord
+
+    refused = discord.Forbidden(SimpleNamespace(status=403, reason="Forbidden"), "Missing Permissions")
+    found = use_forum(monkeypatch, FakeForum([], error=refused))
+    asyncio.run(posts.ensure_tags())
+    assert len(found.edits) == 1 and len(tag_cards) == 1, "one request and one warning for three tags"
+    title, details = tag_cards[0]
+    assert title == "Bugs: the forum's tags are missing"
+    assert "**Manage Channels**" in details and "Open, Fixed, Won't fix" in details
+
+
+def test_another_refusal_is_one_warning_with_discords_reason(tag_cards, monkeypatch):
+    import discord
+
+    refused = discord.HTTPException(SimpleNamespace(status=500, reason="Server Error"), "try later")
+    use_forum(monkeypatch, FakeForum(["Open"], error=refused))
+    asyncio.run(posts.ensure_tags())
+    assert len(tag_cards) == 1
+    assert "Manage Channels" not in tag_cards[0][1] and "tried again at the next start" in tag_cards[0][1]
+
+
+def test_no_forum_set_is_not_worth_a_warning_but_a_wrong_channel_is(tag_cards, monkeypatch):
+    def unusable():
+        raise UserError("BUGS_CHANNEL_ID must be a forum channel.")
+
+    monkeypatch.setattr(posts, "forum", unusable)
+    asyncio.run(posts.ensure_tags())
+    assert tag_cards == [("Bugs: the forum can't be used", "BUGS_CHANNEL_ID must be a forum channel.")]
+    tag_cards.clear()
+    monkeypatch.setitem(posts.CHANNELS, "bugs", None)
+    asyncio.run(posts.ensure_tags())
+    assert tag_cards == []

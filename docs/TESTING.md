@@ -37,12 +37,12 @@ Last updated: 2026-10-09
 | G | Timers | 21 | 8 | 13 | 13 | 8 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
 | J | Dev mode | 32 | 4 | 28 | 28 | 4 | 0 | 0 |
-| K | Startup and housekeeping | 11 | 4 | 7 | 7 | 4 | 0 | 0 |
+| K | Startup and housekeeping | 12 | 5 | 7 | 7 | 5 | 0 | 0 |
 | L | Keep | 12 | 4 | 8 | 8 | 4 | 0 | 0 |
 | M | Message lifecycle | 5 | 4 | 1 | 1 | 4 | 0 | 0 |
 | N | Tool calling | 52 | 24 | 28 | 28 | 24 | 0 | 0 |
-| P | Bugs | 24 | 11 | 13 | 13 | 11 | 0 | 0 |
-| | **Total** | **260** | **90** | **170** | **170** | **90** | **0** | **0** |
+| P | Bugs | 25 | 12 | 13 | 13 | 12 | 0 | 0 |
+| | **Total** | **262** | **92** | **170** | **170** | **92** | **0** | **0** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -267,6 +267,7 @@ Any channel. Check the bot's status in the member list.
 | K9 | 🤖 Auto | Scheduler | Jobs run when due, late ones at startup flagged late, interrupted ones recovered; the nightly backup books its successor | ✅ Pass | 2026-10-07 | `tests/test_scheduler.py` |
 | K10 | 👤 Manual | Set `ASSISTANT_NAME=Marvin` in `.env`, restart, `buttons` and press **Wave** | "👋 Hello from Marvin!"; Claude also gives that name when asked | ⬜ Untested | | Needs a restart with the setting changed; skip otherwise |
 | K11 | 🤖 Auto | Which tasks are loaded | `ENABLED_TASKS` lists them (any case, spaces ignored); if it is empty the old `ENABLED_SKILLS` is read instead, so an `.env` from before the rename still works; the new name wins; neither set loads them all | ✅ Pass | 2026-10-09 | `tests/test_registry.py` |
+| K12 | 🤖 Auto | Start-up with a forum among the channels | Only text channels, threads and DMs are read for pins or history; forum, voice and category channels are skipped (the dev panel's sweep crashed on #bugs, 2026-10-09); a task that fails to start is reported and the rest still start | ✅ Pass | 2026-10-09 | `tests/test_channels.py` |
 
 ## L. Keep
 
@@ -396,4 +397,5 @@ post in #bugs.
 | P21 | 👤 Manual | Press **Won't fix** on a post | "✅ B<n> closed as Won't fix" in the post; the tag changes from Open; the post is archived (closed); `bugs` no longer lists it | ⬜ Untested | | |
 | P22 | 👤 Manual | Restart the bot, then press **Fixed** on a post made before the restart | It works: closed as Fixed, tagged and archived | ⬜ Untested | | |
 | P23 | 👤 Manual | React 🐞 to a message inside a bug's post | ⚠️ on it at once and "That is already in a bug's post…"; no new bug | ⬜ Untested | | |
-| P24 | 👤 Manual | Delete the forum's Fixed tag, restart the bot | The tag is back, or (without Manage Channels) an error card in #bot-log says which tag to add | ⬜ Untested | | |
+| P24 | 👤 Manual | Delete the forum's Fixed tag, restart the bot | The tag is back. Without Manage Channels: one error card in #bot-log, naming that permission and the missing tags | ⬜ Untested | | |
+| P25 | 🤖 Auto | The forum's tags at start-up | Missing tags are asked for in one request at every start, keeping the forum's own; a missing permission is one warning naming Manage Channels, not one a tag; nothing is asked when all are there | ✅ Pass | 2026-10-09 | `tests/test_bugs.py` |

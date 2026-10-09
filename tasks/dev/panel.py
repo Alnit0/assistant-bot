@@ -4,8 +4,7 @@ import re
 
 import discord
 
-from core import devmode, lifecycle
-from core.config import CHANNELS
+from core import channels, devmode, lifecycle
 from core.database import log_received, log_result
 from core.discord_utils import log_error, log_simple, report_interaction_error, safe_reply
 from core.lifecycle import MessageClass
@@ -252,16 +251,14 @@ async def clear_stale() -> None:
     if _client is None:
         return
     removed = 0
-    for channel_id in set(CHANNELS.values()):
-        channel = _channel(channel_id)
-        if channel is None:
-            continue
+    # Only channels that have pins: a forum (the #bugs channel) has none to read
+    for channel in channels.named(_client):
         try:
             async for message in channel.pins():
                 if message.author.id == _client.user.id and message.content.startswith(TITLE):
                     await _delete(channel, message.id)
                     removed += 1
         except discord.HTTPException as error:
-            log.info("Could not look for an old dev panel in %s: %s", channel_id, error)
+            log.info("Could not look for an old dev panel in %s: %s", channel.id, error)
     if removed:
         await log_simple("🛠️ Dev mode off", "Reason: restart. The old panel was removed.")

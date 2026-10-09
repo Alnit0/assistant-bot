@@ -90,15 +90,20 @@ async def ensure_tags() -> None:
         if CHANNELS.get("bugs") is not None:
             await log_error("Bugs: the forum can't be used", str(error))
         return
-    for name in rules.missing_tags([tag.name for tag in channel.available_tags]):
-        try:
-            await channel.create_tag(name=name)
-        except discord.HTTPException as error:
-            log.warning("Could not create the forum tag %s: %s", name, error)
-            await log_error(
-                "Bugs: could not create a forum tag",
-                f"Add the tag “{name}” to the #bugs forum by hand, or give the bot Manage Channels there. ({error})",
-            )
+    missing = rules.missing_tags([tag.name for tag in channel.available_tags])
+    if not missing:
+        return
+    # All of them in one request, so a refusal is one warning and not one a tag.
+    # Asked again at every start for as long as any is missing
+    wanted = list(channel.available_tags) + [discord.ForumTag(name=name) for name in missing]
+    try:
+        await channel.edit(available_tags=wanted)
+    except discord.HTTPException as error:
+        forbidden = isinstance(error, discord.Forbidden)
+        log.warning("Could not create the forum tags %s: %s", ", ".join(missing), error)
+        await log_error("Bugs: the forum's tags are missing", rules.tags_problem(missing, forbidden, str(error)))
+        return
+    log.info("Created the forum tags: %s", ", ".join(missing))
 
 
 async def create_post(number: int, report: rules.Report) -> tuple[int, str]:

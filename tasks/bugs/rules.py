@@ -332,6 +332,18 @@ def missing_tags(existing: list[str]) -> list[str]:
     return [name for name in TAGS.values() if name.lower() not in have]
 
 
+def tags_problem(missing: list[str], forbidden: bool, detail: str = "") -> str:
+    """The one warning for tags that couldn't be created: which, why, and what to do."""
+    names = ", ".join(missing)
+    if forbidden:
+        return (
+            f"The bot needs the **Manage Channels** permission in #bugs to create its tags ({names}). "
+            "Grant it and restart the bot, or add those tags to the forum by hand. "
+            "Until then bugs are still logged, without the tag."
+        )
+    return f"Discord refused the tags ({names}): {detail}. They are tried again at the next start."
+
+
 def tags_after(current: list[str], status: str) -> list[str]:
     """A post's tag names once it has this status: ours replaced, any others kept."""
     ours = {name.lower() for name in TAGS.values()}

@@ -6,6 +6,13 @@ backfilled from the git log.
 
 ## 2026-10-09
 
+- **Dev mode starts again with a #bugs forum set.** Its start-up sweep
+  for an old panel read the pins of every channel in `.env` and failed on
+  the forum, which has none. Forum, voice and category channels are now
+  skipped everywhere pins or history are read.
+- **The forum's tags are created in one go at every start** while any is
+  missing. If the bot lacks Manage Channels you get one warning in
+  #bot-log naming it, not one per tag.
 - **Report a bug with 🐞 or `bug`.** React 🐞 to a message, reply `bug` to
   it, or type `bug` on its own for the latest thing in the channel. It is
   logged at once (no 30-second wait) and the channel gets "🐞 Logged as

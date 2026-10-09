@@ -58,6 +58,13 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   (lasting: Kept) or `ctx.confirm` (self-deleting: Transient) and raise
   `UserError` for problems the user can fix. Code that deletes a message
   by itself checks `lifecycle.deletes(...)` first
+- Not every channel holds messages: #bugs is a forum. Code that goes
+  through channels (`CHANNELS`), or reads pins or history from a channel
+  no message came from, uses `core/channels.py` (`named()`,
+  `holds_messages(channel)`), which skips forum, voice and category
+  channels
+- A task's `startup` failing is logged and shown on the start card; the
+  other tasks still start. Keep it that way
 - The assistant's name comes from `ASSISTANT_NAME`; never hard-code it
 - Permissions go through `is_allowed(user, action)`, never a comparison
   with `OWNER_ID`. Only the owner is allowed anything

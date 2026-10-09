@@ -350,6 +350,11 @@ Things to know:
   handler, timeout)` hands that user's next message in that channel to
   `handler(ctx)`, once, and keeps it away from Claude. Words and reply
   actions are still tried first. It is forgotten at restart.
+- **Going through channels:** not every channel in `.env` holds messages
+  (#bugs is a forum, with no pins or history). Loop over
+  `core.channels.named()` instead of `CHANNELS`, and check
+  `core.channels.holds_messages(channel)` before reading pins or history
+  from a channel that no message came from.
 - **Messages that are yours because of where they are:** override
   `Task.claim(ctx)` to return a handler for a message that is no word,
   reply action or awaited answer (`ctx.parent_channel_id` is the forum a

@@ -41,6 +41,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `reactions.py` | Pure: which reaction changes count, which are checked at once, where they ended up, what to apply or undo; the `reaction_state` queries |
 | `debounce.py` | `Debouncer(delay, callback)`: one quiet-period timer that hands over all collected events together |
 | `protection.py` | Pure: is a message protected (pinned or 📌), is it kept, and the wording when Discord refuses a pin |
+| `channels.py` | Which channels hold messages: `holds_messages(channel)` (text, news, threads, DMs; not forum, voice or category) and `named()`, the channels from `.env` that do. Asked before reading pins or history from a channel no message came from |
 | `pins.py` | `set_pinned(...)`: native pin and unpin for tasks that may not call Discord |
 | `confirmations.py` | Buttons under a short message: `ask` (Confirm / Cancel), `choose` (which of a few), `offer_undo` (done, with Undo). In memory, with timeouts |
 | `tools.py` | Pure: Claude's tools from registrations: names, strict-safe input schemas, input checking, which are sent as strict, which message a message action is aimed at, previews and the listing text, and matching a query against logged messages (`find_logged`) |
@@ -99,7 +100,8 @@ settings before `core` loads. One `test_*.py` per area: `router`,
 `pomodoro`, `timer_text`, `timing`, `timer_status`, `timer_freeze` (pause, resume and events against a
 database with the clock under test control), `devmode`, `dev_parsing`, `lab`, `lifecycle`,
 `permissions`, `scheduler`, `text`, `tools`, `pending`, `llm_tools` (the
-Claude loop against a scripted stand-in), `toolcalls`, `bugs`.
+Claude loop against a scripted stand-in), `toolcalls`, `bugs`, `channels`
+(channel types, the dev panel's start-up sweep, a task failing to start).
 
 ## Data flows
 
