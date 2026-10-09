@@ -39,6 +39,9 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   - `bug`: fixing a reported bug from its id (B4) or a pasted exchange
 - Runtime: Windows service `assistant-bot` (NSSM); logs in `logs/`;
   database `data/assistant.db`; backups in `data/backups/`
+- `python main.py --dev` runs the same bot on the dev database
+  (`data/dev.db`, backups in `data/dev-backups/`): the only place test
+  data, `dev clock` and `dev reset-db` are allowed
 
 ## Architecture rules
 
@@ -76,6 +79,22 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 - Schema changes: append a migration (`core/migrations.py`, or the task's
   `migrations()`); never edit an old one
 - Database calls from the event loop are `async`. Always `await` them
+- The time comes from `core/clock.py`, never from `datetime.now()` or
+  `time.time()`: `scheduler.utc_now()` or `clock.now()` for a moment,
+  `config.now_nz()` for NZ time. They follow the dev clock. Only records of
+  what really happened (log cards, `message_log`, the instance lock, bug
+  reports, dev mode's expiry) use `clock.real_now()` / `real_now_nz()`
+- The day comes from `core/day.py` (`today()`, `day_of()`, `at()`,
+  `end_of()`), never from a datetime's own `.date()`. Work at the end of a
+  day goes in `Task.new_day`, not a job of the task's own at midnight
+- Times the user types are read by `core/timeinput.py` and shown with its
+  `format_time` ("8:04 am"). An ambiguous time is asked about, never guessed
+- Expected things with a state on a day (doses, later reminders and
+  routines) are rows in the occurrence log (`core/occurrences.py`), changed
+  only through its `db_change` family so every change leaves an event
+- The dev clock and `dev reset-db` must refuse to work on the live
+  database. Never weaken those guards (`clock.shiftable()`,
+  `database.wipe_dev()`)
 - Keep decisions apart from Discord calls so they can be unit tested: logic
   in a module with no Discord calls, called by the Discord-facing code. New
   logic needs tests in the same change
@@ -87,6 +106,7 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 - UK spelling in all user-facing text and docs
 - Keep bot replies short and mobile-friendly
 - Claude interprets language; code does date and time maths
+- Times are shown as `8:04 am` everywhere (12-hour, a space, lower case)
 - Times: moments stored in UTC; schedules stored as local time + `Pacific/Auckland`
 - Log raw input before processing it
 - Anything outward-facing (sending emails, deleting data) needs user confirmation
@@ -101,7 +121,8 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 ## Running and testing
 
 - Only one copy of the bot may run at a time (`core/instance_lock.py`).
-  Never start `main.py` while the user's own copy or the service is running
+  Never start `main.py` while the user's own copy or the service is running.
+  That includes `python main.py --dev`: it is the same bot on another database
 - Prefer checks that import the code without starting the bot. Never leave
   a bot process running; confirm with `python -m core.instance_lock`,
   which asks the lock (the source of truth) and says how many bots are

@@ -3,7 +3,9 @@ import sqlite3
 
 import discord
 
-from core import devmode, instance_lock, lifecycle, reactions, scheduler
+from core import backup, clock, confirmations, database, day, devmode, instance_lock, lifecycle, migrations
+from core import reactions, scheduler, users
+from core.config import DB_PATH, DEV_DATABASE
 from core.context import Context
 from core.errors import UserError
 from core.protection import is_kept, is_protected, protection
@@ -124,6 +126,43 @@ async def fire_next(ctx: Context) -> str:
         raise UserError(f"Job {job.id} ran or was cancelled before I could fire it.")
     await ctx.confirm(f"🔥 Fired job #{job.id}: {job.task}/{job.kind}")
     return f"fired job {job.id} ({job.task}/{job.kind}), which was due {job.due_at.isoformat(timespec='seconds')}"
+
+
+# ---------------------------------------------------------------------------
+# dev reset-db
+# ---------------------------------------------------------------------------
+def _start_empty(task_migrations: dict[str, list]) -> None:
+    """Delete the dev database and build an empty one. Blocking."""
+    database.wipe_dev()  # refuses anything but the dev database
+    migrations.migrate(task_migrations)
+    users.clear_user_cache()
+    users.ensure_owner()
+
+
+async def reset_db(ctx: Context) -> str:
+    if not DEV_DATABASE:
+        raise UserError(
+            "`dev reset-db` only works on the dev database (`python main.py --dev`). "
+            "The live database is never wiped."
+        )
+
+    async def wipe() -> str:
+        await asyncio.to_thread(_start_empty, registry.task_migrations())
+        clock.reset()
+        # The core's own jobs went with the rest
+        await backup.schedule_next_backup()
+        await day.schedule_next()
+        scheduler.wake()
+        return f"🧹 `{DB_PATH.name}` wiped, clock back at the real time. Restart the bot if anything looks stale."
+
+    await confirmations.ask(
+        ctx.channel,
+        ctx.user,
+        f"Wipe the dev database (`{DB_PATH.name}`)? Every record in it goes, and the clock returns to the real time.",
+        wipe,
+    )
+    ctx.shown("confirmation question")
+    return "asked before wiping the dev database"
 
 
 # ---------------------------------------------------------------------------

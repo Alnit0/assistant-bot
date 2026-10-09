@@ -1,6 +1,7 @@
 import sqlite3
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from datetime import date
 
 import discord
 
@@ -290,6 +291,13 @@ class Task:
         `job.is_late` set.
         """
         return {}
+
+    async def new_day(self, ended: date, started: date) -> None:
+        """Runs when a day ends (core/day.py): `ended` is the day that was over
+        when the rollover came due, `started` the day it is now. They are a day
+        apart unless the bot was off over a boundary, so deal with any days in
+        between. Only called if overridden; a failure is reported and the other
+        tasks are still told."""
 
     def migrations(self) -> list[Callable[[sqlite3.Connection], None]]:
         """This task's database migrations, in order. Applied by the core at startup.

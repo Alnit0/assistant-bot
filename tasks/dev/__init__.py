@@ -1,11 +1,12 @@
 import discord
 
-from core import devmode
+from core import clock, devmode, scheduler
+from core.config import DEV_DATABASE
 from core.context import Context
 from core.errors import UserError
 from core.lifecycle import MessageClass
 from tasks.base import ANY, Keyword, Param, ReplyAction, Task
-from tasks.dev import panel, tools
+from tasks.dev import clockwords, panel, tools
 from tasks.dev.panel import PERMISSION
 from tasks.timers.durations import DurationError, format_duration, parse_duration
 
@@ -130,6 +131,39 @@ async def dev_expire(ctx: Context) -> str:
     )
 
 
+# ---------------------------------------------------------------------------
+# The clock. Not a dev mode setting: it belongs to the dev database, and stays
+# where it is put when dev mode ends, so the records made under it keep
+# making sense. Only `dev clock reset` and `dev reset-db` go back.
+# ---------------------------------------------------------------------------
+LIVE_DATABASE = (
+    "That only works on the dev database, so real history is never touched. "
+    "Stop the bot and start it with `python main.py --dev`."
+)
+
+
+async def dev_clock(ctx: Context) -> str:
+    if not ctx.args:
+        said = f"🕰️ Clock: {clockwords.describe(clock.now(), clock.offset())}"
+        fixed = "" if DEV_DATABASE else "\n-# It can only be moved on the dev database (`python main.py --dev`)."
+        await ctx.reply(said + fixed)
+        return said
+    if not DEV_DATABASE:
+        raise UserError(LIVE_DATABASE)
+    moment = clockwords.target(ctx.args, clock.now())
+    if moment is None:
+        clock.reset()
+    else:
+        clock.advance_to(moment)
+    # Whatever came due on the way runs now, in order
+    scheduler.wake()
+    if devmode.enabled:
+        await panel.changed()
+    said = f"Clock: {clockwords.describe(clock.now(), clock.offset())}"
+    await ctx.confirm(f"🕰️ {said}")
+    return said
+
+
 class DevTask(Task):
     """Dev mode: the words, the panel and the tools. The state itself is core/devmode.py."""
 
@@ -231,6 +265,31 @@ class DevTask(Task):
                 Param("duration", "How long from now, e.g. 30m or 2h."),
             ),
             word(
+                "dev clock",
+                "show the bot's clock, or move it ahead (dev database only): to the next time it reads "
+                "a time of day, by a duration, or back to the real time with reset",
+                dev_clock,
+                ["dev clock", "dev clock 5:59am", "dev clock +2h", "dev clock reset"],
+                takes_args=True,
+                usage="[<time>|+<duration>|reset]",
+                params=[
+                    Param(
+                        "to",
+                        "A time of day (5:59am, 20:00), + and a duration (+2h, +15m), or reset. "
+                        "Leave out to show the clock.",
+                        required=False,
+                    )
+                ],
+            ),
+            word(
+                "dev reset-db",
+                "wipe the dev database and start it empty, with the clock back at the real time "
+                "(dev database only; asks first)",
+                tools.reset_db,
+                ["dev reset-db"],
+                exact=True,
+            ),
+            word(
                 "dev status",
                 "say how many copies of the bot are running: the one holding the lock, and any other "
                 "process running it (the .venv launcher is not counted)",
@@ -292,6 +351,8 @@ class DevTask(Task):
 
     async def startup(self, client: discord.Client) -> None:
         await panel.clear_stale()
+        # On the dev database the status says so from the start
+        await panel.show_status()
 
 
 task = DevTask()

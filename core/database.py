@@ -1,7 +1,7 @@
 import asyncio
 import sqlite3
 
-from core.config import DB_PATH, now_nz
+from core.config import DB_PATH, DEV_DATABASE, DEV_DB_NAME, real_now_nz
 
 # ---------------------------------------------------------------------------
 # Database (raw input log)
@@ -30,6 +30,16 @@ def connect() -> sqlite3.Connection:
     return conn
 
 
+def wipe_dev() -> None:
+    """Delete the dev database, for `dev reset-db`. Blocking.
+
+    Refuses anything but the dev database: the live one is never wiped."""
+    if not DEV_DATABASE or DB_PATH.name != DEV_DB_NAME:
+        raise RuntimeError("Only the dev database (python main.py --dev) can be wiped")
+    for path in (DB_PATH, DB_PATH.with_name(DB_PATH.name + "-wal"), DB_PATH.with_name(DB_PATH.name + "-shm")):
+        path.unlink(missing_ok=True)
+
+
 def _log_received(
     content: str,
     kind: str,
@@ -45,7 +55,7 @@ def _log_received(
                 (received_at, kind, content, discord_message_id, channel_id, user_id, status)
             VALUES (?, ?, ?, ?, ?, ?, 'received')
             """,
-            (now_nz().isoformat(), kind, content, discord_message_id, channel_id, user_id),
+            (real_now_nz().isoformat(), kind, content, discord_message_id, channel_id, user_id),
         )
         conn.commit()
         return cursor.lastrowid

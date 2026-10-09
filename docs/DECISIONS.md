@@ -427,6 +427,43 @@ A short log of key decisions and why. Newest at the bottom.
   in `lifecycle.delete_after()`, so every Transient message obeys it and
   nothing else changes (commands are still Consumed). Unlike `dev cleanup
   off` it survives a restart and leaves the rest of the tidying alone.
+- **One clock, and it can only be moved on a database of its own:** a
+  day of reminders has to be testable in minutes, so everything time-based
+  reads `core/clock.py`, which `dev clock` can move ahead. Moving it on the
+  live database would leave real history with made-up times, so
+  `python main.py --dev` runs the same bot on `data/dev.db` (its own
+  backups folder too) and the clock refuses to move anywhere else. The
+  dev database can be wiped with `dev reset-db`; the live one can't be.
+- **The dev clock only moves forward; `reset` is the one way back:**
+  going back would leave jobs already run and things "done in the
+  future". `dev clock 6am` therefore means the next 6am, by way of
+  midnight. For the same reason the offset is not part of dev mode: it
+  is kept in `data/dev-clock.json`, survives `dev off`, the expiry and a
+  restart, and only `dev clock reset` or `dev reset-db` clears it.
+- **Time the clock jumped over is not lateness:** `job.is_late` means the
+  bot wasn't there (catch-up after being off). A jump runs what came due
+  in order as if on time, so testing with the clock shows the normal
+  path; restart the bot to test the late one.
+- **What stays on the real clock:** log lines and cards, `message_log`,
+  the instance lock, bug reports (they are matched to `bot.log` by time),
+  the two-minute "ok" and dev mode's expiry (or `dev clock +2h` would
+  switch dev mode off).
+- **The day boundary is one setting, and its work is one job:**
+  `DAY_BOUNDARY` (midnight NZ) in `core/day.py`. Tasks override
+  `new_day(ended, started)` instead of booking their own midnight jobs,
+  so there is one order, one catch-up rule and one place to change it.
+- **A time that could be morning or evening is asked about, except when
+  only one reading is possible:** `parse_time("8")` raises
+  `AmbiguousTime`. For a time something was done at, the reading that
+  fails the checks is ruled out ("at 9", said at 2pm, is 9 am): that is
+  arithmetic, not a guess. Bare `1` to `12` and `8:30` are ambiguous;
+  `08:30`, `2030`, `20` and anything with am or pm are not.
+- **The occurrence log is core, and append-only in spirit:** pills,
+  reminders and routines all need "expected today, and what became of
+  it". Every change writes an event with the values before and after, so
+  a correction is itself history, and "undo that" is `db_revert` of the
+  last change id. A revert is refused if anything was changed again
+  since, because putting old values back would lose the newer ones.
 - **`bugs` uses discord.py, in `posts.py` only:** forum posts, tags and
   persistent buttons have no core helper yet, and one user of them is not
   enough to design one. To be promoted to core when a second task needs a

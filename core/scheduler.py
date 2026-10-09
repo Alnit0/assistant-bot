@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime, time, timedelta, timezone
 from time import perf_counter
 
-from core import database, devmode
+from core import clock, database, devmode
 from core.config import TIMEZONE
 from core.discord_utils import log_error
 
@@ -24,6 +24,11 @@ log = logging.getLogger("assistant")
 #
 # Jobs that came due while the bot was off run at the next start, with
 # job.late_by saying how overdue they are.
+#
+# The time is the clock's (core/clock.py), so jobs follow the dev clock. When
+# that is moved ahead, everything that came due on the way runs at once, in
+# due order, and the time jumped over doesn't count as lateness: a job is
+# late when the bot wasn't there to run it, not when time was skipped.
 #
 # Moments are stored in UTC. Anything on a local-time schedule (the nightly
 # backup) works out its next moment in code with next_run().
@@ -61,7 +66,8 @@ _warned_unhandled: set[tuple[str, str]] = set()
 # Time helpers (pure)
 # ---------------------------------------------------------------------------
 def utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    """Now, as the bot sees it: the real time unless the dev clock has been moved."""
+    return clock.now()
 
 
 def to_db(moment: datetime) -> str:
@@ -74,8 +80,9 @@ def from_db(text: str) -> datetime:
 
 
 def seconds_late(due_at: datetime, now: datetime) -> float:
-    """How overdue a job is, never negative."""
-    return max(0.0, (now - due_at).total_seconds())
+    """How overdue a job is, never negative. Time the dev clock jumped over
+    isn't counted."""
+    return max(0.0, (now - due_at).total_seconds() - clock.skipped_between(due_at, now))
 
 
 def seconds_until_next_look(now: datetime, next_due: datetime | None) -> float:
@@ -234,6 +241,12 @@ async def all_pending() -> list[Job]:
     return await database.run(_db_all_pending)
 
 
+def wake() -> None:
+    """Have the loop look for due jobs now: the clock has just been moved."""
+    if _wake is not None:
+        _wake.set()
+
+
 # ---------------------------------------------------------------------------
 # The loop
 # ---------------------------------------------------------------------------
@@ -276,13 +289,23 @@ async def run_due(now: datetime | None = None) -> int:
     return ran
 
 
+async def run_all_due() -> int:
+    """Run due jobs until none is left: a job may book another that is already
+    due (the clock was moved ahead, or the bot was off for a while). A job
+    nobody handles is left waiting and doesn't keep this going."""
+    total = 0
+    while ran := await run_due():
+        total += ran
+    return total
+
+
 async def _loop() -> None:
     recovered = await database.run(_db_recover)
     if recovered:
         log.info("Scheduler: %s interrupted job(s) put back in the queue", recovered)
     while True:
         try:
-            await run_due()
+            await run_all_due()
             next_due = await database.run(_db_next_due)
             wait = seconds_until_next_look(utc_now(), next_due)
         except Exception:

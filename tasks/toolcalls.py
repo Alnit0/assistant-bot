@@ -8,7 +8,7 @@ from core.context import Context
 from core.database import log_received, log_result
 from core.discord_utils import log_error
 from core.protection import protection
-from core.scheduler import utc_now
+from core.clock import real_now
 from tasks import registry
 from tasks.base import Param
 
@@ -175,7 +175,7 @@ async def _list_recent(turn: Turn) -> str:
         tools.Listed(ref, message.author.display_name, message.created_at, message.content, await _tags(message))
         for ref, message in recent.items()
     ]
-    return tools.listing_text(entries, utc_now())
+    return tools.listing_text(entries, real_now())
 
 
 async def _search(turn: Turn, query: str) -> str:
@@ -187,7 +187,7 @@ async def _search(turn: Turn, query: str) -> str:
         for message_id, content, received_at in await database.recent_log(ctx.channel_id, ctx.user.id, tools.SEARCH_ROWS)
     ]
     skip = frozenset({ctx.message_id} if ctx.message_id is not None else ())
-    matches = tools.find_logged(rows, query, utc_now(), skip=skip)
+    matches = tools.find_logged(rows, query, real_now(), skip=skip)
 
     found = []
     # A logged message may have been archived or deleted since: only offer what is there.
@@ -211,7 +211,7 @@ async def _search(turn: Turn, query: str) -> str:
         for ref, message in turn.listing.items()
         if ref in turn.older
     ]
-    return tools.listing_text(entries, utc_now(), tools.OLDER_HEADER)
+    return tools.listing_text(entries, real_now(), tools.OLDER_HEADER)
 
 
 # ---------------------------------------------------------------------------

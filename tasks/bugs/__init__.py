@@ -5,7 +5,7 @@ import discord
 from core.config import BASE_DIR
 from core.context import Context
 from core.errors import UserError
-from core.scheduler import utc_now
+from core.clock import real_now
 from core.users import User
 from tasks.base import ANY, Keyword, Reaction, ReplyAction, Task
 from tasks.bugs import capture, posts, rules, store
@@ -73,7 +73,7 @@ async def list_bugs(ctx: Context) -> None:
 
 async def export(ctx: Context) -> str:
     entries = await store.in_full(ctx.user.id)
-    text = rules.export_text(entries, utc_now())
+    text = rules.export_text(entries, real_now())
     await asyncio.to_thread(EXPORT_FILE.write_text, text, encoding="utf-8")
     count = len(entries)
     await ctx.confirm(f"📝 Wrote {count} open bug{'' if count == 1 else 's'} to docs/BUGS.md")

@@ -9,7 +9,7 @@ from dataclasses import dataclass
 import discord
 
 import tasks
-from core import scheduler
+from core import day, scheduler
 from core.config import CHANNELS, ENABLED_TASKS
 from core.context import Context
 from core import database, devmode, discord_utils, lifecycle, live, reactions, tools
@@ -168,6 +168,8 @@ def load() -> None:
             _tools.append((task, tool))
         for kind, handler in job_handlers.items():
             scheduler.register_handler(task.name, kind, handler)
+        if type(task).new_day is not Task.new_day:
+            day.on_new_day(task.name, task.new_day)
         for event, handler in events.items():
             _events.setdefault(event, []).append((task, handler))
         _app_commands.extend(slash_commands)

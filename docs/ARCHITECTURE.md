@@ -11,7 +11,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 
 | Path | Responsibility |
 |---|---|
-| `main.py` | Entry point: creates the Discord client, wires Discord events to the registry, holds the Claude chat path (which hands Claude its tools) and the slash command tree |
+| `main.py` | Entry point (`--dev` runs it on the dev database): creates the Discord client, wires Discord events to the registry, holds the Claude chat path (which hands Claude its tools) and the slash command tree |
 | `core/` | Shared building blocks. Never imports from `tasks/` |
 | `tasks/` | One folder per feature, loaded by `tasks/registry.py` |
 | `tests/` | Unit tests (pytest); never start the bot or touch real data |
@@ -19,7 +19,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `docs/` | `ARCHITECTURE` (this), `DEVELOPMENT` (how to use and extend), `DECISIONS` (why), `TESTING` (test tracker), `QA-RUN` (manual run sheet), `BACKLOG` (found and not yet finished), `CHANGELOG` (what changed, by date), `CHEATSHEET` (commands) |
 | `.claude/skills/` | Procedures for Claude Code: `add-task`, `qa`, `end-of-task`, `bug` (fix a reported bug from its id) |
 | `.env`, `.env.example` | Secrets and settings (`.env` is gitignored); every setting has a placeholder in `.env.example` |
-| `data/` | `assistant.db`, `bot.lock`, `backups/` (gitignored) |
+| `data/` | `assistant.db`, `bot.lock`, `backups/`; with `--dev`: `dev.db`, `dev-backups/`, `dev-clock.json` (all gitignored) |
 | `logs/` | `bot.log` (rotating), `service-*.log` (gitignored) |
 | `requirements.txt`, `requirements-dev.txt`, `pytest.ini` | Dependencies (dev adds pytest) and test settings |
 
@@ -27,10 +27,14 @@ for why things are the way they are, `docs/DECISIONS.md`.
 
 | File | Responsibility |
 |---|---|
-| `config.py` | Paths, settings from `.env` and their validation, constants, the `CHANNELS` name-to-id map (with `hub`, from `HUB_CHANNEL_ID`), `now_nz()` |
+| `config.py` | Paths, settings from `.env` and their validation, constants, the `CHANNELS` name-to-id map (with `hub`, from `HUB_CHANNEL_ID`); `DEV_DATABASE` (started with `--dev`), which picks the database and backup folder; `DAY_BOUNDARY`; `now_nz()` (the bot's clock) and `real_now_nz()` |
+| `clock.py` | What time it is: `now()` is the real time plus the dev clock's offset, `real_now()` never moves. The clock can only be moved on the dev database, only forward (`advance`, `advance_to`; `reset` goes back), and its offset is kept in `data/dev-clock.json` across restarts. `skipped_between` is the time a jump passed over. Imports nothing from core |
+| `day.py` | The day boundary for every task (`DAY_BOUNDARY`, midnight NZ): `today()`, `day_of(moment)`, `at(day, time)`, `start_of` / `end_of` (UTC, daylight-saving safe), and the rollover job, which tells every `on_new_day` listener (a task's `new_day`) the day that ended and the day it is now, then books the next |
+| `timeinput.py` | Pure: times the user types (12-hour, 24-hour, noon / midnight), `AmbiguousTime` with both readings when it could be morning or evening, the checks on a time given for something already done (today, not in the future, not before the previous one), and the one way times are shown (`format_time`: "8:04 am") |
+| `occurrences.py` | The occurrence log: expected things on a day (`occurrences`) with their state (pending, done, skipped, missed), plan, due time, actual time and automatic-skip reason, and every change to them (`occurrence_events`, values before and after). Changes made together share a change id: `db_last_change` finds the user's last one and `db_revert` takes it back |
 | `logging_setup.py` | Terminal and rotating file logging |
 | `instance_lock.py` | Single-instance lock on `data/bot.lock`, taken first thing at startup, and the source of truth for what is running: `holder()` asks the lock, `instances()` counts bot processes without the `.venv` launcher, `status()` puts both into words (`python -m core.instance_lock`, `dev status`) |
-| `database.py` | `connect()`, the async `message_log` helpers (`log_received`, `log_result`, `recent_log` for looking further back), `run(func)` in a worker thread |
+| `database.py` | `connect()`, `wipe_dev()` (deletes the dev database and refuses any other), the async `message_log` helpers (`log_received`, `log_result`, `recent_log` for looking further back), `run(func)` in a worker thread |
 | `migrations.py` | Numbered schema migrations, core and per task, applied at startup |
 | `backup.py` | Nightly backup (a scheduler job that books its successor): the database, and `docs/specs/` as a zip beside it; pre-migration snapshots |
 | `users.py` | The `User` record, `ensure_owner()`, cached lookup by Discord id |
@@ -47,8 +51,8 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `confirmations.py` | Buttons under a short message: `ask` (Confirm / Cancel), `choose` (which of a few), `offer_undo` (done, with Undo). In memory, with timeouts |
 | `tools.py` | Pure: Claude's tools from registrations: names, strict-safe input schemas, input checking, which are sent as strict, which message a message action is aimed at, previews and the listing text, and matching a query against logged messages (`find_logged`) |
 | `pending.py` | Proposals waiting for a short "ok": what counts as yes or no, two-minute expiry, one per user and channel (in memory) |
-| `scheduler.py` | Database-backed jobs: `add_job`, a ticker that runs due ones, catch-up at startup (`job.is_late`) |
-| `devmode.py` | Dev mode's in-memory state; other code asks it for values (`reaction_debounce()`, `speed()`, `is_verbose()`, `cleanup_enabled()`, `debug()`, `register_task()`) |
+| `scheduler.py` | Database-backed jobs: `add_job`, a ticker that runs due ones until none is left (`run_all_due`), catch-up at startup (`job.is_late`). Its time is the clock's: when the dev clock jumps, `wake()` runs what came due in order, and time jumped over is not lateness |
+| `devmode.py` | Dev mode's in-memory state (the dev clock is not part of it: `clock.py`); other code asks it for values (`reaction_debounce()`, `speed()`, `is_verbose()`, `cleanup_enabled()`, `debug()`, `register_task()`) |
 | `interactions.py` | Permission check and logging for slash commands and context menus |
 | `llm.py` | Claude client (short timeout, two retries); the system prompt (one cached block, the same for every message); `turn_note` (the time and the tasks' live state, sent after the user's words in the latest turn only); the tool loop (`ask_claude` runs the calls Claude makes, up to `MAX_TOOL_CALLS`, and ends the turn without a closing request when `closing` says the tools have already told the user); the honesty checks (`claims_done`, `claims_change`, `scrub`: a "done" with nothing done, or a reported change with no tool having succeeded, is sent back once; a bracketed tool note is removed); per-channel history of what was said and nothing else; cost estimates including cache and tool tokens |
 | `timing.py` | Where the time goes while one message is answered: each request to Claude, each tool, the calls to Discord, rate-limit waits and retries (read from the libraries' logs). One `Turn` per message, found through a context variable; `summary_lines` is the breakdown on the "Message handled" card, and `as_dict` the same as plain values, kept in `message_log.timing` |
@@ -59,7 +63,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 
 | Path | Responsibility |
 |---|---|
-| `base.py` | The `Task` base class with its hooks (including `message_class` and `tools_available`), and the self-describing `Keyword`, `ReplyAction`, `Reaction` records (the last two with an optional `validate`); `Param` describes an argument for Claude; `Tool` is a tool that isn't a word (reading state, acting by id). `Task.live_state(ctx)` is what a task tells Claude about its state with every message. `Reaction.instant` skips the quiet period (🐞 only); `Task.claim(ctx)` takes a message because of where it was sent |
+| `base.py` | The `Task` base class with its hooks (including `message_class`, `tools_available` and `new_day`), and the self-describing `Keyword`, `ReplyAction`, `Reaction` records (the last two with an optional `validate`); `Param` describes an argument for Claude; `Tool` is a tool that isn't a word (reading state, acting by id). `Task.live_state(ctx)` is what a task tells Claude about its state with every message. `Reaction.instant` skips the quiet period (🐞 only); `Task.claim(ctx)` takes a message because of where it was sent |
 | `registry.py` | Discovers and loads tasks; dispatches words, reply actions and reactions; refuses invalid ones at once; decides how each ends; asks tasks what a message is (`declared_class()`); the single source of what the bot can do (`catalogue()`, `find()`, `capabilities_text()`, and `tools_for()` for Claude, which adds each task's `tools()`); `run_tool()` runs a tool call down the same path as a typed word. `live_state(ctx)` gathers the tasks' state for Claude; a tool call's #bot-log card follows in the background. `dispatch_claimed` hands an unmatched message to the task that claims it; an `instant` reaction is applied the moment it is added |
 | `toolcalls.py` | Not a task: what becomes of a tool call from Claude. Gathers the tools for a message, then decides per call: run now, wait for "ok", Confirm / Cancel, which-message buttons, quoted preview with Undo, or (for a message found further back) quoted and asked first. Also the `recent_messages` and `search_messages` tools, and whether anything was actually done this turn (`Turn.acted`). `closing(turn)` says after each round whether every call acted and showed the user its own confirmation, so the turn can end there |
 | `builtin/__init__.py` | `ping`, `reset`, `buttons`, `stats`, and `help` generated from the registry |
@@ -82,8 +86,9 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `timers/store.py` | Everything timers remember (`timers_*` tables), including each clock's own speed, the events of every timer and session, and the live lists |
 | `timers/timers.py`, `sessions.py`, `board.py`, `common.py` | Timer messages, Pomodoro session cards, the pinned "Active timers" board and the live "Your timers" lists (both rewritten on every change, in the background through `core/live.py`), shared message helpers |
 | `dev/__init__.py` | Registers the `dev …` words; `dev mode on\|off` is the one Claude is always offered |
-| `dev/panel.py` | The pinned dev panel, its persistent buttons, the "🛠️ Dev mode" status |
-| `dev/tools.py` | `dev inspect`, `dev status`, `dev jobs`, `dev run`, `dev fire next`, `dev seed`, `dev clean` |
+| `dev/panel.py` | The pinned dev panel (with the clock, and "DEV DATABASE" when started with `--dev`), its persistent buttons, the bot's status ("🛠️ Dev mode", "🧪 DEV DATABASE") |
+| `dev/clockwords.py` | Pure: what `dev clock <time> \| +<duration> \| reset` moves the clock to (a time is the next moment the clock reads it), and the clock in words |
+| `dev/tools.py` | `dev inspect`, `dev status`, `dev jobs`, `dev run`, `dev fire next`, `dev seed`, `dev clean`, `dev reset-db` (asks, then wipes the dev database and rebuilds it empty) |
 | `lab/__init__.py`, `common.py` | The `lab …` test bench; `common.py` has the `Run` adapters that let one `run_*` function serve a typed word and `/lab` |
 | `lab/buttons.py`, `react.py`, `status.py`, `charts.py`, `data.py`, `misc.py`, `channels.py`, `tour.py`, `state.py`, `ratelimits.py` | One Discord feature each: components, reaction timeline, pinned status, charts and their data, notifications / polls / formatting, cross-channel test, the guided tour, the lab's key/value table, rate-limit watching |
 
@@ -101,16 +106,19 @@ settings before `core` loads. One `test_*.py` per area: `router`,
 `pomodoro`, `timer_text`, `timing`, `timer_status`, `timer_freeze` (pause, resume and events against a
 database with the clock under test control), `devmode`, `dev_parsing`, `lab`, `lifecycle`,
 `permissions`, `scheduler`, `text`, `tools`, `pending`, `llm_tools` (the
-Claude loop against a scripted stand-in), `toolcalls`, `bugs`, `instance_lock`, `backup` (the specs zip), `channels`
+Claude loop against a scripted stand-in), `toolcalls`, `bugs`, `instance_lock`, `backup` (the specs zip), `clock`,
+`day` (the boundary and the rollover job), `timeinput`, `occurrences`,
+`dev_clock` (`dev clock`, `dev reset-db` and their guards), `channels`
 (channel types, the dev panel's start-up sweep, a task failing to start).
 
 ## Data flows
 
-**Startup** (`main.py`): logging → `instance_lock.acquire()` →
-`registry.load()` → `migrate(registry.task_migrations())` →
+**Startup** (`main.py`): `core/config.py` reads `--dev` (which database)
+and hands the clock its stored offset → logging → `instance_lock.acquire()`
+→ `registry.load()` → `migrate(registry.task_migrations())` →
 `ensure_owner()` → connect. `setup_hook` runs each task's `setup`
 (persistent views); `on_ready` syncs slash commands, runs each task's
-`startup`, books the backup and starts the scheduler.
+`startup`, books the backup and the day rollover and starts the scheduler.
 
 **Message → router → task**
 
@@ -229,6 +237,24 @@ answer no. Tasks say which of their messages are Live or an Alert through
    jobs through the handler registered for `(task, kind)`, which
    `registry.load()` collects from each task's `job_handlers()`.
 3. Jobs missed while offline run at startup with `job.is_late`.
+4. A pass goes on until nothing more runs, so a job booked by another and
+   already due is not left for the next tick.
+
+**Time, the dev clock and the day**
+
+1. Everything time-based asks `core/clock.py` (through
+   `scheduler.utc_now()` or `config.now_nz()`). Records of what really
+   happened ask `real_now()`: log cards, `message_log`, the instance lock,
+   bug reports, dev mode's expiry.
+2. `dev clock` (dev database only) moves the clock ahead and wakes the
+   scheduler: every job that came due on the way runs in due order, not
+   flagged late. The offset is saved, so a restart keeps the bot's time.
+3. At `DAY_BOUNDARY` the `core/day_rollover` job calls each task's
+   `new_day(ended, started)` and books the next. After days away (or a
+   jump of several days) it runs once, and the two dates say how long.
+4. What is expected on a day lives in the occurrence log
+   (`core/occurrences.py`); a task makes today's with `db_ensure` (asking
+   twice never resets one) and changes them through `db_change`.
 
 **Buttons, selects, slash commands**: persistent views are registered in
 each task's `setup`; slash commands and menus live in the `CommandTree` in
@@ -236,11 +262,11 @@ each task's `setup`; slash commands and menus live in the `CommandTree` in
 and log second; `main.on_interaction` reports any left unanswered after 2
 seconds.
 
-## Database (`data/assistant.db`)
+## Database (`data/assistant.db`; `data/dev.db` with `--dev`)
 
 | Tables | Owner |
 |---|---|
-| `users`, `message_log`, `scheduled_jobs`, `reaction_state`, `skill_migrations` | core (`core/migrations.py`, version in `PRAGMA user_version`) |
+| `users`, `message_log`, `scheduled_jobs`, `reaction_state`, `skill_migrations`, `occurrences`, `occurrence_events` | core (`core/migrations.py`, version in `PRAGMA user_version`) |
 | `archive_items` | archive |
 | `bugs_items`, `bugs_notes`, `bugs_events` (each closing and re-opening) | bugs |
 | `timers_timers`, `timers_pomodoros`, `timers_focus_log`, `timers_boards`, `timers_events`, `timers_lists` | timers |
@@ -248,7 +274,8 @@ seconds.
 
 Backups go to `data/backups/` nightly at 3am NZ (newest 7 `assistant-*.db`
 kept, and the newest 7 `specs-*.zip` of `docs/specs/` taken with them);
-`pre-migration-*.db` snapshots are never auto-deleted.
+`pre-migration-*.db` snapshots are never auto-deleted. The dev database's
+go to `data/dev-backups/`, so they never push a real backup out.
 
 ## Not built yet
 

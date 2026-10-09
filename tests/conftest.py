@@ -7,7 +7,7 @@ import tests  # noqa: F401  isort: skip
 
 import pytest
 
-from core import backup, database, devmode, migrations, users
+from core import backup, clock, database, devmode, migrations, users
 
 
 @pytest.fixture
@@ -40,6 +40,14 @@ def dev_off():
     devmode.disable()
     yield
     devmode.disable()
+
+
+@pytest.fixture
+def dev_clock():
+    """A clock that may be moved, as on the dev database; the real time again afterwards."""
+    clock.configure(shiftable=True)
+    yield clock
+    clock.configure(shiftable=False)
 
 
 @pytest.fixture

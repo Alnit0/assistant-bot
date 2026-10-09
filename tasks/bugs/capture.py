@@ -5,7 +5,8 @@ from datetime import datetime
 from pathlib import Path
 
 from core.config import BASE_DIR, LOG_DIR
-from core.scheduler import to_db, utc_now
+from core.clock import real_now
+from core.scheduler import to_db
 from tasks.bugs import rules, store
 
 log = logging.getLogger("assistant")
@@ -85,5 +86,5 @@ async def build(
         turn=turn,
         errors=rules.related_errors(lines, _log_clock(start), _log_clock(end)),
         commit=await git_commit(),
-        reported_at=to_db(utc_now()),
+        reported_at=to_db(real_now()),
     )

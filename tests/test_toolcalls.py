@@ -67,7 +67,7 @@ def world(db, dev_off, owner, monkeypatch):
     """A chat message in #inbox, with everything a tool call can touch standing by."""
     seen = SimpleNamespace(ran=[], undone=[], asked=[], choices=[], undo_offers=[], outcome=("ok", "done", ["📌 Pinned"]))
     # The messages are dated NOW: "just now" must not depend on the day the tests are run
-    monkeypatch.setattr(toolcalls, "utc_now", lambda: NOW)
+    monkeypatch.setattr(toolcalls, "real_now", lambda: NOW)
 
     async def run_tool(ctx, spec, value, target=None, *, collect=False):
         seen.ran.append((spec.name, value, getattr(target, "id", None), collect))

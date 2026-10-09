@@ -6,14 +6,23 @@ from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
 
+from core import clock
+
 # ---------------------------------------------------------------------------
 # Paths (relative to the project root, so the Windows service works from any folder)
 # ---------------------------------------------------------------------------
 BASE_DIR = Path(__file__).resolve().parent.parent
 LOG_DIR = BASE_DIR / "logs"
 DATA_DIR = BASE_DIR / "data"
-DB_PATH = DATA_DIR / "assistant.db"
-BACKUP_DIR = DATA_DIR / "backups"
+# `python main.py --dev` runs the same bot on a database of its own, which may
+# be filled with test data, wiped (`dev reset-db`) and have its clock moved
+# (`dev clock`). The live database is never any of those
+DEV_DATABASE = "--dev" in sys.argv[1:]
+DEV_DB_NAME = "dev.db"
+DB_PATH = DATA_DIR / (DEV_DB_NAME if DEV_DATABASE else "assistant.db")
+BACKUP_DIR = DATA_DIR / ("dev-backups" if DEV_DATABASE else "backups")
+# How far ahead the dev clock is, so a restart of the dev bot keeps its time
+DEV_CLOCK_FILE = DATA_DIR / "dev-clock.json"
 # Private spec sheets: gitignored, so the nightly backup is their only copy
 SPECS_DIR = BASE_DIR / "docs" / "specs"
 
@@ -134,6 +143,8 @@ EMBED_FIELD_LIMIT = 1000  # Discord allows 1024 characters per embed field
 BUTTON_TIMEOUT = 300  # seconds before test buttons expire
 BACKUP_TIME = time(3, 0)  # nightly database backup, NZ local time
 BACKUP_KEEP = 7  # number of nightly backups to keep
+# When one day ends and the next begins, NZ local time, for every task (core/day.py)
+DAY_BOUNDARY = time(0, 0)
 
 # Approximate prices in USD per million tokens: (input, output).
 # Check Anthropic's pricing page and update if they change.
@@ -143,5 +154,16 @@ MODEL_PRICING = {
 }
 
 
+clock.configure(shiftable=DEV_DATABASE, store=DEV_CLOCK_FILE)
+
+
 def now_nz() -> datetime:
-    return datetime.now(TIMEZONE)
+    """The time in NZ as the bot sees it: the real time, unless the dev clock
+    has been moved (core/clock.py). Use this for anything time-based."""
+    return clock.now().astimezone(TIMEZONE)
+
+
+def real_now_nz() -> datetime:
+    """The real time in NZ, whatever the dev clock says: for records of what
+    really happened (log cards, message_log, the instance lock)."""
+    return clock.real_now().astimezone(TIMEZONE)

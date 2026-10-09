@@ -4,7 +4,7 @@ import time
 import discord
 
 from core import timing
-from core.config import BOT_LOG_CHANNEL_ID, DISCORD_LIMIT, EMBED_FIELD_LIMIT, now_nz
+from core.config import BOT_LOG_CHANNEL_ID, DISCORD_LIMIT, EMBED_FIELD_LIMIT, real_now_nz
 
 log = logging.getLogger("assistant")
 
@@ -157,14 +157,14 @@ async def report_interaction_error(
 
 
 async def log_simple(title: str, description: str | None = None) -> None:
-    embed = discord.Embed(title=title, colour=COLOUR_INFO, timestamp=now_nz())
+    embed = discord.Embed(title=title, colour=COLOUR_INFO, timestamp=real_now_nz())
     if description:
         embed.description = truncate(description, 4000)
     await send_log(embed)
 
 
 async def log_error(title: str, details: str, user_text: str | None = None) -> None:
-    embed = discord.Embed(title=f"⚠️ {title}", colour=COLOUR_ERROR, timestamp=now_nz())
+    embed = discord.Embed(title=f"⚠️ {title}", colour=COLOUR_ERROR, timestamp=real_now_nz())
     if user_text:
         embed.add_field(name="Input", value=truncate(user_text), inline=False)
     embed.add_field(name="Details", value=truncate(details), inline=False)

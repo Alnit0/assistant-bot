@@ -2,7 +2,8 @@ import sqlite3
 from dataclasses import dataclass
 
 from core import database
-from core.scheduler import to_db, utc_now
+from core.clock import real_now
+from core.scheduler import to_db
 from tasks.bugs import rules
 
 # ---------------------------------------------------------------------------
@@ -142,7 +143,7 @@ def _db_add(conn: sqlite3.Connection, user_id: int | None, report: rules.Report)
             report.target.message_id,
             report.commit,
             report.to_json(),
-            to_db(utc_now()),
+            to_db(real_now()),
         ),
     )
     return cursor.lastrowid
@@ -178,7 +179,7 @@ def _db_open(conn: sqlite3.Connection, user_id: int | None = None) -> list[Item]
 
 def _db_set_status(conn: sqlite3.Connection, bug_id: int, status: str, user_id: int | None = None) -> None:
     """Close or re-open a bug, and add that to its history."""
-    now = to_db(utc_now())
+    now = to_db(real_now())
     closed_at = None if status == rules.OPEN else now
     conn.execute("UPDATE bugs_items SET status = ?, closed_at = ? WHERE id = ?", (status, closed_at, bug_id))
     conn.execute(
@@ -202,7 +203,7 @@ def _db_add_note(
         INSERT INTO bugs_notes (bug_id, user_id, author, content, discord_message_id, created_at)
         VALUES (?, ?, ?, ?, ?, ?)
         """,
-        (bug_id, user_id, author, content, message_id, to_db(utc_now())),
+        (bug_id, user_id, author, content, message_id, to_db(real_now())),
     )
     return cursor.lastrowid
 

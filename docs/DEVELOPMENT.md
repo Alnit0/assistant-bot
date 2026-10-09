@@ -34,6 +34,10 @@ automatically in new terminals. Check the prompt starts with `(.venv)`.
   - `interactions.py`: permission check and logging for slash commands and menus
   - `errors.py`: `UserError`, for problems the user can fix
   - `scheduler.py`: stored jobs that run at a moment in the future, with catch-up
+  - `clock.py`: what time it is; the dev clock (dev database only)
+  - `day.py`: the midnight day boundary and the job that runs when a day ends
+  - `timeinput.py`: reading the times you type, and showing times (`8:04 am`)
+  - `occurrences.py`: what is expected each day, its state, and every change to it
   - `backup.py`: nightly backup (a scheduler job) and pre-migration snapshots
   - `debounce.py`: waits for a quiet period, then handles events together
   - `devmode.py`: dev mode's state, and the values other code reads from it
@@ -554,6 +558,11 @@ no slash commands. `help dev` lists the words.
 | `dev fire next` | Runs the next pending job now, whenever it was due |
 | `dev seed <n>` | Posts n sample messages (up to 20), tagged as test data |
 | `dev clean` | Deletes the tagged messages in this channel |
+| `dev clock` | Shows the bot's clock, and how far ahead of the real time it is |
+| `dev clock <time>` | Dev database only. Moves the clock ahead to the next time it reads that (`5:59am`, `20:00`, `noon`) |
+| `dev clock +<duration>` | Dev database only. Moves it ahead by that much (`+2h`, `+15m`; up to 24h a go) |
+| `dev clock reset` | Back to the real time |
+| `dev reset-db` | Dev database only. Asks, then wipes `data/dev.db` and starts it empty, with the clock back at the real time |
 
 | Setting | Normal | Dev default |
 |---|---|---|
@@ -598,6 +607,33 @@ no slash commands. `help dev` lists the words.
   output of `dev inspect` and `dev jobs`. `dev clean`
   looks through the last 200 messages of the channel and never removes one
   that is pinned or 📌-marked.
+- **The dev database.** `python main.py --dev` (with the service
+  stopped: it is the same bot, and only one copy may run) uses
+  `data/dev.db` instead of `data/assistant.db`, and `data/dev-backups/`
+  for its backups. Everything else is the same: the same Discord server
+  and channels, the same `.env`. It is created empty on its first start.
+  The bot's status reads "🧪 DEV DATABASE" for as long as it runs, the
+  hello in #inbox and the start card say so, and the dev panel has a
+  "🧪 **DEV DATABASE**" line. `dev reset-db` wipes it (Confirm / Cancel
+  first); cards already in Discord are left behind, so restart the bot
+  if anything looks stale.
+- **The dev clock** moves the bot's idea of the time, so a day of
+  reminders can be run in minutes. It only works on the dev database: on
+  the live one `dev clock <anything>` gets ⚠️ and the reason, and only
+  plain `dev clock` (show it) works.
+  - It only moves forward. `dev clock 6am` at 3pm is 6am tomorrow, by
+    way of midnight; `dev clock reset` is the one way back.
+  - It keeps ticking from where you put it, and stays there through
+    `dev off`, dev mode's expiry and a restart (the offset is in
+    `data/dev-clock.json`). Dev mode doesn't need to be on.
+  - When it moves, every scheduler job that came due on the way runs at
+    once, in due order, as if on time (`job.is_late` is false): a timer
+    ends, midnight's rollover runs, the backup runs. To test the
+    catching-up path, stop the bot, wait, and start it again.
+  - A time that could be morning or evening is refused with "6am or
+    6pm?": say which.
+  - Times Discord renders itself (a timer's "ends in…") go by the real
+    time and will look wrong after a move.
 - **Not built yet:** quiet hours, the sweep and the summary. `dev quiet` is
   stored and shown and changes nothing so far; `dev run sweep` and `dev run
   summary` fail with "not built" on the #bot-log card.
@@ -610,6 +646,31 @@ with `await devmode.debug(title, lines)`; it does nothing unless verbose is
 on. A maintenance routine becomes runnable with `dev run <name>` by calling
 `devmode.register_task(name, function)` (names are listed in `TASK_NAMES`).
 The words, panel and tools are in `tasks/dev/`.
+
+**Time in code.** Never call `datetime.now()` or `time.time()` for
+anything time-based: ask `scheduler.utc_now()` / `clock.now()` (a UTC
+moment) or `config.now_nz()`, which follow the dev clock.
+`clock.real_now()` is only for records of what really happened. Which day
+it is comes from `core/day.py`: `day.today()`, `day.day_of(moment)`,
+`day.at(day, time)` for "8pm today" as a moment, `day.end_of(day)` for
+midnight. Work for the end of a day goes in the task's
+`async def new_day(self, ended, started)`: it is called once per rollover,
+and `started - ended` is more than a day if the bot was off over a
+boundary. A time the user typed goes through `timeinput.parse_time`
+(catch `AmbiguousTime` and offer its two `options`), a time something was
+done at through `timeinput.actual_moment`, and every time shown through
+`timeinput.format_time` or `format_moment`. In tests, pass `now` in where
+a function takes it, or use the `dev_clock` fixture to move the clock.
+
+**The occurrence log in code.** `core/occurrences.py` holds what is
+expected on a day. Make today's with `db_ensure(conn, user_id, task,
+item_id, day, seq, planned_time, due_at)`; it returns the existing one
+untouched if there is one, so it is safe at every start. Change one with
+`db_done`, `db_skip`, `db_miss`, `db_reopen`, `db_move` or `db_change`,
+giving where the change came from (`BUTTON`, `FORM`, `MESSAGE`,
+`AUTOMATIC`). Pass the same `change_id` (`new_change_id()`) to changes
+that belong together, inside one `database.run`, and
+`db_last_change` / `db_revert` will treat them as one.
 
 ## Lab commands
 
@@ -740,7 +801,8 @@ Polls, Manage Messages, Pin Messages, Manage Webhooks.
 ## Day-to-day workflow
 
 1. Stop the service (Terminal as Admin): `nssm stop assistant-bot`
-2. Make changes and test: `python main.py`
+2. Make changes and test: `python main.py`, or `python main.py --dev` to
+   test on the dev database (see Dev mode) and leave the real one alone
 3. Stop the test run: `Ctrl + C`
 4. Review: `git status` then `git diff`
 5. Commit and push:
@@ -801,7 +863,8 @@ The tests in `tests/` cover the decision logic: the word router, duration
 parsing, Pomodoro phases and pause arithmetic, which reactions count and
 what to apply or undo, the debounce timer, protection, archive and delete
 rules and records, permissions, the registry and `help`, lab arguments, dev
-mode, and the scheduler (including catch-up and the nightly backup). They
+mode, the scheduler (including catch-up and the nightly backup), the
+clock, the day boundary, typed times and the occurrence log. They
 never start the bot or talk to Discord or Claude, they use made-up settings
 instead of `.env`, and anything that needs a database gets a temporary one,
 so they are safe to run while the bot is running.
@@ -813,7 +876,8 @@ so they are safe to run while the bot is running.
 - **New tests are plain pytest functions** with `assert`. The older
   `unittest` classes are left as they are; pytest runs both.
 - **Fixtures** are in `tests/conftest.py`: `make_db` / `db` (a temporary
-  database), `dev_off`, `owner` and `stranger`. Stand-ins for Discord
+  database), `dev_off`, `dev_clock` (a clock that may be moved, put back
+  afterwards), `owner` and `stranger`. Stand-ins for Discord
   objects are `types.SimpleNamespace`.
 - **Async code** is run with `asyncio.run(...)` inside the test, or from a
   `tests.helpers.DatabaseTestCase`. There is no pytest-asyncio.

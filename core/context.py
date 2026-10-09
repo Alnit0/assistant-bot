@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 import discord
 
 from core import database, lifecycle
-from core.config import CHANNELS, now_nz
+from core.config import CHANNELS, real_now_nz
 from core.discord_utils import COLOUR_INFO, log_error, log_simple, split_message
 from core.lifecycle import MessageClass
 from core.users import User
@@ -92,7 +92,7 @@ class Context:
 
     async def reply_card(self, title: str, fields: list[tuple[str, str]]):
         """Send a card with a title and short name/value fields. Returns the sent message."""
-        embed = discord.Embed(title=title, colour=COLOUR_INFO, timestamp=now_nz())
+        embed = discord.Embed(title=title, colour=COLOUR_INFO, timestamp=real_now_nz())
         for name, value in fields:
             embed.add_field(name=name, value=value, inline=True)
         self.replies.append(f"card: {title}")

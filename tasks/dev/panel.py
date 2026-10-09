@@ -4,13 +4,15 @@ import re
 
 import discord
 
-from core import channels, devmode, lifecycle
+from core import channels, clock, devmode, lifecycle
+from core.config import DB_PATH, DEV_DATABASE
 from core.database import log_received, log_result
 from core.discord_utils import log_error, log_simple, report_interaction_error, safe_reply
 from core.lifecycle import MessageClass
 from core.permissions import is_allowed
-from core.scheduler import utc_now
+from core.clock import real_now
 from core.users import get_user_by_discord_id
+from tasks.dev import clockwords
 
 log = logging.getLogger("assistant")
 
@@ -21,6 +23,8 @@ TASK = "dev"
 PERMISSION = "dev"
 TITLE = "🛠️ **Dev mode**"
 STATUS = "🛠️ Dev mode"
+# Shown on the panel and in the status for as long as the bot runs with --dev
+DEV_DATABASE_LABEL = "DEV DATABASE"
 EXTEND_SECONDS = 60 * 60
 
 _client: discord.Client | None = None
@@ -54,14 +58,18 @@ def render() -> str:
     """Each setting against its normal value, and when dev mode ends."""
     now, normal = devmode.settings, devmode.NORMAL
     ends = int(devmode.expires_at.timestamp())
+    database = [f"🧪 **{DEV_DATABASE_LABEL}** · `{DB_PATH.name}`"] if DEV_DATABASE else []
     return "\n".join(
         [
             f"{TITLE} · expires <t:{ends}:R> (<t:{ends}:t>)",
+            *database,
             f"Reaction debounce: **{_seconds(now.debounce_s)}** (normal: {_seconds(normal.debounce_s)})",
             f"Speed: **{now.speed:g}x** (normal: {normal.speed:g}x)",
             f"Verbose log: **{_on_off(now.verbose)}** (normal: {_on_off(normal.verbose)})",
             f"Quiet hours: **{_quiet(now.ignore_quiet_hours)}** (normal: {_quiet(normal.ignore_quiet_hours)})",
             f"Clean-up: **{_on_off(now.cleanup)}** (normal: {_on_off(normal.cleanup)})",
+            f"Clock: **{clockwords.describe(clock.now(), clock.offset())}**"
+            + ("" if DEV_DATABASE else " · fixed on the live database"),
             "-# `dev off` to finish · `help dev` lists the words",
         ]
     )
@@ -174,13 +182,25 @@ async def _post(channel_id: int) -> None:
         )
 
 
+def status_text(dev_mode: bool, dev_database: bool) -> str | None:
+    """What the bot's status reads: dev mode, the dev database, both or nothing."""
+    parts = ([STATUS] if dev_mode else []) + ([f"🧪 {DEV_DATABASE_LABEL}"] if dev_database else [])
+    return " · ".join(parts) or None
+
+
 async def _set_status(on: bool) -> None:
     if _client is None:
         return
+    text = status_text(on, DEV_DATABASE)
     try:
-        await _client.change_presence(activity=discord.CustomActivity(name=STATUS) if on else None)
+        await _client.change_presence(activity=discord.CustomActivity(name=text) if text else None)
     except Exception as error:
         log.warning("Could not change the bot's status: %s", error)
+
+
+async def show_status() -> None:
+    """Set the status to match how things are now (at startup)."""
+    await _set_status(devmode.enabled)
 
 
 async def _expire_later(seconds: float) -> None:
@@ -195,7 +215,7 @@ def _arm_expiry() -> None:
         _expiry.cancel()
     _expiry = None
     if devmode.enabled and devmode.expires_at is not None:
-        wait = max(0.0, (devmode.expires_at - utc_now()).total_seconds())
+        wait = max(0.0, (devmode.expires_at - real_now()).total_seconds())
         _expiry = asyncio.create_task(_expire_later(wait), name="dev mode expiry")
 
 

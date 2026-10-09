@@ -4,7 +4,7 @@ import asyncio
 import unittest
 from datetime import datetime, time, timedelta, timezone
 
-from core import backup, scheduler
+from core import backup, clock, scheduler
 from core.config import TIMEZONE
 from tests.helpers import DatabaseTestCase
 
@@ -179,6 +179,64 @@ class SchedulerDatabaseTest(DatabaseTestCase):
         self.assertEqual([job.id for job in await scheduler.pending_jobs("test", "ping")], [first])
         self.assertEqual(len(await scheduler.pending_jobs("test")), 2)
         self.assertNotIn(done, [job.id for job in await scheduler.pending_jobs("test")])
+
+
+class DevClockTest(DatabaseTestCase):
+    """The scheduler under a moved clock (core/clock.py)."""
+
+    def setUp(self):
+        super().setUp()
+        self.ran: list[scheduler.Job] = []
+        self._handlers = dict(scheduler._handlers)
+        clock.configure(shiftable=True)
+
+        async def handler(job):
+            self.ran.append(job)
+            # Each books the next, as a re-nudge or a repeating job does
+            if job.payload["n"] < 3:
+                await scheduler.add_job("test", "chain", job.due_at + timedelta(minutes=15), {"n": job.payload["n"] + 1})
+
+        scheduler.register_handler("test", "chain", handler)
+
+    def tearDown(self):
+        clock.configure(shiftable=False)
+        scheduler._handlers.clear()
+        scheduler._handlers.update(self._handlers)
+        super().tearDown()
+
+    async def test_the_schedulers_time_is_the_clocks(self):
+        clock.advance(timedelta(hours=6))
+        ahead = (scheduler.utc_now() - clock.real_now()).total_seconds()
+        self.assertAlmostEqual(ahead, 6 * 3600, delta=1)
+
+    async def test_jumping_ahead_runs_what_came_due_in_order_and_not_as_late(self):
+        start = scheduler.utc_now()
+        await scheduler.add_job("test", "chain", start + timedelta(hours=1), {"n": 1})
+        self.assertEqual(await scheduler.run_all_due(), 0)
+
+        clock.advance(timedelta(hours=3))
+        self.assertEqual(await scheduler.run_all_due(), 3, "each job booked by the one before ran in the same pass")
+
+        self.assertEqual([job.payload["n"] for job in self.ran], [1, 2, 3])
+        self.assertEqual(
+            [job.due_at for job in self.ran],
+            [start + timedelta(hours=1), start + timedelta(minutes=75), start + timedelta(minutes=90)],
+        )
+        for job in self.ran:
+            self.assertFalse(job.is_late, "time the clock jumped over is not lateness")
+            self.assertLess(job.late_by, 5)
+
+    async def test_a_job_overdue_before_the_jump_is_still_late(self):
+        start = scheduler.utc_now()
+        await scheduler.add_job("test", "chain", start - timedelta(minutes=10), {"n": 3})
+        clock.advance(timedelta(hours=3))
+        await scheduler.run_all_due()
+        self.assertTrue(self.ran[0].is_late)
+        self.assertAlmostEqual(self.ran[0].late_by, 600, delta=5)
+
+    async def test_jobs_nobody_handles_do_not_keep_the_pass_going(self):
+        await scheduler.add_job("absent", "thing", scheduler.utc_now() - timedelta(minutes=1))
+        self.assertEqual(await scheduler.run_all_due(), 0)
 
 
 class NightlyBackupTest(DatabaseTestCase):

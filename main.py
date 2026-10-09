@@ -7,14 +7,16 @@ import anthropic
 import discord
 from discord import app_commands
 
-from core import backup, devmode, instance_lock, interactions, lifecycle, live, scheduler, timing
+from core import backup, clock, day, devmode, instance_lock, interactions, lifecycle, live, scheduler, timing
 from core.config import (
     CLAUDE_MODEL,
     DB_PATH,
+    DEV_DATABASE,
     INBOX_CHANNEL_ID,
     MAX_HISTORY,
     TOKEN,
     now_nz,
+    real_now_nz,
 )
 from core.context import Context
 from core.database import log_received, log_result
@@ -59,6 +61,7 @@ INTERACTION_GRACE = 2.0
 session_stats = {"messages": 0, "cost": 0.0}
 
 scheduler.register_handler(backup.JOB_TASK, backup.JOB_KIND, backup.nightly_backup_job)
+scheduler.register_handler(day.JOB_TASK, day.JOB_KIND, day.rollover_job)
 # What `dev run <name>` can run (the sweep and summary register theirs when they exist)
 devmode.register_routine("backup", backup.run_nightly_backup)
 
@@ -173,19 +176,25 @@ async def on_ready():
         slash_status = await setup_slash_commands()
         await registry.startup(client)
         await backup.schedule_next_backup()
+        await day.schedule_next()
     # After the tasks are ready: jobs that came due while we were off run now
     scheduler.start()
 
     channel = client.get_channel(INBOX_CHANNEL_ID)
     if channel:
-        await channel.send("👋 Online and ready. Type `help` for commands.")
+        dev_database = " · 🧪 **DEV DATABASE**" if DEV_DATABASE else ""
+        await channel.send(f"👋 Online and ready. Type `help` for commands.{dev_database}")
     else:
         log.warning("Could not find the inbox channel. Check INBOX_CHANNEL_ID.")
 
-    embed = discord.Embed(title="🟢 Bot started", colour=COLOUR_INFO, timestamp=now_nz())
+    embed = discord.Embed(title="🟢 Bot started", colour=COLOUR_INFO, timestamp=real_now_nz())
     embed.add_field(name="Model", value=CLAUDE_MODEL, inline=True)
     embed.add_field(name="History limit", value=f"{MAX_HISTORY} messages", inline=True)
-    embed.add_field(name="Database", value=DB_PATH.name, inline=True)
+    embed.add_field(
+        name="Database", value=f"{DB_PATH.name} (DEV DATABASE)" if DEV_DATABASE else DB_PATH.name, inline=True
+    )
+    if clock.is_shifted():
+        embed.add_field(name="Clock", value=f"{now_nz():%a %d %b, %I:%M %p} (moved ahead)", inline=True)
     embed.add_field(name="Tasks", value=truncate(registry.summary()), inline=False)
     embed.add_field(name="Slash commands", value=truncate(slash_status), inline=False)
     if registry.problems():
@@ -354,7 +363,7 @@ async def on_message(message: discord.Message):
         session_stats["cost"] += cost
 
     # Log card for #bot-log
-    embed = discord.Embed(title="💬 Message handled", colour=COLOUR_OK, timestamp=now_nz())
+    embed = discord.Embed(title="💬 Message handled", colour=COLOUR_OK, timestamp=real_now_nz())
     embed.add_field(name="Input", value=truncate(text), inline=False)
     embed.add_field(name="Reply", value=truncate(reply) or "(the tool's own confirmation)", inline=False)
     embed.add_field(name="Model", value=CLAUDE_MODEL, inline=True)
@@ -449,6 +458,8 @@ async def on_app_command_completion(interaction: discord.Interaction, command):
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
     setup_logging()
+    if DEV_DATABASE:
+        log.info("Started with --dev: using the dev database %s", DB_PATH.name)
     # Before anything touches the database or Discord: only one copy may run
     instance_lock.acquire()
     registry.load()

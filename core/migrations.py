@@ -135,6 +135,53 @@ def _add_timing_to_message_log(conn: sqlite3.Connection) -> None:
     conn.execute("ALTER TABLE message_log ADD COLUMN timing TEXT")
 
 
+def _create_occurrences(conn: sqlite3.Connection) -> None:
+    # Things expected on a day and what became of them (see core/occurrences.py).
+    # Moments are UTC; day is the day by core/day.py; planned_time is NZ local
+    conn.execute(
+        """
+        CREATE TABLE occurrences (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            task TEXT NOT NULL,
+            item_id INTEGER NOT NULL,
+            day TEXT NOT NULL,
+            seq INTEGER NOT NULL DEFAULT 1,
+            planned_time TEXT,
+            due_at TEXT,
+            state TEXT NOT NULL,
+            actual_at TEXT,
+            automatic INTEGER NOT NULL DEFAULT 0,
+            reason TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            UNIQUE (task, item_id, day, seq)
+        )
+        """
+    )
+    conn.execute("CREATE INDEX occurrences_day ON occurrences (user_id, task, day)")
+    # Every change to one, with the values before and after as JSON. Changes made
+    # together share a change_id; a revert's note is the change_id it took back
+    conn.execute(
+        """
+        CREATE TABLE occurrence_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            occurrence_id INTEGER NOT NULL REFERENCES occurrences(id),
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            change_id TEXT NOT NULL,
+            at TEXT NOT NULL,
+            kind TEXT NOT NULL,
+            source TEXT NOT NULL,
+            before TEXT NOT NULL DEFAULT '{}',
+            after TEXT NOT NULL DEFAULT '{}',
+            note TEXT
+        )
+        """
+    )
+    conn.execute("CREATE INDEX occurrence_events_occurrence ON occurrence_events (occurrence_id)")
+    conn.execute("CREATE INDEX occurrence_events_change ON occurrence_events (change_id)")
+
+
 MIGRATIONS = [
     _create_message_log,
     _create_users,
@@ -143,6 +190,7 @@ MIGRATIONS = [
     _create_scheduled_jobs,
     _create_reaction_state,
     _add_timing_to_message_log,
+    _create_occurrences,
 ]
 
 

@@ -1,10 +1,11 @@
 # QA run sheet
 
-One pass through the 173 👤 Manual tests in `docs/TESTING.md` that are
-⬜ Untested (as of 2026-10-09). Blocks share setup and each one leaves things
+One pass through 182 of the 209 👤 Manual tests in `docs/TESTING.md` that are
+⬜ Untested (as of 2026-10-09); the 27 pills tests (group R) join as each
+stage is built. Blocks share setup and each one leaves things
 ready for the next, so run them in order.
 
-**Time:** about 3½ hours at the keyboard, plus two nights for the backup
+**Time:** about 3¾ hours at the keyboard, plus two nights for the backup
 tests (block 12).
 
 | Block | What | Dev mode | Tests | Minutes |
@@ -23,9 +24,10 @@ tests (block 12).
 | 12 | Overnight backups | off | 2 | 2 nights |
 | 13 | Tool calling (Claude runs things) | off, then on, then off | 32 | 53 |
 | 14 | Bugs and kept confirmations | off (two restarts) | 16 | 21 |
-| | **Total** | | **173** (F2 is split over blocks 4 and 7, counted in 7) | **about 3½ hours** |
+| 15 | Dev database and clock | `--dev`, on and off (three restarts) | 9 | 12 |
+| | **Total** | | **182** (F2 is split over blocks 4 and 7, counted in 7) | **about 3¾ hours** |
 
-Blocks 13 and 14 need nothing from the others: run them any time after
+Blocks 13, 14 and 15 need nothing from the others: run them any time after
 block 1, and before the overnight block if that suits.
 
 ## Before you start
@@ -378,6 +380,23 @@ a real post: close them as you go (steps 10 to 12) or afterwards.
 | 11 | Press **Re-open** on that post, then type `bugs`. Press **Won't fix** again | The post is open again (no longer archived) with the tag Open; the card has **Fixed** and **Won't fix** back and its foot reads "🟢 Open · <time>, <date>"; "🔄 B<n> re-opened" in the post; `bugs` lists it again | P28 |
 | 12 | Delete the forum's Fixed tag (Edit Channel, Tags). Restart the bot (`Ctrl + C`, `python main.py`). Look at the forum's tags, then press **Fixed** on step 4's post and **Re-open** on step 5's | The tag is back. Without Manage Channels: one error card in #bot-log, naming that permission and the missing tags. Both buttons from before the restart work: the first is closed as Fixed, tagged and archived, with Re-open on its card; the second is open again | P24, P22 |
 | 13 | Set `KEEP_CONFIRMATIONS=true` in `.env` (or remove the line) and restart. Reply `pin` to a message, and react 📦 to a message in #archive | "📌 Pinned" stays in the channel and your `pin` is still deleted; the ⚠️ reason for the 📦 stays too. Reply `unpin` afterwards, and press Fixed or Won't fix on step 1's post | M5 |
+
+## 15. Dev database and clock
+
+Stop the bot first (`Ctrl + C`). Steps 2 to 9 run on the dev database, so
+nothing here touches your real history. `dev verbose` on helps for step 8.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Start the bot normally (`python main.py`): `dev clock`, `dev clock +1h`, `dev reset-db`. Stop it again | The first shows the real time and says it can only be moved on the dev database; the other two get ⚠️, with the reason on the log card; nothing changes and no question is asked | J43 |
+| 2 | Start it with `python main.py --dev` | "👋 Online and ready… · 🧪 **DEV DATABASE**" in #inbox; the bot's status reads "🧪 DEV DATABASE"; the start card's Database field says `dev.db (DEV DATABASE)`; `stats` shows the dev database's own (empty at first) totals | J36 |
+| 3 | `dev on` | The panel has a "🧪 **DEV DATABASE** · `dev.db`" line and a "Clock: … (the real time)" line; the status reads "🛠️ Dev mode · 🧪 DEV DATABASE" | J37 |
+| 4 | `timer 30m`, then `dev clock +1h` | "🕰️ Clock: … (1h ahead)"; the timer finishes at once with its alert; the panel's Clock line shows 1h ahead; `dev clock` alone shows the same. Dismiss the alert | J38 |
+| 5 | `dev clock 6`, then `dev clock 6am` | The first gets ⚠️ ("6am or 6pm?" on the log card) and the clock stays; the second moves to the next 6:00 am, later than where it was | J39 |
+| 6 | `dev off`, then `Ctrl + C` and `python main.py --dev` again, then `dev clock` | The clock is still as far ahead as before, through both; the start card has a Clock field | J40 |
+| 7 | `dev clock reset` | "🕰️ Clock: … (the real time)" | J41 |
+| 8 | `dev jobs`, then `dev clock 11:59pm`, `dev clock +2m`, `dev jobs` | First: a `core/day_rollover` job due at the coming midnight. After the two moves: it has run (a 🛠️ job card in #bot-log if verbose is on) and the next one is booked for the midnight after | Q7 |
+| 9 | `timer 10m`, then `dev reset-db`; press **Cancel**; again, press **Confirm** | Cancel: nothing changes (`timers` still lists it). Confirm: "🧹 `dev.db` wiped…"; `timers` and `stats` are empty; `dev jobs` shows only the backup and the day rollover; the clock is the real time. Delete the orphaned timer message by hand, then `dev off` and stop the bot | J42 |
 
 ## When you finish
 

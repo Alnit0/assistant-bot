@@ -4,8 +4,8 @@ from datetime import datetime, timedelta, timezone
 
 import discord
 
-from core import confirmations, devmode, live, scheduler
-from core.config import POMO_AUTO_CONTINUE, TIMEZONE, now_nz
+from core import confirmations, day, devmode, live, scheduler
+from core.config import POMO_AUTO_CONTINUE, TIMEZONE
 from core.context import Context
 from core.discord_utils import report_interaction_error
 from core.errors import UserError
@@ -467,7 +467,7 @@ def render_stats(today: FocusTotals, week: FocusTotals) -> str:
 
 
 async def stats(ctx: Context) -> str:
-    today = now_nz().date()
+    today = day.today()
     # Midnight on Monday in NZ, as a moment
     since = datetime.combine(week_start(today), datetime.min.time(), tzinfo=TIMEZONE).astimezone(timezone.utc)
     log_rows = await store.focus_log(ctx.user.id, since)

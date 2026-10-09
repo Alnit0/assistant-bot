@@ -36,13 +36,15 @@ Last updated: 2026-10-09
 | F | Pins | 4 | 0 | 4 | 4 | 0 | 0 | 0 |
 | G | Timers | 21 | 8 | 13 | 13 | 8 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
-| J | Dev mode | 33 | 4 | 29 | 29 | 4 | 0 | 0 |
+| J | Dev mode | 43 | 6 | 37 | 37 | 6 | 0 | 0 |
 | K | Startup and housekeeping | 14 | 7 | 7 | 7 | 7 | 0 | 0 |
 | L | Keep | 12 | 4 | 8 | 8 | 4 | 0 | 0 |
 | M | Message lifecycle | 5 | 4 | 1 | 1 | 4 | 0 | 0 |
 | N | Tool calling | 52 | 24 | 28 | 28 | 24 | 0 | 0 |
 | P | Bugs | 29 | 14 | 15 | 15 | 14 | 0 | 0 |
-| | **Total** | **269** | **96** | **173** | **173** | **96** | **0** | **0** |
+| Q | Time, days and the occurrence log | 7 | 6 | 1 | 1 | 6 | 0 | 0 |
+| R | Pills | 27 | 0 | 27 | 27 | 0 | 0 | 0 |
+| | **Total** | **313** | **104** | **209** | **209** | **104** | **0** | **0** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -252,6 +254,16 @@ Any channel. Check the bot's status in the member list.
 | J31 | 🤖 Auto | The clean-up setting | On by default and whenever dev mode is off; `dev cleanup off` stops every automatic deletion | ✅ Pass | 2026-10-07 | `tests/test_devmode.py, test_lifecycle.py` |
 | J32 | 👤 Manual | Type `dev mode on`, then `dev mode off` | Same as `dev on` and `dev off` (J1, J3); Claude is not called | ⬜ Untested | | Failed 2026-10-07; fixed in code |
 | J33 | 👤 Manual | Type `dev status` while running a test copy from `.venv` | "🩺 Bot instances": "1 bot is running: PID …, started … (it holds the lock)", and a "Not counted" line for the `.venv` launcher. No ⚠️ line. `python -m core.instance_lock` in PowerShell prints the same | ⬜ Untested | | |
+| J34 | 🤖 Auto | The bot's clock | The real time unless moved; refuses to move on the live database; only forward (`reset` is the one way back); keeps ticking from where it is put; the offset survives a restart and is never picked up by the live bot; an unreadable one is ignored; time jumped over is counted | ✅ Pass | 2026-10-09 | `tests/test_clock.py` |
+| J35 | 🤖 Auto | `dev clock`, `dev reset-db` and their guards | A time is the next moment the clock reads it (past today's: tomorrow's); `+2h` adds; `reset` goes back; "6" is asked about, not guessed; on the live database moving the clock and wiping are refused with the reason and nothing changes, and only a file named as the dev database can be wiped; the status and panel say DEV DATABASE only with `--dev` | ✅ Pass | 2026-10-09 | `tests/test_dev_clock.py` |
+| J36 | 👤 Manual | Stop the bot; start it with `python main.py --dev` | "👋 Online and ready… · 🧪 **DEV DATABASE**" in #inbox; the bot's status reads "🧪 DEV DATABASE"; the start card's Database field says `dev.db (DEV DATABASE)`; `stats` shows the dev database's own (empty at first) totals | ⬜ Untested | | |
+| J37 | 👤 Manual | With `--dev`: `dev on` | The panel has a "🧪 **DEV DATABASE** · `dev.db`" line and a "Clock: … (the real time)" line; the status reads "🛠️ Dev mode · 🧪 DEV DATABASE" | ⬜ Untested | | |
+| J38 | 👤 Manual | With `--dev`: `timer 30m`, then `dev clock +1h` | "🕰️ Clock: … (1h ahead)"; the timer finishes at once with its alert; the panel's Clock line shows 1h ahead; `dev clock` alone shows the same | ⬜ Untested | | |
+| J39 | 👤 Manual | With `--dev`: `dev clock 6`, then `dev clock 6am` | The first gets ⚠️ ("6am or 6pm?" on the log card) and the clock stays; the second moves to the next 6:00 am, later than where it was | ⬜ Untested | | |
+| J40 | 👤 Manual | With `--dev` and the clock moved: `dev off`, then restart with `python main.py --dev`, then `dev clock` | The clock is still as far ahead as before, through both; the start card has a Clock field | ⬜ Untested | | |
+| J41 | 👤 Manual | With `--dev`: `dev clock reset` | "🕰️ Clock: … (the real time)" | ⬜ Untested | | |
+| J42 | 👤 Manual | With `--dev`: `timer 10m`, then `dev reset-db`; press **Cancel**; again, press **Confirm** | Cancel: nothing changes (`timers` still lists it). Confirm: "🧹 `dev.db` wiped…"; `timers` and `stats` are empty; `dev jobs` shows only the backup and the day rollover; the clock is the real time | ⬜ Untested | | |
+| J43 | 👤 Manual | Without `--dev` (the live database): `dev clock`, `dev clock +1h`, `dev reset-db` | The first shows the real time and says it can only be moved on the dev database; the other two get ⚠️, with the reason on the log card; nothing changes and no question is asked | ⬜ Untested | | |
 
 ## K. Startup and housekeeping
 
@@ -406,3 +418,55 @@ post in #bugs.
 | P27 | 🤖 Auto | Closing, re-opening and history | Fixed / Won't fix: the press is answered first, the card gets Re-open, the tag is set and the post archived last. Re-open: unarchived first, the two buttons and the Open tag back. Each is added to the bug's history (export and command line). An old post's stale buttons are put right when pressed; fixed ids, no expiry, both views registered before connecting; someone else changes nothing | ✅ Pass | 2026-10-09 | `tests/test_bugs.py` |
 | P28 | 👤 Manual | Press **Re-open** on a closed post, then type `bugs` | The post is open again (no longer archived) with the tag Open; the card has **Fixed** and **Won't fix** back and its foot reads "🟢 Open · <time>, <date>"; "🔄 B<n> re-opened" in the post; `bugs` lists it again | ⬜ Untested | | |
 | P29 | 👤 Manual | Write two notes in an open bug's post, watching the opening card | The card's foot goes from "📝 No notes yet" to "📝 1 note", then "📝 2 notes", edited in place (no new message from the bot) | ⬜ Untested | | |
+
+## Q. Time, days and the occurrence log
+
+Core foundations (pills stage 1). Nothing here has words of its own: the
+manual test uses the dev clock on the dev database (`python main.py --dev`).
+
+| ID | Type | Test | Expected result | Status | Date | Notes |
+|---|---|---|---|---|---|---|
+| Q1 | 🤖 Auto | Times you type | `8pm`, `8 pm`, `8:30am`, `8.30 am`, `20:00`, `20.00`, `08:30`, `2030`, noon and midnight are read; `8`, `8:30`, `830` and `12` raise the question ("8am or 8pm?") with both readings; nonsense is refused with examples; every time is shown as `8:04 am` | ✅ Pass | 2026-10-09 | `tests/test_timeinput.py` |
+| Q2 | 🤖 Auto | A time something was done at | Must be today, not in the future and not before the previous one, each refused with a short reason; a morning-or-evening time is settled when only one reading passes, still asked about when both do | ✅ Pass | 2026-10-09 | `tests/test_timeinput.py` |
+| Q3 | 🤖 Auto | The day boundary | The day changes at midnight NZ whatever the UTC date; a local time on a day is a UTC moment; days are 23 and 25 hours long when the clocks change; "today" follows the bot's clock | ✅ Pass | 2026-10-09 | `tests/test_day.py` |
+| Q4 | 🤖 Auto | The day rollover job | Exactly one is booked, for the end of today; listeners are told the day that ended and the day it is now, once, even after several days away; one failing is reported and the rest are still told; the next is always booked; a task that overrides `new_day` is a listener | ✅ Pass | 2026-10-09 | `tests/test_day.py` |
+| Q5 | 🤖 Auto | The occurrence log | An occurrence starts pending with its plan and is never made twice or reset; done, skipped (by you or by the bot with a reason), missed, reopened and moved each record the values before and after; a change that changes nothing leaves no trace; changes made together are one change; taking the last one back restores everything it touched, is itself recorded, and is refused if anything changed again since; what is left pending from earlier days can be found; an item's history can be deleted for good | ✅ Pass | 2026-10-09 | `tests/test_occurrences.py` |
+| Q6 | 🤖 Auto | The scheduler under a moved clock | Its time is the bot's clock; a jump runs everything that came due, each job booked by the one before included, in due order and not flagged late; a job already overdue before the jump is still late; jobs nobody handles don't keep the pass going | ✅ Pass | 2026-10-09 | `tests/test_scheduler.py` |
+| Q7 | 👤 Manual | With `--dev`: `dev jobs`, then `dev clock 11:59pm`, `dev clock +2m`, `dev jobs` | First: a `core/day_rollover` job due at the coming midnight. After the two moves: it has run (a 🛠️ job card in #bot-log if verbose is on) and the next one is booked for the midnight after | ⬜ Untested | | |
+
+## R. Pills
+
+The acceptance tests of the pills task, by the stage that builds each one
+(see Notes). Run them on the dev database with the dev clock. A row joins
+`docs/QA-RUN.md` when its stage is built; the 🤖 rows for each stage's logic
+are added with it.
+
+| ID | Type | Test | Expected result | Status | Date | Notes |
+|---|---|---|---|---|---|---|
+| R1 | 👤 Manual | Let the clock reach 6:00 am | The day's checklist appears in the hub without a notification, pills with no time listed first | ⬜ Untested | | Stage 3: not built yet |
+| R2 | 👤 Manual | Choose a pill with no time from the checklist's dropdown | It shows ✅ and the time; the same message is edited, no new one | ⬜ Untested | | Stage 3: not built yet |
+| R3 | 👤 Manual | Type that you took a pill, in plain words | The same result as using the dropdown | ⬜ Untested | | Stage 3: not built yet |
+| R4 | 👤 Manual | Leave a pill with no time untaken until 8:00 pm | One reminder covering all of them, with the dropdown | ⬜ Untested | | Stage 3: not built yet |
+| R5 | 👤 Manual | Let a pill with a fixed time come due | A prompt in the hub; the phone notification gives only a neutral label and the time, never the pill's name | ⬜ Untested | | Stage 4: not built yet |
+| R6 | 👤 Manual | Press Taken on a prompt | The prompt goes; the checklist shows ✅ and the time | ⬜ Untested | | Stage 4: not built yet |
+| R7 | 👤 Manual | Press Skip on a prompt | The prompt goes; the checklist shows ⏭️ | ⬜ Untested | | Stage 4: not built yet |
+| R8 | 👤 Manual | Press Snooze on a prompt | The prompt stays and says until when; a fresh one arrives 15 minutes later | ⬜ Untested | | Stage 4: not built yet |
+| R9 | 👤 Manual | Ignore a prompt completely | Three more nudges, then the prompt goes and the checklist shows ❌ missed | ⬜ Untested | | Stage 4: not built yet |
+| R10 | 👤 Manual | Pill with a minimum gap of 3h: take dose 1 at 8:12 am | Dose 2 is due at 11:12 am and the checklist shows that time | ⬜ Untested | | Stage 5: not built yet |
+| R11 | 👤 Manual | Then take dose 2 late, at 11:40 am | Dose 3 moves to 2:40 pm; the pill's configured plan is unchanged | ⬜ Untested | | Stage 5: not built yet |
+| R12 | 👤 Manual | Take a dose only 2h after the one before | A question saying how long it has been and the minimum, with Log it / Cancel | ⬜ Untested | | Stage 5: not built yet |
+| R13 | 👤 Manual | Look at a pending gap dose with plenty of day left | No take-by hint | ⬜ Untested | | Stage 5: not built yet |
+| R14 | 👤 Manual | Look at the same dose within 2 hours of its take-by time | A ⚠️ take-by hint on its checklist line and its prompt | ⬜ Untested | | Stage 5: not built yet |
+| R15 | 👤 Manual | Three doses, 2h apart: take dose 2 at 11:50 pm | Dose 3 is skipped by the bot straight away, with the reason; the streak is not broken | ⬜ Untested | | Stage 5: not built yet |
+| R16 | 👤 Manual | Then correct dose 2 to 9:00 pm | Dose 3 is pending again, due 11:00 pm | ⬜ Untested | | Stage 5: not built yet |
+| R17 | 👤 Manual | Add a pill “at 20:00” | The preview and the saved pill show `8:00 pm` | ⬜ Untested | | Stage 2: not built yet |
+| R18 | 👤 Manual | Add a pill “at 8” | Asked whether 8am or 8pm; nothing saved until answered | ⬜ Untested | | Stage 2: not built yet |
+| R19 | 👤 Manual | Add a pill that is taken indefinitely | No dates are asked for or shown | ⬜ Untested | | Stage 2: not built yet |
+| R20 | 👤 Manual | Use Taken at… with a time later than now | Refused with a short reason; nothing changes | ⬜ Untested | | Stage 4: not built yet |
+| R21 | 👤 Manual | Say you didn't actually take a pill marked taken | It is pending again and the reply says what changed | ⬜ Untested | | Stage 5: not built yet |
+| R22 | 👤 Manual | Say you took a dose at 9, not 10 | The time is corrected and later doses are worked out again | ⬜ Untested | | Stage 5: not built yet |
+| R23 | 👤 Manual | Pause a pill | It moves to the paused section of the list (and of the checklist, from stage 3), is not prompted for, and its streak is unaffected | ⬜ Untested | | Stage 2: not built yet |
+| R24 | 👤 Manual | Remove a pill | Asked to confirm; then gone from every list, with its history kept | ⬜ Untested | | Stage 2: not built yet |
+| R25 | 👤 Manual | Reach the last day of a pill with an end date | It still appears that day and is listed as ended the day after | ⬜ Untested | | Stage 6: not built yet |
+| R26 | 👤 Manual | Let midnight pass with a dose untouched | It shows ❌ missed; a fresh checklist arrives the next morning | ⬜ Untested | | Stage 6: not built yet |
+| R27 | 👤 Manual | Restart the bot in the middle of a day | The checklist, any open prompts and today's due times are as they were | ⬜ Untested | | Stage 6: not built yet |

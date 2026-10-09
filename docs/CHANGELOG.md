@@ -6,6 +6,19 @@ backfilled from the git log.
 
 ## 2026-10-09
 
+- **A dev database and a clock you can move.** `python main.py --dev`
+  runs the bot on `data/dev.db`, with "DEV DATABASE" in its status, its
+  hello and the dev panel. There, `dev clock 5:59am`, `dev clock +2h` and
+  `dev clock reset` move the bot's time (forward only; reset goes back)
+  and everything that came due on the way runs in order. `dev reset-db`
+  wipes it after asking. On the live database both are refused with the
+  reason, so real history is never touched.
+- **Foundations for pills and reminders** (nothing new to type yet): one
+  midnight day boundary for every task, one reader for typed times that
+  asks "8am or 8pm?" instead of guessing and always shows `8:04 am`, and
+  a log of what is expected each day with every change kept.
+- **The scheduler runs chained jobs in one pass**, so a job booked by
+  another and already due no longer waits up to 15 seconds.
 - **Specs are private and backed up.** `docs/specs/` stays out of git, so
   the nightly backup now zips it beside the database copy
   (`specs-*.zip`, newest 7 kept) and names both on the log card.

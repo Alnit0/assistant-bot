@@ -8,7 +8,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from core.config import DATA_DIR, now_nz
+from core.config import DATA_DIR, real_now_nz
 
 log = logging.getLogger("assistant")
 
@@ -83,7 +83,7 @@ def acquire(path: Path = LOCK_PATH) -> None:
     # Ours. Note who we are, for the message a refused copy shows
     os.lseek(fd, 0, os.SEEK_SET)
     os.ftruncate(fd, 0)
-    os.write(fd, f"PID {os.getpid()}, started {now_nz():%Y-%m-%d %H:%M:%S}".encode("utf-8"))
+    os.write(fd, f"PID {os.getpid()}, started {real_now_nz():%Y-%m-%d %H:%M:%S}".encode("utf-8"))
     _lock_fd = fd
 
 

@@ -254,7 +254,16 @@ only, any channel, no slash. It is off after every restart.
 | `dev fire next` | Run the next pending job now |
 | `dev seed 5` | Post 5 sample messages, tagged as test data |
 | `dev clean` | Delete the test data and dev tool output in this channel |
+| `dev clock` | Show the bot's clock |
+| `dev clock 5:59am` | **Dev database only.** Move the clock ahead to the next 5:59 am; everything due on the way runs in order |
+| `dev clock +2h` | **Dev database only.** Move it ahead by a duration |
+| `dev clock reset` | Back to the real time (the only way back) |
+| `dev reset-db` | **Dev database only.** Wipe `dev.db` after asking; the clock goes back too |
 
+- **Dev database:** stop the service, then `python main.py --dev`. Same
+  bot and channels, but `data/dev.db`; the status, the hello and the panel
+  say **DEV DATABASE**. The clock stays where you put it through `dev off`
+  and restarts
 - Any setting word switches dev mode on first if it is off
 - The pinned panel has **+1 hour**, **Reset** and **Disable** buttons
 - The bot's status shows **🛠️ Dev mode** while it is on

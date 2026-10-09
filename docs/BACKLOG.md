@@ -49,6 +49,18 @@ gained time"):
 
 ## Left for later
 
+- **`python -m tasks.bugs.cli` always reads the live database.** It has
+  no `--dev`, so a bug reported while testing on the dev database can't
+  be read by Claude Code's `bug` skill (found 2026-10-09, stage 1 of
+  pills).
+- **Timer cards under a moved dev clock** show Discord's own countdown
+  ("ends in…"), which goes by the real time: after `dev clock +2h` a
+  running timer's card is wrong until it finishes. The timer itself ends
+  on the bot's clock. Dev database only.
+- **`dev reset-db` leaves cards behind in Discord** (timers, boards,
+  panels) whose records are gone; pressing their buttons fails politely.
+  A restart clears what is held in memory.
+
 - **"Alex" and "Auckland, New Zealand" are still hard-coded** in Claude's
   system prompt (`core/llm.py`). They belong with the user record (name,
   time zone) once there is more than one user.
