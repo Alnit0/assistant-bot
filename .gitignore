@@ -17,3 +17,6 @@ logs/
 
 # The bug export: it holds Discord messages (`bugs export`)
 docs/BUGS.md
+
+#Spec sheets
+docs/specs/
