@@ -45,7 +45,8 @@ account`:
 
 - Never start `main.py` while the user's own copy or the service is
   running, and never leave a bot process behind. Check with
-  `Get-CimInstance Win32_Process -Filter "Name like 'python%'"` (one bot
-  shows as two `python.exe` processes).
+  `python -m core.instance_lock`, which asks the lock and says how many
+  bots are running (a raw process list shows one bot as two `python.exe`
+  lines: the `.venv` launcher and its child).
 - Manual tests are the user's to run; don't mark one passed from reading
   the code.

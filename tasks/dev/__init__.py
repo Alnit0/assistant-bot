@@ -230,6 +230,13 @@ class DevTask(Task):
                 "<duration>",
                 Param("duration", "How long from now, e.g. 30m or 2h."),
             ),
+            word(
+                "dev status",
+                "say how many copies of the bot are running: the one holding the lock, and any other "
+                "process running it (the .venv launcher is not counted)",
+                tools.status,
+                ["dev status"],
+            ),
             word("dev jobs", "list the scheduler's pending jobs", tools.jobs, ["dev jobs"]),
             setting(
                 "dev run",

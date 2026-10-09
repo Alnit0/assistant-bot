@@ -764,7 +764,19 @@ every few seconds when a test copy is already running:
 nssm set assistant-bot AppExit 3 Exit
 ```
 
-To see what is running:
+To see what is running, ask the lock: it is the source of truth, because
+only one process can hold it and the system lets go of it the moment that
+process ends.
+
+```powershell
+python -m core.instance_lock
+```
+
+It prints "1 bot is running: PID …, started …" or "No bot is running",
+and flags any other process running `main.py` without the lock. It doesn't
+start the bot. `dev status` in Discord says the same.
+
+By hand:
 
 ```powershell
 Get-CimInstance Win32_Process -Filter "Name like 'python%'" |
@@ -772,7 +784,9 @@ Get-CimInstance Win32_Process -Filter "Name like 'python%'" |
 ```
 
 One bot shows as **two** `python.exe` lines with the same start time: the
-`.venv` launcher and the real Python it starts. That is one copy, not two.
+`.venv` launcher and the real Python it starts. One line's ParentProcessId
+is the other's ProcessId: that is one copy, not two, and the child is the
+one whose PID is in `data/bot.lock`.
 
 ## Tests
 

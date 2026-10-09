@@ -1,6 +1,6 @@
 # QA run sheet
 
-One pass through the 172 👤 Manual tests in `docs/TESTING.md` that are
+One pass through the 173 👤 Manual tests in `docs/TESTING.md` that are
 ⬜ Untested (as of 2026-10-09). Blocks share setup and each one leaves things
 ready for the next, so run them in order.
 
@@ -13,7 +13,7 @@ tests (block 12).
 | 2 | Builtin words and chat | off | 12 | 9 |
 | 3 | Reactions at the real 30 seconds | off | 6 | 5 |
 | 4 | Pins | off | 4 | 5 |
-| 5 | Dev mode switch and panel | on and off | 13 | 11 |
+| 5 | Dev mode switch and panel | on and off | 14 | 12 |
 | 6 | Archive, delete, keep and protection | on, debounce 2s | 28 | 27 |
 | 7 | Timers and dev tools | on, speed 1x then 60x | 16 | 16 |
 | 8 | Pomodoro | on, speed 60x then 1x | 14 | 13 |
@@ -23,7 +23,7 @@ tests (block 12).
 | 12 | Overnight backups | off | 2 | 2 nights |
 | 13 | Tool calling (Claude runs things) | off, then on, then off | 32 | 53 |
 | 14 | Bugs and kept confirmations | off (two restarts) | 16 | 21 |
-| | **Total** | | **172** (F2 is split over blocks 4 and 7, counted in 7) | **about 3½ hours** |
+| | **Total** | | **173** (F2 is split over blocks 4 and 7, counted in 7) | **about 3½ hours** |
 
 Blocks 13 and 14 need nothing from the others: run them any time after
 block 1, and before the overnight block if that suits.
@@ -132,6 +132,7 @@ the member list.
 | 11 | `dev cleanup off`, then `dev debounce 3` | Dev mode switches on; panel shows clean-up off; both of your words and their confirmations stay on screen | J28 (first half) |
 | 12 | `dev cleanup on`, then `dev off`, then `dev off` again | Words are tidied away again as normal. The second `dev off`: "🛠️ Dev mode is already off." for 5 seconds, your word deleted, no ⚠️. Delete what step 11 left behind by hand | J28 (second half), J30 |
 | 13 | `dev mode on`, then `dev mode off` | Same as `dev on` and `dev off`: the panel is posted and pinned, then unpinned and deleted, with the status and log cards as in steps 2 and 9. No "Message handled" card: Claude is not called | J32 |
+| 14 | `dev status`, then `python -m core.instance_lock` in PowerShell | "🩺 Bot instances": "1 bot is running: PID …, started … (it holds the lock)", and a "Not counted" line for the `.venv` launcher. No ⚠️ line. `python -m core.instance_lock` in PowerShell prints the same | J33 |
 
 ## 6. Archive, delete, keep and protection
 
@@ -381,6 +382,6 @@ a real post: close them as you go (steps 10 to 12) or afterwards.
 ## When you finish
 
 - Stop the test copy (`Ctrl + C`) and check nothing is left running:
-  `Get-CimInstance Win32_Process -Filter "Name like 'python%'"`
+  `python -m core.instance_lock` ("No bot is running")
 - Start the service (Terminal as Admin): `nssm start assistant-bot`
 - Report the results to Claude Code so `docs/TESTING.md` gets updated.

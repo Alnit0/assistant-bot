@@ -113,10 +113,29 @@ nssm start assistant-bot
 ## Checking for duplicate bot copies
 
 ```powershell
-Get-CimInstance Win32_Process -Filter "name='python.exe'" | Select-Object ProcessId, CommandLine
+python -m core.instance_lock      # how many bots are running (doesn't start one)
+```
+
+- Says "1 bot is running: PID …" or "No bot is running", service included
+- It asks the lock (`data/bot.lock`), which only one bot can hold, so it
+  is right even when the process list looks like two
+- In Discord: `dev status` says the same
+
+**Checking by hand**
+
+```powershell
+Get-CimInstance Win32_Process -Filter "Name like 'python%'" |
+  Select-Object ProcessId, ParentProcessId, CommandLine
 Stop-Process -Id <ProcessId>      # stop a specific one
 ```
 
+- **One bot is two lines.** Started from `.venv`, `python.exe main.py`
+  shows twice: the launcher, and the real Python it starts
+- **Use ParentProcessId to tell:** if one line's ParentProcessId is the
+  other line's ProcessId, they are the same bot. The child is the real one
+  (its PID is the one in `data\bot.lock`)
+- **Two bots** would be two lines whose ParentProcessId is *not* another
+  `main.py` line. The lock stops that: the second copy exits by itself
 - **Nothing listed:** no bot is running (service included)
 
 ---
@@ -229,6 +248,7 @@ only, any channel, no slash. It is off after every restart.
 | `dev cleanup off` / `on` | Stop / resume all automatic deletion (commands, confirmations, alerts) |
 | `dev expire 30m` | Switch itself off after this long |
 | reply `dev inspect` | What the bot knows about that message, including its lifecycle class |
+| `dev status` | How many bots are running: the one holding the lock, and any stray (the `.venv` launcher isn't counted) |
 | `dev jobs` | Pending scheduler jobs |
 | `dev run backup` | Run a maintenance routine now (`sweep` and `summary` aren't built yet) |
 | `dev fire next` | Run the next pending job now |

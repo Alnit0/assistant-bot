@@ -1,8 +1,9 @@
+import asyncio
 import sqlite3
 
 import discord
 
-from core import devmode, lifecycle, reactions, scheduler
+from core import devmode, instance_lock, lifecycle, reactions, scheduler
 from core.context import Context
 from core.errors import UserError
 from core.protection import is_kept, is_protected, protection
@@ -123,6 +124,16 @@ async def fire_next(ctx: Context) -> str:
         raise UserError(f"Job {job.id} ran or was cancelled before I could fire it.")
     await ctx.confirm(f"🔥 Fired job #{job.id}: {job.task}/{job.kind}")
     return f"fired job {job.id} ({job.task}/{job.kind}), which was due {job.due_at.isoformat(timespec='seconds')}"
+
+
+# ---------------------------------------------------------------------------
+# dev status
+# ---------------------------------------------------------------------------
+async def status(ctx: Context) -> str:
+    """How many bots are running: the lock's answer, checked against the processes."""
+    text = await asyncio.to_thread(instance_lock.status)
+    await ctx.reply(f"🩺 **Bot instances**\n{text}\n{TAG}")
+    return text
 
 
 # ---------------------------------------------------------------------------

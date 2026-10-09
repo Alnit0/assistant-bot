@@ -100,9 +100,10 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 - Only one copy of the bot may run at a time (`core/instance_lock.py`).
   Never start `main.py` while the user's own copy or the service is running
 - Prefer checks that import the code without starting the bot. Never leave
-  a bot process running; confirm with
-  `Get-CimInstance Win32_Process -Filter "Name like 'python%'"` (one bot
-  shows as two `python.exe` processes)
+  a bot process running; confirm with `python -m core.instance_lock`,
+  which asks the lock (the source of truth) and says how many bots are
+  running. Don't count `python.exe` lines: one bot is two of them (the
+  `.venv` launcher and its child, linked by ParentProcessId)
 - Routine test run: `python -m pytest -q`. Tests use a temporary database
   and made-up settings, never the real ones
 - At the end of every piece of work, follow the `end-of-task` skill: tests, docs,

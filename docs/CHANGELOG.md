@@ -6,6 +6,11 @@ backfilled from the git log.
 
 ## 2026-10-09
 
+- **One bot is counted as one.** `python -m core.instance_lock` (and
+  `dev status` in Discord) says how many bots are running by asking the
+  lock, and no longer takes the `.venv` launcher and the Python it starts
+  for two copies. The cheat sheet shows how to tell them apart by
+  ParentProcessId.
 - **A closed bug can be re-opened.** Pressing Fixed or Won't fix swaps
   both buttons on the post's opening card for one **Re-open** button, and
   the card's foot shows the status and when it changed ("✅ Fixed ·

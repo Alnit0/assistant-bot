@@ -14,7 +14,9 @@ Python). Report passed, failed and skipped counts, and any failure. Never
 suggest a commit over a failing run without saying so.
 
 If you started a bot process while testing, stop it and confirm nothing is
-left: `Get-CimInstance Win32_Process -Filter "Name like 'python%'"`.
+left: `python -m core.instance_lock` (it asks the lock, and doesn't count
+the `.venv` launcher as a second bot). A bot it reports that you didn't
+start is the user's own: leave it running and say so.
 
 ## 2. Docs
 

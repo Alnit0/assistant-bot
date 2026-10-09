@@ -36,13 +36,13 @@ Last updated: 2026-10-09
 | F | Pins | 4 | 0 | 4 | 4 | 0 | 0 | 0 |
 | G | Timers | 21 | 8 | 13 | 13 | 8 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
-| J | Dev mode | 32 | 4 | 28 | 28 | 4 | 0 | 0 |
-| K | Startup and housekeeping | 12 | 5 | 7 | 7 | 5 | 0 | 0 |
+| J | Dev mode | 33 | 4 | 29 | 29 | 4 | 0 | 0 |
+| K | Startup and housekeeping | 13 | 6 | 7 | 7 | 6 | 0 | 0 |
 | L | Keep | 12 | 4 | 8 | 8 | 4 | 0 | 0 |
 | M | Message lifecycle | 5 | 4 | 1 | 1 | 4 | 0 | 0 |
 | N | Tool calling | 52 | 24 | 28 | 28 | 24 | 0 | 0 |
 | P | Bugs | 29 | 14 | 15 | 15 | 14 | 0 | 0 |
-| | **Total** | **266** | **94** | **172** | **172** | **94** | **0** | **0** |
+| | **Total** | **268** | **95** | **173** | **173** | **95** | **0** | **0** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -251,6 +251,7 @@ Any channel. Check the bot's status in the member list.
 | J30 | 👤 Manual | `dev off` when dev mode is already off | "🛠️ Dev mode is already off." for 5 seconds; your word is deleted; no ⚠️ | ⬜ Untested | |  |
 | J31 | 🤖 Auto | The clean-up setting | On by default and whenever dev mode is off; `dev cleanup off` stops every automatic deletion | ✅ Pass | 2026-10-07 | `tests/test_devmode.py, test_lifecycle.py` |
 | J32 | 👤 Manual | Type `dev mode on`, then `dev mode off` | Same as `dev on` and `dev off` (J1, J3); Claude is not called | ⬜ Untested | | Failed 2026-10-07; fixed in code |
+| J33 | 👤 Manual | Type `dev status` while running a test copy from `.venv` | "🩺 Bot instances": "1 bot is running: PID …, started … (it holds the lock)", and a "Not counted" line for the `.venv` launcher. No ⚠️ line. `python -m core.instance_lock` in PowerShell prints the same | ⬜ Untested | | |
 
 ## K. Startup and housekeeping
 
@@ -268,6 +269,7 @@ Any channel. Check the bot's status in the member list.
 | K10 | 👤 Manual | Set `ASSISTANT_NAME=Marvin` in `.env`, restart, `buttons` and press **Wave** | "👋 Hello from Marvin!"; Claude also gives that name when asked | ⬜ Untested | | Needs a restart with the setting changed; skip otherwise |
 | K11 | 🤖 Auto | Which tasks are loaded | `ENABLED_TASKS` lists them (any case, spaces ignored); if it is empty the old `ENABLED_SKILLS` is read instead, so an `.env` from before the rename still works; the new name wins; neither set loads them all | ✅ Pass | 2026-10-09 | `tests/test_registry.py` |
 | K12 | 🤖 Auto | Start-up with a forum among the channels | Only text channels, threads and DMs are read for pins or history; forum, voice and category channels are skipped (the dev panel's sweep crashed on #bugs, 2026-10-09); a task that fails to start is reported and the rest still start | ✅ Pass | 2026-10-09 | `tests/test_channels.py` |
+| K13 | 🤖 Auto | How many bots are running | The lock decides: held means one bot (with its PID and start time), a file left by a stopped bot means none, and looking never keeps the lock or turns a start away. Among processes, the `.venv` launcher and its child are one bot; a copy without the lock is flagged; `dev status` reports it | ✅ Pass | 2026-10-09 | `tests/test_instance_lock.py` |
 
 ## L. Keep
 

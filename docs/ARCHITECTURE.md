@@ -28,7 +28,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 |---|---|
 | `config.py` | Paths, settings from `.env` and their validation, constants, the `CHANNELS` name-to-id map, `now_nz()` |
 | `logging_setup.py` | Terminal and rotating file logging |
-| `instance_lock.py` | Single-instance lock on `data/bot.lock`, taken first thing at startup |
+| `instance_lock.py` | Single-instance lock on `data/bot.lock`, taken first thing at startup, and the source of truth for what is running: `holder()` asks the lock, `instances()` counts bot processes without the `.venv` launcher, `status()` puts both into words (`python -m core.instance_lock`, `dev status`) |
 | `database.py` | `connect()`, the async `message_log` helpers (`log_received`, `log_result`, `recent_log` for looking further back), `run(func)` in a worker thread |
 | `migrations.py` | Numbered schema migrations, core and per task, applied at startup |
 | `backup.py` | Nightly backup (a scheduler job that books its successor) and pre-migration snapshots |
@@ -82,7 +82,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `timers/timers.py`, `sessions.py`, `board.py`, `common.py` | Timer messages, Pomodoro session cards, the pinned "Active timers" board and the live "Your timers" lists (both rewritten on every change, in the background through `core/live.py`), shared message helpers |
 | `dev/__init__.py` | Registers the `dev …` words; `dev mode on\|off` is the one Claude is always offered |
 | `dev/panel.py` | The pinned dev panel, its persistent buttons, the "🛠️ Dev mode" status |
-| `dev/tools.py` | `dev inspect`, `dev jobs`, `dev run`, `dev fire next`, `dev seed`, `dev clean` |
+| `dev/tools.py` | `dev inspect`, `dev status`, `dev jobs`, `dev run`, `dev fire next`, `dev seed`, `dev clean` |
 | `lab/__init__.py`, `common.py` | The `lab …` test bench; `common.py` has the `Run` adapters that let one `run_*` function serve a typed word and `/lab` |
 | `lab/buttons.py`, `react.py`, `status.py`, `charts.py`, `data.py`, `misc.py`, `channels.py`, `tour.py`, `state.py`, `ratelimits.py` | One Discord feature each: components, reaction timeline, pinned status, charts and their data, notifications / polls / formatting, cross-channel test, the guided tour, the lab's key/value table, rate-limit watching |
 
@@ -100,7 +100,7 @@ settings before `core` loads. One `test_*.py` per area: `router`,
 `pomodoro`, `timer_text`, `timing`, `timer_status`, `timer_freeze` (pause, resume and events against a
 database with the clock under test control), `devmode`, `dev_parsing`, `lab`, `lifecycle`,
 `permissions`, `scheduler`, `text`, `tools`, `pending`, `llm_tools` (the
-Claude loop against a scripted stand-in), `toolcalls`, `bugs`, `channels`
+Claude loop against a scripted stand-in), `toolcalls`, `bugs`, `instance_lock`, `channels`
 (channel types, the dev panel's start-up sweep, a task failing to start).
 
 ## Data flows
