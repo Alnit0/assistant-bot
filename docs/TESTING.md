@@ -42,9 +42,9 @@ Last updated: 2026-10-09
 | M | Message lifecycle | 5 | 4 | 1 | 1 | 4 | 0 | 0 |
 | N | Tool calling | 52 | 24 | 28 | 28 | 24 | 0 | 0 |
 | P | Bugs | 29 | 14 | 15 | 15 | 14 | 0 | 0 |
-| Q | Time, days and the occurrence log | 7 | 6 | 1 | 1 | 6 | 0 | 0 |
-| R | Pills | 27 | 0 | 27 | 27 | 0 | 0 | 0 |
-| | **Total** | **313** | **104** | **209** | **209** | **104** | **0** | **0** |
+| Q | Time, days, the occurrence log and cards | 9 | 8 | 1 | 1 | 8 | 0 | 0 |
+| R | Pills | 38 | 2 | 36 | 36 | 2 | 0 | 0 |
+| | **Total** | **326** | **108** | **218** | **218** | **108** | **0** | **0** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -419,9 +419,9 @@ post in #bugs.
 | P28 | 👤 Manual | Press **Re-open** on a closed post, then type `bugs` | The post is open again (no longer archived) with the tag Open; the card has **Fixed** and **Won't fix** back and its foot reads "🟢 Open · <time>, <date>"; "🔄 B<n> re-opened" in the post; `bugs` lists it again | ⬜ Untested | | |
 | P29 | 👤 Manual | Write two notes in an open bug's post, watching the opening card | The card's foot goes from "📝 No notes yet" to "📝 1 note", then "📝 2 notes", edited in place (no new message from the bot) | ⬜ Untested | | |
 
-## Q. Time, days and the occurrence log
+## Q. Time, days, the occurrence log and cards
 
-Core foundations (pills stage 1). Nothing here has words of its own: the
+Core foundations (pills stages 1 and 2). Nothing here has words of its own: the
 manual test uses the dev clock on the dev database (`python main.py --dev`).
 
 | ID | Type | Test | Expected result | Status | Date | Notes |
@@ -433,11 +433,13 @@ manual test uses the dev clock on the dev database (`python main.py --dev`).
 | Q5 | 🤖 Auto | The occurrence log | An occurrence starts pending with its plan and is never made twice or reset; done, skipped (by you or by the bot with a reason), missed, reopened and moved each record the values before and after; a change that changes nothing leaves no trace; changes made together are one change; taking the last one back restores everything it touched, is itself recorded, and is refused if anything changed again since; what is left pending from earlier days can be found; an item's history can be deleted for good | ✅ Pass | 2026-10-09 | `tests/test_occurrences.py` |
 | Q6 | 🤖 Auto | The scheduler under a moved clock | Its time is the bot's clock; a jump runs everything that came due, each job booked by the one before included, in due order and not flagged late; a job already overdue before the jump is still late; jobs nobody handles don't keep the pass going | ✅ Pass | 2026-10-09 | `tests/test_scheduler.py` |
 | Q7 | 👤 Manual | With `--dev`: `dev jobs`, then `dev clock 11:59pm`, `dev clock +2m`, `dev jobs` | First: a `core/day_rollover` job due at the coming midnight. After the two moves: it has run (a 🛠️ job card in #bot-log if verbose is on) and the next one is booked for the midnight after | ⬜ Untested | | |
+| Q8 | 🤖 Auto | Cards (`core/cards.py`) | A component's id carries its task, action and argument, and buttons and dropdowns can't be mistaken for each other; cards Discord would refuse are refused with the reason; a press is answered first, then logged, then handled; a problem the presser can fix is told to them alone and anything else reported; someone else can't press; a form is the first answer and its submission comes back with what was typed | ✅ Pass | 2026-10-09 | `tests/test_cards.py` |
+| Q9 | 🤖 Auto | Dates you type | today, tomorrow, "in 3 days", weekdays (always after today), "the 20th" (the next one, today included, skipping months without it), "20 Oct", "Oct 20", `20/10` day first, and ISO dates; nonsense refused with examples; a run of days shown as "10 to 16 Oct" | ✅ Pass | 2026-10-09 | `tests/test_timeinput.py` |
 
 ## R. Pills
 
-The acceptance tests of the pills task, by the stage that builds each one
-(see Notes). Run them on the dev database with the dev clock. A row joins
+R1 to R27 are the acceptance tests of the pills task, by the stage that builds
+each one (see Notes); the rows after them were added with each stage. Run them on the dev database with the dev clock. A row joins
 `docs/QA-RUN.md` when its stage is built; the 🤖 rows for each stage's logic
 are added with it.
 
@@ -459,14 +461,25 @@ are added with it.
 | R14 | 👤 Manual | Look at the same dose within 2 hours of its take-by time | A ⚠️ take-by hint on its checklist line and its prompt | ⬜ Untested | | Stage 5: not built yet |
 | R15 | 👤 Manual | Three doses, 2h apart: take dose 2 at 11:50 pm | Dose 3 is skipped by the bot straight away, with the reason; the streak is not broken | ⬜ Untested | | Stage 5: not built yet |
 | R16 | 👤 Manual | Then correct dose 2 to 9:00 pm | Dose 3 is pending again, due 11:00 pm | ⬜ Untested | | Stage 5: not built yet |
-| R17 | 👤 Manual | Add a pill “at 20:00” | The preview and the saved pill show `8:00 pm` | ⬜ Untested | | Stage 2: not built yet |
-| R18 | 👤 Manual | Add a pill “at 8” | Asked whether 8am or 8pm; nothing saved until answered | ⬜ Untested | | Stage 2: not built yet |
-| R19 | 👤 Manual | Add a pill that is taken indefinitely | No dates are asked for or shown | ⬜ Untested | | Stage 2: not built yet |
+| R17 | 👤 Manual | Add a pill “at 20:00” | The preview and the saved pill show `8:00 pm` | ⬜ Untested | | Stage 2 |
+| R18 | 👤 Manual | Add a pill “at 8” | Asked whether 8am or 8pm; nothing saved until answered | ⬜ Untested | | Stage 2 |
+| R19 | 👤 Manual | Add a pill that is taken indefinitely | No dates are asked for or shown | ⬜ Untested | | Stage 2 |
 | R20 | 👤 Manual | Use Taken at… with a time later than now | Refused with a short reason; nothing changes | ⬜ Untested | | Stage 4: not built yet |
 | R21 | 👤 Manual | Say you didn't actually take a pill marked taken | It is pending again and the reply says what changed | ⬜ Untested | | Stage 5: not built yet |
 | R22 | 👤 Manual | Say you took a dose at 9, not 10 | The time is corrected and later doses are worked out again | ⬜ Untested | | Stage 5: not built yet |
-| R23 | 👤 Manual | Pause a pill | It moves to the paused section of the list (and of the checklist, from stage 3), is not prompted for, and its streak is unaffected | ⬜ Untested | | Stage 2: not built yet |
-| R24 | 👤 Manual | Remove a pill | Asked to confirm; then gone from every list, with its history kept | ⬜ Untested | | Stage 2: not built yet |
+| R23 | 👤 Manual | Pause a pill | It moves to the ⏸️ Paused section of `pills` (and of the checklist, from stage 3) and is not prompted for | ⬜ Untested | | Stage 2 |
+| R24 | 👤 Manual | Remove a pill | Asked to confirm; then gone from every list, with its history kept | ⬜ Untested | | Stage 2 |
 | R25 | 👤 Manual | Reach the last day of a pill with an end date | It still appears that day and is listed as ended the day after | ⬜ Untested | | Stage 6: not built yet |
 | R26 | 👤 Manual | Let midnight pass with a dose untouched | It shows ❌ missed; a fresh checklist arrives the next morning | ⬜ Untested | | Stage 6: not built yet |
 | R27 | 👤 Manual | Restart the bot in the middle of a day | The checklist, any open prompts and today's due times are as they were | ⬜ Untested | | Stage 6: not built yet |
+| R28 | 👤 Manual | `pills` with no pills yet | "## 💊 Pills" and how to add one; no dropdown; your word is deleted | ⬜ Untested | | Stage 2 |
+| R29 | 👤 Manual | Say: `add course A, 3 times a day, at least 3 hours apart, with food, for 7 days starting tomorrow`; press **Save** | Preview "💊 **Course A** · 3× daily, ≥3h apart · *with food* · <tomorrow> to <6 days later> · first dose when ready" with Save and Edit, and no extra line from Claude. After Save the same message reads "✅ Saved · 🗓️ **Course A** … · starts <tomorrow>" with no buttons | ⬜ Untested | | Stage 2 |
+| R30 | 👤 Manual | Say `add night pill at 8pm`; press **Edit**; say `make it 9pm` | Edit adds a line saying to say what to change, buttons still there. After "make it 9pm" the old preview is gone and a new one shows `9:00 pm`; `pills` still doesn't list it | ⬜ Untested | | Stage 2 |
+| R31 | 👤 Manual | With `--dev`: say `add zinc`, don't save, `dev clock +31m` | The preview disappears; `pills` doesn't list Zinc | ⬜ Untested | | Stage 2 |
+| R32 | 👤 Manual | With a saved Evening pill: say `move the evening pill to 9pm`; press **Save** | "✏️ **Evening pill**" with "Now: … `8:00 pm`" and "New: … `9:00 pm`"; `pills` shows 8:00 pm until Save, then "✅ Updated · …" and 9:00 pm | ⬜ Untested | | Stage 2 |
+| R33 | 👤 Manual | `pills`, pick a pill in the dropdown, press **Pause**, **Resume**, **Back** | The same message each time: the pill with Edit, Pause, Remove, Back; then "⏸️ … · paused" with Resume; then as before; then the list again | ⬜ Untested | | Stage 2 |
+| R34 | 👤 Manual | Say `pause iron until the 20th`, then `pills`; then `resume iron` | "⏸️ **Iron** paused until 20 Oct." at once, with no question; Iron under ⏸️ Paused with "paused until 20 Oct"; then "▶️ **Iron** resumed." | ⬜ Untested | | Stage 2 |
+| R35 | 👤 Manual | Say `delete iron and its history`; press **Delete for good** | A question that says its history goes too and can't be undone; then "🗑️ Deleted **Iron** and its history."; gone from `pills` | ⬜ Untested | | Stage 2 |
+| R36 | 👤 Manual | Say `add magnesium`, restart the bot, then press **Save** on that preview | It is saved as if nothing had happened; `pills` lists it | ⬜ Untested | | Stage 2 |
+| R37 | 🤖 Auto | Building a plan from what was said | Untimed, fixed and interval pills and courses with inclusive dates, each in its one-line wording; unclear times asked about one at a time and a bare gap never taken for hours; twenty kinds of nonsense refused with a short reason; an edit changes only what it names, `none` takes a value away, and changing the kind of schedule drops what belonged to the old one; active, upcoming, paused (ending by itself) and ended worked out from the day; the list in its three groups; a pill found by id, name or part of one, asked about when two fit | ✅ Pass | 2026-10-09 | `tests/test_pills_rules.py` |
+| R38 | 🤖 Auto | Previews, the list and their buttons | Nothing is saved before Save, and Save can't be made to work while a time is unasked; a changed preview replaces the old one and books one lapse; an unsaved preview lapses (deleted, or marked while clean-up is off); an edit shows old and new and changes nothing until Save; pause and resume act at once and tolerate repeats; remove asks and keeps the history, delete for good takes the doses of that pill only; buttons for a pill that has gone or is someone else's do nothing; every button on every card has an action; a tool call from Claude ends the turn on the preview with no closing line | ✅ Pass | 2026-10-09 | `tests/test_pills_plans.py` |

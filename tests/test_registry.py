@@ -35,7 +35,7 @@ def names(entries, attribute="keywords"):
 def test_every_task_loads_without_problems():
     assert registry.problems() == []
     assert [task.name for task in registry.loaded_tasks()] == [
-        "builtin", "archive", "bugs", "dev", "keep", "lab", "timers"
+        "builtin", "archive", "bugs", "dev", "keep", "lab", "pills", "timers"
     ]
 
 
@@ -415,7 +415,7 @@ def ctx(user, channel_id=INBOX):
 def test_help_overview_groups_by_task(owner):
     text = builtin.build_overview(ctx(owner))
     assert text.startswith("**What I understand here**")
-    for heading in ("**Builtin**", "**Archive**", "**Bugs**", "**Dev**", "**Keep**", "**Lab**", "**Timers**"):
+    for heading in ("**Builtin**", "**Archive**", "**Bugs**", "**Dev**", "**Keep**", "**Lab**", "**Pills**", "**Timers**"):
         assert heading in text
     assert "• `ping`: check the bot is alive" in text
     assert text.endswith("Anything else goes to Claude. `help <task or word>` shows details.")

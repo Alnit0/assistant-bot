@@ -464,6 +464,32 @@ A short log of key decisions and why. Newest at the bottom.
   a correction is itself history, and "undo that" is `db_revert` of the
   last change id. A revert is refused if anything was changed again
   since, because putting old values back would lose the newer ones.
+- **Cards are a core helper, not a sixth exception:** pills needs buttons,
+  a dropdown and (from stage 4) a form, and so will reminders and the hub.
+  `core/cards.py` gives every task those from plain records, and does the
+  parts that are easy to get wrong once: answering in time, permission,
+  logging, errors, surviving a restart. Everything a press needs is in
+  the component's id, so nothing is held in memory.
+- **A pill's plan changes only through a saved preview:** adding and
+  editing write a draft and show it; only Save writes the plan. Drafts are
+  rows, not memory, so a preview's buttons work after a restart, and they
+  lapse after 30 minutes so an old one can't be saved by accident.
+- **Editing a preview is done by saying what to change:** the Edit button
+  asks, and the words go to Claude, which calls the tool again with the
+  draft's id. A form was the alternative; it would have needed its own
+  small language for schedules, which is what Claude is for.
+- **Claude passes times and dates as they were said:** `pill_add` gets
+  "8", not "8pm", and "tomorrow", not a date. Code reads them
+  (`core/timeinput.py`) and asks "8am or 8pm?" with buttons. That keeps
+  the never-guess rule out of the model's hands.
+- **Pause and resume act at once; remove asks:** a pause changes no plan
+  and is undone in a word. "Paused until the 20th" means it is taken
+  again on the 20th. A pause with a date ends by itself, and a course is
+  over the day after its last day, without any job: `rules.status_on`
+  works both out from the day.
+- **With dev mode on there are more tools with arguments than can be
+  strict (20):** the dev words go without first, by priority. It only
+  matters if `STRICT_TOOLS` is ever switched back on.
 - **`bugs` uses discord.py, in `posts.py` only:** forum posts, tags and
   persistent buttons have no core helper yet, and one user of them is not
   enough to design one. To be promoted to core when a second task needs a

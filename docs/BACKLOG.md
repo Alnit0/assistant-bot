@@ -49,6 +49,13 @@ gained time"):
 
 ## Left for later
 
+- **`tasks/timers/durations.py` is used by `dev` and `pills` as well.**
+  It belongs in core now that three tasks read durations (found
+  2026-10-09, stage 2 of pills). Its longest duration is 24 hours.
+- **The Edit buttons on a pill need Claude**, so they only lead anywhere
+  in a channel where plain words reach it (#inbox until stage 3 opens
+  the hub).
+- **More than 25 pills:** the list's dropdown shows the first 25 by name.
 - **`python -m tasks.bugs.cli` always reads the live database.** It has
   no `--dev`, so a bug reported while testing on the dev database can't
   be read by Claude Code's `bug` skill (found 2026-10-09, stage 1 of

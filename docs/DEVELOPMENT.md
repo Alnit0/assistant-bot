@@ -42,6 +42,7 @@ automatically in new terminals. Check the prompt starts with `(.venv)`.
   - `debounce.py`: waits for a quiet period, then handles events together
   - `devmode.py`: dev mode's state, and the values other code reads from it
   - `reactions.py`: what to apply or undo once reactions have settled
+  - `cards.py`: buttons, dropdowns and forms for tasks, from plain records
   - `protection.py`, `confirmations.py`: pinned and 📌-marked messages, and
     asking before acting on them
   - `pins.py`: pinning and unpinning a message for tasks
@@ -56,6 +57,7 @@ automatically in new terminals. Check the prompt starts with `(.venv)`.
     menu), with a Restore button on archived copies
   - `keep/`: the 📌 reaction, which keeps and pins a message
   - `lab/`: `lab …` words for trying out Discord features
+  - `pills/`: what you take and when (setting up so far)
   - `timers/`: short timers and Pomodoro sessions
   - `dev/`: the `dev …` words, the dev panel and the dev tools
 - `tests/`: unit tests (`python -m pytest`)
@@ -368,7 +370,38 @@ Things to know:
 - **A reaction that can't wait:** `instant=True` on a `Reaction` skips the
   quiet period, the ✅ and the undo. 🐞 is the only one, by decision
   (`docs/DECISIONS.md`); a test fails if another appears.
-- **Buttons that must survive a restart:** give them a fixed `custom_id`, no
+- **Cards: buttons, a dropdown or a form without discord.py.** Write the
+  card with the records in `core/cards.py` and register what each action
+  does, once (in `setup`):
+
+  ```python
+  from core import cards
+  from core.cards import Button, Card
+
+  cards.register("greeter", "wave", on_wave)
+
+  async def hello(ctx):
+      await cards.post(ctx, Card("👋", ((Button("Wave back", "greeter", "wave", arg="7"),),)))
+
+  async def on_wave(press: cards.Press) -> str:
+      await press.update(Card("👋👋"))      # rewrite the message in place
+      return "waved back"                   # recorded in message_log
+  ```
+
+  A row is a tuple of up to five `Button`s, or one `Select` (a dropdown;
+  what was picked is `press.values`). `press.arg` is the button's `arg`:
+  make it the id of your own record and keep the state in your tables, so
+  the card still works after a restart. `press.say(text)` tells the presser
+  alone, `press.remove()` deletes the message, and raising `UserError` shows
+  the reason to the presser. For a form, register the action with
+  `opens_form=True` and call `press.open_form(Form(...))`; the submission
+  comes back to the same action with `press.fields` filled. The helper
+  answers within 3 seconds, checks `is_allowed` (`card:<task>` unless you
+  pass `permission`), and logs the press. `cards.send(channel_id, card,
+  silent=True)`, `cards.edit` and `cards.delete` are for cards that answer
+  no message (a daily card, a prompt). `cards.check(card)` refuses what
+  Discord would (5 rows, 5 buttons a row, 25 options, 100-character ids).
+- **Buttons that must survive a restart** (in a task that writes its own views)**:** give them a fixed `custom_id`, no
   timeout, and register the view with `client.add_view(...)` in
   `setup(client)`, which runs before the bot connects.
 - **Answer every button, select and form within 3 seconds**, as the first
@@ -455,6 +488,61 @@ owner.
   big to re-upload.
 - **It needs** `ARCHIVE_CHANNEL_ID` in `.env`, Manage Webhooks in the archive
   channel, and Manage Messages wherever the original is.
+
+## Pills
+
+What you take and when. This is the setting-up half; the daily checklist
+and the prompts come in the next stages, so nothing reminds you yet.
+`pills` and every button work in #inbox and in the hub; saying things in
+plain words needs Claude, so that works in #inbox.
+
+| Type or say | What happens |
+|---|---|
+| `pills` (or `pill`) | The list: in use, then ⏸️ Paused, then 🏁 Ended, with one dropdown to pick a pill |
+| "add vitamin D, once a day" | Preview "💊 **Vitamin D** · daily, untimed" with **Save** and **Edit** |
+| "add evening pill at 20:00" | "💊 **Evening pill** · daily at `8:00 pm`" |
+| "add course A, 3 times a day, at least 3 hours apart, with food, for 7 days starting tomorrow" | "💊 **Course A** · 3× daily, ≥3h apart · *with food* · 10 to 16 Oct · first dose when ready" |
+| "move the evening pill to 9pm" | The plan now and the new one, with **Save** and **Edit** |
+| "pause iron", "pause iron until the 20th", "resume iron" | Done at once |
+| "remove iron" | "Remove **Iron**?…" with **Remove** and **Cancel**; its history is kept |
+| "delete iron and its history" | A separate question with **Delete for good** |
+
+- **Three kinds of schedule.** *Untimed*: so many a day, no time. *Fixed*:
+  a time for each dose. *Interval*: so many a day with a minimum gap; the
+  first dose may have a time, the others will follow the dose actually
+  taken (stage 5).
+- **Courses.** A pill with dates is taken from the first to the last, both
+  included ("for 7 days starting tomorrow" on the 9th is 10 to 16 Oct).
+  It is listed with 🗓️ and "starts 10 Oct" until then, and under 🏁 Ended
+  from the day after its last. A pill with no end has no dates: none are
+  asked for or shown.
+- **Nothing is saved until you press Save.** The preview is a draft. Press
+  **Edit** and say what to change ("make it 9pm", "add: with food"): a new
+  preview replaces the old one. A preview nobody saves disappears after 30
+  minutes. Once saved it becomes one line, "✅ Saved · …".
+- **Times and dates are never guessed.** "At 8" gets "8am or 8pm?" with a
+  button for each; a gap of "3" is asked to be `3h` or `3m`. Times are
+  always shown as `8:00 pm`, whatever you typed.
+- **Editing** applies from the next dose; what is already recorded stays.
+  Give only what changes. "No notes", "no times" (untimed) and "no end
+  date" take a value away.
+- **Pausing** stops a pill being asked for and leaves its streak alone.
+  "Until the 20th" means it is taken again on the 20th, by itself.
+- **Removing** hides the pill everywhere and keeps its history for stats.
+  Deleting it with its history is only done when you ask for exactly
+  that, and has its own question.
+- **The list's buttons** rewrite the same message: pick a pill, then
+  **Edit** (tells you to say what to change), **Pause** / **Resume**,
+  **Remove** (asks), **Back**.
+
+**In code.** `tasks/pills/rules.py` is pure: `build(request, today, base)`
+turns what was said into a `Plan` or raises (`TimeQuestion` for an unclear
+time, `UserError` with the reason otherwise), `status_on(pill, day)` says
+what a pill is on a day, and the wording is all there. `store.py` holds
+`pills_pills`, the drafts and the change record. `plans.py` has the tool
+handlers and the cards, with no discord.py (`core/cards.py`). Doses will be
+occurrences (`core/occurrences.py`) with task `pills` and the pill's id as
+the item.
 
 ## Timers and Pomodoro
 
@@ -864,7 +952,8 @@ parsing, Pomodoro phases and pause arithmetic, which reactions count and
 what to apply or undo, the debounce timer, protection, archive and delete
 rules and records, permissions, the registry and `help`, lab arguments, dev
 mode, the scheduler (including catch-up and the nightly backup), the
-clock, the day boundary, typed times and the occurrence log. They
+clock, the day boundary, typed times and dates, the occurrence log, cards
+and pills. They
 never start the bot or talk to Discord or Claude, they use made-up settings
 instead of `.env`, and anything that needs a database gets a temporary one,
 so they are safe to run while the bot is running.

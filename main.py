@@ -7,7 +7,7 @@ import anthropic
 import discord
 from discord import app_commands
 
-from core import backup, clock, day, devmode, instance_lock, interactions, lifecycle, live, scheduler, timing
+from core import backup, cards, clock, day, devmode, instance_lock, interactions, lifecycle, live, scheduler, timing
 from core.config import (
     CLAUDE_MODEL,
     DB_PATH,
@@ -125,6 +125,7 @@ async def on_app_command_error(
 @client.event
 async def setup_hook():
     # Runs once after login, before connecting: persistent buttons get registered here
+    cards.setup(client)
     registry.setup(client)
 
 

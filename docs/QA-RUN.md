@@ -1,11 +1,11 @@
 # QA run sheet
 
-One pass through 182 of the 209 👤 Manual tests in `docs/TESTING.md` that are
-⬜ Untested (as of 2026-10-09); the 27 pills tests (group R) join as each
-stage is built. Blocks share setup and each one leaves things
+One pass through 196 of the 218 👤 Manual tests in `docs/TESTING.md` that are
+⬜ Untested (as of 2026-10-09); the other 22 are pills tests (group R) for
+stages not built yet, and join as each is. Blocks share setup and each one leaves things
 ready for the next, so run them in order.
 
-**Time:** about 3¾ hours at the keyboard, plus two nights for the backup
+**Time:** about 4 hours at the keyboard, plus two nights for the backup
 tests (block 12).
 
 | Block | What | Dev mode | Tests | Minutes |
@@ -25,9 +25,10 @@ tests (block 12).
 | 13 | Tool calling (Claude runs things) | off, then on, then off | 32 | 53 |
 | 14 | Bugs and kept confirmations | off (two restarts) | 16 | 21 |
 | 15 | Dev database and clock | `--dev`, on and off (three restarts) | 9 | 12 |
-| | **Total** | | **182** (F2 is split over blocks 4 and 7, counted in 7) | **about 3¾ hours** |
+| 16 | Pills: setting up | `--dev`, off (one restart) | 14 | 15 |
+| | **Total** | | **196** (F2 is split over blocks 4 and 7, counted in 7) | **about 4 hours** |
 
-Blocks 13, 14 and 15 need nothing from the others: run them any time after
+Blocks 13 to 16 need nothing from the others: run them any time after
 block 1, and before the overnight block if that suits.
 
 ## Before you start
@@ -397,6 +398,30 @@ nothing here touches your real history. `dev verbose` on helps for step 8.
 | 7 | `dev clock reset` | "🕰️ Clock: … (the real time)" | J41 |
 | 8 | `dev jobs`, then `dev clock 11:59pm`, `dev clock +2m`, `dev jobs` | First: a `core/day_rollover` job due at the coming midnight. After the two moves: it has run (a 🛠️ job card in #bot-log if verbose is on) and the next one is booked for the midnight after | Q7 |
 | 9 | `timer 10m`, then `dev reset-db`; press **Cancel**; again, press **Confirm** | Cancel: nothing changes (`timers` still lists it). Confirm: "🧹 `dev.db` wiped…"; `timers` and `stats` are empty; `dev jobs` shows only the backup and the day rollover; the clock is the real time. Delete the orphaned timer message by hand, then `dev off` and stop the bot | J42 |
+
+## 16. Pills: setting up
+
+On the dev database (`python main.py --dev`), in #inbox, dev mode off. Start
+with no pills (`dev reset-db` if there are any). If `ENABLED_TASKS` is set
+in `.env`, add `pills` to it first. Dates below are relative to the day you
+run it.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | `pills` with no pills yet | "## 💊 Pills" and how to add one; no dropdown; your word is deleted | R28 |
+| 2 | Say: `add vitamin D, once a day`; press **Save** | No dates are asked for or shown | R19 |
+| 3 | Say: `add evening pill at 20:00`; press **Save**, then `pills` | The preview and the saved pill show `8:00 pm` | R17 |
+| 4 | Say: `add iron at 8`; look, then press **8:00 am** and **Save** | Asked whether 8am or 8pm; nothing saved until answered | R18 |
+| 5 | Say: `add course A, 3 times a day, at least 3 hours apart, with food, for 7 days starting tomorrow`; press **Save** | Preview "💊 **Course A** · 3× daily, ≥3h apart · *with food* · <tomorrow> to <6 days later> · first dose when ready" with Save and Edit, and no extra line from Claude. After Save the same message reads "✅ Saved · 🗓️ **Course A** … · starts <tomorrow>" with no buttons | R29 |
+| 6 | Say `add night pill at 8pm`; press **Edit**; say `make it 9pm` | Edit adds a line saying to say what to change, buttons still there. After "make it 9pm" the old preview is gone and a new one shows `9:00 pm`; `pills` still doesn't list it | R30 |
+| 7 | With `--dev`: say `add zinc`, don't save, `dev clock +31m` | The preview disappears; `pills` doesn't list Zinc | R31 |
+| 8 | With a saved Evening pill: say `move the evening pill to 9pm`; press **Save** | "✏️ **Evening pill**" with "Now: … `8:00 pm`" and "New: … `9:00 pm`"; `pills` shows 8:00 pm until Save, then "✅ Updated · …" and 9:00 pm | R32 |
+| 9 | `pills`, pick a pill in the dropdown, press **Pause**, **Resume**, **Back** | The same message each time: the pill with Edit, Pause, Remove, Back; then "⏸️ … · paused" with Resume; then as before; then the list again | R33 |
+| 10 | Say `pause iron until the 20th`, then `pills`; then `resume iron` | "⏸️ **Iron** paused until 20 Oct." at once, with no question; Iron under ⏸️ Paused with "paused until 20 Oct"; then "▶️ **Iron** resumed." | R34 |
+| 11 | Say `pause iron`, then `pills` | It moves to the ⏸️ Paused section of `pills` (and of the checklist, from stage 3) and is not prompted for | R23 |
+| 12 | Say `remove vitamin D`; press **Remove**, then `pills` | Asked to confirm; then gone from every list, with its history kept | R24 |
+| 13 | Say `delete iron and its history`; press **Delete for good** | A question that says its history goes too and can't be undone; then "🗑️ Deleted **Iron** and its history."; gone from `pills` | R35 |
+| 14 | Say `add magnesium`, restart the bot, then press **Save** on that preview | It is saved as if nothing had happened; `pills` lists it | R36 |
 
 ## When you finish
 

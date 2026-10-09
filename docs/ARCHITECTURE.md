@@ -30,7 +30,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `config.py` | Paths, settings from `.env` and their validation, constants, the `CHANNELS` name-to-id map (with `hub`, from `HUB_CHANNEL_ID`); `DEV_DATABASE` (started with `--dev`), which picks the database and backup folder; `DAY_BOUNDARY`; `now_nz()` (the bot's clock) and `real_now_nz()` |
 | `clock.py` | What time it is: `now()` is the real time plus the dev clock's offset, `real_now()` never moves. The clock can only be moved on the dev database, only forward (`advance`, `advance_to`; `reset` goes back), and its offset is kept in `data/dev-clock.json` across restarts. `skipped_between` is the time a jump passed over. Imports nothing from core |
 | `day.py` | The day boundary for every task (`DAY_BOUNDARY`, midnight NZ): `today()`, `day_of(moment)`, `at(day, time)`, `start_of` / `end_of` (UTC, daylight-saving safe), and the rollover job, which tells every `on_new_day` listener (a task's `new_day`) the day that ended and the day it is now, then books the next |
-| `timeinput.py` | Pure: times the user types (12-hour, 24-hour, noon / midnight), `AmbiguousTime` with both readings when it could be morning or evening, the checks on a time given for something already done (today, not in the future, not before the previous one), and the one way times are shown (`format_time`: "8:04 am") |
+| `timeinput.py` | Pure: dates the user types (`parse_date`: tomorrow, friday, the 20th, 20 Oct; shown by `format_date` / `format_dates`) and times the user types (12-hour, 24-hour, noon / midnight), `AmbiguousTime` with both readings when it could be morning or evening, the checks on a time given for something already done (today, not in the future, not before the previous one), and the one way times are shown (`format_time`: "8:04 am") |
 | `occurrences.py` | The occurrence log: expected things on a day (`occurrences`) with their state (pending, done, skipped, missed), plan, due time, actual time and automatic-skip reason, and every change to them (`occurrence_events`, values before and after). Changes made together share a change id: `db_last_change` finds the user's last one and `db_revert` takes it back |
 | `logging_setup.py` | Terminal and rotating file logging |
 | `instance_lock.py` | Single-instance lock on `data/bot.lock`, taken first thing at startup, and the source of truth for what is running: `holder()` asks the lock, `instances()` counts bot processes without the `.venv` launcher, `status()` puts both into words (`python -m core.instance_lock`, `dev status`) |
@@ -48,6 +48,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `protection.py` | Pure: is a message protected (pinned or 📌), is it kept, and the wording when Discord refuses a pin |
 | `channels.py` | Which channels hold messages: `holds_messages(channel)` (text, news, threads, DMs; not forum, voice or category) and `named()`, the channels from `.env` that do. Asked before reading pins or history from a channel no message came from |
 | `pins.py` | `set_pinned(...)`: native pin and unpin for tasks that may not call Discord |
+| `cards.py` | Buttons, dropdowns and forms for tasks that may not use discord.py: a task writes a `Card` of plain records (`Button`, `Select`, `Form`) and registers what each action does; the component's id (`card.b:<task>:<action>:<arg>`) carries everything, so cards work after a restart. `handle` answers every press first, checks `is_allowed`, logs it in `message_log` (kind `card`), shows a `UserError` to the presser alone and reports anything else. `post` / `send` / `edit` / `delete` put cards in channels |
 | `confirmations.py` | Buttons under a short message: `ask` (Confirm / Cancel), `choose` (which of a few), `offer_undo` (done, with Undo). In memory, with timeouts |
 | `tools.py` | Pure: Claude's tools from registrations: names, strict-safe input schemas, input checking, which are sent as strict, which message a message action is aimed at, previews and the listing text, and matching a query against logged messages (`find_logged`) |
 | `pending.py` | Proposals waiting for a short "ok": what counts as yes or no, two-minute expiry, one per user and channel (in memory) |
@@ -79,6 +80,10 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `bugs/posts.py` | The Discord work, and the only discord.py in the task: reading the reported message, the forum post with its tags, and the opening card: rewritten in place with the status, when it changed and the note count; persistent buttons under it, Fixed / Won't fix on an open bug (tag and archive) and Re-open on a closed one (unarchive, tag Open) |
 | `bugs/cli.py` | `python -m tasks.bugs.cli list \| show B4 \| note B4 "…"` for Claude Code's `bug` skill: reads and adds notes straight from the database, never closes a bug |
 | `keep/__init__.py` | The 📌 reaction: keep (pin) and unkeep (unpin); reply `pin` / `unpin`, which act at once. All through `core/pins.py` |
+| `pills/__init__.py` | Registers `pills` (the list) and Claude's tools `pill_add`, `pill_edit`, `pill_pause`, `pill_remove`; works in #inbox and the hub |
+| `pills/rules.py` | Pure: a pill's `Plan` (untimed, fixed times, or so many a day with a minimum gap; optionally a course with dates), building one from a `Request` in the user's words (`build`, which raises `TimeQuestion` for a time that could be morning or evening), what a pill is on a day (`status_on`: active, upcoming, paused, ended), which pill a name means (`find`), and all the wording (one-line summary, old-and-new for an edit, the list, the live state for Claude) |
+| `pills/store.py` | The `pills_pills` records, the drafts behind open previews (`pills_drafts`) and every change to a plan or status (`pills_changes`) |
+| `pills/plans.py` | Setting pills up, with no discord.py: the tools' handlers, the preview, list, pill and remove cards (`core/cards.py`), what each button does, and the job that lets an unsaved preview lapse |
 | `timers/__init__.py` | Registers `timer`, `timers`, `pause all`, `resume all`, `pomo`, `pomo stats`, the reply actions and job handlers, and Claude's tools: `list_timers`, `get_pomodoro_status`, `timer_history`, `timer_control`, `pomodoro_control` |
 | `timers/control.py` | The handlers of those tools, and `pause all` / `resume all`. What they report is read back from the database after the change. `timer_control` takes one id, several, or `all` (with an optional label), so a bulk request is one call; `live_state` is what Claude is told with every message |
 | `timers/status.py` | Pure: the live state of timers and the session in words for Claude, the ids (`t12`, `p4`) the control tools take, the event history and what `pause all` did; several ids in one argument, label matching, and the live state text |
@@ -94,7 +99,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 
 Only `lab`, `archive`, `timers`, `dev` and `bugs` (in `posts.py` alone)
 use discord.py directly; that moves behind a gateway layer later. Other tasks go through `Context` and
-core helpers.
+core helpers; `pills` gets its buttons and dropdowns from `core/cards.py`.
 
 ## `tests/`
 
@@ -108,7 +113,9 @@ database with the clock under test control), `devmode`, `dev_parsing`, `lab`, `l
 `permissions`, `scheduler`, `text`, `tools`, `pending`, `llm_tools` (the
 Claude loop against a scripted stand-in), `toolcalls`, `bugs`, `instance_lock`, `backup` (the specs zip), `clock`,
 `day` (the boundary and the rollover job), `timeinput`, `occurrences`,
-`dev_clock` (`dev clock`, `dev reset-db` and their guards), `channels`
+`dev_clock` (`dev clock`, `dev reset-db` and their guards), `cards`,
+`pills_rules`, `pills_plans` (records, previews, buttons, and a tool call
+all the way through the registry), `channels`
 (channel types, the dev panel's start-up sweep, a task failing to start).
 
 ## Data flows
@@ -217,6 +224,31 @@ and hands the clock its stored offset → logging → `instance_lock.acquire()`
    Claude Code's `bug` skill reads a bug with `tasks/bugs/cli.py` and adds
    a "fix ready, needs retest" note; it never closes one.
 
+**Setting up a pill**
+
+1. "add evening pill at 20:00" (in #inbox) reaches Claude, which calls
+   `pill_add` with the name and the time as it was said. `plans.add_tool`
+   has `rules.build` turn that `Request` into a `Plan`; anything that
+   can't be one is refused with a reason for Claude to pass on.
+2. The request is kept as a draft (`pills_drafts`) and the preview is
+   posted as the answer: the plan on one line with **Save** and **Edit**.
+   The turn ends there, with no closing reply from Claude. A job lets the
+   draft lapse after 30 minutes.
+3. A time that could be morning or evening ("at 8") posts the question
+   instead, with a button for each reading; the answer settles that time
+   in the draft and the preview follows.
+4. **Save** builds the plan again, checks the name, writes the pill (or
+   the edit) and removes the draft in one transaction, and the preview
+   becomes one line. **Edit** asks what to change; saying it reaches
+   Claude, which calls the tool again with the draft's id, and the new
+   preview replaces the old.
+5. `pill_edit` is the same against an existing pill, with the old and new
+   plan shown. `pill_pause` acts at once. `pill_remove` posts a Confirm
+   card; deleting a pill with its history is a separate, stronger one.
+6. `pills` posts the list with one dropdown; picking a pill rewrites the
+   message as that pill with Edit, Pause or Resume, Remove and Back.
+   Every press comes through `cards.handle`.
+
 **Message lifecycle**
 
 Every message is Kept, Live, Consumed, Transient, Alert or Protected (the
@@ -269,6 +301,7 @@ seconds.
 | `users`, `message_log`, `scheduled_jobs`, `reaction_state`, `skill_migrations`, `occurrences`, `occurrence_events` | core (`core/migrations.py`, version in `PRAGMA user_version`) |
 | `archive_items` | archive |
 | `bugs_items`, `bugs_notes`, `bugs_events` (each closing and re-opening) | bugs |
+| `pills_pills`, `pills_drafts` (previews waiting for Save), `pills_changes` (every plan and status change); doses will be rows of `occurrences` with task `pills` | pills |
 | `timers_timers`, `timers_pomodoros`, `timers_focus_log`, `timers_boards`, `timers_events`, `timers_lists` | timers |
 | `lab_state`, `lab_tour_runs`, `lab_tour_results` | lab |
 

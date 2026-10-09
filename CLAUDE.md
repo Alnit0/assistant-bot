@@ -58,6 +58,9 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 - Every keyword, reply action and reaction needs a description, examples,
   channels and permission. Destructive words are `exact`
 - Tasks don't call Discord directly; they use `Context` and core helpers.
+  Buttons, dropdowns and forms come from `core/cards.py` (a `Card` of plain
+  records, actions registered by name, the record's id in the component's
+  id so it works after a restart); `pills` is built this way.
   Only `lab`, `archive`, `timers`, `dev` and `bugs` (in `bugs/posts.py`
   only) may use discord.py, until the gateway layer exists
 - The registry decides how every action ends; handlers use `ctx.reply`
@@ -72,6 +75,10 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 - A task's `startup` failing is logged and shown on the start card; the
   other tasks still start. Keep it that way
 - The assistant's name comes from `ASSISTANT_NAME`; never hard-code it
+- A pill's plan never changes unseen: adding or editing makes a draft and a
+  preview (Save / Edit), and only Save writes it. Removing asks first.
+  Claude's pill tools hand over times and dates as the user said them;
+  code reads them, and asks rather than guesses
 - Permissions go through `is_allowed(user, action)`, never a comparison
   with `OWNER_ID`. Only the owner is allowed anything
 - Every record has a `user_id`. Task tables are prefixed with the task's

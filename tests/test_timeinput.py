@@ -1,5 +1,5 @@
 """Times the user types and how they are shown (core/timeinput.py)."""
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 
 import pytest
 
@@ -161,3 +161,70 @@ def test_when_neither_reading_fits_the_reason_is_the_morning_ones():
     with pytest.raises(UserError, match="9:00 am is before the previous one") as raised:
         timeinput.actual_moment("9", NOW, not_before=nz(2026, 10, 9, 10, 0))
     assert not isinstance(raised.value, AmbiguousTime)
+
+
+# ---------------------------------------------------------------------------
+# Dates
+# ---------------------------------------------------------------------------
+TODAY = date(2026, 10, 9)  # a Friday
+
+
+@pytest.mark.parametrize(
+    "typed, expected",
+    [
+        ("today", date(2026, 10, 9)),
+        ("Tomorrow", date(2026, 10, 10)),
+        ("in 3 days", date(2026, 10, 12)),
+        ("2026-10-20", date(2026, 10, 20)),
+        # a day of the month is the next one, today included
+        ("the 20th", date(2026, 10, 20)),
+        ("20th", date(2026, 10, 20)),
+        ("20", date(2026, 10, 20)),
+        ("on the 9th", date(2026, 10, 9)),
+        ("the 8th", date(2026, 11, 8)),
+        ("31", date(2026, 10, 31)),
+        # a weekday is always after today
+        ("friday", date(2026, 10, 16)),
+        ("sat", date(2026, 10, 10)),
+        ("next monday", date(2026, 10, 12)),
+        ("Thursday", date(2026, 10, 15)),
+        # a day and a month is the next one
+        ("20 Oct", date(2026, 10, 20)),
+        ("20th of October", date(2026, 10, 20)),
+        ("Oct 20", date(2026, 10, 20)),
+        ("october 3", date(2027, 10, 3)),
+        ("1 March 2027", date(2027, 3, 1)),
+        ("3 oct 2026", date(2026, 10, 3)),
+        # day first, as written in NZ
+        ("20/10", date(2026, 10, 20)),
+        ("1/2/2027", date(2027, 2, 1)),
+    ],
+)
+def test_dates_are_read_from_how_they_are_said(typed, expected):
+    assert timeinput.parse_date(typed, TODAY) == expected
+
+
+def test_a_day_number_skips_months_that_do_not_have_it():
+    assert timeinput.parse_date("31", date(2027, 2, 1)) == date(2027, 3, 31)
+    assert timeinput.parse_date("30", date(2027, 1, 31)) == date(2027, 3, 30)
+
+
+@pytest.mark.parametrize("typed", ["", "soon", "32", "30 feb", "13/13", "blah 20", "the 0th", "ma 3", "2026-13-01"])
+def test_what_is_not_a_date_is_refused_with_examples(typed):
+    with pytest.raises(UserError, match="can't read") as raised:
+        timeinput.parse_date(typed, TODAY)
+    assert "`tomorrow`" in str(raised.value)
+
+
+@pytest.mark.parametrize(
+    "first, last, shown",
+    [
+        (date(2026, 10, 10), date(2026, 10, 16), "10 to 16 Oct"),
+        (date(2026, 10, 28), date(2026, 11, 3), "28 Oct to 3 Nov"),
+        (date(2026, 12, 28), date(2027, 1, 3), "28 Dec 2026 to 3 Jan 2027"),
+        (date(2026, 10, 10), date(2026, 10, 10), "10 Oct"),
+    ],
+)
+def test_a_run_of_days_is_shown_briefly(first, last, shown):
+    assert timeinput.format_dates(first, last) == shown
+    assert timeinput.format_date(date(2026, 10, 20)) == "20 Oct"

@@ -140,7 +140,7 @@ def test_the_tools_are_ready_for_the_api(world, monkeypatch):
     assert [name for name in names if name.startswith("dev")] == ["dev_mode"], "of dev, only the switch while it is off"
     assert turn.strict == {
         "timer", "pomo", "help", "dev_mode", "timer_control", "pomodoro_control", toolcalls.SEARCH,
-        "pause_all", "resume_all", "timer_history",
+        "pause_all", "resume_all", "timer_history", "pill_add", "pill_edit", "pill_pause", "pill_remove",
     }
     for definition in turn.definitions:
         assert bool(definition.get("strict")) == (definition["name"] in turn.strict)

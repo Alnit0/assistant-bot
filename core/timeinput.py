@@ -1,5 +1,5 @@
 import re
-from datetime import datetime, time
+from datetime import date, datetime, time, timedelta
 
 from core import day
 from core.config import TIMEZONE
@@ -17,7 +17,11 @@ from core.errors import UserError
 #
 # Shown:  always 12-hour, "8:30 am", whatever was typed.
 #
-# Claude works out which words are the time; this works out what time it is.
+# Dates work the same way (parse_date): today, tomorrow, friday, the 20th,
+# 20 Oct, 2026-10-20, in 3 days. A date with no year is the next one.
+#
+# Claude works out which words are the time or the date; this works out what
+# time or date it is.
 # ---------------------------------------------------------------------------
 _WORDS = {"noon": time(12, 0), "midday": time(12, 0), "midnight": time(0, 0)}
 
@@ -155,3 +159,108 @@ def actual_moment(text: str, now: datetime, not_before: datetime | None = None) 
         raise unsure if possible else refusal
     check_actual(moment, now, not_before)
     return moment
+
+
+# ---------------------------------------------------------------------------
+# Dates the user types
+# ---------------------------------------------------------------------------
+_MONTHS = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"]
+_WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+_ORDINAL = r"(\d{1,2})(?:st|nd|rd|th)?"
+_DAY_ONLY = re.compile(rf"(?:the )?{_ORDINAL}")
+_DAY_MONTH = re.compile(rf"(?:the )?{_ORDINAL}(?: of)? ([a-z]+)(?: (\d{{4}}))?")
+_MONTH_DAY = re.compile(rf"([a-z]+) (?:the )?{_ORDINAL}(?: (\d{{4}}))?")
+_SLASHED = re.compile(r"(\d{1,2})/(\d{1,2})(?:/(\d{4}))?")
+_IN_DAYS = re.compile(r"in (\d{1,3}) days?")
+
+DATE_EXAMPLES = "Try `tomorrow`, `friday`, `the 20th`, `20 Oct` or `2026-10-20`."
+
+
+def _unreadable_date(text: str) -> UserError:
+    return UserError(f"I can't read “{text}” as a date. {DATE_EXAMPLES}")
+
+
+def _named(names: list[str], word: str) -> int | None:
+    """Which month or weekday a word is, from its first three letters on. None if it isn't one."""
+    found = [number for number, name in enumerate(names) if len(word) >= 3 and name.startswith(word)]
+    return found[0] if len(found) == 1 else None
+
+
+def _on_or_after(today: date, month: int, day_of_month: int, year: int | None, typed: str) -> date:
+    try:
+        if year is not None:
+            return date(year, month, day_of_month)
+        this_year = date(today.year, month, day_of_month)
+    except ValueError:
+        raise _unreadable_date(typed)
+    return this_year if this_year >= today else date(today.year + 1, month, day_of_month)
+
+
+def parse_date(text: str, today: date) -> date:
+    """The date in `text`, given what day it is.
+
+    A date with no year, a day of the month or a weekday is the next one: a
+    day of the month can be today, a weekday is always after today (said on a
+    Friday, "friday" is next week's). Raises UserError if it isn't a date.
+    """
+    typed = text.strip()
+    value = re.sub(r"\s+", " ", typed.lower().replace(",", " ")).strip()
+    value = value.removeprefix("on ").removeprefix("next ").removeprefix("this ")
+    if value in ("today", "tonight", "now"):
+        return today
+    if value == "tomorrow":
+        return today + timedelta(days=1)
+    if match := _IN_DAYS.fullmatch(value):
+        return today + timedelta(days=int(match[1]))
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        pass
+
+    weekday = _named(_WEEKDAYS, value)
+    if weekday is not None:
+        return today + timedelta(days=(weekday - today.weekday() - 1) % 7 + 1)
+
+    if match := _DAY_ONLY.fullmatch(value):
+        # The next day of the month with that number, today included
+        wanted, month_start = int(match[1]), today.replace(day=1)
+        for _ in range(13):
+            try:
+                found = month_start.replace(day=wanted)
+            except ValueError:
+                found = None  # no 31st this month
+            if found is not None and found >= today:
+                return found
+            month_start = (month_start + timedelta(days=32)).replace(day=1)
+        raise _unreadable_date(typed)
+
+    for pattern, day_group, month_group in ((_DAY_MONTH, 1, 2), (_MONTH_DAY, 2, 1)):
+        if match := pattern.fullmatch(value):
+            month = _named(_MONTHS, match[month_group])
+            if month is not None:
+                year = int(match[3]) if match[3] else None
+                return _on_or_after(today, month + 1, int(match[day_group]), year, typed)
+
+    if match := _SLASHED.fullmatch(value):
+        # Day first, as dates are written in NZ
+        year = int(match[3]) if match[3] else None
+        if 1 <= int(match[2]) <= 12:
+            return _on_or_after(today, int(match[2]), int(match[1]), year, typed)
+
+    raise _unreadable_date(typed)
+
+
+def format_date(value: date) -> str:
+    """A date as it is shown: "20 Oct"."""
+    return f"{value.day} {value:%b}"
+
+
+def format_dates(first: date, last: date) -> str:
+    """A run of days as it is shown: "10 to 16 Oct", "28 Oct to 3 Nov"."""
+    if first == last:
+        return format_date(first)
+    if first.year != last.year:
+        return f"{format_date(first)} {first.year} to {format_date(last)} {last.year}"
+    if first.month == last.month:
+        return f"{first.day} to {format_date(last)}"
+    return f"{format_date(first)} to {format_date(last)}"

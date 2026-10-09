@@ -6,6 +6,19 @@ backfilled from the git log.
 
 ## 2026-10-09
 
+- **Set up your pills by saying so.** In #inbox: "add vitamin D, once a
+  day", "add evening pill at 20:00", "add course A, 3 times a day, at
+  least 3 hours apart, with food, for 7 days starting tomorrow". You get
+  a one-line preview with **Save** and **Edit**; nothing is added until
+  you press Save. "At 8" is asked about (8am or 8pm?) rather than
+  guessed, and a pill with no end is never asked for dates.
+- **`pills` lists them** (in use, paused, ended) with a dropdown to pick
+  one, then Edit, Pause / Resume and Remove. Changing one by words ("move
+  the evening pill to 9pm") shows the old and new plan to save. "Pause
+  iron until the 20th" acts at once; removing asks first and keeps the
+  history; "delete iron and its history" is a separate, final question.
+- Nothing reminds you yet: the daily checklist and prompts are the next
+  stages.
 - **A dev database and a clock you can move.** `python main.py --dev`
   runs the bot on `data/dev.db`, with "DEV DATABASE" in its status, its
   hello and the dev panel. There, `dev clock 5:59am`, `dev clock +2h` and

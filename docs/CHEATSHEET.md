@@ -270,6 +270,23 @@ only, any channel, no slash. It is off after every restart.
 
 ---
 
+## Pills (typed in Discord, #inbox or the hub)
+
+| Type or say | What it does |
+|---|---|
+| `pills` | List every pill; pick one from the dropdown to edit, pause or remove it |
+| "add vitamin D, once a day" | Preview with **Save** / **Edit**; nothing is added until Save |
+| "add evening pill at 20:00" | A pill at a fixed time (shown as `8:00 pm`) |
+| "add course A, 3 times a day, at least 3 hours apart, with food, for 7 days starting tomorrow" | A course with a minimum gap and dates |
+| "move the evening pill to 9pm" | Old and new plan to save |
+| "pause iron until the 20th" / "resume iron" | At once; the 20th is the day it is taken again |
+| "remove iron" | Asks first; its history is kept |
+| "delete iron and its history" | A separate question; can't be undone |
+
+- "At 8" gets the question "8am or 8pm?" with a button for each
+- A preview nobody saves disappears after 30 minutes
+- Saying things needs Claude, so it works in #inbox; `pills` and the buttons work in the hub too
+
 ## Seeing what the bot did (`.env`)
 
 | Setting | What it does |

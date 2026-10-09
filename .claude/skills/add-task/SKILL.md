@@ -40,7 +40,10 @@ complete example, `tasks/archive/` the pattern for anything with logic.
 8. **Jobs:** book with `scheduler.add_job`, handle in `job_handlers()`,
    cope with `job.is_late`. Moments in UTC; schedules as local time +
    `Pacific/Auckland`.
-9. **Buttons and forms:** answer within 3 seconds (defer first if slow),
+9. **Buttons, dropdowns and forms:** use `core/cards.py` (see "Cards" in
+   `docs/DEVELOPMENT.md`; `tasks/pills/plans.py` is the example). It answers,
+   checks permission, logs and survives restarts for you. Only the tasks
+   allowed discord.py write their own views, and then: answer within 3 seconds (defer first if slow),
    then log. Persistent buttons need stable `custom_id`s and are registered
    in `setup`. Reply from error handlers with `safe_reply` and
    `report_interaction_error`.

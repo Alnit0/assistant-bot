@@ -176,9 +176,17 @@ def test_the_real_tool_sets_fit_within_the_limit(owner, dev_off):
     for dev in (False, True):
         if dev:
             devmode.enable()
-        strict, overflow = tools.choose_strict(registry.tools_for(owner, INBOX))
-        assert len(strict) <= tools.STRICT_LIMIT and overflow == []
-    assert {"timer", "pomo", "help", "timer_control", "pomodoro_control"} <= strict
+        specs = registry.tools_for(owner, INBOX)
+        strict, overflow = tools.choose_strict(specs)
+        assert len(strict) <= tools.STRICT_LIMIT
+        if not dev:
+            assert overflow == [], "everything an ordinary message is given fits"
+        else:
+            # With every dev word on offer as well there are more than fit: only
+            # ones nobody gave a priority may go without
+            priority = {spec.name: spec.priority for spec in specs}
+            assert [name for name in overflow if priority[name] > 0] == []
+        assert {"timer", "pomo", "help", "timer_control", "pomodoro_control", "pill_add", "pill_edit"} <= strict
 
 
 def test_strict_is_only_put_on_the_chosen_ones():
