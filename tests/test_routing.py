@@ -15,6 +15,18 @@ NAMES = [entry.name for entry in ENTRIES]
 SHOPPING = demo.SHOPPING
 
 
+def _every_entry():
+    """The demo tasks and the real ones: every fixture file is replayed."""
+    from tasks import registry
+
+    registry.load()
+    return [*demo.ENTRIES, *[entry for entry in actions.catalogue() if entry.name not in NAMES]]
+
+
+ALL = _every_entry()
+ALL_NAMES = [entry.name for entry in ALL]
+
+
 @pytest.fixture
 def claude(monkeypatch):
     """A stand-in for the one request: gives back what the test scripts, and keeps what it was sent."""
@@ -154,7 +166,8 @@ def test_extraction_is_told_to_guess_and_flag_never_to_ask_and_to_write_nothing(
     assert "They are KEPT by the bot's code: they are not yours to send back" in follow_up
     assert '"and jam", "also jam", "plus jam", "jam too" and "jam as well" are jam alone' in follow_up
     assert "goes back as it stands on the card" in follow_up, "every field that is not a list of items"
-    assert "mean what the user mentioned LAST" in text and "take the last one named and list it" in text, "pronouns"
+    assert "do NOT work out which thing is meant: put `@that` where its name or id would go" in text, "pronouns are the code's"
+    assert "is copied exactly and is never a guess" in text and "it never overrides what they said" in text, "what is stated wins"
     after_list = extraction.system_blocks(SHOPPING, after_list=True)[0]["text"]
     assert "has just been shown this task's list" in after_list and "`not_this`" in after_list and "A card is open" not in after_list
     assert extraction.system_blocks(SHOPPING)[0]["cache_control"] == llm.CACHED
@@ -242,21 +255,22 @@ def test_there_are_fixtures_for_each_demo_task_and_for_the_traps():
     assert any(fixture.action == "none" for fixture in EXTRACTIONS) and any(fixture.action == "not_this" for fixture in EXTRACTIONS)
 
 
-@pytest.mark.parametrize("fixture", [f for f in ROUTERS if not set(f.tasks) - set(NAMES)], ids=lambda f: f.name)
+@pytest.mark.parametrize("fixture", [f for f in ROUTERS if not set(f.tasks) - set(ALL_NAMES)], ids=lambda f: f.name)
 def test_router_fixture(fixture):
     if fixture.recorded is None:
         pytest.skip("not recorded yet: python -m evals.live --live --dev --record")
-    problem = fixtures.router_problem(fixture, routing.parse(fixture.recorded, NAMES))
+    route = fixtures.settled(fixture, routing.parse(fixture.recorded, ALL_NAMES), ALL)
+    problem = fixtures.router_problem(fixture, route)
     # A known miss is replayed (it must still be read without error) but not judged:
     # the model gives it differently from one run to the next
     assert fixture.known_miss or not problem, problem
 
 
-@pytest.mark.parametrize("fixture", [f for f in EXTRACTIONS if f.task in NAMES], ids=lambda f: f.name)
+@pytest.mark.parametrize("fixture", [f for f in EXTRACTIONS if f.task in ALL_NAMES], ids=lambda f: f.name)
 def test_extraction_fixture(fixture):
     if fixture.recorded is None:
         pytest.skip("not recorded yet: python -m evals.live --live --dev --record")
-    entry = next(entry for entry in ENTRIES if entry.name == fixture.task)
+    entry = next(entry for entry in ALL if entry.name == fixture.task)
     found = extraction.read(entry, tuple(fixture.recorded), follow_up=fixture.card is not None or fixture.after_list)
     problem = fixtures.extraction_problem(fixture, found)
     # A known miss is replayed (it must still be read without error) but not judged:
@@ -304,3 +318,56 @@ def test_a_fixture_is_judged_on_the_task_the_action_every_item_and_the_guesses()
     assert "expected no chat part, got 'hi'" in fixtures.router_problem(plain, Route(("shopping",), chat_part="hi"))
     chat = fixtures.RouterFixture("x", "hello", chat=True)
     assert fixtures.router_problem(chat, Route()) == "" and "expected chat" in fixtures.router_problem(chat, Route(("shopping",)))
+
+
+# ---------------------------------------------------------------------------
+# Nothing to do, and destinations that are named
+# ---------------------------------------------------------------------------
+def test_a_message_that_needs_nothing_done_is_read_as_nothing():
+    found = routing.parse({"kind": "nothing", "tasks": [], "confidence": "high", "chat_part": ""}, NAMES)
+    assert found.nothing and not found.chat and found.tasks == ()
+    assert routing.parse({"kind": "chat", "tasks": [], "confidence": "high", "chat_part": ""}, NAMES).chat
+    with_task = routing.parse({"kind": "nothing", "tasks": ["shopping"], "confidence": "high", "chat_part": ""}, NAMES)
+    assert with_task.tasks == ("shopping",) and not with_task.nothing, "a task named is never nothing"
+    assert "kind nothing with no tasks: the bot then says nothing at all" in routing.RULES
+    assert routing.tool(ENTRIES)["input_schema"]["properties"]["kind"]["enum"] == ["task", "chat", "nothing"]
+
+
+@pytest.mark.parametrize(
+    "said, expected",
+    [
+        ("add zinc to my pills", ["pills"]),
+        ("put milk on the shopping list", ["shopping"]),
+        ("add socks to the packing list", ["packing"]),
+        ("take jam off my shopping list", ["shopping"]),
+        ("Add eggs  to the Shopping List and a hat to the packing list", ["shopping", "packing"]),
+        ("add a pill timer", []),
+        ("add shopping bags", []),
+        ("my pills are in the cupboard", []),
+        ("what is on the list?", []),
+    ],
+)
+def test_a_destination_is_only_what_is_named_as_one(said, expected):
+    assert [entry.name for entry in routing.named_destinations(said, ALL)] == [name for name in ALL_NAMES if name in expected]
+
+
+def test_a_named_destination_overrules_the_router_unless_the_router_agrees_and_adds_more():
+    assert routing.with_named(Route(("shopping",)), ["pills"]) == Route(("pills",))
+    assert routing.with_named(Route(), ["pills"]) == Route(("pills",)), "never chat"
+    assert routing.with_named(Route(nothing=True), ["pills"]) == Route(("pills",)), "never nothing"
+    assert routing.with_named(Route(("shopping", "packing"), tie=True), ["shopping"]) == Route(("shopping", "packing")), "never a tie"
+    mixed = Route(("shopping", "packing"), chat_part="what is the capital of France?")
+    assert routing.with_named(mixed, ["shopping"]) == mixed, "a message with several parts keeps its other parts"
+    assert routing.with_named(Route(("timers",)), []) == Route(("timers",))
+
+
+def test_a_fixture_can_expect_that_nothing_is_said():
+    quiet = fixtures.RouterFixture("x", "note one", nothing=True)
+    assert fixtures.router_problem(quiet, Route(nothing=True)) == ""
+    assert "expected nothing to be said, got chat" in fixtures.router_problem(quiet, Route())
+    assert "got nothing to be said" in fixtures.router_problem(fixtures.RouterFixture("x", "hello", chat=True), Route(nothing=True))
+
+
+def test_every_task_with_fixtures_is_replayed_not_only_the_demo_ones():
+    assert {"shopping", "packing", "timers", "bugs", "pills"} <= set(ALL_NAMES)
+    assert {fixture.task for fixture in EXTRACTIONS} <= set(ALL_NAMES), "no fixture file is left out of the replay"

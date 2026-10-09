@@ -5,9 +5,10 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from core import actions, cards, database, lifecycle, scheduler
+from core import actions, cards, database, lifecycle, llm, scheduler
 from core.actions import Entry, Proposal, Request
 from core.cards import Button, Card
+from core.discord_utils import log_error
 from core.errors import UserError
 from core.lifecycle import MessageClass
 from core.scheduler import from_db, to_db, utc_now
@@ -45,6 +46,7 @@ STICKY_MINUTES = 5  # how long a plain message is taken as being about the card
 
 CARD, TIE = "card", "tie"
 OPEN, SAVED, CANCELLED, EXPIRED, REPLACED, PICKED = "open", "saved", "cancelled", "expired", "replaced", "picked"
+FAILED = "failed"  # Save was pressed, and what was read back from the database did not match the card
 
 FOOTER = "-# or tell me what to change"
 LAPSED = "⌛ That card has gone and nothing was saved. Say it again to start over."
@@ -340,11 +342,26 @@ async def on_save(press: cards.Press) -> str | None:
         await database.run(db_close, card.id, EXPIRED)
         return f"no action {card.task}/{card.action}"
     # A UserError here (the name was taken meanwhile) is shown to the presser and the card stays
-    said = await action.apply(Request(press.user, card.channel_id), card.data)
-    if not await database.run(db_close, card.id, SAVED):
-        raise UserError("That card was closed a moment ago.")
+    request = Request(press.user, card.channel_id)
+    said = await action.apply(request, card.data)
+    # Nothing is confirmed on the strength of `apply` having returned: the change is
+    # read back from the database first, and "saved" is only said if it is there
+    wrong = await action.verify(request, card.data) if action.verify is not None else ""
+    closed = await database.run(db_close, card.id, FAILED if wrong else SAVED)
     await scheduler.cancel_job(card.job_id)
+    if wrong:
+        log.error("Save of %s/%s did not take: %s (card %s, data %s)", card.task, card.action, wrong, card.id, card.data)
+        await log_error(f"Save did not take: {card.action}", wrong, json.dumps(card.data, ensure_ascii=False))
+        said = f"⚠️ That didn't save: {wrong}. Nothing is confirmed; please check and ask again."
+        await press.update(Card(said))
+        llm.remember(card.channel_id, "(pressed the card's button)", said)
+        return f"NOT saved {card.task}/{card.action}: {wrong}"
+    if not closed:
+        raise UserError("That card was closed a moment ago.")
     await press.update(Card(said))
+    # What a press did is part of the conversation: without it, whatever is asked
+    # next is answered as if the card were still waiting
+    llm.remember(card.channel_id, "(pressed the card's button)", said)
     return f"saved {card.task}/{card.action}: {said}"
 
 
@@ -352,6 +369,7 @@ async def on_cancel(press: cards.Press) -> str | None:
     card = await database.run(db_get, int(press.arg)) if press.arg.isdigit() else None
     if card is not None and card.user_id == press.user.id and await database.run(db_close, card.id, CANCELLED):
         await scheduler.cancel_job(card.job_id)
+        llm.remember(card.channel_id, "(pressed Cancel on the card)", "Cancelled: nothing was changed.")
     await press.remove()
     return f"cancelled card {press.arg}"
 

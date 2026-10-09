@@ -7,7 +7,9 @@ from core.scheduler import to_db
 from tasks.bugs import rules
 
 # ---------------------------------------------------------------------------
-# The bugs and their notes. A bug's id is the number in "B4". No Discord in
+# The bugs and their notes. A bug's id is the number in "B4" ("D4" on the dev
+# database): the row's own key, AUTOINCREMENT, so a number is never given out
+# twice even after the newest bug is deleted. No Discord in
 # here: plain values in, plain values out. The functions starting with `_db_`
 # block (the command line in cli.py calls them directly); the async ones run
 # them in a worker thread.

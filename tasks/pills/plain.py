@@ -1,7 +1,8 @@
 from datetime import date
 
 from core import day, livelists, occurrences, timeinput
-from core.actions import BOOLEAN, INTEGER, ITEMS, Action, Field, LiveReply, Proposal, Request, State, flag, is_guessed
+from core.actions import BOOLEAN, INTEGER, ITEMS, LAST, Action, Field, LiveReply, Proposal, Request, State, flag, is_guessed
+from core.actions import is_reference, point_at
 from core.errors import UserError
 from tasks.pills import rules, store
 from tasks.pills.rules import ACTIVE, ENDED, PAUSED, REMOVED, Pill, Plan, TimeQuestion
@@ -102,6 +103,23 @@ def _changed(user_id: int) -> None:
     livelists.changed(user_id, LIST_KEY, render)
 
 
+async def _pointed(request: Request, items: list[dict], key: str) -> tuple[list[dict], str | None]:
+    """The items with "it" given the pill it stands for, resolved here and never
+    by Claude: the pill mentioned last on the open card; with no card, the
+    pill changed last, which is a guess and comes back as the second value.
+    A new pill can't be "it": there is nothing it could mean."""
+    if not any(is_reference(item.get(key)) for item in items):
+        return items, None
+    previous = request.previous or {}
+    held = previous.get("pills", [])
+    last = previous.get(LAST) or (held[-1].get(key) if held else None)
+    taken_as = None
+    if last is None and key == "pill":
+        changed = await request.db.run(store.db_last_changed, request.user.id)
+        last = taken_as = f"{rules.ID_PREFIX}{changed}" if changed is not None else None
+    return point_at(items, key, last), taken_as
+
+
 def _resolve(pills: list[Pill], items: list[dict]) -> tuple[list[tuple[dict, Pill]], list[str]]:
     """Each item with the pill it means (its `pill` set to that pill's id), and
     what couldn't be found, in words."""
@@ -122,7 +140,8 @@ def _resolve(pills: list[Pill], items: list[dict]) -> tuple[list[tuple[dict, Pil
 async def add_card(request: Request, data: dict, guessed: frozenset) -> Proposal:
     today = day.today()
     existing = await store.pills(request.user.id)
-    items, missing = overlay(request.previous["pills"] if request.previous else [], data["pills"], "name")
+    asked, _ = await _pointed(request, data["pills"], "name")
+    items, missing = overlay(request.previous["pills"] if request.previous else [], asked, "name")
     unsure = _unsure(data, guessed, "name")
     lines, kept, warnings = [], [], [f"{name} isn't on the card: nothing to take off" for name in missing]
     seen: set[str] = set()
@@ -144,7 +163,8 @@ async def add_card(request: Request, data: dict, guessed: frozenset) -> Proposal
         kept.append({**item, "times": settled.times} if settled.times else dict(item))
     if not kept:
         raise UserError("; ".join(warning.removeprefix("Not included: ") for warning in warnings) or "No pill to add.")
-    return Proposal(lines=tuple(lines), data={"pills": kept}, warnings=tuple(warnings), kind="new", guessed=tuple(own_guesses))
+    last = str(asked[-1]["name"]) if asked else None
+    return Proposal(lines=tuple(lines), data={"pills": kept, LAST: last}, warnings=tuple(warnings), kind="new", guessed=tuple(own_guesses))
 
 
 async def add_save(request: Request, data: dict) -> str:
@@ -168,6 +188,21 @@ async def add_save(request: Request, data: dict) -> str:
     return f"✅ Saved · {ICON} {len(saved)} pills added: " + ", ".join(f"**{pill.plan.name}**" for pill in saved)
 
 
+async def add_check(request: Request, data: dict) -> str:
+    """Read each pill back: it is there, in use, with the plan the card showed."""
+    today = day.today()
+    saved = {pill.plan.name.lower(): pill for pill in rules.listed(await store.pills(request.user.id))}
+    wrong = []
+    for item in data["pills"]:
+        plan = rules.build(as_request(item), today)
+        pill = saved.get(plan.name.lower())
+        if pill is None:
+            wrong.append(f"{plan.name} is not among your pills")
+        elif pill.plan != plan:
+            wrong.append(f"{plan.name} was saved as {rules.plain(_line(pill.plan))}")
+    return "; ".join(wrong)
+
+
 # ---------------------------------------------------------------------------
 # Edit
 # ---------------------------------------------------------------------------
@@ -175,11 +210,14 @@ async def edit_card(request: Request, data: dict, guessed: frozenset) -> Proposa
     today = day.today()
     existing = await store.pills(request.user.id)
     unsure = _unsure(data, guessed, "pill")
-    found, problems = _resolve(existing, data["pills"])
+    asked, taken_as = await _pointed(request, data["pills"], "pill")
+    found, problems = _resolve(existing, asked)
     resolved = [item for item, _ in found]
     items, missing = overlay(request.previous["pills"] if request.previous else [], resolved, "pill")
     by_ref = {pill.ref: pill for pill in existing}
-    asked_as = {item["pill"]: str(raw.get("pill", "")).strip().lower() for (item, _), raw in zip(found, data["pills"])}
+    asked_as = {item["pill"]: str(raw.get("pill", "")).strip().lower() for (item, _), raw in zip(found, asked)}
+    if taken_as:
+        unsure = unsure | {taken_as}
     lines, kept, warnings = [], [], [*problems, *[f"{name} isn't on the card: nothing to take off" for name in missing]]
     own_guesses: list[str] = []
     for item in items:
@@ -195,15 +233,21 @@ async def edit_card(request: Request, data: dict, guessed: frozenset) -> Proposa
         if plan == pill.plan:
             warnings.append(f"{pill.plan.name}: nothing would change")
             continue
-        mark = time_guess or asked_as.get(item["pill"], "") in unsure
-        lines += [f"**{pill.plan.name}**", f"Now: {_line(pill.plan)}", flag(f"New: {_line(plan)}", mark)]
+        mark = asked_as.get(item["pill"], "") in unsure
+        # One format for every edit: field · old → new
+        lines.append(flag(f"**{pill.plan.name}**", mark))
+        lines += [
+            flag(f"{name} · {before} → {after}", time_guess and name in ("schedule", "first dose"))
+            for name, before, after in rules.differences(pill.plan, plan)
+        ]
         if time_guess:
             own_guesses.append(f"pills[{len(kept)}].times")
         kept.append({**item, "times": settled.times} if settled.times and item.get("times") else dict(item))
     if not kept:
         raise UserError("; ".join(warning.removeprefix("Not included: ") for warning in warnings) or "Nothing to change.")
     lines.append("-# Applies from the next dose. What is already recorded stays as it is.")
-    return Proposal(lines=tuple(lines), data={"pills": kept}, warnings=tuple(warnings), kind="edit", guessed=tuple(own_guesses))
+    last = resolved[-1]["pill"] if resolved else (request.previous or {}).get(LAST)
+    return Proposal(lines=tuple(lines), data={"pills": kept, LAST: last}, warnings=tuple(warnings), kind="edit", guessed=tuple(own_guesses))
 
 
 async def edit_save(request: Request, data: dict) -> str:
@@ -226,6 +270,56 @@ async def edit_save(request: Request, data: dict) -> str:
     return f"✅ Updated · {ICON} {len(saved)} pills: " + ", ".join(f"**{pill.plan.name}**" for pill in saved)
 
 
+async def edit_check(request: Request, data: dict) -> str:
+    """Read each pill back: asking for the same change again must change nothing."""
+    today = day.today()
+    by_ref = {pill.ref: pill for pill in await store.pills(request.user.id)}
+    wrong = []
+    for item in data["pills"]:
+        pill = by_ref.get(item["pill"])
+        if pill is None:
+            wrong.append(f"{item['pill']} is not among your pills")
+        elif rules.build(as_request(item), today, pill.plan) != pill.plan:
+            wrong.append(f"{pill.plan.name} is still {rules.plain(_line(pill.plan))}")
+    return "; ".join(wrong)
+
+
+async def _status_check(request: Request, data: dict, wanted: str) -> str:
+    """Read each pill back: its status is what the card said it would be."""
+    wrong = []
+    for item in data["pills"]:
+        pill = await store.pill(int(str(item["pill"]).removeprefix(rules.ID_PREFIX)))
+        if pill is None:
+            wrong.append(f"{item['pill']} is gone")
+        elif pill.status != wanted:
+            wrong.append(f"{pill.plan.name} is still {pill.status}")
+        elif wanted == PAUSED and (pill.paused_until.isoformat() if pill.paused_until else None) != item.get("until"):
+            wrong.append(f"{pill.plan.name} is paused until {pill.paused_until}")
+    return "; ".join(wrong)
+
+
+async def pause_check(request: Request, data: dict) -> str:
+    return await _status_check(request, data, PAUSED)
+
+
+async def resume_check(request: Request, data: dict) -> str:
+    return await _status_check(request, data, ACTIVE)
+
+
+async def remove_check(request: Request, data: dict) -> str:
+    return await _status_check(request, data, REMOVED)
+
+
+async def delete_check(request: Request, data: dict) -> str:
+    """Read back: the pill's row is gone, and so is every dose recorded for it."""
+    wrong = []
+    for item in data["pills"]:
+        pill_id = int(str(item["pill"]).removeprefix(rules.ID_PREFIX))
+        if await store.pill(pill_id) is not None:
+            wrong.append(f"{item['pill']} is still there")
+    return "; ".join(wrong)
+
+
 # ---------------------------------------------------------------------------
 # Pause, resume, remove, delete: each a card naming the pills it is about
 # ---------------------------------------------------------------------------
@@ -235,14 +329,15 @@ async def _chosen(
     """The pills a card is about, once this message is taken in: (each item
     with its pill, what couldn't be found, today, the ids Claude guessed at)."""
     existing = await store.pills(request.user.id)
-    found, problems = _resolve(existing, data["pills"])
+    asked, taken_as = await _pointed(request, data["pills"], "pill")
+    found, problems = _resolve(existing, asked)
     resolved = [item for item, _ in found]
     items, missing = overlay(request.previous["pills"] if request.previous else [], resolved, "pill")
     by_ref = {pill.ref: pill for pill in existing}
     chosen = [(item, by_ref[item["pill"]]) for item in items if item["pill"] in by_ref]
     unsure = _unsure(data, guessed, "pill")
-    marked = set()
-    for raw in data["pills"]:
+    marked = {taken_as} if taken_as else set()
+    for raw in asked:
         if str(raw.get("pill", "")).strip().lower() not in unsure:
             continue
         try:
@@ -276,7 +371,7 @@ async def pause_card(request: Request, data: dict, guessed: frozenset) -> Propos
                 warnings.append(f"Not included: {name} (a pause ends on a later day than today)")
                 continue
         when = f"paused until {timeinput.format_date(until)}" if until else "paused until you resume it"
-        lines.append(flag(f"**{name}** · {when}", pill.ref in marked))
+        lines.append(flag(f"**{name}** · {rules.status_on(pill, today)} → {when}", pill.ref in marked))
         kept.append({"pill": pill.ref, **({"until": until.isoformat()} if until else {})})
     if not kept:
         raise _none_left(warnings, "No pill to pause.")
@@ -302,7 +397,7 @@ async def resume_card(request: Request, data: dict, guessed: frozenset) -> Propo
         if rules.status_on(pill, today) != PAUSED:
             warnings.append(f"{pill.plan.name} isn't paused")
             continue
-        lines.append(flag(f"**{pill.plan.name}** · {rules.schedule_text(pill.plan)}", pill.ref in marked))
+        lines.append(flag(f"**{pill.plan.name}** · paused → active", pill.ref in marked))
         kept.append({"pill": pill.ref})
     if not kept:
         raise _none_left(warnings, "No pill to resume.")
@@ -323,7 +418,7 @@ async def remove_card(request: Request, data: dict, guessed: frozenset) -> Propo
     chosen, warnings, today, marked = await _chosen(request, data, guessed)
     if not chosen:
         raise _none_left(warnings, "No pill to remove.")
-    lines = [flag(f"**{pill.plan.name}** · {rules.schedule_text(pill.plan)}", pill.ref in marked) for _, pill in chosen]
+    lines = [flag(f"**{pill.plan.name}** · {rules.schedule_text(pill.plan)} → removed", pill.ref in marked) for _, pill in chosen]
     lines.append("-# This stops its reminders. Its history is kept.")
     return Proposal(
         lines=tuple(lines), data={"pills": [{"pill": pill.ref} for _, pill in chosen]}, warnings=tuple(warnings),
@@ -345,7 +440,10 @@ async def delete_card(request: Request, data: dict, guessed: frozenset) -> Propo
     chosen, warnings, today, marked = await _chosen(request, data, guessed)
     if not chosen:
         raise _none_left(warnings, "No pill to delete.")
-    lines = tuple(flag(f"**{pill.plan.name}** · {rules.schedule_text(pill.plan)}", pill.ref in marked) for _, pill in chosen)
+    lines = tuple(
+        flag(f"**{pill.plan.name}** · {rules.schedule_text(pill.plan)} → deleted, with its history", pill.ref in marked)
+        for _, pill in chosen
+    )
     return Proposal(
         lines=lines, data={"pills": [{"pill": pill.ref} for _, pill in chosen]},
         warnings=(*warnings, "This deletes the history too and can't be undone"),
@@ -418,7 +516,12 @@ _OFF_THE_CARD = Field(
     "Only in a follow-up to an open card: true to take this pill off the card (\"not the iron\").",
     BOOLEAN,
 )
-_WHICH = Field("pill", "Which pill: its id from the state given with the message (pl3), or its name as the user said it.", required=True)
+_WHICH = Field(
+    "pill",
+    "Which pill: its id from the state given with the message (pl3), or its name as the user said it. "
+    "\"it\" or \"that one\" is `@that`: never work out which pill a pronoun means.",
+    required=True,
+)
 
 
 def _one_or_more(what: str, *fields_: Field) -> tuple[Field, ...]:
@@ -444,6 +547,7 @@ ACTIONS = (
         ),
         prepare=add_card,
         apply=add_save,
+        verify=add_check,
     ),
     Action(
         "pill_edit",
@@ -454,6 +558,7 @@ ACTIONS = (
         _one_or_more("to change", _WHICH, Field("name", "A new name for it, if it is being renamed."), *_PLAN_FIELDS, _OFF_THE_CARD),
         prepare=edit_card,
         apply=edit_save,
+        verify=edit_check,
     ),
     Action(
         "pill_pause",
@@ -462,6 +567,7 @@ ACTIONS = (
         _one_or_more("to pause", _WHICH, Field("until", "The day it is taken again, " + AS_SAID + " Leave out for no end."), _OFF_THE_CARD),
         prepare=pause_card,
         apply=pause_save,
+        verify=pause_check,
     ),
     Action(
         "pill_resume",
@@ -469,6 +575,7 @@ ACTIONS = (
         _one_or_more("to resume", _WHICH, _OFF_THE_CARD),
         prepare=resume_card,
         apply=resume_save,
+        verify=resume_check,
     ),
     Action(
         "pill_remove",
@@ -477,6 +584,7 @@ ACTIONS = (
         _one_or_more("to remove", _WHICH, _OFF_THE_CARD),
         prepare=remove_card,
         apply=remove_save,
+        verify=remove_check,
     ),
     Action(
         "pill_delete",
@@ -485,6 +593,7 @@ ACTIONS = (
         _one_or_more("to delete", _WHICH, _OFF_THE_CARD),
         prepare=delete_card,
         apply=delete_save,
+        verify=delete_check,
     ),
     Action(
         "pill_list",

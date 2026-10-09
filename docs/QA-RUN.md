@@ -1,6 +1,6 @@
 # QA run sheet
 
-One pass through 217 of the 239 👤 Manual tests in `docs/TESTING.md` that are
+One pass through 215 of the 237 👤 Manual tests in `docs/TESTING.md` that are
 ⬜ Untested (as of 2026-10-10); the other 22 are pills tests (group R) for
 stages not built yet, and join as each is. Blocks share setup and each one leaves things
 ready for the next, so run them in order.
@@ -27,7 +27,7 @@ tests (block 12).
 | 15 | Dev database and clock | `--dev`, on and off (three restarts) | 10 | 13 |
 | 16 | Pills: setting up | `--dev`, off (one restart) | 15 | 16 |
 | 17 | Traces: `dev why` and bug reports | `--dev`, off (one restart) | 3 | 5 |
-| 18 | Tasks in plain words | `--dev`, off (one restart) | 16 | 25 |
+| 18 | Retest: the fixes of 2026-10-10 | `--dev`, off (one restart) | 14 | 22 |
 | | **Total** | | **213** (F2 is split over blocks 4 and 7, counted in 7) | **about 4¼ hours** |
 
 Blocks 13 to 18 need nothing from the others: run them any time after
@@ -62,6 +62,8 @@ block 1, and before the overnight block if that suits.
 
 ## 1. Start-up
 
+**As soon as the bot is up:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
 Dev mode: off (it always is after a start).
 
 | # | Do | Expect | Tests |
@@ -71,6 +73,8 @@ Dev mode: off (it always is after a start).
 | 3 | From the second account: type `ping` in #inbox and react 📦 on any message. Wait 35 seconds | No reply, no archive, nothing from Claude. Remove that 📦 afterwards | K3 |
 
 ## 2. Builtin words and chat
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
 Dev mode: off. In #inbox unless it says otherwise.
 
@@ -91,6 +95,8 @@ Dev mode: off. In #inbox unless it says otherwise.
 
 ## 3. Reactions at the real 30 seconds
 
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
 Dev mode: off, so the debounce is the real `REACTION_DEBOUNCE`. In #scratch,
 type four messages first: `one`, `two`, `three`, `keep me`.
 
@@ -108,6 +114,8 @@ kept `keep me` (used in block 9).
 
 ## 4. Pins
 
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
 Dev mode: off.
 
 | # | Do | Expect | Tests |
@@ -118,6 +126,8 @@ Dev mode: off.
 | 4 | A minute after step 1, look at the status message, then `lab pin stop` | It was updated on the minute; `stop` unpins it; the unpin is logged | B4 |
 
 ## 5. Dev mode switch and panel
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
 In #scratch. Starts and ends with dev mode off. Watch the bot's status in
 the member list.
@@ -140,6 +150,8 @@ the member list.
 | 14 | `dev status`, then `python -m core.instance_lock` in PowerShell | "🩺 Bot instances": "1 bot is running: PID …, started … (it holds the lock)", and a "Not counted" line for the `.venv` launcher. No ⚠️ line. `python -m core.instance_lock` in PowerShell prints the same | J33 |
 
 ## 6. Archive, delete, keep and protection
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
 In #scratch. Dev mode: **`dev on`** (debounce 2s, verbose on); the steps
 change the debounce where a test needs it.
@@ -187,6 +199,8 @@ Leaves dev mode on, and archived copies in #archive (needed for block 9).
 
 ## 7. Timers and dev tools
 
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
 In #scratch. Dev mode: on, debounce 2s, verbose on, speed 1x to start.
 First press **+1 hour** on the panel so it lasts through block 9.
 
@@ -216,6 +230,8 @@ Leaves dev mode on at speed 60x, verbose off.
 
 ## 8. Pomodoro
 
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
 In #scratch. Dev mode: on. Speed 60x for step 2 only, then 1x, because
 focus rounds only count in the stats at 1x.
 
@@ -240,6 +256,8 @@ focus rounds only count in the stats at 1x.
 Leaves dev mode on at 1x, nothing running.
 
 ## 9. Lab tour and restarts
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
 Two restarts cover every restart test. Dev mode is on going in and is
 switched off by the first restart, which is itself a test.
@@ -284,6 +302,8 @@ switched off by the first restart, which is itself a test.
 
 ## 10. Rest of the lab
 
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
 In #scratch. Dev mode: off. Each is one word and a look.
 
 | # | Do | Expect | Tests |
@@ -299,6 +319,8 @@ In #scratch. Dev mode: off. Each is one word and a look.
 
 ## 11. Phone notifications
 
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
 Dev mode: off. **Close Discord on the desktop** (or let it go idle): Discord
 holds back phone notifications while the desktop app is active. Type
 everything from the phone, in #scratch.
@@ -312,6 +334,8 @@ everything from the phone, in #scratch.
 
 ## 12. Overnight backups
 
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
 Two separate nights. Dev mode: off.
 
 | # | Do | Expect | Tests |
@@ -320,6 +344,8 @@ Two separate nights. Dev mode: off.
 | 2 | Night two: stop the bot before 3am, start it in the morning | The missed backup runs at startup, with its own log card | K6 |
 
 ## 13. Tool calling (Claude runs things)
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
 In #inbox, in plain sentences: none of these is a typed word. Dev mode: off
 until step 12, and off again from step 17. Claude's wording varies from run to run, so judge what
@@ -365,6 +391,8 @@ field in step 13), so this block costs a little more than ordinary chat.
 
 ## 14. Bugs and kept confirmations
 
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
 Dev mode off. "The post" is the bug's post in #bugs. Each 🐞 or `bug` makes
 a real post: close them as you go (steps 10 to 12) or afterwards.
 
@@ -386,6 +414,8 @@ a real post: close them as you go (steps 10 to 12) or afterwards.
 
 ## 15. Dev database and clock
 
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
 Stop the bot first (`Ctrl + C`). Steps 2 to 10 run on the dev database, so
 nothing here touches your real history. `dev verbose` on helps for step 8.
 
@@ -403,6 +433,8 @@ nothing here touches your real history. `dev verbose` on helps for step 8.
 | 10 | `timer 10m`, then `dev reset-db`; press **Cancel**; again, press **Confirm** | Cancel: nothing changes (`timers` still lists it). Confirm: "🧹 `dev.db` wiped…"; `timers` and `stats` are empty; `dev jobs` shows only the backup and the day rollover; the clock is the real time. Delete the orphaned timer message by hand, then `dev off` and stop the bot | J42 |
 
 ## 16. Pills: setting up
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
 On the dev database (`python main.py --dev`), in #inbox, dev mode off. Start
 with no pills (`dev reset-db` if there are any). If `ENABLED_TASKS` is set
@@ -429,6 +461,8 @@ run it.
 
 ## 17. Traces: `dev why` and bug reports
 
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
 On the dev database (`python main.py --dev`), in #inbox, dev mode off.
 Restart the bot first: it adds a column to the message log.
 
@@ -438,31 +472,31 @@ Restart the bot first: it adds a column to the message log.
 | 2 | React 🐞 to the card the bot posted; open the new post in #bugs. Then press **Cancel** on the card | The post in #bugs has a **Trace** section between "That turn" and "Related errors": the same block `dev why` shows for the message of mine that the card answered | P31 |
 | 3 | Type `dev cost` | The card ends with "-# List context sent to extraction this month: … of … lines over … messages, … (at most 20 a task a message)" | J48 |
 
-## 18. Tasks in plain words
+## 18. Retest: the fixes of 2026-10-10
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
 On the dev database (`python main.py --dev`), in #inbox, dev mode off.
 Restart the bot first. Every step ends by saying what to press, so no card
-is left open for the next one. If a result looks wrong, type `dev why`
-before going on and paste the block when you report it.
+is left open for the next one. If a result looks wrong, reply to your
+message with `dev why` and paste the block when you report it.
 
 | # | Do | Expect | Tests |
 |---|---|---|---|
-| 1 | Say `set a timer for 5 minutes called tea`. Press nothing | The timer's own message with its buttons, as `timer 5m tea` gives; no card, and no other line from the bot | T2 |
-| 2 | Say `pause the tea timer`; then `give it 5 more minutes`; then `carry on`. Press nothing | Each is done at once and said in a line (paused, time added, resumed), with no card; the timer's message changes in place | T3 |
-| 3 | Say `start two one-minute timers called a and b`; then `cancel all my timers`; press **Cancel 3 timers** | Two more timers start. Then a card "⏱️ Timers · cancel" with a line for each of the three, "⚠️ This cancels 3 timers and can't be undone" and a red **Cancel 3 timers**; nothing is cancelled until it is pressed, then "🚫 **Cancelled 3**" with each name | T4 |
-| 4 | Say `set a timer for a few minutes`; then `cancel it`. Press nothing | A timer starts, followed by "❓ I guessed the length: …". "cancel it" cancels that one timer at once, with no card | T5 |
-| 5 | Say `start a pomodoro`; then `how long left on my pomodoro?`; then `stop the pomodoro`. Press nothing | The session card; then a line such as "🍅 **Pomodoro** · Focus, round 1 of 4 · 25m left"; then the session stops and the card says so | T6 |
-| 6 | Straight after any reply from the bot say `that's a bug: it was slow`; open the post in #bugs; then say `show my open bugs`. Press nothing | "🐞 Logged as B<n> · 📝 your note is saved with it", linking to the post; the post is about the bot's reply (not your words), has "it was slow" as a note and a **Trace** section. Then the list of open bugs | T7 |
-| 7 | Say `add iron at 8`; then, pressing nothing, `8pm`; press **Save** | A card "💊 Pills · new" with "**Iron** · daily at `8:00 am` ❓" and no question first. After "8pm" it is replaced by one with `8:00 pm` and no ❓ (one dose, not two). Save: "✅ Saved · 💊 **Iron** · daily at `8:00 pm`" | T8 |
-| 8 | Say `add course A, 3 times a day, at least 3 hours apart, with food, for 7 days starting tomorrow`; press **Cancel** | One card: "**Course A** · 3× daily, ≥3h apart · *with food* · <tomorrow to six days later> · first dose when ready". Cancel: the card goes and nothing is saved | T9 |
-| 9 | Say `move iron to 9pm`; press **Save** | A card "💊 Pills · edit": "**Iron**", "Now: … `8:00 pm`", "New: … `9:00 pm`". Save: "✅ Updated · 💊 **Iron** · daily at `9:00 pm`" | T10 |
-| 10 | Say `pause iron until the 20th`; press **Save**. Then `resume iron`; press **Save** | A card "💊 Pills · pause" with "**Iron** · paused until 20 Oct" (or the next 20th); Save: "⏸️ **Iron** paused until …". Then a card "💊 Pills · resume"; Save: "▶️ **Iron** resumed." | T11 |
-| 11 | Say `show all my pills` and keep it in view; then `remove iron`; press **Remove** | The list, with no buttons. Then a card "💊 Pills · remove" that says its history is kept; Remove: "🗑️ Removed **Iron**. Its history is kept." and the list above loses Iron, edited in place | T12 |
-| 12 | Say `add zinc`; press **Save**. Then `delete zinc and its history`; press **Delete for good** | After the first Save zinc is added. Then a card "💊 Pills · delete" with "⚠️ This deletes the history too and can't be undone" and a red **Delete for good**; pressed: "🗑️ Deleted **Zinc** and its history." | T13 |
-| 13 | Send `note one`; then say `pin that`; then `unpin it`. Press nothing | "📌 Pinned" with "> note one" quoted and a jump link, and the message is pinned; then "📌 Unpinned" with the same quote | T14 |
-| 14 | Send `scrap`; then say `delete my last message`; press **Delete for good** | A card "🗂️ Messages · delete" quoting "scrap" (your message, not the bot's), "⚠️ Deleting can't be undone" and a red **Delete for good**; nothing goes until it is pressed, then "🗑️ Deleted" | T15 |
-| 15 | Send `old news`; then say `archive that`. Press nothing | "📦 Archived: <link>" with "> old news" quoted; the message is gone from the channel and its copy in the archive has a Restore button | T16 |
-| 16 | Pin a message by hand, send nothing after it, then say `archive that`; press **Cancel** | A card "🗂️ Messages · archive" quoting it, with "⚠️ … is pinned" and **Archive anyway**; Cancel leaves it where it is | T17 |
+| 1 | Say `add zinc`; press **Save**. Then `delete zinc and its history`; press **Delete for good**. Then send `note one`, and say `show all my pills`. Press nothing more | After the first Save zinc is added. Then a card "💊 Pills · delete" with "**Zinc** · … → deleted, with its history", "⚠️ This deletes the history too and can't be undone" and a red **Delete for good**; pressed: "🗑️ Deleted **Zinc** and its history." Send `note one` next: no reply. `show all my pills` has no Zinc | T13 |
+| 2 | Send `note one`; then `thanks`. Press nothing | No reply to either: a message that asks nothing gets nothing | T21 |
+| 3 | Say `add milk and bread rolls`; then, pressing nothing, `make it 2`; press **Cancel** | The card is replaced: "milk · × 1" and "bread rolls · × 2", with no ❓: "it" is the item mentioned last, worked out by the bot's code | T22 |
+| 4 | Say `set a timer for 5 minutes called tea`, then `set a timer for 9 minutes called dinner`. Reply to the **tea** timer's message with `pause this`; then, with no reply, say `give it 5 more minutes`. Press nothing | The reply pauses tea (not dinner, the newer one). "it" then means tea, the timer you did something to last: tea gets 5 more minutes | T23 |
+| 5 | Say `cancel all my timers`; press **Cancel 2 timers** | A card "⏱️ Timers · cancel" with a line for each timer ending "→ cancelled" and a red **Cancel 2 timers**; pressed: "🚫 **Cancelled 2**" | T4 |
+| 6 | Reply to an earlier message of yours (three or more back) with `dev why 2`. Press nothing | Two blocks: the message you replied to and the one of yours before it, oldest first; nothing newer | T24 |
+| 7 | Straight after any reply from the bot say `that's a bug: it was slow`; open the post in #bugs. Press nothing | "🐞 Logged as B<n> · 📝 your note is saved with it", linking to the post; the post is about your own message before this one (what you asked, never the bot's reply), has "it was slow" as a note and a **Trace** section. | T7 |
+| 8 | Say `add iron at 8pm`; press **Save**. Then `move iron to 9pm`; press **Save** | A card "💊 Pills · edit": "**Iron**", then "schedule · daily at `8:00 pm` → daily at `9:00 pm`". Save: "✅ Updated · 💊 **Iron** · daily at `9:00 pm`" | T10 |
+| 9 | Say `pause iron until the 20th`; press **Save**. Then `resume iron`; press **Save** | A card "💊 Pills · pause" with "**Iron** · active → paused until 20 Oct" (or the next 20th); Save: "⏸️ **Iron** paused until …". Then a card "💊 Pills · resume" with "**Iron** · paused → active"; Save: "▶️ **Iron** resumed." | T11 |
+| 10 | Say `show all my pills`; then `remove iron`; press **Remove** | The list, with no buttons. Then a card "💊 Pills · remove" with "**Iron** · … → removed" that says its history is kept; Remove: "🗑️ Removed **Iron**. Its history is kept." and the list above loses Iron, edited in place | T12 |
+| 11 | Say `add butter`; then, pressing nothing, `add zinc to my pills`; press **Cancel** on both cards | The shopping card for butter stays as it is, and a "💊 Pills · new" card for zinc appears: zinc is not added to the shopping card | T25 |
+| 12 | Say `add magnesium, 2 tablets at 9pm with food`; press **Cancel** | One card: "**magnesium** (2 tablets) · daily at `9:00 pm` · *with food*" with no ❓ anywhere: what was stated is used exactly | T26 |
+| 13 | Send `keep me`; say `pin that`. Then react 📌 to `keep me` and wait for ✅. Press nothing | Nothing is pinned by the words (a short plain answer, or none). The reaction pins it as always | T27 |
+| 14 | React 🐞 to any message; open the post in #bugs; type `bugs`. Press nothing | "🐞 Logged as D<n>" (a D, not a B); the post's title starts "D<n> ·" and it carries the tags Open and dev. `bugs` lists it as D<n> | P33 |
 
 ## When you finish
 

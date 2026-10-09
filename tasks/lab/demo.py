@@ -2,7 +2,7 @@ import re
 
 from core import livelists
 from core.actions import ADD, CHANGE, INTEGER, ITEMS, REMOVE, SET, Action, Entry, Field, LiveReply, Proposal, Request, State
-from core.actions import change_field, flag, is_guessed, merge_items
+from core.actions import LAST, change_field, flag, is_guessed, is_reference, merge_items, point_at
 from core.errors import UserError
 from tasks.lab import state
 
@@ -102,15 +102,28 @@ def _count(number: int, noun: str = "item") -> str:
 # ---------------------------------------------------------------------------
 # Shopping
 # ---------------------------------------------------------------------------
-def _changes(request: Request, data: dict, saved: list[dict], amount: str | None) -> tuple[list[dict], list[str]]:
+def _changes(request: Request, data: dict, saved: list[dict], amount: str | None) -> tuple[list[dict], list[str], str | None, str | None]:
     """What a card holds once this message is taken in: the open card's items
     (if it corrects one) with the message's changes merged in by code. Also
-    the names it was asked to remove that are nowhere."""
-    pending = request.previous["items"] if request.previous else []
-    return merge_items(
-        pending, data["items"], amount=amount, same=same_item, exists=lambda name: _find(saved, name) is not None,
+    the names it was asked to remove that are nowhere, the item mentioned last
+    (for the next "it"), and the item an "it" was taken to be when that was a
+    guess.
+
+    "It" is resolved here, never by Claude: the last thing mentioned on the
+    card. With no card there is nothing mentioned to go by, so it is taken as
+    the newest thing on the list and flagged."""
+    previous = request.previous or {}
+    pending = previous.get("items", [])
+    last = previous.get(LAST) or (pending[-1]["item"] if pending else None)
+    taken_as = None
+    if last is None and saved and any(is_reference(change.get("item")) for change in data["items"]):
+        last = taken_as = saved[-1]["item"]
+    asked = point_at(data["items"], "item", last)
+    merged, nowhere = merge_items(
+        pending, asked, amount=amount, same=same_item, exists=lambda name: _find(saved, name) is not None,
         said=request.text,
     )
+    return merged, nowhere, (asked[-1]["item"] if asked else last), taken_as
 
 
 def _guessed_names(data: dict, guessed: frozenset, *fields: str) -> set[str]:
@@ -127,8 +140,8 @@ async def shop_change_card(request: Request, data: dict, guessed: frozenset) -> 
     """One card for everything asked for: a line an item. Something already on
     the list shows what it is now and what it will be (5 → 7)."""
     saved = await _items("shopping", request.user.id)
-    changes, nowhere = _changes(request, data, saved, "quantity")
-    unsure = _guessed_names(data, guessed, "quantity")
+    changes, nowhere, last, taken_as = _changes(request, data, saved, "quantity")
+    unsure = _guessed_names(data, guessed, "quantity") | ({singular(taken_as)} if taken_as else set())
     lines, items = [], []
     warnings = [f"{name} isn't on the list: nothing to remove" for name in nowhere]
     for change in changes:
@@ -159,7 +172,7 @@ async def shop_change_card(request: Request, data: dict, guessed: frozenset) -> 
         raise UserError(f"{', '.join(nowhere)} isn't on the shopping list.")
     # "new" while nothing on the list is touched: an amount set on a card not yet saved is still new
     new = all(item.get(CHANGE) != REMOVE and _find(saved, item["item"]) is None for item in items)
-    return Proposal(lines=tuple(lines), data={"items": items}, warnings=tuple(warnings), kind="new" if new else "change")
+    return Proposal(lines=tuple(lines), data={"items": items, LAST: last}, warnings=tuple(warnings), kind="new" if new else "change")
 
 
 async def shop_change_save(request: Request, data: dict) -> str:
@@ -194,6 +207,25 @@ async def shop_change_save(request: Request, data: dict) -> str:
         return f"✅ Saved · 🛒 {_count(added)} added to the shopping list"
     parts = [f"{number} {word}" for number, word in ((added, "added"), (changed, "changed"), (removed, "removed")) if number]
     return f"✅ Saved · 🛒 shopping list updated: {', '.join(parts)}"
+
+
+async def shop_change_check(request: Request, data: dict) -> str:
+    """Read the list back: what was removed is gone, what was set has that
+    amount, what was added is there with at least that many."""
+    items = await _items("shopping", request.user.id)
+    wrong = []
+    for change in data["items"]:
+        there, what = _find(items, change["item"]), change.get(CHANGE, ADD)
+        if what == REMOVE:
+            if there is not None:
+                wrong.append(f"{change['item']} is still on the list")
+        elif there is None:
+            wrong.append(f"{change['item']} is not on the list")
+        elif what == SET and there["quantity"] != min(MAX_QUANTITY, change["quantity"]):
+            wrong.append(f"{change['item']} is × {there['quantity']}, not × {change['quantity']}")
+        elif what == ADD and there["quantity"] < min(MAX_QUANTITY, change["quantity"]):
+            wrong.append(f"{change['item']} is only × {there['quantity']}")
+    return "; ".join(wrong)
 
 
 async def shop_list(request: Request, data: dict, guessed: frozenset) -> LiveReply:
@@ -248,6 +280,11 @@ _NAME = (
     "their spelling and their singular or plural (\"milks\" stays milks, \"an egg\" is egg, \"a hat\" is hat)."
 )
 
+async def shop_clear_check(request: Request, data: dict) -> str:
+    left = await _items("shopping", request.user.id)
+    return f"{_count(len(left))} still on the shopping list" if left else ""
+
+
 async def _shopping_state(request: Request) -> State:
     # A line an item: only what the message could mean is sent when the list is long
     items = await _items("shopping", request.user.id)
@@ -300,6 +337,7 @@ SHOPPING = Entry(
             ),
             prepare=shop_change_card,
             apply=shop_change_save,
+            verify=shop_change_check,
         ),
         Action(
             "demo_shop_list",
@@ -328,6 +366,7 @@ SHOPPING = Entry(
             "The user wants the whole shopping list emptied or deleted.",
             prepare=shop_clear_card,
             apply=shop_clear_save,
+            verify=shop_clear_check,
         ),
     ),
 )
@@ -338,8 +377,8 @@ SHOPPING = Entry(
 # ---------------------------------------------------------------------------
 async def pack_change_card(request: Request, data: dict, guessed: frozenset) -> Proposal:
     saved = await _items("packing", request.user.id)
-    changes, nowhere = _changes(request, data, saved, None)
-    unsure = _guessed_names(data, guessed, "bag")
+    changes, nowhere, last, taken_as = _changes(request, data, saved, None)
+    unsure = _guessed_names(data, guessed, "bag") | ({singular(taken_as)} if taken_as else set())
     lines, items = [], []
     warnings = [f"{name} isn't on the packing list: nothing to remove" for name in nowhere]
     for change in changes:
@@ -362,7 +401,7 @@ async def pack_change_card(request: Request, data: dict, guessed: frozenset) -> 
     if not items:
         raise UserError("That is all on the packing list already." if not nowhere else f"{', '.join(nowhere)} isn't on the packing list.")
     new = all(item[CHANGE] == ADD for item in items)
-    return Proposal(lines=tuple(lines), data={"items": items}, warnings=tuple(warnings), kind="new" if new else "change")
+    return Proposal(lines=tuple(lines), data={"items": items, LAST: last}, warnings=tuple(warnings), kind="new" if new else "change")
 
 
 async def pack_change_save(request: Request, data: dict) -> str:
@@ -394,6 +433,21 @@ async def pack_change_save(request: Request, data: dict) -> str:
         return f"✅ Saved · 🧳 {_count(added)} added to the packing list"
     parts = [f"{number} {word}" for number, word in ((added, "added"), (changed, "changed"), (removed, "removed")) if number]
     return f"✅ Saved · 🧳 packing list updated: {', '.join(parts)}"
+
+
+async def pack_change_check(request: Request, data: dict) -> str:
+    items = await _items("packing", request.user.id)
+    wrong = []
+    for change in data["items"]:
+        there = _find(items, change["item"])
+        if change[CHANGE] == REMOVE:
+            if there is not None:
+                wrong.append(f"{change['item']} is still on the packing list")
+        elif there is None:
+            wrong.append(f"{change['item']} is not on the packing list")
+        elif change[CHANGE] == SET and there["bag"] != change["bag"]:
+            wrong.append(f"{change['item']} is in the {there['bag']} bag")
+    return "; ".join(wrong)
 
 
 async def pack_list(request: Request, data: dict, guessed: frozenset) -> LiveReply:
@@ -437,6 +491,7 @@ PACKING = Entry(
             ),
             prepare=pack_change_card,
             apply=pack_change_save,
+            verify=pack_change_check,
         ),
         Action(
             "demo_pack_list",

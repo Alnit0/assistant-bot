@@ -49,6 +49,11 @@ gained time"):
 
 ## Left for later
 
+- **Pin, archive and delete in plain words** ("pin that", "archive that",
+  "delete my last message") were built and taken out on 2026-10-10: it
+  was too easy to act on the wrong message. Reactions (📌, 📦, 🗑️) and
+  reply words do all three. If it comes back, a reply should be the only
+  way to say which message.
 - **`dev qa <block>`: step through a QA block in Discord** (asked for
   2026-10-10, not built). One step of `docs/QA-RUN.md` at a time with
   Pass / Fail buttons; on Fail the trace of the last messages

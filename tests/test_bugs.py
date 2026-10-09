@@ -1058,3 +1058,127 @@ def test_show_my_open_bugs_is_the_same_list_as_the_word(said):
     said.report()
     listed = asyncio.run(bugs.list_said(said.request("show my open bugs"), {}, frozenset()))
     assert listed.splitlines()[0] == "**Open bugs (1)**" and f"[B1]({URL}1)" in listed
+
+
+# --- QA 2026-10-10: "that" is my own newest message, never one of the bot's --------------------------------
+def test_thats_a_bug_without_a_reply_is_about_my_own_last_message(monkeypatch):
+    class History:
+        def __init__(self, found):
+            self.found = found
+
+        def __aiter__(self):
+            async def each():
+                for item in self.found:
+                    yield item
+
+            return each()
+
+    def with_author(message_id, content, bot):
+        made = discord_message(message_id, content)
+        made.author = SimpleNamespace(display_name="Hive" if bot else "Sam", bot=bot)
+        return made
+
+    asked = {}
+
+    class Channel:
+        def history(self, limit, before):
+            asked.update(limit=limit, before=before.id)
+            return History([with_author(5003, "✅ Saved", True), with_author(5002, "⏱️ tea", True), with_author(5001, "set a timer", False)])
+
+    async def channel(channel_id):
+        return Channel()
+
+    monkeypatch.setattr(posts, "_channel", channel)
+    found = asyncio.run(posts.latest_before(INBOX, 5004))
+    assert (found.id, found.content) == (5001, "set a timer") and asked == {"limit": posts.LOOK_BACK, "before": 5004}
+
+    class OnlyBot(Channel):
+        def history(self, limit, before):
+            return History([with_author(5003, "✅ Saved", True)])
+
+    async def only_bot(channel_id):
+        return OnlyBot()
+
+    monkeypatch.setattr(posts, "_channel", only_bot)
+    with pytest.raises(UserError, match="nothing of yours in this channel"):
+        asyncio.run(posts.latest_before(INBOX, 5004))
+
+
+# --- ids: permanent, unique, never reused; D for the dev database -------------------------------------
+def test_deleting_the_newest_bug_never_frees_its_number(bugs_db):
+    first = asyncio.run(store.add(1, report()))
+    second = asyncio.run(store.add(1, report(target=snap(5002, "another"))))
+    assert (first, second) == (1, 2)
+
+    def delete_newest(conn):
+        conn.execute("DELETE FROM bugs_items WHERE id = ?", (second,))
+
+    asyncio.run(database.run(delete_newest))
+    third = asyncio.run(store.add(1, report(target=snap(5003, "a third"))))
+    assert third == 3, "the next number, not the deleted one"
+    assert rules.bug_id(third) == "B3"
+
+
+def test_the_same_number_never_appears_twice_however_many_are_deleted(bugs_db):
+    seen = []
+    for round_ in range(4):
+        number = asyncio.run(store.add(1, report(target=snap(6000 + round_, f"bug {round_}"))))
+        seen.append(number)
+
+        def delete_all(conn):
+            conn.execute("DELETE FROM bugs_items")
+
+        asyncio.run(database.run(delete_all))  # even with the table emptied each time
+    assert seen == [1, 2, 3, 4] and len(set(seen)) == len(seen)
+
+
+def test_the_number_is_the_rows_key_and_the_table_never_reuses_one(bugs_db):
+    def schema(conn):
+        return conn.execute("SELECT sql FROM sqlite_master WHERE name = 'bugs_items'").fetchone()[0]
+
+    assert "id INTEGER PRIMARY KEY AUTOINCREMENT" in asyncio.run(database.run(schema))
+    number = asyncio.run(store.add(1, report()))
+    assert asyncio.run(store.get(number)).id == number
+
+
+def test_a_dev_bug_has_its_own_prefix_and_tag_from_the_database_mode(filing, owner, monkeypatch):
+    assert (rules.prefix(), rules.tags_for_new()) == ("B", ["Open"]), "the live database"
+    monkeypatch.setattr(rules, "DEV", True)
+    assert rules.bug_id(1) == "D1" and rules.tags_for_new() == ["Open", "dev"]
+    line = asyncio.run(bugs._file(owner, ELSEWHERE, snap(), [], rules.REACTION))
+    assert line == f"🐞 Logged as [D1]({URL}1)", "whatever channel it was reported from"
+    assert rules.title(1, "it broke").startswith("D1 · ") and "**D1**" in rules.opening_text(1, report())
+    assert rules.parse_id("d1") == 1 and rules.parse_id("1") == 1
+    with pytest.raises(UserError, match="They look like D4"):
+        rules.parse_id("B1")
+    monkeypatch.setattr(rules, "DEV", False)
+    with pytest.raises(UserError, match="They look like B4"):
+        rules.parse_id("D1")
+
+
+def test_the_dev_tag_is_created_only_by_a_bot_on_the_dev_database(monkeypatch):
+    assert rules.missing_tags(["Open", "Fixed", "Won't fix"]) == []
+    monkeypatch.setattr(rules, "DEV", True)
+    assert rules.missing_tags(["Open", "Fixed", "Won't fix"]) == ["dev"]
+    assert rules.missing_tags(["open", "fixed", "won't fix", "Dev"]) == []
+    assert rules.tags_after(["Open", "dev"], rules.FIXED) == ["dev", "Fixed"], "closing a dev bug keeps its dev tag"
+
+
+def test_a_dev_post_is_opened_with_the_dev_tag(monkeypatch):
+    made = {}
+    tags = [SimpleNamespace(name=name) for name in ("Open", "Fixed", "Won't fix", "dev")]
+
+    class Forum:
+        available_tags = tags
+
+        async def create_thread(self, **options):
+            made.update(options)
+            return SimpleNamespace(thread=SimpleNamespace(id=7001, jump_url=URL, send=None), message=None)
+
+    monkeypatch.setattr(posts, "forum", lambda: Forum())
+    monkeypatch.setattr(rules, "DEV", True)
+    try:
+        asyncio.run(posts.create_post(1, report()))
+    except Exception:
+        pass  # only the opening call matters here: what tags the post is created with
+    assert [tag.name for tag in made["applied_tags"]] == ["Open", "dev"] and made["name"].startswith("D1 · ")

@@ -96,6 +96,22 @@
         "confidence": "high",
         "chat_part": ""
       }
+    },
+    {
+      "message": "add vitamin D tablets to my pills",
+      "tasks": [
+        "pills"
+      ],
+      "on_screen": "a Shopping card (demo_shop_change) from the user saying: add butter | add jam",
+      "note": "QA 2026-10-10, a named destination decides the task outright, whatever card is open (settled in code)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
     }
   ],
   "extraction": [
@@ -183,7 +199,11 @@
               "start": "tomorrow",
               "days": 7
             }
-          ]
+          ],
+          "guessed": [
+            "times[0]"
+          ],
+          "not_included": []
         }
       ]
     },
@@ -327,16 +347,21 @@
         {
           "pills": [
             {
+              "name": "Iron",
+              "times": "08:00"
+            },
+            {
               "name": "Zinc",
               "per_day": 1
             }
           ],
           "guessed": [
-            "times[0]"
+            "Zinc: times (once a day, but no specific time given)"
           ],
           "not_included": []
         }
-      ]
+      ],
+      "known_miss": "claude-haiku-4-5 sometimes sends the card's pill back beside the new one. For pills that is harmless: a pill named again with the same details changes nothing (overlay), which a test checks (2026-10-10)"
     },
     {
       "task": "pills",
@@ -533,7 +558,7 @@
         {
           "pills": [
             {
-              "pill": "pl1"
+              "pill": "Iron"
             }
           ],
           "guessed": [],
@@ -625,7 +650,69 @@
       "recorded": [
         "none",
         {
-          "reason": "User reporting they took their medication, not a pills task action (add, edit, pause, resume, remove, delete, or list)"
+          "reason": "Marking a pill as taken is not a pill management action (setting up, editing, pausing, resuming or removing). The task is for pill schedules, not logging doses."
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "pause it until Friday",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Iron · daily at 8:00 am [active]\n- pl2: 💊 Evening pill · daily at 8:00 pm · with food [active]\n- pl3: ⏸️ Zinc · daily, untimed · paused [paused]\n- pl4: 💊 Vitamin D (1 tablet) · daily, untimed [active]",
+      "action": "pill_pause",
+      "data": {
+        "pills": [
+          {
+            "pill": "@that",
+            "until": "Friday"
+          }
+        ]
+      },
+      "guessed": [],
+      "note": "QA 2026-10-10, references: \"it\" is @that for the code to resolve; the stated day is used as said",
+      "recorded": [
+        "pill_pause",
+        {
+          "pills": [
+            {
+              "pill": "@that",
+              "until": "Friday"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "add magnesium, 2 tablets at 9pm with food",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Iron · daily at 8:00 am [active]\n- pl2: 💊 Evening pill · daily at 8:00 pm · with food [active]\n- pl3: ⏸️ Zinc · daily, untimed · paused [paused]\n- pl4: 💊 Vitamin D (1 tablet) · daily, untimed [active]",
+      "action": "pill_add",
+      "data": {
+        "pills": [
+          {
+            "name": "magnesium",
+            "dose": "2 tablets",
+            "times": "9pm",
+            "notes": "with food"
+          }
+        ]
+      },
+      "guessed": [],
+      "note": "QA 2026-10-10, stated details win: dose, time and note exactly as said, none of them a guess",
+      "recorded": [
+        "pill_add",
+        {
+          "pills": [
+            {
+              "name": "magnesium",
+              "dose": "2 tablets",
+              "times": "9pm",
+              "notes": "with food"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
         }
       ]
     }

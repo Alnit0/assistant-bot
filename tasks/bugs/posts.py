@@ -70,18 +70,23 @@ async def fetch_message(channel_id: int, message_id: int) -> discord.Message:
         raise UserError("I can't find the message you reacted to.") from error
 
 
+LOOK_BACK = 15  # how far back "that's a bug" looks for the user's own last message
+
+
 async def latest_before(channel_id: int, message_id: int | None) -> discord.Message:
-    """The last message in a channel before this one (the latest of all if
-    none is given): what "that's a bug" is about."""
+    """What "that's a bug" is about when it isn't a reply: the user's own newest
+    message before this one, never one of the bot's. The report then has that
+    turn: what was asked, and everything the bot did with it."""
     channel = await _channel(channel_id)
     before = discord.Object(id=message_id) if message_id is not None else None
     try:
-        found = [item async for item in channel.history(limit=1, before=before)]
+        found = [item async for item in channel.history(limit=LOOK_BACK, before=before)]
     except discord.HTTPException as error:
         raise UserError("I can't read this channel to find what to report.") from error
-    if not found:
-        raise UserError("There is nothing in this channel to report yet.")
-    return found[0]
+    mine = [item for item in found if not item.author.bot]
+    if not mine:
+        raise UserError("There is nothing of yours in this channel to report yet. Reply to the message with `bug`.")
+    return mine[0]
 
 
 async def send(channel_id: int, text: str) -> None:
@@ -128,7 +133,7 @@ async def create_post(number: int, report: rules.Report) -> tuple[int, str]:
         created = await channel.create_thread(
             name=rules.title(number, report.target.content),
             content=truncate(first, DISCORD_LIMIT),
-            applied_tags=_tags(channel, [rules.TAGS[rules.OPEN]]),
+            applied_tags=_tags(channel, rules.tags_for_new()),
             view=CloseButtons(),
             allowed_mentions=QUIET,
         )

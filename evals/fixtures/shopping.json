@@ -121,6 +121,22 @@
         "confidence": "high",
         "chat_part": ""
       }
+    },
+    {
+      "message": "add socks to the shopping list",
+      "tasks": [
+        "shopping"
+      ],
+      "on_screen": "the packing list, just shown",
+      "note": "QA 2026-10-10, a named destination decides the task outright, whatever is on screen (settled in code)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "shopping"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
     }
   ],
   "extraction": [
@@ -501,8 +517,7 @@
         {
           "items": [
             {
-              "item": "jam",
-              "change": "add"
+              "item": "jam"
             }
           ],
           "guessed": [],
@@ -536,29 +551,28 @@
       "data": {
         "items": [
           {
-            "item": "bread rolls",
+            "item": "@that",
             "quantity": 2,
             "change": "set"
           }
         ]
       },
-      "note": "QA 2026-10-09, pronouns: \"it\" is the item mentioned last (bread rolls), and this changed milk",
+      "note": "QA 2026-10-10, references: \"it\" comes back as @that and the code resolves it (the item mentioned last). Not a guess",
       "recorded": [
         "demo_shop_change",
         {
           "items": [
             {
-              "item": "bread rolls",
+              "item": "@that",
               "quantity": 2,
               "change": "set"
             }
           ],
-          "guessed": [
-            "items[0]"
-          ],
+          "guessed": [],
           "not_included": []
         }
-      ]
+      ],
+      "guessed": []
     },
     {
       "task": "shopping",
@@ -1037,8 +1051,7 @@
         {
           "items": [
             {
-              "item": "bread",
-              "change": "add"
+              "item": "bread"
             }
           ],
           "guessed": [],
@@ -1292,7 +1305,7 @@
       "recorded": [
         "not_this",
         {
-          "reason": "Message is about weather, not the shopping list"
+          "reason": "User asking about weather, not about shopping list"
         }
       ]
     },
@@ -1303,7 +1316,7 @@
       "recorded": [
         "none",
         {
-          "reason": "Not about shopping list: observation unrelated to buying items"
+          "reason": "Not related to shopping list task"
         }
       ]
     },
@@ -1379,8 +1392,7 @@
         {
           "items": [
             {
-              "item": "milks",
-              "change": "add"
+              "item": "milks"
             }
           ],
           "guessed": [],
@@ -1407,6 +1419,35 @@
           "items": [
             {
               "item": "Egg"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "shopping",
+      "message": "add 3 eggs",
+      "state": "On the shopping list now:\n- eggs × 5",
+      "action": "demo_shop_change",
+      "data": {
+        "items": [
+          {
+            "item": "eggs",
+            "quantity": 3
+          }
+        ]
+      },
+      "guessed": [],
+      "note": "QA 2026-10-10, stated details win: an amount that was said is used exactly and is never a guess, whatever the list holds",
+      "recorded": [
+        "demo_shop_change",
+        {
+          "items": [
+            {
+              "item": "eggs",
+              "quantity": 3
             }
           ],
           "guessed": [],

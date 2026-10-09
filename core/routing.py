@@ -1,4 +1,5 @@
 import logging
+import re
 from dataclasses import dataclass
 
 from core import actions, costs, llm
@@ -24,7 +25,7 @@ log = logging.getLogger("assistant")
 # ---------------------------------------------------------------------------
 TOOL = "route"
 HIGH, TIE = "high", "tie"
-TASK, CHAT = "task", "chat"
+TASK, CHAT, NOTHING = "task", "chat", "nothing"
 MAX_TOKENS = 200
 EXCHANGES = 2  # how many recent exchanges it is shown
 
@@ -43,6 +44,12 @@ RULES = (
     "more usual.\n"
     "- If it is not for any task (a general question, conversation, something no task here does) give "
     "kind chat with no tasks.\n"
+    "- If the message asks nothing and needs nothing done, give kind nothing with no tasks: the bot then "
+    "says nothing at all. That is a note the user is leaving for themselves (\"note one\", \"scrap\", "
+    "\"old news\"), a thank-you, an \"ok\" or any remark that calls for no answer. A question, or "
+    "anything that asks the bot to do or say something, is never nothing.\n"
+    "- A destination the user names decides it: \"to my pills\", \"on the shopping list\", \"to the "
+    "packing list\" is that task, whatever else the message mentions and whatever is on screen.\n"
     "- A message can hold both: a request for a task and, beside it, a general question or remark that "
     "is for no task (\"what's the capital of France, and add milk to the shopping list\"). Then give "
     "the task as usual and copy the part that is for no task into chat_part, word for word. Every part "
@@ -60,10 +67,12 @@ class Route:
     # With tasks: the part of the message that is for none of them (a general
     # question beside the request), to be answered as chat as well
     chat_part: str = ""
+    # The message asks nothing and needs nothing done: no reply at all
+    nothing: bool = False
 
     @property
     def chat(self) -> bool:
-        return not self.tasks
+        return not self.tasks and not self.nothing
 
 
 def catalogue_text(entries: list[Entry]) -> str:
@@ -88,7 +97,11 @@ def tool(entries: list[Entry]) -> dict:
         "input_schema": {
             "type": "object",
             "properties": {
-                "kind": {"type": "string", "enum": [TASK, CHAT], "description": "chat if it is for no task."},
+                "kind": {
+                    "type": "string",
+                    "enum": [TASK, CHAT, NOTHING],
+                    "description": "chat if it is for no task; nothing if it calls for no answer at all.",
+                },
                 "tasks": {
                     "type": "array",
                     "items": {"type": "string", "enum": [entry.name for entry in entries]},
@@ -139,6 +152,9 @@ def parse(raw, names: list[str]) -> Route:
     tasks = tuple(dict.fromkeys(name for name in listed if isinstance(name, str) and name in names))
     unknown = [name for name in listed if name not in names]
     problem = f"unknown task(s): {unknown}" if unknown else ""
+    if raw.get("kind") == NOTHING and not tasks:
+        return Route(problem=problem, nothing=True)
+    # Nothing with a task named is a task: something was asked for
     if raw.get("kind") == CHAT or not tasks:
         return Route(problem=problem)
     aside = raw.get("chat_part")
@@ -148,6 +164,35 @@ def parse(raw, names: list[str]) -> Route:
         problem=problem,
         chat_part=aside.strip() if isinstance(aside, str) else "",
     )
+
+
+_TO = r"(?:to|on|onto|in|into|from|off|for)"
+
+
+def named_destinations(message: str, entries: list[Entry]) -> list[Entry]:
+    """The tasks a message names as where something goes: "to my pills", "on
+    the shopping list", "from the packing list". A stated destination decides
+    the task outright, so this is read in code, not left to the router. Pure."""
+    said = " ".join(message.lower().split())
+    found = []
+    for entry in entries:
+        names = {entry.name, entry.name.removesuffix("s")}
+        name = "|".join(re.escape(each) for each in sorted(names, key=len, reverse=True))
+        if re.search(rf"\b{_TO} (?:my|the|our) (?:{name})(?: list| task)?\b", said):
+            found.append(entry)
+    return found
+
+
+def with_named(found: Route, named: list[str]) -> Route:
+    """The router's answer once the destinations the user named are taken as
+    settled. If the router agrees and adds other tasks (a message with several
+    parts), they stay; if it chose something else, the named task stands
+    alone. Never a tie, and never chat. Pure."""
+    if not named:
+        return found
+    if all(name in found.tasks for name in named):
+        return Route(found.tasks, tie=False, problem=found.problem, chat_part=found.chat_part)
+    return Route(tuple(named), problem=found.problem)
 
 
 async def route(message: str, entries: list[Entry], on_screen: str = "", exchanges=None) -> Route:

@@ -154,6 +154,8 @@ def _card_lines(data: dict | None) -> list[str]:
     """A card's data in short lines, for the trace."""
     lines = []
     for name, value in (data or {}).items():
+        if name.startswith("_"):
+            continue  # the card's own bookkeeping (what was mentioned last)
         if isinstance(value, list) and value and all(isinstance(item, dict) for item in value):
             lines += [" ".join(str(part) for part in item.values()) for item in value]
         else:
@@ -398,6 +400,13 @@ async def handle(ctx: Context, capabilities: str = "", chat_here: bool = True) -
         # "No, shopping": the request on the card was meant for another task. Only
         # the card is re-routed: the redirect's own words are never handed to
         # extraction, so they can't be saved as anything
+        # A destination the user names ("to my pills", "on the shopping list") decides the
+        # task outright: a card or a list of another task on screen does not claim it
+        named = [entry.name for entry in routing.named_destinations(ctx.text, entries)]
+        if named:
+            trace.note(f"named destination: {', '.join(named)} (stated, so it decides the task)")
+        elsewhere_named = bool(named) and (open_card is None or open_card.task not in named)
+
         target = confirm.redirect(ctx.text, entries, open_card.task) if open_card is not None else None
         if target is not None:
             turn.route = costs.FOLLOW_UP
@@ -422,7 +431,7 @@ async def handle(ctx: Context, capabilities: str = "", chat_here: bool = True) -
             settled = True
 
         # About the open card? Then its task's extraction alone, without the router
-        if not settled and open_card is not None:
+        if not settled and open_card is not None and not elsewhere_named:
             latest = None if ctx.is_reply else await _latest_bot_message_id(ctx)
             sticky = confirm.sticks(open_card, utc_now(), replied_to=ctx.reply_target_id, latest_bot_message_id=latest)
             log.info(
@@ -454,7 +463,7 @@ async def handle(ctx: Context, capabilities: str = "", chat_here: bool = True) -
         # Straight after a list was shown? Then a short message is for that list's
         # task, without the router. (A card on screen comes first: it is newer.)
         shown_list = None
-        if not settled and not ctx.is_reply:
+        if not settled and not ctx.is_reply and not named:
             latest = await _latest_bot_message_id(ctx)
             shown_list = await livelists.by_message(latest)
             entry = actions.entry(shown_list.task) if shown_list is not None and shown_list.user_id == ctx.user.id else None
@@ -483,8 +492,18 @@ async def handle(ctx: Context, capabilities: str = "", chat_here: bool = True) -
                 exchanges=_exchanges(ctx.channel_id),
             )
             turn.router = {"tasks": list(routed.tasks), "tie": routed.tie, "chat": routed.chat, "chat_part": routed.chat_part, "problem": routed.problem}
+            if routed.nothing:
+                turn.router["nothing"] = True
             turn.why.append("nothing on screen claimed it" + (f"; the router was shown {on_screen}" if on_screen else ""))
-            if routed.chat:
+            if named:
+                settled_by_name = routing.with_named(routed, named)
+                if settled_by_name != routed:
+                    trace.note(f"named destination: the router said {list(routed.tasks) or 'no task'}, overruled by what was stated")
+                routed = settled_by_name
+            if routed.nothing:
+                # Nothing was asked and nothing needs doing: no reply at all
+                turn.why.append("the message asks nothing and needs nothing done: no reply")
+            elif routed.chat:
                 if not chat_here:
                     return Handled(False, row_id)
                 turn.route = costs.CHAT
@@ -501,7 +520,7 @@ async def handle(ctx: Context, capabilities: str = "", chat_here: bool = True) -
                 turn.said.append(result.reply)
                 await ctx.reply(result.reply)
 
-            if routed.chat:
+            if routed.chat or routed.nothing:
                 pass
             elif routed.tie:
                 tied = [actions.entry(name) for name in routed.tasks]

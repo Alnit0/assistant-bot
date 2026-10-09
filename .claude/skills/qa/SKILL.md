@@ -25,6 +25,9 @@ description: Keep the test tracker and the manual QA run sheet right. Use when t
   whose setup it shares, keep the expected result identical to TESTING.md,
   renumber the block's steps and fix any "step N" references, and update
   the block table (tests, minutes) and the total in the first line.
+- Every block of `docs/QA-RUN.md` starts with `dev clock reset`, as its own
+  line under the heading, so a clock left ahead by an earlier block never
+  spoils the next. Every step says what to press (or "press nothing").
 - A test that can't be run in a normal pass (needs special setup) stays in
   the sheet as an optional step that says to report it as a skip.
 

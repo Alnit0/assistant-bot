@@ -1,8 +1,8 @@
 import json
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
-from core import actions, costs, llm
+from core import actions, costs, llm, trace
 from core.actions import NONE, NOT_THIS, Action, Entry, Invalid
 from core.config import STRICT_SCHEMAS
 
@@ -73,10 +73,14 @@ def rules(entry: Entry) -> str:
         "is NOT a guess: leave it out and its default applies (no amount means one). Never list a default, "
         "and never list a field the user stated outright.\n"
         "- Copy names and wording as the user gave them. Follow each field's description for its form.\n"
-        "- \"It\", \"that\", \"this one\" and \"them\" mean what the user mentioned LAST: the last thing they "
-        "named, not the first on a list. Use what they have said so far to find it. If you cannot tell "
-        f"which is meant, take the last one named and list it in `{actions.GUESSED}` (by its place, e.g. "
-        "`items[0]`), so the user sees the guess.\n"
+        f"- When the user points at something without naming it (\"it\", \"that\", \"this one\", \"them\"), "
+        f"do NOT work out which thing is meant: put `{actions.REFERENCE}` where its name or id would go "
+        f"(\"make it 2\" -> the item is `{actions.REFERENCE}`, with the amount 2). The bot's code knows what "
+        "the user replied to and what they mentioned last, and resolves it. Only a thing the user names "
+        "gets its name. This is not a guess: do not list it as one.\n"
+        "- What the user states outright (an amount, a time, a dose, a note, a name) is copied exactly and "
+        "is never a guess. What is on screen or in the state only fills in what they left out; it never "
+        "overrides what they said.\n"
         "- Take ids and existing names from the state given with the message, when there is one.\n"
         f"- Only if no action fits at all, or the message makes no sense for this task, call `{NONE}`."
     )
@@ -250,6 +254,12 @@ async def extract(
         max_tokens=MAX_TOKENS,
     )
     found = read(entry, called, follow_up)
+    if found.fitted and found.guessed:
+        # Checked in code as well: what was said in so many words is never flagged
+        kept = actions.unstated(found.data, found.guessed, message)
+        if kept != found.guessed:
+            trace.note(f"stated check: no longer a guess, it was said outright: {', '.join(sorted(found.guessed - kept))}")
+            found = replace(found, guessed=kept)
     if not found.fitted and not found.not_this:
         log.info("Extraction for %s fitted nothing: %s", entry.name, found.reason)
     return found

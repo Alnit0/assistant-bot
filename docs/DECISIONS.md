@@ -657,7 +657,7 @@ A short log of key decisions and why. Newest at the bottom.
   did when they ran and when they were skipped. Shown by `dev why` and
   attached to bug reports.
 - **A task's plain-words code takes no Context** (2026-10-10): the
-  actions of timers, bugs, pills and messages live in each task's
+  actions of timers, bugs and pills live in each task's
   `plain.py` and get a `Request` (who, where, what was said, the message
   replied to), so the same code runs for a message, a Save and a tie
   pick. Timers were split so a timer or session can be started with a
@@ -665,23 +665,56 @@ A short log of key decisions and why. Newest at the bottom.
   code.
 - **Three additions to the contract, each for a real task:** `Shown`
   (a timer posts its own message, so nothing more is said), `card_if`
-  (cancelling one timer acts at once, several asks first; archiving a
-  protected message asks) and `Proposal.guessed` (a guess the code made,
+  (cancelling one timer acts at once, several asks first) and `Proposal.guessed` (a guess the code made,
   kept with the card: without it "8pm" after "iron at 8" came back as
   two doses, because 8:00 am looked as if it had been said).
 - **Pills guess instead of asking:** a time that could be morning or
   evening is taken as the morning and marked ❓ on the card. The old
   question with two buttons belongs to the old way and goes with it.
-- **Which message is meant: Claude says how it was pointed at, code
-  counts.** Given ids for the last messages, Claude picked the oldest for
-  "delete that" as often as the newest, whatever order or marking the
-  list had. It now says `newest`, `mine` or `named` (with ids only for a
-  message described by its words), and the code finds the newest ones.
-  Delete is always a card, and whatever is done to a message picked
-  without a reply is quoted.
+- **Archive, pin and delete are not asked for in plain words**
+  (2026-10-10). They were one router entry, "messages", for a day: which
+  message "that" meant was too easy to get wrong (it pinned and archived
+  the bot's own replies), and a reaction or a reply word already says
+  exactly which message. The entry was removed; reactions and reply
+  words are unchanged.
 - **"That's a bug: it was slow" keeps the words as the bug's first note.**
   Dropping them would break "nothing is dropped without a word", and a
   note is exactly what they are. (The typed word `bug` still takes none.)
+- **A confirmation needs the change read back** (2026-10-10). After
+  "Delete for good" the bot told the user it was still waiting for
+  confirmation: the delete had happened, but the press was never added
+  to the conversation, and the next message went the old way to a Claude
+  that knew nothing of it. Two fixes: a press is remembered
+  (`llm.remember`), and every action with an `apply` has a `verify` that
+  reads the change back; only then is the confirmation sent. The
+  registry refuses a saving action without one.
+- **References are resolved in code** (2026-10-10). Claude returns
+  `@that` for "it" and never chooses; the code takes the reply target,
+  else the last thing mentioned (a card keeps it as `_last`), else says
+  it can't tell. With no card, "it" is the newest thing the task has and
+  is flagged. This replaces "Claude takes the last one named".
+- **A named destination is read in code, before the router's answer is
+  used** (`routing.named_destinations`, `with_named`): "to my pills" is
+  pills even with a shopping card open and even if the router says
+  shopping. If the router agrees and adds other tasks, those stay, so a
+  message with several parts still gets every part.
+- **A stated value is never a guess, checked in code**
+  (`actions.unstated`): a guess whose value is in the message word for
+  word, or as the same number, is dropped from the guesses. A time such
+  as "8" is still marked: the code chose morning.
+- **"Nothing" is a third verdict of the router**, beside task and chat: a
+  note or a thank-you gets no reply, costs one small request and is
+  never handed to the old way.
+- **Bug ids are the row's key, and dev bugs are D, not B** (2026-10-10).
+  Both databases post to the one #bugs forum, and the dev database starts
+  again at 1 whenever it is recreated, so there were several "B1" posts.
+  The number is still the primary key (`AUTOINCREMENT`: SQLite never
+  gives one out twice, even after the newest row is deleted; it was
+  already so, and is now tested), never a count of rows or posts. The
+  letter comes from the database the bot is running on, not the channel:
+  B on the live one, D with `--dev`, and a dev post also gets a "dev"
+  forum tag, created at start-up by a bot on the dev database. Live
+  numbers never restart; dev numbers may.
 - **Two demo tasks, on the dev database only,** so the core can be tried
   before any real task depends on it. The live bot's router never hears
   of them.

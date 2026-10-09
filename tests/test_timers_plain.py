@@ -190,7 +190,7 @@ def test_the_card_names_each_timer_and_confirm_cancels_exactly_those(world):
     start(world, ("5m", "tea"), ("9m", "dinner"))
     tea, dinner = going(world)
     proposal = run(plain.cancel_card(world.request, {"which": "all", "action": "cancel"}, frozenset()))
-    assert proposal.lines == ("**tea** · running, 5m left", "**dinner** · running, 9m left")
+    assert proposal.lines == ("**tea** · running, 5m left → cancelled", "**dinner** · running, 9m left → cancelled")
     assert (proposal.kind, proposal.destructive, proposal.confirm_label) == ("cancel", True, "Cancel 2 timers")
     assert proposal.warnings == ("This cancels 2 timers and can't be undone",)
     assert proposal.data == {"ids": [tea.id, dinner.id]}
@@ -233,7 +233,10 @@ def test_the_conversation_asks_with_a_card_only_when_the_action_says_so(world, m
     turn = conversation.Turn()
     run(conversation.act(world.request, Extracted(entry, action, {"which": "all", "action": "cancel"}, frozenset()), turn))
     assert [name for name, _ in shown] == ["timer_change"] and said == [] and len(going(world)) == 2
-    assert turn.said == ["card: timers · cancel: **tea** · running, 5m left / **dinner** · running, 9m left / ⚠️ This cancels 2 timers and can't be undone"]
+    assert turn.said == [
+        "card: timers · cancel: **tea** · running, 5m left → cancelled / **dinner** · running, 9m left → cancelled / "
+        "⚠️ This cancels 2 timers and can't be undone"
+    ]
 
     turn = conversation.Turn()
     run(conversation.act(world.request, Extracted(entry, action, {"which": ref(tea), "action": "cancel"}, frozenset()), turn))
@@ -378,3 +381,37 @@ def test_with_nothing_going_the_state_says_so(world):
     assert actions.shown_state(run(plain.state(world.request)), "set a timer")[0] == (
         "Timers and the Pomodoro session now (use these ids): no timers and no Pomodoro session"
     )
+
+
+# --- QA 2026-10-10: a reply says which timer; "it" is the code's ------------------------------------------
+def test_a_timer_replied_to_is_the_one_meant_whatever_claude_said(world):
+    start(world, ("5m", "tea"), ("9m", "dinner"))
+    tea, dinner = going(world)
+    replied = Request(world.owner, CHANNEL, "pause this", replied_to=tea.message_id)
+    assert run(plain.which_timers(replied, {"which": ref(dinner)})) == ref(tea)
+    assert run(plain.which_timers(replied, {"which": "@that"})) == ref(tea)
+    run(plain.change(replied, {"which": "@that", "action": "pause"}, frozenset()))
+    assert [timer.status for timer in going(world)] == [store.PAUSED, store.RUNNING]
+
+
+def test_it_without_a_reply_is_the_timer_i_did_something_to_last(world):
+    start(world, ("5m", "tea"), ("9m", "dinner"))
+    tea, dinner = going(world)
+    assert run(plain.which_timers(world.request, {"which": "@that"})) == ref(dinner), "the one started last"
+    change(world, ref(tea), "pause")
+    assert run(plain.which_timers(world.request, {"which": "@that"})) == ref(tea), "now the one just paused"
+    assert run(plain.which_timers(world.request, {"which": ref(dinner)})) == ref(dinner), "a name is a name"
+
+
+def test_it_with_no_timer_going_is_said_not_guessed(world):
+    with pytest.raises(UserError, match="No timers are running or paused"):
+        run(plain.which_timers(world.request, {"which": "@that"}))
+
+
+def test_cancelling_several_is_read_back_before_it_is_confirmed(world):
+    start(world, ("5m", "tea"), ("9m", "dinner"))
+    tea, dinner = going(world)
+    data = {"ids": [tea.id, dinner.id]}
+    assert run(plain.cancel_check(world.request, data)) == "tea is still running; dinner is still running"
+    run(plain.cancel_saved(world.request, data))
+    assert run(plain.cancel_check(world.request, data)) == ""

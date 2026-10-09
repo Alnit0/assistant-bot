@@ -14,7 +14,9 @@ safe to run while the bot or the service is running.
 ## 1. Read it
 
 - **A bug id:** `.\.venv\Scripts\python.exe -m tasks.bugs.cli show B4`
-  (`list` shows the open ones). Read all of it: the notes often say what
+  (`list` shows the open ones). An id starting with D (`D4`) is a bug of
+  the dev database: add `--dev` to every command for it (`show D4 --dev`,
+  `note D4 "…" --dev`). Read all of it: the notes often say what
   was expected, what happened instead and whether it has happened before.
 - **A pasted exchange:** work from the paste. There is no record to read
   or to add a note to; say so in the summary.

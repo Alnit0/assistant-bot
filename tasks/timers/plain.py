@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from core import day
-from core.actions import BOOLEAN, ITEMS, Action, Field, Proposal, Request, Shown, State, is_guessed
+from core.actions import BOOLEAN, ITEMS, Action, Field, Proposal, Request, Shown, State, is_guessed, is_reference
 from core.config import TIMEZONE
 from core.errors import UserError
 from core.lifecycle import MessageClass
@@ -132,8 +132,29 @@ async def start(request: Request, data: dict, guessed: frozenset) -> Shown:
 # ---------------------------------------------------------------------------
 # Changing timers: one acts at once; cancelling several asks first
 # ---------------------------------------------------------------------------
-def _control_value(data: dict) -> dict:
-    return {"ids": data["which"], "action": data["action"], "duration": data.get("duration", "")}
+async def which_timers(request: Request, data: dict) -> str:
+    """The ids a change is about, with references resolved here and never by
+    Claude. A timer the user replied to is the one meant, whatever was said.
+    "It" with no reply is the timer the user did something to last; one timer
+    going is that one. Otherwise there is nothing "it" could mean, and that
+    is said."""
+    if request.replied_to is not None:
+        replied = await store.timer_by_message(request.replied_to)
+        if replied is not None and replied.user_id == request.user.id:
+            return status.ref(status.TIMER, replied.id)
+    if not is_reference(data["which"]):
+        return data["which"]
+    active = {timer.id: timer for timer in await store.active_timers(user_id=request.user.id)}
+    for event in reversed(await store.events(request.user.id, limit=20)):
+        if event.kind == store.TIMER and event.record_id in active:
+            return status.ref(status.TIMER, event.record_id)
+    if len(active) == 1:
+        return status.ref(status.TIMER, next(iter(active)))
+    raise UserError("Which timer? Say its name." if active else "No timers are running or paused.")
+
+
+async def _control_value(request: Request, data: dict) -> dict:
+    return {"ids": await which_timers(request, data), "action": data["action"], "duration": data.get("duration", "")}
 
 
 async def cancels_several(request: Request, data: dict) -> bool:
@@ -141,15 +162,15 @@ async def cancels_several(request: Request, data: dict) -> bool:
     if data["action"] != "cancel":
         return False
     try:
-        return len(await control.chosen_timers(request.user.id, _control_value(data), "cancel")) > 1
+        return len(await control.chosen_timers(request.user.id, await _control_value(request, data), "cancel")) > 1
     except UserError:
         return False  # nothing to cancel: `change` says so in its own words
 
 
 async def cancel_card(request: Request, data: dict, guessed: frozenset) -> Proposal:
-    chosen = await control.chosen_timers(request.user.id, _control_value(data), "cancel")
+    chosen = await control.chosen_timers(request.user.id, await _control_value(request, data), "cancel")
     now = utc_now()
-    lines = tuple(f"**{timer.label}** · {status.timer_state(timer, now)}" for timer in chosen)
+    lines = tuple(f"**{timer.label}** · {status.timer_state(timer, now)} → cancelled" for timer in chosen)
     return Proposal(
         lines=lines,
         data={"ids": [timer.id for timer in chosen]},
@@ -175,8 +196,18 @@ async def cancel_saved(request: Request, data: dict) -> str:
     return status.control_text("cancel", done, [f"{gone} had already ended"] if gone else [])
 
 
+async def cancel_check(request: Request, data: dict) -> str:
+    """Read each timer back: none of them is still going."""
+    still = []
+    for timer_id in data["ids"]:
+        timer = await store.get_timer(timer_id)
+        if timer is not None and timer.active:
+            still.append(f"{timer.label} is still {timer.status}")
+    return "; ".join(still)
+
+
 async def change(request: Request, data: dict, guessed: frozenset) -> str:
-    shown, _ = await control.change_timers(request.user.id, _control_value(data))
+    shown, _ = await control.change_timers(request.user.id, await _control_value(request, data))
     if is_guessed(guessed, "which"):
         shown += f"\n{GUESS} I wasn't sure which timer you meant. Tell me if it was another one."
     if data["action"] == "extend" and is_guessed(guessed, "duration"):
@@ -304,9 +335,9 @@ async def pomo_stats(request: Request, data: dict, guessed: frozenset) -> str:
 _WHICH = (
     "The id of each timer meant, taken from the state given with the message, separated by spaces: "
     "\"t12\", or \"t12 t14\" for several. \"all\" for every timer (\"cancel all my timers\", \"stop "
-    "everything\"). Match what the user said to a label in the state; \"it\" or \"the timer\" with one "
-    "timer going is that one. If the user replied to one, that is the one. If two fit and you cannot "
-    "tell, give the likeliest and list `which` as guessed."
+    "everything\"). Match what the user said to a label in the state. \"it\", \"that\", \"this one\" or "
+    "just \"the timer\" is `@that`: never work out which timer a pronoun means, the code does. If two "
+    "labels fit a name and you cannot tell, give the likeliest and list `which` as guessed."
 )
 _DURATION = "A length of time as the user said it, in short form with s, m or h only: 5m, 90s, 1h30, 2h. Never a time of day."
 
@@ -348,6 +379,7 @@ ACTIONS = (
         ),
         prepare=cancel_card,
         apply=cancel_saved,
+        verify=cancel_check,
         run=change,
         card_if=cancels_several,
     ),

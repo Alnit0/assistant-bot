@@ -127,7 +127,7 @@ def test_one_message_is_found_by_its_row(db):
     assert asyncio.run(database.run(trace.db_get, 999)) is None
 
 
-def why(*args, user_id=1):
+def why(*args, user_id=1, reply_to=None, sent_at=None):
     from tasks.dev import tools
 
     said = []
@@ -135,8 +135,14 @@ def why(*args, user_id=1):
     async def reply(text):
         said.append(text)
 
-    result = asyncio.run(tools.why(SimpleNamespace(db=database, reply=reply, args=list(args), user=SimpleNamespace(id=user_id))))
-    return said, result
+    async def fetch_reply_target():
+        return SimpleNamespace(created_at=sent_at)
+
+    ctx = SimpleNamespace(
+        db=database, reply=reply, args=list(args), user=SimpleNamespace(id=user_id), reply_target_id=reply_to,
+        fetch_reply_target=fetch_reply_target,
+    )
+    return said, asyncio.run(tools.why(ctx))
 
 
 def test_dev_why_shows_my_last_message_as_one_block(db):
@@ -183,3 +189,29 @@ def test_dev_why_is_a_typed_word_and_never_a_tool_of_claudes():
     assert registry._keyword_router.match("dev why").entry[1].name == "dev why"
     matched = registry._keyword_router.match("dev why 3")
     assert matched.entry[1].name == "dev why" and matched.entry[1].tool is False
+
+
+# --- as a reply: up to and including the message replied to ------------------------------------------------
+def test_dev_why_as_a_reply_shows_the_messages_up_to_the_one_replied_to(db):
+    for number in range(5):
+        log(f"message {number}", message_id=10 + number)
+    said, result = why("3", reply_to=12)
+    assert ["said: message 0" in said[0], "said: message 1" in said[1], "said: message 2" in said[2]] == [True, True, True]
+    assert len(said) == 3 and "message 3" not in "".join(said)
+    said, _ = why(reply_to=11)
+    assert len(said) == 1 and "said: message 1" in said[0]
+
+
+def test_a_reply_to_one_of_the_bots_messages_means_the_message_of_mine_it_answered(db):
+    from datetime import datetime, timedelta, timezone
+
+    first = log("add milk", message_id=20)
+    log("and jam", message_id=21)
+    received = asyncio.run(database.run(trace.db_get, first))["received_at"]
+    just_after = datetime.fromisoformat(received) + timedelta(microseconds=1)
+    assert asyncio.run(database.run(trace.db_anchor, 1, ("chat",), 999, just_after)) == first
+    assert asyncio.run(database.run(trace.db_anchor, 1, ("chat",), 21, None)) == first + 1, "one of mine is found by its own id"
+    said, _ = why(reply_to=999, sent_at=just_after)
+    assert len(said) == 1 and "said: add milk" in said[0]
+    with pytest.raises(UserError, match="Nothing is logged for that message"):
+        why(reply_to=999, sent_at=datetime(2020, 1, 1, tzinfo=timezone.utc))

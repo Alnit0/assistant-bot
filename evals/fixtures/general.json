@@ -13,13 +13,14 @@
     },
     {
       "message": "thanks, that's great",
-      "chat": true,
       "recorded": {
-        "kind": "chat",
+        "kind": "nothing",
         "tasks": [],
         "confidence": "high",
         "chat_part": ""
-      }
+      },
+      "nothing": true,
+      "note": "a thank-you calls for no answer: the bot says nothing at all"
     },
     {
       "message": "add toothpaste to my list",
@@ -134,7 +135,7 @@
           "shopping"
         ],
         "confidence": "high",
-        "chat_part": "what's the capital of France?"
+        "chat_part": "what's the capital of France"
       }
     },
     {
@@ -167,7 +168,7 @@
           "shopping"
         ],
         "confidence": "high",
-        "chat_part": "and tell me a joke"
+        "chat_part": "tell me a joke"
       }
     },
     {
@@ -181,6 +182,50 @@
         "tasks": [
           "shopping"
         ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "note one",
+      "nothing": true,
+      "note": "QA 2026-10-10: a note to self got \"Just another note from you. No action needed.\" It needs nothing done, so nothing is said",
+      "recorded": {
+        "kind": "nothing",
+        "tasks": [],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "old news",
+      "nothing": true,
+      "note": "QA 2026-10-10: a remark that asks nothing",
+      "recorded": {
+        "kind": "nothing",
+        "tasks": [],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "ok",
+      "nothing": true,
+      "note": "an acknowledgement asks nothing",
+      "recorded": {
+        "kind": "nothing",
+        "tasks": [],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "what does note one mean?",
+      "chat": true,
+      "note": "a question is never nothing: it gets an answer",
+      "recorded": {
+        "kind": "chat",
+        "tasks": [],
         "confidence": "high",
         "chat_part": ""
       }

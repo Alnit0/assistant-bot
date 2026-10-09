@@ -75,8 +75,7 @@
         {
           "items": [
             {
-              "item": "socks",
-              "change": "add"
+              "item": "socks"
             }
           ],
           "guessed": [],
@@ -307,7 +306,7 @@
       "recorded": [
         "not_this",
         {
-          "reason": "Request is for a timer, not a packing task"
+          "reason": "Timer request, not a packing task"
         }
       ]
     }

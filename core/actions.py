@@ -3,6 +3,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 
 from core import database, trace
+from core.errors import UserError
 from core.users import User
 
 # ---------------------------------------------------------------------------
@@ -168,6 +169,10 @@ class Shown:
 
 Prepare = Callable[[Request, dict, frozenset], Awaitable[Proposal]]
 Apply = Callable[[Request, dict], Awaitable[str]]
+# `async (request, data) -> str`: read back from the database what `apply` was
+# to change and say what does not match the card's data ("" if it all does).
+# A confirmation is only ever sent after this has come back empty
+Verify = Callable[[Request, dict], Awaitable[str]]
 Run = Callable[[Request, dict, frozenset], Awaitable["str | LiveReply | Shown"]]
 CardIf = Callable[[Request, dict], Awaitable[bool]]
 
@@ -181,6 +186,9 @@ class Action:
     prepare: Prepare | None = None  # needs_card: the data as a Proposal
     apply: Apply | None = None  # needs_card: Save was pressed; returns what to say
     run: Run | None = None  # direct: do it; returns what to say
+    # After `apply`: the change re-read from the database (see Verify). Every
+    # action with an `apply` has one. A direct action re-reads inside `run`
+    verify: Verify | None = None
     # For an action that only sometimes needs a card (cancelling one timer acts
     # at once, cancelling several asks first): `async (request, data) -> bool`.
     # Such an action has all three of `prepare`, `apply` and `run`
@@ -234,6 +242,77 @@ def flag(text: str, guessed: bool) -> str:
 # ---------------------------------------------------------------------------
 ADD, SET, REMOVE = "add", "set", "remove"
 CHANGE = "change"  # the name of the item field that says which
+
+# ---------------------------------------------------------------------------
+# References: "it", "that", "this one"
+#
+# Claude never works out what a pronoun points at. It puts REFERENCE where the
+# name or id would go, and code resolves it: the message replied to, if the
+# user replied to one; otherwise the last thing the user mentioned (a card
+# keeps that under LAST in its data). Never something the bot said.
+# ---------------------------------------------------------------------------
+REFERENCE = "@that"
+LAST = "_last"  # in a card's data: what the user mentioned last, for the next "it"
+
+
+def is_reference(value) -> bool:
+    return isinstance(value, str) and value.strip().lower() in (REFERENCE, "@it", "@this", "@them", "@those")
+
+
+def point_at(changes: list[dict], key: str, last: str | None) -> list[dict]:
+    """The changes with each reference ("it") given the name it stands for:
+    `last`, the last thing the user mentioned. Raises UserError if there is
+    nothing it could mean: that is said, never guessed."""
+    if not any(is_reference(change.get(key)) for change in changes):
+        return changes
+    if not last:
+        raise UserError("I can't tell what “it” is. Say its name.")
+    return [{**change, key: last} if is_reference(change.get(key)) else change for change in changes]
+
+
+# ---------------------------------------------------------------------------
+# What the user stated is never a guess
+# ---------------------------------------------------------------------------
+_NUMBER_WORDS = {
+    "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+    "eleven": 11, "twelve": 12, "a": 1, "an": 1, "once": 1, "twice": 2,
+}
+
+
+def _value_at(data: dict, guess: str):
+    match = _GUESS_PATH.fullmatch(guess.strip())
+    if not match or match[1] not in data:
+        return None
+    value = data[match[1]]
+    if match[2] is None:
+        return value
+    if not isinstance(value, list) or int(match[2]) >= len(value):
+        return None
+    item = value[int(match[2])]
+    return item.get(match[3]) if match[3] is not None and isinstance(item, dict) else None
+
+
+def _is_stated(value, said: str) -> bool:
+    """Whether a value is in the message in so many words: the same text, or the same number."""
+    heard = said.lower()
+    if isinstance(value, bool) or value is None:
+        return False
+    if isinstance(value, int):
+        numbers = {int(found) for found in re.findall(r"(?<![\w.])\d+(?![\w.]*\d)", heard)}
+        numbers |= {number for word, number in _NUMBER_WORDS.items() if word not in ("a", "an") and re.search(rf"\b{word}\b", heard)}
+        return value in numbers
+    if isinstance(value, str):
+        text = value.strip().lower()
+        return len(text) > 0 and not is_reference(text) and re.search(rf"(?<!\w){re.escape(text)}(?!\w)", heard) is not None
+    return False
+
+
+def unstated(data: dict, guessed: frozenset, said: str) -> frozenset:
+    """The guesses that really are guesses: a value the user stated outright (an
+    amount, a time, a dose, a note) is used exactly and never flagged, whatever
+    Claude listed. A guess about a whole item, or one whose value isn't in the
+    message, stays."""
+    return frozenset(guess for guess in guessed if not _is_stated(_value_at(data, guess), said))
 
 
 def change_field() -> Field:
@@ -412,6 +491,8 @@ def problems(entries: list[Entry]) -> list[str]:
                 names[action.name] = who
             if not action.description.strip():
                 found.append(f"{where} has no description for Claude")
+            if action.apply is not None and action.verify is None:
+                found.append(f"{where} saves with `apply`, so it needs `verify` (the change read back before it is confirmed)")
             if action.card_if is not None:
                 if action.prepare is None or action.apply is None or action.run is None:
                     found.append(f"{where} needs a card only sometimes (`card_if`), so it needs `prepare`, `apply` and `run`")

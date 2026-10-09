@@ -3,7 +3,7 @@ import re
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 
-from core.config import CHANNELS, TIMEZONE
+from core.config import CHANNELS, DEV_DATABASE, TIMEZONE
 from core.database import OWN_MESSAGE_KINDS
 from core.errors import UserError
 
@@ -54,16 +54,37 @@ QUESTIONS = (
 
 
 # --- ids ---------------------------------------------------------------------
+# A bug's number is its row's primary key, which SQLite never gives out twice
+# (AUTOINCREMENT): it is never worked out from a count of rows or of posts. The
+# letter in front says which database it is in: B for the live one, D for the
+# dev database (`--dev`), whose numbers start again whenever it is recreated.
+# Both post to the same forum, so a dev bug also carries the "dev" tag.
+DEV = DEV_DATABASE  # which database this is; never the channel a bug came from
+LIVE_PREFIX, DEV_PREFIX = "B", "D"
+DEV_TAG = "dev"
+
+
+def prefix() -> str:
+    return DEV_PREFIX if DEV else LIVE_PREFIX
+
+
 def bug_id(number: int) -> str:
-    return f"B{number}"
+    return f"{prefix()}{number}"
 
 
 def parse_id(text: str) -> int:
-    """The number in "B4" (or "b4", or "4"). Raises UserError for anything else."""
-    found = re.fullmatch(r"[bB]?(\d+)", text.strip())
+    """The number in "B4" (or "b4", or "4"); "D4" on the dev database. Raises
+    UserError for anything else, the other database's ids included."""
+    letter = prefix()
+    found = re.fullmatch(rf"[{letter.lower()}{letter}]?(\d+)", text.strip())
     if found is None:
-        raise UserError(f"“{text}” isn't a bug id. They look like B4.")
+        raise UserError(f"“{text}” isn't a bug id. They look like {letter}4.")
     return int(found.group(1))
+
+
+def tags_for_new() -> list[str]:
+    """The tags a new post gets: Open, and "dev" for a bug of the dev database."""
+    return [TAGS[OPEN]] + ([DEV_TAG] if DEV else [])
 
 
 # --- where -------------------------------------------------------------------
@@ -381,9 +402,11 @@ def post_sections(number: int, report: Report) -> list[str]:
 
 
 def missing_tags(existing: list[str]) -> list[str]:
-    """The tags the forum still needs, given the names it has."""
+    """The tags the forum still needs, given the names it has. The "dev" tag is
+    only asked for by a bot on the dev database."""
     have = {name.lower() for name in existing}
-    return [name for name in TAGS.values() if name.lower() not in have]
+    wanted = [*TAGS.values(), *([DEV_TAG] if DEV else [])]
+    return [name for name in wanted if name.lower() not in have]
 
 
 def tags_problem(missing: list[str], forbidden: bool, detail: str = "") -> str:

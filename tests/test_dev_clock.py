@@ -108,6 +108,13 @@ def test_on_the_live_database_the_clock_is_refused_with_an_explanation():
     assert ctx.said == []
 
 
+def test_on_the_live_database_reset_is_harmless_so_every_qa_block_can_start_with_it():
+    ctx = context("reset")
+    said = asyncio.run(dev.dev_clock(ctx))
+    assert "(the real time)" in said and ctx.said == [f"🕰️ {said}"]
+    assert not clock.is_shifted()
+
+
 def test_on_the_live_database_the_clock_can_still_be_read():
     ctx = context()
     asyncio.run(dev.dev_clock(ctx))

@@ -5,6 +5,11 @@ the database directly: the bot isn't started and may be running.
     python -m tasks.bugs.cli show B4
     python -m tasks.bugs.cli note B4 "fix ready, needs retest: what changed"
 
+A bug of the dev database has a D in front (D4) and needs `--dev`, which picks
+that database:
+
+    python -m tasks.bugs.cli show D4 --dev
+
 A bug is closed by pressing Fixed or Won't fix on its post, never from here.
 """
 import sys
@@ -42,7 +47,8 @@ def main() -> int:
     # Messages carry emoji, which a Windows console's default encoding can't print
     sys.stdout.reconfigure(encoding="utf-8")
     try:
-        print(run(sys.argv[1:]))
+        # `--dev` has already picked the database (core/config.py); it is not an argument here
+        print(run([arg for arg in sys.argv[1:] if arg != "--dev"]))
     except UserError as error:
         print(error, file=sys.stderr)
         return 1

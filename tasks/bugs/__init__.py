@@ -98,9 +98,9 @@ async def save_note(ctx: Context) -> str:
 # Reporting logs something and changes no setup, so neither needs a card.
 # ---------------------------------------------------------------------------
 async def report_said(request: Request, data: dict, guessed: frozenset) -> str:
-    """Report the message replied to, or else the last thing in the channel
-    before the user's own message. What they said was wrong, if they said,
-    is kept as the bug's first note."""
+    """Report the message replied to, or else the user's own newest message
+    before this one (never one of the bot's: the report is about that turn).
+    What they said was wrong, if they typed it, is kept as the bug's first note."""
     if request.replied_to is not None:
         target, source = await posts.fetch_message(request.channel_id, request.replied_to), rules.REPLY
     else:

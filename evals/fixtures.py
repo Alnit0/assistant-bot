@@ -30,6 +30,7 @@ class RouterFixture:
     tasks: list[str] = field(default_factory=list)  # expected, in any order; empty with chat
     tie: bool = False
     chat: bool = False
+    nothing: bool = False  # it asks nothing and needs nothing done: no reply at all
     # With tasks: whether part of the message is for no task and must be answered as chat too
     also_chat: bool = False
     on_screen: str = ""
@@ -115,8 +116,20 @@ def _same(expected, actual, exact: bool = False) -> bool:
     return expected == actual
 
 
+def settled(fixture: RouterFixture, route, entries):
+    """The router's answer as the bot acts on it: a destination the message
+    names ("to my pills") decides the task, in code (routing.with_named)."""
+    from core import routing
+
+    return routing.with_named(route, [entry.name for entry in routing.named_destinations(fixture.message, entries)])
+
+
 def router_problem(fixture: RouterFixture, route) -> str:
     """What is wrong with a Route for this fixture, or "" if it is right."""
+    if fixture.nothing:
+        return "" if route.nothing else f"expected nothing to be said, got {list(route.tasks) or 'chat'}"
+    if route.nothing:
+        return f"expected {fixture.tasks or 'chat'}, got nothing to be said"
     if fixture.chat:
         return "" if route.chat else f"expected chat, got {list(route.tasks)}"
     if route.chat:

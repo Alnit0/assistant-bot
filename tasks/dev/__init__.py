@@ -148,9 +148,15 @@ async def dev_clock(ctx: Context) -> str:
         fixed = "" if DEV_DATABASE else "\n-# It can only be moved on the dev database (`python main.py --dev`)."
         await ctx.reply(said + fixed)
         return said
-    if not DEV_DATABASE:
-        raise UserError(LIVE_DATABASE)
     moment = clockwords.target(ctx.args, clock.now())
+    if not DEV_DATABASE:
+        if moment is not None:
+            raise UserError(LIVE_DATABASE)
+        # Asking for what is already so isn't a mistake: on the live database the
+        # clock is always the real time, and nothing is touched
+        said = f"Clock: {clockwords.describe(clock.now(), clock.offset())}"
+        await ctx.confirm(f"🕰️ {said}")
+        return said
     if moment is None:
         clock.reset()
     else:

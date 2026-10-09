@@ -416,14 +416,14 @@
       "state": "Timers and the Pomodoro session now (use these ids):\n- t12: \"tea\" · running, 4m left · in this channel",
       "action": "timer_change",
       "data": {
-        "which": "t12",
+        "which": "@that",
         "action": "pause"
       },
-      "note": "one timer going: \"it\" is that one",
+      "note": "\"it\" comes back as @that: the code resolves it (the timer replied to, or the one acted on last)",
       "recorded": [
         "timer_change",
         {
-          "which": "t12",
+          "which": "@that",
           "action": "pause",
           "guessed": [],
           "not_included": []
@@ -683,7 +683,30 @@
       "recorded": [
         "none",
         {
-          "reason": "Not a countdown timer or Pomodoro session: reminder at a time of day"
+          "reason": "Reminder at a specific time of day, not a countdown timer or Pomodoro session"
+        }
+      ]
+    },
+    {
+      "task": "timers",
+      "message": "give it 5 more minutes",
+      "state": "Timers and the Pomodoro session now (use these ids):\n- t12: \"tea\" · running, 4m left · in this channel\n- t14: \"dinner\" · paused with 12m left · in this channel",
+      "action": "timer_change",
+      "data": {
+        "which": "@that",
+        "action": "extend",
+        "duration": "5m"
+      },
+      "guessed": [],
+      "note": "QA 2026-10-10: two timers going and \"it\": never worked out by Claude, and the stated 5 minutes is no guess",
+      "recorded": [
+        "timer_change",
+        {
+          "which": "@that",
+          "action": "extend",
+          "duration": "5m",
+          "guessed": [],
+          "not_included": []
         }
       ]
     }

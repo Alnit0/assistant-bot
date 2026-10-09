@@ -68,19 +68,45 @@ def _row(conn: sqlite3.Connection, found: tuple) -> dict:
     return row
 
 
-def db_recent(conn: sqlite3.Connection, user_id: int, limit: int, kinds: tuple[str, ...], skip_prefix: str = "") -> list[dict]:
+def db_recent(
+    conn: sqlite3.Connection, user_id: int, limit: int, kinds: tuple[str, ...], skip_prefix: str = "", upto: int | None = None
+) -> list[dict]:
     """The user's last messages with everything logged about them, oldest
-    first. `skip_prefix` leaves out the words that ask for this very list."""
+    first. `skip_prefix` leaves out the words that ask for this very list;
+    with `upto`, the last of them is that row and the rest come before it."""
     marks = ", ".join("?" for _ in kinds)
     found = conn.execute(
         f"""
         SELECT {_COLUMNS} FROM message_log
-        WHERE user_id = ? AND kind IN ({marks}) AND (? = '' OR lower(content) NOT LIKE ?)
+        WHERE user_id = ? AND kind IN ({marks}) AND (? = '' OR lower(content) NOT LIKE ?) AND (? IS NULL OR id <= ?)
         ORDER BY id DESC LIMIT ?
         """,
-        (user_id, *kinds, skip_prefix, skip_prefix.lower() + "%", limit),
+        (user_id, *kinds, skip_prefix, skip_prefix.lower() + "%", upto, upto, limit),
     ).fetchall()
     return [_row(conn, row) for row in reversed(found)]
+
+
+def db_anchor(conn: sqlite3.Connection, user_id: int, kinds: tuple[str, ...], message_id: int, sent_at: datetime | None) -> int | None:
+    """The logged row a Discord message belongs to: its own, if it is one of
+    the user's; for one of the bot's, the user's last message before it was
+    sent (`sent_at`). None if there is none."""
+    marks = ", ".join("?" for _ in kinds)
+    own = conn.execute(
+        f"SELECT id FROM message_log WHERE user_id = ? AND kind IN ({marks}) AND discord_message_id = ? ORDER BY id DESC LIMIT 1",
+        (user_id, *kinds, message_id),
+    ).fetchone()
+    if own or sent_at is None:
+        return own[0] if own else None
+    for row_id, received_at in conn.execute(
+        f"SELECT id, received_at FROM message_log WHERE user_id = ? AND kind IN ({marks}) ORDER BY id DESC LIMIT 300",
+        (user_id, *kinds),
+    ):
+        try:
+            if datetime.fromisoformat(received_at) <= sent_at:
+                return row_id
+        except (TypeError, ValueError):
+            continue
+    return None
 
 
 def db_get(conn: sqlite3.Connection, row_id: int) -> dict | None:

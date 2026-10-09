@@ -17,6 +17,10 @@ async def run(request, data, guessed):
     return "done"
 
 
+async def verify(request, data):
+    return ""
+
+
 ADD = Action(
     "thing_add",
     "Add a thing.",
@@ -30,6 +34,7 @@ ADD = Action(
     ),
     prepare=prepare,
     apply=apply,
+    verify=verify,
 )
 SHOW = Action("thing_show", "Show the things.", needs_card=False, run=run)
 ENTRY = Entry("things", "📦", "Only for things.", ("add a thing", "show my things"), (ADD, SHOW))
@@ -139,7 +144,7 @@ def entry(**changes):
         (entry(name="My Things"), "an entry's name is one lower-case word"),
         (entry(actions=(Action("thing_add", "Add.", prepare=prepare),)), "needs both `prepare` (the card) and `apply` (Save)"),
         (entry(actions=(Action("thing_show", "Show.", needs_card=False),)), "needs `run` (which writes the reply)"),
-        (entry(actions=(Action("thing_add", "", prepare=prepare, apply=apply),)), "has no description for Claude"),
+        (entry(actions=(Action("thing_add", "", prepare=prepare, apply=apply, verify=verify),)), "has no description for Claude"),
         (entry(actions=(Action("none", "Nothing.", needs_card=False, run=run),)), "needs a name of its own"),
         (entry(actions=(Action("a", "A.", (Field("x", "X.", "date"),), needs_card=False, run=run),)), "unknown type 'date'"),
         (entry(actions=(Action("a", "A.", (Field("guessed", "G."),), needs_card=False, run=run),)), "a field can't be called that"),
@@ -157,7 +162,7 @@ def test_what_is_missing_from_the_contract_is_named(broken, problem):
 
 
 def test_two_tasks_cannot_share_an_action_or_a_name():
-    other = entry(name="others", actions=(Action("thing_add", "Add.", prepare=prepare, apply=apply),))
+    other = entry(name="others", actions=(Action("thing_add", "Add.", prepare=prepare, apply=apply, verify=verify),))
     assert "others: action thing_add is also an action of things" in actions.problems([ENTRY, other])
     assert "things: two entries share this name" in actions.problems([ENTRY, ENTRY])
 
@@ -472,3 +477,49 @@ def test_a_guess_named_by_an_items_field_alone_is_put_on_the_item():
     several = actions.validate(BUY, {"items": [{"item": "eggs", "quantity": 3}, {"item": "jam"}, {"item": "milk", "quantity": 2}], "guessed": ["quantity"]})
     assert several.guessed == frozenset({"items[0].quantity", "items[2].quantity"}), "each item that has it: which one is not known"
     assert actions.validate(BUY, {"items": [{"item": "eggs"}], "guessed": ["nonsense"]}).guessed == frozenset()
+
+
+# ---------------------------------------------------------------------------
+# A confirmation needs the change read back; references and stated values are the code's
+# ---------------------------------------------------------------------------
+def test_an_action_that_saves_must_say_how_the_change_is_read_back():
+    unchecked = Action("thing_add", "Add a thing.", prepare=prepare, apply=apply)
+    assert actions.problems([entry(actions=(unchecked, SHOW))]) == [
+        "things: action thing_add saves with `apply`, so it needs `verify` (the change read back before it is confirmed)"
+    ]
+
+
+@pytest.mark.parametrize("value, expected", [("@that", True), ("@THAT ", True), ("@it", True), ("that", False), ("milk", False), (3, False), (None, False)])
+def test_what_counts_as_a_reference(value, expected):
+    assert actions.is_reference(value) is expected
+
+
+def test_a_reference_is_given_the_name_of_what_was_mentioned_last():
+    changes = [item("@that", 2, "set"), item("jam")]
+    assert actions.point_at(changes, "item", "bread rolls") == [item("bread rolls", 2, "set"), item("jam")]
+    assert actions.point_at([item("jam")], "item", None) == [item("jam")], "nothing to resolve: nothing is needed"
+
+
+def test_a_reference_with_nothing_it_could_mean_is_said_never_guessed():
+    from core.errors import UserError
+
+    with pytest.raises(UserError, match="I can't tell what “it” is"):
+        actions.point_at([item("@that", 2, "set")], "item", None)
+
+
+@pytest.mark.parametrize(
+    "data, guess, said, still_a_guess",
+    [
+        ({"items": [{"item": "eggs", "quantity": 3}]}, "items[0].quantity", "add 3 eggs", False),
+        ({"items": [{"item": "eggs", "quantity": 3}]}, "items[0].quantity", "add three eggs", False),
+        ({"items": [{"item": "eggs", "quantity": 3}]}, "items[0].quantity", "add a few eggs", True),
+        ({"items": [{"item": "eggs", "quantity": 3}]}, "items[0].quantity", "add eggs to list 30", True),
+        ({"pills": [{"name": "Zinc", "times": "9pm"}]}, "pills[0].times", "add zinc at 9pm", False),
+        ({"pills": [{"name": "Zinc", "notes": "with food"}]}, "pills[0].notes", "Add zinc, With Food", False),
+        ({"pills": [{"name": "Zinc", "times": "9am"}]}, "pills[0].times", "add zinc in the morning", True),
+        ({"which": "t12"}, "which", "pause the tea timer", True),
+        ({"items": [{"item": "eggs"}]}, "items[0]", "add eggs", True),
+    ],
+)
+def test_a_value_said_in_so_many_words_is_never_a_guess(data, guess, said, still_a_guess):
+    assert (guess in actions.unstated(data, frozenset({guess}), said)) is still_a_guess

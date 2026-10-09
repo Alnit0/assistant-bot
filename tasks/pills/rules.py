@@ -392,6 +392,31 @@ def change_text(old: Plan, new: Plan) -> str:
     return f"✏️ **{old.name}**\nNow: {describe(old)}\nNew: {describe(new)}\n-# Applies from the next dose. What is already recorded stays as it is."
 
 
+def differences(old: Plan, new: Plan) -> list[tuple[str, str, str]]:
+    """What an edit changes, a field at a time: (field, old, new), as a card
+    shows it ("schedule · daily at `8:00 pm` → daily at `9:00 pm`"). Empty if
+    nothing would change."""
+
+    def dates(plan: Plan) -> str:
+        return timeinput.format_dates(plan.start, plan.end) if plan.is_course else "no end date"
+
+    def first(plan: Plan) -> str:
+        if plan.kind != INTERVAL:
+            return ""
+        return _clock(plan.times[0]) if plan.times else "when ready"
+
+    found = [
+        ("name", old.name, new.name),
+        ("dose", old.dose or "none", new.dose or "none"),
+        ("notes", old.notes or "none", new.notes or "none"),
+        ("schedule", schedule_text(old), schedule_text(new)),
+        ("dates", dates(old), dates(new)),
+    ]
+    if first(old) and first(new):
+        found.append(("first dose", first(old), first(new)))
+    return [(name, before, after) for name, before, after in found if before != after]
+
+
 # ---------------------------------------------------------------------------
 # Which pill is meant
 # ---------------------------------------------------------------------------

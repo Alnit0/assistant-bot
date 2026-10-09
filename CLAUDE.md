@@ -115,6 +115,15 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 - The dev clock and `dev reset-db` must refuse to work on the live
   database. Never weaken those guards (`clock.shiftable()`,
   `database.wipe_dev()`)
+- A confirmation is only sent after the change has been read back from
+  the database and matches: every action with an `apply` has a `verify`
+  (the registry refuses one without), and a direct action re-reads inside
+  `run`. If it doesn't match, the user is told it didn't save, never that
+  it did. What a button press did is added to the conversation
+  (`llm.remember`), so the next message is never answered as if the card
+  were still waiting
+- Archive, pin and delete are done by reaction or reply word only: they are
+  not asked for in plain words
 - Keep decisions apart from Discord calls so they can be unit tested: logic
   in a module with no Discord calls, called by the Discord-facing code. New
   logic needs tests in the same change
@@ -185,9 +194,24 @@ Input
   card (the line goes) and on the saved list (a card for the change,
   "jam · × 1 → removed"). Removing what is nowhere is said, never
   ignored.
-- "It", "that" and "them" mean the last thing mentioned. If that isn't
-  clear, Claude takes the last one named and the guess is flagged with ❓
-  on its line.
+- What "it", "that" or "this one" points at is worked out by Python,
+  never by Claude, which only says that a reference was used
+  (`actions.REFERENCE`). A Discord reply says it outright: the message
+  replied to is what I mean, for everything (a card, a timer, "make it
+  2", and `dev why 3` as a reply is the 3 messages up to and including
+  that one). Without a reply it is the last thing I mentioned (a card
+  keeps it), or my own newest message; never one of the bot's. If there
+  is nothing it could mean, the bot says so.
+- What I state always wins. A destination I name ("to my pills", "on the
+  shopping list") decides the task outright, whatever is on screen
+  (`routing.named_destinations`). Anything I state (a dose, a time, an
+  amount, a note) is used exactly and never marked ❓
+  (`actions.unstated`). Context only fills in what I left out.
+- A message that asks nothing and needs nothing done ("note one",
+  "thanks", "ok") gets no reply at all.
+- One format for a change on every card: `field · old → new` ("eggs · 5 →
+  7", "schedule · daily at `8:00 pm` → daily at `9:00 pm`", "Iron · active
+  → paused until 20 Oct", "jam · × 1 → removed").
 - A correction undoes the mistake: "No, …" straight after a change to a
   card reverts that change and then applies the correction, so nothing
   of the wrong change is left. A card keeps what it was before its last
@@ -239,10 +263,12 @@ Input
   already exists shows it again instead of failing (`pomo` while a
   session runs re-shows its card; `dev off` when off just says so).
 - Bugs are reported with 🐞 on a message or the word `bug` (as a reply:
-  that message; alone: the latest exchange in the channel). No note is
-  taken in the channel (`bug: text` is not a command): each bug gets a
-  post in the #bugs forum, and what I write there is saved as a note
-  with ✅. Nothing in #bugs is sent to Claude. Claude Code never closes
+  that message; alone: the latest exchange in the channel), or by saying
+  so ("that's a bug": my own last message, or the one I replied to). A
+  note is kept only when I type one: "that's a bug: it was slow" keeps
+  "it was slow" as the bug's first note; 🐞 and the word `bug` take none.
+  Each bug gets a post in the #bugs forum, and what I write there is
+  saved as a note with ✅. Nothing in #bugs is sent to Claude. Claude Code never closes
   a bug: I press Fixed or Won't fix on the post.
 - Help is generated from the registry; every keyword, reply action and
   reaction must have a description, examples, channels and permission.

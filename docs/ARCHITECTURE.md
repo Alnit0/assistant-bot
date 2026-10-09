@@ -51,10 +51,10 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `protection.py` | Pure: is a message protected (pinned or 📌), is it kept, and the wording when Discord refuses a pin |
 | `channels.py` | Which channels hold messages: `holds_messages(channel)` (text, news, threads, DMs; not forum, voice or category) and `named()`, the channels from `.env` that do. Asked before reading pins or history from a channel no message came from |
 | `pins.py` | `set_pinned(...)`: native pin and unpin for tasks that may not call Discord |
-| `actions.py` | The contract for plain words: an `Entry` (a task as the router knows it: name, icon, "only for", examples), its `Action`s (the fields Claude fills in; `prepare` + `apply` for one that needs a card, `run` for one that acts at once, all three with `card_if` for one that only sometimes asks first) and the `Proposal` a card shows. A direct action returns its reply, a `LiveReply`, or `Shown` when it posted its own message. A field may be a list of items (`ITEMS`, with `item_fields`), so one request can hold several things; an item says what to do with it (`change_field()`: add, set, remove) and `merge_items` applies a message's changes to an open card, doing the sums. Builds each action's strict schema (every one also has `guessed` and `not_included`), checks what Claude returned against it (`validate`: an item that doesn't fit is left out and named, never dropped unseen), and names what is missing from a task's contract (`problems`). A task's state for extraction is a `State` (a heading and a line a thing), cut by `shown_state` to `STATE_LINES`, the lines the message could mean first. Holds the catalogue the registry sets. Pure apart from leaving trace notes |
-| `routing.py` | The router: one request that says which task a message is for, from the message, what is on screen and the catalogue (never an action or schema). `parse` reads its answer in code: task(s), a tie, or chat |
+| `actions.py` | The contract for plain words: an `Entry` (a task as the router knows it: name, icon, "only for", examples), its `Action`s (the fields Claude fills in; `prepare` + `apply` for one that needs a card, `run` for one that acts at once, all three with `card_if` for one that only sometimes asks first) and the `Proposal` a card shows. A direct action returns its reply, a `LiveReply`, or `Shown` when it posted its own message. A field may be a list of items (`ITEMS`, with `item_fields`), so one request can hold several things; an item says what to do with it (`change_field()`: add, set, remove) and `merge_items` applies a message's changes to an open card, doing the sums. Builds each action's strict schema (every one also has `guessed` and `not_included`), checks what Claude returned against it (`validate`: an item that doesn't fit is left out and named, never dropped unseen), and names what is missing from a task's contract (`problems`). A reference ("it") comes back as `REFERENCE` and is resolved in code (`point_at`; a card keeps what was mentioned last under `LAST`); `unstated` drops any guess whose value the user said outright; an action that saves has a `verify` that reads the change back. A task's state for extraction is a `State` (a heading and a line a thing), cut by `shown_state` to `STATE_LINES`, the lines the message could mean first. Holds the catalogue the registry sets. Pure apart from leaving trace notes |
+| `routing.py` | The router: one request that says which task a message is for, from the message, what is on screen and the catalogue (never an action or schema). `parse` reads its answer in code: task(s), a tie, chat, or nothing (no reply at all). `named_destinations` reads a destination the message names ("to my pills") in code, and `with_named` lets it overrule the router |
 | `extraction.py` | Extraction: one request for one task, given only that task's actions, which must call exactly one (or `none`; in a follow-up, `not_this`) with a `guessed` list. In a follow-up it gives only the items the message is about, never a total. `read` turns the call into the action, its data and its guesses, or "nothing fitted" with the reason |
-| `confirm.py` | Confirm cards: guess, show, confirm. Renders a `Proposal` (task and kind of change, every line, ❓ and ⚠️, Save / Cancel), keeps it as a row (`confirm_cards`) so it survives a restart, replaces one card with its correction (keeping everything said about it and what it was before its last change, so "No, …" can undo that change: `is_correction`), expires it after 30 minutes, and runs the task's `apply` on Save. Also the question asked on a tie, and the rule for when a message sticks to the open card (`sticks`) |
+| `confirm.py` | Confirm cards: guess, show, confirm. Renders a `Proposal` (task and kind of change, every line, ❓ and ⚠️, Save / Cancel), keeps it as a row (`confirm_cards`) so it survives a restart, replaces one card with its correction (keeping everything said about it and what it was before its last change, so "No, …" can undo that change: `is_correction`), expires it after 30 minutes, and runs the task's `apply` on Save, then its `verify`: the confirmation is only shown if the change reads back from the database, and what the press did is added to the conversation. Also the question asked on a tie, and the rule for when a message sticks to the open card (`sticks`) |
 | `livelists.py` | Live lists: the latest copy of a list a user asked to see is kept up to date in place. `show` (or a direct action returning `actions.LiveReply`) posts it and records where it is (`live_lists`); `changed(user_id, key, render)` rewrites that copy in the background through `core/live.py`. Older copies are left as they were. A list also remembers its task and when it was shown: while it is the bot's latest message and under five minutes old, a short message is for that task (`sticks`) |
 | `conversation.py` | A message in plain words, cheapest first: about the open card (extraction only), anything else (router, then extraction per task), or chat (a plain reply, no tools). Moves a card's items to another task in code on "no, packing", and drops from "Not included" what another card or the plain answer covers (`uncovered`). Hands what was extracted to the task's own code, which writes every word shown; logs the route, tasks, what was extracted, the outcome and each request's cost |
 | `cards.py` | Buttons, dropdowns and forms for tasks that may not use discord.py: a task writes a `Card` of plain records (`Button`, `Select`, `Form`) and registers what each action does; the component's id (`card.b:<task>:<action>:<arg>`) carries everything, so cards work after a restart. `handle` answers every press first, checks `is_allowed`, logs it in `message_log` (kind `card`), shows a `UserError` to the presser alone and reports anything else. `post` / `send` / `edit` / `delete` put cards in channels |
@@ -79,7 +79,6 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `builtin/__init__.py` | `ping`, `reset`, `buttons`, `stats`, and `help` generated from the registry |
 | `builtin/views.py` | The `buttons` test view |
 | `archive/__init__.py` | Registers reply `archive` / `delete`, the 📦 and 🗑️ reactions, the context menu |
-| `archive/plain.py` | Tidying messages in plain words, the `messages` entry: archive, pin, unpin and delete. Claude says how a message was pointed at (the newest, my own last, or one named by its words) and the code finds it among the channel's last few; pin acts at once, archive too unless the message is protected (then a card), delete is always a card |
 | `archive/rules.py` | Pure: what may be archived or deleted, names, embeds, wording |
 | `archive/store.py` | The `archive_items` records |
 | `archive/messages.py` | The Discord work: webhook repost, delete, confirmation, Restore button |
@@ -128,8 +127,8 @@ Claude loop against a scripted stand-in), `toolcalls`, `bugs`, `instance_lock`, 
 `day` (the boundary and the rollover job), `timeinput`, `occurrences`,
 `dev_clock` (`dev clock`, `dev reset-db` and their guards), `actions` (the contract and the checking), `routing` (the router, extraction and the replayed fixtures), `conversation` (a message end to end, confirm cards, the demo lists), `livelists`, `costs` (routes, prices, the roll-up and `dev cost`), `trace` (notes, a message in lines, `dev why`), `cards`,
 `pills_rules`, `pills_plans` (records, previews, buttons, and a tool call
-all the way through the registry), `timers_plain`, `pills_plain` and
-`messages_plain` (each task's actions in plain words), `channels`
+all the way through the registry), `timers_plain` and `pills_plain`
+(each task's actions in plain words), `channels`
 (channel types, the dev panel's start-up sweep, a task failing to start).
 
 ## Data flows
@@ -163,7 +162,7 @@ and hands the clock its stored offset → logging → `instance_lock.acquire()`
 5. Every outcome is emitted to tasks as `action_finished`.
 
 **Plain words → router → extraction → the task's code** (the new way:
-timers, bugs, pills setup and tidying messages are on it; see "Not built
+timers, bugs and pills setup are on it; see "Not built
 yet" for what is left of the old way)
 
 1. `main.on_message`, for a message that is no shortcut, in #inbox or the
@@ -377,8 +376,9 @@ go to `data/dev-backups/`, so they never push a real backup out.
 
 ## Not built yet
 
-Timers, bugs, pills setup and tidying messages (archive, pin, delete) are
-on the router's way (each task's `plain.py`). The old way is still there
+Timers, bugs and pills setup are on the router's way (each task's
+`plain.py`). Archive, pin and delete are not: they are done by reaction
+or reply word only. The old way is still there
 beside it: a message the router calls chat in #inbox still gets every
 tool (`tasks/toolcalls.py`, the reply guards, the pills previews and
 drafts). Removing it is the next step; until then this branch is not to

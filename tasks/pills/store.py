@@ -304,6 +304,18 @@ def db_discard_draft(conn: sqlite3.Connection, draft_id: int) -> bool:
 # ---------------------------------------------------------------------------
 # The same, one call each, for the event loop
 # ---------------------------------------------------------------------------
+def db_last_changed(conn: sqlite3.Connection, user_id: int) -> int | None:
+    """The pill the user changed last (added, edited, paused…), if it is still there."""
+    found = conn.execute(
+        """
+        SELECT c.pill_id FROM pills_changes c JOIN pills_pills p ON p.id = c.pill_id
+        WHERE c.user_id = ? AND p.status != 'removed' ORDER BY c.id DESC LIMIT 1
+        """,
+        (user_id,),
+    ).fetchone()
+    return found[0] if found else None
+
+
 async def pills(user_id: int) -> list[Pill]:
     return await database.run(db_pills, user_id)
 

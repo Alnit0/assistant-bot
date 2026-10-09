@@ -169,7 +169,16 @@ async def why(ctx: Context) -> str:
     whole: what was said, the route and why, what the router and extraction
     returned, what the code applied, the card before and after, the cost."""
     count = why_count(ctx.args)
-    rows = await ctx.db.run(trace.db_recent, ctx.user.id, count, WHY_KINDS, "dev why")
+    upto = None
+    if ctx.reply_target_id is not None:
+        # As a reply: the messages up to and including the one replied to (for one
+        # of the bot's messages, the message of mine it answered)
+        target = await ctx.fetch_reply_target()
+        sent_at = getattr(target, "created_at", None)
+        upto = await ctx.db.run(trace.db_anchor, ctx.user.id, WHY_KINDS, ctx.reply_target_id, sent_at)
+        if upto is None:
+            raise UserError("Nothing is logged for that message.")
+    rows = await ctx.db.run(trace.db_recent, ctx.user.id, count, WHY_KINDS, "dev why", upto)
     if not rows:
         raise UserError("Nothing is logged from you yet.")
     for row in rows:

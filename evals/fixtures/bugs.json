@@ -111,7 +111,9 @@
         "bug_report",
         {
           "guessed": [],
-          "not_included": []
+          "not_included": [
+            "that"
+          ]
         }
       ]
     },
@@ -182,7 +184,7 @@
       "recorded": [
         "none",
         {
-          "reason": "Correction of user's own request, not a bug report"
+          "reason": "Correction of a request, not a bug report"
         }
       ]
     }

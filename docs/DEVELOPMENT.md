@@ -126,7 +126,8 @@ the channel you are in; `help <task or word>` gives details.
   tidy themselves away again.
 - **Reporting a bug.** React 🐞 to a message, reply `bug` to it, or type
   `bug` on its own (the latest thing in that channel). It is logged at
-  once and the channel gets "🐞 Logged as B4", a link to the bug's post in
+  once and the channel gets "🐞 Logged as B4" ("D4", with a "dev" tag on
+  the post, when the bot runs on the dev database), a link to the bug's post in
   the #bugs forum (`BUGS_CHANNEL_ID`, a forum channel where the bot may
   Create Posts, Send Messages in Threads and Manage Threads). The post has
   the message, the five before it, that turn's tool calls, timings and log
@@ -576,8 +577,8 @@ the item.
 minutes", "pause the tea timer", "cancel all my timers", "start a
 pomodoro"), bugs ("that's a bug", "show my open bugs"), pills setup ("add
 iron at 8", "move iron to 9pm", "pause iron until the 20th", "remove
-iron", "show all my pills") and tidying messages ("pin that", "archive
-that", "delete my last message"). Each task's actions are in its
+iron", "show all my pills"). Archive, pin and delete are not asked for in
+plain words: use the reaction or the reply word. Each task's actions are in its
 `plain.py` (bugs: `__init__.py`). What acts at once and what asks first:
 
 | | At once | Asks first (a card) |
@@ -585,7 +586,6 @@ that", "delete my last message"). Each task's actions are in its
 | Timers | start, pause, resume, add time, cancel one, the Pomodoro | cancelling several timers |
 | Bugs | report, list | |
 | Pills | the list | add, edit, pause, resume, remove, delete |
-| Messages | pin, unpin, archive | delete; archiving a pinned or 📌 message |
 
 The way every task will take plain words. Nothing real uses it yet; two
 demo tasks do, on the dev database only (`python main.py --dev`, #inbox or

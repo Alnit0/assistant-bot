@@ -68,7 +68,8 @@ def main() -> int:
             called = await _call_router(fixture, entries)
             times["router"].append(time.perf_counter() - began)
             fixture.recorded = called[1] if called else None
-            problem = fixtures.router_problem(fixture, routing.parse(fixture.recorded, [entry.name for entry in entries]))
+            route = routing.parse(fixture.recorded, [entry.name for entry in entries])
+            problem = fixtures.router_problem(fixture, fixtures.settled(fixture, route, entries))
             print(_mark(problem, fixture) + f"route    {fixture.message!r}" + (f"  -> {problem}" if problem else ""))
             if problem:
                 (known if fixture.known_miss else failures).append(fixture.name)

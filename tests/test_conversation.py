@@ -54,9 +54,13 @@ def shop_add_all(*things, guessed=(), not_included=()):
     return ("demo_shop_change", {"items": [_thing(thing) for thing in things], "guessed": list(guessed), "not_included": list(not_included)})
 
 
-def SAVED(*things):
-    """Items as a card keeps them: each with its amount and what to do with it."""
-    return {"items": [{"item": name, "quantity": quantity, "change": change} for name, quantity, change in things]}
+def SAVED(*things, last=None):
+    """Items as a card keeps them: each with its amount and what to do with it,
+    and the one mentioned last (the last of them, unless said)."""
+    return {
+        "items": [{"item": name, "quantity": quantity, "change": change} for name, quantity, change in things],
+        "_last": last or things[-1][0],
+    }
 
 
 def tick(*names):
@@ -1187,12 +1191,21 @@ def test_no_shopping_still_corrects_a_card_that_came_from_the_list_on_screen(wor
 
 def test_a_message_plainly_for_something_else_is_read_afresh(world):
     show_packing_list(world)
-    world.claude(("not_this", {"reason": "about shopping"}), route("shopping"), shop_add("milk"))
-    world.say("put milk on my shopping list")  # six words: short enough to be tried against the list first
+    run(demo._save("shopping", 1, [{"item": "milk", "quantity": 1}]))
+    world.claude(("not_this", {"reason": "about shopping"}), route("shopping"), tick("milk"))
+    world.say("got the milk")  # short enough to be tried against the list first
     assert [(request.purpose, request.task) for request in world.requests[2:]] == [
         ("extraction", "packing"), ("router", ""), ("extraction", "shopping"),
     ]
     assert "On screen, waiting for the user: the packing list, just shown" in world.requests[3].user
+    assert world.sent[-1][1].text.startswith("☑️ Ticked off **milk**")
+
+
+def test_a_named_destination_is_never_tried_against_the_list_on_screen(world):
+    show_packing_list(world)
+    world.claude(route("shopping"), shop_add("milk"))
+    world.say("put milk on my shopping list")
+    assert [(request.purpose, request.task) for request in world.requests[2:]] == [("router", ""), ("extraction", "shopping")]
     assert world.sent[-1][1].text.splitlines()[0] == "🛒 Shopping · new"
 
 
@@ -1583,3 +1596,132 @@ def test_a_long_list_is_capped_before_it_goes_to_extraction_and_the_count_is_kep
     assert traces()[-1]["state"] == {"shopping": {"sent": 20, "total": 61}}
     assert card_lines(world) == ["🛒 Shopping · change", "eggs · 5 → 7"], "the code still has the whole list"
     assert run(database.run(costs.db_state_sent, "2000-01-01")) == (1, 20, 61)
+
+
+# ---------------------------------------------------------------------------
+# QA 2026-10-10: read back before confirming; "it" is the code's; nothing to do; what is stated wins
+# ---------------------------------------------------------------------------
+def test_saved_is_only_said_once_the_change_has_been_read_back(world, monkeypatch):
+    world.claude(route("shopping"), shop_add("milk", 2))
+    world.say("add 2 milk")
+    card = open_cards()[-1]
+
+    async def lost(kind, user_id, items):
+        return None  # the write goes nowhere
+
+    logged = []
+
+    async def log_error(title, detail, said=""):
+        logged.append((title, detail))
+
+    monkeypatch.setattr(demo, "_save", lost)
+    monkeypatch.setattr(confirm, "log_error", log_error)
+    outcome = run(confirm.on_save(press := world.Press(card.id)))
+    assert press.cards[-1].text == "⚠️ That didn't save: milk is not on the list. Nothing is confirmed; please check and ask again."
+    assert "Saved" not in press.cards[-1].text and outcome.startswith("NOT saved shopping/demo_shop_change")
+    assert logged == [("Save did not take: demo_shop_change", "milk is not on the list")]
+    assert open_cards()[-1].status == "failed" and shopping_list() == []
+
+
+def test_what_a_press_did_is_remembered_so_the_next_message_is_not_answered_as_if_it_were_waiting(world):
+    # QA 2026-10-10: after Delete for good was pressed, the next message was told "I'm waiting for you to confirm"
+    world.claude(route("shopping"), shop_add("milk", 2))
+    world.say("add 2 milk")
+    saved = save(world)
+    history = llm.history_for(world.channel_id) if hasattr(world, "channel_id") else llm.history_for(open_cards()[-1].channel_id)
+    assert history[-2:] == [{"role": "user", "content": "(pressed the card's button)"}, {"role": "assistant", "content": saved}]
+
+    world.claude(route("shopping"), shop_add("jam"))
+    world.say("add jam")
+    run(confirm.on_cancel(world.Press(open_cards()[-1].id)))
+    assert llm.history_for(open_cards()[-1].channel_id)[-1]["content"] == "Cancelled: nothing was changed."
+
+
+def test_each_demo_change_is_read_back_item_by_item(world):
+    request = SimpleNamespace(user=SimpleNamespace(id=1), text="", previous=None)
+    run(demo._save("shopping", 1, [{"item": "eggs", "quantity": 5}, {"item": "jam", "quantity": 1}]))
+    wanted = {"items": [
+        {"item": "eggs", "quantity": 7, "change": "set"}, {"item": "jam", "change": "remove"}, {"item": "milk", "quantity": 2, "change": "add"},
+    ]}
+    assert run(demo.shop_change_check(request, wanted)) == "eggs is × 5, not × 7; jam is still on the list; milk is not on the list"
+    run(demo.shop_change_save(request, wanted))
+    assert run(demo.shop_change_check(request, wanted)) == ""
+    assert run(demo.shop_clear_check(request, {})) == "2 items still on the shopping list"
+
+
+def test_it_is_resolved_by_the_code_to_the_item_mentioned_last_and_is_not_a_guess(world):
+    # QA 2026-10-09 and 10: "make it 2" changed the first item. Claude now only says "it" was used
+    milk_and_bread_rolls(world)
+    world.claude(shop_add("@that", 2, change="set"))
+    world.say("make it 2")
+    assert card_lines(world) == ["🛒 Shopping · new", "milk · × 1", "bread rolls · × 2"], "no ❓: it is a rule, not a guess"
+    assert open_cards()[-1].data["_last"] == "bread rolls"
+
+
+def test_it_follows_whatever_was_mentioned_last_not_the_last_line_of_the_card(world):
+    milk_and_bread_rolls(world)
+    world.claude(shop_add("milk", 3, change="set"))
+    world.say("make the milk 3")
+    world.claude(shop_add("@that", 4, change="set"))
+    world.say("actually make it 4")
+    assert card_lines(world)[1:] == ["milk · × 4", "bread rolls · × 1"]
+
+
+def test_with_no_card_it_is_the_newest_thing_on_the_list_and_that_is_flagged(world):
+    run(demo._save("shopping", 1, [{"item": "eggs", "quantity": 5}, {"item": "jam", "quantity": 1}]))
+    world.claude(route("shopping"), shop_add("@that", 3, change="set"))
+    world.say("make it 3")
+    assert card_lines(world) == ["🛒 Shopping · change", "jam · 1 → 3 ❓"]
+
+
+def test_with_nothing_it_could_mean_the_bot_says_so(world):
+    world.claude(route("shopping"), shop_add("@that", 3, change="set"))
+    world.say("make it 3")
+    assert world.sent[-1][1].text == "⚠️ I can't tell what “it” is. Say its name."
+    assert open_cards() == []
+
+
+def test_a_message_that_needs_nothing_done_gets_no_reply_at_all(world):
+    # QA 2026-10-10: "Note one" was answered "Just another note from you. No action needed."
+    world.claude(("route", {"kind": "nothing", "tasks": [], "confidence": "high", "chat_part": ""}))
+    world.say("note one")
+    assert world.sent == [] and len(world.requests) == 1, "one request to the router, and silence"
+    row = rows()[-1]
+    assert (row[1], row[5]) == ("router", "ok") and not row[4], "logged, with nothing shown"
+    assert traces()[-1]["router"]["nothing"] is True
+    assert "the message asks nothing and needs nothing done: no reply" in traces()[-1]["why"]
+
+
+def test_a_named_destination_wins_over_an_open_card_and_over_the_router(world):
+    world.claude(route("shopping"), shop_add("milk"))
+    world.say("add milk")
+    shopping_card = world.sent[-1][0]
+    # The card is fresh and would claim "add socks"; the router gets it wrong as well
+    world.claude(route("shopping"), pack("socks"))
+    world.say("add socks to the packing list")
+    assert [(request.purpose, request.task) for request in world.requests[2:]] == [("router", ""), ("extraction", "packing")]
+    assert world.sent[-1][1].text.splitlines()[:2] == ["🧳 Packing · new", "socks · checked bag"]
+    assert shopping_card not in world.deleted, "the shopping card is left open"
+    checks = traces()[-1]["checks"]
+    assert "named destination: packing (stated, so it decides the task)" in checks
+    assert "named destination: the router said ['shopping'], overruled by what was stated" in checks
+
+
+def test_a_named_destination_that_is_the_open_cards_own_task_still_sticks(world):
+    world.claude(route("shopping"), shop_add("milk"))
+    world.say("add milk")
+    world.claude(shop_add("jam"))
+    world.say("and jam on the shopping list")
+    assert world.requests[-1].purpose == "extraction" and len(world.requests) == 3, "no router: it is that card's task"
+    assert card_lines(world)[1:] == ["milk · × 1", "jam · × 1"]
+
+
+def test_an_amount_i_stated_is_never_flagged_whatever_claude_listed(world):
+    world.claude(route("shopping"), shop_add("eggs", 3, guessed=["quantity"]))
+    world.say("add 3 eggs")
+    assert card_lines(world) == ["🛒 Shopping · new", "eggs · × 3"] and open_cards()[-1].guessed == ()
+    assert any(check.startswith("stated check: no longer a guess") for check in traces()[-1]["checks"])
+    run(confirm.on_cancel(world.Press(open_cards()[-1].id)))
+    world.claude(route("shopping"), shop_add("eggs", 3, guessed=["quantity"]))
+    world.say("add a few eggs")
+    assert card_lines(world) == ["🛒 Shopping · new", "eggs · × 3 ❓"], "a real guess is still flagged"

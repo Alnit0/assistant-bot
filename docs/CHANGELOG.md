@@ -6,13 +6,29 @@ backfilled from the git log.
 
 ## 2026-10-10
 
-- **Timers, bugs, pills and tidying messages work in plain words the new
-  way.** One small request works out which task a message is for, one
+- **Dev bugs are D1, D2… with a "dev" tag.** Bugs logged while testing
+  on the dev database no longer look like real ones in #bugs. Real bugs
+  stay B1, B2… and a number is never used twice.
+- **"Saved" and "Deleted" are only said once they are true.** Every
+  change is read back from the database before it is confirmed, and what
+  a button did is now part of the conversation: after "Delete for good"
+  the bot no longer says it is still waiting for you to confirm.
+- **"It" and "that" mean what you'd expect.** A reply says which thing
+  you mean, for everything; without one it is the last thing you
+  mentioned, never something the bot said. The bot's code works this out.
+- **What you state always wins.** "Add zinc to my pills" goes to pills
+  whatever card is open, and a dose, time or amount you gave is never
+  marked ❓.
+- **No reply when there is nothing to do.** A note to yourself or a
+  thank-you is left alone.
+- **One format for a change on every card:** `field · old → new`.
+- **Pin, archive and delete in plain words are gone**; reactions and reply
+  words do them as before.
+- **Timers, bugs and pills work in plain words the new way.** One small request works out which task a message is for, one
   fills in the details, and the bot's own code does it and writes every
-  word: "set a timer for 5 minutes", "that's a bug", "add iron at 8",
-  "pin that". A single timer action happens at once; cancelling several
-  timers, any change to a pill, and deleting a message ask first with a
-  card.
+  word: "set a timer for 5 minutes", "that's a bug", "add iron at 8".
+  A single timer action happens at once; cancelling several timers and
+  any change to a pill ask first with a card.
 - **Pills never ask before the card.** "Add iron at 8" shows `8:00 am` ❓;
   say "8pm" and the card is replaced.
 - **`dev why` says why.** `dev why` (or `dev why 3`) posts a copyable
