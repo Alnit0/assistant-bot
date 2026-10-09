@@ -77,7 +77,11 @@ def pack(item, bag=None, guessed=(), change=None):
 @pytest.fixture
 def world(make_db, monkeypatch, owner):
     """A database, the two demo tasks in the catalogue, a channel that records, and a Claude that is scripted."""
-    make_db({"lab": state.MIGRATIONS})
+    # The real tasks' tables too: the golden conversations (tests/test_golden.py) use this world
+    from tasks.pills import store as pills_store
+    from tasks.timers import store as timers_store
+
+    make_db({"lab": state.MIGRATIONS, "pills": pills_store.MIGRATIONS, "timers": timers_store.MIGRATIONS})
     monkeypatch.setattr(actions, "_entries", {})
     actions.set_catalogue(demo.ENTRIES)
     monkeypatch.setattr(cards, "_actions", {})

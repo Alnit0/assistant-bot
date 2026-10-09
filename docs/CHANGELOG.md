@@ -6,6 +6,9 @@ backfilled from the git log.
 
 ## 2026-10-10
 
+- **The conversation standard has an acceptance test.** Its golden
+  conversations are replayed with every test run; nothing changed in how
+  the bot behaves. What it can't do yet is listed in `docs/BACKLOG.md`.
 - **Dev bugs are D1, D2… with a "dev" tag.** Bugs logged while testing
   on the dev database no longer look like real ones in #bugs. Real bugs
   stay B1, B2… and a number is never used twice.

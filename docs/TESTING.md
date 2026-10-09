@@ -44,9 +44,9 @@ Last updated: 2026-10-10
 | P | Bugs | 33 | 16 | 17 | 17 | 16 | 0 | 0 |
 | Q | Time, days, the occurrence log and cards | 9 | 8 | 1 | 1 | 8 | 0 | 0 |
 | R | Pills | 39 | 2 | 37 | 37 | 2 | 0 | 0 |
-| S | Routing and confirm cards | 34 | 4 | 30 | 0 | 34 | 0 | 0 |
+| S | Routing and confirm cards | 35 | 5 | 30 | 0 | 35 | 0 | 0 |
 | T | Tasks in plain words | 22 | 3 | 19 | 13 | 9 | 0 | 0 |
-| | **Total** | **395** | **122** | **273** | **237** | **158** | **0** | **0** |
+| | **Total** | **396** | **123** | **273** | **237** | **159** | **0** | **0** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -544,6 +544,7 @@ the dev database (`python main.py --dev`), in #inbox.
 | S32 | 👤 Manual | Say `add butter and bread rolls`; then, pressing nothing, `make it 2` | The card is replaced: "butter · × 1" and "bread rolls · × 2", perhaps with ❓ on the bread rolls line. "It" is the last thing mentioned: butter stays at 1 | ✅ Pass | 2026-10-10 | From QA 2026-10-09 ("make it 2" changed the first item) |
 | S33 | 👤 Manual | With that card open: say `No, 2 butter` | The card is replaced: "butter · × 2" and "bread rolls · × 1". The change the "no" corrects is undone, so bread rolls is back to 1 | ✅ Pass | 2026-10-10 | From QA 2026-10-09 (the wrong change was left in place) |
 | S34 | 👤 Manual | With butter × 2 on the shopping list: say `Add butter`; then, pressing nothing, `and jam`; then `and honey`; press **Save** | "butter · 2 → 3"; after "and jam" the card is replaced by "butter · 2 → 3" and "jam · × 1"; after "and honey" a "honey · × 1" line is added and butter is still 2 → 3. Save: "✅ Saved · 🛒 shopping list updated: 2 added, 1 changed", and the list has butter × 3 | ✅ Pass | 2026-10-10 | From QA 2026-10-10 ("and jam" made butter 2 → 4: the card came back with the new item and was added again) |
+| S35 | 🤖 Auto | The golden conversations | Each conversation of the conversation standard is run end to end, offline, with Claude's part replayed from what the real API last returned: every stated detail on the card with no ❓; a course; a brief request; a correction replacing the card; a correction straight after Save; a timer with no card and "it" as that timer; a plain answer; several things on one card; a reply to an older timer; `dev why` as a reply; a list as context and a stated destination beating it; "it" as the item mentioned last and "no, …" undoing only the mistake; deleted only said when true; no reply when nothing is needed. Four are marked as gaps and must fail until built (asking on the card: 1c, 1d, 2a; a reply to an older card: 7) | ✅ Pass | 2026-10-10 | `tests/test_golden.py`; the gaps are in `docs/BACKLOG.md` |
 
 ## T. Tasks in plain words
 

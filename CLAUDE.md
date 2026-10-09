@@ -43,6 +43,25 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   (`data/dev.db`, backups in `data/dev-backups/`): the only place test
   data, `dev clock` and `dev reset-db` are allowed
 
+## How the bot talks
+
+- **`docs/specs/conversation.md` is the standard for how the bot talks**
+  (private, like the other specs: read it, never quote it in public docs).
+  Every change must follow it: its principles in their priority order,
+  its context rules, its card rules and its always / never list. On how
+  the bot converses it outranks this file, the routing spec and every
+  task spec. If one of them conflicts with it, it wins: say so, and list
+  the conflict for me
+- **Its golden conversations must pass before I am asked to commit.** They
+  are `tests/test_golden.py`, replayed offline from
+  `evals/fixtures/golden.json` and part of `python -m pytest -q`. One
+  marked `gap` is a conversation the bot can't hold yet: it must fail
+  until that is built, and the summary names every gap. A golden
+  conversation that passed and now fails blocks the commit
+- A new golden conversation in the standard gets its fixtures and its
+  test in the same change; a task's own conversations are checked against
+  the standard by the `task-check` skill (to be written at step 5)
+
 ## Architecture rules
 
 - `core/` never imports from `tasks/`
@@ -87,11 +106,11 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 - A task's `startup` failing is logged and shown on the start card; the
   other tasks still start. Keep it that way
 - The assistant's name comes from `ASSISTANT_NAME`; never hard-code it
-- A pill's plan never changes unseen: adding or editing makes a draft and a
-  preview (Save / Edit), and only Save writes it. Removing asks first.
-  Keep setup simple: it is rare, and due to be rebuilt
-  Claude's pill tools hand over times and dates as the user said them;
-  code reads them, and asks rather than guesses
+- A pill's plan never changes unseen: every change is a confirm card, and
+  only Save writes it. Keep setup simple: it is rare. Claude hands over
+  times and dates as the user said them; code reads them. (The old
+  draft-and-preview with Save / Edit, and the `pills` list with a
+  dropdown, are the old way and go at step 4)
 - Permissions go through `is_allowed(user, action)`, never a comparison
   with `OWNER_ID`. Only the owner is allowed anything
 - Every record has a `user_id`. Task tables are prefixed with the task's
@@ -108,7 +127,9 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   `end_of()`), never from a datetime's own `.date()`. Work at the end of a
   day goes in `Task.new_day`, not a job of the task's own at midnight
 - Times the user types are read by `core/timeinput.py` and shown with its
-  `format_time` ("8:04 am"). An ambiguous time is asked about, never guessed
+  `format_time` ("8:04 am"). An ambiguous time is asked about on the card,
+  with a button for each reading (not built yet: today a card takes the
+  morning and marks it ❓)
 - Expected things with a state on a day (doses, later reminders and
   routines) are rows in the occurrence log (`core/occurrences.py`), changed
   only through its `db_change` family so every change leaves an event
@@ -222,8 +243,9 @@ Input
   plain answer deals with is not listed (`conversation.uncovered`).
   This holds in code too: an item that fails validation, or is lost when
   a card moves to another task, is reported, never discarded.
-- ❓ marks a genuine guess only: a time that could be morning or evening,
-  a vague amount, a task or field Claude was unsure of. A value left at
+- ❓ marks a genuine guess only: a vague amount, a task or field Claude
+  was unsure of. Where the readings lead to different results (a time
+  that could be morning or evening) the card asks instead of guessing. A value left at
   its default (one of something, when no amount was said) is not a guess
   and is never flagged, so ❓ still means something on a card with
   several lines. Code flags with `actions.is_guessed`, never because a
@@ -238,27 +260,24 @@ Input
 - A message with several parts gets every part dealt with: each task's
   card or reply, and a plain answer for anything in it that is for no
   task ("what's the capital of France, and add milk").
-- Asking Claude in plain words works too (#inbox): it runs the same
-  actions as tools. It acts on a clear request, asks when unsure, and waits
-  for "ok" (2 minutes) when it is only suggesting. Destructive actions always
-  ask with Confirm / Cancel.
-- One confirmation only. An action that shows its own preview or question
-  (a pill's Save / Edit preview, a Confirm card) is called directly: no
-  "I'm proposing… reply ok" first. The "ok" is only for actions with no
-  preview of their own, and only when Claude is suggesting something I
-  didn't ask for. Saying "ok" runs exactly what was proposed.
-- Which task is meant: Claude decides from the channel, the recent
-  conversation, what I already have and my wording. If more than one
-  task fits equally it asks with a button per task and never guesses.
-  A typed shortcut names its task ("pill add"); a bare "add …" is never
-  a shortcut.
+- Asking in plain words (#inbox and the hub): the router says which task,
+  extraction fills in the details, and the task's own code does it and
+  writes every word. One confirmation only: the card. Never "I'm
+  proposing…" or "reply ok". (The old way, where Claude runs tools and
+  may wait for an "ok", still answers what the router calls chat in
+  #inbox; it contradicts the standard and goes at step 4.)
+- Which task is meant: what I state decides it; otherwise Claude judges
+  from my wording, what is on screen and the recent conversation. A
+  wrong-task card is easy to fix ("no, shopping"), so it is a safe
+  guess: asking which task is for when there is no signal at all, and is
+  the one question allowed before a card. (Today it asks too readily:
+  see the gap list in `docs/BACKLOG.md`.) A typed shortcut names its
+  task ("pill add"); a bare "add …" is never a shortcut.
 - Replies never show tool names or how a tool was called. Times of day
   are written `8:00 pm`, never `20:00`: every tool and card formats them
   that way itself, and replies are not rewritten afterwards (a timer's
-  "05:00 left" is a length of time). A message it picks without my reply is shown
-  quoted with a jump link, with Undo if reversible; if several fit, it
-  offers buttons instead of guessing. At most 5 tool calls per message.
-  Typed words never go through Claude.
+  "05:00 left" is a length of time). What a reference points to is quoted
+  when it is acted on. Typed words never go through Claude.
 - Commands are idempotent: asking for a single-instance thing that
   already exists shows it again instead of failing (`pomo` while a
   session runs re-shows its card; `dev off` when off just says so).
@@ -339,6 +358,7 @@ Cleanliness
 
 Notifications
 - Levels: silent, normal, urgent (@mention in channel), critical (DM).
+- Private: a notification never shows a sensitive name (a pill's, for one).
 - Notifications stay in the server. DMs only for critical alerts and
   ignored high-priority nudges; they are short pointers with a jump link
   back into the server: no content, buttons or actions in DMs.

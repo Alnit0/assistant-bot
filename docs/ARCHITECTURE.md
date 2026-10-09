@@ -128,7 +128,7 @@ Claude loop against a scripted stand-in), `toolcalls`, `bugs`, `instance_lock`, 
 `dev_clock` (`dev clock`, `dev reset-db` and their guards), `actions` (the contract and the checking), `routing` (the router, extraction and the replayed fixtures), `conversation` (a message end to end, confirm cards, the demo lists), `livelists`, `costs` (routes, prices, the roll-up and `dev cost`), `trace` (notes, a message in lines, `dev why`), `cards`,
 `pills_rules`, `pills_plans` (records, previews, buttons, and a tool call
 all the way through the registry), `timers_plain` and `pills_plain`
-(each task's actions in plain words), `channels`
+(each task's actions in plain words), `golden` (the golden conversations of the conversation standard, end to end, replayed from `evals/fixtures/golden.json`; the ones the bot can't hold yet are marked as gaps), `channels`
 (channel types, the dev panel's start-up sweep, a task failing to start).
 
 ## Data flows

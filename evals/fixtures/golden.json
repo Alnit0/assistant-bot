@@ -1,0 +1,779 @@
+{
+  "router": [
+    {
+      "golden": "1",
+      "message": "add vitamin D to my pills, 1 tablet, once a day at 8am with food",
+      "tasks": [
+        "pills"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "1a",
+      "message": "add course A to my pills, 3 times a day at least 3 hours apart, with food, for 7 days starting tomorrow",
+      "tasks": [
+        "pills"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "1b",
+      "message": "add vitamin D once a day",
+      "tasks": [
+        "pills"
+      ],
+      "note": "brief, and no destination named: still plainly a pill",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "1c",
+      "message": "add iron to my pills at 8",
+      "tasks": [
+        "pills"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "1d",
+      "message": "add magnesium to my pills, twice a day at 8am",
+      "tasks": [
+        "pills"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "2b",
+      "message": "no, I meant 9pm",
+      "tasks": [
+        "pills"
+      ],
+      "exchanges": [
+        [
+          "add iron to my pills at 8pm",
+          "card: pills · new: **Iron** · daily at `8:00 pm`"
+        ],
+        [
+          "(pressed the card's button)",
+          "✅ Saved · 💊 **Iron** · daily at `8:00 pm`"
+        ]
+      ],
+      "note": "straight after Save: the correction is about what was just saved",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "3",
+      "message": "set a tea timer for 5",
+      "tasks": [
+        "timers"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "timers"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "4",
+      "message": "give it 2 more",
+      "tasks": [
+        "timers"
+      ],
+      "exchanges": [
+        [
+          "set a tea timer for 5",
+          "started 1 timer(s): tea 5m"
+        ]
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "timers"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "5",
+      "message": "what's the capital of France? ",
+      "chat": true,
+      "recorded": {
+        "kind": "chat",
+        "tasks": [],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "6",
+      "message": "add honey, jam and 5 eggs",
+      "tasks": [
+        "shopping"
+      ],
+      "note": "no list named: things to buy",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "shopping"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "10",
+      "message": "what am I packing?",
+      "tasks": [
+        "packing"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "packing"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "10a",
+      "message": "add milk to the shopping list",
+      "tasks": [
+        "shopping"
+      ],
+      "on_screen": "the packing list, just shown",
+      "note": "what I stated beats context",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "shopping"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "13",
+      "message": "delete zinc and its history",
+      "tasks": [
+        "pills"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "14",
+      "message": "right, that's sorted then",
+      "nothing": true,
+      "note": "a message with nothing to do",
+      "recorded": {
+        "kind": "nothing",
+        "tasks": [],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    }
+  ],
+  "extraction": [
+    {
+      "golden": "1",
+      "task": "pills",
+      "message": "add vitamin D to my pills, 1 tablet, once a day at 8am with food",
+      "state": "The user's pills now (use the id, or the name): none yet",
+      "action": "pill_add",
+      "data": {
+        "pills": [
+          {
+            "name": "vitamin D",
+            "dose": "1 tablet",
+            "times": "8am",
+            "notes": "with food"
+          }
+        ]
+      },
+      "guessed": [],
+      "recorded": [
+        "pill_add",
+        {
+          "pills": [
+            {
+              "name": "vitamin D",
+              "dose": "1 tablet",
+              "per_day": 1,
+              "times": "8am",
+              "notes": "with food"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "1a",
+      "task": "pills",
+      "message": "add course A to my pills, 3 times a day at least 3 hours apart, with food, for 7 days starting tomorrow",
+      "state": "The user's pills now (use the id, or the name): none yet",
+      "action": "pill_add",
+      "data": {
+        "pills": [
+          {
+            "name": "course A",
+            "per_day": 3,
+            "min_gap": "3h",
+            "notes": "with food",
+            "start": "tomorrow",
+            "days": 7
+          }
+        ]
+      },
+      "guessed": [],
+      "recorded": [
+        "pill_add",
+        {
+          "pills": [
+            {
+              "name": "Course A",
+              "per_day": 3,
+              "min_gap": "3h",
+              "notes": "with food",
+              "start": "tomorrow",
+              "days": 7
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "1b",
+      "task": "pills",
+      "message": "add vitamin D once a day",
+      "state": "The user's pills now (use the id, or the name): none yet",
+      "action": "pill_add",
+      "data": {
+        "pills": [
+          {
+            "name": "vitamin D"
+          }
+        ]
+      },
+      "recorded": [
+        "pill_add",
+        {
+          "pills": [
+            {
+              "name": "Vitamin D",
+              "per_day": 1
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "1c",
+      "task": "pills",
+      "message": "add iron to my pills at 8",
+      "state": "The user's pills now (use the id, or the name): none yet",
+      "action": "pill_add",
+      "data": {
+        "pills": [
+          {
+            "name": "iron",
+            "times": "8"
+          }
+        ]
+      },
+      "note": "the time goes as said; whether to ask or guess is the code's",
+      "recorded": [
+        "pill_add",
+        {
+          "pills": [
+            {
+              "name": "iron",
+              "times": "8"
+            }
+          ],
+          "guessed": [
+            "times[0]"
+          ],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "1d",
+      "task": "pills",
+      "message": "add magnesium to my pills, twice a day at 8am",
+      "state": "The user's pills now (use the id, or the name): none yet",
+      "action": "pill_add",
+      "data": {
+        "pills": [
+          {
+            "name": "magnesium",
+            "per_day": 2,
+            "times": "8am"
+          }
+        ]
+      },
+      "note": "one time for two doses: both facts come back as said, and the code decides what to ask",
+      "recorded": [
+        "pill_add",
+        {
+          "pills": [
+            {
+              "name": "magnesium",
+              "per_day": 2,
+              "times": "8am"
+            }
+          ],
+          "guessed": [
+            "times[1]"
+          ],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "2",
+      "task": "pills",
+      "message": "actually make it 8am",
+      "state": "The user's pills now (use the id, or the name): none yet",
+      "action": "pill_add",
+      "data": {
+        "pills": [
+          {
+            "times": "8am"
+          }
+        ]
+      },
+      "card": {
+        "action": "pill_add",
+        "data": {
+          "pills": [
+            {
+              "name": "iron",
+              "times": "08:00"
+            }
+          ],
+          "_last": "iron"
+        },
+        "guessed": [
+          "pills[0].times"
+        ],
+        "said": "add iron to my pills at 8"
+      },
+      "recorded": [
+        "pill_add",
+        {
+          "pills": [
+            {
+              "name": "iron",
+              "times": "8am"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "2b",
+      "task": "pills",
+      "message": "no, I meant 9pm",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Iron · daily at 8:00 pm [active]",
+      "action": "pill_edit",
+      "data": {
+        "pills": [
+          {
+            "times": "9pm"
+          }
+        ]
+      },
+      "note": "straight after Save, with no card open: a change to the pill just saved",
+      "recorded": [
+        "pill_edit",
+        {
+          "pills": [
+            {
+              "pill": "pl1",
+              "times": "9pm"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "3",
+      "task": "timers",
+      "message": "set a tea timer for 5",
+      "state": "Timers and the Pomodoro session now (use these ids): no timers and no Pomodoro session",
+      "action": "timer_start",
+      "data": {
+        "timers": [
+          {
+            "label": "tea"
+          }
+        ]
+      },
+      "guessed": [],
+      "recorded": [
+        "timer_start",
+        {
+          "timers": [
+            {
+              "duration": "5m",
+              "label": "tea"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "4",
+      "task": "timers",
+      "message": "give it 2 more",
+      "state": "Timers and the Pomodoro session now (use these ids):\n- t1: \"tea\" · running, 4m left · in this channel",
+      "action": "timer_change",
+      "data": {
+        "which": "@that",
+        "action": "extend"
+      },
+      "recorded": [
+        "timer_change",
+        {
+          "which": "t1",
+          "action": "extend",
+          "duration": "2m",
+          "guessed": [],
+          "not_included": []
+        }
+      ],
+      "known_miss": "claude-haiku-4-5 sometimes names what a pronoun means itself instead of returning @that. The outcome was right here (one timer; the item mentioned last), but the rule is that only the code resolves a reference: in the gap list (2026-10-10)"
+    },
+    {
+      "golden": "6",
+      "task": "shopping",
+      "message": "add honey, jam and 5 eggs",
+      "state": "On the shopping list now: nothing",
+      "action": "demo_shop_change",
+      "data": {
+        "items": [
+          {
+            "item": "honey"
+          },
+          {
+            "item": "jam"
+          },
+          {
+            "item": "eggs",
+            "quantity": 5
+          }
+        ]
+      },
+      "guessed": [],
+      "recorded": [
+        "demo_shop_change",
+        {
+          "items": [
+            {
+              "item": "honey"
+            },
+            {
+              "item": "jam"
+            },
+            {
+              "item": "eggs",
+              "quantity": 5
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "7",
+      "task": "shopping",
+      "message": "make it 2",
+      "state": "On the shopping list now: nothing",
+      "action": "demo_shop_change",
+      "data": {
+        "items": [
+          {
+            "quantity": 2,
+            "change": "set"
+          }
+        ]
+      },
+      "card": {
+        "action": "demo_shop_change",
+        "data": {
+          "items": [
+            {
+              "item": "milk",
+              "quantity": 1,
+              "change": "add"
+            }
+          ],
+          "_last": "milk"
+        },
+        "guessed": [],
+        "said": "add milk"
+      },
+      "note": "a reply to an older card: the code picks the card, extraction reads the change",
+      "recorded": [
+        "demo_shop_change",
+        {
+          "items": [
+            {
+              "item": "milk",
+              "quantity": 2,
+              "change": "set"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "10",
+      "task": "packing",
+      "message": "add milk",
+      "state": "On the packing list now: nothing",
+      "action": "demo_pack_change",
+      "data": {
+        "items": [
+          {
+            "item": "milk"
+          }
+        ]
+      },
+      "after_list": true,
+      "recorded": [
+        "demo_pack_change",
+        {
+          "items": [
+            {
+              "item": "milk"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "10a",
+      "task": "shopping",
+      "message": "add milk to the shopping list",
+      "state": "On the shopping list now: nothing",
+      "action": "demo_shop_change",
+      "data": {
+        "items": [
+          {
+            "item": "milk"
+          }
+        ]
+      },
+      "recorded": [
+        "demo_shop_change",
+        {
+          "items": [
+            {
+              "item": "milk",
+              "change": "add"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "11",
+      "task": "shopping",
+      "message": "Make it 2",
+      "state": "On the shopping list now: nothing",
+      "action": "demo_shop_change",
+      "data": {
+        "items": [
+          {
+            "item": "@that",
+            "quantity": 2,
+            "change": "set"
+          }
+        ]
+      },
+      "card": {
+        "action": "demo_shop_change",
+        "data": {
+          "items": [
+            {
+              "item": "milk",
+              "quantity": 1,
+              "change": "add"
+            },
+            {
+              "item": "bread rolls",
+              "quantity": 1,
+              "change": "add"
+            }
+          ],
+          "_last": "bread rolls"
+        },
+        "guessed": [],
+        "said": "add milk and bread rolls"
+      },
+      "recorded": [
+        "demo_shop_change",
+        {
+          "items": [
+            {
+              "item": "bread rolls",
+              "quantity": 2,
+              "change": "set"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ],
+      "known_miss": "claude-haiku-4-5 sometimes names what a pronoun means itself instead of returning @that. The outcome was right here (one timer; the item mentioned last), but the rule is that only the code resolves a reference: in the gap list (2026-10-10)"
+    },
+    {
+      "golden": "12",
+      "task": "shopping",
+      "message": "no, 2 milk",
+      "state": "On the shopping list now: nothing",
+      "action": "demo_shop_change",
+      "data": {
+        "items": [
+          {
+            "item": "milk",
+            "quantity": 2,
+            "change": "set"
+          }
+        ]
+      },
+      "card": {
+        "action": "demo_shop_change",
+        "data": {
+          "items": [
+            {
+              "item": "milk",
+              "quantity": 1,
+              "change": "add"
+            },
+            {
+              "item": "bread rolls",
+              "quantity": 1,
+              "change": "add"
+            }
+          ],
+          "_last": "bread rolls"
+        },
+        "guessed": [],
+        "said": "add milk and bread rolls",
+        "undone": "Make it 2"
+      },
+      "recorded": [
+        "demo_shop_change",
+        {
+          "items": [
+            {
+              "item": "milk",
+              "quantity": 2,
+              "change": "set"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "13",
+      "task": "pills",
+      "message": "delete zinc and its history",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Zinc · daily, untimed [active]",
+      "action": "pill_delete",
+      "data": {
+        "pills": [
+          {}
+        ]
+      },
+      "recorded": [
+        "pill_delete",
+        {
+          "pills": [
+            {
+              "pill": "pl1"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    }
+  ]
+}

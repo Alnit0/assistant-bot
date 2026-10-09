@@ -47,6 +47,41 @@ gained time"):
 | "Pause all timers" asked which, took four calls and left the Pomodoro | `pause all` / `resume all` are typed words (so no Claude call when typed) and tools; they include the Pomodoro unless told otherwise and list what was done | G21, N40 |
 | "I don't have a record of what the times were" | `timers_events` records every change with the time left; `timer_history` reads it | N42 |
 
+## Gaps against the conversation standard (2026-10-10)
+
+Measured, not fixed: each is waiting to be chosen. The golden
+conversations are `tests/test_golden.py`; the ones marked `gap` there
+are 1c, 1d, 2a and 7.
+
+| # | Gap | Layer | Size |
+|---|---|---|---|
+| G1 | Questions on the card: a card that asks, with a button per likely answer, no Save until answered, one question at a time, and a typed answer accepted too (golden 1c, 1d, 2a) | core (card, confirm, contract) and pills | large |
+| G2 | A reply to a card that isn't the newest open one changes the newest, or nothing (golden 7) | core | small |
+| G3 | A correction straight after Save works only by the "pill changed last" guess, so it is marked ❓, and only for pills (golden 2b) | core and each task | medium |
+| G4 | Task ties are asked too readily: the router sees two exchanges and no record of what I have or did lately | router | medium |
+| G5 | Nothing-to-do gets no sign it was received (wanted: ✅ on the message, no text) | core | small |
+| G6 | "Not understood" replies carry the task's own hint ("Say “that's a bug”…"); wanted: neutral | core | small |
+| G7 | Questions still sent as their own message: "Which timer? Say its name.", "Which one: A or B?" for pills, and a plan that can't be built | tasks, then G1 | medium |
+| G8 | Claude sometimes names what "it" means instead of leaving it to the code (2 of 5 golden steps); right both times, but not by rule | extraction prompt | small |
+| G9 | The old way still answers what the router calls chat in #inbox: Claude writes the reply, may claim things, may ask for "ok" | step 4 | large (already planned) |
+| G10 | Card kinds are not one vocabulary: pills say edit, pause, resume, delete; timers say cancel | tasks | small |
+| G11 | Times in a bug's post and in `dev why` are 24-hour | bugs, core | small |
+| G12 | A redirect in looser words ("actually that belongs on the shopping list") leaves the old card open beside the new one | core | small |
+| G13 | The `pills` word still shows the old list with a dropdown and its own buttons | step 4 | small (already planned) |
+| G14 | Privacy of notifications is untested: nothing notifies about a pill yet | pills stage 3 | with reminders |
+
+Done since: dev bugs are numbered D1, D2… with a "dev" tag, and a live
+number is never reused.
+
+**`task-check` (step 5), as now planned.** It audits one task against the
+conversation standard as well as the task contract: each principle in
+order, each context rule, each card rule and each always / never line,
+pass or fail per item with the evidence; it runs the golden
+conversations that involve the task, and proposes new ones for what the
+task adds; and it writes a QA block where every step says what to
+press and the block starts with `dev clock reset`. First use: timers,
+bugs and pills.
+
 ## Left for later
 
 - **Pin, archive and delete in plain words** ("pin that", "archive that",

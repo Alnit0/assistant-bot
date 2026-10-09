@@ -36,6 +36,7 @@ class RouterFixture:
     on_screen: str = ""
     exchanges: list | None = None  # the last (user, bot) exchanges the router is shown, oldest first
     note: str = ""
+    golden: str = ""  # the golden conversation this is a step of ("1c"), if it is one
     # Why the model is known to get this one wrong, at least some of the time.
     # It still counts against the accuracy when it does; the ordinary tests
     # replay it without judging it, since the same sentence can come back
@@ -69,6 +70,7 @@ class ExtractionFixture:
     # False means nothing may be reported as left out, True means something must be
     left_out: bool | None = None
     note: str = ""
+    golden: str = ""  # the golden conversation this is a step of ("1c"), if it is one
     known_miss: str = ""
     recorded: list | None = None  # [tool name, input]
 
