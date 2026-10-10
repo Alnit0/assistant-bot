@@ -1,6 +1,6 @@
 # How the bot should talk
 
-**Status:** draft (v4), for Alex to edit
+**Status:** in use
 **Applies to:** every task, now and in future. Code, prompts and QA are
 judged against this page. When a change breaks a principle here, it is a
 bug, not a matter of taste.
@@ -44,9 +44,15 @@ When two principles clash, the higher one wins.
    go on the card, with buttons for the likely answers (see section 4)
 7. **Fewest steps.** One tap to accept; one reply or tap to fix or
    answer.
-8. **No clutter.** Don't reply when nothing is needed (a ✅ on my
-   message says it was received). No links to the
-   message right above. Old cards get replaced, not stacked.
+8. **No clutter.** Reply in words only to questions and requests. A
+   remark, a note to myself or a thank-you gets no reply. Reactions on
+   my message are the status: 👀 while it is being worked on; when done
+   it comes off, whether or not a card or reply was sent, and nothing is
+   left for nothing-to-do. A 👀 that stays means the bot is stuck. If it
+   went wrong, ⚠️ takes its place, with one short plain line only when I
+   can act on it (try again, wait, rephrase); the error is kept for
+   `dev why` and a 🐞 report. ✅ is not used to acknowledge. No links to
+   the message right above. Old cards get replaced, not stacked.
 9. **Consistent everywhere.** Every task looks and behaves the same
    way. Learn it once.
 10. **Private.** Notifications never show sensitive names (e.g. pills).
@@ -147,8 +153,8 @@ Write them the way I'd really say them.
 | 11 | Card with milk and bread rolls, "make it 2" | Bread rolls × 2 (last mentioned) |
 | 12 | …then "no, 2 milk" | Milk × 2, bread rolls back to 1 |
 | 13 | "delete zinc and its history", Delete for good | Zinc is gone; the reply only says so if it really is |
-| 14 | A message with nothing to do | No reply; ✅ on my message so I know it was received |
-| 15 | | |
+| 14 | A message with nothing to do | No reply. The 👀 comes off and no reaction is left |
+| 15 | "shopping is boring" (a remark) | No reply: only questions and requests get words |
 | 16 | | |
 | 17 | | |
 | 18 | | |

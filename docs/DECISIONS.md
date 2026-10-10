@@ -732,6 +732,19 @@ A short log of key decisions and why. Newest at the bottom.
   resume and edit are "change"; cancel, clear and delete are "remove"
   (a destructive one still has its own button and warning). A task that
   gives another word is shown as "change" and logged.
+- **Reactions are the status of a message; words are for questions and
+  requests** (2026-10-10). 👀 while working, removed when done whatever
+  was or wasn't sent; ⚠️ in its place on failure. A failure posts words
+  only when the user can act on it (Claude timed out or was busy: try
+  again); a crash in the bot's own code posts none, because "that
+  didn't work" helps nobody, and the error is kept with the message
+  (`message_log.error` and its trace) for `dev why` and a bug report.
+  ✅ on a nothing-to-do message was tried for a day and taken out: it is
+  reserved. A remark is "nothing" to the router, so it never reaches
+  chat.
+- **Filler is filtered where Claude's answer is checked**
+  (`actions.validate`), so a leftover of only joining words never
+  becomes "Not included", in the bot and in the fixtures alike.
 - **Two demo tasks, on the dev database only,** so the core can be tried
   before any real task depends on it. The live bot's router never hears
   of them.

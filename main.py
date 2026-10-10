@@ -224,11 +224,22 @@ async def _mark_seen(message: discord.Message) -> None:
         log.info("Could not mark a message as seen: %s", error)
 
 
-async def _unmark_seen(message: discord.Message) -> None:
+FAILED = "⚠️"
+
+
+async def _unmark_seen(message: discord.Message, failed: bool = False) -> None:
+    """Done with a message: the 👀 comes off, whether or not anything was said
+    (one that stays means the bot is stuck). If it went wrong, ⚠️ takes its
+    place. Nothing else is left on a message: ✅ is not used to acknowledge."""
     try:
         await message.remove_reaction(SEEN, client.user)
     except discord.HTTPException as error:
         log.info("Could not clear the seen mark: %s", error)
+    if failed:
+        try:
+            await message.add_reaction(FAILED)
+        except discord.HTTPException as error:
+            log.info("Could not mark a message as failed: %s", error)
 
 
 @client.event
@@ -291,9 +302,10 @@ async def on_message(message: discord.Message):
     except Exception as error:
         log.exception("The router's way failed")
         await log_error("Routing failed", repr(error), text)
-        routed = conversation.Handled(False)
+        # In the inbox the old way still has a go; anywhere else that was the only way
+        routed = conversation.Handled(False, failed=not in_inbox)
     if routed.done or not in_inbox:
-        live.background(_unmark_seen(message))
+        live.background(_unmark_seen(message, routed.failed))
         timing.stop()
         return
 

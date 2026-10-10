@@ -568,3 +568,23 @@ def test_in_a_list_the_one_item_the_message_does_not_name_is_the_pronoun():
 
 def test_a_cards_kind_is_one_of_three_words_for_every_task():
     assert actions.KINDS == ("new", "change", "remove")
+
+
+# ---------------------------------------------------------------------------
+# Connecting and filler words are never "not included" (QA 2026-10-10)
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize("part", ["and", "And", "also", "plus", "too", "then", "please", "and also", "as well", "and then please", "thanks", "&", " , "])
+def test_a_leftover_of_only_joining_words_is_not_worth_reporting(part):
+    assert actions.is_filler(part)
+
+
+@pytest.mark.parametrize("part", ["remind me to call mum at 5", "and book the dentist", "pack a hat", "socks", "please call mum"])
+def test_a_leftover_that_is_a_request_or_content_is_reported(part):
+    assert not actions.is_filler(part)
+
+
+def test_what_claude_says_it_left_out_loses_its_filler_before_anyone_is_told():
+    # Seen: "and socks to the packing list" gave "⚠️ Not included: and"
+    raw = {"items": [{"item": "socks"}], "guessed": [], "not_included": ["and", "book the dentist", "please"]}
+    assert actions.validate(BUY, raw).not_included == ("book the dentist",)
+    assert actions.validate(BUY, {"items": [{"item": "socks"}], "guessed": [], "not_included": ["and"]}).not_included == ()

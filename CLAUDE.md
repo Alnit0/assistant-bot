@@ -233,8 +233,19 @@ Input
   (`routing.named_destinations`). Anything I state (a dose, a time, an
   amount, a note) is used exactly and never marked ❓
   (`actions.unstated`). Context only fills in what I left out.
-- A message that asks nothing and needs nothing done ("note one",
-  "thanks", "ok") gets no reply: only ✅ on it, so I know it was received.
+- The bot replies in words only to questions and requests. A remark, a
+  note to myself or a thank-you ("shopping is boring", "note one",
+  "thanks") gets no reply at all.
+- Reactions on my message are its status: 👀 while it is worked on; when
+  done it comes off, whether or not anything was sent, and nothing is
+  left behind. A 👀 that stays means stuck. On failure ⚠️ takes its
+  place, the error is kept in the message's trace and #bot-log (`dev
+  why` and a 🐞 report show it), and one short plain line is posted only
+  if I can act on it (`conversation.what_i_can_do`). ✅ is never used to
+  acknowledge a message: it is reserved.
+- Connecting and filler words (and, also, plus, too, please…) are never
+  "Not included" (`actions.is_filler`): only a leftover that is a real
+  request or content is reported.
 - When a message isn't understood the reply is neutral ("🤔 I didn't
   understand that."): it names no task and suggests no task's wording.
 - A card's first line says the kind of change in one of three words, the

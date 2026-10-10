@@ -41,7 +41,19 @@ log = logging.getLogger("assistant")
 # Everything is logged: the route, the tasks, what was extracted, the outcome
 # and the cost of each request.
 # ---------------------------------------------------------------------------
-WENT_WRONG = "⚠️ That didn't work. Check #bot-log."
+BUSY = "⏳ Claude didn't answer just now. Wait a moment and send it again."
+_CAN_RETRY = frozenset(
+    {"APITimeoutError", "APIConnectionError", "RateLimitError", "OverloadedError", "InternalServerError", "TimeoutError"}
+)
+
+
+def what_i_can_do(error: BaseException) -> str:
+    """The one plain line for a failure the user can act on (try again, wait),
+    or "" when there is nothing they could do: then the ⚠️ on their message,
+    the trace and #bot-log say it, and no words are posted."""
+    if type(error).__name__ in _CAN_RETRY or getattr(error, "status_code", None) in (408, 429, 500, 502, 503, 529):
+        return BUSY
+    return ""
 
 
 def listens_in(channel_id: int) -> bool:
@@ -63,6 +75,7 @@ class Turn:
     extracted: list[dict] = field(default_factory=list)
     said: list[str] = field(default_factory=list)  # what the user was shown, in order
     failed: bool = False
+    error: str = ""  # what went wrong, kept with the message: `dev why` and a bug report show it
     # For `dev why` and bug reports (core/trace.py): why it went the way it did,
     # what the router returned, the checks the code ran, the card before and
     # after, and how much of each task's state was sent to extraction
@@ -73,7 +86,10 @@ class Turn:
     state: dict = field(default_factory=dict)
 
     def as_trace(self) -> str:
-        kept = {"why": self.why, "router": self.router, "checks": self.checks, "card": self.card, "state": self.state}
+        kept = {
+            "why": self.why, "router": self.router, "checks": self.checks, "card": self.card, "state": self.state,
+            "error": self.error,
+        }
         return json.dumps({name: value for name, value in kept.items() if value}, ensure_ascii=False)
 
 
@@ -130,7 +146,6 @@ def _elsewhere(name: str, tasks, chat_part: str) -> str:
 
 
 NOT_UNDERSTOOD = "🤔 I didn't understand that."
-RECEIVED = "✅"  # on a message that needs nothing done: seen, and nothing to say
 
 
 def nothing_fitted(entry: Entry) -> str:
@@ -239,14 +254,25 @@ async def act(
             else:
                 await say(f"{result}\n{left_out}" if left_out else result)
     except UserError as error:
-        # The task's own words for a problem the user can fix
+        # The task's own words for a problem the user can fix: the one plain line
         turn.failed = True
+        turn.error = turn.error or f"{action.name}: {error}"
         await say(f"⚠️ {error}")
     except Exception as error:
-        turn.failed = True
-        log.exception("Action %s failed", action.name)
-        await log_error(f"Action failed: {action.name}", repr(error), request.text)
-        await say(WENT_WRONG)
+        await _failed(turn, f"Action failed: {action.name}", error, request.text, say)
+
+
+async def _failed(turn: Turn, title: str, error: BaseException, said: str, say) -> None:
+    """Something broke. It is recorded with the message (its trace, #bot-log)
+    and the caller marks the message ⚠️. Words are posted only when the user
+    can do something about it; "that didn't work" on its own helps nobody."""
+    turn.failed = True
+    turn.error = turn.error or f"{title}: {error!r}"
+    log.exception(title)
+    await log_error(title, repr(error), said)
+    line = what_i_can_do(error)
+    if line:
+        await say(line)
 
 
 def _in_common(entry_field, new, old) -> bool:
@@ -349,6 +375,7 @@ async def _latest_bot_message_id(ctx: Context) -> int | None:
 class Handled:
     done: bool  # False: not for any migrated task; the caller carries on its own way
     row_id: int | None = None  # the message_log row, for a caller that carries on
+    failed: bool = False  # it went wrong: the caller swaps the 👀 on the message for ⚠️
 
 
 async def handle(ctx: Context, capabilities: str = "", chat_here: bool = True) -> Handled:
@@ -527,9 +554,9 @@ async def handle(ctx: Context, capabilities: str = "", chat_here: bool = True) -
                     trace.note(f"named destination: the router said {list(routed.tasks) or 'no task'}, overruled by what was stated")
                 routed = settled_by_name
             if routed.nothing:
-                # Nothing was asked and nothing needs doing: no reply, only a tick to say it was seen
+                # Nothing was asked and nothing needs doing: no reply and no reaction left. The 👀
+                # that showed it being read is taken off like any other, which is the sign it was
                 turn.why.append("the message asks nothing and needs nothing done: no reply")
-                await ctx.acknowledge(RECEIVED)
             elif routed.chat:
                 if not chat_here:
                     return Handled(False, row_id)
@@ -586,14 +613,15 @@ async def handle(ctx: Context, capabilities: str = "", chat_here: bool = True) -
                     else:
                         await act(request, found, turn)
     except Exception as error:
-        turn.failed = True
-        log.exception("Could not handle a message")
-        await log_error("Message failed", repr(error), ctx.text)
-        await cards.send(ctx.channel_id, Card(WENT_WRONG))
+        async def say(text: str) -> None:
+            turn.said.append(text)
+            await cards.send(ctx.channel_id, Card(text))
+
+        await _failed(turn, "Message failed", error, ctx.text, say)
 
     trace.stop()
     await _finish(ctx, row_id, turn, spent, time.perf_counter() - started)
-    return Handled(True, row_id)
+    return Handled(True, row_id, failed=turn.failed)
 
 
 async def _finish(ctx_or_request, row_id: int, turn: Turn, spent: timing.Turn, duration: float) -> None:
@@ -605,6 +633,7 @@ async def _finish(ctx_or_request, row_id: int, turn: Turn, spent: timing.Turn, d
         row_id,
         reply=reply,
         status="error" if turn.failed else "ok",
+        error=turn.error or None,
         duration_s=duration,
         model=calls[0].model if calls else None,
         timing=json.dumps(timing.as_dict(spent, duration)),

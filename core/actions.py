@@ -747,6 +747,21 @@ def _item(entry_field: Field, raw, where: str) -> dict:
     return item
 
 
+# Words that join or soften a request and ask for nothing themselves
+_FILLER = frozenset(
+    "and also plus too then please pls as well thanks thank you cheers ok okay oh so just now actually well hey hi hello "
+    "btw the a an to my for of with on in it that this also, &".split()
+)
+
+
+def is_filler(part: str) -> bool:
+    """Whether a leftover part of a message is only connecting or filler words
+    ("and", "also", "please"): never worth telling the user it was not
+    included. A leftover that is a real request or content has other words."""
+    words = re.findall(r"[^\W_]+|&", part.lower())
+    return all(word in _FILLER for word in words)
+
+
 def validate(action: Action, raw) -> Checked:
     """What Claude returned, checked: the data, what was guessed, and what was
     left out. Raises Invalid if it doesn't fit the action at all.
@@ -819,7 +834,7 @@ def validate(action: Action, raw) -> Checked:
     not_included = raw.get(NOT_INCLUDED, [])
     if not isinstance(not_included, list) or not all(isinstance(item, str) for item in not_included):
         raise Invalid(f"`{NOT_INCLUDED}` must be a list of the parts left out")
-    left_out = [part.strip() for part in not_included if part.strip()] + left_out
+    left_out = [part.strip() for part in not_included if part.strip() and not is_filler(part)] + left_out
     # A guess named by an item's field alone ("duration" for "timers[0].duration"),
     # seen from Claude on a list of one: it is put where it belongs, on each item that
     # has that field, so the guess is still flagged rather than forgotten

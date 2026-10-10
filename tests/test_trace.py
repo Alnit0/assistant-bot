@@ -84,6 +84,7 @@ def test_a_message_from_before_traces_or_on_the_old_way_still_reads():
         "router: not asked",
         "extraction: none",
         "tool: tool: timer 5m · ok · timer started",
+        "trace: none kept for this message (a shortcut or a button, or from before traces)",
         "python: no checks recorded",
         "shown: Started.",
         "cost: US$0.0000 · 0 request(s)",
@@ -177,9 +178,15 @@ def test_dev_why_refuses_anything_but_a_small_number(db, args):
         why(*args)
 
 
-def test_dev_why_with_nothing_logged_says_so(db):
-    with pytest.raises(UserError, match="Nothing is logged from you yet"):
-        why()
+def test_dev_why_with_nothing_logged_says_so_in_a_line_and_is_no_failure(db):
+    said, result = why()
+    assert said == ["🔎 Nothing is logged from you yet in this database."] and result == "nothing is logged yet"
+
+
+def test_an_error_kept_with_a_message_is_in_its_block():
+    row = {**ROW, "status": "error", "error": None, "trace": json.dumps({"error": "Message failed: APITimeoutError('timed out')"})}
+    assert "error: Message failed: APITimeoutError('timed out')" in trace.lines(row)
+    assert "error: boom" in trace.lines({**ROW, "error": "boom"})
 
 
 def test_dev_why_is_a_typed_word_and_never_a_tool_of_claudes():
@@ -213,5 +220,8 @@ def test_a_reply_to_one_of_the_bots_messages_means_the_message_of_mine_it_answer
     assert asyncio.run(database.run(trace.db_anchor, 1, ("chat",), 21, None)) == first + 1, "one of mine is found by its own id"
     said, _ = why(reply_to=999, sent_at=just_after)
     assert len(said) == 1 and "said: add milk" in said[0]
-    with pytest.raises(UserError, match="Nothing is logged for that message"):
-        why(reply_to=999, sent_at=datetime(2020, 1, 1, tzinfo=timezone.utc))
+    # QA 2026-10-10: `dev why 5` as a reply to a message from before the dev database was
+    # recreated got a bare ⚠️. It is said in a line, and it is not a failure
+    said, result = why("5", reply_to=999, sent_at=datetime(2020, 1, 1, tzinfo=timezone.utc))
+    assert len(said) == 1 and said[0].startswith("🔎 Nothing is logged for that message: it is from before this database was started")
+    assert result == "nothing is logged for the message replied to"

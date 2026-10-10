@@ -261,11 +261,12 @@
               "item": "rubbish bags"
             },
             {
-              "item": "eggs",
-              "quantity": 5
+              "item": "eggs"
             }
           ],
-          "guessed": [],
+          "guessed": [
+            "items[4].quantity"
+          ],
           "not_included": []
         }
       ],
@@ -289,7 +290,8 @@
         {
           "items": [
             {
-              "item": "milk"
+              "item": "milk",
+              "change": "add"
             }
           ],
           "guessed": [],
@@ -306,7 +308,36 @@
       "recorded": [
         "not_this",
         {
-          "reason": "Timer request, not a packing task"
+          "reason": "Request is for a timer, not for packing list management"
+        }
+      ]
+    },
+    {
+      "task": "packing",
+      "message": "and socks to the packing list",
+      "state": "On the packing list now: nothing",
+      "action": "demo_pack_change",
+      "data": {
+        "items": [
+          {
+            "item": "socks"
+          }
+        ]
+      },
+      "left_out": false,
+      "note": "QA 2026-10-10: gave \"⚠️ Not included: and\". A joining word is never something left out",
+      "recorded": [
+        "demo_pack_change",
+        {
+          "items": [
+            {
+              "item": "socks"
+            }
+          ],
+          "guessed": [],
+          "not_included": [
+            "and"
+          ]
         }
       ]
     }

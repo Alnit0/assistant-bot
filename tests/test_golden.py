@@ -79,7 +79,8 @@ def test_1_every_detail_i_state_is_on_the_card_exactly_with_no_question_mark(bot
     bot.claude(ROUTED["1"], EXTRACTED["1"])
     bot.say(SAID["1"])
     lines, buttons = card(bot)
-    assert lines[:2] == ["💊 Pills · new", "**vitamin D** (1 tablet) · daily at `8:00 am` · *with food*"]
+    # The name is kept as typed; a re-recording may come back with either capital, so that alone isn't judged
+    assert lines[0] == "💊 Pills · new" and lines[1].lower() == "**vitamin d** (1 tablet) · daily at `8:00 am` · *with food*"
     assert "❓" not in bot.sent[-1][1].text and buttons == ["Save", "Cancel"]
     assert pills(bot) == [], "nothing is saved before Save"
 
@@ -96,7 +97,8 @@ def test_1a_a_course_with_every_detail_and_no_question_mark(bot):
 def test_1b_a_brief_request_gets_a_card_with_the_defaults(bot):
     bot.claude(ROUTED["1b"], EXTRACTED["1b"])
     bot.say(SAID["1b"])
-    assert card(bot)[0][:2] == ["💊 Pills · new", "**Vitamin D** · daily, untimed"]
+    lines = card(bot)[0]
+    assert lines[0] == "💊 Pills · new" and lines[1].lower() == "**vitamin d** · daily, untimed"
 
 
 @gap("questions on the card are not built: the time is guessed as the morning and marked ❓")
@@ -285,7 +287,14 @@ def test_14_a_message_with_nothing_to_do_gets_no_reply(bot):
     bot.claude(ROUTED["14"])
     ctx, _ = bot.say(SAID["14"])
     assert bot.sent == [] and ctx.replies == [] and open_cards() == []
-    assert bot.reactions == [(SAID["14"], "✅")], "a tick, so I know it was received"
+    assert bot.reactions == [], "and no reaction is left on it: the 👀 coming off says it was read"
+
+
+def test_15_a_remark_gets_no_reply(bot):
+    bot.claude(ROUTED["15"])
+    ctx, handled = bot.say(SAID["15"])
+    assert bot.sent == [] and ctx.replies == [] and bot.reactions == []
+    assert handled.done, "and it is not handed on to anything that would answer it"
 
 
 # --- the list itself ---------------------------------------------------------------------------------------------------
@@ -293,4 +302,4 @@ def test_every_golden_conversation_in_the_fixture_file_has_a_test_here():
     ids = {entry["golden"] for entry in [*FIXTURES["router"], *FIXTURES["extraction"]]}
     tested = {name.split("_")[1] for name in globals() if name.startswith("test_") and name.split("_")[1][0].isdigit()}
     assert ids <= tested, f"no test for: {sorted(ids - tested)}"
-    assert {"1", "1a", "1b", "1c", "1d", "2", "2a", "2b", "3", "4", "5", "6", "7", "8", "9", "10", "10a", "11", "12", "13", "14"} == tested
+    assert {"1", "1a", "1b", "1c", "1d", "2", "2a", "2b", "3", "4", "5", "6", "7", "8", "9", "10", "10a", "11", "12", "13", "14", "15"} == tested

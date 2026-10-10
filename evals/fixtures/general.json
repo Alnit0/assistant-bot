@@ -52,10 +52,9 @@
       "recorded": {
         "kind": "task",
         "tasks": [
-          "packing",
-          "shopping"
+          "packing"
         ],
-        "confidence": "tie",
+        "confidence": "high",
         "chat_part": ""
       }
     },
@@ -223,6 +222,39 @@
       "message": "what does note one mean?",
       "chat": true,
       "note": "a question is never nothing: it gets an answer",
+      "recorded": {
+        "kind": "chat",
+        "tasks": [],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "that was quick",
+      "nothing": true,
+      "note": "QA 2026-10-10: a remark gets no reply (\"I hear you! Anything I can help…\" was the old way)",
+      "recorded": {
+        "kind": "nothing",
+        "tasks": [],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "I'm so tired today",
+      "nothing": true,
+      "note": "a statement that asks for nothing",
+      "recorded": {
+        "kind": "nothing",
+        "tasks": [],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "is shopping boring for everyone?",
+      "chat": true,
+      "note": "a question, however idle, gets an answer",
       "recorded": {
         "kind": "chat",
         "tasks": [],

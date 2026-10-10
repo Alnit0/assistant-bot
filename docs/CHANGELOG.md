@@ -6,6 +6,14 @@ backfilled from the git log.
 
 ## 2026-10-10
 
+- **Remarks get no reply.** Only a question or a request is answered in
+  words; "shopping is boring" is left alone.
+- **Reactions show status.** 👀 while the bot works, gone when it is
+  done; ⚠️ in its place if it went wrong, with a line only when you can
+  do something about it. ✅ is no longer used to say "received".
+- **"And" is never "Not included"**, nor any other joining word.
+- **`dev why` on a message with no log** says so in a line instead of
+  leaving a bare ⚠️.
 - **A reply to an older card changes that card**, not the newest one.
 - **A note or a thank-you gets ✅** on it and no words; a message the bot
   can't make sense of gets one neutral line, with no task's instructions.

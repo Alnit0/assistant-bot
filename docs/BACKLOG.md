@@ -81,8 +81,29 @@ task adds; and it writes a QA block where every step says what to
 press and the block starts with `dev clock reset`. First use: timers,
 bugs and pills.
 
+**Also at step 5:** the `new-task` skill reads the "Scaling notes" in
+`docs/ARCHITECTURE.md` first; and the task contract's `hint` line goes
+(it is no longer shown anywhere since "not understood" became neutral).
+
 ## Left for later
 
+- **Schedules with days of the week, in core** (after pills reminders;
+  asked for 2026-10-10). Certain days only, different times on different
+  days, every N days, skipping a day; shared by every task. Checked
+  against what is stored now: a pill's plan is columns on `pills_pills`
+  (kind, times as a JSON list, doses a day, minimum gap, start and end
+  date), what is due on a day is worked out from the plan when the day
+  starts and kept as rows in the occurrence log, and the scheduler only
+  holds one-off jobs. So days can be added without a rewrite: a new
+  column (or a small JSON rule) by migration, and one function that says
+  whether a plan applies on a given day; rows already logged are
+  untouched. The one thing to do first is move that function and the
+  plan's schedule fields from `tasks/pills/rules.py` into core, so
+  reminders and later tasks share them.
+- **A notes task** (possible future task): keep a note and recall it
+  ("note: call the dentist about Thursday", "what did I note about the
+  dentist?"). Today a note such as "note one" is only a row in the
+  message log; nothing can list it back.
 - **Pin, archive and delete in plain words** ("pin that", "archive that",
   "delete my last message") were built and taken out on 2026-10-10: it
   was too easy to act on the wrong message. Reactions (📌, 📦, 🗑️) and

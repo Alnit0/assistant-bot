@@ -1,6 +1,6 @@
 # QA run sheet
 
-One pass through 211 of the 233 👤 Manual tests in `docs/TESTING.md` that are
+One pass through 207 of the 229 👤 Manual tests in `docs/TESTING.md` that are
 ⬜ Untested (as of 2026-10-10); the other 22 are pills tests (group R) for
 stages not built yet, and join as each is. Blocks share setup and each one leaves things
 ready for the next, so run them in order.
@@ -27,7 +27,7 @@ tests (block 12).
 | 15 | Dev database and clock | `--dev`, on and off (three restarts) | 10 | 13 |
 | 16 | Pills: setting up | `--dev`, off (one restart) | 15 | 16 |
 | 17 | Traces: `dev why` and bug reports | `--dev`, off (one restart) | 3 | 5 |
-| 18 | Retest: batch 1 of the conversation gaps | `--dev`, off (one restart) | 11 | 15 |
+| 18 | Retest: filler words, remarks, reactions as status, `dev why` | `--dev`, off (one restart) | 7 | 8 |
 | | **Total** | | **213** (F2 is split over blocks 4 and 7, counted in 7) | **about 4¼ hours** |
 
 Blocks 13 to 18 need nothing from the others: run them any time after
@@ -472,27 +472,26 @@ Restart the bot first: it adds a column to the message log.
 | 2 | React 🐞 to the card the bot posted; open the new post in #bugs. Then press **Cancel** on the card | The post in #bugs has a **Trace** section between "That turn" and "Related errors": the same block `dev why` shows for the message of mine that the card answered | P31 |
 | 3 | Type `dev cost` | The card ends with "-# List context sent to extraction this month: … of … lines over … messages, … (at most 20 a task a message)" | J48 |
 
-## 18. Retest: batch 1 of the conversation gaps
+## 18. Retest: filler words, remarks, reactions as status, `dev why`
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
 On the dev database (`python main.py --dev`), in #inbox, dev mode off.
-Restart the bot first. Every step ends by saying what to press, so no card
-is left open for the next one. If a result looks wrong, reply to your
-message with `dev why` and paste the block when you report it.
+Restart the bot first. Every step ends by saying what to press. If a
+result looks wrong, reply to your message with `dev why` and paste the
+block when you report it.
 
 | # | Do | Expect | Tests |
 |---|---|---|---|
-| 1 | Say `add milk to the shopping list`; then `add socks to the packing list`. Reply to the **shopping** card (the older one) with `make it 2`; press **Cancel** on both cards | The shopping card is replaced by one with "milk · × 2"; the packing card, though newer, is untouched | S36 |
-| 2 | Send `note one`. Press nothing | No reply; a ✅ appears on your message | S37, T21 |
-| 3 | Say `shopping is boring`. Press nothing | If the bot answers that it can't act on it, the words are "🤔 I didn't understand that." and nothing about any task (a plain chat answer, or ✅ and nothing, is fine too) | S38 |
-| 4 | Say `add milk and bread rolls`; then `make it 2`; type `dev why`; press **Cancel** | "bread rolls · × 2", "milk · × 1". In the `dev why` block the extraction line shows `@that` for the item, or a line "python: reference check: Claude named … for a pronoun; put back for the code to resolve" | S39 |
-| 5 | Say `add socks to the packing list`; then `actually that belongs with the things to buy`; press **Cancel** | The packing card is deleted and a "🛒 Shopping · new" card with socks takes its place: one card on screen, not two | S40 |
-| 6 | Say `add iron at 8pm`; press **Save**. Then `move iron to 9pm`; press **Save** | A card "💊 Pills · change": "**Iron**", then "schedule · daily at `8:00 pm` → daily at `9:00 pm`". Save: "✅ Updated · 💊 **Iron** · daily at `9:00 pm`" | T10 |
-| 7 | Say `pause iron until the 20th`; press **Save**. Then `resume iron`; press **Save** | A card "💊 Pills · change" with "**Iron** · active → paused until 20 Oct" (or the next 20th); Save: "⏸️ **Iron** paused until …". Then a card "💊 Pills · change" with "**Iron** · paused → active"; Save: "▶️ **Iron** resumed." | T11 |
-| 8 | Say `add zinc`; press **Save**. Then `delete zinc and its history`; press **Delete for good**. Then send `note one`. Press nothing more | After the first Save zinc is added. Then a card "💊 Pills · remove" with "**Zinc** · … → deleted, with its history", "⚠️ This deletes the history too and can't be undone" and a red **Delete for good**; pressed: "🗑️ Deleted **Zinc** and its history." Send `note one` next: no reply, only ✅ on it. | T13 |
-| 9 | Say `set a timer for 5 minutes called a`, then `set a timer for 5 minutes called b`; then `cancel all my timers`; press **Cancel 2 timers** | A card "⏱️ Timers · remove" with a line for each timer ending "→ cancelled" and a red **Cancel 2 timers**; pressed: "🚫 **Cancelled 2**" | T4 |
-| 10 | React 🐞 to any reply of the bot's; open the post in #bugs; then reply to one of your messages with `dev why`. Press nothing | In the post, the times beside the messages read like "2:00 pm", never "14:00", and so does the first line of its Trace and of the `dev why` block | P31 |
+| 1 | Say `add milk to the shopping list`; then `and socks to the packing list`; press **Cancel** on both cards | Two cards. The packing card has "socks · checked bag" and no "Not included" line | S41 |
+| 2 | Say `shopping is boring`; then `that was quick`. Press nothing | No reply to either. The 👀 appears and goes, and nothing is left on the messages | S42, S38 |
+| 3 | Send `note one`; then `thanks`. Press nothing | No reply, and when the 👀 has gone no reaction is left on your message | S37, T21 |
+| 4 | Say `what's the capital of France?`; watch your message. Press nothing | 👀 on it while the bot works; when the answer arrives the 👀 is gone and no other reaction is left | S43 |
+| 5 | On a fresh `dev.db`, or replying to a message sent before the last `dev reset-db`: reply to it with `dev why 5`. Press nothing | One plain line: "🔎 Nothing is logged for that message: it is from before this database was started…". No ⚠️ on your message | S44 |
+
+A failure can't be made on demand, so it has no step: if a message of
+yours ever ends with ⚠️ on it, `dev why` as a reply to it shows an
+"error:" line, and 🐞 on it puts the same in the bug's post.
 
 ## When you finish
 

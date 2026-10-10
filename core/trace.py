@@ -194,6 +194,9 @@ def lines(row: dict) -> list[str]:
     for task, state in (kept.get("state") or {}).items():
         out.append(f"state sent ({task}): {state.get('sent', 0)} of {state.get('total', 0)} line(s)")
     checks = kept.get("checks") or []
+    if not kept:
+        # Said plainly, so an empty block is not mistaken for nothing having happened
+        out.append("trace: none kept for this message (a shortcut or a button, or from before traces)")
     out += [f"python: {check}" for check in checks] or ["python: no checks recorded"]
 
     card = kept.get("card")
@@ -202,8 +205,8 @@ def lines(row: dict) -> list[str]:
         out.append("card after:  " + (" / ".join(card.get("after") or []) or "none"))
     if row.get("reply"):
         out.append(f"shown: {_short(row['reply'], 400)}")
-    if row.get("error"):
-        out.append(f"error: {_short(row['error'], 300)}")
+    if row.get("error") or kept.get("error"):
+        out.append(f"error: {_short(row.get('error') or kept['error'], 300)}")
 
     calls = row.get("calls") or []
     spent = " + ".join(

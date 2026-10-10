@@ -371,3 +371,8 @@ def test_a_fixture_can_expect_that_nothing_is_said():
 def test_every_task_with_fixtures_is_replayed_not_only_the_demo_ones():
     assert {"shopping", "packing", "timers", "bugs", "pills"} <= set(ALL_NAMES)
     assert {fixture.task for fixture in EXTRACTIONS} <= set(ALL_NAMES), "no fixture file is left out of the replay"
+
+
+def test_the_router_is_told_that_only_questions_and_requests_get_words():
+    assert "The bot replies in words only to questions and requests." in routing.RULES
+    assert '"shopping is boring"' in routing.RULES and "Do not offer help in return for a remark." in routing.RULES

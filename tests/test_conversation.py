@@ -734,9 +734,49 @@ def test_a_crash_in_a_tasks_code_is_reported_and_the_user_is_told_it_did_not_wor
     broken = actions.Entry("shopping", "🛒", "x", ("a", "b"), (actions.Action("demo_shop_list", "List.", needs_card=False, run=boom),))
     actions.set_catalogue([broken])
     world.claude(route("shopping"), ("demo_shop_list", {"guessed": []}))
-    world.say("what do I need to buy?")
-    assert world.sent[0][1].text == conversation.WENT_WRONG and errors == ["Action failed: demo_shop_list"]
-    assert rows()[0][5] == "error"
+    _, handled = world.say("what do I need to buy?")
+    assert errors == ["Action failed: demo_shop_list"] and rows()[0][5] == "error"
+    assert world.sent == [], "nothing I could do about it, so no words: the ⚠️ on my message says it"
+    assert handled.failed, "the caller swaps 👀 for ⚠️"
+    assert traces()[-1]["error"] == "Action failed: demo_shop_list: RuntimeError('boom')", "kept for dev why and a bug report"
+
+
+def test_a_failure_i_can_do_something_about_gets_one_plain_line(world, monkeypatch):
+    async def quiet(*args, **options):
+        return None
+
+    monkeypatch.setattr(conversation, "log_error", quiet)
+
+    class APITimeoutError(Exception):
+        pass
+
+    async def call_tool(*args, **options):
+        raise APITimeoutError("timed out")
+
+    monkeypatch.setattr(llm, "call_tool", call_tool)
+    _, handled = world.say("add milk")
+    assert [card.text for _, card in world.sent] == ["⏳ Claude didn't answer just now. Wait a moment and send it again."]
+    assert handled.failed and handled.done and rows()[-1][5] == "error"
+    assert traces()[-1]["error"].startswith("Message failed: APITimeoutError")
+
+
+def test_what_i_can_act_on_is_a_matter_of_what_failed():
+    class RateLimitError(Exception):
+        pass
+
+    class Overloaded(Exception):
+        status_code = 529
+
+    assert conversation.what_i_can_do(RateLimitError()) == conversation.BUSY
+    assert conversation.what_i_can_do(Overloaded()) == conversation.BUSY
+    assert conversation.what_i_can_do(KeyError("x")) == "" and conversation.what_i_can_do(RuntimeError("boom")) == ""
+
+
+def test_a_problem_i_can_fix_is_said_in_the_tasks_words_and_kept_as_the_error(world):
+    world.claude(route("shopping"), tick("caviar"))
+    _, handled = world.say("got the caviar")
+    assert world.sent[0][1].text.startswith("⚠️ “caviar” isn't on the shopping list") and handled.failed
+    assert traces()[-1]["error"].startswith("demo_shop_tick: “caviar” isn't on the shopping list")
 
 
 # ---------------------------------------------------------------------------
@@ -1765,13 +1805,11 @@ def test_a_reply_to_something_that_is_not_an_open_card_changes_nothing_about_whi
     assert world.requests[-1].purpose == "extraction"
 
 
-def test_a_message_that_needs_nothing_gets_a_tick_and_no_words(world):
+def test_a_message_that_needs_nothing_gets_no_words_and_no_reaction_is_left(world):
     world.claude(("route", {"kind": "nothing", "tasks": [], "confidence": "high", "chat_part": ""}))
-    world.say("note one")
-    assert world.reactions == [("note one", "✅")] and world.sent == []
-    world.claude(route("shopping"), shop_add("milk"))
-    world.say("add milk")
-    assert len(world.reactions) == 1, "only for nothing-to-do: a request is answered by its card"
+    _, handled = world.say("shopping is boring")
+    assert world.reactions == [] and world.sent == [], "✅ is not used to acknowledge: the 👀 coming off is the sign"
+    assert handled.done and not handled.failed
 
 
 def test_a_card_of_an_unknown_kind_is_shown_as_a_change_and_logged(monkeypatch):

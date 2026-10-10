@@ -223,6 +223,18 @@
         "confidence": "high",
         "chat_part": ""
       }
+    },
+    {
+      "golden": "15",
+      "message": "shopping is boring",
+      "nothing": true,
+      "note": "a remark: only questions and requests get words, even when it mentions a task's subject",
+      "recorded": {
+        "kind": "nothing",
+        "tasks": [],
+        "confidence": "high",
+        "chat_part": ""
+      }
     }
   ],
   "extraction": [
@@ -248,7 +260,7 @@
         {
           "pills": [
             {
-              "name": "vitamin D",
+              "name": "Vitamin D",
               "dose": "1 tablet",
               "per_day": 1,
               "times": "8am",
@@ -292,7 +304,9 @@
               "days": 7
             }
           ],
-          "guessed": [],
+          "guessed": [
+            "times[0]"
+          ],
           "not_included": []
         }
       ]
@@ -315,7 +329,7 @@
         {
           "pills": [
             {
-              "name": "Vitamin D",
+              "name": "vitamin D",
               "per_day": 1
             }
           ],
@@ -640,8 +654,7 @@
         {
           "items": [
             {
-              "item": "milk",
-              "change": "add"
+              "item": "milk"
             }
           ],
           "guessed": [],

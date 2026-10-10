@@ -52,7 +52,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `channels.py` | Which channels hold messages: `holds_messages(channel)` (text, news, threads, DMs; not forum, voice or category) and `named()`, the channels from `.env` that do. Asked before reading pins or history from a channel no message came from |
 | `pins.py` | `set_pinned(...)`: native pin and unpin for tasks that may not call Discord |
 | `actions.py` | The contract for plain words: an `Entry` (a task as the router knows it: name, icon, "only for", examples), its `Action`s (the fields Claude fills in; `prepare` + `apply` for one that needs a card, `run` for one that acts at once, all three with `card_if` for one that only sometimes asks first) and the `Proposal` a card shows. A direct action returns its reply, a `LiveReply`, or `Shown` when it posted its own message. A field may be a list of items (`ITEMS`, with `item_fields`), so one request can hold several things; an item says what to do with it (`change_field()`: add, set, remove) and `merge_items` applies a message's changes to an open card, doing the sums. Builds each action's strict schema (every one also has `guessed` and `not_included`), checks what Claude returned against it (`validate`: an item that doesn't fit is left out and named, never dropped unseen), and names what is missing from a task's contract (`problems`). A reference ("it") comes back as `REFERENCE` and is resolved in code (`point_at`; a card keeps what was mentioned last under `LAST`); `as_references` puts a name Claude worked out for a pronoun back as a reference; `unstated` drops any guess whose value the user said outright; a card's kind is one of `KINDS`; an action that saves has a `verify` that reads the change back. A task's state for extraction is a `State` (a heading and a line a thing), cut by `shown_state` to `STATE_LINES`, the lines the message could mean first. Holds the catalogue the registry sets. Pure apart from leaving trace notes |
-| `routing.py` | The router: one request that says which task a message is for, from the message, what is on screen and the catalogue (never an action or schema). `parse` reads its answer in code: task(s), a tie, chat, or nothing (no reply at all). `named_destinations` reads a destination the message names ("to my pills") in code, and `with_named` lets it overrule the router |
+| `routing.py` | The router: one request that says which task a message is for, from the message, what is on screen and the catalogue (never an action or schema). `parse` reads its answer in code: task(s), a tie, chat, or nothing (no reply at all: a remark, a note, a thank-you). `named_destinations` reads a destination the message names ("to my pills") in code, and `with_named` lets it overrule the router |
 | `extraction.py` | Extraction: one request for one task, given only that task's actions, which must call exactly one (or `none`; in a follow-up, `not_this`) with a `guessed` list. In a follow-up it gives only the items the message is about, never a total. `read` turns the call into the action, its data and its guesses, or "nothing fitted" with the reason |
 | `confirm.py` | Confirm cards: guess, show, confirm. Renders a `Proposal` (task and kind of change, every line, ❓ and ⚠️, Save / Cancel), keeps it as a row (`confirm_cards`) so it survives a restart, replaces one card with its correction (keeping everything said about it and what it was before its last change, so "No, …" can undo that change: `is_correction`), expires it after 30 minutes, and runs the task's `apply` on Save, then its `verify`: the confirmation is only shown if the change reads back from the database, and what the press did is added to the conversation. Also the question asked on a tie, and the rule for when a message sticks to the open card (`sticks`) |
 | `livelists.py` | Live lists: the latest copy of a list a user asked to see is kept up to date in place. `show` (or a direct action returning `actions.LiveReply`) posts it and records where it is (`live_lists`); `changed(user_id, key, render)` rewrites that copy in the background through `core/live.py`. Older copies are left as they were. A list also remembers its task and when it was shown: while it is the bot's latest message and under five minutes old, a short message is for that task (`sticks`) |
@@ -373,6 +373,35 @@ Backups go to `data/backups/` nightly at 3am NZ (newest 7 `assistant-*.db`
 kept, and the newest 7 `specs-*.zip` of `docs/specs/` taken with them);
 `pre-migration-*.db` snapshots are never auto-deleted. The dev database's
 go to `data/dev-backups/`, so they never push a real backup out.
+
+## Scaling notes
+
+How the bot is meant to grow. The `new-task` skill reads this first.
+
+- **Shared core blocks over task-specific code.** What two tasks need
+  belongs in `core/`: the router, extraction and confirm cards, live
+  lists, the occurrence log, the day boundary, time input, the scheduler,
+  cards and traces. A task holds its own rules, wording and tables, and
+  as little else as it can.
+- **What tasks do, so far** (an observation, to revisit): every task
+  captures something from me, delivers something to me, or both, and
+  most involve time. Timers capture a length and deliver an alert; pills
+  capture a plan and will deliver reminders and a checklist; bugs
+  capture a report. A new task probably fits the same shape, and what it
+  needs for time (when, how often, on which days) should come from core.
+- **The router keeps the cost of a message flat.** It sees one line a
+  task, never an action or a schema, so a message costs the same with 5
+  tasks or 50: one small request to choose, one to fill in.
+- **Claude understands; Python acts and replies.** Claude says which task
+  and fills in the fields, and never resolves a reference, does a sum or
+  writes a word the user reads. Code validates, saves, reads the change
+  back, and writes every confirmation.
+- **Dev and live are kept apart.** A separate database (`--dev`), the dev
+  clock and the demo data only there, dev bugs numbered and tagged
+  apart. Nothing that is for testing can touch the live data.
+- **Every capability follows `docs/CONVERSATION.md`.** How the bot talks
+  is one standard for every task, checked by its golden conversations
+  and, per task, by `task-check`.
 
 ## Not built yet
 

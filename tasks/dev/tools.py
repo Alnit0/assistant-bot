@@ -150,6 +150,10 @@ async def cost(ctx: Context) -> str:
 # dev why
 # ---------------------------------------------------------------------------
 WHY_USAGE = "dev why [<how many>]"
+NO_LOG = (
+    "🔎 Nothing is logged for that message: it is from before this database was started "
+    f"(`{'dev.db' if DEV_DATABASE else 'assistant.db'}` only knows what came after)."
+)
 WHY_MOST = 10
 # What counts as "a message from me": what I typed, and the buttons I pressed
 WHY_KINDS = (*database.OWN_MESSAGE_KINDS, "card")
@@ -177,10 +181,13 @@ async def why(ctx: Context) -> str:
         sent_at = getattr(target, "created_at", None)
         upto = await ctx.db.run(trace.db_anchor, ctx.user.id, WHY_KINDS, ctx.reply_target_id, sent_at)
         if upto is None:
-            raise UserError("Nothing is logged for that message.")
+            # Not a failure: said in a line. (A failed word only gets ⚠️, with its reason in #bot-log)
+            await ctx.reply(NO_LOG)
+            return "nothing is logged for the message replied to"
     rows = await ctx.db.run(trace.db_recent, ctx.user.id, count, WHY_KINDS, "dev why", upto)
     if not rows:
-        raise UserError("Nothing is logged from you yet.")
+        await ctx.reply("🔎 Nothing is logged from you yet in this database.")
+        return "nothing is logged yet"
     for row in rows:
         await ctx.reply(trace.block(row))
     return f"showed the trace of message(s) {', '.join('#' + str(row['id']) for row in rows)}"
