@@ -37,6 +37,9 @@ class Extracted:
     not_included: tuple[str, ...] = ()
     not_this: bool = False
     reason: str = ""  # why nothing fitted, or what was wrong with what came back. For the log
+    # Which kind of "nothing" it was, when Claude declined: one of actions.DECLINES.
+    # This, never the reason's words, decides what the user is told
+    declined: str = ""
 
     @property
     def fitted(self) -> bool:
@@ -45,7 +48,8 @@ class Extracted:
     def as_log(self) -> dict:
         """What was extracted, for message_log."""
         if self.action is None:
-            return {"task": self.entry.name, "action": NOT_THIS if self.not_this else NONE, "reason": self.reason}
+            logged = {"task": self.entry.name, "action": NOT_THIS if self.not_this else NONE, "reason": self.reason}
+            return {**logged, "why": self.declined} if self.declined else logged
         logged = {"task": self.entry.name, "action": self.action.name, "data": self.data, "guessed": sorted(self.guessed)}
         if self.not_included:
             logged["not_included"] = list(self.not_included)
@@ -82,7 +86,11 @@ def rules(entry: Entry) -> str:
         "is never a guess. What is on screen or in the state only fills in what they left out; it never "
         "overrides what they said.\n"
         "- Take ids and existing names from the state given with the message, when there is one.\n"
-        f"- Only if no action fits at all, or the message makes no sense for this task, call `{NONE}`."
+        "- Whether the thing already exists, or is already as asked, is for the bot's code to find out, "
+        "not you: when an action could carry the request (\"add X\" when X is in the state), fill that "
+        "action in with what the user said. The code compares it with what is there and tells the user.\n"
+        f"- Only if no action fits at all, or the message makes no sense for this task, call `{NONE}`, and "
+        "say which kind of nothing it is in `why`."
     )
 
 
@@ -223,7 +231,8 @@ def read(entry: Entry, called: tuple[str, dict] | None, follow_up: bool = False)
     if name == NOT_THIS and follow_up:
         return Extracted(entry, not_this=True, reason=str(said))
     if name in (NONE, NOT_THIS):
-        return Extracted(entry, reason=str(said) or "nothing fitted")
+        why = raw.get("why") if isinstance(raw, dict) else None
+        return Extracted(entry, reason=str(said) or "nothing fitted", declined=why if why in actions.DECLINES else "")
     action = entry.action(name)
     if action is None:
         return Extracted(entry, reason=f"`{name}` is not an action of {entry.name}")

@@ -11,17 +11,19 @@ session; the end-of-task checklist updates it at the end of every task.
   passed its retest and is committed: the old path is removed).
 - Pills stage 1 is committed: the schedule model in core
   (`core/schedule.py`) with pill setup moved onto it.
-- In hand, uncommitted, after block 19 step 2 failed (a gap handed over
-  as "3 hours apart" was refused): lengths of time and times of day now
-  come from Claude structured; `core/durations.py` reads spoken lengths
-  as a safety net; a part that can't be read, or doses that can't fit,
-  get a card with the reason and no Save. Block 19 is to be rerun from
-  the start (it has steps 10 and 11 now).
+- Committed: lengths and times handed over structured, and cards with
+  no Save for what can't be read or can't fit. Block 19 was rerun:
+  10 of 11 passed, with two findings.
+- In hand, uncommitted, for those findings: adding a pill that is
+  already there (said in a line, or a change card), a decline that
+  names its kind instead of "didn't understand", and "show all my
+  pills" as the free list shortcut. Paused for a short retest: block
+  20 of `docs/QA-RUN.md` (3 steps).
 - Tests: `python -m pytest -q` passes. Golden conversations 1c, 1d
   and 2a are marked as gaps (they need questions on the card, G1).
-  The live evals of 2026-10-10 with the new schema: pills 36 of 37,
-  golden 29 of 31; every miss is a known one that the code covers.
-- Live eval spend to date: about US$2.90.
+  The pills live eval of 2026-10-10: 38 of 39; the miss is a known one
+  that the code covers.
+- Live eval spend to date: about US$2.98.
 
 ## Current goal
 
@@ -50,20 +52,21 @@ No new features, tools or dev commands until pills reminders work
 
 ## Next up
 
-1. The rerun of block 19 (pills stage 1) from the start, then the
-   commit of what is in hand.
-2. Pills, in the order of the spec's section 15, with a pause for QA
-   after each: (2) the daily checklist; (3) reminders; then corrections
-   and questions. Each starts on a go.
-3. Step 5, after pills reminders: write the standard into the task
+1. The retest (block 20), then the commit of what is in hand.
+2. Pills stage 2, the daily checklist, with dose logging by message
+   (the go is given). With it: logging examples in pills' router
+   entry; a message that names one of my pills or timers is never
+   routed as "nothing"; a golden conversation, "I've taken my Zinc
+   today" ticks Zinc off today's checklist. Then a QA block.
+3. Pills stage 3, reminders, then corrections and questions, each on
+   a go.
+4. Step 5, after pills reminders: write the standard into the task
    contract and docs, drop the contract's unused `hint`, and replace the
    `add-task` skill with `new-task` (which reads the Scaling notes
    first) and `task-check`; run `task-check` on timers, bugs and pills.
 
 ## Open decisions
 
-- Whether timers' lengths should come structured too (they need
-  seconds; see the backlog).
 - Deferred until pills reminders work: G1 (questions on the card), G3
   (corrections after Save), G4 (task ties asked too often), G7 (questions
   sent as their own message). G14 (privacy of notifications) comes with

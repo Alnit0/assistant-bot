@@ -749,6 +749,10 @@ def tool(action: Action, strict: bool = False) -> dict:
     return definition
 
 
+# Why nothing was done, as one of a few kinds the code has a line for. The
+# reason in words is for the log only: code never reads it
+ALREADY_SO, CANNOT, UNCLEAR = "already_so", "cannot", "unclear"
+DECLINES = (ALREADY_SO, CANNOT, UNCLEAR)
 NONE_TOOL = {
     "name": NONE,
     "description": (
@@ -756,8 +760,20 @@ NONE_TOOL = {
     ),
     "input_schema": {
         "type": "object",
-        "properties": {"reason": {"type": "string", "description": "Why, in a few words. For the log, not the user."}},
-        "required": ["reason"],
+        "properties": {
+            "why": {
+                "type": "string",
+                "enum": list(DECLINES),
+                "description": (
+                    f"`{ALREADY_SO}`: the request is clear, but what it asks for is already exactly the case and no "
+                    f"action would change anything. `{CANNOT}`: the request is clear and is for this task, but none "
+                    f"of its actions can do it. `{UNCLEAR}`: it makes no sense for this task, or you can't tell what "
+                    "is wanted."
+                ),
+            },
+            "reason": {"type": "string", "description": "Why, in a few words. For the log, not the user."},
+        },
+        "required": ["why", "reason"],
         "additionalProperties": False,
     },
 }

@@ -84,6 +84,35 @@ bugs and pills.
 `docs/ARCHITECTURE.md` first; and the task contract's `hint` line goes
 (it is no longer shown anywhere since "not understood" became neutral).
 
+## Word lists and phrase patterns in Python (2026-10-10)
+
+Language is Claude's job and rules are Python's (see the Scaling notes in
+`docs/ARCHITECTURE.md`): these are safety nets, listed so that none grows
+into the way something is understood. "Replace" says whether a change to
+a schema could take its place.
+
+| Where | What it reads | Why it is there | Replace with a schema change? |
+|---|---|---|---|
+| `routing.named_alone` | A task's name alone, or after "show", "list", "see", "open", "what are my" | Shows a list with no request at all | No: its point is to ask nothing |
+| `routing.named_destinations` | "to my pills", "on the shopping list" | A destination I name decides the task, whatever the router says | Partly: the router could return `named` beside the task; kept in code because the router got it wrong in QA |
+| `confirm.redirect` (`_NO`, `_FOR`) | "no, shopping", "I meant packing", "shopping instead" | Moves a card to another task with one request instead of two | Partly: the follow-up extraction already has `not_this`; this only saves the router's request |
+| `confirm.is_correction` (`_CORRECTION`) | A message that starts "no, …" | Undoes the card's last change before applying the correction | Yes: a `corrects` yes/no in the follow-up's answer |
+| `actions.as_references` (`_POINTING`, `_SMALL_WORDS`) | "it", "that", "this", "them", and whether the message names the thing | Puts back a name Claude worked out for a pronoun | No: it checks the schema's own `@that` |
+| `actions.unstated` (`_is_stated`, `_NUMBER_WORDS`) | Whether a guessed value is in the message word for word | A value I stated is never marked ❓ | No: it checks `guessed` |
+| `actions.unchosen` (`_HALF_MARKED`, `_PART_OF_DAY`) | am, pm, "morning", "evening", a 24-hour time | Takes back an am or pm Claude chose by itself | No: it checks the fixed form of a time |
+| `actions.is_filler` (`_FILLER`) | "and", "also", "please", "too"… | Joining words are never reported as "Not included" | No: it checks `not_included` |
+| `actions._structured` (`_BETWEEN_TIMES`) | Times sent as one text ("8am, 8pm") | A list of times that arrived as text is still read | Already replaced (`TIMES`); this is the net under it |
+| `core/durations.py` spoken forms | "3 hours apart", "an hour and a half", number words | A length that arrived as words is still read | Already replaced for pills (`MINUTES`). Timers still take "5m" as text: left so for now (decided 2026-10-10), a seconds type would replace it |
+| `core/timeinput.py` times | `8pm`, `20:00`, `noon`, `midnight` | Reads the fixed form, and any other that arrives | Already replaced (`TIME`); also reads what I type into a form |
+| `core/timeinput.py` dates | "tomorrow", "friday", "the 20th", "20 Oct", "in 3 days" | The only reader of dates: they still come as I said them | Yes: a structured date (a weekday, a day of the month, a number of days from today). Not an ISO date from Claude: it doesn't know today |
+| `pills/rules.py` `_COUNT`, `_COUNT_WORDS`, `_days` | "twice", "3 times a day", "7 days" | Text for a number that should be a number | Already replaced (`per_day` and `days` are integers) |
+| `pills/rules.py` `CLEAR` | "none", "no", "clear", "remove" as a value | Taking a setting away when changing a pill | Yes: a list of settings to clear in the edit action |
+| `pills/rules.py` `_TIME_SEPARATOR` | "8am, 8pm", "8 and 20:00" | The times of a request, joined up inside the task | Already replaced (`TIMES`) |
+| `timers/pomodoro.py` `parse_session` | "50/10", "50 and 10" in `lengths` | A session's lengths, handed over as text | Yes: focus and break as two `MINUTES` fields |
+| `livelists.sticks` | A message of 8 words or fewer after a list | Sends a short follow-up to the list's task first | No: it is a length, not a wording; extraction can still say `not_this` |
+| `outgoing.without_offer` (`_OFFER`) | "want me to…?", "anything else?" at the end of a chat reply | Plain chat is free text, and is told not to offer; this trims one that slips through | No: chat's reply has no schema |
+| `core/router.py` (`GENERIC_VERBS`, fillers), `timers/control.py` (`_SCOPE_WORDS`…) | Typed words: `pause all timers`, "pin this" | Typed shortcuts never go to Claude, by design | No |
+
 ## Left for later
 
 - **Left over from removing the old path** (step 4, 2026-10-10), for step
@@ -143,9 +172,9 @@ bugs and pills.
 - **Timers still take a length as text** ("5m", "90s"), read by
   `core/durations.py`. Pills now get lengths as whole minutes
   (`actions.MINUTES`); timers need seconds and a bare "5" that the code
-  takes as minutes, so they were left as they are (2026-10-10). To
-  decide: a seconds type for timers, with their fixtures and golden
-  conversations 3 and 4 re-recorded.
+  takes as minutes, so they stay as text for now (decided 2026-10-10).
+  When it is done: a seconds type for timers, with their fixtures and
+  golden conversations 3 and 4 re-recorded.
 - **Some refusals are still a bare line, not a card** (2026-10-10). A
   part that can't be read, and doses that can't fit, now get a card with
   no Save. What contradicts itself does not yet: one time for two doses,

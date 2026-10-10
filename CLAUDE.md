@@ -267,6 +267,14 @@ Input
   request or content is reported.
 - When a message isn't understood the reply is neutral ("🤔 I didn't
   understand that."): it names no task and suggests no task's wording.
+  That line is only for what wasn't understood. When extraction
+  understood and declined, it says which kind (`actions.DECLINES`) and
+  the code has a line for each (`conversation.DECLINED`); the reason in
+  words is for the log and code never reads it.
+- Whether a thing already exists is for Python to find out, never a
+  reason for Claude to decline: asking to add what is there with the
+  same details says so and shows it; with other details it is a change
+  card for it (old → new).
 - A card's first line says the kind of change in one of three words, the
   same for every task: new, change, remove (`actions.KINDS`).
 - A reply to a card means that card, however many newer ones are open.
@@ -304,9 +312,11 @@ Input
   extraction fills in the details, and the task's own code does it and
   writes every word. One confirmation only: the card. Never "I'm
   proposing…" or "reply ok".
-- A task's or list's name on its own ("pills", "my pills", "timers",
-  "show my timers") shows what that task has, Live, from Python, with no
-  request to Claude (`routing.named_alone`, the task's `show` action).
+- A task's or list's name on its own ("pills", "my pills", "timers"),
+  or a plain request to see it ("show my timers", "show all my pills",
+  "list my pills", "what are my pills"), shows what that task has, Live,
+  from Python, with no request to Claude (`routing.named_alone`, the
+  task's `show` action).
 - Which task is meant: what I state decides it; otherwise Claude judges
   from my wording, what is on screen and the recent conversation. A
   wrong-task card is easy to fix ("no, shopping"), so it is a safe

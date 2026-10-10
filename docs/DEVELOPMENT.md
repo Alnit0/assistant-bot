@@ -510,6 +510,11 @@ Everything works in #inbox and in the hub.
   to correct it. A time the others settle is not a guess: in "8am, 11:30
   and 3pm" the 11:30 can only be the morning. Times are always shown as
   `8:00 pm`, whatever you typed.
+- **Adding a pill you already have** never makes a second one. With the
+  same details: "💊 **Pill A** is already in your pills with these
+  settings" and the pill, with no card. With other details: a card for
+  that pill, "**Pill A** · already in your pills" and each change as old
+  → new; Save changes it.
 - **What can't be read is shown, not refused.** A time, a gap, a number
   or a date the bot can't read is a line on the card ("❔ gap · I can't
   read …") beside everything it did understand, and the card has

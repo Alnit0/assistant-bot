@@ -146,13 +146,20 @@ def _elsewhere(name: str, tasks, chat_part: str) -> str:
 
 
 NOT_UNDERSTOOD = "🤔 I didn't understand that."
+# When Claude understood and declined, the user is told which, in the code's own words
+DECLINED = {
+    actions.ALREADY_SO: "✅ That's already how it is: there is nothing to change.",
+    actions.CANNOT: "🤷 I understood that, but it isn't something I can do yet.",
+}
 
 
-def nothing_fitted(entry: Entry) -> str:
-    """Said when extraction found no action. Neutral: no task is named and no
-    task's way of asking is suggested, since the message may not have been
-    for that task at all."""
-    return NOT_UNDERSTOOD
+def nothing_fitted(found: Extracted) -> str:
+    """Said when extraction found no action: the line for the kind of decline
+    Claude named, and "didn't understand" only when that is what happened.
+    Neutral: no task is named and no task's way of asking is suggested,
+    since the message may not have been for that task at all. The reason
+    Claude gave in words is for the log and is never read here."""
+    return DECLINED.get(found.declined, NOT_UNDERSTOOD)
 
 
 async def _state(entry: Entry, request: Request, turn: Turn | None = None) -> str:
@@ -209,7 +216,9 @@ async def act(
         await cards.send(request.channel_id, Card(text))
 
     if not found.fitted:
-        await say(nothing_fitted(entry))
+        if found.declined:
+            trace.note(f"declined: extraction said `{found.declined}` ({found.reason})")
+        await say(nothing_fitted(found))
         return
     action = found.action
     if not is_allowed(request.user, f"action:{action.name}"):

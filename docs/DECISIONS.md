@@ -706,6 +706,14 @@ A short log of key decisions and why. Newest at the bottom.
     never a bare error. Dates still come as said: working one out needs
     today's date, which is the code's. Timers were left as they are
     (see the backlog).
+  - **A decline names its kind (2026-10-10).** QA: extraction declined
+    to add a pill that was already there, said why in words, and the
+    user was told "I didn't understand that". Two changes. Claude is
+    told that whether a thing exists is the code's to find out, so it
+    fills the action in; pills then compares and says "already in your
+    pills", or shows a change card. And when Claude does decline, the
+    `none` tool carries `why` (already so, can't, unclear) and the code
+    has a line for each; the reason in words stays in the log, unread.
   - The `kind` column of `pills_pills` is dropped and `latest_time` added,
     in one appended migration; the other columns mean what they did, so
     no row needed rewriting.

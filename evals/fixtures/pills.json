@@ -170,8 +170,7 @@
                 "9:00 am",
                 "12:00 pm",
                 "3:00 pm"
-              ],
-              "per_day": 3
+              ]
             }
           ],
           "guessed": [],
@@ -201,7 +200,7 @@
         {
           "pills": [
             {
-              "name": "Course A",
+              "name": "course A",
               "per_day": 3,
               "min_gap_minutes": 180,
               "notes": "with food",
@@ -241,7 +240,7 @@
         {
           "pills": [
             {
-              "name": "Pill A",
+              "name": "pill A",
               "per_day": 3,
               "times": [
                 "8:00 am",
@@ -251,6 +250,81 @@
               "min_gap_minutes": 180,
               "latest": "4:00 pm",
               "notes": "without food"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "add pill A to my pills, 3 times a day at 8am, 11:30 and 3pm, at least 3 hours apart, not after 4pm, without food",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:30 am, 3:00 pm · at least 3h apart · not after 4:00 pm · without food [active]\n- pl2: 💊 Iron · daily at 8:00 am [active]",
+      "action": "pill_add",
+      "data": {
+        "pills": [
+          {
+            "times": [
+              "8:00 am",
+              "11:30 am",
+              "3:00 pm"
+            ],
+            "min_gap_minutes": 180,
+            "latest": "4:00 pm",
+            "notes": "without food"
+          }
+        ]
+      },
+      "note": "QA 2026-10-10: the pill is already there with the same settings. Still pill_add with what was said, never `none`: the code says it is already there",
+      "recorded": [
+        "pill_add",
+        {
+          "pills": [
+            {
+              "name": "pill A",
+              "per_day": 3,
+              "times": [
+                "8:00 am",
+                "11:30 am",
+                "3:00 pm"
+              ],
+              "min_gap_minutes": 180,
+              "latest": "4:00 pm",
+              "notes": "without food"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "add iron to my pills at 9pm with food",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:30 am, 3:00 pm · at least 3h apart · not after 4:00 pm · without food [active]\n- pl2: 💊 Iron · daily at 8:00 am [active]",
+      "action": "pill_edit",
+      "data": {
+        "pills": [
+          {
+            "times": [
+              "9:00 pm"
+            ],
+            "notes": "with food"
+          }
+        ]
+      },
+      "note": "QA 2026-10-10: the pill is already there with other settings. A change to it, never `none`: pill_edit (what came back) and pill_add both end in the same change card, old → new, made by the code",
+      "recorded": [
+        "pill_edit",
+        {
+          "pills": [
+            {
+              "pill": "Iron",
+              "times": [
+                "9:00 pm"
+              ],
+              "notes": "with food"
             }
           ],
           "guessed": [],
@@ -277,14 +351,14 @@
         {
           "pills": [
             {
-              "name": "pill E",
+              "name": "Pill E",
               "per_day": 2,
               "min_gap_minutes": 180
             }
           ],
           "guessed": [
-            "times[0]",
-            "times[1]"
+            "per_day: inferred 2 doses from 'twice a day'",
+            "times: no specific times given"
           ],
           "not_included": []
         }
@@ -400,7 +474,7 @@
         {
           "pills": [
             {
-              "name": "Pill J",
+              "name": "pill J",
               "per_day": 3,
               "min_gap_minutes": 90
             }
@@ -434,10 +508,7 @@
               "min_gap_minutes": 180
             }
           ],
-          "guessed": [
-            "per_day (not explicitly stated as 'twice a day' but clearly means 2 doses)",
-            "min_gap_minutes (worked out from '3 hours')"
-          ],
+          "guessed": [],
           "not_included": []
         }
       ]
@@ -499,11 +570,11 @@
         {
           "pills": [
             {
-              "name": "Magnesium",
+              "name": "magnesium",
               "per_day": 2
             },
             {
-              "name": "Zinc",
+              "name": "zinc",
               "per_day": 2
             }
           ],
@@ -741,10 +812,10 @@
         {
           "pills": [
             {
-              "pill": "pl1"
+              "pill": "Iron"
             },
             {
-              "pill": "pl4"
+              "pill": "Vitamin D"
             }
           ],
           "guessed": [],
@@ -905,7 +976,8 @@
       "recorded": [
         "none",
         {
-          "reason": "Message is about taking a dose, not managing pills (add, edit, pause, resume, remove, delete, or list)."
+          "why": "cannot",
+          "reason": "User reports taking a pill, but no action exists to log pill intakes or mark them as taken. This task only manages setup, scheduling, pausing, resuming and removal of pills."
         }
       ]
     },

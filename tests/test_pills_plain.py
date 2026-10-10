@@ -239,7 +239,7 @@ def test_a_pill_that_cannot_be_a_plan_is_named_on_the_card_and_the_rest_stay(wor
     add(world, {"name": "Iron"})
     proposal = card(world, plain.add_card, {"name": "Zinc"}, {"name": "iron"}, {"name": "X", "times": "8am", "per_day": 3})
     assert proposal.lines == ("**Zinc** · daily, any time",)
-    assert proposal.warnings[0].startswith("Not included: iron (There is already a pill called **Iron**")
+    assert proposal.warnings[0] == "**Iron** is already in your pills with these settings"
     assert proposal.warnings[1].startswith("Not included: X (That is 1 time for 3 doses a day")
 
 
@@ -544,3 +544,57 @@ def test_an_edit_lists_each_field_that_changes_as_old_to_new():
     assert rules.differences(gap, timed) == [
         ("schedule", "3× daily, at least 3h apart, first dose when ready", "3× daily, at least 3h apart, first dose at `9:00 am`"),
     ]
+
+
+# --- QA 2026-10-10: adding a pill that is already there ------------------------------------------------
+def test_adding_a_pill_that_is_there_with_the_same_settings_says_so_with_no_card(world):
+    add(world, PILL_A_AS_GIVEN)
+    request, data = world.request(), {"pills": [dict(PILL_A_AS_GIVEN, name="pill a")]}
+    assert run(plain.add_asks(request, data)) is False, "nothing to save: no card"
+    assert run(plain.add_already(request, data, frozenset())) == (
+        "💊 **Pill A** is already in your pills with these settings\n"
+        "💊 **Pill A** · 3× daily · `8:00 am`, `11:30 am`, `3:00 pm` · at least 3h apart · not after `4:00 pm` · *without food*"
+    )
+    assert run(plain.add_asks(request, {"pills": [{"name": "Pill A"}]})) is False, "named alone: still nothing to change"
+    assert len(pills(world)) == 1
+
+
+def test_adding_a_pill_that_is_there_with_other_settings_is_a_change_card_for_it(world):
+    add(world, PILL_A_AS_GIVEN)
+    data = {"pills": [{"name": "pill A", "latest": "5:00 pm", "notes": "with food"}]}
+    assert run(plain.add_asks(world.request(), data)) is True
+    proposal = card(world, plain.add_card, *data["pills"])
+    assert proposal.kind == "change" and proposal.can_save and proposal.warnings == ()
+    assert proposal.lines == (
+        "**Pill A** · already in your pills",
+        "notes · without food → with food",
+        "schedule · 3× daily · `8:00 am`, `11:30 am`, `3:00 pm` · at least 3h apart · not after `4:00 pm` → "
+        "3× daily · `8:00 am`, `11:30 am`, `3:00 pm` · at least 3h apart · not after `5:00 pm`",
+    )
+    assert proposal.data["pills"] == [{"name": "pill A", "latest": "5:00 pm", "notes": "with food", "pill": "pl1"}]
+    assert run(plain.add_save(world.request(), proposal.data)).startswith("✅ Updated · 💊 **Pill A** · 3× daily")
+    assert run(plain.add_check(world.request(), proposal.data)) == ""
+    (pill,) = pills(world)
+    assert (pill.plan.name, pill.plan.notes, pill.plan.schedule.latest) == ("Pill A", "with food", time(17, 0)), "one pill, changed"
+
+
+def test_a_new_pill_and_one_that_is_there_share_a_card_and_one_save(world):
+    add(world, {"name": "Iron", "times": ["8:00 am"]})
+    proposal = card(world, plain.add_card, {"name": "Zinc"}, {"name": "iron", "times": ["9:00 pm"]})
+    assert proposal.kind == "new" and proposal.lines == (
+        "**Zinc** · daily, any time",
+        "**Iron** · already in your pills",
+        "schedule · daily at `8:00 am` → daily at `9:00 pm`",
+    )
+    assert proposal.warnings == ()
+    assert run(plain.add_save(world.request(), proposal.data)) == "✅ Saved · 💊 2 pills: **Zinc**, **Iron**"
+    assert run(plain.add_check(world.request(), proposal.data)) == ""
+    assert [(pill.plan.name, pill.plan.schedule.times) for pill in pills(world)] == [("Iron", (time(21, 0),)), ("Zinc", ())]
+
+
+def test_a_reply_to_the_change_card_is_laid_over_it_and_it_is_still_that_pill(world):
+    add(world, {"name": "Iron", "times": ["8:00 am"]})
+    first = card(world, plain.add_card, {"name": "Iron", "times": ["9:00 pm"]})
+    second = card(world, plain.add_card, {"name": "iron", "notes": "with food"}, previous=first.data)
+    assert second.lines == ("**Iron** · already in your pills", "notes · none → with food", "schedule · daily at `8:00 am` → daily at `9:00 pm`")
+    assert second.data["pills"][0]["pill"] == "pl1"

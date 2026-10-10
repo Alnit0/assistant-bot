@@ -201,16 +201,20 @@ def named_destinations(message: str, entries: list[Entry]) -> list[Entry]:
 
 
 def named_alone(message: str, entries: list[Entry]) -> Entry | None:
-    """The task whose name is all the message says: "pills", "my pills",
-    "shopping list", "the shopping list", "show my timers". That asks to see
-    what the task has, and is answered by code with no request. None for
-    anything more than the name, and when two tasks could be meant. Pure."""
+    """The task whose name is all the message says, with or without a plain
+    way of asking to see it: "pills", "my pills", "shopping list", "show my
+    timers", "show all my pills", "list my pills", "what are my pills". That
+    asks to see what the task has, and is answered by code with no request.
+    None for anything more than that ("what are pills?" is a question), and
+    when two tasks could be meant. Pure."""
     said = re.sub(r"[\s.!?]+", " ", message.lower()).strip()
     found = []
     for entry in entries:
         names = {entry.name, entry.name.removesuffix("s"), entry.name + "s"}
         name = "|".join(re.escape(each) for each in sorted(names, key=len, reverse=True))
-        if re.fullmatch(rf"(?:show (?:me )?|list |see |open )?(?:my |the |our )?(?:{name})(?: list)?(?: please)?", said):
+        shown = rf"(?:(?:show|list|see|open)(?: me)?(?: all(?: of)?)? )?(?:my |the |our )?(?:{name})(?: list)?"
+        asked = rf"what(?: are| is|'s|s) (?:all )?(?:my|our) (?:{name})(?: list)?"
+        if re.fullmatch(rf"(?:please )?(?:{shown}|{asked})(?: please)?", said):
             found.append(entry)
     return found[0] if len(found) == 1 else None
 

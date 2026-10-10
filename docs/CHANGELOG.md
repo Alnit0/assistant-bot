@@ -6,6 +6,14 @@ backfilled from the git log.
 
 ## 2026-10-10
 
+- **Adding a pill you already have is no longer "I didn't understand".**
+  With the same details the bot says it is already in your pills and
+  shows it; with other details you get a change card for it (old → new).
+- **"I didn't understand that" now only means that.** When your message
+  was understood and nothing could be done, the bot says which: it is
+  already so, or it isn't something it can do yet.
+- **"Show all my pills", "list my pills" and "what are my pills"** show
+  the list at no cost, like "my pills".
 - **"At least 3 hours apart" can no longer be refused for its wording.**
   Lengths of time now reach the bot's code as a number of minutes and
   times of day in one fixed form, so nothing depends on how they were

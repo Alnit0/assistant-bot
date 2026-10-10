@@ -337,6 +337,23 @@ def test_when_nothing_fits_python_says_so_in_neutral_words_naming_no_task(world)
     assert open_cards() == []
 
 
+@pytest.mark.parametrize(
+    "why, line",
+    [
+        ("already_so", "✅ That's already how it is: there is nothing to change."),
+        ("cannot", "🤷 I understood that, but it isn't something I can do yet."),
+        ("unclear", "🤔 I didn't understand that."),
+    ],
+)
+def test_a_decline_with_a_known_reason_is_never_answered_with_did_not_understand(world, why, line):
+    # QA 2026-10-10: extraction declined because the pill was already there, and the user was
+    # told "I didn't understand that". The kind of decline decides the line; its words never do
+    world.claude(route("shopping"), ("none", {"why": why, "reason": "milk already exists with identical specifications"}))
+    world.say("add milk")
+    assert world.sent[0][1].text == line and "milk" not in line
+    assert json.loads(rows()[0][6])[0]["reason"] == "milk already exists with identical specifications"
+
+
 def test_what_claude_returns_is_checked_and_a_bad_call_is_nothing_fitted(world):
     world.claude(route("shopping"), ("demo_shop_change", {"items": "milk", "guessed": []}))
     world.say("add two milk")

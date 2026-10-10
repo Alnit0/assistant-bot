@@ -137,6 +137,21 @@ def settle(request: rules.Request, today: date, base: Plan | None = None) -> Rea
     raise UserError("I couldn't read those times.")
 
 
+def _known(existing: list[Pill], name: str) -> Pill | None:
+    """The pill the user already has by exactly this name, whatever the case."""
+    wanted = name.strip().lower()
+    return next((pill for pill in rules.listed(existing) if pill.plan.name.lower() == wanted), None)
+
+
+def _change(item: dict) -> rules.Request:
+    """What an item says about a pill that is already there: everything but its name."""
+    return as_request({part: value for part, value in item.items() if part not in ("name", "pill")})
+
+
+def _already(pill: Pill) -> str:
+    return f"**{pill.plan.name}** is already in your pills with these settings"
+
+
 def _held_lines(read: Read) -> list[str]:
     """A line for each part that couldn't be read: marked ❔, with the reason."""
     return [f"❔ {UNREAD[part]} · {reason}" for part, reason in read.unread]
@@ -223,62 +238,133 @@ async def add_card(request: Request, data: dict, guessed: frozenset) -> Proposal
     lines, kept, warnings = [], [], [f"{name} isn't on the card: nothing to take off" for name in missing]
     seen: set[str] = set()
     own_guesses: list[str] = []
-    held = False
+    held, changes = False, 0
     for item in items:
         name = str(item["name"]).strip()
+        pill = _known(existing, name)
         try:
-            read = settle(as_request(item), today)
-            rules.check_name(read.plan, existing)
+            if pill is not None:
+                # Already one of the user's pills: what was said is a change to it, never a second pill
+                read = settle(_change(item), today, pill.plan)
+            else:
+                read = settle(as_request(item), today)
+                rules.check_name(read.plan, existing)
             if read.plan.name.lower() in seen:
                 raise UserError("it is on this card twice")
         except UserError as error:
             warnings.append(f"Not included: {name} ({error})")
             continue
         seen.add(read.plan.name.lower())
-        first, *rest = rules.card_lines(read.plan)
-        lines += [flag(first, read.guessed or name.lower() in unsure), *rest, *_held_lines(read)]
+        if pill is not None and read.plan == pill.plan and not read.held:
+            warnings.append(_already(pill))
+            continue
+        if pill is not None:
+            # One format for a change, on whichever card it is: field · old → new
+            lines.append(flag(f"**{pill.plan.name}** · already in your pills", name.lower() in unsure))
+            lines += [
+                flag(f"{part} · {before} → {after}", read.guessed and part == "schedule")
+                for part, before, after in rules.differences(pill.plan, read.plan)
+            ]
+            lines += _held_lines(read)
+            changes += 1
+        else:
+            first, *rest = rules.card_lines(read.plan)
+            lines += [flag(first, read.guessed or name.lower() in unsure), *rest, *_held_lines(read)]
         warnings += _held_warnings(read)
         if read.guessed:
             own_guesses.append(f"pills[{len(kept)}].times")
         # What can't be saved yet stays as it was said, so one reply can put it right
-        kept.append(dict(item) if read.held else _settled(item, read.request))
+        fixed = dict(item) if read.held else _settled(item, read.request)
+        kept.append({**fixed, "pill": pill.ref} if pill is not None else fixed)
         held = held or read.held
     if not kept:
         raise UserError("; ".join(warning.removeprefix("Not included: ") for warning in warnings) or "No pill to add.")
     last = str(asked[-1]["name"]) if asked else None
     return Proposal(
-        lines=tuple(lines), data={"pills": kept, LAST: last}, warnings=tuple(warnings), kind="new",
-        guessed=tuple(own_guesses), can_save=not held,
+        lines=tuple(lines), data={"pills": kept, LAST: last}, warnings=tuple(warnings),
+        kind="change" if changes == len(kept) else "new", guessed=tuple(own_guesses), can_save=not held,
     )
+
+
+async def _unchanged(request: Request, data: dict) -> list[Pill] | None:
+    """The pills a message asks to add, if every one of them is already among
+    the user's pills just as asked; None if anything is new or would change."""
+    existing = await store.pills(request.user.id)
+    today = day.today()
+    found = []
+    for item in data["pills"]:
+        pill = _known(existing, str(item.get("name", "")))
+        if pill is None:
+            return None
+        try:
+            read = settle(_change(item), today, pill.plan)
+        except UserError:
+            return None
+        if read.held or read.plan != pill.plan:
+            return None
+        found.append(pill)
+    return found or None
+
+
+async def add_asks(request: Request, data: dict) -> bool:
+    """Whether adding needs a card: not when there is nothing to save, because
+    every pill named is already there with these settings."""
+    return bool(request.previous) or await _unchanged(request, data) is None
+
+
+async def add_already(request: Request, data: dict, guessed: frozenset) -> str:
+    """Said in place of a card when nothing would change: each pill, as it is."""
+    today = day.today()
+    pills = await _unchanged(request, data) or []
+    return "\n".join(f"{ICON} {_already(pill)}\n{rules.describe_pill(pill, today)}" for pill in pills)
 
 
 async def add_save(request: Request, data: dict) -> str:
     today = day.today()
     user_id = request.user.id
 
-    def save(conn) -> list[Pill]:
+    def save(conn) -> list[tuple[Pill, bool]]:
         # Checked again here, in the same transaction as the write: the list may
         # have changed since the card was shown
         saved = []
         for item in data["pills"]:
+            if item.get("pill"):
+                pill = rules.find(store.db_pills(conn, user_id), item["pill"])
+                plan = rules.build(_change(item), today, pill.plan)
+                saved.append((store.db_edit(conn, pill.id, plan), True))
+                continue
             plan = rules.build(as_request(item), today)
             rules.check_name(plan, store.db_pills(conn, user_id))
-            saved.append(store.db_add(conn, user_id, plan))
+            saved.append((store.db_add(conn, user_id, plan), False))
         return saved
 
     saved = await request.db.run(save)
     _changed(user_id)
     if len(saved) == 1:
-        return f"✅ Saved · {rules.describe_pill(saved[0], today)}"
-    return f"✅ Saved · {ICON} {len(saved)} pills added: " + ", ".join(f"**{pill.plan.name}**" for pill in saved)
+        pill, changed = saved[0]
+        return f"✅ {'Updated' if changed else 'Saved'} · {rules.describe_pill(pill, today)}"
+    names = ", ".join(f"**{pill.plan.name}**" for pill, _ in saved)
+    if not any(changed for _, changed in saved):
+        return f"✅ Saved · {ICON} {len(saved)} pills added: {names}"
+    return f"✅ Saved · {ICON} {len(saved)} pills: {names}"
 
 
 async def add_check(request: Request, data: dict) -> str:
     """Read each pill back: it is there, in use, with the plan the card showed."""
     today = day.today()
-    saved = {pill.plan.name.lower(): pill for pill in rules.listed(await store.pills(request.user.id))}
+    listed = rules.listed(await store.pills(request.user.id))
+    saved = {pill.plan.name.lower(): pill for pill in listed}
+    by_ref = {pill.ref: pill for pill in listed}
     wrong = []
     for item in data["pills"]:
+        if item.get("pill"):
+            # A change to a pill that was there: asking for it again must change nothing
+            pill = by_ref.get(item["pill"])
+            if pill is None:
+                wrong.append(f"{item['pill']} is not among your pills")
+            elif rules.build(_change(item), today, pill.plan) != pill.plan:
+                wrong.append(f"{pill.plan.name} is still {rules.plain(_line(pill.plan))}")
+            continue
         plan = rules.build(as_request(item), today)
         pill = saved.get(plan.name.lower())
         if pill is None:
@@ -641,7 +727,8 @@ ACTIONS = (
         "dates: leave start, end and days out. In a follow-up (\"8pm\", \"make it twice a day\"), give the "
         "pill by the name on the card and only what changes. A time said in a follow-up REPLACES the card's "
         "time (card shows 8:00 am, user says \"8pm\" -> times [8:00 pm], never both), unless the user says to "
-        "add another dose.",
+        "add another dose. If the pill named is already in the state, this is still the action for \"add\": "
+        "give what the user said, exactly as for a new one, and the code works out whether anything changes.",
         _one_or_more(
             "to add",
             Field("name", "What it is called, as the user said it, e.g. Vitamin D.", required=True),
@@ -651,6 +738,9 @@ ACTIONS = (
         prepare=add_card,
         apply=add_save,
         verify=add_check,
+        # No card when every pill named is already there just as asked: that is said in a line
+        card_if=add_asks,
+        run=add_already,
     ),
     Action(
         "pill_edit",

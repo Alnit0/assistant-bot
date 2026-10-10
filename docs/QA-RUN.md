@@ -1,6 +1,6 @@
 # QA run sheet
 
-One pass through 174 of the 205 👤 Manual tests in `docs/TESTING.md` that are
+One pass through 177 of the 208 👤 Manual tests in `docs/TESTING.md` that are
 ⬜ Untested (as of 2026-10-10); the other 31 are for pills stages not built yet
 (group R) or need a setup of their own, and join as each can be run. Blocks share setup and each one leaves things
 ready for the next, so run them in order.
@@ -27,9 +27,10 @@ tests (block 12).
 | 17 | Traces: `dev why` and bug reports | `--dev`, off (one restart) | 3 | 5 |
 | 18 | Retest: one path for every message | `--dev`, off (one restart) | 9 | 12 |
 | 19 | Pills: one schedule model | `--dev`, off (one restart) | 11 | 13 |
-| | **Total** | | **174** (F2 is split over blocks 4 and 7, counted in 7) | **about 3¼ hours** |
+| 20 | Retest: a pill that is already there, and list names | `--dev`, off (one restart) | 3 | 4 |
+| | **Total** | | **177** (F2 is split over blocks 4 and 7, counted in 7) | **about 3¼ hours** |
 
-Blocks 14 to 19 need nothing from the others (13 and 16 tested the old way of asking Claude, which is gone): run them any time after
+Blocks 14 to 20 need nothing from the others (20 follows 19) (13 and 16 tested the old way of asking Claude, which is gone): run them any time after
 block 1, and before the overnight block if that suits.
 
 ## Before you start
@@ -443,6 +444,22 @@ due. Every step ends by saying what to press.
 | 9 | Say `show all my pills` and keep it in view; then `remove iron`; press **Remove** | The list, with no buttons. Then a card "💊 Pills · remove" with "**Iron** · … → removed" that says its history is kept; Remove: "🗑️ Removed **Iron**. Its history is kept." and the list above loses Iron, edited in place | T12 |
 | 10 | Say `add pill D to my pills, at 8am and 5pm, not after 4pm`; then, pressing nothing, `not after 6pm`; press **Cancel** | A card with "**Pill D** · daily at `8:00 am`, `5:00 pm`", "Not after `4:00 pm`" and "⚠️ Pill D can't be saved yet: A dose at 5:00 pm would be after the latest time, 4:00 pm." It has **Cancel** only, no Save. After the reply it is replaced by one with "Not after `6:00 pm`", no ⚠️, and **Save** and **Cancel**. Cancel: nothing is saved | R43 |
 | 11 | With Iron no longer on the list, say `add zinc to my pills`; press **Save**. Then say `pause zinc until whenever`; then, pressing nothing, `until friday`; press **Cancel** | After Save zinc is added. Then a card "💊 Pills · change" with "**Zinc** · active → paused until ❔" and "❔ until · I can't read “whenever” as a date. …". It has **Cancel** only, no Save, and there is no bare ⚠️ line in the channel. After the reply it is replaced by one with "paused until" and a date, with **Save** and **Cancel** | R44 |
+
+## 20. Retest: a pill that is already there, and list names
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
+On the dev database (`python main.py --dev`), in #inbox, dev mode off.
+Restart the bot first. Pill A is saved as in block 19, step 2 (not after
+`5:00 pm` if step 4 was saved: then expect that in step 1, and step 2
+changes it back to something else of your choosing). Every step ends by
+saying what to press.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | With Pill A saved as in R40: say `add pill A to my pills, 3 times a day at 8am, 11:30 and 3pm, at least 3 hours apart, not after 4pm, without food` again. Press nothing | No card and no "I didn't understand that": "💊 **Pill A** is already in your pills with these settings" with the pill's line under it. Still one Pill A in `my pills` | R45 |
+| 2 | With Pill A saved: say `add pill A to my pills, not after 5pm, with food`; press **Save** | A card "💊 Pills · change": "**Pill A** · already in your pills", then "notes · without food → with food" and "schedule · … not after `4:00 pm` → … not after `5:00 pm`". Save: "✅ Updated · 💊 **Pill A** · …". Still one Pill A | R46 |
+| 3 | Say `show all my pills`; reply to it with `dev why`. Then say `list my pills`, then `what are my pills?`. Press nothing more | The pills list each time, with no words about it. The `dev why` block reads "route: shortcut", "router: not asked" and "cost: US$0.0000 · 0 request(s)" | S54 |
 
 ## When you finish
 

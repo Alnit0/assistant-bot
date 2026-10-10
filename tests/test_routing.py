@@ -215,7 +215,17 @@ def test_a_call_that_fits_is_the_action_its_data_and_its_guesses():
 def test_a_call_that_does_not_fit_is_nothing_fitted_with_the_reason_kept(called, reason):
     found = extraction.read(SHOPPING, called)
     assert not found.fitted and not found.not_this and reason in found.reason
-    assert found.as_log()["action"] == "none"
+    assert found.as_log()["action"] == "none" and found.declined == ""
+
+
+def test_a_decline_says_which_kind_it_is_and_only_a_known_kind_is_kept():
+    found = extraction.read(SHOPPING, ("none", {"why": "already_so", "reason": "milk is on the list already"}))
+    assert (found.fitted, found.declined) == (False, "already_so")
+    assert found.as_log() == {"task": "shopping", "action": "none", "reason": "milk is on the list already", "why": "already_so"}
+    assert extraction.read(SHOPPING, ("none", {"why": "because", "reason": "x"})).declined == "", "not one of the kinds: not understood"
+    tool = actions.NONE_TOOL["input_schema"]
+    assert tool["properties"]["why"]["enum"] == ["already_so", "cannot", "unclear"] and "why" in tool["required"]
+    assert "for the bot's code to find out" in extraction.rules(SHOPPING)
 
 
 def test_in_a_follow_up_not_this_means_the_message_is_about_something_else():
@@ -388,6 +398,10 @@ def test_the_router_is_told_that_only_questions_and_requests_get_words():
         ("pills", "pills"), ("my pills", "pills"), ("Pill list", "pills"), ("show my pills", "pills"), ("show me the pills list please", "pills"),
         ("timers", "timers"), ("my timers", "timers"), ("list timers", "timers"), ("packing list", "packing"),
         ("bugs", "bugs"),
+        # QA 2026-10-10: "show all my pills" cost two requests; asking to see a list by name is free
+        ("show all my pills", "pills"), ("list my pills", "pills"), ("what are my pills", "pills"), ("What are my pills?", "pills"),
+        ("show me all of my timers please", "timers"), ("list all my timers", "timers"), ("what's my shopping list", "shopping"),
+        ("what are pills?", None), ("what pills do I take in the morning", None), ("show my pills for tomorrow", None),
         ("add milk to the shopping list", None), ("shopping is boring", None), ("is milk on my shopping list?", None),
         ("pills and timers", None), ("the list", None), ("shop", None),
     ],
