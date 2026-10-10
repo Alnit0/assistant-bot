@@ -145,6 +145,23 @@ def _elsewhere(name: str, tasks, chat_part: str) -> str:
     return "; ".join(parts)
 
 
+async def _owners(text: str, entries: list[Entry], request: Request) -> list[str]:
+    """The tasks that hold something of the user's that the message names."""
+    found = []
+    for entry in entries:
+        if entry.names is None:
+            continue
+        try:
+            named = routing.names_item(text, await entry.names(request))
+        except Exception:
+            log.exception("Task %s could not give the names of what it holds", entry.name)
+            continue
+        if named:
+            trace.note(f"named item: the router said nothing needs doing, but the message names {named!r}; sent to {entry.name}")
+            found.append(entry.name)
+    return found
+
+
 NOT_UNDERSTOOD = "🤔 I didn't understand that."
 # When Claude understood and declined, the user is told which, in the code's own words.
 # For "already so" these are only the fallback: the task's own line, which names the
@@ -588,6 +605,13 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
                 if settled_by_name != routed:
                     trace.note(f"named destination: the router said {list(routed.tasks) or 'no task'}, overruled by what was stated")
                 routed = settled_by_name
+            if routed.nothing:
+                # A message that names one of my things is never a remark to drop in silence
+                # ("I've taken my Zinc today"): it goes to the task that holds the thing
+                owners = await _owners(ctx.text, entries, request)
+                if owners:
+                    routed = routing.Route(tuple(owners), problem=routed.problem)
+                    turn.router["named item"] = owners
             if routed.nothing:
                 # Nothing was asked and nothing needs doing: no reply and no reaction left. The 👀
                 # that showed it being read is taken off like any other, which is the sign it was

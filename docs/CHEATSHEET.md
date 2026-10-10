@@ -276,7 +276,9 @@ only, any channel, no slash. It is off after every restart.
 
 | Type or say | What it does |
 |---|---|
-| `pills` (or "my pills") | The list of every pill: read-only, and kept up to date in place |
+| `pills` | Today's checklist, fresh at the bottom of the hub |
+| "my pills", "show all my pills" | The list of every pill: read-only, and kept up to date in place |
+| "took my zinc" / "had pill A at 9" / "skip magnesium today" / "I didn't take zinc" | Ticks today's dose off, skips it or puts it back, and says what is left |
 | "add vitamin D, once a day" | A card with **Save** / **Cancel** straight away; nothing is added until Save |
 | "add evening pill at 20:00" | A pill at a fixed time (shown as `8:00 pm`) |
 | "add course A, 3 times a day, at least 3 hours apart, with food, for 7 days starting tomorrow" | A course with a minimum gap and dates |

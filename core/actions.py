@@ -62,7 +62,7 @@ NONE = "none"  # the action that says "nothing here fits"
 NOT_THIS = "not_this"  # in a follow-up: "this isn't about the open card"
 RESERVED = (NONE, NOT_THIS)
 
-MIN_EXAMPLES, MAX_EXAMPLES = 2, 3
+MIN_EXAMPLES, MAX_EXAMPLES = 2, 8
 GUESS_MARK = "❓"
 WARNING_MARK = "⚠️"
 # The kind of change a card says on its first line: the same three words for every task
@@ -246,6 +246,10 @@ class Entry:
     # extraction gave for it. Without one, or when it returns None, core's
     # plain line is said instead
     already: Callable[[Request, str], Awaitable[str | None]] | None = None
+    # `async (request) -> list[str]`: the names of the things of the user's that
+    # this task holds now (their pills, their running timers). A message that
+    # names one is this task's to answer, whatever the router made of it
+    names: Callable[[Request], Awaitable[list[str]]] | None = None
 
     @property
     def title(self) -> str:

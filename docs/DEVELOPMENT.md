@@ -465,13 +465,16 @@ owner.
 
 ## Pills
 
-What you take and when. This is the setting-up half; the daily checklist
-and the prompts come in the next stages, so nothing reminds you yet.
+What you take and when, and today's checklist of it. Reminders at each
+dose's time come in the next stage, so nothing notifies you yet.
 Everything works in #inbox and in the hub.
 
 | Type or say | What happens |
 |---|---|
-| `pills` (or `pill`) | The list: in use, then ⏸️ Paused, then 🏁 Ended. Read-only |
+| `pills` (or `pill`) | A fresh copy of today's checklist at the bottom of the hub; the old one goes |
+| "my pills", "show all my pills" | The list of every pill: in use, then ⏸️ Paused, then 🏁 Ended. Read-only |
+| "took my zinc", "had pill A at 9", "skip magnesium today", "I didn't take zinc" | Today's dose is ticked off, skipped or put back, at once: "✅ **Zinc** · taken 8:04 am · still to take today: …" |
+| "what pills do I have left today?" | The checklist, as `pills` |
 | "add vitamin D, once a day" | A card "💊 Pills · new" with "**Vitamin D** · daily, any time", **Save** and **Cancel** |
 | "add evening pill at 20:00" | "💊 **Evening pill** · daily at `8:00 pm`" |
 | "add course A, 3 times a day, at least 3 hours apart, with food, for 7 days starting tomorrow" | "💊 **Course A** · 3× daily, at least 3h apart, first dose when ready · *with food* · 10 to 16 Oct" |
@@ -481,6 +484,25 @@ Everything works in #inbox and in the hub.
 | "remove iron" | A card with **Remove** and **Cancel**; its history is kept |
 | "delete iron and its history" | A separate card with **Delete for good** |
 
+- **Today's checklist** is posted in the hub at 6:00 am without a
+  notification (or when the bot starts later than that), as one message
+  that is edited in place: "## 💊 Pills · ▰▰▱▱▱ 2 of 5", then a line a
+  dose. Doses with no time come first, then the timed ones by when they
+  are due today; paused pills have their own section and are not
+  counted. Taken and skipped both count as dealt with.
+- **A dose with no time** has a message of its own under the checklist,
+  with **Taken** and **Skip**. Pressing one deletes that message and
+  updates the checklist. A timed dose has no buttons yet (they come with
+  its reminder): say "took …".
+- **Today's times follow what you took.** With a gap, the next dose is
+  shown at the later of its planned time and the dose before plus the
+  gap; the plan itself never changes.
+- **Changes during the day** show at once: a pill added, changed, paused
+  or removed. A course that starts tomorrow is not on today.
+- **At midnight** what nobody touched is marked ❌ missed, the single
+  messages go, and the checklist is left as it ended.
+- **Needs `HUB_CHANNEL_ID`** in `.env`. Without it nothing is posted by
+  itself, and `pills` posts the checklist where you typed it.
 - **One shape of schedule.** Every pill has doses a day, and may have a
   planned time for each dose (or for the first only), a minimum gap
   between doses ("at least 3 hours apart") and a latest time ("not after
@@ -549,6 +571,9 @@ turns what was said into a `Plan` or raises (`TimeQuestion` for an unclear
 time, `UserError` with the reason otherwise), `status_on(pill, day)` says
 what a pill is on a day, and the wording is all there. `doses.py` has the
 take-by time and whether a dose still fits before the day's limit.
+`today.py` (pure) turns the pills and the day's occurrences into doses
+and writes the checklist; `checklist.py` posts it, keeps it up to date,
+marks doses and runs the 6:00 am job and the end of the day.
 `store.py` holds
 `pills_pills` and the change record. `plain.py` has the actions, their
 cards and the read-back checks, with no discord.py. Doses will be

@@ -6,6 +6,19 @@ backfilled from the git log.
 
 ## 2026-10-10
 
+- **The daily pills checklist.** At 6:00 am, without a notification, the
+  hub gets today's checklist: a progress bar, a line for every dose
+  (those with no time first, then by time), and paused pills in their own
+  section. It is one message, kept up to date in place.
+- **Tick a pill off by button or by saying so.** Each dose with no time
+  has its own Taken / Skip message under the checklist. "Took my zinc",
+  "had pill A at 9", "skip magnesium today" and "I didn't take zinc" do
+  the same from chat, and the reply says what is left.
+- **`pills` now posts a fresh copy of today's checklist**; "my pills"
+  still lists every pill. What nobody touched by midnight is marked
+  missed.
+- **A message that names one of your pills or timers is never met with
+  silence**, whatever the bot first took it for.
 - **Adding a pill you already have is no longer "I didn't understand".**
   With the same details the bot says it is already in your pills and
   shows it; with other details you get a change card for it (old → new).

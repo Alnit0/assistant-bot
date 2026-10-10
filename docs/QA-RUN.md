@@ -1,7 +1,7 @@
 # QA run sheet
 
-One pass through 178 of the 209 👤 Manual tests in `docs/TESTING.md` that are
-⬜ Untested (as of 2026-10-10); the other 31 are for pills stages not built yet
+One pass through 176 of the 200 👤 Manual tests in `docs/TESTING.md` that are
+⬜ Untested (as of 2026-10-10); the other 24 are for pills stages not built yet
 (group R) or need a setup of their own, and join as each can be run. Blocks share setup and each one leaves things
 ready for the next, so run them in order.
 
@@ -26,11 +26,10 @@ tests (block 12).
 | 15 | Dev database and clock | `--dev`, on and off (three restarts) | 10 | 13 |
 | 17 | Traces: `dev why` and bug reports | `--dev`, off (one restart) | 3 | 5 |
 | 18 | Retest: one path for every message | `--dev`, off (one restart) | 9 | 12 |
-| 19 | Pills: one schedule model | `--dev`, off (one restart) | 11 | 13 |
-| 20 | Retest: a pill that is already there, and list names | `--dev`, off (one restart) | 4 | 5 |
-| | **Total** | | **178** (F2 is split over blocks 4 and 7, counted in 7) | **about 3¼ hours** |
+| 21 | Pills: the daily checklist | `--dev`, off (two restarts) | 13 | 20 |
+| | **Total** | | **176** (F2 is split over blocks 4 and 7, counted in 7) | **about 3¼ hours** |
 
-Blocks 14 to 20 need nothing from the others (20 follows 19) (13 and 16 tested the old way of asking Claude, which is gone): run them any time after
+Blocks 14 to 21 need nothing from the others (19 and 20, the first pills blocks, passed on 2026-10-10 and are no longer here) (13 and 16 tested the old way of asking Claude, which is gone): run them any time after
 block 1, and before the overnight block if that suits.
 
 ## Before you start
@@ -421,46 +420,32 @@ to your message with `dev why` and paste the block when you report it.
 | 8 | Say `add milk to the shopping list`. Press nothing | No shopping card: the demo lists are no longer part of the bot. A short plain answer, "🤔 I didn't understand that.", or nothing; never a card and never "added" | S51 |
 | 9 | On a fresh `dev.db`, or replying to a message sent before the last `dev reset-db`: reply to it with `dev why 5`. Press nothing | One plain line: "🔎 Nothing is logged for that message: it is from before this database was started…". No ⚠️ on your message | S44 |
 
-## 19. Pills: one schedule model
+## 21. Pills: the daily checklist
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
-On the dev database (`python main.py --dev`), in #inbox, dev mode off.
-Restart the bot first: the pills table changes when it starts (a
-"pre-migration" backup is taken by itself). Nothing here needs the clock
-moved: the checklist and reminders are not built yet, so no dose comes
-due. Every step ends by saying what to press.
-
-| # | Do | Expect | Tests |
-|---|---|---|---|
-| 1 | Restart the bot, then say `my pills`. Press nothing | The bot starts with no ⚠️ on the start card. Every pill is listed with the schedule it had: a pill with no time reads "daily, any time", one with a gap "…, at least 3h apart, first dose when ready" | R39 |
-| 2 | Say `add pill A to my pills, 3 times a day at 8am, 11:30 and 3pm, at least 3 hours apart, not after 4pm, without food`; press **Save** | One card, "💊 Pills · new", with two lines: "**Pill A** · 3× daily · `8:00 am`, `11:30 am`, `3:00 pm`" and "At least 3h apart · not after `4:00 pm` · *without food*". No ❓ and no ⚠️. Save: "✅ Saved · 💊 **Pill A** · 3× daily · `8:00 am`, `11:30 am`, `3:00 pm` · at least 3h apart · not after `4:00 pm` · *without food*" | R40 |
-| 3 | Say `add pill C to my pills, 3 times a day at 8am, 11:30am and 2pm, at least 3 hours apart`; press **Cancel** | A card whose first line ends "`8:00 am`, `11:30 am`, `2:30 pm`", with "⚠️ 11:30 am to 2:00 pm is under 3h: the third dose moves to 2:30 pm". Cancel: nothing is saved | R41 |
-| 4 | Say `pill A can be taken until 5pm`; press **Save**. Then `my pills` | A card "💊 Pills · change": "**Pill A**", then "schedule · … not after `4:00 pm` → … not after `5:00 pm`", the times and the gap unchanged. Save: "✅ Updated · …"; the list shows `5:00 pm` | R42 |
-| 5 | Say `add course A, 3 times a day, at least 3 hours apart, with food, for 7 days starting tomorrow`; press **Cancel** | One card: "**Course A** · 3× daily, at least 3h apart, first dose when ready · *with food* · <tomorrow to six days later>". Cancel: the card goes and nothing is saved | T9 |
-| 6 | Say `add iron at 8`; then, pressing nothing, `8pm`; press **Save** | A card "💊 Pills · new" with "**Iron** · daily at `8:00 am` ❓" and no question first. After "8pm" it is replaced by one with `8:00 pm` and no ❓ (one dose, not two). Save: "✅ Saved · 💊 **Iron** · daily at `8:00 pm`" | T8 |
-| 7 | Say `move iron to 9pm`; press **Save** | A card "💊 Pills · change": "**Iron**", then "schedule · daily at `8:00 pm` → daily at `9:00 pm`". Save: "✅ Updated · 💊 **Iron** · daily at `9:00 pm`" | T10 |
-| 8 | Say `add magnesium, 2 tablets at 9pm with food`; press **Cancel** | One card: "**magnesium** (2 tablets) · daily at `9:00 pm` · *with food*" with no ❓ anywhere: what was stated is used exactly | T26 |
-| 9 | Say `show all my pills` and keep it in view; then `remove iron`; press **Remove** | The list, with no buttons. Then a card "💊 Pills · remove" with "**Iron** · … → removed" that says its history is kept; Remove: "🗑️ Removed **Iron**. Its history is kept." and the list above loses Iron, edited in place | T12 |
-| 10 | Say `add pill D to my pills, at 8am and 5pm, not after 4pm`; then, pressing nothing, `not after 6pm`; press **Cancel** | A card with "**Pill D** · daily at `8:00 am`, `5:00 pm`", "Not after `4:00 pm`" and "⚠️ Pill D can't be saved yet: A dose at 5:00 pm would be after the latest time, 4:00 pm." It has **Cancel** only, no Save. After the reply it is replaced by one with "Not after `6:00 pm`", no ⚠️, and **Save** and **Cancel**. Cancel: nothing is saved | R43 |
-| 11 | With Iron no longer on the list, say `add zinc to my pills`; press **Save**. Then say `pause zinc until whenever`; then, pressing nothing, `until friday`; press **Cancel** | After Save zinc is added. Then a card "💊 Pills · change" with "**Zinc** · active → paused until ❔" and "❔ until · I can't read “whenever” as a date. …". It has **Cancel** only, no Save, and there is no bare ⚠️ line in the channel. After the reply it is replaced by one with "paused until" and a date, with **Save** and **Cancel** | R44 |
-
-## 20. Retest: a pill that is already there, and list names
-
-**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
-
-On the dev database (`python main.py --dev`), in #inbox, dev mode off.
-Restart the bot first. Pill A is saved as in block 19, step 2 (not after
-`5:00 pm` if step 4 was saved: then expect that in step 1, and step 2
-changes it back to something else of your choosing). Every step ends by
+On the dev database (`python main.py --dev`), dev mode off, with
+`HUB_CHANNEL_ID` set in `.env` to a channel the bot can post in. Type in
+#inbox unless a step says the hub. The pills table gains one more table
+when the bot starts. The steps move the dev clock: it only goes forward,
+so run them in order, and `dev clock reset` afterwards. Nothing notifies
+you in this block: reminders are the next stage. Every step ends by
 saying what to press.
 
 | # | Do | Expect | Tests |
 |---|---|---|---|
-| 1 | With Pill A saved as in R40: say `add pill A to my pills, 3 times a day at 8am, 11:30 and 3pm, at least 3 hours apart, not after 4pm, without food` again. Press nothing | No card and no "I didn't understand that": "💊 **Pill A** is already in your pills with these settings" with the pill's line under it. Still one Pill A in `my pills` | R45 |
-| 2 | With Pill A saved: say `add pill A to my pills, not after 5pm, with food`; press **Save** | A card "💊 Pills · change": "**Pill A** · already in your pills", then "notes · without food → with food" and "schedule · … not after `4:00 pm` → … not after `5:00 pm`". Save: "✅ Updated · 💊 **Pill A** · …". Still one Pill A | R46 |
-| 3 | With Iron saved at `8:00 am` (say `add iron to my pills at 8am`; **Save**, if it isn't): say `move iron to 8am`. Press nothing | No card, no "I didn't understand that" and not the plain "That's already how it is": "💊 **Iron** is already in your pills with these settings" with Iron's line under it | R47 |
-| 4 | Say `show all my pills`; reply to it with `dev why`. Then say `list my pills`, then `what are my pills?`. Press nothing more | The pills list each time, with no words about it. The `dev why` block reads "route: shortcut", "router: not asked" and "cost: US$0.0000 · 0 request(s)" | S54 |
+| 1 | Restart the bot. Say `remove pill A`; press **Remove** (skip this if there is no Pill A). Then say `add pill A to my pills, 3 times a day at 8am, 11:30 and 3pm, at least 3 hours apart, not after 4pm, without food`; press **Save** | One card, "💊 Pills · new", with two lines: "**Pill A** · 3× daily · `8:00 am`, `11:30 am`, `3:00 pm`" and "At least 3h apart · not after `4:00 pm` · *without food*". No ❓ and no ⚠️. Save: "✅ Saved · 💊 **Pill A** · …" | R40 |
+| 2 | Make sure there is a pill with no time: say `add zinc to my pills`; **Save** (skip if Zinc is there). Then `dev clock 5:59am`, then `dev clock +2m`. Press nothing | Today's checklist appears in the hub without a notification: "## 💊 Pills · ▱▱▱▱▱ 0 of N", the doses with no time first, then the timed ones by time. Under it, one message with **Taken** and **Skip** for each dose with no time, and none for a timed dose | R1 |
+| 3 | Type something in the hub, then type `pills` there. Then type `pills` in #inbox | A fresh copy of the checklist at the bottom of the hub, with its Taken / Skip messages under it; the old checklist and its messages are gone. Typed in #inbox instead: the same, and "💊 Today's checklist is in #hub" where you typed | R48 |
+| 4 | Say `I've taken my Zinc today`. Press nothing; then reply to your message with `dev why` | Never silence: "✅ **Zinc** · taken <time> · …", and Zinc is ticked off on the checklist. The `dev why` block shows it went to pills (if the router said nothing needed doing, a line says the message names 'Zinc') | R50 |
+| 5 | Say `add magnesium and copper to my pills`; press **Save** | The checklist gains "💊 **Copper**" and "💊 **Magnesium**" and the total goes up by two, edited in place; a Taken / Skip message for each appears under it | R49 |
+| 6 | Press **Taken** on Magnesium's message | That message is deleted. The checklist is edited in place: the dose shows ✅ and "taken" with the time, and the bar moves. No new checklist | R2 |
+| 7 | Press **Skip** on Copper's message | The message is deleted; the checklist shows ⏭️ … skipped, and it counts in the bar | R4 |
+| 8 | `dev clock 9:00am`. Say `add course A to my pills, 3 times a day, at least 3 hours apart`; press **Save**. Then say `had course A at 8:12`. Then say `I didn't take course A` | After Save the checklist shows Course A three times, dose 1 with no time (and its own message) and doses 2 and 3 "after dose …". Then "✅ **Course A** (dose 1 of 3) · taken 8:12 am · still to take today: … (dose 2 of 3) `11:12 am` …", and the checklist shows dose 2 at `11:12 am`. Then "↩️ **Course A** (dose 1 of 3) · no longer ticked off · …": dose 1 is pending again, with its Taken / Skip message back | R51 |
+| 9 | Say `took my course A` (so that one dose is ticked off). Then say `pause copper`; press **Save**. Then say `my pills` | Dose 1 of Course A is ✅. Copper's line leaves the checklist and the count, and Copper is under "### ⏸️ Paused" (it was skipped, so it has no message to delete). `my pills` is the read-only list of every pill, with Copper under ⏸️ Paused | R23, S50 |
+| 10 | Say `took my pill A`. Press nothing | "✅ **Pill A** (dose 1 of 3) · taken 9:0… am · still to take today: …" with dose 2 at the later of `11:30 am` and three hours after the time taken. (A timed dose has no buttons yet: that comes with reminders) | R3 |
+| 11 | Restart the bot (still `--dev`); type `dev jobs`. Then say `took my pill A` again | No second checklist and no second set of messages in the hub. `dev jobs` shows one `pills/checklist` job, for the next 6:00 am. The second dose of Pill A is ticked off on the same checklist message | R27 |
+| 12 | `dev clock 11:59pm`, then `dev clock +2m`. Look at the hub; then `dev clock 6:00am` | The untouched doses show ❌ missed on yesterday's checklist, which is otherwise left as it was; their own messages are deleted. `dev clock 6:00am` then posts a fresh checklist for the new day, everything pending | R26 |
 
 ## When you finish
 

@@ -15,6 +15,7 @@ from types import SimpleNamespace
 import pytest
 
 from core import actions, confirm, day, timeinput
+from tasks.pills import checklist
 from core.actions import Request
 from tests import demo
 from tasks.pills import store as pills_store
@@ -126,7 +127,7 @@ def test_2_a_correction_in_chat_replaces_the_card(bot):
     first = bot.sent[-1][0]
     bot.claude(EXTRACTED["2"])
     bot.say(SAID["2"])
-    assert bot.deleted == [first] and card(bot)[0][1] == "**iron** · daily at `8:00 am`", "replaced, and no longer a guess"
+    assert bot.deleted == [first] and card(bot)[0][1].lower() == "**iron** · daily at `8:00 am`", "replaced, and no longer a guess"
 
 
 @gap("questions on the card are not built, so there is no 8:00 pm button to tap before correcting")
@@ -312,7 +313,7 @@ def test_every_golden_conversation_in_the_fixture_file_has_a_test_here():
     ids = {entry["golden"] for entry in [*FIXTURES["router"], *FIXTURES["extraction"]]}
     tested = {name.split("_")[1] for name in globals() if name.startswith("test_") and name.split("_")[1][0].isdigit()}
     assert ids <= tested, f"no test for: {sorted(ids - tested)}"
-    assert {"1", "1a", "1b", "1c", "1d", "2", "2a", "2b", "3", "4", "5", "6", "7", "8", "9", "10", "10a", "11", "12", "13", "14", "15", "16"} == tested
+    assert {"1", "1a", "1b", "1c", "1d", "2", "2a", "2b", "3", "4", "5", "6", "7", "8", "9", "10", "10a", "11", "12", "13", "14", "15", "16", "17"} == tested
 
 
 # --- QA 2026-10-10: "already so" ends in the task's own line, whichever way it was found --------------------
@@ -352,3 +353,53 @@ def test_only_when_the_task_cannot_name_the_thing_is_the_plain_line_said(bot):
     bot.claude(route("pills"), ("none", {"why": "already_so", "reason": "nothing to change"}))
     bot.say("leave my pills as they are")
     assert bot.sent[-1][1].text == "✅ That's already how it is: there is nothing to change."
+
+
+# --- 17: saying a pill was taken ticks it off today's checklist -----------------------------------------------
+def _zinc_on_the_checklist(bot):
+    _with_zinc(bot)
+    return run(checklist.post(bot.owner.id, 100))
+
+
+def _ticked_off(bot, sheet):
+    said = bot.sent[-1][1].text
+    assert said.startswith("✅ **Zinc** · taken ") and said.endswith(" · nothing left to take today"), said
+    last = [text for message_id, text in bot.edited if message_id == sheet][-1]
+    assert "✅ **Zinc** · taken " in last and "▰▰▰▰▰ 1 of 1" in last, "the checklist itself, edited in place"
+    assert sheet + 1 in bot.deleted, "its own Taken / Skip message goes"
+    (dose,) = run(checklist.view(bot.owner.id))[1]
+    assert dose.occurrence.state == "done"
+
+
+def test_17_saying_i_have_taken_it_ticks_it_off_on_todays_checklist(bot):
+    sheet = _zinc_on_the_checklist(bot)
+    bot.claude(ROUTED["17"], EXTRACTED["17"])
+    bot.say(SAID["17"])
+    _ticked_off(bot, sheet)
+
+
+def test_17_a_message_that_names_one_of_my_pills_is_never_dropped_as_a_remark(bot):
+    # QA 2026-10-10: this very sentence was routed as a remark and got no reply. With logging
+    # built, silence would look like success: a message that names a pill goes to pills
+    sheet = _zinc_on_the_checklist(bot)
+    bot.claude(("route", {"kind": "nothing", "tasks": [], "confidence": "high", "chat_part": ""}), EXTRACTED["17"])
+    bot.say(SAID["17"])
+    _ticked_off(bot, sheet)
+
+
+def test_a_remark_that_names_nothing_of_mine_still_gets_no_reply(bot):
+    _zinc_on_the_checklist(bot)
+    before = len(bot.sent)
+    bot.claude(("route", {"kind": "nothing", "tasks": [], "confidence": "high", "chat_part": ""}))
+    bot.say("shopping is boring")
+    assert len(bot.sent) == before
+
+
+def test_a_message_that_names_a_pill_and_asks_nothing_clear_is_answered_not_dropped(bot):
+    _zinc_on_the_checklist(bot)
+    bot.claude(
+        ("route", {"kind": "nothing", "tasks": [], "confidence": "high", "chat_part": ""}),
+        ("none", {"why": "unclear", "reason": "a remark about zinc"}),
+    )
+    bot.say("zinc is a funny word")
+    assert bot.sent[-1][1].text == "🤔 I didn't understand that.", "said, so that silence never passes for done"

@@ -1,5 +1,6 @@
 import json
 import sqlite3
+from dataclasses import dataclass
 from datetime import date, datetime, time
 
 from core import database
@@ -72,9 +73,30 @@ def one_schedule_model(conn: sqlite3.Connection) -> None:
     conn.execute("ALTER TABLE pills_pills DROP COLUMN kind")
 
 
+def checklist_messages(conn: sqlite3.Connection) -> None:
+    # Where today's checklist is, and the message of its own that each dose
+    # with no time has under it, so both are found again after a restart
+    conn.execute(
+        """
+        CREATE TABLE pills_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            day TEXT NOT NULL,
+            kind TEXT NOT NULL,
+            occurrence_id INTEGER,
+            channel_id INTEGER NOT NULL,
+            message_id INTEGER NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute("CREATE INDEX pills_messages_day ON pills_messages (user_id, day)")
+
+
 MIGRATIONS = [
     create_tables,
     one_schedule_model,
+    checklist_messages,
 ]
 
 
@@ -202,6 +224,60 @@ def db_set_status(
     return db_pill(conn, pill_id)
 
 
+# ---------------------------------------------------------------------------
+# The checklist's messages (blocking)
+# ---------------------------------------------------------------------------
+CHECKLIST, DOSE = "checklist", "dose"
+
+
+@dataclass(frozen=True)
+class Message:
+    user_id: int
+    day: date
+    kind: str  # CHECKLIST, or DOSE for the message of one dose with no time
+    occurrence_id: int | None  # the dose, for a DOSE message
+    channel_id: int
+    message_id: int
+
+
+_MESSAGE_COLUMNS = "user_id, day, kind, occurrence_id, channel_id, message_id"
+
+
+def _message(row: tuple) -> Message:
+    return Message(row[0], date.fromisoformat(row[1]), row[2], row[3], row[4], row[5])
+
+
+def db_messages(conn: sqlite3.Connection, user_id: int, day: date) -> list[Message]:
+    rows = conn.execute(
+        f"SELECT {_MESSAGE_COLUMNS} FROM pills_messages WHERE user_id = ? AND day = ? ORDER BY id", (user_id, day.isoformat())
+    ).fetchall()
+    return [_message(row) for row in rows]
+
+
+def db_messages_before(conn: sqlite3.Connection, day: date) -> list[Message]:
+    """Every user's messages from days before `day`, oldest first."""
+    rows = conn.execute(f"SELECT {_MESSAGE_COLUMNS} FROM pills_messages WHERE day < ? ORDER BY id", (day.isoformat(),)).fetchall()
+    return [_message(row) for row in rows]
+
+
+def db_add_message(
+    conn: sqlite3.Connection, user_id: int, day: date, kind: str, occurrence_id: int | None, channel_id: int, message_id: int
+) -> None:
+    conn.execute(
+        "INSERT INTO pills_messages (user_id, day, kind, occurrence_id, channel_id, message_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (user_id, day.isoformat(), kind, occurrence_id, channel_id, message_id, to_db(utc_now())),
+    )
+
+
+def db_drop_message(conn: sqlite3.Connection, message_id: int) -> None:
+    conn.execute("DELETE FROM pills_messages WHERE message_id = ?", (message_id,))
+
+
+def db_users(conn: sqlite3.Connection) -> list[int]:
+    """The users who have a pill that hasn't been removed."""
+    return [row[0] for row in conn.execute("SELECT DISTINCT user_id FROM pills_pills WHERE status != ? ORDER BY user_id", (REMOVED,))]
+
+
 def db_delete(conn: sqlite3.Connection, pill_id: int) -> None:
     """Delete a pill and the record of its changes, for good. Its doses are the
     occurrence log's to delete (occurrences.db_delete_item), in the same transaction."""
@@ -230,6 +306,16 @@ def db_last_changed(conn: sqlite3.Connection, user_id: int) -> int | None:
         (user_id,),
     ).fetchone()
     return found[0] if found else None
+
+
+def db_message_kind(conn: sqlite3.Connection, message_id: int) -> str | None:
+    found = conn.execute("SELECT kind FROM pills_messages WHERE message_id = ?", (message_id,)).fetchone()
+    return found[0] if found else None
+
+
+async def message_kind(message_id: int) -> str | None:
+    """CHECKLIST or DOSE if this is one of the checklist's messages, else None."""
+    return await database.run(db_message_kind, message_id)
 
 
 async def pills(user_id: int) -> list[Pill]:

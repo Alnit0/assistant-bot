@@ -10,7 +10,7 @@ from core import actions, database, day, livelists, timeinput
 from core.actions import LiveReply, Request
 from core.errors import UserError
 from tasks import registry
-from tasks.pills import plain, rules, store
+from tasks.pills import checklist, plain, rules, store
 from core.schedule import Schedule
 from tasks.pills.rules import ACTIVE, PAUSED, REMOVED
 
@@ -22,6 +22,7 @@ def world(make_db, monkeypatch, owner):
     make_db({"pills": store.MIGRATIONS})
     changed = []
     monkeypatch.setattr(livelists, "changed", lambda user_id, key, render: changed.append((user_id, key)))
+    monkeypatch.setattr(checklist, "changed", lambda user_id: None)  # the checklist has its own tests
     return SimpleNamespace(owner=owner, changed=changed, request=lambda **more: Request(owner, HUB, "said", **more))
 
 
@@ -77,11 +78,14 @@ def test_the_pills_task_meets_the_contract_and_every_change_needs_a_card():
     assert entry is not None and (entry.icon, entry.title) == ("💊", "Pills") and "Not shopping" in entry.only_for
     assert [(action.name, action.needs_card) for action in entry.actions] == [
         ("pill_add", True), ("pill_edit", True), ("pill_pause", True), ("pill_resume", True),
-        ("pill_remove", True), ("pill_delete", True), ("pill_list", False),
+        ("pill_remove", True), ("pill_delete", True), ("pill_log", False), ("pill_today", False), ("pill_list", False),
     ]
     assert actions.problems([entry]) == [] and registry.problems() == []
-    for action in entry.actions[:-1]:
+    for action in entry.actions[:6]:
         assert action.field("pills").type == actions.ITEMS, "one request can hold several pills"
+    assert entry.action("pill_log").field("doses").type == actions.ITEMS, "and several doses"
+    assert {"took my zinc", "I've taken my zinc today", "had pill A at 9", "I didn't take zinc"} <= set(entry.examples)
+    assert "never a remark" in entry.only_for and entry.names is not None
 
 
 # --- laying a change over a card (pure) ---------------------------------------------------

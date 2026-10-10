@@ -220,9 +220,15 @@ class Task:
         return [
             Entry(
                 self.name, self.icon, self.only_for, tuple(self.examples), found, self.hint, self.action_state, self.show,
-                self.already_so,
+                self.already_so, self.item_names,
             )
         ]
+
+    async def item_names(self, request: Request) -> list[str]:
+        """The names of the user's things this task holds now (their pills, their
+        running timers). A message that names one is never taken for a remark
+        and dropped: it comes to this task, which acts on it or says why not."""
+        return []
 
     async def already_so(self, request: Request, about: str) -> str | None:
         """The task's line for a request that changes nothing because it is

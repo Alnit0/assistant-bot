@@ -11,21 +11,19 @@ session; the end-of-task checklist updates it at the end of every task.
   passed its retest and is committed: the old path is removed).
 - Pills stage 1 is committed: the schedule model in core
   (`core/schedule.py`) with pill setup moved onto it.
-- Committed: lengths and times handed over structured, and cards with
-  no Save for what can't be read or can't fit. Block 19 was rerun:
-  10 of 11 passed, with two findings.
-- In hand, uncommitted, for those findings: adding a pill that is
-  already there (said in a line, or a change card), a decline that
-  names its kind instead of "didn't understand", and "show all my
-  pills" as the free list shortcut. Block 20, step 1 half-passed (the
-  plain "already how it is" line was said): every way of finding that
-  nothing would change now ends in the task's own line. Paused for the
-  retest of block 20 of `docs/QA-RUN.md` (4 steps).
+- Committed: lengths and times handed over structured, cards with no
+  Save for what can't be read or can't fit, a pill that is already
+  there, declines that name their kind. Blocks 19 and 20 passed
+  (one row, R40, still needs a database with no Pill A).
+- In hand, uncommitted and paused for QA (block 21 of
+  `docs/QA-RUN.md`): pills stage 2, the daily checklist, with dose
+  logging by message. Starting the bot runs one pills migration, and
+  it needs `HUB_CHANNEL_ID` to post by itself.
 - Tests: `python -m pytest -q` passes. Golden conversations 1c, 1d
   and 2a are marked as gaps (they need questions on the card, G1).
-  The pills live eval of 2026-10-10: 40 of 41; the miss is a known one
-  that the code covers.
-- Live eval spend to date: about US$3.06.
+  The live evals of 2026-10-10: pills 50 of 51, golden 32 of 33; each
+  miss is a known one that the code covers.
+- Live eval spend to date: about US$3.35.
 
 ## Current goal
 
@@ -40,10 +38,16 @@ No new features, tools or dev commands until pills reminders work
 
 ## Recently done
 
-- Pills stage 1: one schedule model for every pill (doses a day, planned
-  times, minimum gap, latest time) and when each dose is due, in core,
-  with the spec's worked example as unit tests; the cards, the list and
-  the database moved onto it.
+- Pills stage 2: today's checklist in the hub at 6:00 am, edited in
+  place, with Taken / Skip for doses with no time, logging by message,
+  `pills` for a fresh copy, changes during the day, the end of the
+  day, and nothing doubled by a restart.
+- A message that names one of my pills or timers is never dropped as
+  a remark (golden conversation 17).
+- Adding what is already there, and declines that name their kind.
+- Lengths and times handed over structured; cards with no Save.
+- Pills stage 1: one schedule model for every pill, and when each
+  dose is due, in core.
 - One path for every message: the old way (Claude with every tool) and
   the demo lists are removed; `pills` is a read-only Live list.
 - A task's name on its own shows its list; chat has no access to data
@@ -54,15 +58,11 @@ No new features, tools or dev commands until pills reminders work
 
 ## Next up
 
-1. The retest (block 20), then the commit of what is in hand.
-2. Pills stage 2, the daily checklist, with dose logging by message
-   (the go is given). With it: logging examples in pills' router
-   entry; a message that names one of my pills or timers is never
-   routed as "nothing"; a golden conversation, "I've taken my Zinc
-   today" ticks Zinc off today's checklist. Then a QA block.
-3. Pills stage 3, reminders, then corrections and questions, each on
-   a go.
-4. Step 5, after pills reminders: write the standard into the task
+1. QA of pills stage 2 (block 21), then its commit.
+2. Pills stage 3, reminders (prompts at each dose's time, snooze,
+   re-nudges, missed, take-by, automatic skips, the latest time, the
+   too-soon question), on a go. Then corrections and questions.
+3. Step 5, after pills reminders: write the standard into the task
    contract and docs, drop the contract's unused `hint`, and replace the
    `add-task` skill with `new-task` (which reads the Scaling notes
    first) and `task-check`; run `task-check` on timers, bugs and pills.

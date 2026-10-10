@@ -138,8 +138,8 @@ def entry(**changes):
     [
         (entry(icon=""), "things: needs an icon"),
         (entry(only_for=" "), "things: needs an \"only for\" line"),
-        (entry(examples=("one",)), "things: needs 2 to 3 example phrases, not 1"),
-        (entry(examples=("a", "b", "c", "d")), "things: needs 2 to 3 example phrases, not 4"),
+        (entry(examples=("one",)), "things: needs 2 to 8 example phrases, not 1"),
+        (entry(examples=tuple("abcdefghi")), "things: needs 2 to 8 example phrases, not 9"),
         (entry(actions=()), "things: has no actions"),
         (entry(name="My Things"), "an entry's name is one lower-case word"),
         (entry(actions=(Action("thing_add", "Add.", prepare=prepare),)), "needs both `prepare` (the card) and `apply` (Save)"),

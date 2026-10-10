@@ -235,6 +235,22 @@
         "confidence": "high",
         "chat_part": ""
       }
+    },
+    {
+      "message": "I've taken my Zinc today",
+      "tasks": [
+        "pills"
+      ],
+      "golden": "17",
+      "note": "a request to tick Zinc off, not a remark. If the router ever says nothing here, the code still sends it to pills: the message names one of my pills",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
     }
   ],
   "extraction": [
@@ -300,7 +316,7 @@
         {
           "pills": [
             {
-              "name": "course A",
+              "name": "Course A",
               "per_day": 3,
               "min_gap_minutes": 180,
               "notes": "with food",
@@ -335,7 +351,7 @@
         {
           "pills": [
             {
-              "name": "Vitamin D",
+              "name": "vitamin D",
               "per_day": 1
             }
           ],
@@ -366,7 +382,7 @@
         {
           "pills": [
             {
-              "name": "iron",
+              "name": "Iron",
               "times": [
                 "8:00"
               ]
@@ -538,10 +554,12 @@
       "recorded": [
         "timer_change",
         {
-          "which": "t1",
+          "which": "@that",
           "action": "extend",
           "duration": "2m",
-          "guessed": [],
+          "guessed": [
+            "duration"
+          ],
           "not_included": []
         }
       ],
@@ -678,8 +696,7 @@
         {
           "items": [
             {
-              "item": "milk",
-              "change": "add"
+              "item": "milk"
             }
           ],
           "guessed": [],
@@ -806,6 +823,33 @@
           "pills": [
             {
               "pill": "pl1"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "I've taken my Zinc today",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Zinc · daily, any time [active]",
+      "action": "pill_log",
+      "data": {
+        "doses": [
+          {
+            "did": "taken"
+          }
+        ]
+      },
+      "golden": "17",
+      "recorded": [
+        "pill_log",
+        {
+          "doses": [
+            {
+              "pill": "pl1",
+              "did": "taken"
             }
           ],
           "guessed": [],

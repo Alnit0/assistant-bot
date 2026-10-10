@@ -414,6 +414,23 @@ def test_only_a_name_and_nothing_else_asks_to_see_the_list(said, expected):
     assert (found.name if found else None) == expected
 
 
+@pytest.mark.parametrize(
+    "said, names, named",
+    [
+        ("I've taken my Zinc today", ["Iron", "Zinc"], "Zinc"),
+        ("had pill a at 9", ["Pill A"], "Pill A"),
+        ("tea is nearly done", ["tea"], "tea"),
+        ("zincs are boring", ["Zinc"], None),  # part of another word
+        ("I took vitamin   d", ["Vitamin D"], "Vitamin D"),
+        ("shopping is boring", ["Zinc", "tea"], None),
+        ("that was a good day", ["a", "D"], None),  # too short to be sure of
+        ("anything", [], None),
+    ],
+)
+def test_a_message_names_one_of_my_things_only_as_a_whole_name(said, names, named):
+    assert routing.names_item(said, names) == named
+
+
 def test_every_task_that_has_a_list_says_which_action_shows_it():
     shows = {entry.name: entry.show for entry in ALL}
     assert shows == {"shopping": "demo_shop_list", "packing": "demo_pack_list", "bugs": "bug_list", "pills": "pill_list", "timers": "timer_list"}

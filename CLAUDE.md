@@ -114,8 +114,16 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   other tasks still start. Keep it that way
 - The assistant's name comes from `ASSISTANT_NAME`; never hard-code it
 - A pill's plan never changes unseen: every change is a confirm card, and
-  only Save writes it. Keep setup simple: it is rare. The `pills`
-  word and "my pills" show the same read-only Live list
+  only Save writes it. Keep setup simple: it is rare. "My pills" shows
+  the read-only Live list of every pill; the word `pills` posts today's
+  checklist
+- Today's pills checklist is one message, edited in place, and never the
+  record: a dose is a row of the occurrence log, and the checklist is
+  written again from the pills and those rows each time
+  (`tasks/pills/today.py`). When a dose is due today is worked out from
+  the plan and what was taken (`core/schedule.py`), never stored as the
+  truth. There is only ever one checklist for today
+  (`tasks/pills/checklist.py` keeps where it is in `pills_messages`)
 - Claude does the reading, and hands over structured values: a length of
   time as whole minutes (`actions.MINUTES`) and a time of day in the one
   fixed form (`actions.TIME`, `TIMES`: `8:00 pm`, or `8:00` when I gave
@@ -318,11 +326,16 @@ Input
   extraction fills in the details, and the task's own code does it and
   writes every word. One confirmation only: the card. Never "I'm
   proposing…" or "reply ok".
-- A task's or list's name on its own ("pills", "my pills", "timers"),
-  or a plain request to see it ("show my timers", "show all my pills",
-  "list my pills", "what are my pills"), shows what that task has, Live,
-  from Python, with no request to Claude (`routing.named_alone`, the
-  task's `show` action).
+- A task's or list's name on its own ("my pills", "timers", "shopping
+  list"), or a plain request to see it ("show my timers", "show all my
+  pills", "list my pills", "what are my pills"), shows what that task
+  has, Live, from Python, with no request to Claude
+  (`routing.named_alone`, the task's `show` action). The typed word
+  `pills` is the exception: it posts today's checklist.
+- A message that names one of my things (a pill, a running timer) is
+  never routed as "nothing" and dropped: it goes to the task that holds
+  the thing, which acts on it or says why not (`Task.item_names`,
+  `routing.names_item`). Silence must never be able to pass for "done".
 - Which task is meant: what I state decides it; otherwise Claude judges
   from my wording, what is on screen and the recent conversation. A
   wrong-task card is easy to fix ("no, shopping"), so it is a safe

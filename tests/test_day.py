@@ -157,7 +157,7 @@ def test_a_task_that_overrides_new_day_is_a_listener(monkeypatch):
 
     assert type(Plain()).new_day is Task.new_day
     assert type(Daily()).new_day is not Task.new_day
-    # No task in the repository listens yet: loading registers none
+    # Pills is the one task that listens so far (the end of the day closes its checklist)
     monkeypatch.setattr(day, "_listeners", {})
     registry.load()
-    assert day._listeners == {}
+    assert set(day._listeners) == {"pills"}

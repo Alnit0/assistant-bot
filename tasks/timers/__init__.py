@@ -107,6 +107,17 @@ class TimersTask(Task):
     async def action_state(self, request):
         return await plain.state(request)
 
+    async def item_names(self, request):
+        # The names the user gave their running timers ("tea"): a message that says one is for
+        # this task. A timer with no name is known by its length, which names nothing
+        found = []
+        for timer in await store.active_timers(user_id=request.user.id):
+            try:
+                parse_duration(timer.label)
+            except DurationError:
+                found.append(timer.label)
+        return found
+
     def keywords(self) -> list[Keyword]:
         return [
             Keyword(

@@ -91,14 +91,20 @@ def load() -> tuple[list[RouterFixture], list[ExtractionFixture]]:
     return routers, extractions
 
 
+def _key(entry: dict) -> str:
+    """What tells one fixture from another: the message and what it was said against."""
+    return json.dumps([entry.get(name) or None for name in ("message", "state", "card", "on_screen", "earlier", "moved")], sort_keys=True)
+
+
 def save_recorded(routers: list[RouterFixture], extractions: list[ExtractionFixture]) -> None:
     """Write what Claude returned back into the fixture files, beside what was expected."""
     for path in sorted(FOLDER.glob("*.json")):
         content = json.loads(path.read_text(encoding="utf-8"))
         for kind, fixtures in (("router", routers), ("extraction", extractions)):
-            by_message = {fixture.message: fixture for fixture in fixtures if fixture.file == path.stem}
+            # The same sentence may be a fixture twice, with another state or card: each keeps its own answer
+            found = {_key(vars(fixture)): fixture for fixture in fixtures if fixture.file == path.stem}
             for entry in content.get(kind, []):
-                fixture = by_message.get(entry["message"])
+                fixture = found.get(_key(entry))
                 if fixture is not None and fixture.recorded is not None:
                     entry["recorded"] = fixture.recorded
         path.write_text(json.dumps(content, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

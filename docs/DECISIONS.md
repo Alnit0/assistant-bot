@@ -720,6 +720,28 @@ A short log of key decisions and why. Newest at the bottom.
     code says it when it finds nothing would change, and for a decline
     the `none` tool also says what it is about (an id or a name), which
     the task looks up. Core's line is only the fallback.
+  - **The checklist is a view, never the record (2026-10-10).** A dose
+    is an occurrence; the checklist and each reply are written from the
+    pills and the day's occurrences every time, and when a dose is due
+    today is worked out from the plan and what was taken, not stored. So
+    a restart, a late job or a second `pills` can't make a second dose
+    or a second checklist: `db_ensure` never makes one twice, and where
+    the messages are is in `pills_messages`. The bot's own messages are
+    checked before posting: one there already is refreshed, not posted
+    again.
+  - **The word `pills` is today's checklist; "my pills" is the list of
+    every pill.** The list's name still shows the list for free; the
+    typed word is what is used every day.
+  - **Logging by message acts at once, with no card:** it is about
+    today's doses, not the plan, and a wrong one is put right by saying
+    so ("I didn't take zinc").
+  - **A message that names one of my things is never "nothing".** The
+    router once took "I've taken my Zinc today" for a remark; with
+    logging built, silence would look like success. Each task gives the
+    names of what it holds, and code sends such a message to its task.
+    It is a check on the router, not a way of understanding the message.
+  - **An entry may have up to 8 example phrases** (it was 3): pills
+    needed its logging phrases in the router's catalogue.
   - The `kind` column of `pills_pills` is dropped and `latest_time` added,
     in one appended migration; the other columns mean what they did, so
     no row needed rewriting.

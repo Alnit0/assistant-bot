@@ -1,12 +1,12 @@
 from dataclasses import dataclass, field, replace
 from datetime import date
 
-from core import day, livelists, occurrences, timeinput
-from core.actions import BOOLEAN, INTEGER, ITEMS, LAST, MINUTES, TIME, TIMES, Action, Field, LiveReply, Proposal, Request, State
+from core import clock, day, hub, livelists, occurrences, timeinput
+from core.actions import BOOLEAN, INTEGER, ITEMS, LAST, MINUTES, TIME, TIMES, Action, Field, LiveReply, Proposal, Request, Shown, State
 from core.actions import flag, is_guessed
 from core.actions import is_reference, point_at
 from core.errors import UserError
-from tasks.pills import rules, store
+from tasks.pills import checklist, rules, store, today
 from tasks.pills.rules import ACTIVE, ENDED, PAUSED, REMOVED, Pill, Plan, TimeQuestion
 
 # ---------------------------------------------------------------------------
@@ -37,10 +37,14 @@ ICON = "💊"
 LIST_KEY = "pills"
 ONLY_FOR = (
     "Pills, vitamins, supplements and medicines the user takes: setting one up, changing when or how it "
-    "is taken, pausing, resuming or removing it, and listing them. Not shopping for them, and not timers, "
-    "general reminders or to-dos."
+    "is taken, pausing, resuming or removing it, listing them, saying that one was taken, skipped or not "
+    "taken today (\"took my zinc\" is a request to tick it off, never a remark), and asking what is left "
+    "to take today. Not shopping for them, and not timers, general reminders or to-dos."
 )
-EXAMPLES = ("add vitamin D once a day with food", "move the evening pill to 9pm", "pause iron until the 20th")
+EXAMPLES = (
+    "add vitamin D once a day with food", "move the evening pill to 9pm", "pause iron until the 20th",
+    "took my zinc", "I've taken my zinc today", "had pill A at 9", "I didn't take zinc",
+)
 HINT = "Try saying its name and when you take it, e.g. “add iron at 8am”."
 
 PLAN_FIELDS = ("name", "dose", "notes", "times", "per_day", "min_gap", "latest", "start", "end", "days")
@@ -193,6 +197,8 @@ def _changed(user_id: int) -> None:
         return rules.list_text(await store.pills(user_id), day.today())
 
     livelists.changed(user_id, LIST_KEY, render)
+    # Today's checklist follows the plan straight away: a pill added, changed, paused or removed
+    checklist.changed(user_id)
 
 
 async def _pointed(request: Request, items: list[dict], key: str) -> tuple[list[dict], str | None]:
@@ -692,6 +698,92 @@ async def state(request: Request) -> State:
 
 
 # ---------------------------------------------------------------------------
+# Today: logging a dose by saying so, and the checklist
+# ---------------------------------------------------------------------------
+def _moment(said: str, now, not_before):
+    """When a dose was taken, from the time given: today, not in the future and
+    not before the dose before it. A time that could be morning or evening
+    is the most recent one that can be right (at 9 pm, "8" is 8:00 pm)."""
+    try:
+        return timeinput.actual_moment(said, now, not_before)
+    except timeinput.AmbiguousTime as unsure:
+        today_ = day.day_of(now)
+        possible = [day.at(today_, option) for option in unsure.options]
+        return max(moment for moment in possible if moment <= now and (not_before is None or moment >= not_before))
+
+
+def _not_today(pill: Pill, today_: date) -> str:
+    state = rules.status_on(pill, today_)
+    if state == PAUSED:
+        return f"⏸️ **{pill.plan.name}** is paused: there is nothing to tick off today."
+    if state == ENDED:
+        return f"🏁 **{pill.plan.name}** has ended: there is nothing to tick off."
+    return f"🗓️ **{pill.plan.name}** starts {timeinput.format_date(pill.plan.start)}: there is nothing to tick off today."
+
+
+async def log_doses(request: Request, data: dict, guessed: frozenset) -> str:
+    """ "took my zinc", "had pill A at 9", "skip magnesium today", "I didn't take
+    zinc": done at once, with no card (it is about today's doses, not the
+    plan), read back before it is said, and the checklist follows."""
+    user_id = request.user.id
+    said, changed = [], False
+    for item in data["doses"]:
+        pills, listed, today_ = await checklist.view(user_id)
+        try:
+            if is_reference(item.get("pill")):
+                raise UserError("Which pill? Say its name.")
+            pill = rules.find(pills, str(item["pill"]))
+        except UserError as error:
+            said.append(f"⚠️ {error}")
+            continue
+        if not rules.is_taken_on(pill, today_):
+            said.append(_not_today(pill, today_))
+            continue
+        did, now = item["did"], clock.now()
+        taken, pending = today.last_taken(listed, pill.id), today.next_pending(listed, pill.id)
+        if did == checklist.NOT_TAKEN:
+            if taken is None:
+                said.append(f"💊 **{pill.plan.name}** isn't ticked off today: there is nothing to change.")
+                continue
+            dose, at = taken, now
+        elif pending is None:
+            # Already so: named and shown, as it stands on the checklist
+            already = taken if did == checklist.TAKEN and taken is not None else None
+            said.append(f"{today.line(already)} already" if already else f"💊 **{pill.plan.name}** has nothing left to take today.")
+            continue
+        else:
+            dose, at = pending, now
+            if did == checklist.TAKEN and str(item.get("at", "")).strip():
+                try:
+                    at = _moment(str(item["at"]), now, taken.occurrence.actual_at if taken else None)
+                except UserError as error:
+                    said.append(f"⚠️ {rules.plain(dose.label)}: {error}")
+                    continue
+        after = await checklist.mark(dose, did, at, occurrences.MESSAGE)
+        said.append(checklist.marked_text(after, did))
+        changed = True
+    if changed:
+        checklist.changed(user_id)
+        _, listed, _ = await checklist.view(user_id)
+        said[-1] += f" · {today.left_text(listed)}"
+    return "\n".join(said)
+
+
+async def show_today(request: Request, data: dict, guessed: frozenset) -> Shown:
+    """ "what pills do I have left today?": a fresh copy of today's checklist,
+    in the hub (where it was asked, if no hub is set)."""
+    await checklist.post(request.user.id, request.channel_id)
+    where = hub.channel_id()
+    elsewhere = where is not None and where != request.channel_id
+    return Shown("posted today's checklist", f"💊 Today's checklist is in <#{where}>." if elsewhere else "")
+
+
+async def names(request: Request) -> list[str]:
+    """The names of the user's pills: a message that says one is for this task."""
+    return [pill.plan.name for pill in rules.listed(await store.pills(request.user.id))]
+
+
+# ---------------------------------------------------------------------------
 # The actions
 # ---------------------------------------------------------------------------
 AS_SAID = "exactly as the user said it (tomorrow, friday, the 20th): never work out a date. The code reads it."
@@ -815,6 +907,33 @@ ACTIONS = (
         prepare=delete_card,
         apply=delete_save,
         verify=delete_check,
+    ),
+    Action(
+        "pill_log",
+        "The user says they took, skipped or did not take a pill TODAY. Examples: \"took my zinc\" -> pill "
+        "zinc, did taken. \"I've taken my zinc today\" -> pill zinc, did taken. \"had pill A at 9\" -> pill "
+        "pill A, did taken, at 9:00. \"took iron and vitamin D\" -> one item each. \"skip magnesium today\" -> "
+        "did skipped. \"I didn't take zinc\", \"I haven't actually taken zinc\" -> did not_taken (it is marked "
+        "as still to take). Never for changing when a pill is taken from now on: that is pill_edit.",
+        (
+            Field(
+                "doses", "Each pill that was taken, skipped or not taken, one item each, in the order said.", ITEMS, required=True,
+                item_fields=(
+                    _WHICH,
+                    Field("did", "What happened to today's dose.", choices=(checklist.TAKEN, checklist.SKIP, checklist.NOT_TAKEN), required=True),
+                    Field("at", "For taken only: the time it was taken, if the user gave one. Leave out for just now.", TIME),
+                ),
+            ),
+        ),
+        needs_card=False,
+        run=log_doses,
+    ),
+    Action(
+        "pill_today",
+        "The user asks what is left to take today, or to see today's checklist (\"what pills do I have left "
+        "today?\", \"what's left to take?\", \"have I taken everything?\").",
+        needs_card=False,
+        run=show_today,
     ),
     Action(
         "pill_list",

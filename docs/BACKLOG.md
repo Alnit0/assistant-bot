@@ -94,6 +94,7 @@ a schema could take its place.
 | Where | What it reads | Why it is there | Replace with a schema change? |
 |---|---|---|---|
 | `routing.named_alone` | A task's name alone, or after "show", "list", "see", "open", "what are my" | Shows a list with no request at all | No: its point is to ask nothing |
+| `routing.names_item` | One of my pills' or running timers' names, whole, in a message the router called "nothing" | A message that names one of my things is never dropped in silence | No: it checks the router, and only says whose the message is |
 | `routing.named_destinations` | "to my pills", "on the shopping list" | A destination I name decides the task, whatever the router says | Partly: the router could return `named` beside the task; kept in code because the router got it wrong in QA |
 | `confirm.redirect` (`_NO`, `_FOR`) | "no, shopping", "I meant packing", "shopping instead" | Moves a card to another task with one request instead of two | Partly: the follow-up extraction already has `not_this`; this only saves the router's request |
 | `confirm.is_correction` (`_CORRECTION`) | A message that starts "no, …" | Undoes the card's last change before applying the correction | Yes: a `corrects` yes/no in the follow-up's answer |
@@ -126,9 +127,31 @@ a schema could take its place.
   read, with the reason and no Save; one reply puts it right. When
   questions on the card exist (G1) this could offer the likely fixes as
   buttons instead.
-- **R1 to R27 in `docs/TESTING.md` still describe the old pills plan**
-  (a dropdown on the checklist, stages 3 to 6). Rewrite them from the
-  spec's acceptance tests as the checklist and reminders are built.
+- **R5 to R22 and R25 in `docs/TESTING.md` still describe the old pills
+  plan** (stages 4 to 6). Rewrite them from the acceptance tests as
+  reminders and corrections are built. (R1 to R4, R23, R26 and R27 were
+  rewritten with the checklist, 2026-10-10.)
+- **For step 5: "adding something that already exists" as a core
+  pattern** (asked for 2026-10-10; not now). Each task declares in its
+  contract an identity (which fields make two items the same) and an
+  `on_repeat` rule: update, add_to_amount, allow_another, or ask (once
+  G1 exists). Core does the matching, the replies, the cards and the
+  sums. The `new-task` skill asks for both, and `task-check` checks
+  every task declares them. Pills already behaves as identity: name,
+  on_repeat: update, in its own code (`plain._known`, `add_card`).
+- **Left for pills stage 3, with reminders** (the checklist shows the
+  doses but does not yet act on the rules of the day): a dose that can no
+  longer fit is not skipped automatically; there is no take-by hint;
+  taking a dose sooner than the gap is not asked about; a pill's latest
+  time does not end its day (untouched doses are missed at midnight). A
+  timed dose has no buttons until it has a prompt: until then it is
+  ticked off by saying so.
+- **Left for pills stage 4**: changing the time of a dose already ticked
+  off ("I took it at 9, not 10"), "undo that", and "it" for a dose
+  ("took it" names no pill: the bot asks which).
+- **The section provider interface** (for a morning brief) is not built:
+  nothing would use it yet. `core/hub.py` has the hub channel and the
+  progress bar only.
 - **"How long is left on tea?" shows whole minutes only** (asked for
   2026-10-10). Use the same format as the paused card ("4m 18s left"),
   so time remaining reads the same everywhere.

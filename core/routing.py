@@ -219,6 +219,21 @@ def named_alone(message: str, entries: list[Entry]) -> Entry | None:
     return found[0] if len(found) == 1 else None
 
 
+MIN_ITEM_NAME = 3  # shorter names ("a", "D") are too easily a word of something else
+
+
+def names_item(message: str, names: list[str]) -> str | None:
+    """The first of `names` that the message says, whole and whatever the case
+    ("I've taken my Zinc today" names Zinc). A check on the router, not a way
+    of understanding the message: it only says whose the message is. Pure."""
+    said = " ".join(message.lower().split())
+    for name in names:
+        wanted = " ".join(name.lower().split())
+        if len(wanted) >= MIN_ITEM_NAME and re.search(rf"(?<!\w){re.escape(wanted)}(?!\w)", said):
+            return name
+    return None
+
+
 def with_named(found: Route, named: list[str]) -> Route:
     """The router's answer once the destinations the user named are taken as
     settled. If the router agrees and adds other tasks (a message with several

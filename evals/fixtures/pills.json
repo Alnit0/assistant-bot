@@ -112,6 +112,66 @@
         "confidence": "high",
         "chat_part": ""
       }
+    },
+    {
+      "message": "took my zinc",
+      "tasks": [
+        "pills"
+      ],
+      "note": "stage 2: logging a dose by saying so: a request to tick it off, never a remark",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "had pill A at 9",
+      "tasks": [
+        "pills"
+      ],
+      "note": "stage 2: logging a dose by saying so",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "I didn't take zinc",
+      "tasks": [
+        "pills"
+      ],
+      "note": "stage 2: logging a dose by saying so",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "what pills do I have left today?",
+      "tasks": [
+        "pills"
+      ],
+      "note": "stage 2: today's checklist",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
     }
   ],
   "extraction": [
@@ -207,13 +267,7 @@
               "start": "tomorrow",
               "days": 7
             }
-          ],
-          "guessed": [
-            "times[0]",
-            "times[1]",
-            "times[2]"
-          ],
-          "not_included": []
+          ]
         }
       ]
     },
@@ -244,7 +298,7 @@
         {
           "pills": [
             {
-              "name": "Pill A",
+              "name": "pill A",
               "per_day": 3,
               "times": [
                 "8:00 am",
@@ -286,7 +340,7 @@
         {
           "pills": [
             {
-              "name": "Pill A",
+              "name": "pill A",
               "per_day": 3,
               "times": [
                 "8:00 am",
@@ -389,7 +443,7 @@
         "none",
         {
           "why": "already_so",
-          "reason": "Iron is already scheduled daily at 8:00 am, exactly as stated. No change needed.",
+          "reason": "Iron is already scheduled daily at 8:00 am, exactly as stated",
           "about": "pl2"
         }
       ]
@@ -413,7 +467,7 @@
         {
           "pills": [
             {
-              "name": "Pill E",
+              "name": "pill E",
               "per_day": 2,
               "min_gap_minutes": 180
             }
@@ -473,7 +527,7 @@
         {
           "pills": [
             {
-              "name": "Pill G",
+              "name": "pill G",
               "per_day": 3,
               "min_gap_minutes": 150
             }
@@ -533,7 +587,7 @@
         {
           "pills": [
             {
-              "name": "pill J",
+              "name": "Pill J",
               "per_day": 3,
               "min_gap_minutes": 90
             }
@@ -567,7 +621,10 @@
               "min_gap_minutes": 180
             }
           ],
-          "guessed": [],
+          "guessed": [
+            "times[0]",
+            "times[1]"
+          ],
           "not_included": []
         }
       ]
@@ -943,7 +1000,7 @@
         {
           "pills": [
             {
-              "pill": "Iron"
+              "pill": "pl1"
             }
           ],
           "guessed": [],
@@ -989,7 +1046,7 @@
         {
           "pills": [
             {
-              "pill": "pl1"
+              "pill": "Iron"
             }
           ],
           "guessed": [],
@@ -1029,14 +1086,26 @@
       "task": "pills",
       "message": "took my iron",
       "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Iron · daily at 8:00 am [active]\n- pl2: 💊 Evening pill · daily at 8:00 pm · with food [active]\n- pl3: ⏸️ Zinc · daily, any time · paused [paused]\n- pl4: 💊 Vitamin D (1 tablet) · daily, any time [active]",
-      "action": "none",
-      "data": {},
-      "note": "logging a dose is not built yet: nothing here fits",
+      "action": "pill_log",
+      "data": {
+        "doses": [
+          {
+            "did": "taken"
+          }
+        ]
+      },
+      "note": "stage 2: logging a dose by saying so (before the checklist existed this had to come back as none)",
       "recorded": [
-        "none",
+        "pill_log",
         {
-          "why": "unclear",
-          "reason": "Message reports taking a pill, which is tracking/logging a dose, not setting up or managing the pill itself (add, edit, pause, resume, remove, delete, list)."
+          "doses": [
+            {
+              "pill": "pl1",
+              "did": "taken"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
         }
       ]
     },
@@ -1101,6 +1170,163 @@
               "notes": "with food"
             }
           ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "took my zinc",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Zinc · daily, any time [active]\n- pl2: 💊 Pill A · 3× daily · 8:00 am, 11:30 am, 3:00 pm · at least 3h apart · not after 4:00 pm · without food [active]\n- pl3: 💊 Magnesium · daily, any time · with food [active]",
+      "action": "pill_log",
+      "data": {
+        "doses": [
+          {
+            "did": "taken"
+          }
+        ]
+      },
+      "note": "stage 2: logging a dose by saying so",
+      "recorded": [
+        "pill_log",
+        {
+          "doses": [
+            {
+              "pill": "pl1",
+              "did": "taken"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "had pill A at 9",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Zinc · daily, any time [active]\n- pl2: 💊 Pill A · 3× daily · 8:00 am, 11:30 am, 3:00 pm · at least 3h apart · not after 4:00 pm · without food [active]\n- pl3: 💊 Magnesium · daily, any time · with food [active]",
+      "action": "pill_log",
+      "data": {
+        "doses": [
+          {
+            "did": "taken"
+          }
+        ]
+      },
+      "note": "stage 2: logging a dose by saying so. The time is not judged here: it comes as 9:00 or, now and then, 9:00 am, and an am the message doesn't say is taken back in code (actions.unchosen), which then takes the latest 9 that has happened",
+      "recorded": [
+        "pill_log",
+        {
+          "doses": [
+            {
+              "pill": "pl2",
+              "did": "taken",
+              "at": "9:00 am"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "I didn't take zinc",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Zinc · daily, any time [active]\n- pl2: 💊 Pill A · 3× daily · 8:00 am, 11:30 am, 3:00 pm · at least 3h apart · not after 4:00 pm · without food [active]\n- pl3: 💊 Magnesium · daily, any time · with food [active]",
+      "action": "pill_log",
+      "data": {
+        "doses": [
+          {
+            "did": "not_taken"
+          }
+        ]
+      },
+      "note": "stage 2: logging a dose by saying so",
+      "recorded": [
+        "pill_log",
+        {
+          "doses": [
+            {
+              "pill": "pl1",
+              "did": "not_taken"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "skip magnesium today",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Zinc · daily, any time [active]\n- pl2: 💊 Pill A · 3× daily · 8:00 am, 11:30 am, 3:00 pm · at least 3h apart · not after 4:00 pm · without food [active]\n- pl3: 💊 Magnesium · daily, any time · with food [active]",
+      "action": "pill_log",
+      "data": {
+        "doses": [
+          {
+            "did": "skipped"
+          }
+        ]
+      },
+      "note": "stage 2: logging a dose by saying so",
+      "recorded": [
+        "pill_log",
+        {
+          "doses": [
+            {
+              "pill": "pl3",
+              "did": "skipped"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "took my zinc and magnesium",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Zinc · daily, any time [active]\n- pl2: 💊 Pill A · 3× daily · 8:00 am, 11:30 am, 3:00 pm · at least 3h apart · not after 4:00 pm · without food [active]\n- pl3: 💊 Magnesium · daily, any time · with food [active]",
+      "action": "pill_log",
+      "data": {
+        "doses": [
+          {
+            "did": "taken"
+          },
+          {
+            "did": "taken"
+          }
+        ]
+      },
+      "note": "stage 2: logging a dose by saying so: one item each",
+      "recorded": [
+        "pill_log",
+        {
+          "doses": [
+            {
+              "pill": "pl1",
+              "did": "taken"
+            },
+            {
+              "pill": "pl3",
+              "did": "taken"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "what pills do I have left today?",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Zinc · daily, any time [active]\n- pl2: 💊 Pill A · 3× daily · 8:00 am, 11:30 am, 3:00 pm · at least 3h apart · not after 4:00 pm · without food [active]\n- pl3: 💊 Magnesium · daily, any time · with food [active]",
+      "action": "pill_today",
+      "note": "stage 2: today's checklist",
+      "recorded": [
+        "pill_today",
+        {
           "guessed": [],
           "not_included": []
         }

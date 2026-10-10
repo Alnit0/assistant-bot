@@ -161,7 +161,7 @@ Write them the way I'd really say them.
 | 14 | A message with nothing to do | No reply. The 👀 comes off and no reaction is left |
 | 15 | "shopping is boring" (a remark) | No reply: only questions and requests get words |
 | 16 | "shopping list" (a list's name on its own; also "my pills", "timers") | The list itself, Live, from the bot's own code. No words about it, and no offer after it |
-| 17 | | |
+| 17 | "I've taken my Zinc today" | Zinc is ticked off on today's checklist, edited in place, and one line says so and what is left. Never silence: a message that names one of my pills or timers is never taken for a remark |
 | 18 | | |
 | 19 | | |
 | 20 | | |
