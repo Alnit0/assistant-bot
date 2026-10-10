@@ -6,12 +6,13 @@ from types import SimpleNamespace
 
 import pytest
 
-from core import actions, day, livelists, timeinput
+from core import actions, database, day, livelists, timeinput
 from core.actions import LiveReply, Request
 from core.errors import UserError
 from tasks import registry
 from tasks.pills import plain, rules, store
-from tasks.pills.rules import ACTIVE, FIXED, INTERVAL, PAUSED, REMOVED, UNTIMED
+from core.schedule import Schedule
+from tasks.pills.rules import ACTIVE, PAUSED, REMOVED
 
 HUB = 400
 
@@ -42,6 +43,33 @@ def add(world, *items):
     return run(plain.add_save(world.request(), proposal.data))
 
 
+# --- pills saved before the one schedule model ------------------------------------------
+def test_pills_saved_with_a_kind_of_schedule_come_through_the_migration_unchanged(make_db, owner):
+    make_db({"pills": store.MIGRATIONS[:1]})
+    old = [
+        ("Vitamin D", "untimed", "[]", 1, None),
+        ("Evening pill", "fixed", '["20:00"]', 1, None),
+        ("Course A", "interval", "[]", 3, 180),
+        ("Course B", "interval", '["08:00"]', 3, 90),
+    ]
+
+    def insert(conn):
+        conn.executemany(
+            "INSERT INTO pills_pills (user_id, name, kind, times, per_day, gap_minutes, status, created_at, updated_at) "
+            f"VALUES ({owner.id}, ?, ?, ?, ?, ?, 'active', '2026-10-09T00:00:00', '2026-10-09T00:00:00')",
+            old,
+        )
+
+    run(database.run(insert))
+    make_db({"pills": store.MIGRATIONS})
+    assert [(pill.plan.name, pill.plan.schedule) for pill in run(store.pills(owner.id))] == [
+        ("Vitamin D", Schedule(1)),
+        ("Evening pill", Schedule(1, (time(20, 0),))),
+        ("Course A", Schedule(3, gap_minutes=180)),
+        ("Course B", Schedule(3, (time(8, 0),), gap_minutes=90)),
+    ]
+
+
 # --- the contract ---------------------------------------------------------------------
 def test_the_pills_task_meets_the_contract_and_every_change_needs_a_card():
     registry.load()
@@ -69,11 +97,11 @@ def test_a_pill_named_again_keeps_what_it_had_and_takes_what_is_new():
 # --- add: guess, show, confirm ---------------------------------------------------------------
 def test_a_plain_pill_is_one_line_and_nothing_is_saved_before_save(world):
     proposal = card(world, plain.add_card, {"name": "Vitamin D", "notes": "with food"})
-    assert proposal.lines == ("**Vitamin D** · daily, untimed · *with food*",) and proposal.kind == "new"
+    assert proposal.lines == ("**Vitamin D** · daily, any time · *with food*",) and proposal.kind == "new"
     assert proposal.warnings == () and pills(world) == []
-    assert run(plain.add_save(world.request(), proposal.data)) == "✅ Saved · 💊 **Vitamin D** · daily, untimed · *with food*"
+    assert run(plain.add_save(world.request(), proposal.data)) == "✅ Saved · 💊 **Vitamin D** · daily, any time · *with food*"
     (pill,) = pills(world)
-    assert (pill.plan.name, pill.plan.kind, pill.plan.notes) == ("Vitamin D", UNTIMED, "with food")
+    assert (pill.plan.name, pill.plan.schedule, pill.plan.notes) == ("Vitamin D", Schedule(1), "with food")
     assert world.changed == [(world.owner.id, "pills")], "the list on screen is brought up to date"
 
 
@@ -88,14 +116,14 @@ def test_a_reply_with_the_time_replaces_the_guess_and_the_flag_goes(world):
     second = card(world, plain.add_card, {"name": "Iron", "times": "8pm"}, previous=first.data)
     assert second.lines == ("**Iron** · daily at `8:00 pm` · *with food*",), "the note said before is kept by the code"
     run(plain.add_save(world.request(), second.data))
-    assert pills(world)[0].plan.times == (time(20, 0),)
+    assert pills(world)[0].plan.schedule.times == (time(20, 0),)
 
 
 def test_a_guess_claude_made_is_flagged_on_that_pills_line_only(world):
     proposal = card(
         world, plain.add_card, {"name": "A", "per_day": 3, "min_gap": "3h"}, {"name": "B"}, guessed=["pills[0].per_day"],
     )
-    assert proposal.lines == ("**A** · 3× daily, ≥3h apart · first dose when ready ❓", "**B** · daily, untimed")
+    assert proposal.lines == ("**A** · 3× daily, at least 3h apart, first dose when ready ❓", "**B** · daily, any time")
 
 
 def test_fixed_times_and_a_course_read_as_the_spec_shows_them(world):
@@ -107,19 +135,67 @@ def test_fixed_times_and_a_course_read_as_the_spec_shows_them(world):
     )
     dates = timeinput.format_dates(today + timedelta(days=1), today + timedelta(days=7))
     assert proposal.lines == (
-        "**A** · daily at `9:00 am`, `12:00 pm` and `3:00 pm`",
-        f"**Course A** · 3× daily, ≥3h apart · *with food* · {dates} · first dose when ready",
+        "**A** · daily at `9:00 am`, `12:00 pm`, `3:00 pm`",
+        f"**Course A** · 3× daily, at least 3h apart, first dose when ready · *with food* · {dates}",
     )
     assert run(plain.add_save(world.request(), proposal.data)) == "✅ Saved · 💊 2 pills added: **A**, **Course A**"
-    assert [(pill.plan.name, pill.plan.kind) for pill in pills(world)] == [("A", FIXED), ("Course A", INTERVAL)]
+    assert [(pill.plan.name, pill.plan.schedule) for pill in pills(world)] == [
+        ("A", Schedule(3, (time(9, 0), time(12, 0), time(15, 0)))), ("Course A", Schedule(3, gap_minutes=180)),
+    ]
+
+
+# --- one model: planned times, a gap and a latest time ---------------------------------------------
+PILL_A = {"name": "Pill A", "per_day": 3, "times": "8am, 11:30, 3pm", "min_gap": "3h", "latest": "4pm", "notes": "without food"}
+
+
+def test_pill_a_is_on_the_card_exactly_as_said_and_is_saved_and_read_back(world):
+    proposal = card(world, plain.add_card, PILL_A)
+    assert proposal.lines == (
+        "**Pill A** · 3× daily · `8:00 am`, `11:30 am`, `3:00 pm`",
+        "At least 3h apart · not after `4:00 pm` · *without food*",
+    )
+    assert proposal.warnings == () and proposal.guessed == (), "nothing guessed: 11:30 can only be the morning"
+    run(plain.add_save(world.request(), proposal.data))
+    assert run(plain.add_check(world.request(), proposal.data)) == ""
+    assert pills(world)[0].plan.schedule == Schedule(3, (time(8, 0), time(11, 30), time(15, 0)), 180, time(16, 0))
+    assert run(plain.show_list(world.request(), {}, frozenset())).text.splitlines()[1] == (
+        "💊 **Pill A** · 3× daily · `8:00 am`, `11:30 am`, `3:00 pm` · at least 3h apart · not after `4:00 pm` · *without food*"
+    )
+
+
+def test_planned_times_closer_than_the_gap_are_moved_with_a_warning_and_save_keeps_the_fix(world):
+    proposal = card(world, plain.add_card, {**PILL_A, "times": "8am, 11:30, 2pm"})
+    assert proposal.lines[0] == "**Pill A** · 3× daily · `8:00 am`, `11:30 am`, `2:30 pm`"
+    assert proposal.warnings == ("11:30 am to 2:00 pm is under 3h: the third dose moves to 2:30 pm",)
+    run(plain.add_save(world.request(), proposal.data))
+    assert run(plain.add_check(world.request(), proposal.data)) == ""
+    assert pills(world)[0].plan.schedule.times[2] == time(14, 30)
+
+
+def test_a_latest_time_that_could_be_morning_or_evening_is_taken_as_the_evening_and_flagged(world):
+    proposal = card(world, plain.add_card, {"name": "B", "latest": "4"})
+    assert proposal.lines == ("**B** · daily, any time ❓", "Not after `4:00 pm`")
+    assert proposal.data["pills"] == [{"name": "B", "latest": "16:00"}], "Save applies what the card showed"
+
+
+def test_an_edit_adds_a_gap_and_a_latest_time_to_a_pill_with_times(world):
+    add(world, {"name": "Pill A", "times": "8am, 11:30am, 3pm"})
+    proposal = card(world, plain.edit_card, {"pill": "pill a", "min_gap": "3h", "latest": "4pm"})
+    assert proposal.lines[1] == (
+        "schedule · daily at `8:00 am`, `11:30 am`, `3:00 pm` → "
+        "3× daily · `8:00 am`, `11:30 am`, `3:00 pm` · at least 3h apart · not after `4:00 pm`"
+    )
+    run(plain.edit_save(world.request(), proposal.data))
+    assert run(plain.edit_check(world.request(), proposal.data)) == ""
+    assert pills(world)[0].plan.schedule == Schedule(3, (time(8, 0), time(11, 30), time(15, 0)), 180, time(16, 0))
 
 
 def test_another_pill_said_after_the_card_joins_it_and_one_can_be_taken_off(world):
     first = card(world, plain.add_card, {"name": "Iron"})
     both = card(world, plain.add_card, {"name": "Zinc", "per_day": 2}, previous=first.data)
-    assert both.lines == ("**Iron** · daily, untimed", "**Zinc** · 2× daily, untimed")
+    assert both.lines == ("**Iron** · daily, any time", "**Zinc** · 2× daily, any time")
     one = card(world, plain.add_card, {"name": "iron", "remove": True}, previous=both.data)
-    assert one.lines == ("**Zinc** · 2× daily, untimed",)
+    assert one.lines == ("**Zinc** · 2× daily, any time",)
     off = card(world, plain.add_card, {"name": "copper", "remove": True}, previous=one.data)
     assert off.warnings == ("copper isn't on the card: nothing to take off",)
 
@@ -127,7 +203,7 @@ def test_another_pill_said_after_the_card_joins_it_and_one_can_be_taken_off(worl
 def test_a_pill_that_cannot_be_a_plan_is_named_on_the_card_and_the_rest_stay(world):
     add(world, {"name": "Iron"})
     proposal = card(world, plain.add_card, {"name": "Zinc"}, {"name": "iron"}, {"name": "X", "times": "8am", "per_day": 3})
-    assert proposal.lines == ("**Zinc** · daily, untimed",)
+    assert proposal.lines == ("**Zinc** · daily, any time",)
     assert proposal.warnings[0].startswith("Not included: iron (There is already a pill called **Iron**")
     assert proposal.warnings[1].startswith("Not included: X (That is 1 time for 3 doses a day")
 
@@ -154,9 +230,9 @@ def test_an_edit_shows_now_and_new_and_save_changes_only_what_was_said(world):
         "schedule · daily at `8:00 pm` → daily at `9:00 pm`",
         "-# Applies from the next dose. What is already recorded stays as it is.",
     ) and proposal.kind == "change", "one format for an edit: field · old → new, and only what changes"
-    assert pills(world)[0].plan.times == (time(20, 0),), "nothing until Save"
+    assert pills(world)[0].plan.schedule.times == (time(20, 0),), "nothing until Save"
     assert run(plain.edit_save(world.request(), proposal.data)) == "✅ Updated · 💊 **Evening pill** · daily at `9:00 pm` · *with food*"
-    assert pills(world)[0].plan.times == (time(21, 0),) and pills(world)[0].plan.notes == "with food"
+    assert pills(world)[0].plan.schedule.times == (time(21, 0),) and pills(world)[0].plan.notes == "with food"
 
 
 def test_an_edit_by_id_a_rename_and_taking_a_note_away(world):
@@ -217,7 +293,7 @@ def test_resume_is_a_card_for_the_paused_ones_only(world):
 def test_remove_keeps_the_history_and_says_so_on_the_card(world):
     add(world, {"name": "Iron"})
     proposal = card(world, plain.remove_card, {"pill": "iron"})
-    assert proposal.lines == ("**Iron** · daily, untimed → removed", "-# This stops its reminders. Its history is kept.")
+    assert proposal.lines == ("**Iron** · daily, any time → removed", "-# This stops its reminders. Its history is kept.")
     assert (proposal.kind, proposal.confirm_label, proposal.destructive) == ("remove", "Remove", False)
     assert run(plain.remove_save(world.request(), proposal.data)) == "🗑️ Removed **Iron**. Its history is kept."
     assert pills(world) == [] and run(store.pill(1)).status == REMOVED
@@ -235,7 +311,7 @@ def test_delete_is_a_card_of_its_own_kind_that_cannot_be_undone(world):
 def test_a_guess_at_which_pill_is_flagged_on_its_line(world):
     add(world, {"name": "Iron"}, {"name": "Zinc"})
     proposal = card(world, plain.remove_card, {"pill": "iron"}, {"pill": "zinc"}, guessed=["pills[1].pill"])
-    assert proposal.lines[:2] == ("**Iron** · daily, untimed → removed", "**Zinc** · daily, untimed → removed ❓")
+    assert proposal.lines[:2] == ("**Iron** · daily, any time → removed", "**Zinc** · daily, any time → removed ❓")
 
 
 def test_a_pill_can_be_taken_off_a_remove_card_by_a_reply(world):
@@ -257,7 +333,7 @@ def test_the_state_has_a_line_a_pill_with_its_id_and_what_it_is_today(world):
     run(plain.pause_save(world.request(), {"pills": [{"pill": "zinc"}]}))
     state = run(plain.state(world.request()))
     assert state.heading == "The user's pills now (use the id, or the name)"
-    assert state.lines == ("pl1: 💊 Iron · daily at 8:00 am [active]", "pl2: ⏸️ Zinc · daily, untimed · paused [paused]")
+    assert state.lines == ("pl1: 💊 Iron · daily at 8:00 am [active]", "pl2: ⏸️ Zinc · daily, any time · paused [paused]")
     assert actions.shown_state(run(plain.state(SimpleNamespace(user=SimpleNamespace(id=99)))), "x")[0] == (
         "The user's pills now (use the id, or the name): none yet"
     )
@@ -306,7 +382,7 @@ def test_it_on_a_pills_card_is_the_pill_mentioned_last(world):
     first = card(world, plain.add_card, {"name": "Iron"}, {"name": "Zinc"})
     assert first.data["_last"] == "Zinc"
     second = card(world, plain.add_card, {"name": "@that", "per_day": 2}, previous=first.data)
-    assert second.lines == ("**Iron** · daily, untimed", "**Zinc** · 2× daily, untimed")
+    assert second.lines == ("**Iron** · daily, any time", "**Zinc** · 2× daily, any time")
 
 
 def test_it_with_no_card_is_the_pill_changed_last_and_that_is_flagged(world):
@@ -326,18 +402,20 @@ def test_a_pill_sent_back_with_the_card_changes_nothing(world):
     # Seen in the live eval on 2026-10-10: "and zinc once a day" came back with the card's iron as well
     first = card(world, plain.add_card, {"name": "Iron", "times": "8am"})
     second = card(world, plain.add_card, {"name": "Iron", "times": "08:00"}, {"name": "Zinc", "per_day": 1}, previous=first.data)
-    assert second.lines == ("**Iron** · daily at `8:00 am`", "**Zinc** · daily, untimed")
+    assert second.lines == ("**Iron** · daily at `8:00 am`", "**Zinc** · daily, any time")
 
 
 def test_an_edit_lists_each_field_that_changes_as_old_to_new():
-    old = rules.Plan("Iron", "1 tablet", "", rules.FIXED, (time(8, 0),))
-    new = rules.Plan("Iron", "2 tablets", "with food", rules.FIXED, (time(8, 0), time(20, 0)), per_day=2)
+    old = rules.Plan("Iron", "1 tablet", "", Schedule(1, (time(8, 0),)))
+    new = rules.Plan("Iron", "2 tablets", "with food", Schedule(2, (time(8, 0), time(20, 0))))
     assert rules.differences(old, new) == [
         ("dose", "1 tablet", "2 tablets"),
         ("notes", "none", "with food"),
-        ("schedule", "daily at `8:00 am`", "daily at `8:00 am` and `8:00 pm`"),
+        ("schedule", "daily at `8:00 am`", "daily at `8:00 am`, `8:00 pm`"),
     ]
     assert rules.differences(old, old) == []
-    gap = rules.Plan("A", kind=rules.INTERVAL, per_day=3, gap_minutes=180)
-    timed = rules.Plan("A", kind=rules.INTERVAL, times=(time(9, 0),), per_day=3, gap_minutes=180)
-    assert rules.differences(gap, timed) == [("first dose", "when ready", "`9:00 am`")]
+    gap = rules.Plan("A", schedule=Schedule(3, gap_minutes=180))
+    timed = rules.Plan("A", schedule=Schedule(3, (time(9, 0),), 180))
+    assert rules.differences(gap, timed) == [
+        ("schedule", "3× daily, at least 3h apart, first dose when ready", "3× daily, at least 3h apart, first dose at `9:00 am`"),
+    ]

@@ -33,6 +33,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `costs.py` | What each message cost and how it was handled: the routes (`button`, `shortcut`, `reaction`, `follow-up`, `router`, `chat`, and `tools` for the old way of sending every tool), the price of a request including cached tokens, recording a message's route, tasks and each request to Claude (`db_record`), and adding it up by day, month, route and task for `dev cost` (`split`, `report`). Pure apart from the functions that take a connection |
 | `day.py` | The day boundary for every task (`DAY_BOUNDARY`, midnight NZ): `today()`, `day_of(moment)`, `at(day, time)`, `start_of` / `end_of` (UTC, daylight-saving safe), and the rollover job, which tells every `on_new_day` listener (a task's `new_day`) the day that ended and the day it is now, then books the next |
 | `timeinput.py` | Pure: dates the user types (`parse_date`: tomorrow, friday, the 20th, 20 Oct; shown by `format_date` / `format_dates`) and times the user types (12-hour, 24-hour, noon / midnight), `AmbiguousTime` with both readings when it could be morning or evening, the checks on a time given for something already done (today, not in the future, not before the previous one), and the one way times are shown (`format_time`: "8:04 am") |
+| `schedule.py` | Pure: the schedule model, one shape for everything with a schedule. A `Schedule` is how many a day, a planned time for each (or for the first ones, or none: any time), a minimum gap and a latest time of day; only the first is required. `dues` says when each of a day's is due, from the plan and what was done so far: the later of its planned time and the one before, done, plus the gap (a `Due` also says why: planned, after the one before, any time, or waiting for one not yet done). `limit` is the day's limit (the latest time, or the end of the day) and `spaced` moves planned times apart to keep the gap, saying what moved. Days of the week come here later |
 | `occurrences.py` | The occurrence log: expected things on a day (`occurrences`) with their state (pending, done, skipped, missed), plan, due time, actual time and automatic-skip reason, and every change to them (`occurrence_events`, values before and after). Changes made together share a change id: `db_last_change` finds the user's last one and `db_revert` takes it back |
 | `trace.py` | What happened to one message, step by step, for `dev why` and bug reports: any code leaves a note while a message is handled (`note`: a check that fired or was skipped), `core/conversation.py` keeps them with the route's reason, the router's answer, the card before and after and how much state was sent (`message_log.trace`), and `lines` / `block` put a logged message into a few plain lines that can be copied whole. Imports nothing from core |
 | `logging_setup.py` | Terminal and rotating file logging |
@@ -88,8 +89,9 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `bugs/cli.py` | `python -m tasks.bugs.cli list \| show B4 \| note B4 "…"` for Claude Code's `bug` skill: reads and adds notes straight from the database, never closes a bug |
 | `keep/__init__.py` | The 📌 reaction: keep (pin) and unkeep (unpin); reply `pin` / `unpin`, which act at once. All through `core/pins.py` |
 | `pills/__init__.py` | Registers `pills` (the read-only Live list) and the task's plain-words entry; works in #inbox and the hub |
-| `pills/plain.py` | Setting pills up in plain words: `pill_add`, `pill_edit`, `pill_pause`, `pill_resume`, `pill_remove`, `pill_delete` (each a confirm card, each taking a list of pills) and `pill_list` (read-only, Live). Reads what was said into a plan with `rules.build`, never asking: a time that could be morning or evening is taken as the morning and flagged. A reply's change is laid over the card in code (`overlay`). No discord.py, no Context |
-| `pills/rules.py` | Pure: a pill's `Plan` (untimed, fixed times, or so many a day with a minimum gap; optionally a course with dates), building one from a `Request` in the user's words (`build`, which raises `TimeQuestion` for a time that could be morning or evening), what a pill is on a day (`status_on`: active, upcoming, paused, ended), which pill a name means (`find`), and all the wording (one-line summary, old-and-new for an edit, the list, the live state for Claude) |
+| `pills/plain.py` | Setting pills up in plain words: `pill_add`, `pill_edit`, `pill_pause`, `pill_resume`, `pill_remove`, `pill_delete` (each a confirm card, each taking a list of pills) and `pill_list` (read-only, Live). Reads what was said into a plan with `rules.build`, never asking: a time that could be morning or evening is taken as the morning (a latest time as the evening) and flagged, and a planned time moved to keep the gap is a ⚠️ line on the card. A reply's change is laid over the card in code (`overlay`). No discord.py, no Context |
+| `pills/rules.py` | Pure: a pill's `Plan` (its name, dose and notes, its `Schedule` from `core/schedule.py`, and optionally a course's dates), building one from a `Request` in the user's words (`build`, which settles a time by the times around it when only one reading keeps them in order, raises `TimeQuestion` for one that could still be morning or evening, moves a planned time that is closer to the one before than the gap and says so, and refuses a schedule that can't fit in a day), what a pill is on a day (`status_on`: active, upcoming, paused, ended), which pill a name means (`find`), and all the wording (one-line summary, the card's lines, old-and-new for an edit, the list, the live state for Claude) |
+| `pills/doses.py` | Pure: what the day's limit means for a dose, from its schedule alone: whether a dose due then still fits (`fits`), and the time a dose must be taken by for those after it to fit (`take_by`). Not used by the bot yet: the checklist and reminders will |
 | `pills/store.py` | The `pills_pills` records and every change to a plan or status (`pills_changes`). (`pills_drafts` is a table of the old previews: no code uses it now) |
 | `timers/__init__.py` | Registers `timer`, `timers`, `pause all`, `resume all`, `pomo`, `pomo stats`, the reply actions and job handlers, and the task's plain-words entry |
 | `timers/plain.py` | Timers and the Pomodoro in plain words: `timer_start` (a list), `timer_change` (at once; cancelling several asks first with a card), `timer_all`, `timer_list`, `timer_history`, `pomo_start`, `pomo_change`, `pomo_status`, `pomo_stats`, and what extraction is told (every timer and the session with their ids). Posts through `sender(channel_id)`, so the same code runs for a message and a button |
@@ -119,9 +121,9 @@ settings before `core` loads. One `test_*.py` per area: `router`,
 `pomodoro`, `timer_text`, `timing`, `timer_status`, `timer_freeze` (pause, resume and events against a
 database with the clock under test control), `devmode`, `dev_parsing`, `lab`, `lifecycle`,
 `permissions`, `scheduler`, `text` (and the chat prompt and plain chat), `outgoing` (nothing internal sent, no offers), `bugs`, `instance_lock`, `backup` (the specs zip), `clock`,
-`day` (the boundary and the rollover job), `timeinput`, `occurrences`,
+`day` (the boundary and the rollover job), `timeinput`, `schedule` (when each dose is due: the worked example), `occurrences`,
 `dev_clock` (`dev clock`, `dev reset-db` and their guards), `actions` (the contract and the checking), `routing` (the router, extraction and the replayed fixtures), `conversation` (a message end to end, confirm cards; on the demo lists of `tests/demo.py`), `livelists`, `costs` (routes, prices, the roll-up and `dev cost`), `trace` (notes, a message in lines, `dev why`), `cards`,
-`pills_rules`, `timers_plain` and `pills_plain`
+`pills_rules`, `pills_doses`, `timers_plain` and `pills_plain`
 (each task's actions in plain words), `golden` (the golden conversations of the conversation standard, end to end, replayed from `evals/fixtures/golden.json`; the ones the bot can't hold yet are marked as gaps), `channels`
 (channel types, the dev panel's start-up sweep, a task failing to start).
 
@@ -261,6 +263,8 @@ every message that is no shortcut)
 2. The confirm card shows the plan on a line with **Save** and **Cancel**.
    A time that could be morning or evening is taken as the morning and
    marked ❓ (to become a question on the card: see the backlog, G1).
+   Planned times closer together than the gap are moved apart, with a
+   ⚠️ line saying which dose moved.
 3. A reply changes the card: the change is laid over what the card holds
    (`plain.overlay`), the old card is deleted and a fresh one posted.
 4. **Save** builds the plan again, checks the name and writes the pill in
@@ -337,7 +341,8 @@ How the bot is meant to grow. The `new-task` skill reads this first.
 
 - **Shared core blocks over task-specific code.** What two tasks need
   belongs in `core/`: the router, extraction and confirm cards, live
-  lists, the occurrence log, the day boundary, time input, the scheduler,
+  lists, the occurrence log, the day boundary, time input, the schedule
+  model, the scheduler,
   cards and traces. A task holds its own rules, wording and tables, and
   as little else as it can.
 - **Core or task: how to decide.** In this order:
@@ -376,7 +381,8 @@ How the bot is meant to grow. The `new-task` skill reads this first.
 Questions on the card, corrections straight after Save, fewer task ties
 and questions that are still sent as their own message: see the gap list
 in `docs/BACKLOG.md` (G1, G3, G4, G7), deferred until pills reminders
-work. The pills checklist, reminders and tracking (pills stages 3 to 6).
+work. The pills checklist, reminders, corrections and questions (stages 2 to 4
+of the pills build order).
 
 The gateway layer (`main.py` and `builtin`'s view still use discord.py
 directly), bulk and cross-channel actions for Claude,

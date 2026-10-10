@@ -6,6 +6,16 @@ backfilled from the git log.
 
 ## 2026-10-10
 
+- **One kind of schedule for every pill.** A pill can now have planned
+  times, a minimum gap and a latest time together ("at 8am, 11:30 and
+  3pm, at least 3 hours apart, not after 4pm"); the card writes out each
+  one. "Untimed" now reads "any time" and "≥3h apart" reads "at least 3h
+  apart". Pills already saved are unchanged.
+- **Planned times closer than the gap are moved apart**, and the card
+  says which dose moved. In a list of times, one that only makes sense
+  as the morning is no longer marked ❓.
+- Underneath: when each dose is due is now worked out in one place
+  (`core/schedule.py`), ready for the checklist and reminders.
 - **One way of handling what you say.** The old path, where Claude was
   given every tool and wrote its own replies, is gone: every message is
   routed, and the bot's own code does the work and the talking. No more

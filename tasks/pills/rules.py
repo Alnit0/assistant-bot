@@ -2,8 +2,9 @@ import re
 from dataclasses import dataclass, replace
 from datetime import date, time, timedelta
 
-from core import timeinput
+from core import schedule, timeinput
 from core.errors import UserError
+from core.schedule import DAY_MINUTES, Schedule
 from core.timeinput import AmbiguousTime
 from tasks.timers.durations import DurationError, parse_duration
 
@@ -12,20 +13,17 @@ from tasks.timers.durations import DurationError, parse_duration
 # how it is put into words. Pure: no Discord, no database, no clock (the day
 # it is comes in as `today`).
 #
-# The plan is what the user configured and only they change it. Three kinds
-# of schedule:
-#   untimed    so many a day, at no particular time
-#   fixed      at these times of day
-#   interval   so many a day with a minimum gap between doses; the first may
-#              have a time, each later one follows the dose actually taken
+# The plan is what the user configured and only they change it. Every pill
+# has the one shape of schedule (core/schedule.py): doses a day, and
+# optionally a planned time for each dose (or for the first only), a minimum
+# gap between doses and a latest time of day. What is here is how a schedule
+# is read from the user's words and put back into them.
 # A plan with dates is a course: taken from `start` to `end`, both included.
 # Without dates it simply goes on.
 #
 # Claude decides which of the user's words are the name, the times and the
 # dates, and hands them over as they were said; everything here on is code.
 # ---------------------------------------------------------------------------
-UNTIMED, FIXED, INTERVAL = "untimed", "fixed", "interval"
-
 # What is stored
 ACTIVE, PAUSED, REMOVED = "active", "paused", "removed"
 # What a pill is on a given day, which also depends on its dates
@@ -34,7 +32,6 @@ UPCOMING, ENDED = "upcoming", "ended"
 MAX_NAME = 60
 MAX_TEXT = 100  # dose and notes
 MAX_PER_DAY = 12
-DAY_MINUTES = 24 * 60
 
 ID_PREFIX = "pl"
 # Said in place of a value, to take it away when editing
@@ -46,10 +43,7 @@ class Plan:
     name: str
     dose: str = ""  # "1 tablet"
     notes: str = ""  # "with food"
-    kind: str = UNTIMED
-    times: tuple[time, ...] = ()  # fixed: each dose; interval: the first dose, if it has a time
-    per_day: int = 1
-    gap_minutes: int | None = None  # interval only
+    schedule: Schedule = Schedule()
     start: date | None = None  # a course; both or neither
     end: date | None = None
 
@@ -83,6 +77,7 @@ class Request:
     times: str = ""  # "8am, 8pm"
     per_day: str = ""  # "3"
     min_gap: str = ""  # "3h"
+    latest: str = ""  # "4pm"
     start: str = ""  # "tomorrow"
     end: str = ""  # "the 20th"
     days: str = ""  # "7"
@@ -94,12 +89,13 @@ class Request:
 
 
 class TimeQuestion(UserError):
-    """One of the times could be morning or evening. `index` says which of the
-    request's times it is and `options` holds both readings; nothing is
-    guessed. answer() gives the request with it settled."""
+    """One of the times could be morning or evening. `field` says whether it
+    is one of the request's times (`index` says which) or its latest time,
+    and `options` holds both readings; nothing is guessed. answer() gives the
+    request with it settled."""
 
-    def __init__(self, index: int, typed: str, options: tuple[time, time]):
-        self.index, self.typed, self.options = index, typed, options
+    def __init__(self, index: int, typed: str, options: tuple[time, time], field: str = "times"):
+        self.index, self.typed, self.options, self.field = index, typed, options, field
         super().__init__(f"“{typed}”: {timeinput.AmbiguousTime(options)}")
 
 
@@ -126,19 +122,52 @@ def split_times(text: str) -> list[str]:
 
 def answer(request: Request, question: TimeQuestion, chosen: time) -> Request:
     """The request with the time that was asked about replaced by the answer."""
+    if question.field == "latest":
+        return replace(request, latest=chosen.strftime("%H:%M"))
     parts = split_times(request.times)
     parts[question.index] = chosen.strftime("%H:%M")
     return replace(request, times=", ".join(parts))
 
 
 def _times(text: str) -> tuple[time, ...]:
-    found = []
-    for index, part in enumerate(split_times(text)):
+    """The times as said. One that could be morning or evening is settled by
+    the times around it when only one reading keeps them in order ("8am,
+    11:30 and 3pm" can only mean 11:30 am): that is not a guess. Otherwise it
+    is a TimeQuestion."""
+    parts = split_times(text)
+    read: list[time | AmbiguousTime] = []
+    for part in parts:
         try:
-            found.append(timeinput.parse_time(part))
+            read.append(timeinput.parse_time(part))
         except AmbiguousTime as unsure:
-            raise TimeQuestion(index, part, unsure.options)
+            read.append(unsure)
+    found: list[time] = []
+    for index, value in enumerate(read):
+        if isinstance(value, AmbiguousTime):
+            after = found[-1] if found else None
+            before = next((later for later in read[index + 1 :] if isinstance(later, time)), None)
+            possible = [
+                option
+                for option in value.options
+                if (after is None or option > after) and (before is None or option < before)
+            ]
+            if len(possible) != 1:
+                raise TimeQuestion(index, parts[index], value.options)
+            value = possible[0]
+        found.append(value)
     return tuple(found)
+
+
+def _latest(text: str, times: tuple[time, ...]) -> time:
+    """The latest time of day. "4" after planned times that end at 3 pm can
+    only be 4 pm; with nothing to go by it is a TimeQuestion."""
+    try:
+        return timeinput.parse_time(text)
+    except AmbiguousTime as unsure:
+        possible = [option for option in unsure.options if times and option >= max(times)]
+        if len(possible) == 1:
+            return possible[0]
+        raise TimeQuestion(0, text.strip(), unsure.options, field="latest")
 
 
 def _count(text: str) -> int:
@@ -182,12 +211,14 @@ def _text(value: str, limit: int, what: str) -> str:
 # ---------------------------------------------------------------------------
 # Building a plan
 # ---------------------------------------------------------------------------
-def build(request: Request, today: date, base: Plan | None = None) -> Plan:
+def build(request: Request, today: date, base: Plan | None = None, moved: list[str] | None = None) -> Plan:
     """The plan a request asks for: a new one, or `base` with the changes.
 
     Raises TimeQuestion if a time could be morning or evening, and UserError
     with a short reason for anything that doesn't make a plan. Nothing is
-    guessed and nothing is silently adjusted.
+    guessed. The one thing adjusted is a planned time closer to the one
+    before than the gap allows: it moves later, and `moved` is given a line
+    saying so, for the card.
     """
     # --- name, dose, notes ---
     name = _text(request.name, MAX_NAME, "name") if _given(request.name) else (base.name if base else "")
@@ -202,50 +233,52 @@ def build(request: Request, today: date, base: Plan | None = None) -> Plan:
     dose = optional(request.dose, base.dose if base else "", "dose")
     notes = optional(request.notes, base.notes if base else "", "note")
 
-    # --- schedule ---
+    # --- schedule: only what was said changes ---
+    old = base.schedule if base else None
     if not _given(request.times):
-        times = base.times if base else ()
+        times = old.times if old else ()
     else:
         times = () if _cleared(request.times) else _times(request.times)
     if not _given(request.min_gap):
-        gap = base.gap_minutes if base else None
+        gap = old.gap_minutes if old else None
     else:
         gap = None if _cleared(request.min_gap) else _gap(request.min_gap)
+    if not _given(request.latest):
+        latest = old.latest if old else None
+    else:
+        latest = None if _cleared(request.latest) else _latest(request.latest, times)
     asked = _count(request.per_day) if _given(request.per_day) else None
-    if base is not None:
-        # Changing the kind of schedule: what belonged to the old kind doesn't carry over
-        if _given(request.min_gap) and not _given(request.times) and base.kind != INTERVAL:
-            times = ()
-        if len(times) > 1 and not _given(request.min_gap) and base.kind == INTERVAL:
-            gap = None
+    if len(set(times)) != len(times):
+        raise UserError("Two of those times are the same.")
+    times = tuple(sorted(times))
 
-    if gap is not None:
-        kind = INTERVAL
-        if len(times) > 1:
-            raise UserError(
-                "With a minimum gap only the first dose can have a time: the others follow the dose before."
-            )
-        per_day = asked or (base.per_day if base and base.kind == INTERVAL else None)
-        if per_day is None:
-            raise UserError("How many times a day?")
-        if per_day < 2:
-            raise UserError("A minimum gap needs at least 2 doses a day.")
-        if gap * (per_day - 1) >= DAY_MINUTES:
-            raise UserError(f"{per_day} doses {gap_text(gap)} apart don't fit in a day.")
-    elif times:
-        kind = FIXED
-        if len(set(times)) != len(times):
-            raise UserError("Two of those times are the same.")
-        times = tuple(sorted(times))
-        if asked is not None and asked != len(times):
+    if gap is None:
+        if times and asked is not None and asked != len(times):
             raise UserError(
                 f"That is {len(times)} time{'s' if len(times) != 1 else ''} for {asked} doses a day. "
                 "Give a time for each dose, or a minimum gap between them instead."
             )
-        per_day = len(times)
+        per_day = len(times) or asked or (old.per_day if old else 1)
     else:
-        kind = UNTIMED
-        per_day = asked or (base.per_day if base and base.kind == UNTIMED else 1)
+        per_day = asked or (len(times) if len(times) > 1 else None) or (old.per_day if old and old.per_day > 1 else None)
+        if per_day is None:
+            raise UserError("How many times a day?")
+        if per_day < 2:
+            raise UserError("A minimum gap needs at least 2 doses a day.")
+        # Times the pill already had, for another number of doses, don't carry over
+        first_only = old is not None and old.gap_minutes is not None and len(times) == 1
+        if not _given(request.times) and len(times) != per_day and not first_only:
+            times = ()
+        if len(times) not in (0, 1, per_day):
+            raise UserError(
+                f"That is {len(times)} times for {per_day} doses a day. "
+                "Give a time for each dose, or for the first one only."
+            )
+
+    planned, moves = schedule.spaced(Schedule(per_day, times, gap, latest))
+    if moved is not None:
+        moved.extend(_move_text(move, gap) for move in moves)
+    _check_fits(planned)
 
     # --- dates: a course, or none ---
     start, end = (base.start, base.end) if base else (None, None)
@@ -268,7 +301,38 @@ def build(request: Request, today: date, base: Plan | None = None) -> Plan:
                 f"It would end ({timeinput.format_date(end)}) before it starts ({timeinput.format_date(start)})."
             )
 
-    return Plan(name, dose, notes, kind, times, per_day, gap, start, end)
+    return Plan(name, dose, notes, planned, start, end)
+
+
+_ORDINALS = ("first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth")
+
+
+def _move_text(move: schedule.Move, gap: int) -> str:
+    """ "11:30 am to 2:00 pm is under 3h: the third dose moves to 2:30 pm"."""
+    shown = timeinput.format_time
+    return (
+        f"{shown(move.before)} to {shown(move.was)} is under {gap_text(gap)}: "
+        f"the {_ORDINALS[move.index]} dose moves to {shown(move.now)}"
+    )
+
+
+def _check_fits(planned: Schedule) -> None:
+    """Refuse a schedule whose doses can't all be taken in a day, even on time."""
+    shown = timeinput.format_time
+    limit = planned.latest.hour * 60 + planned.latest.minute if planned.latest is not None else None
+    for value in planned.times:
+        if limit is not None and value.hour * 60 + value.minute > limit:
+            raise UserError(f"A dose at {shown(value)} would be after the latest time, {shown(planned.latest)}.")
+    if planned.gap_minutes is None:
+        return
+    earliest = 0
+    for index in range(planned.per_day):
+        value = planned.planned(index)
+        at = value.hour * 60 + value.minute if value is not None else 0
+        earliest = at if index == 0 else max(at, earliest + planned.gap_minutes)
+    if earliest >= DAY_MINUTES or (limit is not None and earliest > limit):
+        where = "in a day" if limit is None else f"before {shown(planned.latest)}"
+        raise UserError(f"{planned.per_day} doses {gap_text(planned.gap_minutes)} apart don't fit {where}.")
 
 
 def check_name(plan: Plan, others: list[Pill], own_id: int | None = None) -> None:
@@ -318,29 +382,57 @@ def _clock(value: time) -> str:
     return f"`{timeinput.format_time(value)}`"
 
 
+def _schedule_parts(planned: Schedule) -> tuple[str, list[str]]:
+    """A schedule as (how often and when, its conditions): every setting that
+    was filled in is written out, and none that wasn't."""
+    count = "daily" if planned.per_day == 1 else f"{planned.per_day}× daily"
+    times = ", ".join(_clock(value) for value in planned.times)
+    conditions = []
+    if planned.gap_minutes is None:
+        head = f"daily at {times}" if planned.times else f"{count}, any time"
+    elif len(planned.times) > 1:
+        head = f"{count} · {times}"
+        conditions.append(f"at least {gap_text(planned.gap_minutes)} apart")
+    else:
+        first = f"first dose at {times}" if planned.times else "first dose when ready"
+        head = f"{count}, at least {gap_text(planned.gap_minutes)} apart, {first}"
+    if planned.latest is not None:
+        conditions.append(f"not after {_clock(planned.latest)}")
+    return head, conditions
+
+
 def schedule_text(plan: Plan) -> str:
-    """ "daily, untimed", "daily at `8:00 pm`", "3× daily, ≥3h apart"."""
-    if plan.kind == INTERVAL:
-        return f"{plan.per_day}× daily, ≥{gap_text(plan.gap_minutes)} apart"
-    if plan.kind == FIXED:
-        shown = [_clock(value) for value in plan.times]
-        joined = shown[0] if len(shown) == 1 else ", ".join(shown[:-1]) + " and " + shown[-1]
-        return f"daily at {joined}"
-    return "daily, untimed" if plan.per_day == 1 else f"{plan.per_day}× daily, untimed"
+    """ "daily, any time", "daily at `8:00 pm`", "3× daily, at least 3h apart,
+    first dose when ready", "3× daily · `8:00 am`, `11:30 am`, `3:00 pm` · at
+    least 3h apart · not after `4:00 pm`"."""
+    head, conditions = _schedule_parts(plan.schedule)
+    return " · ".join([head, *conditions])
+
+
+def _name(plan: Plan) -> str:
+    return f"**{plan.name}**" + (f" ({plan.dose})" if plan.dose else "")
+
+
+def _extras(plan: Plan) -> list[str]:
+    return ([f"*{plan.notes}*"] if plan.notes else []) + (
+        [timeinput.format_dates(plan.start, plan.end)] if plan.is_course else []
+    )
 
 
 def describe(plan: Plan, icon: str = "💊") -> str:
-    """A plan on one line, as previews and lists show it. A pill that goes on
-    indefinitely shows no dates at all."""
-    name = f"**{plan.name}**" + (f" ({plan.dose})" if plan.dose else "")
-    parts = [f"{icon} {name}", schedule_text(plan)]
-    if plan.notes:
-        parts.append(f"*{plan.notes}*")
-    if plan.is_course:
-        parts.append(timeinput.format_dates(plan.start, plan.end))
-    if plan.kind == INTERVAL:
-        parts.append(f"first dose at {_clock(plan.times[0])}" if plan.times else "first dose when ready")
-    return " · ".join(parts)
+    """A plan on one line, as lists show it. A pill that goes on indefinitely
+    shows no dates at all."""
+    return " · ".join([f"{icon} {_name(plan)}", schedule_text(plan), *_extras(plan)])
+
+
+def card_lines(plan: Plan) -> list[str]:
+    """A plan as a card shows it: one line, or two for a pill with planned
+    times and conditions on them (the gap, the latest time)."""
+    head, conditions = _schedule_parts(plan.schedule)
+    if not conditions:
+        return [" · ".join([_name(plan), head, *_extras(plan)])]
+    second = " · ".join([*conditions, *_extras(plan)])
+    return [f"{_name(plan)} · {head}", second[0].upper() + second[1:]]
 
 
 def describe_pill(pill: Pill, today: date) -> str:
@@ -393,11 +485,6 @@ def differences(old: Plan, new: Plan) -> list[tuple[str, str, str]]:
     def dates(plan: Plan) -> str:
         return timeinput.format_dates(plan.start, plan.end) if plan.is_course else "no end date"
 
-    def first(plan: Plan) -> str:
-        if plan.kind != INTERVAL:
-            return ""
-        return _clock(plan.times[0]) if plan.times else "when ready"
-
     found = [
         ("name", old.name, new.name),
         ("dose", old.dose or "none", new.dose or "none"),
@@ -405,8 +492,6 @@ def differences(old: Plan, new: Plan) -> list[tuple[str, str, str]]:
         ("schedule", schedule_text(old), schedule_text(new)),
         ("dates", dates(old), dates(new)),
     ]
-    if first(old) and first(new):
-        found.append(("first dose", first(old), first(new)))
     return [(name, before, after) for name, before, after in found if before != after]
 
 

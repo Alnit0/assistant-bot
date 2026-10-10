@@ -13,8 +13,10 @@ from tasks.pills.rules import ACTIVE, ENDED, PAUSED, REMOVED, Pill, Plan, TimeQu
 # Claude fills in what was said; the code here reads it into a plan with
 # tasks/pills/rules.py, shows its best reading on a confirm card, and only
 # Save writes it. Nothing is asked before the card: a time that could be
-# morning or evening is taken as the morning and marked ❓. A reply changes
-# the card: the code lays the change over what the card holds.
+# morning or evening is taken as the morning (a latest time as the evening)
+# and marked ❓. A planned time too close to the one before is moved, and the
+# card says so. A reply changes the card: the code lays the change over what
+# the card holds.
 #
 # Every action takes a list of pills, so "pause iron and vitamin D" is one
 # card. No discord.py and no Context: the same code runs for a message and
@@ -31,7 +33,7 @@ ONLY_FOR = (
 EXAMPLES = ("add vitamin D once a day with food", "move the evening pill to 9pm", "pause iron until the 20th")
 HINT = "Try saying its name and when you take it, e.g. “add iron at 8am”."
 
-PLAN_FIELDS = ("name", "dose", "notes", "times", "per_day", "min_gap", "start", "end", "days")
+PLAN_FIELDS = ("name", "dose", "notes", "times", "per_day", "min_gap", "latest", "start", "end", "days")
 TRIES = rules.MAX_PER_DAY + 1
 
 
@@ -66,16 +68,20 @@ def as_request(item: dict) -> rules.Request:
     return rules.Request(**{name: str(item[name]) for name in PLAN_FIELDS if item.get(name) not in (None, "")})
 
 
-def settle(request: rules.Request, today: date, base: Plan | None = None) -> tuple[Plan, rules.Request, bool]:
+def settle(
+    request: rules.Request, today: date, base: Plan | None = None, moved: list[str] | None = None
+) -> tuple[Plan, rules.Request, bool]:
     """The plan a request makes, never asking: a time that could be morning or
-    evening is read as the morning, and the last value says a guess was made.
-    Also the request with those times settled, which is what Save applies."""
+    evening is read as the morning (a latest time as the evening), and the
+    last value says a guess was made. Also the request with those times
+    settled, which is what Save applies. `moved` is given a line for each
+    planned time that had to move to keep the gap."""
     guessed = False
     for _ in range(TRIES):
         try:
-            return rules.build(request, today, base), request, guessed
+            return rules.build(request, today, base, moved), request, guessed
         except TimeQuestion as question:
-            request = rules.answer(request, question, question.options[0])
+            request = rules.answer(request, question, question.options[question.field == "latest"])
             guessed = True
     raise UserError("I couldn't read those times.")
 
@@ -92,6 +98,12 @@ def _unsure(data: dict, guessed: frozenset, key: str) -> set[str]:
 
 def _line(plan: Plan) -> str:
     return rules.describe(plan, "").strip()
+
+
+def _settled(item: dict, settled: rules.Request) -> dict:
+    """An item with the times the code settled in place of the ones said, so
+    Save applies what the card showed."""
+    return {**item, **{name: getattr(settled, name) for name in ("times", "latest") if item.get(name) and getattr(settled, name)}}
 
 
 def _changed(user_id: int) -> None:
@@ -148,8 +160,9 @@ async def add_card(request: Request, data: dict, guessed: frozenset) -> Proposal
     own_guesses: list[str] = []
     for item in items:
         name = str(item["name"]).strip()
+        moved: list[str] = []
         try:
-            plan, settled, time_guess = settle(as_request(item), today)
+            plan, settled, time_guess = settle(as_request(item), today, moved=moved)
             rules.check_name(plan, existing)
             if plan.name.lower() in seen:
                 raise UserError("it is on this card twice")
@@ -157,10 +170,12 @@ async def add_card(request: Request, data: dict, guessed: frozenset) -> Proposal
             warnings.append(f"Not included: {name} ({error})")
             continue
         seen.add(plan.name.lower())
-        lines.append(flag(_line(plan), time_guess or name.lower() in unsure))
+        first, *rest = rules.card_lines(plan)
+        lines += [flag(first, time_guess or name.lower() in unsure), *rest]
+        warnings += moved
         if time_guess:
             own_guesses.append(f"pills[{len(kept)}].times")
-        kept.append({**item, "times": settled.times} if settled.times else dict(item))
+        kept.append(_settled(item, settled))
     if not kept:
         raise UserError("; ".join(warning.removeprefix("Not included: ") for warning in warnings) or "No pill to add.")
     last = str(asked[-1]["name"]) if asked else None
@@ -224,8 +239,9 @@ async def edit_card(request: Request, data: dict, guessed: frozenset) -> Proposa
         pill = by_ref.get(item["pill"])
         if pill is None:
             continue
+        moved: list[str] = []
         try:
-            plan, settled, time_guess = settle(as_request(item), today, pill.plan)
+            plan, settled, time_guess = settle(as_request(item), today, pill.plan, moved)
             rules.check_name(plan, existing, own_id=pill.id)
         except UserError as error:
             warnings.append(f"Not included: {pill.plan.name} ({error})")
@@ -237,12 +253,13 @@ async def edit_card(request: Request, data: dict, guessed: frozenset) -> Proposa
         # One format for every edit: field · old → new
         lines.append(flag(f"**{pill.plan.name}**", mark))
         lines += [
-            flag(f"{name} · {before} → {after}", time_guess and name in ("schedule", "first dose"))
+            flag(f"{name} · {before} → {after}", time_guess and name == "schedule")
             for name, before, after in rules.differences(pill.plan, plan)
         ]
+        warnings += moved
         if time_guess:
             own_guesses.append(f"pills[{len(kept)}].times")
-        kept.append({**item, "times": settled.times} if settled.times and item.get("times") else dict(item))
+        kept.append(_settled(item, settled))
     if not kept:
         raise UserError("; ".join(warning.removeprefix("Not included: ") for warning in warnings) or "Nothing to change.")
     lines.append("-# Applies from the next dose. What is already recorded stays as it is.")
@@ -498,14 +515,20 @@ _PLAN_FIELDS = (
     Field("notes", "Instructions, e.g. with food. Leave out if not said."),
     Field(
         "times",
-        "The time of each dose, separated by commas, " + AS_SAID + " E.g. \"8am, 8pm\". With min_gap, at most "
-        "one: the time of the first dose. Leave out for a pill with no set time.",
+        "The time of each dose, separated by commas, " + AS_SAID + " E.g. \"8am, 8pm\", or \"8am, 11:30, "
+        "3pm\". \"Every 2 hours from 8am\" is a time for each dose. Leave out for a pill with no set time.",
     ),
     Field("per_day", "How many doses a day, if said. Not needed when a time is given for each dose.", INTEGER),
     Field(
         "min_gap",
-        "The least time between doses, with its unit: 3h, 90m. Only for a pill taken several times a day at "
-        "least so long apart; then per_day is needed too (your best guess, listed as guessed, if not said).",
+        "The least time between doses, with its unit: 3h, 90m (\"at least 3 hours apart\"). It can go with "
+        "times. Without a time for each dose, per_day is needed too (your best guess, listed as guessed, if "
+        "not said).",
+    ),
+    Field(
+        "latest",
+        "The time of day after which it must not be taken (\"not after 4pm\" -> 4pm): the time only, "
+        + AS_SAID + " Leave out if not said.",
     ),
     Field("start", "For a course only: its first day, " + AS_SAID),
     Field("end", "For a course only: its last day, " + AS_SAID),
@@ -535,7 +558,9 @@ ACTIONS = (
         "-> name Vitamin D, notes with food. \"add iron at 8\" -> name Iron, times 8. \"add course A, 3 times a "
         "day, at least 3 hours apart, with food, for 7 days starting tomorrow\" -> name Course A, per_day 3, "
         "min_gap 3h, notes with food, start tomorrow, days 7. \"a new pill called A at 9am, 12pm and 3pm\" -> "
-        "name A, times \"9am, 12pm, 3pm\". A pill with no end has no dates: leave start, end and days out. In "
+        "name A, times \"9am, 12pm, 3pm\". \"add pill A, 3 times a day at 8am, 11:30 and 3pm, at least 3 hours "
+        "apart, not after 4pm, without food\" -> name Pill A, per_day 3, times \"8am, 11:30, 3pm\", min_gap 3h, "
+        "latest 4pm, notes without food. A pill with no end has no dates: leave start, end and days out. In "
         "a follow-up (\"8pm\", \"make it twice a day\"), give the pill by the name on the card and only what "
         "changes. A time said in a follow-up REPLACES the card's time (card shows 08:00, user says \"8pm\" -> "
         "times 8pm, never \"08:00, 8pm\"), unless the user says to add another dose.",
@@ -551,9 +576,9 @@ ACTIONS = (
     ),
     Action(
         "pill_edit",
-        "Change a pill the user already has: its name, dose, notes, times, how often, the gap or its dates. "
-        "Give only what changes. To take something away give \"none\" for it (notes none; times none makes it "
-        "untimed; end none makes it go on with no end). Examples: \"move the evening pill to 9pm\" -> pill "
+        "Change a pill the user already has: its name, dose, notes, times, how often, the gap, the latest "
+        "time or its dates. Give only what changes. To take something away give \"none\" for it (notes none; "
+        "times none makes it any time; min_gap none; latest none; end none makes it go on with no end). Examples: \"move the evening pill to 9pm\" -> pill "
         "Evening pill, times 9pm. \"vitamin D is 2 tablets now\" -> dose 2 tablets.",
         _one_or_more("to change", _WHICH, Field("name", "A new name for it, if it is being renamed."), *_PLAN_FIELDS, _OFF_THE_CARD),
         prepare=edit_card,

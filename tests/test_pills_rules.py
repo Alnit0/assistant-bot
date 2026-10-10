@@ -4,8 +4,9 @@ from datetime import date, time
 import pytest
 
 from core.errors import UserError
+from core.schedule import Schedule
 from tasks.pills import rules
-from tasks.pills.rules import ACTIVE, ENDED, FIXED, INTERVAL, PAUSED, REMOVED, UNTIMED, UPCOMING, Pill, Plan, Request, TimeQuestion
+from tasks.pills.rules import ACTIVE, ENDED, PAUSED, REMOVED, UPCOMING, Pill, Plan, Request, TimeQuestion
 
 TODAY = date(2026, 10, 9)  # a Friday
 
@@ -14,51 +15,105 @@ def build(base=None, **said):
     return rules.build(Request(**said), TODAY, base)
 
 
-def pill(pill_id=1, status=ACTIVE, paused_until=None, **plan):
-    plan.setdefault("name", f"Pill {pill_id}")
-    return Pill(pill_id, 1, Plan(**plan), status, paused_until)
+def pill(pill_id=1, status=ACTIVE, paused_until=None, name=None, start=None, end=None, **schedule):
+    plan = Plan(name or f"Pill {pill_id}", schedule=Schedule(**schedule), start=start, end=end)
+    return Pill(pill_id, 1, plan, status, paused_until)
+
+
+def moved(**said):
+    """The plan, and what the card is told moved."""
+    lines = []
+    return rules.build(Request(**said), TODAY, None, lines), lines
 
 
 # ---------------------------------------------------------------------------
 # New pills
 # ---------------------------------------------------------------------------
-def test_once_a_day_with_nothing_else_is_untimed():
+def test_once_a_day_with_nothing_else_is_any_time():
     plan = build(name="Vitamin D")
-    assert plan == Plan("Vitamin D", kind=UNTIMED, per_day=1)
-    assert rules.describe(plan) == "💊 **Vitamin D** · daily, untimed"
+    assert plan == Plan("Vitamin D", schedule=Schedule(1))
+    assert rules.describe(plan) == "💊 **Vitamin D** · daily, any time"
 
 
-def test_a_time_makes_it_fixed_and_is_shown_in_12_hour_form():
+def test_a_time_is_its_planned_time_and_is_shown_in_12_hour_form():
     plan = build(name="Evening pill", times="20:00")
-    assert (plan.kind, plan.times, plan.per_day) == (FIXED, (time(20, 0),), 1)
+    assert plan.schedule == Schedule(1, (time(20, 0),))
     assert rules.describe(plan) == "💊 **Evening pill** · daily at `8:00 pm`"
 
 
 def test_several_times_are_put_in_order():
     plan = build(name="Twice", times="8pm and 8am")
-    assert plan.times == (time(8, 0), time(20, 0)) and plan.per_day == 2
-    assert rules.describe(plan) == "💊 **Twice** · daily at `8:00 am` and `8:00 pm`"
-    assert rules.schedule_text(build(name="Thrice", times="8am, noon; 20:00")) == "daily at `8:00 am`, `12:00 pm` and `8:00 pm`"
+    assert plan.schedule == Schedule(2, (time(8, 0), time(20, 0)))
+    assert rules.describe(plan) == "💊 **Twice** · daily at `8:00 am`, `8:00 pm`"
+    assert rules.schedule_text(build(name="Thrice", times="8am, noon; 20:00")) == "daily at `8:00 am`, `12:00 pm`, `8:00 pm`"
 
 
-def test_a_gap_makes_it_an_interval_course_with_inclusive_dates():
+def test_a_gap_with_no_times_is_a_course_with_inclusive_dates_and_the_first_dose_when_ready():
     plan = build(name="Course A", per_day="3", min_gap="3 hours", notes="with food", start="tomorrow", days="7")
-    assert (plan.kind, plan.per_day, plan.gap_minutes, plan.times) == (INTERVAL, 3, 180, ())
+    assert plan.schedule == Schedule(3, gap_minutes=180)
     assert (plan.start, plan.end) == (date(2026, 10, 10), date(2026, 10, 16)), "7 days, the last one a day of taking"
     assert rules.describe(plan) == (
-        "💊 **Course A** · 3× daily, ≥3h apart · *with food* · 10 to 16 Oct · first dose when ready"
+        "💊 **Course A** · 3× daily, at least 3h apart, first dose when ready · *with food* · 10 to 16 Oct"
     )
+    assert rules.card_lines(plan) == [rules.describe(plan, "").strip()], "one line on the card too"
 
 
-def test_an_interval_pill_may_give_its_first_dose_a_time():
+def test_a_pill_with_a_gap_may_give_its_first_dose_a_time():
     plan = build(name="Course B", per_day="3 times a day", min_gap="90m", times="8am")
-    assert plan.times == (time(8, 0),)
-    assert rules.describe(plan) == "💊 **Course B** · 3× daily, ≥1h 30m apart · first dose at `8:00 am`"
+    assert plan.schedule == Schedule(3, (time(8, 0),), gap_minutes=90)
+    assert rules.describe(plan) == "💊 **Course B** · 3× daily, at least 1h 30m apart, first dose at `8:00 am`"
 
 
 def test_dose_and_notes_are_shown():
     plan = build(name="Magnesium", dose="1 tablet", notes="with food", per_day="twice")
-    assert rules.describe(plan) == "💊 **Magnesium** (1 tablet) · 2× daily, untimed · *with food*"
+    assert rules.describe(plan) == "💊 **Magnesium** (1 tablet) · 2× daily, any time · *with food*"
+
+
+# ---------------------------------------------------------------------------
+# One model: planned times, a gap and a latest time together
+# ---------------------------------------------------------------------------
+PILL_A = {"name": "Pill A", "per_day": "3", "times": "8am, 11:30, 3pm", "min_gap": "3h", "latest": "4pm", "notes": "without food"}
+
+
+def test_pill_a_every_setting_is_used_exactly_and_nothing_is_a_question():
+    plan, lines = moved(**PILL_A)
+    assert plan.schedule == Schedule(3, (time(8, 0), time(11, 30), time(15, 0)), gap_minutes=180, latest=time(16, 0))
+    assert lines == []
+    assert rules.card_lines(plan) == [
+        "**Pill A** · 3× daily · `8:00 am`, `11:30 am`, `3:00 pm`",
+        "At least 3h apart · not after `4:00 pm` · *without food*",
+    ]
+    assert rules.describe(plan) == (
+        "💊 **Pill A** · 3× daily · `8:00 am`, `11:30 am`, `3:00 pm` · at least 3h apart · not after `4:00 pm` · *without food*"
+    )
+
+
+def test_the_times_around_it_settle_a_time_that_could_be_morning_or_evening():
+    assert build(name="A", times="8am, 11:30 and 3pm").schedule.times == (time(8, 0), time(11, 30), time(15, 0))
+    assert build(name="A", times="8am, 8").schedule.times == (time(8, 0), time(20, 0)), "the 8 after 8 am"
+    assert build(name="A", times="8am, 3pm", latest="4").schedule.latest == time(16, 0), "not after 4, after a 3 pm dose"
+    with pytest.raises(TimeQuestion):
+        build(name="A", times="8am and 9")  # 9 am or 9 pm: both are after 8 am
+
+
+def test_a_latest_time_with_nothing_to_go_by_is_a_question_about_the_latest_time():
+    request = Request(name="B", latest="4")
+    with pytest.raises(TimeQuestion) as raised:
+        rules.build(request, TODAY)
+    assert (raised.value.field, raised.value.options) == ("latest", (time(4, 0), time(16, 0)))
+    answered = rules.answer(request, raised.value, time(16, 0))
+    assert rules.build(answered, TODAY).schedule == Schedule(1, latest=time(16, 0))
+    assert rules.card_lines(rules.build(answered, TODAY)) == ["**B** · daily, any time", "Not after `4:00 pm`"]
+
+
+def test_a_planned_time_too_close_to_the_one_before_moves_and_the_card_is_told():
+    plan, lines = moved(**{**PILL_A, "times": "8am, 11:30, 2pm"})
+    assert plan.schedule.times == (time(8, 0), time(11, 30), time(14, 30))
+    assert lines == ["11:30 am to 2:00 pm is under 3h: the third dose moves to 2:30 pm"]
+
+
+def test_times_with_a_gap_say_how_many_doses_there_are():
+    assert build(name="A", times="8am, 2pm", min_gap="4h").schedule == Schedule(2, (time(8, 0), time(14, 0)), gap_minutes=240)
 
 
 def test_a_pill_with_no_end_has_no_dates_at_all():
@@ -94,13 +149,13 @@ def test_a_time_that_could_be_morning_or_evening_is_a_question():
 
 
 def test_answering_settles_that_time_and_leaves_the_rest_as_said():
-    request = Request(name="Twice", times="8am, 8")
+    request = Request(name="Twice", times="8am, 9")
     with pytest.raises(TimeQuestion) as raised:
         rules.build(request, TODAY)
     assert raised.value.index == 1
-    answered = rules.answer(request, raised.value, time(20, 0))
-    assert answered.times == "8am, 20:00"
-    assert rules.build(answered, TODAY).times == (time(8, 0), time(20, 0))
+    answered = rules.answer(request, raised.value, time(21, 0))
+    assert answered.times == "8am, 21:00"
+    assert rules.build(answered, TODAY).schedule.times == (time(8, 0), time(21, 0))
 
 
 def test_each_unclear_time_is_asked_about_in_turn():
@@ -112,7 +167,7 @@ def test_each_unclear_time_is_asked_about_in_turn():
         rules.build(request, TODAY)
     assert (second.value.index, second.value.typed) == (1, "9:30")
     request = rules.answer(request, second.value, time(21, 30))
-    assert rules.build(request, TODAY).times == (time(8, 0), time(21, 30))
+    assert rules.build(request, TODAY).schedule.times == (time(8, 0), time(21, 30))
 
 
 def test_a_gap_with_no_unit_is_not_guessed_to_be_hours():
@@ -135,7 +190,11 @@ def test_a_gap_with_no_unit_is_not_guessed_to_be_hours():
         ({"name": "A", "min_gap": "3h"}, "How many times a day"),
         ({"name": "A", "min_gap": "3h", "per_day": "1"}, "at least 2 doses"),
         ({"name": "A", "min_gap": "12h", "per_day": "3"}, "don't fit in a day"),
-        ({"name": "A", "min_gap": "3h", "per_day": "3", "times": "8am, 8pm"}, "only the first dose can have a time"),
+        ({"name": "A", "min_gap": "3h", "per_day": "3", "times": "8am, 8pm"}, "a time for each dose, or for the first one only"),
+        ({"name": "A", "min_gap": "3h", "per_day": "3", "times": "8pm"}, "3 doses 3h apart don't fit in a day"),
+        ({"name": "A", "min_gap": "3h", "per_day": "3", "latest": "5am"}, "3 doses 3h apart don't fit before 5:00 am"),
+        ({"name": "A", "times": "8am, 5pm", "latest": "4pm"}, "A dose at 5:00 pm would be after the latest time, 4:00 pm"),
+        ({"name": "A", "times": "8am, 11:30, 2pm", "min_gap": "3h", "latest": "2:15pm"}, "A dose at 2:30 pm would be after the latest time"),
         ({"name": "A", "min_gap": "ages", "per_day": "3"}, "can't read “ages” as a gap"),
         ({"name": "A", "start": "tomorrow"}, "When does it end"),
         ({"name": "A", "end": "the 20th", "days": "7"}, "not both"),
@@ -162,13 +221,14 @@ def test_two_pills_in_use_cannot_share_a_name():
 # ---------------------------------------------------------------------------
 # Editing: only what was said changes
 # ---------------------------------------------------------------------------
-EVENING = Plan("Evening pill", dose="1 tablet", notes="with food", kind=FIXED, times=(time(20, 0),), per_day=1)
-COURSE = Plan("Course A", kind=INTERVAL, per_day=3, gap_minutes=180, start=date(2026, 10, 10), end=date(2026, 10, 16))
+EVENING = Plan("Evening pill", dose="1 tablet", notes="with food", schedule=Schedule(1, (time(20, 0),)))
+COURSE = Plan("Course A", schedule=Schedule(3, gap_minutes=180), start=date(2026, 10, 10), end=date(2026, 10, 16))
+THRICE = Plan("Pill A", schedule=Schedule(3, (time(8, 0), time(11, 30), time(15, 0))))
 
 
 def test_an_edit_changes_only_what_it_names():
     assert build(EVENING, times="9pm") == Plan(
-        "Evening pill", dose="1 tablet", notes="with food", kind=FIXED, times=(time(21, 0),), per_day=1
+        "Evening pill", dose="1 tablet", notes="with food", schedule=Schedule(1, (time(21, 0),))
     )
     assert build(EVENING, dose="2 tablets").dose == "2 tablets"
     assert build(EVENING, name="Night pill").name == "Night pill"
@@ -178,27 +238,32 @@ def test_an_edit_changes_only_what_it_names():
 def test_none_takes_a_value_away():
     assert build(EVENING, notes="none").notes == ""
     assert build(EVENING, dose="none").dose == ""
-    untimed = build(EVENING, times="none")
-    assert (untimed.kind, untimed.times, untimed.per_day) == (UNTIMED, (), 1)
+    assert build(EVENING, times="none").schedule == Schedule(1)
+    whole = Plan("Pill A", schedule=Schedule(3, (time(8, 0), time(11, 30), time(15, 0)), 180, time(16, 0)))
+    assert build(whole, min_gap="none").schedule == Schedule(3, whole.schedule.times, None, time(16, 0))
+    assert build(whole, latest="none").schedule == Schedule(3, whole.schedule.times, 180, None)
     forever = build(COURSE, end="none")
     assert (forever.start, forever.end) == (None, None)
 
 
-def test_changing_the_kind_of_schedule_drops_what_belonged_to_the_old_kind():
-    # Fixed times -> a gap: the old times don't become "the first dose"
-    by_gap = build(EVENING, per_day="3", min_gap="4h")
-    assert (by_gap.kind, by_gap.times, by_gap.per_day, by_gap.gap_minutes) == (INTERVAL, (), 3, 240)
-    # A gap -> a time for each dose: the gap goes
-    by_times = build(COURSE, times="8am, 2pm, 8pm")
-    assert (by_times.kind, by_times.gap_minutes, by_times.per_day) == (FIXED, None, 3)
-    # A gap, and one time: that is the first dose, still by gap
-    first = build(COURSE, times="8am")
-    assert (first.kind, first.times, first.gap_minutes) == (INTERVAL, (time(8, 0),), 180)
+def test_a_gap_and_a_latest_time_can_be_added_to_planned_times():
+    assert build(THRICE, min_gap="3h", latest="4pm").schedule == Schedule(3, THRICE.schedule.times, 180, time(16, 0))
 
 
-def test_an_interval_edit_keeps_the_count_it_had():
-    assert build(COURSE, min_gap="2h").per_day == 3
-    assert build(COURSE, per_day="4").gap_minutes == 180
+def test_times_for_another_number_of_doses_do_not_carry_over():
+    # One time, now 3 a day with a gap: the old time doesn't become "the first dose"
+    assert build(EVENING, per_day="3", min_gap="4h").schedule == Schedule(3, gap_minutes=240)
+    # A gap, and a time for each dose: the gap stays, as nothing was said about it
+    assert build(COURSE, times="8am, 2pm, 8pm").schedule == Schedule(3, (time(8, 0), time(14, 0), time(20, 0)), 180)
+    # A gap, and one time: that is the first dose
+    assert build(COURSE, times="8am").schedule == Schedule(3, (time(8, 0),), 180)
+    # The first dose's time stays when the gap changes
+    assert build(build(COURSE, times="8am"), min_gap="2h").schedule == Schedule(3, (time(8, 0),), 120)
+
+
+def test_an_edit_to_a_pill_with_a_gap_keeps_the_count_it_had():
+    assert build(COURSE, min_gap="2h").schedule.per_day == 3
+    assert build(COURSE, per_day="4").schedule.gap_minutes == 180
 
 
 def test_course_dates_can_be_moved():
@@ -246,20 +311,20 @@ def test_the_list_groups_in_use_paused_and_ended_and_leaves_out_removed():
     pills = [
         pill(1, name="Vitamin D"),
         pill(2, name="Iron", status=PAUSED, paused_until=date(2026, 10, 20)),
-        pill(3, name="Course B", kind=INTERVAL, per_day=3, gap_minutes=180, start=date(2026, 10, 1), end=date(2026, 10, 7)),
+        pill(3, name="Course B", per_day=3, gap_minutes=180, start=date(2026, 10, 1), end=date(2026, 10, 7)),
         pill(4, name="Gone", status=REMOVED),
-        pill(5, name="Course A", kind=INTERVAL, per_day=3, gap_minutes=180, start=date(2026, 10, 10), end=date(2026, 10, 16)),
-        pill(6, name="evening pill", kind=FIXED, times=(time(20, 0),)),
+        pill(5, name="Course A", per_day=3, gap_minutes=180, start=date(2026, 10, 10), end=date(2026, 10, 16)),
+        pill(6, name="evening pill", times=(time(20, 0),)),
     ]
     assert rules.list_text(pills, TODAY).splitlines() == [
         "## 💊 Pills",
         "💊 **evening pill** · daily at `8:00 pm`",
-        "💊 **Vitamin D** · daily, untimed",
-        "🗓️ **Course A** · 3× daily, ≥3h apart · 10 to 16 Oct · first dose when ready · starts 10 Oct",
+        "💊 **Vitamin D** · daily, any time",
+        "🗓️ **Course A** · 3× daily, at least 3h apart, first dose when ready · 10 to 16 Oct · starts 10 Oct",
         "### ⏸️ Paused",
-        "⏸️ **Iron** · daily, untimed · paused until 20 Oct",
+        "⏸️ **Iron** · daily, any time · paused until 20 Oct",
         "### 🏁 Ended",
-        "🏁 **Course B** · 3× daily, ≥3h apart · 1 to 7 Oct · first dose when ready",
+        "🏁 **Course B** · 3× daily, at least 3h apart, first dose when ready · 1 to 7 Oct",
     ]
     assert [p.id for p in rules.listed(pills)] == [5, 3, 6, 2, 1], "by name, whatever the case"
 
@@ -268,7 +333,7 @@ def test_an_empty_list_says_how_to_start():
     assert rules.list_text([], TODAY) == f"## 💊 Pills\n{rules.EMPTY_LIST}"
     assert rules.list_text([pill(status=REMOVED)], TODAY) == f"## 💊 Pills\n{rules.EMPTY_LIST}"
     only_paused = rules.list_text([pill(name="Iron", status=PAUSED)], TODAY)
-    assert "Nothing is being taken at the moment." in only_paused and "⏸️ **Iron** · daily, untimed · paused" in only_paused
+    assert "Nothing is being taken at the moment." in only_paused and "⏸️ **Iron** · daily, any time · paused" in only_paused
 
 
 # ---------------------------------------------------------------------------

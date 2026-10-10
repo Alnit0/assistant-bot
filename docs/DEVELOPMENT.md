@@ -471,19 +471,27 @@ Everything works in #inbox and in the hub.
 
 | Type or say | What happens |
 |---|---|
-| `pills` (or `pill`) | The list: in use, then ⏸️ Paused, then 🏁 Ended, with one dropdown to pick a pill |
-| "add vitamin D, once a day" | A card "💊 Pills · new" with "**Vitamin D** · daily, untimed", **Save** and **Cancel** |
+| `pills` (or `pill`) | The list: in use, then ⏸️ Paused, then 🏁 Ended. Read-only |
+| "add vitamin D, once a day" | A card "💊 Pills · new" with "**Vitamin D** · daily, any time", **Save** and **Cancel** |
 | "add evening pill at 20:00" | "💊 **Evening pill** · daily at `8:00 pm`" |
-| "add course A, 3 times a day, at least 3 hours apart, with food, for 7 days starting tomorrow" | "💊 **Course A** · 3× daily, ≥3h apart · *with food* · 10 to 16 Oct · first dose when ready" |
-| "move the evening pill to 9pm" | The plan now and the new one, with **Save** and **Edit** |
-| "pause iron", "pause iron until the 20th", "resume iron" | Done at once |
-| "remove iron" | "Remove **Iron**?…" with **Remove** and **Cancel**; its history is kept |
-| "delete iron and its history" | A separate question with **Delete for good** |
+| "add course A, 3 times a day, at least 3 hours apart, with food, for 7 days starting tomorrow" | "💊 **Course A** · 3× daily, at least 3h apart, first dose when ready · *with food* · 10 to 16 Oct" |
+| "add pill A to my pills, 3 times a day at 8am, 11:30 and 3pm, at least 3 hours apart, not after 4pm, without food" | Two lines: "**Pill A** · 3× daily · `8:00 am`, `11:30 am`, `3:00 pm`" and "At least 3h apart · not after `4:00 pm` · *without food*", with no ❓ |
+| "move the evening pill to 9pm" | A card: "schedule · daily at `8:00 pm` → daily at `9:00 pm`", with **Save** and **Cancel** |
+| "pause iron", "pause iron until the 20th", "resume iron" | A card to save |
+| "remove iron" | A card with **Remove** and **Cancel**; its history is kept |
+| "delete iron and its history" | A separate card with **Delete for good** |
 
-- **Three kinds of schedule.** *Untimed*: so many a day, no time. *Fixed*:
-  a time for each dose. *Interval*: so many a day with a minimum gap; the
-  first dose may have a time, the others will follow the dose actually
-  taken (stage 5).
+- **One shape of schedule.** Every pill has doses a day, and may have a
+  planned time for each dose (or for the first only), a minimum gap
+  between doses ("at least 3 hours apart") and a latest time ("not after
+  4pm"). Only what you say is filled in, and the card writes out each
+  setting it filled in. With no time and no gap a dose is "any time".
+  A dose will be due at the later of its planned time and the dose before
+  it, taken, plus the gap (the checklist and reminders use this next).
+- **Planned times closer together than the gap** are moved apart, and the
+  card says which dose moved ("⚠️ 11:30 am to 2:00 pm is under 3h: the
+  third dose moves to 2:30 pm"). A schedule that can't fit in a day, or a
+  planned time after the latest time, is refused with the reason.
 - **Courses.** A pill with dates is taken from the first to the last, both
   included ("for 7 days starting tomorrow" on the 9th is 10 to 16 Oct).
   It is listed with 🗓️ and "starts 10 Oct" until then, and under 🏁 Ended
@@ -497,10 +505,12 @@ Everything works in #inbox and in the hub.
   database before "✅ Saved" is shown.
 - **Times.** "At 8" is taken as `8:00 am` and marked ❓ on the card (it
   will become a question on the card: gap G1 in the backlog); say "8pm"
-  to correct it. Times are always shown as `8:00 pm`, whatever you typed.
+  to correct it. A time the others settle is not a guess: in "8am, 11:30
+  and 3pm" the 11:30 can only be the morning. Times are always shown as
+  `8:00 pm`, whatever you typed.
 - **Editing** applies from the next dose; what is already recorded stays.
-  Give only what changes. "No notes", "no times" (untimed) and "no end
-  date" take a value away.
+  Give only what changes. "No notes", "no times" (any time), "no gap",
+  "no latest time" and "no end date" take a value away.
 - **Pausing** stops a pill being asked for and leaves its streak alone.
   "Until the 20th" means it is taken again on the 20th, by itself.
 - **Removing** hides the pill everywhere and keeps its history for stats.
@@ -510,10 +520,15 @@ Everything works in #inbox and in the hub.
   and Live: it has no buttons, and it is rewritten in place when a pill
   changes. To change a pill, say so.
 
-**In code.** `tasks/pills/rules.py` is pure: `build(request, today, base)`
+**In code.** The schedule itself is core: `core/schedule.py` has the
+`Schedule` every pill's plan holds and `dues(schedule, day, so_far)`, which
+says when each dose is due. `tasks/pills/rules.py` is pure:
+`build(request, today, base)`
 turns what was said into a `Plan` or raises (`TimeQuestion` for an unclear
 time, `UserError` with the reason otherwise), `status_on(pill, day)` says
-what a pill is on a day, and the wording is all there. `store.py` holds
+what a pill is on a day, and the wording is all there. `doses.py` has the
+take-by time and whether a dose still fits before the day's limit.
+`store.py` holds
 `pills_pills` and the change record. `plain.py` has the actions, their
 cards and the read-back checks, with no discord.py. Doses will be
 occurrences (`core/occurrences.py`) with task `pills` and the pill's id as

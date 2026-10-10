@@ -89,7 +89,7 @@ def test_1a_a_course_with_every_detail_and_no_question_mark(bot):
     bot.say(SAID["1a"])
     today = day.today()
     dates = timeinput.format_dates(today + timedelta(days=1), today + timedelta(days=7))
-    assert card(bot)[0][1] == f"**Course A** · 3× daily, ≥3h apart · *with food* · {dates} · first dose when ready"
+    assert card(bot)[0][1] == f"**Course A** · 3× daily, at least 3h apart, first dose when ready · *with food* · {dates}"
     assert "❓" not in bot.sent[-1][1].text
 
 
@@ -97,7 +97,7 @@ def test_1b_a_brief_request_gets_a_card_with_the_defaults(bot):
     bot.claude(ROUTED["1b"], EXTRACTED["1b"])
     bot.say(SAID["1b"])
     lines = card(bot)[0]
-    assert lines[0] == "💊 Pills · new" and lines[1].lower() == "**vitamin d** · daily, untimed"
+    assert lines[0] == "💊 Pills · new" and lines[1].lower() == "**vitamin d** · daily, any time"
 
 
 @gap("questions on the card are not built: the time is guessed as the morning and marked ❓")

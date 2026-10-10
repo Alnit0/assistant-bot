@@ -671,6 +671,26 @@ A short log of key decisions and why. Newest at the bottom.
 - **Pills guess instead of asking:** a time that could be morning or
   evening is taken as the morning and marked ❓ on the card. The old
   question with two buttons belongs to the old way and goes with it.
+- **One schedule model, in core (2026-10-10):** `core/schedule.py` holds
+  the one shape (doses a day, planned times, minimum gap, latest time)
+  and the rule for when a dose is due; untimed, fixed and interval are no
+  longer kinds, only what the settings come to. Only the plan is stored:
+  what is due today is worked out each time from it and what was done.
+  - Planned times may be given for every dose, for the first only (the
+    others follow the dose before), or for none. Any other number is
+    refused.
+  - A dose still to take is expected at its own due time when working out
+    the ones after it, and never before now; a skipped or missed dose is
+    not waited for (the gap is from the last dose really taken).
+  - An edit changes only the settings it names: giving times to a pill
+    with a gap keeps the gap. Times kept from before are dropped only
+    when they are for another number of doses.
+  - The take-by time and "does it still fit" are in the pills task
+    (`tasks/pills/doses.py`), as the spec has them, though they know
+    nothing of pills: they move to core when a second task needs them.
+  - The `kind` column of `pills_pills` is dropped and `latest_time` added,
+    in one appended migration; the other columns mean what they did, so
+    no row needed rewriting.
 - **Archive, pin and delete are not asked for in plain words**
   (2026-10-10). They were one router entry, "messages", for a day: which
   message "that" meant was too easy to get wrong (it pinned and archived

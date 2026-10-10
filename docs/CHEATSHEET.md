@@ -280,6 +280,7 @@ only, any channel, no slash. It is off after every restart.
 | "add vitamin D, once a day" | A card with **Save** / **Cancel** straight away; nothing is added until Save |
 | "add evening pill at 20:00" | A pill at a fixed time (shown as `8:00 pm`) |
 | "add course A, 3 times a day, at least 3 hours apart, with food, for 7 days starting tomorrow" | A course with a minimum gap and dates |
+| "add pill A to my pills, 3 times a day at 8am, 11:30 and 3pm, at least 3 hours apart, not after 4pm, without food" | Planned times, a minimum gap and a latest time together |
 | "move the evening pill to 9pm" | A card: schedule · old → new, to save |
 | "pause iron until the 20th" / "resume iron" | A card to save; the 20th is the day it is taken again |
 | "remove iron" | Asks first; its history is kept |

@@ -91,6 +91,15 @@ bugs and pills.
   still describe parts of the old way and are rewritten then; the
   `pills_drafts` table is unused; the cost reports keep the `tools`
   route for rows logged before the removal.
+- **A planned time after the latest time is refused, not fixed**
+  (2026-10-10). The pills spec asks for rule problems to be shown on the
+  card with the sensible fix applied; for this one no fix is given (drop
+  the dose, move it, or move the latest time?), so the pill is named as
+  "Not included" with the reason. The same goes for a dose that moving
+  for the gap would push past the latest time. To decide.
+- **R1 to R27 in `docs/TESTING.md` still describe the old pills plan**
+  (a dropdown on the checklist, stages 3 to 6). Rewrite them from the
+  spec's acceptance tests as the checklist and reminders are built.
 - **"How long is left on tea?" shows whole minutes only** (asked for
   2026-10-10). Use the same format as the paused card ("4m 18s left"),
   so time remaining reads the same everywhere.

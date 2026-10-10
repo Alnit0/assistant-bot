@@ -768,7 +768,7 @@
       "golden": "13",
       "task": "pills",
       "message": "delete zinc and its history",
-      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Zinc · daily, untimed [active]",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Zinc · daily, any time [active]",
       "action": "pill_delete",
       "data": {
         "pills": [
