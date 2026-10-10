@@ -189,13 +189,13 @@ def test_an_error_kept_with_a_message_is_in_its_block():
     assert "error: boom" in trace.lines({**ROW, "error": "boom"})
 
 
-def test_dev_why_is_a_typed_word_and_never_a_tool_of_claudes():
+def test_dev_why_is_a_typed_word():
     from tasks import registry
 
     registry.load()
     assert registry._keyword_router.match("dev why").entry[1].name == "dev why"
     matched = registry._keyword_router.match("dev why 3")
-    assert matched.entry[1].name == "dev why" and matched.entry[1].tool is False
+    assert matched.entry[1].name == "dev why" and matched.args == ["3"]
 
 
 # --- as a reply: up to and including the message replied to ------------------------------------------------

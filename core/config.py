@@ -130,11 +130,6 @@ TIMEZONE_NAME = "Pacific/Auckland"
 TIMEZONE = ZoneInfo(TIMEZONE_NAME)
 MAX_HISTORY = 10  # number of recent messages (yours and the bot's) sent to Claude
 MAX_TOKENS = 1024  # maximum length of each Claude reply
-MAX_TOOL_CALLS = 5  # how many tools Claude may run in answer to one message
-# Whether tools are sent to the API as `strict`. Off: measured on 2026-10-07 it
-# added about 2 seconds to every request and about 40 to the first one after
-# the set of tools changed. Every input is checked in code either way
-STRICT_TOOLS = False
 # Whether the action schemas of the router's way are sent to the API as `strict`.
 # Off until measured as cheap for the small per-task sets: what comes back is
 # checked in code either way (core/actions.py)

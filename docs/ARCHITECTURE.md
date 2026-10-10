@@ -11,11 +11,11 @@ for why things are the way they are, `docs/DECISIONS.md`.
 
 | Path | Responsibility |
 |---|---|
-| `main.py` | Entry point (`--dev` runs it on the dev database): creates the Discord client, wires Discord events to the registry, holds the Claude chat path (which hands Claude its tools) and the slash command tree |
+| `main.py` | Entry point (`--dev` runs it on the dev database): creates the Discord client, wires Discord events to the registry, hands every plain message to `core/conversation.py`, keeps the 👀 / ⚠️ status reactions on the user's message, and holds the slash command tree |
 | `core/` | Shared building blocks. Never imports from `tasks/` |
 | `tasks/` | One folder per feature, loaded by `tasks/registry.py` |
-| `tests/` | Unit tests (pytest); never start the bot or touch real data |
-| `evals/` | Fixtures for the router and extraction (`fixtures/*.json`: a sentence and what it must come out as, with what the real API last returned), the code that judges them (`fixtures.py`), and the live eval that asks the real API and reports accuracy, time and cost (`python -m evals.live --live`) |
+| `tests/` | Unit tests (pytest); never start the bot or touch real data. `tests/demo.py` holds two demo lists (shopping and packing) that the conversation tests, the golden conversations and the fixtures use: they are test fixtures, never offered by the bot |
+| `evals/` | Fixtures for the router and extraction, the demo lists' included (`fixtures/*.json`: a sentence and what it must come out as, with what the real API last returned), the code that judges them (`fixtures.py`), and the live eval that asks the real API and reports accuracy, time and cost (`python -m evals.live --live`) |
 | `docs/specs/` | Private task specs (gitignored, never committed or quoted in public docs); zipped by the nightly backup |
 | `docs/` | `STATUS` (where the work stands: read first), `CONVERSATION` (the standard for how the bot talks, with its golden conversations), `ARCHITECTURE` (this), `DEVELOPMENT` (how to use and extend), `DECISIONS` (why), `TESTING` (test tracker), `QA-RUN` (manual run sheet), `BACKLOG` (found and not yet finished), `CHANGELOG` (what changed, by date), `CHEATSHEET` (commands) |
 | `.claude/skills/` | Procedures for Claude Code: `add-task`, `qa`, `end-of-task`, `bug` (fix a reported bug from its id) |
@@ -43,7 +43,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `users.py` | The `User` record, `ensure_owner()`, cached lookup by Discord id |
 | `permissions.py` | `is_allowed(user, action)`: the one permission check |
 | `errors.py` | `UserError`: a problem the user can fix |
-| `context.py` | `Context` handed to tasks: user, channel, args, `reply` (Kept) / `confirm` / `note` (Transient), database, #bot-log; `via_tool` says Claude is running it; `posted` counts what a handler put in the channel; `parent_channel_id` is the forum or channel a post or thread hangs off |
+| `context.py` | `Context` handed to tasks for a typed word, reply action or reaction: user, channel, args, `reply` (Kept) / `confirm` / `note` (Transient), database, #bot-log; `posted` counts what a handler put in the channel; `parent_channel_id` is the forum or channel a post or thread hangs off. Everything it sends passes `core/outgoing.py` |
 | `lifecycle.py` | The message lifecycle: the six classes and their policy, `classify(...)`, and `deletes(...)` / `delete_after()`, which everything that deletes a message by itself asks first (`dev cleanup off` says no). `KEEP_CONFIRMATIONS` makes `delete_after()` leave every Transient message in place |
 | `router.py` | Matches typed words and phrases, with typo tolerance; sets filler words aside for reply actions ("pin this"); `GENERIC_VERBS` are the verbs no shortcut may be on its own (add, edit, remove, pause…) |
 | `reactions.py` | Pure: which reaction changes count, which are checked at once, where they ended up, what to apply or undo; the `reaction_state` queries |
@@ -56,15 +56,14 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `extraction.py` | Extraction: one request for one task, given only that task's actions, which must call exactly one (or `none`; in a follow-up, `not_this`) with a `guessed` list. In a follow-up it gives only the items the message is about, never a total. `read` turns the call into the action, its data and its guesses, or "nothing fitted" with the reason |
 | `confirm.py` | Confirm cards: guess, show, confirm. Renders a `Proposal` (task and kind of change, every line, ❓ and ⚠️, Save / Cancel), keeps it as a row (`confirm_cards`) so it survives a restart, replaces one card with its correction (keeping everything said about it and what it was before its last change, so "No, …" can undo that change: `is_correction`), expires it after 30 minutes, and runs the task's `apply` on Save, then its `verify`: the confirmation is only shown if the change reads back from the database, and what the press did is added to the conversation. Also the question asked on a tie, and the rule for when a message sticks to the open card (`sticks`) |
 | `livelists.py` | Live lists: the latest copy of a list a user asked to see is kept up to date in place. `show` (or a direct action returning `actions.LiveReply`) posts it and records where it is (`live_lists`); `changed(user_id, key, render)` rewrites that copy in the background through `core/live.py`. Older copies are left as they were. A list also remembers its task and when it was shown: while it is the bot's latest message and under five minutes old, a short message is for that task (`sticks`) |
+| `outgoing.py` | The last check on what the bot sends through `cards.py` and `context.py`: an internal label ("(nothing)", an action's name, the pronoun marker, chat's sentinel) is taken out and reported, never sent (`clean`); and a reply never ends with an offer or "want me to…?" (`without_offer`). Pure |
 | `conversation.py` | A message in plain words, cheapest first: about the open card (extraction only), anything else (router, then extraction per task), or chat (a plain reply, no tools). Moves a card's items to another task in code on "no, packing", and drops from "Not included" what another card or the plain answer covers (`uncovered`). Hands what was extracted to the task's own code, which writes every word shown; logs the route, tasks, what was extracted, the outcome and each request's cost |
 | `cards.py` | Buttons, dropdowns and forms for tasks that may not use discord.py: a task writes a `Card` of plain records (`Button`, `Select`, `Form`) and registers what each action does; the component's id (`card.b:<task>:<action>:<arg>`) carries everything, so cards work after a restart. `handle` answers every press first, checks `is_allowed`, logs it in `message_log` (kind `card`), shows a `UserError` to the presser alone and reports anything else. `post` / `send` / `edit` / `delete` put cards in channels |
-| `confirmations.py` | Buttons under a short message: `ask` (Confirm / Cancel), `choose` (which of a few), `offer_undo` (done, with Undo). In memory, with timeouts |
-| `tools.py` | Pure: Claude's tools from registrations: names, strict-safe input schemas, input checking, which are sent as strict, which message a message action is aimed at, previews and the listing text, and matching a query against logged messages (`find_logged`) |
-| `pending.py` | Proposals waiting for a short "ok" (only ever for actions with no preview of their own): what counts as yes or no, two-minute expiry, one per user and channel (in memory) |
+| `confirmations.py` | Buttons under a short message: `ask` (Confirm / Cancel) and `choose` (which of a few), for the tasks that still use discord.py directly (archive, timers, dev). In memory, with timeouts |
 | `scheduler.py` | Database-backed jobs: `add_job`, a ticker that runs due ones until none is left (`run_all_due`), catch-up at startup (`job.is_late`). Its time is the clock's: when the dev clock jumps, `wake()` runs what came due in order, and time jumped over is not lateness |
 | `devmode.py` | Dev mode's in-memory state (the dev clock is not part of it: `clock.py`); other code asks it for values (`reaction_debounce()`, `speed()`, `is_verbose()`, `cleanup_enabled()`, `debug()`, `register_task()`) |
 | `interactions.py` | Permission check and logging for slash commands and context menus |
-| `llm.py` | Claude client (short timeout, two retries); the system prompt (one cached block, the same for every message); `turn_note` (the time and the tasks' live state, sent after the user's words in the latest turn only); the tool loop (`ask_claude` runs the calls Claude makes, up to `MAX_TOOL_CALLS`, and ends the turn without a closing request when `closing` says the tools have already told the user); the honesty checks (`claims_done`, `claims_change`, `scrub`: a "done" with nothing done, or a reported change with no tool having succeeded, is sent back once; a bracketed tool note is removed); per-channel history of what was said and nothing else; cost estimates including cache and tool tokens |
+| `llm.py` | The Claude client, with two kinds of request and nothing else: `call_tool` (one request that must come back as a tool call: the router and extraction) and `ask_claude` (plain chat: no tools, no access to the user's data, told so, and told never to offer). Two memories per channel, kept apart: chat's own questions and answers (`history_for`), and what was said and shown (`exchanges_for`), which only the router reads. `ABOUT_DATA` is what chat answers when a message is about the user's data after all |
 | `timing.py` | Where the time goes while one message is answered: each request to Claude (and what it was for), each tool, the calls to Discord, rate-limit waits and retries (read from the libraries' logs). One `Turn` per message, found through a context variable; `summary_lines` is the breakdown on the "Message handled" card, and `as_dict` the same as plain values, kept in `message_log.timing` |
 | `live.py` | Work nobody should wait for: `schedule(key, refresh)` brings one Live message up to date in the background, one edit however many changes asked for it and at most one every 2 seconds per message; `background(...)` runs anything else after the reply. What they do is not counted in the turn's timing |
 | `discord_utils.py` | Binds the client and times every call it makes to Discord; #bot-log cards, `split_message`, `truncate`, `safe_reply`, `report_interaction_error` |
@@ -73,9 +72,8 @@ for why things are the way they are, `docs/DECISIONS.md`.
 
 | Path | Responsibility |
 |---|---|
-| `base.py` | The `Task` base class with its hooks (including `message_class`, `tools_available` and `new_day`), and the self-describing `Keyword`, `ReplyAction`, `Reaction` records (the last two with an optional `validate`); `Param` describes an argument for Claude; `Tool` is a tool that isn't a word (reading state, acting by id). `Task.live_state(ctx)` is what a task tells Claude about its state with every message. `Reaction.instant` skips the quiet period (🐞 only); `Task.claim(ctx)` takes a message because of where it was sent |
-| `registry.py` | Discovers and loads tasks; dispatches words, reply actions and reactions; refuses invalid ones at once; decides how each ends; asks tasks what a message is (`declared_class()`); the single source of what the bot can do (`catalogue()`, `find()`, `capabilities_text()`, and `tools_for()` for Claude, which adds each task's `tools()`); `run_tool()` runs a tool call down the same path as a typed word. `live_state(ctx)` gathers the tasks' state for Claude; a tool call's #bot-log card follows in the background. `dispatch_claimed` hands an unmatched message to the task that claims it; an `instant` reaction is applied the moment it is added |
-| `toolcalls.py` | Not a task: what becomes of a tool call from Claude. Gathers the tools for a message, then decides per call: run now, wait for "ok", Confirm / Cancel, which-message buttons, quoted preview with Undo, (for a message found further back) quoted and asked first, or, for calls Claude marked `candidate` because tools of different tasks fit equally, held until the round ends and offered as one button per task (`end_round`). What waits is always the call with its structured input; the user is shown a word as typed or a tool's `label`, never its name. Also the `recent_messages` and `search_messages` tools, and whether anything was actually done this turn (`Turn.acted`). `closing(turn)` says after each round whether every call acted and showed the user its own confirmation, so the turn can end there |
+| `base.py` | The `Task` base class with its hooks (including `message_class`, `new_day`, and for plain words `icon`, `only_for`, `examples`, `show`, `actions()` and `action_state()`), and the self-describing `Keyword`, `ReplyAction`, `Reaction` records (the last two with an optional `validate`). `Reaction.instant` skips the quiet period (🐞 only); `Task.claim(ctx)` takes a message because of where it was sent |
+| `registry.py` | Discovers and loads tasks; dispatches words, reply actions and reactions; refuses invalid ones at once; decides how each ends; asks tasks what a message is (`declared_class()`); the single source of what the bot can do (`catalogue()`, `find()`, `capabilities_text()`), and sets the router's catalogue from each task's entries (`actions.set_catalogue`) and the names that may never be sent as text (`outgoing.set_internal_names`). `dispatch_claimed` hands an unmatched message to the task that claims it; an `instant` reaction is applied the moment it is added |
 | `builtin/__init__.py` | `ping`, `reset`, `buttons`, `stats`, and `help` generated from the registry |
 | `builtin/views.py` | The `buttons` test view |
 | `archive/__init__.py` | Registers reply `archive` / `delete`, the 📦 and 🗑️ reactions, the context menu |
@@ -89,15 +87,14 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `bugs/posts.py` | The Discord work, and the only discord.py in the task: reading the reported message, the forum post with its tags, and the opening card: rewritten in place with the status, when it changed and the note count; persistent buttons under it, Fixed / Won't fix on an open bug (tag and archive) and Re-open on a closed one (unarchive, tag Open) |
 | `bugs/cli.py` | `python -m tasks.bugs.cli list \| show B4 \| note B4 "…"` for Claude Code's `bug` skill: reads and adds notes straight from the database, never closes a bug |
 | `keep/__init__.py` | The 📌 reaction: keep (pin) and unkeep (unpin); reply `pin` / `unpin`, which act at once. All through `core/pins.py` |
-| `pills/__init__.py` | Registers `pills` (the list) and Claude's tools `pill_add`, `pill_edit`, `pill_pause`, `pill_remove`; works in #inbox and the hub |
+| `pills/__init__.py` | Registers `pills` (the read-only Live list) and the task's plain-words entry; works in #inbox and the hub |
 | `pills/plain.py` | Setting pills up in plain words: `pill_add`, `pill_edit`, `pill_pause`, `pill_resume`, `pill_remove`, `pill_delete` (each a confirm card, each taking a list of pills) and `pill_list` (read-only, Live). Reads what was said into a plan with `rules.build`, never asking: a time that could be morning or evening is taken as the morning and flagged. A reply's change is laid over the card in code (`overlay`). No discord.py, no Context |
 | `pills/rules.py` | Pure: a pill's `Plan` (untimed, fixed times, or so many a day with a minimum gap; optionally a course with dates), building one from a `Request` in the user's words (`build`, which raises `TimeQuestion` for a time that could be morning or evening), what a pill is on a day (`status_on`: active, upcoming, paused, ended), which pill a name means (`find`), and all the wording (one-line summary, old-and-new for an edit, the list, the live state for Claude) |
-| `pills/store.py` | The `pills_pills` records, the drafts behind open previews (`pills_drafts`) and every change to a plan or status (`pills_changes`) |
-| `pills/plans.py` | Setting pills up, with no discord.py: the tools' handlers, the preview, list, pill and remove cards (`core/cards.py`), what each button does, and the job that lets an unsaved preview lapse |
-| `timers/__init__.py` | Registers `timer`, `timers`, `pause all`, `resume all`, `pomo`, `pomo stats`, the reply actions and job handlers, and Claude's tools: `list_timers`, `get_pomodoro_status`, `timer_history`, `timer_control`, `pomodoro_control` |
+| `pills/store.py` | The `pills_pills` records and every change to a plan or status (`pills_changes`). (`pills_drafts` is a table of the old previews: no code uses it now) |
+| `timers/__init__.py` | Registers `timer`, `timers`, `pause all`, `resume all`, `pomo`, `pomo stats`, the reply actions and job handlers, and the task's plain-words entry |
 | `timers/plain.py` | Timers and the Pomodoro in plain words: `timer_start` (a list), `timer_change` (at once; cancelling several asks first with a card), `timer_all`, `timer_list`, `timer_history`, `pomo_start`, `pomo_change`, `pomo_status`, `pomo_stats`, and what extraction is told (every timer and the session with their ids). Posts through `sender(channel_id)`, so the same code runs for a message and a button |
-| `timers/control.py` | The handlers of those tools, and `pause all` / `resume all`. What they report is read back from the database after the change. `timer_control` takes one id, several, or `all` (with an optional label), so a bulk request is one call; `live_state` is what Claude is told with every message |
-| `timers/status.py` | Pure: the live state of timers and the session in words for Claude, the ids (`t12`, `p4`) the control tools take, the event history and what `pause all` did; several ids in one argument, label matching, and the live state text |
+| `timers/control.py` | Changing timers and the session by id, for plain words and for `pause all` / `resume all`: `change_timers` (one id, several, or `all`), `change_session`, `change_all`. What they report is read back from the database after the change |
+| `timers/status.py` | Pure: a timer's and the session's state in words, the ids (`t12`, `p4`), several ids in one argument, label matching, and the wording of what a change or `pause all` did |
 | `timers/durations.py`, `pomodoro.py` | Pure: duration parsing; Pomodoro phases, pause arithmetic, stats |
 | `timers/store.py` | Everything timers remember (`timers_*` tables), including each clock's own speed, the events of every timer and session, and the live lists |
 | `timers/timers.py`, `sessions.py`, `board.py`, `common.py` | Timer messages, Pomodoro session cards, the pinned "Active timers" board and the live "Your timers" lists (both rewritten on every change, in the background through `core/live.py`), shared message helpers |
@@ -105,7 +102,6 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `dev/panel.py` | The pinned dev panel (with the clock, and "DEV DATABASE" when started with `--dev`), its persistent buttons, the bot's status ("🛠️ Dev mode", "🧪 DEV DATABASE") |
 | `dev/clockwords.py` | Pure: what `dev clock <time> \| +<duration> \| reset` moves the clock to (a time is the next moment the clock reads it), and the clock in words |
 | `dev/tools.py` | `dev inspect`, `dev status`, `dev jobs`, `dev run`, `dev fire next`, `dev seed`, `dev clean`, `dev cost`, `dev why` (the trace of my last messages), `dev reset-db` (asks, then wipes the dev database and rebuilds it empty) |
-| `lab/demo.py` | Two demo tasks, a shopping list and a packing list, offered to the router on the dev database only: for trying confirm cards, corrections, ties and chat before a real task uses them |
 | `lab/__init__.py`, `common.py` | The `lab …` test bench; `common.py` has the `Run` adapters that let one `run_*` function serve a typed word and `/lab` |
 | `lab/buttons.py`, `react.py`, `status.py`, `charts.py`, `data.py`, `misc.py`, `channels.py`, `tour.py`, `state.py`, `ratelimits.py` | One Discord feature each: components, reaction timeline, pinned status, charts and their data, notifications / polls / formatting, cross-channel test, the guided tour, the lab's key/value table, rate-limit watching |
 
@@ -122,12 +118,10 @@ settings before `core` loads. One `test_*.py` per area: `router`,
 `debounce`, `live`, `keep`, `archive_rules`, `archive_store`, `durations`,
 `pomodoro`, `timer_text`, `timing`, `timer_status`, `timer_freeze` (pause, resume and events against a
 database with the clock under test control), `devmode`, `dev_parsing`, `lab`, `lifecycle`,
-`permissions`, `scheduler`, `text`, `tools`, `pending`, `llm_tools` (the
-Claude loop against a scripted stand-in), `toolcalls`, `bugs`, `instance_lock`, `backup` (the specs zip), `clock`,
+`permissions`, `scheduler`, `text` (and the chat prompt and plain chat), `outgoing` (nothing internal sent, no offers), `bugs`, `instance_lock`, `backup` (the specs zip), `clock`,
 `day` (the boundary and the rollover job), `timeinput`, `occurrences`,
-`dev_clock` (`dev clock`, `dev reset-db` and their guards), `actions` (the contract and the checking), `routing` (the router, extraction and the replayed fixtures), `conversation` (a message end to end, confirm cards, the demo lists), `livelists`, `costs` (routes, prices, the roll-up and `dev cost`), `trace` (notes, a message in lines, `dev why`), `cards`,
-`pills_rules`, `pills_plans` (records, previews, buttons, and a tool call
-all the way through the registry), `timers_plain` and `pills_plain`
+`dev_clock` (`dev clock`, `dev reset-db` and their guards), `actions` (the contract and the checking), `routing` (the router, extraction and the replayed fixtures), `conversation` (a message end to end, confirm cards; on the demo lists of `tests/demo.py`), `livelists`, `costs` (routes, prices, the roll-up and `dev cost`), `trace` (notes, a message in lines, `dev why`), `cards`,
+`pills_rules`, `timers_plain` and `pills_plain`
 (each task's actions in plain words), `golden` (the golden conversations of the conversation standard, end to end, replayed from `evals/fixtures/golden.json`; the ones the bot can't hold yet are marked as gaps), `channels`
 (channel types, the dev panel's start-up sweep, a task failing to start).
 
@@ -161,13 +155,15 @@ and hands the clock its stored offset → logging → `instance_lock.acquire()`
    gets this far, so it never costs an API call.
 5. Every outcome is emitted to tasks as `action_finished`.
 
-**Plain words → router → extraction → the task's code** (the new way:
-timers, bugs and pills setup are on it; see "Not built
-yet" for what is left of the old way)
+**Plain words → router → extraction → the task's code** (the one way for
+every message that is no shortcut)
 
 1. `main.on_message`, for a message that is no shortcut, in #inbox or the
-   hub: `conversation.handle`. With nothing in the catalogue it does
-   nothing and the old way below carries on.
+   hub: 👀 on it, then `conversation.handle`. When that returns the 👀
+   comes off (⚠️ in its place if it failed).
+1a. **Just a name?** A task's or list's name on its own ("pills", "my
+   shopping list": `routing.named_alone`) runs that task's `show` action:
+   its list, Live, with no request.
 2. **A redirect?** With a card open, a bare "no, shopping"
    (`confirm.redirect`) sends the request on that card to the other
    task's extraction, without the redirect's own words, and the new card
@@ -185,9 +181,12 @@ yet" for what is left of the old way)
    answers with the task(s), a tie, or chat, and, with a task, any part
    of the message that is for no task (`chat_part`): that part gets a
    plain answer first, then the task's card or reply.
-4. **Chat:** a plain reply from Claude with no tools. While tasks remain
-   on the old way, a chat verdict in #inbox is handed to the old way
-   instead, with the same log row.
+4. **Chat:** a plain reply from Claude, which has no tools and no access
+   to the user's data (`llm.ask_claude`); a closing offer is trimmed
+   (`outgoing.without_offer`). If chat answers that the message is about
+   the user's data after all, the router is asked again, told so, and
+   the owning task answers; if no task owns it, one neutral line.
+4a. **Nothing:** a remark, a note or a thank-you gets no reply.
 5. **A tie:** `confirm.ask_which` posts a button per task; the pick runs
    extraction for that task on what was said (`conversation.on_pick`).
 6. **Extraction** (`extraction.extract`), one request per task chosen.
@@ -206,39 +205,6 @@ yet" for what is left of the old way)
    return the reply. Nothing Claude wrote is shown.
 8. The log row gets the route (`follow-up`, `router`, `chat`), the tasks,
    what was extracted, the outcome, and one `llm_calls` row per request.
-
-**Chat → Claude → tools** (the old way, until every task has moved)
-
-1. `toolcalls.answer_pending`: a short "ok" or "no" to something Claude
-   proposed is settled here, without calling Claude.
-2. `toolcalls.prepare`: `registry.tools_for(user, channel)` (channel,
-   permission, each task's `tools_available`), `core/tools.py` picks the
-   strict ones, and the definitions are marked for caching.
-3. `llm.ask_claude` sends the message with the tools. For each call Claude
-   makes, `toolcalls.execute` checks the input, finds the target message
-   for a message action (the reply, or a ref from `recent_messages` or
-   `search_messages`), and decides: destructive, or found further back →
-   `confirmations.ask`; `propose` → `core/pending.py`; several candidates
-   → `confirmations.choose`; otherwise `registry.run_tool`, which goes
-   through `_run` like a typed word (logged as `tool`, permission checked,
-   #bot-log card). A task's own tool (`Task.tools()`) runs the same way
-   and posts nothing: its result is for Claude to put into words.
-4. Every result, failures included, goes back to Claude, which writes the
-   reply. A reply that offers an "ok" with no proposal waiting, or names
-   a tool, is sent back once like an unbacked "done"; whatever is sent
-   has tool names taken out. Times are not rewritten: tools give them
-   already formatted (`8:00 pm`). If that reply says "done" and no tool has done anything
-   (`Turn.acted`), it goes back to Claude once before the user sees it,
-   and a card in #bot-log records it. Only the reply's text is kept in
-   the history. The "Message handled" card lists the tools sent, their
-   tokens, cache use, the calls and where the time went (`core/timing.py`).
-5. Speed: the message gets 👀 at once (removed when answered). The time
-   and `registry.live_state` go with the user's words as a note, so the
-   system prompt and tools stay byte-identical (cached) and a simple
-   request needs no read first. When every call of a round acted and
-   showed its own confirmation (`toolcalls.closing`), the turn ends
-   there: one request to Claude, not two. Board, list and card edits
-   and the tool's log card follow in the background (`core/live.py`).
 
 **Reaction → debouncer → actions**
 
@@ -289,29 +255,20 @@ yet" for what is left of the old way)
 
 **Setting up a pill**
 
-1. "add evening pill at 20:00" (in #inbox) reaches Claude, which calls
-   `pill_add` directly (it has no `propose`: the preview is the one
-   confirmation) with the name and the time as it was said. `plans.add_tool`
-   has `rules.build` turn that `Request` into a `Plan`; anything that
-   can't be one is refused with a reason for Claude to pass on.
-2. The request is kept as a draft (`pills_drafts`) and the preview is
-   posted as the answer: the plan on one line with **Save** and **Edit**.
-   The turn ends there, with no closing reply from Claude. A job lets the
-   draft lapse after 30 minutes.
-3. A time that could be morning or evening ("at 8") posts the question
-   instead, with a button for each reading; the answer settles that time
-   in the draft and the preview follows.
-4. **Save** builds the plan again, checks the name, writes the pill (or
-   the edit) and removes the draft in one transaction, and the preview
-   becomes one line. **Edit** asks what to change; saying it reaches
-   Claude, which calls the tool again with the draft's id, and the new
-   preview replaces the old.
-5. `pill_edit` is the same against an existing pill, with the old and new
-   plan shown. `pill_pause` acts at once. `pill_remove` posts a Confirm
-   card; deleting a pill with its history is a separate, stronger one.
-6. `pills` posts the list with one dropdown; picking a pill rewrites the
-   message as that pill with Edit, Pause or Resume, Remove and Back.
-   Every press comes through `cards.handle`.
+1. "add iron at 8" (in #inbox or the hub) is routed to pills, and
+   extraction fills in `pill_add` with the name and the time as it was
+   said. `plain.add_card` has `rules.build` turn that into a `Plan`.
+2. The confirm card shows the plan on a line with **Save** and **Cancel**.
+   A time that could be morning or evening is taken as the morning and
+   marked ❓ (to become a question on the card: see the backlog, G1).
+3. A reply changes the card: the change is laid over what the card holds
+   (`plain.overlay`), the old card is deleted and a fresh one posted.
+4. **Save** builds the plan again, checks the name and writes the pill in
+   one transaction; `add_check` then reads it back, and only then is
+   "✅ Saved" shown. Edit, pause, resume, remove and delete are the same:
+   a card each, read back before it is confirmed.
+5. `pills`, "my pills" and "show all my pills" show the same read-only
+   list, Live: it is rewritten in place when a pill changes.
 
 **Message lifecycle**
 
@@ -365,7 +322,7 @@ seconds.
 | `users`, `message_log` (every input, with its route, tasks, what was extracted, its trace, requests, tokens, cost and time), `llm_calls` (one row per request to Claude), `confirm_cards` (open confirm cards and tie questions), `live_lists` (where the latest copy of each list shown on request is), `scheduled_jobs`, `reaction_state`, `skill_migrations`, `occurrences`, `occurrence_events` | core (`core/migrations.py`, version in `PRAGMA user_version`) |
 | `archive_items` | archive |
 | `bugs_items`, `bugs_notes`, `bugs_events` (each closing and re-opening) | bugs |
-| `pills_pills`, `pills_drafts` (previews waiting for Save), `pills_changes` (every plan and status change); doses will be rows of `occurrences` with task `pills` | pills |
+| `pills_pills`, `pills_drafts` (left from the old previews; unused), `pills_changes` (every plan and status change); doses will be rows of `occurrences` with task `pills` | pills |
 | `timers_timers`, `timers_pomodoros`, `timers_focus_log`, `timers_boards`, `timers_events`, `timers_lists` | timers |
 | `lab_state`, `lab_tour_runs`, `lab_tour_results` | lab |
 
@@ -397,7 +354,7 @@ How the bot is meant to grow. The `new-task` skill reads this first.
   writes a word the user reads. Code validates, saves, reads the change
   back, and writes every confirmation.
 - **Dev and live are kept apart.** A separate database (`--dev`), the dev
-  clock and the demo data only there, dev bugs numbered and tagged
+  clock only there, dev bugs numbered and tagged
   apart. Nothing that is for testing can touch the live data.
 - **Every capability follows `docs/CONVERSATION.md`.** How the bot talks
   is one standard for every task, checked by its golden conversations
@@ -405,16 +362,13 @@ How the bot is meant to grow. The `new-task` skill reads this first.
 
 ## Not built yet
 
-Timers, bugs and pills setup are on the router's way (each task's
-`plain.py`). Archive, pin and delete are not: they are done by reaction
-or reply word only. The old way is still there
-beside it: a message the router calls chat in #inbox still gets every
-tool (`tasks/toolcalls.py`, the reply guards, the pills previews and
-drafts). Removing it is the next step; until then this branch is not to
-be merged.
+Questions on the card, corrections straight after Save, fewer task ties
+and questions that are still sent as their own message: see the gap list
+in `docs/BACKLOG.md` (G1, G3, G4, G7), deferred until pills reminders
+work. The pills checklist, reminders and tracking (pills stages 3 to 6).
 
-The gateway layer (the Claude chat path in `main.py` and `builtin`'s view
-still use discord.py directly), bulk and cross-channel actions for Claude,
+The gateway layer (`main.py` and `builtin`'s view still use discord.py
+directly), bulk and cross-channel actions for Claude,
 quiet hours, the sweep and the summary (`dev
 quiet` changes nothing; `dev run sweep|summary` report "not built"), and
 to-dos (the list of things to do: called "to-dos" so it is never confused

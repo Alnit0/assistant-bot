@@ -214,6 +214,9 @@ class Entry:
     # `async (request) -> str`: what extraction should know about this task's
     # state right now (names and ids). Goes in the user turn, never the cached part
     live_state: Callable[[Request], Awaitable["State | str"]] | None = None
+    # The action that shows what this task has (its list, its board). The task's
+    # name said on its own ("pills", "my shopping list") runs it, with no request
+    show: str = ""
 
     @property
     def title(self) -> str:
@@ -548,6 +551,8 @@ def problems(entries: list[Entry]) -> list[str]:
             found.append(f"{who}: needs {MIN_EXAMPLES} to {MAX_EXAMPLES} example phrases, not {len(entry.examples)}")
         if not entry.actions:
             found.append(f"{who}: has no actions")
+        if entry.show and not any(action.name == entry.show and not action.needs_card and not action.fields for action in entry.actions):
+            found.append(f"{who}: `show` must name one of its actions that acts at once and takes nothing ({entry.show})")
         for action in entry.actions:
             where = f"{who}: action {action.name or '(unnamed)'}"
             if not action.name or action.name in RESERVED:

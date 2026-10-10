@@ -192,18 +192,17 @@ the channel you are in; `help <task or word>` gives details.
     cancel and finish is recorded with the time left, so you can ask
     "what was on dinner when I paused it?" or "when did I resume tea?".
     The record starts from the restart that brought this in.
-  - **It only says "done" when something ran.** A reply claiming it with
-    nothing run is caught before you see it, and a "⚠️ Claude said
-    "done" with nothing run" card in #bot-log records each time.
-  - **Limits:** at most 5 actions per message; the lab is never available
-    to it, and dev tools only while dev mode is on (it can always switch
-    dev mode on or off for you); reactions are yours to
-    add. It is told never to claim or offer something it has no tool for.
-  - **What it costs:** the tools are sent with every chat message. The
-    "💬 Message handled" card in #bot-log shows which were sent, about how
-    many tokens they add, what the cache saved, and each call's outcome.
-    Every call also gets its own "🔧 Tool: …" card and a `tool` row in
-    `message_log`.
+  - **Only the bot's own code says "done".** Claude works out which task
+    a message is for and fills in the details; the task's code does it,
+    reads the change back and writes every word. Claude runs nothing.
+  - **Plain chat** answers general questions and nothing else: it has no
+    tools and no access to your lists, pills or timers. Anything about
+    your data is answered by the task that owns it. A remark or a
+    thank-you gets no reply.
+  - **What it costs:** one small request to choose the task and one to
+    fill in the details; a task's name on its own ("pills") costs
+    nothing. The "🧭 Message routed" card in #bot-log shows the route,
+    the tasks and the cost, and `dev why` shows the rest.
 - **The assistant's name** is `ASSISTANT_NAME` in `.env` (default Hive). It
   is what Claude calls itself and what the archive webhook and lab messages
   show. Restart the bot after changing it.
@@ -413,60 +412,11 @@ Things to know:
   bare copy of the message, and its other buttons have no handlers. Build
   the full view again and send that (see `build_panel` in
   `tasks/lab/buttons.py`).
-- **Every word and reply action is also a tool for Claude**, generated from
-  the registration (`registry.tools_for`, `core/tools.py`). To make one work
-  well as a tool:
-  - Write the `description` so it says what the action does; it is what
-    Claude reads.
-  - A word with `takes_args=True` must list its arguments as `params`, in
-    the order they are typed: `Param("duration", "How long, e.g. 25m.")`,
-    with `required=False` for one that can be left out and `choices=(...)`
-    for a fixed set. The registry reports a word that doesn't. The values
-    come back to the handler as `ctx.args`, exactly as if typed, so there
-    is nothing else to write.
-  - `exact=True` makes it destructive: Claude can only run it after you
-    press Confirm.
-  - Give a reversible reply action an `undo(ctx, message)` that returns the
-    text to show; Claude's confirmation then has an Undo button.
-  - `tool=False` keeps a registration from Claude; `tool_priority` decides
-    which get a strict schema if there are ever more than 20 with
-    arguments; override `Task.tools_available` to offer a whole task only
-    sometimes (as `dev` does), or set `exposes_tools = False` (as `lab`
-    does).
-  - `tool_always=True` offers one word even while its task is holding
-    the rest back (the `dev mode` switch).
-- **Which task Claude picks, and one confirmation only** (the task
-  contract for anything Claude can run):
-  - A typed word carries its task's name: `pill add`, `timer 5m`. A bare
-    generic verb (`core/router.py` `GENERIC_VERBS`: add, edit, remove,
-    pause, list…) is refused at load, so "add milk" always reaches Claude.
-  - Every `Tool` has `only_for`: one sentence starting "Only for …" that
-    says what tells it apart from similar tools in other tasks. It is
-    appended to the description Claude reads; the registry reports a
-    tool without one.
-  - Every `Tool` has a `label` in plain words ("add a pill"). That, never
-    the tool's name or its arguments, is what the user is shown and what
-    the conversation history remembers.
-  - A tool that shows its own preview or Confirm card sets
-    `confirms_itself=True`. It then has no `propose` argument and Claude
-    is told to call it directly: the preview's button is the one
-    confirmation. Only tools with no preview of their own can wait for
-    "ok".
-  - When tools of different tasks fit a request equally, Claude calls
-    each with `candidate: true`; they are held and the user gets one
-    button per task (`toolcalls.end_round`). You don't write anything for
-    this, but your `label` is what the button says.
-  - What waits for an "ok" or a button is the call itself, with the
-    structured input Claude gave: never rebuild it from the user's text.
-- **`tools()`** returns `Tool`s: tools for Claude that aren't words. Use
-  one to report state (`reads_only=True`: `list_timers`) or to act on a
-  record by id (`timer_control`). The handler is `async (ctx, value)`
-  with the input as `{param: text}`; it returns the result for Claude and
-  posts nothing in the channel. Write the description for Claude, with
-  examples. Prefer a word or reply action whenever the user could type
-  it.
-- **`ctx.via_tool`** is true when Claude is running the handler: use it
-  when a typed word would show something Claude is about to say anyway.
+- **Plain words** are a task's `plain.py`: its `Action`s (`core/actions.py`)
+  and the code that carries them out, taking a `Request`, never a
+  Context. See "Routing and confirm cards" below, and `tasks/timers/plain.py`
+  or `tasks/pills/plain.py` for a worked example. (This section is
+  rewritten at step 5, with the `new-task` and `task-check` skills.)
 - **Turning tasks on and off:** `ENABLED_TASKS=builtin,greeter` in `.env`.
   Leave it empty to load everything. A disabled task keeps its data, and
   its words, slash commands and help entries disappear.
@@ -517,13 +467,12 @@ owner.
 
 What you take and when. This is the setting-up half; the daily checklist
 and the prompts come in the next stages, so nothing reminds you yet.
-`pills` and every button work in #inbox and in the hub; saying things in
-plain words needs Claude, so that works in #inbox.
+Everything works in #inbox and in the hub.
 
 | Type or say | What happens |
 |---|---|
 | `pills` (or `pill`) | The list: in use, then ⏸️ Paused, then 🏁 Ended, with one dropdown to pick a pill |
-| "add vitamin D, once a day" | Preview "💊 **Vitamin D** · daily, untimed" with **Save** and **Edit** |
+| "add vitamin D, once a day" | A card "💊 Pills · new" with "**Vitamin D** · daily, untimed", **Save** and **Cancel** |
 | "add evening pill at 20:00" | "💊 **Evening pill** · daily at `8:00 pm`" |
 | "add course A, 3 times a day, at least 3 hours apart, with food, for 7 days starting tomorrow" | "💊 **Course A** · 3× daily, ≥3h apart · *with food* · 10 to 16 Oct · first dose when ready" |
 | "move the evening pill to 9pm" | The plan now and the new one, with **Save** and **Edit** |
@@ -540,15 +489,15 @@ plain words needs Claude, so that works in #inbox.
   It is listed with 🗓️ and "starts 10 Oct" until then, and under 🏁 Ended
   from the day after its last. A pill with no end has no dates: none are
   asked for or shown.
-- **Nothing is saved until you press Save.** The preview is a draft, and
-  its Save is the only confirmation there is: the bot never asks "reply
-  ok" first. Press **Edit** and say what to change ("make it 9pm", "add:
-  with food"): a new preview replaces the old one. A preview nobody saves
-  disappears after 30 minutes. Once saved it becomes one line, "✅ Saved ·
-  …".
-- **Times and dates are never guessed.** "At 8" gets "8am or 8pm?" with a
-  button for each; a gap of "3" is asked to be `3h` or `3m`. Times are
-  always shown as `8:00 pm`, whatever you typed.
+- **Nothing is saved until you press Save.** Every change is a confirm
+  card with Save and Cancel, and Save is the only confirmation: the bot
+  never asks "reply ok" first. Say what to change ("make it 9pm", "with
+  food") and a fresh card replaces the old one. A card nobody saves
+  disappears after 30 minutes. What is saved is read back from the
+  database before "✅ Saved" is shown.
+- **Times.** "At 8" is taken as `8:00 am` and marked ❓ on the card (it
+  will become a question on the card: gap G1 in the backlog); say "8pm"
+  to correct it. Times are always shown as `8:00 pm`, whatever you typed.
 - **Editing** applies from the next dose; what is already recorded stays.
   Give only what changes. "No notes", "no times" (untimed) and "no end
   date" take a value away.
@@ -557,17 +506,16 @@ plain words needs Claude, so that works in #inbox.
 - **Removing** hides the pill everywhere and keeps its history for stats.
   Deleting it with its history is only done when you ask for exactly
   that, and has its own question.
-- **The list's buttons** rewrite the same message: pick a pill, then
-  **Edit** (tells you to say what to change), **Pause** / **Resume**,
-  **Remove** (asks), **Back**. The list is not rewritten when a pill
-  changes by another route: type `pills` again.
+- **The list** (`pills`, "my pills", "show all my pills") is read-only
+  and Live: it has no buttons, and it is rewritten in place when a pill
+  changes. To change a pill, say so.
 
 **In code.** `tasks/pills/rules.py` is pure: `build(request, today, base)`
 turns what was said into a `Plan` or raises (`TimeQuestion` for an unclear
 time, `UserError` with the reason otherwise), `status_on(pill, day)` says
 what a pill is on a day, and the wording is all there. `store.py` holds
-`pills_pills`, the drafts and the change record. `plans.py` has the tool
-handlers and the cards, with no discord.py (`core/cards.py`). Doses will be
+`pills_pills` and the change record. `plain.py` has the actions, their
+cards and the read-back checks, with no discord.py. Doses will be
 occurrences (`core/occurrences.py`) with task `pills` and the pill's id as
 the item.
 
@@ -851,10 +799,10 @@ no slash commands. `help dev` lists the words.
 - **`dev cost`** adds up the database the bot is running on (the live one
   for real figures; the dev one has its own). Every logged message has a
   route: `shortcut` (a typed word), `button`, `reaction`, or one that
-  went to Claude (`tools` today: every tool is sent with every message).
-  For those it shows the cost, the requests and the seconds per message.
-  A message that used tools of two tasks is charged half to each; chat
-  that used none is "no task". Days and months go by the real clock, not
+  went to Claude (`router`, `follow-up` or `chat`; `tools` is the old
+  way, in rows from before it was removed). For those it shows the cost,
+  the requests and the seconds per message. A message for two tasks is
+  charged half to each; chat is "no task". Days and months go by the real clock, not
   the dev clock. In code: `core/costs.py`; a message's cost is recorded
   with `database.record_cost(row_id, route, tasks, calls)`, and each
   request to Claude says what it was for through

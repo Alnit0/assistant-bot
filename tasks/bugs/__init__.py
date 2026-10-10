@@ -161,6 +161,7 @@ class BugsTask(Task):
     )
     examples = ("that's a bug", "log that as a bug: it started two timers", "show my open bugs")
     hint = "Say “that's a bug” straight after what went wrong, or reply to it with `bug`."
+    show = "bug_list"
 
     def actions(self) -> list:
         return list(ACTIONS)

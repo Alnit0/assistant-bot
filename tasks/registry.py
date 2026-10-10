@@ -1,6 +1,5 @@
 import asyncio
 import importlib
-import json
 import logging
 import pkgutil
 import time
@@ -12,7 +11,7 @@ import tasks
 from core import day, scheduler
 from core.config import CHANNELS, ENABLED_TASKS
 from core.context import Context
-from core import actions, confirm, database, devmode, discord_utils, lifecycle, live, livelists, reactions, tools
+from core import actions, confirm, database, devmode, discord_utils, lifecycle, livelists, outgoing, reactions
 from core.database import log_received, log_result
 from core.debounce import Debouncer
 from core.discord_utils import log_error, log_simple
@@ -20,7 +19,7 @@ from core.errors import UserError
 from core.permissions import is_allowed
 from core.router import Router, is_generic
 from core.users import User, get_user_by_discord_id
-from tasks.base import ANY, Keyword, Reaction, ReplyAction, Task, Tool
+from tasks.base import ANY, Keyword, Reaction, ReplyAction, Task
 
 log = logging.getLogger("assistant")
 
@@ -38,7 +37,6 @@ _tasks: list[Task] = []
 _keywords: list[tuple[Task, Keyword]] = []
 _reply_actions: list[tuple[Task, ReplyAction]] = []
 _reactions: dict[str, tuple[Task, Reaction]] = {}
-_tools: list[tuple[Task, Tool]] = []
 _events: dict[str, list[tuple[Task, object]]] = {}
 _app_commands: list = []
 _problems: list[str] = []
@@ -79,12 +77,6 @@ def _check_registration(task: Task, kind: str, item) -> None:
     for name in _channel_names(item):
         if name != ANY and name not in CHANNELS:
             _problem(f"{task.name}: {kind} {item.name} names channel '{name}', which isn't set in .env")
-    # Claude picks between tasks by what each tool says it is for
-    if kind == "tool" and not (getattr(item, "only_for", "") or "").strip():
-        _problem(f"{task.name}: tool {item.name} doesn't say what it is `only_for` (what tells it apart from other tasks' tools)")
-    # Claude runs words as tools, and a tool has to know its arguments
-    if task.exposes_tools and getattr(item, "tool", False) and getattr(item, "takes_args", False) and not item.params:
-        _problem(f"{task.name}: {kind} {item.name} takes arguments but lists no `params` for Claude")
 
 
 def _register_words(router: Router, task: Task, kind: str, item) -> None:
@@ -113,7 +105,6 @@ def load() -> None:
     _keywords.clear()
     _reply_actions.clear()
     _reactions.clear()
-    _tools.clear()
     _events.clear()
     _app_commands.clear()
     _problems.clear()
@@ -142,7 +133,6 @@ def load() -> None:
             keywords = task.keywords()
             reply_actions = task.reply_actions()
             reactions = task.reactions()
-            bespoke_tools = task.tools()
             job_handlers = task.job_handlers()
             events = task.events()
             slash_commands = task.app_commands()
@@ -170,12 +160,6 @@ def load() -> None:
                 _problem(f"{name}: reaction {reaction.emoji} already belongs to {_reactions[key][0].name}")
                 continue
             _reactions[key] = (task, reaction)
-        for tool in bespoke_tools:
-            _check_registration(task, "tool", tool)
-            if any(tool.name == other.name for _, other in _tools):
-                _problem(f"{name}: tool `{tool.name}` is already registered")
-                continue
-            _tools.append((task, tool))
         for kind, handler in job_handlers.items():
             scheduler.register_handler(task.name, kind, handler)
         if type(task).new_day is not Task.new_day:
@@ -191,6 +175,8 @@ def load() -> None:
         _problem(f"routing: {problem}")
     broken = {problem.split(":")[0] for problem in actions.problems(routed)}
     actions.set_catalogue([entry for entry in routed if entry.name not in broken])
+    # Names that are the code's own and must never be sent to the user (core/outgoing.py)
+    outgoing.set_internal_names(action.name for entry in routed for action in entry.actions)
 
     log.info("Tasks loaded: %s", summary())
     if _undocumented:
@@ -389,15 +375,6 @@ async def _run(
     if reply is None:
         reply = "\n".join(ctx.replies)
     await log_result(row_id, reply=reply, status="ok", duration_s=time.perf_counter() - started)
-    if ctx.via_tool:
-        # Claude is waiting for this result and the user for its answer: the
-        # #bot-log card and the rest follow in the background
-        async def afterwards() -> None:
-            await ctx.log(title, reply)
-            await finished("ok", reply, False)
-
-        live.background(afterwards())
-        return "ok", reply
     await ctx.log(title, reply)
     command_deleted = False if keep_command else await ctx.delete_command()
     await finished("ok", reply, command_deleted)
@@ -474,223 +451,6 @@ async def dispatch_reply_action(ctx: Context) -> bool:
         keep_command=action.keep_command,
     )
     return True
-
-
-# ---------------------------------------------------------------------------
-# Tools for Claude: every word and reply action, generated from what it says
-# about itself (core/tools.py builds the schemas), and each task's bespoke
-# tools (Task.tools: reading state, acting by id). tasks/toolcalls.py decides
-# when a call may run; when it may, it runs here, down the same path as a
-# typed word, so it is logged and permission-checked in exactly the same way.
-# ---------------------------------------------------------------------------
-def _channel_name(channel_id: int | None) -> str | None:
-    for name, known_id in CHANNELS.items():
-        if known_id == channel_id:
-            return name
-    return None
-
-
-def _spec(task: Task, kind: str, item) -> tools.ToolSpec:
-    is_reply = kind == tools.REPLY_ACTION
-    if is_reply:
-        description = f"Message action: {item.description}."
-    else:
-        description = f"Same as the user typing `{describe_words(item)}`: {item.description}."
-    if item.destructive:
-        description += " The user is asked to confirm with buttons before it runs."
-    return tools.ToolSpec(
-        name=tools.tool_name(kind, item.name),
-        description=description,
-        schema=tools.build_schema(
-            item.params, propose=not item.destructive, targets=is_reply, candidate=not is_reply
-        ),
-        kind=kind,
-        task=task.name,
-        item=item,
-        has_arguments=bool(item.params),
-        priority=item.tool_priority,
-        destructive=item.destructive,
-    )
-
-
-SHOWS_ITS_OWN = (
-    " It shows the user its own preview or question with buttons, so call it directly: never "
-    "propose it, never ask for an ok first, and never describe the preview yourself."
-)
-
-
-def _tool_spec(task: Task, item: Tool) -> tools.ToolSpec:
-    description = item.description
-    if item.only_for:
-        description += f" {item.only_for}"
-    if item.confirms_itself:
-        description += SHOWS_ITS_OWN
-    return tools.ToolSpec(
-        name=item.name,
-        description=description,
-        # Something that only reports can't be proposed: there is nothing to agree to.
-        # Nor can something that asks the user itself: one confirmation, never two
-        schema=tools.build_schema(
-            item.params,
-            propose=not item.reads_only and not item.confirms_itself,
-            candidate=not item.reads_only,
-        ),
-        kind=tools.BESPOKE,
-        task=task.name,
-        item=item,
-        has_arguments=bool(item.params),
-        priority=item.tool_priority,
-        reads_only=item.reads_only,
-    )
-
-
-def tools_for(user: User | None, channel_id: int | None) -> list[tools.ToolSpec]:
-    """The tools Claude may be given for this user in this channel, in a fixed order.
-
-    Filtered the way `help` is (channel and permission), then by each task's
-    own say (the lab never offers any; dev only while dev mode is on) and by
-    registrations that opt out with `tool=False`. A word marked `tool_always`
-    is offered even while its task holds the rest back.
-    """
-    if user is None:
-        # catalogue() reads "no user" as "don't filter"; for tools it means nobody is asking
-        return []
-    channel_name = _channel_name(channel_id)
-    words = {entry.task.name: entry for entry in catalogue(user, channel_id)}
-    specs = []
-    for task in _tasks:
-        available = task.tools_available(channel_name)
-        entry = words.get(task.name)
-        if entry is not None:
-            specs += [
-                _spec(task, tools.KEYWORD, item)
-                for item in entry.keywords
-                if item.tool and (available or item.tool_always)
-            ]
-            if available:
-                specs += [_spec(task, tools.REPLY_ACTION, item) for item in entry.reply_actions if item.tool]
-        if available:
-            specs += [
-                _tool_spec(task, item)
-                for owner, item in _tools
-                if owner is task and works_in(item, channel_id) and is_allowed(user, item.permission)
-            ]
-    return specs
-
-
-async def live_state(ctx: Context) -> str:
-    """What the tasks whose tools are on offer here say about their state right
-    now, for Claude to read with the message (Task.live_state). A task that
-    fails is left out and logged: the message is still answered."""
-    channel_name = _channel_name(ctx.channel_id)
-    parts = []
-    for task in _tasks:
-        if not task.tools_available(channel_name):
-            continue
-        try:
-            text = await task.live_state(ctx)
-        except Exception:
-            log.exception("Task %s could not give its live state", task.name)
-            continue
-        if text:
-            parts.append(text)
-    return "\n".join(parts)
-
-
-@dataclass(frozen=True)
-class ToolOutcome:
-    status: str  # "ok", "error" or "denied"
-    text: str  # what was recorded, or why it failed
-    confirmations: list[str]  # what the handler would have confirmed, if they were collected
-    posted: bool = False  # the handler put something in the channel itself
-    told: tuple[str, ...] = ()  # a bespoke tool's own confirmation, not posted: for the user
-
-
-async def run_tool(
-    ctx: Context, spec: tools.ToolSpec, value: dict, target: discord.Message | None = None, *, collect: bool = False
-) -> ToolOutcome:
-    """Run one tool call that has been cleared to run.
-
-    `ctx` is the user's chat message; the call gets its own context, whose text
-    is the call itself (that is what is logged as the input). `target` is the
-    message a reply action acts on. With `collect`, confirmations are handed
-    back instead of posted, for the caller to show with a preview. A bespoke
-    tool posts nothing: what it returns is the result, for Claude to put
-    into words.
-    """
-    item = spec.item
-    args = tools.to_args(item.params, value)
-    call_ctx = Context(
-        user=ctx.user,
-        channel_id=ctx.channel_id,
-        message_id=ctx.message_id,
-        text=f"tool: {spec.name} {json.dumps(value, ensure_ascii=False, sort_keys=True)}",
-        _channel=ctx._channel,
-        args=args,
-        _message=ctx._message,
-        collect_confirmations=collect or spec.kind == tools.BESPOKE,
-        via_tool=True,
-    )
-
-    told: list[str] = []
-
-    async def call():
-        if spec.kind == tools.BESPOKE:
-            result = await item.handler(call_ctx, value)
-            # Before _run adds its own "Done": only what the handler chose to say
-            told.extend(call_ctx.collected)
-            return result
-        if spec.kind == tools.REPLY_ACTION:
-            if target is None:
-                raise UserError("I can't find the message to act on.")
-            if item.validate is not None:
-                item.validate(target)
-            return await item.handler(call_ctx, target)
-        return await item.handler(call_ctx)
-
-    status, text = await _run(
-        call_ctx,
-        kind="tool",
-        name=tools.command_text(item.name, args),
-        title=f"🔧 Tool: {item.name}",
-        permission=item.permission,
-        call=call,
-        # The user's message was chat with Claude (Kept), not a command to tidy away
-        keep_command=True,
-        mark_failure=False,
-    )
-    return ToolOutcome(status, text, list(call_ctx.collected), call_ctx.posted > 0, tuple(told))
-
-
-async def run_undo(ctx: Context, spec: tools.ToolSpec, target: discord.Message) -> ToolOutcome:
-    """Take back a reply action Claude ran (the Undo button), logged like the call was."""
-    item = spec.item
-    call_ctx = Context(
-        user=ctx.user,
-        channel_id=ctx.channel_id,
-        message_id=ctx.message_id,
-        text=f"undo: {spec.name} on message {target.id}",
-        _channel=ctx._channel,
-        _message=ctx._message,
-        collect_confirmations=True,
-    )
-
-    async def call():
-        shown = await item.undo(call_ctx, target)
-        call_ctx.shown(shown)
-        return shown
-
-    status, text = await _run(
-        call_ctx,
-        kind="tool",
-        name=f"undo {item.name}",
-        title=f"↩️ Undo: {item.name}",
-        permission=item.permission,
-        call=call,
-        keep_command=True,
-        mark_failure=False,
-    )
-    return ToolOutcome(status, text, list(call_ctx.collected))
 
 
 # ---------------------------------------------------------------------------

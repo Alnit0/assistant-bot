@@ -1,7 +1,6 @@
 import re
 from datetime import datetime
 
-from core.tools import age
 from tasks.timers import store
 from tasks.timers.durations import format_duration
 from tasks.timers.pomodoro import PHASE_NAMES, phase_length
@@ -17,15 +16,19 @@ from tasks.timers.pomodoro import PHASE_NAMES, phase_length
 # ---------------------------------------------------------------------------
 TIMER, SESSION = "t", "p"
 
-NO_TIMERS = "No timers are running or paused."
 NO_SESSION = "No Pomodoro session is going."
-NO_EVENTS = (
-    "Nothing is recorded for that. What happens to timers has only been kept since the record "
-    "was added, so anything earlier is not here."
-)
-# Put after everything a read tool returns: Claude once read the list and then
-# said the timer was running again
-ONLY_READ = "(This only read the state. Nothing was changed by this call.)"
+
+
+def age(moment: datetime, now: datetime) -> str:
+    """How long ago, in a word or two: "just now", "5m ago", "2h ago"."""
+    seconds = max(0, int((now - moment).total_seconds()))
+    if seconds < 60:
+        return "just now"
+    if seconds < 3600:
+        return f"{seconds // 60}m ago"
+    if seconds < 86400:
+        return f"{seconds // 3600}h ago"
+    return f"{seconds // 86400}d ago"
 
 
 def ref(kind: str, record_id: int) -> str:
@@ -99,85 +102,6 @@ def timer_state(timer: store.Timer, now: datetime) -> str:
     return f"finished{when}{waiting}"
 
 
-def timers_text(
-    active: list[store.Timer],
-    ended: list[store.Timer],
-    session: store.Session | None,
-    now: datetime,
-    *,
-    here: int | None = None,
-    replied_to: int | None = None,
-) -> str:
-    """Every timer that is going, then the ones that ended lately (so "the tea
-    timer" that has already finished can be told apart from one that never
-    existed). `replied_to` is the message the user replied to, if any: the
-    timer it belongs to is pointed out."""
-
-    def line(timer: store.Timer) -> str:
-        parts = [f'{ref(TIMER, timer.id)}: "{timer.label}"', timer_state(timer, now)]
-        if timer.active:
-            parts.append(_where(timer.channel_id, here))
-        else:
-            parts.append(f"was {format_duration(timer.duration_s)}")
-        text = " · ".join(parts)
-        if replied_to is not None and replied_to in (timer.message_id, timer.notice_message_id):
-            text += " · the user replied to this one"
-        return text
-
-    lines = []
-    if active:
-        lines.append("Timers going now. Use the id with timer_control:")
-        lines += [line(timer) for timer in active]
-    else:
-        lines.append(NO_TIMERS)
-    if ended:
-        lines.append("Ended in the last day (nothing more can be done to these):")
-        lines += [line(timer) for timer in ended]
-    if session is not None:
-        lines.append(
-            f'Pomodoro: {ref(SESSION, session.id)} "{session.label}" is going; get_pomodoro_status has the details.'
-        )
-    return "\n".join(lines)
-
-
-def live_text(
-    active: list[store.Timer],
-    ended: list[store.Timer],
-    session: store.Session | None,
-    now: datetime,
-    *,
-    here: int | None = None,
-    replied_to: int | None = None,
-) -> str:
-    """What Claude is told with every message: each timer that is going (every
-    one, however alike their labels), the ones that ended lately, and the
-    session in full. Complete, so nothing has to be read with a tool before
-    acting."""
-
-    def line(timer: store.Timer) -> str:
-        text = f'{ref(TIMER, timer.id)}: "{timer.label}" · {timer_state(timer, now)}'
-        if timer.active:
-            text += f" · {_where(timer.channel_id, here)}"
-        if replied_to is not None and replied_to in (timer.message_id, timer.notice_message_id):
-            text += " · the user replied to this one"
-        return text
-
-    lines = []
-    if active:
-        lines.append("Timers going now (the ids are for timer_control):")
-        lines += [line(timer) for timer in active]
-    else:
-        lines.append(NO_TIMERS)
-    if ended:
-        lines.append("Ended in the last day (nothing more can be done to these):")
-        lines += [line(timer) for timer in ended]
-    if session is None:
-        lines.append(NO_SESSION)
-    else:
-        lines.append(f"Pomodoro (the id is for pomodoro_control): {session_text(session, now, here=here)}")
-    return "\n".join(lines)
-
-
 def lengths_text(session: store.Session) -> str:
     """A session's lengths as they are typed: "50m/10m/30m"."""
     return "/".join(format_duration(seconds) for seconds in (session.focus_s, session.short_s, session.long_s))
@@ -214,25 +138,6 @@ def session_text(
 
 def phase_text(session: store.Session) -> str:
     return f"{PHASE_NAMES[session.phase]}, round {session.round}"
-
-
-# ---------------------------------------------------------------------------
-# What happened: the events of a timer or session, oldest first
-# ---------------------------------------------------------------------------
-def events_text(events: list[store.Event], zone) -> str:
-    """One line per event with the local time and what was left on the clock then."""
-    if not events:
-        return NO_EVENTS
-    lines = ["What happened, oldest first (times are local):"]
-    for event in events:
-        kind = TIMER if event.kind == store.TIMER else SESSION
-        text = f'{event.at.astimezone(zone):%a %H:%M:%S} · {ref(kind, event.record_id)} "{event.label}" · {event.event}'
-        if event.detail:
-            text += f" ({event.detail})"
-        if event.remaining_s is not None and event.event not in (store.WAS_FINISHED, store.PHASE_FINISHED):
-            text += f" · {format_duration(event.remaining_s)} left"
-        lines.append(text)
-    return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------

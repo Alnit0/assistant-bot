@@ -9,8 +9,8 @@ how long it takes and what it costs.
 
 It spends real money (a few cents), so nothing is sent without --live. It
 uses the real .env, starts no bot, and reads and writes no database: a
-fixture carries any state it needs. Add --dev to include the demo tasks,
-which are only offered on the dev database.
+fixture carries any state it needs. Add --dev to include the demo lists
+(shopping and packing: test fixtures in tests/demo.py, not part of the bot).
 """
 import argparse
 import asyncio
@@ -23,7 +23,7 @@ ARGS.add_argument("--live", action="store_true", help="really call the API (cost
 ARGS.add_argument("--record", action="store_true", help="save what Claude returned into the fixture files")
 ARGS.add_argument("--strict", action="store_true", help="send action schemas as strict")
 ARGS.add_argument("--only", default="", help="run one fixture file, by its name without .json")
-ARGS.add_argument("--dev", action="store_true", help="include the demo tasks (dev database only)")
+ARGS.add_argument("--dev", action="store_true", help="include the demo lists of tests/demo.py")
 
 # Roughly what one request costs with the current model: for the estimate before running
 ROUGH_COST_PER_REQUEST = 0.0015
@@ -39,6 +39,11 @@ def main() -> int:
 
     registry.load()
     entries = actions.catalogue()
+    if options.dev:
+        # The demo lists are test fixtures now (tests/demo.py): the bot itself never offers them
+        from tests import demo
+
+        entries = [*entries, *demo.ENTRIES]
     routers, extractions = fixtures.load()
     known = {entry.name for entry in entries}
     if options.only:

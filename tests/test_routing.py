@@ -8,7 +8,7 @@ from core import actions, extraction, llm, routing
 from core.extraction import OpenCard
 from core.routing import Route
 from evals import fixtures
-from tasks.lab import demo
+from tests import demo
 
 ENTRIES = demo.ENTRIES
 NAMES = [entry.name for entry in ENTRIES]
@@ -376,3 +376,40 @@ def test_every_task_with_fixtures_is_replayed_not_only_the_demo_ones():
 def test_the_router_is_told_that_only_questions_and_requests_get_words():
     assert "The bot replies in words only to questions and requests." in routing.RULES
     assert '"shopping is boring"' in routing.RULES and "Do not offer help in return for a remark." in routing.RULES
+
+
+# ---------------------------------------------------------------------------
+# A task's name on its own; my data belongs to its task
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize(
+    "said, expected",
+    [
+        ("Shopping list", "shopping"), ("shopping", "shopping"), ("my shopping list", "shopping"), ("the shopping list.", "shopping"),
+        ("pills", "pills"), ("my pills", "pills"), ("Pill list", "pills"), ("show my pills", "pills"), ("show me the pills list please", "pills"),
+        ("timers", "timers"), ("my timers", "timers"), ("list timers", "timers"), ("packing list", "packing"),
+        ("bugs", "bugs"),
+        ("add milk to the shopping list", None), ("shopping is boring", None), ("is milk on my shopping list?", None),
+        ("pills and timers", None), ("the list", None), ("shop", None),
+    ],
+)
+def test_only_a_name_and_nothing_else_asks_to_see_the_list(said, expected):
+    found = routing.named_alone(said, ALL)
+    assert (found.name if found else None) == expected
+
+
+def test_every_task_that_has_a_list_says_which_action_shows_it():
+    shows = {entry.name: entry.show for entry in ALL}
+    assert shows == {"shopping": "demo_shop_list", "packing": "demo_pack_list", "bugs": "bug_list", "pills": "pill_list", "timers": "timer_list"}
+    assert actions.problems(ALL) == []
+    broken = actions.Entry("things", "📦", "Only for things.", ("a", "b"), demo.SHOPPING.actions, show="demo_shop_change")
+    assert actions.problems([broken]) == [
+        "things: `show` must name one of its actions that acts at once and takes nothing (demo_shop_change)"
+    ]
+
+
+def test_the_router_is_told_my_data_belongs_to_its_task_and_can_be_asked_to_look_again():
+    assert "Anything about the user's own data goes to the task that owns it, a question included" in routing.RULES
+    assert "chat cannot see any of the user's data" in routing.RULES
+    again = routing.user_turn("what have I got to buy", about_data=True)
+    assert again.startswith("This message is about the user's own data") and again.endswith("The message to route:\nwhat have I got to buy")
+    assert not routing.user_turn("hello").startswith("This message is about")

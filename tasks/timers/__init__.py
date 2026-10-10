@@ -3,7 +3,7 @@ import discord
 from core.context import Context
 from core.errors import UserError
 from core.lifecycle import MessageClass
-from tasks.base import ANY, Keyword, Param, ReplyAction, Task, Tool
+from tasks.base import ANY, Keyword, ReplyAction, Task
 from tasks.timers import board, control, plain, sessions, store, timers
 from tasks.timers.common import PERMISSION, delete_message
 from tasks.timers.durations import DurationError, parse_duration
@@ -72,17 +72,6 @@ async def resume_reply(ctx: Context, target: discord.Message) -> None:
     await ctx.confirm(await module.resume(record))
 
 
-async def undo_pause(ctx: Context, target: discord.Message) -> str:
-    """Take back a pause (the Undo button on Claude's confirmation): set it going again."""
-    module, record = await _target(target)
-    return await module.resume(record)
-
-
-async def undo_resume(ctx: Context, target: discord.Message) -> str:
-    module, record = await _target(target)
-    return await module.pause(record)
-
-
 async def extend_reply(ctx: Context, target: discord.Message) -> None:
     try:
         seconds = parse_duration(" ".join(ctx.args))
@@ -100,16 +89,6 @@ async def acknowledge_reply(ctx: Context, target: discord.Message) -> None:
     await ctx.confirm(await (timers.dismiss(record) if module is timers else sessions.acknowledge(record)))
 
 
-# For Claude: "pause all timers" means everything, the Pomodoro included
-SCOPE = Param(
-    "scope",
-    "Leave empty to include the Pomodoro session: that is what \"all\", \"everything\" and \"all "
-    "timers\" mean. Use \"except pomodoro\" only when the user says to leave the Pomodoro alone.",
-    choices=("except pomodoro",),
-    required=False,
-)
-
-
 class TimersTask(Task):
     """Short timers and Pomodoro sessions. Typed words only: there are no slash commands."""
 
@@ -120,6 +99,7 @@ class TimersTask(Task):
     only_for = plain.ONLY_FOR
     examples = plain.EXAMPLES
     hint = plain.HINT
+    show = "timer_list"
 
     def actions(self) -> list:
         return list(plain.ACTIONS)
@@ -138,11 +118,6 @@ class TimersTask(Task):
                 permission=PERMISSION,
                 takes_args=True,
                 usage="<duration> [label]",
-                params=[
-                    Param("duration", "How long, e.g. 25m, 90s, 1h30. Leave empty to list the timers instead.", required=False),
-                    Param("label", "A short name for the timer, e.g. laundry.", required=False),
-                ],
-                tool_priority=10,
             ),
             Keyword(
                 "timers",
@@ -163,8 +138,6 @@ class TimersTask(Task):
                 usage="[timers] [except pomodoro]",
                 accepts=control.scope_is_ours,
                 keep_command=True,
-                params=[SCOPE],
-                tool_priority=9,
             ),
             Keyword(
                 ["resume all", "unpause all", "resume everything"],
@@ -177,8 +150,6 @@ class TimersTask(Task):
                 usage="[timers] [except pomodoro]",
                 accepts=control.scope_is_ours,
                 keep_command=True,
-                params=[SCOPE],
-                tool_priority=9,
             ),
             Keyword(
                 ["pomo", "pomodoro"],
@@ -189,22 +160,6 @@ class TimersTask(Task):
                 permission=PERMISSION,
                 takes_args=True,
                 usage="[focus/break[/long break]] [auto|manual] [label]",
-                params=[
-                    Param(
-                        "lengths",
-                        "Focus and break lengths in minutes as focus/break or focus/break/long break, "
-                        "e.g. 50/10 or 50/10/30. Empty means 25/5.",
-                        required=False,
-                    ),
-                    Param(
-                        "mode",
-                        "auto starts each phase by itself; manual waits for Start. Empty uses the default.",
-                        choices=("auto", "manual"),
-                        required=False,
-                    ),
-                    Param("label", "What the session is for, e.g. writing.", required=False),
-                ],
-                tool_priority=9,
             ),
             Keyword(
                 ["pomo stats", "pomodoro stats"],
@@ -227,7 +182,6 @@ class TimersTask(Task):
                 examples=["cancel"],
                 permission=PERMISSION,
                 applies_to=_is_ours,
-                tool=False,  # Claude acts by id (timer_control), never by finding the message
             ),
             ReplyAction(
                 "pause",
@@ -236,8 +190,6 @@ class TimersTask(Task):
                 examples=["pause"],
                 permission=PERMISSION,
                 applies_to=_is_ours,
-                undo=undo_pause,
-                tool=False,
             ),
             ReplyAction(
                 ["resume", "unpause"],
@@ -246,8 +198,6 @@ class TimersTask(Task):
                 examples=["resume"],
                 permission=PERMISSION,
                 applies_to=_is_ours,
-                undo=undo_resume,
-                tool=False,
             ),
             ReplyAction(
                 ["ok", "done", "dismiss", "got it"],
@@ -267,118 +217,8 @@ class TimersTask(Task):
                 usage="<duration>",
                 pattern=r"\+\s*(.+)",
                 applies_to=_is_ours,
-                params=[Param("duration", "How much time to add, e.g. 10m.")],
-                tool=False,
             ),
         ]
-
-    def tools(self) -> list[Tool]:
-        return [
-            Tool(
-                "list_timers",
-                "Read the user's timers again: each one's id, label, whether it is running or "
-                "paused, the time left and its channel, plus timers that ended in the last day. "
-                "The same is already given with every message as the live state, so this is "
-                "rarely needed: only to look again after something has changed in the same "
-                "turn. It posts nothing: put the answer in your reply.",
-                control.list_timers_tool,
-                label="list the timers",
-                only_for="Only for countdown timers started with `timer` (tea, laundry): not pills, reminders or anything on a schedule.",
-                permission=PERMISSION,
-                reads_only=True,
-            ),
-            Tool(
-                "get_pomodoro_status",
-                "Read the Pomodoro session again: its id, phase, round, time left, whether it is "
-                "paused or waiting for the user to press Start, and its lengths. The same is "
-                "already given with every message as the live state, so this is rarely needed. "
-                "It posts nothing: put the answer in your reply.",
-                control.pomodoro_status_tool,
-                label="check the Pomodoro session",
-                only_for="Only for the Pomodoro focus session started with `pomo`: not timers, pills or reminders.",
-                permission=PERMISSION,
-                reads_only=True,
-            ),
-            Tool(
-                "timer_history",
-                "Read what has happened to the user's timers and Pomodoro, with the time of each "
-                "event and what was left on the clock then: started, paused, resumed, extended, "
-                "cancelled, finished. Call it for questions about the past (\"what was on dinner "
-                "when I paused it?\", \"when did I resume the tea timer?\", \"what happened to my "
-                "timers?\"). It posts nothing: put the answer in your reply.",
-                control.timer_history_tool,
-                params=[
-                    Param(
-                        "id",
-                        "One timer (t12) or session (p4) from the live state, "
-                        "or empty for the latest events of all of them.",
-                        required=False,
-                    )
-                ],
-                label="look up what happened to the timers",
-                only_for="Only for countdown timers and the Pomodoro session: not pills, reminders or anything on a schedule.",
-                permission=PERMISSION,
-                reads_only=True,
-            ),
-            Tool(
-                "timer_control",
-                "Pause, resume, cancel or add time to one timer, several, or all of them, in ONE "
-                "call. Take the ids from the live state given with the message. Examples: "
-                '"pause the tea timer" -> ids t12, action pause. "unpause it" or "carry on" -> '
-                'action resume. "stop the laundry timer" -> ids t7, action cancel. "give tea 5 '
-                'more minutes" -> action extend, duration 5m. "cancel tea and dinner" -> ids '
-                '"t12 t14". "cancel all timers" or "stop everything" -> ids all, action cancel. '
-                '"stop all timers called tea" -> ids all, label tea, action cancel: that acts on '
-                "every timer whose label has that word (tea, Tea 2), whatever the case. Never "
-                "make one call per timer. If the user names one timer and the label fits more "
-                "than one, ask which. To pause or resume everything including the Pomodoro, use "
-                "pause_all or resume_all. The result names each timer it changed, as saved: "
-                "report that, not what you expected.",
-                control.timer_control_tool,
-                params=[
-                    Param(
-                        "ids",
-                        'One or more ids from the live state, separated by spaces, e.g. "t12" or '
-                        '"t12 t14"; or "all" for every timer.',
-                    ),
-                    Param("action", "What to do to them. stop is the same as cancel.", choices=control.TIMER_ACTIONS),
-                    Param("duration", "For extend only: how much time to add, e.g. 10m.", required=False),
-                    Param(
-                        "label",
-                        'With ids "all" only: act on just the timers whose label has these words, '
-                        "e.g. tea. Empty for every timer.",
-                        required=False,
-                    ),
-                ],
-                label="change the timers",
-                only_for="Only for countdown timers started with `timer` (tea, laundry): not pills, reminders or anything on a schedule.",
-                permission=PERMISSION,
-                tool_priority=8,
-            ),
-            Tool(
-                "pomodoro_control",
-                "Change the Pomodoro session that is going. Take its id from the live state given "
-                'with the message, or use "current": there is only ever one. Examples: "pause '
-                'my pomodoro" -> id current, action pause. "carry on" -> action resume. "start '
-                'the break" when it is waiting for Start -> action start. "skip this break" -> '
-                'action skip. "end the session" -> action stop. "10 more minutes on this round" '
-                "-> action extend, duration 10m. The result ends with the state as it was saved: "
-                "report that, not what you expected.",
-                control.pomodoro_control_tool,
-                params=[
-                    Param("id", 'The session\'s id from the live state, e.g. p4, or "current".'),
-                    Param("action", "What to do to it.", choices=control.POMODORO_ACTIONS),
-                    Param("duration", "For extend only: how much time to add, e.g. 10m.", required=False),
-                ],
-                label="change the Pomodoro session",
-                only_for="Only for the Pomodoro focus session started with `pomo`: not timers, pills or reminders.",
-                permission=PERMISSION,
-                tool_priority=7,
-            ),
-        ]
-
-    async def live_state(self, ctx: Context) -> str:
-        return await control.live_state(ctx)
 
     def job_handlers(self) -> dict:
         return {

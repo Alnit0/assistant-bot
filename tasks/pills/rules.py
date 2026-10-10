@@ -385,13 +385,6 @@ def listed(pills: list[Pill]) -> list[Pill]:
     return [pill for pill in _by_name(pills) if pill.status != REMOVED]
 
 
-def change_text(old: Plan, new: Plan) -> str:
-    """An edit, old and new, so nothing about the plan changes unseen."""
-    if old == new:
-        return f"{describe(new)}\n-# Nothing would change."
-    return f"✏️ **{old.name}**\nNow: {describe(old)}\nNew: {describe(new)}\n-# Applies from the next dose. What is already recorded stays as it is."
-
-
 def differences(old: Plan, new: Plan) -> list[tuple[str, str, str]]:
     """What an edit changes, a field at a time: (field, old, new), as a card
     shows it ("schedule · daily at `8:00 pm` → daily at `9:00 pm`"). Empty if
@@ -456,23 +449,3 @@ def find(pills: list[Pill], wanted: str) -> Pill:
 def plain(text: str) -> str:
     return re.sub(r"[*`]", "", text)
 
-
-def live_text(pills: list[Pill], previews: list[tuple[str, str]], today: date) -> str:
-    """The user's pills and any preview waiting for Save, in plain lines.
-    `previews` are (draft ref, what it shows). Empty if there is nothing."""
-    shown = listed(pills)
-    if not shown and not previews:
-        return ""
-    lines = []
-    if shown:
-        lines.append("Pills (ids for the pill tools; a name works too):")
-        lines += [f"- {pill.ref}: {plain(describe_pill(pill, today))} [{status_on(pill, today)}]" for pill in shown]
-    else:
-        lines.append("Pills: none yet.")
-    if previews:
-        lines.append(
-            "Pill previews waiting for the user to press Save (not saved; to change one, call the same tool "
-            "again with its draft id and only what changes):"
-        )
-        lines += [f"- {ref}: {plain(text)}" for ref, text in previews]
-    return "\n".join(lines)

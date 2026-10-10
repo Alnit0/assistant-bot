@@ -1,6 +1,5 @@
 from datetime import timedelta
 
-from core.config import TIMEZONE
 from core.context import Context
 from core.errors import UserError
 from core.scheduler import utc_now
@@ -16,7 +15,6 @@ from tasks.timers.durations import DurationError, parse_duration
 # running.
 # ---------------------------------------------------------------------------
 ENDED_WITHIN = timedelta(hours=24)  # how long an ended timer is still mentioned
-TIMER_ACTIONS = ("pause", "resume", "cancel", "stop", "extend")
 POMODORO_ACTIONS = ("pause", "resume", "start", "skip", "stop", "extend")
 _SAME_AS = {"stop": "cancel"}  # stopping a timer is cancelling it
 # With "all", which timers an action is about (the others are not a failure)
@@ -38,50 +36,6 @@ _SESSION_AFTER = {
     "stop": {store.STOPPED},
     "extend": {store.RUNNING, store.PAUSED},
 }
-
-
-# --- reading -----------------------------------------------------------------
-async def live_state(ctx: Context) -> str:
-    """Every timer and the session as they are now, sent to Claude with each
-    message so that a simple request needs no reading first."""
-    now = utc_now()
-    active = await store.active_timers(user_id=ctx.user.id)
-    ended = await store.ended_timers(ctx.user.id, now - ENDED_WITHIN)
-    running = await store.active_sessions(user_id=ctx.user.id)
-    return status.live_text(
-        active, ended, running[0] if running else None, now, here=ctx.channel_id, replied_to=ctx.reply_target_id
-    )
-
-
-
-async def list_timers_tool(ctx: Context, value: dict) -> str:
-    now = utc_now()
-    active = await store.active_timers(user_id=ctx.user.id)
-    ended = await store.ended_timers(ctx.user.id, now - ENDED_WITHIN)
-    running = await store.active_sessions(user_id=ctx.user.id)
-    text = status.timers_text(
-        active, ended, running[0] if running else None, now, here=ctx.channel_id, replied_to=ctx.reply_target_id
-    )
-    return f"{text}\n{status.ONLY_READ}"
-
-
-async def pomodoro_status_tool(ctx: Context, value: dict) -> str:
-    running = await store.active_sessions(user_id=ctx.user.id)
-    text = status.session_text(running[0] if running else None, utc_now(), here=ctx.channel_id)
-    return f"{text}\n{status.ONLY_READ}"
-
-
-async def timer_history_tool(ctx: Context, value: dict) -> str:
-    wanted = value.get("id", "").strip()
-    kind = record_id = None
-    if wanted:
-        for prefix, name in ((status.TIMER, store.TIMER), (status.SESSION, store.SESSION)):
-            if wanted.lower().startswith(prefix) and status.parse_ref(wanted, prefix) is not None:
-                kind, record_id = name, status.parse_ref(wanted, prefix)
-        if kind is None:
-            raise UserError(f"`{wanted}` is not an id. Use one from list_timers (t12) or get_pomodoro_status (p4), or leave it empty.")
-    found = await store.events(ctx.user.id, kind, record_id)
-    return f"{status.events_text(found, TIMEZONE)}\n{status.ONLY_READ}"
 
 
 # --- one timer or session, by id ----------------------------------------------
@@ -128,15 +82,6 @@ async def chosen_timers(user_id: int, value: dict, action: str) -> list[store.Ti
     return chosen
 
 
-async def timer_control_tool(ctx: Context, value: dict) -> str:
-    shown, done = await change_timers(ctx.user.id, value)
-    # For the user, if Claude adds nothing (tasks/toolcalls.py)
-    await ctx.confirm(shown)
-    now = utc_now()
-    saved_as = [f'{status.ref(status.TIMER, saved.id)}: "{saved.label}" · {status.timer_state(saved, now)}' for saved in done]
-    return f"{shown}\nNow saved as: " + "\n".join(saved_as)
-
-
 async def change_timers(user_id: int, value: dict) -> tuple[str, list[store.Timer]]:
     """Pause, resume, cancel or add time to the timers `value` names (`ids`,
     `action`, and `duration` or `label` where they apply): (what to tell the
@@ -178,14 +123,6 @@ async def change_timers(user_id: int, value: dict) -> tuple[str, list[store.Time
         lines = [saved.label if action == "cancel" else status.bulk_line(saved.label, saved.left(now)) for saved in done]
         shown = status.control_text(action, lines, left_alone)
     return shown, done
-
-
-async def pomodoro_control_tool(ctx: Context, value: dict) -> str:
-    said, saved = await change_session(ctx.user.id, value)
-    await ctx.confirm(said)
-    if saved.state == store.STOPPED:
-        return said
-    return f"{said}\nNow saved as: {status.session_text(saved, utc_now(), here=ctx.channel_id)}"
 
 
 async def change_session(user_id: int, value: dict) -> tuple[str, store.Session]:

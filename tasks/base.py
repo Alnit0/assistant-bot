@@ -20,29 +20,6 @@ def _as_list(value) -> list[str]:
     return [value] if isinstance(value, str) else list(value)
 
 
-@dataclass(frozen=True)
-class Param:
-    """One argument of a word or reply action, as Claude is told about it.
-
-    Claude can run registered actions as tools (core/tools.py), and a tool
-    needs to know its arguments: list them in the order they are typed. Each is
-    a string; one that may be left out is `required=False`. The values are
-    turned back into the words after the command, so the handler reads
-    `ctx.args` exactly as it does for a typed word.
-    """
-
-    name: str  # snake_case, e.g. "duration"
-    description: str  # what to put here, with an example
-    choices: tuple[str, ...] | list[str] = ()  # the only values allowed, if it is a fixed set
-    required: bool = True
-
-
-# ---------------------------------------------------------------------------
-# The three things a user can do to reach a task. Each describes itself, so
-# `help` and Claude's knowledge of what the bot can do are generated from
-# these and never drift from the code. Always fill in `description`; a missing
-# one is reported at startup.
-# ---------------------------------------------------------------------------
 @dataclass
 class Keyword:
     """A word or phrase the user types on its own, e.g. "stats".
@@ -71,19 +48,10 @@ class Keyword:
     exact: bool = False  # never match by typo
     accepts: Callable[[list[str]], bool] | None = None  # say no to arguments that aren't ours
     keep_command: bool = False  # leave the user's message in place after it works
-    # For Claude, which can run this as a tool. A word that takes arguments must
-    # list them (the registry reports one that doesn't)
-    params: list[Param] | tuple = ()
-    tool: bool = True  # False keeps this word from Claude; typing it still works
-    tool_priority: int = 0  # higher is likelier to be used, and gets a strict schema first
-    # Offered to Claude even while the task is holding its tools back
-    # (Task.tools_available): the dev mode switch, when dev mode is off
-    tool_always: bool = False
 
     def __post_init__(self):
         self.words = _as_list(self.words)
         self.examples = list(self.examples)
-        self.params = list(self.params)
         self.permission = self.permission or f"keyword:{self.name}"
 
     @property
@@ -130,18 +98,10 @@ class ReplyAction:
     # with the reason. Asked before the handler; the user's reply gets ⚠️ and the
     # reason is shown briefly. Must be quick and change nothing
     validate: Callable[[discord.Message], None] | None = None
-    # For Claude (see Keyword): its arguments, whether it is offered, and how likely
-    params: list[Param] | tuple = ()
-    tool: bool = True
-    tool_priority: int = 0
-    # How to take it back: `async (ctx, message) -> str` (what to show). Set it when
-    # the action can be reversed; Claude's confirmation then carries an Undo button
-    undo: Callable[[Context, discord.Message], Awaitable[str]] | None = None
 
     def __post_init__(self):
         self.words = _as_list(self.words)
         self.examples = list(self.examples)
-        self.params = list(self.params)
         self.permission = self.permission or f"reply:{self.name}"
 
     @property
@@ -205,49 +165,6 @@ class Reaction:
         return self.emoji
 
 
-@dataclass
-class Tool:
-    """A tool for Claude that is not a word the user types: reading live state
-    (which timers are running), or acting on a record by its id.
-
-    Most tools are generated from a Keyword or ReplyAction; use this only for
-    what has no typed form. The handler gets the context and the input as
-    {param name: text} and returns the result for Claude, which does the
-    talking: the handler posts nothing in the channel. Raise UserError for a
-    problem Claude should explain. It runs through `registry.run_tool`, so it
-    is logged and permission-checked like every other tool call.
-    """
-
-    name: str  # as Claude sees it: snake_case, unique
-    description: str  # written for Claude: what it does, when to use it, examples
-    handler: Callable[[Context, dict], Awaitable[str]]
-    params: list[Param] | tuple = ()
-    channels: list[str] | str = ANY
-    permission: str = ""  # defaults to "tool:<name>"
-    reads_only: bool = False  # only reports; never counts as having done something
-    tool_priority: int = 0
-    # What it does in a few plain words ("add a pill"): how the call is named to the
-    # user, who must never be shown the tool's name or its arguments
-    label: str = ""
-    # What tells this apart from similar tools in other tasks ("Only for pills,
-    # vitamins and medicines the user takes; not for to-dos or reminders"). Claude
-    # reads it to pick the right task, so every tool must have one
-    only_for: str = ""
-    # True for a tool that shows the user its own preview or question with buttons
-    # before anything changes (a Save / Edit preview, a Confirm card). Claude then
-    # calls it directly and can never propose it: one confirmation, not two
-    confirms_itself: bool = False
-
-    # What the tool machinery asks of every action; a bespoke tool is none of these
-    destructive = False
-    undo = None
-
-    def __post_init__(self):
-        self.params = list(self.params)
-        self.permission = self.permission or f"tool:{self.name}"
-        self.label = self.label or self.name.replace("_", " ")
-
-
 class Task:
     """Base class for tasks. Set name and description, override the hooks you need.
 
@@ -256,8 +173,6 @@ class Task:
 
     name: str = ""
     description: str = ""
-    # False for a task whose words are never offered to Claude as tools (the lab)
-    exposes_tools: bool = True
 
     # --- for the router (core/routing.py). A task that takes plain words sets
     # these three and returns its actions; the registry refuses one that is
@@ -268,12 +183,8 @@ class Task:
     only_for: str = ""
     examples: tuple[str, ...] = ()  # two or three things one might say to it
     hint: str = ""  # said when nothing fits: how to ask
+    show: str = ""  # the action that shows what the task has; the task's name on its own runs it
 
-    def tools_available(self, channel_name: str | None) -> bool:
-        """Whether this task's words are offered to Claude right now, in this
-        channel (our name for it, or None). Channel and permission are checked
-        separately; override this for anything else, as dev does."""
-        return self.exposes_tools
 
     def keywords(self) -> list[Keyword]:
         """Words and phrases the user can type."""
@@ -287,9 +198,6 @@ class Task:
         """Emoji this task responds to."""
         return []
 
-    def tools(self) -> list[Tool]:
-        """Tools for Claude that aren't words: reading state, acting by id (see Tool)."""
-        return []
 
     def actions(self) -> list[Action]:
         """What this task can be asked to do in plain words (core/actions.py): for
@@ -309,7 +217,7 @@ class Task:
         found = tuple(self.actions())
         if not found:
             return []
-        return [Entry(self.name, self.icon, self.only_for, tuple(self.examples), found, self.hint, self.action_state)]
+        return [Entry(self.name, self.icon, self.only_for, tuple(self.examples), found, self.hint, self.action_state, self.show)]
 
     def claim(self, ctx: Context) -> Callable[[Context], Awaitable[str | None]] | None:
         """Take a message that is no word, reply action or awaited answer, because
@@ -318,12 +226,6 @@ class Task:
         costs an API call. The bugs task claims what is written in a bug's post."""
         return None
 
-    async def live_state(self, ctx) -> str:
-        """What Claude should know about this task's state right now, in a few
-        plain lines with the ids its tools take. Sent with every chat message
-        (never kept in the history), so a simple request needs one round trip
-        instead of a read first. Empty if there is nothing to say."""
-        return ""
 
     def job_handlers(self) -> dict[str, Callable[[Job], Awaitable[None]]]:
         """What to run when one of this task's scheduled jobs comes due, by kind.

@@ -52,9 +52,10 @@
       "recorded": {
         "kind": "task",
         "tasks": [
+          "shopping",
           "packing"
         ],
-        "confidence": "high",
+        "confidence": "tie",
         "chat_part": ""
       }
     },
@@ -258,6 +259,51 @@
       "recorded": {
         "kind": "chat",
         "tasks": [],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "is there milk on my shopping list?",
+      "tasks": [
+        "shopping"
+      ],
+      "note": "QA 2026-10-10: a question about my data goes to the task that owns it, never to chat",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "shopping"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "which pills do I take in the evening?",
+      "tasks": [
+        "pills"
+      ],
+      "note": "a question about my data: the pills task, not chat",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "how many timers have I got going?",
+      "tasks": [
+        "timers"
+      ],
+      "note": "a question about my data: the timers task, not chat",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "timers"
+        ],
         "confidence": "high",
         "chat_part": ""
       }

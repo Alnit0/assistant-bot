@@ -12,7 +12,8 @@ from core.actions import Proposal
 from core.cards import Card
 from core.errors import UserError
 from core.scheduler import utc_now
-from tasks.lab import demo, state
+from tasks.lab import state
+from tests import demo
 
 INBOX, HUB = 100, 400
 HAIKU = "claude-haiku-4-5"
@@ -87,6 +88,7 @@ def world(make_db, monkeypatch, owner):
     monkeypatch.setattr(cards, "_actions", {})
     monkeypatch.setattr(scheduler, "_handlers", dict(scheduler._handlers))
     monkeypatch.setattr(llm, "_histories", {})
+    monkeypatch.setattr(llm, "_exchanges", {})
     live.reset()
     conversation.setup()
 
@@ -121,14 +123,17 @@ def world(make_db, monkeypatch, owner):
             assert queue, f"an unscripted request was made: {purpose} {task}"
             return queue.pop(0)
 
-        async def ask_claude(text, capabilities="", channel_id=None, **options):
-            seen.chats.append((text, options))
-            timing.record_claude(0.9, HAIKU, 300, 40, purpose=options.get("purpose", ""))
-            assert options.get("tools") is None, "chat has no tools"
-            # As the real one does: chat remembers its own exchange
-            llm.remember(channel_id, text, "Paris.")
+        async def ask_claude(text, capabilities="", channel_id=None, purpose=""):
+            # Plain chat takes nothing else: no tools, no state, nothing of the user's data
+            seen.chats.append((text, {"purpose": purpose}))
+            timing.record_claude(0.9, HAIKU, 300, 40, purpose=purpose)
             seen.order.append("answer")
-            return llm.ChatResult(reply="Paris.")
+            answer = seen.chat_answers.pop(0) if seen.chat_answers else "Paris."
+            if answer == llm.ABOUT_DATA:
+                return llm.ChatResult(reply="", about_data=True)
+            # As the real one does: chat keeps its own words, and nothing else
+            llm.history_for(channel_id).extend([{"role": "user", "content": text}, {"role": "assistant", "content": answer}])
+            return llm.ChatResult(reply=answer)
 
         monkeypatch.setattr(llm, "call_tool", call_tool)
         monkeypatch.setattr(llm, "ask_claude", ask_claude)
@@ -162,9 +167,9 @@ def world(make_db, monkeypatch, owner):
 
     def say(text, **options):
         ctx = message(text, **options)
-        return ctx, run(conversation.handle(ctx, "the shortcuts", chat_here=seen.chat_here))
+        return ctx, run(conversation.handle(ctx, "the shortcuts"))
 
-    seen.chat_here = True
+    seen.chat_answers = []
     seen.say = say
     seen.owner = owner
 
@@ -575,15 +580,6 @@ def test_a_general_question_is_a_plain_reply_with_no_tools(world):
     assert rows()[0][1:4] == ("chat", "", 2) and purposes() == [("router", ""), ("chat", "")]
 
 
-def test_while_tasks_remain_on_the_old_way_chat_is_handed_back_with_its_log_row(world):
-    world.chat_here = False
-    world.claude(route())
-    ctx, handled = world.say("set a timer for 5 minutes")
-    assert not handled.done and handled.row_id is not None
-    assert ctx.replies == [] and world.chats == [] and world.sent == []
-    assert rows() == [], "the row is the caller's to finish: one message, logged once"
-
-
 def test_with_nothing_in_the_catalogue_nothing_is_asked_at_all(world, monkeypatch):
     monkeypatch.setattr(actions, "_entries", {})
     world.claude()
@@ -711,10 +707,8 @@ def test_the_exchange_is_remembered_in_pythons_words_for_the_router_to_see(world
     world.claude(route("shopping"), tick("caviar"))
     world.say("got the caviar")
     said = "⚠️ “caviar” isn't on the shopping list. On it: nothing."
-    assert llm.history_for(INBOX)[-2:] == [
-        {"role": "user", "content": "got the caviar"},
-        {"role": "assistant", "content": said},
-    ]
+    assert llm.exchanges_for(INBOX)[-1] == ("got the caviar", said)
+    assert llm.history_for(INBOX) == [], "chat is never shown what a task's code said: it has no access to my data"
     world.claude(route())
     world.say("thanks")
     assert f"User: got the caviar\nBot: {said}" in world.requests[-1].user
@@ -843,17 +837,11 @@ def test_a_mixed_message_with_a_tie_answers_then_asks_which(world):
 def test_a_mixed_message_is_remembered_once_as_a_whole(world):
     world.claude(route("shopping", chat_part="what's the capital of France"), shop_add("milk", 1))
     world.say(MIXED)
+    assert llm.exchanges_for(INBOX) == [(MIXED, "Paris.\ncard: shopping · new: milk · × 1")], "once, for the router"
     assert llm.history_for(INBOX) == [
-        {"role": "user", "content": MIXED},
-        {"role": "assistant", "content": "Paris.\ncard: shopping · new: milk · × 1"},
-    ]
-
-
-def test_while_tasks_remain_on_the_old_way_a_mixed_message_is_still_dealt_with_here(world):
-    world.chat_here = False  # #inbox, before the old way has gone
-    world.claude(route("shopping", chat_part="what's the capital of France"), shop_add("milk", 1))
-    ctx, handled = world.say(MIXED)
-    assert handled.done and ctx.replies == ["Paris."] and len(world.sent) == 1
+        {"role": "user", "content": "what's the capital of France"},
+        {"role": "assistant", "content": "Paris."},
+    ], "chat keeps the part it answered, and nothing about the list"
 
 
 def test_ticking_off_names_what_is_left_so_a_count_cannot_be_misread(world):
@@ -1679,13 +1667,12 @@ def test_what_a_press_did_is_remembered_so_the_next_message_is_not_answered_as_i
     world.claude(route("shopping"), shop_add("milk", 2))
     world.say("add 2 milk")
     saved = save(world)
-    history = llm.history_for(world.channel_id) if hasattr(world, "channel_id") else llm.history_for(open_cards()[-1].channel_id)
-    assert history[-2:] == [{"role": "user", "content": "(pressed the card's button)"}, {"role": "assistant", "content": saved}]
+    assert llm.exchanges_for(INBOX)[-1] == ("(pressed the card's button)", saved)
 
     world.claude(route("shopping"), shop_add("jam"))
     world.say("add jam")
     run(confirm.on_cancel(world.Press(open_cards()[-1].id)))
-    assert llm.history_for(open_cards()[-1].channel_id)[-1]["content"] == "Cancelled: nothing was changed."
+    assert llm.exchanges_for(INBOX)[-1] == ("(pressed Cancel on the card)", "Cancelled: nothing was changed.")
 
 
 def test_each_demo_change_is_read_back_item_by_item(world):
@@ -1830,3 +1817,95 @@ def test_a_looser_redirect_about_something_else_leaves_the_first_card_open(world
     assert [(card.task, card.status) for card in open_cards()] == [("packing", "open"), ("shopping", "open")], (
         "other items: a request of its own, so both cards stay"
     )
+
+
+# ---------------------------------------------------------------------------
+# QA 2026-10-10: a name on its own, my data never goes to chat, nothing internal is sent
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize("said", ["Shopping list", "shopping", "my shopping list", "the shopping list", "show my shopping list"])
+def test_a_lists_name_on_its_own_shows_the_list_from_code_at_no_cost(world, said):
+    # Seen: "Shopping list" replied "(nothing)", then went to chat, which answered about the list
+    run(demo._save("shopping", 1, [{"item": "milk", "quantity": 2}]))
+    world.claude()  # nothing is scripted: no request may be made
+    world.say(said)
+    assert world.sent[-1][1].text == "## 🛒 Shopping list\n- **milk** × 2"
+    assert world.requests == [] and world.chats == [], "matched in code, before the router"
+    row = rows()[-1]
+    assert (row[1], row[2], row[3]) == ("shortcut", "shopping", 0)
+    assert traces()[-1]["why"] == ["the message is just the name of shopping: its list is shown by code, at no cost"]
+    assert run(livelists.by_message(world.sent[-1][0])).key == "shopping", "and it is the Live copy"
+
+
+def test_a_name_on_its_own_shows_the_list_even_with_a_card_open_and_leaves_the_card(world):
+    world.claude(route("shopping"), shop_add("milk"))
+    world.say("add milk")
+    card = world.sent[-1][0]
+    world.claude()
+    world.say("packing list")
+    assert world.sent[-1][1].text == "🧳 The packing list is empty." and card not in world.deleted
+    assert open_cards()[-1].status == "open" and len(world.requests) == 2
+
+
+def test_more_than_the_name_is_not_a_shortcut(world):
+    world.claude(route("shopping"), ("demo_shop_list", {"guessed": [], "not_included": []}))
+    world.say("is milk on my shopping list?")
+    assert [request.purpose for request in world.requests] == ["router", "extraction"], "a question about my data goes to its task"
+
+
+def test_chat_that_turns_out_to_be_about_my_data_is_routed_to_the_task_that_owns_it(world):
+    # Seen: "Shopping list" went to chat and got "You've got milk on your shopping list. Want to add anything else?"
+    run(demo._save("shopping", 1, [{"item": "milk", "quantity": 2}]))
+    world.chat_answers = [llm.ABOUT_DATA]
+    world.claude(route(), route("shopping"), ("demo_shop_list", {"guessed": [], "not_included": []}))
+    ctx, _ = world.say("what have I got to buy this week then")
+    assert ctx.replies == [], "chat said nothing: it has no access to my data"
+    assert world.sent[-1][1].text == "## 🛒 Shopping list\n- **milk** × 2"
+    assert [request.purpose for request in world.requests] == ["router", "router", "extraction"]
+    assert world.requests[1].user.startswith("This message is about the user's own data"), "the second look is told so"
+    kept = traces()[-1]
+    assert "chat check: chat said the message is about my data; routed again to the task that owns it" in kept["checks"]
+    assert kept["router"]["second look"] == ["shopping"] and rows()[-1][1] == "router"
+    assert llm.history_for(INBOX) == [], "and nothing of it is kept as chat"
+
+
+def test_about_my_data_with_no_task_to_own_it_gets_the_neutral_line_and_never_a_guess(world):
+    world.chat_answers = [llm.ABOUT_DATA]
+    world.claude(route(), route())
+    ctx, _ = world.say("how many books have I read this year")
+    assert ctx.replies == [] and [card.text for _, card in world.sent] == ["🤔 I didn't understand that."]
+
+
+def test_chat_never_ends_with_an_offer_whatever_claude_wrote(world):
+    world.chat_answers = ["Paris. Want me to tell you more about it?"]
+    world.claude(route())
+    ctx, _ = world.say("what's the capital of France?")
+    assert ctx.replies == ["Paris."]
+
+
+def test_chat_is_never_shown_what_the_tasks_said_or_hold(world):
+    run(demo._save("shopping", 1, [{"item": "milk", "quantity": 2}]))
+    world.claude()
+    world.say("shopping list")
+    world.claude(route("shopping"), shop_add("jam"))
+    world.say("add jam")
+    world.claude(route())
+    world.say("what's the capital of France?")
+    assert llm.history_for(INBOX) == [
+        {"role": "user", "content": "what's the capital of France?"}, {"role": "assistant", "content": "Paris."},
+    ], "its own question and answer, and not a word about the list"
+    assert world.chats[-1] == ("what's the capital of France?", {"purpose": "chat"}), "no state, no tools, nothing else"
+
+
+def test_a_chat_message_has_its_router_in_the_trace(world):
+    # Seen: dev why showed "route: tools" and "router: not asked" while the cost listed a router request
+    world.claude(route())
+    world.say("what's the capital of France?")
+    kept = traces()[-1]
+    assert kept["router"] == {"tasks": [], "tie": False, "chat": True, "chat_part": "", "problem": ""}
+    assert rows()[-1][1] == "chat" and purposes()[-2:] == [("router", ""), ("chat", "")]
+
+
+def test_nothing_shown_means_nothing_remembered_so_no_placeholder_can_leak(world):
+    world.claude(("route", {"kind": "nothing", "tasks": [], "confidence": "high", "chat_part": ""}))
+    world.say("note one")
+    assert llm.exchanges_for(INBOX) == [] and llm.history_for(INBOX) == []

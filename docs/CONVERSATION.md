@@ -123,6 +123,11 @@ When two principles clash, the higher one wins.
 - A question about something I already stated
 - Saving a guess I haven't seen
 - A reply when nothing needed doing
+- Offering to do what I just asked, or ending a reply with "want me
+  to…?" or "would you like…?". Do it instead
+- An answer about my data from plain chat: anything about what I have
+  (a list, my pills, my timers) comes from the task that owns it
+- An internal label as text ("(nothing)", a route or action name)
 
 ---
 
@@ -155,7 +160,7 @@ Write them the way I'd really say them.
 | 13 | "delete zinc and its history", Delete for good | Zinc is gone; the reply only says so if it really is |
 | 14 | A message with nothing to do | No reply. The 👀 comes off and no reaction is left |
 | 15 | "shopping is boring" (a remark) | No reply: only questions and requests get words |
-| 16 | | |
+| 16 | "shopping list" (a list's name on its own; also "my pills", "timers") | The list itself, Live, from the bot's own code. No words about it, and no offer after it |
 | 17 | | |
 | 18 | | |
 | 19 | | |

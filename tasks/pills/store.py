@@ -1,29 +1,11 @@
 import json
 import sqlite3
-from dataclasses import asdict, dataclass
 from datetime import date, datetime, time
 
 from core import database
 from core.scheduler import to_db, utc_now
-from tasks.pills.rules import ACTIVE, PAUSED, REMOVED, Pill, Plan, Request
+from tasks.pills.rules import ACTIVE, PAUSED, REMOVED, Pill, Plan
 
-# ---------------------------------------------------------------------------
-# What the pills task remembers. No Discord in here: plain values in and out.
-#
-#   pills_pills    each pill and its plan
-#   pills_drafts   a preview waiting for Save: what was asked for, in the
-#                  user's words, and the message showing it. Kept in the
-#                  database so the buttons work after a restart
-#   pills_changes  every change to a plan or a status, with the plan before
-#                  and after: the plan never changes without a trace
-#
-# Doses are not here: they are occurrences (core/occurrences.py) under the
-# task name "pills", with the pill's id as the item.
-#
-# The db_* functions block and take a connection; the async ones below them
-# are one call each.
-# ---------------------------------------------------------------------------
-DRAFT_PREFIX = "d"
 
 CREATED, EDITED, WAS_PAUSED, RESUMED, WAS_REMOVED = "created", "edited", "paused", "resumed", "removed"
 
@@ -86,33 +68,10 @@ MIGRATIONS = [
 ]
 
 
-@dataclass(frozen=True)
-class Draft:
-    id: int
-    user_id: int
-    pill_id: int | None  # the pill being edited; None for a new one
-    request: Request
-    channel_id: int | None
-    message_id: int | None
-    job_id: int | None  # the job that lets it lapse
-    created_at: datetime
-
-    @property
-    def ref(self) -> str:
-        return f"{DRAFT_PREFIX}{self.id}"
-
-
-def draft_id(ref: str) -> int | None:
-    """The id in "d5" (or "5"), or None if it isn't one."""
-    text = ref.strip().lower().removeprefix(DRAFT_PREFIX)
-    return int(text) if text.isdigit() else None
-
-
 # ---------------------------------------------------------------------------
 # Rows
 # ---------------------------------------------------------------------------
 _COLUMNS = "id, user_id, name, dose, notes, kind, times, per_day, gap_minutes, start_date, end_date, status, paused_until"
-_DRAFT_COLUMNS = "id, user_id, pill_id, request, channel_id, message_id, job_id, created_at"
 
 
 def _day(text: str | None) -> date | None:
@@ -154,10 +113,6 @@ def plan_json(plan: Plan | None) -> str | None:
         return None
     names = ("name", "dose", "notes", "kind", "times", "per_day", "gap_minutes", "start", "end")
     return json.dumps(dict(zip(names, _plan_values(plan))))
-
-
-def _draft(row: tuple) -> Draft:
-    return Draft(row[0], row[1], row[2], Request(**json.loads(row[3])), row[4], row[5], row[6], datetime.fromisoformat(row[7]))
 
 
 def _record(conn, user_id: int, pill_id: int, kind: str, before: Plan | None, after: Plan | None, now: datetime) -> None:
@@ -251,57 +206,6 @@ def db_changes(conn: sqlite3.Connection, pill_id: int) -> list[tuple[str, str, s
 
 
 # ---------------------------------------------------------------------------
-# Drafts (blocking)
-# ---------------------------------------------------------------------------
-def db_draft(conn: sqlite3.Connection, draft_id: int) -> Draft | None:
-    row = conn.execute(f"SELECT {_DRAFT_COLUMNS} FROM pills_drafts WHERE id = ?", (draft_id,)).fetchone()
-    return _draft(row) if row else None
-
-
-def db_drafts(conn: sqlite3.Connection, user_id: int) -> list[Draft]:
-    rows = conn.execute(f"SELECT {_DRAFT_COLUMNS} FROM pills_drafts WHERE user_id = ? ORDER BY id", (user_id,)).fetchall()
-    return [_draft(row) for row in rows]
-
-
-def db_draft_for_pill(conn: sqlite3.Connection, pill_id: int) -> Draft | None:
-    row = conn.execute(
-        f"SELECT {_DRAFT_COLUMNS} FROM pills_drafts WHERE pill_id = ? ORDER BY id DESC LIMIT 1", (pill_id,)
-    ).fetchone()
-    return _draft(row) if row else None
-
-
-def db_draft_by_message(conn: sqlite3.Connection, message_id: int) -> Draft | None:
-    row = conn.execute(f"SELECT {_DRAFT_COLUMNS} FROM pills_drafts WHERE message_id = ?", (message_id,)).fetchone()
-    return _draft(row) if row else None
-
-
-def db_add_draft(
-    conn: sqlite3.Connection, user_id: int, pill_id: int | None, request: Request, now: datetime | None = None
-) -> Draft:
-    cursor = conn.execute(
-        "INSERT INTO pills_drafts (user_id, pill_id, request, created_at) VALUES (?, ?, ?, ?)",
-        (user_id, pill_id, json.dumps(asdict(request)), to_db(now or utc_now())),
-    )
-    return db_draft(conn, cursor.lastrowid)
-
-
-def db_update_draft(conn: sqlite3.Connection, draft_id: int, **values) -> Draft | None:
-    """Set any of request, channel_id, message_id, job_id on a draft."""
-    if "request" in values:
-        values["request"] = json.dumps(asdict(values["request"]))
-    unknown = set(values) - {"request", "channel_id", "message_id", "job_id"}
-    if unknown:
-        raise ValueError(f"Not a draft's to set: {sorted(unknown)}")
-    assignments = ", ".join(f"{name} = ?" for name in values)
-    conn.execute(f"UPDATE pills_drafts SET {assignments} WHERE id = ?", (*values.values(), draft_id))
-    return db_draft(conn, draft_id)
-
-
-def db_discard_draft(conn: sqlite3.Connection, draft_id: int) -> bool:
-    return conn.execute("DELETE FROM pills_drafts WHERE id = ?", (draft_id,)).rowcount == 1
-
-
-# ---------------------------------------------------------------------------
 # The same, one call each, for the event loop
 # ---------------------------------------------------------------------------
 def db_last_changed(conn: sqlite3.Connection, user_id: int) -> int | None:
@@ -327,22 +231,3 @@ async def pill(pill_id: int) -> Pill | None:
 async def set_status(pill_id: int, status: str, paused_until: date | None = None) -> Pill:
     return await database.run(db_set_status, pill_id, status, paused_until)
 
-
-async def draft(draft_id: int) -> Draft | None:
-    return await database.run(db_draft, draft_id)
-
-
-async def drafts(user_id: int) -> list[Draft]:
-    return await database.run(db_drafts, user_id)
-
-
-async def add_draft(user_id: int, pill_id: int | None, request: Request) -> Draft:
-    return await database.run(db_add_draft, user_id, pill_id, request)
-
-
-async def update_draft(draft_id: int, **values) -> Draft | None:
-    return await database.run(lambda conn: db_update_draft(conn, draft_id, **values))
-
-
-async def discard_draft(draft_id: int) -> bool:
-    return await database.run(db_discard_draft, draft_id)

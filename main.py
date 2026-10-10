@@ -1,13 +1,10 @@
 import asyncio
-import json
 import logging
-import time
 
-import anthropic
 import discord
 from discord import app_commands
 
-from core import backup, cards, clock, conversation, costs, database, day, pending, devmode, instance_lock, interactions, lifecycle, live, scheduler, timing
+from core import backup, cards, clock, conversation, database, day, devmode, instance_lock, interactions, lifecycle, live, scheduler, timing
 from core.config import (
     CLAUDE_MODEL,
     DB_PATH,
@@ -19,25 +16,21 @@ from core.config import (
     real_now_nz,
 )
 from core.context import Context
-from core.database import log_received, log_result
 from core.discord_utils import (
     COLOUR_INFO,
-    COLOUR_OK,
     bind_client,
     interaction_gone,
     log_error,
     safe_reply,
     send_log,
-    split_message,
     truncate,
 )
 from core.lifecycle import MessageClass
-from core.llm import ask_claude, count_tool_tokens, estimate_cost, format_cost, history_for, turn_note
 from core.logging_setup import setup_logging
 from core.migrations import migrate
 from core.permissions import is_allowed
 from core.users import ensure_owner, get_user_by_discord_id
-from tasks import registry, toolcalls
+from tasks import registry
 
 log = logging.getLogger("assistant")
 
@@ -58,7 +51,6 @@ slash_status = "not set up yet"
 INTERACTION_GRACE = 2.0
 
 # Running totals since the bot started
-session_stats = {"messages": 0, "cost": 0.0}
 
 scheduler.register_handler(backup.JOB_TASK, backup.JOB_KIND, backup.nightly_backup_job)
 scheduler.register_handler(day.JOB_TASK, day.JOB_KIND, day.rollover_job)
@@ -283,202 +275,28 @@ async def on_message(message: discord.Message):
     in_inbox = message.channel.id == INBOX_CHANNEL_ID
     log.info("Received: %s", text)
 
-    # A short "ok" (or "no") to something Claude proposed is dealt with here
-    if in_inbox and await toolcalls.answer_pending(ctx):
-        return
-
-    started = time.perf_counter()
-    spent = timing.start()
     # Seen: 👀 straight away, and "typing" with it. Neither is waited for
+    timing.start()
     live.background(_mark_seen(message))
 
-    # The router's way first: tasks that have moved to it are handled there, by
-    # their own code. What it says is for no such task carries on below, the old
-    # way, while there are tasks that haven't moved (the inbox only)
+    # One way for every message that is no shortcut: the router says whether it is
+    # for a task, a general question or nothing at all, and the task's own code (or
+    # plain chat, which has no tools and no access to my data) does the rest
+    failed = False
     try:
-        routed = await conversation.handle(
-            ctx, registry.capabilities_text(user, message.channel.id), chat_here=not in_inbox
-        )
+        handled = await conversation.handle(ctx, registry.capabilities_text(user, message.channel.id))
+        failed = handled.failed
     except Exception as error:
-        log.exception("The router's way failed")
-        await log_error("Routing failed", repr(error), text)
-        # In the inbox the old way still has a go; anywhere else that was the only way
-        routed = conversation.Handled(False, failed=not in_inbox)
-    if routed.done or not in_inbox:
-        live.background(_unmark_seen(message, routed.failed))
-        timing.stop()
-        return
-
-    # Everything else goes to Claude. Log the raw input before processing
-    # (the router has already, if it looked at this message).
-    row_id = routed.row_id or await log_received(text, "chat", message.id, message.channel.id, user_id=user.id)
-
-    turn = None
-
-    async def record_cost(called=()) -> None:
-        """How this message was handled and what it cost, whether or not it worked.
-        Every tool is sent with every message here: that is the "tools" route."""
-        with_tools = bool(turn and turn.definitions)
-        tasks = sorted({turn.specs[call.name].task for call in called if turn and call.name in turn.specs})
-        purpose = costs.PURPOSE_TOOLS if with_tools else costs.PURPOSE_CHAT
-        try:
-            await database.record_cost(
-                row_id, costs.TOOLS if with_tools else costs.CHAT, tasks, costs.calls_from(spent.claude_calls, purpose)
-            )
-        except Exception:
-            log.exception("Could not record what a message cost")
-
-    try:
-        try:
-            # Tell Claude what the bot itself can do here, and give it the same
-            # actions as tools so it can do them when asked
-            capabilities = registry.capabilities_text(user, message.channel.id)
-            turn = await toolcalls.prepare(ctx)
-
-            async def run_tool(name: str, value: dict) -> tuple[str, bool]:
-                return await toolcalls.execute(turn, name, value)
-
-            result = await ask_claude(
-                text,
-                capabilities,
-                channel_id=message.channel.id,
-                tools=turn.definitions,
-                run_tool=run_tool,
-                acted=lambda: turn.acted,
-                # The time and what is running now, so a simple request needs no reading first
-                note=turn_note(await registry.live_state(ctx) if turn.definitions else ""),
-                closing=lambda: toolcalls.end_round(turn),
-                proposed=lambda: pending.waiting(message.channel.id, user.id),
-            )
-            reply, input_tokens, output_tokens = result.reply, result.input_tokens, result.output_tokens
-        except anthropic.APIStatusError as error:
-            duration = time.perf_counter() - started
-            log.error("Claude API error %s: %s", error.status_code, error.message)
-            await log_result(
-                row_id,
-                status="error",
-                error=f"{error.status_code}: {error.message}",
-                model=CLAUDE_MODEL,
-                duration_s=duration,
-            )
-            await record_cost()
-            await message.channel.send(f"⚠️ Claude API error ({error.status_code}). Check #bot-log.")
-            await log_error(f"Claude API error {error.status_code}", str(error.message), text)
-            return
-        except anthropic.APIConnectionError as error:
-            duration = time.perf_counter() - started
-            log.exception("Could not reach the Claude API")
-            await log_result(row_id, status="error", error=repr(error), model=CLAUDE_MODEL, duration_s=duration)
-            await record_cost()
-            await message.channel.send("⚠️ Couldn't reach Claude. Check the internet connection.")
-            await log_error("Connection error", repr(error), text)
-            return
-        except Exception as error:
-            duration = time.perf_counter() - started
-            log.exception("Unexpected error while asking Claude")
-            await log_result(row_id, status="error", error=repr(error), model=CLAUDE_MODEL, duration_s=duration)
-            await record_cost()
-            await message.channel.send("⚠️ Something went wrong. Check #bot-log.")
-            await log_error("Unexpected error", repr(error), text)
-            return
-
-        # Nothing to send when the tools' own confirmations were the answer
-        for chunk in split_message(reply):
-            await message.channel.send(chunk)
+        log.exception("Could not handle a message")
+        await log_error("Message failed", repr(error), text)
+        failed = True
     finally:
-        live.background(_unmark_seen(message))
-
-    # The whole wait, as the user saw it: until the reply was in the channel
-    timing.mark_replied()
-    timing.stop()
-    duration = time.perf_counter() - started
-    log.info("Timing: %s", timing.log_line(spent))
-
-    cost = estimate_cost(
-        CLAUDE_MODEL, input_tokens, output_tokens, result.cache_read_tokens, result.cache_write_tokens
-    )
-    called = ", ".join(f"{call.name}{' (failed)' if call.is_error else ''}" for call in result.tool_calls)
-    await log_result(
-        row_id,
-        reply=reply + (f"\n[tools: {called}]" if called else ""),
-        model=CLAUDE_MODEL,
-        input_tokens=input_tokens,
-        output_tokens=output_tokens,
-        cost_usd=cost,
-        duration_s=duration,
-        status="ok",
-        timing=json.dumps(timing.as_dict(spent)),
-    )
-    # After the result: this sets the route and the totals of every request made
-    await record_cost(result.tool_calls)
-
-    session_stats["messages"] += 1
-    if cost is not None:
-        session_stats["cost"] += cost
-
-    # Log card for #bot-log
-    embed = discord.Embed(title="💬 Message handled", colour=COLOUR_OK, timestamp=real_now_nz())
-    embed.add_field(name="Input", value=truncate(text), inline=False)
-    embed.add_field(name="Reply", value=truncate(reply) or "(the tool's own confirmation)", inline=False)
-    embed.add_field(name="Model", value=CLAUDE_MODEL, inline=True)
-    embed.add_field(name="Tokens", value=f"{input_tokens} in / {output_tokens} out", inline=True)
-    embed.add_field(name="Est. cost", value=format_cost(cost), inline=True)
-    embed.add_field(name="Time", value=f"{duration:.1f}s", inline=True)
-    embed.add_field(
-        name="Route",
-        value=f"{costs.TOOLS if turn.definitions else costs.CHAT} · {len(spent.claude_calls)} request(s)",
-        inline=True,
-    )
-    embed.add_field(
-        name="History", value=f"{len(history_for(message.channel.id))} messages", inline=True
-    )
-    embed.add_field(
-        name="Session total",
-        value=f"{session_stats['messages']} msgs · {format_cost(session_stats['cost'])}",
-        inline=True,
-    )
-    # What the tools cost: they are sent with every message, used or not
-    tool_tokens = await count_tool_tokens(turn.definitions)
-    embed.add_field(
-        name="Tool tokens",
-        value="none sent" if not turn.definitions else ("unknown" if tool_tokens is None else f"about {tool_tokens}"),
-        inline=True,
-    )
-    embed.add_field(
-        name="Cache",
-        value=f"{result.cache_read_tokens} read / {result.cache_write_tokens} written",
-        inline=True,
-    )
-    embed.add_field(name="Timing", value=truncate("\n".join(timing.summary_lines(spent))), inline=False)
-    if turn.definitions:
-        strict = f", {len(turn.strict)} strict" if turn.strict else ""
-        embed.add_field(
-            name=f"Tools sent ({len(turn.definitions)}{strict})", value=truncate(", ".join(turn.names)), inline=False
-        )
-    if result.tool_calls:
-        embed.add_field(
-            name=f"Tool calls ({len(result.tool_calls)})",
-            value=truncate(
-                "\n".join(
-                    f"{'⚠️' if call.is_error else '🔧'} `{call.name}` {truncate(call.result, 120)}"
-                    for call in result.tool_calls
-                )
-            ),
-            inline=False,
-        )
-    await send_log(embed)
-    if result.unbacked_claim:
-        # Claude said it was done when no tool had done anything, and was sent back
-        await log_error(
-            "Claude said \"done\" with nothing run",
-            f"First reply (not sent): {truncate(result.unbacked_claim, 300)}\n"
-            f"Sent instead: {truncate(reply, 300)}\n"
-            f"Tool calls after the check: {called or 'none'}",
-            text,
-        )
+        # The 👀 always comes off: one that stays means the bot is stuck
+        live.background(_unmark_seen(message, failed))
+        timing.stop()
     await registry.emit(
         "action_finished",
-        registry.ActionResult("chat", "chat", "ok", user.id, message.channel.id, reply=reply),
+        registry.ActionResult("chat", "chat", "error" if failed else "ok", user.id, message.channel.id),
     )
 
 

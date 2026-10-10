@@ -93,11 +93,15 @@ def test_the_system_prompt_includes_the_capabilities_when_there_are_some():
 
 
 @pytest.mark.parametrize("capabilities", ["", "- stats: totals"])
-def test_claude_is_always_told_it_cannot_act(capabilities):
+def test_chat_is_always_told_it_cannot_act_cannot_see_my_data_and_never_offers(capabilities):
     prompt = llm.build_system_prompt(capabilities)
-    assert "You have no tools yet." in prompt
-    assert "cannot run commands or take any action yourself" in prompt
-    assert "Never offer to perform an action" in prompt
+    assert "You have no tools: you cannot run anything" in prompt
+    assert "Never say or imply that you have done something" in prompt
+    assert "You have NO access to the user's own data" in prompt and "Never guess what their data holds" in prompt
+    assert f"answer with exactly `{llm.ABOUT_DATA}` and nothing else" in prompt, "so the message can be routed to its task"
+    assert "Answer the question and stop." in prompt and "never offer further help" in prompt
+    assert "\"want me to…?\", \"would you like…?\" or \"anything else?\"" in prompt
+    assert "8:00 pm, never 20:00" in prompt
 
 
 def test_the_assistant_is_named_from_the_setting(monkeypatch):
@@ -111,31 +115,57 @@ def test_the_system_prompt_asks_for_uk_spelling_and_short_replies():
     assert "UK spelling" in prompt and "short" in prompt
 
 
-# --- what Claude is told when it has tools ------------------------------------
-def test_with_tools_claude_is_told_how_to_use_them():
-    prompt = llm.build_system_prompt("- stats: totals", has_tools=True)
-    assert "You have no tools yet." not in prompt
-    for rule in (
-        "decide whether to simply answer, call one or more tools, ask a clarifying question, or propose",
-        "call it straight away with propose set to false",
-        "ask a short question instead of guessing",
-        "unless a tool you called for this very message returned success",
-        "Earlier messages are not evidence",
-        "Never write a tool call, a tool result or a bracketed note",
-        "use that note: answer from it and take ids from it",
-        "Never use an earlier message for this",
-        "Put every action the user asked for in ONE response",
-        "call search_messages to look further back",
-        "Never claim or offer to do something you have no tool for",
-        "If a tool fails, explain why",
-        "at most 5 tool calls",
-        "Never guess between them",
-    ):
-        assert rule in prompt, rule
-    assert "- stats: totals" in prompt and "Reactions are theirs alone" in prompt
+def test_the_time_is_not_in_the_chat_prompt_so_all_of_it_can_be_cached():
+    prompt = llm.build_system_prompt("- stats: totals")
+    assert "current date and time" not in prompt and "- stats: totals" in prompt
+    assert llm._time_line().startswith("The current date and time in Auckland is ")
 
 
-def test_the_time_is_not_in_the_system_prompt_so_all_of_it_can_be_cached():
-    prompt = llm.build_system_prompt("- stats: totals", has_tools=True)
-    assert "current date and time" not in prompt
-    assert llm.turn_note().splitlines()[1].startswith("The current date and time in Auckland is ")
+# --- plain chat: one request, its own words kept, and a way to say "this is about your data" ------------
+class _Reply:
+    def __init__(self, text):
+        self.content = [type("Block", (), {"type": "text", "text": text})()]
+        self.usage = type("Usage", (), {"input_tokens": 10, "output_tokens": 5})()
+        self.stop_reason = "end_turn"
+
+
+def _chat(monkeypatch, answer):
+    import asyncio
+
+    sent = []
+
+    class Messages:
+        async def create(self, **request):
+            sent.append(request)
+            return _Reply(answer)
+
+    monkeypatch.setattr(llm, "claude", type("Client", (), {"messages": Messages()})())
+    monkeypatch.setattr(llm, "_histories", {})
+    monkeypatch.setattr(llm, "_exchanges", {})
+    llm.remember(7, "add milk", "✅ Saved · 🛒 milk × 2 is on the shopping list")  # what a task's code said
+    result = asyncio.run(llm.ask_claude("what's the capital of France?", "", 7, purpose="chat"))
+    return result, sent
+
+
+def test_chat_is_sent_no_tools_and_nothing_a_task_said(monkeypatch):
+    result, sent = _chat(monkeypatch, "Paris.")
+    (request,) = sent
+    assert "tools" not in request and len(request["messages"]) == 1, "one message: nothing of the list is in it"
+    assert "milk" not in str(request["messages"]) and "milk" not in str(request["system"])
+    assert result.reply == "Paris." and not result.about_data
+    assert llm.history_for(7) == [
+        {"role": "user", "content": "what's the capital of France?"}, {"role": "assistant", "content": "Paris."},
+    ]
+    assert llm.exchanges_for(7) == [("add milk", "✅ Saved · 🛒 milk × 2 is on the shopping list")], "kept apart, for the router"
+
+
+def test_when_chat_says_it_is_about_my_data_nothing_is_said_or_kept(monkeypatch):
+    result, _ = _chat(monkeypatch, llm.ABOUT_DATA)
+    assert result.about_data and result.reply == "" and llm.history_for(7) == []
+
+
+def test_an_exchange_with_nothing_shown_is_not_remembered(monkeypatch):
+    monkeypatch.setattr(llm, "_exchanges", {})
+    llm.remember(7, "note one", "")
+    llm.remember(7, "note two", "  ")
+    assert llm.exchanges_for(7) == []

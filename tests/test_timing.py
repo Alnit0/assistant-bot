@@ -5,8 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from core import discord_utils, llm, timing
-from tests.test_llm_tools import TOOLS, FakeClaude, Runner, call, response, text
+from core import discord_utils, timing
 
 
 @pytest.fixture(autouse=True)
@@ -113,38 +112,6 @@ def test_watching_twice_counts_once(logs_on):
 
 
 # --- the Claude loop and the Discord client report in --------------------------
-def test_the_loop_records_each_request_and_tool(monkeypatch):
-    monkeypatch.setattr(llm, "_histories", {})
-    fake = FakeClaude(
-        response(call("timer", duration="5m"), stop="tool_use", tokens=(100, 30), cache=(5000, 0)),
-        response(text("Started."), tokens=(150, 5), cache=(5000, 0)),
-    )
-    monkeypatch.setattr(llm, "claude", fake)
-
-    async def ask() -> timing.Turn:
-        turn = timing.start()
-        await llm.ask_claude("Set a timer for 5 minutes", "", 1, tools=TOOLS, run_tool=Runner())
-        return turn
-
-    turn = asyncio.run(ask())
-    assert [(c.input_tokens, c.output_tokens, c.cache_read_tokens) for c in turn.claude_calls] == [
-        (100, 30, 5000),
-        (150, 5, 5000),
-    ]
-    assert [(run.name, run.failed) for run in turn.tool_runs] == [("timer", False)]
-
-
-def test_a_failed_tool_is_recorded_as_failed(monkeypatch):
-    monkeypatch.setattr(llm, "_histories", {})
-    fake = FakeClaude(response(call("timer"), stop="tool_use"), response(text("That didn't work.")))
-    monkeypatch.setattr(llm, "claude", fake)
-
-    async def ask() -> timing.Turn:
-        turn = timing.start()
-        await llm.ask_claude("Set a timer", "", 1, tools=TOOLS, run_tool=Runner(RuntimeError("boom")))
-        return turn
-
-    assert [run.failed for run in asyncio.run(ask()).tool_runs] == [True]
 
 
 def test_discord_requests_are_timed_once_however_often_bound(monkeypatch):

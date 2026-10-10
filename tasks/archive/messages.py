@@ -356,14 +356,6 @@ async def restore(item_id: int) -> str:
     return f"{RESTORE_EMOJI} Restored to {origin.mention}: {restored.jump_url}"
 
 
-async def undo_archive(ctx: Context, target: discord.Message) -> str:
-    """Take back an archive (the Undo button on a confirmation of Claude's): restore it."""
-    item = await store.by_original(target.id)
-    if item is None:
-        raise UserError("I have no record of archiving that, or it was already restored.")
-    return await restore(item.id)
-
-
 class RestoreButton(
     discord.ui.DynamicItem[discord.ui.Button], template=r"archive:restore:(?P<id>\d+)"
 ):

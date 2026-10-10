@@ -1,7 +1,7 @@
 from core.context import Context
 from core.llm import clear_history, format_cost
 from tasks import registry
-from tasks.base import ANY, Keyword, Param, Task
+from tasks.base import ANY, Keyword, Task
 from tasks.builtin.views import TestButtons
 
 # A task with more words than this is summarised in the overview
@@ -145,10 +145,6 @@ class BuiltinTask(Task):
                 takes_args=True,
                 usage="[task or word]",
                 accepts=_help_accepts,
-                params=[
-                    Param("topic", "A task or word to explain, e.g. timers or pomo. Empty shows the whole list.", required=False)
-                ],
-                tool_priority=5,
             ),
         ]
 

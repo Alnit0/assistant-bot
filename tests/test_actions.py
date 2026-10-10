@@ -198,7 +198,9 @@ def test_on_the_dev_database_the_two_demo_tasks_are_in_the_catalogue(monkeypatch
     monkeypatch.setattr(config, "DEV_DATABASE", True)
     registry.load()
     names = [found.name for found in actions.catalogue()]
-    assert {"shopping", "packing", "timers"} <= set(names), "the demo tasks beside the real ones"
+    assert {"timers", "pills", "bugs"} <= set(names) and not {"shopping", "packing"} & set(names), (
+        "the demo lists are test fixtures (tests/demo.py): the bot offers them on neither database"
+    )
     assert registry.problems() == []
     monkeypatch.setattr(config, "DEV_DATABASE", False)
     registry.load()

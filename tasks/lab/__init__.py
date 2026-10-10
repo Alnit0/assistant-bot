@@ -1,8 +1,7 @@
 import discord
 
-from core import config
 from tasks.base import Keyword, Task
-from tasks.lab import common, demo, ratelimits, state
+from tasks.lab import common, ratelimits, state
 
 # Importing these adds their subcommands to the /lab group
 from tasks.lab import buttons, channels, charts, misc, react, status, tour  # noqa: F401  isort: skip
@@ -18,7 +17,6 @@ class LabTask(Task):
     name = "lab"
     description = "Test bench for Discord features. Owner only."
     # A test bench, not something to ask Claude for: its words are typed only
-    exposes_tools = False
 
     def keywords(self) -> list[Keyword]:
         return [
@@ -45,11 +43,6 @@ class LabTask(Task):
 
     def migrations(self) -> list:
         return list(state.MIGRATIONS)
-
-    def entries(self) -> list:
-        # Two demo tasks for trying the router's way, on the dev database only:
-        # the live bot's router never hears of them
-        return list(demo.ENTRIES) if config.DEV_DATABASE else []
 
     def setup(self, client: discord.Client) -> None:
         # Before connecting, so a press on an old message can never arrive too early

@@ -50,7 +50,11 @@ RULES = (
     "and any remark, opinion or statement that asks for nothing (\"shopping is boring\", \"that was "
     "quick\", \"I'm tired\"), even when it mentions something a task deals with. Do not offer help in "
     "return for a remark. A question, or anything that asks the bot to do or say something, is never "
-    "nothing.\n"
+    "nothing: something phrased as a question gets an answer, however idle it seems (\"is shopping "
+    "boring for everyone?\" is chat).\n"
+    "- Anything about the user's own data goes to the task that owns it, a question included: what is on "
+    "a list, which pills they take, what timers are running, which bugs are open. Never chat for these: "
+    "chat cannot see any of the user's data.\n"
     "- A destination the user names decides it: \"to my pills\", \"on the shopping list\", \"to the "
     "packing list\" is that task, whatever else the message mentions and whatever is on screen.\n"
     "- A message can hold both: a request for a task and, beside it, a general question or remark that "
@@ -129,10 +133,20 @@ def tool(entries: list[Entry]) -> dict:
     }
 
 
-def user_turn(message: str, on_screen: str = "", exchanges: list[tuple[str, str]] | None = None) -> str:
+ABOUT_DATA = (
+    "This message is about the user's own data, or asks the bot to do something with it: plain chat said "
+    "so and has no access to that data. Choose the task that owns it. Answer chat or nothing only if no "
+    "task here could possibly own it."
+)
+
+
+def user_turn(
+    message: str, on_screen: str = "", exchanges: list[tuple[str, str]] | None = None, about_data: bool = False
+) -> str:
     """What changes from message to message: the last exchanges, what is on
-    screen, and the message. Never part of the cached block."""
-    parts = []
+    screen, and the message. Never part of the cached block. `about_data` is
+    the second look, after chat said the message is about the user's data."""
+    parts = [ABOUT_DATA] if about_data else []
     if exchanges:
         lines = ["The last exchanges, oldest first:"]
         for said, answered in exchanges[-EXCHANGES:]:
@@ -186,6 +200,21 @@ def named_destinations(message: str, entries: list[Entry]) -> list[Entry]:
     return found
 
 
+def named_alone(message: str, entries: list[Entry]) -> Entry | None:
+    """The task whose name is all the message says: "pills", "my pills",
+    "shopping list", "the shopping list", "show my timers". That asks to see
+    what the task has, and is answered by code with no request. None for
+    anything more than the name, and when two tasks could be meant. Pure."""
+    said = re.sub(r"[\s.!?]+", " ", message.lower()).strip()
+    found = []
+    for entry in entries:
+        names = {entry.name, entry.name.removesuffix("s"), entry.name + "s"}
+        name = "|".join(re.escape(each) for each in sorted(names, key=len, reverse=True))
+        if re.fullmatch(rf"(?:show (?:me )?|list |see |open )?(?:my |the |our )?(?:{name})(?: list)?(?: please)?", said):
+            found.append(entry)
+    return found[0] if len(found) == 1 else None
+
+
 def with_named(found: Route, named: list[str]) -> Route:
     """The router's answer once the destinations the user named are taken as
     settled. If the router agrees and adds other tasks (a message with several
@@ -198,12 +227,12 @@ def with_named(found: Route, named: list[str]) -> Route:
     return Route(tuple(named), problem=found.problem)
 
 
-async def route(message: str, entries: list[Entry], on_screen: str = "", exchanges=None) -> Route:
+async def route(message: str, entries: list[Entry], on_screen: str = "", exchanges=None, about_data: bool = False) -> Route:
     """Ask the router. One request; the result is checked and never raises for
     something the router got wrong."""
     called = await llm.call_tool(
         system_blocks(entries),
-        user_turn(message, on_screen, exchanges),
+        user_turn(message, on_screen, exchanges, about_data),
         [tool(entries)],
         choice={"type": "tool", "name": TOOL},
         purpose=costs.PURPOSE_ROUTER,

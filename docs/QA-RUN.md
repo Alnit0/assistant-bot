@@ -1,11 +1,11 @@
 # QA run sheet
 
-One pass through 207 of the 229 👤 Manual tests in `docs/TESTING.md` that are
-⬜ Untested (as of 2026-10-10); the other 22 are pills tests (group R) for
-stages not built yet, and join as each is. Blocks share setup and each one leaves things
+One pass through 163 of the 194 👤 Manual tests in `docs/TESTING.md` that are
+⬜ Untested (as of 2026-10-10); the other 31 are for pills stages not built yet
+(group R) or need a setup of their own, and join as each can be run. Blocks share setup and each one leaves things
 ready for the next, so run them in order.
 
-**Time:** about 4¼ hours at the keyboard, plus two nights for the backup
+**Time:** about 3¼ hours at the keyboard, plus two nights for the backup
 tests (block 12).
 
 | Block | What | Dev mode | Tests | Minutes |
@@ -22,15 +22,13 @@ tests (block 12).
 | 10 | Rest of the lab | off | 8 | 8 |
 | 11 | Phone notifications | off | 5 | 11 |
 | 12 | Overnight backups | off | 2 | 2 nights |
-| 13 | Tool calling (Claude runs things) | off, then on, then off | 32 | 53 |
 | 14 | Bugs and kept confirmations | off (two restarts) | 16 | 21 |
 | 15 | Dev database and clock | `--dev`, on and off (three restarts) | 10 | 13 |
-| 16 | Pills: setting up | `--dev`, off (one restart) | 15 | 16 |
 | 17 | Traces: `dev why` and bug reports | `--dev`, off (one restart) | 3 | 5 |
-| 18 | Retest: filler words, remarks, reactions as status, `dev why` | `--dev`, off (one restart) | 7 | 8 |
-| | **Total** | | **213** (F2 is split over blocks 4 and 7, counted in 7) | **about 4¼ hours** |
+| 18 | Retest: one path for every message | `--dev`, off (one restart) | 9 | 12 |
+| | **Total** | | **163** (F2 is split over blocks 4 and 7, counted in 7) | **about 3¼ hours** |
 
-Blocks 13 to 18 need nothing from the others: run them any time after
+Blocks 14 to 18 need nothing from the others (13 and 16 tested the old way of asking Claude, which is gone): run them any time after
 block 1, and before the overnight block if that suits.
 
 ## Before you start
@@ -343,52 +341,6 @@ Two separate nights. Dev mode: off.
 | 1 | Night one: leave the bot running past 3am NZ. Check in the morning | "💾 Backup saved" log card naming the database copy and the specs zip; the newest 7 `assistant-*.db` and `specs-*.zip` kept in `data\backups\` | K5 |
 | 2 | Night two: stop the bot before 3am, start it in the morning | The missed backup runs at startup, with its own log card | K6 |
 
-## 13. Tool calling (Claude runs things)
-
-**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
-
-In #inbox, in plain sentences: none of these is a typed word. Dev mode: off
-until step 12, and off again from step 17. Claude's wording varies from run to run, so judge what
-happens, not the exact words. Cancel or stop anything a step starts.
-
-| # | Do | Expect | Tests |
-|---|---|---|---|
-| 1 | `timer 10s` (the typed word) | Runs as always: your word is deleted, and there is no "Message handled" card, because Claude was not called. Dismiss the alert | N14 |
-| 2 | `Set a timer` | Claude asks how long, and starts nothing | N15 |
-| 3 | `Email my landlord about the rent` | It says it can't do that; it does not claim or offer to. Nothing runs | A18 |
-| 4 | `Would a pomodoro help? Suggest one but wait for my ok`, then `ok` | It proposes and nothing starts; after `ok` a session starts. No "Message handled" card for the `ok`. Stop the session | N16 |
-| 5 | Ask the same again, then `no` | "👌 Left it: …" for 5 seconds; nothing starts | N17 |
-| 6 | Ask the same again, wait over 2 minutes, then `ok` | Nothing starts: the `ok` goes to Claude as ordinary chat | N18 |
-| 7 | `Clear our conversation`; press **Cancel**; ask again and press **Confirm** | A question naming `reset` with Confirm and Cancel, nothing cleared yet; Cancel removes it; Confirm clears the memory and the question shows "✅ Done" | N19 |
-| 8 | Type `file me away`, then reply to it: `can you file this away for me?` | That message is archived, as reply `archive` does, with the usual "📦 Archived: link" for 5 seconds | N20 |
-| 9 | Type `Rent is due on the 1st`. Then, without replying: `pin the message about rent`. Press **Undo** | It is pinned; a confirmation quotes it with a link and an Undo button for 30 seconds; Undo unpins it | N21 |
-| 10 | Without replying: `delete the message about rent`; press **Cancel** | Confirm / Cancel question that quotes the message; nothing deleted | N23 |
-| 11 | Type `Buy oat milk`, then `Milk for the neighbours`. Then: `archive the note about milk` | "Which message should I `archive`?" with both quoted and numbered buttons, plus "None of these"; pressing **1** archives that one only | N22 |
-| 12 | `speed the timers up 60 times`. Then `dev on`, and ask again | First it says it can't (or to type `dev speed 60`) and nothing changes. With dev mode on it runs and the panel shows 60x | N24 |
-| 13 | Look at the "Message handled" card for that last message | Fields for Tools sent (count, how many strict, names), Tool tokens, Cache (read / written) and Tool calls with each outcome | N26 |
-| 14 | `run the lab chart` | It tells you to type `lab chart`; no chart is posted | N25 |
-| 15 | `dev speed 1`, then: `Start six one-minute timers called a, b, c, d, e and f` | Five start; Claude says the sixth was not done. Cancel them | N27 |
-| 16 | `Set a timer for three days` | No timer; Claude explains the 24-hour limit; no ⚠️ on your message; a "Command failed" log card. Then `dev off` | N28 |
-| 17 | `Set a timer for 20 minutes called tea`, then type `timer 5m eggs` and `pomo 50/10/30 writing`. Then: `Show my timers`, and `How long left on my Pomodoro?` | Claude answers from the live state: each timer's label and time left, and the session's phase, round and time left (or that it is waiting for Start). It does not say "check the channel above" | N29 |
-| 18 | Send a dozen short chat messages so the timers are off screen, then, without replying: `Pause the tea timer`, `Unpause the tea timer`, `Pause my pomodoro`, `Carry on with the pomodoro`, and `Pause the laundry timer` | Each acts on the right one (its message or card changes); nothing is said about not finding a message. For laundry it says there is no such timer | N30 |
-| 19 | `Start a Pomodoro timer for 25 minutes`, then `no` | One reply and nothing else new in the channel: it says a session is already going, with its lengths and where it is up to, and offers to restart it as 25/5. The session is unchanged | H19 |
-| 20 | `Start a timer for 3 minutes called testing`, then `Cancel the eggs timer`. Check each against the channel and the log cards | Whenever Claude says something was done, a "🔧 Tool" card shows it ran, and the timer is there (or gone). If a "⚠️ Claude said "done" with nothing run" card appears, the reply you got must still be true | N31 |
-| 21 | Read back over Claude's replies from steps 17 to 20 | No bracketed debug text ("[Tool calls this turn: …]") in any reply; what was called is only on the "Message handled" cards | N32 |
-| 22 | `Switch dev mode on`, then `Turn dev mode off` | Dev mode goes on (panel posted), then off, each at once with no Confirm. Then `speed the timers up 60 times`: it can't, as in step 12 | N33 |
-| 23 | `Pin the message about rent` (step 9's, now more than 20 messages back); if it doesn't look by itself, `Look further back`. Press **Confirm** | It finds "Rent is due on the 1st" and asks first: "Found further back…" with the message quoted, a link, and Confirm / Cancel. Nothing is pinned until Confirm. Then reply `unpin` to it | N34 |
-| 24 | Cancel what is left from step 17, then type `timer 10m tea`, `timer 5m dinner` and `pomo`. Type `timers`; reply `pause` to the dinner timer and watch the list; then `timers` again | The list changes by itself: dinner reads "paused, … left" with no countdown, and stays so. The second `timers` puts a new list at the bottom and removes the old one | G16 |
-| 25 | Reply `resume` to dinner. Type `pause all`; wait two minutes; look at the list; then `resume all` | "⏸️ Paused 3" naming tea, dinner and the Pomodoro, each with its time left. Two minutes later the list shows the same times. "▶️ Resumed 3" with those same times, and each counts down from there. Neither word shows a "Message handled" card | G21 |
-| 26 | Ask: `Pause all timers` | It acts at once, without asking which. One "⏸️ Paused 3" message names each timer and the Pomodoro with the time left; Claude adds at most a line | N40 |
-| 27 | Ask: `Resume my tea timer`; then type `timers` | Tea's own message and the list show it running, and the time Claude gives matches them. If a "⚠️ Claude said "done" with nothing run" card appears, tea must still be running | N41 |
-| 28 | Ask: `What was left on dinner when I paused it?` | It answers from the record: the time of the pause and what was left (it matches step 26's message). Then `resume all`, cancel the timers and stop the session | N42 |
-| 29 | Ask: `Set a timer for 5 minutes`, then look at its "Message handled" log card | A Timing field: the seconds to the reply and the number of round trips, one line per request to Claude, one per tool, the Discord time and call count, rate-limit waits and retries. `logs/bot.log` has a matching `Timing:` line. Cancel the timer | N46 |
-| 30 | Ask: `Set a timer for 5 minutes`, watching the clock; then `Pause the timer` | 👀 appears on your message at once and goes when it is answered. The timer's message is there in under 4 seconds and Claude adds no line of its own. The pause is confirmed in one short message, also in under 4 seconds. Each log card's Timing shows 1 round trip | N50 |
-| 31 | Cancel the timer. Start timers `tea`, `Tea 2` and `dinner`, then ask: `Stop all timers called tea` | One message: "🚫 Cancelled 2" naming tea and Tea 2. Dinner is still running. The board and the timers' own messages show it within a few seconds | N51 |
-| 32 | Start five more timers (six with dinner), then ask: `Cancel all timers` | One message naming all six; none is left and you are not asked to repeat the request. The log card shows one tool call and no rate-limit waits | N52 |
-
-Each sentence costs an API call with the tools attached (see the Tool tokens
-field in step 13), so this block costs a little more than ordinary chat.
-
 ## 14. Bugs and kept confirmations
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
@@ -432,33 +384,6 @@ nothing here touches your real history. `dev verbose` on helps for step 8.
 | 9 | In #inbox say `set a timer for 1 minute`, then type `dev cost` | A card that stays: "## 💰 Cost · `dev.db`"; **Today** with the cost, the number of messages and how many went to Claude; the averages per message; a line counting messages by route (`shortcut`, `button`, `tools` with its cost); **This month** the same; "Most expensive task this month: **timers**"; the tokens and requests of the month | J44 |
 | 10 | `timer 10m`, then `dev reset-db`; press **Cancel**; again, press **Confirm** | Cancel: nothing changes (`timers` still lists it). Confirm: "🧹 `dev.db` wiped…"; `timers` and `stats` are empty; `dev jobs` shows only the backup and the day rollover; the clock is the real time. Delete the orphaned timer message by hand, then `dev off` and stop the bot | J42 |
 
-## 16. Pills: setting up
-
-**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
-
-On the dev database (`python main.py --dev`), in #inbox, dev mode off. Start
-with no pills (`dev reset-db` if there are any). If `ENABLED_TASKS` is set
-in `.env`, add `pills` to it first. Dates below are relative to the day you
-run it.
-
-| # | Do | Expect | Tests |
-|---|---|---|---|
-| 1 | `pills` with no pills yet | "## 💊 Pills" and how to add one; no dropdown; your word is deleted | R28 |
-| 2 | Say: `add vitamin D, once a day`; press **Save** | The preview at once; no dates are asked for or shown | R19 |
-| 3 | Say: `add evening pill at 20:00`; press **Save**, then `pills` | The preview at once (no “I'm proposing… reply ok” first), and it and the saved pill show `8:00 pm` | R17 |
-| 4 | Say: `add iron at 8`; look, then press **8:00 am** and **Save** | Asked whether 8am or 8pm; nothing saved until answered | R18 |
-| 5 | Say: `add course A, 3 times a day, at least 3 hours apart, with food, for 7 days starting tomorrow`; press **Save** | One step: the preview "💊 **Course A** · 3× daily, ≥3h apart · *with food* · <tomorrow> to <6 days later> · first dose when ready" with Save and Edit, no proposal, no "reply ok" and no extra line from Claude. After Save the same message reads "✅ Saved · 🗓️ **Course A** … · starts <tomorrow>" with no buttons | R29 |
-| 6 | Say `add night pill at 8pm`; press **Edit**; say `make it 9pm` | Edit adds a line saying to say what to change, buttons still there. After "make it 9pm" the old preview is gone and a new one shows `9:00 pm`; `pills` still doesn't list it | R30 |
-| 7 | With `--dev`: say `add zinc`, don't save, `dev clock +31m` | The preview disappears; `pills` doesn't list Zinc | R31 |
-| 8 | With a saved Evening pill: say `move the evening pill to 9pm`; press **Save** | "✏️ **Evening pill**" with "Now: … `8:00 pm`" and "New: … `9:00 pm`"; `pills` shows 8:00 pm until Save, then "✅ Updated · …" and 9:00 pm | R32 |
-| 9 | `pills`, pick a pill in the dropdown, press **Pause**, **Resume**, **Back** | The same message each time: the pill with Edit, Pause, Remove, Back; then "⏸️ … · paused" with Resume; then as before; then the list again | R33 |
-| 10 | Say `pause iron until the 20th`, then `pills`; then `resume iron` | "⏸️ **Iron** paused until 20 Oct." at once, with no question; Iron under ⏸️ Paused with "paused until 20 Oct"; then "▶️ **Iron** resumed." | R34 |
-| 11 | Say `pause iron`, then `pills` | It moves to the ⏸️ Paused section of `pills` (and of the checklist, from stage 3) and is not prompted for | R23 |
-| 12 | Say `remove vitamin D`; press **Remove**, then `pills` | Asked to confirm; then gone from every list, with its history kept | R24 |
-| 13 | Say `delete iron and its history`; press **Delete for good** | A question that says its history goes too and can't be undone; then "🗑️ Deleted **Iron** and its history."; gone from `pills` | R35 |
-| 14 | Say `add magnesium`, restart the bot, then press **Save** on that preview | It is saved as if nothing had happened; `pills` lists it | R36 |
-| 15 | Look back over every reply from the bot in this block | No reply says "I'm proposing" or "reply ok" for a pill; none shows a tool's name or how it was called (`pill_add …`); every time of day on a preview or list is written like `8:00 pm` | R39 |
-
 ## 17. Traces: `dev why` and bug reports
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
@@ -472,26 +397,27 @@ Restart the bot first: it adds a column to the message log.
 | 2 | React 🐞 to the card the bot posted; open the new post in #bugs. Then press **Cancel** on the card | The post in #bugs has a **Trace** section between "That turn" and "Related errors": the same block `dev why` shows for the message of mine that the card answered | P31 |
 | 3 | Type `dev cost` | The card ends with "-# List context sent to extraction this month: … of … lines over … messages, … (at most 20 a task a message)" | J48 |
 
-## 18. Retest: filler words, remarks, reactions as status, `dev why`
+## 18. Retest: one path for every message
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
 On the dev database (`python main.py --dev`), in #inbox, dev mode off.
-Restart the bot first. Every step ends by saying what to press. If a
-result looks wrong, reply to your message with `dev why` and paste the
-block when you report it.
+Restart the bot first. The old way of asking Claude is gone, and so are
+the demo shopping and packing lists: these steps use pills and timers.
+Every step ends by saying what to press. If a result looks wrong, reply
+to your message with `dev why` and paste the block when you report it.
 
 | # | Do | Expect | Tests |
 |---|---|---|---|
-| 1 | Say `add milk to the shopping list`; then `and socks to the packing list`; press **Cancel** on both cards | Two cards. The packing card has "socks · checked bag" and no "Not included" line | S41 |
-| 2 | Say `shopping is boring`; then `that was quick`. Press nothing | No reply to either. The 👀 appears and goes, and nothing is left on the messages | S42, S38 |
-| 3 | Send `note one`; then `thanks`. Press nothing | No reply, and when the 👀 has gone no reaction is left on your message | S37, T21 |
-| 4 | Say `what's the capital of France?`; watch your message. Press nothing | 👀 on it while the bot works; when the answer arrives the 👀 is gone and no other reaction is left | S43 |
-| 5 | On a fresh `dev.db`, or replying to a message sent before the last `dev reset-db`: reply to it with `dev why 5`. Press nothing | One plain line: "🔎 Nothing is logged for that message: it is from before this database was started…". No ⚠️ on your message | S44 |
-
-A failure can't be made on demand, so it has no step: if a message of
-yours ever ends with ⚠️ on it, `dev why` as a reply to it shows an
-"error:" line, and 🐞 on it puts the same in the bug's post.
+| 1 | Say `add iron at 8pm`; press **Save**. Then say `my pills`; then reply to `my pills` with `dev why`. Press nothing more | The pills list itself ("## 💊 Pills" and Iron), with no buttons and no words about it. The `dev why` block reads "route: shortcut (the message is just the name of pills…)", "router: not asked" and "cost: US$0.0000 · 0 request(s)" | S46 |
+| 2 | Say `which pills do I take?`. Press nothing | The same list, from the bot's own code: not a sentence about your pills, and no "want to add anything?" after it | S47 |
+| 3 | Say `what's the capital of France?`; then reply to it with `dev why`. Press nothing | A plain answer that ends with the answer: no offer, no "anything else?". The block reads "route: chat" and "router: chat", with a router and a chat request in the cost line | S48 |
+| 4 | Say `shopping is boring`; then `that was quick`. Press nothing | No reply to either. The 👀 appears and goes, and nothing is left on the messages | S42 |
+| 5 | Say `set a timer for 5 minutes called tea`; then `how long is left on tea?`; then `my timers`; then `cancel it`. Press nothing | The timer's own message; then the "Your timers" list (not a sentence from Claude); the list again for `my timers`, at no cost; then tea is cancelled at once, said in one line | S49 |
+| 6 | Type `pills`; then say `pause iron`; press **Save** | The word shows the same read-only list: no dropdown and no buttons. After Save ("⏸️ **Iron** paused.") that list moves Iron under "⏸️ Paused", edited in place | S50 |
+| 7 | Say `add zinc to my pills`; then, pressing nothing, `and magnesium`; press **Cancel** | One card with zinc and magnesium, and no "Not included" line | S52 |
+| 8 | Say `add milk to the shopping list`. Press nothing | No shopping card: the demo lists are no longer part of the bot. A short plain answer, "🤔 I didn't understand that.", or nothing; never a card and never "added" | S51 |
+| 9 | On a fresh `dev.db`, or replying to a message sent before the last `dev reset-db`: reply to it with `dev why 5`. Press nothing | One plain line: "🔎 Nothing is logged for that message: it is from before this database was started…". No ⚠️ on your message | S44 |
 
 ## When you finish
 

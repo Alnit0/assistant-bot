@@ -6,7 +6,7 @@ from dataclasses import dataclass, field, replace
 
 import discord
 
-from core import actions, cards, confirm, costs, database, extraction, livelists, llm, routing, timing, trace
+from core import actions, cards, confirm, costs, database, extraction, livelists, llm, outgoing, routing, timing, trace
 from core.actions import LIST, ITEMS, Entry, LiveReply, Request, Shown
 from core.cards import Card
 from core.config import CHANNELS, INBOX_CHANNEL_ID
@@ -353,13 +353,9 @@ def _items_lost(card: confirm.Stored, found: Extracted) -> list[str]:
 
 
 def _exchanges(channel_id: int) -> list[tuple[str, str]]:
-    """The last things said here, as (user, bot) pairs, for the router."""
-    history = llm.history_for(channel_id)
-    pairs = []
-    for index in range(0, len(history) - 1, 2):
-        said, answered = history[index]["content"], history[index + 1]["content"]
-        if isinstance(said, str) and isinstance(answered, str):
-            pairs.append((truncate(said, 200), truncate(answered, 200)))
+    """The last things said here, as (user, bot) pairs, for the router: what
+    the user said or pressed, and what the bot showed for it. Never given to chat."""
+    pairs = [(truncate(said, 200), truncate(answered, 200)) for said, answered in llm.exchanges_for(channel_id)]
     return pairs[-routing.EXCHANGES :]
 
 
@@ -371,6 +367,17 @@ async def _latest_bot_message_id(ctx: Context) -> int | None:
     return None
 
 
+async def _say(ctx: Context, turn: Turn, text: str, reply: bool = False) -> None:
+    """Send a line of the conversation's own (a chat answer, "not understood") and note it."""
+    if not text:
+        return
+    turn.said.append(text)
+    if reply:
+        await ctx.reply(text)
+    else:
+        await cards.send(ctx.channel_id, Card(text))
+
+
 @dataclass(frozen=True)
 class Handled:
     done: bool  # False: not for any migrated task; the caller carries on its own way
@@ -378,10 +385,10 @@ class Handled:
     failed: bool = False  # it went wrong: the caller swaps the 👀 on the message for ⚠️
 
 
-async def handle(ctx: Context, capabilities: str = "", chat_here: bool = True) -> Handled:
-    """Deal with a message that is no shortcut. `capabilities` is what the bot's
-    shortcuts are, for chat to mention. With `chat_here` off, a message for no
-    task is handed back (while tasks that aren't migrated still have the old way)."""
+async def handle(ctx: Context, capabilities: str = "") -> Handled:
+    """Deal with a message that is no shortcut: every one, whether it is for a
+    task, a general question, or nothing at all. `capabilities` is what the
+    bot's shortcuts are, for chat to mention."""
     entries = entries_for(ctx.user)
     if not entries:
         return Handled(False)
@@ -453,6 +460,15 @@ async def handle(ctx: Context, capabilities: str = "", chat_here: bool = True) -
         # "No, shopping": the request on the card was meant for another task. Only
         # the card is re-routed: the redirect's own words are never handed to
         # extraction, so they can't be saved as anything
+        # A task's name on its own ("pills", "my shopping list") asks to see what it has:
+        # that task's own code shows it, with no request to Claude at all
+        alone = routing.named_alone(ctx.text, entries)
+        if alone is not None and alone.show:
+            turn.route = costs.SHORTCUT
+            turn.why.append(f"the message is just the name of {alone.name}: its list is shown by code, at no cost")
+            await act(request, Extracted(alone, alone.action(alone.show), {}, frozenset()), turn)
+            settled = True
+
         # A destination the user names ("to my pills", "on the shopping list") decides the
         # task outright: a card or a list of another task on screen does not claim it
         named = [entry.name for entry in routing.named_destinations(ctx.text, entries)]
@@ -460,7 +476,7 @@ async def handle(ctx: Context, capabilities: str = "", chat_here: bool = True) -
             trace.note(f"named destination: {', '.join(named)} (stated, so it decides the task)")
         elsewhere_named = bool(named) and (open_card is None or open_card.task not in named)
 
-        target = confirm.redirect(ctx.text, entries, open_card.task) if open_card is not None else None
+        target = confirm.redirect(ctx.text, entries, open_card.task) if open_card is not None and not settled else None
         if target is not None:
             turn.route = costs.FOLLOW_UP
             turn.why.append(f"a bare redirect: card {open_card.id} moves from {open_card.task} to {target.name}")
@@ -558,21 +574,29 @@ async def handle(ctx: Context, capabilities: str = "", chat_here: bool = True) -
                 # that showed it being read is taken off like any other, which is the sign it was
                 turn.why.append("the message asks nothing and needs nothing done: no reply")
             elif routed.chat:
-                if not chat_here:
-                    return Handled(False, row_id)
                 turn.route = costs.CHAT
                 result = await llm.ask_claude(ctx.text, capabilities, ctx.channel_id, purpose=costs.PURPOSE_CHAT)
-                turn.said.append(result.reply)
-                await ctx.reply(result.reply)
+                if result.about_data:
+                    # Chat has no access to my data and must never answer about it: it said the
+                    # message is about that, so the router looks again, told to find the owner
+                    trace.note("chat check: chat said the message is about my data; routed again to the task that owns it")
+                    turn.route = costs.ROUTER
+                    routed = await routing.route(
+                        ctx.text, entries, on_screen=on_screen, exchanges=_exchanges(ctx.channel_id), about_data=True
+                    )
+                    turn.router["second look"] = list(routed.tasks) or "no task"
+                    if not routed.tasks:
+                        routed = replace(routed, nothing=True)  # handled here: one neutral line, and no more
+                        await _say(ctx, turn, NOT_UNDERSTOOD)
+                else:
+                    await _say(ctx, turn, outgoing.without_offer(result.reply), reply=True)
             elif routed.chat_part:
                 # The message also asked something that is for no task: every part
                 # is dealt with. The answer goes first, so that a card stays the
                 # last thing on screen and a correction still finds it
                 result = await llm.ask_claude(routed.chat_part, capabilities, ctx.channel_id, purpose=costs.PURPOSE_CHAT)
-                # The whole exchange is remembered once, at the end, not this part twice
-                del llm.history_for(ctx.channel_id)[-2:]
-                turn.said.append(result.reply)
-                await ctx.reply(result.reply)
+                if not result.about_data:
+                    await _say(ctx, turn, outgoing.without_offer(result.reply), reply=True)
 
             if routed.chat or routed.nothing:
                 pass
@@ -641,9 +665,10 @@ async def _finish(ctx_or_request, row_id: int, turn: Turn, spent: timing.Turn, d
         trace=turn.as_trace(),
     )
     await database.record_cost(row_id, turn.route, turn.tasks, calls)
-    if turn.route != costs.CHAT and text:
-        # Chat remembers itself; the rest is remembered as what the bot's own code said
-        llm.remember(channel_id, text, reply or "(nothing)")
+    if text:
+        # For the router only, to follow the conversation: what was said and what was shown.
+        # (Chat keeps its own words, and is never shown these.) Nothing shown, nothing kept
+        llm.remember(channel_id, text, reply)
 
     cost = sum(call.cost or 0 for call in calls)
     embed = discord.Embed(title="🧭 Message routed", colour=COLOUR_OK, timestamp=real_now_nz())
@@ -690,7 +715,7 @@ async def on_pick(press: cards.Press) -> str | None:
             press.row_id, extracted=json.dumps(turn.extracted, ensure_ascii=False), duration_s=time.perf_counter() - started,
             trace=turn.as_trace(),
         )
-    llm.remember(card.channel_id, card.said, "\n".join(turn.said) or "(nothing)")
+    llm.remember(card.channel_id, card.said, "\n".join(turn.said))
     return f"picked {name}: " + "\n".join(turn.said)
 
 

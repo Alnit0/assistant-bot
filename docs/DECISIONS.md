@@ -745,6 +745,37 @@ A short log of key decisions and why. Newest at the bottom.
 - **Filler is filtered where Claude's answer is checked**
   (`actions.validate`), so a leftover of only joining words never
   becomes "Not included", in the bot and in the fixtures alike.
+- **The old path is removed** (2026-10-10, step 4): `tasks/toolcalls.py`,
+  `core/pending.py`, `core/tools.py`, the tool loop and its guards in
+  `core/llm.py`, `Tool`, `Param` and the `tool…` and `undo` fields of
+  the registrations, the timers' and pills' tool handlers, and the pills
+  previews and drafts (`tasks/pills/plans.py`). Claude now makes two
+  kinds of request only: one that must come back as a tool call (router,
+  extraction), and plain chat. The `pills_drafts` table stays, unused:
+  migrations are never edited, and dropping it is not worth one.
+- **Chat cannot answer about the user's data because it never sees it**
+  (2026-10-10). "Shopping list" once got "You've got milk on your
+  list… want to add anything else?" from chat, which had read it in the
+  shared history. There are now two memories: chat's own questions and
+  answers, and the exchanges (what was said and shown), which only the
+  router reads. If chat thinks a message is about the user's data it
+  says so with a sentinel and the router looks again, told so; with no
+  task to own it the user gets one neutral line. Offers are forbidden in
+  the prompt and trimmed in code.
+- **A task's name on its own is matched in code** (`routing.named_alone`)
+  and runs the task's `show` action: no request, and no chance of it
+  being read as chat.
+- **One check on what is sent** (`core/outgoing.py`): "(nothing)" reached
+  the user because a placeholder was written into the history and Claude
+  repeated it. The placeholder is gone (nothing shown, nothing kept),
+  and anything sent through cards or a Context has internal labels taken
+  out and reported. Messages the timers, archive, bugs, lab and dev
+  tasks send with discord.py directly do not pass it: their text is all
+  written in code.
+- **The demo lists are test fixtures** (`tests/demo.py`), not part of the
+  bot: the conversation tests, the golden conversations and the shopping
+  and packing fixtures still use them, and the live eval loads them with
+  `--dev`. In Discord there is no shopping or packing list any more.
 - **Two demo tasks, on the dev database only,** so the core can be tried
   before any real task depends on it. The live bot's router never hears
   of them.

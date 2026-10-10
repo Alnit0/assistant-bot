@@ -9,13 +9,14 @@ session; the end-of-task checklist updates it at the end of every task.
 
 - Branch `feature/router`, not to be merged before the old path is
   removed (step 4).
-- Last commit: batch 1 of the conversation gaps. In hand, uncommitted
-  and waiting for the retest (block 18 of `docs/QA-RUN.md`): filler
-  words never "Not included", no reply to remarks, reactions as status,
-  `dev why` saying when nothing is logged.
+- Last commit: no reply to remarks, reactions as status. In hand,
+  uncommitted and waiting for the retest (block 18 of `docs/QA-RUN.md`):
+  the six QA findings (a name shows its list, chat has no data, nothing
+  internal is sent, no offers) and step 4, the removal of the old path
+  and the demo lists.
 - Tests: `python -m pytest -q` passes. Golden conversations 1c, 1d and
   2a are marked as gaps (they need questions on the card, G1).
-- Live eval spend to date: about US$2.46.
+- Live eval spend to date: about US$2.57.
 
 ## Current goal
 
@@ -30,22 +31,19 @@ No new features, tools or dev commands until pills reminders work
 
 ## Recently done
 
-- Timers, bugs and pills setup work in plain words on the router's way.
-- Every change is read back from the database before it is confirmed.
-- "It" and "that" are resolved in code; what is stated always wins; a
-  message that needs nothing gets no reply.
-- Dev bugs are numbered D1, D2… with a "dev" tag.
+- One path for every message: the old way (Claude with every tool) and
+  the demo lists are removed; `pills` is a read-only Live list.
+- A task's name on its own shows its list; chat has no access to data
+  and never offers; internal labels are never sent.
+- Remarks get no reply; 👀 and ⚠️ on a message are its status.
+- Batch 1 of the conversation gaps (G2, G5, G6, G8, G10, G11, G12).
 - The conversation standard is `docs/CONVERSATION.md`, with its golden
   conversations replayed in `tests/test_golden.py`.
-- Batch 1 of the gaps: a reply to an older card, ✅ on a message that
-  needs nothing, a neutral "not understood", pronouns always resolved in
-  code, one vocabulary for card kinds, 12-hour times in bug posts and
-  `dev why`, a looser redirect replacing the old card.
 
 ## Next up
 
-1. The retest of these four fixes, then their commit.
-2. Step 4 (G9, G13): remove the old path and the demo tasks. Pause.
+1. The retest of block 18, then its commit.
+2. Merging `feature/router`: the old path is gone, so it can be.
 3. Step 5: write the standard into the task contract and docs, drop the
    contract's unused `hint`, and replace the `add-task` skill with
    `new-task` (which reads the Scaling notes first) and `task-check`;

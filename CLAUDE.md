@@ -31,7 +31,7 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   before exploring the code. Update it in the same change whenever a file
   is added, moved, renamed or changes responsibility
 - `docs/DEVELOPMENT.md`: how to use and extend the bot, task by task
-- `docs/DECISIONS.md`: read before changing architecture or tools
+- `docs/DECISIONS.md`: read before changing architecture
 - `docs/TESTING.md` (test tracker) and `docs/QA-RUN.md` (manual run sheet)
 - `docs/specs/` holds the task specs and is private (gitignored; the nightly
   backup is its other copy). Read them, but never commit them, and never
@@ -69,24 +69,28 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 
 - `core/` never imports from `tasks/`
 - `tasks/registry.py` is the single source of what the bot can do (`help`,
-  Claude's system prompt and Claude's tools all read it). Never hard-code a
-  list of commands or a tool definition
+  the list chat is given of what can be typed, and the router's catalogue
+  all read it). Never hard-code a list of commands or of tasks
 - A typed shortcut carries its task's name ("pill add", `timer 5m`): a
   bare generic verb (add, edit, remove, pause, list…; `core/router.py`
   `GENERIC_VERBS`) is never registered as a word, so "add milk" always
-  goes to Claude. Every `Tool` says what it is `only_for` (what tells it
-  apart from similar tools in other tasks) and has a `label` in plain
-  words; the registry reports one that doesn't
-- A tool that shows its own preview or Confirm card sets
-  `confirms_itself`: it then has no `propose` argument and can never be
-  put behind an "ok". What waits for a button or an "ok" is the call
-  itself (tool and structured input), never the user's words
-- The user is never shown a tool's name or arguments: a word is shown as
-  it would be typed, a `Tool` by its `label`
-- Claude runs words and reply actions as tools generated from their
-  registrations. A word that takes arguments lists them as `params`; a
-  reversible reply action sets `undo`. Tool calls run through
-  `registry.run_tool`, never by calling a handler directly
+  goes to the router
+- One way for plain words (`core/conversation.py`): the router says which
+  task (or chat, or nothing), extraction fills in one of that task's
+  actions, and the task's own code does it and writes every word. Claude
+  runs nothing: it has no tools, and there is no "propose" or "ok" step.
+  A task's plain-words code is its `plain.py` and takes a `Request`,
+  never a Context
+- Plain chat (`llm.ask_claude`) answers general questions only. It has no
+  tools and no access to my data: it is given its own earlier answers and
+  nothing a task said or holds (`llm.exchanges_for` is for the router
+  alone). Anything about my data goes to the task that owns it; if chat
+  says a message is about my data (`llm.ABOUT_DATA`) the router looks
+  again and the task answers
+- Everything sent through `core/cards.py` and `core/context.py` passes
+  `core/outgoing.py` first: an internal label ("(nothing)", an action's
+  name, a route) is never sent as text, and a reply never ends with an
+  offer or "want me to…?"
 - Ways in, in order of preference: a typed word, a reply action, a
   reaction. Slash commands and context menus are a fallback only
 - Every keyword, reply action and reaction needs a description, examples,
@@ -111,9 +115,8 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 - The assistant's name comes from `ASSISTANT_NAME`; never hard-code it
 - A pill's plan never changes unseen: every change is a confirm card, and
   only Save writes it. Keep setup simple: it is rare. Claude hands over
-  times and dates as the user said them; code reads them. (The old
-  draft-and-preview with Save / Edit, and the `pills` list with a
-  dropdown, are the old way and go at step 4)
+  times and dates as the user said them; code reads them. The `pills`
+  word and "my pills" show the same read-only Live list
 - Permissions go through `is_allowed(user, action)`, never a comparison
   with `OWNER_ID`. Only the owner is allowed anything
 - Every record has a `user_id`. Task tables are prefixed with the task's
@@ -284,9 +287,10 @@ Input
 - Asking in plain words (#inbox and the hub): the router says which task,
   extraction fills in the details, and the task's own code does it and
   writes every word. One confirmation only: the card. Never "I'm
-  proposing…" or "reply ok". (The old way, where Claude runs tools and
-  may wait for an "ok", still answers what the router calls chat in
-  #inbox; it contradicts the standard and goes at step 4.)
+  proposing…" or "reply ok".
+- A task's or list's name on its own ("pills", "my pills", "timers",
+  "show my timers") shows what that task has, Live, from Python, with no
+  request to Claude (`routing.named_alone`, the task's `show` action).
 - Which task is meant: what I state decides it; otherwise Claude judges
   from my wording, what is on screen and the recent conversation. A
   wrong-task card is easy to fix ("no, shopping"), so it is a safe
@@ -294,8 +298,8 @@ Input
   the one question allowed before a card. (Today it asks too readily:
   see the gap list in `docs/BACKLOG.md`.) A typed shortcut names its
   task ("pill add"); a bare "add …" is never a shortcut.
-- Replies never show tool names or how a tool was called. Times of day
-  are written `8:00 pm`, never `20:00`: every tool and card formats them
+- Replies never show an action's name or anything internal. Times of day
+  are written `8:00 pm`, never `20:00`: every task and card formats them
   that way itself, and replies are not rewritten afterwards (a timer's
   "05:00 left" is a length of time). What a reference points to is quoted
   when it is acted on. Typed words never go through Claude.

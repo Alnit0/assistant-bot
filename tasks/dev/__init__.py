@@ -5,7 +5,7 @@ from core.config import DEV_DATABASE
 from core.context import Context
 from core.errors import UserError
 from core.lifecycle import MessageClass
-from tasks.base import ANY, Keyword, Param, ReplyAction, Task
+from tasks.base import ANY, Keyword, ReplyAction, Task
 from tasks.dev import clockwords, panel, tools
 from tasks.dev.panel import PERMISSION
 from tasks.timers.durations import DurationError, format_duration, parse_duration
@@ -176,19 +176,14 @@ class DevTask(Task):
     name = "dev"
     description = "Dev mode for testing: shorter waits, debug lines in #bot-log, and inspection tools"
 
-    def tools_available(self, channel_name: str | None) -> bool:
-        # Claude only gets the dev tools while testing: dev mode on, or in the dev
-        # channel. The switch itself (`dev mode`, tool_always) is the exception
-        return devmode.enabled or channel_name == DEV_CHANNEL
-
     def keywords(self) -> list[Keyword]:
         def word(words, description, handler, examples, **options) -> Keyword:
             return Keyword(
                 words, description, handler, examples=examples, channels=ANY, permission=PERMISSION, **options
             )
 
-        def setting(words, description, handler, examples, usage, param) -> Keyword:
-            return word(words, description, handler, examples, takes_args=True, usage=usage, params=[param])
+        def setting(words, description, handler, examples, usage) -> Keyword:
+            return word(words, description, handler, examples, takes_args=True, usage=usage)
 
         return [
             word("dev", "show the dev panel again, at the bottom of this channel", dev_show, ["dev"]),
@@ -197,7 +192,6 @@ class DevTask(Task):
                 "switch dev mode on: debounce 2s, speed 1x, verbose on, quiet hours ignored, for 1 hour",
                 dev_on,
                 ["dev on"],
-                tool=False,  # Claude has `dev mode` for both directions
             ),
             word(
                 "dev off",
@@ -205,7 +199,6 @@ class DevTask(Task):
                 dev_off,
                 ["dev off"],
                 exact=True,
-                tool=False,
             ),
             word(
                 "dev mode",
@@ -215,10 +208,8 @@ class DevTask(Task):
                 takes_args=True,
                 usage="on|off",
                 accepts=_is_on_or_off,
-                params=[Param("state", "on to switch dev mode on, off to switch it off.", choices=("on", "off"))],
                 # The one dev tool Claude always has: without it dev mode could
                 # never be switched on by asking
-                tool_always=True,
             ),
             word("dev reset", "put the dev settings back to the dev defaults", dev_reset, ["dev reset"], exact=True),
             setting(
@@ -227,7 +218,6 @@ class DevTask(Task):
                 dev_debounce,
                 ["dev debounce 0", "dev debounce 5"],
                 "<seconds>",
-                Param("seconds", "Seconds of quiet, from 0 to 600, e.g. 2."),
             ),
             setting(
                 "dev speed",
@@ -235,7 +225,6 @@ class DevTask(Task):
                 dev_speed,
                 ["dev speed 60"],
                 "<n>",
-                Param("multiplier", "How many times faster, e.g. 60."),
             ),
             setting(
                 "dev verbose",
@@ -243,7 +232,6 @@ class DevTask(Task):
                 dev_verbose,
                 ["dev verbose off"],
                 "on|off",
-                Param("state", "on or off.", choices=("on", "off")),
             ),
             setting(
                 "dev quiet",
@@ -251,7 +239,6 @@ class DevTask(Task):
                 dev_quiet,
                 ["dev quiet on"],
                 "on|off",
-                Param("state", "on: quiet hours apply. off: alerts ignore them.", choices=("on", "off")),
             ),
             setting(
                 "dev cleanup",
@@ -260,7 +247,6 @@ class DevTask(Task):
                 dev_cleanup,
                 ["dev cleanup off"],
                 "on|off",
-                Param("state", "off stops all automatic deletion; on brings it back.", choices=("on", "off")),
             ),
             setting(
                 "dev expire",
@@ -268,7 +254,6 @@ class DevTask(Task):
                 dev_expire,
                 ["dev expire 30m", "dev expire 2h"],
                 "<duration>",
-                Param("duration", "How long from now, e.g. 30m or 2h."),
             ),
             word(
                 "dev clock",
@@ -278,14 +263,6 @@ class DevTask(Task):
                 ["dev clock", "dev clock 5:59am", "dev clock +2h", "dev clock reset"],
                 takes_args=True,
                 usage="[<time>|+<duration>|reset]",
-                params=[
-                    Param(
-                        "to",
-                        "A time of day (5:59am, 20:00), + and a duration (+2h, +15m), or reset. "
-                        "Leave out to show the clock.",
-                        required=False,
-                    )
-                ],
             ),
             word(
                 "dev cost",
@@ -303,8 +280,6 @@ class DevTask(Task):
                 ["dev why", "dev why 3"],
                 takes_args=True,
                 usage="[<how many>]",
-                params=[Param("count", "How many of the latest messages, from 1 to 10. Leave out for the last one.", required=False)],
-                tool=False,  # for me while testing: Claude never needs it
             ),
             word(
                 "dev reset-db",
@@ -328,7 +303,6 @@ class DevTask(Task):
                 tools.run,
                 ["dev run backup"],
                 "|".join(devmode.ROUTINE_NAMES),
-                Param("routine", "Which maintenance routine to run.", choices=devmode.ROUTINE_NAMES),
             ),
             word(
                 "dev fire next",
@@ -343,7 +317,6 @@ class DevTask(Task):
                 tools.seed,
                 ["dev seed 5"],
                 "<n>",
-                Param("count", f"How many sample messages, from 1 to {tools.MAX_SEED}."),
             ),
             word(
                 "dev clean",

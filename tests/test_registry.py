@@ -483,7 +483,7 @@ def test_dev_mode_on_and_off_are_typed_words(typed, args):
     match = registry._keyword_router.match(typed)
     keyword = match.entry[1]
     assert keyword.name == "dev mode" and match.args == args and keyword.accepts(match.args)
-    assert not keyword.exact and keyword.tool_always
+    assert not keyword.exact
 
 
 @pytest.mark.parametrize("typed", ["dev mode", "dev mode please", "dev mode on now"])
@@ -534,13 +534,10 @@ def test_a_bare_generic_verb_matches_no_shortcut(typed):
 
 def test_two_tasks_that_both_want_add_can_claim_it_only_with_their_name(monkeypatch):
     from core.router import Router
-    from tasks.base import Keyword, Task, Tool
+    from tasks.base import Keyword, Task
 
     async def handler(ctx):
         return None
-
-    async def tool_handler(ctx, value):
-        return ""
 
     class Pills(Task):
         name = "pillbox"
@@ -552,7 +549,7 @@ def test_two_tasks_that_both_want_add_can_claim_it_only_with_their_name(monkeypa
     monkeypatch.setattr(registry, "_problems", [])
     for task, phrase in ((Pills(), "pill add"), (Shopping(), "shop add")):
         # Each tries the bare verb as well as its own namespaced phrase
-        keyword = Keyword(["add", phrase], "add an item", handler, examples=[phrase], takes_args=True, params=[])
+        keyword = Keyword(["add", phrase], "add an item", handler, examples=[phrase], takes_args=True)
         registry._register_words(router, task, "keyword", keyword)
 
     assert router.match("add milk") is None, "the bare verb belongs to neither"
@@ -561,14 +558,4 @@ def test_two_tasks_that_both_want_add_can_claim_it_only_with_their_name(monkeypa
     assert registry._problems == [
         "pillbox: keyword `add` is a bare generic verb; put the task's name in it",
         "shopping: keyword `add` is a bare generic verb; put the task's name in it",
-    ]
-
-    # And a tool that doesn't say what tells it apart from the other task's is reported
-    monkeypatch.setattr(registry, "_problems", [])
-    registry._check_registration(Shopping(), "tool", Tool("shopping_add", "Add an item.", tool_handler))
-    registry._check_registration(
-        Shopping(), "tool", Tool("shopping_add", "Add an item.", tool_handler, only_for="Only for the shopping list.")
-    )
-    assert registry._problems == [
-        "shopping: tool shopping_add doesn't say what it is `only_for` (what tells it apart from other tasks' tools)"
     ]

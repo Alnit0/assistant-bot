@@ -7,7 +7,6 @@ A conversation the bot can't yet hold is marked `gap` with what is missing. It m
 until that is built (strict), so the list of gaps here is always the true one. Every change
 must keep the others passing.
 """
-import asyncio
 import json
 from datetime import timedelta
 from pathlib import Path
@@ -17,7 +16,7 @@ import pytest
 
 from core import actions, confirm, day, timeinput
 from core.actions import Request
-from tasks.lab import demo
+from tests import demo
 from tasks.pills import store as pills_store
 from tasks.pills import task as pills_task
 from tasks.timers import plain as timers_plain
@@ -297,9 +296,19 @@ def test_15_a_remark_gets_no_reply(bot):
     assert handled.done, "and it is not handed on to anything that would answer it"
 
 
+def test_16_a_lists_name_on_its_own_is_the_list_itself(bot):
+    run(demo._save("shopping", 1, [{"item": "milk", "quantity": 2}]))
+    bot.claude()  # no request may be made
+    ctx, _ = bot.say("shopping list")
+    assert bot.sent[-1][1].text == "## 🛒 Shopping list\n- **milk** × 2" and bot.requests == [] and bot.chats == []
+    assert ctx.replies == [], "the list, and not a word about it or an offer after it"
+    bot.say("my pills")
+    assert bot.sent[-1][1].text.startswith("## 💊 Pills") and bot.requests == []
+
+
 # --- the list itself ---------------------------------------------------------------------------------------------------
 def test_every_golden_conversation_in_the_fixture_file_has_a_test_here():
     ids = {entry["golden"] for entry in [*FIXTURES["router"], *FIXTURES["extraction"]]}
     tested = {name.split("_")[1] for name in globals() if name.startswith("test_") and name.split("_")[1][0].isdigit()}
     assert ids <= tested, f"no test for: {sorted(ids - tested)}"
-    assert {"1", "1a", "1b", "1c", "1d", "2", "2a", "2b", "3", "4", "5", "6", "7", "8", "9", "10", "10a", "11", "12", "13", "14", "15"} == tested
+    assert {"1", "1a", "1b", "1c", "1d", "2", "2a", "2b", "3", "4", "5", "6", "7", "8", "9", "10", "10a", "11", "12", "13", "14", "15", "16"} == tested

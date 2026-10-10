@@ -22,7 +22,6 @@ class ArchiveTask(Task):
                 messages.archive_reply,
                 examples=["archive", "archive this"],
                 validate=messages.check_archivable,
-                undo=messages.undo_archive,
             ),
             ReplyAction(
                 ["delete", "remove"],

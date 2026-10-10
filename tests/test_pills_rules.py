@@ -208,17 +208,6 @@ def test_course_dates_can_be_moved():
     assert (later.start, later.end) == (date(2026, 10, 10), date(2026, 10, 20))
 
 
-def test_an_edit_is_shown_old_and_new():
-    text = rules.change_text(EVENING, build(EVENING, times="9pm"))
-    assert text.splitlines()[:3] == [
-        "✏️ **Evening pill**",
-        "Now: 💊 **Evening pill** (1 tablet) · daily at `8:00 pm` · *with food*",
-        "New: 💊 **Evening pill** (1 tablet) · daily at `9:00 pm` · *with food*",
-    ]
-    assert "Applies from the next dose" in text
-    assert "Nothing would change" in rules.change_text(EVENING, EVENING)
-
-
 def test_a_request_merged_with_a_later_one_keeps_what_the_later_one_leaves_out():
     first = Request(name="Evening pill", times="8", notes="with food")
     merged = first.merged(Request(times="9pm", dose="2 tablets"))
@@ -317,18 +306,4 @@ def test_a_pill_that_is_not_there_lists_the_ones_that_are():
 # ---------------------------------------------------------------------------
 # For Claude
 # ---------------------------------------------------------------------------
-def test_the_live_state_gives_ids_and_states_without_markdown():
-    text = rules.live_text(PILLS[:1] + [pill(3, name="Iron", status=PAUSED)], [("d5", "new pill 💊 **Zinc** · daily, untimed")], TODAY)
-    assert text.splitlines() == [
-        "Pills (ids for the pill tools; a name works too):",
-        "- pl3: ⏸️ Iron · daily, untimed · paused [paused]",
-        "- pl1: 💊 Vitamin D · daily, untimed [active]",
-        "Pill previews waiting for the user to press Save (not saved; to change one, call the same tool "
-        "again with its draft id and only what changes):",
-        "- d5: new pill 💊 Zinc · daily, untimed",
-    ]
 
-
-def test_with_nothing_to_say_the_live_state_is_empty():
-    assert rules.live_text([], [], TODAY) == ""
-    assert rules.live_text([pill(status=REMOVED)], [], TODAY) == ""

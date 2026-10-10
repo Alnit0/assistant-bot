@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 
 import discord
 
-from core import database, lifecycle
+from core import database, lifecycle, outgoing
 from core.config import CHANNELS, real_now_nz
 from core.discord_utils import COLOUR_INFO, log_error, log_simple, split_message
 from core.lifecycle import MessageClass
@@ -28,13 +28,6 @@ class Context:
     replies: list[str] = field(default_factory=list)  # what has been sent so far
     args: list[str] = field(default_factory=list)  # words after the keyword, if it takes any
     _message: discord.Message | None = field(default=None, repr=False)
-    # Set when the caller will show the outcome itself (a tool call that quotes its
-    # target): confirmations are kept here instead of being posted
-    collect_confirmations: bool = False
-    collected: list[str] = field(default_factory=list)
-    # True when Claude is running this as a tool: it will say what happened, so a
-    # handler can hand it the facts instead of posting them as well
-    via_tool: bool = False
     posted: int = 0  # how many messages this has put in the channel (asides don't count)
 
     # Database access: the async helpers in core/database.py, including run()
@@ -81,6 +74,10 @@ class Context:
 
         Text too long for one message is split at line breaks.
         """
+        text = outgoing.clean(text)
+        if not text:
+            log.error("A reply with nothing left to say was not sent")
+            return None
         self.replies.append(text)
         self.posted += 1
         chunks = split_message(text) or [text]
@@ -107,13 +104,13 @@ class Context:
         the user will want to read again is Kept: use reply().
         """
         self.replies.append(text)
-        if self.collect_confirmations:
-            self.collected.append(text)
-            return
         self.posted += 1
         await self._send_transient(text)
 
     async def _send_transient(self, text: str, seconds: float | None = None) -> None:
+        text = outgoing.clean(text)
+        if not text:
+            return
         """Send a note that deletes itself (unless clean-up is switched off)."""
         lifetime = lifecycle.delete_after() if seconds is None else lifecycle.delete_after(seconds)
         message = await self._channel.send(text, delete_after=lifetime)

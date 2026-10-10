@@ -247,23 +247,6 @@ async def show_again(ctx: Context, session: store.Session, restart=None, asked: 
     return f"pomodoro {session.id} already going; card shown again"
 
 
-def already_going(session: store.Session, asked: str | None, here: int | None) -> str:
-    """What Claude is told when it asks for a session while one is going. Nothing
-    is posted: it has the facts and says them once."""
-    text = (
-        "Not started: a Pomodoro session is already going, and it has been left as it is. "
-        f"{status.session_text(session, utc_now(), here=here)}. "
-        "Nothing was posted, so tell the user this yourself, in a line."
-    )
-    if asked:
-        text += (
-            f" The user asked for {asked}, which is not what this session has: offer to restart it "
-            f"with those lengths. Only if they say yes, call pomodoro_control with action stop for "
-            f"{status.ref(status.SESSION, session.id)}, then pomo again."
-        )
-    return text
-
-
 async def start(ctx: Context) -> str:
     try:
         plan, label, auto = parse_session(ctx.args)
@@ -273,10 +256,6 @@ async def start(ctx: Context) -> str:
     if running:
         session = running[0]
         asked = different_lengths(ctx.args, session.plan)
-        if ctx.via_tool:
-            # Claude is answering: one reply from it, not a second card and a note as well
-            raise UserError(already_going(session, asked, ctx.channel_id))
-
         async def restart() -> str:
             # The same session under new lengths: it keeps its label unless a new one was typed
             stopped = await store.get_session(session.id)

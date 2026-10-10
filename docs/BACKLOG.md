@@ -51,8 +51,9 @@ gained time"):
 
 What is left. The golden conversations are `tests/test_golden.py`; the
 ones marked `gap` there are 1c, 1d and 2a, all waiting on G1. G1, G3,
-G4 and G7 are deferred until pills reminders work; G9 and G13 are step
-4; G14 comes with reminders.
+G4 and G7 are deferred until pills reminders work; G14 comes with
+reminders. G9 and G13 (the old path, the old `pills` list) were removed
+at step 4.
 
 | # | Gap | Layer | Size |
 |---|---|---|---|
@@ -60,8 +61,6 @@ G4 and G7 are deferred until pills reminders work; G9 and G13 are step
 | G3 | A correction straight after Save works only by the "pill changed last" guess, so it is marked ❓, and only for pills (golden 2b) | core and each task | medium |
 | G4 | Task ties are asked too readily: the router sees two exchanges and no record of what I have or did lately | router | medium |
 | G7 | Questions still sent as their own message: "Which timer? Say its name.", "Which one: A or B?" for pills, and a plan that can't be built | tasks, then G1 | medium |
-| G9 | The old way still answers what the router calls chat in #inbox: Claude writes the reply, may claim things, may ask for "ok" | step 4 | large (already planned) |
-| G13 | The `pills` word still shows the old list with a dropdown and its own buttons | step 4 | small (already planned) |
 | G14 | Privacy of notifications is untested: nothing notifies about a pill yet | pills stage 3 | with reminders |
 
 Done: dev bugs are numbered D1, D2… with a "dev" tag and a live number
@@ -87,6 +86,16 @@ bugs and pills.
 
 ## Left for later
 
+- **Left over from removing the old path** (step 4, 2026-10-10), for step
+  5: `docs/DEVELOPMENT.md` "How to add a task" and the `add-task` skill
+  still describe parts of the old way and are rewritten then; the
+  `pills_drafts` table is unused; the cost reports keep the `tools`
+  route for rows logged before the removal.
+- **The outgoing check does not cover every message.** What the timers,
+  archive, bugs, lab and dev tasks send with discord.py directly does not
+  pass `core/outgoing.py`. All of it is written in code, so nothing
+  internal should be in it; it joins the check when the gateway layer
+  exists.
 - **Schedules with days of the week, in core** (after pills reminders;
   asked for 2026-10-10). Certain days only, different times on different
   days, every N days, skipping a day; shared by every task. Checked
@@ -114,12 +123,6 @@ bugs and pills.
   Pass / Fail buttons; on Fail the trace of the last messages
   (`core/trace.py`) is captured with a note; the results are recorded in
   `docs/TESTING.md` (status, date, notes) and the summary recounted.
-- **The demo tasks go at step 4 of the router work.** `tasks/lab/demo.py`
-  (the shopping and packing lists) exists only so the router's way could
-  be tried before a real task used it. When the old way is removed, move
-  the two entries into `tests/` as fixtures for the tests that use them,
-  or delete them; either way they leave `tasks/` and the lab's
-  `entries()`. Their fixture files in `evals/fixtures/` go with them.
 - **Why one "make it 2" didn't stick on 2026-10-09 is not known.** At
   21:20:41 a plain message straight after a card went to the router;
   nothing in the log says why. It now works either way (the card goes

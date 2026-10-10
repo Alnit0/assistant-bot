@@ -6,6 +6,19 @@ backfilled from the git log.
 
 ## 2026-10-10
 
+- **One way of handling what you say.** The old path, where Claude was
+  given every tool and wrote its own replies, is gone: every message is
+  routed, and the bot's own code does the work and the talking. No more
+  "I'm waiting for you to confirm" or "want to add anything else?".
+- **A list's name shows the list.** "pills", "my pills", "timers" or
+  "show my timers" on its own shows that list, Live, at no cost.
+- **Chat knows nothing about your data.** A question about your pills or
+  timers is answered by that task; plain chat only answers general
+  questions, and never offers to do things.
+- **`pills` is a plain list.** The dropdown and the Save / Edit previews
+  are gone; say what to change and you get a card.
+- **The demo shopping and packing lists have left the bot.** They are
+  only test fixtures now.
 - **Remarks get no reply.** Only a question or a request is answered in
   words; "shopping is boring" is left alone.
 - **Reactions show status.** 👀 while the bot works, gone when it is

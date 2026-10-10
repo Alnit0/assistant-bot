@@ -39,49 +39,6 @@ def test_a_session_id_is_not_a_timer_id():
 
 
 # --- list_timers -------------------------------------------------------------
-def test_each_timer_has_its_id_label_state_time_left_and_channel():
-    paused = timer(3, status=store.PAUSED, ends_at=None, remaining_s=604, channel_id=THERE)
-    text = status.timers_text([paused, timer()], [], None, NOW, here=HERE)
-    assert text.splitlines() == [
-        "Timers going now. Use the id with timer_control:",
-        't3: "tea" · paused with 10m 4s left · <#200>',
-        't12: "tea" · running, 1m 20s left · <#100> (this channel)',
-    ]
-
-
-def test_no_timers_says_so():
-    assert status.timers_text([], [], None, NOW) == status.NO_TIMERS
-
-
-def test_a_timer_that_ended_lately_is_told_apart_from_one_that_never_was():
-    finished = timer(10, status=store.DISMISSED, ends_at=NOW - timedelta(minutes=4), duration_s=150)
-    waiting = timer(9, status=store.FINISHED, ends_at=NOW - timedelta(hours=2), duration_s=60)
-    cancelled = timer(8, status=store.CANCELLED)
-    lines = status.timers_text([], [finished, waiting, cancelled], None, NOW).splitlines()
-    assert lines == [
-        status.NO_TIMERS,
-        "Ended in the last day (nothing more can be done to these):",
-        't10: "tea" · finished 4m ago · was 2m 30s',
-        't9: "tea" · finished 2h ago, its alert not dismissed yet · was 1m',
-        't8: "tea" · cancelled · was 5m',
-    ]
-
-
-def test_the_timer_the_user_replied_to_is_pointed_out():
-    text = status.timers_text([timer(12), timer(13, label="eggs")], [], None, NOW, replied_to=512)
-    first, second = text.splitlines()[1:]
-    assert first.endswith("the user replied to this one") and "replied" not in second
-
-
-def test_a_sped_up_clock_is_reported_in_the_timers_own_time():
-    text = status.timers_text([timer(speed=60)], [], None, NOW)  # 80 real seconds to go, at 60x
-    assert "running, 1h 20m left" in text
-    assert "running, 1h left" in status.session_text(session(speed=60, ends_at=NOW + timedelta(minutes=1)), NOW)
-
-
-def test_the_timer_list_mentions_a_session_without_describing_it():
-    text = status.timers_text([], [], session(), NOW)
-    assert text.splitlines()[-1] == 'Pomodoro: p4 "writing" is going; get_pomodoro_status has the details.'
 
 
 # --- get_pomodoro_status -----------------------------------------------------
@@ -134,31 +91,6 @@ NZ = timezone(timedelta(hours=13))
 
 def event(name, remaining=None, detail="", minutes=0, kind=store.TIMER, record_id=3, label="tea") -> store.Event:
     return store.Event(kind, record_id, label, name, remaining, detail, NOW + timedelta(minutes=minutes))
-
-
-def test_events_are_listed_with_the_local_time_and_what_was_left():
-    text = status.events_text(
-        [
-            event(store.RESUMED, 604),
-            event(store.WAS_PAUSED, 561.2, minutes=1),
-            event(store.EXTENDED, 1161, "+10m", minutes=2),
-            event(store.WAS_FINISHED, 0, minutes=30),
-            event(store.WAS_PAUSED, 1348, "Focus, round 1", minutes=31, kind=store.SESSION, record_id=5, label="Pomodoro"),
-        ],
-        NZ,
-    )
-    assert text.splitlines() == [
-        "What happened, oldest first (times are local):",
-        'Thu 01:00:00 · t3 "tea" · resumed · 10m 4s left',
-        'Thu 01:01:00 · t3 "tea" · paused · 9m 21s left',
-        'Thu 01:02:00 · t3 "tea" · extended (+10m) · 19m 21s left',
-        'Thu 01:30:00 · t3 "tea" · finished',
-        'Thu 01:31:00 · p5 "Pomodoro" · paused (Focus, round 1) · 22m 28s left',
-    ]
-
-
-def test_no_events_says_the_record_is_new():
-    assert status.events_text([], NZ) == status.NO_EVENTS
 
 
 # --- pause all / resume all: exactly what was done -----------------------------
@@ -232,27 +164,6 @@ def test_all_timers_called_tea_is_every_one_with_that_word():
 
 
 # --- what Claude is told with every message -------------------------------------
-def test_the_live_state_has_every_timer_and_the_session_in_full():
-    going = [
-        timer(1, label="tea"),
-        timer(2, label="tea", status=store.PAUSED, ends_at=None, remaining_s=95, channel_id=THERE),
-        timer(3, label="Tea 2"),
-    ]
-    ended = [timer(9, label="eggs", status=store.CANCELLED)]
-    lines = status.live_text(going, ended, session(), NOW, here=HERE, replied_to=503).splitlines()
-    assert lines == [
-        "Timers going now (the ids are for timer_control):",
-        't1: "tea" · running, 1m 20s left · <#100> (this channel)',
-        't2: "tea" · paused with 1m 35s left · <#200>',
-        't3: "Tea 2" · running, 1m 20s left · <#100> (this channel) · the user replied to this one',
-        "Ended in the last day (nothing more can be done to these):",
-        't9: "eggs" · cancelled',
-        "Pomodoro (the id is for pomodoro_control): " + status.session_text(session(), NOW, here=HERE),
-    ]
-
-
-def test_the_live_state_says_so_when_nothing_is_going():
-    assert status.live_text([], [], None, NOW).splitlines() == [status.NO_TIMERS, status.NO_SESSION]
 
 
 def test_what_was_done_to_several_timers_names_each():

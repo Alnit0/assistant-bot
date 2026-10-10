@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 import discord
 
-from core import database, discord_utils
+from core import database, discord_utils, outgoing
 from core.context import Context
 from core.database import log_received, log_result
 from core.discord_utils import report_interaction_error, safe_reply
@@ -421,7 +421,7 @@ def setup(client: discord.Client) -> None:
 async def post(ctx: Context, card: Card) -> int | None:
     """Send a card as the reply to what the user sent. Returns the message's id."""
     built = view(card)
-    message = await ctx.reply(card.text, view=built)
+    message = await ctx.reply(card.text, view=built)  # checked there (core/outgoing.py)
     return getattr(message, "id", None)
 
 
@@ -439,10 +439,14 @@ async def send(channel_id: int, card: Card, *, silent: bool = False) -> int | No
         log.warning("Could not post a card: channel %s not found", channel_id)
         return None
     built = view(card)
+    text = outgoing.clean(card.text)
+    if not text:
+        log.error("A card with nothing left to say was not sent")
+        return None
     if built is None:
-        message = await channel.send(card.text, silent=silent)
+        message = await channel.send(text, silent=silent)
     else:
-        message = await channel.send(card.text, view=built, silent=silent)
+        message = await channel.send(text, view=built, silent=silent)
     return message.id
 
 
@@ -452,7 +456,7 @@ async def edit(channel_id: int, message_id: int, card: Card) -> bool:
     if channel is None:
         return False
     try:
-        await channel.get_partial_message(message_id).edit(content=card.text, view=view(card))
+        await channel.get_partial_message(message_id).edit(content=outgoing.clean(card.text) or card.text, view=view(card))
     except discord.NotFound:
         return False
     except discord.HTTPException as error:

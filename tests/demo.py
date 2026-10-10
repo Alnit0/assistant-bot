@@ -300,6 +300,7 @@ SHOPPING = Entry(
     name="shopping",
     icon="🛒",
     live_state=_shopping_state,
+    show="demo_shop_list",
     only_for=(
         "A demo shopping list, used for testing the bot: things to buy from a shop, changing or removing "
         "them, ticking them off, and asking what is on it. Not things to pack for a trip, and not pills, "
@@ -458,6 +459,7 @@ PACKING = Entry(
     name="packing",
     icon="🧳",
     live_state=_packing_state,
+    show="demo_pack_list",
     only_for=(
         "A demo packing list for a trip, used for testing the bot: things to put in a bag, moving or removing "
         "them, and asking what is on it. Not things to buy, and not pills, timers or reminders."
