@@ -186,6 +186,10 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   `.venv` launcher and its child, linked by ParentProcessId)
 - Routine test run: `python -m pytest -q`. Tests use a temporary database
   and made-up settings, never the real ones
+- Speed: while working, run only the tests related to what is being
+  changed (`python -m pytest -q tests/test_x.py`); run the full suite
+  once, at the end. Live evals only when I ask, or at a pause where
+  fixtures changed
 - At the end of every piece of work, follow the `end-of-task` skill: tests, docs,
   then the suggested commit command. Do not commit unless asked
 - A suggested commit message never contains a double quote: it breaks the

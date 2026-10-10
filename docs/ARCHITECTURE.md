@@ -340,6 +340,17 @@ How the bot is meant to grow. The `new-task` skill reads this first.
   lists, the occurrence log, the day boundary, time input, the scheduler,
   cards and traces. A task holds its own rules, wording and tables, and
   as little else as it can.
+- **Core or task: how to decide.** In this order:
+  1. How the bot behaves or talks (cards, references, lifecycle,
+     wording rules) → core.
+  2. Plumbing (the database, the scheduler, the clock, channels,
+     traces) → core.
+  3. Knowledge about one subject (what a pill is, its rules and its
+     words) → the task.
+  4. A general tool: core if it is clearly general; otherwise build it
+     in the task, cleanly separated (a module of its own that knows
+     nothing of the task's subject), and move it to core when a second
+     task needs it.
 - **What tasks do, so far** (an observation, to revisit): every task
   captures something from me, delivers something to me, or both, and
   most involve time. Timers capture a length and deliver an alert; pills

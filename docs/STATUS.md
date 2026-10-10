@@ -7,15 +7,15 @@ session; the end-of-task checklist updates it at the end of every task.
 
 ## Branch and state
 
-- Branch `feature/router`, not to be merged before the old path is
-  removed (step 4).
-- Last commit: no reply to remarks, reactions as status. In hand,
-  uncommitted and waiting for the retest (block 18 of `docs/QA-RUN.md`):
-  the six QA findings (a name shows its list, chat has no data, nothing
-  internal is sent, no offers) and step 4, the removal of the old path
-  and the demo lists.
-- Tests: `python -m pytest -q` passes. Golden conversations 1c, 1d and
-  2a are marked as gaps (they need questions on the card, G1).
+- Branch `feature/pills`, with `feature/router` merged into it (step 4
+  passed its retest and is committed: the old path is removed).
+- In hand, uncommitted: docs only (the speed rule in `CLAUDE.md`, core
+  or task in the Scaling notes, one backlog line).
+- Pills stage 1 (the schedule model in core) is not started: it waits
+  for v7 of the pills spec, which is not on disk (the file is v6).
+- Tests: `python -m pytest -q` passed at the last commit. Golden
+  conversations 1c, 1d and 2a are marked as gaps (they need questions on
+  the card, G1).
 - Live eval spend to date: about US$2.57.
 
 ## Current goal
@@ -42,13 +42,15 @@ No new features, tools or dev commands until pills reminders work
 
 ## Next up
 
-1. The retest of block 18, then its commit.
-2. Merging `feature/router`: the old path is gone, so it can be.
-3. Step 5: write the standard into the task contract and docs, drop the
-   contract's unused `hint`, and replace the `add-task` skill with
-   `new-task` (which reads the Scaling notes first) and `task-check`;
-   run `task-check` on timers, bugs and pills.
-4. Pills stages 3 to 6: reminders, the checklist, tracking.
+1. Pills, in the order of the spec's section 15, with a pause for QA
+   after each: (1) the schedule model in core (doses a day, planned
+   times, minimum gap, latest time, when a dose is due), with existing
+   pill setup moved onto it; (2) the checklist; (3) reminders. 2 and 3
+   start on a go.
+2. Step 5, after pills reminders: write the standard into the task
+   contract and docs, drop the contract's unused `hint`, and replace the
+   `add-task` skill with `new-task` (which reads the Scaling notes
+   first) and `task-check`; run `task-check` on timers, bugs and pills.
 
 ## Open decisions
 
@@ -56,9 +58,8 @@ No new features, tools or dev commands until pills reminders work
   (corrections after Save), G4 (task ties asked too often), G7 (questions
   sent as their own message). G14 (privacy of notifications) comes with
   reminders.
-- Pill names in `docs/CONVERSATION.md`: the answer came back unfilled
-  ("none are real / replace X"), so none was changed. Waiting to hear.
 - After pills reminders: schedules with days of the week, in core (see
   the backlog); a notes task is a possible future task.
-- Live eval: only at a pause, only for the tasks whose fixtures changed,
-  and asked first for any run over US$0.25.
+- Live eval: only when asked, or at a pause where fixtures changed; only
+  for the tasks whose fixtures changed, and asked first for any run over
+  US$0.25.

@@ -91,6 +91,9 @@ bugs and pills.
   still describe parts of the old way and are rewritten then; the
   `pills_drafts` table is unused; the cost reports keep the `tools`
   route for rows logged before the removal.
+- **"How long is left on tea?" shows whole minutes only** (asked for
+  2026-10-10). Use the same format as the paused card ("4m 18s left"),
+  so time remaining reads the same everywhere.
 - **The outgoing check does not cover every message.** What the timers,
   archive, bugs, lab and dev tasks send with discord.py directly does not
   pass `core/outgoing.py`. All of it is written in code, so nothing
