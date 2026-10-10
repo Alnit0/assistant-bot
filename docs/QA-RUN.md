@@ -1,6 +1,6 @@
 # QA run sheet
 
-One pass through 177 of the 208 👤 Manual tests in `docs/TESTING.md` that are
+One pass through 178 of the 209 👤 Manual tests in `docs/TESTING.md` that are
 ⬜ Untested (as of 2026-10-10); the other 31 are for pills stages not built yet
 (group R) or need a setup of their own, and join as each can be run. Blocks share setup and each one leaves things
 ready for the next, so run them in order.
@@ -27,8 +27,8 @@ tests (block 12).
 | 17 | Traces: `dev why` and bug reports | `--dev`, off (one restart) | 3 | 5 |
 | 18 | Retest: one path for every message | `--dev`, off (one restart) | 9 | 12 |
 | 19 | Pills: one schedule model | `--dev`, off (one restart) | 11 | 13 |
-| 20 | Retest: a pill that is already there, and list names | `--dev`, off (one restart) | 3 | 4 |
-| | **Total** | | **177** (F2 is split over blocks 4 and 7, counted in 7) | **about 3¼ hours** |
+| 20 | Retest: a pill that is already there, and list names | `--dev`, off (one restart) | 4 | 5 |
+| | **Total** | | **178** (F2 is split over blocks 4 and 7, counted in 7) | **about 3¼ hours** |
 
 Blocks 14 to 20 need nothing from the others (20 follows 19) (13 and 16 tested the old way of asking Claude, which is gone): run them any time after
 block 1, and before the overnight block if that suits.
@@ -459,7 +459,8 @@ saying what to press.
 |---|---|---|---|
 | 1 | With Pill A saved as in R40: say `add pill A to my pills, 3 times a day at 8am, 11:30 and 3pm, at least 3 hours apart, not after 4pm, without food` again. Press nothing | No card and no "I didn't understand that": "💊 **Pill A** is already in your pills with these settings" with the pill's line under it. Still one Pill A in `my pills` | R45 |
 | 2 | With Pill A saved: say `add pill A to my pills, not after 5pm, with food`; press **Save** | A card "💊 Pills · change": "**Pill A** · already in your pills", then "notes · without food → with food" and "schedule · … not after `4:00 pm` → … not after `5:00 pm`". Save: "✅ Updated · 💊 **Pill A** · …". Still one Pill A | R46 |
-| 3 | Say `show all my pills`; reply to it with `dev why`. Then say `list my pills`, then `what are my pills?`. Press nothing more | The pills list each time, with no words about it. The `dev why` block reads "route: shortcut", "router: not asked" and "cost: US$0.0000 · 0 request(s)" | S54 |
+| 3 | With Iron saved at `8:00 am` (say `add iron to my pills at 8am`; **Save**, if it isn't): say `move iron to 8am`. Press nothing | No card, no "I didn't understand that" and not the plain "That's already how it is": "💊 **Iron** is already in your pills with these settings" with Iron's line under it | R47 |
+| 4 | Say `show all my pills`; reply to it with `dev why`. Then say `list my pills`, then `what are my pills?`. Press nothing more | The pills list each time, with no words about it. The `dev why` block reads "route: shortcut", "router: not asked" and "cost: US$0.0000 · 0 request(s)" | S54 |
 
 ## When you finish
 

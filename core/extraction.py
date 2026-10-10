@@ -40,6 +40,7 @@ class Extracted:
     # Which kind of "nothing" it was, when Claude declined: one of actions.DECLINES.
     # This, never the reason's words, decides what the user is told
     declined: str = ""
+    about: str = ""  # with a decline of the kind "already so": the thing it is about, by id or name
 
     @property
     def fitted(self) -> bool:
@@ -49,7 +50,11 @@ class Extracted:
         """What was extracted, for message_log."""
         if self.action is None:
             logged = {"task": self.entry.name, "action": NOT_THIS if self.not_this else NONE, "reason": self.reason}
-            return {**logged, "why": self.declined} if self.declined else logged
+            if self.declined:
+                logged["why"] = self.declined
+            if self.about:
+                logged["about"] = self.about
+            return logged
         logged = {"task": self.entry.name, "action": self.action.name, "data": self.data, "guessed": sorted(self.guessed)}
         if self.not_included:
             logged["not_included"] = list(self.not_included)
@@ -232,7 +237,11 @@ def read(entry: Entry, called: tuple[str, dict] | None, follow_up: bool = False)
         return Extracted(entry, not_this=True, reason=str(said))
     if name in (NONE, NOT_THIS):
         why = raw.get("why") if isinstance(raw, dict) else None
-        return Extracted(entry, reason=str(said) or "nothing fitted", declined=why if why in actions.DECLINES else "")
+        about = raw.get("about") if isinstance(raw, dict) else None
+        return Extracted(
+            entry, reason=str(said) or "nothing fitted", declined=why if why in actions.DECLINES else "",
+            about=about.strip() if isinstance(about, str) else "",
+        )
     action = entry.action(name)
     if action is None:
         return Extracted(entry, reason=f"`{name}` is not an action of {entry.name}")

@@ -36,6 +36,9 @@ class PillsTask(Task):
     async def action_state(self, request):
         return await plain.state(request)
 
+    async def already_so(self, request, about):
+        return await plain.already_so(request, about)
+
     def keywords(self) -> list[Keyword]:
         return [
             Keyword(

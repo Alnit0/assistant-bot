@@ -514,7 +514,11 @@ Everything works in #inbox and in the hub.
   same details: "💊 **Pill A** is already in your pills with these
   settings" and the pill, with no card. With other details: a card for
   that pill, "**Pill A** · already in your pills" and each change as old
-  → new; Save changes it.
+  → new; Save changes it. A change that changes nothing ("move iron to
+  8am" when it is at 8am) gets the same "already in your pills" line.
+  A task gives this line through its `already_so(request, about)` hook
+  and says the same one from its own code; without the hook core says
+  "✅ That's already how it is".
 - **What can't be read is shown, not refused.** A time, a gap, a number
   or a date the bot can't read is a line on the card ("❔ gap · I can't
   read …") beside everything it did understand, and the card has

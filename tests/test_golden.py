@@ -313,3 +313,42 @@ def test_every_golden_conversation_in_the_fixture_file_has_a_test_here():
     tested = {name.split("_")[1] for name in globals() if name.startswith("test_") and name.split("_")[1][0].isdigit()}
     assert ids <= tested, f"no test for: {sorted(ids - tested)}"
     assert {"1", "1a", "1b", "1c", "1d", "2", "2a", "2b", "3", "4", "5", "6", "7", "8", "9", "10", "10a", "11", "12", "13", "14", "15", "16"} == tested
+
+
+# --- QA 2026-10-10: "already so" ends in the task's own line, whichever way it was found --------------------
+ZINC_AS_IT_IS = "💊 **Zinc** is already in your pills with these settings\n💊 **Zinc** · daily, any time"
+
+
+def _with_zinc(bot):
+    bot.claude(route("pills"), ("pill_add", {"pills": [{"name": "Zinc"}], "guessed": [], "not_included": []}))
+    bot.say("add zinc to my pills")
+    press(bot)
+
+
+def test_adding_what_is_there_with_the_same_details_names_it_and_shows_it(bot):
+    _with_zinc(bot)
+    bot.claude(route("pills"), ("pill_add", {"pills": [{"name": "zinc", "per_day": 1}], "guessed": [], "not_included": []}))
+    bot.say("add zinc to my pills, once a day")
+    assert bot.sent[-1][1].text == ZINC_AS_IT_IS and bot.sent[-1][1].rows == (), "a line, not a card"
+
+
+def test_a_change_that_changes_nothing_says_the_same_line(bot):
+    _with_zinc(bot)
+    bot.claude(route("pills"), ("pill_edit", {"pills": [{"pill": "zinc", "per_day": 1}], "guessed": [], "not_included": []}))
+    bot.say("make zinc once a day")
+    assert bot.sent[-1][1].text == ZINC_AS_IT_IS and bot.sent[-1][1].rows == ()
+
+
+def test_a_decline_because_it_is_already_so_says_the_same_line_not_the_plain_one(bot):
+    _with_zinc(bot)
+    declined = {"why": "already_so", "about": "Zinc", "reason": "Zinc already exists with identical specifications"}
+    bot.claude(route("pills"), ("none", declined))
+    bot.say("add zinc to my pills, once a day")
+    assert bot.sent[-1][1].text == ZINC_AS_IT_IS
+
+
+def test_only_when_the_task_cannot_name_the_thing_is_the_plain_line_said(bot):
+    _with_zinc(bot)
+    bot.claude(route("pills"), ("none", {"why": "already_so", "reason": "nothing to change"}))
+    bot.say("leave my pills as they are")
+    assert bot.sent[-1][1].text == "✅ That's already how it is: there is nothing to change."

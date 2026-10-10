@@ -146,7 +146,9 @@ def _elsewhere(name: str, tasks, chat_part: str) -> str:
 
 
 NOT_UNDERSTOOD = "🤔 I didn't understand that."
-# When Claude understood and declined, the user is told which, in the code's own words
+# When Claude understood and declined, the user is told which, in the code's own words.
+# For "already so" these are only the fallback: the task's own line, which names the
+# thing and shows it, is said when the task has one (Entry.already)
 DECLINED = {
     actions.ALREADY_SO: "✅ That's already how it is: there is nothing to change.",
     actions.CANNOT: "🤷 I understood that, but it isn't something I can do yet.",
@@ -216,9 +218,17 @@ async def act(
         await cards.send(request.channel_id, Card(text))
 
     if not found.fitted:
+        line = None
         if found.declined:
-            trace.note(f"declined: extraction said `{found.declined}` ({found.reason})")
-        await say(nothing_fitted(found))
+            trace.note(f"declined: extraction said `{found.declined}`" + (f" about {found.about!r}" if found.about else "") + f" ({found.reason})")
+        if found.declined == actions.ALREADY_SO and entry.already is not None:
+            # Every way of finding that something is already so ends in the task's one line for it
+            try:
+                line = await entry.already(request, found.about)
+            except Exception:
+                log.exception("Task %s could not say what is already so", entry.name)
+            trace.note("already so: " + ("said in the task's own line" if line else "the task has no line for it; the plain one is said"))
+        await say(line or nothing_fitted(found))
         return
     action = found.action
     if not is_allowed(request.user, f"action:{action.name}"):

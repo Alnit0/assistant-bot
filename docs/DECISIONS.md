@@ -714,6 +714,12 @@ A short log of key decisions and why. Newest at the bottom.
     pills", or shows a change card. And when Claude does decline, the
     `none` tool carries `why` (already so, can't, unclear) and the code
     has a line for each; the reason in words stays in the log, unread.
+    The retest showed Claude still declining now and then, and the
+    plain line being said. So "already so" has one end: the task's own
+    line, naming the thing and showing it (`Entry.already`). Its own
+    code says it when it finds nothing would change, and for a decline
+    the `none` tool also says what it is about (an id or a name), which
+    the task looks up. Core's line is only the fallback.
   - The `kind` column of `pills_pills` is dropped and `latest_time` added,
     in one appended migration; the other columns mean what they did, so
     no row needed rewriting.

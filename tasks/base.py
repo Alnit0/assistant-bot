@@ -217,7 +217,19 @@ class Task:
         found = tuple(self.actions())
         if not found:
             return []
-        return [Entry(self.name, self.icon, self.only_for, tuple(self.examples), found, self.hint, self.action_state, self.show)]
+        return [
+            Entry(
+                self.name, self.icon, self.only_for, tuple(self.examples), found, self.hint, self.action_state, self.show,
+                self.already_so,
+            )
+        ]
+
+    async def already_so(self, request: Request, about: str) -> str | None:
+        """The task's line for a request that changes nothing because it is
+        already so: it names the thing and shows it. `about` is the id or name
+        extraction gave. None to leave it to core's plain line. The same line
+        the task says when its own code finds nothing to change."""
+        return None
 
     def claim(self, ctx: Context) -> Callable[[Context], Awaitable[str | None]] | None:
         """Take a message that is no word, reply action or awaited answer, because

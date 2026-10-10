@@ -241,6 +241,11 @@ class Entry:
     # The action that shows what this task has (its list, its board). The task's
     # name said on its own ("pills", "my shopping list") runs it, with no request
     show: str = ""
+    # `async (request, about) -> str | None`: the task's own line for "that is
+    # already so", naming the thing and showing it. `about` is the name or id
+    # extraction gave for it. Without one, or when it returns None, core's
+    # plain line is said instead
+    already: Callable[[Request, str], Awaitable[str | None]] | None = None
 
     @property
     def title(self) -> str:
@@ -769,6 +774,13 @@ NONE_TOOL = {
                     f"action would change anything. `{CANNOT}`: the request is clear and is for this task, but none "
                     f"of its actions can do it. `{UNCLEAR}`: it makes no sense for this task, or you can't tell what "
                     "is wanted."
+                ),
+            },
+            "about": {
+                "type": "string",
+                "description": (
+                    f"With `{ALREADY_SO}` only: the id or name, from the state, of the one thing the request is "
+                    "about, so that the user can be shown it. Leave out otherwise."
                 ),
             },
             "reason": {"type": "string", "description": "Why, in a few words. For the log, not the user."},

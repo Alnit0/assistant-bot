@@ -9,6 +9,8 @@ backfilled from the git log.
 - **Adding a pill you already have is no longer "I didn't understand".**
   With the same details the bot says it is already in your pills and
   shows it; with other details you get a change card for it (old → new).
+  A change that changes nothing ("move iron to 8am" when it is at 8am)
+  gets the same line, however the bot came to find that out.
 - **"I didn't understand that" now only means that.** When your message
   was understood and nothing could be done, the bot says which: it is
   already so, or it isn't something it can do yet.

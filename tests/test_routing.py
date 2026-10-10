@@ -222,6 +222,9 @@ def test_a_decline_says_which_kind_it_is_and_only_a_known_kind_is_kept():
     found = extraction.read(SHOPPING, ("none", {"why": "already_so", "reason": "milk is on the list already"}))
     assert (found.fitted, found.declined) == (False, "already_so")
     assert found.as_log() == {"task": "shopping", "action": "none", "reason": "milk is on the list already", "why": "already_so"}
+    about = extraction.read(SHOPPING, ("none", {"why": "already_so", "about": " milk ", "reason": "x"}))
+    assert about.about == "milk" and about.as_log()["about"] == "milk"
+    assert "about" in actions.NONE_TOOL["input_schema"]["properties"]
     assert extraction.read(SHOPPING, ("none", {"why": "because", "reason": "x"})).declined == "", "not one of the kinds: not understood"
     tool = actions.NONE_TOOL["input_schema"]
     assert tool["properties"]["why"]["enum"] == ["already_so", "cannot", "unclear"] and "why" in tool["required"]

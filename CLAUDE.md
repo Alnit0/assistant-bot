@@ -275,6 +275,12 @@ Input
   reason for Claude to decline: asking to add what is there with the
   same details says so and shows it; with other details it is a change
   card for it (old → new).
+- "That is already so" has one line per task, which names the thing and
+  shows it, and every way of finding it out ends there: adding what is
+  there, a change that changes nothing, and a decline of that kind
+  (extraction says what it is about, and the task's `already_so` gives
+  the line). Core's plain line is only the fallback when the task has
+  none or can't tell which thing is meant.
 - A card's first line says the kind of change in one of three words, the
   same for every task: new, change, remove (`actions.KINDS`).
 - A reply to a card means that card, however many newer ones are open.

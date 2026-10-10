@@ -17,13 +17,15 @@ session; the end-of-task checklist updates it at the end of every task.
 - In hand, uncommitted, for those findings: adding a pill that is
   already there (said in a line, or a change card), a decline that
   names its kind instead of "didn't understand", and "show all my
-  pills" as the free list shortcut. Paused for a short retest: block
-  20 of `docs/QA-RUN.md` (3 steps).
+  pills" as the free list shortcut. Block 20, step 1 half-passed (the
+  plain "already how it is" line was said): every way of finding that
+  nothing would change now ends in the task's own line. Paused for the
+  retest of block 20 of `docs/QA-RUN.md` (4 steps).
 - Tests: `python -m pytest -q` passes. Golden conversations 1c, 1d
   and 2a are marked as gaps (they need questions on the card, G1).
-  The pills live eval of 2026-10-10: 38 of 39; the miss is a known one
+  The pills live eval of 2026-10-10: 40 of 41; the miss is a known one
   that the code covers.
-- Live eval spend to date: about US$2.98.
+- Live eval spend to date: about US$3.06.
 
 ## Current goal
 

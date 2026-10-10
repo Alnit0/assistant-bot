@@ -286,24 +286,41 @@ async def add_card(request: Request, data: dict, guessed: frozenset) -> Proposal
     )
 
 
-async def _unchanged(request: Request, data: dict) -> list[Pill] | None:
-    """The pills a message asks to add, if every one of them is already among
-    the user's pills just as asked; None if anything is new or would change."""
+async def _unchanged(request: Request, data: dict, key: str = "name") -> list[Pill] | None:
+    """The pills a message is about, if every one of them is already among the
+    user's pills just as asked: named to be added (`key` "name") or to be
+    changed ("pill"). None if anything is new or would change."""
     existing = await store.pills(request.user.id)
     today = day.today()
     found = []
     for item in data["pills"]:
-        pill = _known(existing, str(item.get("name", "")))
-        if pill is None:
-            return None
         try:
-            read = settle(_change(item), today, pill.plan)
+            pill = _known(existing, str(item.get(key, ""))) if key == "name" else rules.find(existing, str(item.get(key, "")))
+            if pill is None:
+                return None
+            read = settle(_change(item) if key == "name" else as_request(item), today, pill.plan)
         except UserError:
             return None
         if read.held or read.plan != pill.plan:
             return None
         found.append(pill)
     return found or None
+
+
+def already_text(pills: list[Pill], today: date) -> str:
+    """The one line for "that is already so", whichever way it was found: the
+    pill is named, and shown as the list shows it."""
+    return "\n".join(f"{ICON} {_already(pill)}\n{rules.describe_pill(pill, today)}" for pill in pills)
+
+
+async def already_so(request: Request, about: str) -> str | None:
+    """For a request extraction declined because it changes nothing: the same
+    line, for the pill it named. None if that is no pill of the user's."""
+    try:
+        pill = rules.find(await store.pills(request.user.id), about)
+    except UserError:
+        return None
+    return already_text([pill], day.today())
 
 
 async def add_asks(request: Request, data: dict) -> bool:
@@ -314,9 +331,16 @@ async def add_asks(request: Request, data: dict) -> bool:
 
 async def add_already(request: Request, data: dict, guessed: frozenset) -> str:
     """Said in place of a card when nothing would change: each pill, as it is."""
-    today = day.today()
-    pills = await _unchanged(request, data) or []
-    return "\n".join(f"{ICON} {_already(pill)}\n{rules.describe_pill(pill, today)}" for pill in pills)
+    return already_text(await _unchanged(request, data) or [], day.today())
+
+
+async def edit_asks(request: Request, data: dict) -> bool:
+    """Whether a change needs a card: not when it would change nothing."""
+    return bool(request.previous) or await _unchanged(request, data, "pill") is None
+
+
+async def edit_already(request: Request, data: dict, guessed: frozenset) -> str:
+    return already_text(await _unchanged(request, data, "pill") or [], day.today())
 
 
 async def add_save(request: Request, data: dict) -> str:
@@ -403,7 +427,7 @@ async def edit_card(request: Request, data: dict, guessed: frozenset) -> Proposa
             warnings.append(f"Not included: {pill.plan.name} ({error})")
             continue
         if read.plan == pill.plan and not read.held:
-            warnings.append(f"{pill.plan.name}: nothing would change")
+            warnings.append(_already(pill))
             continue
         mark = asked_as.get(item["pill"], "") in unsure
         # One format for every edit: field · old → new
@@ -753,6 +777,9 @@ ACTIONS = (
         prepare=edit_card,
         apply=edit_save,
         verify=edit_check,
+        # No card when nothing would change: the same line as adding what is already there
+        card_if=edit_asks,
+        run=edit_already,
     ),
     Action(
         "pill_pause",

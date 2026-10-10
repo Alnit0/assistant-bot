@@ -208,7 +208,11 @@
               "days": 7
             }
           ],
-          "guessed": [],
+          "guessed": [
+            "times[0]",
+            "times[1]",
+            "times[2]"
+          ],
           "not_included": []
         }
       ]
@@ -240,7 +244,7 @@
         {
           "pills": [
             {
-              "name": "pill A",
+              "name": "Pill A",
               "per_day": 3,
               "times": [
                 "8:00 am",
@@ -276,13 +280,13 @@
           }
         ]
       },
-      "note": "QA 2026-10-10: the pill is already there with the same settings. Still pill_add with what was said, never `none`: the code says it is already there",
+      "note": "QA 2026-10-10, already so by adding: the pill is there with the same settings. pill_add with what was said (the code finds nothing would change), or a decline of the kind already_so about Pill A: either way the user gets the pills task's own line, with the pill shown",
       "recorded": [
         "pill_add",
         {
           "pills": [
             {
-              "name": "pill A",
+              "name": "Pill A",
               "per_day": 3,
               "times": [
                 "8:00 am",
@@ -297,7 +301,15 @@
           "guessed": [],
           "not_included": []
         }
-      ]
+      ],
+      "also_ok": {
+        "action": "none",
+        "declined": "already_so",
+        "about": [
+          "pill a",
+          "pl1"
+        ]
+      }
     },
     {
       "task": "pills",
@@ -334,6 +346,56 @@
     },
     {
       "task": "pills",
+      "message": "move iron to 8am",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:30 am, 3:00 pm · at least 3h apart · not after 4:00 pm · without food [active]\n- pl2: 💊 Iron · daily at 8:00 am [active]",
+      "action": "pill_edit",
+      "data": {
+        "pills": [
+          {
+            "times": [
+              "8:00 am"
+            ]
+          }
+        ]
+      },
+      "also_ok": {
+        "action": "none",
+        "declined": "already_so",
+        "about": [
+          "iron",
+          "pl2"
+        ]
+      },
+      "note": "QA 2026-10-10, already so by changing: iron is at 8:00 am already. pill_edit with what was said (the code finds nothing would change), or a decline of the kind already_so about Iron: the same line either way",
+      "recorded": [
+        "none",
+        {
+          "why": "already_so",
+          "reason": "Iron is already at 8:00 am",
+          "about": "pl2"
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "iron is already at 8am, leave it as it is",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:30 am, 3:00 pm · at least 3h apart · not after 4:00 pm · without food [active]\n- pl2: 💊 Iron · daily at 8:00 am [active]",
+      "action": "none",
+      "also_ok": {
+        "action": "pill_edit"
+      },
+      "note": "QA 2026-10-10, already so by declining: nothing is asked to change. A decline (the pills line if it says already_so about Iron, the plain line otherwise), or pill_edit with nothing that changes",
+      "recorded": [
+        "none",
+        {
+          "why": "already_so",
+          "reason": "Iron is already scheduled daily at 8:00 am, exactly as stated. No change needed.",
+          "about": "pl2"
+        }
+      ]
+    },
+    {
+      "task": "pills",
       "message": "add pill E to my pills, twice a day, at least 3 hrs apart",
       "state": "The user's pills now (use the id, or the name): none yet",
       "action": "pill_add",
@@ -356,10 +418,7 @@
               "min_gap_minutes": 180
             }
           ],
-          "guessed": [
-            "per_day: inferred 2 doses from 'twice a day'",
-            "times: no specific times given"
-          ],
+          "guessed": [],
           "not_included": []
         }
       ]
@@ -414,7 +473,7 @@
         {
           "pills": [
             {
-              "name": "pill G",
+              "name": "Pill G",
               "per_day": 3,
               "min_gap_minutes": 150
             }
@@ -812,10 +871,10 @@
         {
           "pills": [
             {
-              "pill": "Iron"
+              "pill": "pl1"
             },
             {
-              "pill": "Vitamin D"
+              "pill": "pl4"
             }
           ],
           "guessed": [],
@@ -884,7 +943,7 @@
         {
           "pills": [
             {
-              "pill": "pl1"
+              "pill": "Iron"
             }
           ],
           "guessed": [],
@@ -976,8 +1035,8 @@
       "recorded": [
         "none",
         {
-          "why": "cannot",
-          "reason": "User reports taking a pill, but no action exists to log pill intakes or mark them as taken. This task only manages setup, scheduling, pausing, resuming and removal of pills."
+          "why": "unclear",
+          "reason": "Message reports taking a pill, which is tracking/logging a dose, not setting up or managing the pill itself (add, edit, pause, resume, remove, delete, list)."
         }
       ]
     },

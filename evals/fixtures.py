@@ -72,6 +72,9 @@ class ExtractionFixture:
     note: str = ""
     golden: str = ""  # the golden conversation this is a step of ("1c"), if it is one
     known_miss: str = ""
+    # Another answer that ends in the same thing for the user, so is as right: {"action":…},
+    # and for "none" which kind of decline and what it must be about, by name or id ({"declined":…, "about":[…]})
+    also_ok: dict | None = None
     recorded: list | None = None  # [tool name, input]
 
     @property
@@ -151,6 +154,15 @@ def extraction_problem(fixture: ExtractionFixture, found) -> str:
     """What is wrong with an Extracted for this fixture, or "" if it is right."""
     got = "not_this" if found.not_this else (found.action.name if found.action else "none")
     if got != fixture.action:
+        other = fixture.also_ok or {}
+        if got == other.get("action"):
+            if other.get("declined", found.declined) != found.declined:
+                return f"declined as {found.declined or 'no kind'}, expected {other['declined']}"
+            # What it is about may come as the name or as the id: either finds the thing
+            wanted = [other["about"]] if isinstance(other.get("about"), str) else other.get("about") or []
+            if wanted and not any(each.lower() in found.about.lower() for each in wanted):
+                return f"declined about {found.about!r}, expected one of {wanted}"
+            return ""
         return f"expected {fixture.action}, got {got}" + (f" ({found.reason})" if found.reason else "")
     if found.action is None:
         return ""

@@ -379,7 +379,7 @@ def test_an_edit_with_an_unclear_time_is_guessed_and_flagged_and_a_reply_settles
 
 def test_an_edit_that_changes_nothing_or_names_no_pill_says_so(world):
     add(world, {"name": "Iron", "times": "8am"})
-    with pytest.raises(UserError, match="Iron: nothing would change"):
+    with pytest.raises(UserError, match=r"\*\*Iron\*\* is already in your pills with these settings"):
         card(world, plain.edit_card, {"pill": "iron", "times": "8am"})
     with pytest.raises(UserError, match="I don't have a pill called “zinc”"):
         card(world, plain.edit_card, {"pill": "zinc", "times": "8am"})
@@ -598,3 +598,39 @@ def test_a_reply_to_the_change_card_is_laid_over_it_and_it_is_still_that_pill(wo
     second = card(world, plain.add_card, {"name": "iron", "notes": "with food"}, previous=first.data)
     assert second.lines == ("**Iron** · already in your pills", "notes · none → with food", "schedule · daily at `8:00 am` → daily at `9:00 pm`")
     assert second.data["pills"][0]["pill"] == "pl1"
+
+
+# --- QA 2026-10-10: every way of finding "already so" ends in the one line ------------------------------
+IRON_AS_IT_IS = "💊 **Iron** is already in your pills with these settings\n💊 **Iron** · daily at `8:00 am`"
+
+
+def test_the_three_routes_to_already_so_say_the_same_line_with_the_pill_shown(world):
+    add(world, {"name": "Iron", "times": ["8:00 am"]})
+    request = world.request()
+    # 1. Adding it again with the same details
+    same = {"pills": [{"name": "iron", "times": ["8:00 am"]}]}
+    assert run(plain.add_asks(request, same)) is False
+    assert run(plain.add_already(request, same, frozenset())) == IRON_AS_IT_IS
+    # 2. A change that changes nothing
+    no_change = {"pills": [{"pill": "iron", "times": ["8:00 am"]}]}
+    assert run(plain.edit_asks(request, no_change)) is False
+    assert run(plain.edit_already(request, no_change, frozenset())) == IRON_AS_IT_IS
+    # 3. Extraction declined, saying it is already so and which pill it is about (by name or id)
+    assert run(plain.already_so(request, "Iron")) == IRON_AS_IT_IS
+    assert run(plain.already_so(request, "pl1")) == IRON_AS_IT_IS
+    assert run(plain.already_so(request, "copper")) is None and run(plain.already_so(request, "")) is None
+
+
+def test_a_change_that_would_change_something_still_asks_first_with_a_card(world):
+    add(world, {"name": "Iron", "times": ["8:00 am"]})
+    assert run(plain.edit_asks(world.request(), {"pills": [{"pill": "iron", "times": ["9:00 pm"]}]})) is True
+    assert run(plain.edit_asks(world.request(), {"pills": [{"pill": "zinc", "notes": "x"}]})) is True, "no such pill: the card path says so"
+    assert run(plain.edit_asks(world.request(), {"pills": [{"pill": "@that", "times": ["8:00 am"]}]})) is True, "a pronoun is resolved on the card path"
+    assert run(plain.edit_asks(world.request(previous={"pills": []}), {"pills": [{"pill": "iron", "times": ["8:00 am"]}]})) is True
+
+
+def test_on_a_card_with_other_changes_the_pill_that_would_not_change_is_named_the_same_way(world):
+    add(world, {"name": "Iron", "times": ["8:00 am"]}, {"name": "Zinc"})
+    proposal = card(world, plain.edit_card, {"pill": "iron", "times": ["8:00 am"]}, {"pill": "zinc", "notes": "with food"})
+    assert proposal.lines[:2] == ("**Zinc**", "notes · none → with food")
+    assert proposal.warnings == ("**Iron** is already in your pills with these settings",)
