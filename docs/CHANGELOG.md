@@ -6,6 +6,20 @@ backfilled from the git log.
 
 ## 2026-10-10
 
+- **"At least 3 hours apart" can no longer be refused for its wording.**
+  Lengths of time now reach the bot's code as a number of minutes and
+  times of day in one fixed form, so nothing depends on how they were
+  said. Lengths that arrive as words are read all the same ("3 hrs",
+  "2 and a half hours", "an hour and a half").
+- **Something that can't be read is shown, not refused.** The card has
+  everything that was understood, marks the part it couldn't read with
+  ❔ and the reason, and has no Save until you say it again.
+- **A bare "at 8" stays yours to settle.** If morning or evening wasn't
+  said, a choice made for you is taken back and the card marks it ❓.
+- **A pill that can't fit in a day gets a card, not just a refusal.** A
+  planned time after the latest time, or doses that can't all fit, is
+  shown as it was read with the reason and no Save; say what to change
+  ("not after 6pm") and the card is replaced, with Save back.
 - **One kind of schedule for every pill.** A pill can now have planned
   times, a minimum gap and a latest time together ("at 8am, 11:30 and
   3pm, at least 3 hours apart, not after 4pm"); the card writes out each

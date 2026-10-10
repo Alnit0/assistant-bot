@@ -1809,6 +1809,14 @@ def test_a_card_of_an_unknown_kind_is_shown_as_a_change_and_logged(monkeypatch):
         assert confirm.render(demo.SHOPPING, Proposal(lines=("x",), data={}, kind=kind), 1).text.splitlines()[0].endswith(kind)
 
 
+def test_a_card_that_cannot_be_saved_yet_has_cancel_only():
+    held = Proposal(lines=("x",), data={}, warnings=("x can't be saved yet: why",), can_save=False)
+    shown = confirm.render(demo.SHOPPING, held, 1)
+    assert [[button.label for button in row] for row in shown.rows] == [["Cancel"]]
+    assert "⚠️ x can't be saved yet: why" in shown.text
+    assert [button.label for button in confirm.render(demo.SHOPPING, Proposal(lines=("x",), data={}), 1).rows[0]] == ["Save", "Cancel"]
+
+
 def test_a_looser_redirect_about_something_else_leaves_the_first_card_open(world):
     world.claude(route("packing"), pack("socks"))
     world.say("add socks")

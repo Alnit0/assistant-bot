@@ -91,12 +91,12 @@ bugs and pills.
   still describe parts of the old way and are rewritten then; the
   `pills_drafts` table is unused; the cost reports keep the `tools`
   route for rows logged before the removal.
-- **A planned time after the latest time is refused, not fixed**
-  (2026-10-10). The pills spec asks for rule problems to be shown on the
-  card with the sensible fix applied; for this one no fix is given (drop
-  the dose, move it, or move the latest time?), so the pill is named as
-  "Not included" with the reason. The same goes for a dose that moving
-  for the gap would push past the latest time. To decide.
+- **A pill whose doses can't fit is refused, not fixed** (decided
+  2026-10-10; look again with G1). A planned time after the latest time,
+  or doses that can't all fit before it, is shown on the card as it was
+  read, with the reason and no Save; one reply puts it right. When
+  questions on the card exist (G1) this could offer the likely fixes as
+  buttons instead.
 - **R1 to R27 in `docs/TESTING.md` still describe the old pills plan**
   (a dropdown on the checklist, stages 3 to 6). Rewrite them from the
   spec's acceptance tests as the checklist and reminders are built.
@@ -140,9 +140,19 @@ bugs and pills.
   nothing in the log says why. It now works either way (the card goes
   with the message), and the log says for every message whether the
   open card stuck and what the bot's latest message was.
-- **`tasks/timers/durations.py` is used by `dev` and `pills` as well.**
-  It belongs in core now that three tasks read durations (found
-  2026-10-09, stage 2 of pills). Its longest duration is 24 hours.
+- **Timers still take a length as text** ("5m", "90s"), read by
+  `core/durations.py`. Pills now get lengths as whole minutes
+  (`actions.MINUTES`); timers need seconds and a bare "5" that the code
+  takes as minutes, so they were left as they are (2026-10-10). To
+  decide: a seconds type for timers, with their fixtures and golden
+  conversations 3 and 4 re-recorded.
+- **Some refusals are still a bare line, not a card** (2026-10-10). A
+  part that can't be read, and doses that can't fit, now get a card with
+  no Save. What contradicts itself does not yet: one time for two doses,
+  a gap with no number of doses, a name already in use. They need a
+  question on the card (G1, golden conversation 1d).
+- **`core/durations.py` has the timers' limits in it** (5 seconds to 24
+  hours, worded for timers), though pills and dev read lengths with it.
 - **`reset` is a bare verb that is still a shortcut** (it clears the chat
   memory). It predates the rule that shortcuts carry their task's name
   and is not in `GENERIC_VERBS`; rename it when a second task wants a

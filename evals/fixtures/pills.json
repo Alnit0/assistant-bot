@@ -133,7 +133,7 @@
         {
           "pills": [
             {
-              "name": "vitamin D",
+              "name": "Vitamin D",
               "per_day": 1,
               "notes": "with food"
             }
@@ -152,7 +152,11 @@
         "pills": [
           {
             "name": "A",
-            "times": "9am, 12pm, 3pm"
+            "times": [
+              "9:00 am",
+              "12:00 pm",
+              "3:00 pm"
+            ]
           }
         ]
       },
@@ -162,7 +166,12 @@
           "pills": [
             {
               "name": "A",
-              "times": "9am, 12pm, 3pm"
+              "times": [
+                "9:00 am",
+                "12:00 pm",
+                "3:00 pm"
+              ],
+              "per_day": 3
             }
           ],
           "guessed": [],
@@ -180,7 +189,7 @@
           {
             "name": "Course A",
             "per_day": 3,
-            "min_gap": "3h",
+            "min_gap_minutes": 180,
             "notes": "with food",
             "start": "tomorrow",
             "days": 7
@@ -194,15 +203,13 @@
             {
               "name": "Course A",
               "per_day": 3,
-              "min_gap": "3h",
+              "min_gap_minutes": 180,
               "notes": "with food",
               "start": "tomorrow",
               "days": 7
             }
           ],
-          "guessed": [
-            "times[0]"
-          ],
+          "guessed": [],
           "not_included": []
         }
       ]
@@ -216,15 +223,224 @@
         "pills": [
           {
             "name": "Pill A",
-            "times": "8am, 11:30, 3pm",
-            "min_gap": "3h",
-            "latest": "4pm",
+            "times": [
+              "8:00 am",
+              "11:30 am",
+              "3:00 pm"
+            ],
+            "min_gap_minutes": 180,
+            "latest": "4:00 pm",
             "notes": "without food"
           }
         ]
       },
       "guessed": [],
-      "note": "one schedule model: planned times, a gap and a latest time together, each as it was said"
+      "note": "one schedule model: planned times, a gap and a latest time together. QA 2026-10-10: the gap came back as \"3 hours apart\" and the pill was refused; it is asked for as minutes now",
+      "recorded": [
+        "pill_add",
+        {
+          "pills": [
+            {
+              "name": "Pill A",
+              "per_day": 3,
+              "times": [
+                "8:00 am",
+                "11:30 am",
+                "3:00 pm"
+              ],
+              "min_gap_minutes": 180,
+              "latest": "4:00 pm",
+              "notes": "without food"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "add pill E to my pills, twice a day, at least 3 hrs apart",
+      "state": "The user's pills now (use the id, or the name): none yet",
+      "action": "pill_add",
+      "data": {
+        "pills": [
+          {
+            "per_day": 2,
+            "min_gap_minutes": 180
+          }
+        ]
+      },
+      "note": "QA 2026-10-10: a length of time comes back as whole minutes, however it was said",
+      "recorded": [
+        "pill_add",
+        {
+          "pills": [
+            {
+              "name": "pill E",
+              "per_day": 2,
+              "min_gap_minutes": 180
+            }
+          ],
+          "guessed": [
+            "times[0]",
+            "times[1]"
+          ],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "add pill F to my pills, 4 times a day, 2.5 hours apart",
+      "state": "The user's pills now (use the id, or the name): none yet",
+      "action": "pill_add",
+      "data": {
+        "pills": [
+          {
+            "per_day": 4,
+            "min_gap_minutes": 150
+          }
+        ]
+      },
+      "note": "QA 2026-10-10: a length of time comes back as whole minutes, however it was said",
+      "recorded": [
+        "pill_add",
+        {
+          "pills": [
+            {
+              "name": "pill F",
+              "per_day": 4,
+              "min_gap_minutes": 150
+            }
+          ],
+          "guessed": [
+            "min_gap_minutes"
+          ],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "add pill G to my pills, 3 times a day, two and a half hours apart",
+      "state": "The user's pills now (use the id, or the name): none yet",
+      "action": "pill_add",
+      "data": {
+        "pills": [
+          {
+            "per_day": 3,
+            "min_gap_minutes": 150
+          }
+        ]
+      },
+      "note": "QA 2026-10-10: a length of time comes back as whole minutes, however it was said",
+      "recorded": [
+        "pill_add",
+        {
+          "pills": [
+            {
+              "name": "pill G",
+              "per_day": 3,
+              "min_gap_minutes": 150
+            }
+          ],
+          "guessed": [
+            "min_gap_minutes"
+          ],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "add pill H to my pills, twice a day, at least 90 minutes apart",
+      "state": "The user's pills now (use the id, or the name): none yet",
+      "action": "pill_add",
+      "data": {
+        "pills": [
+          {
+            "per_day": 2,
+            "min_gap_minutes": 90
+          }
+        ]
+      },
+      "note": "QA 2026-10-10: a length of time comes back as whole minutes, however it was said",
+      "recorded": [
+        "pill_add",
+        {
+          "pills": [
+            {
+              "name": "pill H",
+              "per_day": 2,
+              "min_gap_minutes": 90
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "add pill J to my pills, 3 times a day, an hour and a half between doses",
+      "state": "The user's pills now (use the id, or the name): none yet",
+      "action": "pill_add",
+      "data": {
+        "pills": [
+          {
+            "per_day": 3,
+            "min_gap_minutes": 90
+          }
+        ]
+      },
+      "note": "QA 2026-10-10: a length of time comes back as whole minutes, however it was said",
+      "recorded": [
+        "pill_add",
+        {
+          "pills": [
+            {
+              "name": "Pill J",
+              "per_day": 3,
+              "min_gap_minutes": 90
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "add pill K to my pills, twice a day with 3 hours between them",
+      "state": "The user's pills now (use the id, or the name): none yet",
+      "action": "pill_add",
+      "data": {
+        "pills": [
+          {
+            "per_day": 2,
+            "min_gap_minutes": 180
+          }
+        ]
+      },
+      "note": "QA 2026-10-10: a length of time comes back as whole minutes, however it was said",
+      "recorded": [
+        "pill_add",
+        {
+          "pills": [
+            {
+              "name": "pill K",
+              "per_day": 2,
+              "min_gap_minutes": 180
+            }
+          ],
+          "guessed": [
+            "per_day (not explicitly stated as 'twice a day' but clearly means 2 doses)",
+            "min_gap_minutes (worked out from '3 hours')"
+          ],
+          "not_included": []
+        }
+      ]
     },
     {
       "task": "pills",
@@ -235,7 +451,9 @@
         "pills": [
           {
             "name": "Iron",
-            "times": "8"
+            "times": [
+              "8:00"
+            ]
           }
         ]
       },
@@ -246,7 +464,9 @@
           "pills": [
             {
               "name": "iron",
-              "times": "8"
+              "times": [
+                "8:00"
+              ]
             }
           ],
           "guessed": [
@@ -279,11 +499,11 @@
         {
           "pills": [
             {
-              "name": "magnesium",
+              "name": "Magnesium",
               "per_day": 2
             },
             {
-              "name": "zinc",
+              "name": "Zinc",
               "per_day": 2
             }
           ],
@@ -301,7 +521,9 @@
         "pills": [
           {
             "name": "Iron",
-            "times": "8pm"
+            "times": [
+              "8:00 pm"
+            ]
           }
         ]
       },
@@ -312,7 +534,9 @@
           "pills": [
             {
               "name": "Iron",
-              "times": "08:00"
+              "times": [
+                "8:00 am"
+              ]
             }
           ]
         },
@@ -327,7 +551,9 @@
           "pills": [
             {
               "name": "Iron",
-              "times": "8pm"
+              "times": [
+                "8:00 pm"
+              ]
             }
           ],
           "guessed": [],
@@ -354,7 +580,9 @@
           "pills": [
             {
               "name": "Iron",
-              "times": "08:00"
+              "times": [
+                "8:00 am"
+              ]
             }
           ]
         },
@@ -367,16 +595,16 @@
           "pills": [
             {
               "name": "Iron",
-              "times": "08:00"
+              "times": [
+                "8:00 am"
+              ]
             },
             {
               "name": "Zinc",
               "per_day": 1
             }
           ],
-          "guessed": [
-            "Zinc: times (once a day, but no specific time given)"
-          ],
+          "guessed": [],
           "not_included": []
         }
       ],
@@ -391,7 +619,9 @@
         "pills": [
           {
             "pill": "pl2",
-            "times": "9pm"
+            "times": [
+              "9:00 pm"
+            ]
           }
         ]
       },
@@ -402,7 +632,9 @@
           "pills": [
             {
               "pill": "pl2",
-              "times": "9pm"
+              "times": [
+                "9:00 pm"
+              ]
             }
           ],
           "guessed": [],
@@ -444,7 +676,9 @@
       "data": {
         "pills": [
           {
-            "times": "none"
+            "times": [
+              "none"
+            ]
           }
         ]
       },
@@ -454,7 +688,9 @@
           "pills": [
             {
               "pill": "pl1",
-              "times": "none"
+              "times": [
+                "none"
+              ]
             }
           ],
           "guessed": [],
@@ -577,7 +813,7 @@
         {
           "pills": [
             {
-              "pill": "Iron"
+              "pill": "pl1"
             }
           ],
           "guessed": [],
@@ -669,7 +905,7 @@
       "recorded": [
         "none",
         {
-          "reason": "Marking a pill as taken is not a pill management action (setting up, editing, pausing, resuming or removing). The task is for pill schedules, not logging doses."
+          "reason": "Message is about taking a dose, not managing pills (add, edit, pause, resume, remove, delete, or list)."
         }
       ]
     },
@@ -712,7 +948,9 @@
           {
             "name": "magnesium",
             "dose": "2 tablets",
-            "times": "9pm",
+            "times": [
+              "9:00 pm"
+            ],
             "notes": "with food"
           }
         ]
@@ -724,9 +962,11 @@
         {
           "pills": [
             {
-              "name": "magnesium",
+              "name": "Magnesium",
               "dose": "2 tablets",
-              "times": "9pm",
+              "times": [
+                "9:00 pm"
+              ],
               "notes": "with food"
             }
           ],

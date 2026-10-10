@@ -2,7 +2,7 @@
 import pytest
 
 from core import actions
-from core.actions import BOOLEAN, INTEGER, ITEMS, LIST, Action, Entry, Field, Invalid, Proposal
+from core.actions import BOOLEAN, INTEGER, ITEMS, LIST, MINUTES, TIME, TIMES, Action, Entry, Field, Invalid, Proposal
 
 
 async def prepare(request, data, guessed):
@@ -151,7 +151,7 @@ def entry(**changes):
         (entry(actions=(Action("a", "A.", (Field("not_included", "N."),), needs_card=False, run=run),)), "a field can't be called that"),
         (entry(actions=(Action("a", "A.", (Field("items", "I.", "items"),), needs_card=False, run=run),)), "needs `item_fields`"),
         (entry(actions=(Action("a", "A.", (Field("x", "X.", item_fields=(Field("y", "Y."),)),), needs_card=False, run=run),)), "is not a list of items"),
-        (entry(actions=(Action("a", "A.", (Field("items", "I.", "items", item_fields=(Field("y", "Y.", "list"),)),), needs_card=False, run=run),)), "must be text, a number or yes/no"),
+        (entry(actions=(Action("a", "A.", (Field("items", "I.", "items", item_fields=(Field("y", "Y.", "list"),)),), needs_card=False, run=run),)), "must be text, a number, yes/no, a length of time or times of day"),
         (entry(actions=(Action("a", "A.", (Field("x", "X."), Field("x", "X again.")), needs_card=False, run=run),)), "two fields with the same name"),
         (entry(actions=(Action("a", "A.", (Field("n", "N.", INTEGER, choices=("1",)),), needs_card=False, run=run),)), "which only text can have"),
         (entry(actions=(Action("a", "A.", (Field("x", ""),), needs_card=False, run=run),)), "field x has no description"),
@@ -590,3 +590,99 @@ def test_what_claude_says_it_left_out_loses_its_filler_before_anyone_is_told():
     raw = {"items": [{"item": "socks"}], "guessed": [], "not_included": ["and", "book the dentist", "please"]}
     assert actions.validate(BUY, raw).not_included == ("book the dentist",)
     assert actions.validate(BUY, {"items": [{"item": "socks"}], "guessed": [], "not_included": ["and"]}).not_included == ()
+
+
+# --- lengths of time and times of day come structured -----------------------------------------------
+async def _nothing(*_):
+    return ""
+
+
+DOSES = Action(
+    "dose_plan",
+    "Plan doses.",
+    (
+        Field(
+            "doses", "Each one.", ITEMS, required=True,
+            item_fields=(
+                Field("name", "What.", required=True),
+                Field("gap", "The least time between.", MINUTES),
+                Field("times", "When.", TIMES),
+                Field("latest", "Not after.", TIME),
+            ),
+        ),
+        Field("wait", "How long to wait.", MINUTES),
+    ),
+    needs_card=False,
+    run=_nothing,
+)
+
+
+def checked(**item):
+    return actions.validate(DOSES, {"doses": [{"name": "A", **item}], "guessed": [], "not_included": []})
+
+
+def test_a_length_of_time_is_asked_for_as_whole_minutes_and_times_in_one_form():
+    properties = actions.schema(DOSES)["properties"]
+    inner = properties["doses"]["items"]["properties"]
+    assert inner["gap"]["type"] == "integer" and "whole number of minutes" in inner["gap"]["description"]
+    assert inner["times"]["type"] == "array" and inner["times"]["items"] == {"type": "string"}
+    assert inner["latest"]["type"] == "string"
+    for name in ("times", "latest"):
+        assert "`8:00 am`" in inner[name]["description"] and "never choose for them" in inner[name]["description"]
+    assert properties["wait"]["type"] == "integer"
+    assert actions.problems([Entry("doses", "💊", "Doses.", ("a", "b"), (DOSES,))]) == []
+
+
+def test_minutes_and_times_as_asked_for_pass_through():
+    found = checked(gap=180, times=["8:00 am", " 11:30 ", "3:00 pm"], latest="4:00 pm")
+    assert found.data["doses"] == [{"name": "A", "gap": 180, "times": ["8:00 am", "11:30", "3:00 pm"], "latest": "4:00 pm"}]
+    assert found.not_included == ()
+    assert checked(gap=0).data["doses"] == [{"name": "A", "gap": 0}], "nothing: the task's way of taking it away"
+
+
+@pytest.mark.parametrize(
+    "said, minutes",
+    [
+        ("3 hours", 180), ("3 hrs", 180), ("3 hours apart", 180), ("2.5 hours", 150), ("2 and a half hours", 150),
+        ("90 minutes", 90), ("an hour and a half", 90), ("3h", 180), ("180", 180),
+    ],
+)
+def test_a_length_that_comes_as_words_all_the_same_is_read_in_core(said, minutes):
+    assert checked(gap=said).data["doses"] == [{"name": "A", "gap": minutes}]
+
+
+def test_what_cannot_be_read_is_passed_on_as_it_was_never_dropped():
+    found = checked(gap="a good while", times="8am, 8pm", latest="teatime")
+    assert found.data["doses"] == [{"name": "A", "gap": "a good while", "times": ["8am", "8pm"], "latest": "teatime"}]
+    assert found.not_included == (), "the item stays: the task shows what it couldn't read on its card"
+
+
+def test_only_a_value_of_the_wrong_kind_altogether_is_refused():
+    for wrong in ({"gap": True}, {"times": [8, 20]}, {"gap": -5}, {"latest": 16}):
+        found = actions.validate(DOSES, {"doses": [{"name": "A", **wrong}, {"name": "B"}], "guessed": [], "not_included": []})
+        assert found.data["doses"] == [{"name": "B"}] and len(found.not_included) == 1, wrong
+
+
+# --- morning or evening is the user's to say ----------------------------------------------------------
+@pytest.mark.parametrize(
+    "said, given, kept",
+    [
+        ("add iron to my pills at 8", ["8:00 am"], ["8:00"]),  # Claude chose: taken back
+        ("add iron at 8:30", ["8:30 pm"], ["8:30"]),
+        ("add iron at 8am", ["8:00 am"], ["8:00 am"]),
+        ("add iron at 8 pm", ["8:00 pm"], ["8:00 pm"]),
+        ("add iron at 8 in the evening", ["8:00 pm"], ["8:00 pm"]),
+        ("add iron at 20:00", ["8:00 pm"], ["8:00 pm"]),
+        ("add iron at 0830", ["8:30 am"], ["8:30 am"]),
+        ("add iron at noon", ["12:00 pm"], ["12:00 pm"]),
+        ("at 8am, 11:30 and 3pm", ["8:00 am", "11:30 am", "3:00 pm"], ["8:00 am", "11:30 am", "3:00 pm"]),  # the others settle it
+        ("add iron at 8", ["8:00"], ["8:00"]),
+        ("I am taking iron at 8", ["8:00 am"], ["8:00"]),  # "am" the word is not a time's am
+        ("iron no longer needs a time", ["none"], ["none"]),
+    ],
+)
+def test_a_morning_or_evening_claude_chose_by_itself_is_taken_back(said, given, kept):
+    data = {"doses": [{"name": "A", "times": given, "latest": given[0]}], "wait": 5}
+    changed, back = actions.unchosen(DOSES, data, said)
+    assert changed["doses"][0]["times"] == kept and changed["doses"][0]["latest"] == kept[0] and changed["wait"] == 5
+    assert bool(back) == (given != kept)

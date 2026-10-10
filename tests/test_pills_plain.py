@@ -108,7 +108,7 @@ def test_a_plain_pill_is_one_line_and_nothing_is_saved_before_save(world):
 def test_a_time_that_could_be_morning_or_evening_is_taken_as_morning_and_flagged_never_asked(world):
     proposal = card(world, plain.add_card, {"name": "Iron", "times": "8"})
     assert proposal.lines == ("**Iron** · daily at `8:00 am` ❓",)
-    assert proposal.data == {"pills": [{"name": "Iron", "times": "08:00"}], "_last": "Iron"}, "Save applies what the card showed"
+    assert proposal.data == {"pills": [{"name": "Iron", "times": ["8:00 am"]}], "_last": "Iron"}, "Save applies what the card showed"
 
 
 def test_a_reply_with_the_time_replaces_the_guess_and_the_flag_goes(world):
@@ -121,7 +121,7 @@ def test_a_reply_with_the_time_replaces_the_guess_and_the_flag_goes(world):
 
 def test_a_guess_claude_made_is_flagged_on_that_pills_line_only(world):
     proposal = card(
-        world, plain.add_card, {"name": "A", "per_day": 3, "min_gap": "3h"}, {"name": "B"}, guessed=["pills[0].per_day"],
+        world, plain.add_card, {"name": "A", "per_day": 3, "min_gap_minutes": 180}, {"name": "B"}, guessed=["pills[0].per_day"],
     )
     assert proposal.lines == ("**A** · 3× daily, at least 3h apart, first dose when ready ❓", "**B** · daily, any time")
 
@@ -131,7 +131,7 @@ def test_fixed_times_and_a_course_read_as_the_spec_shows_them(world):
     proposal = card(
         world, plain.add_card,
         {"name": "A", "times": "9am, 12pm, 3pm"},
-        {"name": "Course A", "per_day": 3, "min_gap": "3h", "notes": "with food", "start": "tomorrow", "days": 7},
+        {"name": "Course A", "per_day": 3, "min_gap_minutes": 180, "notes": "with food", "start": "tomorrow", "days": 7},
     )
     dates = timeinput.format_dates(today + timedelta(days=1), today + timedelta(days=7))
     assert proposal.lines == (
@@ -145,7 +145,7 @@ def test_fixed_times_and_a_course_read_as_the_spec_shows_them(world):
 
 
 # --- one model: planned times, a gap and a latest time ---------------------------------------------
-PILL_A = {"name": "Pill A", "per_day": 3, "times": "8am, 11:30, 3pm", "min_gap": "3h", "latest": "4pm", "notes": "without food"}
+PILL_A = {"name": "Pill A", "per_day": 3, "times": "8am, 11:30, 3pm", "min_gap_minutes": 180, "latest": "4pm", "notes": "without food"}
 
 
 def test_pill_a_is_on_the_card_exactly_as_said_and_is_saved_and_read_back(world):
@@ -172,15 +172,50 @@ def test_planned_times_closer_than_the_gap_are_moved_with_a_warning_and_save_kee
     assert pills(world)[0].plan.schedule.times[2] == time(14, 30)
 
 
+def test_a_schedule_that_cannot_fit_is_on_the_card_with_the_reason_and_no_save_and_a_reply_fixes_it(world):
+    first = card(world, plain.add_card, {**PILL_A, "times": "8am, 11:30, 5pm"})
+    assert first.lines == (
+        "**Pill A** · 3× daily · `8:00 am`, `11:30 am`, `5:00 pm`",
+        "At least 3h apart · not after `4:00 pm` · *without food*",
+    ), "what was read, as it was said"
+    assert first.warnings == ("Pill A can't be saved yet: A dose at 5:00 pm would be after the latest time, 4:00 pm.",)
+    assert not first.can_save
+    with pytest.raises(UserError, match="after the latest time"):
+        run(plain.add_save(world.request(), first.data))  # and Save would refuse it anyway
+    assert pills(world) == []
+    second = card(world, plain.add_card, {"name": "Pill A", "latest": "6pm"}, previous=first.data)
+    assert second.can_save and second.warnings == () and second.lines[1].startswith("At least 3h apart · not after `6:00 pm`")
+    run(plain.add_save(world.request(), second.data))
+    assert pills(world)[0].plan.schedule.latest == time(18, 0)
+
+
+def test_one_pill_that_cannot_fit_holds_the_whole_card_and_can_be_taken_off(world):
+    first = card(world, plain.add_card, {"name": "Zinc"}, {"name": "X", "per_day": 3, "min_gap_minutes": 720})
+    assert first.lines == ("**Zinc** · daily, any time", "**X** · 3× daily, at least 12h apart, first dose when ready")
+    assert first.warnings == ("X can't be saved yet: 3 doses 12h apart don't fit in a day.",) and not first.can_save
+    second = card(world, plain.add_card, {"name": "X", "remove": True}, previous=first.data)
+    assert second.can_save and second.lines == ("**Zinc** · daily, any time",)
+
+
+def test_an_edit_that_cannot_fit_is_on_the_card_with_the_reason_and_no_save(world):
+    add(world, PILL_A)
+    proposal = card(world, plain.edit_card, {"pill": "pill a", "latest": "2pm"})
+    assert proposal.lines[0] == "**Pill A**" and "not after `4:00 pm` → " in proposal.lines[1]
+    assert proposal.warnings == ("Pill A can't be saved yet: A dose at 3:00 pm would be after the latest time, 2:00 pm.",)
+    assert not proposal.can_save
+    fixed = card(world, plain.edit_card, {"pill": "pill a", "latest": "3pm"}, previous=proposal.data)
+    assert fixed.can_save and fixed.warnings == ()
+
+
 def test_a_latest_time_that_could_be_morning_or_evening_is_taken_as_the_evening_and_flagged(world):
     proposal = card(world, plain.add_card, {"name": "B", "latest": "4"})
     assert proposal.lines == ("**B** · daily, any time ❓", "Not after `4:00 pm`")
-    assert proposal.data["pills"] == [{"name": "B", "latest": "16:00"}], "Save applies what the card showed"
+    assert proposal.data["pills"] == [{"name": "B", "latest": "4:00 pm"}], "Save applies what the card showed"
 
 
 def test_an_edit_adds_a_gap_and_a_latest_time_to_a_pill_with_times(world):
     add(world, {"name": "Pill A", "times": "8am, 11:30am, 3pm"})
-    proposal = card(world, plain.edit_card, {"pill": "pill a", "min_gap": "3h", "latest": "4pm"})
+    proposal = card(world, plain.edit_card, {"pill": "pill a", "min_gap_minutes": 180, "latest": "4pm"})
     assert proposal.lines[1] == (
         "schedule · daily at `8:00 am`, `11:30 am`, `3:00 pm` → "
         "3× daily · `8:00 am`, `11:30 am`, `3:00 pm` · at least 3h apart · not after `4:00 pm`"
@@ -210,7 +245,97 @@ def test_a_pill_that_cannot_be_a_plan_is_named_on_the_card_and_the_rest_stay(wor
 
 def test_when_no_pill_can_be_a_plan_the_reason_is_said_and_there_is_no_card(world):
     with pytest.raises(UserError, match=r"X \(A minimum gap needs at least 2 doses a day\.\)"):
-        card(world, plain.add_card, {"name": "X", "min_gap": "3h", "per_day": 1})
+        card(world, plain.add_card, {"name": "X", "min_gap_minutes": 180, "per_day": 1})
+
+
+# --- what Claude hands over: times in one form, lengths as minutes ---------------------------------
+PILL_A_AS_GIVEN = {
+    "name": "Pill A", "per_day": 3, "times": ["8:00 am", "11:30", "3:00 pm"], "min_gap_minutes": 180,
+    "latest": "4:00 pm", "notes": "without food",
+}
+
+
+def test_times_in_the_one_form_and_a_gap_in_minutes_make_the_same_card(world):
+    proposal = card(world, plain.add_card, PILL_A_AS_GIVEN)
+    assert proposal.lines == (
+        "**Pill A** · 3× daily · `8:00 am`, `11:30 am`, `3:00 pm`",
+        "At least 3h apart · not after `4:00 pm` · *without food*",
+    )
+    assert proposal.can_save and proposal.warnings == () and proposal.guessed == ()
+    run(plain.add_save(world.request(), proposal.data))
+    assert run(plain.add_check(world.request(), proposal.data)) == ""
+    assert pills(world)[0].plan.schedule == Schedule(3, (time(8, 0), time(11, 30), time(15, 0)), 180, time(16, 0))
+
+
+def test_a_time_with_no_am_or_pm_is_still_the_codes_to_settle(world):
+    proposal = card(world, plain.add_card, {"name": "Iron", "times": ["8:00"]})
+    assert proposal.lines == ("**Iron** · daily at `8:00 am` ❓",) and proposal.guessed == ("pills[0].times",)
+
+
+def test_a_gap_of_nothing_takes_the_gap_away_and_none_takes_the_times_away(world):
+    add(world, PILL_A_AS_GIVEN)
+    proposal = card(world, plain.edit_card, {"pill": "pill a", "min_gap_minutes": 0, "latest": "none"})
+    run(plain.edit_save(world.request(), proposal.data))
+    assert pills(world)[0].plan.schedule == Schedule(3, (time(8, 0), time(11, 30), time(15, 0)))
+    run(plain.edit_save(world.request(), {"pills": [{"pill": "pl1", "times": ["none"]}]}))
+    assert pills(world)[0].plan.schedule == Schedule(3)
+
+
+# --- a part that can't be read: on the card with the rest, never a bare error ----------------------
+def test_a_gap_that_cannot_be_read_is_marked_on_the_card_with_everything_else_and_no_save(world):
+    # QA 2026-10-10: the gap came back as words, and the whole pill was refused in a bare line
+    first = card(world, plain.add_card, {**PILL_A_AS_GIVEN, "min_gap_minutes": "a good while"})
+    assert first.lines == (
+        "**Pill A** · daily at `8:00 am`, `11:30 am`, `3:00 pm`",
+        "Not after `4:00 pm` · *without food*",
+        "❔ gap · I can't read “a good while” as a gap. Try `3h` or `90m`.",
+    )
+    assert not first.can_save and pills(world) == []
+    second = card(world, plain.add_card, {"name": "Pill A", "min_gap_minutes": 180}, previous=first.data)
+    assert second.can_save and second.lines == (
+        "**Pill A** · 3× daily · `8:00 am`, `11:30 am`, `3:00 pm`",
+        "At least 3h apart · not after `4:00 pm` · *without food*",
+    )
+
+
+def test_the_gap_that_failed_in_qa_is_now_simply_read(world):
+    proposal = card(world, plain.add_card, {**PILL_A_AS_GIVEN, "min_gap_minutes": "3 hours apart"})
+    assert proposal.can_save and proposal.lines[1].startswith("At least 3h apart")
+
+
+def test_several_parts_that_cannot_be_read_are_each_marked(world):
+    proposal = card(world, plain.add_card, {"name": "B", "times": ["8:00 am", "teatime"], "latest": "bedtime", "notes": "with food"})
+    assert proposal.lines == (
+        "**B** · daily, any time · *with food*",
+        "❔ times · I can't read “teatime” as a time. Try `8pm`, `8:30 am`, `20:00` or `noon`.",
+        "❔ latest time · I can't read “bedtime” as a time. Try `8pm`, `8:30 am`, `20:00` or `noon`.",
+    )
+    assert not proposal.can_save and proposal.data["pills"] == [
+        {"name": "B", "times": ["8:00 am", "teatime"], "latest": "bedtime", "notes": "with food"}
+    ], "kept as it came, so a reply lays the fix over it"
+
+
+def test_an_edit_with_a_part_that_cannot_be_read_shows_what_would_change_and_the_part(world):
+    add(world, {"name": "Iron", "times": ["8:00 am"]})
+    proposal = card(world, plain.edit_card, {"pill": "iron", "notes": "with food", "latest": "bedtime"})
+    assert proposal.lines[:3] == (
+        "**Iron**",
+        "notes · none → with food",
+        "❔ latest time · I can't read “bedtime” as a time. Try `8pm`, `8:30 am`, `20:00` or `noon`.",
+    )
+    assert not proposal.can_save
+
+
+def test_a_pause_until_a_day_that_cannot_be_read_is_on_the_card_with_no_save(world):
+    add(world, {"name": "Iron"})
+    first = card(world, plain.pause_card, {"pill": "iron", "until": "whenever"})
+    assert first.lines[:2] == (
+        "**Iron** · active → paused until ❔",
+        "❔ until · I can't read “whenever” as a date. Try `tomorrow`, `friday`, `the 20th`, `20 Oct` or `2026-10-20`.",
+    )
+    assert not first.can_save
+    second = card(world, plain.pause_card, {"pill": "iron", "until": "tomorrow"}, previous=first.data)
+    assert second.can_save and "❔" not in second.lines[0]
 
 
 def test_a_name_taken_between_the_card_and_save_is_refused_at_save(world):

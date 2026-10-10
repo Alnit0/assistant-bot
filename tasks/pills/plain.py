@@ -1,7 +1,9 @@
+from dataclasses import dataclass, field, replace
 from datetime import date
 
 from core import day, livelists, occurrences, timeinput
-from core.actions import BOOLEAN, INTEGER, ITEMS, LAST, Action, Field, LiveReply, Proposal, Request, State, flag, is_guessed
+from core.actions import BOOLEAN, INTEGER, ITEMS, LAST, MINUTES, TIME, TIMES, Action, Field, LiveReply, Proposal, Request, State
+from core.actions import flag, is_guessed
 from core.actions import is_reference, point_at
 from core.errors import UserError
 from tasks.pills import rules, store
@@ -15,8 +17,16 @@ from tasks.pills.rules import ACTIVE, ENDED, PAUSED, REMOVED, Pill, Plan, TimeQu
 # Save writes it. Nothing is asked before the card: a time that could be
 # morning or evening is taken as the morning (a latest time as the evening)
 # and marked ❓. A planned time too close to the one before is moved, and the
-# card says so. A reply changes the card: the code lays the change over what
-# the card holds.
+# card says so. A schedule that can't fit in a day is shown as it was read
+# with the reason, and a part that can't be read at all is marked ❔ with the
+# reason beside everything that was understood: either way the card has no
+# Save until a reply puts it right. A reply changes the card: the code lays
+# the change over what the card holds.
+#
+# Claude gives times in the one fixed form and lengths of time as minutes
+# (core/actions.py: TIMES, TIME, MINUTES), so nothing here reads free text
+# that could have come structured; what arrives in another form is still
+# read where it can be.
 #
 # Every action takes a list of pills, so "pause iron and vitamin D" is one
 # card. No discord.py and no Context: the same code runs for a message and
@@ -34,6 +44,13 @@ EXAMPLES = ("add vitamin D once a day with food", "move the evening pill to 9pm"
 HINT = "Try saying its name and when you take it, e.g. “add iron at 8am”."
 
 PLAN_FIELDS = ("name", "dose", "notes", "times", "per_day", "min_gap", "latest", "start", "end", "days")
+# Where an item of the action calls a part of the plan something else
+ITEM_KEYS = {"min_gap": "min_gap_minutes"}
+# A part of the plan, as a card names it when it couldn't be read
+UNREAD = {
+    "times": "times", "per_day": "doses a day", "min_gap": "gap", "latest": "latest time",
+    "start": "start", "end": "end", "days": "days",
+}
 TRIES = rules.MAX_PER_DAY + 1
 
 
@@ -65,30 +82,73 @@ def overlay(pending: list[dict], items: list[dict], key: str) -> tuple[list[dict
 
 
 def as_request(item: dict) -> rules.Request:
-    return rules.Request(**{name: str(item[name]) for name in PLAN_FIELDS if item.get(name) not in (None, "")})
+    """An item as extraction gives it, in the words rules.build reads: the
+    times joined up, the gap's minutes with their unit."""
+    said = {}
+    for name in PLAN_FIELDS:
+        value = item.get(ITEM_KEYS.get(name, name))
+        if value in (None, "", []):
+            continue
+        if isinstance(value, list):
+            value = ", ".join(str(each) for each in value)
+        elif name == "min_gap" and isinstance(value, int):
+            value = f"{value}m" if value else "none"
+        said[name] = str(value)
+    return rules.Request(**said)
 
 
-def settle(
-    request: rules.Request, today: date, base: Plan | None = None, moved: list[str] | None = None
-) -> tuple[Plan, rules.Request, bool]:
-    """The plan a request makes, never asking: a time that could be morning or
-    evening is read as the morning (a latest time as the evening), and the
-    last value says a guess was made. Also the request with those times
-    settled, which is what Save applies. `moved` is given a line for each
-    planned time that had to move to keep the gap."""
-    guessed = False
-    for _ in range(TRIES):
+@dataclass
+class Read:
+    """What was made of one pill's request, never asking."""
+
+    plan: Plan  # everything that was understood
+    request: rules.Request  # with the times that were guessed settled: what Save applies
+    guessed: bool = False  # a time that could be morning or evening was taken as one of them
+    moved: list[str] = field(default_factory=list)  # a line for each planned time moved to keep the gap
+    unread: list[tuple[str, str]] = field(default_factory=list)  # (which part, why) for each part that couldn't be read
+    unfit: str = ""  # why the doses can't fit in a day, if they can't
+
+    @property
+    def held(self) -> bool:
+        """Whether something has to be put right before this can be saved."""
+        return bool(self.unread or self.unfit)
+
+
+def settle(request: rules.Request, today: date, base: Plan | None = None) -> Read:
+    """The plan a request makes, never asking and never stopping at the first
+    thing wrong: a time that could be morning or evening is read as the
+    morning (a latest time as the evening) and marked as a guess; a part that
+    can't be read is set aside with its reason and the rest is still read; a
+    schedule that can't fit is kept as read with its reason. Raises UserError
+    only for what leaves nothing to show."""
+    guessed, unread = False, []
+    for _ in range(TRIES + len(PLAN_FIELDS)):
+        moved: list[str] = []
         try:
-            return rules.build(request, today, base, moved), request, guessed
+            return Read(rules.build(request, today, base, moved), request, guessed, moved, unread)
         except TimeQuestion as question:
             request = rules.answer(request, question, question.options[question.field == "latest"])
             guessed = True
+        except rules.Unreadable as problem:
+            unread.append((problem.field, str(problem)))
+            request = replace(request, **{problem.field: ""})
+        except rules.DoesNotFit as problem:
+            return Read(problem.plan, request, guessed, moved, unread, str(problem))
     raise UserError("I couldn't read those times.")
+
+
+def _held_lines(read: Read) -> list[str]:
+    """A line for each part that couldn't be read: marked ❔, with the reason."""
+    return [f"❔ {UNREAD[part]} · {reason}" for part, reason in read.unread]
+
+
+def _held_warnings(read: Read) -> list[str]:
+    return [*read.moved, *([f"{read.plan.name} can't be saved yet: {read.unfit}"] if read.unfit else [])]
 
 
 def _unsure(data: dict, guessed: frozenset, key: str) -> set[str]:
     """The pills of this message that Claude guessed something about."""
-    fields_ = [key, *PLAN_FIELDS, "until"]
+    fields_ = [key, *(ITEM_KEYS.get(name, name) for name in PLAN_FIELDS), "until"]
     return {
         str(item[key]).strip().lower()
         for index, item in enumerate(data["pills"])
@@ -103,7 +163,12 @@ def _line(plan: Plan) -> str:
 def _settled(item: dict, settled: rules.Request) -> dict:
     """An item with the times the code settled in place of the ones said, so
     Save applies what the card showed."""
-    return {**item, **{name: getattr(settled, name) for name in ("times", "latest") if item.get(name) and getattr(settled, name)}}
+    fixed = dict(item)
+    if item.get("times") and settled.times:
+        fixed["times"] = rules.split_times(settled.times)
+    if item.get("latest") and settled.latest:
+        fixed["latest"] = settled.latest
+    return fixed
 
 
 def _changed(user_id: int) -> None:
@@ -158,28 +223,33 @@ async def add_card(request: Request, data: dict, guessed: frozenset) -> Proposal
     lines, kept, warnings = [], [], [f"{name} isn't on the card: nothing to take off" for name in missing]
     seen: set[str] = set()
     own_guesses: list[str] = []
+    held = False
     for item in items:
         name = str(item["name"]).strip()
-        moved: list[str] = []
         try:
-            plan, settled, time_guess = settle(as_request(item), today, moved=moved)
-            rules.check_name(plan, existing)
-            if plan.name.lower() in seen:
+            read = settle(as_request(item), today)
+            rules.check_name(read.plan, existing)
+            if read.plan.name.lower() in seen:
                 raise UserError("it is on this card twice")
         except UserError as error:
             warnings.append(f"Not included: {name} ({error})")
             continue
-        seen.add(plan.name.lower())
-        first, *rest = rules.card_lines(plan)
-        lines += [flag(first, time_guess or name.lower() in unsure), *rest]
-        warnings += moved
-        if time_guess:
+        seen.add(read.plan.name.lower())
+        first, *rest = rules.card_lines(read.plan)
+        lines += [flag(first, read.guessed or name.lower() in unsure), *rest, *_held_lines(read)]
+        warnings += _held_warnings(read)
+        if read.guessed:
             own_guesses.append(f"pills[{len(kept)}].times")
-        kept.append(_settled(item, settled))
+        # What can't be saved yet stays as it was said, so one reply can put it right
+        kept.append(dict(item) if read.held else _settled(item, read.request))
+        held = held or read.held
     if not kept:
         raise UserError("; ".join(warning.removeprefix("Not included: ") for warning in warnings) or "No pill to add.")
     last = str(asked[-1]["name"]) if asked else None
-    return Proposal(lines=tuple(lines), data={"pills": kept, LAST: last}, warnings=tuple(warnings), kind="new", guessed=tuple(own_guesses))
+    return Proposal(
+        lines=tuple(lines), data={"pills": kept, LAST: last}, warnings=tuple(warnings), kind="new",
+        guessed=tuple(own_guesses), can_save=not held,
+    )
 
 
 async def add_save(request: Request, data: dict) -> str:
@@ -235,36 +305,41 @@ async def edit_card(request: Request, data: dict, guessed: frozenset) -> Proposa
         unsure = unsure | {taken_as}
     lines, kept, warnings = [], [], [*problems, *[f"{name} isn't on the card: nothing to take off" for name in missing]]
     own_guesses: list[str] = []
+    held = False
     for item in items:
         pill = by_ref.get(item["pill"])
         if pill is None:
             continue
-        moved: list[str] = []
         try:
-            plan, settled, time_guess = settle(as_request(item), today, pill.plan, moved)
-            rules.check_name(plan, existing, own_id=pill.id)
+            read = settle(as_request(item), today, pill.plan)
+            rules.check_name(read.plan, existing, own_id=pill.id)
         except UserError as error:
             warnings.append(f"Not included: {pill.plan.name} ({error})")
             continue
-        if plan == pill.plan:
+        if read.plan == pill.plan and not read.held:
             warnings.append(f"{pill.plan.name}: nothing would change")
             continue
         mark = asked_as.get(item["pill"], "") in unsure
         # One format for every edit: field · old → new
         lines.append(flag(f"**{pill.plan.name}**", mark))
         lines += [
-            flag(f"{name} · {before} → {after}", time_guess and name == "schedule")
-            for name, before, after in rules.differences(pill.plan, plan)
+            flag(f"{name} · {before} → {after}", read.guessed and name == "schedule")
+            for name, before, after in rules.differences(pill.plan, read.plan)
         ]
-        warnings += moved
-        if time_guess:
+        lines += _held_lines(read)
+        warnings += _held_warnings(read)
+        if read.guessed:
             own_guesses.append(f"pills[{len(kept)}].times")
-        kept.append(_settled(item, settled))
+        kept.append(dict(item) if read.held else _settled(item, read.request))
+        held = held or read.held
     if not kept:
         raise UserError("; ".join(warning.removeprefix("Not included: ") for warning in warnings) or "Nothing to change.")
     lines.append("-# Applies from the next dose. What is already recorded stays as it is.")
     last = resolved[-1]["pill"] if resolved else (request.previous or {}).get(LAST)
-    return Proposal(lines=tuple(lines), data={"pills": kept, LAST: last}, warnings=tuple(warnings), kind="change", guessed=tuple(own_guesses))
+    return Proposal(
+        lines=tuple(lines), data={"pills": kept, LAST: last}, warnings=tuple(warnings), kind="change",
+        guessed=tuple(own_guesses), can_save=not held,
+    )
 
 
 async def edit_save(request: Request, data: dict) -> str:
@@ -371,7 +446,7 @@ def _none_left(warnings: list[str], otherwise: str) -> UserError:
 
 async def pause_card(request: Request, data: dict, guessed: frozenset) -> Proposal:
     chosen, warnings, today, marked = await _chosen(request, data, guessed)
-    lines, kept = [], []
+    lines, kept, held = [], [], False
     for item, pill in chosen:
         name = pill.plan.name
         if rules.status_on(pill, today) == ENDED:
@@ -382,7 +457,10 @@ async def pause_card(request: Request, data: dict, guessed: frozenset) -> Propos
             try:
                 until = timeinput.parse_date(str(item["until"]), today)
             except UserError as error:
-                warnings.append(f"Not included: {name} ({error})")
+                # Not read: on the card with the reason, and no Save until a reply gives the day
+                lines += [f"**{name}** · {rules.status_on(pill, today)} → paused until ❔", f"❔ until · {error}"]
+                kept.append({"pill": pill.ref, "until": str(item["until"])})
+                held = True
                 continue
             if until <= today:
                 warnings.append(f"Not included: {name} (a pause ends on a later day than today)")
@@ -393,7 +471,7 @@ async def pause_card(request: Request, data: dict, guessed: frozenset) -> Propos
     if not kept:
         raise _none_left(warnings, "No pill to pause.")
     lines.append("-# It won't be asked for while paused, and its streak is unaffected.")
-    return Proposal(lines=tuple(lines), data={"pills": kept}, warnings=tuple(warnings), kind="change")
+    return Proposal(lines=tuple(lines), data={"pills": kept}, warnings=tuple(warnings), kind="change", can_save=not held)
 
 
 async def pause_save(request: Request, data: dict) -> str:
@@ -506,29 +584,28 @@ async def state(request: Request) -> State:
 # ---------------------------------------------------------------------------
 # The actions
 # ---------------------------------------------------------------------------
-AS_SAID = (
-    "exactly as the user said it (8, 8pm, 20:00, tomorrow, the 20th): never convert it, never add am or "
-    "pm, never work out a date. The code reads it."
-)
+AS_SAID = "exactly as the user said it (tomorrow, friday, the 20th): never work out a date. The code reads it."
 _PLAN_FIELDS = (
     Field("dose", "How much each time, e.g. 1 tablet. Leave out if not said."),
     Field("notes", "Instructions, e.g. with food. Leave out if not said."),
     Field(
         "times",
-        "The time of each dose, separated by commas, " + AS_SAID + " E.g. \"8am, 8pm\", or \"8am, 11:30, "
-        "3pm\". \"Every 2 hours from 8am\" is a time for each dose. Leave out for a pill with no set time.",
+        "The time of each dose, in the order said. \"Every 2 hours from 8am\" is a time for each dose. Leave "
+        "out for a pill with no set time. When changing a pill, the one value `none` takes its times away "
+        "(\"it no longer needs a time\").",
+        TIMES,
     ),
     Field("per_day", "How many doses a day, if said. Not needed when a time is given for each dose.", INTEGER),
     Field(
-        "min_gap",
-        "The least time between doses, with its unit: 3h, 90m (\"at least 3 hours apart\"). It can go with "
-        "times. Without a time for each dose, per_day is needed too (your best guess, listed as guessed, if "
-        "not said).",
+        "min_gap_minutes",
+        "The least time between doses (\"at least 3 hours apart\" -> 180). It can go with times. Without a "
+        "time for each dose, per_day is needed too (your best guess, listed as guessed, if not said).",
+        MINUTES,
     ),
     Field(
         "latest",
-        "The time of day after which it must not be taken (\"not after 4pm\" -> 4pm): the time only, "
-        + AS_SAID + " Leave out if not said.",
+        "The time of day after which it must not be taken (\"not after 4pm\" -> `4:00 pm`). Leave out if not said.",
+        TIME,
     ),
     Field("start", "For a course only: its first day, " + AS_SAID),
     Field("end", "For a course only: its last day, " + AS_SAID),
@@ -555,15 +632,16 @@ ACTIONS = (
     Action(
         "pill_add",
         "Set up a new pill, vitamin, supplement or medicine. Examples: \"add vitamin D once a day with food\" "
-        "-> name Vitamin D, notes with food. \"add iron at 8\" -> name Iron, times 8. \"add course A, 3 times a "
+        "-> name Vitamin D, notes with food. \"add iron at 8\" -> name Iron, times [8:00]. \"add course A, 3 times a "
         "day, at least 3 hours apart, with food, for 7 days starting tomorrow\" -> name Course A, per_day 3, "
-        "min_gap 3h, notes with food, start tomorrow, days 7. \"a new pill called A at 9am, 12pm and 3pm\" -> "
-        "name A, times \"9am, 12pm, 3pm\". \"add pill A, 3 times a day at 8am, 11:30 and 3pm, at least 3 hours "
-        "apart, not after 4pm, without food\" -> name Pill A, per_day 3, times \"8am, 11:30, 3pm\", min_gap 3h, "
-        "latest 4pm, notes without food. A pill with no end has no dates: leave start, end and days out. In "
-        "a follow-up (\"8pm\", \"make it twice a day\"), give the pill by the name on the card and only what "
-        "changes. A time said in a follow-up REPLACES the card's time (card shows 08:00, user says \"8pm\" -> "
-        "times 8pm, never \"08:00, 8pm\"), unless the user says to add another dose.",
+        "min_gap_minutes 180, notes with food, start tomorrow, days 7. \"a new pill called A at 9am, 12pm and "
+        "3pm\" -> name A, times [9:00 am, 12:00 pm, 3:00 pm]. \"add pill A, 3 times a day at 8am, 11:30 and "
+        "3pm, at least 3 hours apart, not after 4pm, without food\" -> name Pill A, per_day 3, times [8:00 am, "
+        "11:30 am, 3:00 pm], min_gap_minutes 180, latest 4:00 pm, notes without food. A pill with no end has no "
+        "dates: leave start, end and days out. In a follow-up (\"8pm\", \"make it twice a day\"), give the "
+        "pill by the name on the card and only what changes. A time said in a follow-up REPLACES the card's "
+        "time (card shows 8:00 am, user says \"8pm\" -> times [8:00 pm], never both), unless the user says to "
+        "add another dose.",
         _one_or_more(
             "to add",
             Field("name", "What it is called, as the user said it, e.g. Vitamin D.", required=True),
@@ -578,8 +656,9 @@ ACTIONS = (
         "pill_edit",
         "Change a pill the user already has: its name, dose, notes, times, how often, the gap, the latest "
         "time or its dates. Give only what changes. To take something away give \"none\" for it (notes none; "
-        "times none makes it any time; min_gap none; latest none; end none makes it go on with no end). Examples: \"move the evening pill to 9pm\" -> pill "
-        "Evening pill, times 9pm. \"vitamin D is 2 tablets now\" -> dose 2 tablets.",
+        "times [none] makes it any time; latest none; end none makes it go on with no end), and 0 for "
+        "min_gap_minutes to take the gap away. Examples: \"move the evening pill to 9pm\" -> pill "
+        "Evening pill, times [9:00 pm]. \"vitamin D is 2 tablets now\" -> dose 2 tablets.",
         _one_or_more("to change", _WHICH, Field("name", "A new name for it, if it is being renamed."), *_PLAN_FIELDS, _OFF_THE_CARD),
         prepare=edit_card,
         apply=edit_save,

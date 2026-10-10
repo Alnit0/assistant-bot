@@ -6,7 +6,7 @@ from core.lifecycle import MessageClass
 from tasks.base import ANY, Keyword, ReplyAction, Task
 from tasks.timers import board, control, plain, sessions, store, timers
 from tasks.timers.common import PERMISSION, delete_message
-from tasks.timers.durations import DurationError, parse_duration
+from core.durations import DurationError, parse_duration
 
 
 # ---------------------------------------------------------------------------

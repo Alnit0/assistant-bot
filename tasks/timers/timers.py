@@ -21,7 +21,7 @@ from tasks.timers.common import (
     mention,
     owner_pressed,
 )
-from tasks.timers.durations import DurationError, format_duration, split_duration
+from core.durations import DurationError, format_duration, split_duration
 from tasks.timers.pomodoro import resumed_end
 
 log = logging.getLogger("assistant")

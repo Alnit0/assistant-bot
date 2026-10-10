@@ -8,7 +8,7 @@ from core.lifecycle import MessageClass
 from tasks.base import ANY, Keyword, ReplyAction, Task
 from tasks.dev import clockwords, panel, tools
 from tasks.dev.panel import PERMISSION
-from tasks.timers.durations import DurationError, format_duration, parse_duration
+from core.durations import DurationError, format_duration, parse_duration
 
 
 DEV_CHANNEL = "dev"  # our name for the scratch channel (DEV_CHANNEL_ID)

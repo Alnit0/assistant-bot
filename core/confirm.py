@@ -92,7 +92,8 @@ def render(entry: Entry, proposal: Proposal, card_id: int) -> Card:
         confirm = Button(proposal.confirm_label, CARDS, "save", str(card_id), emoji="🗑️", style=cards.DANGER)
     else:
         confirm = Button(proposal.confirm_label, CARDS, "save", str(card_id), emoji="✅", style=cards.SUCCESS)
-    return Card("\n".join(lines), ((confirm, Button("Cancel", CARDS, "cancel", str(card_id), emoji="✖️")),))
+    cancel = Button("Cancel", CARDS, "cancel", str(card_id), emoji="✖️")
+    return Card("\n".join(lines), ((confirm, cancel) if proposal.can_save else (cancel,),))
 
 
 def render_tie(entries: list[Entry], card_id: int, said: str) -> Card:

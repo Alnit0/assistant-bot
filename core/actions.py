@@ -2,7 +2,7 @@ import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 
-from core import database, trace
+from core import database, durations, trace
 from core.errors import UserError
 from core.users import User
 
@@ -30,7 +30,28 @@ from core.users import User
 # calls, core/confirm.py shows the cards, core/conversation.py ties them up.
 # ---------------------------------------------------------------------------
 STRING, INTEGER, LIST, BOOLEAN, ITEMS = "string", "integer", "list", "boolean", "items"
-TYPES = (STRING, INTEGER, LIST, BOOLEAN, ITEMS)
+# Lengths of time and times of day are not handed over as the user's words:
+# Claude does the reading and gives them in one form, the same for every task.
+#   MINUTES  a length of time, as a whole number of minutes
+#   TIME     a time of day in TIME_FORMAT
+#   TIMES    several of them, as a list
+# What arrives in another form all the same is not thrown away: validate()
+# reads a length given in words (core/durations.py) and passes on anything it
+# can't read as the text it was, for the task to show as unread on its card.
+MINUTES, TIME, TIMES = "minutes", "time", "times"
+TYPES = (STRING, INTEGER, LIST, BOOLEAN, ITEMS, MINUTES, TIME, TIMES)
+IN_AN_ITEM = (STRING, INTEGER, BOOLEAN, MINUTES, TIME, TIMES)
+
+MINUTES_FORMAT = (
+    " As a whole number of minutes, worked out by you: \"3 hours\" is 180, \"an hour and a half\" is 90, "
+    "\"2.5 hours\" is 150. Never text."
+)
+TIME_FORMAT = (
+    " In this form only: `8:00 am`, `11:30 am`, `3:00 pm` (\"8pm\" and \"20:00\" are `8:00 pm`, \"noon\" is "
+    "`12:00 pm`, \"half past eight in the evening\" is `8:30 pm`). If the user did not say morning or evening, "
+    "it is not a 24-hour time and nothing else they said settles it (\"at 8\"), give it with no am or pm, "
+    "`8:00`: never choose for them."
+)
 
 GUESSED = "guessed"  # the field of every action that lists what Claude guessed
 # The field of every action that lists what was asked for and could not be put
@@ -121,6 +142,9 @@ class Proposal:
     kind: str = "new"  # the kind of change, for the first line: one of KINDS
     destructive: bool = False  # can't be undone: a card of its own kind
     confirm_label: str = "Save"
+    # False while something on the card has to be put right first (its reason
+    # is one of the warnings): the card has Cancel only, and a reply fixes it
+    can_save: bool = True
     # What the task's own code guessed in `data` (a time taken as the morning),
     # named as Claude names a guess ("pills[0].times"). Kept with the card beside
     # Claude's guesses, so a follow-up knows the value was never said
@@ -327,6 +351,63 @@ def as_references(action: "Action", data: dict, said: str, state: str = "") -> t
                 changed[entry_field.name] = [{**item, key: REFERENCE} if item is unnamed[0] else item for item in value]
                 back.append(unnamed[0][key])
     return changed, back
+
+
+_GIVEN_TIME = re.compile(r"(\d{1,2}):(\d{2})\s*([ap])m", re.IGNORECASE)
+_HALF_MARKED = re.compile(r"(?<![a-z])\d{1,2}(?:[:.]\d{2})?\s*[ap]\.?m\b")
+_PART_OF_DAY = re.compile(
+    r"\b(?:morning|afternoon|evening|night|tonight|noon|midday|midnight|lunch|lunchtime|breakfast|dinner|supper|bedtime)\b"
+)
+
+
+def _half_is_said(given: str, said: str) -> bool:
+    """Whether the message can settle which half of the day a time is in: it
+    marks a time am or pm, names a part of the day, or has this very time on
+    the 24-hour clock. A time that isn't in the fixed form is not judged."""
+    match = _GIVEN_TIME.fullmatch(given.strip())
+    if not match:
+        return True
+    heard = said.lower()
+    if _HALF_MARKED.search(heard) or _PART_OF_DAY.search(heard):
+        return True
+    hour = int(match[1]) % 12 + (12 if match[3].lower() == "p" else 0)
+    forms = {f"{hour:02d}:{match[2]}", f"{hour:02d}.{match[2]}", f"{hour:02d}{match[2]}"}
+    if hour >= 13:
+        forms |= {f"{hour}:{match[2]}", f"{hour}.{match[2]}"} | ({str(hour)} if match[2] == "00" else set())
+    return any(re.search(rf"(?<![\d:.]){re.escape(form)}(?![\d:.]\d)", heard) for form in forms)
+
+
+def unchosen(action: "Action", data: dict, said: str) -> tuple[dict, list[str]]:
+    """What extraction returned, with any morning or evening Claude chose by
+    itself taken back: (the data, the times it was taken from).
+
+    A time comes in the fixed form, with no am or pm when the user gave none
+    (TIME_FORMAT). When one comes with am or pm and nothing in the message
+    could settle it ("at 8"), the choice was Claude's: the am or pm is taken
+    off, and the code decides what to do with a time that could be either.
+    Applies to every TIME and TIMES field, in a list of items too. Pure."""
+    back: list[str] = []
+
+    def checked(value):
+        if isinstance(value, list):
+            return [checked(each) for each in value]
+        if isinstance(value, str) and not _half_is_said(value, said):
+            back.append(value)
+            match = _GIVEN_TIME.fullmatch(value.strip())
+            return f"{int(match[1])}:{match[2]}"
+        return value
+
+    def within(fields_: tuple[Field, ...], held: dict) -> dict:
+        changed = dict(held)
+        for entry_field in fields_:
+            value = held.get(entry_field.name)
+            if entry_field.type in (TIME, TIMES) and value is not None:
+                changed[entry_field.name] = checked(value)
+            elif entry_field.type == ITEMS and isinstance(value, list):
+                changed[entry_field.name] = [within(entry_field.item_fields, item) for item in value]
+        return changed
+
+    return within(action.fields, data), back
 
 
 def point_at(changes: list[dict], key: str, last: str | None) -> list[dict]:
@@ -588,8 +669,8 @@ def problems(entries: list[Entry]) -> list[str]:
                     if not entry_field.item_fields:
                         found.append(f"{where}: field {entry_field.name} is a list of items, so it needs `item_fields`")
                     for inner in entry_field.item_fields:
-                        if inner.type not in (STRING, INTEGER, BOOLEAN):
-                            found.append(f"{where}: an item's field {inner.name} must be text, a number or yes/no")
+                        if inner.type not in IN_AN_ITEM:
+                            found.append(f"{where}: an item's field {inner.name} must be text, a number, yes/no, a length of time or times of day")
                         if not inner.description.strip():
                             found.append(f"{where}: an item's field {inner.name} has no description for Claude")
                 elif entry_field.item_fields:
@@ -617,6 +698,12 @@ def _property(entry_field: Field) -> dict:
         if entry_field.choices:
             items["enum"] = list(entry_field.choices)
         return {"type": "array", "items": items, "description": entry_field.description}
+    if entry_field.type == MINUTES:
+        return {"type": "integer", "description": entry_field.description + MINUTES_FORMAT}
+    if entry_field.type == TIME:
+        return {"type": "string", "description": entry_field.description + TIME_FORMAT}
+    if entry_field.type == TIMES:
+        return {"type": "array", "items": {"type": "string"}, "description": entry_field.description + " Each one:" + TIME_FORMAT}
     prop: dict = {"type": entry_field.type, "description": entry_field.description}
     if entry_field.choices:
         prop["enum"] = list(entry_field.choices)
@@ -713,9 +800,51 @@ _PYTHON_TYPES = {STRING: str, INTEGER: int, BOOLEAN: bool}
 _GUESS_PATH = re.compile(r"(\w+)(?:\[(\d+)\])?(?:\.(\w+))?")
 
 
+_BETWEEN_TIMES = re.compile(r"\s*(?:,|;|&|\band\b|\bthen\b)\s*")
+
+
+def _structured(entry_field: Field, value, where: str):
+    """A length of time or times of day, checked. A length that came as words
+    is read here; what can't be read, and every time, is passed on as text
+    for the task's own code, which shows what it couldn't read on its card.
+    None if it was left empty."""
+    if entry_field.type == MINUTES:
+        if isinstance(value, bool) or not isinstance(value, (int, str)):
+            raise Invalid(f"`{where}` must be a number of minutes")
+        if isinstance(value, int):
+            if value < 0:
+                raise Invalid(f"`{where}` is less than nothing")
+            return value
+        text = value.strip()
+        if not text:
+            return None
+        try:
+            seconds = durations.parse_duration(text) if re.search(r"[a-z:]", text.lower()) else int(text) * 60
+        except (durations.DurationError, ValueError):
+            trace.note(f"`{where}` came as text that is not a length of time: {text!r}")
+            return text
+        trace.note(f"`{where}` came as text ({text!r}), read as {round(seconds / 60)} minutes")
+        return round(seconds / 60)
+    if entry_field.type == TIME:
+        if not isinstance(value, str):
+            raise Invalid(f"`{where}` must be a time of day")
+        return value.strip() or None
+    # TIMES: a list, or the times in one text ("8am, 8pm")
+    if isinstance(value, str):
+        value = _BETWEEN_TIMES.split(value)
+    if not isinstance(value, list) or not all(isinstance(each, str) for each in value):
+        raise Invalid(f"`{where}` must be a list of times of day")
+    return [each.strip() for each in value if each.strip()] or None
+
+
 def _scalar(entry_field: Field, value, where: str):
     """One text, number or yes/no value, checked. Returns it, or None if it is
     an optional text left empty."""
+    if entry_field.type in (MINUTES, TIME, TIMES):
+        value = _structured(entry_field, value, where)
+        if value is None and entry_field.required:
+            raise Invalid(f"`{where}` is empty")
+        return value
     expected = _PYTHON_TYPES[entry_field.type]
     # bool is an int in Python: an INTEGER must not be True
     if not isinstance(value, expected) or (entry_field.type == INTEGER and isinstance(value, bool)):

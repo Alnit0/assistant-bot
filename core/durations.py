@@ -1,8 +1,19 @@
 import re
 
 # ---------------------------------------------------------------------------
-# Durations: turning "25m", "1h30" or "2 hours" into seconds, in code.
+# Durations: turning "25m", "1h30" or "2 hours" into seconds, in code. Shared
+# by every task that reads a length of time (timers, pills, dev).
 # Pure functions: no Discord, no database, no clock.
+#
+# Two ways of reading:
+#   the short forms people type      25m, 1h30, 1h 30m, 1.5h, 2 hours, 1:30
+#   the way people say them          3 hours apart, 2 and a half hours, an hour
+#                                    and a half, half an hour, ninety minutes
+# The second is a safety net: where a length comes from Claude it is asked for
+# as a whole number (core/actions.py, MINUTES), and this reads what arrives
+# as words all the same. Typed words with a label after them (`timer 5m long
+# walk`) are only ever read the first way, so no word of a label is taken
+# for part of the length.
 # ---------------------------------------------------------------------------
 MIN_SECONDS = 5
 MAX_SECONDS = 24 * 60 * 60
@@ -30,12 +41,54 @@ def _check_range(seconds: float) -> int:
 
 
 def parse_duration(text: str) -> int:
-    """Seconds for text such as "90s", "25m", "1h30", "1h 30m", "1.5h", "2 hours" or "1:30".
+    """Seconds for a length of time, in its short form or as people say it:
+    "90s", "25m", "1h30", "1h 30m", "1.5h", "2 hours", "1:30", and also "3
+    hours apart", "2 and a half hours", "an hour and a half".
 
     A bare number is minutes ("25"). A bare number straight after hours is
     minutes ("1h30"), and straight after minutes is seconds ("1m30"). "1:30"
     is hours and minutes; "1:30:00" adds seconds. Raises DurationError.
     """
+    try:
+        return _short(text)
+    except DurationError as problem:
+        said = as_said(text)
+        if said == text.strip().lower():
+            raise
+        try:
+            return _short(said)
+        except DurationError:
+            raise problem  # in the words that were given, not the reworked ones
+
+
+_NUMBERS = {
+    "a": 1, "an": 1, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8,
+    "nine": 9, "ten": 10, "eleven": 11, "twelve": 12, "fifteen": 15, "twenty": 20, "thirty": 30, "forty": 40,
+    "forty-five": 45, "fifty": 50, "sixty": 60, "ninety": 90,
+}
+_UNIT_WORDS = "|".join(sorted(_UNITS, key=len, reverse=True))
+_NUMBER_WORD = re.compile(r"\b(" + "|".join(sorted(_NUMBERS, key=len, reverse=True)) + r")\b(?=\s+(?:and\s+a\s+half\s+)?(?:" + _UNIT_WORDS + r")\b)")
+_BEFORE = re.compile(r"^(?:(?:at\s+least|at\s+most|every|for|about|around|roughly|in)\s+)+")
+_AFTER = re.compile(r"(?:\s+(?:apart|between\s+(?:doses|each|them)|each\s+time|long|later|or\s+so))+$")
+_HALF_OF = re.compile(r"\bhalf\s+an?\s+(" + _UNIT_WORDS + r")\b")
+_AND_A_HALF_BEFORE = re.compile(r"(\d+)\s+and\s+a\s+half\s+(" + _UNIT_WORDS + r")\b")
+_AND_A_HALF_AFTER = re.compile(r"(\d+)\s+(" + _UNIT_WORDS + r")\s+and\s+a\s+half\b")
+
+
+def as_said(text: str) -> str:
+    """A length as people say it, put into the short form: "an hour and a
+    half" -> "1.5 hour", "at least 3 hours apart" -> "3 hours"."""
+    said = re.sub(r"\s+", " ", text.strip().lower()).replace(",", " ").strip(" .")
+    said = _AFTER.sub("", _BEFORE.sub("", said)).strip()
+    said = _HALF_OF.sub(r"0.5 \1", said)
+    said = _NUMBER_WORD.sub(lambda found: str(_NUMBERS[found[1]]), said)
+    said = _AND_A_HALF_BEFORE.sub(r"\1.5 \2", said)
+    said = _AND_A_HALF_AFTER.sub(r"\1.5 \2", said)
+    return re.sub(r"\s+and\s+", " ", said)
+
+
+def _short(text: str) -> int:
+    """Seconds for a length in its short form. Raises DurationError."""
     text = text.strip().lower()
     if not text:
         raise DurationError("No duration given.")
@@ -93,7 +146,8 @@ def split_duration(words: list[str]) -> tuple[int, str]:
     problem: DurationError | None = None
     for count in range(min(len(words), 6), 0, -1):
         try:
-            seconds = parse_duration(" ".join(words[:count]))
+            # The short form only: a word of the label is never part of the length
+            seconds = _short(" ".join(words[:count]))
         except DurationError as error:
             # Remember the most specific complaint: the one about the shortest attempt
             problem = error

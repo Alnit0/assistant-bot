@@ -79,7 +79,8 @@ def main() -> int:
             if problem:
                 (known if fixture.known_miss else failures).append(fixture.name)
         for fixture in extractions:
-            entry = actions.entry(fixture.task)
+            # From the entries of this run: the demo lists are not in the bot's catalogue
+            entry = next(each for each in entries if each.name == fixture.task)
             card = extraction.OpenCard(**fixture.card) if fixture.card else None
             began = time.perf_counter()
             called = await _call_extraction(entry, fixture, card, options.strict)

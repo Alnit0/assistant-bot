@@ -1,6 +1,6 @@
 # QA run sheet
 
-One pass through 172 of the 203 👤 Manual tests in `docs/TESTING.md` that are
+One pass through 174 of the 205 👤 Manual tests in `docs/TESTING.md` that are
 ⬜ Untested (as of 2026-10-10); the other 31 are for pills stages not built yet
 (group R) or need a setup of their own, and join as each can be run. Blocks share setup and each one leaves things
 ready for the next, so run them in order.
@@ -26,8 +26,8 @@ tests (block 12).
 | 15 | Dev database and clock | `--dev`, on and off (three restarts) | 10 | 13 |
 | 17 | Traces: `dev why` and bug reports | `--dev`, off (one restart) | 3 | 5 |
 | 18 | Retest: one path for every message | `--dev`, off (one restart) | 9 | 12 |
-| 19 | Pills: one schedule model | `--dev`, off (one restart) | 9 | 10 |
-| | **Total** | | **172** (F2 is split over blocks 4 and 7, counted in 7) | **about 3¼ hours** |
+| 19 | Pills: one schedule model | `--dev`, off (one restart) | 11 | 13 |
+| | **Total** | | **174** (F2 is split over blocks 4 and 7, counted in 7) | **about 3¼ hours** |
 
 Blocks 14 to 19 need nothing from the others (13 and 16 tested the old way of asking Claude, which is gone): run them any time after
 block 1, and before the overnight block if that suits.
@@ -441,6 +441,8 @@ due. Every step ends by saying what to press.
 | 7 | Say `move iron to 9pm`; press **Save** | A card "💊 Pills · change": "**Iron**", then "schedule · daily at `8:00 pm` → daily at `9:00 pm`". Save: "✅ Updated · 💊 **Iron** · daily at `9:00 pm`" | T10 |
 | 8 | Say `add magnesium, 2 tablets at 9pm with food`; press **Cancel** | One card: "**magnesium** (2 tablets) · daily at `9:00 pm` · *with food*" with no ❓ anywhere: what was stated is used exactly | T26 |
 | 9 | Say `show all my pills` and keep it in view; then `remove iron`; press **Remove** | The list, with no buttons. Then a card "💊 Pills · remove" with "**Iron** · … → removed" that says its history is kept; Remove: "🗑️ Removed **Iron**. Its history is kept." and the list above loses Iron, edited in place | T12 |
+| 10 | Say `add pill D to my pills, at 8am and 5pm, not after 4pm`; then, pressing nothing, `not after 6pm`; press **Cancel** | A card with "**Pill D** · daily at `8:00 am`, `5:00 pm`", "Not after `4:00 pm`" and "⚠️ Pill D can't be saved yet: A dose at 5:00 pm would be after the latest time, 4:00 pm." It has **Cancel** only, no Save. After the reply it is replaced by one with "Not after `6:00 pm`", no ⚠️, and **Save** and **Cancel**. Cancel: nothing is saved | R43 |
+| 11 | With Iron no longer on the list, say `add zinc to my pills`; press **Save**. Then say `pause zinc until whenever`; then, pressing nothing, `until friday`; press **Cancel** | After Save zinc is added. Then a card "💊 Pills · change" with "**Zinc** · active → paused until ❔" and "❔ until · I can't read “whenever” as a date. …". It has **Cancel** only, no Save, and there is no bare ⚠️ line in the channel. After the reply it is replaced by one with "paused until" and a date, with **Save** and **Cancel** | R44 |
 
 ## When you finish
 

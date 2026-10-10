@@ -491,7 +491,9 @@ Everything works in #inbox and in the hub.
 - **Planned times closer together than the gap** are moved apart, and the
   card says which dose moved ("⚠️ 11:30 am to 2:00 pm is under 3h: the
   third dose moves to 2:30 pm"). A schedule that can't fit in a day, or a
-  planned time after the latest time, is refused with the reason.
+  planned time after the latest time, is never saved or adjusted: the
+  card shows it as read with "⚠️ … can't be saved yet: …" and has
+  **Cancel** only, until a reply puts it right.
 - **Courses.** A pill with dates is taken from the first to the last, both
   included ("for 7 days starting tomorrow" on the 9th is 10 to 16 Oct).
   It is listed with 🗓️ and "starts 10 Oct" until then, and under 🏁 Ended
@@ -508,6 +510,10 @@ Everything works in #inbox and in the hub.
   to correct it. A time the others settle is not a guess: in "8am, 11:30
   and 3pm" the 11:30 can only be the morning. Times are always shown as
   `8:00 pm`, whatever you typed.
+- **What can't be read is shown, not refused.** A time, a gap, a number
+  or a date the bot can't read is a line on the card ("❔ gap · I can't
+  read …") beside everything it did understand, and the card has
+  **Cancel** only until a reply gives it again.
 - **Editing** applies from the next dose; what is already recorded stays.
   Give only what changes. "No notes", "no times" (any time), "no gap",
   "no latest time" and "no end date" take a value away.
@@ -519,6 +525,12 @@ Everything works in #inbox and in the hub.
 - **The list** (`pills`, "my pills", "show all my pills") is read-only
   and Live: it has no buttons, and it is rewritten in place when a pill
   changes. To change a pill, say so.
+
+**What Claude hands over.** Times come in one fixed form (`8:00 pm`;
+`8:00` when no am or pm was said, which the code then settles or marks
+❓) and the gap as whole minutes (`min_gap_minutes`), so the code never
+depends on how a time or a length was worded. Use `actions.TIME`,
+`TIMES` and `MINUTES` for any new field that holds one.
 
 **In code.** The schedule itself is core: `core/schedule.py` has the
 `Schedule` every pill's plan holds and `dues(schedule, day, so_far)`, which

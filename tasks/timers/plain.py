@@ -9,7 +9,7 @@ from core.scheduler import utc_now
 from core.timeinput import format_time
 from tasks.timers import board, control, sessions, status, store, timers
 from tasks.timers.common import channel_for, delete_message
-from tasks.timers.durations import DurationError, format_duration, parse_duration
+from core.durations import DurationError, format_duration, parse_duration
 from tasks.timers.pomodoro import PHASE_NAMES, different_lengths, parse_session, phase_length, summarise_focus, week_start
 
 # ---------------------------------------------------------------------------

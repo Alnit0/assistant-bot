@@ -2,11 +2,10 @@ import re
 from dataclasses import dataclass, replace
 from datetime import date, time, timedelta
 
-from core import schedule, timeinput
+from core import durations, schedule, timeinput
 from core.errors import UserError
 from core.schedule import DAY_MINUTES, Schedule
 from core.timeinput import AmbiguousTime
-from tasks.timers.durations import DurationError, parse_duration
 
 # ---------------------------------------------------------------------------
 # Pills: what a pill's plan is, how one is built from what the user said, and
@@ -22,7 +21,10 @@ from tasks.timers.durations import DurationError, parse_duration
 # Without dates it simply goes on.
 #
 # Claude decides which of the user's words are the name, the times and the
-# dates, and hands them over as they were said; everything here on is code.
+# dates. It hands over times in one fixed form (with no am or pm when the
+# user gave none) and lengths of time as minutes; dates as they were said.
+# Everything here on is code, and it reads other forms of a time or a length
+# as well, should one arrive.
 # ---------------------------------------------------------------------------
 # What is stored
 ACTIVE, PAUSED, REMOVED = "active", "paused", "removed"
@@ -88,6 +90,36 @@ class Request:
         return replace(self, **given)
 
 
+class DoesNotFit(UserError):
+    """The schedule was read, but its doses can't all be taken in a day. `plan`
+    is what was read, so a card can show it with the reason and be put right
+    by a reply; it is never saved as it is."""
+
+    def __init__(self, reason: str, plan: "Plan | None" = None):
+        self.plan = plan
+        super().__init__(reason)
+
+
+class Unreadable(UserError):
+    """One part of the request couldn't be read at all. `field` says which of
+    the request's parts; the message says why. The rest can still be shown."""
+
+    def __init__(self, field: str, reason: str):
+        self.field = field
+        super().__init__(reason)
+
+
+def _read(field: str, reader, *given):
+    """What `reader` makes of one part of the request; if it can't, the
+    refusal names the part."""
+    try:
+        return reader(*given)
+    except (TimeQuestion, Unreadable):
+        raise
+    except UserError as problem:
+        raise Unreadable(field, str(problem))
+
+
 class TimeQuestion(UserError):
     """One of the times could be morning or evening. `field` says whether it
     is one of the request's times (`index` says which) or its latest time,
@@ -123,9 +155,9 @@ def split_times(text: str) -> list[str]:
 def answer(request: Request, question: TimeQuestion, chosen: time) -> Request:
     """The request with the time that was asked about replaced by the answer."""
     if question.field == "latest":
-        return replace(request, latest=chosen.strftime("%H:%M"))
+        return replace(request, latest=timeinput.format_time(chosen))
     parts = split_times(request.times)
-    parts[question.index] = chosen.strftime("%H:%M")
+    parts[question.index] = timeinput.format_time(chosen)
     return replace(request, times=", ".join(parts))
 
 
@@ -181,13 +213,15 @@ def _count(text: str) -> int:
 
 
 def _gap(text: str) -> int:
-    """A minimum gap in minutes. A bare number isn't guessed to be hours or minutes."""
-    value = text.strip().lower()
+    """A minimum gap in minutes, from a length in any form core/durations.py
+    reads ("180m", "3h", "3 hours apart", "an hour and a half"). A bare
+    number isn't guessed to be hours or minutes."""
+    value = durations.as_said(text)
     if not re.search(r"[a-z:]", value):
         raise UserError(f"Is the gap {value} hours or {value} minutes? Say `{value}h` or `{value}m`.")
     try:
-        minutes = round(parse_duration(value) / 60)
-    except DurationError:
+        minutes = round(durations.parse_duration(value) / 60)
+    except durations.DurationError:
         raise UserError(f"I can't read “{text.strip()}” as a gap. Try `3h` or `90m`.")
     if minutes < 1:
         raise UserError("The gap between doses must be at least a minute.")
@@ -215,8 +249,10 @@ def build(request: Request, today: date, base: Plan | None = None, moved: list[s
     """The plan a request asks for: a new one, or `base` with the changes.
 
     Raises TimeQuestion if a time could be morning or evening, and UserError
-    with a short reason for anything that doesn't make a plan. Nothing is
-    guessed. The one thing adjusted is a planned time closer to the one
+    with a short reason for anything that doesn't make a plan: Unreadable,
+    naming the part, for a time, a length, a number or a date that can't be
+    read; DoesNotFit, carrying the plan as read, when it is only that the
+    doses can't fit in a day. Nothing is guessed. The one thing adjusted is a planned time closer to the one
     before than the gap allows: it moves later, and `moved` is given a line
     saying so, for the card.
     """
@@ -238,16 +274,16 @@ def build(request: Request, today: date, base: Plan | None = None, moved: list[s
     if not _given(request.times):
         times = old.times if old else ()
     else:
-        times = () if _cleared(request.times) else _times(request.times)
+        times = () if _cleared(request.times) else _read("times", _times, request.times)
     if not _given(request.min_gap):
         gap = old.gap_minutes if old else None
     else:
-        gap = None if _cleared(request.min_gap) else _gap(request.min_gap)
+        gap = None if _cleared(request.min_gap) else _read("min_gap", _gap, request.min_gap)
     if not _given(request.latest):
         latest = old.latest if old else None
     else:
-        latest = None if _cleared(request.latest) else _latest(request.latest, times)
-    asked = _count(request.per_day) if _given(request.per_day) else None
+        latest = None if _cleared(request.latest) else _read("latest", _latest, request.latest, times)
+    asked = _read("per_day", _count, request.per_day) if _given(request.per_day) else None
     if len(set(times)) != len(times):
         raise UserError("Two of those times are the same.")
     times = tuple(sorted(times))
@@ -278,7 +314,6 @@ def build(request: Request, today: date, base: Plan | None = None, moved: list[s
     planned, moves = schedule.spaced(Schedule(per_day, times, gap, latest))
     if moved is not None:
         moved.extend(_move_text(move, gap) for move in moves)
-    _check_fits(planned)
 
     # --- dates: a course, or none ---
     start, end = (base.start, base.end) if base else (None, None)
@@ -287,11 +322,11 @@ def build(request: Request, today: date, base: Plan | None = None, moved: list[s
     elif any(_given(value) for value in (request.start, request.end, request.days)):
         if _given(request.end) and _given(request.days):
             raise UserError("Give an end date or a number of days, not both.")
-        start = timeinput.parse_date(request.start, today) if _given(request.start) else (start or today)
+        start = _read("start", timeinput.parse_date, request.start, today) if _given(request.start) else (start or today)
         if _given(request.days):
-            end = start + timedelta(days=_days(request.days) - 1)  # the last day is a day of taking
+            end = start + timedelta(days=_read("days", _days, request.days) - 1)  # the last day is a day of taking
         elif _given(request.end):
-            end = timeinput.parse_date(request.end, max(today, start))
+            end = _read("end", timeinput.parse_date, request.end, max(today, start))
         elif end is None:
             raise UserError("When does it end? Give an end date or a number of days.")
         if end < today:
@@ -301,7 +336,12 @@ def build(request: Request, today: date, base: Plan | None = None, moved: list[s
                 f"It would end ({timeinput.format_date(end)}) before it starts ({timeinput.format_date(start)})."
             )
 
-    return Plan(name, dose, notes, planned, start, end)
+    plan = Plan(name, dose, notes, planned, start, end)
+    try:
+        _check_fits(planned)
+    except DoesNotFit as problem:
+        raise DoesNotFit(str(problem), plan)
+    return plan
 
 
 _ORDINALS = ("first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth")
@@ -322,7 +362,7 @@ def _check_fits(planned: Schedule) -> None:
     limit = planned.latest.hour * 60 + planned.latest.minute if planned.latest is not None else None
     for value in planned.times:
         if limit is not None and value.hour * 60 + value.minute > limit:
-            raise UserError(f"A dose at {shown(value)} would be after the latest time, {shown(planned.latest)}.")
+            raise DoesNotFit(f"A dose at {shown(value)} would be after the latest time, {shown(planned.latest)}.")
     if planned.gap_minutes is None:
         return
     earliest = 0
@@ -332,7 +372,7 @@ def _check_fits(planned: Schedule) -> None:
         earliest = at if index == 0 else max(at, earliest + planned.gap_minutes)
     if earliest >= DAY_MINUTES or (limit is not None and earliest > limit):
         where = "in a day" if limit is None else f"before {shown(planned.latest)}"
-        raise UserError(f"{planned.per_day} doses {gap_text(planned.gap_minutes)} apart don't fit {where}.")
+        raise DoesNotFit(f"{planned.per_day} doses {gap_text(planned.gap_minutes)} apart don't fit {where}.")
 
 
 def check_name(plan: Plan, others: list[Pill], own_id: int | None = None) -> None:

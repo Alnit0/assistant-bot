@@ -688,6 +688,24 @@ A short log of key decisions and why. Newest at the bottom.
   - The take-by time and "does it still fit" are in the pills task
     (`tasks/pills/doses.py`), as the spec has them, though they know
     nothing of pills: they move to core when a second task needs them.
+  - A schedule whose doses can't fit is refused, never fixed by the bot
+    (which dose to drop or move is the user's to say), but it is shown
+    on the card as read, with the reason, so one reply fixes it. For
+    that a card can be without Save (`Proposal.can_save`): the first
+    piece of what questions on the card (G1) will need.
+  - **Lengths and times come structured (2026-10-10).** QA found the
+    gap handed over once as "3h" and once as "3 hours apart", and the
+    second refused. Claude now does the reading: a length is whole
+    minutes (`actions.MINUTES`), a time of day is in one fixed form
+    (`TIME`, `TIMES`). This replaces "times as the user said them".
+    Three safety nets stay in code: a length that still comes as words
+    is read by `core/durations.py`; a time comes with no am or pm when
+    none was said, and an am or pm the message can't support is taken
+    back (`actions.unchosen`), so "at 8" is still the code's to settle;
+    and a part that can't be read is a ❔ line on a card with no Save,
+    never a bare error. Dates still come as said: working one out needs
+    today's date, which is the code's. Timers were left as they are
+    (see the backlog).
   - The `kind` column of `pills_pills` is dropped and `latest_time` added,
     in one appended migration; the other columns mean what they did, so
     no row needed rewriting.

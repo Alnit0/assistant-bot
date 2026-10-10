@@ -9,15 +9,19 @@ session; the end-of-task checklist updates it at the end of every task.
 
 - Branch `feature/pills`, with `feature/router` merged into it (step 4
   passed its retest and is committed: the old path is removed).
-- In hand, uncommitted and paused for QA (block 19 of
-  `docs/QA-RUN.md`): pills stage 1, the schedule model in core
-  (`core/schedule.py`) with pill setup moved onto it. Starting the bot
-  runs one pills migration.
-- Tests: `python -m pytest -q` passes (1714). Golden conversations 1c,
-  1d and 2a are marked as gaps (they need questions on the card, G1).
-  One new pills fixture (the Pill A sentence) is not recorded yet, so
-  its replay is skipped until a live eval of `pills.json` is run.
-- Live eval spend to date: about US$2.57.
+- Pills stage 1 is committed: the schedule model in core
+  (`core/schedule.py`) with pill setup moved onto it.
+- In hand, uncommitted, after block 19 step 2 failed (a gap handed over
+  as "3 hours apart" was refused): lengths of time and times of day now
+  come from Claude structured; `core/durations.py` reads spoken lengths
+  as a safety net; a part that can't be read, or doses that can't fit,
+  get a card with the reason and no Save. Block 19 is to be rerun from
+  the start (it has steps 10 and 11 now).
+- Tests: `python -m pytest -q` passes. Golden conversations 1c, 1d
+  and 2a are marked as gaps (they need questions on the card, G1).
+  The live evals of 2026-10-10 with the new schema: pills 36 of 37,
+  golden 29 of 31; every miss is a known one that the code covers.
+- Live eval spend to date: about US$2.90.
 
 ## Current goal
 
@@ -46,7 +50,8 @@ No new features, tools or dev commands until pills reminders work
 
 ## Next up
 
-1. QA of pills stage 1 (block 19), then its commit.
+1. The rerun of block 19 (pills stage 1) from the start, then the
+   commit of what is in hand.
 2. Pills, in the order of the spec's section 15, with a pause for QA
    after each: (2) the daily checklist; (3) reminders; then corrections
    and questions. Each starts on a go.
@@ -57,10 +62,8 @@ No new features, tools or dev commands until pills reminders work
 
 ## Open decisions
 
-- Pills: what the card should do with a planned time after the latest
-  time (today the pill is refused with the reason; see the backlog).
-- Pills: whether the live eval of `pills.json` is run now (the action's
-  wording and one fixture changed).
+- Whether timers' lengths should come structured too (they need
+  seconds; see the backlog).
 - Deferred until pills reminders work: G1 (questions on the card), G3
   (corrections after Save), G4 (task ties asked too often), G7 (questions
   sent as their own message). G14 (privacy of notifications) comes with

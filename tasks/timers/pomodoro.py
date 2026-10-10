@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
-from tasks.timers.durations import DurationError, parse_duration
+from core.durations import DurationError, parse_duration
 
 # ---------------------------------------------------------------------------
 # Pomodoro: the rules of the cycle, and the arithmetic of pausing.

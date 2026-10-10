@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from core import scheduler, timeinput
 from core.config import TIMEZONE
 from core.errors import UserError
-from tasks.timers.durations import DurationError, format_duration, parse_duration
+from core.durations import DurationError, format_duration, parse_duration
 
 # ---------------------------------------------------------------------------
 # What was typed after `dev clock`, and how the clock is described. Pure: the

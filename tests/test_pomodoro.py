@@ -2,7 +2,7 @@ import unittest
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-from tasks.timers.durations import DurationError
+from core.durations import DurationError
 from tasks.timers.pomodoro import (
     DEFAULT_LABEL,
     FOCUS,

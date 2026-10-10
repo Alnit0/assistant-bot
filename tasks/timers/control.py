@@ -4,7 +4,7 @@ from core.context import Context
 from core.errors import UserError
 from core.scheduler import utc_now
 from tasks.timers import board, sessions, status, store, timers
-from tasks.timers.durations import DurationError, parse_duration
+from core.durations import DurationError, parse_duration
 
 # ---------------------------------------------------------------------------
 # Acting on timers and the session by id (Claude's tools), and on all of them

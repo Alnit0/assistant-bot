@@ -112,6 +112,42 @@ def test_a_planned_time_too_close_to_the_one_before_moves_and_the_card_is_told()
     assert lines == ["11:30 am to 2:00 pm is under 3h: the third dose moves to 2:30 pm"]
 
 
+@pytest.mark.parametrize(
+    "said, minutes",
+    [
+        ("180m", 180), ("3h", 180), ("3 hours", 180), ("3 hrs", 180), ("3 hours apart", 180), ("2.5 hours", 150),
+        ("2 and a half hours", 150), ("90 minutes", 90), ("an hour and a half", 90),
+    ],
+)
+def test_a_gap_is_read_in_any_form_a_length_comes_in(said, minutes):
+    assert build(name="A", per_day="3", min_gap=said).schedule.gap_minutes == minutes
+
+
+@pytest.mark.parametrize(
+    "said, part, reason",
+    [
+        ({"per_day": "3", "min_gap": "ages"}, "min_gap", "can't read “ages” as a gap"),
+        ({"per_day": "3", "min_gap": "3"}, "min_gap", "3 hours or 3 minutes"),
+        ({"times": "8am, teatime"}, "times", "can't read “teatime” as a time"),
+        ({"latest": "bedtime"}, "latest", "can't read “bedtime” as a time"),
+        ({"per_day": "lots"}, "per_day", "How many times a day"),
+        ({"start": "whenever", "days": "7"}, "start", "can't read “whenever” as a date"),
+        ({"end": "someday"}, "end", "can't read “someday” as a date"),
+        ({"days": "a week"}, "days", "For how many days"),
+    ],
+)
+def test_a_part_that_cannot_be_read_is_refused_by_name_so_the_rest_can_be_shown(said, part, reason):
+    with pytest.raises(rules.Unreadable, match=reason) as raised:
+        build(name="A", **said)
+    assert raised.value.field == part
+
+
+def test_a_schedule_that_cannot_fit_is_refused_with_the_plan_as_it_was_read():
+    with pytest.raises(rules.DoesNotFit, match="A dose at 5:00 pm would be after the latest time, 4:00 pm") as raised:
+        build(name="A", times="8am, 5pm", latest="4pm", notes="with food")
+    assert raised.value.plan == Plan("A", notes="with food", schedule=Schedule(2, (time(8, 0), time(17, 0)), latest=time(16, 0)))
+
+
 def test_times_with_a_gap_say_how_many_doses_there_are():
     assert build(name="A", times="8am, 2pm", min_gap="4h").schedule == Schedule(2, (time(8, 0), time(14, 0)), gap_minutes=240)
 
@@ -154,7 +190,7 @@ def test_answering_settles_that_time_and_leaves_the_rest_as_said():
         rules.build(request, TODAY)
     assert raised.value.index == 1
     answered = rules.answer(request, raised.value, time(21, 0))
-    assert answered.times == "8am, 21:00"
+    assert answered.times == "8am, 9:00 pm", "in the one form times are handed over in"
     assert rules.build(answered, TODAY).schedule.times == (time(8, 0), time(21, 0))
 
 
@@ -371,4 +407,3 @@ def test_a_pill_that_is_not_there_lists_the_ones_that_are():
 # ---------------------------------------------------------------------------
 # For Claude
 # ---------------------------------------------------------------------------
-

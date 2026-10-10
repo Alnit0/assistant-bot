@@ -1,6 +1,8 @@
 import unittest
 
-from tasks.timers.durations import (
+import pytest
+
+from core.durations import (
     DurationError,
     format_duration,
     parse_duration,
@@ -119,3 +121,28 @@ class FormatDurationTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# --- the way people say a length (a safety net: Claude is asked for minutes) -----------------------------
+@pytest.mark.parametrize(
+    "said, minutes",
+    [
+        ("3 hours", 180), ("3 hrs", 180), ("3 hours apart", 180), ("at least 3 hours apart", 180), ("2.5 hours", 150),
+        ("2 and a half hours", 150), ("two and a half hours", 150), ("90 minutes", 90), ("ninety minutes", 90),
+        ("an hour and a half", 90), ("an hour and 30 minutes", 90), ("half an hour", 30), ("an hour", 60),
+        ("every 4 hours", 240), ("three hours between doses", 180), ("a minute", 1),
+    ],
+)
+def test_a_length_is_read_the_way_people_say_it(said, minutes):
+    assert parse_duration(said) == minutes * 60
+
+
+@pytest.mark.parametrize("said", ["a while", "soon", "apart", "hours", "3 bananas", "half"])
+def test_what_is_not_a_length_is_still_refused_in_the_words_given(said):
+    with pytest.raises(DurationError, match=said):
+        parse_duration(said)
+
+
+def test_a_word_of_a_label_is_never_taken_for_part_of_the_length():
+    assert split_duration("5m long walk".split()) == (300, "long walk")
+    assert split_duration("2 hours apart".split()) == (7200, "apart")

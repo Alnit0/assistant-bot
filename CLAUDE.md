@@ -114,9 +114,21 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   other tasks still start. Keep it that way
 - The assistant's name comes from `ASSISTANT_NAME`; never hard-code it
 - A pill's plan never changes unseen: every change is a confirm card, and
-  only Save writes it. Keep setup simple: it is rare. Claude hands over
-  times and dates as the user said them; code reads them. The `pills`
+  only Save writes it. Keep setup simple: it is rare. The `pills`
   word and "my pills" show the same read-only Live list
+- Claude does the reading, and hands over structured values: a length of
+  time as whole minutes (`actions.MINUTES`) and a time of day in the one
+  fixed form (`actions.TIME`, `TIMES`: `8:00 pm`, or `8:00` when I gave
+  no am or pm), never as my words for code to parse. Dates still come as
+  I said them, and code reads them. Code stays the safety net:
+  `core/durations.py` and `core/timeinput.py` read other forms that
+  arrive anyway, and an am or pm my message doesn't support is taken
+  back (`actions.unchosen`), so what is unclear is still the code's to
+  settle
+- A field that can't be read never produces a bare error: the card
+  shows everything that was understood, marks that field ❔ with the
+  reason, and has no Save (`Proposal.can_save`) until a reply fixes it.
+  The same goes for something read but impossible (doses that can't fit)
 - Permissions go through `is_allowed(user, action)`, never a comparison
   with `OWNER_ID`. Only the owner is allowed anything
 - Every record has a `user_id`. Task tables are prefixed with the task's

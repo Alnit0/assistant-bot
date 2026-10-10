@@ -6,7 +6,7 @@ import discord
 from core import discord_utils, live
 from core.discord_utils import log_error
 from tasks.timers import store
-from tasks.timers.durations import format_duration
+from core.durations import format_duration
 from tasks.timers.pomodoro import PHASE_NAMES, phase_length
 
 log = logging.getLogger("assistant")

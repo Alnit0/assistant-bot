@@ -2,7 +2,7 @@ import re
 from datetime import datetime
 
 from tasks.timers import store
-from tasks.timers.durations import format_duration
+from core.durations import format_duration
 from tasks.timers.pomodoro import PHASE_NAMES, phase_length
 
 # ---------------------------------------------------------------------------
