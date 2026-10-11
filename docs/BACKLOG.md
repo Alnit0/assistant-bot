@@ -139,6 +139,12 @@ a schema could take its place.
   sums. The `new-task` skill asks for both, and `task-check` checks
   every task declares them. Pills already behaves as identity: name,
   on_repeat: update, in its own code (`plain._known`, `add_card`).
+- **The dev clock outlives the dev database.** Its offset is in
+  `data/dev-clock.json`: deleting `dev.db` by hand (not `dev reset-db`)
+  leaves the clock where it was, so a "fresh" database can start a day
+  ahead without saying so (seen in QA, 2026-10-10). The dev panel shows
+  the clock, but only when dev mode is on. Worth a line on the start
+  card when the clock is moved.
 - **Left for pills stage 3, with reminders** (the checklist shows the
   doses but does not yet act on the rules of the day): a dose that can no
   longer fit is not skipped automatically; there is no take-by hint;

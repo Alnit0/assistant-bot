@@ -92,12 +92,15 @@ def on_new_day(name: str, listener: Listener) -> None:
 
 
 async def schedule_next() -> None:
-    """Make sure the rollover is booked, for the end of today."""
-    if await scheduler.pending_jobs(JOB_TASK, JOB_KIND):
-        return
+    """Make sure the rollover is booked, for the end of today as the clock now
+    reads: one left booked for a later day, from before the clock went back,
+    is moved."""
     due_at = end_of(today())
-    await scheduler.add_job(JOB_TASK, JOB_KIND, due_at)
+    await scheduler.ensure(JOB_TASK, JOB_KIND, due_at)
     log.info("Next day rollover: %s", due_at.astimezone(TIMEZONE).isoformat())
+
+
+scheduler.keep_booked(f"{JOB_TASK}/{JOB_KIND}", schedule_next)
 
 
 async def rollover_job(job: scheduler.Job) -> None:

@@ -159,6 +159,9 @@ async def dev_clock(ctx: Context) -> str:
         return said
     if moment is None:
         clock.reset()
+        # The clock went back: a job booked for "the next midnight" or "the next 6:00 am"
+        # while it read a later day would never come. Each is booked again for the time it now is
+        await scheduler.rebook_standing()
     else:
         clock.advance_to(moment)
     # Whatever came due on the way runs now, in order

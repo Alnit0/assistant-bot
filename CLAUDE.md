@@ -149,6 +149,15 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   `config.now_nz()` for NZ time. They follow the dev clock. Only records of
   what really happened (log cards, `message_log`, the instance lock, bug
   reports, dev mode's expiry) use `clock.real_now()` / `real_now_nz()`
+- A job that books itself for "the next time the clock reads X" (the
+  day rollover, the backup, a task's morning post) is a standing job:
+  it is booked with `scheduler.ensure` and registered with
+  `scheduler.keep_booked`, so that `dev clock reset` and `dev reset-db`
+  book it again for the time it now is. Never book one with a bare
+  "already pending? then leave it"
+- Nothing may depend on a job having run to be right: a day that is
+  over is closed by the rollover and, failing that, by whatever looks at
+  today next (`checklist.close_past`)
 - The day comes from `core/day.py` (`today()`, `day_of()`, `at()`,
   `end_of()`), never from a datetime's own `.date()`. Work at the end of a
   day goes in `Task.new_day`, not a job of the task's own at midnight

@@ -214,10 +214,9 @@ async def reset_db(ctx: Context) -> str:
     async def wipe() -> str:
         await asyncio.to_thread(_start_empty, registry.task_migrations())
         clock.reset()
-        # The core's own jobs went with the rest
-        await backup.schedule_next_backup()
-        await day.schedule_next()
-        scheduler.wake()
+        # Every standing job went with the rest (the rollover, the backup, a task's
+        # morning post): each is booked again, for the time it now is
+        await scheduler.rebook_standing()
         return f"🧹 `{DB_PATH.name}` wiped, clock back at the real time. Restart the bot if anything looks stale."
 
     await confirmations.ask(

@@ -740,6 +740,20 @@ A short log of key decisions and why. Newest at the bottom.
     logging built, silence would look like success. Each task gives the
     names of what it holds, and code sends such a message to its task.
     It is a check on the router, not a way of understanding the message.
+  - **Standing jobs follow the clock (2026-10-10).** The day cycle
+    failed in QA with nothing wrong in how the date was read: the bot
+    had started with the dev clock a day ahead (its offset outlives the
+    database), booked the rollover and the 6:00 am post for that later
+    day, and `dev clock reset` then went back and left them. A job
+    booked for "the next midnight" is only right for the time it was
+    booked at. So such jobs are booked through `scheduler.ensure` (which
+    moves one booked too late, and never one that is overdue) and are
+    booked again by `rebook_standing` when the clock goes back or the
+    database is wiped. `dev reset-db` used to rebook the rollover and
+    the backup by hand and miss the pills job.
+  - **Closing a day never depends on a job.** `close_past` is asked by
+    the rollover and by everything that reads today's doses, and does
+    nothing when there is nothing to close.
   - **An entry may have up to 8 example phrases** (it was 3): pills
     needed its logging phrases in the router's catalogue.
   - The `kind` column of `pills_pills` is dropped and `latest_time` added,

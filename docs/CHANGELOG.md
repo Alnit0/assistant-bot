@@ -6,6 +6,15 @@ backfilled from the git log.
 
 ## 2026-10-10
 
+- **`dev clock reset` no longer strands midnight and 6:00 am.** If the
+  bot was started with the dev clock still ahead from an earlier run,
+  the day rollover and the pills checklist were booked a day late, and
+  going back to the real time left them there: the day never ended and
+  no new checklist came. They are now booked again whenever the clock
+  goes back.
+- **A day that is over is closed whenever the bot next looks at today**,
+  so yesterday's untouched pills are marked missed even if the midnight
+  job never ran.
 - **The daily pills checklist.** At 6:00 am, without a notification, the
   hub gets today's checklist: a progress bar, a line for every dose
   (those with no time first, then by time), and paused pills in their own

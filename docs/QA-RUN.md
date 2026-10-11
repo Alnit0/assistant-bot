@@ -432,6 +432,13 @@ so run them in order, and `dev clock reset` afterwards. Nothing notifies
 you in this block: reminders are the next stage. Every step ends by
 saying what to press.
 
+After the `dev clock reset` above, type `dev clock` and `dev jobs` once:
+the clock should read the real time, with `core/day_rollover` due at the
+coming midnight and `pills/checklist` at the next 6:00 am. (On
+2026-10-10 the clock was still a day ahead from an earlier run when the
+bot started, and both were booked a day late; the reset now books them
+again.)
+
 | # | Do | Expect | Tests |
 |---|---|---|---|
 | 1 | Restart the bot. Say `remove pill A`; press **Remove** (skip this if there is no Pill A). Then say `add pill A to my pills, 3 times a day at 8am, 11:30 and 3pm, at least 3 hours apart, not after 4pm, without food`; press **Save** | One card, "💊 Pills · new", with two lines: "**Pill A** · 3× daily · `8:00 am`, `11:30 am`, `3:00 pm`" and "At least 3h apart · not after `4:00 pm` · *without food*". No ❓ and no ⚠️. Save: "✅ Saved · 💊 **Pill A** · …" | R40 |

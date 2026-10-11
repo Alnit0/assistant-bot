@@ -109,11 +109,12 @@ async def run_nightly_backup() -> None:
 # ---------------------------------------------------------------------------
 async def schedule_next_backup() -> None:
     """Make sure a nightly backup is booked, for the next BACKUP_TIME on the NZ clock."""
-    if await scheduler.pending_jobs(JOB_TASK, JOB_KIND):
-        return
     due_at = scheduler.next_run(BACKUP_TIME, now_nz())
-    await scheduler.add_job(JOB_TASK, JOB_KIND, due_at)
+    await scheduler.ensure(JOB_TASK, JOB_KIND, due_at)
     log.info("Next nightly backup: %s", due_at.isoformat())
+
+
+scheduler.keep_booked(f"{JOB_TASK}/{JOB_KIND}", schedule_next_backup)
 
 
 async def nightly_backup_job(job: scheduler.Job) -> None:

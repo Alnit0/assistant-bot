@@ -215,6 +215,48 @@ async def add_job(
     return job_id
 
 
+# ---------------------------------------------------------------------------
+# Standing jobs: the ones that book themselves for "the next time the clock
+# reads X" (the day rollover, the nightly backup, a task's morning post). When
+# one is due depends on what time it is, so it has to be worked out again
+# whenever the clock goes back (`dev clock reset`) or the jobs are gone (`dev
+# reset-db`): a job left booked from a later time would simply never come.
+# ---------------------------------------------------------------------------
+_standing: dict[str, Callable[[], Awaitable[None]]] = {}
+
+
+def keep_booked(name: str, book: Callable[[], Awaitable[None]]) -> None:
+    """Register a standing job. `book` makes sure it is booked for the right
+    moment as the clock now reads (with `ensure`), and is safe to call at any
+    time. `name` says whose it is; registering again replaces it."""
+    _standing[name] = book
+
+
+async def rebook_standing() -> None:
+    """Book every standing job again for the time it now is. Called when the
+    clock has gone back or the jobs were wiped. One failing is logged and the
+    others are still booked."""
+    for name, book in list(_standing.items()):
+        try:
+            await book()
+        except Exception:
+            log.exception("Could not book the standing job %s", name)
+    wake()
+
+
+async def ensure(task: str, kind: str, due_at: datetime, user_id: int | None = None) -> None:
+    """Make sure exactly this is booked: one pending job of this kind, due no
+    later than `due_at`. None pending: it is booked. One booked for a later
+    moment (it was booked before the clock went back): it is moved. One due
+    earlier is left alone: it is overdue and must still run."""
+    pending = await pending_jobs(task, kind)
+    if not pending:
+        await add_job(task, kind, due_at, user_id=user_id)
+    elif pending[0].due_at > due_at:
+        log.info("%s/%s was booked for %s, later than it is due now: moved to %s", task, kind, pending[0].due_at.isoformat(), due_at.isoformat())
+        await reschedule_job(pending[0].id, due_at)
+
+
 async def cancel_job(job_id: int | None) -> bool:
     """Stop a job that hasn't run yet. False if it already ran or doesn't exist."""
     if job_id is None:

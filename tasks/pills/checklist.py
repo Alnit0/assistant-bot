@@ -21,6 +21,11 @@ log = logging.getLogger("assistant")
 # notification, when the bot starts later than that, and afresh when asked
 # for: the old copy goes, so there is only ever one for today.
 #
+# Every time and date here comes from the one clock (core/clock.py, through
+# core/day.py), which is the clock `dev clock` moves. A day that is over is
+# closed by the rollover and, failing that, by whatever looks at today next
+# (close_past): nothing depends on a job having run.
+#
 # The checklist is never the record: a dose is a row of the occurrence log
 # (core/occurrences.py), changed only through it, and what is shown is
 # written again from the pills and those rows each time (tasks/pills/today.py).
@@ -47,7 +52,9 @@ def db_sync(conn, user_id: int, day: date, now: datetime) -> tuple[list[Pill], l
 
 
 async def view(user_id: int, day: date | None = None) -> tuple[list[Pill], list[Dose], date]:
-    """The user's pills and the day's doses as they stand now (today, unless told)."""
+    """The user's pills and the day's doses as they stand now (today, unless
+    told). Any earlier day still open is closed first."""
+    await close_past()
     now = clock.now()
     day = day or days.today(now)
     pills, found = await database.run(db_sync, user_id, day, now)
@@ -192,6 +199,8 @@ async def on_skip(press: cards.Press) -> str:
 def register() -> None:
     cards.register(TASK, TAKEN, on_taken)
     cards.register(TASK, SKIP, on_skip)
+    # The 6:00 am post is booked for "the next 6:00 am": booked again if the clock goes back
+    scheduler.keep_booked(f"{TASK}/{JOB}", book_next)
 
 
 # ---------------------------------------------------------------------------
@@ -207,9 +216,8 @@ async def _post_if_due(user_id: int) -> None:
 
 
 async def book_next() -> None:
-    """Make sure the next 6:00 am post is booked."""
-    if not await scheduler.pending_jobs(TASK, JOB):
-        await scheduler.add_job(TASK, JOB, scheduler.next_run(POST_AT, clock.now()))
+    """Make sure the next 6:00 am post is booked, as the clock now reads."""
+    await scheduler.ensure(TASK, JOB, scheduler.next_run(POST_AT, clock.now()))
 
 
 async def post_job(job: scheduler.Job) -> None:
@@ -247,10 +255,14 @@ def db_close(conn, started: date, now: datetime) -> list[store.Message]:
     return store.db_messages_before(conn, started)
 
 
-async def new_day(ended: date, started: date) -> None:
-    """A day has ended: what was untouched is missed, the messages for single
-    doses go, and each old checklist is written one last time and left as it is."""
-    for message in await database.run(db_close, started, clock.now()):
+async def close_past() -> None:
+    """Close every day before today that is still open: what was untouched is
+    missed, the messages for single doses go, and each old checklist is
+    written one last time and left as it is. Safe to ask at any time, and
+    asked before anything is shown or marked: a day is over because the
+    clock says so, not because a job happened to run."""
+    now = clock.now()
+    for message in await database.run(db_close, days.today(now), now):
         if message.kind == CHECKLIST:
             pills = await store.pills(message.user_id)
             found = await occurrences.for_day(message.user_id, TASK, message.day)
@@ -259,3 +271,8 @@ async def new_day(ended: date, started: date) -> None:
             await database.run(store.db_drop_message, message.message_id)
         else:
             await _remove(message)
+
+
+async def new_day(ended: date, started: date) -> None:
+    """A day has ended (core/day.py): close it."""
+    await close_past()

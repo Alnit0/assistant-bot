@@ -18,7 +18,11 @@ session; the end-of-task checklist updates it at the end of every task.
 - In hand, uncommitted and paused for QA (block 21 of
   `docs/QA-RUN.md`): pills stage 2, the daily checklist, with dose
   logging by message. Starting the bot runs one pills migration, and
-  it needs `HUB_CHANNEL_ID` to post by itself.
+  it needs `HUB_CHANNEL_ID` to post by itself. The day cycle failed in
+  the first run of block 21: jobs booked while the dev clock was a day
+  ahead stayed there after `dev clock reset`. Fixed in core (standing
+  jobs follow the clock) and the checklist now closes a past day by
+  itself; block 21 is to be rerun.
 - Tests: `python -m pytest -q` passes. Golden conversations 1c, 1d
   and 2a are marked as gaps (they need questions on the card, G1).
   The live evals of 2026-10-10: pills 50 of 51, golden 32 of 33; each
