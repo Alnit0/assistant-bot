@@ -759,7 +759,7 @@ class Step:
     did: str = ""
     at: datetime | None = None
     was: datetime | None = None  # a correction of a dose already ticked off: when it had been taken
-    late: str = ""  # the pill's latest time, as shown, when `at` is after it
+    asks: tuple[str, ...] = ()  # what is asked about on a card first: after the latest time, out of order, too close
 
 
 def db_last_logged(conn, user_id: int) -> int | None:
@@ -795,6 +795,9 @@ async def _step(request: Request, item: dict) -> Step:
     if not rules.is_taken_on(pill, today_):
         return Step(_not_today(pill, today_))
     did, name = item["did"], pill.plan.name
+    if item.get("dose") is not None:
+        # A dose I name by its number is that dose, exactly: never the one the code would have picked
+        return _numbered(pill, listed, today_, item, now)
     taken = today.last_taken(listed, pill.id)
     if did == checklist.NOT_TAKEN:
         if taken is None:
@@ -830,8 +833,62 @@ async def _step(request: Request, item: dict) -> Step:
         at = _moment(given, now, taken.occurrence.actual_at if taken else None) if given else now
     except UserError as error:
         return Step(f"⚠️ {rules.plain(target.label)}: {error}")
+    return Step(dose=target, did=checklist.TAKEN, at=at, asks=_late(pill, today_, at))
+
+
+def _late(pill: Pill, today_: date, at: datetime) -> tuple[str, ...]:
     plan = pill.plan.schedule
-    return Step(dose=target, did=checklist.TAKEN, at=at, late=limits.limit_text(plan) if limits.is_after_limit(plan, today_, at) else "")
+    return (f"That's after the latest time, {limits.limit_text(plan)}.",) if limits.is_after_limit(plan, today_, at) else ()
+
+
+def _out_of_place(listed: list[Dose], dose: Dose, at: datetime, logging: bool) -> tuple[str, ...]:
+    """What a time for this dose breaks among the pill's other doses today: the
+    order they were taken in, or the gap between them. Said on the card."""
+    plan = dose.pill.plan.schedule
+    said = []
+    for other in sorted((each for each in listed if each.pill.id == dose.pill.id and each.number != dose.number), key=lambda each: each.number):
+        earlier, taken = other.number < dose.number, other.occurrence.actual_at
+        if other.occurrence.state != occurrences.DONE or taken is None:
+            if logging and earlier and limits.decided_by_the_bot(other.occurrence):
+                said.append(f"Dose {other.number} isn't ticked off.")
+            continue
+        shown = f"dose {other.number}, taken {timeinput.format_moment(taken)}"
+        if at == taken:
+            said.append(f"That's the same time as {shown}.")
+        elif (at < taken) if earlier else (at > taken):
+            said.append(f"That's {'before' if earlier else 'after'} {shown}.")
+        elif plan.gap is not None and abs(at - taken) < plan.gap:
+            said.append(f"That's less than {rules.gap_text(plan.gap_minutes)} {'after' if earlier else 'before'} {shown}.")
+    return tuple(said)
+
+
+def _numbered(pill: Pill, listed: list[Dose], today_: date, item: dict, now: datetime) -> Step:
+    """What an item means when it says which dose by its number ("dose 1 at
+    9am"): that dose is logged, or its time put right (old → new). A time
+    that breaks the order or the gap is not refused: the card asks."""
+    number, of, name = item["dose"], pill.plan.schedule.per_day, pill.plan.name
+    dose = next((each for each in listed if each.pill.id == pill.id and each.number == number), None)
+    if dose is None:
+        return Step(f"⚠️ **{name}** is {'one dose' if of == 1 else f'{of} doses'} a day: there is no dose {number}.")
+    did, state = item["did"], dose.occurrence.state
+    if did == checklist.NOT_TAKEN:
+        if state != occurrences.DONE:
+            return Step(f"💊 {dose.label} isn't ticked off today: there is nothing to change.")
+        return Step(dose=dose, did=did, at=now)
+    if did == checklist.SKIP:
+        return Step(dose=dose, did=did, at=now) if dose.is_pending else Step(f"{today.line(dose)} already")
+    given = str(item.get("at", "")).strip()
+    taken = dose.occurrence.actual_at if state == occurrences.DONE else None
+    if state == occurrences.DONE and not given:
+        return Step(f"{today.line(dose)} already")
+    try:
+        at = _moment(given, now, None) if given else now
+    except UserError as error:
+        return Step(f"⚠️ {rules.plain(dose.label)}: {error}")
+    if taken is not None and at == taken:
+        return Step(f"{today.line(dose)} already")
+    asks = _out_of_place(listed, dose, at, logging=taken is None) + (() if taken is not None else _late(pill, today_, at))
+    return Step(dose=dose, did=checklist.TAKEN, at=at, was=taken, asks=asks)
 
 
 async def _do(step: Step) -> str:
@@ -844,9 +901,10 @@ async def _do(step: Step) -> str:
 # --- a dose logged after the pill's latest time is asked about first ------------------------------
 async def log_asks(request: Request, data: dict) -> bool:
     """Whether logging needs a card: only when a dose would be ticked off after
-    its pill's latest time."""
+    its pill's latest time, or a dose named by its number would be out of
+    order or too close to another."""
     for item in data["doses"]:
-        if (await _step(request, item)).late:
+        if (await _step(request, item)).asks:
             return True
     return False
 
@@ -861,8 +919,9 @@ def _preview(step: Step) -> str:
 
 
 async def log_card(request: Request, data: dict, guessed: frozenset) -> Proposal:
-    """The card that asks before a dose is logged after its pill's latest time:
-    what would be logged, with the time, and the question. Log it does it."""
+    """The card that asks before a dose is logged after its pill's latest time,
+    or out of order: what would be logged, with the time, and the question.
+    Log it does it."""
     lines, held, warnings = [], [], []
     for item in data["doses"]:
         step = await _step(request, item)
@@ -870,8 +929,8 @@ async def log_card(request: Request, data: dict, guessed: frozenset) -> Proposal
             warnings.append(step.say.removeprefix("⚠️ "))
             continue
         lines.append(_preview(step))
-        if step.late:
-            warnings.append(f"That's after the latest time, {step.late}. Log it anyway?")
+        if step.asks:
+            warnings.append(f"{' '.join(step.asks)} Log it anyway?")
         held.append({
             "occurrence": step.dose.occurrence.id, "did": step.did, "moment": step.at.isoformat(),
             **({"was": step.was.isoformat()} if step.was is not None else {}),
@@ -1057,9 +1116,10 @@ ACTIONS = (
         "zinc, did taken. \"I've taken my zinc today\" -> pill zinc, did taken. \"had pill A at 9\" -> pill "
         "pill A, did taken, at 9:00. \"took iron and vitamin D\" -> one item each. \"skip magnesium today\" -> "
         "did skipped. \"I didn't take zinc\", \"I haven't actually taken zinc\" -> did not_taken (it is marked "
-        "as still to take). \"I took it at 9am\", \"actually it was at 9\" -> pill @that, did taken, at 9:00 am: "
-        "give it like any other; the code works out that it corrects the dose just logged. Never for changing "
-        "when a pill is taken from now on: that is pill_edit.",
+        "as still to take). \"I took it at 9am\", \"I had it at 9pm\", \"it was 9pm actually\" -> pill @that, did taken, at the "
+        "time said: give it like any other; the code works out that it corrects the dose just logged. \"I took dose 1 of "
+        "pill A at 9am\" -> pill pill A, did taken, dose 1, at 9:00 am. \"dose 2 at 12:15pm\" -> pill @that, did taken, "
+        "dose 2, at 12:15 pm. Never for changing when a pill is taken from now on: that is pill_edit.",
         (
             Field(
                 "doses", "Each pill that was taken, skipped or not taken, one item each, in the order said.", ITEMS, required=True,
@@ -1067,11 +1127,18 @@ ACTIONS = (
                     _WHICH,
                     Field("did", "What happened to today's dose.", choices=(checklist.TAKEN, checklist.SKIP, checklist.NOT_TAKEN), required=True),
                     Field("at", "For taken only: the time it was taken, if the user gave one. Leave out for just now.", TIME),
+                    Field(
+                        "dose",
+                        "Only when the user says WHICH of the day's doses by its number (\"dose 1\", \"my second dose\", "
+                        "\"the 3rd one\"): that number. Leave out otherwise: the code knows which dose is next.",
+                        INTEGER,
+                    ),
                 ),
             ),
         ),
         run=log_doses,
-        # Done at once, unless a dose would be ticked off after its pill's latest time: that is asked first
+        # Done at once, unless a dose would be ticked off after its pill's latest time, or one named
+        # by its number would be out of order: that is asked first
         card_if=log_asks,
         prepare=log_card,
         apply=log_save,

@@ -169,3 +169,29 @@ def test_an_exchange_with_nothing_shown_is_not_remembered(monkeypatch):
     llm.remember(7, "note one", "")
     llm.remember(7, "note two", "  ")
     assert llm.exchanges_for(7) == []
+
+
+# --- which task answered last ------------------------------------------------------------------------------
+def test_a_task_that_answered_sticks_for_five_minutes_and_chat_clears_it(monkeypatch):
+    from datetime import timedelta
+
+    from core import clock, llm
+
+    monkeypatch.setattr(llm, "_answered", {})
+    start = clock.now()
+    llm.task_answered(100, "pills")
+    assert llm.answering_task(100, start + timedelta(minutes=4, seconds=59)) == "pills"
+    assert llm.answering_task(100, start + timedelta(minutes=5, seconds=1)) == "", "five minutes, as for a card and a list"
+    assert llm.answering_task(200, start) == "", "another channel"
+    llm.task_answered(100, "")  # plain chat answered since
+    assert llm.answering_task(100, start) == ""
+    llm.task_answered(100, "timers")
+    llm.clear_history(100)
+    assert llm.answering_task(100, start) == ""
+
+
+def test_chat_is_told_never_to_acknowledge_something_done():
+    from core import llm
+
+    prompt = llm.build_system_prompt()
+    assert "You cannot record anything either" in prompt and "Never acknowledge" in prompt and "I took it at 9pm" in prompt

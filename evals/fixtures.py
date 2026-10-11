@@ -42,6 +42,10 @@ class RouterFixture:
     # replay it without judging it, since the same sentence can come back
     # right on one run and wrong on the next
     known_miss: str = ""
+    # The message says the user did something and no task here keeps track of it. It must
+    # never be chat (an answer would read as if it had been recorded): either marked as a
+    # report with no task (the bot says it didn't understand) or as a remark (no reply)
+    reports: bool = False
     recorded: dict | None = None
 
     @property
@@ -65,6 +69,7 @@ class ExtractionFixture:
     # request as it stood on that card ({"action":…, "data":…, "said":…})
     moved: dict | None = None
     after_list: bool = False  # the message came straight after this task's list was shown
+    after_answer: bool = False  # the message came straight after this task's own code answered
     elsewhere: str = ""  # what else in the message is being handled, and by what ("the packing task")
     # Whether anything was asked for that can't go in the action: None doesn't check,
     # False means nothing may be reported as left out, True means something must be
@@ -137,7 +142,13 @@ def settled(fixture: RouterFixture, route, entries):
 
 def router_problem(fixture: RouterFixture, route) -> str:
     """What is wrong with a Route for this fixture, or "" if it is right."""
+    if fixture.reports:
+        if route.tasks:
+            return f"expected a report no task owns, got {list(route.tasks)}"
+        return "" if route.reports else f"expected a report, got {'a remark' if route.nothing else 'chat'}"
     if fixture.nothing:
+        if route.reports:
+            return "expected nothing to be said, got a report (the user would be told it can't be logged)"
         return "" if route.nothing else f"expected nothing to be said, got {list(route.tasks) or 'chat'}"
     if route.nothing:
         return f"expected {fixture.tasks or 'chat'}, got nothing to be said"

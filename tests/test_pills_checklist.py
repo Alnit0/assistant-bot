@@ -508,3 +508,80 @@ def test_with_no_latest_time_the_limit_is_midnight_and_nothing_is_ever_due_tomor
     assert log(world, {"pill": "course a", "did": "taken"}) == "✅ **Course A** (dose 1 of 3) · taken 9:30 pm · nothing left to take today"
     found = {o.seq: (o.state, o.reason) for o in run(occurrences.for_day(world.owner.id, "pills", DAY))}
     assert found[2] == (SKIPPED, "not enough time before midnight") and found[3] == (SKIPPED, "not enough time before midnight")
+
+
+# --- a dose named by its number is that dose, exactly (QA 2026-10-12) -----------------------------------------
+def numbered(dose, at=None, did="taken", pill="Pill A"):
+    return {"pill": pill, "did": did, "dose": dose, **({"at": at} if at else {})}
+
+
+def two_taken(world):
+    """Dose 1 logged at 12:32 am and dose 2 at 9:00 am, as it was; it is now 9:30 am."""
+    world.now = day.at(DAY, time(0, 32))
+    add(world, MAIN)
+    log(world, {"pill": "pill a", "did": "taken"})
+    world.now = day.at(DAY, time(9, 30))
+    assert log(world, {"pill": "pill a", "did": "taken", "at": "9:00 am"}).startswith("✅ **Pill A** (dose 2 of 3) · taken 9:00 am")
+
+
+def test_a_time_for_dose_1_corrects_dose_1_whatever_was_logged_since(world):
+    # "I took dose 1 of Pill A at 9am" gave "Pill A (dose 2 of 3) · taken 9:00 am already": the number was ignored
+    two_taken(world)
+    said = log(world, numbered(1, "5:30 am"))
+    assert said.startswith("✏️ **Pill A** (dose 1 of 3) · taken 12:32 am → 5:30 am"), "dose 1, old → new"
+    taken = {o.seq: o.actual_at for o in run(occurrences.for_day(world.owner.id, "pills", DAY))}
+    assert taken[1] == day.at(DAY, time(5, 30)) and taken[2] == day.at(DAY, time(9, 0)), "and dose 2 is as it was"
+    assert log(world, numbered(1, "5:30 am")) == "✅ **Pill A** (dose 1 of 3) · taken 5:30 am already"
+    assert log(world, numbered(1)) == "✅ **Pill A** (dose 1 of 3) · taken 5:30 am already", "no time: nothing to put right"
+
+
+@pytest.mark.parametrize(
+    "at, asked",
+    [
+        ("9:00 am", "That's the same time as dose 2, taken 9:00 am. Log it anyway?"),
+        ("9:15 am", "That's after dose 2, taken 9:00 am. Log it anyway?"),
+        ("8:00 am", "That's less than 3h before dose 2, taken 9:00 am. Log it anyway?"),
+    ],
+)
+def test_a_time_that_breaks_the_order_or_the_gap_is_asked_about_on_a_card(world, at, asked):
+    two_taken(world)
+    request, said = world.request(), {"doses": [numbered(1, at)]}
+    assert run(plain.log_asks(request, said)) is True
+    card = run(plain.log_card(request, said, frozenset()))
+    assert card.lines == (f"**Pill A** (dose 1 of 3) · taken 12:32 am → {at}",) and card.warnings == (asked,)
+    assert run(occurrences.for_day(world.owner.id, "pills", DAY))[0].actual_at == day.at(DAY, time(0, 32)), "nothing is changed by asking"
+    assert run(plain.log_save(request, card.data)).startswith(f"✏️ **Pill A** (dose 1 of 3) · taken 12:32 am → {at}")
+    assert run(plain.log_check(request, card.data)) == ""
+
+
+def test_dose_2_by_its_number_is_logged_then_corrected_and_what_is_not_there_is_said(world):
+    world.now = day.at(DAY, time(9, 5))
+    add(world, MAIN)
+    log(world, {"pill": "pill a", "did": "taken", "at": "9:00 am"})
+    world.now = day.at(DAY, time(12, 30))
+    assert run(plain.log_asks(world.request(), {"doses": [numbered(2, "12:15 pm", pill="@that")]})) is False, "in order and 3h on: nothing to ask"
+    assert log(world, numbered(2, "12:15 pm", pill="@that")).startswith("✅ **Pill A** (dose 2 of 3) · taken 12:15 pm")
+    assert log(world, numbered(2, "12:20 pm")).startswith("✏️ **Pill A** (dose 2 of 3) · taken 12:15 pm → 12:20 pm")
+    early = run(plain.log_card(world.request(), {"doses": [numbered(2, "8:00 am")]}, frozenset()))
+    assert early.warnings == ("That's before dose 1, taken 9:00 am. Log it anyway?",)
+    assert log(world, numbered(4, "12:25 pm")) == "⚠️ **Pill A** is 3 doses a day: there is no dose 4."
+    assert log(world, numbered(3, did="not_taken")) == "💊 **Pill A** (dose 3 of 3) isn't ticked off today: there is nothing to change."
+    assert log(world, numbered(1, did="not_taken")).startswith("↩️ **Pill A** (dose 1 of 3) · no longer ticked off"), "dose 1, though dose 2 was taken later"
+
+
+def test_a_later_dose_logged_before_an_earlier_one_is_asked_about(world):
+    world.now = day.at(DAY, time(12, 30))
+    add(world, MAIN)
+    card = run(plain.log_card(world.request(), {"doses": [numbered(2, "12:15 pm")]}, frozenset()))
+    assert card.lines == ("**Pill A** (dose 2 of 3) · taken 12:15 pm",) and card.warnings == ("Dose 1 isn't ticked off. Log it anyway?",)
+    assert run(plain.log_save(world.request(), card.data)).startswith("✅ **Pill A** (dose 2 of 3) · taken 12:15 pm")
+    assert pill_a(world)[1][0] != DONE
+
+
+def test_the_log_action_takes_a_dose_number_and_shows_how(world):
+    from core import actions
+
+    log_action = next(action for action in plain.ACTIONS if action.name == "pill_log")
+    item = actions.schema(log_action)["properties"]["doses"]["items"]
+    assert item["properties"]["dose"]["type"] == "integer" and "dose" not in item["required"], "only when I say which"
+    assert "dose 1, at 9:00 am" in log_action.description and "dose 2, at 12:15 pm" in log_action.description

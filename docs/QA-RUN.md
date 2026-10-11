@@ -28,8 +28,8 @@ tests (block 12).
 | 18 | Retest: one path for every message | `--dev`, off (one restart) | 9 | 12 |
 | 21 | Pills: the daily checklist | `--dev`, off (two restarts) | 13 | 20 |
 | 22 | Channel reset, housekeeping that leaves no trace, and button colours | `--dev`, off then on (two restarts) | 8 | 15 |
-| 23 | Retest: the main pill, late at night | `--dev`, off (one restart) | 4 | 8 |
-| | **Total** | | **188** (F2 is split over blocks 4 and 7, counted in 7) | **about 3¼ hours** |
+| 23 | Retest: the main pill, late at night | `--dev`, off (one restart) | 7 | 12 |
+| | **Total** | | **191** (F2 is split over blocks 4 and 7, counted in 7) | **about 3¼ hours** |
 
 Blocks 14 to 23 need nothing from the others (19 and 20, the first pills blocks, passed on 2026-10-10 and are no longer here) (13 and 16 tested the old way of asking Claude, which is gone): run them any time after
 block 1, and before the overnight block if that suits.
@@ -490,9 +490,12 @@ Every step ends by saying what to press.
 | # | Do | Expect | Tests |
 |---|---|---|---|
 | 1 | With `--dev`: `dev clock reset`. Make sure the main pill is there (say `add pill A to my pills, 3 times a day at 8am, 11:30 and 3pm, at least 3 hours apart, not after 4pm`; **Save**). `dev clock 10:57pm`. Type `pills`. Then say `Taken my pill A`; press **Log it** | The checklist shows the three doses ❌ missed, with no times. Then a card "💊 Pills · change": "**Pill A** (dose 1 of 3) · taken 10:57 pm" and "⚠️ That's after the latest time, 4:00 pm. Log it anyway?", with **Log it** (green) and **Cancel**. Log it: "✅ **Pill A** (dose 1 of 3) · taken 10:57 pm · nothing left to take today": no dose promised for 1:57 am. On the checklist dose 1 is ✅ and doses 2 and 3 read "⏭️ … skipped automatically: not enough time before 4:00 pm" | R56 |
-| 2 | Straight after: say `I took it at 9am`. Press nothing | No "Which pill?" and no refusal: "✏️ **Pill A** (dose 1 of 3) · taken 10:57 pm → 9:00 am · nothing left to take today". The checklist shows dose 1 taken 9:00 am, dose 2 ❌ missed (it was due at noon) and dose 3 still skipped automatically | R57 |
+| 2 | Straight after: say `I took it at 9am`. Then reply to that message of yours with `dev why`. Then say `it was 9:15am actually`. Press nothing | No "Which pill?", no refusal, and never an answer like "Got it": "✏️ **Pill A** (dose 1 of 3) · taken 10:57 pm → 9:00 am · nothing left to take today". The `dev why` block says the message went to pills first because pills had just answered, with "router: not asked" and one request. Then "✏️ … taken 9:00 am → 9:15 am · …". The checklist shows dose 1 taken 9:15 am, dose 2 ❌ missed (it was due after noon) and dose 3 still skipped automatically | R57 |
 | 3 | `dev clock 9:00am` (the next day: a new checklist is posted on the way). Say `took my pill A`. Then `dev clock 12:40pm`, look; `dev clock 1:05pm`, look; `dev clock 4:02pm`, look. Press nothing | Dose 1 ✅ 9:00 am, dose 2 `12:00 pm`, dose 3 `3:00 pm`. At 12:40 pm nothing has moved: dose 2 still `12:00 pm`, dose 3 still `3:00 pm`. At 1:05 pm dose 3 is ⏭️ skipped automatically (dose 2 can no longer be in time for it); dose 2 still `12:00 pm`. At 4:02 pm dose 2 is ❌ missed, changed by the bot without your asking | R58 |
-| 4 | Say `I took pill A at 8:30am`. Press nothing | "✏️ **Pill A** (dose 1 of 3) · taken 9:00 am → 8:30 am · …": a time earlier than the dose last taken puts that dose right, and is not a second dose. Then `dev clock reset` | R59 |
+| 4 | Say `I took pill A at 8:30am`. Press nothing | "✏️ **Pill A** (dose 1 of 3) · taken 9:00 am → 8:30 am · …": a time earlier than the dose last taken puts that dose right, and is not a second dose | R59 |
+| 5 | Say `I took dose 2 of pill A at 12:15pm`. Then `I took dose 1 of pill A at 8:45am`. Press nothing | "✅ **Pill A** (dose 2 of 3) · taken 12:15 pm · …" (it was ❌ missed). Then "✏️ **Pill A** (dose 1 of 3) · taken 8:30 am → 8:45 am · …": dose 1, not dose 2, and no "Not included" line | R61 |
+| 6 | Say `I took dose 1 of pill A at 12:15pm`. Press **Cancel** | A card: "**Pill A** (dose 1 of 3) · taken 8:45 am → 12:15 pm" and "⚠️ That's the same time as dose 2, taken 12:15 pm. Log it anyway?", with **Log it** and **Cancel**. After Cancel the checklist still shows dose 1 taken 8:45 am | R62 |
+| 7 | Say `I went for a run at 7 this morning`. Then `shopping is boring`. Then `dev clock reset` | "I can't log that yet." to the first: no "Got it", and not silence. No reply at all to the second | S57 |
 
 ## When you finish
 

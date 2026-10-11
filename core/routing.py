@@ -62,7 +62,16 @@ RULES = (
     "the task as usual and copy the part that is for no task into chat_part, word for word. Every part "
     "of a message must be dealt with. Leave chat_part empty when the whole message is for the task(s); "
     "a greeting or a please is not a part.\n"
-    "- A reply to what is on screen usually belongs to the same task as that."
+    "- A reply to what is on screen usually belongs to the same task as that.\n"
+    "- A message that says the user did, took or finished something, or when something happened (\"I took "
+    "it at 9pm\", \"I had it at 9\", \"it was 9pm actually\", \"done my stretches\") is a report: set "
+    "reports_doing to true. A report is for the task that keeps track of that thing (taking a pill is "
+    "pills'), and for the task that answered last in the recent exchanges when it names nothing (\"it\"). "
+    "It is never chat: chat can record nothing, and an answer from it would look as if it had. If no "
+    "task here keeps track of it (\"I walked the dog at 6\", \"finished my book last night\"), give no tasks "
+    "and still set reports_doing to true, whatever the kind: the user is then told it can't be logged, so it "
+    "is not a remark to pass over in silence. An opinion, a feeling or a thank-you (\"shopping is boring\", "
+    "\"thanks\") reports nothing done."
 )
 
 
@@ -76,6 +85,9 @@ class Route:
     chat_part: str = ""
     # The message asks nothing and needs nothing done: no reply at all
     nothing: bool = False
+    # The message says the user did or took something, or when something happened.
+    # With no task to take it, it is neither chat nor silence: the bot says it didn't understand
+    reports: bool = False
 
     @property
     def chat(self) -> bool:
@@ -119,6 +131,14 @@ def tool(entries: list[Entry]) -> dict:
                     "enum": [HIGH, TIE],
                     "description": "tie only when two or more tasks fit equally and nothing settles it.",
                 },
+                "reports_doing": {
+                    "type": "boolean",
+                    "description": (
+                        "true if the message says the user did, took or finished something, or when something "
+                        "happened, whether or not any task keeps track of it. Such a message is never "
+                        "answered by chat."
+                    ),
+                },
                 "chat_part": {
                     "type": "string",
                     "description": (
@@ -127,16 +147,17 @@ def tool(entries: list[Entry]) -> dict:
                     ),
                 },
             },
-            "required": ["kind", "tasks", "confidence", "chat_part"],
+            "required": ["kind", "tasks", "confidence", "reports_doing", "chat_part"],
             "additionalProperties": False,
         },
     }
 
 
 ABOUT_DATA = (
-    "This message is about the user's own data, or asks the bot to do something with it: plain chat said "
-    "so and has no access to that data. Choose the task that owns it. Answer chat or nothing only if no "
-    "task here could possibly own it."
+    "This message is about the user's own data, asks the bot to do something with it, or reports "
+    "something the user did or took: plain chat said so, and chat has no access to that data and can "
+    "record nothing. Choose the task that owns it. Answer chat or nothing only if no task here could "
+    "possibly own it."
 )
 
 
@@ -169,17 +190,19 @@ def parse(raw, names: list[str]) -> Route:
     tasks = tuple(dict.fromkeys(name for name in listed if isinstance(name, str) and name in names))
     unknown = [name for name in listed if name not in names]
     problem = f"unknown task(s): {unknown}" if unknown else ""
+    reports = raw.get("reports_doing") is True
     if raw.get("kind") == NOTHING and not tasks:
-        return Route(problem=problem, nothing=True)
+        return Route(problem=problem, nothing=True, reports=reports)
     # Nothing with a task named is a task: something was asked for
     if raw.get("kind") == CHAT or not tasks:
-        return Route(problem=problem)
+        return Route(problem=problem, reports=reports)
     aside = raw.get("chat_part")
     return Route(
         tasks,
         tie=raw.get("confidence") == TIE and len(tasks) > 1,
         problem=problem,
         chat_part=aside.strip() if isinstance(aside, str) else "",
+        reports=reports,
     )
 
 
@@ -242,8 +265,8 @@ def with_named(found: Route, named: list[str]) -> Route:
     if not named:
         return found
     if all(name in found.tasks for name in named):
-        return Route(found.tasks, tie=False, problem=found.problem, chat_part=found.chat_part)
-    return Route(tuple(named), problem=found.problem)
+        return Route(found.tasks, tie=False, problem=found.problem, chat_part=found.chat_part, reports=found.reports)
+    return Route(tuple(named), problem=found.problem, reports=found.reports)
 
 
 async def route(message: str, entries: list[Entry], on_screen: str = "", exchanges=None, about_data: bool = False) -> Route:

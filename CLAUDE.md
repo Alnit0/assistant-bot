@@ -134,6 +134,10 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   time given for a dose just logged, or earlier than the dose last
   taken, corrects that dose (old → new) and is never a second dose.
   "It" is the pill logged last
+- A dose I name by its number ("dose 1 at 9am") is that dose exactly,
+  logged or put right, never the one the code would have picked. A time
+  that breaks the order of the day's doses or the gap is not refused:
+  the card says so and asks
 - Claude does the reading, and hands over structured values: a length of
   time as whole minutes (`actions.MINUTES`) and a time of day in the one
   fixed form (`actions.TIME`, `TIMES`: `8:00 pm`, or `8:00` when I gave
@@ -298,7 +302,8 @@ Input
   acknowledge a message: it is reserved.
 - Connecting and filler words (and, also, plus, too, please…) are never
   "Not included" (`actions.is_filler`): only a leftover that is a real
-  request or content is reported.
+  request or content is reported, and as whole words of that part,
+  never cut off mid-phrase ("dose 1 of": `actions.whole_part`).
 - When a message isn't understood the reply is neutral ("🤔 I didn't
   understand that."): it names no task and suggests no task's wording.
   That line is only for what wasn't understood. When extraction
@@ -343,6 +348,20 @@ Input
   short message that follows goes to that list's task ("add milk" after
   "what am I packing?" is for packing). The card names its task, so
   "no, shopping" still corrects it.
+- The task that just answered is context too: for 5 minutes after a
+  task's own code answers (a log, a change, an answer, the result of a
+  card's button: `llm.task_answered`), a short message that follows goes
+  to that task's extraction first, with no router (`after_answer`). It
+  may answer `not_this`, and the message is then read afresh. A plain
+  chat answer clears it.
+- Plain chat never acknowledges something I did, took or finished, or a
+  time something happened: it can record nothing, so "got it" would read
+  as done. Three things hold this: chat is told to hand such a message
+  back (`llm.ABOUT_DATA`); the router marks it (`reports_doing`), and
+  with no task to take it the bot says "I can't log that yet."
+  (`conversation.CANT_LOG`), never silence; and an acknowledgement chat
+  writes anyway is never sent (`outgoing.acknowledges`), the message
+  being routed again.
 - Names are kept exactly as I typed them. Singular and plural of a name
   are the same item when adding to or ticking off a list.
 - A message with several parts gets every part dealt with: each task's

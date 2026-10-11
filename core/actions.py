@@ -739,7 +739,8 @@ def schema(action: Action) -> dict:
         "items": {"type": "string"},
         "description": (
             "Every part of what the user asked for that you could NOT put into this action, each copied "
-            "word for word. The user is told, so nothing is dropped unseen. Empty if all of it is covered."
+            "word for word. Each is a whole part (a whole request, or the whole phrase), never one cut off "
+            "mid-phrase. The user is told, so nothing is dropped unseen. Empty if all of it is covered."
         ),
     }
     return {
@@ -928,6 +929,23 @@ def is_filler(part: str) -> bool:
     return all(word in _FILLER for word in words)
 
 
+# Joining words that mean nothing left hanging at an end of a leftover
+_DANGLING_END = frozenset("of and or the a an my at for with plus &".split())
+_DANGLING_START = frozenset("and or of plus then also &".split())
+
+
+def whole_part(part: str) -> str:
+    """A leftover as whole words of a real part of the message. Claude sometimes
+    cuts one mid-phrase ("dose 1 of", from "dose 1 of Pill A"): a joining
+    word left hanging at either end is taken off ("dose 1")."""
+    words = part.split()
+    while words and words[-1].strip(",;:.").lower() in _DANGLING_END:
+        words.pop()
+    while words and words[0].strip(",;:.").lower() in _DANGLING_START:
+        words.pop(0)
+    return " ".join(words).strip(" ,;:")
+
+
 def validate(action: Action, raw) -> Checked:
     """What Claude returned, checked: the data, what was guessed, and what was
     left out. Raises Invalid if it doesn't fit the action at all.
@@ -1000,7 +1018,7 @@ def validate(action: Action, raw) -> Checked:
     not_included = raw.get(NOT_INCLUDED, [])
     if not isinstance(not_included, list) or not all(isinstance(item, str) for item in not_included):
         raise Invalid(f"`{NOT_INCLUDED}` must be a list of the parts left out")
-    left_out = [part.strip() for part in not_included if part.strip() and not is_filler(part)] + left_out
+    left_out = [whole for part in not_included if (whole := whole_part(part)) and not is_filler(whole)] + left_out
     # A guess named by an item's field alone ("duration" for "timers[0].duration"),
     # seen from Claude on a list of one: it is put where it belongs, on each item that
     # has that field, so the guess is still flagged rather than forgotten

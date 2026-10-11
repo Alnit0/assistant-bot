@@ -63,3 +63,29 @@ def test_a_label_is_taken_out_and_what_is_left_is_sent(monkeypatch):
 )
 def test_a_reply_never_ends_with_an_offer(said, kept):
     assert outgoing.without_offer(said) == kept
+
+
+# --- chat can record nothing, so it never acknowledges ----------------------------------------------------
+import pytest  # noqa: E402
+
+from core import outgoing as _outgoing  # noqa: E402
+
+
+@pytest.mark.parametrize(
+    "reply, acknowledges",
+    [
+        ("Got it. So you took it about 2 hours and 49 minutes ago.", True),
+        ("Noted! Well done on the run.", True),
+        ("Done.", True),
+        ("Okay, got it.", True),
+        ("I've logged that for you.", True),
+        ("So you took it at 9 pm.", True),
+        ("Thanks for letting me know.", True),
+        ("Paris.", False),
+        ("Vitamin D helps the body absorb calcium.", False),
+        ("Noting the time zone, Auckland is 13 hours ahead.", False),
+        ("", False),
+    ],
+)
+def test_a_reply_that_opens_by_acknowledging_something_done_is_caught(reply, acknowledges):
+    assert _outgoing.acknowledges(reply) is acknowledges

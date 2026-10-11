@@ -22,14 +22,23 @@ session; the end-of-task checklist updates it at the end of every task.
 - Committed: housekeeping lines deleted by a stored job, and the rule
   for button colours. Live since 2026-10-11.
 - In hand, uncommitted, from going live (three parts, a pause after
-  each): **part 1, the bugs from real use, is done** and paused for
-  a retest (block 23 of `docs/QA-RUN.md`). Part 2 (polish) and part
-  3 (the checklist redesign, mock-ups first) wait for it.
+  each): **part 1, the bugs from real use**, is committed. Its retest
+  (block 23 of `docs/QA-RUN.md`) failed at step 2, silently: a time
+  said straight after a log went to plain chat, which acknowledged it.
+  Fixed and uncommitted: a follow-up goes to the task that just
+  answered, and chat never acknowledges something done. The rerun
+  found one more: a stated dose number was ignored. Fixed and
+  uncommitted with it: a dose named by its number is that dose, a
+  leftover is never cut off mid-phrase, and a report nothing tracks
+  gets "I can't log that yet." Steps 5 to 7 of block 23 retest these.
+  Part 2 (polish) and part 3 (the checklist redesign, mock-ups first)
+  wait for it.
 - Tests: `python -m pytest -q` passes. Golden conversations 1c, 1d
   and 2a are marked as gaps (they need questions on the card, G1).
-  The live evals of 2026-10-10: pills 50 of 51, golden 32 of 33; each
-  miss is a known one that the code covers.
-- Live eval spend to date: about US$3.47.
+  The live evals of 2026-10-12: pills 56 of 57, general 12 of 12,
+  golden 37 of 39 (not run again since the router's rule on reports
+  was reworded); each miss is a known one that the code covers.
+- Live eval spend to date: about US$3.91.
 
 ## Current goal
 

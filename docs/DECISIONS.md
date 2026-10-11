@@ -964,3 +964,30 @@ A short log of key decisions and why. Newest at the bottom.
     correction. Anything else with a time is the next dose.
   - The "too soon" question and the take-by hint still come with
     reminders.
+- **The task that just answered is context (2026-10-12).** A retest
+  failed in silence: "Taken my pill A", then "I took it at 9pm" went to
+  plain chat, which answered "Got it. So you took it about 2 hours and
+  49 minutes ago." and changed nothing. Stickiness had only been for an
+  open card and a list just shown; a log leaves neither on screen. Now
+  any answer from a task's own code makes a short message that follows,
+  for five minutes, that task's first (one extraction request, no
+  router); `not_this`, or nothing fitting, sends it on to the router.
+  - Chat acknowledging is the worse half, because it reads as done. It
+    is held three ways: chat's instructions (hand the message back), the
+    router's `reports_doing` flag (a report with no task is "I didn't
+    understand that", never chat), and a check on chat's reply that
+    stops an acknowledgement being sent.
+  - The tests' default is a message that comes later than five minutes:
+    most scripted conversations are about something else. The golden
+    conversations that are follow-ups (2b, 4 and 18) run the new path.
+- **A dose number is stated, so it is used exactly (2026-10-12).** "I
+  took dose 1 of Pill A at 9am" was answered about dose 2, the one the
+  code would have picked, with "Not included: dose 1 of". The log action
+  now takes an optional dose number, and a numbered dose is that one:
+  logged if it wasn't, its time put right if it was.
+  - A time that breaks the order or the gap is not refused, since what
+    I state wins: the card says what it breaks and asks. A later dose
+    logged while an earlier one is open is asked about the same way.
+  - A report nothing keeps track of gets "I can't log that yet." It
+    replaces "I didn't understand that" there, which was untrue: it was
+    understood.

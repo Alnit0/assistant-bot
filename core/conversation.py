@@ -163,6 +163,8 @@ async def _owners(text: str, entries: list[Entry], request: Request) -> list[str
 
 
 NOT_UNDERSTOOD = "🤔 I didn't understand that."
+# Something I did that no task keeps track of ("I went for a run at 7"): understood, and said so
+CANT_LOG = "I can't log that yet."
 # When Claude understood and declined, the user is told which, in the code's own words.
 # For "already so" these are only the fallback: the task's own line, which names the
 # thing and shows it, is said when the task has one (Entry.already)
@@ -289,6 +291,8 @@ async def act(
                     await say(left_out)
             else:
                 await say(f"{result}\n{left_out}" if left_out else result)
+            # For a few minutes a short message that follows is this task's first
+            llm.task_answered(request.channel_id, entry.name)
     except UserError as error:
         # The task's own words for a problem the user can fix: the one plain line
         turn.failed = True
@@ -586,6 +590,23 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
             else:
                 shown_list = None
 
+        # Straight after a task's own answer (a log, a change, a reply)? Then a short message
+        # is that task's first, without the router: "it was 9pm actually" names nothing, and
+        # the router took it for chat, which "acknowledged" it and changed nothing
+        if not settled and not ctx.is_reply and not named:
+            entry = actions.entry(llm.answering_task(ctx.channel_id)) if llm.answering_task(ctx.channel_id) else None
+            if entry in entries and 0 < len(ctx.text.split()) <= livelists.SHORT_WORDS:
+                found = await extraction.extract(entry, ctx.text, await _state(entry, request, turn), after_answer=True)
+                # Anything but an action or a plain "that is already so" is not about what was just done
+                if found.fitted or found.declined in (actions.ALREADY_SO, actions.CANNOT):
+                    turn.route = costs.FOLLOW_UP
+                    turn.why.append(f"{entry.name} answered here less than 5 minutes ago and the message is short: it goes to {entry.name} first")
+                    await act(request, found, turn)
+                    settled = True
+                else:
+                    turn.extracted.append(found.as_log())
+                    trace.note(f"extraction said the message is not about what {entry.name} just did: on to the router")
+
         if not settled:
             on_screen = confirm.on_screen(open_card) if open_card is not None else ""
             if not on_screen and shown_list is not None:
@@ -605,21 +626,35 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
                 if settled_by_name != routed:
                     trace.note(f"named destination: the router said {list(routed.tasks) or 'no task'}, overruled by what was stated")
                 routed = settled_by_name
-            if routed.nothing:
+            if routed.reports and not routed.tasks:
+                # "I went for a run at 7" with no task to take it: never chat (an answer would look as
+                # if it had been recorded) and never silence (that would look like success)
+                trace.note("report check: the message says something was done and no task owns it: said so, never chat")
+                turn.router["report"] = True
+                routed = replace(routed, nothing=True)  # handled here: one plain line, and no more
+                await _say(ctx, turn, CANT_LOG)
+            elif routed.nothing:
                 # A message that names one of my things is never a remark to drop in silence
                 # ("I've taken my Zinc today"): it goes to the task that holds the thing
                 owners = await _owners(ctx.text, entries, request)
                 if owners:
                     routed = routing.Route(tuple(owners), problem=routed.problem)
                     turn.router["named item"] = owners
-            if routed.nothing:
+            if routed.nothing and turn.router.get("report"):
+                pass  # said above
+            elif routed.nothing:
                 # Nothing was asked and nothing needs doing: no reply and no reaction left. The 👀
                 # that showed it being read is taken off like any other, which is the sign it was
                 turn.why.append("the message asks nothing and needs nothing done: no reply")
             elif routed.chat:
                 turn.route = costs.CHAT
                 result = await llm.ask_claude(ctx.text, capabilities, ctx.channel_id, purpose=costs.PURPOSE_CHAT)
-                if result.about_data:
+                acknowledged = not result.about_data and outgoing.acknowledges(result.reply)
+                if acknowledged:
+                    # Chat can record nothing, so "Got it" from chat is never sent: it would read as done
+                    trace.note(f"chat check: chat acknowledged something done ({truncate(result.reply, 60)!r}); not sent, routed again")
+                    llm.history_for(ctx.channel_id)[-2:] = []  # nor remembered as said
+                if result.about_data or acknowledged:
                     # Chat has no access to my data and must never answer about it: it said the
                     # message is about that, so the router looks again, told to find the owner
                     trace.note("chat check: chat said the message is about my data; routed again to the task that owns it")
@@ -629,10 +664,11 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
                     )
                     turn.router["second look"] = list(routed.tasks) or "no task"
                     if not routed.tasks:
-                        routed = replace(routed, nothing=True)  # handled here: one neutral line, and no more
-                        await _say(ctx, turn, NOT_UNDERSTOOD)
+                        routed = replace(routed, nothing=True)  # handled here: one plain line, and no more
+                        await _say(ctx, turn, CANT_LOG if acknowledged or routed.reports else NOT_UNDERSTOOD)
                 else:
                     await _say(ctx, turn, outgoing.without_offer(result.reply), reply=True)
+                    llm.task_answered(ctx.channel_id, "")  # the last answer here is chat's: nothing sticks to it
             elif routed.chat_part:
                 # The message also asked something that is for no task: every part
                 # is dealt with. The answer goes first, so that a card stays the

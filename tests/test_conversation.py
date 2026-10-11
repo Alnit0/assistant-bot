@@ -89,6 +89,7 @@ def world(make_db, monkeypatch, owner):
     monkeypatch.setattr(scheduler, "_handlers", dict(scheduler._handlers))
     monkeypatch.setattr(llm, "_histories", {})
     monkeypatch.setattr(llm, "_exchanges", {})
+    monkeypatch.setattr(llm, "_answered", {})
     live.reset()
     conversation.setup()
 
@@ -165,7 +166,12 @@ def world(make_db, monkeypatch, owner):
 
     seen.message = message
 
-    def say(text, **options):
+    def say(text, straight_after=False, **options):
+        # A short message within five minutes of a task's answer goes to that task first, with no
+        # router. Most tests here are about something else, so by default a message is taken as
+        # coming later than that; one that is about the follow-up says `straight_after=True`
+        if not straight_after:
+            llm.task_answered(options.get("channel_id", INBOX), "")
         ctx = message(text, **options)
         return ctx, run(conversation.handle(ctx, "the shortcuts"))
 
@@ -1180,7 +1186,7 @@ def test_what_was_left_out_of_a_reply_is_said_after_it(world):
     run(demo._save("shopping", 1, [{"item": "milk", "quantity": 1}, {"item": "eggs", "quantity": 6}]))
     world.claude(route("shopping"), ("demo_shop_tick", {"items": [{"item": "milk"}], "guessed": [], "not_included": ["and book the dentist"]}))
     world.say("got the milk and book the dentist")
-    assert world.sent[-1][1].text == "☑️ Ticked off **milk** × 1 · still to buy: eggs\n⚠️ Not included: and book the dentist"
+    assert world.sent[-1][1].text == "☑️ Ticked off **milk** × 1 · still to buy: eggs\n⚠️ Not included: book the dentist"
 
 
 def test_ticking_off_several_names_the_ones_that_were_not_on_the_list(world):

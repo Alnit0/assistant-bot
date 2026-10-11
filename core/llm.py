@@ -1,10 +1,11 @@
 import logging
 import time
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 
 from anthropic import AsyncAnthropic, Timeout
 
-from core import costs, timing
+from core import clock, costs, timing
 from core.config import (
     ANTHROPIC_API_KEY,
     ASSISTANT_NAME,
@@ -73,6 +74,30 @@ def clear_history(channel_id: int | None) -> None:
     """Forget the conversation in one channel. Other channels are untouched."""
     history_for(channel_id).clear()
     exchanges_for(channel_id).clear()
+    _answered.pop(channel_id, None)
+
+
+# The task whose own code last answered in each channel (a log, a change, an
+# answer, the result of a card's button), and when. For a few minutes a short
+# message that follows is that task's first: "it was 9pm actually" names
+# nothing, and only makes sense as being about what was just done.
+_answered: dict[int | None, tuple[str, datetime]] = {}
+ANSWER_STICKS = timedelta(minutes=5)
+
+
+def task_answered(channel_id: int | None, task: str) -> None:
+    """Note that a task has just answered in a channel. An empty name says the
+    last answer there was plain chat's: nothing sticks to that."""
+    if task:
+        _answered[channel_id] = (task, clock.now())
+    else:
+        _answered.pop(channel_id, None)
+
+
+def answering_task(channel_id: int | None, now: datetime | None = None) -> str:
+    """The task that answered in this channel within the last few minutes, or ""."""
+    task, at = _answered.get(channel_id, ("", None))
+    return task if task and (now or clock.now()) - at <= ANSWER_STICKS else ""
 
 
 def remember(channel_id: int | None, user_text: str, bot_text: str) -> None:
@@ -104,6 +129,11 @@ def _stable_prompt(capabilities: str) -> str:
         "chat tells you what it holds. If the message asks about any of that, or asks for something "
         f"to be added, changed, shown or removed there, answer with exactly `{ABOUT_DATA}` and nothing "
         "else: the bot's own code will deal with it. Never guess what their data holds.\n\n"
+        "You cannot record anything either. If the message tells you that the user did, took or finished "
+        "something, or when something happened (\"I took it at 9pm\", \"had it this morning\", \"it was "
+        f"9pm actually\", \"done\"), answer with exactly `{ABOUT_DATA}` and nothing else. Never acknowledge "
+        "such a message: no \"got it\", \"noted\", \"done\" or \"so you took it at…\". An acknowledgement "
+        "from you would read as if it had been recorded, and it has not.\n\n"
         "Answer the question and stop. Never offer to do something, never offer further help, and never "
         "end with a question such as \"want me to…?\", \"would you like…?\" or \"anything else?\"."
     )

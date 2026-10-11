@@ -592,6 +592,28 @@ def test_what_claude_says_it_left_out_loses_its_filler_before_anyone_is_told():
     assert actions.validate(BUY, {"items": [{"item": "socks"}], "guessed": [], "not_included": ["and"]}).not_included == ()
 
 
+@pytest.mark.parametrize(
+    "part, whole",
+    [
+        ("dose 1 of", "dose 1"),
+        ("and book the dentist for", "book the dentist"),
+        ("the jam", "the jam"),
+        ("turn it on", "turn it on"),
+        ("of the", ""),
+        ("socks, and", "socks"),
+    ],
+)
+def test_a_leftover_cut_off_mid_phrase_loses_the_word_left_hanging(part, whole):
+    assert actions.whole_part(part) == whole
+
+
+def test_a_leftover_is_said_as_whole_words_of_a_real_part():
+    # QA 2026-10-12: "I took dose 1 of Pill A at 9am" gave "⚠️ Not included: dose 1 of"
+    raw = {"items": [{"item": "socks"}], "guessed": [], "not_included": ["dose 1 of", "of", "and the"]}
+    assert actions.validate(BUY, raw).not_included == ("dose 1",)
+    assert "never one cut off" in actions.schema(BUY)["properties"]["not_included"]["description"]
+
+
 # --- lengths of time and times of day come structured -----------------------------------------------
 async def _nothing(*_):
     return ""

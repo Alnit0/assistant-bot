@@ -391,6 +391,7 @@ async def on_save(press: cards.Press) -> str | None:
     # What a press did is part of the conversation: without it, whatever is asked
     # next is answered as if the card were still waiting
     llm.remember(card.channel_id, "(pressed the card's button)", said)
+    llm.task_answered(card.channel_id, card.task)  # and what follows shortly is that task's first
     return f"saved {card.task}/{card.action}: {said}"
 
 

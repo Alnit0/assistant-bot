@@ -37,6 +37,23 @@ _OFFER = re.compile(
 )
 
 
+# How a chat reply opens when it is acknowledging something the user said they
+# did. Chat is told never to (it can record nothing); this catches one that
+# slips through, so it is never sent: the message goes back to the router
+_ACKNOWLEDGES = re.compile(
+    r"^\W*(?:got it|noted|done|logged|recorded|understood|ok(?:ay)?[,.!]? (?:got it|noted|done)"
+    r"|i(?:'ve| have)? (?:noted|logged|recorded|updated|marked|saved)"
+    r"|so you (?:took|had|did|finished)|thanks for (?:letting me know|the update))\b",
+    re.IGNORECASE,
+)
+
+
+def acknowledges(text: str) -> bool:
+    """Whether a chat reply opens by acknowledging something the user did ("Got
+    it. So you took it about 2 hours ago."). Pure."""
+    return _ACKNOWLEDGES.search(text or "") is not None
+
+
 def set_internal_names(names) -> None:
     """The names that are the code's own and never the user's to read: every
     action of every task. Set by the registry when the tasks are loaded."""

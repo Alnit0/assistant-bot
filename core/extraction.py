@@ -126,9 +126,22 @@ AFTER_LIST_RULES = (
 )
 
 
-def system_blocks(entry: Entry, follow_up: bool = False, after_list: bool = False) -> list[dict]:
+AFTER_ANSWER_RULES = (
+    "\n- This task has just answered the user (it logged or changed something, or answered a question), and "
+    "the message came straight after. A short message that names nothing (\"it was 9pm actually\", \"I had "
+    "it at 9\", \"make that 2\") is about what was just done: fill in the action as usual, with "
+    f"`{actions.REFERENCE}` for \"it\". The bot's code knows what its last answer was about.\n"
+    f"- If the message is plainly for something else, or is general conversation, call `{NOT_THIS}` and it "
+    "is read afresh."
+)
+
+
+def system_blocks(entry: Entry, follow_up: bool = False, after_list: bool = False, after_answer: bool = False) -> list[dict]:
     """The instructions for this task: fixed text, marked for caching."""
-    text = rules(entry) + (FOLLOW_UP_RULES if follow_up else "") + (AFTER_LIST_RULES if after_list else "")
+    text = (
+        rules(entry) + (FOLLOW_UP_RULES if follow_up else "") + (AFTER_LIST_RULES if after_list else "")
+        + (AFTER_ANSWER_RULES if after_answer else "")
+    )
     return [{"type": "text", "text": text, "cache_control": llm.CACHED}]
 
 
@@ -254,16 +267,17 @@ def read(entry: Entry, called: tuple[str, dict] | None, follow_up: bool = False)
 
 async def extract(
     entry: Entry, message: str, state: str = "", card: OpenCard | None = None, earlier: str = "",
-    after_list: bool = False, elsewhere: str = "",
+    after_list: bool = False, elsewhere: str = "", after_answer: bool = False,
 ) -> Extracted:
     """Ask Claude to fill in one of this task's actions. One request.
 
     With `card`, the message is a follow-up to that open card. With
-    `after_list`, it came straight after this task's list was shown. Either
+    `after_list`, it came straight after this task's list was shown; with
+    `after_answer`, straight after this task's own code answered. Any
     way Claude may answer `not_this`."""
-    follow_up = card is not None or after_list
+    follow_up = card is not None or after_list or after_answer
     called = await llm.call_tool(
-        system_blocks(entry, card is not None, after_list),
+        system_blocks(entry, card is not None, after_list, after_answer),
         user_turn(message, state, card, earlier, elsewhere),
         tools(entry, follow_up),
         choice={"type": "any"},

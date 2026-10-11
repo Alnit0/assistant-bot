@@ -8,6 +8,7 @@
         "kind": "chat",
         "tasks": [],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": ""
       }
     },
@@ -17,6 +18,7 @@
         "kind": "nothing",
         "tasks": [],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": ""
       },
       "nothing": true,
@@ -37,6 +39,7 @@
           "shopping"
         ],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": ""
       }
     },
@@ -52,10 +55,11 @@
       "recorded": {
         "kind": "task",
         "tasks": [
-          "shopping",
-          "packing"
+          "packing",
+          "shopping"
         ],
         "confidence": "tie",
+        "reports_doing": false,
         "chat_part": ""
       }
     },
@@ -73,6 +77,7 @@
           "packing"
         ],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": ""
       }
     },
@@ -90,6 +95,7 @@
           "packing"
         ],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": ""
       }
     },
@@ -104,6 +110,7 @@
           "packing"
         ],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": ""
       }
     },
@@ -119,6 +126,7 @@
           "shopping"
         ],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": ""
       }
     },
@@ -135,6 +143,7 @@
           "shopping"
         ],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": "what's the capital of France"
       }
     },
@@ -150,6 +159,7 @@
           "shopping"
         ],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": "how many grams are in an ounce?"
       }
     },
@@ -168,6 +178,7 @@
           "shopping"
         ],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": "tell me a joke"
       }
     },
@@ -183,6 +194,7 @@
           "shopping"
         ],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": ""
       }
     },
@@ -194,6 +206,7 @@
         "kind": "nothing",
         "tasks": [],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": ""
       }
     },
@@ -205,6 +218,7 @@
         "kind": "nothing",
         "tasks": [],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": ""
       }
     },
@@ -216,6 +230,7 @@
         "kind": "nothing",
         "tasks": [],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": ""
       }
     },
@@ -227,6 +242,7 @@
         "kind": "chat",
         "tasks": [],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": ""
       }
     },
@@ -238,6 +254,7 @@
         "kind": "nothing",
         "tasks": [],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": ""
       }
     },
@@ -249,6 +266,7 @@
         "kind": "nothing",
         "tasks": [],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": ""
       }
     },
@@ -260,6 +278,7 @@
         "kind": "chat",
         "tasks": [],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": ""
       }
     },
@@ -275,6 +294,7 @@
           "shopping"
         ],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": ""
       }
     },
@@ -290,6 +310,7 @@
           "pills"
         ],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": ""
       }
     },
@@ -305,6 +326,19 @@
           "timers"
         ],
         "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "I went for a run at 7 this morning",
+      "reports": true,
+      "note": "QA 2026-10-12: something done that no task keeps track of. Never chat, which would acknowledge it, and never silence: a report with no task, so the bot says it can't log that yet",
+      "recorded": {
+        "kind": "nothing",
+        "tasks": [],
+        "confidence": "high",
+        "reports_doing": true,
         "chat_part": ""
       }
     }

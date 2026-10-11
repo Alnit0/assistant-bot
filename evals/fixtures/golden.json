@@ -12,6 +12,7 @@
           "pills"
         ],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": ""
       }
     },
@@ -27,6 +28,7 @@
           "pills"
         ],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": ""
       }
     },
@@ -43,6 +45,7 @@
           "pills"
         ],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": ""
       }
     },
@@ -58,6 +61,7 @@
           "pills"
         ],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": ""
       }
     },
@@ -73,6 +77,7 @@
           "pills"
         ],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": ""
       }
     },
@@ -99,6 +104,7 @@
           "pills"
         ],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": ""
       }
     },
@@ -114,6 +120,7 @@
           "timers"
         ],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": ""
       }
     },
@@ -135,6 +142,7 @@
           "timers"
         ],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": ""
       }
     },
@@ -146,6 +154,7 @@
         "kind": "chat",
         "tasks": [],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": ""
       }
     },
@@ -162,6 +171,7 @@
           "shopping"
         ],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": ""
       }
     },
@@ -177,6 +187,7 @@
           "packing"
         ],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": ""
       }
     },
@@ -194,6 +205,7 @@
           "shopping"
         ],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": ""
       }
     },
@@ -209,6 +221,7 @@
           "pills"
         ],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": ""
       }
     },
@@ -221,6 +234,7 @@
         "kind": "nothing",
         "tasks": [],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": ""
       }
     },
@@ -233,6 +247,7 @@
         "kind": "nothing",
         "tasks": [],
         "confidence": "high",
+        "reports_doing": false,
         "chat_part": ""
       }
     },
@@ -249,6 +264,76 @@
           "pills"
         ],
         "confidence": "high",
+        "reports_doing": true,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "I took it at 9pm",
+      "tasks": [
+        "pills"
+      ],
+      "exchanges": [
+        [
+          "Taken my pill A",
+          "✅ Pill A (dose 1 of 3) · taken 11:49 pm · nothing left to take today"
+        ]
+      ],
+      "golden": "18",
+      "note": "QA 2026-10-12: it follows a pill being logged and reports a time: pills', never chat (chat said \"Got it\" and nothing was corrected). Within five minutes the router is not even asked",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "I had it at 9pm",
+      "tasks": [
+        "pills"
+      ],
+      "exchanges": [
+        [
+          "Taken my pill A",
+          "✅ Pill A (dose 1 of 3) · taken 11:49 pm · nothing left to take today"
+        ]
+      ],
+      "golden": "18a",
+      "note": "QA 2026-10-12: it follows a pill being logged and reports a time: pills', never chat (chat said \"Got it\" and nothing was corrected). Within five minutes the router is not even asked",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "it was 9pm actually",
+      "tasks": [
+        "pills"
+      ],
+      "exchanges": [
+        [
+          "Taken my pill A",
+          "✅ Pill A (dose 1 of 3) · taken 11:49 pm · nothing left to take today"
+        ]
+      ],
+      "golden": "18b",
+      "note": "QA 2026-10-12: it follows a pill being logged and reports a time: pills', never chat (chat said \"Got it\" and nothing was corrected). Within five minutes the router is not even asked",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
         "chat_part": ""
       }
     }
@@ -316,7 +401,7 @@
         {
           "pills": [
             {
-              "name": "Course A",
+              "name": "course A",
               "per_day": 3,
               "min_gap_minutes": 180,
               "notes": "with food",
@@ -351,7 +436,7 @@
         {
           "pills": [
             {
-              "name": "vitamin D",
+              "name": "Vitamin D",
               "per_day": 1
             }
           ],
@@ -382,7 +467,7 @@
         {
           "pills": [
             {
-              "name": "Iron",
+              "name": "iron",
               "times": [
                 "8:00"
               ]
@@ -511,7 +596,8 @@
           "guessed": [],
           "not_included": []
         }
-      ]
+      ],
+      "after_answer": true
     },
     {
       "golden": "3",
@@ -554,16 +640,15 @@
       "recorded": [
         "timer_change",
         {
-          "which": "@that",
+          "which": "t1",
           "action": "extend",
           "duration": "2m",
-          "guessed": [
-            "duration"
-          ],
+          "guessed": [],
           "not_included": []
         }
       ],
-      "known_miss": "claude-haiku-4-5 sometimes names what a pronoun means itself instead of returning @that. The outcome was right here (one timer; the item mentioned last), but the rule is that only the code resolves a reference: in the gap list (2026-10-10)"
+      "known_miss": "claude-haiku-4-5 sometimes names what a pronoun means itself instead of returning @that. The outcome was right here (one timer; the item mentioned last), but the rule is that only the code resolves a reference: in the gap list (2026-10-10)",
+      "after_answer": true
     },
     {
       "golden": "6",
@@ -850,6 +935,102 @@
             {
               "pill": "pl1",
               "did": "taken"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "I took it at 9pm",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:30 am, 3:00 pm · at least 3h apart · not after 4:00 pm [active]",
+      "after_answer": true,
+      "action": "pill_log",
+      "data": {
+        "doses": [
+          {
+            "pill": "@that",
+            "did": "taken",
+            "at": "9:00 pm"
+          }
+        ]
+      },
+      "golden": "18",
+      "note": "QA 2026-10-12: straight after pills logged a dose. \"it\" is the code's to resolve; the time corrects that dose",
+      "recorded": [
+        "pill_log",
+        {
+          "doses": [
+            {
+              "pill": "@that",
+              "did": "taken",
+              "at": "9:00 pm"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "I had it at 9pm",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:30 am, 3:00 pm · at least 3h apart · not after 4:00 pm [active]",
+      "after_answer": true,
+      "action": "pill_log",
+      "data": {
+        "doses": [
+          {
+            "pill": "@that",
+            "did": "taken",
+            "at": "9:00 pm"
+          }
+        ]
+      },
+      "golden": "18a",
+      "note": "QA 2026-10-12: straight after pills logged a dose. \"it\" is the code's to resolve; the time corrects that dose",
+      "recorded": [
+        "pill_log",
+        {
+          "doses": [
+            {
+              "pill": "@that",
+              "did": "taken",
+              "at": "9:00 pm"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "it was 9pm actually",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:30 am, 3:00 pm · at least 3h apart · not after 4:00 pm [active]",
+      "after_answer": true,
+      "action": "pill_log",
+      "data": {
+        "doses": [
+          {
+            "pill": "@that",
+            "did": "taken",
+            "at": "9:00 pm"
+          }
+        ]
+      },
+      "golden": "18b",
+      "note": "QA 2026-10-12: straight after pills logged a dose. \"it\" is the code's to resolve; the time corrects that dose",
+      "recorded": [
+        "pill_log",
+        {
+          "doses": [
+            {
+              "pill": "@that",
+              "did": "taken",
+              "at": "9:00 pm"
             }
           ],
           "guessed": [],

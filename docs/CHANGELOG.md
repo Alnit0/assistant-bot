@@ -6,6 +6,21 @@ backfilled from the git log.
 
 ## 2026-10-12
 
+- **A dose named by its number is that dose.** "I took dose 1 of Pill A
+  at 9am" corrects dose 1 (old → new) whatever was logged since, and
+  "dose 2 at 12:15pm" logs or corrects dose 2. A time that breaks the
+  order or the gap is asked about on a card first.
+- **"Not included" is never cut off mid-phrase** ("dose 1 of").
+- **Something done that nothing keeps track of** ("I went for a run at
+  7") gets "I can't log that yet." instead of silence.
+- **A follow-up goes to the task that just answered.** For five minutes
+  after a task logs, changes or answers something, a short message is
+  taken as being about that: "I took it at 9pm", "I had it at 9pm" and
+  "it was 9pm actually" straight after logging a pill all correct that
+  dose.
+- **Chat no longer says "Got it" to something you did.** It can record
+  nothing, so it never acknowledges; such a message goes to the task
+  that keeps track of it, or gets "I didn't understand that".
 - **No more doses "due" at 1:57 am.** A dose is shown at its planned
   time unless the gap from one you really took pushes it later, and
   never past the day's limit. One that can no longer be taken today is

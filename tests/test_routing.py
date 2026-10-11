@@ -70,7 +70,25 @@ def test_the_router_can_only_name_tasks_in_the_catalogue():
     schema = routing.tool(ENTRIES)["input_schema"]
     assert schema["properties"]["tasks"]["items"]["enum"] == ["shopping", "packing"]
     assert schema["properties"]["confidence"]["enum"] == ["high", "tie"]
-    assert schema["required"] == ["kind", "tasks", "confidence", "chat_part"] and schema["additionalProperties"] is False
+    assert schema["required"] == ["kind", "tasks", "confidence", "reports_doing", "chat_part"] and schema["additionalProperties"] is False
+    assert schema["properties"]["reports_doing"]["type"] == "boolean"
+
+
+def test_a_report_of_something_done_is_marked_whatever_else_the_router_says():
+    names = ["shopping", "packing"]
+    said = {"tasks": [], "confidence": "high", "chat_part": "", "reports_doing": True}
+    assert routing.parse({**said, "kind": "chat"}, names) == routing.Route(reports=True)
+    assert routing.parse({**said, "kind": "nothing"}, names) == routing.Route(nothing=True, reports=True)
+    assert routing.parse({**said, "kind": "task", "tasks": ["shopping"]}, names).reports is True
+    assert routing.parse({"kind": "chat", "tasks": [], "confidence": "high", "chat_part": ""}, names).reports is False, "an answer recorded before the field existed"
+    assert "is never chat" in routing.RULES and "reports_doing" in routing.RULES
+    assert "reports something the user did or took" in routing.ABOUT_DATA
+
+
+def test_straight_after_the_tasks_own_answer_extraction_is_told_so_and_may_say_not_this():
+    told = extraction.system_blocks(SHOPPING, after_answer=True)[0]["text"]
+    assert "has just answered the user" in told and "`not_this`" in told and "has just been shown this task's list" not in told
+    assert "not_this" in [tool["name"] for tool in extraction.tools(SHOPPING, True)]
 
 
 def test_what_changes_goes_in_the_user_turn():
@@ -194,9 +212,9 @@ def test_a_call_that_fits_is_the_action_its_data_and_its_guesses():
     found = extraction.read(SHOPPING, called)
     assert found.fitted and found.action.name == "demo_shop_change"
     assert found.data == {"items": [{"item": "honey"}, {"item": "eggs", "quantity": 3}]}
-    assert found.guessed == frozenset({"items[1].quantity"}) and found.not_included == ("and a pony",)
+    assert found.guessed == frozenset({"items[1].quantity"}) and found.not_included == ("a pony",)
     assert found.as_log() == {
-        "task": "shopping", "action": "demo_shop_change", "data": found.data, "guessed": ["items[1].quantity"], "not_included": ["and a pony"],
+        "task": "shopping", "action": "demo_shop_change", "data": found.data, "guessed": ["items[1].quantity"], "not_included": ["a pony"],
     }
 
 
@@ -284,7 +302,7 @@ def test_extraction_fixture(fixture):
     if fixture.recorded is None:
         pytest.skip("not recorded yet: python -m evals.live --live --dev --record")
     entry = next(entry for entry in ALL if entry.name == fixture.task)
-    found = extraction.read(entry, tuple(fixture.recorded), follow_up=fixture.card is not None or fixture.after_list)
+    found = extraction.read(entry, tuple(fixture.recorded), follow_up=fixture.card is not None or fixture.after_list or fixture.after_answer)
     problem = fixtures.extraction_problem(fixture, found)
     # A known miss is replayed (it must still be read without error) but not judged:
     # the model gives it differently from one run to the next

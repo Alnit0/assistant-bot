@@ -105,6 +105,7 @@ a schema could take its place.
 | `actions.as_references` (`_POINTING`, `_SMALL_WORDS`) | "it", "that", "this", "them", and whether the message names the thing | Puts back a name Claude worked out for a pronoun | No: it checks the schema's own `@that` |
 | `actions.unstated` (`_is_stated`, `_NUMBER_WORDS`) | Whether a guessed value is in the message word for word | A value I stated is never marked ❓ | No: it checks `guessed` |
 | `actions.unchosen` (`_HALF_MARKED`, `_PART_OF_DAY`) | am, pm, "morning", "evening", a 24-hour time | Takes back an am or pm Claude chose by itself | No: it checks the fixed form of a time |
+| `actions.whole_part` (`_DANGLING_END`, `_DANGLING_START`) | "of", "and", "the", "at"… left hanging at an end of a leftover | A "Not included" part is whole words, never cut off mid-phrase ("dose 1 of") | No: it checks `not_included`, whose description now asks for whole parts |
 | `actions.is_filler` (`_FILLER`) | "and", "also", "please", "too"… | Joining words are never reported as "Not included" | No: it checks `not_included` |
 | `actions._structured` (`_BETWEEN_TIMES`) | Times sent as one text ("8am, 8pm") | A list of times that arrived as text is still read | Already replaced (`TIMES`); this is the net under it |
 | `core/durations.py` spoken forms | "3 hours apart", "an hour and a half", number words | A length that arrived as words is still read | Already replaced for pills (`MINUTES`). Timers still take "5m" as text: left so for now (decided 2026-10-10), a seconds type would replace it |
@@ -115,6 +116,7 @@ a schema could take its place.
 | `pills/rules.py` `_TIME_SEPARATOR` | "8am, 8pm", "8 and 20:00" | The times of a request, joined up inside the task | Already replaced (`TIMES`) |
 | `timers/pomodoro.py` `parse_session` | "50/10", "50 and 10" in `lengths` | A session's lengths, handed over as text | Yes: focus and break as two `MINUTES` fields |
 | `livelists.sticks` | A message of 8 words or fewer after a list | Sends a short follow-up to the list's task first | No: it is a length, not a wording; extraction can still say `not_this` |
+| `outgoing.acknowledges` (`_ACKNOWLEDGES`) | "Got it", "Noted", "Done", "So you took…" at the start of a chat reply | Chat is told never to acknowledge something I did; this stops one that slips through from being sent | No: chat's reply has no schema. The router's `reports_doing` is the structured half |
 | `outgoing.without_offer` (`_OFFER`) | "want me to…?", "anything else?" at the end of a chat reply | Plain chat is free text, and is told not to offer; this trims one that slips through | No: chat's reply has no schema |
 | `core/router.py` (`GENERIC_VERBS`, fillers), `timers/control.py` (`_SCOPE_WORDS`…) | Typed words: `pause all timers`, "pin this" | Typed shortcuts never go to Claude, by design | No |
 
@@ -184,15 +186,24 @@ a schema could take its place.
   ahead without saying so (seen in QA, 2026-10-10). The dev panel shows
   the clock, but only when dev mode is on. Worth a line on the start
   card when the clock is moved.
+- **After midnight, logging yesterday's doses** (asked for 2026-10-12).
+  "I took it at 9pm" said at 12:30 am means yesterday. Until about
+  4:00 am, a time later than now refers to yesterday's checklist, shown
+  on a card first. Today it is refused ("hasn't happened yet").
+- **Switching task straight after an answer costs one more request**
+  (2026-10-12): a short message within five minutes of a task's answer
+  goes to that task first, and only on to the router if it says the
+  message isn't its own. A follow-up to the same task costs one request
+  fewer than before.
 - **Left for pills stage 3, with reminders**: there is no take-by hint,
   and taking a dose sooner than the gap is not asked about (it is logged
   as the next dose). A timed dose has no buttons until it has a prompt:
   until then it is ticked off by saying so. (Automatic skips and the
   latest time ending a pill's day were brought forward, 2026-10-12.)
-- **Left for pills stage 4**: correcting a dose that is not the last one
-  taken, "I took it at 9, not 10" said long after, and "undo that".
-  (Correcting the dose just logged, and "it" for the pill logged last,
-  were brought forward, 2026-10-12.)
+- **Left for pills stage 4**: "I took it at 9, not 10" said long after
+  with no dose number, and "undo that". (Correcting the dose just
+  logged, "it" for the pill logged last, and correcting any dose by its
+  number were brought forward, 2026-10-12.)
 - **A Pomodoro left waiting for Start for more than 2 hours ends
   itself**, with a line in #bot-log (asked for 2026-10-12).
 - **`reset channel` from #inbox for another channel by name** ("reset

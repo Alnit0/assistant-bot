@@ -141,8 +141,9 @@ def test_2b_straight_after_save_a_correction_is_a_change_card_for_what_was_just_
     bot.claude(route("pills"), ("pill_add", {"pills": [{"name": "Iron", "times": "8pm"}], "guessed": [], "not_included": []}))
     bot.say("add iron to my pills at 8pm")
     assert press(bot) == "✅ Saved · 💊 **Iron** · daily at `8:00 pm`"
-    bot.claude(ROUTED["2b"], EXTRACTED["2b"])
-    bot.say(SAID["2b"])
+    # Straight after the Save: pills answered a moment ago, so this goes to pills with no router
+    bot.claude(EXTRACTED["2b"])
+    bot.say(SAID["2b"], straight_after=True)
     lines, buttons = card(bot)
     assert lines[:3] == ["💊 Pills · change", "**Iron**", "schedule · daily at `8:00 pm` → daily at `9:00 pm`"]
     assert buttons == ["Save", "Cancel"]
@@ -159,8 +160,9 @@ def test_3_a_timer_starts_with_no_card(bot):
 def test_4_it_is_the_timer_just_started(bot):
     bot.claude(ROUTED["3"], EXTRACTED["3"])
     bot.say(SAID["3"])
-    bot.claude(ROUTED["4"], EXTRACTED["4"])
-    bot.say(SAID["4"])
+    # Straight after the timer started: timers answered a moment ago, so no router
+    bot.claude(EXTRACTED["4"])
+    bot.say(SAID["4"], straight_after=True)
     (tea,) = timers(bot)
     assert tea.duration_s + 120 == pytest.approx(tea.left(timers_plain.utc_now()), abs=5), "two more minutes on the tea timer"
     assert "tea" in bot.sent[-1][1].text and open_cards() == []
@@ -313,7 +315,7 @@ def test_every_golden_conversation_in_the_fixture_file_has_a_test_here():
     ids = {entry["golden"] for entry in [*FIXTURES["router"], *FIXTURES["extraction"]]}
     tested = {name.split("_")[1] for name in globals() if name.startswith("test_") and name.split("_")[1][0].isdigit()}
     assert ids <= tested, f"no test for: {sorted(ids - tested)}"
-    assert {"1", "1a", "1b", "1c", "1d", "2", "2a", "2b", "3", "4", "5", "6", "7", "8", "9", "10", "10a", "11", "12", "13", "14", "15", "16", "17"} == tested
+    assert {"1", "1a", "1b", "1c", "1d", "2", "2a", "2b", "3", "4", "5", "6", "7", "8", "9", "10", "10a", "11", "12", "13", "14", "15", "16", "17", "18", "18a", "18b"} == tested
 
 
 # --- QA 2026-10-10: "already so" ends in the task's own line, whichever way it was found --------------------
@@ -408,6 +410,8 @@ def test_a_message_that_names_a_pill_and_asks_nothing_clear_is_answered_not_drop
 # --- going live, 2026-10-11: the exact sequence, replayed with the clock at 10:57 pm -------------------------
 PILLS = json.loads((Path(__file__).parent.parent / "evals" / "fixtures" / "pills.json").read_text(encoding="utf-8"))
 LOGGED = {entry["message"]: tuple(entry["recorded"]) for entry in PILLS["extraction"] if entry.get("note", "").startswith("going live")}
+NUMBERED = {entry["message"]: tuple(entry["recorded"]) for entry in PILLS["extraction"] if entry.get("note", "").startswith("dose number")}
+GENERAL = json.loads((Path(__file__).parent.parent / "evals" / "fixtures" / "general.json").read_text(encoding="utf-8"))
 
 
 @pytest.mark.parametrize("corrected", ["I took it at 9am", "I took Pill A at 9am"])
@@ -433,3 +437,130 @@ def test_a_late_log_is_asked_about_then_a_time_said_straight_after_corrects_it(b
     assert bot.sent[-1][1].text == "✏️ **Pill A** (dose 1 of 3) · taken 10:57 pm → 9:00 am · nothing left to take today"
     assert bot.sent[-1][1].rows == (), "a correction of today's dose is done at once: old → new, no card"
 
+
+# --- 18: a follow-up sticks to the task that just answered, and chat never acknowledges ----------------------
+# QA 2026-10-12, on --dev: "Taken my pill A", then "I took it at 9pm" went to plain chat, which said "Got it. So
+# you took it about 2 hours and 49 minutes ago." Nothing was corrected, and it read as if it had been
+MAIN = {"name": "Pill A", "per_day": 3, "times": ["8:00 am", "11:30 am", "3:00 pm"], "min_gap_minutes": 180, "latest": "4:00 pm"}
+CORRECTED = "✏️ **Pill A** (dose 1 of 3) · taken 11:49 pm → 9:00 pm · nothing left to take today"
+NOT_UNDERSTOOD = "🤔 I didn't understand that."
+CANT_LOG = "I can't log that yet."
+
+
+def _taken_at_11_49(bot, dev_clock):
+    from datetime import time
+
+    dev_clock.advance_to(day.at(day.today() + timedelta(days=1), time(23, 49)))
+    bot.claude(route("pills"), ("pill_add", {"pills": [MAIN], "guessed": [], "not_included": []}))
+    bot.say("add pill A to my pills, 3 times a day at 8am, 11:30 and 3pm, at least 3 hours apart, not after 4pm")
+    press(bot)
+    bot.claude(route("pills"), LOGGED["Taken my Pill A"])
+    bot.say("Taken my pill A")
+    assert press(bot) == "✅ **Pill A** (dose 1 of 3) · taken 11:49 pm · nothing left to take today"
+    return len(bot.requests)
+
+
+def _no_chat(bot):
+    assert bot.chats == [], "plain chat was never asked"
+    assert not any("Got it" in shown.text or "So you took" in shown.text for _, shown in bot.sent)
+
+
+def test_18_i_took_it_at_9pm_straight_after_a_log_goes_to_that_task_and_corrects_the_dose(bot, dev_clock):
+    _corrects_the_dose_just_logged(bot, dev_clock, "18")
+
+
+def test_18a_i_had_it_at_9pm_does_the_same(bot, dev_clock):
+    _corrects_the_dose_just_logged(bot, dev_clock, "18a")
+
+
+def test_18b_it_was_9pm_actually_does_the_same(bot, dev_clock):
+    _corrects_the_dose_just_logged(bot, dev_clock, "18b")
+
+
+def _corrects_the_dose_just_logged(bot, dev_clock, golden):
+    before = _taken_at_11_49(bot, dev_clock)
+    bot.claude(EXTRACTED[golden])  # one request, for pills: the router is not asked
+    bot.say(SAID[golden], straight_after=True)
+    assert bot.sent[-1][1].text == CORRECTED
+    assert [(asked.task, "not_this" in asked.tools) for asked in bot.requests[before:]] == [("pills", True)]
+    _no_chat(bot)
+
+
+def test_18_more_than_five_minutes_later_the_router_is_asked_and_it_is_still_a_correction(bot, dev_clock):
+    _taken_at_11_49(bot, dev_clock)
+    dev_clock.advance(timedelta(minutes=6))
+    bot.claude(ROUTED["18"], EXTRACTED["18"])
+    bot.say(SAID["18"], straight_after=True)  # as it comes: by now nothing sticks
+    assert bot.sent[-1][1].text == CORRECTED.replace("11:49 pm → 9:00 pm", "11:49 pm → 9:00 pm"), "9 pm is before the dose last taken: its time put right"
+    _no_chat(bot)
+
+
+def test_a_short_message_for_something_else_straight_after_is_read_afresh(bot, dev_clock):
+    before = _taken_at_11_49(bot, dev_clock)
+    bot.claude(("not_this", {"reason": "a general question"}), ROUTED["5"])
+    asked, _ = bot.say("what's the capital of France?", straight_after=True)
+    assert asked.replies == ["Paris."] and len(bot.requests) == before + 2, "pills said it wasn't theirs; then the router"
+    # And after chat has answered, nothing sticks to pills any more
+    bot.claude(ROUTED["5"])
+    again, _ = bot.say("and of Spain?", straight_after=True)
+    assert again.replies == ["Paris."] and len(bot.requests) == before + 3, "the router alone: no request to pills first"
+
+
+@pytest.mark.parametrize("kind", ["chat", "nothing"])
+def test_a_report_of_something_done_that_no_task_owns_is_neither_chat_nor_silence(bot, kind):
+    bot.claude(("route", {"kind": kind, "tasks": [], "confidence": "high", "reports_doing": True, "chat_part": ""}))
+    bot.say("I went for a run at 7 this morning")
+    assert bot.sent[-1][1].text == CANT_LOG
+    _no_chat(bot)
+
+
+def test_the_run_as_the_router_really_answered_it_is_told_it_cannot_be_logged(bot):
+    run_ = next(entry for entry in GENERAL["router"] if entry["message"] == "I went for a run at 7 this morning")
+    bot.claude(("route", run_["recorded"]))
+    bot.say(run_["message"])
+    assert [shown.text for _, shown in bot.sent] == [CANT_LOG]
+    _no_chat(bot)
+
+
+def test_dose_1_at_9am_as_claude_really_read_it_is_about_dose_1_with_nothing_left_out(bot, dev_clock):
+    # QA 2026-10-12: it answered about dose 2 and said "⚠️ Not included: dose 1 of"
+    from datetime import time
+
+    dev_clock.advance_to(day.at(day.today() + timedelta(days=1), time(0, 32)))
+    bot.claude(route("pills"), ("pill_add", {"pills": [MAIN], "guessed": [], "not_included": []}))
+    bot.say("add pill A to my pills, 3 times a day at 8am, 11:30 and 3pm, at least 3 hours apart, not after 4pm")
+    press(bot)
+    bot.claude(route("pills"), LOGGED["Taken my Pill A"])
+    bot.say("Taken my pill A")
+    dev_clock.advance_to(day.at(day.today(), time(9, 30)))
+    bot.claude(route("pills"), LOGGED["I took Pill A at 9am"])
+    bot.say("I took Pill A at 9am")
+    assert bot.sent[-1][1].text.startswith("✅ **Pill A** (dose 2 of 3) · taken 9:00 am")
+    bot.claude(route("pills"), NUMBERED["I took dose 1 of Pill A at 9am"])
+    bot.say("I took dose 1 of Pill A at 9am")
+    card = bot.sent[-1][1].text
+    assert "**Pill A** (dose 1 of 3) · taken 12:32 am → 9:00 am" in card and "Not included" not in card
+    assert "That's the same time as dose 2, taken 9:00 am. Log it anyway?" in card
+    assert press(bot).startswith("✏️ **Pill A** (dose 1 of 3) · taken 12:32 am → 9:00 am")
+
+
+def test_an_acknowledgement_from_chat_is_never_sent_and_the_message_is_routed_again(bot, dev_clock):
+    from core import llm
+
+    _taken_at_11_49(bot, dev_clock)
+    dev_clock.advance(timedelta(minutes=6))
+    bot.chat_answers.append("Got it. So you took it about 2 hours and 49 minutes ago.")
+    chat = ("route", {"kind": "chat", "tasks": [], "confidence": "high", "reports_doing": False, "chat_part": ""})
+    bot.claude(chat, ROUTED["18"], EXTRACTED["18"])  # the router's slip, chat's slip, then the second look
+    bot.say(SAID["18"], straight_after=True)
+    assert bot.sent[-1][1].text == CORRECTED
+    assert not any("Got it" in shown.text for _, shown in bot.sent), "what chat wrote was never shown"
+    assert llm.history_for(100) == [], "nor kept as something chat said"
+
+
+def test_an_acknowledgement_from_chat_with_no_task_to_own_it_gets_the_neutral_line(bot):
+    bot.chat_answers.append("Noted! Well done on the run.")
+    chat = ("route", {"kind": "chat", "tasks": [], "confidence": "high", "reports_doing": False, "chat_part": ""})
+    bot.claude(chat, chat)
+    bot.say("I went for a run at 7 this morning")
+    assert [shown.text for _, shown in bot.sent] == [CANT_LOG]

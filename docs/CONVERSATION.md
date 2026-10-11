@@ -78,6 +78,10 @@ When two principles clash, the higher one wins.
   packing" change the card I'm looking at
 - **A list I've just asked to see is context.** "add milk" straight
   after "what am I packing?" means packing
+- **The task that just answered is the conversation.** For five minutes
+  after a task logs, changes or answers something, a short message that
+  follows is that task's first: "it was 9pm actually" straight after
+  logging a pill corrects that dose. "It" is what that answer was about
 - **Meaning beats keywords.** "how much milk should I drink?" is a
   question, not a shopping item
 - **Everything I say counts.** Several items or requests in one message
@@ -145,6 +149,11 @@ When two principles clash, the higher one wins.
   to…?" or "would you like…?". Do it instead
 - An answer about my data from plain chat: anything about what I have
   (a list, my pills, my timers) comes from the task that owns it
+- An acknowledgement from plain chat of something I did ("got it",
+  "noted", "done", "so you took it at…"). Chat can record nothing, so it
+  would read as done when nothing was. A message about having done or
+  taken something, or when, goes to the task that keeps track of it; if
+  none does, the bot says "I can't log that yet."
 - An internal label as text ("(nothing)", a route or action name)
 
 ---
@@ -180,7 +189,9 @@ Write them the way I'd really say them.
 | 15 | "shopping is boring" (a remark) | No reply: only questions and requests get words |
 | 16 | "shopping list" (a list's name on its own; also "my pills", "timers") | The list itself, Live, from the bot's own code. No words about it, and no offer after it |
 | 17 | "I've taken my Zinc today" | Zinc is ticked off on today's checklist, edited in place, and one line says so and what is left. Never silence: a message that names one of my pills or timers is never taken for a remark |
-| 18 | | |
+| 18 | "Taken my pill A", then straight after "I took it at 9pm" | The dose just logged is corrected, old → new ("taken 11:49 pm → 9:00 pm"). It goes to pills, the task that just answered; never an answer from chat, and never "got it" |
+| 18a | …or "I had it at 9pm" | The same correction |
+| 18b | …or "it was 9pm actually" | The same correction |
 | 19 | | |
 | 20 | | |
 
