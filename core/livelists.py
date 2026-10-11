@@ -97,6 +97,17 @@ def db_by_message(conn: sqlite3.Connection, message_id: int) -> Placed | None:
     return _placed(row) if row else None
 
 
+def db_forget(conn: sqlite3.Connection, gone: set[int]) -> None:
+    for message_id in gone:
+        conn.execute("DELETE FROM live_lists WHERE message_id = ?", (message_id,))
+
+
+async def forget(gone: set[int]) -> None:
+    """Messages were deleted (a channel reset): a list that was one of them is
+    no longer anybody's Live copy."""
+    await database.run(db_forget, gone)
+
+
 async def by_message(message_id: int | None) -> Placed | None:
     """The list whose Live copy this message is, if it is one."""
     return await database.run(db_by_message, message_id) if message_id is not None else None

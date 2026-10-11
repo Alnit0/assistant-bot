@@ -580,6 +580,42 @@ cards and the read-back checks, with no discord.py. Doses will be
 occurrences (`core/occurrences.py`) with task `pills` and the pill's id as
 the item.
 
+## Channel reset
+
+Empties the channel you are in. It always asks first.
+
+| Type or say | What happens |
+|---|---|
+| `reset channel` (any channel the bot can manage) | A card: "🧹 Channel · reset", "134 messages in #inbox, 3 of them pinned or 📌", "⚠️ This can't be undone", with **Delete all**, **Delete all unpinned** and **Cancel** |
+| "reset this channel", "clean up this channel" (#inbox and the hub) | The same card |
+
+- **Delete all** removes every message, pinned and 📌 ones included.
+  **Delete all unpinned** leaves the pinned and 📌 ones.
+- **What is live comes back**: today's pills checklist with its Taken /
+  Skip messages, the cards of running timers and a Pomodoro session, the
+  timers board and the dev panel are posted again, once each, and go on
+  working. A card that was waiting for Save is gone for good.
+- **Speed**: messages up to 14 days old go a hundred at a time; older
+  ones one by one, and the card says roughly how long that will take.
+- **A copy first**: before anything is deleted the whole channel is
+  written to `data\exports\<channel>-<date>-<time>.txt`: who, when, what
+  was said, whether it was pinned or 📌, and a link to each attachment
+  (the files themselves are not downloaded, and Discord's links stop
+  working once the message is gone). If the copy can't be written,
+  nothing is deleted.
+- **When it is done**: "🧹 Channel reset: 131 messages deleted · a copy
+  was saved", which
+  tidies itself away after 10 seconds unless `KEEP_CONFIRMATIONS` is on,
+  and a card in #bot-log.
+- **Permissions**: the bot's role needs Read Message History and Manage
+  Messages in the channel. If one is missing the card says which, and
+  nothing is deleted.
+
+**In code.** `tasks/channel/rules.py` is pure (what goes and how, the
+words); `core/clearing.py` does the Discord work; a task puts its own
+live messages back in `channel_cleared(channel_id, gone)`, where `gone`
+is the ids that were deleted.
+
 ## Routing and confirm cards (being built)
 
 **What is on it now.** Timers and the Pomodoro ("set a timer for 5

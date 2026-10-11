@@ -129,6 +129,17 @@ async def refresh(user_id: int) -> None:
     await _dose_messages(user_id, day, listed, held, sheet.channel_id)
 
 
+async def channel_cleared(channel_id: int, gone: set[int]) -> None:
+    """The channel was reset: if today's checklist or one of its Taken / Skip
+    messages went with it, post the whole of it afresh there. `post` forgets
+    the old messages, so the records point at the new ones only."""
+    day = days.today(clock.now())
+    for user_id in await database.run(store.db_users):
+        held = await database.run(store.db_messages, user_id, day)
+        if any(message.channel_id == channel_id and message.message_id in gone for message in held):
+            await post(user_id, channel_id)
+
+
 def changed(user_id: int) -> None:
     """A pill or a dose changed: bring the checklist up to date, in the background."""
     live.schedule(("pills-checklist", user_id), lambda: refresh(user_id))

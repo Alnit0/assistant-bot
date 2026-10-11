@@ -4,6 +4,19 @@ What changed, newest first. One entry per task, as one to three bullets on
 what changed for the user. Entries before 2026-10-07's last one were
 backfilled from the git log.
 
+## 2026-10-11
+
+- **`reset channel` empties the channel you are in.** It always asks
+  first, with how many messages there are and how many are pinned or 📌;
+  **Delete all** removes everything, **Delete all unpinned** keeps the
+  pinned and 📌 ones. It can't be undone. "Reset this channel" in plain
+  words does the same.
+- **What is live is put back afterwards**: today's pills checklist and
+  its Taken / Skip messages, running timers, the dev panel.
+- **A copy is saved first.** The channel is written to a text file in
+  `data\exports\` before anything is deleted, and the closing line says
+  so. If it can't be written, nothing is deleted.
+
 ## 2026-10-10
 
 - **`dev clock reset` no longer strands midnight and 6:00 am.** If the

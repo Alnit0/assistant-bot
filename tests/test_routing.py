@@ -433,7 +433,7 @@ def test_a_message_names_one_of_my_things_only_as_a_whole_name(said, names, name
 
 def test_every_task_that_has_a_list_says_which_action_shows_it():
     shows = {entry.name: entry.show for entry in ALL}
-    assert shows == {"shopping": "demo_shop_list", "packing": "demo_pack_list", "bugs": "bug_list", "pills": "pill_list", "timers": "timer_list"}
+    assert shows == {"shopping": "demo_shop_list", "packing": "demo_pack_list", "bugs": "bug_list", "pills": "pill_list", "timers": "timer_list", "channel": ""}
     assert actions.problems(ALL) == []
     broken = actions.Entry("things", "📦", "Only for things.", ("a", "b"), demo.SHOPPING.actions, show="demo_shop_change")
     assert actions.problems([broken]) == [

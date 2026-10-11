@@ -289,6 +289,13 @@ class Task:
         """
         return {}
 
+    async def channel_cleared(self, channel_id: int, gone: set[int]) -> None:
+        """A channel was reset: the messages with the ids in `gone` are deleted.
+        Post again whatever of this task's own was live among them (a checklist,
+        a running timer's card, a pinned panel) and point its records at the
+        new messages, so nothing is orphaned and nothing is there twice. One of
+        its messages that is not in `gone` was kept: leave it alone."""
+
     async def message_class(self, message_id: int) -> MessageClass | None:
         """What kind of message this is, if it is one of this task's own and not
         plain content: MessageClass.LIVE for a card edited in place, ALERT for a

@@ -20,7 +20,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `docs/` | `STATUS` (where the work stands: read first), `CONVERSATION` (the standard for how the bot talks, with its golden conversations), `ARCHITECTURE` (this), `DEVELOPMENT` (how to use and extend), `DECISIONS` (why), `TESTING` (test tracker), `QA-RUN` (manual run sheet), `BACKLOG` (found and not yet finished), `CHANGELOG` (what changed, by date), `CHEATSHEET` (commands) |
 | `.claude/skills/` | Procedures for Claude Code: `add-task`, `qa`, `end-of-task`, `bug` (fix a reported bug from its id) |
 | `.env`, `.env.example` | Secrets and settings (`.env` is gitignored); every setting has a placeholder in `.env.example` |
-| `data/` | `assistant.db`, `bot.lock`, `backups/`; with `--dev`: `dev.db`, `dev-backups/`, `dev-clock.json` (all gitignored) |
+| `data/` | `assistant.db`, `bot.lock`, `backups/`, `exports/` (a transcript of each channel that was reset); with `--dev`: `dev.db`, `dev-backups/`, `dev-clock.json` (all gitignored) |
 | `logs/` | `bot.log` (rotating), `service-*.log` (gitignored) |
 | `requirements.txt`, `requirements-dev.txt`, `pytest.ini` | Dependencies (dev adds pytest) and test settings |
 
@@ -53,6 +53,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `debounce.py` | `Debouncer(delay, callback)`: one quiet-period timer that hands over all collected events together |
 | `protection.py` | Pure: is a message protected (pinned or 📌), is it kept, and the wording when Discord refuses a pin |
 | `channels.py` | Which channels hold messages: `holds_messages(channel)` (text, news, threads, DMs; not forum, voice or category) and `named()`, the channels from `.env` that do. Asked before reading pins or history from a channel no message came from |
+| `clearing.py` | Emptying a channel, for tasks that may not call Discord: `scan` reads every message (who wrote it, what it says, links to its attachments, and whether it is pinned or 📌), or says which permission is missing; `delete` removes the ones asked for, a hundred at a time where Discord allows and one by one otherwise, and says which are gone; `note` posts the closing line that tidies itself away |
 | `pins.py` | `set_pinned(...)`: native pin and unpin for tasks that may not call Discord |
 | `actions.py` | The contract for plain words: an `Entry` (a task as the router knows it: name, icon, "only for", examples), its `Action`s (the fields Claude fills in; `prepare` + `apply` for one that needs a card, `run` for one that acts at once, all three with `card_if` for one that only sometimes asks first) and the `Proposal` a card shows. A direct action returns its reply, a `LiveReply`, or `Shown` when it posted its own message. A field may be a list of items (`ITEMS`, with `item_fields`), so one request can hold several things; an item says what to do with it (`change_field()`: add, set, remove) and `merge_items` applies a message's changes to an open card, doing the sums. Builds each action's strict schema (every one also has `guessed` and `not_included`), checks what Claude returned against it (`validate`: an item that doesn't fit is left out and named, never dropped unseen), and names what is missing from a task's contract (`problems`). A reference ("it") comes back as `REFERENCE` and is resolved in code (`point_at`; a card keeps what was mentioned last under `LAST`); `as_references` puts a name Claude worked out for a pronoun back as a reference; `unstated` drops any guess whose value the user said outright; a length of time is asked for as whole minutes (`MINUTES`) and a time of day in one fixed form (`TIME`, `TIMES`), the same for every task: `validate` reads a length that comes as words all the same and passes on what it can't read as text, never dropping the item, and `unchosen` takes back an am or pm the message doesn't support; a decline names its kind (`DECLINES`: already so, can't, unclear) in the `none` tool, and for "already so" what it is about, so code never reads the reason's words; an `Entry` may carry `already`, the task's own line for what is already so, and `names`, the names of the user's things it holds; a card's kind is one of `KINDS`; a `Proposal` with `can_save` off is a card with Cancel only, until a reply puts right what its warning names; an action that saves has a `verify` that reads the change back. A task's state for extraction is a `State` (a heading and a line a thing), cut by `shown_state` to `STATE_LINES`, the lines the message could mean first. Holds the catalogue the registry sets. Pure apart from leaving trace notes |
 | `routing.py` | The router: one request that says which task a message is for, from the message, what is on screen and the catalogue (never an action or schema). `parse` reads its answer in code: task(s), a tie, chat, or nothing (no reply at all: a remark, a note, a thank-you). `named_destinations` reads a destination the message names ("to my pills") in code, and `with_named` lets it overrule the router; `names_item` says whether a message names one of the user's things, whole |
@@ -75,7 +76,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 
 | Path | Responsibility |
 |---|---|
-| `base.py` | The `Task` base class with its hooks (including `message_class`, `new_day`, and for plain words `icon`, `only_for`, `examples`, `show`, `actions()`, `action_state()`, `already_so()` and `item_names()`), and the self-describing `Keyword`, `ReplyAction`, `Reaction` records (the last two with an optional `validate`). `Reaction.instant` skips the quiet period (🐞 only); `Task.claim(ctx)` takes a message because of where it was sent |
+| `base.py` | The `Task` base class with its hooks (including `message_class`, `new_day`, and for plain words `icon`, `only_for`, `examples`, `show`, `actions()`, `action_state()`, `already_so()` and `item_names()`; and `channel_cleared`, for putting its live messages back after a channel reset), and the self-describing `Keyword`, `ReplyAction`, `Reaction` records (the last two with an optional `validate`). `Reaction.instant` skips the quiet period (🐞 only); `Task.claim(ctx)` takes a message because of where it was sent |
 | `registry.py` | Discovers and loads tasks; dispatches words, reply actions and reactions; refuses invalid ones at once; decides how each ends; asks tasks what a message is (`declared_class()`); the single source of what the bot can do (`catalogue()`, `find()`, `capabilities_text()`), and sets the router's catalogue from each task's entries (`actions.set_catalogue`) and the names that may never be sent as text (`outgoing.set_internal_names`). `dispatch_claimed` hands an unmatched message to the task that claims it; an `instant` reaction is applied the moment it is added |
 | `builtin/__init__.py` | `ping`, `reset`, `buttons`, `stats`, and `help` generated from the registry |
 | `builtin/views.py` | The `buttons` test view |
@@ -89,6 +90,8 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `bugs/capture.py` | Puts a report together: the turn, the errors from the tail of `logs/bot.log`, the commit the bot started on. No Discord |
 | `bugs/posts.py` | The Discord work, and the only discord.py in the task: reading the reported message, the forum post with its tags, and the opening card: rewritten in place with the status, when it changed and the note count; persistent buttons under it, Fixed / Won't fix on an open bug (tag and archive) and Re-open on a closed one (unarchive, tag Open) |
 | `bugs/cli.py` | `python -m tasks.bugs.cli list \| show B4 \| note B4 "…"` for Claude Code's `bug` skill: reads and adds notes straight from the database, never closes a bug |
+| `channel/__init__.py` | Channel reset: `reset channel` (any channel) and "reset this channel" in plain words post the card that asks (the counts, how slow it will be, that it can't be undone; Delete all, Delete all unpinned, Cancel). A press reads the channel again, writes a transcript of it to `data/exports/` (no copy, no deleting), deletes through `core/clearing.py`, forgets the open cards and lists that went, tells every task (`registry.channel_cleared`), says so in a line and in #bot-log. No discord.py |
+| `channel/rules.py` | Pure: which messages go in bulk and which singly (14 days by the real clock), what is kept, the counts, the transcript and its file name, and every word of the card and the closing lines |
 | `keep/__init__.py` | The 📌 reaction: keep (pin) and unkeep (unpin); reply `pin` / `unpin`, which act at once. All through `core/pins.py` |
 | `pills/__init__.py` | Registers `pills` (today's checklist, fresh), the task's plain-words entry, the 6:00 am job, the end-of-day work, the Taken / Skip buttons and what kind of message each of its own is; works in #inbox and the hub |
 | `pills/plain.py` | Pills in plain words. Setting up: `pill_add`, `pill_edit`, `pill_pause`, `pill_resume`, `pill_remove`, `pill_delete` (each a confirm card, each taking a list of pills) and `pill_list` (read-only, Live). Today: `pill_log` ("took my zinc", "had pill A at 9", "skip magnesium", "I didn't take zinc": done at once, read back, said in a line with what is left) and `pill_today` (a fresh checklist). Reads what was said into a plan with `rules.build`, never asking: a time that could be morning or evening is taken as the morning (a latest time as the evening) and flagged, and a planned time moved to keep the gap is a ⚠️ line on the card. Never stopping at the first thing wrong (`settle`): a part that can't be read is a ❔ line with the reason beside everything that was understood, doses that can't fit are a ⚠️ line, and either way the card has no Save until a reply puts it right. A reply's change is laid over the card in code (`overlay`). Adding a pill that is already there is never a second pill: with nothing to change it is said in a line with the pill shown and no card; otherwise the add card shows the change to it, old → new, and Save edits that pill. That line (`already_text`) is the one end of every way of finding that nothing would change: adding what is there (`add_asks`), a change that changes nothing (`edit_asks`), and extraction declining as already so (`already_so`). No discord.py, no Context |
@@ -129,7 +132,7 @@ database with the clock under test control), `devmode`, `dev_parsing`, `lab`, `l
 `dev_clock` (`dev clock`, `dev reset-db` and their guards), `actions` (the contract and the checking), `routing` (the router, extraction and the replayed fixtures), `conversation` (a message end to end, confirm cards; on the demo lists of `tests/demo.py`), `livelists`, `costs` (routes, prices, the roll-up and `dev cost`), `trace` (notes, a message in lines, `dev why`), `cards`,
 `pills_rules`, `pills_doses`, `pills_today`, `pills_checklist`, `pills_day` (two whole days on a moved clock, through the real scheduler), `timers_plain` and `pills_plain`
 (each task's actions in plain words), `golden` (the golden conversations of the conversation standard, end to end, replayed from `evals/fixtures/golden.json`; the ones the bot can't hold yet are marked as gaps), `channels`
-(channel types, the dev panel's start-up sweep, a task failing to start).
+(channel types, the dev panel's start-up sweep, a task failing to start), `channel` (channel reset: what goes and how, the card and both buttons, the Discord work on a fake channel, and the checklist and timers being posted again).
 
 ## Data flows
 
@@ -301,6 +304,26 @@ every message that is no shortcut)
 5. When the day ends (`Task.new_day`) what nobody touched is marked
    missed, the single messages are deleted, and the old checklist is
    written one last time and left where it is.
+
+**Channel reset**
+
+1. `reset channel`, or "reset this channel" in plain words: `clearing.scan`
+   reads the channel and the card shows the counts. If the bot's role
+   lacks Read Message History or Manage Messages the card says so and has
+   Cancel only.
+2. **Delete all** or **Delete all unpinned**: the channel is read again
+   and written, whole, to a text file in `data/exports/`
+   (`rules.transcript`: author, time, content, pinned or 📌, links to
+   attachments). If that fails nothing is deleted. Then `rules.plan` splits what goes into batches of a hundred (under 14
+   days old) and singles (older), and `clearing.delete` does it. The card
+   shows the work and goes last.
+3. Open confirm cards and Live lists that went are forgotten
+   (`confirm.forget`, `livelists.forget`). A closing line is posted, and
+   `registry.channel_cleared` tells every task which messages are gone:
+   pills posts today's checklist and its Taken / Skip messages again,
+   timers the cards of running timers and sessions and the board, dev
+   its panel. Each points its records at the new messages; a message
+   that was kept is left alone.
 
 **Message lifecycle**
 

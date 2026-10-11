@@ -255,6 +255,23 @@ async def _take_away(card: Stored, status: str) -> None:
             await cards.delete(card.channel_id, card.message_id)
 
 
+def db_forget(conn: sqlite3.Connection, gone: set[int]) -> list[int | None]:
+    """Close every open card whose message is among `gone`. Returns their expiry jobs."""
+    rows = conn.execute("SELECT id, message_id, job_id FROM confirm_cards WHERE status = ?", (OPEN,)).fetchall()
+    jobs = []
+    for card_id, message_id, job_id in rows:
+        if message_id in gone and db_close(conn, card_id, CANCELLED):
+            jobs.append(job_id)
+    return jobs
+
+
+async def forget(gone: set[int]) -> None:
+    """Messages were deleted (a channel reset): a card that was one of them is
+    closed, so no later message is taken as being about it."""
+    for job_id in await database.run(db_forget, gone):
+        await scheduler.cancel_job(job_id)
+
+
 def said_so_far(replaces: Stored | None, text: str, undone: bool = False) -> str:
     """Everything said about a card, one message a line: what the card it
     replaces came from, then this message. With `undone`, the last message

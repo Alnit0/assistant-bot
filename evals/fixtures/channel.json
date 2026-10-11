@@ -1,0 +1,90 @@
+{
+  "router": [
+    {
+      "message": "reset this channel",
+      "tasks": [
+        "channel"
+      ],
+      "note": "channel reset: asked in plain words, always answered with a card first",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "channel"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "clean up this channel",
+      "tasks": [
+        "channel"
+      ],
+      "note": "channel reset: asked in plain words, always answered with a card first",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "channel"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "reset my tea timer",
+      "tasks": [
+        "timers"
+      ],
+      "note": "a trap: a reset, but of a timer",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "timers"
+        ],
+        "confidence": "high",
+        "chat_part": ""
+      }
+    }
+  ],
+  "extraction": [
+    {
+      "task": "channel",
+      "message": "reset this channel",
+      "action": "channel_reset",
+      "note": "channel reset: asked in plain words, always answered with a card first",
+      "recorded": [
+        "channel_reset",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "channel",
+      "message": "clean up this channel",
+      "action": "channel_reset",
+      "note": "channel reset: asked in plain words, always answered with a card first",
+      "recorded": [
+        "channel_reset",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "channel",
+      "message": "please clear out this channel",
+      "action": "channel_reset",
+      "note": "channel reset: asked in plain words, always answered with a card first",
+      "recorded": [
+        "channel_reset",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    }
+  ]
+}

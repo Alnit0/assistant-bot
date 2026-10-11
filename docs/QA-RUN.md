@@ -1,6 +1,6 @@
 # QA run sheet
 
-One pass through 176 of the 200 👤 Manual tests in `docs/TESTING.md` that are
+One pass through 181 of the 205 👤 Manual tests in `docs/TESTING.md` that are
 ⬜ Untested (as of 2026-10-10); the other 24 are for pills stages not built yet
 (group R) or need a setup of their own, and join as each can be run. Blocks share setup and each one leaves things
 ready for the next, so run them in order.
@@ -27,9 +27,10 @@ tests (block 12).
 | 17 | Traces: `dev why` and bug reports | `--dev`, off (one restart) | 3 | 5 |
 | 18 | Retest: one path for every message | `--dev`, off (one restart) | 9 | 12 |
 | 21 | Pills: the daily checklist | `--dev`, off (two restarts) | 13 | 20 |
-| | **Total** | | **176** (F2 is split over blocks 4 and 7, counted in 7) | **about 3¼ hours** |
+| 22 | Channel reset | `--dev`, off then on (one restart) | 5 | 8 |
+| | **Total** | | **181** (F2 is split over blocks 4 and 7, counted in 7) | **about 3¼ hours** |
 
-Blocks 14 to 21 need nothing from the others (19 and 20, the first pills blocks, passed on 2026-10-10 and are no longer here) (13 and 16 tested the old way of asking Claude, which is gone): run them any time after
+Blocks 14 to 22 need nothing from the others (19 and 20, the first pills blocks, passed on 2026-10-10 and are no longer here) (13 and 16 tested the old way of asking Claude, which is gone): run them any time after
 block 1, and before the overnight block if that suits.
 
 ## Before you start
@@ -453,6 +454,25 @@ again.)
 | 10 | Say `took my pill A`. Press nothing | "✅ **Pill A** (dose 1 of 3) · taken 9:0… am · still to take today: …" with dose 2 at the later of `11:30 am` and three hours after the time taken. (A timed dose has no buttons yet: that comes with reminders) | R3 |
 | 11 | Restart the bot (still `--dev`); type `dev jobs`. Then say `took my pill A` again | No second checklist and no second set of messages in the hub. `dev jobs` shows one `pills/checklist` job, for the next 6:00 am. The second dose of Pill A is ticked off on the same checklist message | R27 |
 | 12 | `dev clock 11:59pm`, then `dev clock +2m`. Look at the hub; then `dev clock 6:00am` | The untouched doses show ❌ missed on yesterday's checklist, which is otherwise left as it was; their own messages are deleted. `dev clock 6:00am` then posts a fresh checklist for the new day, everything pending | R26 |
+
+## 22. Channel reset
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
+On the dev database (`python main.py --dev`), dev mode off unless a step
+says otherwise. Restart the bot first. **Use a test channel for steps 1
+to 3**: everything in it is deleted, and it can't be undone. Step 4 is in
+the hub, so run it only where the hub is a test channel too. Put a dozen
+messages in the test channel first, pin one by hand and react 📌 to
+another (wait for its ✅). Every step ends by saying what to press.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | In a test channel with a dozen messages, one of them pinned and one marked 📌: type `reset channel`. Then press **Cancel** | Your word is deleted and a card appears: "🧹 Channel · reset", "N messages in #channel, 2 of them pinned or 📌", "⚠️ This can't be undone", with **Delete all** (red), **Delete all unpinned** and **Cancel**. Nothing is deleted. Cancel removes the card | U4 |
+| 2 | Type `reset channel` again; press **Delete all unpinned** | The card shows "🧹 Deleting N messages…", then everything goes except the pinned and the 📌 message. \"🧹 Channel reset: N messages deleted · a copy was saved\" (it stays while `KEEP_CONFIRMATIONS` is on, otherwise it goes after 10 seconds), and a "🧹 Channel reset" card in #bot-log saying 2 were kept and naming the copy. In `data\exports\` there is a `<channel>-<date>-<time>.txt` with every message that was there, oldest first, the pinned and 📌 ones marked | U5 |
+| 3 | Type `reset channel` once more; press **Delete all** | Every message goes, the pinned and the 📌 one too. The closing line and the #bot-log card as before, with nothing kept | U6 |
+| 4 | In the hub, with today's checklist posted (`pills`), a timer running (`timer 10m tea`) and dev mode on there (`dev on`): say `reset this channel`; press **Delete all**. Then press **Taken** on a pill's message, and reply `cancel` to the tea timer | The card, then everything goes. Afterwards, once each and nothing twice: today's checklist with its Taken / Skip messages, the tea timer's card, the pinned "Active timers" board and the pinned dev panel. Taken ticks the pill off on the new checklist; `cancel` cancels the timer on its new card | U7 |
+| 5 | Only if you can change the bot's role (otherwise report `U8 skip`): take Manage Messages away from it in a test channel; type `reset channel` there. Give the permission back | A card that says "⚠️ I can't reset #channel: my role needs **Manage Messages** in this channel. Nothing was deleted." with **Cancel** only. No ⚠️ on your message and nothing in the channel is touched | U8 |
 
 ## When you finish
 

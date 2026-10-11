@@ -73,6 +73,9 @@ class PillsTask(Task):
     async def new_day(self, ended, started):
         await checklist.new_day(ended, started)
 
+    async def channel_cleared(self, channel_id, gone):
+        await checklist.channel_cleared(channel_id, gone)
+
     async def message_class(self, message_id):
         kind = await store.message_kind(message_id)
         if kind is None:

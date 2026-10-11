@@ -3,7 +3,7 @@
 Where the work stands, in under a page. Read it at the start of every
 session; the end-of-task checklist updates it at the end of every task.
 
-**Updated:** 2026-10-10
+**Updated:** 2026-10-11
 
 ## Branch and state
 
@@ -15,19 +15,17 @@ session; the end-of-task checklist updates it at the end of every task.
   Save for what can't be read or can't fit, a pill that is already
   there, declines that name their kind. Blocks 19 and 20 passed
   (one row, R40, still needs a database with no Pill A).
-- In hand, uncommitted and paused for QA (block 21 of
-  `docs/QA-RUN.md`): pills stage 2, the daily checklist, with dose
-  logging by message. Starting the bot runs one pills migration, and
-  it needs `HUB_CHANNEL_ID` to post by itself. The day cycle failed in
-  the first run of block 21: jobs booked while the dev clock was a day
-  ahead stayed there after `dev clock reset`. Fixed in core (standing
-  jobs follow the clock) and the checklist now closes a past day by
-  itself; block 21 is to be rerun.
+- Committed: pills stage 2, the daily checklist with dose logging by
+  message, and standing jobs that follow the clock. Block 21 is
+  still to be reported.
+- In hand, uncommitted (not to be committed until asked): channel
+  reset, with a short QA block (22 of `docs/QA-RUN.md`). If
+  `ENABLED_TASKS` is set in `.env`, `channel` has to be added to it.
 - Tests: `python -m pytest -q` passes. Golden conversations 1c, 1d
   and 2a are marked as gaps (they need questions on the card, G1).
   The live evals of 2026-10-10: pills 50 of 51, golden 32 of 33; each
   miss is a known one that the code covers.
-- Live eval spend to date: about US$3.35.
+- Live eval spend to date: about US$3.36.
 
 ## Current goal
 
@@ -39,9 +37,14 @@ matter most.
 
 No new features, tools or dev commands until pills reminders work
 (2026-10-10). Fixes and the agreed steps only. Nothing is added unasked.
+One exception was asked for on 2026-10-11, needed before going live:
+channel reset.
 
 ## Recently done
 
+- Channel reset: `reset channel` empties the channel after asking on a
+  card (all, or all but pinned and 📌), and every task puts its live
+  messages back.
 - Pills stage 2: today's checklist in the hub at 6:00 am, edited in
   place, with Taken / Skip for doses with no time, logging by message,
   `pills` for a fresh copy, changes during the day, the end of the
@@ -62,7 +65,7 @@ No new features, tools or dev commands until pills reminders work
 
 ## Next up
 
-1. QA of pills stage 2 (block 21), then its commit.
+1. QA of pills stage 2 (block 21) and of channel reset (block 22).
 2. Pills stage 3, reminders (prompts at each dose's time, snooze,
    re-nudges, missed, take-by, automatic skips, the latest time, the
    too-soon question), on a go. Then corrections and questions.

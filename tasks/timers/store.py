@@ -488,6 +488,16 @@ async def save_list(channel_id: int, message_id: int, user_id: int) -> None:
     await database.run(_save_list, channel_id, message_id, user_id)
 
 
+def _list_in(conn: sqlite3.Connection, channel_id: int) -> int | None:
+    found = conn.execute("SELECT message_id FROM timers_lists WHERE channel_id = ?", (channel_id,)).fetchone()
+    return found[0] if found else None
+
+
+async def list_in(channel_id: int) -> int | None:
+    """The "Your timers" list kept up to date in a channel, if there is one."""
+    return await database.run(_list_in, channel_id)
+
+
 async def forget_list(channel_id: int) -> None:
     await database.run(_forget_list, channel_id)
 

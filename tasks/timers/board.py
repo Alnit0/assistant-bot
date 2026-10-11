@@ -91,6 +91,15 @@ async def refresh_lists(user_id: int) -> None:
             await store.forget_list(channel_id)
 
 
+async def channel_cleared(channel_id: int, gone: set[int]) -> None:
+    """The channel was reset: a "Your timers" list that went with it is
+    forgotten, and the board is written again (a new one is posted and pinned
+    if the old one went and there is still something to show)."""
+    if await store.list_in(channel_id) in gone:
+        await store.forget_list(channel_id)
+    await _refresh_board(channel_id)
+
+
 async def refresh(channel_id: int, user_id: int | None = None) -> None:
     """Bring a channel's board up to date, and the user's "Your timers" lists with it.
 

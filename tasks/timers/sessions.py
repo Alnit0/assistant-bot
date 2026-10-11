@@ -102,6 +102,19 @@ async def _update_card(session: store.Session) -> None:
     )
 
 
+async def repost(channel_id: int, gone: set[int], send) -> int:
+    """The channel was reset: post again the card of a session still going there
+    whose message went, with its buttons, and point the session at it."""
+    posted = 0
+    for session in await store.active_sessions(channel_id=channel_id):
+        if session.message_id in gone:
+            message = await send(render_card(session), view=card_view(session))
+            session.message_id = message.id
+            await store.save_session(session)
+            posted += 1
+    return posted
+
+
 def _show_soon(session_id: int) -> None:
     """Rewrite a session's card in the background, from what is saved by then
     (core/live.py)."""

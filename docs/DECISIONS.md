@@ -871,3 +871,29 @@ A short log of key decisions and why. Newest at the bottom.
   persistent buttons have no core helper yet, and one user of them is not
   enough to design one. To be promoted to core when a second task needs a
   forum (in the backlog).
+
+- **Channel reset (2026-10-11), an exception to the scope freeze, wanted
+  before going live.** A task of its own (`tasks/channel`), with the
+  Discord work in `core/clearing.py` so the task needs no discord.py.
+  - It is the one deletion asked for in plain words: there is no single
+    message to point at, so no reaction or reply word could ask for it,
+    and it always shows a card first.
+  - The card is the task's own (`core/cards.py`), not a confirm card:
+    it has two ways of saying yes. It carries only the channel's id, and
+    the channel is read again when a button is pressed, so what is
+    deleted is what is there then.
+  - Putting live messages back is each task's job, through one hook
+    (`Task.channel_cleared(channel_id, gone)`): core can't know what a
+    checklist or a timer card is. The hook is told which messages went,
+    so with **Delete all unpinned** a card that was pinned and kept is
+    not posted a second time.
+  - A message's age for the 14-day rule is by the real clock, not the
+    dev clock: it is Discord's rule about real messages.
+  - A transcript is written before anything is deleted, of the whole
+    channel (what is kept included), and a failure to write it stops
+    the reset: the copy is the only undo there is. It is named by the
+    real time, a record of what really happened. Attachments are listed
+    by link only.
+  - The closing line goes through `lifecycle.delete_after`, like every
+    Transient message: it goes after 10 seconds, and stays while
+    `KEEP_CONFIRMATIONS` is on.

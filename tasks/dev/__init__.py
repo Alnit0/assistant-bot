@@ -342,6 +342,9 @@ class DevTask(Task):
             ),
         ]
 
+    async def channel_cleared(self, channel_id: int, gone: set[int]) -> None:
+        await panel.channel_cleared(channel_id, gone)
+
     async def message_class(self, message_id: int) -> MessageClass | None:
         return MessageClass.LIVE if panel.is_panel(message_id) else None
 

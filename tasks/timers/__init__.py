@@ -240,6 +240,14 @@ class TimersTask(Task):
     def migrations(self) -> list:
         return list(store.MIGRATIONS)
 
+    async def channel_cleared(self, channel_id: int, gone: set[int]) -> None:
+        # Running timers and a session keep going whatever happens to their cards: each card
+        # that went is posted again, quietly, and then the board
+        send = plain.sender(channel_id)
+        await timers.repost(channel_id, gone, send)
+        await sessions.repost(channel_id, gone, send)
+        await board.channel_cleared(channel_id, gone)
+
     async def message_class(self, message_id: int) -> MessageClass | None:
         if await store.is_board(message_id) or await store.is_list(message_id):
             return MessageClass.LIVE

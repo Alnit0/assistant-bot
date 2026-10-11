@@ -241,6 +241,12 @@ async def changed() -> None:
         log.warning("Could not update the dev panel: %s", error)
 
 
+async def channel_cleared(channel_id: int, gone: set[int]) -> None:
+    """The channel was reset: if the panel went with it, put it back there, pinned."""
+    if devmode.enabled and _channel_id == channel_id and _message_id in gone:
+        await _post(channel_id)
+
+
 def is_panel(message_id: int) -> bool:
     """Whether a message is the current dev panel."""
     return devmode.enabled and message_id == _message_id

@@ -392,6 +392,19 @@ mstsc                    # Remote Desktop (enter: hive)
 
 ---
 
+## Channel reset (typed in Discord, any channel)
+
+| Type or say | What it does |
+|---|---|
+| `reset channel` | Asks first, with the counts; then **Delete all** or **Delete all unpinned**. Can't be undone |
+| "reset this channel" / "clean up this channel" (#inbox, the hub) | The same card |
+
+- A transcript is saved first, in `data\exports\`
+- Today's pills checklist, running timers and the dev panel are posted again afterwards
+- The bot's role needs Read Message History and Manage Messages in the channel
+
+---
+
 ## Typical workflow, start to finish
 
 1. `nssm stop assistant-bot` (Admin)

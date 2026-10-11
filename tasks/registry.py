@@ -260,6 +260,17 @@ async def emit(event: str, *args) -> None:
             await log_error(f"Task event failed: {task.name} / {event}", repr(error))
 
 
+async def channel_cleared(channel_id: int, gone: set[int]) -> None:
+    """Tell every task a channel was reset, so each puts its live messages back
+    (Task.channel_cleared). One failing is reported and the others are still told."""
+    for task in _tasks:
+        try:
+            await task.channel_cleared(channel_id, gone)
+        except Exception as error:
+            log.exception("Task %s could not put its messages back in channel %s", task.name, channel_id)
+            await log_error(f"Not re-posted after a channel reset: {task.name}", repr(error))
+
+
 async def declared_class(message_id: int) -> lifecycle.MessageClass | None:
     """What a task says one of its own messages is (Live, Alert), or None if
     no task claims it. For `dev inspect`."""

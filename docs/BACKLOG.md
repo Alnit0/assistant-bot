@@ -139,6 +139,25 @@ a schema could take its place.
   sums. The `new-task` skill asks for both, and `task-check` checks
   every task declares them. Pills already behaves as identity: name,
   on_repeat: update, in its own code (`plain._known`, `add_card`).
+- **Channel reset, left as it is** (2026-10-11):
+  - In plain words it works where the bot listens (#inbox and the hub);
+    everywhere else it is the typed `reset channel`.
+  - A finished timer's alert that was waiting to be dismissed, and a
+    Pomodoro phase notice, are not posted again: only what is still
+    running is. A "Your timers" list that went is forgotten, not
+    re-posted.
+  - The timers board and the dev panel coming back are covered by the
+    manual test only (their code is discord.py); the checklist and the
+    timer cards have unit tests.
+  - Attachments are not downloaded with the transcript, only their
+    links, and Discord's links die with the message. Download them too
+    if that is ever needed.
+  - **`data/exports/` is not in the nightly backup.** The backup copies
+    the database and a zip of the specs into `data/backups/`; nothing
+    else under `data/` is copied anywhere. To decide: zip the exports
+    beside them, as the specs are.
+  - The router's catalogue gained an entry. Only the new fixtures were
+    run live (6 of 6); a full live eval has not been run since.
 - **The dev clock outlives the dev database.** Its offset is in
   `data/dev-clock.json`: deleting `dev.db` by hand (not `dev reset-db`)
   leaves the clock where it was, so a "fresh" database can start a day

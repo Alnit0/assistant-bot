@@ -179,7 +179,14 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   (`llm.remember`), so the next message is never answered as if the card
   were still waiting
 - Archive, pin and delete are done by reaction or reply word only: they are
-  not asked for in plain words
+  not asked for in plain words. The one exception is emptying a whole
+  channel (`reset channel`, "reset this channel"): there is no single
+  message to point at, and it always asks first on a card
+- A task that keeps a message live in a channel (a checklist, a running
+  timer's card, a pinned panel) implements `Task.channel_cleared`: after
+  a channel reset it posts again what of its own went and points its
+  records at the new messages. What was kept is left alone, so nothing is
+  orphaned and nothing is there twice
 - Keep decisions apart from Discord calls so they can be unit tested: logic
   in a module with no Discord calls, called by the Discord-facing code. New
   logic needs tests in the same change

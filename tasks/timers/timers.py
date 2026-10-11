@@ -63,6 +63,20 @@ async def _changed(timer: store.Timer, refresh: bool = True) -> None:
         await board.refresh(timer.channel_id, timer.user_id)
 
 
+async def repost(channel_id: int, gone: set[int], send) -> int:
+    """The channel was reset: post again the card of every timer still running
+    or paused there whose message went, with `send(text)`, and point the
+    timer at its new message. Returns how many were posted."""
+    posted = 0
+    for timer in await store.active_timers(channel_id=channel_id):
+        if timer.message_id in gone:
+            message = await send(render_timer(timer))
+            timer.message_id = message.id
+            await store.save_timer(timer)
+            posted += 1
+    return posted
+
+
 def show_soon(timer_id: int) -> None:
     """Rewrite a timer's own message in the background, from what is saved by
     then (core/live.py): nobody waits for it, and several changes are one edit."""
