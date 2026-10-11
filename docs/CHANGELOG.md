@@ -6,6 +6,15 @@ backfilled from the git log.
 
 ## 2026-10-11
 
+- **Button colours mean the same everywhere.** Green is the main yes
+  (Save, Taken), red is what destroys (Delete for good, Remove, Delete
+  all), blurple is every other choice (Skip, Dismiss, Restart, the
+  answers to a question), and grey is Cancel alone, now written ↩️.
+  Nothing you are meant to choose is grey any more.
+- **A housekeeping line really goes after 10 seconds**, also if the bot
+  is restarted in between: it is deleted by a stored job.
+- **"Delete all unpinned" is only offered when something is pinned or
+  📌.**
 - **Housekeeping leaves no trace.** Deleting, archiving, pinning,
   unpinning and resetting a channel now say one short line that goes
   after about 10 seconds, even with `KEEP_CONFIRMATIONS` on; the word

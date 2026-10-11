@@ -78,7 +78,11 @@ pass or fail per item with the evidence; it runs the golden
 conversations that involve the task, and proposes new ones for what the
 task adds; and it writes a QA block where every step says what to
 press and the block starts with `dev clock reset`. First use: timers,
-bugs and pills.
+bugs and pills. It also checks the task's buttons against the colour
+rule of the standard's section 4 (asked for 2026-10-11): until the skill
+exists, `cards.check` refuses a card that breaks it and
+`tests/test_buttons.py` lists every button made with discord.py, so a
+new view has to be added to that test by hand.
 
 **Also at step 5:** the `new-task` skill reads the "Scaling notes" in
 `docs/ARCHITECTURE.md` first; and the task contract's `hint` line goes
@@ -139,6 +143,18 @@ a schema could take its place.
   sums. The `new-task` skill asks for both, and `task-check` checks
   every task declares them. Pills already behaves as identity: name,
   on_repeat: update, in its own code (`plain._known`, `add_card`).
+- **A #commands channel the bot keeps up to date** (asked for
+  2026-10-11; after pills reminders). Generated from the task registry,
+  never written by hand. One message per task: its icon and name, a
+  short description (from the task's "only for" line, written for a
+  person), then its commands grouped by purpose (set up, each day, see,
+  reply words, reactions, buttons). Housekeeping and dev each get a
+  message of their own. Rebuilt at start-up when the tasks have
+  changed. The channel's id is in `.env`, and the channel is read-only
+  for me: only the bot posts there.
+- **The lab's buttons keep their own colours** (2026-10-11). The lab is
+  the bench for Discord's own features, and its toggles use grey for
+  "off" on purpose; the colour rule was applied everywhere else.
 - **Housekeeping, left as it is** (2026-10-11): `reset` (it clears the
   chat's memory and says so for 5 seconds, or for good while
   confirmations are kept) and `dev clean` are not counted as

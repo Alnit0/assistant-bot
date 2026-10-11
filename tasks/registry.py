@@ -11,7 +11,7 @@ import tasks
 from core import day, scheduler
 from core.config import CHANNELS, ENABLED_TASKS
 from core.context import Context
-from core import actions, confirm, database, devmode, discord_utils, lifecycle, livelists, outgoing, reactions
+from core import actions, confirm, database, devmode, discord_utils, lifecycle, livelists, outgoing, reactions, tidy
 from core.database import log_received, log_result
 from core.debounce import Debouncer
 from core.discord_utils import log_error, log_simple
@@ -592,8 +592,12 @@ async def _refuse_reaction(
     message = _partial_message(payload.channel_id, payload.message_id)
     if message is not None:
         try:
-            lifetime = lifecycle.tidy_after() if reaction.housekeeping else lifecycle.delete_after()
-            note = await message.channel.send(f"{reactions.FAILED_EMOJI} {reason}", delete_after=lifetime, silent=True)
+            if reaction.housekeeping:
+                # No trace: deleted by a stored job, restart or not (core/tidy.py)
+                note = await message.channel.send(f"{reactions.FAILED_EMOJI} {reason}", silent=True)
+                await tidy.later(payload.channel_id, note.id, lifecycle.tidy_after())
+            else:
+                note = await message.channel.send(f"{reactions.FAILED_EMOJI} {reason}", delete_after=lifecycle.delete_after(), silent=True)
             lifecycle.note_transient(note.id)
         except discord.HTTPException as error:
             log.info("Could not say why a reaction was refused: %s", error)

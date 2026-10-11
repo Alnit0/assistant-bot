@@ -99,9 +99,21 @@ When two principles clash, the higher one wins.
   💊 Pills · new
   **Iron** · daily at ❔
   Is that 8 in the morning or the evening?
-  [8:00 am] [8:00 pm]   [✖️ Cancel]
+  [8:00 am] [8:00 pm]   [↩️ Cancel]
   ```
 - **Save** / **Cancel**; destructive actions say they can't be undone
+- **A button's colour says what kind it is**, the same on every card:
+  - **green**: the positive main action (Save, Taken)
+  - **red**: destructive (Delete for good, Remove, Delete all, a bulk
+    cancel)
+  - **blurple**: every other choice (Delete all unpinned, Skip, Snooze,
+    Taken at…, the answers to a question, the tasks on a tie)
+  - **grey**: Cancel only. Grey is hard to read in dark mode, so nothing
+    I am meant to choose is grey
+  Cancel is written ↩️ (✖️ is nearly invisible on grey).
+- **Only what applies is offered.** A choice that would do nothing, or
+  the same as another, is left off the card (no "Delete all unpinned"
+  when nothing is pinned or 📌)
 - **Correcting in chat replaces the card.** "no, I meant 9pm",
   "actually 2", "make it shopping": the old card is deleted and a fresh
   one posted with the correction. Works whether I answered a question,

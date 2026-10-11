@@ -75,7 +75,8 @@ class Button:
     action: str
     arg: str = ""  # which record this is about; comes back as press.arg
     emoji: str | None = None
-    style: str = SECONDARY
+    # The colour says what kind of button it is, the same on every card (see COLOURS)
+    style: str = PRIMARY
     disabled: bool = False
 
 
@@ -145,9 +146,39 @@ def parse_id(custom_id: str) -> tuple[str, str, str, str] | None:
     return (match["kind"], match["task"], match["action"], match["arg"]) if match else None
 
 
+# ---------------------------------------------------------------------------
+# Button colours: one rule for every card (docs/CONVERSATION.md, section 4)
+#   green   SUCCESS    the positive main action: Save, Taken
+#   red     DANGER     destructive: Delete for good, Remove, Delete all, a bulk cancel
+#   blurple PRIMARY    every other choice: Skip, Snooze, an answer to a question, a task
+#   grey    SECONDARY  Cancel, and nothing else: grey is hard to read in dark mode
+# Cancel is written with ↩️ (✖️ all but disappears on grey), and made with cancel().
+# ---------------------------------------------------------------------------
+CANCEL_EMOJI = "↩️"
+CANCEL_LABEL = "Cancel"
+
+
+def cancel(task: str, action: str, arg: str = "", label: str = CANCEL_LABEL) -> Button:
+    """The one grey button: the way out of a card that changes nothing. `label`
+    is for a card where "Cancel" would read oddly ("Neither", "None of these")."""
+    return Button(label, task, action, arg, emoji=CANCEL_EMOJI, style=SECONDARY)
+
+
+def colour_problem(label: str, style: str, emoji: str | None) -> str:
+    """What is wrong with a button's colour, or "" if it follows the rule. Takes
+    plain values, so buttons made with discord.py can be checked the same way."""
+    is_cancel = emoji == CANCEL_EMOJI and style == SECONDARY
+    if style == SECONDARY and not is_cancel:
+        return f"“{label}” is grey: grey is for Cancel only (make it with cards.cancel), and any other choice is blurple"
+    if label.strip().lower() == CANCEL_LABEL.lower() and not is_cancel:
+        return f"“{label}” must be the grey {CANCEL_EMOJI} button (make it with cards.cancel)"
+    return ""
+
+
 def check(card: Card) -> None:
-    """Refuse a card Discord would refuse, with a reason that names the problem.
-    Raises ValueError: this is a mistake in the code, not the user's."""
+    """Refuse a card Discord would refuse, or one that breaks the rule for button
+    colours, with a reason that names the problem. Raises ValueError: this is
+    a mistake in the code, not the user's."""
     if len(card.rows) > MAX_ROWS:
         raise ValueError(f"A card has at most {MAX_ROWS} rows, not {len(card.rows)}")
     seen: set[str] = set()
@@ -168,6 +199,10 @@ def check(card: Card) -> None:
                 raise ValueError(f"A row has 1 to {MAX_BUTTONS_IN_ROW} buttons, not {len(row)}")
             if any(len(button.label) > MAX_LABEL for button in row):
                 raise ValueError(f"A button's label is at most {MAX_LABEL} characters")
+            for button in row:
+                wrong = colour_problem(button.label, button.style, button.emoji)
+                if wrong:
+                    raise ValueError(wrong)
             ids = [make_id(_BUTTON, button.task, button.action, button.arg) for button in row]
         for custom_id in ids:
             if custom_id in seen:

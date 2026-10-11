@@ -229,7 +229,7 @@ class CloseButtons(discord.ui.View):
     async def fixed(self, interaction: discord.Interaction, button: discord.ui.Button):
         await _change(interaction, rules.FIXED)
 
-    @discord.ui.button(label="Won't fix", style=discord.ButtonStyle.secondary, custom_id="bugs:wontfix")
+    @discord.ui.button(label="Won't fix", style=discord.ButtonStyle.primary, custom_id="bugs:wontfix")
     async def wontfix(self, interaction: discord.Interaction, button: discord.ui.Button):
         await _change(interaction, rules.WONTFIX)
 
@@ -243,7 +243,7 @@ class ReopenButton(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="Re-open", emoji="🔄", style=discord.ButtonStyle.secondary, custom_id="bugs:reopen")
+    @discord.ui.button(label="Re-open", emoji="🔄", style=discord.ButtonStyle.primary, custom_id="bugs:reopen")
     async def reopen(self, interaction: discord.Interaction, button: discord.ui.Button):
         await _change(interaction, rules.OPEN)
 

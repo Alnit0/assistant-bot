@@ -366,7 +366,7 @@ class RestoreButton(
             discord.ui.Button(
                 label="Restore",
                 emoji=RESTORE_EMOJI,
-                style=discord.ButtonStyle.secondary,
+                style=discord.ButtonStyle.primary,
                 custom_id=f"archive:restore:{item_id}",
             )
         )

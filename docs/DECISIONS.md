@@ -919,3 +919,22 @@ A short log of key decisions and why. Newest at the bottom.
   that message's status, and goes when the 📌 does); `reset` (the chat's
   memory) and `dev clean`, which are not housekeeping of messages in
   this sense.
+- **A housekeeping line is deleted by a stored job (2026-10-11).**
+  discord.py's `delete_after` is a timer in the bot's memory: a restart
+  forgets it and the line stays for good. `core/tidy.py` books a
+  scheduler job instead, and the scheduler is in the database, so a
+  line whose time came while the bot was off goes when it starts. Only
+  housekeeping lines go this way; other confirmations keep the timer in
+  memory, since most of them are kept anyway.
+- **Button colours are a rule of the core, not of each task
+  (2026-10-11).** A card's `Button` is blurple unless it says otherwise,
+  the one grey button is made with `cards.cancel()`, and `cards.check`
+  refuses a card with any other grey button, or a "Cancel" that isn't
+  that one: a task can't get it wrong unseen. Buttons made with
+  discord.py (timers, sessions, the dev panel, bugs, archive, the
+  Confirm / Cancel question) were changed by hand and are listed in
+  `tests/test_buttons.py`. A removal is red even when it can be taken
+  back (a pill's history is kept): red says "this takes something
+  away". Stopping a Pomodoro session and disabling dev mode stay red on
+  the same reading. Undo, which is not a Cancel, became blurple with ⏪,
+  leaving ↩️ to Cancel alone.

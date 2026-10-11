@@ -81,7 +81,7 @@ def render() -> str:
 # ---------------------------------------------------------------------------
 BUTTONS = {
     "extend": ("+1 hour", "⏳", discord.ButtonStyle.primary),
-    "reset": ("Reset", "🔁", discord.ButtonStyle.secondary),
+    "reset": ("Reset", "🔁", discord.ButtonStyle.primary),
     "disable": ("Disable", "⏹️", discord.ButtonStyle.danger),
 }
 

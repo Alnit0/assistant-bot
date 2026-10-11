@@ -4,7 +4,7 @@ import logging
 import discord
 from discord import app_commands
 
-from core import backup, cards, clock, conversation, database, day, devmode, instance_lock, interactions, lifecycle, live, scheduler, timing
+from core import backup, cards, clock, conversation, database, day, devmode, instance_lock, interactions, lifecycle, live, scheduler, tidy, timing
 from core.config import (
     CLAUDE_MODEL,
     DB_PATH,
@@ -54,6 +54,7 @@ INTERACTION_GRACE = 2.0
 
 scheduler.register_handler(backup.JOB_TASK, backup.JOB_KIND, backup.nightly_backup_job)
 scheduler.register_handler(day.JOB_TASK, day.JOB_KIND, day.rollover_job)
+tidy.setup()
 # What `dev run <name>` can run (the sweep and summary register theirs when they exist)
 devmode.register_routine("backup", backup.run_nightly_backup)
 

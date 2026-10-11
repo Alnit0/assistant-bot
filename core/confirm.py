@@ -23,7 +23,7 @@ log = logging.getLogger("assistant")
 #     **G** · 10× daily, fixed times every 2h
 #     First `8:00 am` ❓ · last `12:00 am`
 #     ⚠️ Only 9 fit before midnight
-#     [✅ Save] [✖️ Cancel]
+#     [✅ Save] [↩️ Cancel]
 #     -# or tell me what to change
 #
 # The card says what would be saved, with every guess flagged and every
@@ -88,11 +88,12 @@ def render(entry: Entry, proposal: Proposal, card_id: int) -> Card:
     lines = [f"{entry.icon} {entry.title} · {proposal.kind}", *proposal.lines]
     lines += [f"{actions.WARNING_MARK} {warning}" for warning in proposal.warnings]
     lines.append(FOOTER)
-    if proposal.destructive:
+    # Red for what takes something away (a removal, anything that can't be undone), green for Save
+    if proposal.destructive or proposal.kind == "remove":
         confirm = Button(proposal.confirm_label, CARDS, "save", str(card_id), emoji="🗑️", style=cards.DANGER)
     else:
         confirm = Button(proposal.confirm_label, CARDS, "save", str(card_id), emoji="✅", style=cards.SUCCESS)
-    cancel = Button("Cancel", CARDS, "cancel", str(card_id), emoji="✖️")
+    cancel = cards.cancel(CARDS, "cancel", str(card_id))
     return Card("\n".join(lines), ((confirm, cancel) if proposal.can_save else (cancel,),))
 
 
@@ -102,7 +103,7 @@ def render_tie(entries: list[Entry], card_id: int, said: str) -> Card:
         Button(entry.title, CARDS, "pick", f"{card_id}:{entry.name}", emoji=entry.icon, style=cards.PRIMARY)
         for entry in entries
     )
-    return Card(f"Which is “{cards.truncate_label(said, 100)}” for?", (row + (Button("Neither", CARDS, "cancel", str(card_id), emoji="✖️"),),))
+    return Card(f"Which is “{cards.truncate_label(said, 100)}” for?", (row + (cards.cancel(CARDS, "cancel", str(card_id), "Neither"),),))
 
 
 def sticks(

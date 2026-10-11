@@ -4,7 +4,7 @@ from datetime import datetime
 
 import discord
 
-from core import channels, discord_utils, lifecycle, outgoing, protection
+from core import channels, discord_utils, lifecycle, outgoing, protection, tidy
 from core.errors import UserError
 
 log = logging.getLogger("assistant")
@@ -127,9 +127,11 @@ async def delete(channel_id: int, bulk: list[list[int]], single: list[int]) -> s
 
 
 async def note(channel_id: int, text: str, seconds: float) -> None:
-    """A short line in the channel that tidies itself away after `seconds`.
-    Housekeeping leaves no trace: it goes even while confirmations are kept
-    (lifecycle.tidy_after), and #bot-log is the record."""
+    """A short line in the channel that is deleted after `seconds`. Housekeeping
+    leaves no trace: it goes even while confirmations are kept
+    (lifecycle.tidy_after) and even if the bot restarts meanwhile
+    (core/tidy.py); #bot-log is the record."""
     channel = _channel(channel_id)
     if channel is not None:
-        await channel.send(outgoing.clean(text) or text, delete_after=lifecycle.tidy_after(seconds))
+        message = await channel.send(outgoing.clean(text) or text)
+        await tidy.later(channel_id, getattr(message, "id", None), lifecycle.tidy_after(seconds))

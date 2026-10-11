@@ -255,8 +255,8 @@ async def dismiss(timer: store.Timer) -> str:
 # ---------------------------------------------------------------------------
 BUTTONS = {
     "plus5": ("+5 min", "➕", discord.ButtonStyle.primary),
-    "restart": ("Restart", "🔁", discord.ButtonStyle.secondary),
-    "dismiss": ("Dismiss", "👍", discord.ButtonStyle.secondary),
+    "restart": ("Restart", "🔁", discord.ButtonStyle.primary),
+    "dismiss": ("Dismiss", "👍", discord.ButtonStyle.primary),
 }
 
 

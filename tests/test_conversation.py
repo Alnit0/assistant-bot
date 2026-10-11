@@ -549,7 +549,7 @@ def test_a_tie_asks_which_task_with_a_button_each_and_runs_nothing(world):
     world.say("add socks")
     (message_id, card), = world.sent
     assert card.text == "Which is “add socks” for?"
-    assert [(button.emoji, button.label) for button in card.rows[0]] == [("🛒", "Shopping"), ("🧳", "Packing"), ("✖️", "Neither")]
+    assert [(button.emoji, button.label) for button in card.rows[0]] == [("🛒", "Shopping"), ("🧳", "Packing"), ("↩️", "Neither")]
     assert len(world.requests) == 1, "no extraction until the user says which"
     (question,) = open_cards()
     assert (question.kind, question.data, question.said) == ("tie", {"tasks": ["shopping", "packing"]}, "add socks")
@@ -698,7 +698,7 @@ def test_a_card_states_the_task_the_kind_of_change_every_line_and_every_warning(
         "-# or tell me what to change",
     ]
     assert [(button.emoji, button.label, button.action, button.arg) for button in card.rows[0]] == [
-        ("✅", "Save", "save", "7"), ("✖️", "Cancel", "cancel", "7"),
+        ("✅", "Save", "save", "7"), ("↩️", "Cancel", "cancel", "7"),
     ]
 
 

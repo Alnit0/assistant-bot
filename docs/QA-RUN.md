@@ -1,6 +1,6 @@
 # QA run sheet
 
-One pass through 182 of the 206 👤 Manual tests in `docs/TESTING.md` that are
+One pass through 184 of the 208 👤 Manual tests in `docs/TESTING.md` that are
 ⬜ Untested (as of 2026-10-10); the other 24 are for pills stages not built yet
 (group R) or need a setup of their own, and join as each can be run. Blocks share setup and each one leaves things
 ready for the next, so run them in order.
@@ -27,8 +27,8 @@ tests (block 12).
 | 17 | Traces: `dev why` and bug reports | `--dev`, off (one restart) | 3 | 5 |
 | 18 | Retest: one path for every message | `--dev`, off (one restart) | 9 | 12 |
 | 21 | Pills: the daily checklist | `--dev`, off (two restarts) | 13 | 20 |
-| 22 | Channel reset, and housekeeping that leaves no trace | `--dev`, off then on (one restart) | 6 | 11 |
-| | **Total** | | **182** (F2 is split over blocks 4 and 7, counted in 7) | **about 3¼ hours** |
+| 22 | Channel reset, housekeeping that leaves no trace, and button colours | `--dev`, off then on (two restarts) | 8 | 15 |
+| | **Total** | | **184** (F2 is split over blocks 4 and 7, counted in 7) | **about 3¼ hours** |
 
 Blocks 14 to 22 need nothing from the others (19 and 20, the first pills blocks, passed on 2026-10-10 and are no longer here) (13 and 16 tested the old way of asking Claude, which is gone): run them any time after
 block 1, and before the overnight block if that suits.
@@ -455,7 +455,7 @@ again.)
 | 11 | Restart the bot (still `--dev`); type `dev jobs`. Then say `took my pill A` again | No second checklist and no second set of messages in the hub. `dev jobs` shows one `pills/checklist` job, for the next 6:00 am. The second dose of Pill A is ticked off on the same checklist message | R27 |
 | 12 | `dev clock 11:59pm`, then `dev clock +2m`. Look at the hub; then `dev clock 6:00am` | The untouched doses show ❌ missed on yesterday's checklist, which is otherwise left as it was; their own messages are deleted. `dev clock 6:00am` then posts a fresh checklist for the new day, everything pending | R26 |
 
-## 22. Channel reset, and housekeeping that leaves no trace
+## 22. Channel reset, housekeeping that leaves no trace, and button colours
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -474,6 +474,8 @@ another (wait for its ✅). Every step ends by saying what to press.
 | 4 | In the hub, with today's checklist posted (`pills`), a timer running (`timer 10m tea`) and dev mode on there (`dev on`): say `reset this channel`; press **Delete all**. Then press **Taken** on a pill's message, and reply `cancel` to the tea timer | The card, then everything goes. Afterwards, once each and nothing twice: today's checklist with its Taken / Skip messages, the tea timer's card, the pinned "Active timers" board and the pinned dev panel. Taken ticks the pill off on the new checklist; `cancel` cancels the timer on its new card | U7 |
 | 5 | Only if you can change the bot's role (otherwise report `U8 skip`): take Manage Messages away from it in a test channel; type `reset channel` there. Give the permission back | A card that says "⚠️ I can't reset #channel: my role needs **Manage Messages** in this channel. Nothing was deleted." with **Cancel** only. No ⚠️ on your message and nothing in the channel is touched | U8 |
 | 6 | With `KEEP_CONFIRMATIONS` on (the default; restart after setting it): send `a`, `b` and `c`. Reply `pin` to `a`, then `unpin`. Reply `archive` to `b`. Reply `delete` to `c`. Wait 15 seconds after each | Each time: one short line ("📌 Pinned", "📌 Unpinned", "📦 Archived: link", "🗑️ Deleted") that is gone after about 10 seconds, though confirmations are kept; your reply word is deleted; a card in #bot-log for each. Afterwards nothing in the channel says any of it happened | M7 |
+| 7 | Reply `pin` to a message, and within 5 seconds stop the bot (Ctrl + C). Wait 20 seconds, then start it again | "📌 Pinned" is still there while the bot is off, and is deleted within a few seconds of it starting: a restart doesn't leave the line behind | M8 |
+| 8 | Look at the buttons as you go: say `add zinc to my pills` (don't press); say `remove zinc` on a saved pill (don't press); type `pills` in the hub; let a timer finish (`timer 10s tea`); in a test channel with nothing pinned or 📌, type `reset channel` | **Save** is green and **Cancel** grey with ↩️. **Remove** is red. **Taken** is green and **Skip** blurple. On the timer's alert **+5 min**, **Restart** and **Dismiss** are all blurple: nothing but Cancel is grey anywhere. The reset card has **Delete all** (red) and **Cancel** only: no "Delete all unpinned" when nothing is pinned or 📌 | Q14 |
 
 ## When you finish
 

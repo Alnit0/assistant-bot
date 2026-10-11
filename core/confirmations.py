@@ -3,7 +3,8 @@ from collections.abc import Awaitable, Callable
 
 import discord
 
-from core import lifecycle
+from core import lifecycle, tidy
+from core.cards import CANCEL_EMOJI
 from core.config import CONFIRMATION_SECONDS
 from core.database import log_received, log_result
 from core.discord_utils import log_error, log_simple, report_interaction_error, safe_reply
@@ -87,12 +88,21 @@ class _OwnedView(discord.ui.View):
         except UserError as error:
             await log_result(row_id, status="error", error=str(error))
             await log_error("Confirmed action failed", str(error), what)
-            await interaction.message.edit(content=f"⚠️ {error}", view=None, delete_after=self._lifetime(CONFIRMATION_SECONDS * 3))
+            await self._say(interaction, f"⚠️ {error}", CONFIRMATION_SECONDS * 3)
             return
         await log_result(row_id, reply=outcome, status="ok")
         # What was confirmed is on record in #bot-log, whatever becomes of the line in the channel
         await log_simple("☑️ Confirmed", f"{what.removeprefix('confirmed: ')}\n{outcome}")
-        await interaction.message.edit(content=outcome, view=None, delete_after=self._lifetime())
+        await self._say(interaction, outcome)
+
+    async def _say(self, interaction: discord.Interaction, text: str, seconds: float | None = None) -> None:
+        """Put how it went in place of the question, for as long as such a line stays."""
+        if self.housekeeping:
+            # No trace: deleted by a stored job, restart or not (core/tidy.py)
+            await interaction.message.edit(content=text, view=None)
+            await tidy.later(interaction.channel_id, interaction.message.id, self._lifetime(seconds))
+        else:
+            await interaction.message.edit(content=text, view=None, delete_after=self._lifetime(seconds))
 
 
 class _Prompt(_OwnedView):
@@ -105,7 +115,7 @@ class _Prompt(_OwnedView):
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self._finish(interaction, f"confirmed: {self.question}", self.on_confirm)
 
-    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary)
+    @discord.ui.button(label="Cancel", emoji=CANCEL_EMOJI, style=discord.ButtonStyle.secondary)
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         await self._remove()
@@ -136,7 +146,7 @@ class _Choice(_OwnedView):
         super().__init__(user, TIMEOUT_SECONDS)
         for label, on_pick in options[:MAX_CHOICES]:
             self.add_item(self._button(question, label, on_pick))
-        cancel = discord.ui.Button(label="None of these", style=discord.ButtonStyle.secondary)
+        cancel = discord.ui.Button(label="None of these", emoji=CANCEL_EMOJI, style=discord.ButtonStyle.secondary)
         cancel.callback = self._cancel
         self.add_item(cancel)
 
@@ -178,7 +188,7 @@ class _Undo(_OwnedView):
         self.text = text
         self.on_undo = on_undo
 
-    @discord.ui.button(label="Undo", emoji="↩️", style=discord.ButtonStyle.secondary)
+    @discord.ui.button(label="Undo", emoji="⏪", style=discord.ButtonStyle.primary)
     async def undo(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self._finish(interaction, f"undo: {self.text}", self.on_undo)
 

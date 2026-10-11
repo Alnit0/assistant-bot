@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 
 import discord
 
-from core import database, lifecycle, outgoing
+from core import database, lifecycle, outgoing, tidy
 from core.config import CHANNELS, real_now_nz
 from core.discord_utils import COLOUR_INFO, log_error, log_simple, split_message
 from core.lifecycle import MessageClass
@@ -116,11 +116,13 @@ class Context:
             return
         """Send a note that deletes itself (unless clean-up is switched off)."""
         if self.housekeeping:
-            # No trace in the channel: #bot-log is the record
-            lifetime = lifecycle.tidy_after() if seconds is None else lifecycle.tidy_after(seconds)
+            # No trace in the channel: #bot-log is the record. Deleted by a stored job
+            # (core/tidy.py), so it goes even if the bot is restarted meanwhile
+            message = await self._channel.send(text)
+            await tidy.later(self.channel_id, getattr(message, "id", None), lifecycle.tidy_after() if seconds is None else lifecycle.tidy_after(seconds))
         else:
             lifetime = lifecycle.delete_after() if seconds is None else lifecycle.delete_after(seconds)
-        message = await self._channel.send(text, delete_after=lifetime)
+            message = await self._channel.send(text, delete_after=lifetime)
         lifecycle.note_transient(getattr(message, "id", None))
 
     def shown(self, text: str) -> None:

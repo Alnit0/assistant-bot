@@ -160,6 +160,7 @@ class FakeChannel:
 
     async def send(self, text, delete_after=None):
         self.sent.append((text, delete_after))
+        return SimpleNamespace(id=7000 + len(self.sent))
 
 
 def real(message_id, pinned=False, marked=False, days_old=0, content="", attachments=(), embeds=()):
@@ -223,15 +224,19 @@ def test_a_batch_discord_refuses_is_done_one_by_one(discord_channel):
     assert channel.bulk == [] and channel.singles == [3, 1, 2]
 
 
-def test_the_closing_line_goes_after_ten_seconds_even_while_confirmations_are_kept(discord_channel, monkeypatch):
-    from core import devmode, lifecycle
+def test_the_closing_line_is_booked_to_go_after_ten_seconds_even_while_confirmations_are_kept(discord_channel, monkeypatch, db):
+    from core import devmode, lifecycle, scheduler, tidy
 
     channel = discord_channel(FakeChannel())
     monkeypatch.setattr(lifecycle, "keeps_confirmations", lambda: True)
+    before = scheduler.utc_now()
     run(clearing.note(INBOX, "🧹 Channel reset: 3 messages deleted", 10))
+    (job,) = run(scheduler.pending_jobs(tidy.JOB_TASK, tidy.JOB_KIND))
+    assert job.payload == {"channel": INBOX, "message": 7001} and 9 <= (job.due_at - before).total_seconds() <= 11
+    assert channel.sent == [("🧹 Channel reset: 3 messages deleted", None)], "deleted by the stored job, not by a timer in memory"
     monkeypatch.setattr(devmode, "cleanup_enabled", lambda: False)  # `dev cleanup off` is the one thing that keeps it
     run(clearing.note(INBOX, "🧹 Channel reset: 3 messages deleted", 10))
-    assert channel.sent == [("🧹 Channel reset: 3 messages deleted", 10), ("🧹 Channel reset: 3 messages deleted", None)]
+    assert len(run(scheduler.pending_jobs(tidy.JOB_TASK, tidy.JOB_KIND))) == 1, "nothing more is booked"
 
 
 # ---------------------------------------------------------------------------
@@ -332,7 +337,17 @@ def test_asking_always_shows_a_card_with_the_counts_and_three_buttons(world):
     assert [(button.label, button.action, button.arg) for button in row] == [
         ("Delete all", "all", "100:6"), ("Delete all unpinned", "unpinned", "100:6"), ("Cancel", "cancel", "100:6"),
     ], "each button carries the channel and the message that asked"
-    assert row[0].style == cards.DANGER and world.deleted == [], "nothing is deleted by asking"
+    assert [(button.label, button.style, button.emoji) for button in row] == [
+        ("Delete all", cards.DANGER, "🗑️"), ("Delete all unpinned", cards.PRIMARY, "📌"), ("Cancel", cards.SECONDARY, "↩️"),
+    ], "red for what destroys, blurple for the other choice, grey for Cancel alone"
+    assert world.deleted == [], "nothing is deleted by asking"
+
+
+def test_with_nothing_pinned_or_marked_delete_all_unpinned_is_not_offered(world):
+    world.messages = [each for each in world.messages if not each.protected]
+    posted = ask(world)
+    assert posted.card.text.splitlines()[1] == "4 messages in <#100>, 0 of them pinned or 📌"
+    assert [button.label for button in posted.card.rows[0]] == ["Delete all", "Cancel"], "it would do the same as Delete all"
 
 
 def test_the_typed_word_asks_the_same_and_does_not_count_itself(world):

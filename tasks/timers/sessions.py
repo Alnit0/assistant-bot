@@ -72,11 +72,11 @@ def render_card(session: store.Session) -> str:
 
 
 BUTTONS = {
-    "ok": ("OK", "👍", discord.ButtonStyle.secondary),
-    "pause": ("Pause", "⏸️", discord.ButtonStyle.secondary),
+    "ok": ("OK", "👍", discord.ButtonStyle.primary),
+    "pause": ("Pause", "⏸️", discord.ButtonStyle.primary),
     "resume": ("Resume", "▶️", discord.ButtonStyle.success),
     "start": ("Start", "▶️", discord.ButtonStyle.success),
-    "skip": ("Skip", "⏭️", discord.ButtonStyle.secondary),
+    "skip": ("Skip", "⏭️", discord.ButtonStyle.primary),
     "stop": ("Stop", "⏹️", discord.ButtonStyle.danger),
 }
 

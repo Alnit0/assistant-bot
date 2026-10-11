@@ -73,7 +73,7 @@ def _read(arg: str) -> tuple[int, int | None]:
 
 
 def _cancel(channel_id: int, asked_by: int | None = None) -> Button:
-    return Button("Cancel", TASK, CANCEL, _arg(channel_id, asked_by), emoji="✖️")
+    return cards.cancel(TASK, CANCEL, _arg(channel_id, asked_by))
 
 
 def asking_card(found: clearing.Scan, asked_by: int | None = None) -> Card | None:
@@ -86,16 +86,11 @@ def asking_card(found: clearing.Scan, asked_by: int | None = None) -> Card | Non
     if not total:
         return None
     which = _arg(found.channel_id, asked_by)
-    return Card(
-        rules.card_text(found.mention, total, protected, old),
-        (
-            (
-                Button("Delete all", TASK, ALL, which, emoji="🗑️", style=cards.DANGER),
-                Button("Delete all unpinned", TASK, UNPINNED, which, emoji="📌"),
-                _cancel(found.channel_id, asked_by),
-            ),
-        ),
-    )
+    choices = [Button("Delete all", TASK, ALL, which, emoji="🗑️", style=cards.DANGER)]
+    if protected:
+        # Only offered when it would do something different: with nothing pinned or 📌 it is "Delete all"
+        choices.append(Button("Delete all unpinned", TASK, UNPINNED, which, emoji="📌", style=cards.PRIMARY))
+    return Card(rules.card_text(found.mention, total, protected, old), ((*choices, _cancel(found.channel_id, asked_by)),))
 
 
 # ---------------------------------------------------------------------------

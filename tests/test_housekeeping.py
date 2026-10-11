@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from core import confirmations, context, devmode, lifecycle, pins
+from core import confirmations, context, devmode, lifecycle, pins, scheduler, tidy
 from core.context import Context
 from core.errors import UserError
 from tasks import registry
@@ -19,6 +19,12 @@ TEN = lifecycle.HOUSEKEEPING_SECONDS
 
 def run(coroutine):
     return asyncio.run(coroutine)
+
+
+def booked():
+    """The lines booked to be deleted: (the message, seconds from now, to the nearest)."""
+    now = scheduler.utc_now()
+    return [(job.payload["message"], round((job.due_at - now).total_seconds())) for job in run(scheduler.pending_jobs(tidy.JOB_TASK, tidy.JOB_KIND))]
 
 
 class Channel:
@@ -158,7 +164,8 @@ def test_a_housekeeping_word_that_kept_its_command_would_be_refused_at_load(monk
 )
 def test_it_says_one_line_that_goes_deletes_my_word_and_is_recorded_in_bot_log(chat, said, line, title):
     chat.reply(said)
-    assert chat.channel.sent == [(line, TEN)], "one line, and it goes after ten seconds though confirmations are kept"
+    assert chat.channel.sent == [(line, None)], "one line, with no timer in memory to lose in a restart"
+    assert booked() == [(9001, TEN)], "it is booked to go after ten seconds, though confirmations are kept"
     assert chat.mine.deleted and chat.mine.reactions == [], "my word is deleted too"
     assert [logged[0] for logged in chat.logged] == [title], "and #bot-log has it"
 
@@ -171,8 +178,8 @@ def test_a_word_that_is_not_housekeeping_still_follows_keep_confirmations(chat):
 def test_when_it_cannot_be_done_the_reason_goes_after_ten_seconds_and_my_word_stays_marked(chat):
     chat.target = target(channel_id=ARCHIVE)  # a copy in the archive can't be archived again
     chat.reply("archive")
-    (said, stays), = chat.channel.sent
-    assert said.startswith("⚠️ ") and stays == TEN
+    (said, _), = chat.channel.sent
+    assert said.startswith("⚠️ ") and booked() == [(9001, TEN)]
     assert not chat.mine.deleted and chat.mine.reactions == ["⚠️"], "a failure is not housekeeping done: the ⚠️ is how I know"
     assert chat.logged[0][0] == "Command failed: archive"
 
@@ -214,7 +221,8 @@ def test_confirming_a_protected_delete_says_so_briefly_and_records_it(chat):
         return pressed
 
     pressed = run(pressing())
-    assert pressed.edits == [{"content": "🗑️ Deleted", "view": None, "delete_after": TEN}], "how it went, for ten seconds, then nothing"
+    assert pressed.edits == [{"content": "🗑️ Deleted", "view": None}], "how it went, in place of the question"
+    assert booked() == [(9001, TEN)], "for ten seconds, then nothing"
     assert chat.logged[-1][0] == "☑️ Confirmed" and chat.logged[-1][1].endswith("🗑️ Deleted")
 
 
@@ -265,4 +273,4 @@ def test_a_refused_housekeeping_reaction_says_why_for_ten_seconds(chat, monkeypa
     box = next(reaction for reaction in archive.reactions() if reaction.housekeeping)
     payload = SimpleNamespace(message_id=50, channel_id=INBOX)
     run(registry._refuse_reaction(archive, box, payload, chat.owner, "That message is already in the archive."))
-    assert sent == [("⚠️ That message is already in the archive.", TEN)]
+    assert sent == [("⚠️ That message is already in the archive.", None)] and booked() == [(1, TEN)]

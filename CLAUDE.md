@@ -420,7 +420,8 @@ Cleanliness
 - **Housekeeping leaves no trace in the channel** (delete, archive, pin,
   unpin, channel reset): at most one short line, which deletes itself
   after about 10 seconds whatever `KEEP_CONFIRMATIONS` says
-  (`lifecycle.tidy_after`); the typed word is deleted; a card or
+  (`lifecycle.tidy_after`), by a stored job so that a restart can't
+  leave it behind (`core/tidy.py`, never discord.py's `delete_after`); the typed word is deleted; a card or
   question that asked first goes on yes and on no; and the action is
   recorded in #bot-log, which is its record. A registration says it is
   housekeeping (`housekeeping=True` on a `Keyword`, `ReplyAction` or
@@ -460,6 +461,13 @@ Notifications
 - Quiet hours hold non-critical alerts; repeats are grouped.
 
 Interactions
+- Button colours are one rule (`docs/CONVERSATION.md`, section 4; in code
+  `core/cards.py`): green for the positive main action, red for what is
+  destructive, blurple for every other choice, grey for Cancel only,
+  which is made with `cards.cancel()` (↩️). `cards.check` refuses a card
+  that breaks it; a button made with discord.py follows it too
+  (`cards.colour_problem`, `tests/test_buttons.py`). A choice that
+  doesn't apply is left off the card.
 - Acknowledge every interaction within 3 seconds (defer first if slow).
 - Persistent buttons use stable custom_ids and survive restarts.
 - Error handlers check whether the interaction was already answered.

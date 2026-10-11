@@ -18,11 +18,11 @@ session; the end-of-task checklist updates it at the end of every task.
 - Committed: pills stage 2, the daily checklist with dose logging by
   message, and standing jobs that follow the clock. Block 21 is
   still to be reported.
-- In hand, uncommitted (not to be committed until asked): channel
-  reset (a transcript is saved first, and it leaves no trace of
-  itself), and the rule that all housekeeping leaves no trace in the
-  channel, with a short QA block (22 of `docs/QA-RUN.md`). If
-  `ENABLED_TASKS` is set in `.env`, `channel` has to be added to it.
+- Committed: channel reset, and housekeeping that leaves no trace.
+- In hand, uncommitted: a housekeeping line deleted by a stored job
+  (it used to survive a restart), "Delete all unpinned" hidden when
+  nothing is pinned, and the rule for button colours. Block 22 of
+  `docs/QA-RUN.md` has their steps (7 and 8).
 - Tests: `python -m pytest -q` passes. Golden conversations 1c, 1d
   and 2a are marked as gaps (they need questions on the card, G1).
   The live evals of 2026-10-10: pills 50 of 51, golden 32 of 33; each
@@ -44,9 +44,12 @@ channel reset.
 
 ## Recently done
 
+- Button colours are one rule (green, red, blurple, grey for Cancel
+  only), applied to every button and enforced by `core/cards.py`.
 - Housekeeping leaves no trace: delete, archive, pin, unpin and channel
-  reset say one line that goes after about 10 seconds, the typed word
-  goes too, and #bot-log is the record.
+  reset say one line that goes after about 10 seconds (by a stored job,
+  so also after a restart), the typed word goes too, and #bot-log is
+  the record.
 - Channel reset: `reset channel` empties the channel after asking on a
   card (all, or all but pinned and 📌), saves a transcript first, and
   every task puts its live messages back.

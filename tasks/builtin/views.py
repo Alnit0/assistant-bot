@@ -63,7 +63,7 @@ class TestButtons(discord.ui.View):
         await interaction.response.send_message(reply, ephemeral=True)
         await self.record(interaction, "Roll", reply)
 
-    @discord.ui.button(label="Wave", emoji="👋", style=discord.ButtonStyle.secondary)
+    @discord.ui.button(label="Wave", emoji="👋", style=discord.ButtonStyle.primary)
     async def wave(self, interaction: discord.Interaction, button: discord.ui.Button):
         reply = f"👋 Hello from {ASSISTANT_NAME}!"
         await interaction.response.send_message(reply)

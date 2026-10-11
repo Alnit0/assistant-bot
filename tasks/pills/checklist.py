@@ -69,7 +69,7 @@ def dose_card(dose: Dose) -> Card:
     which = str(dose.occurrence.id)
     return Card(
         today.dose_text(dose),
-        ((Button("Taken", TASK, TAKEN, which, emoji="✅", style=cards.SUCCESS), Button("Skip", TASK, SKIP, which, emoji="⏭️")),),
+        ((Button("Taken", TASK, TAKEN, which, emoji="✅", style=cards.SUCCESS), Button("Skip", TASK, SKIP, which, emoji="⏭️", style=cards.PRIMARY)),),
     )
 
 
