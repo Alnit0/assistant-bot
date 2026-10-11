@@ -829,6 +829,7 @@ no slash commands. `help dev` lists the words.
 | `dev expire <duration>` | Switches itself off after this long (`30m`, `2h`) |
 | reply `dev inspect` | What the bot knows about the message you replied to |
 | `dev jobs` | The scheduler's pending jobs |
+| `dev mock [<name>]` | Posts the card sketched in `docs/mockups/<name>.txt` here as a Components V2 message; on its own, lists the sketches. See "Mock-ups" below |
 | `dev run backup\|sweep\|summary` | Runs a maintenance routine now |
 | `dev fire next` | Runs the next pending job now, whenever it was due |
 | `dev seed <n>` | Posts n sample messages (up to 20), tagged as test data |
@@ -959,6 +960,41 @@ giving where the change came from (`BUTTON`, `FORM`, `MESSAGE`,
 `AUTOMATIC`). Pass the same `change_id` (`new_change_id()`) to changes
 that belong together, inside one `database.run`, and
 `db_last_change` / `db_revert` will treat them as one.
+
+### Mock-ups: `dev mock`
+
+A card is sketched in a text file in `docs/mockups/` and posted as a real
+Components V2 message, so a design can be looked at in Discord before any
+of it is built. A line at a time:
+
+| In the file | Becomes |
+|---|---|
+| `┃ …` | A line inside a Container. Lines that follow each other are one Container; a blank line ends it |
+| `┃ accent: amber` | That Container's accent colour (its first line): green, red, amber, yellow, blurple, blue, grey |
+| `[✅ Taken: green] [⏭️ Skip: blurple]` | A row of buttons: green, red, blurple, or grey for `[↩️ Cancel: grey]` only. Pressed, they only say it is a mock-up |
+| `---` | A separator |
+| anything else | Text as Discord writes it: `# ` and `## ` headings, `-# ` subtext, `**bold**` |
+
+Text, buttons and separators work inside a Container and outside one. A
+mistake is said in a line with the number of the line it is on. The
+reading is `tasks/dev/mock.py`; the real cards are not built from these
+files.
+
+### #commands, the nickname and the status
+
+- **#commands** (`COMMANDS_CHANNEL_ID`) is written from the task
+  registry every time the bot starts, and only touched when it would
+  read differently (`tasks/builtin/commands.py`, `core/mirror.py`). A
+  typed word says which group it goes in with `purpose=`
+  (`actions.SET_UP`, `EACH_DAY`, `SEE`); a plain-words action with
+  `purpose=` and `say=` (what one might type: placeholder names only); a
+  task lists its buttons in `buttons()`. A registration that is
+  `housekeeping` is listed with the housekeeping; a task marked
+  `testing` (dev, lab) comes last.
+- **The nickname and the status** are `core/identity.py`. A job that
+  catches its own failure, or decides not to do its work, says so with
+  `scheduler.report(job, scheduler.FAILED)` (or `SKIPPED`): the status
+  then shows that job until one of its runs works.
 
 ## Lab commands
 

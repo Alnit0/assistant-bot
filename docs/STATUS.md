@@ -21,29 +21,26 @@ session; the end-of-task checklist updates it at the end of every task.
 - Committed: channel reset, and housekeeping that leaves no trace.
 - Committed: housekeeping lines deleted by a stored job, and the rule
   for button colours. Live since 2026-10-11.
-- In hand, uncommitted, from going live (three parts, a pause after
-  each): **part 1, the bugs from real use**, is committed. Its retest
-  (block 23 of `docs/QA-RUN.md`) failed at step 2, silently: a time
-  said straight after a log went to plain chat, which acknowledged it.
-  Fixed and uncommitted: a follow-up goes to the task that just
-  answered, and chat never acknowledges something done. The rerun
-  found one more: a stated dose number was ignored. Fixed and
-  uncommitted with it: a dose named by its number is that dose, a
-  leftover is never cut off mid-phrase, and a report nothing tracks
-  gets "I can't log that yet." Steps 5 to 7 of block 23 retest these.
-  Part 2 (polish) and part 3 (the checklist redesign, mock-ups first)
-  wait for it.
-- In hand, uncommitted, a live bug of 2026-10-12: the 6:00 am
-  checklist didn't post, because one had been asked for at 1:29 am.
-  Fixed: the morning's post is a fresh copy, and a morning with no
-  post says why in the log and #bot-log. `dev status` now says what is
-  running. **The live bot must be restarted on this code for
-  tomorrow's 6:00 am.**
+- Committed: part 1 of the work from going live (the bugs from real
+  use: follow-ups to the task that just answered, dose numbers, "I
+  can't log that yet."), and the 6:00 am checklist as a fresh post.
+  Steps 5 to 7 of block 23 (`docs/QA-RUN.md`) are still to be reported.
+- In hand, uncommitted (2026-10-12): **a batch of small backlog items**,
+  asked for as one: the bot's nickname and status line, what the reset
+  card will post again, pointer lines that go by themselves,
+  `data/exports` in the nightly backup, "how long is left on tea?" to
+  the second, the #commands channel, and `dev mock` with two new
+  sketches. Nothing in it changes pill doses, schedules or reminders,
+  and the real checklist is untouched. Its manual tests are block 24.
+  **To use it: add `COMMANDS_CHANNEL_ID` to `.env` and restart the live
+  bot.**
 - Tests: `python -m pytest -q` passes. Golden conversations 1c, 1d
   and 2a are marked as gaps (they need questions on the card, G1).
   The live evals of 2026-10-12: pills 56 of 57, general 12 of 12,
   golden 37 of 39 (not run again since the router's rule on reports
-  was reworded); each miss is a known one that the code covers.
+  was reworded); each miss is a known one that the code covers. One
+  timers fixture ("how long left on tea?", now `timer_left`) has no
+  recording yet: one live request.
 - Live eval spend to date: about US$3.91.
 
 ## Current goal
@@ -56,21 +53,23 @@ matter most.
 
 No new features, tools or dev commands until pills reminders work
 (2026-10-10). Fixes and the agreed steps only. Nothing is added unasked.
-One exception was asked for on 2026-10-11, needed before going live:
-channel reset.
+Exceptions asked for: channel reset (2026-10-11, needed before going
+live), and on 2026-10-12 the bot's nickname and status line, the
+#commands channel and `dev mock`.
 
 ## Recently done
 
+- A batch of small items (2026-10-12): the bot says which one it is
+  (nickname and status line), #commands is written from the registry,
+  `dev mock` posts a sketched card, the reset card says what comes
+  back, pointer lines go by themselves, exports are in the backup, and
+  time left on a timer is said to the second.
 - From the first night live: due times that never pass the day's limit
   or creep, doses that can't fit skipped by the bot, a late log asked
   about on a card, and a time said straight after logging taken as a
   correction.
 - Button colours are one rule (green, red, blurple, grey for Cancel
   only), applied to every button and enforced by `core/cards.py`.
-- Housekeeping leaves no trace: delete, archive, pin, unpin and channel
-  reset say one line that goes after about 10 seconds (by a stored job,
-  so also after a restart), the typed word goes too, and #bot-log is
-  the record.
 - Channel reset: `reset channel` empties the channel after asking on a
   card (all, or all but pinned and 📌), saves a transcript first, and
   every task puts its live messages back.
@@ -81,25 +80,23 @@ channel reset.
 
 ## Next up
 
-1. The retest of part 1 (block 23), then its commit. Blocks 21 and 22
-   are still to be reported.
-2. Part 2, small polish: what the reset card will post again, pointer
-   messages that tidy themselves away, and `data/exports` in the
-   nightly backup. (The result line that stayed, the hidden button,
-   the no-trace rule and button colours are already done.)
-3. Part 3: the checklist redesigned with Discord's Components V2,
-   mock-ups first through a `dev mock` tool; the real checklist is
+1. Block 24 (this batch, on the live bot), then its commit. Blocks 21
+   and 22, and steps 5 to 7 of block 23, are still to be reported.
+2. The checklist redesigned with Discord's Components V2: look at
+   `dev mock checklist` and say what to change; the real checklist is
    not converted until the mock-ups are approved. Then reminders.
-2. Pills stage 3, reminders (prompts at each dose's time, snooze,
+3. Pills stage 3, reminders (prompts at each dose's time, snooze,
    re-nudges, missed, take-by, automatic skips, the latest time, the
    too-soon question), on a go. Then corrections and questions.
-3. Step 5, after pills reminders: write the standard into the task
+4. Step 5, after pills reminders: write the standard into the task
    contract and docs, drop the contract's unused `hint`, and replace the
    `add-task` skill with `new-task` (which reads the Scaling notes
    first) and `task-check`; run `task-check` on timers, bugs and pills.
 
 ## Open decisions
 
+- Whether the 6:00 am checklist not posting should show in the bot's
+  status, and for which reasons (see the backlog).
 - Deferred until pills reminders work: G1 (questions on the card), G3
   (corrections after Save), G4 (task ties asked too often), G7 (questions
   sent as their own message). G14 (privacy of notifications) comes with

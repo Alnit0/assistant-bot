@@ -274,3 +274,17 @@ def test_a_refused_housekeeping_reaction_says_why_for_ten_seconds(chat, monkeypa
     payload = SimpleNamespace(message_id=50, channel_id=INBOX)
     run(registry._refuse_reaction(archive, box, payload, chat.owner, "That message is already in the archive."))
     assert sent == [("⚠️ That message is already in the archive.", None)] and booked() == [(1, TEN)]
+
+
+def test_a_pointer_line_goes_after_ten_seconds_even_while_confirmations_are_kept(db, monkeypatch, dev_off):
+    from core import discord_utils
+
+    channel = Channel()
+    monkeypatch.setattr(discord_utils, "client", SimpleNamespace(get_channel=lambda channel_id: channel))
+    monkeypatch.setattr(lifecycle, "keeps_confirmations", lambda: True)
+    run(tidy.pointer(INBOX, "💊 Today's checklist is in <#400>."))
+    assert channel.sent == [("💊 Today's checklist is in <#400>.", None)], "deleted by the stored job, not by a timer in memory"
+    assert booked() == [(9001, TEN)]
+    monkeypatch.setattr(devmode, "cleanup_enabled", lambda: False)  # `dev cleanup off` is the one thing that keeps it
+    run(tidy.pointer(INBOX, "💊 Today's checklist is in <#400>."))
+    assert len(booked()) == 1

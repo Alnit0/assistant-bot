@@ -76,11 +76,17 @@ HEADING = "🧹 Channel · reset"
 NOT_UNDONE = "⚠️ This can't be undone"
 
 
-def card_text(mention: str, total: int, protected: int, old: int) -> str:
-    """The card that asks: the counts, how slow it will be, and that it can't be undone."""
+AGAIN = "♻️ Posted again afterwards:"
+
+
+def card_text(mention: str, total: int, protected: int, old: int, again=()) -> str:
+    """The card that asks: the counts, how slow it will be, what the tasks will
+    post again once it is done (`again`, a line each), and that it can't be undone."""
     lines = [HEADING, f"{_messages(total)} in {mention}, {protected} of them pinned or 📌"]
     if old:
         lines.append(slow_text(old))
+    if again:
+        lines += [AGAIN, *(f"• {what}" for what in again)]
     lines.append(NOT_UNDONE)
     return "\n".join(lines)
 

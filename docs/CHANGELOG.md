@@ -6,6 +6,23 @@ backfilled from the git log.
 
 ## 2026-10-12
 
+- **The bot says which one it is.** Its nickname is its base name on
+  live and "<base> · DEV" on the dev database, and its status reads
+  "🟢 Live · up 7h · next: nightly backup 3:00 am", "🧪 DEV database ·
+  clock +13h", or "⚠️ nightly backup failed · see #bot-log" until that
+  job next works.
+- **#commands** (`COMMANDS_CHANNEL_ID`): what the bot can do, written
+  from the task registry, one message a task, and brought up to date
+  at start-up only when it would read differently.
+- **`dev mock <name>`** posts a card sketched in `docs/mockups/` as a
+  Components V2 message; `dev mock` lists the sketches. Two new ones:
+  `reset-card` and `confirm-card`.
+- **The reset card says what will be posted again** ("Active timers:
+  Pomodoro waiting to start"). **Pointer lines go by themselves**
+  ("Today's checklist is in #hub", after about 10 seconds). **The
+  nightly backup zips `data/exports/`** beside the specs.
+- **"How long is left on tea?"** is answered to the second, in the
+  paused card's words: "⏱️ **tea** · 4m 18s left".
 - **The 6:00 am checklist always posts.** On 12 October it didn't: the
   checklist had been asked for at 1:29 am, so the job found today's
   already there, brought it up to date in place and said nothing. The

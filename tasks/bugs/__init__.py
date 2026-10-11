@@ -2,13 +2,13 @@ import asyncio
 
 import discord
 
-from core.actions import Action, Field, Request
+from core.actions import EACH_DAY, SEE, Action, Field, Request
 from core.config import BASE_DIR
 from core.context import Context
 from core.errors import UserError
 from core.clock import real_now
 from core.users import User
-from tasks.base import ANY, Keyword, Reaction, ReplyAction, Task
+from tasks.base import ANY, ButtonNote, Keyword, Reaction, ReplyAction, Task
 from tasks.bugs import capture, posts, rules, store
 
 EXPORT_FILE = BASE_DIR / "docs" / "BUGS.md"
@@ -137,12 +137,16 @@ ACTIONS = (
         ),
         needs_card=False,
         run=report_said,
+        purpose=EACH_DAY,
+        say=("that's a bug: it started two timers",),
     ),
     Action(
         "bug_list",
         "The user asks which bugs are open (\"show my open bugs\", \"what bugs have I reported?\").",
         needs_card=False,
         run=list_said,
+        purpose=SEE,
+        say=("show my open bugs",),
     ),
 )
 
@@ -175,19 +179,29 @@ class BugsTask(Task):
                 report_latest,
                 examples=["bug"],
                 channels=ANY,
+                purpose=EACH_DAY,
             ),
             Keyword(
                 "bugs",
                 "list the open bugs, each with a link to its post",
                 list_bugs,
                 examples=["bugs"],
+                purpose=SEE,
             ),
             Keyword(
                 "bugs export",
                 "write the open bugs, with everything captured and their notes, to docs/BUGS.md",
                 export,
                 examples=["bugs export"],
+                purpose=SEE,
             ),
+        ]
+
+    def buttons(self) -> list[ButtonNote]:
+        return [
+            ButtonNote("✅ Fixed", "on a bug's post in #bugs: close it as fixed"),
+            ButtonNote("Won't fix", "on a bug's post: close it without a fix"),
+            ButtonNote("🔄 Re-open", "on a closed bug's post: open it again"),
         ]
 
     def reply_actions(self) -> list[ReplyAction]:

@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 import discord
 
-from core import confirmations, day, devmode, live, scheduler
+from core import confirmations, day, devmode, live, scheduler, tidy
 from core.config import POMO_AUTO_CONTINUE, TIMEZONE
 from core.context import Context
 from core.discord_utils import report_interaction_error
@@ -242,7 +242,9 @@ async def show_again(ctx: Context, session: store.Session, restart=None, asked: 
     if where_to_show(session.channel_id, ctx.channel_id) == POINT:
         guild_id = getattr(getattr(ctx.channel, "guild", None), "id", "@me")
         link = f"https://discord.com/channels/{guild_id}/{session.channel_id}/{session.message_id}"
-        await ctx.confirm(f"🍅 **{session.label}** is already going in <#{session.channel_id}>: {link}")
+        # Only says where to look: gone after about ten seconds
+        await tidy.pointer(ctx.channel_id, f"🍅 **{session.label}** is already going in <#{session.channel_id}>: {link}")
+        ctx.shown("pointed to the session's card")
         if asked:
             await offer()
         return f"pomodoro {session.id} already going; pointed to its card"

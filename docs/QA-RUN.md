@@ -29,6 +29,7 @@ tests (block 12).
 | 21 | Pills: the daily checklist | `--dev`, off (two restarts) | 13 | 20 |
 | 22 | Channel reset, housekeeping that leaves no trace, and button colours | `--dev`, off then on (two restarts) | 8 | 15 |
 | 23 | Retest: the main pill, late at night | `--dev`, off (one restart) | 7 | 12 |
+| 24 | Small backlog batch: identity, #commands, mock-ups, the reset card | live, off (two restarts) | 9 | 15 |
 | | **Total** | | **191** (F2 is split over blocks 4 and 7, counted in 7) | **about 3¼ hours** |
 
 Blocks 14 to 23 need nothing from the others (19 and 20, the first pills blocks, passed on 2026-10-10 and are no longer here) (13 and 16 tested the old way of asking Claude, which is gone): run them any time after
@@ -496,6 +497,28 @@ Every step ends by saying what to press.
 | 5 | Say `I took dose 2 of pill A at 12:15pm`. Then `I took dose 1 of pill A at 8:45am`. Press nothing | "✅ **Pill A** (dose 2 of 3) · taken 12:15 pm · …" (it was ❌ missed). Then "✏️ **Pill A** (dose 1 of 3) · taken 8:30 am → 8:45 am · …": dose 1, not dose 2, and no "Not included" line | R61 |
 | 6 | Say `I took dose 1 of pill A at 12:15pm`. Press **Cancel** | A card: "**Pill A** (dose 1 of 3) · taken 8:45 am → 12:15 pm" and "⚠️ That's the same time as dose 2, taken 12:15 pm. Log it anyway?", with **Log it** and **Cancel**. After Cancel the checklist still shows dose 1 taken 8:45 am | R62 |
 | 7 | Say `I went for a run at 7 this morning`. Then `shopping is boring`. Then `dev clock reset` | "I can't log that yet." to the first: no "Got it", and not silence. No reply at all to the second | S57 |
+
+## 24. Small backlog batch, on the live bot
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
+On the **live** bot, dev mode off. Before you start: make a #commands
+channel that only the bot can write in, put its id in `.env` as
+`COMMANDS_CHANNEL_ID`, and restart the service on this code. Use a test
+channel for step 5. Nothing here changes a pill or a dose. Every step
+ends by saying what to press.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Look at the bot in the member list, now and five minutes later. Press nothing | Its nickname is its base name, with no "· DEV". Its status reads "🟢 Live · up 0m · next: …" naming the next job and its time, and a few minutes later the uptime has moved on | K19 |
+| 2 | Read #commands. Then restart the service once more and look again. Press nothing | One message a task (Builtin, Bugs, Pills, Timers), then Housekeeping, Dev and Lab; pills are only ever "Pill A" and "Pill B". #bot-log has "📖 #commands updated". After the second restart nothing in the channel changed and there is no second card | K21 |
+| 3 | In #inbox: type `pills`. Wait 15 seconds. Press nothing | The checklist is posted in the hub. In #inbox "💊 Today's checklist is in #hub." appears and is gone within about 10 seconds; your word is deleted; nothing is left | M10 |
+| 4 | `timer 5m tea`; say `how long is left on tea?`. Reply `pause` to the timer; ask again. Then reply `cancel` to it | "⏱️ **tea** · 4m 18s left" (minutes and seconds, no list posted). Paused: "⏸️ **tea** · paused with 4m 5s left", the same words as the first line of the timer's card | G23 |
+| 5 | In a test channel: type `pomo` and don't press Start. Type `reset channel`; press **Cancel**. Then press **Stop** on the session | The card has "♻️ Posted again afterwards:" and "• Active timers: Pomodoro waiting to start" above "⚠️ This can't be undone". After Cancel nothing changed | U10 |
+| 6 | Type `dev mock`. Then `dev mock checklist`, and press **Taken** on it. Then `dev mock reset-card` and `dev mock confirm-card` | The list names `checklist`, `confirm-card` and `reset-card`. Each sketch is posted as one message with boxed sections, an accent colour down the side, headings, small text and coloured buttons; your word is deleted. A button answers "🧪 Mock-up: this button does nothing yet." to you alone, and nothing changes | J51 |
+| 7 | Type `dev mock nothing`. Press nothing | "🧪 There is no mock-up called `nothing`." with the list of the ones there are; nothing else is posted | J52 |
+| 8 | Tomorrow morning: look at "💾 Backup saved" in #bot-log, and at the bot's status. Press nothing | The card lists `assistant-….db`, `specs-….zip` and, if a channel was ever reset, `exports-….zip`. The status is "🟢 Live · …", not a ⚠️ line | K22 |
+| 9 | Only when you next run the dev database (otherwise report `K20 skip`): `python main.py --dev`; look at the bot. `dev clock +13h`; look again. Stop it and start the live bot | "<base> · DEV" and "🧪 DEV database"; after the clock moves, "🧪 DEV database · clock +13h". Back on live the nickname is the base name again | K20 |
 
 ## When you finish
 

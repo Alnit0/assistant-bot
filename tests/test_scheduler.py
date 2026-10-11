@@ -122,6 +122,48 @@ class SchedulerDatabaseTest(DatabaseTestCase):
         self.assertEqual(self.query("SELECT error FROM scheduled_jobs WHERE kind = 'broken'"), [("RuntimeError('kaboom')",)])
         self.assertEqual(len(self.ran), 1)
 
+    async def test_a_job_whose_latest_run_failed_or_was_skipped_is_in_trouble_until_one_works(self):
+        ran = []
+
+        async def handler(job):
+            ran.append(job.id)
+            if job.payload.get("how"):
+                scheduler.report(job, job.payload["how"])
+            if job.payload.get("raise"):
+                raise RuntimeError("boom")
+
+        async def no_log(*args):
+            pass
+
+        real_log, scheduler.log_error = scheduler.log_error, no_log
+        self.addCleanup(setattr, scheduler, "log_error", real_log)
+        scheduler.register_handler("pills", "checklist", handler)
+        scheduler.register_handler("core", "nightly_backup", handler)
+        before = scheduler.utc_now() - timedelta(minutes=5)
+        self.assertEqual(await scheduler.troubled(), [])
+
+        await scheduler.add_job("pills", "checklist", before, {"how": scheduler.SKIPPED})
+        await scheduler.add_job("core", "nightly_backup", before, {"how": scheduler.FAILED})
+        await scheduler.run_all_due()
+        self.assertEqual(sorted(await scheduler.troubled()), [("core", "nightly_backup", "failed"), ("pills", "checklist", "skipped")])
+        self.assertEqual(self.query("SELECT kind, status FROM scheduled_jobs ORDER BY id"), [("checklist", "skipped"), ("nightly_backup", "failed")])
+
+        await scheduler.add_job("pills", "checklist", before)  # the next run works
+        await scheduler.add_job("core", "nightly_backup", before, {"raise": True})  # the next run raises
+        await scheduler.run_all_due()
+        self.assertEqual(await scheduler.troubled(), [("core", "nightly_backup", "failed")], "a run that worked clears its kind, and only its kind")
+
+        await scheduler.add_job("core", "nightly_backup", before)
+        await scheduler.add_job("core", "nightly_backup", scheduler.utc_now() + timedelta(hours=1))  # one still waiting changes nothing
+        await scheduler.run_all_due()
+        self.assertEqual(await scheduler.troubled(), [])
+        self.assertEqual(len(ran), 5)
+
+    async def test_a_job_reports_itself_as_failed_or_skipped_and_nothing_else(self):
+        job = scheduler.Job(1, None, "s", "k", {}, scheduler.utc_now())
+        with self.assertRaises(ValueError):
+            scheduler.report(job, scheduler.DONE)
+
     async def test_a_job_for_a_task_that_is_not_loaded_waits(self):
         now = scheduler.utc_now()
         await scheduler.add_job("absent", "thing", now - timedelta(minutes=1))
@@ -279,6 +321,16 @@ class NightlyBackupTest(DatabaseTestCase):
         self.assertEqual(self.backups, 1)
         self.assertEqual(self.query("SELECT status, late_by_s > 32000 FROM scheduled_jobs ORDER BY id LIMIT 1"), [("done", 1)])
         self.assertEqual(len(await scheduler.pending_jobs(backup.JOB_TASK)), 1, "and tomorrow's is booked")
+
+    async def test_a_backup_that_could_not_be_saved_is_recorded_as_failed_and_the_next_is_still_booked(self):
+        async def incomplete():
+            return False  # it said why in #bot-log itself
+
+        backup.run_nightly_backup = incomplete
+        await scheduler.add_job(backup.JOB_TASK, backup.JOB_KIND, scheduler.utc_now() - timedelta(minutes=1))
+        await scheduler.run_due()
+        self.assertEqual(await scheduler.troubled(), [(backup.JOB_TASK, backup.JOB_KIND, scheduler.FAILED)])
+        self.assertEqual(len(await scheduler.pending_jobs(backup.JOB_TASK)), 1)
 
     async def test_the_next_backup_is_booked_even_if_this_one_fails(self):
         async def broken():

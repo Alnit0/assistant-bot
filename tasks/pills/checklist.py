@@ -197,6 +197,20 @@ async def channel_cleared(channel_id: int, gone: set[int]) -> None:
             await post(user_id, channel_id)
 
 
+AGAIN = "Today's pills checklist"
+
+
+async def reposted(channel_id: int, gone: set[int]) -> list[str]:
+    """What a reset that took `gone` would have posted again here: today's
+    checklist, if it or one of its messages is among them. No pill is named."""
+    day = days.today(clock.now())
+    for user_id in await database.run(store.db_users):
+        held = await database.run(store.db_messages, user_id, day)
+        if any(message.channel_id == channel_id and message.message_id in gone for message in held):
+            return [AGAIN]
+    return []
+
+
 def changed(user_id: int) -> None:
     """A pill or a dose changed: bring the checklist up to date, in the background."""
     live.schedule(("pills-checklist", user_id), lambda: refresh(user_id))

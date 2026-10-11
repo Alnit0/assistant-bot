@@ -52,6 +52,9 @@ class Keyword:
     # channel: what is said about it deletes itself after about 10 seconds whatever
     # KEEP_CONFIRMATIONS says, the user's command goes too, and #bot-log is the record
     housekeeping: bool = False
+    # Which group of #commands this goes in: actions.SET_UP, EACH_DAY or SEE. Left
+    # empty it is listed under "Typed words"
+    purpose: str = ""
 
     def __post_init__(self):
         self.words = _as_list(self.words)
@@ -177,6 +180,16 @@ class Reaction:
         return self.emoji
 
 
+@dataclass(frozen=True)
+class ButtonNote:
+    """A button of the task's, for #commands: how it reads and what it does.
+    Buttons are made where their cards are, so the task says here which it has."""
+
+    label: str  # as on the button: "✅ Taken"
+    description: str
+    housekeeping: bool = False  # listed with the housekeeping, not with the task
+
+
 class Task:
     """Base class for tasks. Set name and description, override the hooks you need.
 
@@ -185,6 +198,8 @@ class Task:
 
     name: str = ""
     description: str = ""
+    # For testing the bot, not for every day (dev, lab): listed last in #commands
+    testing: bool = False
 
     # --- for the router (core/routing.py). A task that takes plain words sets
     # these three and returns its actions; the registry refuses one that is
@@ -208,6 +223,10 @@ class Task:
 
     def reactions(self) -> list[Reaction]:
         """Emoji this task responds to."""
+        return []
+
+    def buttons(self) -> list[ButtonNote]:
+        """The buttons on this task's own messages, for #commands."""
         return []
 
 
@@ -307,6 +326,13 @@ class Task:
         a running timer's card, a pinned panel) and point its records at the
         new messages, so nothing is orphaned and nothing is there twice. One of
         its messages that is not in `gone` was kept: leave it alone."""
+
+    async def reposted(self, channel_id: int, gone: set[int]) -> list[str]:
+        """What `channel_cleared` would post again if the messages in `gone` went,
+        in a few words each ("Active timers: Pomodoro waiting to start"), for
+        the card that asks before a channel is reset. Changes nothing. Never a
+        sensitive name (a pill's)."""
+        return []
 
     async def message_class(self, message_id: int) -> MessageClass | None:
         """What kind of message this is, if it is one of this task's own and not

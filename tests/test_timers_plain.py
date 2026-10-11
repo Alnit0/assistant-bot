@@ -77,7 +77,7 @@ def test_the_timers_task_meets_the_contract_and_is_one_entry():
     assert entry is not None and (entry.icon, entry.title) == ("⏱️", "Timers")
     assert "Not pills" in entry.only_for and len(entry.examples) == 3
     assert [action.name for action in entry.actions] == [
-        "timer_start", "timer_change", "timer_all", "timer_list", "timer_history",
+        "timer_start", "timer_change", "timer_all", "timer_list", "timer_left", "timer_history",
         "pomo_start", "pomo_change", "pomo_status", "pomo_stats",
     ]
     assert actions.problems([entry]) == []
@@ -282,6 +282,46 @@ def test_the_list_is_the_live_one_and_a_new_copy_takes_the_old_ones_place(world)
     assert dict(run(store.lists(world.owner.id)))[CHANNEL] == 7002
     run(plain.show_list(world.request, {}, frozenset()))
     assert world.deleted == [7002] and dict(run(store.lists(world.owner.id)))[CHANNEL] == 7003
+
+
+def how_long(world, which, guessed=()):
+    return run(plain.how_long(world.request, {"which": which}, frozenset(guessed)))
+
+
+def test_how_long_is_left_is_said_to_the_second_in_the_paused_cards_format(world):
+    start(world, ("5m", "tea"), ("1h30", "roast"))
+    tea, roast = going(world)
+    world.wait(42)
+    assert how_long(world, ref(tea)) == "⏱️ **tea** · 4m 18s left", "not whole minutes"
+    assert how_long(world, f"{ref(tea)} {ref(roast)}").splitlines() == ["⏱️ **tea** · 4m 18s left", "⏱️ **roast** · 1h 29m left"]
+    assert len(world.channel.sent) == 2, "a line in answer: no list is posted"
+    change(world, ref(tea), "pause")
+    paused = going(world)[0]
+    said = how_long(world, ref(tea))
+    assert said == "⏸️ **tea** · paused with 4m 18s left"
+    assert said == timers.render_timer(paused).splitlines()[0], "word for word the first line of the paused card"
+
+
+def test_how_long_is_left_on_it_is_the_timer_touched_last_and_a_guess_is_marked(world):
+    start(world, ("5m", "tea"), ("10m", "eggs"))
+    tea, eggs = going(world)
+    change(world, ref(tea), "extend", duration="5m")
+    assert how_long(world, actions.REFERENCE) == "⏱️ **tea** · 10m left", "“it” is worked out by the code"
+    assert how_long(world, ref(eggs), guessed=["which"]).splitlines() == [
+        "⏱️ **eggs** · 10m left", "❓ I wasn't sure which timer you meant. Tell me if it was another one.",
+    ]
+    assert how_long(world, "all").splitlines() == ["⏱️ **tea** · 10m left", "⏱️ **eggs** · 10m left"]
+
+
+def test_how_long_is_left_on_a_timer_that_is_over_or_unknown(world):
+    start(world, ("5m", "tea"))
+    (tea,) = going(world)
+    change(world, ref(tea), "cancel")
+    assert how_long(world, ref(tea)) == "🚫 **tea** · cancelled"
+    with pytest.raises(UserError, match="I couldn't tell which timer you meant"):
+        how_long(world, "t999")
+    with pytest.raises(UserError, match="No timers are running or paused"):
+        how_long(world, actions.REFERENCE)
 
 
 def test_with_nothing_going_the_list_says_so_and_is_not_kept(world):

@@ -1,9 +1,9 @@
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta
 
-from core import clock, day, hub, livelists, occurrences, timeinput
+from core import clock, day, hub, livelists, occurrences, tidy, timeinput
 from core.actions import BOOLEAN, INTEGER, ITEMS, LAST, MINUTES, TIME, TIMES, Action, Field, LiveReply, Proposal, Request, Shown, State
-from core.actions import flag, is_guessed
+from core.actions import EACH_DAY, SEE, SET_UP, flag, is_guessed
 from core.actions import is_reference, point_at
 from core.errors import UserError
 from tasks.pills import checklist, rules, store, today
@@ -976,8 +976,15 @@ async def show_today(request: Request, data: dict, guessed: frozenset) -> Shown:
     in the hub (where it was asked, if no hub is set)."""
     await checklist.post(request.user.id, request.channel_id)
     where = hub.channel_id()
-    elsewhere = where is not None and where != request.channel_id
-    return Shown("posted today's checklist", f"💊 Today's checklist is in <#{where}>." if elsewhere else "")
+    if where is not None and where != request.channel_id:
+        # Only says where to look: gone after about ten seconds
+        await tidy.pointer(request.channel_id, elsewhere_text(where))
+    return Shown("posted today's checklist")
+
+
+def elsewhere_text(where: int) -> str:
+    """The line that points to the checklist when it was asked for somewhere else."""
+    return f"💊 Today's checklist is in <#{where}>."
 
 
 async def names(request: Request) -> list[str]:
@@ -1054,6 +1061,8 @@ ACTIONS = (
             _OFF_THE_CARD,
         ),
         prepare=add_card,
+        purpose=SET_UP,
+        say=("add Pill A at 8 am", "add Pill B twice a day, at least 6 hours apart",),
         apply=add_save,
         verify=add_check,
         # No card when every pill named is already there just as asked: that is said in a line
@@ -1069,6 +1078,8 @@ ACTIONS = (
         "Evening pill, times [9:00 pm]. \"vitamin D is 2 tablets now\" -> dose 2 tablets.",
         _one_or_more("to change", _WHICH, Field("name", "A new name for it, if it is being renamed."), *_PLAN_FIELDS, _OFF_THE_CARD),
         prepare=edit_card,
+        purpose=SET_UP,
+        say=("move Pill A to 9 pm", "Pill B is 2 tablets now",),
         apply=edit_save,
         verify=edit_check,
         # No card when nothing would change: the same line as adding what is already there
@@ -1081,6 +1092,8 @@ ACTIONS = (
         "the 20th\" -> until the 20th (the day it is taken again).",
         _one_or_more("to pause", _WHICH, Field("until", "The day it is taken again, " + AS_SAID + " Leave out for no end."), _OFF_THE_CARD),
         prepare=pause_card,
+        purpose=SET_UP,
+        say=("pause Pill A until the 20th",),
         apply=pause_save,
         verify=pause_check,
     ),
@@ -1089,6 +1102,8 @@ ACTIONS = (
         "Take a paused pill again (\"resume iron\", \"start iron again\").",
         _one_or_more("to resume", _WHICH, _OFF_THE_CARD),
         prepare=resume_card,
+        purpose=SET_UP,
+        say=("resume Pill A",),
         apply=resume_save,
         verify=resume_check,
     ),
@@ -1098,6 +1113,8 @@ ACTIONS = (
         "iron\"). This is the usual one.",
         _one_or_more("to remove", _WHICH, _OFF_THE_CARD),
         prepare=remove_card,
+        purpose=SET_UP,
+        say=("remove Pill A",),
         apply=remove_save,
         verify=remove_check,
     ),
@@ -1107,6 +1124,8 @@ ACTIONS = (
         "and its history\", \"delete it completely\"); otherwise use pill_remove.",
         _one_or_more("to delete", _WHICH, _OFF_THE_CARD),
         prepare=delete_card,
+        purpose=SET_UP,
+        say=("delete Pill A and its history",),
         apply=delete_save,
         verify=delete_check,
     ),
@@ -1137,6 +1156,8 @@ ACTIONS = (
             ),
         ),
         run=log_doses,
+        purpose=EACH_DAY,
+        say=("took Pill A", "had Pill A at 9 am", "skip Pill B today", "I didn't take Pill A",),
         # Done at once, unless a dose would be ticked off after its pill's latest time, or one named
         # by its number would be out of order: that is asked first
         card_if=log_asks,
@@ -1150,11 +1171,15 @@ ACTIONS = (
         "today?\", \"what's left to take?\", \"have I taken everything?\").",
         needs_card=False,
         run=show_today,
+        purpose=SEE,
+        say=("what's left to take today?",),
     ),
     Action(
         "pill_list",
         "The user asks what pills they have or when they take them (\"show all my pills\", \"what do I take?\").",
         needs_card=False,
         run=show_list,
+        purpose=SEE,
+        say=("my pills",),
     ),
 )

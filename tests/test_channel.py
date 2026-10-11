@@ -16,7 +16,7 @@ from tasks import registry
 from tasks.channel import rules
 from tasks.pills import checklist, plain as pills_plain
 from tasks.pills import store as pills_store
-from tasks.timers import sessions, timers
+from tasks.timers import board, sessions, timers
 from tasks.timers import store as timers_store
 
 NOW = datetime(2026, 10, 11, 12, 0, tzinfo=timezone.utc)
@@ -252,8 +252,12 @@ def world(make_db, monkeypatch, owner, tmp_path):
             message(1, author="Alnit0", content="one"), message(2, protected=True, author="Alnit0", content="keep me"),
             message(3, author="Assistant", content="three"), message(4, days_old=20, author="Alnit0", content="an old one"), message(5),
         ],
-        missing=(),
+        missing=(), again=[], asked_again=[],
     )
+
+    async def reposted(channel_id, gone):
+        seen.asked_again.append((channel_id, set(gone)))
+        return list(seen.again)
 
     async def scan(channel_id):
         return Scan(channel_id, f"<#{channel_id}>", () if seen.missing else tuple(seen.messages), seen.missing, name="inbox")
@@ -295,6 +299,7 @@ def world(make_db, monkeypatch, owner, tmp_path):
     monkeypatch.setattr(cards, "edit", edit)
     monkeypatch.setattr(channel_task, "log_simple", log_simple)
     monkeypatch.setattr(registry, "channel_cleared", cleared)
+    monkeypatch.setattr(registry, "reposted", reposted)
     monkeypatch.setattr(clock, "real_now", lambda: NOW)
     monkeypatch.setattr(llm, "_exchanges", {})
     live.reset()
@@ -341,6 +346,64 @@ def test_asking_always_shows_a_card_with_the_counts_and_three_buttons(world):
         ("Delete all", cards.DANGER, "🗑️"), ("Delete all unpinned", cards.PRIMARY, "📌"), ("Cancel", cards.SECONDARY, "↩️"),
     ], "red for what destroys, blurple for the other choice, grey for Cancel alone"
     assert world.deleted == [], "nothing is deleted by asking"
+
+
+def test_the_card_lists_what_will_be_posted_again(world):
+    world.again = ["Active timers: Pomodoro waiting to start", "Today's pills checklist"]
+    posted = ask(world)
+    assert posted.card.text.splitlines() == [
+        "🧹 Channel · reset",
+        "5 messages in <#100>, 1 of them pinned or 📌",
+        "⏳ 1 of them is over 14 days old and can only be deleted one at a time: that will be slow, about 1 minute",
+        "♻️ Posted again afterwards:",
+        "• Active timers: Pomodoro waiting to start",
+        "• Today's pills checklist",
+        "⚠️ This can't be undone",
+    ]
+    assert world.asked_again == [(INBOX, {1, 2, 3, 4, 5, ASKED})], "the tasks are asked about everything that is there"
+
+
+def test_with_nothing_to_post_again_the_card_says_nothing_about_it(world):
+    assert "♻️" not in ask(world).card.text
+    assert rules.card_text("<#100>", 3, 0, 0) == "🧹 Channel · reset\n3 messages in <#100>, 0 of them pinned or 📌\n⚠️ This can't be undone"
+
+
+def test_what_the_timers_would_post_again_is_said_in_a_line(world):
+    def timer(label, message_id, status=timers_store.RUNNING):
+        made = timers_store.Timer(
+            user_id=world.owner.id, discord_user_id=1, channel_id=INBOX, label=label, duration_s=300, status=status,
+            ends_at=clock.now() + timedelta(minutes=5), message_id=message_id, remaining_s=120 if status == timers_store.PAUSED else None,
+        )
+        return run(timers_store.add_timer(made))
+
+    assert run(board.reposted(INBOX, {11, 12})) == [], "nothing is going"
+    timer("tea", 11), timer("dinner", 12, timers_store.PAUSED), timer("old", 13, timers_store.CANCELLED)
+    assert run(board.reposted(INBOX, {11, 99})) == ["Active timers: tea, dinner (paused)"]
+    assert run(board.reposted(INBOX, {98, 99})) == [], "none of their messages is going: nothing to post again"
+    assert run(board.reposted(HUB, {11, 12})) == [], "another channel"
+    waiting = SimpleNamespace(state=timers_store.WAITING)
+    running = SimpleNamespace(state=timers_store.RUNNING)
+    assert board.again_text([], [waiting]) == "Active timers: Pomodoro waiting to start"
+    assert board.again_text([], [running]) == "Active timers: Pomodoro running"
+
+
+def test_every_task_is_asked_what_it_would_post_again_and_one_failing_is_left_out(monkeypatch):
+    monkeypatch.undo()
+
+    class Says:
+        name = "says"
+
+        async def reposted(self, channel_id, gone):
+            return [f"{len(gone)} of mine"]
+
+    class Broken:
+        name = "broken"
+
+        async def reposted(self, channel_id, gone):
+            raise RuntimeError("no")
+
+    monkeypatch.setattr(registry, "_tasks", [Broken(), Says()])
+    assert run(registry.reposted(INBOX, {1, 2})) == ["2 of mine"]
 
 
 def test_with_nothing_pinned_or_marked_delete_all_unpinned_is_not_offered(world):

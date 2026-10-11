@@ -37,6 +37,11 @@ TICK_SECONDS = 15
 LATE_AFTER_SECONDS = 60  # a job this overdue counts as late
 
 PENDING, RUNNING, DONE, FAILED, CANCELLED = "pending", "running", "done", "failed", "cancelled"
+# A job that ran and decided not to do its work, having said why (`report`)
+SKIPPED = "skipped"
+# How a job that ran can have ended: the last of these, for each kind of job, says whether
+# that kind is in trouble (`troubled`)
+_ENDED = (DONE, FAILED, SKIPPED)
 
 
 @dataclass(frozen=True)
@@ -197,6 +202,25 @@ def _db_all_pending(conn: sqlite3.Connection) -> list[Job]:
     return [_job(row) for row in rows]
 
 
+def _db_troubled(conn: sqlite3.Connection) -> list[tuple[str, str, str]]:
+    """(task, kind, how it ended) for each kind of job whose latest run failed or
+    was skipped, the most recent first. A later run that worked clears it."""
+    marks = ", ".join("?" for _ in _ENDED)
+    rows = conn.execute(
+        f"""
+        SELECT skill, kind, status FROM scheduled_jobs AS job
+        WHERE status IN (?, ?) AND id = (
+            SELECT id FROM scheduled_jobs
+            WHERE skill = job.skill AND kind = job.kind AND status IN ({marks})
+            ORDER BY finished_at DESC, id DESC LIMIT 1
+        )
+        ORDER BY finished_at DESC, id DESC
+        """,
+        (FAILED, SKIPPED, *_ENDED),
+    ).fetchall()
+    return [(row[0], row[1], row[2]) for row in rows]
+
+
 # ---------------------------------------------------------------------------
 # For tasks and the core
 # ---------------------------------------------------------------------------
@@ -290,6 +314,31 @@ def wake() -> None:
 
 
 # ---------------------------------------------------------------------------
+# How a job ended. One that raises has failed. A handler that catches its own
+# failure, or decides not to do its work, says so with `report`: the job is
+# then recorded as failed or skipped instead of done, and that kind of job
+# counts as in trouble until one of its runs works (the bot's status says so:
+# core/identity.py). The handler still says why itself, in the log and #bot-log.
+# ---------------------------------------------------------------------------
+_reported: dict[int, str] = {}
+
+
+def report(job: Job, ended: str) -> None:
+    """Called by a job's handler while it runs: this run is to be recorded as
+    FAILED or SKIPPED, not as done."""
+    if ended not in (FAILED, SKIPPED):
+        raise ValueError(f"A job reports itself as failed or skipped, not {ended!r}")
+    _reported[job.id] = ended
+
+
+async def troubled() -> list[tuple[str, str, str]]:
+    """(task, kind, "failed" or "skipped") for each kind of job whose latest run
+    did not work, the most recent first. Read from the jobs table, so a restart
+    doesn't forget it."""
+    return await database.run(_db_troubled)
+
+
+# ---------------------------------------------------------------------------
 # The loop
 # ---------------------------------------------------------------------------
 async def run_due(now: datetime | None = None) -> int:
@@ -312,13 +361,15 @@ async def run_due(now: datetime | None = None) -> int:
         try:
             await handler(job)
         except Exception as error:
+            _reported.pop(job.id, None)
             log.exception("Scheduled job %s (%s/%s) failed", job.id, job.task, job.kind)
             await database.run(_db_finish, job.id, FAILED, job.late_by, repr(error))
             await log_error(f"Scheduled job failed: {job.task}/{job.kind}", repr(error))
             outcome = "failed"
         else:
-            await database.run(_db_finish, job.id, DONE, job.late_by, None)
-            outcome = "done"
+            # Done, unless the handler said this run failed or was skipped (`report`)
+            outcome = _reported.pop(job.id, DONE)
+            await database.run(_db_finish, job.id, outcome, job.late_by, None)
         await devmode.debug(
             f"Job {job.id}: {job.task}/{job.kind}",
             [

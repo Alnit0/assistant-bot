@@ -2,7 +2,7 @@ import discord
 
 from core.config import REACTION_DEBOUNCE_SECONDS
 from tasks.archive import messages, store
-from tasks.base import Reaction, ReplyAction, Task
+from tasks.base import ButtonNote, Reaction, ReplyAction, Task
 
 WAIT = f"{REACTION_DEBOUNCE_SECONDS:g} seconds"
 
@@ -12,6 +12,9 @@ class ArchiveTask(Task):
 
     name = "archive"
     description = "Move messages to the archive channel (with a Restore button), or delete them"
+
+    def buttons(self) -> list[ButtonNote]:
+        return [ButtonNote(f"{messages.RESTORE_EMOJI} Restore", "under an archived copy: put the message back where it was", housekeeping=True)]
 
     def reply_actions(self) -> list[ReplyAction]:
         return [

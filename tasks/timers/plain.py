@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from core import day
-from core.actions import BOOLEAN, ITEMS, Action, Field, Proposal, Request, Shown, State, is_guessed, is_reference
+from core.actions import BOOLEAN, EACH_DAY, ITEMS, SEE, Action, Field, Proposal, Request, Shown, State, is_guessed, is_reference
 from core.config import TIMEZONE
 from core.errors import UserError
 from core.lifecycle import MessageClass
@@ -222,6 +222,24 @@ async def change_all(request: Request, data: dict, guessed: frozenset) -> str:
 # ---------------------------------------------------------------------------
 # Showing and asking
 # ---------------------------------------------------------------------------
+async def how_long(request: Request, data: dict, guessed: frozenset) -> str:
+    """ "how long is left on tea?": the time left on each timer asked about, a
+    line each, to the second, in the format of the paused card."""
+    wanted = await which_timers(request, data)
+    if wanted.strip().lower() == status.ALL:
+        found = await store.active_timers(user_id=request.user.id)
+    else:
+        ids, _ = status.parse_refs(wanted, status.TIMER)
+        found = [timer for timer in [await store.get_timer(timer_id) for timer_id in ids] if timer is not None and timer.user_id == request.user.id]
+    if not found:
+        raise UserError("I couldn't tell which timer you meant. Say its name.")
+    now = utc_now()
+    said = "\n".join(status.left_line(timer, now) for timer in found)
+    if is_guessed(guessed, "which"):
+        said += f"\n{GUESS} I wasn't sure which timer you meant. Tell me if it was another one."
+    return said
+
+
 async def show_list(request: Request, data: dict, guessed: frozenset) -> Shown:
     """The live "Your timers" list, as the word `timers` shows it: one per
     channel, the new one at the bottom taking the old one's place."""
@@ -363,6 +381,8 @@ ACTIONS = (
         ),
         needs_card=False,
         run=start,
+        purpose=EACH_DAY,
+        say=("set a timer for 5 minutes called tea",),
     ),
     Action(
         "timer_change",
@@ -378,6 +398,8 @@ ACTIONS = (
             Field("duration", "For extend only: how much time to add. " + _DURATION),
         ),
         prepare=cancel_card,
+        purpose=EACH_DAY,
+        say=("pause the tea timer", "give tea 5 more minutes", "cancel all timers",),
         apply=cancel_saved,
         verify=cancel_check,
         run=change,
@@ -394,13 +416,28 @@ ACTIONS = (
         ),
         needs_card=False,
         run=change_all,
+        purpose=EACH_DAY,
+        say=("pause everything", "resume everything",),
     ),
     Action(
         "timer_list",
-        "The user asks what timers are going or how long is left on one (\"show my timers\", \"how long "
-        "left on tea?\", \"what timers do I have?\").",
+        "The user asks to see their timers in general (\"show my timers\", \"what timers do I have?\", "
+        "\"what's running?\"). For how long is left on a timer they name, use `timer_left`.",
         needs_card=False,
         run=show_list,
+        purpose=SEE,
+        say=("show my timers",),
+    ),
+    Action(
+        "timer_left",
+        "The user asks how long is left on a timer they name, or on \"it\" (\"how long left on tea?\" -> "
+        "which t12; \"how much longer on it?\" -> which `@that`; \"how long on tea and dinner?\" -> which "
+        "\"t12 t14\"). For the Pomodoro session use `pomo_status`.",
+        (Field("which", _WHICH, required=True),),
+        needs_card=False,
+        run=how_long,
+        purpose=SEE,
+        say=("how long is left on tea?",),
     ),
     Action(
         "timer_history",
@@ -409,6 +446,8 @@ ACTIONS = (
         (Field("which", "The id of the one timer (t12) or session (p4) asked about, from the state. Leave out for all of them."),),
         needs_card=False,
         run=history,
+        purpose=SEE,
+        say=("what happened to my timers?",),
     ),
     Action(
         "pomo_start",
@@ -425,6 +464,8 @@ ACTIONS = (
         ),
         needs_card=False,
         run=pomo_start,
+        purpose=EACH_DAY,
+        say=("start a pomodoro", "pomodoro 50/10 for writing",),
     ),
     Action(
         "pomo_change",
@@ -438,6 +479,8 @@ ACTIONS = (
         ),
         needs_card=False,
         run=pomo_change,
+        purpose=EACH_DAY,
+        say=("pause my pomodoro", "skip this break", "end the session",),
     ),
     Action(
         "pomo_status",
@@ -445,11 +488,15 @@ ACTIONS = (
         "round am I on?\", \"is my pomodoro paused?\").",
         needs_card=False,
         run=pomo_status,
+        purpose=SEE,
+        say=("how long is left on my pomodoro?",),
     ),
     Action(
         "pomo_stats",
         "How much focus time the user has done (\"how much have I focused today?\", \"pomodoro stats\").",
         needs_card=False,
         run=pomo_stats,
+        purpose=SEE,
+        say=("how much have I focused today?",),
     ),
 )

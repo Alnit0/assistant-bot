@@ -15,6 +15,8 @@ class LabTask(Task):
     """
 
     name = "lab"
+    icon = "🧪"
+    testing = True
     description = "Test bench for Discord features. Owner only."
     # A test bench, not something to ask Claude for: its words are typed only
 

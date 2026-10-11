@@ -1,7 +1,8 @@
 from core.config import CHANNELS
-from core import day, hub, livelists
+from core import day, hub, livelists, tidy
 from core.lifecycle import MessageClass
-from tasks.base import INBOX, Keyword, Task
+from core.actions import EACH_DAY
+from tasks.base import INBOX, ButtonNote, Keyword, Task
 from tasks.pills import checklist, plain, rules, store
 
 HUB = "hub"
@@ -25,7 +26,9 @@ async def show_today(ctx) -> str:
     await checklist.post(ctx.user.id, ctx.channel_id)
     where = hub.channel_id()
     if where is not None and where != ctx.channel_id:
-        await ctx.confirm(f"💊 Today's checklist is in <#{where}>.")
+        # Only says where to look: gone after about ten seconds
+        await tidy.pointer(ctx.channel_id, plain.elsewhere_text(where))
+        ctx.shown("pointed to the hub")
     return "posted today's checklist"
 
 
@@ -61,7 +64,14 @@ class PillsTask(Task):
                 show_today,
                 examples=["pills"],
                 channels=WHERE,
+                purpose=EACH_DAY,
             ),
+        ]
+
+    def buttons(self) -> list[ButtonNote]:
+        return [
+            ButtonNote("✅ Taken", "under today's checklist, for a dose with no set time: tick it off as taken now"),
+            ButtonNote("⏭️ Skip", "under today's checklist: leave that dose out today"),
         ]
 
     def migrations(self):
@@ -75,6 +85,9 @@ class PillsTask(Task):
 
     async def channel_cleared(self, channel_id, gone):
         await checklist.channel_cleared(channel_id, gone)
+
+    async def reposted(self, channel_id, gone):
+        return await checklist.reposted(channel_id, gone)
 
     async def message_class(self, message_id):
         kind = await store.message_kind(message_id)

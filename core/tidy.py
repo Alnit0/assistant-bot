@@ -3,7 +3,7 @@ from datetime import timedelta
 
 import discord
 
-from core import discord_utils, lifecycle, scheduler
+from core import discord_utils, lifecycle, outgoing, scheduler
 from core.lifecycle import MessageClass
 
 log = logging.getLogger("assistant")
@@ -40,6 +40,20 @@ async def tidy_job(job: scheduler.Job) -> None:
         await channel.get_partial_message(job.payload["message"]).delete()
     except discord.HTTPException as error:
         log.debug("A line to tidy away had already gone, or couldn't be deleted: %s", error)
+
+
+async def pointer(channel_id: int | None, text: str) -> None:
+    """A line that only says where to look ("Today's checklist is in #hub"). What
+    it points at is the answer, so the line itself goes after about ten
+    seconds, whatever KEEP_CONFIRMATIONS says, and by the stored job."""
+    client = discord_utils.client
+    channel = client.get_channel(channel_id) if client is not None and channel_id else None
+    text = outgoing.clean(text)
+    if channel is None or not text:
+        return
+    message = await channel.send(text)
+    lifecycle.note_transient(getattr(message, "id", None))
+    await later(channel_id, getattr(message, "id", None), lifecycle.tidy_after())
 
 
 def setup() -> None:

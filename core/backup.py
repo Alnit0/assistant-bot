@@ -5,7 +5,7 @@ import zipfile
 from pathlib import Path
 
 from core import scheduler
-from core.config import BACKUP_DIR, BACKUP_KEEP, BACKUP_TIME, SPECS_DIR, now_nz
+from core.config import BACKUP_DIR, BACKUP_KEEP, BACKUP_TIME, EXPORTS_DIR, SPECS_DIR, now_nz
 from core.database import connect
 from core.discord_utils import log_error, log_simple
 
@@ -13,6 +13,7 @@ log = logging.getLogger("assistant")
 
 NIGHTLY_PREFIX = "assistant-"
 SPECS_PREFIX = "specs-"
+EXPORTS_PREFIX = "exports-"
 
 # How the nightly backup is known to the scheduler
 JOB_TASK = "core"
@@ -53,24 +54,36 @@ def backup_database() -> Path:
     return target
 
 
+def _zip_folder(folder: Path, prefix: str) -> Path | None:
+    """Zip everything in a folder next to the database backup, keeping the newest
+    BACKUP_KEEP with that prefix. None if there is nothing to copy. Blocking."""
+    files = sorted(path for path in folder.rglob("*") if path.is_file()) if folder.is_dir() else []
+    if not files:
+        return None
+    BACKUP_DIR.mkdir(exist_ok=True)
+    target = BACKUP_DIR / f"{prefix}{now_nz():%Y-%m-%d_%H%M%S}.zip"
+    temporary = target.with_name(target.name + ".tmp")
+    with zipfile.ZipFile(temporary, "w", zipfile.ZIP_DEFLATED) as archive:
+        for path in files:
+            archive.write(path, path.relative_to(folder).as_posix())
+    temporary.replace(target)
+    _prune(f"{prefix}*.zip")
+    return target
+
+
 def backup_specs() -> Path | None:
     """Zip the private spec sheets next to the database backup, keeping the newest
     BACKUP_KEEP. None if there are none to copy. Blocking.
 
     docs/specs/ is gitignored, so this is the only other copy of it.
     """
-    files = sorted(path for path in SPECS_DIR.rglob("*") if path.is_file()) if SPECS_DIR.is_dir() else []
-    if not files:
-        return None
-    BACKUP_DIR.mkdir(exist_ok=True)
-    target = BACKUP_DIR / f"{SPECS_PREFIX}{now_nz():%Y-%m-%d_%H%M%S}.zip"
-    temporary = target.with_name(target.name + ".tmp")
-    with zipfile.ZipFile(temporary, "w", zipfile.ZIP_DEFLATED) as archive:
-        for path in files:
-            archive.write(path, path.relative_to(SPECS_DIR).as_posix())
-    temporary.replace(target)
-    _prune(f"{SPECS_PREFIX}*.zip")
-    return target
+    return _zip_folder(SPECS_DIR, SPECS_PREFIX)
+
+
+def backup_exports() -> Path | None:
+    """Zip the transcripts of the channels that were reset (data/exports/) the
+    same way. They are in no other place: the messages themselves are gone."""
+    return _zip_folder(EXPORTS_DIR, EXPORTS_PREFIX)
 
 
 def snapshot_before_migration(version: int) -> Path:
@@ -80,28 +93,33 @@ def snapshot_before_migration(version: int) -> Path:
     return target
 
 
-async def run_nightly_backup() -> None:
-    """Scheduled job: back up the database and report to #bot-log."""
+async def run_nightly_backup() -> bool:
+    """Scheduled job: back up the database and report to #bot-log. False if any
+    part of it could not be saved (each failure has its own card there)."""
     try:
         path = await asyncio.to_thread(backup_database)
     except Exception as error:
         log.exception("Nightly backup failed")
         await log_error("Backup failed", repr(error))
-        return
+        return False
     size_kb = path.stat().st_size / 1024
     log.info("Backup saved: %s (%.0f KB)", path.name, size_kb)
     lines = [f"{path.name} ({size_kb:.0f} KB)"]
-    # The specs are a separate copy: failing to take it doesn't undo the database's
-    try:
-        specs = await asyncio.to_thread(backup_specs)
-    except Exception as error:
-        log.exception("Specs backup failed")
-        await log_error("Specs backup failed", repr(error))
-    else:
-        if specs is not None:
-            log.info("Specs backup saved: %s", specs.name)
-            lines.append(f"{specs.name} ({specs.stat().st_size / 1024:.0f} KB)")
+    complete = True
+    # The specs and the exports are separate copies: failing to take one doesn't undo the database's
+    for what, take in (("Specs", backup_specs), ("Exports", backup_exports)):
+        try:
+            saved = await asyncio.to_thread(take)
+        except Exception as error:
+            log.exception("%s backup failed", what)
+            await log_error(f"{what} backup failed", repr(error))
+            complete = False
+        else:
+            if saved is not None:
+                log.info("%s backup saved: %s", what, saved.name)
+                lines.append(f"{saved.name} ({saved.stat().st_size / 1024:.0f} KB)")
     await log_simple("💾 Backup saved", "\n".join(lines))
+    return complete
 
 
 # ---------------------------------------------------------------------------
@@ -125,6 +143,8 @@ async def nightly_backup_job(job: scheduler.Job) -> None:
     if job.is_late:
         log.info("Nightly backup is running %.0f minutes late", job.late_by / 60)
     try:
-        await run_nightly_backup()
+        if await run_nightly_backup() is False:
+            # Said in #bot-log already; recorded too, so the bot's status shows it until a backup works
+            scheduler.report(job, scheduler.FAILED)
     finally:
         await schedule_next_backup()

@@ -2,6 +2,7 @@ from core.context import Context
 from core.llm import clear_history, format_cost
 from tasks import registry
 from tasks.base import ANY, Keyword, Task
+from tasks.builtin import commands
 from tasks.builtin.views import TestButtons
 
 # A task with more words than this is summarised in the overview
@@ -123,6 +124,11 @@ async def help_command(ctx: Context) -> None:
 class BuiltinTask(Task):
     name = "builtin"
     description = "Basic commands: ping, reset, buttons, stats and help"
+    icon = "⚙️"
+
+    async def startup(self, client) -> None:
+        # #commands is written from the registry, which is complete by now
+        await commands.update()
 
     def keywords(self) -> list[Keyword]:
         return [

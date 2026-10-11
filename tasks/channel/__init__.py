@@ -5,7 +5,7 @@ from pathlib import Path
 from core import cards, clearing, clock, confirm, livelists, llm
 from core.actions import Action, Request, Shown
 from core.cards import Button, Card
-from core.config import DATA_DIR, real_now_nz
+from core.config import EXPORTS_DIR, real_now_nz
 from core.context import Context
 from core.discord_utils import log_error, log_simple
 from tasks.base import ANY, Keyword, Task
@@ -42,7 +42,7 @@ ONLY_FOR = (
     "message, and not resetting the chat's memory, a timer or a pill."
 )
 EXAMPLES = ("reset this channel", "clean up this channel")
-EXPORT_DIR = DATA_DIR / "exports"  # in data/: never in git
+EXPORT_DIR = EXPORTS_DIR  # in data/: never in git; zipped by the nightly backup
 
 log = logging.getLogger("assistant")
 
@@ -76,10 +76,21 @@ def _cancel(channel_id: int, asked_by: int | None = None) -> Button:
     return cards.cancel(TASK, CANCEL, _arg(channel_id, asked_by))
 
 
-def asking_card(found: clearing.Scan, asked_by: int | None = None) -> Card | None:
+async def posted_again(found: clearing.Scan) -> tuple[str, ...]:
+    """What the tasks would post again after this channel is emptied, in their
+    own words, for the card."""
+    if found.missing or not found.messages:
+        return ()
+    from tasks import registry  # the registry loads this task: imported when used
+
+    return tuple(await registry.reposted(found.channel_id, {message.id for message in found.messages}))
+
+
+def asking_card(found: clearing.Scan, asked_by: int | None = None, again: tuple[str, ...] = ()) -> Card | None:
     """The card for a channel as it stands. None if there is nothing in it to
     delete. `asked_by` is the message that asked: it goes with the rest, or
-    on Cancel, and is not one of the messages counted."""
+    on Cancel, and is not one of the messages counted. `again` is what will
+    be posted again afterwards (`posted_again`)."""
     if found.missing:
         return Card(rules.cannot_text(found.mention, found.missing), ((_cancel(found.channel_id, asked_by),),))
     total, protected, old = rules.counts(found.messages, clock.real_now(), frozenset({asked_by} if asked_by else ()))
@@ -90,7 +101,7 @@ def asking_card(found: clearing.Scan, asked_by: int | None = None) -> Card | Non
     if protected:
         # Only offered when it would do something different: with nothing pinned or 📌 it is "Delete all"
         choices.append(Button("Delete all unpinned", TASK, UNPINNED, which, emoji="📌", style=cards.PRIMARY))
-    return Card(rules.card_text(found.mention, total, protected, old), ((*choices, _cancel(found.channel_id, asked_by)),))
+    return Card(rules.card_text(found.mention, total, protected, old, again), ((*choices, _cancel(found.channel_id, asked_by)),))
 
 
 # ---------------------------------------------------------------------------
@@ -99,7 +110,7 @@ def asking_card(found: clearing.Scan, asked_by: int | None = None) -> Card | Non
 async def reset_word(ctx: Context) -> str:
     """`reset channel`: the card for this channel."""
     found = await clearing.scan(ctx.channel_id)
-    card = asking_card(found, ctx.message_id)
+    card = asking_card(found, ctx.message_id, await posted_again(found))
     if card is None:
         await ctx.confirm(rules.empty_text(found.mention))
         return "nothing to delete"
@@ -110,7 +121,7 @@ async def reset_word(ctx: Context) -> str:
 async def reset_asked(request: Request, data: dict, guessed: frozenset) -> Shown | str:
     """ "reset this channel" in plain words: the same card."""
     found = await clearing.scan(request.channel_id)
-    card = asking_card(found, request.message_id)
+    card = asking_card(found, request.message_id, await posted_again(found))
     if card is None:
         # Nothing to delete but the message that asked: said for a moment, and that goes too
         await clearing.note(request.channel_id, rules.empty_text(found.mention), rules.NOTE_SECONDS)
@@ -200,6 +211,7 @@ class ChannelTask(Task):
                 "\"clean up this channel\", \"clear this channel\"). They are always asked first, on a card.",
                 needs_card=False,
                 run=reset_asked,
+                say=("reset this channel",),
             )
         ]
 

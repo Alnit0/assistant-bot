@@ -102,6 +102,18 @@ def timer_state(timer: store.Timer, now: datetime) -> str:
     return f"finished{when}{waiting}"
 
 
+def left_line(timer: store.Timer, now: datetime) -> str:
+    """The time left on one timer, in a line for the user. One format wherever
+    time left is said: a paused timer reads as the first line of its own card
+    ("⏸️ **tea** · paused with 4m 18s left"), a running one "⏱️ **tea** · 4m 18s left"."""
+    if timer.status == store.RUNNING:
+        return f"⏱️ **{timer.label}** · {format_duration(timer.left(now))} left"
+    if timer.status == store.PAUSED:
+        return f"⏸️ **{timer.label}** · paused with {format_duration(timer.remaining_s)} left"
+    icon = "🚫" if timer.status == store.CANCELLED else "✅"
+    return f"{icon} **{timer.label}** · {timer_state(timer, now)}"
+
+
 def lengths_text(session: store.Session) -> str:
     """A session's lengths as they are typed: "50m/10m/30m"."""
     return "/".join(format_duration(seconds) for seconds in (session.focus_s, session.short_s, session.long_s))

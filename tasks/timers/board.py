@@ -41,6 +41,26 @@ def session_line(session: store.Session) -> str:
     return f"🍅 {session.label} · {where} · ends {stamp(session.ends_at)}"
 
 
+def again_text(timers: list[store.Timer], sessions: list[store.Session]) -> str:
+    """What is going in a channel, in a line for the card that asks before a
+    reset: "Active timers: Pomodoro waiting to start, tea (paused)"."""
+    doing = {store.WAITING: "waiting to start", store.PAUSED: "paused"}
+    going = [f"Pomodoro {doing.get(session.state, 'running')}" for session in sessions]
+    going += [timer.label + (" (paused)" if timer.status == store.PAUSED else "") for timer in timers]
+    return "Active timers: " + ", ".join(going)
+
+
+async def reposted(channel_id: int, gone: set[int]) -> list[str]:
+    """What a reset that took `gone` would have posted again here: the cards of
+    what is still going, and the board."""
+    timers = await store.active_timers(channel_id=channel_id)
+    sessions = await store.active_sessions(channel_id=channel_id)
+    mine = {record.message_id for record in (*timers, *sessions)} | {await store.get_board(channel_id)}
+    if not (timers or sessions) or not (mine & gone):
+        return []
+    return [again_text(timers, sessions)]
+
+
 def render_board(timers: list[store.Timer], sessions: list[store.Session]) -> str:
     lines = [session_line(session) for session in sessions] + [timer_line(timer) for timer in timers]
     return "\n".join([TITLE, *(lines or ["No active timers"])])

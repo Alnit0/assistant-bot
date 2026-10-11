@@ -166,21 +166,8 @@ def test_only_a_file_named_as_the_dev_database_is_wiped(db, monkeypatch, tmp_pat
 
 
 # ---------------------------------------------------------------------------
-# The panel and the status
+# The panel (the status line is core/identity.py: tests/test_identity.py)
 # ---------------------------------------------------------------------------
-@pytest.mark.parametrize(
-    "dev_mode, dev_database, expected",
-    [
-        (False, False, None),
-        (True, False, "🛠️ Dev mode"),
-        (False, True, "🧪 DEV DATABASE"),
-        (True, True, "🛠️ Dev mode · 🧪 DEV DATABASE"),
-    ],
-)
-def test_the_status_says_dev_mode_and_dev_database(dev_mode, dev_database, expected):
-    assert panel.status_text(dev_mode, dev_database) == expected
-
-
 def test_the_panel_shows_the_clock_and_marks_the_dev_database(dev_off, monkeypatch):
     from core import devmode
 

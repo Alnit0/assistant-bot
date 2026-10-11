@@ -1,12 +1,12 @@
 import discord
 
-from core import clock, devmode, scheduler
+from core import clock, devmode, identity, scheduler
 from core.config import DEV_DATABASE
 from core.context import Context
 from core.errors import UserError
 from core.lifecycle import MessageClass
 from tasks.base import ANY, Keyword, ReplyAction, Task
-from tasks.dev import clockwords, panel, tools
+from tasks.dev import clockwords, mock, panel, tools
 from tasks.dev.panel import PERMISSION
 from core.durations import DurationError, format_duration, parse_duration
 
@@ -168,6 +168,8 @@ async def dev_clock(ctx: Context) -> str:
     scheduler.wake()
     if devmode.enabled:
         await panel.changed()
+    # The status says how far the clock is moved
+    await identity.refresh()
     said = f"Clock: {clockwords.describe(clock.now(), clock.offset())}"
     await ctx.confirm(f"🕰️ {said}")
     return said
@@ -177,6 +179,8 @@ class DevTask(Task):
     """Dev mode: the words, the panel and the tools. The state itself is core/devmode.py."""
 
     name = "dev"
+    icon = "🛠️"
+    testing = True
     description = "Dev mode for testing: shorter waits, debug lines in #bot-log, and inspection tools"
 
     def keywords(self) -> list[Keyword]:
@@ -300,6 +304,15 @@ class DevTask(Task):
                 ["dev status"],
             ),
             word("dev jobs", "list the scheduler's pending jobs", tools.jobs, ["dev jobs"]),
+            word(
+                "dev mock",
+                "post a card sketched in docs/mockups/<name>.txt here as a Components V2 message, to look at a "
+                "design before it is built; on its own, lists the sketches. Its buttons only say it is a mock-up",
+                mock.mock,
+                ["dev mock", "dev mock checklist"],
+                takes_args=True,
+                usage="[<name>]",
+            ),
             setting(
                 "dev run",
                 "run a maintenance routine now",
@@ -345,18 +358,19 @@ class DevTask(Task):
     async def channel_cleared(self, channel_id: int, gone: set[int]) -> None:
         await panel.channel_cleared(channel_id, gone)
 
+    async def reposted(self, channel_id: int, gone: set[int]) -> list[str]:
+        return panel.reposted(channel_id, gone)
+
     async def message_class(self, message_id: int) -> MessageClass | None:
         return MessageClass.LIVE if panel.is_panel(message_id) else None
 
     def setup(self, client: discord.Client) -> None:
         panel.bind(client)
         # Before connecting, so the buttons on a panel from before a restart still answer
-        client.add_dynamic_items(panel.PanelButton)
+        client.add_dynamic_items(panel.PanelButton, mock.MockButton)
 
     async def startup(self, client: discord.Client) -> None:
         await panel.clear_stale()
-        # On the dev database the status says so from the start
-        await panel.show_status()
 
 
 task = DevTask()

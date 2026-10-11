@@ -33,6 +33,7 @@ for name, value in {
     "DEV_CHANNEL_ID": "",
     "BUGS_CHANNEL_ID": "300",
     "HUB_CHANNEL_ID": "400",
+    "COMMANDS_CHANNEL_ID": "",
     "KEEP_CONFIRMATIONS": "false",  # the tests check that notes tidy themselves away
 }.items():
     os.environ[name] = value

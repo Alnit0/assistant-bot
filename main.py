@@ -4,7 +4,7 @@ import logging
 import discord
 from discord import app_commands
 
-from core import backup, cards, clock, conversation, database, day, devmode, instance_lock, interactions, lifecycle, live, scheduler, tidy, timing
+from core import backup, cards, clock, conversation, database, day, devmode, identity, instance_lock, interactions, lifecycle, live, scheduler, tidy, timing
 from core.config import (
     CLAUDE_MODEL,
     DB_PATH,
@@ -174,6 +174,8 @@ async def on_ready():
         await day.schedule_next()
     # After the tasks are ready: jobs that came due while we were off run now
     scheduler.start()
+    # Which bot this is, for anyone looking: the nickname and the status line
+    await identity.start()
 
     channel = client.get_channel(INBOX_CHANNEL_ID)
     if channel:

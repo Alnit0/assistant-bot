@@ -4,7 +4,7 @@ import re
 
 import discord
 
-from core import channels, clock, devmode, lifecycle
+from core import channels, clock, devmode, identity, lifecycle
 from core.config import DB_PATH, DEV_DATABASE
 from core.database import log_received, log_result
 from core.discord_utils import log_error, log_simple, report_interaction_error, safe_reply
@@ -22,7 +22,6 @@ log = logging.getLogger("assistant")
 TASK = "dev"
 PERMISSION = "dev"
 TITLE = "🛠️ **Dev mode**"
-STATUS = "🛠️ Dev mode"
 # Shown on the panel and in the status for as long as the bot runs with --dev
 DEV_DATABASE_LABEL = "DEV DATABASE"
 EXTEND_SECONDS = 60 * 60
@@ -182,25 +181,10 @@ async def _post(channel_id: int) -> None:
         )
 
 
-def status_text(dev_mode: bool, dev_database: bool) -> str | None:
-    """What the bot's status reads: dev mode, the dev database, both or nothing."""
-    parts = ([STATUS] if dev_mode else []) + ([f"🧪 {DEV_DATABASE_LABEL}"] if dev_database else [])
-    return " · ".join(parts) or None
-
-
-async def _set_status(on: bool) -> None:
-    if _client is None:
-        return
-    text = status_text(on, DEV_DATABASE)
-    try:
-        await _client.change_presence(activity=discord.CustomActivity(name=text) if text else None)
-    except Exception as error:
-        log.warning("Could not change the bot's status: %s", error)
-
-
-async def show_status() -> None:
-    """Set the status to match how things are now (at startup)."""
-    await _set_status(devmode.enabled)
+async def _set_status() -> None:
+    """Dev mode went on or off, or the clock moved: the bot's status says so at
+    once (core/identity.py writes the line)."""
+    await identity.refresh()
 
 
 async def _expire_later(seconds: float) -> None:
@@ -222,7 +206,7 @@ def _arm_expiry() -> None:
 async def started(channel_id: int) -> None:
     """Dev mode has just been switched on: show the panel here and set the status."""
     await _post(channel_id)
-    await _set_status(True)
+    await _set_status()
     _arm_expiry()
     await log_simple("🛠️ Dev mode on", f"In <#{channel_id}>, until <t:{int(devmode.expires_at.timestamp())}:t>.")
 
@@ -230,6 +214,7 @@ async def started(channel_id: int) -> None:
 async def changed() -> None:
     """A setting changed: edit the panel in place and restart the countdown."""
     _arm_expiry()
+    await _set_status()  # the clock may have moved
     channel = _channel(_channel_id)
     if channel is None or _message_id is None:
         return
@@ -245,6 +230,11 @@ async def channel_cleared(channel_id: int, gone: set[int]) -> None:
     """The channel was reset: if the panel went with it, put it back there, pinned."""
     if devmode.enabled and _channel_id == channel_id and _message_id in gone:
         await _post(channel_id)
+
+
+def reposted(channel_id: int, gone: set[int]) -> list[str]:
+    """What a reset that took `gone` would have posted again here: the panel."""
+    return ["Dev panel"] if devmode.enabled and _channel_id == channel_id and _message_id in gone else []
 
 
 def is_panel(message_id: int) -> bool:
@@ -267,7 +257,7 @@ async def stop(reason: str) -> str:
     _arm_expiry()
     await _delete(_channel(_channel_id), _message_id)
     _channel_id = _message_id = None
-    await _set_status(False)
+    await _set_status()
     await log_simple("🛠️ Dev mode off", f"Reason: {reason}. Normal settings are back.")
     return f"dev mode off ({reason})"
 

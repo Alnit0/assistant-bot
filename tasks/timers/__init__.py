@@ -3,7 +3,8 @@ import discord
 from core.context import Context
 from core.errors import UserError
 from core.lifecycle import MessageClass
-from tasks.base import ANY, Keyword, ReplyAction, Task
+from core.actions import EACH_DAY, SEE
+from tasks.base import ANY, ButtonNote, Keyword, ReplyAction, Task
 from tasks.timers import board, control, plain, sessions, store, timers
 from tasks.timers.common import PERMISSION, delete_message
 from core.durations import DurationError, parse_duration
@@ -129,6 +130,7 @@ class TimersTask(Task):
                 permission=PERMISSION,
                 takes_args=True,
                 usage="<duration> [label]",
+                purpose=EACH_DAY,
             ),
             Keyword(
                 "timers",
@@ -137,6 +139,7 @@ class TimersTask(Task):
                 examples=["timers"],
                 channels=ANY,
                 permission=PERMISSION,
+                purpose=SEE,
             ),
             Keyword(
                 ["pause all", "pause everything"],
@@ -149,6 +152,7 @@ class TimersTask(Task):
                 usage="[timers] [except pomodoro]",
                 accepts=control.scope_is_ours,
                 keep_command=True,
+                purpose=EACH_DAY,
             ),
             Keyword(
                 ["resume all", "unpause all", "resume everything"],
@@ -161,6 +165,7 @@ class TimersTask(Task):
                 usage="[timers] [except pomodoro]",
                 accepts=control.scope_is_ours,
                 keep_command=True,
+                purpose=EACH_DAY,
             ),
             Keyword(
                 ["pomo", "pomodoro"],
@@ -171,6 +176,7 @@ class TimersTask(Task):
                 permission=PERMISSION,
                 takes_args=True,
                 usage="[focus/break[/long break]] [auto|manual] [label]",
+                purpose=EACH_DAY,
             ),
             Keyword(
                 ["pomo stats", "pomodoro stats"],
@@ -179,6 +185,7 @@ class TimersTask(Task):
                 examples=["pomo stats"],
                 channels=ANY,
                 permission=PERMISSION,
+                purpose=SEE,
             ),
         ]
 
@@ -231,6 +238,22 @@ class TimersTask(Task):
             ),
         ]
 
+    def buttons(self) -> list[ButtonNote]:
+        def named(table, action: str) -> str:
+            label, emoji, _ = table[action]
+            return f"{emoji} {label}"
+
+        return [
+            ButtonNote(named(timers.BUTTONS, "dismiss"), "on a finished timer's alert: clear it away"),
+            ButtonNote(named(timers.BUTTONS, "plus5"), "on a finished timer's alert: run it for 5 more minutes"),
+            ButtonNote(named(timers.BUTTONS, "restart"), "on a finished timer's alert: run it again for its full length"),
+            ButtonNote(named(sessions.BUTTONS, "start"), "on the Pomodoro card: start the phase that is waiting"),
+            ButtonNote(named(sessions.BUTTONS, "pause"), "on the Pomodoro card: pause this phase; Resume carries on"),
+            ButtonNote(named(sessions.BUTTONS, "skip"), "on the Pomodoro card: go on to the next phase now"),
+            ButtonNote(named(sessions.BUTTONS, "stop"), "on the Pomodoro card: end the session"),
+            ButtonNote(named(sessions.BUTTONS, "ok"), "on a Pomodoro phase alert: clear it away"),
+        ]
+
     def job_handlers(self) -> dict:
         return {
             timers.JOB_KIND: timers.on_due,
@@ -247,6 +270,9 @@ class TimersTask(Task):
         await timers.repost(channel_id, gone, send)
         await sessions.repost(channel_id, gone, send)
         await board.channel_cleared(channel_id, gone)
+
+    async def reposted(self, channel_id: int, gone: set[int]) -> list[str]:
+        return await board.reposted(channel_id, gone)
 
     async def message_class(self, message_id: int) -> MessageClass | None:
         if await store.is_board(message_id) or await store.is_list(message_id):

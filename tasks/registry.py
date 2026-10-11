@@ -273,6 +273,18 @@ async def channel_cleared(channel_id: int, gone: set[int]) -> None:
             await log_error(f"Not re-posted after a channel reset: {task.name}", repr(error))
 
 
+async def reposted(channel_id: int, gone: set[int]) -> list[str]:
+    """What the tasks would post again if those messages went (Task.reposted),
+    for the card that asks before a reset. A task that can't say is left out."""
+    found: list[str] = []
+    for task in _tasks:
+        try:
+            found += await task.reposted(channel_id, gone)
+        except Exception:
+            log.exception("Task %s could not say what it would post again in channel %s", task.name, channel_id)
+    return found
+
+
 async def declared_class(message_id: int) -> lifecycle.MessageClass | None:
     """What a task says one of its own messages is (Live, Alert), or None if
     no task claims it. For `dev inspect`."""

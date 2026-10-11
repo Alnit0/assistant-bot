@@ -34,19 +34,19 @@ Last updated: 2026-10-12
 | D | Archive and restore | 15 | 4 | 11 | 11 | 4 | 0 | 0 |
 | E | Delete and protection | 12 | 3 | 9 | 9 | 3 | 0 | 0 |
 | F | Pins | 4 | 0 | 4 | 4 | 0 | 0 | 0 |
-| G | Timers | 21 | 8 | 13 | 13 | 8 | 0 | 0 |
+| G | Timers | 23 | 9 | 14 | 14 | 9 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
-| J | Dev mode | 49 | 9 | 40 | 41 | 8 | 0 | 0 |
-| K | Startup and housekeeping | 14 | 7 | 7 | 7 | 7 | 0 | 0 |
+| J | Dev mode | 52 | 10 | 42 | 43 | 9 | 0 | 0 |
+| K | Startup and housekeeping | 22 | 11 | 11 | 11 | 11 | 0 | 0 |
 | L | Keep | 12 | 4 | 8 | 8 | 4 | 0 | 0 |
-| M | Message lifecycle | 8 | 5 | 3 | 3 | 5 | 0 | 0 |
+| M | Message lifecycle | 10 | 6 | 4 | 4 | 6 | 0 | 0 |
 | P | Bugs | 33 | 16 | 17 | 15 | 18 | 0 | 0 |
 | Q | Time, days, the schedule model, the occurrence log and cards | 14 | 12 | 2 | 2 | 12 | 0 | 0 |
 | R | Pills | 51 | 8 | 43 | 35 | 16 | 0 | 0 |
 | S | Routing and confirm cards | 57 | 9 | 48 | 13 | 43 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 1 | 21 | 0 | 0 |
-| U | Channel reset | 8 | 3 | 5 | 5 | 3 | 0 | 0 |
-| | **Total** | **392** | **115** | **277** | **215** | **176** | **0** | **1** |
+| U | Channel reset | 10 | 4 | 6 | 6 | 4 | 0 | 0 |
+| | **Total** | **409** | **123** | **286** | **224** | **184** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -190,6 +190,8 @@ tidy themselves away; M5 covers the setting). "Log card" means a card in
 | G19 | 🤖 Auto | `pause all` / `resume all` | Every running (or paused) timer and the Pomodoro; `except pomodoro` or `timers only` leaves it out; a timer that has run out is left alone and named; the reply lists each one with the time left as saved; with nothing to do it says so and changes nothing | ✅ Pass | 2026-10-07 | `tests/test_timer_freeze.py, test_timer_status.py` |
 | G20 | 🤖 Auto | The live "Your timers" list | A paused timer shows as paused with its time, not a countdown; one list per channel, the newest; it is a Live message; an empty one is not kept live | ✅ Pass | 2026-10-07 | `tests/test_timer_freeze.py` |
 | G21 | 👤 Manual | With two timers and a Pomodoro running, type `pause all`; wait two minutes; `timers`; then `resume all` | "⏸️ Paused 3" naming each with its time left. Two minutes later the list shows the same times. "▶️ Resumed 3" with those same times, and each then counts down from there | ⬜ Untested | | |
+| G22 | 🤖 Auto | How long is left on a timer | Said to the second, a line a timer: "⏱️ **tea** · 4m 18s left"; a paused one word for word as the first line of its card; "it" is the timer touched last; one that is over says so; an unknown one is asked about | ✅ Pass | 2026-10-12 | `tests/test_timers_plain.py` |
+| G23 | 👤 Manual | `timer 5m tea`; say `how long is left on tea?`. Reply `pause` to the timer; ask again. Then reply `cancel` to it | "⏱️ **tea** · 4m 18s left" (minutes and seconds, no list posted). Paused: "⏸️ **tea** · paused with 4m 5s left", the same words as the first line of the timer's card | ⬜ Untested | | |
 
 ## H. Pomodoro
 
@@ -272,6 +274,9 @@ Any channel. Check the bot's status in the member list.
 | J47 | 👤 Manual | With `--dev`: say `add butter`, then `and jam`; type `dev why`, then `dev why 3` | One block in a code box that can be copied whole: "#<n> · <time> · chat · ok", "said: and jam", "route: follow-up (card … is open and the message sticks to it…)", "router: not asked", an "extraction:" line with what came back, "python:" lines for each check (sticky, correction, restatement, merge), "card before:" and "card after:", "shown:", and "cost: US$… · 1 request(s)". `dev why 3` posts three blocks, oldest first; the `dev why` words themselves are never among them | ⬜ Untested | | |
 | J48 | 👤 Manual | After a few messages to the shopping list: type `dev cost` | The card ends with "-# List context sent to extraction this month: … of … lines over … messages, … (at most 20 a task a message)" | ⬜ Untested | | |
 | J49 | 🤖 Auto | `dev status` says what is running | Live or dev and the database file, uptime, the commit, the clock (real, or how far the dev clock is ahead), and one line for each kind of job with its next run; the commit is read from `.git` (a branch, packed refs, a detached HEAD, or "unknown") | ✅ Pass | 2026-10-12 | `tests/test_instance_lock.py` |
+| J50 | 🤖 Auto | `dev mock`: a sketch read and built | Lines inside ┃ are one Container, a blank line starts a new one, `accent:` is its colour, `[label: colour]` buttons are a row, `---` a separator, headings and subtext are left to Discord; every mistake names its line (an unknown colour, a grey button that isn't Cancel, six buttons in a row, an accent out of place, an empty sketch, more than Discord takes); the three sketches in `docs/mockups/` read; only a plain name is looked for; a mock-up's button only says it is one | ✅ Pass | 2026-10-12 | `tests/test_mock.py` |
+| J51 | 👤 Manual | Type `dev mock`. Then `dev mock checklist`, and press **Taken** on it. Then `dev mock reset-card` and `dev mock confirm-card` | The list names `checklist`, `confirm-card` and `reset-card`. Each sketch is posted as one message with boxed sections, an accent colour down the side, headings, small text and coloured buttons; your word is deleted. A button answers "🧪 Mock-up: this button does nothing yet." to you alone, and nothing changes | ⬜ Untested | | |
+| J52 | 👤 Manual | Type `dev mock nothing` | "🧪 There is no mock-up called `nothing`." with the list of the ones there are; nothing else is posted | ⬜ Untested | | |
 
 ## K. Startup and housekeeping
 
@@ -291,6 +296,14 @@ Any channel. Check the bot's status in the member list.
 | K12 | 🤖 Auto | Start-up with a forum among the channels | Only text channels, threads and DMs are read for pins or history; forum, voice and category channels are skipped (the dev panel's sweep crashed on #bugs, 2026-10-09); a task that fails to start is reported and the rest still start | ✅ Pass | 2026-10-09 | `tests/test_channels.py` |
 | K13 | 🤖 Auto | How many bots are running | The lock decides: held means one bot (with its PID and start time), a file left by a stopped bot means none, and looking never keeps the lock or turns a start away. Among processes, the `.venv` launcher and its child are one bot; a copy without the lock is flagged; `dev status` reports it | ✅ Pass | 2026-10-09 | `tests/test_instance_lock.py` |
 | K14 | 🤖 Auto | Specs in the nightly backup | `docs/specs/` is zipped beside the database backup with its subfolders; no folder or an empty one makes no zip; the newest 7 zips are kept, counted apart from the database's; a specs copy that fails is reported and the database backup still is | ✅ Pass | 2026-10-09 | `tests/test_backup.py` |
+| K15 | 🤖 Auto | Nickname and status line | The nickname is the base name on live and "<base> · DEV" on the dev database, marked once and unmarked again on live; without Change Nickname nothing changes and #bot-log says so once. The status: "🟢 Live · up 7h · next: nightly backup 3:00 am"; "🧪 DEV database · clock +13h"; "⚠️ nightly backup failed · see #bot-log" until that job next works; dev mode in front; only sent when it reads differently | ✅ Pass | 2026-10-12 | `tests/test_identity.py` |
+| K16 | 🤖 Auto | How a job ended | A job that raises, or reports itself failed or skipped, is recorded so; that kind of job is in trouble until one of its runs works, and a restart doesn't forget it; a backup that could not be saved is recorded as failed and tomorrow's is still booked | ✅ Pass | 2026-10-12 | `tests/test_scheduler.py` |
+| K17 | 🤖 Auto | Channel transcripts in the nightly backup | `data/exports/` is zipped beside the database and the specs; no folder makes no zip; the newest 7 are kept, counted apart; the #bot-log card lists all three | ✅ Pass | 2026-10-12 | `tests/test_backup.py` |
+| K18 | 🤖 Auto | #commands is written from the registry | One message a task (icon, name, what it is for, its ways in grouped as set up, each day, see, words, reply words, reactions, buttons), then housekeeping, then dev and lab; a task that is all housekeeping has no message of its own; only placeholder pill names; a long page is split and says whose the rest is. The channel is left alone when it reads the same, edited in place when a page changed, written again when there are more or fewer; a channel that can't be written is reported, not raised | ✅ Pass | 2026-10-12 | `tests/test_commands.py` |
+| K19 | 👤 Manual | Restart the live bot. Look at it in the member list, now and five minutes later | Its nickname is its base name, with no "· DEV". Its status reads "🟢 Live · up 0m · next: …" naming the next job and its time, and a few minutes later the uptime has moved on | ⬜ Untested | | |
+| K20 | 👤 Manual | Only when you next run the dev database (otherwise report `K20 skip`): start with `python main.py --dev`; look at the bot. `dev clock +13h`; look again. Stop it and start the live bot | "<base> · DEV" and "🧪 DEV database"; after the clock moves, "🧪 DEV database · clock +13h". Back on live the nickname is the base name again | ⬜ Untested | | |
+| K21 | 👤 Manual | Make a #commands channel that only the bot can write in, put its id in `.env` as `COMMANDS_CHANNEL_ID`, restart. Read the channel. Restart once more | One message a task (Builtin, Bugs, Pills, Timers), then Housekeeping, Dev and Lab; pills are only ever "Pill A" and "Pill B". #bot-log has "📖 #commands updated". After the second restart nothing in the channel changed and there is no second card | ⬜ Untested | | |
+| K22 | 👤 Manual | The morning after a channel was reset: look at "💾 Backup saved" in #bot-log | It lists three files: `assistant-….db`, `specs-….zip` and `exports-….zip` | ⬜ Untested | | |
 
 ## L. Keep
 
@@ -328,6 +341,8 @@ by J28 and J29.
 | M6 | 🤖 Auto | Housekeeping leaves no trace | A housekeeping line goes after 10 seconds whatever `KEEP_CONFIRMATIONS` says, and only `dev cleanup off` keeps it; archive, delete, 📦, 🗑️, pin, unpin, 📌 and `reset channel` are marked and none keeps its command (one that did would be refused at load); `pin`, `unpin`, `archive` and `delete` as real replies each say one line that goes, delete the word and are recorded in #bot-log; a word that is not housekeeping still follows the setting; a reason it can't be done goes after 10 seconds and the word stays with ⚠️; confirming a protected delete says so briefly and is recorded, and archive asks about a protected message as housekeeping; a refused 📦 says why for 10 seconds; each line is booked to be deleted by a stored job, with no timer in memory | ✅ Pass | 2026-10-11 | `tests/test_housekeeping.py` |
 | M7 | 👤 Manual | With `KEEP_CONFIRMATIONS` on (the default; restart after setting it): send `a`, `b` and `c`. Reply `pin` to `a`, then `unpin`. Reply `archive` to `b`. Reply `delete` to `c`. Wait 15 seconds after each | Each time: one short line ("📌 Pinned", "📌 Unpinned", "📦 Archived: link", "🗑️ Deleted") that is gone after about 10 seconds, though confirmations are kept; your reply word is deleted; a card in #bot-log for each. Afterwards nothing in the channel says any of it happened | ⬜ Untested | | From 2026-10-11 |
 | M8 | 👤 Manual | Reply `pin` to a message, and within 5 seconds stop the bot (Ctrl + C). Wait 20 seconds, then start it again | "📌 Pinned" is still there while the bot is off, and is deleted within a few seconds of it starting: a restart doesn't leave the line behind | ⬜ Untested | | From 2026-10-11 |
+| M9 | 🤖 Auto | A pointer line goes by itself | "💊 Today's checklist is in #hub" is deleted by a stored job after about 10 seconds, also while confirmations are kept; only `dev cleanup off` keeps it; the word and the question both point and say nothing lasting | ✅ Pass | 2026-10-12 | `tests/test_housekeeping.py`, `tests/test_pills_checklist.py` |
+| M10 | 👤 Manual | With `KEEP_CONFIRMATIONS` on, in #inbox: type `pills`. Wait 15 seconds | The checklist is posted in the hub. In #inbox "💊 Today's checklist is in #hub." appears and is gone within about 10 seconds; your word is deleted; nothing is left | ⬜ Untested | | |
 
 ## P. Bugs
 
@@ -568,3 +583,5 @@ Run the manual tests in a channel made for it, never one you want to keep.
 | U6 | 👤 Manual | Type `reset channel` once more; press **Delete all** | Every message goes, the pinned and the 📌 one too. The closing line and the #bot-log card as before, with nothing kept | ⬜ Untested | | |
 | U7 | 👤 Manual | In the hub, with today's checklist posted (`pills`), a timer running (`timer 10m tea`) and dev mode on there (`dev on`): say `reset this channel`; press **Delete all**. Then press **Taken** on a pill's message, and reply `cancel` to the tea timer | The card, then everything goes. Afterwards, once each and nothing twice: today's checklist with its Taken / Skip messages, the tea timer's card, the pinned "Active timers" board and the pinned dev panel. Taken ticks the pill off on the new checklist; `cancel` cancels the timer on its new card | ⬜ Untested | | |
 | U8 | 👤 Manual | Only if you can change the bot's role (otherwise report `U8 skip`): take Manage Messages away from it in a test channel; type `reset channel` there. Give the permission back | A card that says "⚠️ I can't reset #channel: my role needs **Manage Messages** in this channel. Nothing was deleted." with **Cancel** only. No ⚠️ on your message and nothing in the channel is touched | ⬜ Untested | | |
+| U9 | 🤖 Auto | What a reset will post again | Every task is asked (one failing is left out); timers answer "Active timers: Pomodoro waiting to start, tea (paused)" when a card or the board would go, pills "Today's pills checklist" with no pill named; the card lists them a line each above "can't be undone", and says nothing when there is nothing | ✅ Pass | 2026-10-12 | `tests/test_channel.py`, `tests/test_pills_checklist.py` |
+| U10 | 👤 Manual | In a test channel: type `pomo` and don't press Start. Type `reset channel`; press **Cancel** | The card has "♻️ Posted again afterwards:" and "• Active timers: Pomodoro waiting to start" above "⚠️ This can't be undone". After Cancel nothing changed (stop the session afterwards) | ⬜ Untested | | |

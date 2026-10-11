@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from core import cards, clock, database, day, hub, live, llm, occurrences, scheduler
+from core import cards, clock, database, day, hub, live, llm, occurrences, scheduler, tidy
 from core.actions import Request, Shown
 from core.occurrences import DONE, MISSED, PENDING, SKIPPED
 from tasks.pills import checklist, plain, store, today
@@ -129,20 +129,32 @@ def test_with_no_hub_set_it_is_posted_where_it_was_asked_for(world, monkeypatch)
     assert world.sent[0].channel == INBOX
 
 
-def test_the_word_and_the_question_post_today_and_say_where_it_is(world):
+def test_the_word_and_the_question_post_today_and_point_to_it_in_a_line_that_goes(world, monkeypatch):
     add(world, {"name": "Zinc"})
-    confirmed = []
+    pointed, shown = [], []
 
-    async def confirm(text):
-        confirmed.append(text)
+    async def pointer(channel_id, text):
+        pointed.append((channel_id, text))
 
-    ctx = SimpleNamespace(user=world.owner, channel_id=INBOX, confirm=confirm)
+    monkeypatch.setattr(tidy, "pointer", pointer)  # the line that deletes itself after about ten seconds
+    ctx = SimpleNamespace(user=world.owner, channel_id=INBOX, shown=shown.append)
     (keyword,) = pills_task.keywords()
     assert run(keyword.handler(ctx)) == "posted today's checklist"
-    assert world.sent[0].channel == HUB and confirmed == ["💊 Today's checklist is in <#400>."]
-    shown = run(plain.show_today(world.request(HUB), {}, frozenset()))
-    assert shown == Shown("posted today's checklist", ""), "asked in the hub: nothing more to say"
-    assert run(plain.show_today(world.request(INBOX), {}, frozenset())).also == "💊 Today's checklist is in <#400>."
+    assert world.sent[0].channel == HUB and pointed == [(INBOX, "💊 Today's checklist is in <#400>.")]
+    assert shown == ["pointed to the hub"], "so no Done line is added on top of the pointer"
+    assert run(plain.show_today(world.request(HUB), {}, frozenset())) == Shown("posted today's checklist", "")
+    assert len(pointed) == 1, "asked in the hub: nothing more to say"
+    assert run(plain.show_today(world.request(INBOX), {}, frozenset())) == Shown("posted today's checklist", "")
+    assert pointed[1:] == [(INBOX, "💊 Today's checklist is in <#400>.")], "never a lasting reply: the pointer only"
+
+
+def test_what_a_reset_would_post_again_is_the_checklist_and_names_no_pill(world):
+    add(world, {"name": "Zinc"})
+    assert run(checklist.reposted(HUB, {1, 2, 3})) == [], "no checklist posted yet"
+    run(checklist.post(world.owner.id))
+    mine = {each.id for each in world.sent}
+    assert run(checklist.reposted(HUB, mine)) == ["Today's pills checklist"]
+    assert run(checklist.reposted(HUB, {1, 2, 3})) == [] and run(checklist.reposted(INBOX, mine)) == [], "kept, or another channel"
 
 
 # --- the buttons under it ------------------------------------------------------------------------------

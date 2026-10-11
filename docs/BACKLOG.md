@@ -122,6 +122,31 @@ a schema could take its place.
 
 ## Left for later
 
+- **From the small batch of 2026-10-12** (identity, #commands, mock-ups):
+  - **The 6:00 am checklist is not wired to the status.** A job can now
+    say it was skipped (`scheduler.report`), and the status then shows
+    "⚠️ … skipped · see #bot-log" until it next works. The pills job
+    does not say so yet: two of its three reasons for not posting are
+    normal (this morning's is already there; nothing to take today),
+    and the batch was not to touch the checklist. To decide: which
+    reasons count (the hub not being found is the clear one).
+  - **One fixture is not recorded.** "how long left on tea?" is now the
+    action `timer_left`; its fixture in `evals/fixtures/timers.json` has
+    no recording, so its replay is skipped until the timers fixtures are
+    run live once (one request).
+  - **`dev clean` does not remove a mock-up.** A Components V2 message
+    has no text to carry the test-data mark. Delete one with 🗑️.
+  - **The reset card lists what "Delete all" would post again.** With
+    "Delete all unpinned" a pinned board is kept, not posted again; the
+    line reads the same either way.
+  - **#commands reads the bot's last 200 messages there**, shows a
+    plain-words action only by what one might type (its description is
+    written for Claude), and writes what a task is for from its "only
+    for" line by rule, which reads a little stiffly for some tasks.
+  - **The status shows dev mode in front of the line** ("🛠️ Dev mode ·
+    🟢 Live · …"), as the old status did. Not asked for either way.
+  - **The header of `docs/QA-RUN.md` still counts the tests as of
+    2026-10-10.**
 - **Left over from removing the old path** (step 4, 2026-10-10), for step
   5: `docs/DEVELOPMENT.md` "How to add a task" and the `add-task` skill
   still describe parts of the old way and are rewritten then; the
@@ -145,15 +170,6 @@ a schema could take its place.
   sums. The `new-task` skill asks for both, and `task-check` checks
   every task declares them. Pills already behaves as identity: name,
   on_repeat: update, in its own code (`plain._known`, `add_card`).
-- **A #commands channel the bot keeps up to date** (asked for
-  2026-10-11; after pills reminders). Generated from the task registry,
-  never written by hand. One message per task: its icon and name, a
-  short description (from the task's "only for" line, written for a
-  person), then its commands grouped by purpose (set up, each day, see,
-  reply words, reactions, buttons). Housekeeping and dev each get a
-  message of their own. Rebuilt at start-up when the tasks have
-  changed. The channel's id is in `.env`, and the channel is read-only
-  for me: only the bot posts there.
 - **The lab's buttons keep their own colours** (2026-10-11). The lab is
   the bench for Discord's own features, and its toggles use grey for
   "off" on purpose; the colour rule was applied everywhere else.
@@ -174,10 +190,6 @@ a schema could take its place.
   - Attachments are not downloaded with the transcript, only their
     links, and Discord's links die with the message. Download them too
     if that is ever needed.
-  - **`data/exports/` is not in the nightly backup.** The backup copies
-    the database and a zip of the specs into `data/backups/`; nothing
-    else under `data/` is copied anywhere. To decide: zip the exports
-    beside them, as the specs are.
   - The router's catalogue gained an entry. Only the new fixtures were
     run live (6 of 6); a full live eval has not been run since.
 - **The dev clock outlives the dev database.** Its offset is in
@@ -218,9 +230,6 @@ a schema could take its place.
 - **The section provider interface** (for a morning brief) is not built:
   nothing would use it yet. `core/hub.py` has the hub channel and the
   progress bar only.
-- **"How long is left on tea?" shows whole minutes only** (asked for
-  2026-10-10). Use the same format as the paused card ("4m 18s left"),
-  so time remaining reads the same everywhere.
 - **The outgoing check does not cover every message.** What the timers,
   archive, bugs, lab and dev tasks send with discord.py directly does not
   pass `core/outgoing.py`. All of it is written in code, so nothing

@@ -501,15 +501,10 @@
       "task": "timers",
       "message": "how long left on tea?",
       "state": "Timers and the Pomodoro session now (use these ids):\n- t12: \"tea\" · running, 4m left · in this channel\n- t14: \"dinner\" · paused with 12m left · in this channel",
-      "action": "timer_list",
-      "data": {},
-      "recorded": [
-        "timer_list",
-        {
-          "guessed": [],
-          "not_included": []
-        }
-      ]
+      "action": "timer_left",
+      "data": {
+        "which": "t12"
+      }
     },
     {
       "task": "timers",

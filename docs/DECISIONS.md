@@ -1004,3 +1004,23 @@ A short log of key decisions and why. Newest at the bottom.
     #bot-log when it posts nothing. With no pills at all it is the log
     only: a line every morning for somebody with nothing to take would
     be noise.
+- **Who the bot is, and #commands (2026-10-12).** Asked for as a batch
+  of small items, outside the scope freeze.
+  - The status is worked out from what is stored, never remembered: the
+    jobs table says how each kind of job last ended (done, failed,
+    skipped), so "⚠️ … · see #bot-log" survives a restart and clears by
+    itself when that job next works. A handler that catches its own
+    failure says so with `scheduler.report`.
+  - A failure reads "failed" and a skip "skipped", though one wording
+    was asked for: they are different things to act on.
+  - #commands keeps no record of its own. The channel is the record:
+    the bot's messages there are read at start-up and compared with the
+    pages the registry makes (`core/mirror.py`). Nothing to migrate,
+    and deleting a message by hand heals at the next start.
+  - What #commands shows a person is declared where the thing is
+    registered (`purpose`, `say`, `buttons()`), not written in a file
+    of its own, and a task's description is its "only for" line with
+    the router's asides and its "not for" sentences taken out.
+  - A sketch for `dev mock` is read by code that knows nothing of pills
+    or timers, and the real cards are not built from sketches: the
+    format is for looking, not a second way to build a card.

@@ -203,6 +203,11 @@ Run = Callable[[Request, dict, frozenset], Awaitable["str | LiveReply | Shown"]]
 CardIf = Callable[[Request, dict], Awaitable[bool]]
 
 
+# What a way in is for, as #commands groups them (tasks/builtin/commands.py)
+SET_UP, EACH_DAY, SEE = "set up", "each day", "see"
+PURPOSES = (SET_UP, EACH_DAY, SEE)
+
+
 @dataclass(frozen=True)
 class Action:
     name: str  # unique across every task: "pill_add"
@@ -219,6 +224,11 @@ class Action:
     # at once, cancelling several asks first): `async (request, data) -> bool`.
     # Such an action has all three of `prepare`, `apply` and `run`
     card_if: CardIf | None = None
+    # For people, never sent to Claude: which group of #commands this goes in (one of
+    # PURPOSES) and what one might type for it. Names in `say` are placeholders
+    # ("Pill A"), never a real one of the user's. An action with no `say` is not listed
+    purpose: str = ""
+    say: tuple[str, ...] = ()
 
     def field(self, name: str) -> Field | None:
         return next((entry for entry in self.fields if entry.name == name), None)
