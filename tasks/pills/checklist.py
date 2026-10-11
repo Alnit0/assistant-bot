@@ -317,39 +317,45 @@ def morning_copy(held: list[store.Message], day: date) -> store.Message | None:
     return mine[-1] if mine else None
 
 
-async def _post_if_due(user_id: int) -> tuple[bool, str]:
+async def _post_if_due(user_id: int) -> tuple[bool, str, bool]:
     """Post this morning's checklist unless it is there already or there is
-    nothing on it. Returns whether it was posted, and why or why not."""
+    nothing on it. Returns whether it was posted, why or why not, and
+    whether not posting is a problem: it is when the hub can't be found,
+    and not when the checklist is there already or there is nothing to take."""
     pills, listed, day = await view(user_id)
     held = await database.run(store.db_messages, user_id, day)
     there = morning_copy(held, day)
     if there is not None:
         await refresh(user_id)
-        return False, f"it was already posted at {timeinput.format_moment(there.created_at)}; brought up to date in place"
+        return False, f"it was already posted at {timeinput.format_moment(there.created_at)}; brought up to date in place", False
     if not listed:
-        return False, "there is nothing to take today"
+        return False, "there is nothing to take today", False
     earlier = next((message for message in held if message.kind == CHECKLIST), None)
     if await post(user_id) is None:
-        return False, "the hub channel is not set or can't be found"
+        return False, "the hub channel is not set or can't be found", True
     doses = f"{len(listed)} dose{'' if len(listed) == 1 else 's'}"
     if earlier is not None and earlier.created_at is not None:
-        return True, f"{doses}, in place of the copy from {timeinput.format_moment(earlier.created_at)}"
-    return True, doses
+        return True, f"{doses}, in place of the copy from {timeinput.format_moment(earlier.created_at)}", False
+    return True, doses, False
 
 
-async def _decide(what: str) -> None:
+async def _decide(what: str) -> bool:
     """Post or not for each user, and say what was decided and why: in the log
-    always, and in #bot-log when nothing was posted."""
+    always, and in #bot-log when nothing was posted. True if a checklist
+    that should have been posted could not be."""
+    stuck = False
     now = clock.now()
     when = f"{days.today(now).isoformat()} {timeinput.format_moment(now)}"
     users = await database.run(store.db_users)
     if not users:
         log.info("Pills checklist, %s (%s): not posted: nobody has a pill", what, when)
     for user_id in users:
-        posted, why = await _post_if_due(user_id)
+        posted, why, problem = await _post_if_due(user_id)
+        stuck = stuck or problem
         log.info("Pills checklist, %s (%s), user %s: %s: %s", what, when, user_id, "posted" if posted else "not posted", why)
         if not posted:
             await discord_utils.log_simple("💊 Pills checklist not posted", f"{what.capitalize()}: {why}.")
+    return stuck
 
 
 async def book_next() -> None:
@@ -360,7 +366,9 @@ async def book_next() -> None:
 async def post_job(job: scheduler.Job) -> None:
     """Scheduler handler: 6:00 am. Post each user's checklist, then book tomorrow's."""
     try:
-        await _decide(f"job {job.id}" + (f", {job.late_by / 60:.0f} minutes late" if job.is_late else ""))
+        if await _decide(f"job {job.id}" + (f", {job.late_by / 60:.0f} minutes late" if job.is_late else "")):
+            # A real problem, not a morning with nothing to do: the bot's status shows it until a post works
+            scheduler.report(job, scheduler.SKIPPED)
     finally:
         await book_next()
 

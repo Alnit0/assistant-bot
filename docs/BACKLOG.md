@@ -123,13 +123,6 @@ a schema could take its place.
 ## Left for later
 
 - **From the small batch of 2026-10-12** (identity, #commands, mock-ups):
-  - **The 6:00 am checklist is not wired to the status.** A job can now
-    say it was skipped (`scheduler.report`), and the status then shows
-    "⚠️ … skipped · see #bot-log" until it next works. The pills job
-    does not say so yet: two of its three reasons for not posting are
-    normal (this morning's is already there; nothing to take today),
-    and the batch was not to touch the checklist. To decide: which
-    reasons count (the hub not being found is the clear one).
   - **One fixture is not recorded.** "how long left on tea?" is now the
     action `timer_left`; its fixture in `evals/fixtures/timers.json` has
     no recording, so its replay is skipped until the timers fixtures are

@@ -25,15 +25,14 @@ session; the end-of-task checklist updates it at the end of every task.
   use: follow-ups to the task that just answered, dose numbers, "I
   can't log that yet."), and the 6:00 am checklist as a fresh post.
   Steps 5 to 7 of block 23 (`docs/QA-RUN.md`) are still to be reported.
-- In hand, uncommitted (2026-10-12): **a batch of small backlog items**,
-  asked for as one: the bot's nickname and status line, what the reset
-  card will post again, pointer lines that go by themselves,
-  `data/exports` in the nightly backup, "how long is left on tea?" to
-  the second, the #commands channel, and `dev mock` with two new
-  sketches. Nothing in it changes pill doses, schedules or reminders,
-  and the real checklist is untouched. Its manual tests are block 24.
-  **To use it: add `COMMANDS_CHANNEL_ID` to `.env` and restart the live
-  bot.**
+- Committed: the batch of small backlog items (nickname and status
+  line, #commands, `dev mock`, the reset card, pointer lines, exports
+  in the backup, time left on a timer). Block 24 passed on the live
+  bot, bar step 8 (the morning's backup card, K22) and K20 (dev
+  database), still to be reported.
+- In hand, uncommitted (2026-10-12): the status warns only about real
+  problems: the 6:00 am checklist counts as skipped only when the hub
+  can't be found.
 - Tests: `python -m pytest -q` passes. Golden conversations 1c, 1d
   and 2a are marked as gaps (they need questions on the card, G1).
   The live evals of 2026-10-12: pills 56 of 57, general 12 of 12,
@@ -80,8 +79,8 @@ live), and on 2026-10-12 the bot's nickname and status line, the
 
 ## Next up
 
-1. Block 24 (this batch, on the live bot), then its commit. Blocks 21
-   and 22, and steps 5 to 7 of block 23, are still to be reported.
+1. Step 8 of block 24 (tomorrow's backup card). Blocks 21 and 22, and
+   steps 5 to 7 of block 23, are still to be reported.
 2. The checklist redesigned with Discord's Components V2: look at
    `dev mock checklist` and say what to change; the real checklist is
    not converted until the mock-ups are approved. Then reminders.
@@ -95,8 +94,6 @@ live), and on 2026-10-12 the bot's nickname and status line, the
 
 ## Open decisions
 
-- Whether the 6:00 am checklist not posting should show in the bot's
-  status, and for which reasons (see the backlog).
 - Deferred until pills reminders work: G1 (questions on the card), G3
   (corrections after Save), G4 (task ties asked too often), G7 (questions
   sent as their own message). G14 (privacy of notifications) comes with

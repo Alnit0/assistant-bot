@@ -6,6 +6,10 @@ backfilled from the git log.
 
 ## 2026-10-12
 
+- **The status warns only about real problems.** The 6:00 am checklist
+  shows as "⚠️ pills checklist skipped · see #bot-log" only when the
+  hub can't be found; "already posted" and "nothing to take" are
+  normal mornings. A failure reads "failed", a skip "skipped".
 - **The bot says which one it is.** Its nickname is its base name on
   live and "<base> · DEV" on the dev database, and its status reads
   "🟢 Live · up 7h · next: nightly backup 3:00 am", "🧪 DEV database ·

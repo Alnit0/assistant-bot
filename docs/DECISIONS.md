@@ -1011,8 +1011,12 @@ A short log of key decisions and why. Newest at the bottom.
     skipped), so "⚠️ … · see #bot-log" survives a restart and clears by
     itself when that job next works. A handler that catches its own
     failure says so with `scheduler.report`.
-  - A failure reads "failed" and a skip "skipped", though one wording
-    was asked for: they are different things to act on.
+  - A failure reads "failed" and a skip "skipped": they are different
+    things to act on (confirmed 2026-10-12).
+  - The status warns only about a real problem. For the 6:00 am
+    checklist that is the hub not being set or found; a morning whose
+    checklist is there already, or with nothing to take, is not one.
+    The job says which itself: code never reads the reason's wording.
   - #commands keeps no record of its own. The channel is the record:
     the bot's messages there are read at start-up and compared with the
     pages the registry makes (`core/mirror.py`). Nothing to migrate,

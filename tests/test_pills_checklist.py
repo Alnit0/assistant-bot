@@ -679,3 +679,24 @@ def test_a_morning_with_no_post_says_why_in_the_log_and_in_bot_log(world, monkey
     monkeypatch.setattr(hub, "channel_id", lambda: None)
     run(checklist.post_job(six()))
     assert world.bot_log[-1] == (NOT_POSTED, "Job 61: the hub channel is not set or can't be found.") and world.sent == []
+
+
+def test_only_a_hub_that_cannot_be_found_makes_the_morning_job_a_skipped_one(world, monkeypatch):
+    reported = []
+    monkeypatch.setattr(scheduler, "report", lambda job, ended: reported.append((job.id, ended)))
+    world.now = day.at(DAY, time(6, 0))
+    run(checklist.post_job(six(70)))  # nothing to take today
+    add(world, MAIN)
+    run(checklist.post_job(six(71)))  # posted
+    world.now = day.at(DAY, time(7, 0))
+    run(checklist.post_job(six(72)))  # this morning's is there already
+    assert reported == [], "a morning with nothing to do is not a problem"
+
+    async def nowhere(channel_id, card, silent=False):
+        return None
+
+    monkeypatch.setattr(cards, "send", nowhere)  # the hub can't be found
+    world.now = day.at(DAY + timedelta(days=1), time(6, 0))
+    run(checklist.post_job(scheduler.Job(73, None, "pills", checklist.JOB, {}, world.now)))
+    assert reported == [(73, scheduler.SKIPPED)]
+    assert world.bot_log[-1] == (NOT_POSTED, "Job 73: the hub channel is not set or can't be found.")
