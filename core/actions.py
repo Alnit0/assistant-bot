@@ -2,7 +2,7 @@ import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 
-from core import database, durations, trace
+from core import database, durations, repeats, trace
 from core.errors import UserError
 from core.users import User
 
@@ -243,8 +243,6 @@ class Entry:
     only_for: str  # what it is for and what it is not, in a sentence or two
     examples: tuple[str, ...]  # two or three things one might say to it
     actions: tuple[Action, ...]
-    # Said when nothing fits: how to ask ("Try saying the name and when you take it.")
-    hint: str = ""
     # `async (request) -> str`: what extraction should know about this task's
     # state right now (names and ids). Goes in the user turn, never the cached part
     live_state: Callable[[Request], Awaitable["State | str"]] | None = None
@@ -260,6 +258,12 @@ class Entry:
     # this task holds now (their pills, their running timers). A message that
     # names one is this task's to answer, whatever the router made of it
     names: Callable[[Request], Awaitable[list[str]]] | None = None
+    # Adding something that is already there (core/repeats.py). `identity`: the
+    # fields that make two items the same thing, e.g. ("name",); empty when no
+    # two are ever the same. `on_repeat`: what asking to add one that is there
+    # means, one of repeats.ON_REPEAT. Every entry declares `on_repeat`
+    identity: tuple[str, ...] = ()
+    on_repeat: str = ""
 
     @property
     def title(self) -> str:
@@ -653,6 +657,8 @@ def problems(entries: list[Entry]) -> list[str]:
             found.append(f"{who}: has no actions")
         if entry.show and not any(action.name == entry.show and not action.needs_card and not action.fields for action in entry.actions):
             found.append(f"{who}: `show` must name one of its actions that acts at once and takes nothing ({entry.show})")
+        taken = {inner.name for action in entry.actions for outer in action.fields for inner in (outer, *outer.item_fields)}
+        found += repeats.problems(who, tuple(entry.identity), entry.on_repeat, taken)
         for action in entry.actions:
             where = f"{who}: action {action.name or '(unnamed)'}"
             if not action.name or action.name in RESERVED:

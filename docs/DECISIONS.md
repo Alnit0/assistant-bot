@@ -1028,3 +1028,21 @@ A short log of key decisions and why. Newest at the bottom.
   - A sketch for `dev mock` is read by code that knows nothing of pills
     or timers, and the real cards are not built from sketches: the
     format is for looking, not a second way to build a card.
+- **Step 5: identity and on_repeat in the contract (2026-10-12).** Each
+  task says which fields make two items the same and what asking to add
+  one that is there means (update, add_to_amount, allow_another, ask).
+  - Core owns the matching, the decision and the words
+    (`core/repeats.py`); a task hands over what it holds and supplies
+    its own values. Pills now finds "the pill of this name" and writes
+    "already in your pills" and `field · old → new` through it, with
+    the same results as before. The card itself is still put together
+    by the task, because a pill's lines come from its schedule.
+  - `ask` is declared in the contract and refused by it until cards can
+    ask (G1), so no task can depend on a question that can't be shown.
+  - A task with no identity must say `allow_another`: there is no
+    default, so a new task can't forget to decide.
+  - `hint` went: nothing had shown it since "not understood" became
+    neutral.
+  - `CLAUDE.md` keeps the rules that are about the code and a table of
+    where each rule of the standard lives in it; how the bot talks is
+    only in `docs/CONVERSATION.md`.

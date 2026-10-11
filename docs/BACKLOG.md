@@ -71,22 +71,39 @@ the code), G10 (card kinds are new, change, remove), G11 (12-hour times
 in bug posts and `dev why`) and G12 (a looser redirect replaces the old
 card).
 
-**`task-check` (step 5), as now planned.** It audits one task against the
-conversation standard as well as the task contract: each principle in
-order, each context rule, each card rule and each always / never line,
-pass or fail per item with the evidence; it runs the golden
-conversations that involve the task, and proposes new ones for what the
-task adds; and it writes a QA block where every step says what to
-press and the block starts with `dev clock reset`. First use: timers,
-bugs and pills. It also checks the task's buttons against the colour
-rule of the standard's section 4 (asked for 2026-10-11): until the skill
-exists, `cards.check` refuses a card that breaks it and
-`tests/test_buttons.py` lists every button made with discord.py, so a
-new view has to be added to that test by hand.
+## Found by `task-check` (2026-10-12)
 
-**Also at step 5:** the `new-task` skill reads the "Scaling notes" in
-`docs/ARCHITECTURE.md` first; and the task contract's `hint` line goes
-(it is no longer shown anywhere since "not understood" became neutral).
+The first run of the skill, on timers, bugs and pills. Nothing here is
+fixed: each is waiting to be chosen. In the standard's own order of
+importance. "Size" is how big the fix looks.
+
+| # | Task | What | Where | Rule | Layer | Size |
+|---|---|---|---|---|---|---|
+| C1 | timers | Three refusals end with words written for Claude, which I now read: "Nothing has changed; tell the user so." | `tasks/timers/control.py:81`, `:116`, `:117`, `:154` | Never: an internal label as text | task | small |
+| C2 | timers | Refusals name fields and "the live state": "`duration` says how much time to add", "Use the ids in the live state (such as t12…)" | `tasks/timers/control.py:46`, `:64-66`, `:142-144` | Never: tool or action names in replies | task | small |
+| C3 | timers | A timer or session that starts is announced from the record in memory, not read back first | `tasks/timers/timers.py:116-135`, `tasks/timers/sessions.py:291` | Principle 1 | task | small |
+| C4 | bugs | "🐞 Logged as B4" and "your note is saved with it" are said without reading the bug or the note back | `tasks/bugs/__init__.py:37-40`, `:115-118` | Principle 1 | task | small |
+| C5 | pills | A Discord reply to a dose's message or to the checklist is not what "it" means: pills never looks at what was replied to; "it" is the pill logged last | `tasks/pills/plain.py:788-793` (no `replied_to` anywhere in `tasks/pills/`) | Principle 3 | task | medium |
+| C6 | pills | A pill Claude guessed at is logged at once with no ❓ (timers marks its guesses) | `tasks/pills/plain.py:729-741` | Principle 5 | task | small |
+| C7 | pills | Questions sent as a line of their own: "Which pill?", "Which one: A or B?", "What is the pill called?", "How many times a day?", "Is the gap 3 hours or 3 minutes?" | `tasks/pills/rules.py:221`, `:262`, `:301`, `:550`, `:564`; `tasks/pills/plain.py:792` | Never: a question as a separate message (G7, then G1) | task, then core | medium |
+| C8 | timers | The same: "Which timer? Say its name.", and `pomo` with other lengths asks "Restart it as `50/10`?" in a message of its own | `tasks/timers/plain.py:152`, `tasks/timers/sessions.py:238-239` | The same (G7) | task, then core | medium |
+| C9 | bugs | A note written in a bug's post is ticked ✅. The standard says ✅ is not used to acknowledge: **a conflict between the standard and what was asked for bugs**; the standard wins unless it is given an exception | `tasks/bugs/__init__.py:91` | Principle 8 | the standard or the task | small |
+| C10 | bugs | "show my open bugs" is a plain reply, not a Live list | `tasks/bugs/__init__.py:122-123` | Golden conversation 16 | task | small |
+| C11 | timers | A timer's and a phase's end time is Discord's own timestamp, which follows the reader's Discord settings and may read 20:04 | `tasks/timers/timers.py:43`, `tasks/timers/sessions.py:63` | Always: 12-hour times | task | small |
+| C12 | bugs | Declared "each report is its own", but a message that already has an open bug is found and pointed to in the task's own code | `tasks/bugs/__init__.py:29-31` | Contract: `identity`, `on_repeat` | contract (a fifth meaning: show the one there) | small |
+| C13 | pills | "A name already in use" is matched in the task, by a rule of its own (lower case only), beside core's | `tasks/pills/rules.py:381` | Contract: matching is core's | task | small |
+| C14 | timers | Lengths are handed over as text ("5m", "50/10") and several ids as one text ("t12 t14") | `tasks/timers/plain.py:359`, `:457`; `tasks/timers/status.py:51-63`, `tasks/timers/pomodoro.py:55-79` | Contract: structured values (decided 2026-10-10 to leave) | schema, fixtures | medium |
+| C15 | pills | Whether a skipped dose was the bot's own decision is told by how its reason is worded (`startswith`) | `tasks/pills/doses.py:59` | Code never reads the reason's words | task (a kind beside the reason) | small |
+| C16 | pills | Taking a setting away is the word "none" (`CLEAR`) | `tasks/pills/rules.py:40` | Word lists (listed below: replace with a list of settings to clear) | schema | small |
+| C17 | timers | Words Claude might send for "the session" are accepted as a set ("current", "it", "pomodoro"…) | `tasks/timers/control.py:22` | Word lists (not listed below until now) | schema (`@that`) | small |
+| C18 | timers | Its own live lists ("Your timers", one a channel) beside `core/livelists.py`; its own send, edit and delete helpers beside `core/cards.py` | `tasks/timers/board.py:79-112`, `tasks/timers/store.py` (`timers_lists`), `tasks/timers/common.py:22-58` | Core or task: plumbing | core | medium |
+| C19 | pills | "Which of my things does this name mean" (whole name, then part, then ask) and laying a reply over an open card are general, and live in the task | `tasks/pills/rules.py:541-568`, `tasks/pills/plain.py:69` | Core or task: a general tool (move when a second task needs it) | core | medium |
+| C20 | bugs | Its plain-words code is in `__init__.py`, not `plain.py`, and `__init__.py` imports discord.py (for type names) | `tasks/bugs/__init__.py:3`, `:101-123` | Structure | task | small |
+
+Known gaps the run met again, already listed above: G1 (golden 1c, 1d,
+2a), G3 (golden 2b passes only by the "pill changed last" guess), G14
+(nothing notifies about a pill yet). One fixture has no recording
+("how long left on tea?").
 
 ## Word lists and phrase patterns in Python (2026-10-10)
 
@@ -118,6 +135,8 @@ a schema could take its place.
 | `livelists.sticks` | A message of 8 words or fewer after a list | Sends a short follow-up to the list's task first | No: it is a length, not a wording; extraction can still say `not_this` |
 | `outgoing.acknowledges` (`_ACKNOWLEDGES`) | "Got it", "Noted", "Done", "So you took…" at the start of a chat reply | Chat is told never to acknowledge something I did; this stops one that slips through from being sent | No: chat's reply has no schema. The router's `reports_doing` is the structured half |
 | `outgoing.without_offer` (`_OFFER`) | "want me to…?", "anything else?" at the end of a chat reply | Plain chat is free text, and is told not to offer; this trims one that slips through | No: chat's reply has no schema |
+| `timers/control.py` `_THE_SESSION` | "current", "it", "pomodoro", "session" as the session's id | Whatever Claude sends for "the session" still finds it | Yes: `@that`, as for timers (C17) |
+| `pills/doses.py` `decided_by_the_bot` | Whether a stored skip reason starts with "no time left" | Tells the bot's own skips from mine | Yes: a kind stored beside the reason (C15) |
 | `core/router.py` (`GENERIC_VERBS`, fillers), `timers/control.py` (`_SCOPE_WORDS`…) | Typed words: `pause all timers`, "pin this" | Typed shortcuts never go to Claude, by design | No |
 
 ## Left for later
@@ -140,11 +159,11 @@ a schema could take its place.
     🟢 Live · …"), as the old status did. Not asked for either way.
   - **The header of `docs/QA-RUN.md` still counts the tests as of
     2026-10-10.**
-- **Left over from removing the old path** (step 4, 2026-10-10), for step
-  5: `docs/DEVELOPMENT.md` "How to add a task" and the `add-task` skill
-  still describe parts of the old way and are rewritten then; the
+- **Left over from removing the old path** (step 4, 2026-10-10): the
   `pills_drafts` table is unused; the cost reports keep the `tools`
-  route for rows logged before the removal.
+  route for rows logged before the removal; "How to add a task" in
+  `docs/DEVELOPMENT.md` still says in places that Claude is given a
+  word's description.
 - **A pill whose doses can't fit is refused, not fixed** (decided
   2026-10-10; look again with G1). A planned time after the latest time,
   or doses that can't all fit before it, is shown on the card as it was
@@ -155,14 +174,6 @@ a schema could take its place.
   plan** (stages 4 to 6). Rewrite them from the acceptance tests as
   reminders and corrections are built. (R1 to R4, R23, R26 and R27 were
   rewritten with the checklist, 2026-10-10.)
-- **For step 5: "adding something that already exists" as a core
-  pattern** (asked for 2026-10-10; not now). Each task declares in its
-  contract an identity (which fields make two items the same) and an
-  `on_repeat` rule: update, add_to_amount, allow_another, or ask (once
-  G1 exists). Core does the matching, the replies, the cards and the
-  sums. The `new-task` skill asks for both, and `task-check` checks
-  every task declares them. Pills already behaves as identity: name,
-  on_repeat: update, in its own code (`plain._known`, `add_card`).
 - **The lab's buttons keep their own colours** (2026-10-11). The lab is
   the bench for Discord's own features, and its toggles use grey for
   "off" on purpose; the colour rule was applied everywhere else.

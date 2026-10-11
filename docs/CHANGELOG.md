@@ -6,6 +6,16 @@ backfilled from the git log.
 
 ## 2026-10-12
 
+- **Step 5: the standard is in the docs and the skills.** Nothing about
+  how a task behaves changed. `CLAUDE.md` is under half its length and
+  points to `docs/CONVERSATION.md` and the Scaling notes instead of
+  repeating them. Every task now declares what adding something that is
+  already there means (`identity`, `on_repeat`), with the matching and
+  the words in core; the unused `hint` line is gone.
+- **Two new skills for Claude Code**, in place of `add-task`: `new-task`
+  (interview, contract, spec, approval, build) and `task-check` (an
+  audit of one task against the standard). Its first run, on timers,
+  bugs and pills, found 20 things, listed in `docs/BACKLOG.md`.
 - **The status warns only about real problems.** The 6:00 am checklist
   shows as "⚠️ pills checklist skipped · see #bot-log" only when the
   hub can't be found; "already posted" and "nothing to take" are

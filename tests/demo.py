@@ -1,6 +1,6 @@
 import re
 
-from core import livelists
+from core import livelists, repeats
 from core.actions import ADD, CHANGE, INTEGER, ITEMS, REMOVE, SET, Action, Entry, Field, LiveReply, Proposal, Request, State
 from core.actions import LAST, change_field, flag, is_guessed, is_reference, merge_items, point_at
 from core.errors import UserError
@@ -307,7 +307,8 @@ SHOPPING = Entry(
         "timers or reminders."
     ),
     examples=("add milk to the shopping list", "what do I need to buy?", "got the bread"),
-    hint="Try “add milk to the shopping list”.",
+    identity=("item",),
+    on_repeat=repeats.ADD_TO_AMOUNT,  # "add 3 milk" with milk on the list is 3 more
     actions=(
         Action(
             "demo_shop_change",
@@ -465,7 +466,8 @@ PACKING = Entry(
         "them, and asking what is on it. Not things to buy, and not pills, timers or reminders."
     ),
     examples=("pack my passport in the carry-on", "what am I packing?"),
-    hint="Try “pack my passport”.",
+    identity=("item",),
+    on_repeat=repeats.UPDATE,  # the same thing again is a change to it (another bag), or nothing
     actions=(
         Action(
             "demo_pack_change",

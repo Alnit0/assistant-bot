@@ -2,6 +2,7 @@ import asyncio
 
 import discord
 
+from core import repeats
 from core.actions import EACH_DAY, SEE, Action, Field, Request
 from core.config import BASE_DIR
 from core.context import Context
@@ -164,7 +165,9 @@ class BugsTask(Task):
         "something the bot should do, and not a problem with anything outside the bot."
     )
     examples = ("that's a bug", "log that as a bug: it started two timers", "show my open bugs")
-    hint = "Say “that's a bug” straight after what went wrong, or reply to it with `bug`."
+    # Each report is its own (a message that already has an open bug is pointed to: rules.py)
+    identity = ()
+    on_repeat = repeats.ALLOW_ANOTHER
     show = "bug_list"
 
     def actions(self) -> list:

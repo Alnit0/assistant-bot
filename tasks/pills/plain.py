@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta
 
-from core import clock, day, hub, livelists, occurrences, tidy, timeinput
+from core import clock, day, hub, livelists, occurrences, repeats, tidy, timeinput
 from core.actions import BOOLEAN, INTEGER, ITEMS, LAST, MINUTES, TIME, TIMES, Action, Field, LiveReply, Proposal, Request, Shown, State
 from core.actions import EACH_DAY, SEE, SET_UP, flag, is_guessed
 from core.actions import is_reference, point_at
@@ -47,7 +47,10 @@ EXAMPLES = (
     "add vitamin D once a day with food", "move the evening pill to 9pm", "pause iron until the 20th",
     "took my zinc", "I've taken my zinc today", "had pill A at 9", "I didn't take zinc",
 )
-HINT = "Try saying its name and when you take it, e.g. “add iron at 8am”."
+# A pill is its name: asking to add one that is there is a change to it, never a second pill
+IDENTITY = ("name",)
+ON_REPEAT = repeats.UPDATE
+WHERE = "pills"  # as in "already in your pills"
 
 PLAN_FIELDS = ("name", "dose", "notes", "times", "per_day", "min_gap", "latest", "start", "end", "days")
 # Where an item of the action calls a part of the plan something else
@@ -145,8 +148,7 @@ def settle(request: rules.Request, today: date, base: Plan | None = None) -> Rea
 
 def _known(existing: list[Pill], name: str) -> Pill | None:
     """The pill the user already has by exactly this name, whatever the case."""
-    wanted = name.strip().lower()
-    return next((pill for pill in rules.listed(existing) if pill.plan.name.lower() == wanted), None)
+    return repeats.find(IDENTITY, {"name": name}, rules.listed(existing), lambda pill: {"name": pill.plan.name})
 
 
 def _change(item: dict) -> rules.Request:
@@ -155,7 +157,7 @@ def _change(item: dict) -> rules.Request:
 
 
 def _already(pill: Pill) -> str:
-    return f"**{pill.plan.name}** is already in your pills with these settings"
+    return repeats.already(pill.plan.name, WHERE)
 
 
 def _held_lines(read: Read) -> list[str]:
@@ -263,14 +265,15 @@ async def add_card(request: Request, data: dict, guessed: frozenset) -> Proposal
             warnings.append(f"Not included: {name} ({error})")
             continue
         seen.add(read.plan.name.lower())
-        if pill is not None and read.plan == pill.plan and not read.held:
+        repeat = repeats.decide(ON_REPEAT, pill, changes=pill is None or read.plan != pill.plan or read.held)
+        if repeat.kind == repeats.SAME:
             warnings.append(_already(pill))
             continue
-        if pill is not None:
+        if repeat.kind == repeats.CHANGE:
             # One format for a change, on whichever card it is: field · old → new
-            lines.append(flag(f"**{pill.plan.name}** · already in your pills", name.lower() in unsure))
+            lines.append(flag(repeats.there_line(pill.plan.name, WHERE), name.lower() in unsure))
             lines += [
-                flag(f"{part} · {before} → {after}", read.guessed and part == "schedule")
+                flag(repeats.change_line(part, before, after), read.guessed and part == "schedule")
                 for part, before, after in rules.differences(pill.plan, read.plan)
             ]
             lines += _held_lines(read)

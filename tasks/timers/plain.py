@@ -30,7 +30,6 @@ ONLY_FOR = (
     "them. Not pills, not reminders or alarms at a time of day, and not anything on a schedule."
 )
 EXAMPLES = ("set a timer for 5 minutes called tea", "pause the laundry timer", "start a pomodoro")
-HINT = "Try “set a timer for 10 minutes” or “pause the tea timer”."
 
 CHANGES = ("pause", "resume", "cancel", "extend")
 SESSION_CHANGES = control.POMODORO_ACTIONS

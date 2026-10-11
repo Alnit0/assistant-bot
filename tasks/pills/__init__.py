@@ -41,7 +41,8 @@ class PillsTask(Task):
     icon = plain.ICON
     only_for = plain.ONLY_FOR
     examples = plain.EXAMPLES
-    hint = plain.HINT
+    identity = plain.IDENTITY
+    on_repeat = plain.ON_REPEAT
     show = "pill_list"
 
     def actions(self) -> list:

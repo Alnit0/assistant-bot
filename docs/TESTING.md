@@ -41,12 +41,12 @@ Last updated: 2026-10-12
 | L | Keep | 12 | 4 | 8 | 8 | 4 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
 | P | Bugs | 33 | 16 | 17 | 15 | 18 | 0 | 0 |
-| Q | Time, days, the schedule model, the occurrence log and cards | 14 | 12 | 2 | 2 | 12 | 0 | 0 |
+| Q | Time, days, the schedule model, the occurrence log and cards | 15 | 13 | 2 | 2 | 13 | 0 | 0 |
 | R | Pills | 51 | 8 | 43 | 35 | 16 | 0 | 0 |
 | S | Routing and confirm cards | 57 | 9 | 48 | 13 | 43 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 1 | 21 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **409** | **123** | **286** | **217** | **191** | **0** | **1** |
+| | **Total** | **410** | **124** | **286** | **217** | **192** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -406,6 +406,7 @@ manual test uses the dev clock on the dev database (`python main.py --dev`).
 | Q12 | 🤖 Auto | Standing jobs follow the clock | A job booked for "the next midnight" or "the next 6:00 am" while the clock was ahead is booked again for the real time when the clock goes back; one that is overdue is never moved later; asking twice books one | ✅ Pass | 2026-10-10 | `tests/test_pills_day.py`, `tests/test_day.py`, `tests/test_backup.py` |
 | Q13 | 🤖 Auto | Button colours, and lines deleted by a stored job | A button is blurple unless it says otherwise and Cancel is the one grey button, with ↩️; a card with any other grey button, or a Cancel that isn't that one, is refused before it is sent; the confirm card (Save green, Remove and Delete for good and a bulk cancel red, Cancel grey), the question on a tie (tasks blurple, Neither grey), the pills dose message (Taken green, Skip blurple); no grey button on a timer, a session or the dev panel; the Confirm / Cancel question, the bug buttons and Restore follow the rule; a housekeeping line is booked and deleted when its time comes, even if that was while the bot was off, and nothing is booked while clean-up is off | ✅ Pass | 2026-10-11 | `tests/test_buttons.py` |
 | Q14 | 👤 Manual | Look at the buttons as you go: say `add zinc to my pills` (don't press); say `remove zinc` on a saved pill (don't press); type `pills` in the hub; let a timer finish (`timer 10s tea`); in a test channel with nothing pinned or 📌, type `reset channel` | **Save** is green and **Cancel** grey with ↩️. **Remove** is red. **Taken** is green and **Skip** blurple. On the timer's alert **+5 min**, **Restart** and **Dismiss** are all blurple: nothing but Cancel is grey anywhere. The reset card has **Delete all** (red) and **Cancel** only: no "Delete all unpinned" when nothing is pinned or 📌 | ⬜ Untested | | From 2026-10-11 |
+| Q15 | 🤖 Auto | Adding what is already there: `identity` and `on_repeat` | Every task declares what a repeat means, and one that doesn't is not routed to; update and add_to_amount need an identity made of the task's own fields; `ask` is refused until cards can ask; the same name is the same thing whatever the case or spacing; a repeat comes to new, same, change, more, another or a question; "already in your pills" and `field · old → new` are written by core; pills, timers, bugs and channel declare name / update and none / allow_another, and the `hint` line is gone | ✅ Pass | 2026-10-12 | `tests/test_repeats.py`, `tests/test_actions.py` |
 
 ## R. Pills
 

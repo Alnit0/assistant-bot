@@ -37,7 +37,7 @@ ADD = Action(
     verify=verify,
 )
 SHOW = Action("thing_show", "Show the things.", needs_card=False, run=run)
-ENTRY = Entry("things", "📦", "Only for things.", ("add a thing", "show my things"), (ADD, SHOW))
+ENTRY = Entry("things", "📦", "Only for things.", ("add a thing", "show my things"), (ADD, SHOW), on_repeat="allow_another")
 
 
 # ---------------------------------------------------------------------------
@@ -128,7 +128,7 @@ def test_a_complete_entry_has_no_problems():
 
 
 def entry(**changes):
-    values = dict(name="things", icon="📦", only_for="Only for things.", examples=("add a thing", "show my things"), actions=(ADD, SHOW))
+    values = dict(name="things", icon="📦", only_for="Only for things.", examples=("add a thing", "show my things"), actions=(ADD, SHOW), on_repeat="allow_another")
     values.update(changes)
     return Entry(**values)
 
@@ -230,14 +230,15 @@ def test_a_task_with_actions_is_one_entry_built_from_its_own_fields():
         icon = "📦"
         only_for = "Only for things."
         examples = ("add a thing", "show my things")
-        hint = "Try “add a thing”."
+        identity = ("name",)
+        on_repeat = "update"
 
         def actions(self):
             return [SHOW]
 
     (found,) = Things().entries()
-    assert (found.name, found.icon, found.only_for, found.examples, found.hint) == (
-        "things", "📦", "Only for things.", ("add a thing", "show my things"), "Try “add a thing”.",
+    assert (found.name, found.icon, found.only_for, found.examples, found.identity, found.on_repeat) == (
+        "things", "📦", "Only for things.", ("add a thing", "show my things"), ("name",), "update",
     )
     assert found.actions == (SHOW,) and found.live_state is not None
     assert Task().entries() == [], "a task with no actions is not offered to the router"
@@ -652,7 +653,7 @@ def test_a_length_of_time_is_asked_for_as_whole_minutes_and_times_in_one_form():
     for name in ("times", "latest"):
         assert "`8:00 am`" in inner[name]["description"] and "never choose for them" in inner[name]["description"]
     assert properties["wait"]["type"] == "integer"
-    assert actions.problems([Entry("doses", "💊", "Doses.", ("a", "b"), (DOSES,))]) == []
+    assert actions.problems([Entry("doses", "💊", "Doses.", ("a", "b"), (DOSES,), on_repeat="allow_another")]) == []
 
 
 def test_minutes_and_times_as_asked_for_pass_through():
@@ -708,3 +709,51 @@ def test_a_morning_or_evening_claude_chose_by_itself_is_taken_back(said, given, 
     changed, back = actions.unchosen(DOSES, data, said)
     assert changed["doses"][0]["times"] == kept and changed["doses"][0]["latest"] == kept[0] and changed["wait"] == 5
     assert bool(back) == (given != kept)
+
+
+# ---------------------------------------------------------------------------
+# Adding what is already there: every entry says what that means
+# ---------------------------------------------------------------------------
+def test_an_entry_must_say_what_adding_something_already_there_means():
+    assert actions.problems([entry(on_repeat="")]) == [
+        "things: needs `on_repeat`, what adding something that is already there means: one of update, add_to_amount, allow_another, ask"
+    ]
+    assert actions.problems([entry(on_repeat="replace")])[0].startswith("things: needs `on_repeat`")
+    assert actions.problems([entry(on_repeat="allow_another")]) == [], "nothing is ever the same: no identity needed"
+
+
+def test_updating_or_adding_to_what_is_there_needs_an_identity_made_of_its_own_fields():
+    assert actions.problems([entry(on_repeat="update")]) == ["things: `on_repeat` update needs an `identity`: the fields that make two items the same"]
+    assert actions.problems([entry(on_repeat="add_to_amount")]) == ["things: `on_repeat` add_to_amount needs an `identity`: the fields that make two items the same"]
+    named = next(each.name for each in ADD.fields)
+    assert actions.problems([entry(on_repeat="update", identity=(named,))]) == []
+    assert actions.problems([entry(on_repeat="update", identity=("colour",))]) == ["things: `identity` names `colour`, which is no field of any of its actions"]
+
+
+def test_asking_on_a_repeat_is_refused_until_cards_can_ask():
+    named = next(each.name for each in ADD.fields)
+    assert actions.problems([entry(on_repeat="ask", identity=(named,))]) == [
+        "things: `on_repeat` ask needs questions on the card, which are not built yet (the gap list, G1)"
+    ]
+
+
+def test_every_task_declares_its_identity_and_what_a_repeat_means():
+    from tasks import registry
+
+    registry.load()
+    declared = {found.name: (found.identity, found.on_repeat) for found in actions.catalogue()}
+    assert declared == {
+        "pills": (("name",), "update"),
+        "timers": ((), "allow_another"),
+        "bugs": ((), "allow_another"),
+        "channel": ((), "allow_another"),
+    }
+    assert not hasattr(actions.Entry("x", "x", "x", (), ()), "hint"), "the hint line is gone from the contract"
+
+
+def test_the_demo_lists_declare_theirs_too():
+    from tests import demo
+
+    assert (demo.SHOPPING.identity, demo.SHOPPING.on_repeat) == (("item",), "add_to_amount")
+    assert (demo.PACKING.identity, demo.PACKING.on_repeat) == (("item",), "update")
+    assert actions.problems(demo.ENTRIES) == []

@@ -453,7 +453,7 @@ def test_every_task_that_has_a_list_says_which_action_shows_it():
     shows = {entry.name: entry.show for entry in ALL}
     assert shows == {"shopping": "demo_shop_list", "packing": "demo_pack_list", "bugs": "bug_list", "pills": "pill_list", "timers": "timer_list", "channel": ""}
     assert actions.problems(ALL) == []
-    broken = actions.Entry("things", "📦", "Only for things.", ("a", "b"), demo.SHOPPING.actions, show="demo_shop_change")
+    broken = actions.Entry("things", "📦", "Only for things.", ("a", "b"), demo.SHOPPING.actions, show="demo_shop_change", on_repeat="allow_another")
     assert actions.problems([broken]) == [
         "things: `show` must name one of its actions that acts at once and takes nothing (demo_shop_change)"
     ]

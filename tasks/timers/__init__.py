@@ -3,6 +3,7 @@ import discord
 from core.context import Context
 from core.errors import UserError
 from core.lifecycle import MessageClass
+from core import repeats
 from core.actions import EACH_DAY, SEE
 from tasks.base import ANY, ButtonNote, Keyword, ReplyAction, Task
 from tasks.timers import board, control, plain, sessions, store, timers
@@ -99,7 +100,9 @@ class TimersTask(Task):
     icon = plain.ICON
     only_for = plain.ONLY_FOR
     examples = plain.EXAMPLES
-    hint = plain.HINT
+    # Each timer is its own: a second one called tea runs beside the first
+    identity = ()
+    on_repeat = repeats.ALLOW_ANOTHER
     show = "timer_list"
 
     def actions(self) -> list:

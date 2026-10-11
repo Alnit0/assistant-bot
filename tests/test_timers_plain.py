@@ -93,9 +93,9 @@ def test_only_cancelling_several_asks_first():
 def test_an_action_that_sometimes_needs_a_card_needs_all_three_halves():
     whole = next(action for action in plain.ACTIONS if action.name == "timer_change")
     broken = actions.Action("x_change", "Change x.", card_if=plain.cancels_several, run=plain.change)
-    entry = actions.Entry("things", "📦", "Only for things.", ("a", "b"), (broken,))
+    entry = actions.Entry("things", "📦", "Only for things.", ("a", "b"), (broken,), on_repeat="allow_another")
     assert actions.problems([entry]) == ["things: action x_change needs a card only sometimes (`card_if`), so it needs `prepare`, `apply` and `run`"]
-    assert actions.problems([actions.Entry("things", "📦", "Only for things.", ("a", "b"), (whole,))]) == []
+    assert actions.problems([actions.Entry("things", "📦", "Only for things.", ("a", "b"), (whole,), on_repeat="allow_another")]) == []
 
 
 # --- starting ----------------------------------------------------------------------------

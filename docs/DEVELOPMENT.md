@@ -415,8 +415,21 @@ Things to know:
 - **Plain words** are a task's `plain.py`: its `Action`s (`core/actions.py`)
   and the code that carries them out, taking a `Request`, never a
   Context. See "Routing and confirm cards" below, and `tasks/timers/plain.py`
-  or `tasks/pills/plain.py` for a worked example. (This section is
-  rewritten at step 5, with the `new-task` and `task-check` skills.)
+  or `tasks/pills/plain.py` for a worked example. A task that takes plain
+  words sets, on its `Task`: `icon`, `only_for`, `examples`, `show`, and
+  what adding something that is already there means:
+  - `identity`: the fields that make two items the same thing
+    (`("name",)` for a pill; `()` when each is its own, like a timer).
+  - `on_repeat`: `update` (it is a change to the one there),
+    `add_to_amount` (more of it), `allow_another` (a second one), or
+    `ask` (not available until cards can ask).
+  `core/repeats.py` does the matching (`find`), says what a request comes
+  to (`decide`) and writes the words (`already`, `there_line`,
+  `change_line`). The bot won't route to a task that doesn't declare
+  `on_repeat`, or whose identity names a field none of its actions take.
+- **A new task starts with the `new-task` skill** (the interview, the
+  contract, the spec, then the build), and every task is audited with
+  `task-check`.
 - **Turning tasks on and off:** `ENABLED_TASKS=builtin,greeter` in `.env`.
   Leave it empty to load everything. A disabled task keeps its data, and
   its words, slash commands and help entries disappear.

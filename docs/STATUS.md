@@ -28,11 +28,17 @@ session; the end-of-task checklist updates it at the end of every task.
 - Committed: the batch of small backlog items (nickname and status
   line, #commands, `dev mock`, the reset card, pointer lines, exports
   in the backup, time left on a timer). Block 24 passed on the live
-  bot, bar step 8 (the morning's backup card, K22) and K20 (dev
-  database), still to be reported.
-- In hand, uncommitted (2026-10-12): the status warns only about real
-  problems: the 6:00 am checklist counts as skipped only when the hub
-  can't be found.
+  bot, bar step 8 (the morning's backup card, K22), still to be
+  reported, and K20, untested until the dev database is next run.
+- Committed: the status warns only about real problems (the 6:00 am
+  checklist counts as skipped only when the hub can't be found).
+- In hand, uncommitted (2026-10-12): **step 5 of the routing spec,
+  documentation and skills**, with no change to how any task behaves:
+  `CLAUDE.md` tidied, `identity` and `on_repeat` in the task contract
+  (`core/repeats.py`), `hint` removed, the skills `new-task` and
+  `task-check` in place of `add-task`, and the first `task-check` of
+  timers, bugs and pills: 20 findings in `docs/BACKLOG.md` (C1 to C20),
+  none fixed.
 - Tests: `python -m pytest -q` passes. Golden conversations 1c, 1d
   and 2a are marked as gaps (they need questions on the card, G1).
   The live evals of 2026-10-12: pills 56 of 57, general 12 of 12,
@@ -58,6 +64,8 @@ live), and on 2026-10-12 the bot's nickname and status line, the
 
 ## Recently done
 
+- Step 5 (2026-10-12): the standard written into `CLAUDE.md`, the task
+  contract and the skills; `task-check` run on timers, bugs and pills.
 - A batch of small items (2026-10-12): the bot says which one it is
   (nickname and status line), #commands is written from the registry,
   `dev mock` posts a sketched card, the reset card says what comes
@@ -72,10 +80,6 @@ live), and on 2026-10-12 the bot's nickname and status line, the
 - Channel reset: `reset channel` empties the channel after asking on a
   card (all, or all but pinned and 📌), saves a transcript first, and
   every task puts its live messages back.
-- Pills stage 2: today's checklist in the hub at 6:00 am, edited in
-  place, with Taken / Skip for doses with no time, logging by message,
-  `pills` for a fresh copy, changes during the day, the end of the
-  day, and nothing doubled by a restart.
 
 ## Next up
 
@@ -87,13 +91,13 @@ live), and on 2026-10-12 the bot's nickname and status line, the
 3. Pills stage 3, reminders (prompts at each dose's time, snooze,
    re-nudges, missed, take-by, automatic skips, the latest time, the
    too-soon question), on a go. Then corrections and questions.
-4. Step 5, after pills reminders: write the standard into the task
-   contract and docs, drop the contract's unused `hint`, and replace the
-   `add-task` skill with `new-task` (which reads the Scaling notes
-   first) and `task-check`; run `task-check` on timers, bugs and pills.
 
 ## Open decisions
 
+- Which of the `task-check` findings to fix, and when (C1 to C20 in
+  `docs/BACKLOG.md`; block 25 of `docs/QA-RUN.md` shows each as the bot
+  behaves today). C9 is a conflict to settle: a note in a bug's post
+  gets ✅, and the standard says ✅ is not used to acknowledge.
 - Deferred until pills reminders work: G1 (questions on the card), G3
   (corrections after Save), G4 (task ties asked too often), G7 (questions
   sent as their own message). G14 (privacy of notifications) comes with

@@ -2,7 +2,7 @@ import asyncio
 import logging
 from pathlib import Path
 
-from core import cards, clearing, clock, confirm, livelists, llm
+from core import cards, clearing, clock, confirm, livelists, llm, repeats
 from core.actions import Action, Request, Shown
 from core.cards import Button, Card
 from core.config import EXPORTS_DIR, real_now_nz
@@ -202,6 +202,9 @@ class ChannelTask(Task):
     icon = ICON
     only_for = ONLY_FOR
     examples = EXAMPLES
+    # Nothing is added or kept: there is nothing to be the same as
+    identity = ()
+    on_repeat = repeats.ALLOW_ANOTHER
 
     def actions(self) -> list:
         return [

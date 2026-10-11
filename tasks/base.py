@@ -209,8 +209,13 @@ class Task:
     # this, and nothing else about the task but the examples, to choose it
     only_for: str = ""
     examples: tuple[str, ...] = ()  # two or three things one might say to it
-    hint: str = ""  # said when nothing fits: how to ask
     show: str = ""  # the action that shows what the task has; the task's name on its own runs it
+    # Adding something that is already there (core/repeats.py): the fields that make
+    # two items the same thing, and what asking to add one that is there means
+    # (update, add_to_amount, allow_another, ask). The registry refuses a task
+    # that takes plain words and does not say
+    identity: tuple[str, ...] = ()
+    on_repeat: str = ""
 
 
     def keywords(self) -> list[Keyword]:
@@ -250,8 +255,8 @@ class Task:
             return []
         return [
             Entry(
-                self.name, self.icon, self.only_for, tuple(self.examples), found, self.hint, self.action_state, self.show,
-                self.already_so, self.item_names,
+                self.name, self.icon, self.only_for, tuple(self.examples), found, live_state=self.action_state, show=self.show,
+                already=self.already_so, names=self.item_names, identity=tuple(self.identity), on_repeat=self.on_repeat,
             )
         ]
 
