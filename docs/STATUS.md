@@ -33,6 +33,12 @@ session; the end-of-task checklist updates it at the end of every task.
   gets "I can't log that yet." Steps 5 to 7 of block 23 retest these.
   Part 2 (polish) and part 3 (the checklist redesign, mock-ups first)
   wait for it.
+- In hand, uncommitted, a live bug of 2026-10-12: the 6:00 am
+  checklist didn't post, because one had been asked for at 1:29 am.
+  Fixed: the morning's post is a fresh copy, and a morning with no
+  post says why in the log and #bot-log. `dev status` now says what is
+  running. **The live bot must be restarted on this code for
+  tomorrow's 6:00 am.**
 - Tests: `python -m pytest -q` passes. Golden conversations 1c, 1d
   and 2a are marked as gaps (they need questions on the card, G1).
   The live evals of 2026-10-12: pills 56 of 57, general 12 of 12,

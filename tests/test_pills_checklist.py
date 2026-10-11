@@ -42,6 +42,12 @@ def world(make_db, monkeypatch, owner):
     monkeypatch.setattr(clock, "now", lambda: seen.now)
     monkeypatch.setattr(hub, "channel_id", lambda: HUB)
     monkeypatch.setattr(llm, "_exchanges", {})
+    seen.bot_log = []
+
+    async def log_simple(title, description=None):
+        seen.bot_log.append((title, description))
+
+    monkeypatch.setattr(checklist.discord_utils, "log_simple", log_simple)
     live.reset()
     seen.request = lambda channel=INBOX: Request(owner, channel, "said")
     return seen
@@ -585,3 +591,79 @@ def test_the_log_action_takes_a_dose_number_and_shows_how(world):
     item = actions.schema(log_action)["properties"]["doses"]["items"]
     assert item["properties"]["dose"]["type"] == "integer" and "dose" not in item["required"], "only when I say which"
     assert "dose 1, at 9:00 am" in log_action.description and "dose 2, at 12:15 pm" in log_action.description
+
+
+# --- the morning's post, as it went wrong live on 2026-10-12 --------------------------------------------------
+# The bot was started at about 1:30 am and the checklist was asked for by hand at 1:29 am. At 6:00 am the job ran
+# on time, found "today's checklist is there already", brought it up to date in place and posted nothing, saying
+# nothing anywhere.
+NOT_POSTED = "💊 Pills checklist not posted"
+
+
+def six(number=61, late=None):
+    due = day.at(DAY, time(6, 0))
+    return scheduler.Job(number, None, "pills", checklist.JOB, {}, due)
+
+
+def test_started_at_half_past_one_on_a_fresh_day_the_checklist_posts_at_six(world, caplog):
+    add(world, MAIN)
+    world.now = day.at(DAY, time(1, 30))
+    run(checklist.startup())
+    assert world.sent == [], "before 6:00 am nothing is posted"
+    (booked,) = run(scheduler.pending_jobs("pills", checklist.JOB))
+    assert booked.due_at == day.at(DAY, time(6, 0)), "today's 6:00 am, not tomorrow's"
+    world.now = day.at(DAY, time(6, 0))
+    with caplog.at_level("INFO", logger="assistant"):
+        run(checklist.post_job(six(booked.id)))
+    assert [sent.card.text.splitlines()[0] for sent in world.sent] == ["## 💊 Pills · ▱▱▱▱▱ 0 of 3"] and world.sent[0].channel == HUB
+    assert f"Pills checklist, job {booked.id} (2026-10-12 6:00 am), user {world.owner.id}: posted: 3 doses" in caplog.text
+    assert world.bot_log == [], "posted: nothing to report"
+
+
+def test_with_yesterday_s_checklist_still_there_today_s_posts_at_six(world):
+    add(world, MAIN)
+    world.now = day.at(DAY - timedelta(days=1), time(22, 0))
+    run(checklist.post(world.owner.id))
+    world.now = day.at(DAY, time(1, 30))
+    run(checklist.startup())
+    world.now = day.at(DAY, time(6, 0))
+    run(checklist.post_job(six()))
+    assert len(world.sent) == 2 and world.sent[-1].card.text.count("💊 **Pill A**") == 3, "a fresh one for today"
+    held = run(database.run(store.db_messages, world.owner.id, DAY))
+    assert [message.message_id for message in held] == [world.sent[-1].id]
+    assert world.sent[0].id not in world.deleted, "yesterday's is closed and left where it is"
+
+
+def test_a_checklist_asked_for_in_the_night_does_not_stand_in_for_the_morning_s(world, caplog):
+    add(world, MAIN)
+    world.now = day.at(DAY, time(1, 29))
+    night = run(checklist.post(world.owner.id))  # `pills`, typed at 1:29 am
+    world.now = day.at(DAY, time(6, 0))
+    with caplog.at_level("INFO", logger="assistant"):
+        run(checklist.post_job(six()))
+    assert len(world.sent) == 2 and night in world.deleted, "a fresh copy at the bottom of the hub; the night's copy goes"
+    assert "posted: 3 doses, in place of the copy from 1:29 am" in caplog.text
+    # The job run twice, or a restart later in the morning: this morning's is there, so it is only brought up to date
+    world.now = day.at(DAY, time(7, 0))
+    with caplog.at_level("INFO", logger="assistant"):
+        run(checklist.post_job(six(62)))
+    run(checklist.startup())
+    assert len(world.sent) == 2
+    why = "it was already posted at 6:00 am; brought up to date in place"
+    assert f"not posted: {why}" in caplog.text
+    assert world.bot_log == [(NOT_POSTED, f"Job 62: {why}."), (NOT_POSTED, f"Start-up after 6:00 am: {why}.")]
+
+
+def test_a_morning_with_no_post_says_why_in_the_log_and_in_bot_log(world, monkeypatch, caplog):
+    world.now = day.at(DAY, time(6, 0))
+    with caplog.at_level("INFO", logger="assistant"):
+        run(checklist.post_job(six()))
+    assert "not posted: nobody has a pill" in caplog.text and world.bot_log == [], "no pills at all: the log only"
+    add(world, {"name": "Iron"})
+    run(plain.pause_save(world.request(), {"pills": [{"pill": "iron"}]}))
+    run(checklist.post_job(six()))
+    assert world.bot_log == [(NOT_POSTED, "Job 61: there is nothing to take today.")]
+    run(plain.resume_save(world.request(), {"pills": [{"pill": "iron"}]}))
+    monkeypatch.setattr(hub, "channel_id", lambda: None)
+    run(checklist.post_job(six()))
+    assert world.bot_log[-1] == (NOT_POSTED, "Job 61: the hub channel is not set or can't be found.") and world.sent == []

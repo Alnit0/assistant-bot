@@ -1,7 +1,7 @@
 import logging
 from datetime import date, datetime, time, timedelta
 
-from core import cards, clock, database, hub, lifecycle, live, llm, occurrences, scheduler, timeinput
+from core import cards, clock, database, discord_utils, hub, lifecycle, live, llm, occurrences, scheduler, timeinput
 from core import day as days
 from core import schedule as core_schedule
 from core.cards import Button, Card
@@ -22,6 +22,11 @@ log = logging.getLogger("assistant")
 # dose that has no time (Taken / Skip). It is posted at 6:00 am without a
 # notification, when the bot starts later than that, and afresh when asked
 # for: the old copy goes, so there is only ever one for today.
+#
+# The morning's post is a fresh copy at the bottom of the hub, whatever was
+# posted earlier in the night: only a copy posted since 6:00 am counts as
+# this morning's. Each time it is decided, what was decided and why is
+# logged, and a morning with no post says so in #bot-log.
 #
 # Every time and date here comes from the one clock (core/clock.py, through
 # core/day.py), which is the clock `dev clock` moves. A day that is over is
@@ -289,13 +294,48 @@ def register() -> None:
 # ---------------------------------------------------------------------------
 # 6:00 am, a late start, and the end of the day
 # ---------------------------------------------------------------------------
-async def _post_if_due(user_id: int) -> None:
-    """Post today's checklist unless it is there already or there is nothing on it."""
+def morning_copy(held: list[store.Message], day: date) -> store.Message | None:
+    """This morning's checklist, if it has been posted: a copy posted since
+    6:00 am. One posted earlier in the night (asked for at 1:30 am) is not the
+    morning's post, and does not stand in for it."""
+    since = days.at(day, POST_AT)
+    mine = [message for message in held if message.kind == CHECKLIST and message.created_at is not None and message.created_at >= since]
+    return mine[-1] if mine else None
+
+
+async def _post_if_due(user_id: int) -> tuple[bool, str]:
+    """Post this morning's checklist unless it is there already or there is
+    nothing on it. Returns whether it was posted, and why or why not."""
     pills, listed, day = await view(user_id)
-    if any(message.kind == CHECKLIST for message in await database.run(store.db_messages, user_id, day)):
+    held = await database.run(store.db_messages, user_id, day)
+    there = morning_copy(held, day)
+    if there is not None:
         await refresh(user_id)
-    elif listed:
-        await post(user_id)
+        return False, f"it was already posted at {timeinput.format_moment(there.created_at)}; brought up to date in place"
+    if not listed:
+        return False, "there is nothing to take today"
+    earlier = next((message for message in held if message.kind == CHECKLIST), None)
+    if await post(user_id) is None:
+        return False, "the hub channel is not set or can't be found"
+    doses = f"{len(listed)} dose{'' if len(listed) == 1 else 's'}"
+    if earlier is not None and earlier.created_at is not None:
+        return True, f"{doses}, in place of the copy from {timeinput.format_moment(earlier.created_at)}"
+    return True, doses
+
+
+async def _decide(what: str) -> None:
+    """Post or not for each user, and say what was decided and why: in the log
+    always, and in #bot-log when nothing was posted."""
+    now = clock.now()
+    when = f"{days.today(now).isoformat()} {timeinput.format_moment(now)}"
+    users = await database.run(store.db_users)
+    if not users:
+        log.info("Pills checklist, %s (%s): not posted: nobody has a pill", what, when)
+    for user_id in users:
+        posted, why = await _post_if_due(user_id)
+        log.info("Pills checklist, %s (%s), user %s: %s: %s", what, when, user_id, "posted" if posted else "not posted", why)
+        if not posted:
+            await discord_utils.log_simple("💊 Pills checklist not posted", f"{what.capitalize()}: {why}.")
 
 
 async def book_next() -> None:
@@ -306,8 +346,7 @@ async def book_next() -> None:
 async def post_job(job: scheduler.Job) -> None:
     """Scheduler handler: 6:00 am. Post each user's checklist, then book tomorrow's."""
     try:
-        for user_id in await database.run(store.db_users):
-            await _post_if_due(user_id)
+        await _decide(f"job {job.id}" + (f", {job.late_by / 60:.0f} minutes late" if job.is_late else ""))
     finally:
         await book_next()
 
@@ -320,8 +359,9 @@ async def startup() -> None:
         return
     now = clock.now()
     if now >= days.at(days.today(now), POST_AT):
-        for user_id in await database.run(store.db_users):
-            await _post_if_due(user_id)
+        await _decide("start-up after 6:00 am")
+    else:
+        log.info("Pills checklist: started before 6:00 am, nothing to post yet")
 
 
 def db_close(conn, started: date, now: datetime) -> list[store.Message]:

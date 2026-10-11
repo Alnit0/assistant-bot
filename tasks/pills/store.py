@@ -5,7 +5,7 @@ from datetime import date, datetime, time
 
 from core import database
 from core.schedule import Schedule
-from core.scheduler import to_db, utc_now
+from core.scheduler import from_db, to_db, utc_now
 from tasks.pills.rules import ACTIVE, PAUSED, REMOVED, Pill, Plan
 
 
@@ -238,13 +238,14 @@ class Message:
     occurrence_id: int | None  # the dose, for a DOSE message
     channel_id: int
     message_id: int
+    created_at: datetime | None = None  # when it was posted, by the bot's clock
 
 
-_MESSAGE_COLUMNS = "user_id, day, kind, occurrence_id, channel_id, message_id"
+_MESSAGE_COLUMNS = "user_id, day, kind, occurrence_id, channel_id, message_id, created_at"
 
 
 def _message(row: tuple) -> Message:
-    return Message(row[0], date.fromisoformat(row[1]), row[2], row[3], row[4], row[5])
+    return Message(row[0], date.fromisoformat(row[1]), row[2], row[3], row[4], row[5], from_db(row[6]) if row[6] else None)
 
 
 def db_messages(conn: sqlite3.Connection, user_id: int, day: date) -> list[Message]:

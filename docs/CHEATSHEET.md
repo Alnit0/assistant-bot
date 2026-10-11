@@ -248,7 +248,7 @@ only, any channel, no slash. It is off after every restart.
 | `dev cleanup off` / `on` | Stop / resume all automatic deletion (commands, confirmations, alerts) |
 | `dev expire 30m` | Switch itself off after this long |
 | reply `dev inspect` | What the bot knows about that message, including its lifecycle class |
-| `dev status` | How many bots are running: the one holding the lock, and any stray (the `.venv` launcher isn't counted) |
+| `dev status` | What is running: live or dev, the database, uptime, the commit, the clock, the next run of each job; and how many bots are running: the one holding the lock, and any stray (the `.venv` launcher isn't counted) |
 | `dev jobs` | Pending scheduler jobs |
 | `dev run backup` | Run a maintenance routine now (`sweep` and `summary` aren't built yet) |
 | `dev fire next` | Run the next pending job now |

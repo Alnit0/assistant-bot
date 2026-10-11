@@ -294,8 +294,8 @@ class DevTask(Task):
             ),
             word(
                 "dev status",
-                "say how many copies of the bot are running: the one holding the lock, and any other "
-                "process running it (the .venv launcher is not counted)",
+                "say what is running: live or dev, the database, uptime, the commit, the clock, the next run "
+                "of each job, and how many copies of the bot there are (the one holding the lock, and any other)",
                 tools.status,
                 ["dev status"],
             ),

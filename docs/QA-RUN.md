@@ -148,7 +148,7 @@ the member list.
 | 11 | `dev cleanup off`, then `dev debounce 3` | Dev mode switches on; panel shows clean-up off; both of your words and their confirmations stay on screen | J28 (first half) |
 | 12 | `dev cleanup on`, then `dev off`, then `dev off` again | Words are tidied away again as normal. The second `dev off`: "🛠️ Dev mode is already off." for 5 seconds, your word deleted, no ⚠️. Delete what step 11 left behind by hand | J28 (second half), J30 |
 | 13 | `dev mode on`, then `dev mode off` | Same as `dev on` and `dev off`: the panel is posted and pinned, then unpinned and deleted, with the status and log cards as in steps 2 and 9. No "Message handled" card: Claude is not called | J32 |
-| 14 | `dev status`, then `python -m core.instance_lock` in PowerShell | "🩺 Bot instances": "1 bot is running: PID …, started … (it holds the lock)", and a "Not counted" line for the `.venv` launcher. No ⚠️ line. `python -m core.instance_lock` in PowerShell prints the same | J33 |
+| 14 | `dev status`, then `python -m core.instance_lock` in PowerShell | "🩺 **Status**": "🧪 **Dev** bot · database `dev.db`" (on live: "🟢 **Live** bot · database `assistant.db`"), "Up … · code at feature/pills @ … when it started", "Clock: … (the real time)", a "Next …" line for each kind of job, then "**Bot instances**": "1 bot is running: PID …, started … (it holds the lock)", and a "Not counted" line for the `.venv` launcher. No ⚠️ line. `python -m core.instance_lock` in PowerShell prints the same | J33 |
 
 ## 6. Archive, delete, keep and protection
 

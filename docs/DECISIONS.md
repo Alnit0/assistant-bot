@@ -991,3 +991,16 @@ A short log of key decisions and why. Newest at the bottom.
   - A report nothing keeps track of gets "I can't log that yet." It
     replaces "I didn't understand that" there, which was untrue: it was
     understood.
+- **The morning's checklist is a fresh post (2026-10-12).** Live, the
+  6:00 am job ran on time and posted nothing. The log and database
+  showed why: `pills` had been typed at 1:29 am, the job's rule was
+  "post unless today's is there", so it edited that copy in place, with
+  no line anywhere. Nothing was wrong with the date or the clock.
+  - The rule is now "unless this morning's is there": a copy posted
+    since 6:00 am. One from earlier in the night is replaced by a fresh
+    copy at the bottom of the hub. A restart or a second run later in
+    the morning still makes no duplicate.
+  - The job says what it decided and why every time (the log), and in
+    #bot-log when it posts nothing. With no pills at all it is the log
+    only: a line every morning for somebody with nothing to take would
+    be noise.

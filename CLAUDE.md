@@ -124,6 +124,11 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   the plan and what was taken (`core/schedule.py`), never stored as the
   truth. There is only ever one checklist for today
   (`tasks/pills/checklist.py` keeps where it is in `pills_messages`)
+- The 6:00 am post is a fresh copy, whatever was posted earlier in the
+  night: only a copy posted since 6:00 am counts as the morning's
+  (`checklist.morning_copy`). A job that decides not to do its work says
+  so: what it decided and why goes in the log every time, and a line in
+  #bot-log when it skips. A job never does nothing in silence
 - A dose's due time is its planned time unless the gap from a dose
   really taken pushes it later (`schedule.dues`): it never depends on
   what time it is now, and a time past the day's limit is never shown

@@ -6,6 +6,16 @@ backfilled from the git log.
 
 ## 2026-10-12
 
+- **The 6:00 am checklist always posts.** On 12 October it didn't: the
+  checklist had been asked for at 1:29 am, so the job found today's
+  already there, brought it up to date in place and said nothing. The
+  morning's post is now a fresh copy at the bottom of the hub, whatever
+  was posted in the night.
+- **A morning with no post says why**, in the log and in #bot-log
+  ("💊 Pills checklist not posted: there is nothing to take today").
+- **`dev status` says what is running**: live or dev, the database,
+  uptime, the commit, the clock, and the next run of each job, above
+  the count of bots.
 - **A dose named by its number is that dose.** "I took dose 1 of Pill A
   at 9am" corrects dose 1 (old → new) whatever was logged since, and
   "dose 2 at 12:15pm" logs or corrects dose 2. A time that breaks the

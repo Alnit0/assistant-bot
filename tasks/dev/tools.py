@@ -3,10 +3,11 @@ import sqlite3
 
 import discord
 
-from core import backup, clock, confirmations, database, day, devmode, instance_lock, lifecycle, migrations
-from core import actions, costs, reactions, scheduler, trace, users
+from core import about, backup, clock, confirmations, database, day, devmode, instance_lock, lifecycle, migrations
+from core import actions, costs, reactions, scheduler, timeinput, trace, users
 from core.clock import real_now
-from core.config import DB_PATH, DEV_DATABASE
+from core.config import DB_PATH, DEV_DATABASE, TIMEZONE
+from core.durations import format_duration
 from core.context import Context
 from core.errors import UserError
 from core.protection import is_kept, is_protected, protection
@@ -232,10 +233,32 @@ async def reset_db(ctx: Context) -> str:
 # ---------------------------------------------------------------------------
 # dev status
 # ---------------------------------------------------------------------------
+def _when(moment) -> str:
+    local = moment.astimezone(TIMEZONE)
+    return f"{local:%a} {local.day} {local:%b}, {timeinput.format_time(local.time())}"
+
+
+def status_lines(dev: bool, database_name: str, up: float, commit: str, ahead, now, pending: list) -> list[str]:
+    """What is running, in lines: which bot and database, for how long, at which
+    commit, what the clock reads, and when each kind of job runs next."""
+    lines = [
+        f"{'🧪 **Dev** bot' if dev else '🟢 **Live** bot'} · database `{database_name}`",
+        f"Up {format_duration(up)} · code at {commit} when it started",
+        f"Clock: {_when(now)} " + (f"(dev clock, {format_duration(ahead.total_seconds())} ahead)" if ahead else "(the real time)"),
+    ]
+    first: dict[str, object] = {}
+    for job in pending:  # soonest first
+        first.setdefault(f"{job.task}/{job.kind}", job)
+    lines += [f"Next {name}: {_when(job.due_at)} (`#{job.id}`)" for name, job in first.items()] or ["No job is booked."]
+    return lines
+
+
 async def status(ctx: Context) -> str:
-    """How many bots are running: the lock's answer, checked against the processes."""
+    """What is running, and how many bots: the lock's answer, checked against the processes."""
     text = await asyncio.to_thread(instance_lock.status)
-    await ctx.reply(f"🩺 **Bot instances**\n{text}\n{TAG}")
+    up = (real_now() - about.STARTED).total_seconds()
+    lines = status_lines(DEV_DATABASE, DB_PATH.name, up, about.COMMIT, clock.offset(), clock.now(), await scheduler.all_pending())
+    await ctx.reply("🩺 **Status**\n" + "\n".join(lines) + f"\n**Bot instances**\n{text}\n{TAG}")
     return text
 
 

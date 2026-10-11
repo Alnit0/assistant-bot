@@ -186,6 +186,12 @@ a schema could take its place.
   ahead without saying so (seen in QA, 2026-10-10). The dev panel shows
   the clock, but only when dev mode is on. Worth a line on the start
   card when the clock is moved.
+- **"🧪 dev test data" under every dev tool's reply** (asked about
+  2026-10-12). It is the mark `dev clean` looks for, and is put on
+  `dev jobs`, `dev status` and `dev inspect` as well as on seeded
+  samples, so on the live bot it reads as if the jobs were test data.
+  They are not. To do if wanted: a second mark, "🧪 dev tool", for
+  tool output, with `dev clean` removing both.
 - **After midnight, logging yesterday's doses** (asked for 2026-10-12).
   "I took it at 9pm" said at 12:30 am means yesterday. Until about
   4:00 am, a time later than now refers to yesterday's checklist, shown

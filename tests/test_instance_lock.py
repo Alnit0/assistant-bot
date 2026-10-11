@@ -178,6 +178,45 @@ def test_dev_status_replies_with_the_count(monkeypatch):
     async def reply(text):
         replies.append(text)
 
+    async def none():
+        return []
+
+    monkeypatch.setattr(tools.scheduler, "all_pending", none)
     recorded = asyncio.run(tools.status(SimpleNamespace(reply=reply)))
-    assert replies[0].startswith("🩺 **Bot instances**\n1 bot is running: PID 15084")
+    assert replies[0].startswith("🩺 **Status**\n") and "**Bot instances**\n1 bot is running: PID 15084" in replies[0]
     assert replies[0].endswith(tools.TAG) and recorded.startswith("1 bot is running")
+
+
+def test_dev_status_says_what_is_running_and_when_each_job_runs_next():
+    from datetime import datetime, timedelta, timezone
+
+    from core import scheduler
+
+    now = datetime(2026, 10, 12, 19, 20, tzinfo=timezone.utc)  # Tue 13 Oct, 8:20 am in New Zealand
+    job = lambda number, task, kind, hours: scheduler.Job(number, None, task, kind, {}, now + timedelta(hours=hours))
+    pending = [job(70, "pills", "checklist", 21.67), job(71, "core", "tidy", 22), job(72, "core", "tidy", 23)]
+    lines = tools.status_lines(False, "assistant.db", 6 * 3600 + 51 * 60, "feature/pills @ ad5c1a6", timedelta(0), now, pending)
+    assert lines[:3] == [
+        "🟢 **Live** bot · database `assistant.db`",
+        "Up 6h 51m · code at feature/pills @ ad5c1a6 when it started",
+        "Clock: Tue 13 Oct, 8:20 am (the real time)",
+    ]
+    assert lines[3] == "Next pills/checklist: Wed 14 Oct, 6:00 am (`#70`)" and len(lines) == 5, "one line a kind of job: its next run"
+    dev = tools.status_lines(True, "dev.db", 65, "unknown", timedelta(hours=14, minutes=2), now, [])
+    assert dev == ["🧪 **Dev** bot · database `dev.db`", "Up 1m 5s · code at unknown when it started", "Clock: Tue 13 Oct, 8:20 am (dev clock, 14h 2m ahead)", "No job is booked."]
+
+
+def test_the_commit_is_read_from_the_git_folder_itself(tmp_path):
+    from core import about
+
+    assert about.commit(tmp_path) == "unknown", "no .git: said, never raised"
+    git = tmp_path / ".git"
+    (git / "refs" / "heads" / "feature").mkdir(parents=True)
+    (git / "HEAD").write_text("ref: refs/heads/feature/pills\n", encoding="utf-8")
+    (git / "refs" / "heads" / "feature" / "pills").write_text("ad5c1a6f00000000000000000000000000000000\n", encoding="utf-8")
+    assert about.commit(tmp_path) == "feature/pills @ ad5c1a6"
+    (git / "refs" / "heads" / "feature" / "pills").unlink()
+    (git / "packed-refs").write_text("# pack-refs\n99ecd15000000000000000000000000000000000 refs/heads/feature/pills\n", encoding="utf-8")
+    assert about.commit(tmp_path) == "feature/pills @ 99ecd15"
+    (git / "HEAD").write_text("48ea52b000000000000000000000000000000000\n", encoding="utf-8")
+    assert about.commit(tmp_path) == "48ea52b", "a detached HEAD"

@@ -36,17 +36,17 @@ Last updated: 2026-10-12
 | F | Pins | 4 | 0 | 4 | 4 | 0 | 0 | 0 |
 | G | Timers | 21 | 8 | 13 | 13 | 8 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
-| J | Dev mode | 48 | 8 | 40 | 40 | 8 | 0 | 0 |
+| J | Dev mode | 49 | 9 | 40 | 41 | 8 | 0 | 0 |
 | K | Startup and housekeeping | 14 | 7 | 7 | 7 | 7 | 0 | 0 |
 | L | Keep | 12 | 4 | 8 | 8 | 4 | 0 | 0 |
 | M | Message lifecycle | 8 | 5 | 3 | 3 | 5 | 0 | 0 |
 | P | Bugs | 33 | 16 | 17 | 15 | 18 | 0 | 0 |
 | Q | Time, days, the schedule model, the occurrence log and cards | 14 | 12 | 2 | 2 | 12 | 0 | 0 |
-| R | Pills | 50 | 7 | 43 | 34 | 16 | 0 | 0 |
+| R | Pills | 51 | 8 | 43 | 35 | 16 | 0 | 0 |
 | S | Routing and confirm cards | 57 | 9 | 48 | 13 | 43 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 1 | 21 | 0 | 0 |
 | U | Channel reset | 8 | 3 | 5 | 5 | 3 | 0 | 0 |
-| | **Total** | **390** | **113** | **277** | **213** | **176** | **0** | **1** |
+| | **Total** | **392** | **115** | **277** | **215** | **176** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -255,7 +255,7 @@ Any channel. Check the bot's status in the member list.
 | J30 | 👤 Manual | `dev off` when dev mode is already off | "🛠️ Dev mode is already off." for 5 seconds; your word is deleted; no ⚠️ | ⬜ Untested | |  |
 | J31 | 🤖 Auto | The clean-up setting | On by default and whenever dev mode is off; `dev cleanup off` stops every automatic deletion | ✅ Pass | 2026-10-07 | `tests/test_devmode.py, test_lifecycle.py` |
 | J32 | 👤 Manual | Type `dev mode on`, then `dev mode off` | Same as `dev on` and `dev off` (J1, J3); Claude is not called | ⬜ Untested | | Failed 2026-10-07; fixed in code |
-| J33 | 👤 Manual | Type `dev status` while running a test copy from `.venv` | "🩺 Bot instances": "1 bot is running: PID …, started … (it holds the lock)", and a "Not counted" line for the `.venv` launcher. No ⚠️ line. `python -m core.instance_lock` in PowerShell prints the same | ⬜ Untested | | |
+| J33 | 👤 Manual | Type `dev status` while running a test copy from `.venv` | "🩺 **Status**": "🧪 **Dev** bot · database `dev.db`" (on live: "🟢 **Live** bot · database `assistant.db`"), "Up … · code at feature/pills @ … when it started", "Clock: … (the real time)", a "Next …" line for each kind of job, then "**Bot instances**": "1 bot is running: PID …, started … (it holds the lock)", and a "Not counted" line for the `.venv` launcher. No ⚠️ line. `python -m core.instance_lock` in PowerShell prints the same | ⬜ Untested | | |
 | J34 | 🤖 Auto | The bot's clock | The real time unless moved; refuses to move on the live database; only forward (`reset` is the one way back); keeps ticking from where it is put; the offset survives a restart and is never picked up by the live bot; an unreadable one is ignored; time jumped over is counted | ✅ Pass | 2026-10-09 | `tests/test_clock.py` |
 | J35 | 🤖 Auto | `dev clock`, `dev reset-db` and their guards | A time is the next moment the clock reads it (past today's: tomorrow's); `+2h` adds; `reset` goes back; "6" is asked about, not guessed; on the live database moving the clock and wiping are refused with the reason and nothing changes, and only a file named as the dev database can be wiped; the status and panel say DEV DATABASE only with `--dev` | ✅ Pass | 2026-10-09 | `tests/test_dev_clock.py` |
 | J36 | 👤 Manual | Stop the bot; start it with `python main.py --dev` | "👋 Online and ready… · 🧪 **DEV DATABASE**" in #inbox; the bot's status reads "🧪 DEV DATABASE"; the start card's Database field says `dev.db (DEV DATABASE)`; `stats` shows the dev database's own (empty at first) totals | ⬜ Untested | | |
@@ -271,6 +271,7 @@ Any channel. Check the bot's status in the member list.
 | J46 | 🤖 Auto | The trace of a message and `dev why` | A note is kept only while a message is being handled, up to a limit; a logged message reads as plain lines (said, route and why, the router's answer, each extraction, how much state was sent, each check, the card before and after, what was shown, the cost per request); a message from before traces, or on the old way with its tool calls, still reads; times are 12-hour; a block fits one Discord message; `dev why` shows my last message, `dev why 3` three, oldest first, a button press counts and the asking itself never does; as a reply it shows the messages up to and including the one replied to (for one of the bot's, the message of mine it answered); an error kept with a message is in its block; a message with no trace says so, and a reply to one with no log row is told so in a line, not failed; anything but 1 to 10 is refused; it is a typed word and never one of Claude's tools | ✅ Pass | 2026-10-10 | `tests/test_trace.py` |
 | J47 | 👤 Manual | With `--dev`: say `add butter`, then `and jam`; type `dev why`, then `dev why 3` | One block in a code box that can be copied whole: "#<n> · <time> · chat · ok", "said: and jam", "route: follow-up (card … is open and the message sticks to it…)", "router: not asked", an "extraction:" line with what came back, "python:" lines for each check (sticky, correction, restatement, merge), "card before:" and "card after:", "shown:", and "cost: US$… · 1 request(s)". `dev why 3` posts three blocks, oldest first; the `dev why` words themselves are never among them | ⬜ Untested | | |
 | J48 | 👤 Manual | After a few messages to the shopping list: type `dev cost` | The card ends with "-# List context sent to extraction this month: … of … lines over … messages, … (at most 20 a task a message)" | ⬜ Untested | | |
+| J49 | 🤖 Auto | `dev status` says what is running | Live or dev and the database file, uptime, the commit, the clock (real, or how far the dev clock is ahead), and one line for each kind of job with its next run; the commit is read from `.git` (a branch, packed refs, a detached HEAD, or "unknown") | ✅ Pass | 2026-10-12 | `tests/test_instance_lock.py` |
 
 ## K. Startup and housekeeping
 
@@ -453,6 +454,7 @@ are added with it.
 | R60 | 🤖 Auto | A dose named by its number | The log action takes an optional dose number and its description shows how; a time for dose 1 corrects dose 1 (old → new) with dose 2 left as it was, and the same time again or no time says "already"; a time equal to, after, or less than the gap before another dose is asked about on a card, which changes nothing until **Log it** and is read back; dose 2 by number is logged, then corrected; a dose that doesn't exist is said; un-ticking by number; a later dose logged while an earlier one is open is asked about; the exact message as Claude really read it ends in a card about dose 1 with no "Not included" | ✅ Pass | 2026-10-12 | `tests/test_pills_checklist.py`, `tests/test_golden.py`. From QA 2026-10-12 |
 | R61 | 👤 Manual | Say `I took dose 2 of pill A at 12:15pm`. Then `I took dose 1 of pill A at 8:45am`. Press nothing | "✅ **Pill A** (dose 2 of 3) · taken 12:15 pm · …" (it was ❌ missed). Then "✏️ **Pill A** (dose 1 of 3) · taken 8:30 am → 8:45 am · …": dose 1, not dose 2, and no "Not included" line | ⬜ Untested | | From QA 2026-10-12: the dose number was ignored |
 | R62 | 👤 Manual | Say `I took dose 1 of pill A at 12:15pm`. Press **Cancel** | A card: "**Pill A** (dose 1 of 3) · taken 8:45 am → 12:15 pm" and "⚠️ That's the same time as dose 2, taken 12:15 pm. Log it anyway?", with **Log it** and **Cancel**. After Cancel the checklist still shows dose 1 taken 8:45 am | ⬜ Untested | | From QA 2026-10-12 |
+| R63 | 🤖 Auto | The morning's post | Started at 1:30 am on a fresh day, nothing is posted, today's 6:00 am is booked, and at 6:00 am the checklist posts in the hub and the log says so with the count; with yesterday's checklist still there, today's posts and yesterday's is left; a checklist asked for at 1:29 am does not stand in for the morning's (a fresh copy, the night's goes, the log says in place of which); a second run or a restart later in the morning posts nothing more and says why in the log and in #bot-log; nothing to take, and no hub, are each said in #bot-log; nobody with a pill is the log only | ✅ Pass | 2026-10-12 | `tests/test_pills_checklist.py`. From live, 2026-10-12: the 6:00 am post didn't come |
 
 ## S. Routing and confirm cards
 
