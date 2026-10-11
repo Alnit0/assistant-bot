@@ -196,14 +196,17 @@ def test_it_works_before_the_checklist_is_posted_and_the_checklist_then_shows_it
 def test_a_time_given_is_used_and_checked(world):
     add(world, {"name": "Pill A", "per_day": 3, "times": ["8:00 am", "11:30 am", "3:00 pm"], "min_gap_minutes": 180})
     assert log(world, {"pill": "pill a", "did": "taken", "at": "8:10 am"}).startswith("✅ **Pill A** (dose 1 of 3) · taken 8:10 am")
-    # Not taken after all: it is 9:00 am, so dose 1 can't be before now and dose 2 follows it by the gap
+    # Not taken after all: each dose is shown at its planned time again, whatever time it is now
     assert log(world, {"pill": "pill a", "did": "not_taken"}) == (
         "↩️ **Pill A** (dose 1 of 3) · no longer ticked off · still to take today: "
-        "Pill A (dose 1 of 3) `8:00 am`, Pill A (dose 2 of 3) `12:00 pm`, Pill A (dose 3 of 3) `3:00 pm`"
+        "Pill A (dose 1 of 3) `8:00 am`, Pill A (dose 2 of 3) `11:30 am`, Pill A (dose 3 of 3) `3:00 pm`"
     )
     assert log(world, {"pill": "pill a", "did": "taken", "at": "8:00"}).startswith("✅ **Pill A** (dose 1 of 3) · taken 8:00 am"), "8 can only be this morning: it is 9 am"
-    assert log(world, {"pill": "pill a", "did": "taken", "at": "10:00 am"}) == "⚠️ Pill A (dose 2 of 3): 10:00 am hasn't happened yet: it's 9:00 am now."
-    assert log(world, {"pill": "pill a", "did": "taken", "at": "7:00 am"}) == "⚠️ Pill A (dose 2 of 3): 7:00 am is before the previous one, at 8:00 am."
+    assert log(world, {"pill": "pill a", "did": "taken", "at": "10:00 am"}) == "⚠️ Pill A (dose 1 of 3): 10:00 am hasn't happened yet: it's 9:00 am now."
+    world.now = day.at(DAY, time(12, 0))  # no longer "just logged": a later time is the next dose
+    assert log(world, {"pill": "pill a", "did": "taken", "at": "11:40 am"}).startswith("✅ **Pill A** (dose 2 of 3) · taken 11:40 am")
+    world.now = day.at(DAY, time(13, 0))
+    assert log(world, {"pill": "pill a", "did": "taken", "at": "1:00 pm"}).startswith("✅ **Pill A** (dose 3 of 3) · taken 1:00 pm"), "asking about a dose taken too soon comes with reminders"
 
 
 def test_a_time_that_could_be_either_is_the_latest_one_that_has_happened(world):
@@ -236,8 +239,8 @@ def test_several_at_once_skipping_and_what_cannot_be_done_are_each_said(world):
         "⏭️ **Magnesium** · skipped",
         "⏸️ **Iron** is paused: there is nothing to tick off today.",
         "⚠️ I don't have a pill called “copper”. Yours: Evening pill, Iron, Magnesium, Vitamin D.",
-        "⚠️ Which pill? Say its name. · still to take today: Evening pill `8:00 pm`",
-    ]
+        "💊 **Magnesium** has nothing left to take today. · still to take today: Evening pill `8:00 pm`",
+    ], "\"it\" is the pill logged last, here Magnesium, which I skipped"
 
 
 def test_what_is_already_so_names_the_dose_and_shows_it(world):
@@ -376,3 +379,132 @@ def test_the_task_says_which_of_its_messages_are_live_and_which_wait_to_be_press
     assert run(pills_task.message_class(single.id)) == MessageClass.ALERT
     assert run(pills_task.message_class(1)) is None
     assert PENDING == "pending" and today.TASK == "pills"
+
+
+# --- going live, 2026-10-11: a pill with a latest time, logged late and then corrected -------------------
+MAIN = {"name": "Pill A", "per_day": 3, "times": ["8:00 am", "11:30 am", "3:00 pm"], "min_gap_minutes": 180, "latest": "4:00 pm"}
+AUTO = "*skipped automatically: not enough time before 4:00 pm*"
+
+
+def pill_a(world):
+    return {o.seq: (o.state, o.automatic, o.reason) for o in run(occurrences.for_day(world.owner.id, "pills", DAY))}
+
+
+def late_night(world):
+    """10:57 pm, nothing taken all day; then "Taken my Pill A", asked about, and logged."""
+    world.now = day.at(DAY, time(22, 57))
+    add(world, MAIN)
+    request, said = world.request(), {"doses": [{"pill": "Pill A", "did": "taken"}]}
+    assert run(plain.log_asks(request, said)) is True
+    asked = run(plain.log_card(request, said, frozenset()))
+    return request, asked
+
+
+def test_past_its_latest_time_with_nothing_taken_the_day_is_missed_and_no_time_is_shown(world):
+    world.now = day.at(DAY, time(22, 57))
+    add(world, MAIN)
+    run(checklist.post(world.owner.id))
+    assert pill_a(world) == {1: (MISSED, True, None), 2: (MISSED, True, None), 3: (MISSED, True, None)}
+    assert sheet(world).count("❌") == 3 and "`" not in sheet(world), "no time is shown for what can't be taken any more"
+
+
+def test_logging_after_the_latest_time_asks_first_on_a_card(world):
+    request, asked = late_night(world)
+    assert asked.lines == ("**Pill A** (dose 1 of 3) · taken 10:57 pm",) and asked.kind == "change"
+    assert asked.warnings == ("That's after the latest time, 4:00 pm. Log it anyway?",) and asked.confirm_label == "Log it"
+    assert pill_a(world)[1][0] == MISSED, "nothing is logged by asking"
+    world.now = day.at(DAY, time(22, 58))  # Log it is pressed a minute later: the card's time is what is saved
+    assert run(plain.log_save(request, asked.data)) == "✅ **Pill A** (dose 1 of 3) · taken 10:57 pm · nothing left to take today"
+    assert run(plain.log_check(request, asked.data)) == ""
+
+
+def test_the_doses_that_can_no_longer_fit_are_skipped_by_the_bot_and_never_given_a_time_past_the_day(world):
+    # It used to say "still to take today: dose 2 1:57 am, dose 3 4:57 am"
+    request, asked = late_night(world)
+    said = run(plain.log_save(request, asked.data))
+    assert "am" not in said.split("·", 2)[2] and said.endswith("nothing left to take today")
+    reason = "not enough time before 4:00 pm"
+    assert pill_a(world) == {1: (DONE, False, None), 2: (SKIPPED, True, reason), 3: (SKIPPED, True, reason)}
+    run(checklist.post(world.owner.id))
+    assert sheet(world).splitlines() == [
+        "## 💊 Pills · ▰▰▰▰▰ 3 of 3",
+        "",
+        "✅ **Pill A** (dose 1 of 3) · taken 10:57 pm",
+        f"⏭️ **Pill A** (dose 2 of 3) · {AUTO}",
+        f"⏭️ **Pill A** (dose 3 of 3) · {AUTO}",
+    ]
+
+
+@pytest.mark.parametrize("named", ["@that", "Pill A", "pl1"])
+def test_a_time_given_straight_after_is_a_correction_of_the_dose_just_logged_old_to_new(world, named):
+    # "I took it at 9am" got "Which pill?", and "I took Pill A at 9am" was read as a second dose and refused
+    request, asked = late_night(world)
+    run(plain.log_save(request, asked.data))
+    world.now = day.at(DAY, time(22, 58))
+    again = {"doses": [{"pill": named, "did": "taken", "at": "9:00 am"}]}
+    assert run(plain.log_asks(request, again)) is False, "9 am is not after the latest time: nothing to ask"
+    assert log(world, *again["doses"]) == "✏️ **Pill A** (dose 1 of 3) · taken 10:57 pm → 9:00 am · nothing left to take today"
+    states = pill_a(world)
+    assert states[1] == (DONE, False, None) and run(occurrences.for_day(world.owner.id, "pills", DAY))[0].actual_at == day.at(DAY, time(9, 0))
+    assert states[2] == (MISSED, True, None), "taken at 9, dose 2 was due at noon and had its time"
+    assert states[3] == (SKIPPED, True, "not enough time before 4:00 pm")
+    kinds = [event.kind for event in run(occurrences.history(run(occurrences.for_day(world.owner.id, "pills", DAY))[0].id))]
+    assert kinds[-1] == "corrected", "the correction is on the dose's record"
+    assert log(world, *again["doses"]) == "✅ **Pill A** (dose 1 of 3) · taken 9:00 am already"
+
+
+def test_a_time_earlier_than_the_dose_last_taken_corrects_it_however_long_ago_it_was_logged(world):
+    world.now = day.at(DAY, time(9, 30))
+    add(world, MAIN)
+    log(world, {"pill": "pill a", "did": "taken"})
+    world.now = day.at(DAY, time(11, 0))
+    assert log(world, {"pill": "pill a", "did": "taken", "at": "8:15 am"}).startswith("✏️ **Pill A** (dose 1 of 3) · taken 9:30 am → 8:15 am")
+    assert log(world, {"pill": "pill a", "did": "taken", "at": "12:00 pm"}) == "⚠️ Pill A (dose 1 of 3): 12:00 pm hasn't happened yet: it's 11:00 am now."
+
+
+def test_it_with_nothing_logged_yet_is_asked_about(world):
+    add(world, MAIN)
+    assert log(world, {"pill": "@that", "did": "taken", "at": "8:00 am"}) == "⚠️ Which pill? Say its name."
+
+
+def test_a_dose_is_skipped_by_the_bot_the_moment_it_can_no_longer_fit_and_comes_back_if_a_correction_makes_room(world):
+    world.now = day.at(DAY, time(12, 30))
+    add(world, MAIN)
+    run(checklist.post(world.owner.id))
+    # Dose 1 logged for 12:20 pm: dose 2 at 3:20 pm still fits before 4:00 pm, dose 3 at 6:20 pm does not
+    said = log(world, {"pill": "pill a", "did": "taken", "at": "12:20 pm"})
+    assert said == "✅ **Pill A** (dose 1 of 3) · taken 12:20 pm · still to take today: Pill A (dose 2 of 3) `3:20 pm`"
+    assert pill_a(world)[3] == (SKIPPED, True, "not enough time before 4:00 pm") and f"⏭️ **Pill A** (dose 3 of 3) · {AUTO}" in sheet(world)
+    # It was really at 9: dose 2 is due at noon and dose 3 fits again
+    said = log(world, {"pill": "@that", "did": "taken", "at": "9:00 am"})
+    assert said == (
+        "✏️ **Pill A** (dose 1 of 3) · taken 12:20 pm → 9:00 am · still to take today: "
+        "Pill A (dose 2 of 3) `12:00 pm`, Pill A (dose 3 of 3) `3:00 pm`"
+    )
+    assert pill_a(world)[3] == (PENDING, False, None), "the bot's own skip is taken back"
+
+
+def test_with_a_dose_overdue_the_one_after_it_keeps_its_time_until_it_cannot_fit(world):
+    # Dose 3 was shown at 2:03 am: three hours from "now", because dose 2 was overdue
+    world.now = day.at(DAY, time(9, 0))
+    add(world, MAIN)
+    run(checklist.post(world.owner.id))
+    log(world, {"pill": "pill a", "did": "taken"})
+    world.now = day.at(DAY, time(12, 40))
+    run(checklist.refresh(world.owner.id))
+    assert "💊 **Pill A** (dose 2 of 3) · `12:00 pm`" in sheet(world) and "💊 **Pill A** (dose 3 of 3) · `3:00 pm`" in sheet(world)
+    world.now = day.at(DAY, time(13, 1))  # dose 2 not taken by 1:00 pm: dose 3 can no longer fit
+    run(checklist.refresh(world.owner.id))
+    assert "💊 **Pill A** (dose 2 of 3) · `12:00 pm`" in sheet(world) and f"⏭️ **Pill A** (dose 3 of 3) · {AUTO}" in sheet(world)
+    world.now = day.at(DAY, time(16, 1))  # and dose 2 had its time
+    run(checklist.limit_job(job()))
+    assert "❌ **Pill A** (dose 2 of 3) · missed" in sheet(world) and f"⏭️ **Pill A** (dose 3 of 3) · {AUTO}" in sheet(world)
+
+
+def test_with_no_latest_time_the_limit_is_midnight_and_nothing_is_ever_due_tomorrow(world):
+    world.now = day.at(DAY, time(21, 30))
+    add(world, {"name": "Course A", "per_day": 3, "min_gap_minutes": 180})
+    assert run(plain.log_asks(world.request(), {"doses": [{"pill": "course a", "did": "taken"}]})) is False, "no latest time: nothing to ask"
+    assert log(world, {"pill": "course a", "did": "taken"}) == "✅ **Course A** (dose 1 of 3) · taken 9:30 pm · nothing left to take today"
+    found = {o.seq: (o.state, o.reason) for o in run(occurrences.for_day(world.owner.id, "pills", DAY))}
+    assert found[2] == (SKIPPED, "not enough time before midnight") and found[3] == (SKIPPED, "not enough time before midnight")

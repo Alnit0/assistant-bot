@@ -1,6 +1,6 @@
 # QA run sheet
 
-One pass through 184 of the 208 👤 Manual tests in `docs/TESTING.md` that are
+One pass through 188 of the 212 👤 Manual tests in `docs/TESTING.md` that are
 ⬜ Untested (as of 2026-10-10); the other 24 are for pills stages not built yet
 (group R) or need a setup of their own, and join as each can be run. Blocks share setup and each one leaves things
 ready for the next, so run them in order.
@@ -28,9 +28,10 @@ tests (block 12).
 | 18 | Retest: one path for every message | `--dev`, off (one restart) | 9 | 12 |
 | 21 | Pills: the daily checklist | `--dev`, off (two restarts) | 13 | 20 |
 | 22 | Channel reset, housekeeping that leaves no trace, and button colours | `--dev`, off then on (two restarts) | 8 | 15 |
-| | **Total** | | **184** (F2 is split over blocks 4 and 7, counted in 7) | **about 3¼ hours** |
+| 23 | Retest: the main pill, late at night | `--dev`, off (one restart) | 4 | 8 |
+| | **Total** | | **188** (F2 is split over blocks 4 and 7, counted in 7) | **about 3¼ hours** |
 
-Blocks 14 to 22 need nothing from the others (19 and 20, the first pills blocks, passed on 2026-10-10 and are no longer here) (13 and 16 tested the old way of asking Claude, which is gone): run them any time after
+Blocks 14 to 23 need nothing from the others (19 and 20, the first pills blocks, passed on 2026-10-10 and are no longer here) (13 and 16 tested the old way of asking Claude, which is gone): run them any time after
 block 1, and before the overnight block if that suits.
 
 ## Before you start
@@ -476,6 +477,22 @@ another (wait for its ✅). Every step ends by saying what to press.
 | 6 | With `KEEP_CONFIRMATIONS` on (the default; restart after setting it): send `a`, `b` and `c`. Reply `pin` to `a`, then `unpin`. Reply `archive` to `b`. Reply `delete` to `c`. Wait 15 seconds after each | Each time: one short line ("📌 Pinned", "📌 Unpinned", "📦 Archived: link", "🗑️ Deleted") that is gone after about 10 seconds, though confirmations are kept; your reply word is deleted; a card in #bot-log for each. Afterwards nothing in the channel says any of it happened | M7 |
 | 7 | Reply `pin` to a message, and within 5 seconds stop the bot (Ctrl + C). Wait 20 seconds, then start it again | "📌 Pinned" is still there while the bot is off, and is deleted within a few seconds of it starting: a restart doesn't leave the line behind | M8 |
 | 8 | Look at the buttons as you go: say `add zinc to my pills` (don't press); say `remove zinc` on a saved pill (don't press); type `pills` in the hub; let a timer finish (`timer 10s tea`); in a test channel with nothing pinned or 📌, type `reset channel` | **Save** is green and **Cancel** grey with ↩️. **Remove** is red. **Taken** is green and **Skip** blurple. On the timer's alert **+5 min**, **Restart** and **Dismiss** are all blurple: nothing but Cancel is grey anywhere. The reset card has **Delete all** (red) and **Cancel** only: no "Delete all unpinned" when nothing is pinned or 📌 | Q14 |
+
+## 23. Retest: the main pill, late at night
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
+On the dev database (`python main.py --dev`), dev mode off, with the hub
+set. Restart the bot first. The steps move the dev clock forward, so run
+them in order. "Pill A" stands for your main pill: use the same times.
+Every step ends by saying what to press.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | With `--dev`: `dev clock reset`. Make sure the main pill is there (say `add pill A to my pills, 3 times a day at 8am, 11:30 and 3pm, at least 3 hours apart, not after 4pm`; **Save**). `dev clock 10:57pm`. Type `pills`. Then say `Taken my pill A`; press **Log it** | The checklist shows the three doses ❌ missed, with no times. Then a card "💊 Pills · change": "**Pill A** (dose 1 of 3) · taken 10:57 pm" and "⚠️ That's after the latest time, 4:00 pm. Log it anyway?", with **Log it** (green) and **Cancel**. Log it: "✅ **Pill A** (dose 1 of 3) · taken 10:57 pm · nothing left to take today": no dose promised for 1:57 am. On the checklist dose 1 is ✅ and doses 2 and 3 read "⏭️ … skipped automatically: not enough time before 4:00 pm" | R56 |
+| 2 | Straight after: say `I took it at 9am`. Press nothing | No "Which pill?" and no refusal: "✏️ **Pill A** (dose 1 of 3) · taken 10:57 pm → 9:00 am · nothing left to take today". The checklist shows dose 1 taken 9:00 am, dose 2 ❌ missed (it was due at noon) and dose 3 still skipped automatically | R57 |
+| 3 | `dev clock 9:00am` (the next day: a new checklist is posted on the way). Say `took my pill A`. Then `dev clock 12:40pm`, look; `dev clock 1:05pm`, look; `dev clock 4:02pm`, look. Press nothing | Dose 1 ✅ 9:00 am, dose 2 `12:00 pm`, dose 3 `3:00 pm`. At 12:40 pm nothing has moved: dose 2 still `12:00 pm`, dose 3 still `3:00 pm`. At 1:05 pm dose 3 is ⏭️ skipped automatically (dose 2 can no longer be in time for it); dose 2 still `12:00 pm`. At 4:02 pm dose 2 is ❌ missed, changed by the bot without your asking | R58 |
+| 4 | Say `I took pill A at 8:30am`. Press nothing | "✏️ **Pill A** (dose 1 of 3) · taken 9:00 am → 8:30 am · …": a time earlier than the dose last taken puts that dose right, and is not a second dose. Then `dev clock reset` | R59 |
 
 ## When you finish
 

@@ -68,7 +68,7 @@ class PillsTask(Task):
         return store.MIGRATIONS
 
     def job_handlers(self):
-        return {checklist.JOB: checklist.post_job}
+        return {checklist.JOB: checklist.post_job, checklist.LIMIT_JOB: checklist.limit_job}
 
     async def new_day(self, ended, started):
         await checklist.new_day(ended, started)

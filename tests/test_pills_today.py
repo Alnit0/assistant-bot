@@ -64,7 +64,7 @@ def test_the_checklist_as_the_day_goes_on():
         dose(EVENING),
         dose(MORNING, state=MISSED),
     ]
-    listed = today.doses(pills, found, DAY, at(15))
+    listed = today.doses(pills, found, DAY)
     assert today.checklist(listed, pills, DAY).splitlines() == [
         "## 💊 Pills · ▰▱▱▱▱ 2 of 7",
         "",
@@ -85,7 +85,7 @@ def test_the_checklist_as_the_day_goes_on():
 def test_doses_with_no_time_come_first_then_the_timed_ones_by_when_they_are_due_today():
     pills = [EVENING, PILL_A, MAGNESIUM, VITAMIN_D]
     found = [dose(EVENING), dose(PILL_A, 1, DONE, at(9)), dose(PILL_A, 2), dose(PILL_A, 3), dose(MAGNESIUM), dose(VITAMIN_D)]
-    listed = today.doses(pills, found, DAY, at(9, 30))
+    listed = today.doses(pills, found, DAY)
     assert [today.line(each) for each in listed] == [
         "💊 **Magnesium** · *with food*",
         "💊 **Vitamin D**",
@@ -97,7 +97,7 @@ def test_doses_with_no_time_come_first_then_the_timed_ones_by_when_they_are_due_
 
 
 def test_a_dose_that_follows_one_not_yet_taken_says_so_and_only_the_first_is_untimed():
-    listed = today.doses([COURSE_A], [dose(COURSE_A, 1), dose(COURSE_A, 2), dose(COURSE_A, 3)], DAY, at(9))
+    listed = today.doses([COURSE_A], [dose(COURSE_A, 1), dose(COURSE_A, 2), dose(COURSE_A, 3)], DAY)
     assert [today.line(each) for each in listed] == [
         "💊 **Course A** (dose 1 of 3)",
         "💊 **Course A** (dose 2 of 3) · *after dose 1*",
@@ -127,7 +127,7 @@ def test_a_pill_that_is_not_taken_today_has_no_line_whatever_was_recorded():
 
 # --- what a reply needs ------------------------------------------------------------------------------------
 def test_the_next_dose_to_take_the_last_one_taken_and_what_is_left():
-    listed = today.doses([PILL_A, VITAMIN_D], [dose(PILL_A, 1, DONE, at(8)), dose(PILL_A, 2), dose(PILL_A, 3), dose(VITAMIN_D)], DAY, at(9))
+    listed = today.doses([PILL_A, VITAMIN_D], [dose(PILL_A, 1, DONE, at(8)), dose(PILL_A, 2), dose(PILL_A, 3), dose(VITAMIN_D)], DAY)
     assert today.next_pending(listed, PILL_A.id).number == 2 and today.last_taken(listed, PILL_A.id).number == 1
     assert today.last_taken(listed, VITAMIN_D.id) is None
     assert today.left_text(listed) == "still to take today: Vitamin D, Pill A (dose 2 of 3) `11:30 am`, Pill A (dose 3 of 3) `3:00 pm`"

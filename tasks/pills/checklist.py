@@ -1,12 +1,14 @@
 import logging
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 
-from core import cards, clock, database, hub, lifecycle, live, llm, occurrences, scheduler
+from core import cards, clock, database, hub, lifecycle, live, llm, occurrences, scheduler, timeinput
 from core import day as days
+from core import schedule as core_schedule
 from core.cards import Button, Card
 from core.errors import UserError
 from core.lifecycle import MessageClass
-from core.occurrences import DONE, PENDING, SKIPPED, Occurrence
+from core.occurrences import DONE, MISSED, PENDING, SKIPPED, Occurrence
+from tasks.pills import doses as limits
 from tasks.pills import rules, store, today
 from tasks.pills.rules import Pill
 from tasks.pills.store import CHECKLIST, DOSE
@@ -35,6 +37,7 @@ log = logging.getLogger("assistant")
 # ---------------------------------------------------------------------------
 POST_AT = time(6, 0)
 JOB = "checklist"
+LIMIT_JOB = "limit"  # looks again when a pill's latest time passes
 TAKEN, SKIP, NOT_TAKEN = "taken", "skipped", "not_taken"
 
 
@@ -48,7 +51,33 @@ def db_sync(conn, user_id: int, day: date, now: datetime) -> tuple[list[Pill], l
     for pill in pills:
         for number, planned in today.wanted(pill, day):
             occurrences.db_ensure(conn, user_id, TASK, pill.id, day, number, planned, now=now)
+    if day == days.day_of(now):
+        db_settle(conn, user_id, pills, day, now)
     return pills, occurrences.db_for_day(conn, user_id, TASK, day)
+
+
+def db_settle(conn, user_id: int, pills: list[Pill], day: date, now: datetime) -> None:
+    """No dose is left waiting once it can't be taken today: it is skipped with
+    the reason, or missed if the pill's limit passed with nothing taken; and
+    one the bot had closed comes back if there is room for it again
+    (tasks/pills/doses.py). Only what really differs is written."""
+    found: dict[int, dict[int, Occurrence]] = {}
+    for occurrence in occurrences.db_for_day(conn, user_id, TASK, day):
+        found.setdefault(occurrence.item_id, {})[occurrence.seq] = occurrence
+    for pill in pills:
+        mine = found.get(pill.id)
+        if not mine or not rules.is_taken_on(pill, day):
+            continue
+        for number, (state, reason) in limits.outcomes(pill.plan.schedule, day, mine, now).items():
+            dose = mine[number]
+            if state == dose.state and (state != SKIPPED or dose.reason == reason):
+                continue
+            if state == PENDING:
+                occurrences.db_reopen(conn, dose.id, occurrences.AUTOMATIC, now=now)
+            elif state == SKIPPED:
+                occurrences.db_skip(conn, dose.id, occurrences.AUTOMATIC, automatic=True, reason=reason, now=now)
+            else:
+                occurrences.db_miss(conn, dose.id, now=now)
 
 
 async def view(user_id: int, day: date | None = None) -> tuple[list[Pill], list[Dose], date]:
@@ -58,7 +87,7 @@ async def view(user_id: int, day: date | None = None) -> tuple[list[Pill], list[
     now = clock.now()
     day = day or days.today(now)
     pills, found = await database.run(db_sync, user_id, day, now)
-    return pills, today.doses(pills, found, day, now), day
+    return pills, today.doses(pills, found, day), day
 
 
 # ---------------------------------------------------------------------------
@@ -110,6 +139,7 @@ async def post(user_id: int, channel_id: int | None = None) -> int | None:
         return None
     await database.run(store.db_add_message, user_id, day, CHECKLIST, None, channel_id, message_id)
     await _dose_messages(user_id, day, listed, [], channel_id)
+    await book_limit(pills, day)
     return message_id
 
 
@@ -127,6 +157,28 @@ async def refresh(user_id: int) -> None:
         await post(user_id, sheet.channel_id)
         return
     await _dose_messages(user_id, day, listed, held, sheet.channel_id)
+    await book_limit(pills, day)
+
+
+async def book_limit(pills: list[Pill], day: date) -> None:
+    """Look again when the next latest time of today has passed, so that what is
+    left then is closed on the checklist without anyone having to ask."""
+    now = clock.now()
+    coming = [
+        moment for pill in pills if rules.is_taken_on(pill, day) and pill.plan.schedule.latest is not None
+        for moment in [core_schedule.limit(pill.plan.schedule, day)] if moment > now
+    ]
+    if coming:
+        # A minute past it: "not after 4:00 pm" still holds at 4:00 pm
+        await scheduler.ensure(TASK, LIMIT_JOB, min(coming) + timedelta(minutes=1))
+
+
+async def limit_job(job: scheduler.Job) -> None:
+    """Scheduler handler: a pill's latest time has passed. Each checklist is
+    brought up to date, which closes what can't be taken any more and books
+    the next look."""
+    for user_id in await database.run(store.db_users):
+        await refresh(user_id)
 
 
 async def channel_cleared(channel_id: int, gone: set[int]) -> None:
@@ -169,6 +221,25 @@ async def mark(dose: Dose, did: str, at: datetime, source: str) -> Dose:
     if after is None or after.state != _STATE[did] or (did == TAKEN and after.actual_at != at):
         raise UserError(f"That didn't save: {rules.plain(dose.label)} is still {dose.occurrence.state}.")
     return Dose(dose.pill, after, dose.due)
+
+
+def db_correct(conn, occurrence_id: int, at: datetime, source: str) -> Occurrence:
+    occurrences.db_change(conn, occurrence_id, occurrences.CORRECTED, source, actual_at=at)
+    return occurrences.db_get(conn, occurrence_id)
+
+
+async def correct(dose: Dose, at: datetime, source: str) -> Dose:
+    """Change when a dose already ticked off was taken, and return it as the
+    database now has it. Raises UserError if it didn't save."""
+    after = await database.run(db_correct, dose.occurrence.id, at, source)
+    if after is None or after.state != DONE or after.actual_at != at:
+        raise UserError(f"That didn't save: {rules.plain(dose.label)} is still as it was.")
+    return Dose(dose.pill, after, dose.due)
+
+
+def corrected_text(dose: Dose, was: datetime) -> str:
+    """A correction in one line: what it was, and what it is now."""
+    return f"✏️ {dose.label} · taken {timeinput.format_moment(was)} → {timeinput.format_moment(dose.occurrence.actual_at)}"
 
 
 def marked_text(dose: Dose, did: str) -> str:
@@ -253,16 +324,30 @@ async def startup() -> None:
 
 
 def db_close(conn, started: date, now: datetime) -> list[store.Message]:
-    """The days before `started` are over: a dose nobody touched is missed (one
-    that is no longer in its pill's plan is set aside instead, and breaks no
-    streak). Returns the messages those days left behind."""
+    """The days before `started` are over. Each dose still open is closed as
+    it stood when its pill's day ran out (tasks/pills/doses.py): missed if
+    it had its time, set aside with the reason if it never could have been
+    taken in time, and set aside if it is no longer in its pill's plan.
+    Neither kind of setting aside breaks a streak. Returns the messages those
+    days left behind."""
     pills = {pill.id: pill for pill in store.db_all_pills(conn)}
+    decided: dict[tuple[date, int], dict] = {}
     for left in occurrences.db_pending_before(conn, TASK, started):
         pill = pills.get(left.item_id)
-        if pill is not None and left.seq in [number for number, _ in today.wanted(pill, left.day)]:
-            occurrences.db_miss(conn, left.id, now=now)
-        else:
+        if pill is None or left.seq not in [number for number, _ in today.wanted(pill, left.day)]:
             occurrences.db_skip(conn, left.id, occurrences.AUTOMATIC, automatic=True, reason="no longer in the plan", now=now)
+            continue
+        key = (left.day, left.item_id)
+        if key not in decided:
+            mine = {each.seq: each for each in occurrences.db_for_day(conn, left.user_id, TASK, left.day, left.item_id)}
+            plan = pill.plan.schedule
+            # As things stood the moment the pill's day was over
+            decided[key] = limits.outcomes(plan, left.day, mine, core_schedule.limit(plan, left.day) + timedelta(seconds=1))
+        state, reason = decided[key].get(left.seq, (MISSED, None))
+        if state == SKIPPED:
+            occurrences.db_skip(conn, left.id, occurrences.AUTOMATIC, automatic=True, reason=reason, now=now)
+        else:
+            occurrences.db_miss(conn, left.id, now=now)
     return store.db_messages_before(conn, started)
 
 

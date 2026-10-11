@@ -3,7 +3,7 @@
 Where the work stands, in under a page. Read it at the start of every
 session; the end-of-task checklist updates it at the end of every task.
 
-**Updated:** 2026-10-11
+**Updated:** 2026-10-12
 
 ## Branch and state
 
@@ -19,15 +19,17 @@ session; the end-of-task checklist updates it at the end of every task.
   message, and standing jobs that follow the clock. Block 21 is
   still to be reported.
 - Committed: channel reset, and housekeeping that leaves no trace.
-- In hand, uncommitted: a housekeeping line deleted by a stored job
-  (it used to survive a restart), "Delete all unpinned" hidden when
-  nothing is pinned, and the rule for button colours. Block 22 of
-  `docs/QA-RUN.md` has their steps (7 and 8).
+- Committed: housekeeping lines deleted by a stored job, and the rule
+  for button colours. Live since 2026-10-11.
+- In hand, uncommitted, from going live (three parts, a pause after
+  each): **part 1, the bugs from real use, is done** and paused for
+  a retest (block 23 of `docs/QA-RUN.md`). Part 2 (polish) and part
+  3 (the checklist redesign, mock-ups first) wait for it.
 - Tests: `python -m pytest -q` passes. Golden conversations 1c, 1d
   and 2a are marked as gaps (they need questions on the card, G1).
   The live evals of 2026-10-10: pills 50 of 51, golden 32 of 33; each
   miss is a known one that the code covers.
-- Live eval spend to date: about US$3.36.
+- Live eval spend to date: about US$3.47.
 
 ## Current goal
 
@@ -44,6 +46,10 @@ channel reset.
 
 ## Recently done
 
+- From the first night live: due times that never pass the day's limit
+  or creep, doses that can't fit skipped by the bot, a late log asked
+  about on a card, and a time said straight after logging taken as a
+  correction.
 - Button colours are one rule (green, red, blurple, grey for Cancel
   only), applied to every button and enforced by `core/cards.py`.
 - Housekeeping leaves no trace: delete, archive, pin, unpin and channel
@@ -57,23 +63,18 @@ channel reset.
   place, with Taken / Skip for doses with no time, logging by message,
   `pills` for a fresh copy, changes during the day, the end of the
   day, and nothing doubled by a restart.
-- A message that names one of my pills or timers is never dropped as
-  a remark (golden conversation 17).
-- Adding what is already there, and declines that name their kind.
-- Lengths and times handed over structured; cards with no Save.
-- Pills stage 1: one schedule model for every pill, and when each
-  dose is due, in core.
-- One path for every message: the old way (Claude with every tool) and
-  the demo lists are removed; `pills` is a read-only Live list.
-- A task's name on its own shows its list; chat has no access to data
-  and never offers; internal labels are never sent.
-- Remarks get no reply; 👀 and ⚠️ on a message are its status.
-- The conversation standard is `docs/CONVERSATION.md`, with its golden
-  conversations replayed in `tests/test_golden.py`.
 
 ## Next up
 
-1. QA of pills stage 2 (block 21) and of channel reset (block 22).
+1. The retest of part 1 (block 23), then its commit. Blocks 21 and 22
+   are still to be reported.
+2. Part 2, small polish: what the reset card will post again, pointer
+   messages that tidy themselves away, and `data/exports` in the
+   nightly backup. (The result line that stayed, the hidden button,
+   the no-trace rule and button colours are already done.)
+3. Part 3: the checklist redesigned with Discord's Components V2,
+   mock-ups first through a `dev mock` tool; the real checklist is
+   not converted until the mock-ups are approved. Then reminders.
 2. Pills stage 3, reminders (prompts at each dose's time, snooze,
    re-nudges, missed, take-by, automatic skips, the latest time, the
    too-soon question), on a go. Then corrections and questions.

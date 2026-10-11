@@ -70,16 +70,19 @@ def limit(schedule: Schedule, day: date) -> datetime:
     return days.at(day, schedule.latest) if schedule.latest is not None else days.end_of(day)
 
 
-def dues(
-    schedule: Schedule, day: date, so_far: Sequence[datetime | str] = (), now: datetime | None = None
-) -> list[Due]:
+def dues(schedule: Schedule, day: date, so_far: Sequence[datetime | str] = ()) -> list[Due]:
     """When each of the day's is due, given what has been done so far.
 
     `so_far` says what became of each, in order: the moment it was done, OPEN
     or OUT; any it leaves out are OPEN. One still open is expected at its own
-    due time (not before `now`, if given), so those after it show when they
-    will be due if it is done on time. One that was done keeps the time it
-    would have been due, for the record.
+    due time, so those after it show when they will be due if it is done on
+    time. One that was done keeps the time it would have been due, for the
+    record.
+
+    What time it is now plays no part: a due time is the planned time unless
+    the gap from a dose really taken pushes it later, and it doesn't creep
+    forward because something is overdue. Whether what is left can still be
+    done today is another question, for whoever keeps the day.
     """
     found: list[Due] = []
     previous: datetime | None = None  # when the one before was done, or is expected to be
@@ -100,7 +103,7 @@ def dues(
             previous, waiting = state, False
         elif state == OPEN and schedule.gap is not None:
             if due.at is not None:
-                previous, waiting = (max(due.at, now) if now is not None else due.at), False
+                previous, waiting = due.at, False
             else:
                 previous, waiting = None, True
     return found

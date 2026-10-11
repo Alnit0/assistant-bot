@@ -184,16 +184,20 @@ a schema could take its place.
   ahead without saying so (seen in QA, 2026-10-10). The dev panel shows
   the clock, but only when dev mode is on. Worth a line on the start
   card when the clock is moved.
-- **Left for pills stage 3, with reminders** (the checklist shows the
-  doses but does not yet act on the rules of the day): a dose that can no
-  longer fit is not skipped automatically; there is no take-by hint;
-  taking a dose sooner than the gap is not asked about; a pill's latest
-  time does not end its day (untouched doses are missed at midnight). A
-  timed dose has no buttons until it has a prompt: until then it is
-  ticked off by saying so.
-- **Left for pills stage 4**: changing the time of a dose already ticked
-  off ("I took it at 9, not 10"), "undo that", and "it" for a dose
-  ("took it" names no pill: the bot asks which).
+- **Left for pills stage 3, with reminders**: there is no take-by hint,
+  and taking a dose sooner than the gap is not asked about (it is logged
+  as the next dose). A timed dose has no buttons until it has a prompt:
+  until then it is ticked off by saying so. (Automatic skips and the
+  latest time ending a pill's day were brought forward, 2026-10-12.)
+- **Left for pills stage 4**: correcting a dose that is not the last one
+  taken, "I took it at 9, not 10" said long after, and "undo that".
+  (Correcting the dose just logged, and "it" for the pill logged last,
+  were brought forward, 2026-10-12.)
+- **A Pomodoro left waiting for Start for more than 2 hours ends
+  itself**, with a line in #bot-log (asked for 2026-10-12).
+- **`reset channel` from #inbox for another channel by name** ("reset
+  #bot-log"); forum channels are excluded with a plain reason (asked for
+  2026-10-12).
 - **The section provider interface** (for a morning brief) is not built:
   nothing would use it yet. `core/hub.py` has the hub channel and the
   progress bar only.

@@ -938,3 +938,29 @@ A short log of key decisions and why. Newest at the bottom.
   away". Stopping a Pomodoro session and disabling dev mode stay red on
   the same reading. Undo, which is not a Cancel, became blurple with ⏪,
   leaving ↩️ to Cancel alone.
+- **Due times and the day's limit, after the first night live
+  (2026-10-12).** Logged at 10:57 pm, the main pill promised doses at
+  1:57 am and 4:57 am, and an overdue dose pushed the next one to
+  "three hours from now". Two things were being mixed up, and are now
+  apart:
+  - *When a dose is due* (`schedule.dues`) is its planned time unless
+    the gap from a dose really taken pushes it later. The time it is
+    now plays no part, so a due time never creeps.
+  - *Whether a dose can still be taken today* (`doses.outcomes`) does
+    depend on now. A dose that can never be in time is skipped by the
+    bot at once, with the reason, and breaks no streak. One that had its
+    time is missed once the limit has passed; so is everything left
+    when nothing was taken all day. These are the bot's own conclusions
+    and are looked at again on every change, so a correction can bring
+    a skipped dose back. The end of a day uses the same rule, as things
+    stood when the pill's day ran out, so a bot that was off at 4:00 pm
+    comes to the same answer.
+  - Logging after the latest time is allowed (a late dose is still a
+    dose) but asked about first; the card holds the time, so Log it
+    saves what was shown. It can be logged against a dose the bot had
+    already closed.
+  - A time for a dose logged within five minutes, or a time earlier
+    than the dose last taken (which no later dose could have), is a
+    correction. Anything else with a time is the next dose.
+  - The "too soon" question and the take-by hint still come with
+    reminders.

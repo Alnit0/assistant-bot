@@ -58,7 +58,7 @@ def wanted(pill: Pill, day: date) -> list[tuple[int, time | None]]:
     return [(index + 1, plan.planned(index)) for index in range(plan.per_day)]
 
 
-def doses(pills: list[Pill], found: list[Occurrence], day: date, now: datetime | None = None) -> list[Dose]:
+def doses(pills: list[Pill], found: list[Occurrence], day: date) -> list[Dose]:
     """The day's doses in the order the checklist shows them: those with no
     time first (by name), then the timed ones by when they are due today."""
     by_pill: dict[int, dict[int, Occurrence]] = {}
@@ -77,7 +77,7 @@ def doses(pills: list[Pill], found: list[Occurrence], day: date, now: datetime |
                 so_far.append(OPEN)
             else:
                 so_far.append(occurrence.actual_at if occurrence.state == DONE and occurrence.actual_at else OUT)
-        due = schedule.dues(plan, day, so_far, now)
+        due = schedule.dues(plan, day, so_far)
         listed += [Dose(pill, mine[index + 1], due[index]) for index in range(plan.per_day) if index + 1 in mine]
 
     def order(dose: Dose):
@@ -92,6 +92,29 @@ def next_pending(listed: list[Dose], pill_id: int) -> Dose | None:
     """The pill's next dose still to take today."""
     mine = sorted((dose for dose in listed if dose.pill.id == pill_id and dose.is_pending), key=lambda dose: dose.number)
     return mine[0] if mine else None
+
+
+def next_to_log(listed: list[Dose], pill_id: int) -> Dose | None:
+    """The dose that "I took it" is about: the next one still to take, or, when
+    the bot has closed what was left (missed, or skipped for want of time),
+    the first of those. Taking a dose late is still taking it."""
+    mine = sorted((dose for dose in listed if dose.pill.id == pill_id), key=lambda dose: dose.number)
+    closed = [dose for dose in mine if dose.occurrence.state in (MISSED, SKIPPED) and dose.occurrence.automatic]
+    return next_pending(listed, pill_id) or (closed[0] if closed else None)
+
+
+def before(listed: list[Dose], dose: Dose) -> Dose | None:
+    """The dose of the same pill taken just before this one, if any."""
+    earlier = [each for each in listed if each.pill.id == dose.pill.id and each.number < dose.number and each.occurrence.state == DONE]
+    return max(earlier, key=lambda each: each.number) if earlier else None
+
+
+def shown_time(dose: Dose) -> datetime | None:
+    """When a dose still to take is shown as due: never a time past the day's
+    limit, which nobody could act on."""
+    if dose.due.at is None or dose.due.at > schedule.limit(dose.pill.plan.schedule, dose.occurrence.day):
+        return None
+    return dose.due.at
 
 
 def last_taken(listed: list[Dose], pill_id: int) -> Dose | None:
@@ -119,7 +142,7 @@ def line(dose: Dose) -> str:
         return f"⏭️ {dose.label} · skipped"
     if state == MISSED:
         return f"❌ {dose.label} · missed"
-    if dose.due.at is not None:
+    if shown_time(dose) is not None:
         when = [f"`{timeinput.format_moment(dose.due.at)}`"]
     elif dose.due.why == WAITING:
         when = [f"*after dose {dose.number - 1}*"]
@@ -162,6 +185,6 @@ def left_text(listed: list[Dose]) -> str:
     named = []
     for dose in pending:
         name = rules.plain(dose.label)
-        named.append(f"{name} `{timeinput.format_moment(dose.due.at)}`" if dose.due.at is not None else name)
+        named.append(f"{name} `{timeinput.format_moment(dose.due.at)}`" if shown_time(dose) is not None else name)
     return "still to take today: " + ", ".join(named)
 

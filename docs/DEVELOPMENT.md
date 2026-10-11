@@ -496,7 +496,23 @@ Everything works in #inbox and in the hub.
   its reminder): say "took …".
 - **Today's times follow what you took.** With a gap, the next dose is
   shown at the later of its planned time and the dose before plus the
-  gap; the plan itself never changes.
+  gap; the plan itself never changes. A time never moves because a dose
+  is overdue, and none is ever shown past the day's limit (the pill's
+  latest time, or midnight).
+- **A dose that can no longer be taken today is closed by the bot.** If
+  it could never have been in time (the one before was taken too late,
+  or still isn't taken), it is "⏭️ skipped automatically: not enough
+  time before 4:00 pm", which breaks no streak. If it had its time and
+  the latest time has passed, it is ❌ missed, shown a minute after that
+  time without your asking. A correction that makes room brings a
+  skipped dose back.
+- **Logging late.** "Took my pill A" after its latest time asks first:
+  "That's after the latest time, 4:00 pm. Log it anyway?" with **Log
+  it** and **Cancel**.
+- **Putting a time right.** A time said straight after logging ("I took
+  it at 9am"), or one earlier than the dose last taken, corrects that
+  dose: "✏️ **Pill A** (dose 1 of 3) · taken 10:57 pm → 9:00 am". "It"
+  is the pill you logged last.
 - **Changes during the day** show at once: a pill added, changed, paused
   or removed. A course that starts tomorrow is not on today.
 - **At midnight** what nobody touched is marked ❌ missed, the single

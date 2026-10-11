@@ -226,6 +226,7 @@
           "pills": [
             {
               "name": "A",
+              "per_day": 3,
               "times": [
                 "9:00 am",
                 "12:00 pm",
@@ -425,7 +426,7 @@
         "none",
         {
           "why": "already_so",
-          "reason": "Iron is already at 8:00 am",
+          "reason": "Iron is already scheduled at 8:00 am",
           "about": "pl2"
         }
       ]
@@ -443,7 +444,7 @@
         "none",
         {
           "why": "already_so",
-          "reason": "Iron is already scheduled daily at 8:00 am, exactly as stated",
+          "reason": "Iron is already scheduled at 8:00 am; no change requested",
           "about": "pl2"
         }
       ]
@@ -472,7 +473,10 @@
               "min_gap_minutes": 180
             }
           ],
-          "guessed": [],
+          "guessed": [
+            "times[0]",
+            "times[1]"
+          ],
           "not_included": []
         }
       ]
@@ -527,7 +531,7 @@
         {
           "pills": [
             {
-              "name": "pill G",
+              "name": "Pill G",
               "per_day": 3,
               "min_gap_minutes": 150
             }
@@ -622,8 +626,7 @@
             }
           ],
           "guessed": [
-            "times[0]",
-            "times[1]"
+            "per_day"
           ],
           "not_included": []
         }
@@ -686,11 +689,11 @@
         {
           "pills": [
             {
-              "name": "magnesium",
+              "name": "Magnesium",
               "per_day": 2
             },
             {
-              "name": "zinc",
+              "name": "Zinc",
               "per_day": 2
             }
           ],
@@ -780,12 +783,6 @@
         "pill_add",
         {
           "pills": [
-            {
-              "name": "Iron",
-              "times": [
-                "8:00 am"
-              ]
-            },
             {
               "name": "Zinc",
               "per_day": 1
@@ -1046,7 +1043,7 @@
         {
           "pills": [
             {
-              "pill": "Iron"
+              "pill": "pl1"
             }
           ],
           "guessed": [],
@@ -1162,7 +1159,7 @@
         {
           "pills": [
             {
-              "name": "Magnesium",
+              "name": "magnesium",
               "dose": "2 tablets",
               "times": [
                 "9:00 pm"
@@ -1220,12 +1217,14 @@
         {
           "doses": [
             {
-              "pill": "pl2",
+              "pill": "Pill A",
               "did": "taken",
               "at": "9:00 am"
             }
           ],
-          "guessed": [],
+          "guessed": [
+            "at[0]"
+          ],
           "not_included": []
         }
       ]
@@ -1327,6 +1326,92 @@
       "recorded": [
         "pill_today",
         {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "Taken my Pill A",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:30 am, 3:00 pm · at least 3h apart · not after 4:00 pm [active]\n- pl2: 💊 Zinc · daily, any time [active]",
+      "action": "pill_log",
+      "data": {
+        "doses": [
+          {
+            "did": "taken"
+          }
+        ]
+      },
+      "note": "going live, 2026-10-11: said at 10:57 pm, after the pill's latest time. The code asks first on a card; extraction just says taken",
+      "recorded": [
+        "pill_log",
+        {
+          "doses": [
+            {
+              "pill": "pl1",
+              "did": "taken"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "I took it at 9am",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:30 am, 3:00 pm · at least 3h apart · not after 4:00 pm [active]\n- pl2: 💊 Zinc · daily, any time [active]",
+      "action": "pill_log",
+      "data": {
+        "doses": [
+          {
+            "pill": "@that",
+            "did": "taken",
+            "at": "9:00 am"
+          }
+        ]
+      },
+      "note": "going live, 2026-10-11: straight after a log. \"it\" is the code's to resolve (the pill just logged), and the time corrects that dose",
+      "recorded": [
+        "pill_log",
+        {
+          "doses": [
+            {
+              "pill": "@that",
+              "did": "taken",
+              "at": "9:00 am"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "I took Pill A at 9am",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:30 am, 3:00 pm · at least 3h apart · not after 4:00 pm [active]\n- pl2: 💊 Zinc · daily, any time [active]",
+      "action": "pill_log",
+      "data": {
+        "doses": [
+          {
+            "did": "taken",
+            "at": "9:00 am"
+          }
+        ]
+      },
+      "note": "going live, 2026-10-11: straight after a log. It was read as a second dose and refused; the code now takes it as a correction of the dose just logged",
+      "recorded": [
+        "pill_log",
+        {
+          "doses": [
+            {
+              "pill": "pl1",
+              "did": "taken",
+              "at": "9:00 am"
+            }
+          ],
           "guessed": [],
           "not_included": []
         }

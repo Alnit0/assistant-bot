@@ -4,6 +4,18 @@ What changed, newest first. One entry per task, as one to three bullets on
 what changed for the user. Entries before 2026-10-07's last one were
 backfilled from the git log.
 
+## 2026-10-12
+
+- **No more doses "due" at 1:57 am.** A dose is shown at its planned
+  time unless the gap from one you really took pushes it later, and
+  never past the day's limit. One that can no longer be taken today is
+  skipped by the bot with the reason, or marked missed if it had its
+  time; the checklist shows that a minute after a pill's latest time.
+- **Logging after a pill's latest time asks first**, on a card.
+- **"I took it at 9am" straight after logging corrects that dose**
+  (old → new) instead of asking which pill or refusing it as a second
+  dose.
+
 ## 2026-10-11
 
 - **Button colours mean the same everywhere.** Green is the main yes

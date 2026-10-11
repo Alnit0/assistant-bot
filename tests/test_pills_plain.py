@@ -78,7 +78,7 @@ def test_the_pills_task_meets_the_contract_and_every_change_needs_a_card():
     assert entry is not None and (entry.icon, entry.title) == ("💊", "Pills") and "Not shopping" in entry.only_for
     assert [(action.name, action.needs_card) for action in entry.actions] == [
         ("pill_add", True), ("pill_edit", True), ("pill_pause", True), ("pill_resume", True),
-        ("pill_remove", True), ("pill_delete", True), ("pill_log", False), ("pill_today", False), ("pill_list", False),
+        ("pill_remove", True), ("pill_delete", True), ("pill_log", True), ("pill_today", False), ("pill_list", False),
     ]
     assert actions.problems([entry]) == [] and registry.problems() == []
     for action in entry.actions[:6]:

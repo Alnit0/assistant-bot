@@ -47,6 +47,7 @@ def world(make_db, monkeypatch, owner, dev_clock):
     monkeypatch.setattr(day, "_listeners", {})
     scheduler.register_handler(day.JOB_TASK, day.JOB_KIND, day.rollover_job)
     scheduler.register_handler("pills", checklist.JOB, checklist.post_job)
+    scheduler.register_handler("pills", checklist.LIMIT_JOB, checklist.limit_job)
     day.on_new_day("pills", checklist.new_day)
     checklist.register()
     live.reset()
@@ -122,6 +123,7 @@ def test_two_days_on_a_moved_clock(world):
     # --- across midnight: Saturday is over ---
     assert move_to(sunday, time(0, 5)) == 1, "the rollover, and nothing else yet"
     assert set(states(world, saturday).values()) == {MISSED} and len(states(world, saturday)) == 5
+    assert ("pills", "limit") not in jobs(), "Pill A's latest time had passed when the bot started: nothing more to look at that day"
     last = text_of(world, first)
     assert last.count("❌") == 5 and "❌ **Pill B** · missed" in last and "❌ **Pill A** (dose 3 of 3) · missed" in last
     assert world.deleted == saturday_singles, "the Taken / Skip messages nobody pressed are gone"
@@ -144,6 +146,7 @@ def test_two_days_on_a_moved_clock(world):
     ]
     assert set(states(world, sunday).values()) == {PENDING}, "a new day starts fresh from the plan"
     assert jobs()[("pills", "checklist")] == day.at(monday, time(6, 0))
+    assert jobs()[("pills", "limit")] == day.at(sunday, time(16, 1)), "to look again when Pill A's latest time has passed"
     assert "❌" in text_of(world, first) and len([t for m, t in world.edited if m == first]) == 1, "yesterday's is left as it ended"
 
     # --- Sunday: doses are logged, by saying so and by a button ---
@@ -167,6 +170,11 @@ def test_two_days_on_a_moved_clock(world):
     assert [m.kind for m in records(world, sunday)] == ["checklist"], "no single message left: B was said, C was pressed"
     move_to(sunday, time(12, 40))
     assert log(world, {"pill": "pill a", "did": "taken"}).startswith("✅ **Pill A** (dose 2 of 3) · taken 12:40 pm · still to take today: Pill A (dose 3 of 3) `3:40 pm`")
+
+    # --- past Pill A's latest time: its third dose had its time (3:40 pm) and wasn't taken ---
+    assert move_to(sunday, time(16, 5)) == 1, "the look at 4:01 pm"
+    assert states(world, sunday)[(1, 3)] == MISSED and "❌ **Pill A** (dose 3 of 3) · missed" in text_of(world, second)
+    assert ("pills", "limit") not in jobs()
 
     # --- across the next midnight: what was taken stays, what wasn't is missed ---
     assert move_to(monday, time(0, 1)) == 1

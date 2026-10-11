@@ -403,3 +403,33 @@ def test_a_message_that_names_a_pill_and_asks_nothing_clear_is_answered_not_drop
     )
     bot.say("zinc is a funny word")
     assert bot.sent[-1][1].text == "🤔 I didn't understand that.", "said, so that silence never passes for done"
+
+
+# --- going live, 2026-10-11: the exact sequence, replayed with the clock at 10:57 pm -------------------------
+PILLS = json.loads((Path(__file__).parent.parent / "evals" / "fixtures" / "pills.json").read_text(encoding="utf-8"))
+LOGGED = {entry["message"]: tuple(entry["recorded"]) for entry in PILLS["extraction"] if entry.get("note", "").startswith("going live")}
+
+
+@pytest.mark.parametrize("corrected", ["I took it at 9am", "I took Pill A at 9am"])
+def test_a_late_log_is_asked_about_then_a_time_said_straight_after_corrects_it(bot, dev_clock, corrected):
+    from datetime import time
+
+    tonight = day.at(day.today() + timedelta(days=1), time(22, 57))
+    dev_clock.advance_to(tonight)
+    main = {"name": "Pill A", "per_day": 3, "times": ["8:00 am", "11:30 am", "3:00 pm"], "min_gap_minutes": 180, "latest": "4:00 pm"}
+    bot.claude(route("pills"), ("pill_add", {"pills": [main], "guessed": [], "not_included": []}))
+    bot.say("add pill A to my pills, 3 times a day at 8am, 11:30 and 3pm, at least 3 hours apart, not after 4pm")
+    press(bot)
+
+    bot.claude(route("pills"), LOGGED["Taken my Pill A"])
+    bot.say("Taken my Pill A")
+    lines, buttons = card(bot)
+    assert lines[:3] == ["💊 Pills · change", "**Pill A** (dose 1 of 3) · taken 10:57 pm", "⚠️ That's after the latest time, 4:00 pm. Log it anyway?"]
+    assert buttons == ["Log it", "Cancel"], "asked first, on a card"
+    assert press(bot) == "✅ **Pill A** (dose 1 of 3) · taken 10:57 pm · nothing left to take today", "and no dose is promised for 1:57 am"
+
+    bot.claude(route("pills"), LOGGED[corrected])
+    bot.say(corrected)
+    assert bot.sent[-1][1].text == "✏️ **Pill A** (dose 1 of 3) · taken 10:57 pm → 9:00 am · nothing left to take today"
+    assert bot.sent[-1][1].rows == (), "a correction of today's dose is done at once: old → new, no card"
+

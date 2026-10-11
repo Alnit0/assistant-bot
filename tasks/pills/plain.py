@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field, replace
-from datetime import date
+from datetime import date, datetime, timedelta
 
 from core import clock, day, hub, livelists, occurrences, timeinput
 from core.actions import BOOLEAN, INTEGER, ITEMS, LAST, MINUTES, TIME, TIMES, Action, Field, LiveReply, Proposal, Request, Shown, State
@@ -7,6 +7,8 @@ from core.actions import flag, is_guessed
 from core.actions import is_reference, point_at
 from core.errors import UserError
 from tasks.pills import checklist, rules, store, today
+from tasks.pills import doses as limits
+from tasks.pills.today import Dose
 from tasks.pills.rules import ACTIVE, ENDED, PAUSED, REMOVED, Pill, Plan, TimeQuestion
 
 # ---------------------------------------------------------------------------
@@ -725,48 +727,189 @@ async def log_doses(request: Request, data: dict, guessed: frozenset) -> str:
     """ "took my zinc", "had pill A at 9", "skip magnesium today", "I didn't take
     zinc": done at once, with no card (it is about today's doses, not the
     plan), read back before it is said, and the checklist follows."""
-    user_id = request.user.id
     said, changed = [], False
     for item in data["doses"]:
-        pills, listed, today_ = await checklist.view(user_id)
-        try:
-            if is_reference(item.get("pill")):
-                raise UserError("Which pill? Say its name.")
-            pill = rules.find(pills, str(item["pill"]))
-        except UserError as error:
-            said.append(f"⚠️ {error}")
+        step = await _step(request, item)  # worked out afresh each time: the one before may have changed the day
+        if step.dose is None:
+            said.append(step.say)
             continue
-        if not rules.is_taken_on(pill, today_):
-            said.append(_not_today(pill, today_))
-            continue
-        did, now = item["did"], clock.now()
-        taken, pending = today.last_taken(listed, pill.id), today.next_pending(listed, pill.id)
-        if did == checklist.NOT_TAKEN:
-            if taken is None:
-                said.append(f"💊 **{pill.plan.name}** isn't ticked off today: there is nothing to change.")
-                continue
-            dose, at = taken, now
-        elif pending is None:
-            # Already so: named and shown, as it stands on the checklist
-            already = taken if did == checklist.TAKEN and taken is not None else None
-            said.append(f"{today.line(already)} already" if already else f"💊 **{pill.plan.name}** has nothing left to take today.")
-            continue
-        else:
-            dose, at = pending, now
-            if did == checklist.TAKEN and str(item.get("at", "")).strip():
-                try:
-                    at = _moment(str(item["at"]), now, taken.occurrence.actual_at if taken else None)
-                except UserError as error:
-                    said.append(f"⚠️ {rules.plain(dose.label)}: {error}")
-                    continue
-        after = await checklist.mark(dose, did, at, occurrences.MESSAGE)
-        said.append(checklist.marked_text(after, did))
+        said.append(await _do(step))
         changed = True
+    return await _with_what_is_left(request.user.id, said, changed)
+
+
+async def _with_what_is_left(user_id: int, said: list[str], changed: bool) -> str:
     if changed:
         checklist.changed(user_id)
         _, listed, _ = await checklist.view(user_id)
         said[-1] += f" · {today.left_text(listed)}"
     return "\n".join(said)
+
+
+# A time given for a dose ticked off this recently is a correction of it, not another dose
+CORRECTION_WINDOW = timedelta(minutes=5)
+
+
+@dataclass
+class Step:
+    """What one "I took it" comes to, before anything is changed."""
+
+    say: str = ""  # nothing to do: this is said as it is
+    dose: Dose | None = None  # the dose it is about
+    did: str = ""
+    at: datetime | None = None
+    was: datetime | None = None  # a correction of a dose already ticked off: when it had been taken
+    late: str = ""  # the pill's latest time, as shown, when `at` is after it
+
+
+def db_last_logged(conn, user_id: int) -> int | None:
+    """The pill whose dose the user changed last, by a button or by saying so."""
+    events = occurrences.db_last_change(conn, user_id, TASK)
+    found = occurrences.db_get(conn, events[-1].occurrence_id) if events else None
+    return found.item_id if found is not None else None
+
+
+async def _just_logged(dose: Dose, now: datetime) -> bool:
+    """Whether the user ticked this dose off (or corrected it) a moment ago."""
+    mine = [event for event in await occurrences.history(dose.occurrence.id) if event.source != occurrences.AUTOMATIC]
+    return bool(mine) and now - mine[-1].at <= CORRECTION_WINDOW
+
+
+async def _step(request: Request, item: dict) -> Step:
+    """What an item of the message means for today's doses as they stand now.
+    Nothing is changed here."""
+    user_id = request.user.id
+    pills, listed, today_ = await checklist.view(user_id)
+    now = clock.now()
+    named = item.get("pill")
+    if is_reference(named):
+        # "it" is the pill mentioned last, worked out here and never by Claude: the one just logged
+        last = await request.db.run(db_last_logged, user_id)
+        if last is None:
+            return Step("⚠️ Which pill? Say its name.")
+        named = f"{rules.ID_PREFIX}{last}"
+    try:
+        pill = rules.find(pills, str(named))
+    except UserError as error:
+        return Step(f"⚠️ {error}")
+    if not rules.is_taken_on(pill, today_):
+        return Step(_not_today(pill, today_))
+    did, name = item["did"], pill.plan.name
+    taken = today.last_taken(listed, pill.id)
+    if did == checklist.NOT_TAKEN:
+        if taken is None:
+            return Step(f"💊 **{name}** isn't ticked off today: there is nothing to change.")
+        return Step(dose=taken, did=did, at=now)
+    if did == checklist.SKIP:
+        pending = today.next_pending(listed, pill.id)
+        if pending is None:
+            return Step(f"💊 **{name}** has nothing left to take today.")
+        return Step(dose=pending, did=did, at=now)
+
+    given = str(item.get("at", "")).strip()
+    if taken is not None and given:
+        # A time for a dose just ticked off, or one earlier than the dose last taken (which no
+        # later dose could have), is that dose's time put right: old → new, never a second dose
+        earlier = today.before(listed, taken)
+        try:
+            at = _moment(given, now, earlier.occurrence.actual_at if earlier else None)
+        except UserError as error:
+            at, problem = None, f"⚠️ {rules.plain(taken.label)}: {error}"
+        if at is None:
+            if await _just_logged(taken, now):
+                return Step(problem)
+        elif at < taken.occurrence.actual_at or await _just_logged(taken, now):
+            if at == taken.occurrence.actual_at:
+                return Step(f"{today.line(taken)} already")
+            return Step(dose=taken, did=checklist.TAKEN, at=at, was=taken.occurrence.actual_at)
+    target = today.next_to_log(listed, pill.id)
+    if target is None:
+        # Already so: named and shown, as it stands on the checklist
+        return Step(f"{today.line(taken)} already" if taken is not None else f"💊 **{name}** has nothing left to take today.")
+    try:
+        at = _moment(given, now, taken.occurrence.actual_at if taken else None) if given else now
+    except UserError as error:
+        return Step(f"⚠️ {rules.plain(target.label)}: {error}")
+    plan = pill.plan.schedule
+    return Step(dose=target, did=checklist.TAKEN, at=at, late=limits.limit_text(plan) if limits.is_after_limit(plan, today_, at) else "")
+
+
+async def _do(step: Step) -> str:
+    """Make the change a step stands for, read back, and say it in a line."""
+    if step.was is not None:
+        return checklist.corrected_text(await checklist.correct(step.dose, step.at, occurrences.MESSAGE), step.was)
+    return checklist.marked_text(await checklist.mark(step.dose, step.did, step.at, occurrences.MESSAGE), step.did)
+
+
+# --- a dose logged after the pill's latest time is asked about first ------------------------------
+async def log_asks(request: Request, data: dict) -> bool:
+    """Whether logging needs a card: only when a dose would be ticked off after
+    its pill's latest time."""
+    for item in data["doses"]:
+        if (await _step(request, item)).late:
+            return True
+    return False
+
+
+def _preview(step: Step) -> str:
+    """A step on the card, before it is done."""
+    if step.was is not None:
+        return f"{step.dose.label} · taken {timeinput.format_moment(step.was)} → {timeinput.format_moment(step.at)}"
+    if step.did == checklist.TAKEN:
+        return f"{step.dose.label} · taken {timeinput.format_moment(step.at)}"
+    return f"{step.dose.label} · " + ("skipped" if step.did == checklist.SKIP else "no longer ticked off")
+
+
+async def log_card(request: Request, data: dict, guessed: frozenset) -> Proposal:
+    """The card that asks before a dose is logged after its pill's latest time:
+    what would be logged, with the time, and the question. Log it does it."""
+    lines, held, warnings = [], [], []
+    for item in data["doses"]:
+        step = await _step(request, item)
+        if step.dose is None:
+            warnings.append(step.say.removeprefix("⚠️ "))
+            continue
+        lines.append(_preview(step))
+        if step.late:
+            warnings.append(f"That's after the latest time, {step.late}. Log it anyway?")
+        held.append({
+            "occurrence": step.dose.occurrence.id, "did": step.did, "moment": step.at.isoformat(),
+            **({"was": step.was.isoformat()} if step.was is not None else {}),
+        })
+    if not held:
+        raise UserError("; ".join(warnings) or "Nothing to log.")
+    return Proposal(lines=tuple(lines), data={"doses": held}, warnings=tuple(warnings), kind="change", confirm_label="Log it")
+
+
+async def _held(request: Request, data: dict) -> list[Step]:
+    """The steps a card holds, on the doses as they are now."""
+    _, listed, _ = await checklist.view(request.user.id)
+    by_id = {dose.occurrence.id: dose for dose in listed}
+    steps = []
+    for item in data["doses"]:
+        dose = by_id.get(item["occurrence"])
+        if dose is None:
+            raise UserError("That dose isn't on today's checklist any more.")
+        was = datetime.fromisoformat(item["was"]) if item.get("was") else None
+        steps.append(Step(dose=dose, did=item["did"], at=datetime.fromisoformat(item["moment"]), was=was))
+    return steps
+
+
+async def log_save(request: Request, data: dict) -> str:
+    """Log it: exactly what the card showed, with the times it showed."""
+    said = [await _do(step) for step in await _held(request, data)]
+    return await _with_what_is_left(request.user.id, said, True)
+
+
+async def log_check(request: Request, data: dict) -> str:
+    """Read each dose back: it is in the state, and at the time, the card said."""
+    wrong = []
+    for step in await _held(request, data):
+        state, at = step.dose.occurrence.state, step.dose.occurrence.actual_at
+        wanted = {checklist.TAKEN: occurrences.DONE, checklist.SKIP: occurrences.SKIPPED}.get(step.did, occurrences.PENDING)
+        if state != wanted or (step.did == checklist.TAKEN and at != step.at):
+            wrong.append(f"{rules.plain(step.dose.label)} is still {state}")
+    return "; ".join(wrong)
 
 
 async def show_today(request: Request, data: dict, guessed: frozenset) -> Shown:
@@ -914,7 +1057,9 @@ ACTIONS = (
         "zinc, did taken. \"I've taken my zinc today\" -> pill zinc, did taken. \"had pill A at 9\" -> pill "
         "pill A, did taken, at 9:00. \"took iron and vitamin D\" -> one item each. \"skip magnesium today\" -> "
         "did skipped. \"I didn't take zinc\", \"I haven't actually taken zinc\" -> did not_taken (it is marked "
-        "as still to take). Never for changing when a pill is taken from now on: that is pill_edit.",
+        "as still to take). \"I took it at 9am\", \"actually it was at 9\" -> pill @that, did taken, at 9:00 am: "
+        "give it like any other; the code works out that it corrects the dose just logged. Never for changing "
+        "when a pill is taken from now on: that is pill_edit.",
         (
             Field(
                 "doses", "Each pill that was taken, skipped or not taken, one item each, in the order said.", ITEMS, required=True,
@@ -925,8 +1070,12 @@ ACTIONS = (
                 ),
             ),
         ),
-        needs_card=False,
         run=log_doses,
+        # Done at once, unless a dose would be ticked off after its pill's latest time: that is asked first
+        card_if=log_asks,
+        prepare=log_card,
+        apply=log_save,
+        verify=log_check,
     ),
     Action(
         "pill_today",

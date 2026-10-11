@@ -82,11 +82,11 @@ def test_a_dose_that_was_skipped_or_missed_is_not_waited_for():
     assert shown(schedule.dues(COURSE_A, DAY, [OUT]))[1] == (None, ANY_TIME), "nothing was taken: there is nothing to wait for"
 
 
-def test_a_dose_still_open_past_its_time_is_expected_now_at_the_earliest():
-    # Dose 2 was due at 12:00 pm and it is 12:40 pm: dose 3 can't be before 3:40 pm
-    found = schedule.dues(PILL_A, DAY, [at(9), OPEN], now=at(12, 40))
-    assert shown(found)[1:] == [(time(12, 0), AFTER_PREVIOUS), (time(15, 40), AFTER_PREVIOUS)]
-    assert shown(schedule.dues(PILL_A, DAY, [at(9)], now=at(10)))[2] == (time(15, 0), PLANNED), "not yet due: as planned"
+def test_a_due_time_never_creeps_forward_because_something_is_overdue():
+    # QA 2026-10-11: with dose 2 overdue, dose 3 was shown three hours from "now", and so at 2:03 am.
+    # A due time is the planned time unless the gap from a dose really taken pushes it later
+    found = schedule.dues(PILL_A, DAY, [at(9), OPEN])
+    assert shown(found)[1:] == [(time(12, 0), AFTER_PREVIOUS), (time(15, 0), PLANNED)], "whatever time it is now"
 
 
 # --- the day's limit ---------------------------------------------------------------------------------------

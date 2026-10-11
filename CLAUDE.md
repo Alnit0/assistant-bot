@@ -124,6 +124,16 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   the plan and what was taken (`core/schedule.py`), never stored as the
   truth. There is only ever one checklist for today
   (`tasks/pills/checklist.py` keeps where it is in `pills_messages`)
+- A dose's due time is its planned time unless the gap from a dose
+  really taken pushes it later (`schedule.dues`): it never depends on
+  what time it is now, and a time past the day's limit is never shown
+  or scheduled. Whether a dose can still be taken today is a separate
+  question (`doses.outcomes`): none is left pending once it can't, it is
+  skipped by the bot with the reason, or missed if it had its time
+- Logging a dose after its pill's latest time asks first on a card. A
+  time given for a dose just logged, or earlier than the dose last
+  taken, corrects that dose (old → new) and is never a second dose.
+  "It" is the pill logged last
 - Claude does the reading, and hands over structured values: a length of
   time as whole minutes (`actions.MINUTES`) and a time of day in the one
   fixed form (`actions.TIME`, `TIMES`: `8:00 pm`, or `8:00` when I gave
