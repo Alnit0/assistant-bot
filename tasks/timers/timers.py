@@ -9,6 +9,7 @@ from core.context import Context
 from core.discord_utils import report_interaction_error
 from core.errors import UserError
 from core.scheduler import utc_now
+from core.timeinput import format_moment
 from tasks.timers import board, store
 from tasks.timers.board import stamp
 from tasks.timers.common import (
@@ -40,7 +41,7 @@ def render_timer(timer: store.Timer) -> str:
     length = format_duration(timer.duration_s)
     if timer.status == store.RUNNING:
         return (
-            f"⏱️ **{timer.label}** · {length} · ends {stamp(timer.ends_at)} ({stamp(timer.ends_at, 't')})\n"
+            f"⏱️ **{timer.label}** · {length} · ends {stamp(timer.ends_at)} ({format_moment(timer.ends_at)})\n"
             "-# Reply to this with `cancel`, `pause` or `+10m`"
         )
     if timer.status == store.PAUSED:
@@ -58,9 +59,20 @@ async def _changed(timer: store.Timer, refresh: bool = True) -> None:
     lists up to date. `refresh=False` leaves the board and lists to the caller,
     who is changing several timers and will refresh once at the end."""
     await store.save_timer(timer)
+    await read_back(timer)
     show_soon(timer.id)
     if refresh:
         await board.refresh(timer.channel_id, timer.user_id)
+
+
+async def read_back(timer: store.Timer) -> None:
+    """Nothing about a timer is said to have happened until it is read back from
+    the database and is what was meant to be saved: every action that saves
+    comes through here before its confirmation. Raises UserError if not."""
+    saved = await store.get_timer(timer.id)
+    wanted = (timer.status, timer.ends_at, timer.remaining_s, timer.job_id)
+    if saved is None or (saved.status, saved.ends_at, saved.remaining_s, saved.job_id) != wanted:
+        raise UserError(f"That didn't save: **{timer.label}** is {'gone' if saved is None else 'still ' + saved.status}.")
 
 
 async def repost(channel_id: int, gone: set[int], send) -> int:
@@ -128,6 +140,9 @@ async def start_one(user_id: int, discord_user_id: int, channel_id: int, seconds
         )
     )
     await _run(timer, seconds)
+    # Saved and read back before its message says it is running
+    await store.save_timer(timer)
+    await read_back(timer)
     message = await send(render_timer(timer))
     timer.message_id = message.id
     await store.save_timer(timer)
@@ -244,6 +259,7 @@ async def dismiss(timer: store.Timer) -> str:
     await delete_message(timer.channel_id, timer.notice_message_id)
     timer.status, timer.notice_message_id = store.DISMISSED, None
     await store.save_timer(timer)
+    await read_back(timer)
     await store.log_event(timer, store.WAS_DISMISSED)
     await edit_message(timer.channel_id, timer.message_id, content=render_timer(timer))
     return f"👍 Dismissed: {timer.label}"

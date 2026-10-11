@@ -73,23 +73,21 @@ card).
 
 ## Found by `task-check` (2026-10-12)
 
-The first run of the skill, on timers, bugs and pills. Nothing here is
-fixed: each is waiting to be chosen. In the standard's own order of
-importance. "Size" is how big the fix looks.
+The first run of the skill, on timers, bugs and pills, in the standard's
+own order of importance. "Size" is how big the fix looks.
+
+Decided 2026-10-12. **Fixed:** C1 and C2 (refusals written for me), C3
+(timers read back), C5 (a reply to a dose's message), C6 (a guessed pill
+goes on a card), C9 (no ✅ on a note in a bug's post) and C11 (12-hour
+text, not Discord's clock). **Until G1:** C7 and C8. **A later tidy-up
+batch:** C13 and C15 to C20. **Not decided:** C4, C10, C12, C14.
 
 | # | Task | What | Where | Rule | Layer | Size |
 |---|---|---|---|---|---|---|
-| C1 | timers | Three refusals end with words written for Claude, which I now read: "Nothing has changed; tell the user so." | `tasks/timers/control.py:81`, `:116`, `:117`, `:154` | Never: an internal label as text | task | small |
-| C2 | timers | Refusals name fields and "the live state": "`duration` says how much time to add", "Use the ids in the live state (such as t12…)" | `tasks/timers/control.py:46`, `:64-66`, `:142-144` | Never: tool or action names in replies | task | small |
-| C3 | timers | A timer or session that starts is announced from the record in memory, not read back first | `tasks/timers/timers.py:116-135`, `tasks/timers/sessions.py:291` | Principle 1 | task | small |
 | C4 | bugs | "🐞 Logged as B4" and "your note is saved with it" are said without reading the bug or the note back | `tasks/bugs/__init__.py:37-40`, `:115-118` | Principle 1 | task | small |
-| C5 | pills | A Discord reply to a dose's message or to the checklist is not what "it" means: pills never looks at what was replied to; "it" is the pill logged last | `tasks/pills/plain.py:788-793` (no `replied_to` anywhere in `tasks/pills/`) | Principle 3 | task | medium |
-| C6 | pills | A pill Claude guessed at is logged at once with no ❓ (timers marks its guesses) | `tasks/pills/plain.py:729-741` | Principle 5 | task | small |
 | C7 | pills | Questions sent as a line of their own: "Which pill?", "Which one: A or B?", "What is the pill called?", "How many times a day?", "Is the gap 3 hours or 3 minutes?" | `tasks/pills/rules.py:221`, `:262`, `:301`, `:550`, `:564`; `tasks/pills/plain.py:792` | Never: a question as a separate message (G7, then G1) | task, then core | medium |
 | C8 | timers | The same: "Which timer? Say its name.", and `pomo` with other lengths asks "Restart it as `50/10`?" in a message of its own | `tasks/timers/plain.py:152`, `tasks/timers/sessions.py:238-239` | The same (G7) | task, then core | medium |
-| C9 | bugs | A note written in a bug's post is ticked ✅. The standard says ✅ is not used to acknowledge: **a conflict between the standard and what was asked for bugs**; the standard wins unless it is given an exception | `tasks/bugs/__init__.py:91` | Principle 8 | the standard or the task | small |
 | C10 | bugs | "show my open bugs" is a plain reply, not a Live list | `tasks/bugs/__init__.py:122-123` | Golden conversation 16 | task | small |
-| C11 | timers | A timer's and a phase's end time is Discord's own timestamp, which follows the reader's Discord settings and may read 20:04 | `tasks/timers/timers.py:43`, `tasks/timers/sessions.py:63` | Always: 12-hour times | task | small |
 | C12 | bugs | Declared "each report is its own", but a message that already has an open bug is found and pointed to in the task's own code | `tasks/bugs/__init__.py:29-31` | Contract: `identity`, `on_repeat` | contract (a fifth meaning: show the one there) | small |
 | C13 | pills | "A name already in use" is matched in the task, by a rule of its own (lower case only), beside core's | `tasks/pills/rules.py:381` | Contract: matching is core's | task | small |
 | C14 | timers | Lengths are handed over as text ("5m", "50/10") and several ids as one text ("t12 t14") | `tasks/timers/plain.py:359`, `:457`; `tasks/timers/status.py:51-63`, `tasks/timers/pomodoro.py:55-79` | Contract: structured values (decided 2026-10-10 to leave) | schema, fixtures | medium |
@@ -141,6 +139,22 @@ a schema could take its place.
 
 ## Left for later
 
+- **Left by the task-check fixes** (2026-10-12):
+  - **Three fixtures are not recorded**: "took the usual one" (a guessed
+    pill), "took it" (said as a reply) and "how long left on tea?". Their
+    replays are skipped until pills and timers are run live once
+    (`python -m evals.live --live --only pills --record`, then timers).
+  - **A reply to the checklist only says which pill when one pill is on
+    it.** With several, "it" is still the pill logged last, or the bot
+    asks which. A reply to a dose's own Taken / Skip message is exact.
+  - **Whether a reply to a dose's message reaches pills at all is the
+    router's call**, as for every reply that is not to a card. It went
+    to pills in the tests' recorded answers; nothing in code forces it.
+  - **A timer that didn't save can't be shown in Discord**: C3 is
+    covered by unit tests only.
+  - **The archive's "Originally posted" and the dev tools' job times are
+    still Discord's own timestamps.** Doses, timers and bug posts are
+    ours now.
 - **From the small batch of 2026-10-12** (identity, #commands, mock-ups):
   - **One fixture is not recorded.** "how long left on tea?" is now the
     action `timer_left`; its fixture in `evals/fixtures/timers.json` has

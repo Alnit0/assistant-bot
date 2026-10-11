@@ -200,7 +200,9 @@ Apply = Callable[[Request, dict], Awaitable[str]]
 # A confirmation is only ever sent after this has come back empty
 Verify = Callable[[Request, dict], Awaitable[str]]
 Run = Callable[[Request, dict, frozenset], Awaitable["str | LiveReply | Shown"]]
-CardIf = Callable[[Request, dict], Awaitable[bool]]
+# `async (request, data, guessed) -> bool`: `guessed` is what Claude said it guessed, so a guess
+# about which thing is meant can be shown on a card instead of acted on
+CardIf = Callable[[Request, dict, frozenset], Awaitable[bool]]
 
 
 # What a way in is for, as #commands groups them (tasks/builtin/commands.py)

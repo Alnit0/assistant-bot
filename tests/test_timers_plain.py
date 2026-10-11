@@ -163,7 +163,7 @@ def test_a_guess_at_which_timer_is_flagged_after_what_was_done(world):
 def test_a_timer_that_is_not_there_is_said_in_words_the_user_can_act_on(world):
     with pytest.raises(UserError, match="No timers are running or paused"):
         change(world, "all", "pause")
-    with pytest.raises(UserError, match="There is no timer `t99`"):
+    with pytest.raises(UserError, match="I can't find that timer. Say its name."):
         change(world, "t99", "pause")
 
 
@@ -455,3 +455,71 @@ def test_cancelling_several_is_read_back_before_it_is_confirmed(world):
     assert run(plain.cancel_check(world.request, data)) == "tea is still running; dinner is still running"
     run(plain.cancel_saved(world.request, data))
     assert run(plain.cancel_check(world.request, data)) == ""
+
+
+# --- nothing is confirmed until it is read back ----------------------------------------------------------
+def test_a_change_that_did_not_save_is_said_so_and_never_confirmed(world, monkeypatch):
+    start(world, ("5m", "tea"))
+    (tea,) = going(world)
+
+    async def lost(timer):
+        return None  # the write goes nowhere
+
+    monkeypatch.setattr(store, "save_timer", lost)
+    for action in (timers.pause, timers.cancel):
+        with pytest.raises(UserError, match=r"That didn't save: \*\*tea\*\* is still running\."):
+            run(action(run(store.get_timer(tea.id))))
+    with pytest.raises(UserError, match="That didn't save"):
+        run(timers.extend(run(store.get_timer(tea.id)), 60))
+    with pytest.raises(UserError, match="That didn't save"):
+        change(world, ref(tea), "pause")
+    assert going(world)[0].status == store.RUNNING
+
+
+def test_a_timer_that_did_not_save_never_gets_a_message_saying_it_is_running(world, monkeypatch):
+    async def lost(timer):
+        return None
+
+    monkeypatch.setattr(store, "save_timer", lost)
+    with pytest.raises(UserError, match="No timer started: tea \\(That didn't save"):
+        start(world, ("5m", "tea"))
+    assert world.channel.sent == [], "no card was posted for a timer that isn't in the database as running"
+
+
+def test_a_session_that_did_not_save_is_said_so(world, monkeypatch):
+    run(plain.pomo_start(world.request, {}, frozenset()))
+    (session,) = run(store.active_sessions(user_id=world.owner.id))
+
+    async def lost(record):
+        return None
+
+    monkeypatch.setattr(store, "save_session", lost)
+    with pytest.raises(UserError, match=r"That didn't save: \*\*Pomodoro\*\* is still running\."):
+        run(sessions.pause(session))
+    with pytest.raises(UserError, match="That didn't save"):
+        run(plain.pomo_change(world.request, {"action": "stop"}, frozenset()))
+    assert run(store.get_session(session.id)).state == store.RUNNING
+
+
+# --- refusals are written for me ------------------------------------------------------------------------
+def test_no_refusal_is_written_for_claude_or_names_a_field_or_an_id(world):
+    start(world, ("5m", "tea"), ("5m", "eggs"))
+    tea, eggs = going(world)
+    said = []
+    for which, action, more in (
+        ("t999", "pause", {}), (f"{ref(tea)} t999", "pause", {}), (ref(tea), "extend", {"duration": "soon"}),
+        ("all", "resume", {}),
+    ):
+        with pytest.raises(UserError) as refused:
+            change(world, which, action, **more)
+        said.append(str(refused.value))
+    with pytest.raises(UserError) as refused:
+        run(control.change_session(world.owner.id, {"id": "p999", "action": "pause"}))
+    said.append(str(refused.value))
+    assert said[0] == "I can't find that timer. Say its name."
+    assert said[1] == "I can't find one of those timers. Say their names."
+    assert said[2].endswith("Say how much time to add, e.g. 10 minutes.")
+    assert said[3] == "None of them is paused, so nothing changed."
+    assert said[4] == "I can't find that Pomodoro session."
+    for line in said:
+        assert "tell the user" not in line.lower() and "`" not in line and "live state" not in line and "t999" not in line, line

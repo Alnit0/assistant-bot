@@ -6,6 +6,19 @@ backfilled from the git log.
 
 ## 2026-10-12
 
+- **A pill that was guessed is never logged straight away.** It is shown
+  on a card with ❓, Save and Cancel. A name that is exact, or that only
+  one pill fits, still logs at once.
+- **A reply says which pill.** "took it" as a reply to a dose's message
+  ticks off that pill and that dose, not the pill logged last.
+- **Timers confirm only what was saved**, as pills does, and their
+  refusals are plain lines for me ("I can't find that timer. Say its
+  name."), with nothing written for Claude in them.
+- **Times are ours, 12-hour**: a timer's and a Pomodoro phase's end time
+  and a bug post's time no longer follow Discord's settings ("ends in 9
+  minutes (8:04 pm)").
+- **No ✅ on a note in a bug's post**: the count on the post's card
+  shows it was saved.
 - **Step 5: the standard is in the docs and the skills.** Nothing about
   how a task behaves changed. `CLAUDE.md` is under half its length and
   points to `docs/CONVERSATION.md` and the Scaling notes instead of

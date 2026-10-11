@@ -1046,3 +1046,19 @@ A short log of key decisions and why. Newest at the bottom.
   - `CLAUDE.md` keeps the rules that are about the code and a table of
     where each rule of the standard lives in it; how the bot talks is
     only in `docs/CONVERSATION.md`.
+- **What the first `task-check` changed (2026-10-12).**
+  - A guess about which thing is meant is never acted on unseen, even
+    for an action that otherwise acts at once: `card_if` is now handed
+    what Claude guessed, and pills shows the dose on a card with ❓.
+    What the code can settle by itself (an exact name, a name only one
+    pill fits, "it") is no guess and logs directly.
+  - A Discord reply fills in "it" for pills as it does for timers and
+    cards: the message replied to, then the pill logged last. A pill or
+    a dose number I state still wins over where I point.
+  - The read-back for timers is in the one place every change goes
+    through (`timers.read_back`, `sessions.read_back`), so typed words,
+    reply words, buttons and plain words are all covered.
+  - ✅ stays unused: a note in a bug's post is shown as saved by the
+    count on the post's card.
+  - Where a time matters it is written by the bot, 12-hour; Discord's
+    relative countdowns ("in 5 minutes") stay.

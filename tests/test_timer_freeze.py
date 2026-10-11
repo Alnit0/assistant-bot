@@ -479,7 +479,7 @@ def test_a_label_nothing_has_or_an_id_that_is_not_there_is_explained(world, tool
     nobody = control_call(tool, ids="all", action="cancel", label="coffee")
     assert nobody.status == "error" and 'No timer going is called "coffee"' in nobody.text and '"tea"' in nobody.text
     missing = control_call(tool, ids="t1 t99", action="cancel")
-    assert missing.status == "error" and "`t99`" in missing.text
+    assert missing.status == "error" and missing.text == "I can't find one of those timers. Say their names.", "no id is shown: I never see one"
     assert statuses(world) == {"tea": store.RUNNING}, "nothing is done when part of the request is wrong"
 
 

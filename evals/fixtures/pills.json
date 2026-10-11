@@ -1557,6 +1557,41 @@
           "not_included": []
         }
       ]
+    },
+    {
+      "task": "pills",
+      "message": "took the usual one",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:30 am, 3:00 pm · at least 3h apart · not after 4:00 pm [active]\n- pl2: 💊 Zinc · daily, any time [active]",
+      "action": "pill_log",
+      "data": {
+        "doses": [
+          {
+            "did": "taken"
+          }
+        ]
+      },
+      "guessed": [
+        "doses[0].pill"
+      ],
+      "also_ok": {
+        "action": "none"
+      },
+      "note": "task-check C6, 2026-10-12: nothing says which pill. If one is picked it must be listed as guessed, so the code shows it on a card with a question mark instead of logging it; declining is as right"
+    },
+    {
+      "task": "pills",
+      "message": "took it",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:30 am, 3:00 pm · at least 3h apart · not after 4:00 pm [active]\n- pl2: 💊 Zinc · daily, any time [active]",
+      "action": "pill_log",
+      "data": {
+        "doses": [
+          {
+            "pill": "@that",
+            "did": "taken"
+          }
+        ]
+      },
+      "note": "task-check C5, 2026-10-12: said as a Discord reply to a dose's Taken / Skip message. Which pill it is stays the code's to resolve (the message replied to, then the pill logged last)"
     }
   ]
 }

@@ -11,6 +11,7 @@ from core.discord_utils import report_interaction_error
 from core.errors import UserError
 from core.lifecycle import MessageClass
 from core.scheduler import utc_now
+from core.timeinput import format_moment
 from tasks.timers import board, status, store
 from tasks.timers.board import stamp
 from tasks.timers.common import (
@@ -60,7 +61,7 @@ def render_card(session: store.Session) -> str:
     if session.state == store.RUNNING:
         return (
             f"🍅 {title} · {_where(session)}\n"
-            f"Ends {stamp(session.ends_at)} ({stamp(session.ends_at, 't')})"
+            f"Ends {stamp(session.ends_at)} ({format_moment(session.ends_at)})"
         )
     if session.state == store.PAUSED:
         return f"⏸️ {title} · {_where(session)}\nPaused with {format_duration(session.remaining_s)} left"
@@ -127,9 +128,20 @@ def _show_soon(session_id: int) -> None:
     live.schedule(("session", session_id), show)
 
 
+async def read_back(session: store.Session) -> None:
+    """Nothing about a session is said to have happened until it is read back
+    from the database and is what was meant to be saved. Raises UserError if not."""
+    saved = await store.get_session(session.id)
+    wanted = (session.state, session.phase, session.round, session.ends_at, session.remaining_s, session.job_id)
+    if saved is None or (saved.state, saved.phase, saved.round, saved.ends_at, saved.remaining_s, saved.job_id) != wanted:
+        raise UserError(f"That didn't save: **{session.label}** is {'gone' if saved is None else 'still ' + saved.state}.")
+
+
 async def _changed(session: store.Session) -> None:
-    """Save a session and bring its card and the channel's board up to date."""
+    """Save a session, read it back, and bring its card and the channel's board
+    up to date."""
     await store.save_session(session)
+    await read_back(session)
     _show_soon(session.id)
     await board.refresh(session.channel_id, session.user_id)
 
@@ -306,6 +318,9 @@ async def start_session(user_id: int, discord_user_id: int, channel_id: int, pla
         )
     )
     await _begin_phase(session)
+    # Saved and read back before its card says it is running
+    await store.save_session(session)
+    await read_back(session)
     message = await send(render_card(session), view=card_view(session))
     session.message_id = message.id
     await store.save_session(session)

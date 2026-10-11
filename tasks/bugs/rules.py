@@ -395,9 +395,8 @@ def opening_text(
     """The post's opening card: where the bug came from, the message, and a foot
     with its status and note count. Rewritten in place whenever either changes,
     so it is built from the record every time and always fits one message."""
-    when = int(datetime.fromisoformat(report.reported_at).timestamp())
     header = (
-        f"{BUG_EMOJI} **{bug_id(number)}** · from {report.channel} · <t:{when}:f> · "
+        f"{BUG_EMOJI} **{bug_id(number)}** · from {report.channel} · {clock(report.reported_at)} · "
         f"by {SOURCES[report.source]} · commit `{report.commit}`"
     )
     heading, message = sections(report, brief=True)[0]

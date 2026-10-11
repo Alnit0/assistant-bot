@@ -32,20 +32,21 @@ session; the end-of-task checklist updates it at the end of every task.
   reported, and K20, untested until the dev database is next run.
 - Committed: the status warns only about real problems (the 6:00 am
   checklist counts as skipped only when the hub can't be found).
-- In hand, uncommitted (2026-10-12): **step 5 of the routing spec,
-  documentation and skills**, with no change to how any task behaves:
-  `CLAUDE.md` tidied, `identity` and `on_repeat` in the task contract
-  (`core/repeats.py`), `hint` removed, the skills `new-task` and
-  `task-check` in place of `add-task`, and the first `task-check` of
-  timers, bugs and pills: 20 findings in `docs/BACKLOG.md` (C1 to C20),
-  none fixed.
+- Committed: step 5 of the routing spec (`CLAUDE.md` tidied, `identity`
+  and `on_repeat` in the contract, the skills `new-task` and
+  `task-check`, and the first `task-check`: C1 to C20 in the backlog).
+- In hand, uncommitted (2026-10-12): **the task-check fixes chosen**: a
+  guessed pill goes on a card (C6), a reply to a dose's message says
+  which pill (C5), timers read back before confirming (C3), refusals
+  written for me (C1, C2), 12-hour text in place of Discord's clock
+  (C11), and no ✅ on a note in a bug's post (C9). Block 25 retests
+  them. Three fixtures are waiting to be recorded live.
 - Tests: `python -m pytest -q` passes. Golden conversations 1c, 1d
   and 2a are marked as gaps (they need questions on the card, G1).
   The live evals of 2026-10-12: pills 56 of 57, general 12 of 12,
   golden 37 of 39 (not run again since the router's rule on reports
-  was reworded); each miss is a known one that the code covers. One
-  timers fixture ("how long left on tea?", now `timer_left`) has no
-  recording yet: one live request.
+  was reworded); each miss is a known one that the code covers. Three
+  fixtures have no recording yet (see the backlog).
 - Live eval spend to date: about US$3.91.
 
 ## Current goal
@@ -64,6 +65,7 @@ live), and on 2026-10-12 the bot's nickname and status line, the
 
 ## Recently done
 
+- The task-check fixes (2026-10-12): C1, C2, C3, C5, C6, C9, C11.
 - Step 5 (2026-10-12): the standard written into `CLAUDE.md`, the task
   contract and the skills; `task-check` run on timers, bugs and pills.
 - A batch of small items (2026-10-12): the bot says which one it is
@@ -83,7 +85,8 @@ live), and on 2026-10-12 the bot's nickname and status line, the
 
 ## Next up
 
-1. Step 8 of block 24 (tomorrow's backup card). Blocks 21 and 22, and
+1. Block 25 (the task-check fixes), then its commit. Step 8 of block
+   24 (tomorrow's backup card). Blocks 21 and 22, and
    steps 5 to 7 of block 23, are still to be reported.
 2. The checklist redesigned with Discord's Components V2: look at
    `dev mock checklist` and say what to change; the real checklist is
@@ -94,10 +97,9 @@ live), and on 2026-10-12 the bot's nickname and status line, the
 
 ## Open decisions
 
-- Which of the `task-check` findings to fix, and when (C1 to C20 in
-  `docs/BACKLOG.md`; block 25 of `docs/QA-RUN.md` shows each as the bot
-  behaves today). C9 is a conflict to settle: a note in a bug's post
-  gets ✅, and the standard says ✅ is not used to acknowledge.
+- Of the `task-check` findings: C7 and C8 wait for G1; C13 and C15 to
+  C20 are for a later tidy-up batch; C4, C10, C12 and C14 are not
+  decided.
 - Deferred until pills reminders work: G1 (questions on the card), G3
   (corrections after Save), G4 (task ties asked too often), G7 (questions
   sent as their own message). G14 (privacy of notifications) comes with

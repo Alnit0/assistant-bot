@@ -315,7 +315,7 @@ only, any channel, no slash. It is off after every restart.
 | React 🐞 to a message | Logged at once: "🐞 Logged as B4" with a link to its post in #bugs. Removing the 🐞 does nothing |
 | Reply `bug` to a message | The same, for that message |
 | Type `bug` on its own | The same, for the latest thing in that channel |
-| Write in the bug's post | Saved as a note, ticked ✅. The bot doesn't answer |
+| Write in the bug's post | Saved as a note: the count on the post's card goes up. No ✅, and the bot doesn't answer |
 | Press **Fixed** / **Won't fix** on the post | Tags it and archives the post; the card shows the status and time, and a **Re-open** button |
 | Press **Re-open** | Unarchives the post, tag back to Open, the two buttons back |
 | `bugs` | The open bugs, with links |

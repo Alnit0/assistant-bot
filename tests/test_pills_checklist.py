@@ -700,3 +700,97 @@ def test_only_a_hub_that_cannot_be_found_makes_the_morning_job_a_skipped_one(wor
     run(checklist.post_job(scheduler.Job(73, None, "pills", checklist.JOB, {}, world.now)))
     assert reported == [(73, scheduler.SKIPPED)]
     assert world.bot_log[-1] == (NOT_POSTED, "Job 73: the hub channel is not set or can't be found.")
+
+
+# --- a pill that was guessed is shown first, never logged straight away (task-check C6) ------------------
+def test_a_guessed_pill_is_put_on_a_card_with_a_question_mark_and_nothing_is_logged(world):
+    add(world, {"name": "Zinc"}, {"name": "Iron"})
+    run(checklist.post(world.owner.id))
+    said = {"doses": [{"pill": "zinc", "did": "taken"}]}
+    guessed = frozenset({"doses[0].pill"})
+    assert run(plain.log_asks(world.request(), said, guessed)) is True, "a guess is never saved unseen"
+    proposal = run(plain.log_card(world.request(), said, guessed))
+    assert proposal.lines == ("**Zinc** · taken 9:00 am ❓",) and proposal.kind == "change"
+    assert proposal.confirm_label == "Save" and proposal.warnings == (), "Save and Cancel: nothing is being asked but whether the guess is right"
+    assert state_of(world, "Zinc") == PENDING
+    assert run(plain.log_save(world.request(), proposal.data)).startswith("✅ **Zinc** · taken 9:00 am")
+    assert state_of(world, "Zinc") == DONE and run(plain.log_check(world.request(), proposal.data)) == ""
+
+
+def test_an_exact_name_part_of_one_that_fits_one_pill_and_it_all_log_at_once(world):
+    add(world, {"name": "Zinc"}, {"name": "Iron"})
+    run(checklist.post(world.owner.id))
+    nothing = frozenset()
+    assert run(plain.log_asks(world.request(), {"doses": [{"pill": "Zinc", "did": "taken"}]}, nothing)) is False
+    assert run(plain.log_asks(world.request(), {"doses": [{"pill": "zin", "did": "taken"}]}, nothing)) is False, "only one pill it could be"
+    assert log(world, {"pill": "zinc", "did": "taken"}).startswith("✅ **Zinc** · taken")
+    assert run(plain.log_asks(world.request(), {"doses": [{"pill": "@that", "did": "not_taken"}]}, nothing)) is False, "the code resolves “it”: no guess"
+    # A guess about something else (the time) is not a guess about which pill
+    assert run(plain.log_asks(world.request(), {"doses": [{"pill": "iron", "did": "taken"}]}, frozenset({"doses[0].at"}))) is False
+
+
+def test_with_two_pills_only_the_guessed_one_is_marked(world):
+    add(world, {"name": "Zinc"}, {"name": "Iron"})
+    run(checklist.post(world.owner.id))
+    said = {"doses": [{"pill": "zinc", "did": "taken"}, {"pill": "iron", "did": "taken"}]}
+    proposal = run(plain.log_card(world.request(), said, frozenset({"doses[1].pill"})))
+    assert proposal.lines == ("**Zinc** · taken 9:00 am", "**Iron** · taken 9:00 am ❓")
+
+
+# --- a Discord reply to a dose's message or the checklist is what "it" means (task-check C5) ---------------
+def replying(world, message_id, said="took it"):
+    return Request(world.owner, HUB, said, replied_to=message_id)
+
+
+def dose_message(world, name):
+    held = run(database.run(store.db_messages, world.owner.id, DAY))
+    _, listed, _ = run(checklist.view(world.owner.id))
+    wanted = next(dose for dose in listed if dose.pill.plan.name == name)
+    return next(message.message_id for message in held if message.occurrence_id == wanted.occurrence.id)
+
+
+def test_a_reply_to_a_doses_message_means_that_pill_not_the_one_logged_last(world):
+    add(world, {"name": "Zinc"}, {"name": "Iron"})
+    run(checklist.post(world.owner.id))
+    log(world, {"pill": "zinc", "did": "taken"})  # the pill logged last is Zinc
+    iron = dose_message(world, "Iron")
+    said = run(plain.log_doses(replying(world, iron), {"doses": [{"pill": "@that", "did": "taken"}]}, frozenset()))
+    assert said.startswith("✅ **Iron** · taken 9:00 am"), "where I point beats what is newest"
+    assert state_of(world, "Iron") == DONE
+
+
+def test_without_a_reply_it_is_still_the_pill_logged_last(world):
+    add(world, {"name": "Zinc"}, {"name": "Iron"})
+    run(checklist.post(world.owner.id))
+    log(world, {"pill": "zinc", "did": "taken"})
+    said = log(world, {"pill": "@that", "did": "not_taken"})
+    assert said.startswith("↩️ **Zinc** · no longer ticked off") and state_of(world, "Iron") == PENDING
+
+
+def test_a_pill_i_name_wins_over_the_message_i_replied_to(world):
+    add(world, {"name": "Zinc"}, {"name": "Iron"})
+    run(checklist.post(world.owner.id))
+    iron = dose_message(world, "Iron")
+    said = run(plain.log_doses(replying(world, iron, "took zinc"), {"doses": [{"pill": "zinc", "did": "taken"}]}, frozenset()))
+    assert said.startswith("✅ **Zinc** · taken") and state_of(world, "Iron") == PENDING, "what I state wins"
+
+
+def test_a_reply_to_the_checklist_means_its_pill_when_there_is_one(world):
+    add(world, {"name": "Pill A", "times": ["8:00 am"]})
+    sheet_id = run(checklist.post(world.owner.id))
+    said = run(plain.log_doses(replying(world, sheet_id), {"doses": [{"pill": "@that", "did": "taken"}]}, frozenset()))
+    assert "**Pill A**" in said and "taken 9:00 am" in said, "nothing was logged before: the checklist says which pill"
+
+
+def test_a_reply_to_a_checklist_of_several_pills_or_to_any_other_message_falls_back(world):
+    add(world, {"name": "Zinc"}, {"name": "Iron"})
+    sheet_id = run(checklist.post(world.owner.id))
+    asked = {"doses": [{"pill": "@that", "did": "taken"}]}
+    assert run(plain.log_doses(replying(world, sheet_id), asked, frozenset())) == "⚠️ Which pill? Say its name.", "it can't tell which, and nothing was logged yet"
+    assert run(plain.log_doses(replying(world, 123456), asked, frozenset())) == "⚠️ Which pill? Say its name."
+
+
+def state_of(world, name):
+    """The state of a pill's (first) dose today, as the database has it."""
+    _, listed, _ = run(checklist.view(world.owner.id))
+    return next(dose.occurrence.state for dose in listed if dose.pill.plan.name == name)

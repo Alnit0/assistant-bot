@@ -26,7 +26,7 @@ def session(**changes) -> store.Session:
 # --- a timer's own message ---------------------------------------------------
 def test_a_running_timer_shows_a_live_end_time_and_what_to_reply():
     text = render_timer(timer())
-    assert text.splitlines()[0] == f"⏱️ **Tea** · 5m · ends <t:{STAMP}:R> (<t:{STAMP}:t>)"
+    assert text.splitlines()[0] == f"⏱️ **Tea** · 5m · ends <t:{STAMP}:R> (1:00 am)", "the countdown is Discord's; the time is ours, 12-hour"
     assert "`cancel`, `pause` or `+10m`" in text
 
 
@@ -96,3 +96,11 @@ def test_stamps_are_discord_timestamps():
 )
 def test_next_phase_only_starts_itself_in_auto_mode_and_on_time(auto_continue, is_late, expected):
     assert starts_by_itself(auto_continue, is_late) is expected
+
+
+def test_a_running_session_shows_its_end_time_in_our_own_12_hour_text():
+    from tasks.timers.sessions import render_card
+
+    assert render_card(session(state=store.RUNNING)).splitlines()[1] == f"Ends <t:{STAMP}:R> (1:00 am)"
+    evening = datetime(2026, 10, 7, 7, 4, tzinfo=timezone.utc)  # 8:04 pm in NZ
+    assert "(8:04 pm)" in render_timer(timer(ends_at=evening)), "never 20:04, whatever Discord is set to"

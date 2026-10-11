@@ -43,7 +43,7 @@ def _extra_time(value: dict) -> int:
     try:
         return parse_duration(value.get("duration", ""))
     except DurationError as error:
-        raise UserError(f"{error} `duration` says how much time to add, e.g. 10m.")
+        raise UserError(f"{error} Say how much time to add, e.g. 10 minutes.")
 
 
 async def chosen_timers(user_id: int, value: dict, action: str) -> list[store.Timer]:
@@ -60,11 +60,8 @@ async def chosen_timers(user_id: int, value: dict, action: str) -> list[store.Ti
             else:
                 chosen.append(timer)
         if bad or not chosen:
-            named = ", ".join(f"`{piece}`" for piece in bad) or "that"
-            raise UserError(
-                f"There is no timer {named}. Use the ids in the live state (such as t12, several "
-                f'separated by spaces), or "{status.ALL}".'
-            )
+            # Which one was meant is known to the code by an id the user never sees: say it plainly
+            raise UserError("I can't find that timer. Say its name." if len(wanted.split()) <= 1 else "I can't find one of those timers. Say their names.")
         return chosen
 
     active = await store.active_timers(user_id=user_id)
@@ -78,7 +75,7 @@ async def chosen_timers(user_id: int, value: dict, action: str) -> list[store.Ti
     needs = _ALL_APPLIES_TO.get(action)
     chosen = [timer for timer in fitting if needs is None or timer.status == needs]
     if not chosen:
-        raise UserError(f"None of them is {needs}, so nothing was changed. Tell the user so.")
+        raise UserError(f"None of them is {needs}, so nothing changed.")
     return chosen
 
 
@@ -113,8 +110,8 @@ async def change_timers(user_id: int, value: dict) -> tuple[str, list[store.Time
 
     if not done:
         if len(chosen) == 1 and left_alone[0].startswith("**"):
-            raise UserError(f"That did not take: {left_alone[0]}. Nothing has changed; tell the user so.")
-        raise UserError(f"Nothing has changed: {'; '.join(left_alone)}. Tell the user so.")
+            raise UserError(f"That didn't save: {left_alone[0]}.")
+        raise UserError(f"Nothing changed: {'; '.join(left_alone)}.")
 
     now = utc_now()
     if len(chosen) == 1:
@@ -139,9 +136,7 @@ async def change_session(user_id: int, value: dict) -> tuple[str, store.Session]
         session_id = status.parse_ref(wanted, status.SESSION)
         session = await store.get_session(session_id) if session_id is not None else None
     if session is None or session.user_id != user_id:
-        raise UserError(
-            f'There is no Pomodoro session `{wanted}`. Use the id in the live state, such as p4, or "current".'
-        )
+        raise UserError("I can't find that Pomodoro session.")
     action = value["action"]
     if action == "extend":
         said = await sessions.extend(session, _extra_time(value))
@@ -151,7 +146,7 @@ async def change_session(user_id: int, value: dict) -> tuple[str, store.Session]
     saved = await store.get_session(session.id)
     if saved is None or saved.state not in _SESSION_AFTER[action]:
         state = "gone" if saved is None else f"still {saved.state}"
-        raise UserError(f"That did not take: **{session.label}** is {state}. Nothing has changed; tell the user so.")
+        raise UserError(f"That didn't save: **{session.label}** is {state}.")
     return said, saved
 
 

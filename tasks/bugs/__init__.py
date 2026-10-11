@@ -83,12 +83,13 @@ async def export(ctx: Context) -> str:
 
 
 async def save_note(ctx: Context) -> str:
-    """Something written in a bug's post: kept with the bug, and ticked."""
+    """Something written in a bug's post: kept with the bug. Nothing is added to
+    the message (✅ is not used to acknowledge): the count on the post's card
+    is what shows it was saved."""
     item = await store.by_thread(ctx.channel_id)
     if item is None:
         return "not a bug's post: left alone"
     await store.add_note(item.id, ctx.user.id, rules.OWNER, ctx.text, ctx.message_id)
-    await ctx.acknowledge()
     # The count on the post's opening card, in place
     await posts.refresh_card(await store.get(item.id))
     return f"note saved for {rules.bug_id(item.id)}"

@@ -156,7 +156,7 @@ async def _control_value(request: Request, data: dict) -> dict:
     return {"ids": await which_timers(request, data), "action": data["action"], "duration": data.get("duration", "")}
 
 
-async def cancels_several(request: Request, data: dict) -> bool:
+async def cancels_several(request: Request, data: dict, guessed: frozenset = frozenset()) -> bool:
     """Whether this is a bulk stop, which asks first: cancelling more than one timer."""
     if data["action"] != "cancel":
         return False

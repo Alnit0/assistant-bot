@@ -30,7 +30,7 @@ tests (block 12).
 | 22 | Channel reset, housekeeping that leaves no trace, and button colours | `--dev`, off then on (two restarts) | 8 | 15 |
 | 23 | Retest: the main pill, late at night | `--dev`, off (one restart) | 7 | 12 |
 | 24 | Small backlog batch: identity, #commands, mock-ups, the reset card | live, off (two restarts) | 9 | 15 |
-| 25 | `task-check`: what timers, bugs and pills do today against the standard | `--dev`, off (one restart) | 0 (no tracker rows yet) | 15 |
+| 25 | Retest: the `task-check` fixes (a guessed pill, replies, plain refusals, 12-hour times) | `--dev`, off (one restart) | 6 | 10 |
 | | **Total** | | **191** (F2 is split over blocks 4 and 7, counted in 7) | **about 3¼ hours** |
 
 Blocks 14 to 23 need nothing from the others (19 and 20, the first pills blocks, passed on 2026-10-10 and are no longer here) (13 and 16 tested the old way of asking Claude, which is gone): run them any time after
@@ -521,29 +521,24 @@ ends by saying what to press.
 | 8 | Tomorrow morning: look at "💾 Backup saved" in #bot-log, and at the bot's status. Press nothing | The card lists `assistant-….db`, `specs-….zip` and, if a channel was ever reset, `exports-….zip`. The status is "🟢 Live · …", not a ⚠️ line | K22 |
 | 9 | Only when you next run the dev database (otherwise report `K20 skip`): `python main.py --dev`; look at the bot. `dev clock +13h`; look again. Stop it and start the live bot | "<base> · DEV" and "🧪 DEV database"; after the clock moves, "🧪 DEV database · clock +13h". Back on live the nickname is the base name again | K20 |
 
-## 25. `task-check` on timers, bugs and pills (2026-10-12)
+## 25. Retest: the `task-check` fixes
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
 On the dev database (`python main.py --dev`), dev mode off, with the hub
-set. Restart the bot first. Nothing here is a test to pass yet: each step
-shows one finding of the `task-check` run **as the bot behaves today**
-(the C numbers are in `docs/BACKLOG.md`), so you can choose what to fix.
-When one is fixed it gets a row in `docs/TESTING.md` and its step says
-what the standard expects. Every step says what to press.
+set. Restart the bot first. Set up two pills with no set time: say `add
+pill X once a day` and press **Save**, then `add pill Y once a day` and
+press **Save**. Type `pills`. (That a timer which didn't save is never
+confirmed can't be shown from Discord: it is covered by the unit tests.)
+Every step says what to press.
 
-| # | Do | Today | The standard | Finding |
-|---|---|---|---|---|
-| 1 | `timer 10m tea`; `pause all`; then say `pause all my timers called tea`. Press nothing (if the line reads cleanly, report `C1 not seen`: it depends on which ids Claude sends) | A line ending "Tell the user so." | A plain line for me, with nothing written for Claude in it | C1 |
-| 2 | Say `give tea more time`. Press nothing | A line that names "`duration`" | No field or action names | C2 |
-| 3 | `timer 5m eggs` (two timers now); say `pause it` twice. Press nothing | After the first, nothing left to mean: "⚠️ Which timer? Say its name." as a message | The question on a card, with a button a timer | C8 |
-| 4 | `pomo`, then `pomo 50/10`. Press **Cancel** | "🍅 … is already going at 25m/5m/15m. Restart it as `50/10`?" as its own message with Confirm and Cancel | The question on the session's card | C8 |
-| 5 | Look at the tea timer's card. Press nothing | "ends in 9 minutes (8:04 PM)" or "(20:04)", as your Discord is set | `8:04 pm` whatever Discord is set to | C11 |
-| 6 | Say `that's a bug: it was slow`; then say `show my open bugs`; then report another and look at the list you got before. Press nothing | "🐞 Logged as D… · 📝 your note is saved with it". The first list does not change when the second bug is logged | The list is Live: its latest copy is rewritten in place | C10 |
-| 7 | In the new bug's post in #bugs, write `a note`. Press nothing | ✅ appears on your note | Either no ✅, or the standard says this one is allowed | C9 |
-| 8 | Say `add pill A to my pills, 3 times a day at 8am, 11:30 and 3pm` and press **Save**; say `add pill B once a day` and press **Save**. Type `pills`. Reply to **Pill B**'s Taken / Skip message with `took it`. Press nothing | "⚠️ Which pill? Say its name." (nothing was logged before), or the pill logged last is ticked off, not Pill B | Pill B is ticked off: the message I replied to is what "it" means | C5, C7 |
-| 9 | Say `took the usual one`. Press nothing (if it asks which pill, report `C6 not seen`: it only shows when Claude picks a pill and says it guessed) | A pill is ticked off at once, with no ❓ | The guess is marked ❓ in the line that says what was logged | C6 |
-| 10 | Say `pause the pill`. Press nothing. Then `dev clock reset` | "⚠️ Which one: **Pill A** or **Pill B**?" as a line of its own | A card that asks, with a button a pill | C7 |
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Say `took the usual one`. Press **Cancel** (if it asks which pill instead, that passes too) | Never ticked off at once. A card "💊 Pills · change" with the dose and ❓, **Save** and **Cancel**; after Cancel the checklist is unchanged | R66 |
+| 2 | Say `took my pill X`. Then reply to **Pill Y**'s Taken / Skip message with `took it`. Press nothing | "✅ **Pill X** · taken …", then "✅ **Pill Y** · taken …": the pill whose message you replied to, not the one logged just before | R67 |
+| 3 | `timer 10m tea`; say `give tea more time`. Press nothing | One plain line that ends "Say how much time to add, e.g. 10 minutes.": no `duration`, no "tell the user", no id like t12 | G25 |
+| 4 | Look at the tea timer's message; type `pomo` and look at its card. Press **Stop**, and reply `cancel` to the tea timer | "ends in 9 minutes (8:04 pm)" and "Ends in 25 minutes (8:19 pm)": the time in brackets is 12-hour with am or pm, whatever your Discord is set to | G26 |
+| 5 | React 🐞 to any message; open the post in #bugs and write `a note`. Press nothing. Then `dev clock reset` | No ✅ on your note and no reply; the count on the post's opening card goes up by one. The card's first line gives the time as "8:04 pm, 12 Oct" | P34 |
 
 ## When you finish
 

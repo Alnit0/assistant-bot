@@ -34,19 +34,19 @@ Last updated: 2026-10-12
 | D | Archive and restore | 15 | 4 | 11 | 11 | 4 | 0 | 0 |
 | E | Delete and protection | 12 | 3 | 9 | 9 | 3 | 0 | 0 |
 | F | Pins | 4 | 0 | 4 | 4 | 0 | 0 | 0 |
-| G | Timers | 23 | 9 | 14 | 13 | 10 | 0 | 0 |
+| G | Timers | 26 | 10 | 16 | 15 | 11 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
 | J | Dev mode | 52 | 10 | 42 | 41 | 11 | 0 | 0 |
 | K | Startup and housekeeping | 22 | 11 | 11 | 9 | 13 | 0 | 0 |
 | L | Keep | 12 | 4 | 8 | 8 | 4 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
-| P | Bugs | 33 | 16 | 17 | 15 | 18 | 0 | 0 |
+| P | Bugs | 34 | 16 | 18 | 16 | 18 | 0 | 0 |
 | Q | Time, days, the schedule model, the occurrence log and cards | 15 | 13 | 2 | 2 | 13 | 0 | 0 |
-| R | Pills | 51 | 8 | 43 | 35 | 16 | 0 | 0 |
+| R | Pills | 55 | 10 | 45 | 37 | 18 | 0 | 0 |
 | S | Routing and confirm cards | 57 | 9 | 48 | 13 | 43 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 1 | 21 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **410** | **124** | **286** | **217** | **192** | **0** | **1** |
+| | **Total** | **418** | **127** | **291** | **222** | **195** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -192,6 +192,9 @@ tidy themselves away; M5 covers the setting). "Log card" means a card in
 | G21 | 👤 Manual | With two timers and a Pomodoro running, type `pause all`; wait two minutes; `timers`; then `resume all` | "⏸️ Paused 3" naming each with its time left. Two minutes later the list shows the same times. "▶️ Resumed 3" with those same times, and each then counts down from there | ⬜ Untested | | |
 | G22 | 🤖 Auto | How long is left on a timer | Said to the second, a line a timer: "⏱️ **tea** · 4m 18s left"; a paused one word for word as the first line of its card; "it" is the timer touched last; one that is over says so; an unknown one is asked about | ✅ Pass | 2026-10-12 | `tests/test_timers_plain.py` |
 | G23 | 👤 Manual | `timer 5m tea`; say `how long is left on tea?`. Reply `pause` to the timer; ask again. Then reply `cancel` to it | "⏱️ **tea** · 4m 18s left" (minutes and seconds, no list posted). Paused: "⏸️ **tea** · paused with 4m 5s left", the same words as the first line of the timer's card | ✅ Pass | 2026-10-12 | Block 24, on the live bot |
+| G24 | 🤖 Auto | Nothing is confirmed until it is read back; refusals are written for me | Every timer and session action that saves is read back first: a change that didn't save says "That didn't save: **tea** is still running." and a timer that didn't save gets no message. No refusal says "tell the user", names a field or shows an id: "I can't find that timer. Say its name.", "Say how much time to add, e.g. 10 minutes." | ✅ Pass | 2026-10-12 | `tests/test_timers_plain.py`, `tests/test_timer_freeze.py` |
+| G25 | 👤 Manual | `timer 10m tea`; say `give tea more time`. Press nothing | One plain line that ends "Say how much time to add, e.g. 10 minutes.": no `duration`, no "tell the user", no id like t12 | ⬜ Untested | | |
+| G26 | 👤 Manual | Look at the tea timer's message, and start `pomo` and look at its card. Press **Stop** | "ends in 9 minutes (8:04 pm)" and "Ends in 25 minutes (8:19 pm)": the time in brackets is 12-hour with am or pm, whatever your Discord is set to | ⬜ Untested | | |
 
 ## H. Pomodoro
 
@@ -358,7 +361,7 @@ post in #bugs.
 | P5 | 🤖 Auto | The records | Numbered in order and open; found by post and by message; a closed one leaves the list; notes kept in order with who wrote them | ✅ Pass | 2026-10-09 | `tests/test_bugs.py` |
 | P6 | 🤖 Auto | Filing a report | Recorded with its post and link; the same message is not logged twice; nothing is recorded when there is no forum; the turn, errors and commit are captured | ✅ Pass | 2026-10-09 | `tests/test_bugs.py` |
 | P7 | 🤖 Auto | `bug` alone, as a reply, and 🐞 | Alone: the latest message with the five before it; reply: that message; 🐞: that message, with the line sent to its channel; the line is a lasting reply | ✅ Pass | 2026-10-09 | `tests/test_bugs.py` |
-| P8 | 🤖 Auto | Notes, `bugs` and `bugs export` | A message in a bug's post is saved and ticked with no reply; a post that isn't a bug's is left alone; the list links to posts; the export has everything in full | ✅ Pass | 2026-10-09 | `tests/test_bugs.py` |
+| P8 | 🤖 Auto | Notes, `bugs` and `bugs export` | A message in a bug's post is saved with no tick and no reply (✅ is not used to acknowledge); a post that isn't a bug's is left alone; the list links to posts; the export has everything in full | ✅ Pass | 2026-10-09 | `tests/test_bugs.py` |
 | P9 | 🤖 Auto | The instant reaction and claimed messages | 🐞 runs at once and is never debounced; taking it away does nothing; only 🐞 is instant; a message in #bugs is claimed before Claude; a stranger's is dropped | ✅ Pass | 2026-10-09 | `tests/test_registry.py` |
 | P10 | 🤖 Auto | Owner only, and the command line | Every word, the reaction, notes and closing need the owner; `cli show` and `note` work and nothing closes a bug | ✅ Pass | 2026-10-09 | `tests/test_bugs.py` |
 | P11 | 🤖 Auto | A turn's timings are kept | The breakdown on the log card is stored as plain values with the message | ✅ Pass | 2026-10-09 | `tests/test_timing.py` |
@@ -384,6 +387,7 @@ post in #bugs.
 | P31 | 👤 Manual | With `--dev`: say `add butter`, then react 🐞 to the card the bot posted | The post in #bugs has a **Trace** section between "That turn" and "Related errors": the same block `dev why` shows for the message of mine that the card answered. Times in the post read like "2:00 pm", never "14:00" | ✅ Pass | 2026-10-10 |  |
 | P32 | 🤖 Auto | Bug ids | Deleting the newest bug and logging another gives the next number, not the deleted one; the same number never appears twice however many are deleted; the number is the row's key and the table is AUTOINCREMENT; on the dev database a bug is D-prefixed whatever channel it came from, its post is opened with the dev tag, the other database's ids are refused, and closing it keeps the tag; only a bot on the dev database asks the forum for the dev tag | ✅ Pass | 2026-10-10 | `tests/test_bugs.py` |
 | P33 | 👤 Manual | With `--dev`: react 🐞 to any message; open the post; type `bugs` | "🐞 Logged as D<n>" (a D, not a B); the post's title starts "D<n> ·" and it carries the tags Open and dev. `bugs` lists it as D<n> | ✅ Pass | 2026-10-10 | From QA 2026-10-10 (several "B1" posts from the dev database) |
+| P34 | 👤 Manual | Write `a note` in a bug's post. Press nothing | No ✅ on your note and no reply; the count on the post's opening card goes up by one | ⬜ Untested | | |
 
 ## Q. Time, days, the schedule model, the occurrence log and cards
 
@@ -471,6 +475,10 @@ are added with it.
 | R61 | 👤 Manual | Say `I took dose 2 of pill A at 12:15pm`. Then `I took dose 1 of pill A at 8:45am`. Press nothing | "✅ **Pill A** (dose 2 of 3) · taken 12:15 pm · …" (it was ❌ missed). Then "✏️ **Pill A** (dose 1 of 3) · taken 8:30 am → 8:45 am · …": dose 1, not dose 2, and no "Not included" line | ⬜ Untested | | From QA 2026-10-12: the dose number was ignored |
 | R62 | 👤 Manual | Say `I took dose 1 of pill A at 12:15pm`. Press **Cancel** | A card: "**Pill A** (dose 1 of 3) · taken 8:45 am → 12:15 pm" and "⚠️ That's the same time as dose 2, taken 12:15 pm. Log it anyway?", with **Log it** and **Cancel**. After Cancel the checklist still shows dose 1 taken 8:45 am | ⬜ Untested | | From QA 2026-10-12 |
 | R63 | 🤖 Auto | The morning's post | Started at 1:30 am on a fresh day, nothing is posted, today's 6:00 am is booked, and at 6:00 am the checklist posts in the hub and the log says so with the count; with yesterday's checklist still there, today's posts and yesterday's is left; a checklist asked for at 1:29 am does not stand in for the morning's (a fresh copy, the night's goes, the log says in place of which); a second run or a restart later in the morning posts nothing more and says why in the log and in #bot-log; nothing to take, and no hub, are each said in #bot-log; nobody with a pill is the log only | ✅ Pass | 2026-10-12 | `tests/test_pills_checklist.py`. From live, 2026-10-12: the 6:00 am post didn't come |
+| R64 | 🤖 Auto | A guessed pill is shown first | When Claude says it guessed which pill, nothing is logged: a card shows the dose with ❓, Save and Cancel, and Save logs it and reads it back. An exact name, part of a name only one pill has, and "it" log at once; a guess about the time is not a guess about the pill | ✅ Pass | 2026-10-12 | `tests/test_pills_checklist.py` |
+| R65 | 🤖 Auto | A reply says which pill | "took it" as a reply to a dose's Taken / Skip message is that pill and that dose, not the pill logged last; a pill I name still wins; a reply to a checklist with one pill on it means that pill; with several, or a reply to anything else, it falls back | ✅ Pass | 2026-10-12 | `tests/test_pills_checklist.py` |
+| R66 | 👤 Manual | With two pills: say `took the usual one`. Press **Cancel** (if it asks which pill instead, that passes too) | Never ticked off at once. A card "💊 Pills · change" with the dose and ❓, **Save** and **Cancel**; after Cancel the checklist is unchanged | ⬜ Untested | | |
+| R67 | 👤 Manual | With two pills that have no set time, type `pills`; say `took my` and the first one's name; then reply to the **other** pill's Taken / Skip message with `took it`. Press nothing | The pill whose message you replied to is ticked off ("✅ **…** · taken …"), not the one logged just before | ⬜ Untested | | |
 
 ## S. Routing and confirm cards
 

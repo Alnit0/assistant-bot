@@ -258,7 +258,7 @@ async def act(
         needs_card = action.needs_card
         if action.card_if is not None:
             # Some actions ask first only when a lot is at stake (cancelling several timers)
-            needs_card = await action.card_if(request, found.data)
+            needs_card = await action.card_if(request, found.data, frozenset(found.guessed))
             trace.note(f"card check: {action.name} " + ("asks first with a card" if needs_card else "acts at once, no card"))
         if needs_card:
             proposal = await action.prepare(request, found.data, found.guessed)

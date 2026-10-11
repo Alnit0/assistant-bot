@@ -132,7 +132,7 @@ the channel you are in; `help <task or word>` gives details.
   Create Posts, Send Messages in Threads and Manage Threads). The post has
   the message, the five before it, that turn's tool calls, timings and log
   errors, and the commit, then three questions. Whatever you write in the
-  post is saved as a note and ticked ✅; the bot never answers there and
+  post is saved as a note (the count on its card goes up; no ✅); the bot never answers there and
   nothing is sent to Claude. The opening card counts the notes. **Fixed**
   and **Won't fix** tag the post and archive it, and leave a **Re-open**
   button on the card with the status and time. `bugs` lists the open ones, and `bugs export` writes them in
@@ -519,6 +519,14 @@ Everything works in #inbox and in the hub.
   the latest time has passed, it is ❌ missed, shown a minute after that
   time without your asking. A correction that makes room brings a
   skipped dose back.
+- **A pill that was guessed is shown first.** If nothing in what you
+  said names the pill and Claude picks one, nothing is logged: a card
+  shows the dose with ❓, **Save** and **Cancel**. An exact name, part of
+  a name only one pill has, and "it" log at once.
+- **A reply says which pill.** "took it" as a Discord reply to a dose's
+  Taken / Skip message means that pill and that dose, whatever was
+  logged last; a pill you name still wins. A reply to the checklist
+  means its pill when only one is on it.
 - **Logging late.** "Took my pill A" after its latest time asks first:
   "That's after the latest time, 4:00 pm. Log it anyway?" with **Log
   it** and **Cancel**.

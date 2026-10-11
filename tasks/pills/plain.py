@@ -8,6 +8,7 @@ from core.actions import is_reference, point_at
 from core.errors import UserError
 from tasks.pills import checklist, rules, store, today
 from tasks.pills import doses as limits
+from tasks.pills.store import DOSE
 from tasks.pills.today import Dose
 from tasks.pills.rules import ACTIVE, ENDED, PAUSED, REMOVED, Pill, Plan, TimeQuestion
 
@@ -334,7 +335,7 @@ async def already_so(request: Request, about: str) -> str | None:
     return already_text([pill], day.today())
 
 
-async def add_asks(request: Request, data: dict) -> bool:
+async def add_asks(request: Request, data: dict, guessed: frozenset = frozenset()) -> bool:
     """Whether adding needs a card: not when there is nothing to save, because
     every pill named is already there with these settings."""
     return bool(request.previous) or await _unchanged(request, data) is None
@@ -345,7 +346,7 @@ async def add_already(request: Request, data: dict, guessed: frozenset) -> str:
     return already_text(await _unchanged(request, data) or [], day.today())
 
 
-async def edit_asks(request: Request, data: dict) -> bool:
+async def edit_asks(request: Request, data: dict, guessed: frozenset = frozenset()) -> bool:
     """Whether a change needs a card: not when it would change nothing."""
     return bool(request.previous) or await _unchanged(request, data, "pill") is None
 
@@ -778,6 +779,24 @@ async def _just_logged(dose: Dose, now: datetime) -> bool:
     return bool(mine) and now - mine[-1].at <= CORRECTION_WINDOW
 
 
+async def _replied_to(request: Request, listed: list[Dose], today_: date) -> tuple[Pill | None, Dose | None]:
+    """What a Discord reply points at, among today's messages: (the pill, the
+    dose). A dose's own Taken / Skip message is that pill and that dose. The
+    checklist is the pill on it, when there is only one. Neither if the
+    message replied to is not one of these."""
+    if request.replied_to is None:
+        return None, None
+    held = await request.db.run(store.db_messages, request.user.id, today_)
+    message = next((each for each in held if each.message_id == request.replied_to), None)
+    if message is None:
+        return None, None
+    if message.kind == DOSE:
+        dose = next((each for each in listed if each.occurrence.id == message.occurrence_id), None)
+        return (dose.pill, dose) if dose is not None else (None, None)
+    on_it = {dose.pill.id: dose.pill for dose in listed}
+    return (next(iter(on_it.values())), None) if len(on_it) == 1 else (None, None)
+
+
 async def _step(request: Request, item: dict) -> Step:
     """What an item of the message means for today's doses as they stand now.
     Nothing is changed here."""
@@ -785,9 +804,12 @@ async def _step(request: Request, item: dict) -> Step:
     pills, listed, today_ = await checklist.view(user_id)
     now = clock.now()
     named = item.get("pill")
+    # Where I point beats what is newest: a reply to a dose's message or to the checklist
+    pointed, pointed_dose = await _replied_to(request, listed, today_)
     if is_reference(named):
-        # "it" is the pill mentioned last, worked out here and never by Claude: the one just logged
-        last = await request.db.run(db_last_logged, user_id)
+        # "it" is worked out here and never by Claude: the pill of the message replied to,
+        # or else the pill mentioned last, the one just logged
+        last = pointed.id if pointed is not None else await request.db.run(db_last_logged, user_id)
         if last is None:
             return Step("⚠️ Which pill? Say its name.")
         named = f"{rules.ID_PREFIX}{last}"
@@ -795,6 +817,10 @@ async def _step(request: Request, item: dict) -> Step:
         pill = rules.find(pills, str(named))
     except UserError as error:
         return Step(f"⚠️ {error}")
+    if pointed_dose is not None and pointed_dose.pill.id == pill.id and item.get("dose") is None:
+        # The message replied to is about one dose: that dose, as if named by its number.
+        # A pill or a dose number I state still wins over where I point
+        item = {**item, "dose": pointed_dose.number}
     if not rules.is_taken_on(pill, today_):
         return Step(_not_today(pill, today_))
     did, name = item["did"], pill.plan.name
@@ -902,12 +928,19 @@ async def _do(step: Step) -> str:
 
 
 # --- a dose logged after the pill's latest time is asked about first ------------------------------
-async def log_asks(request: Request, data: dict) -> bool:
-    """Whether logging needs a card: only when a dose would be ticked off after
-    its pill's latest time, or a dose named by its number would be out of
+def _pill_guessed(guessed: frozenset, index: int) -> bool:
+    """Whether Claude guessed which pill this dose is of. A pill named exactly, one a
+    part of a name picks out alone, and "it" (which the code resolves) are no guess."""
+    return is_guessed(guessed, "doses", index, "pill")
+
+
+async def log_asks(request: Request, data: dict, guessed: frozenset = frozenset()) -> bool:
+    """Whether logging needs a card: when which pill is meant was a guess (a
+    guess is never saved unseen), when a dose would be ticked off after its
+    pill's latest time, or when a dose named by its number would be out of
     order or too close to another."""
-    for item in data["doses"]:
-        if (await _step(request, item)).asks:
+    for index, item in enumerate(data["doses"]):
+        if _pill_guessed(guessed, index) or (await _step(request, item)).asks:
             return True
     return False
 
@@ -922,16 +955,18 @@ def _preview(step: Step) -> str:
 
 
 async def log_card(request: Request, data: dict, guessed: frozenset) -> Proposal:
-    """The card that asks before a dose is logged after its pill's latest time,
-    or out of order: what would be logged, with the time, and the question.
-    Log it does it."""
-    lines, held, warnings = [], [], []
-    for item in data["doses"]:
+    """The card shown before a dose is logged: when the pill was a guess (its
+    line is marked ❓, with Save and Cancel), or after its pill's latest time
+    or out of order (what would be logged, with the time, and the question:
+    Log it does it)."""
+    lines, held, warnings, asked = [], [], [], False
+    for index, item in enumerate(data["doses"]):
         step = await _step(request, item)
         if step.dose is None:
             warnings.append(step.say.removeprefix("⚠️ "))
             continue
-        lines.append(_preview(step))
+        lines.append(flag(_preview(step), _pill_guessed(guessed, index)))
+        asked = asked or bool(step.asks)
         if step.asks:
             warnings.append(f"{' '.join(step.asks)} Log it anyway?")
         held.append({
@@ -940,7 +975,8 @@ async def log_card(request: Request, data: dict, guessed: frozenset) -> Proposal
         })
     if not held:
         raise UserError("; ".join(warnings) or "Nothing to log.")
-    return Proposal(lines=tuple(lines), data={"doses": held}, warnings=tuple(warnings), kind="change", confirm_label="Log it")
+    # "Log it" answers a question the card asks; a guess to look over is an ordinary Save
+    return Proposal(lines=tuple(lines), data={"doses": held}, warnings=tuple(warnings), kind="change", confirm_label="Log it" if asked else "Save")
 
 
 async def _held(request: Request, data: dict) -> list[Step]:

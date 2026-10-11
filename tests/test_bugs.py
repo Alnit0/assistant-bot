@@ -208,7 +208,7 @@ def test_closing_says_which_way():
 def test_the_post_opens_with_the_message_and_ends_with_the_questions():
     turn = rules.pick_turn(ROWS, 5001, AT, exclude_message_id=4100)
     parts = rules.post_sections(4, report(turn=turn, errors=["2026-10-09 14:00:28,200 ERROR assistant: boom"]))
-    assert parts[0].startswith("🐞 **B4** · from #inbox · <t:1791507660:f> · by a 🐞 reaction · commit `03c7d23`")
+    assert parts[0].startswith("🐞 **B4** · from #inbox · 2:01 pm, 9 Oct · by a 🐞 reaction · commit `03c7d23`")
     assert "**Message**\nHive, 2:00 pm · [jump](https://discord.com/channels/1/100/5001)\n> ⏱️ Timer set for 50m" in parts[0]
     assert parts[1] == "**Before it**\n`2:00 pm` **Alex**: set a timer for 5 minutes"
     assert parts[2].startswith("**That turn**\nInput (chat): `set a timer for 5 minutes`\nOutcome: ok in 2.5s")
@@ -491,12 +491,12 @@ def test_the_reaction_reports_the_message_and_leaves_the_line_in_its_channel(fil
     assert filing.posts[0][1].source == rules.REACTION
 
 
-def test_what_is_written_in_a_post_is_saved_as_a_note_and_ticked(filing, owner):
+def test_what_is_written_in_a_post_is_saved_as_a_note_with_no_tick_and_no_reply(filing, owner):
     asyncio.run(bugs._file(owner, INBOX, snap(), [], rules.REACTION))
     ctx = FakeCtx(owner, channel_id=7001, parent=BUGS, text="I expected 5 minutes, it set 50")
     assert bugs.task.claim(ctx) is bugs.save_note
     assert asyncio.run(bugs.save_note(ctx)) == "note saved for B1"
-    assert ctx.ticked == 1 and ctx.replied == [], "a tick, and no reply"
+    assert ctx.ticked == 0 and ctx.replied == [], "no ✅ (it is not used to acknowledge) and no reply: the card's count shows it"
     assert [note.content for note in asyncio.run(store.notes(1))] == ["I expected 5 minutes, it set 50"]
 
 
@@ -933,7 +933,7 @@ def test_a_card_that_cannot_be_updated_does_not_lose_the_note(filing, owner, mon
     asyncio.run(bugs._file(owner, INBOX, snap(), [], rules.REACTION))
     ctx = FakeCtx(owner, channel_id=7001, parent=BUGS, text="still saved")
     assert asyncio.run(bugs.save_note(ctx)) == "note saved for B1"
-    assert ctx.ticked == 1 and [note.content for note in asyncio.run(store.notes(1))] == ["still saved"]
+    assert ctx.ticked == 0 and [note.content for note in asyncio.run(store.notes(1))] == ["still saved"]
 
 
 def test_the_trace_of_the_turn_is_a_section_of_the_report_when_there_is_one():
