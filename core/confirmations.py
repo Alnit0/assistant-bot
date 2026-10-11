@@ -6,7 +6,7 @@ import discord
 from core import lifecycle
 from core.config import CONFIRMATION_SECONDS
 from core.database import log_received, log_result
-from core.discord_utils import log_error, report_interaction_error, safe_reply
+from core.discord_utils import log_error, log_simple, report_interaction_error, safe_reply
 from core.errors import UserError
 from core.lifecycle import MessageClass
 from core.users import User, get_user_by_discord_id
@@ -33,11 +33,20 @@ class _OwnedView(discord.ui.View):
     # True for a message that says something was done (Undo): KEEP_CONFIRMATIONS
     # leaves it in place, without its buttons. A question nobody answered still goes
     confirmation = False
+    # True when what is being asked about is housekeeping (deleting or archiving a
+    # protected message): how it went is said for about 10 seconds and then goes,
+    # kept confirmations or not, and #bot-log is the record
+    housekeeping = False
 
     def __init__(self, user: User, timeout: float):
         super().__init__(timeout=timeout)
         self.user = user
         self.message: discord.Message | None = None
+
+    def _lifetime(self, seconds: float | None = None) -> float | None:
+        if self.housekeeping:
+            return lifecycle.tidy_after() if seconds is None else lifecycle.tidy_after(seconds)
+        return lifecycle.delete_after() if seconds is None else lifecycle.delete_after(seconds)
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         presser = await get_user_by_discord_id(interaction.user.id)
@@ -78,12 +87,12 @@ class _OwnedView(discord.ui.View):
         except UserError as error:
             await log_result(row_id, status="error", error=str(error))
             await log_error("Confirmed action failed", str(error), what)
-            await interaction.message.edit(
-                content=f"⚠️ {error}", view=None, delete_after=lifecycle.delete_after(CONFIRMATION_SECONDS * 3)
-            )
+            await interaction.message.edit(content=f"⚠️ {error}", view=None, delete_after=self._lifetime(CONFIRMATION_SECONDS * 3))
             return
         await log_result(row_id, reply=outcome, status="ok")
-        await interaction.message.edit(content=outcome, view=None, delete_after=lifecycle.delete_after())
+        # What was confirmed is on record in #bot-log, whatever becomes of the line in the channel
+        await log_simple("☑️ Confirmed", f"{what.removeprefix('confirmed: ')}\n{outcome}")
+        await interaction.message.edit(content=outcome, view=None, delete_after=self._lifetime())
 
 
 class _Prompt(_OwnedView):
@@ -107,14 +116,17 @@ async def ask(
     user: User,
     question: str,
     on_confirm: Callable[[], Awaitable[str]],
+    housekeeping: bool = False,
 ) -> discord.Message:
     """Ask `user` to confirm something, in `channel`.
 
     Confirm runs `on_confirm()` and shows what it returns for a few seconds;
     Cancel, or no answer within TIMEOUT_SECONDS, removes the question and does
-    nothing. Only that user can answer.
+    nothing. Only that user can answer. With `housekeeping` what it returns
+    always goes after about 10 seconds. Either way it is recorded in #bot-log.
     """
     prompt = _Prompt(user, question, on_confirm)
+    prompt.housekeeping = housekeeping
     prompt.message = await channel.send(question, view=prompt)
     return prompt.message
 

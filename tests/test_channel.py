@@ -223,13 +223,13 @@ def test_a_batch_discord_refuses_is_done_one_by_one(discord_channel):
     assert channel.bulk == [] and channel.singles == [3, 1, 2]
 
 
-def test_the_closing_line_tidies_itself_away_unless_confirmations_are_kept(discord_channel, monkeypatch):
-    from core import lifecycle
+def test_the_closing_line_goes_after_ten_seconds_even_while_confirmations_are_kept(discord_channel, monkeypatch):
+    from core import devmode, lifecycle
 
     channel = discord_channel(FakeChannel())
-    monkeypatch.setattr(lifecycle, "keeps_confirmations", lambda: False)
-    run(clearing.note(INBOX, "🧹 Channel reset: 3 messages deleted", 10))
     monkeypatch.setattr(lifecycle, "keeps_confirmations", lambda: True)
+    run(clearing.note(INBOX, "🧹 Channel reset: 3 messages deleted", 10))
+    monkeypatch.setattr(devmode, "cleanup_enabled", lambda: False)  # `dev cleanup off` is the one thing that keeps it
     run(clearing.note(INBOX, "🧹 Channel reset: 3 messages deleted", 10))
     assert channel.sent == [("🧹 Channel reset: 3 messages deleted", 10), ("🧹 Channel reset: 3 messages deleted", None)]
 
@@ -296,9 +296,12 @@ def world(make_db, monkeypatch, owner, tmp_path):
     return seen
 
 
+ASKED = 6  # the id of my own message that asks, in the tests below
+
+
 class Press:
-    def __init__(self, user, channel_id, message_id):
-        self.user, self.arg, self.channel_id, self.message_id = user, str(channel_id), channel_id, message_id
+    def __init__(self, user, channel_id, message_id, asked_by=ASKED):
+        self.user, self.arg, self.channel_id, self.message_id = user, f"{channel_id}:{asked_by or 0}", channel_id, message_id
         self.shown, self.removed = [], False
 
     async def update(self, card):
@@ -310,7 +313,9 @@ class Press:
 
 def ask(world, channel_id=INBOX):
     """Ask in plain words: the card that comes back, as the message it is."""
-    shown = run(channel_task.reset_asked(Request(world.owner, channel_id, "reset this channel"), {}, frozenset()))
+    world.messages.append(message(ASKED, author="Alnit0", content="reset this channel"))  # my own message, in the channel
+    asking = Request(world.owner, channel_id, "reset this channel", message_id=ASKED)
+    shown = run(channel_task.reset_asked(asking, {}, frozenset()))
     assert shown == Shown(f"asked before resetting <#{channel_id}>")
     return world.sent[-1]
 
@@ -325,8 +330,8 @@ def test_asking_always_shows_a_card_with_the_counts_and_three_buttons(world):
     ]
     (row,) = posted.card.rows
     assert [(button.label, button.action, button.arg) for button in row] == [
-        ("Delete all", "all", "100"), ("Delete all unpinned", "unpinned", "100"), ("Cancel", "cancel", "100"),
-    ]
+        ("Delete all", "all", "100:6"), ("Delete all unpinned", "unpinned", "100:6"), ("Cancel", "cancel", "100:6"),
+    ], "each button carries the channel and the message that asked"
     assert row[0].style == cards.DANGER and world.deleted == [], "nothing is deleted by asking"
 
 
@@ -348,22 +353,24 @@ def test_delete_all_deletes_everything_and_the_card_then_says_so_and_tells_every
     press = Press(world.owner, INBOX, posted.id)
     assert run(channel_task.on_all(press)) == "🧹 Channel reset: 5 messages deleted · a copy was saved"
     assert [card.text for card in press.shown] == ["🧹 Deleting 5 messages (1 of them one at a time: this will be slow)…"]
-    assert world.deleted == [1, 2, 3, 4, 5, posted.id] and world.messages == [], "pinned and 📌 included, and the card last"
-    assert world.notes == [(INBOX, "🧹 Channel reset: 5 messages deleted · a copy was saved", 10)]
-    assert world.cleared == [(INBOX, {1, 2, 3, 4, 5, posted.id})]
+    assert world.deleted[:5] == [1, 2, 3, 4, 5] and set(world.deleted[5:]) == {ASKED, posted.id}, "pinned and 📌 included; my message and the card last"
+    assert world.messages == [], "no trace of the reset: nothing is left in the channel at all"
+    assert world.notes == [(INBOX, "🧹 Channel reset: 5 messages deleted · a copy was saved", 10)], "only the line that goes after ten seconds"
+    assert world.cleared == [(INBOX, {1, 2, 3, 4, 5, ASKED, posted.id})]
     assert world.logged == [("🧹 Channel reset", "5 messages deleted in <#100> · nothing kept · copy saved as `inbox-2026-10-12-010000.txt`")]
     assert llm.exchanges_for(INBOX) == [("(pressed Delete all)", "🧹 Channel reset: 5 messages deleted · a copy was saved")]
     # The copy: everything that was there, the card apart, written before anything went
     (saved,) = world.exports.iterdir()
     assert saved.name == "inbox-2026-10-12-010000.txt"
     assert saved.read_text(encoding="utf-8").splitlines() == [
-        "#inbox · saved 2026-10-12 1:00 am · 5 messages",
+        "#inbox · saved 2026-10-12 1:00 am · 6 messages",
         "",
         "[2026-09-22 12:00 am] Alnit0: an old one",  # before the clocks went forward
         "[2026-10-12 1:00 am] Alnit0: one",
         "[2026-10-12 1:00 am] Alnit0 (pinned): keep me",
         "[2026-10-12 1:00 am] Assistant: three",
         "[2026-10-12 1:00 am] unknown:",
+        "[2026-10-12 1:00 am] Alnit0: reset this channel",  # my own message may be in the copy
     ]
 
 
@@ -372,7 +379,7 @@ def test_delete_all_unpinned_leaves_the_pinned_and_marked_ones(world):
     world.messages.append(message(posted.id))
     assert run(channel_task.on_unpinned(Press(world.owner, INBOX, posted.id))) == "🧹 Channel reset: 4 messages deleted · a copy was saved"
     assert [each.id for each in world.messages] == [2], "the pinned one is still there"
-    assert world.cleared == [(INBOX, {1, 3, 4, 5, posted.id})], "tasks are told what went: what was kept is not posted again"
+    assert world.cleared == [(INBOX, {1, 3, 4, 5, ASKED, posted.id})], "tasks are told what went: what was kept is not posted again"
     assert world.logged[0][1].startswith("4 messages deleted in <#100> · 1 pinned or 📌 kept · copy saved as `inbox-")
     (saved,) = world.exports.iterdir()
     assert "Alnit0 (pinned): keep me" in saved.read_text(encoding="utf-8"), "the copy is of the whole channel, what is kept included"
@@ -392,7 +399,7 @@ def test_if_the_copy_cannot_be_saved_nothing_is_deleted(world, monkeypatch):
     posted = ask(world)
     press = Press(world.owner, INBOX, posted.id)
     assert run(channel_task.on_all(press)) == "not saved, nothing deleted"
-    assert world.deleted == [] and world.cleared == [] and world.notes == [] and len(world.messages) == 5
+    assert world.deleted == [] and world.cleared == [] and world.notes == [] and len(world.messages) == 6, "my message included"
     assert press.shown[-1].text == (
         "🧹 Channel · reset\n⚠️ I couldn't save a copy of this channel first, so nothing was deleted. The reason is in #bot-log."
     )
@@ -404,12 +411,20 @@ def test_what_is_deleted_is_what_is_there_when_the_button_is_pressed(world):
     posted = ask(world)
     world.messages += [message(posted.id), message(50), message(51)]  # two more arrived after the card
     assert run(channel_task.on_all(Press(world.owner, INBOX, posted.id))) == "🧹 Channel reset: 7 messages deleted · a copy was saved"
-    assert "7 messages" in next(world.exports.iterdir()).read_text(encoding="utf-8").splitlines()[0], "and so is the copy"
+    assert "8 messages" in next(world.exports.iterdir()).read_text(encoding="utf-8").splitlines()[0], "and so is the copy, with my own message in it"
 
 
-def test_cancel_removes_the_card_and_deletes_nothing(world):
+def test_cancel_removes_the_card_and_my_message_and_nothing_else(world):
     posted = ask(world)
     press = Press(world.owner, INBOX, posted.id)
+    assert run(channel_task.on_cancel(press)) == "cancelled" and press.removed, "the card goes"
+    assert world.deleted == [ASKED], "and so does the message that asked: no trace of the question either"
+    assert [each.id for each in world.messages] == [1, 2, 3, 4, 5] and world.notes == [] and world.exports.exists() is False
+
+
+def test_cancel_after_the_typed_word_has_nothing_more_to_delete(world):
+    # The word was tidied away by the registry already (it is housekeeping): deleting it again is harmless
+    press = Press(world.owner, INBOX, 900, asked_by=None)
     assert run(channel_task.on_cancel(press)) == "cancelled" and press.removed and world.deleted == []
 
 
@@ -424,18 +439,22 @@ def test_a_missing_permission_is_said_on_the_card_instead_of_failing(world):
     press = Press(world.owner, INBOX, posted.id)
     assert run(channel_task.on_all(press)) == "missing Manage Messages"
     assert "my role needs **Manage Messages**" in press.shown[0].text and world.deleted == [] and world.cleared == []
+    assert press.shown[0].rows[0][0].arg == "100:6", "Cancel on it still knows which message asked"
 
 
 def test_an_empty_channel_is_said_in_a_line_with_no_card(world):
-    world.messages = []
-    said = run(channel_task.reset_asked(Request(world.owner, INBOX, "reset this channel"), {}, frozenset()))
-    assert said == "🧹 <#100> is already empty: there is nothing to delete." and world.sent == []
+    world.messages = [message(ASKED)]  # nothing there but my own message asking
+    said = run(channel_task.reset_asked(Request(world.owner, INBOX, "reset this channel", message_id=ASKED), {}, frozenset()))
+    assert said == Shown("nothing to delete") and world.sent == []
+    assert world.notes == [(INBOX, "🧹 <#100> is already empty: there is nothing to delete.", 10)], "said for a moment"
+    assert world.deleted == [ASKED], "and my message goes too: no trace"
 
 
 def test_the_word_carries_the_tasks_name_is_exact_and_leaves_reset_alone():
     registry.load()
     kind, task, keyword = registry.find("reset channel")
     assert (kind, task.name, keyword.exact, keyword.channels) == ("keyword", "channel", True, "any")
+    assert keyword.housekeeping and not keyword.keep_command, "the typed word is tidied away by the registry"
     assert registry._keyword_router.match("reset channel").entry is not registry._keyword_router.match("reset").entry
     assert registry._keyword_router.match("reset chanel") is None, "a destructive word is never matched by a typo"
     assert registry.find("reset")[1].name == "builtin"

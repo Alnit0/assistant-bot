@@ -6,6 +6,16 @@ backfilled from the git log.
 
 ## 2026-10-11
 
+- **Housekeeping leaves no trace.** Deleting, archiving, pinning,
+  unpinning and resetting a channel now say one short line that goes
+  after about 10 seconds, even with `KEEP_CONFIRMATIONS` on; the word
+  you typed goes too, and #bot-log keeps the record. Before, "📦
+  Archived", "🗑️ Deleted", "📌 Pinned" and "📌 Unpinned" stayed in the
+  channel.
+- **A channel reset removes its own card and your message**, on Delete
+  and on Cancel alike.
+- **Confirming a protected delete or archive** is now recorded in
+  #bot-log.
 - **`reset channel` empties the channel you are in.** It always asks
   first, with how many messages there are and how many are pinned or 📌;
   **Delete all** removes everything, **Delete all unpinned** keeps the

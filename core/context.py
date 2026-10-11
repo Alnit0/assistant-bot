@@ -29,6 +29,9 @@ class Context:
     args: list[str] = field(default_factory=list)  # words after the keyword, if it takes any
     _message: discord.Message | None = field(default=None, repr=False)
     posted: int = 0  # how many messages this has put in the channel (asides don't count)
+    # Set by the registry for a housekeeping word (delete, archive, pin, unpin, channel
+    # reset): everything said about it tidies itself away, kept confirmations or not
+    housekeeping: bool = False
 
     # Database access: the async helpers in core/database.py, including run()
     db = database
@@ -112,7 +115,11 @@ class Context:
         if not text:
             return
         """Send a note that deletes itself (unless clean-up is switched off)."""
-        lifetime = lifecycle.delete_after() if seconds is None else lifecycle.delete_after(seconds)
+        if self.housekeeping:
+            # No trace in the channel: #bot-log is the record
+            lifetime = lifecycle.tidy_after() if seconds is None else lifecycle.tidy_after(seconds)
+        else:
+            lifetime = lifecycle.delete_after() if seconds is None else lifecycle.delete_after(seconds)
         message = await self._channel.send(text, delete_after=lifetime)
         lifecycle.note_transient(getattr(message, "id", None))
 

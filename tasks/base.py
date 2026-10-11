@@ -48,6 +48,10 @@ class Keyword:
     exact: bool = False  # never match by typo
     accepts: Callable[[list[str]], bool] | None = None  # say no to arguments that aren't ours
     keep_command: bool = False  # leave the user's message in place after it works
+    # Housekeeping (delete, archive, pin, unpin, channel reset) leaves no trace in the
+    # channel: what is said about it deletes itself after about 10 seconds whatever
+    # KEEP_CONFIRMATIONS says, the user's command goes too, and #bot-log is the record
+    housekeeping: bool = False
 
     def __post_init__(self):
         self.words = _as_list(self.words)
@@ -98,6 +102,10 @@ class ReplyAction:
     # with the reason. Asked before the handler; the user's reply gets ⚠️ and the
     # reason is shown briefly. Must be quick and change nothing
     validate: Callable[[discord.Message], None] | None = None
+    # Housekeeping (delete, archive, pin, unpin, channel reset) leaves no trace in the
+    # channel: what is said about it deletes itself after about 10 seconds whatever
+    # KEEP_CONFIRMATIONS says, the user's command goes too, and #bot-log is the record
+    housekeeping: bool = False
 
     def __post_init__(self):
         self.words = _as_list(self.words)
@@ -155,6 +163,10 @@ class Reaction:
     # Must be quick and change nothing
     validate: Callable[[discord.Message], None] | None = None
     instant: bool = False  # act at once, with no quiet period and no undo
+    # Housekeeping (delete, archive, pin, unpin, channel reset) leaves no trace in the
+    # channel: what is said about it deletes itself after about 10 seconds whatever
+    # KEEP_CONFIRMATIONS says, and #bot-log is the record
+    housekeeping: bool = False
 
     def __post_init__(self):
         self.examples = list(self.examples)

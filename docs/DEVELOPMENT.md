@@ -431,7 +431,7 @@ owner.
 | Way in | What happens |
 |---|---|
 | Reply `archive` (or `box`, `file away`) | The message is copied to the archive channel under its author's name and avatar, with attachments, the original time and a link to where it was. Then the original and your reply are deleted, and "📦 Archived: link" shows for 5 seconds |
-| Reply `delete` (or `remove`) | The message and your reply are deleted for good, and "🗑️ Deleted" shows for 5 seconds. Must be spelled exactly |
+| Reply `delete` (or `remove`) | The message and your reply are deleted for good, and "🗑️ Deleted" shows for about 10 seconds. Must be spelled exactly |
 | React 📦 | Same as replying `archive`, after 30 seconds. Remove the 📦 in time to cancel |
 | React 🗑️ | Same as replying `delete`, after 30 seconds. Remove the 🗑️ in time to cancel |
 | Apps > **Archive message** | Same as replying `archive` (fallback) |
@@ -603,10 +603,12 @@ Empties the channel you are in. It always asks first.
   (the files themselves are not downloaded, and Discord's links stop
   working once the message is gone). If the copy can't be written,
   nothing is deleted.
+- **No trace of itself**: your `reset channel` (or the sentence you
+  said) and the card are deleted with everything else, and on **Cancel**
+  both go too.
 - **When it is done**: "🧹 Channel reset: 131 messages deleted · a copy
-  was saved", which
-  tidies itself away after 10 seconds unless `KEEP_CONFIRMATIONS` is on,
-  and a card in #bot-log.
+  was saved", which deletes itself after 10 seconds (also while
+  `KEEP_CONFIRMATIONS` is on), and a card in #bot-log.
 - **Permissions**: the bot's role needs Read Message History and Manage
   Messages in the channel. If one is missing the card says which, and
   nothing is deleted.

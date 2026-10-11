@@ -125,6 +125,19 @@ def delete_after(seconds: float = CONFIRMATION_SECONDS) -> float | None:
     return seconds if deletes(MessageClass.TRANSIENT) else None
 
 
+# Housekeeping (delete, archive, pin, unpin, channel reset) leaves no trace in
+# the channel: what it says goes after about this long whatever
+# KEEP_CONFIRMATIONS says, because its record is #bot-log, not the channel
+HOUSEKEEPING_SECONDS = 10.0
+
+
+def tidy_after(seconds: float = HOUSEKEEPING_SECONDS) -> float | None:
+    """How long a housekeeping line stays (for discord.py's `delete_after`).
+    Never None because confirmations are kept; only while clean-up is
+    switched off altogether (`dev cleanup off`)."""
+    return max(seconds, HOUSEKEEPING_SECONDS) if deletes(MessageClass.TRANSIENT) else None
+
+
 # The ids of our recent self-deleting notes, so `dev inspect` can name one that
 # was left on screen. In memory: a restart forgets them, and they read as Kept.
 _transient: deque[int] = deque(maxlen=500)

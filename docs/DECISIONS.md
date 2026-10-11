@@ -897,3 +897,25 @@ A short log of key decisions and why. Newest at the bottom.
   - The closing line goes through `lifecycle.delete_after`, like every
     Transient message: it goes after 10 seconds, and stays while
     `KEEP_CONFIRMATIONS` is on.
+- **Housekeeping leaves no trace (2026-10-11).** Delete, archive, pin,
+  unpin and channel reset are about tidying: a line left behind saying
+  so is clutter of its own. What stayed around before, and why:
+  - "📦 Archived: link", "🗑️ Deleted", "📌 Pinned", "📌 Unpinned" (reply
+    words), the answer to "That message is pinned. Delete it anyway?",
+    the reason an archive, delete or 📌 was refused, and "🧹 Channel
+    reset: …": each was a Transient message, and `KEEP_CONFIRMATIONS`
+    (on by default) kept every one of those in place.
+  - The message that asked for a channel reset in plain words, and its
+    card on Cancel.
+  Now a registration is marked `housekeeping`, and what is said about it
+  goes after about 10 seconds whatever that setting says
+  (`lifecycle.tidy_after`); only `dev cleanup off`, which stops all
+  tidying, keeps it. `KEEP_CONFIRMATIONS` still keeps every other
+  confirmation: it exists so that what the bot did can be read back,
+  and for housekeeping #bot-log is where that is read. A confirmed
+  protected delete was not in #bot-log at all; every confirmed question
+  is now. Left as they are, on purpose: a failed word stays with ⚠️ (a
+  failure must be seen); the ✅ on a message whose 📌 was applied (it is
+  that message's status, and goes when the 📌 does); `reset` (the chat's
+  memory) and `dev clean`, which are not housekeeping of messages in
+  this sense.

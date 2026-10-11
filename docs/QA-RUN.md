@@ -1,6 +1,6 @@
 # QA run sheet
 
-One pass through 181 of the 205 👤 Manual tests in `docs/TESTING.md` that are
+One pass through 182 of the 206 👤 Manual tests in `docs/TESTING.md` that are
 ⬜ Untested (as of 2026-10-10); the other 24 are for pills stages not built yet
 (group R) or need a setup of their own, and join as each can be run. Blocks share setup and each one leaves things
 ready for the next, so run them in order.
@@ -27,8 +27,8 @@ tests (block 12).
 | 17 | Traces: `dev why` and bug reports | `--dev`, off (one restart) | 3 | 5 |
 | 18 | Retest: one path for every message | `--dev`, off (one restart) | 9 | 12 |
 | 21 | Pills: the daily checklist | `--dev`, off (two restarts) | 13 | 20 |
-| 22 | Channel reset | `--dev`, off then on (one restart) | 5 | 8 |
-| | **Total** | | **181** (F2 is split over blocks 4 and 7, counted in 7) | **about 3¼ hours** |
+| 22 | Channel reset, and housekeeping that leaves no trace | `--dev`, off then on (one restart) | 6 | 11 |
+| | **Total** | | **182** (F2 is split over blocks 4 and 7, counted in 7) | **about 3¼ hours** |
 
 Blocks 14 to 22 need nothing from the others (19 and 20, the first pills blocks, passed on 2026-10-10 and are no longer here) (13 and 16 tested the old way of asking Claude, which is gone): run them any time after
 block 1, and before the overnight block if that suits.
@@ -89,7 +89,7 @@ Dev mode: off. In #inbox unless it says otherwise.
 | 7 | `archive` (not as a reply) | Not an action: Claude answers | D10 |
 | 8 | `reset`, then `What was my test word?` | "🧹 Conversation memory cleared." for 5 seconds; Claude no longer knows | A10 |
 | 9 | `timer banana` | Your message stays and gets ⚠️; the reason is only on the log card | K4 |
-| 10 | Reply `delete` to that `timer banana` message | It and your reply are deleted; "🗑️ Deleted" for 5 seconds | E1 |
+| 10 | Reply `delete` to that `timer banana` message | It and your reply are deleted; "🗑️ Deleted" for about 10 seconds | E1 |
 | 11 | In #scratch: `ping` | Nothing: no reply, no Claude. **Leave the message there** (target for block 6) | A12 |
 | 12 | Back in #inbox: `Set a timer for 5 minutes` | A 5-minute timer starts, exactly as `timer 5m` would; your message stays; Claude adds one short line. A "🔧 Tool: timer" log card as well as "Message handled". Reply `cancel` to the timer | A17 |
 
@@ -105,7 +105,7 @@ type four messages first: `one`, `two`, `three`, `keep me`.
 | 1 | React 📦 on `one` and time it | Nothing for 30 seconds, then it is archived | C1 |
 | 2 | Look at the copy in #archive | Your name and avatar, original time, link back; original gone | D4 |
 | 3 | React 📦 on `two`, and about 5 seconds later on `three` | Both archived together, 30 seconds after the second reaction | C4 |
-| 4 | React 📦 on any card in #bot-log | At once, with no 30-second wait: the card gets ⚠️, the reason shows in the channel for 5 seconds, and there is a "Reaction refused" log card. Nothing more happens later | C6 |
+| 4 | React 📦 on any card in #bot-log | At once, with no 30-second wait: the card gets ⚠️, the reason shows in the channel for about 10 seconds, and there is a "Reaction refused" log card. Nothing more happens later | C6 |
 | 5 | Remove your 📦 from that card | The ⚠️ is removed; nothing else happens | C12 |
 | 6 | React 📌 on `keep me` and time it | Nothing for 30 seconds, then it is pinned and gets ✅; no "pinned a message" notice left behind; "📌 Reaction: keep" log card. **Leave it kept** (target for block 9) | L1 |
 
@@ -162,7 +162,7 @@ Targets already there: your `ping` (block 2) and the pinned `pin me`
 | # | Do | Expect | Tests |
 |---|---|---|---|
 | 1 | `dev on` | Panel as before | |
-| 2 | Reply `archive` to your `ping` | Copy in #archive under your name and avatar, original time, link back; original and reply deleted; "📦 Archived: link" for 5 seconds | D1 |
+| 2 | Reply `archive` to your `ping` | Copy in #archive under your name and avatar, original time, link back; original and reply deleted; "📦 Archived: link" for about 10 seconds | D1 |
 | 3 | Post a message with the image and the file attached; reply `archive` to it | Both attachments are on the archived copy | D2 |
 | 4 | In #archive: press **Restore** on that copy | Reposted to #scratch with name, avatar, attachments and time; the archived copy is removed | D6 |
 | 5 | `dev seed 6` | Six sample messages tagged "🧪 dev test data" (oat milk, weekly review, dentist, article link, car registration, gym) | |
@@ -187,11 +187,11 @@ Targets already there: your `ping` (block 2) and the pinned `pin me`
 | 24 | `dev seed 2`, pin one by hand, `dev clean` | The pinned one stays; the other goes | J23 |
 | 25 | Remove your 📌 from "Gym…" and wait 2 seconds | It is unpinned and its ✅ is removed; "📌 Reaction removed: keep" log card | L2 |
 | 26 | `dev seed 2`; reply `please archive this` to "Buy oat milk…" | Archived, as `archive` does | D15 |
-| 27 | Reply `pin` to "Idea: a weekly review…" | Pinned at once (no wait); your reply is deleted; "📌 Pinned" for 5 seconds; no "pinned a message" notice left behind | L9 |
-| 28 | Reply `unpin` to it | Unpinned at once; "📌 Unpinned" for 5 seconds | L11 |
+| 27 | Reply `pin` to "Idea: a weekly review…" | Pinned at once (no wait); your reply is deleted; "📌 Pinned" for about 10 seconds; no "pinned a message" notice left behind | L9 |
+| 28 | Reply `unpin` to it | Unpinned at once; "📌 Unpinned" for about 10 seconds | L11 |
 | 29 | Reply `pin this` to it, then `unpin`; then `pin me`, then `unpin` | Each `pin …` pins it, as `pin` does | L10 |
-| 30 | In #archive: reply `archive` to one of the copies | At once: your reply stays with ⚠️, "That message is already in the archive." shows for 5 seconds, and there is a log card. Delete your reply by hand | D13 |
-| 31 | Still in #archive: react 🗑️ on that copy, then remove the 🗑️ | At once: ⚠️ on the copy and "Messages in the archive stay there…" for 5 seconds; nothing is deleted. Removing the 🗑️ removes the ⚠️ | E12 |
+| 30 | In #archive: reply `archive` to one of the copies | At once: your reply stays with ⚠️, "That message is already in the archive." shows for about 10 seconds, and there is a log card. Delete your reply by hand | D13 |
+| 31 | Still in #archive: react 🗑️ on that copy, then remove the 🗑️ | At once: ⚠️ on the copy and "Messages in the archive stay there…" for about 10 seconds; nothing is deleted. Removing the 🗑️ removes the ⚠️ | E12 |
 | 32 | Tidy up: unpin the one from step 24, `dev clean`; in #archive, `dev clean` | #scratch has no test data; the `dev inspect` card in #archive is gone | |
 | 33 | Only if you have a channel that is at Discord's pin limit (otherwise report `L5 skip`): react 📌 on a message there. Then unpin one, take the 📌 off and add it again | The message gets ⚠️, isn't pinned and nothing is said in the channel; the log card says the channel is full and what to do. The second time it is pinned, and ✅ replaces the ⚠️ | L5 |
 
@@ -455,7 +455,7 @@ again.)
 | 11 | Restart the bot (still `--dev`); type `dev jobs`. Then say `took my pill A` again | No second checklist and no second set of messages in the hub. `dev jobs` shows one `pills/checklist` job, for the next 6:00 am. The second dose of Pill A is ticked off on the same checklist message | R27 |
 | 12 | `dev clock 11:59pm`, then `dev clock +2m`. Look at the hub; then `dev clock 6:00am` | The untouched doses show ❌ missed on yesterday's checklist, which is otherwise left as it was; their own messages are deleted. `dev clock 6:00am` then posts a fresh checklist for the new day, everything pending | R26 |
 
-## 22. Channel reset
+## 22. Channel reset, and housekeeping that leaves no trace
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -468,11 +468,12 @@ another (wait for its ✅). Every step ends by saying what to press.
 
 | # | Do | Expect | Tests |
 |---|---|---|---|
-| 1 | In a test channel with a dozen messages, one of them pinned and one marked 📌: type `reset channel`. Then press **Cancel** | Your word is deleted and a card appears: "🧹 Channel · reset", "N messages in #channel, 2 of them pinned or 📌", "⚠️ This can't be undone", with **Delete all** (red), **Delete all unpinned** and **Cancel**. Nothing is deleted. Cancel removes the card | U4 |
-| 2 | Type `reset channel` again; press **Delete all unpinned** | The card shows "🧹 Deleting N messages…", then everything goes except the pinned and the 📌 message. \"🧹 Channel reset: N messages deleted · a copy was saved\" (it stays while `KEEP_CONFIRMATIONS` is on, otherwise it goes after 10 seconds), and a "🧹 Channel reset" card in #bot-log saying 2 were kept and naming the copy. In `data\exports\` there is a `<channel>-<date>-<time>.txt` with every message that was there, oldest first, the pinned and 📌 ones marked | U5 |
+| 1 | In a test channel with a dozen messages, one of them pinned and one marked 📌: type `reset channel`. Then press **Cancel** | Your word is deleted and a card appears: "🧹 Channel · reset", "N messages in #channel, 2 of them pinned or 📌", "⚠️ This can't be undone", with **Delete all** (red), **Delete all unpinned** and **Cancel**. Nothing is deleted. Cancel removes the card: with your word already gone, nothing of the question is left. (Asked in plain words in #inbox, `reset this channel`, Cancel deletes that message of yours too) | U4 |
+| 2 | Type `reset channel` again; press **Delete all unpinned** | The card shows "🧹 Deleting N messages…", then everything goes except the pinned and the 📌 message. \"🧹 Channel reset: N messages deleted · a copy was saved\" (it goes after 10 seconds, also while `KEEP_CONFIRMATIONS` is on), and a "🧹 Channel reset" card in #bot-log saying 2 were kept and naming the copy. In `data\exports\` there is a `<channel>-<date>-<time>.txt` with every message that was there, oldest first, the pinned and 📌 ones marked | U5 |
 | 3 | Type `reset channel` once more; press **Delete all** | Every message goes, the pinned and the 📌 one too. The closing line and the #bot-log card as before, with nothing kept | U6 |
 | 4 | In the hub, with today's checklist posted (`pills`), a timer running (`timer 10m tea`) and dev mode on there (`dev on`): say `reset this channel`; press **Delete all**. Then press **Taken** on a pill's message, and reply `cancel` to the tea timer | The card, then everything goes. Afterwards, once each and nothing twice: today's checklist with its Taken / Skip messages, the tea timer's card, the pinned "Active timers" board and the pinned dev panel. Taken ticks the pill off on the new checklist; `cancel` cancels the timer on its new card | U7 |
 | 5 | Only if you can change the bot's role (otherwise report `U8 skip`): take Manage Messages away from it in a test channel; type `reset channel` there. Give the permission back | A card that says "⚠️ I can't reset #channel: my role needs **Manage Messages** in this channel. Nothing was deleted." with **Cancel** only. No ⚠️ on your message and nothing in the channel is touched | U8 |
+| 6 | With `KEEP_CONFIRMATIONS` on (the default; restart after setting it): send `a`, `b` and `c`. Reply `pin` to `a`, then `unpin`. Reply `archive` to `b`. Reply `delete` to `c`. Wait 15 seconds after each | Each time: one short line ("📌 Pinned", "📌 Unpinned", "📦 Archived: link", "🗑️ Deleted") that is gone after about 10 seconds, though confirmations are kept; your reply word is deleted; a card in #bot-log for each. Afterwards nothing in the channel says any of it happened | M7 |
 
 ## When you finish
 

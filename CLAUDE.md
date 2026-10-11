@@ -411,13 +411,22 @@ Cleanliness
   | Kept | Chats with Claude and its replies, help, explanations, lists, stats, seed instructions, results you'll want to read | Never auto-deleted (until the future nightly sweep); only removed by me (archive, delete) |
   | Live | Dev panel, timer board, Pomodoro card | Edited in place; when finished, collapses to a one-line summary (becomes Kept), or is removed if it has no lasting value (e.g. the dev panel) |
   | Consumed | My command words: reply actions (archive, pin), settings (dev debounce 1), shortcuts whose result is posted | Deleted once actioned successfully; kept with ⚠️ if it failed |
-  | Transient | Short confirmations ("📦 Archived"), invalid-action reasons | Delete themselves after a few seconds; stay while `KEEP_CONFIRMATIONS` is on (the default) |
+  | Transient | Short confirmations ("📦 Archived"), invalid-action reasons | Delete themselves after a few seconds; stay while `KEEP_CONFIRMATIONS` is on, except housekeeping's, which always go (the default) |
   | Alert | Timer done, Pomodoro phase change, reminders | Stay until acknowledged, then deleted, with the original updated |
   | Protected | 📌-reacted or pinned messages | Never auto-deleted; archive/delete ask for confirmation |
 
 - Rule of thumb: only delete a message when its information now lives
   somewhere else. `dev cleanup off` disables all auto-deletion.
-- `KEEP_CONFIRMATIONS` (`.env`, default true) keeps every Transient
+- **Housekeeping leaves no trace in the channel** (delete, archive, pin,
+  unpin, channel reset): at most one short line, which deletes itself
+  after about 10 seconds whatever `KEEP_CONFIRMATIONS` says
+  (`lifecycle.tidy_after`); the typed word is deleted; a card or
+  question that asked first goes on yes and on no; and the action is
+  recorded in #bot-log, which is its record. A registration says it is
+  housekeeping (`housekeeping=True` on a `Keyword`, `ReplyAction` or
+  `Reaction`), and the registry and `ctx.confirm` / `ctx.note` do the
+  rest. A failure is the one thing that stays: ⚠️ on my message.
+- `KEEP_CONFIRMATIONS` (`.env`, default true) keeps every other Transient
   message in place, so what the bot did can be read back. It changes
   nothing else: command messages are still Consumed, and a question left
   unanswered still goes. Send them through `ctx.confirm`, `ctx.note` or

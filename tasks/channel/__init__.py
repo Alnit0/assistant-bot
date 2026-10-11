@@ -23,10 +23,15 @@ from tasks.channel import rules
 # data/exports/ (who, when, what, pinned or marked, links to attachments). If
 # that can't be done, nothing is deleted.
 #
+# A reset leaves no trace of itself: the message that asked and the card go
+# with everything else (and on Cancel, both of them), and the one line that
+# says it is done deletes itself after ten seconds. #bot-log is the record.
+#
 # No discord.py here: reading and deleting is core/clearing.py, the buttons
-# are core/cards.py. The channel's id travels in the buttons, so the card
-# still works after a restart, and the channel is read again when one is
-# pressed: what is deleted is what is there then.
+# are core/cards.py. The channel's id and the id of the message that asked
+# travel in the buttons, so the card still works after a restart, and the
+# channel is read again when one is pressed: what is deleted is what is
+# there then.
 # ---------------------------------------------------------------------------
 TASK = "channel"
 ICON = "🧹"
@@ -57,25 +62,37 @@ async def save_copy(found: clearing.Scan) -> Path:
     return await asyncio.to_thread(_write, EXPORT_DIR, rules.file_name(found.name, saved_at), text)
 
 
-def _cancel(channel_id: int) -> Button:
-    return Button("Cancel", TASK, CANCEL, str(channel_id), emoji="✖️")
+def _arg(channel_id: int, asked_by: int | None) -> str:
+    """What a button carries: the channel, and the message that asked (0 if none)."""
+    return f"{channel_id}:{asked_by or 0}"
 
 
-def asking_card(found: clearing.Scan, leave: frozenset[int] = frozenset()) -> Card | None:
-    """The card for a channel as it stands. None if there is nothing in it to delete."""
+def _read(arg: str) -> tuple[int, int | None]:
+    channel_id, _, asked_by = arg.partition(":")
+    return int(channel_id), int(asked_by or 0) or None
+
+
+def _cancel(channel_id: int, asked_by: int | None = None) -> Button:
+    return Button("Cancel", TASK, CANCEL, _arg(channel_id, asked_by), emoji="✖️")
+
+
+def asking_card(found: clearing.Scan, asked_by: int | None = None) -> Card | None:
+    """The card for a channel as it stands. None if there is nothing in it to
+    delete. `asked_by` is the message that asked: it goes with the rest, or
+    on Cancel, and is not one of the messages counted."""
     if found.missing:
-        return Card(rules.cannot_text(found.mention, found.missing), ((_cancel(found.channel_id),),))
-    total, protected, old = rules.counts(found.messages, clock.real_now(), leave)
+        return Card(rules.cannot_text(found.mention, found.missing), ((_cancel(found.channel_id, asked_by),),))
+    total, protected, old = rules.counts(found.messages, clock.real_now(), frozenset({asked_by} if asked_by else ()))
     if not total:
         return None
-    which = str(found.channel_id)
+    which = _arg(found.channel_id, asked_by)
     return Card(
         rules.card_text(found.mention, total, protected, old),
         (
             (
                 Button("Delete all", TASK, ALL, which, emoji="🗑️", style=cards.DANGER),
                 Button("Delete all unpinned", TASK, UNPINNED, which, emoji="📌"),
-                _cancel(found.channel_id),
+                _cancel(found.channel_id, asked_by),
             ),
         ),
     )
@@ -86,10 +103,8 @@ def asking_card(found: clearing.Scan, leave: frozenset[int] = frozenset()) -> Ca
 # ---------------------------------------------------------------------------
 async def reset_word(ctx: Context) -> str:
     """`reset channel`: the card for this channel."""
-    # The word itself is tidied away once this has worked: it isn't one of the messages counted
-    leave = frozenset({ctx.message_id} if ctx.message_id else ())
     found = await clearing.scan(ctx.channel_id)
-    card = asking_card(found, leave)
+    card = asking_card(found, ctx.message_id)
     if card is None:
         await ctx.confirm(rules.empty_text(found.mention))
         return "nothing to delete"
@@ -100,9 +115,13 @@ async def reset_word(ctx: Context) -> str:
 async def reset_asked(request: Request, data: dict, guessed: frozenset) -> Shown | str:
     """ "reset this channel" in plain words: the same card."""
     found = await clearing.scan(request.channel_id)
-    card = asking_card(found)
+    card = asking_card(found, request.message_id)
     if card is None:
-        return rules.empty_text(found.mention)
+        # Nothing to delete but the message that asked: said for a moment, and that goes too
+        await clearing.note(request.channel_id, rules.empty_text(found.mention), rules.NOTE_SECONDS)
+        if request.message_id is not None:
+            await cards.delete(request.channel_id, request.message_id)
+        return Shown("nothing to delete")
     await cards.send(request.channel_id, card)
     return Shown(f"asked before resetting {found.mention}")
 
@@ -111,15 +130,17 @@ async def reset_asked(request: Request, data: dict, guessed: frozenset) -> Shown
 # Doing it
 # ---------------------------------------------------------------------------
 async def _reset(press: cards.Press, keep_protected: bool) -> str:
-    channel_id = int(press.arg)
+    channel_id, asked_by = _read(press.arg)
     found = await clearing.scan(channel_id)
     if found.missing:
         # The permission went between the card and the press: said on the card, nothing deleted
-        await press.update(Card(rules.cannot_text(found.mention, found.missing), ((_cancel(channel_id),),)))
+        await press.update(Card(rules.cannot_text(found.mention, found.missing), ((_cancel(channel_id, asked_by),),)))
         return "missing " + ", ".join(found.missing)
-    # The card is left out of the plan and the count: it shows the work, and goes last
+    # The reset's own two messages are left out of the plan and the count, and go last:
+    # the card, which shows the work meanwhile, and the message that asked for it
     card_id = frozenset({press.message_id} if press.message_id else ())
-    todo = rules.plan(found.messages, keep_protected, clock.real_now(), card_id)
+    own = card_id | frozenset({asked_by} if asked_by else ())
+    todo = rules.plan(found.messages, keep_protected, clock.real_now(), own)
     await press.update(Card(rules.working_text(len(todo.ids), len(todo.single))))
     # A copy first, of everything that is there (the card apart): no copy, no deleting
     everything = clearing.Scan(found.channel_id, found.mention, tuple(m for m in found.messages if m.id not in card_id), name=found.name)
@@ -128,12 +149,12 @@ async def _reset(press: cards.Press, keep_protected: bool) -> str:
     except OSError as error:
         log.exception("Could not save a transcript of channel %s", channel_id)
         await log_error("Channel reset stopped: no copy could be saved", repr(error))
-        await press.update(Card(f"{rules.HEADING}\n{rules.NOT_SAVED}", ((_cancel(channel_id),),)))
+        await press.update(Card(f"{rules.HEADING}\n{rules.NOT_SAVED}", ((_cancel(channel_id, asked_by),),)))
         return "not saved, nothing deleted"
     gone = await clearing.delete(channel_id, [list(batch) for batch in todo.bulk], list(todo.single))
-    if press.message_id is not None:
-        await cards.delete(channel_id, press.message_id)
-        gone.add(press.message_id)
+    for message_id in own:
+        await cards.delete(channel_id, message_id)
+        gone.add(message_id)
     deleted = len(gone & todo.ids)
 
     # Whatever pointed at a message that is gone is put right: open cards and
@@ -159,7 +180,11 @@ async def on_unpinned(press: cards.Press) -> str:
 
 
 async def on_cancel(press: cards.Press) -> str:
+    """No after all: the card goes, and so does the message that asked. Nothing is left."""
+    channel_id, asked_by = _read(press.arg)
     await press.remove()
+    if asked_by is not None:
+        await cards.delete(channel_id, asked_by)
     return "cancelled"
 
 
@@ -192,6 +217,7 @@ class ChannelTask(Task):
                 examples=["reset channel"],
                 channels=ANY,
                 exact=True,
+                housekeeping=True,
             ),
         ]
 

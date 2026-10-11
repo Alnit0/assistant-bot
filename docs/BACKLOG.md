@@ -139,6 +139,10 @@ a schema could take its place.
   sums. The `new-task` skill asks for both, and `task-check` checks
   every task declares them. Pills already behaves as identity: name,
   on_repeat: update, in its own code (`plain._known`, `add_card`).
+- **Housekeeping, left as it is** (2026-10-11): `reset` (it clears the
+  chat's memory and says so for 5 seconds, or for good while
+  confirmations are kept) and `dev clean` are not counted as
+  housekeeping. Say if they should be.
 - **Channel reset, left as it is** (2026-10-11):
   - In plain words it works where the bot listens (#inbox and the hub);
     everywhere else it is the typed `reset channel`.

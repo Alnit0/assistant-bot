@@ -39,14 +39,14 @@ Last updated: 2026-10-11
 | J | Dev mode | 48 | 8 | 40 | 40 | 8 | 0 | 0 |
 | K | Startup and housekeeping | 14 | 7 | 7 | 7 | 7 | 0 | 0 |
 | L | Keep | 12 | 4 | 8 | 8 | 4 | 0 | 0 |
-| M | Message lifecycle | 5 | 4 | 1 | 1 | 4 | 0 | 0 |
+| M | Message lifecycle | 7 | 5 | 2 | 2 | 5 | 0 | 0 |
 | P | Bugs | 33 | 16 | 17 | 15 | 18 | 0 | 0 |
 | Q | Time, days, the schedule model, the occurrence log and cards | 12 | 11 | 1 | 1 | 11 | 0 | 0 |
 | R | Pills | 42 | 5 | 37 | 29 | 13 | 0 | 0 |
 | S | Routing and confirm cards | 55 | 8 | 47 | 13 | 41 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 1 | 21 | 0 | 0 |
 | U | Channel reset | 8 | 3 | 5 | 5 | 3 | 0 | 0 |
-| | **Total** | **375** | **108** | **267** | **205** | **169** | **0** | **1** |
+| | **Total** | **377** | **109** | **268** | **206** | **170** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -111,7 +111,7 @@ tidy themselves away; M5 covers the setting). "Log card" means a card in
 | C3 | 🤖 Auto | Reaction added, removed, added again | Applied once, on where it ended up | ✅ Pass | 2026-10-07 | `tests/test_reactions.py` |
 | C4 | 👤 Manual | React 📦 on two messages a few seconds apart | Both handled together, 30 seconds after the last reaction | ⬜ Untested | | |
 | C5 | 🤖 Auto | Someone who isn't allowed reacts 📦 | Ignored before any decision is made | ✅ Pass | 2026-10-07 | `tests/test_reaction_keys.py` |
-| C6 | 👤 Manual | React 📦 on a message that can't be archived (e.g. in #bot-log) | At once, with no 30-second wait: the message gets ⚠️, the reason shows in the channel for 5 seconds, and there is a "Reaction refused" log card. Nothing more happens later | ⬜ Untested | | |
+| C6 | 👤 Manual | React 📦 on a message that can't be archived (e.g. in #bot-log) | At once, with no 30-second wait: the message gets ⚠️, the reason shows in the channel for about 10 seconds, and there is a "Reaction refused" log card. Nothing more happens later | ⬜ Untested | | |
 | C7 | 🤖 Auto | An emoji nothing is registered for (👍), or one that doesn't work in that channel | Ignored | ✅ Pass | 2026-10-07 | `tests/test_reaction_keys.py` |
 | C8 | 👤 Manual | React 📦 while the bot is stopped, then start it | Not acted on (reactions made while off are not seen) | ⬜ Untested | | |
 | C9 | 🤖 Auto | Debounce timer | One batch after the quiet period; each change restarts the wait; cancel drops the batch; a change during handling starts a new batch | ✅ Pass | 2026-10-07 | `tests/test_debounce.py, test_devmode.py` |
@@ -123,7 +123,7 @@ tidy themselves away; M5 covers the setting). "Log card" means a card in
 
 | ID | Type | Test | Expected result | Status | Date | Notes |
 |---|---|---|---|---|---|---|
-| D1 | 👤 Manual | Reply `archive` to a text message | Copy in #archive under the author's name and avatar, with the original time and a link back; original and your reply deleted; "📦 Archived: link" for 5 seconds | ⬜ Untested | | |
+| D1 | 👤 Manual | Reply `archive` to a text message | Copy in #archive under the author's name and avatar, with the original time and a link back; original and your reply deleted; "📦 Archived: link" for about 10 seconds | ⬜ Untested | | |
 | D2 | 👤 Manual | Reply `archive` to a message with an image and a file | Attachments are on the archived copy | ⬜ Untested | | |
 | D3 | 👤 Manual | Reply `box`, and `file away` | Both archive, as `archive` does | ⬜ Untested | | |
 | D4 | 👤 Manual | React 📦 and wait | Same result as D1, with no reply to clean up | ⬜ Untested | | |
@@ -135,7 +135,7 @@ tidy themselves away; M5 covers the setting). "Log card" means a card in
 | D10 | 👤 Manual | Type `archive` on its own (not as a reply) | Not an action; goes to Claude in #inbox | ⬜ Untested | | |
 | D11 | 🤖 Auto | Archive record life cycle | Created, copy noted, found by original, copy or button message; restored once only; discarded if the copy fails | ✅ Pass | 2026-10-07 | `tests/test_archive_store.py` |
 | D12 | 🤖 Auto | Webhook names, copied embeds, restore fallback text | "discord" and "clyde" masked, 80 characters at most; only the message's own embeds; "**Name** wrote:" within 2000 characters | ✅ Pass | 2026-10-07 | `tests/test_archive_rules.py` |
-| D13 | 👤 Manual | Reply `archive` to an archived copy in #archive | At once: your reply stays with ⚠️, "That message is already in the archive." shows for 5 seconds, and there is a log card | ⬜ Untested | |  |
+| D13 | 👤 Manual | Reply `archive` to an archived copy in #archive | At once: your reply stays with ⚠️, "That message is already in the archive." shows for about 10 seconds, and there is a log card | ⬜ Untested | |  |
 | D14 | 🤖 Auto | Filler words on a reply | `pin this`, `pin me`, `please archive it`, `delete this` are read as the action; `delet this` and `pin this to the wall` are not; typed words are unchanged (`ping me` is chat) | ✅ Pass | 2026-10-07 | `tests/test_router.py, test_registry.py` |
 | D15 | 👤 Manual | Reply `please archive this` to a message | Archived, as `archive` does | ⬜ Untested | |  |
 
@@ -143,7 +143,7 @@ tidy themselves away; M5 covers the setting). "Log card" means a card in
 
 | ID | Type | Test | Expected result | Status | Date | Notes |
 |---|---|---|---|---|---|---|
-| E1 | 👤 Manual | Reply `delete` to a message | Message and your reply deleted; "🗑️ Deleted" for 5 seconds | ⬜ Untested | | |
+| E1 | 👤 Manual | Reply `delete` to a message | Message and your reply deleted; "🗑️ Deleted" for about 10 seconds | ⬜ Untested | | |
 | E2 | 🤖 Auto | Reply `delet` | Not treated as delete (exact word) | ✅ Pass | 2026-10-07 | `tests/test_registry.py` |
 | E3 | 👤 Manual | React 🗑️ and wait 30 seconds | Message deleted | ⬜ Untested | | |
 | E4 | 👤 Manual | React 🗑️, remove it within 30 seconds | Nothing happens | ⬜ Untested | | |
@@ -154,7 +154,7 @@ tidy themselves away; M5 covers the setting). "Log card" means a card in
 | E9 | 👤 Manual | Apps > **Archive message** on a pinned message | Asks for confirmation first | ⬜ Untested | | |
 | E10 | 🤖 Auto | Protection rules | Pinned or 📌 by anyone protects; a removed 📌 doesn't | ✅ Pass | 2026-10-07 | `tests/test_reactions.py` |
 | E11 | 🤖 Auto | Delete refusals and the confirmation question | Archive and #bot-log messages aren't deleted on request; the question names the reason and the action | ✅ Pass | 2026-10-07 | `tests/test_archive_rules.py` |
-| E12 | 👤 Manual | React 🗑️ on an archived copy in #archive | At once: ⚠️ on the copy and "Messages in the archive stay there…" for 5 seconds; nothing is deleted. Removing the 🗑️ removes the ⚠️ | ⬜ Untested | |  |
+| E12 | 👤 Manual | React 🗑️ on an archived copy in #archive | At once: ⚠️ on the copy and "Messages in the archive stay there…" for about 10 seconds; nothing is deleted. Removing the 🗑️ removes the ⚠️ | ⬜ Untested | |  |
 
 ## F. Pins
 
@@ -306,9 +306,9 @@ alone, and archive and delete ask first (E8). Replying `pin` pins at once.
 | L6 | 🤖 Auto | The 📌 registration | A reaction of the keep task, any channel, not destructive, with an undo; every reaction that leaves its message can be undone | ✅ Pass | 2026-10-07 | `tests/test_keep.py, test_registry.py` |
 | L7 | 🤖 Auto | Keeping and unkeeping | Keeping pins, unkeeping unpins; unkeeping a message that has gone is fine; a message counts as kept once 📌 is applied | ✅ Pass | 2026-10-07 | `tests/test_keep.py` |
 | L8 | 🤖 Auto | Discord refuses to pin or unpin | Pin limit, message gone, kind of message that can't be pinned, no permission: each fails with a reason the user can act on | ✅ Pass | 2026-10-07 | `tests/test_keep.py` |
-| L9 | 👤 Manual | Reply `pin` to a message | Pinned at once (no wait); your reply is deleted; "📌 Pinned" for 5 seconds; no "pinned a message" notice left behind | ⬜ Untested | |  |
+| L9 | 👤 Manual | Reply `pin` to a message | Pinned at once (no wait); your reply is deleted; "📌 Pinned" for about 10 seconds; no "pinned a message" notice left behind | ⬜ Untested | |  |
 | L10 | 👤 Manual | Reply `pin this`, and `pin me`, to a message | Each pins it, as `pin` does | ⬜ Untested | |  |
-| L11 | 👤 Manual | Reply `unpin` to a pinned message | Unpinned at once; "📌 Unpinned" for 5 seconds | ⬜ Untested | |  |
+| L11 | 👤 Manual | Reply `unpin` to a pinned message | Unpinned at once; "📌 Unpinned" for about 10 seconds | ⬜ Untested | |  |
 | L12 | 🤖 Auto | Pinning by reply | `pin`, `keep`, `save` pin and `unpin`, `unkeep` unpin, in any channel; a refusal by Discord confirms nothing | ✅ Pass | 2026-10-07 | `tests/test_keep.py` |
 
 ## M. Message lifecycle
@@ -324,6 +324,8 @@ by J28 and J29.
 | M3 | 🤖 Auto | What the timers task declares | A running timer or session is Live, its alert is an Alert, and a finished one's summary is ordinary Kept content | ✅ Pass | 2026-10-07 | `tests/test_lifecycle.py` |
 | M4 | 🤖 Auto | `KEEP_CONFIRMATIONS` | On unless switched off; while on, confirmations and notes get no lifetime, and the command message is still removed | ✅ Pass | 2026-10-09 | `tests/test_lifecycle.py` |
 | M5 | 👤 Manual | Set `KEEP_CONFIRMATIONS=true` (or remove the line), restart, then reply `pin` to a message, and react 📦 to a message in #archive | "📌 Pinned" stays in the channel and your `pin` is still deleted; the ⚠️ reason for the 📦 stays too. Reply `unpin` afterwards | ⬜ Untested | | |
+| M6 | 🤖 Auto | Housekeeping leaves no trace | A housekeeping line goes after 10 seconds whatever `KEEP_CONFIRMATIONS` says, and only `dev cleanup off` keeps it; archive, delete, 📦, 🗑️, pin, unpin, 📌 and `reset channel` are marked and none keeps its command (one that did would be refused at load); `pin`, `unpin`, `archive` and `delete` as real replies each say one line that goes, delete the word and are recorded in #bot-log; a word that is not housekeeping still follows the setting; a reason it can't be done goes after 10 seconds and the word stays with ⚠️; confirming a protected delete says so briefly and is recorded, and archive asks about a protected message as housekeeping; a refused 📦 says why for 10 seconds | ✅ Pass | 2026-10-11 | `tests/test_housekeeping.py` |
+| M7 | 👤 Manual | With `KEEP_CONFIRMATIONS` on (the default; restart after setting it): send `a`, `b` and `c`. Reply `pin` to `a`, then `unpin`. Reply `archive` to `b`. Reply `delete` to `c`. Wait 15 seconds after each | Each time: one short line ("📌 Pinned", "📌 Unpinned", "📦 Archived: link", "🗑️ Deleted") that is gone after about 10 seconds, though confirmations are kept; your reply word is deleted; a card in #bot-log for each. Afterwards nothing in the channel says any of it happened | ⬜ Untested | | From 2026-10-11 |
 
 ## P. Bugs
 
@@ -545,9 +547,9 @@ Run the manual tests in a channel made for it, never one you want to keep.
 |---|---|---|---|---|---|---|
 | U1 | 🤖 Auto | What goes, and how | Delete all takes everything, pinned and 📌 included; Delete all unpinned leaves those and counts them; messages under 14 days go a hundred at a time and older ones singly; a single message is no batch; the card that is asking is never touched or counted; every line of the card, the slow warning, the missing-permission card and the closing lines; the transcript: oldest first, in NZ time, who, what, pinned or 📌 said, links to attachments, and a file name from the channel, the date and the time | ✅ Pass | 2026-10-11 | `tests/test_channel.py` |
 | U2 | 🤖 Auto | The Discord work, on a fake channel | A scan reads every message and which are pinned or 📌; a missing permission is named and nothing is read; a forum is refused; deleting in bulk then singly says what is gone, a message already gone counts as gone and one that can't be deleted does not; a batch Discord refuses is done one by one; the closing line tidies itself away unless confirmations are kept; a scan keeps what each message says, and a card with no text by its title and body | ✅ Pass | 2026-10-11 | `tests/test_channel.py` |
-| U3 | 🤖 Auto | Asking, both buttons, and putting live messages back | Asking shows the card with the counts and three buttons and deletes nothing; the typed word doesn't count itself; Delete all deletes everything and the card, says so, logs it and tells every task; Delete all unpinned leaves the pinned and 📌 ones and says what went; what is deleted is what is there when the button is pressed; Cancel removes the card; a missing permission is said on the card, at the card and at the press; an empty channel is said in a line; the word carries the task's name, is exact and leaves `reset` alone; today's checklist and its Taken / Skip messages are posted again and the records follow; one that was kept or is elsewhere is not posted twice; running timers get their cards back; one task failing doesn't stop the others; open cards and lists that went are forgotten; a copy of the whole channel is written before anything is deleted, what is kept included, and the closing line says so; if the copy can't be saved nothing is deleted and the card says so | ✅ Pass | 2026-10-11 | `tests/test_channel.py` |
-| U4 | 👤 Manual | In a test channel with a dozen messages, one of them pinned and one marked 📌: type `reset channel`. Then press **Cancel** | Your word is deleted and a card appears: "🧹 Channel · reset", "N messages in #channel, 2 of them pinned or 📌", "⚠️ This can't be undone", with **Delete all** (red), **Delete all unpinned** and **Cancel**. Nothing is deleted. Cancel removes the card | ⬜ Untested | | |
-| U5 | 👤 Manual | Type `reset channel` again; press **Delete all unpinned** | The card shows "🧹 Deleting N messages…", then everything goes except the pinned and the 📌 message. \"🧹 Channel reset: N messages deleted · a copy was saved\" (it stays while `KEEP_CONFIRMATIONS` is on, otherwise it goes after 10 seconds), and a "🧹 Channel reset" card in #bot-log saying 2 were kept and naming the copy. In `data\exports\` there is a `<channel>-<date>-<time>.txt` with every message that was there, oldest first, the pinned and 📌 ones marked | ⬜ Untested | | |
+| U3 | 🤖 Auto | Asking, both buttons, and putting live messages back | Asking shows the card with the counts and three buttons and deletes nothing; the typed word doesn't count itself; Delete all deletes everything and the card, says so, logs it and tells every task; Delete all unpinned leaves the pinned and 📌 ones and says what went; what is deleted is what is there when the button is pressed; Cancel removes the card; a missing permission is said on the card, at the card and at the press; an empty channel is said in a line; the word carries the task's name, is exact and leaves `reset` alone; today's checklist and its Taken / Skip messages are posted again and the records follow; one that was kept or is elsewhere is not posted twice; running timers get their cards back; one task failing doesn't stop the others; open cards and lists that went are forgotten; a copy of the whole channel is written before anything is deleted, what is kept included, and the closing line says so; if the copy can't be saved nothing is deleted and the card says so; a reset leaves no trace of itself: the message that asked and the card go with the rest, and on Cancel both go and nothing else; an empty channel is said for a moment and the asking message goes | ✅ Pass | 2026-10-11 | `tests/test_channel.py` |
+| U4 | 👤 Manual | In a test channel with a dozen messages, one of them pinned and one marked 📌: type `reset channel`. Then press **Cancel** | Your word is deleted and a card appears: "🧹 Channel · reset", "N messages in #channel, 2 of them pinned or 📌", "⚠️ This can't be undone", with **Delete all** (red), **Delete all unpinned** and **Cancel**. Nothing is deleted. Cancel removes the card: with your word already gone, nothing of the question is left. (Asked in plain words in #inbox, `reset this channel`, Cancel deletes that message of yours too) | ⬜ Untested | | |
+| U5 | 👤 Manual | Type `reset channel` again; press **Delete all unpinned** | The card shows "🧹 Deleting N messages…", then everything goes except the pinned and the 📌 message. \"🧹 Channel reset: N messages deleted · a copy was saved\" (it goes after 10 seconds, also while `KEEP_CONFIRMATIONS` is on), and a "🧹 Channel reset" card in #bot-log saying 2 were kept and naming the copy. In `data\exports\` there is a `<channel>-<date>-<time>.txt` with every message that was there, oldest first, the pinned and 📌 ones marked | ⬜ Untested | | |
 | U6 | 👤 Manual | Type `reset channel` once more; press **Delete all** | Every message goes, the pinned and the 📌 one too. The closing line and the #bot-log card as before, with nothing kept | ⬜ Untested | | |
 | U7 | 👤 Manual | In the hub, with today's checklist posted (`pills`), a timer running (`timer 10m tea`) and dev mode on there (`dev on`): say `reset this channel`; press **Delete all**. Then press **Taken** on a pill's message, and reply `cancel` to the tea timer | The card, then everything goes. Afterwards, once each and nothing twice: today's checklist with its Taken / Skip messages, the tea timer's card, the pinned "Active timers" board and the pinned dev panel. Taken ticks the pill off on the new checklist; `cancel` cancels the timer on its new card | ⬜ Untested | | |
 | U8 | 👤 Manual | Only if you can change the bot's role (otherwise report `U8 skip`): take Manage Messages away from it in a test channel; type `reset channel` there. Give the permission back | A card that says "⚠️ I can't reset #channel: my role needs **Manage Messages** in this channel. Nothing was deleted." with **Cancel** only. No ⚠️ on your message and nothing in the channel is touched | ⬜ Untested | | |

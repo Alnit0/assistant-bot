@@ -22,6 +22,7 @@ class ArchiveTask(Task):
                 messages.archive_reply,
                 examples=["archive", "archive this"],
                 validate=messages.check_archivable,
+                housekeeping=True,
             ),
             ReplyAction(
                 ["delete", "remove"],
@@ -31,6 +32,7 @@ class ArchiveTask(Task):
                 # Destructive, so no typo correction: it must be spelled exactly
                 exact=True,
                 validate=messages.check_deletable,
+                housekeeping=True,
             ),
         ]
 
@@ -46,6 +48,7 @@ class ArchiveTask(Task):
                 examples=[f"react {messages.ARCHIVE_EMOJI} to a message"],
                 destructive=True,
                 validate=messages.check_archivable,
+                housekeeping=True,
             ),
             Reaction(
                 messages.DELETE_EMOJI,
@@ -54,6 +57,7 @@ class ArchiveTask(Task):
                 examples=[f"react {messages.DELETE_EMOJI} to a message"],
                 destructive=True,
                 validate=messages.check_deletable,
+                housekeeping=True,
             ),
         ]
 

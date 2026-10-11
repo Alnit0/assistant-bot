@@ -19,7 +19,9 @@ session; the end-of-task checklist updates it at the end of every task.
   message, and standing jobs that follow the clock. Block 21 is
   still to be reported.
 - In hand, uncommitted (not to be committed until asked): channel
-  reset, with a short QA block (22 of `docs/QA-RUN.md`). If
+  reset (a transcript is saved first, and it leaves no trace of
+  itself), and the rule that all housekeeping leaves no trace in the
+  channel, with a short QA block (22 of `docs/QA-RUN.md`). If
   `ENABLED_TASKS` is set in `.env`, `channel` has to be added to it.
 - Tests: `python -m pytest -q` passes. Golden conversations 1c, 1d
   and 2a are marked as gaps (they need questions on the card, G1).
@@ -42,9 +44,12 @@ channel reset.
 
 ## Recently done
 
+- Housekeeping leaves no trace: delete, archive, pin, unpin and channel
+  reset say one line that goes after about 10 seconds, the typed word
+  goes too, and #bot-log is the record.
 - Channel reset: `reset channel` empties the channel after asking on a
-  card (all, or all but pinned and 📌), and every task puts its live
-  messages back.
+  card (all, or all but pinned and 📌), saves a transcript first, and
+  every task puts its live messages back.
 - Pills stage 2: today's checklist in the hub at 6:00 am, edited in
   place, with Taken / Skip for doses with no time, logging by message,
   `pills` for a fresh copy, changes during the day, the end of the

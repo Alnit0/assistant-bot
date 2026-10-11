@@ -221,7 +221,7 @@ async def _run_or_ask(
     async def confirmed() -> str:
         return (await perform(message, user))[1]
 
-    await confirmations.ask(message.channel, user, rules.confirm_question(reason, verb), confirmed)
+    await confirmations.ask(message.channel, user, rules.confirm_question(reason, verb), confirmed, housekeeping=True)
     return None
 
 

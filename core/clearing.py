@@ -127,8 +127,9 @@ async def delete(channel_id: int, bulk: list[list[int]], single: list[int]) -> s
 
 
 async def note(channel_id: int, text: str, seconds: float) -> None:
-    """A short line in the channel that tidies itself away after `seconds`, as
-    every Transient message does (it stays while confirmations are kept)."""
+    """A short line in the channel that tidies itself away after `seconds`.
+    Housekeeping leaves no trace: it goes even while confirmations are kept
+    (lifecycle.tidy_after), and #bot-log is the record."""
     channel = _channel(channel_id)
     if channel is not None:
-        await channel.send(outgoing.clean(text) or text, delete_after=lifecycle.delete_after(seconds))
+        await channel.send(outgoing.clean(text) or text, delete_after=lifecycle.tidy_after(seconds))

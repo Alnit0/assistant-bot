@@ -53,6 +53,12 @@ When two principles clash, the higher one wins.
    can act on it (try again, wait, rephrase); the error is kept for
    `dev why` and a 🐞 report. ✅ is not used to acknowledge. No links to
    the message right above. Old cards get replaced, not stacked.
+   **Housekeeping leaves no trace in the channel.** Deleting, archiving,
+   pinning, unpinning and resetting a channel say at most one short line
+   that deletes itself after about 10 seconds; the word I typed for it
+   is deleted too; a card that asked first goes whether I say yes or
+   no. What was done is recorded in #bot-log instead. Only a failure
+   stays: ⚠️ on my message, so that I see it.
 9. **Consistent everywhere.** Every task looks and behaves the same
    way. Learn it once.
 10. **Private.** Notifications never show sensitive names (e.g. pills).

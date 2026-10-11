@@ -74,6 +74,8 @@ def _check_registration(task: Task, kind: str, item) -> None:
     """Report a registration that doesn't describe itself or names an unknown channel."""
     if not (item.description or "").strip():
         _undocumented.append(f"{task.name}: {kind} {item.name}")
+    if getattr(item, "housekeeping", False) and getattr(item, "keep_command", False):
+        _problem(f"{task.name}: {kind} {item.name} is housekeeping, which leaves no trace: it can't keep its command")
     for name in _channel_names(item):
         if name != ANY and name not in CHANNELS:
             _problem(f"{task.name}: {kind} {item.name} names channel '{name}', which isn't set in .env")
@@ -403,6 +405,7 @@ async def dispatch_keyword(ctx: Context) -> bool:
     if keyword.accepts is not None and not keyword.accepts(match.args):
         return False
     ctx.args = match.args
+    ctx.housekeeping = keyword.housekeeping
 
     async def call():
         if match.corrected:
@@ -436,6 +439,8 @@ async def dispatch_reply_action(ctx: Context) -> bool:
     if action.applies_to is not None and not await action.applies_to(ctx):
         ctx.args = []
         return False
+
+    ctx.housekeeping = action.housekeeping
 
     async def call():
         target = await ctx.fetch_reply_target()
@@ -587,9 +592,8 @@ async def _refuse_reaction(
     message = _partial_message(payload.channel_id, payload.message_id)
     if message is not None:
         try:
-            note = await message.channel.send(
-                f"{reactions.FAILED_EMOJI} {reason}", delete_after=lifecycle.delete_after(), silent=True
-            )
+            lifetime = lifecycle.tidy_after() if reaction.housekeeping else lifecycle.delete_after()
+            note = await message.channel.send(f"{reactions.FAILED_EMOJI} {reason}", delete_after=lifetime, silent=True)
             lifecycle.note_transient(note.id)
         except discord.HTTPException as error:
             log.info("Could not say why a reaction was refused: %s", error)

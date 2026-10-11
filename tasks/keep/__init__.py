@@ -53,12 +53,14 @@ class KeepTask(Task):
                 "pin that message at once: clean-ups leave it alone, and archiving or deleting it asks first",
                 pin_reply,
                 examples=["pin", "pin this", "keep"],
+                housekeeping=True,
             ),
             ReplyAction(
                 ["unpin", "unkeep"],
                 "unpin that message, so it is no longer protected",
                 unpin_reply,
                 examples=["unpin"],
+                housekeeping=True,
             ),
         ]
 
@@ -71,6 +73,7 @@ class KeepTask(Task):
                 keep,
                 examples=[f"react {KEEP_EMOJI} to a message"],
                 undo=unkeep,
+                housekeeping=True,
             ),
         ]
 
