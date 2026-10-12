@@ -1,5 +1,3 @@
-import discord
-
 from core import pins
 from core.config import REACTION_DEBOUNCE_SECONDS
 from core.context import Context
@@ -10,17 +8,20 @@ from tasks.base import Reaction, ReplyAction, Task
 KEEP_EMOJI = PROTECT_EMOJI
 WAIT = f"{REACTION_DEBOUNCE_SECONDS:g} seconds"
 
+# No discord.py here: pinning is core/pins.py's, and what a handler is given (the
+# reaction that was added, the message replied to) is only read for its ids.
+#
 # A kept message is one carrying the owner's 📌. The 📌 itself is what protects it
 # (core/protection.py: left alone by clean-ups, and archive and delete ask
 # first); keeping adds a native Discord pin on top, and unkeeping takes it off.
 
 
-async def keep(payload: discord.RawReactionActionEvent, user: User) -> str:
+async def keep(payload, user: User) -> str:
     await pins.set_pinned(payload.channel_id, payload.message_id, True, "Kept with 📌")
     return f"kept and pinned a message in <#{payload.channel_id}>"
 
 
-async def unkeep(payload: discord.RawReactionActionEvent, user: User) -> str:
+async def unkeep(payload, user: User) -> str:
     await pins.set_pinned(payload.channel_id, payload.message_id, False, "📌 removed")
     return f"unkept and unpinned a message in <#{payload.channel_id}>"
 
@@ -28,13 +29,13 @@ async def unkeep(payload: discord.RawReactionActionEvent, user: User) -> str:
 # The same by reply: "pin" pins the message straight away, and a pinned message
 # is protected just as a 📌-marked one is. No 📌 is involved, so there is nothing
 # to wait for and nothing recorded as a reaction.
-async def pin_reply(ctx: Context, target: discord.Message) -> str:
+async def pin_reply(ctx: Context, target) -> str:
     await pins.set_pinned(target.channel.id, target.id, True, "Pinned by reply")
     await ctx.confirm(f"{KEEP_EMOJI} Pinned")
     return f"pinned a message in <#{target.channel.id}>"
 
 
-async def unpin_reply(ctx: Context, target: discord.Message) -> str:
+async def unpin_reply(ctx: Context, target) -> str:
     await pins.set_pinned(target.channel.id, target.id, False, "Unpinned by reply")
     await ctx.confirm(f"{KEEP_EMOJI} Unpinned")
     return f"unpinned a message in <#{target.channel.id}>"
