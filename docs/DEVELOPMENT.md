@@ -432,7 +432,12 @@ Things to know:
   router, and the code resolves "it" from `request.replied_to`. A task
   owns whatever `message_class` knows; override `Task.owns_message` if
   it posts messages with no lifecycle class (timers does, for a card
-  whose timer has ended).
+  whose timer has ended). A line that says what was done to one of the
+  task's things is its message too: return `actions.Answer(text,
+  placed)` from the action and record the message in `placed` (timers:
+  `plain.about`, `store.note_message`), so a reply to "⏸️ Paused:
+  dinner" means dinner. Never act on a thing that was only guessed: ask
+  which (timers: `plain.which_timers`).
 - **A new task starts with the `new-task` skill** (the interview, the
   contract, the spec, then the build), and every task is audited with
   `task-check`.

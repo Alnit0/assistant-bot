@@ -193,13 +193,24 @@ class Shown:
     also: str = ""
 
 
+@dataclass(frozen=True)
+class Answer:
+    """What a direct action returns when its reply is about things of the task's
+    own (the timer that was paused): `placed(message_id)` is awaited once the
+    reply is sent, so the task can record the message as theirs and a Discord
+    reply to it means the same thing (`Task.owns_message`)."""
+
+    text: str
+    placed: Callable[[int], Awaitable[None]]
+
+
 Prepare = Callable[[Request, dict, frozenset], Awaitable[Proposal]]
 Apply = Callable[[Request, dict], Awaitable[str]]
 # `async (request, data) -> str`: read back from the database what `apply` was
 # to change and say what does not match the card's data ("" if it all does).
 # A confirmation is only ever sent after this has come back empty
 Verify = Callable[[Request, dict], Awaitable[str]]
-Run = Callable[[Request, dict, frozenset], Awaitable["str | LiveReply | Shown"]]
+Run = Callable[[Request, dict, frozenset], Awaitable["str | LiveReply | Shown | Answer"]]
 # `async (request, data, guessed) -> bool`: `guessed` is what Claude said it guessed, so a guess
 # about which thing is meant can be shown on a card instead of acted on
 CardIf = Callable[[Request, dict, frozenset], Awaitable[bool]]

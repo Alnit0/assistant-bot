@@ -85,6 +85,7 @@ async def repost(channel_id: int, gone: set[int], send) -> int:
             message = await send(render_timer(timer))
             timer.message_id = message.id
             await store.save_timer(timer)
+            await store.note_message(message.id, timer.channel_id, [timer])
             posted += 1
     return posted
 
@@ -146,6 +147,7 @@ async def start_one(user_id: int, discord_user_id: int, channel_id: int, seconds
     message = await send(render_timer(timer))
     timer.message_id = message.id
     await store.save_timer(timer)
+    await store.note_message(message.id, timer.channel_id, [timer])
     await store.log_event(timer, store.STARTED, seconds)
     await board.refresh(timer.channel_id, timer.user_id)
     return timer
@@ -175,6 +177,7 @@ async def _finish(timer: store.Timer, note: str = "") -> None:
         try:
             notice = await channel.send(text, view=finished_view(timer.id), allowed_mentions=PING)
             timer.notice_message_id = notice.id
+            await store.note_message(notice.id, timer.channel_id, [timer])
         except discord.HTTPException as error:
             log.warning("Could not announce that timer %s finished: %s", timer.id, error)
     await store.log_event(timer, store.WAS_FINISHED, 0)

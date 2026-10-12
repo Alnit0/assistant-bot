@@ -199,7 +199,11 @@ every message that is no shortcut)
    Taken / Skip message, a timer's card, a checklist (`Entry.owns`, from
    `Task.owns_message`) goes to that task's extraction first, told so
    (`replied`), however old the message. Anything but an action sends it
-   on to the router. A task I name in the message still decides.
+   on to the router. A task I name in the message still decides. A
+   direct action whose reply is about things of the task's own returns
+   `actions.Answer(text, placed)`: the task is told which message said
+   so and records it (timers: `timers_messages`), so a reply to that
+   line is the task's too.
 2a. **Follow-up?** If there is an open confirm card and the message is a
    reply to it, or the card is the bot's latest message there and under
    five minutes old (`confirm.sticks`), the message goes straight to that
@@ -400,7 +404,7 @@ seconds.
 | `archive_items` | archive |
 | `bugs_items`, `bugs_notes`, `bugs_events` (each closing and re-opening) | bugs |
 | `pills_pills`, `pills_drafts` (left from the old previews; unused), `pills_changes` (every plan and status change), `pills_messages` (where today's checklist and each dose's own message are); doses are rows of `occurrences` with task `pills` | pills |
-| `timers_timers`, `timers_pomodoros`, `timers_focus_log`, `timers_boards`, `timers_events`, `timers_lists` | timers |
+| `timers_timers`, `timers_pomodoros`, `timers_focus_log`, `timers_boards`, `timers_events`, `timers_lists`, `timers_messages` (every message about a timer or session: a reply to one says which is meant) | timers |
 | `lab_state`, `lab_tour_runs`, `lab_tour_results` | lab |
 
 Backups go to `data/backups/` nightly at 3am NZ (newest 7 `assistant-*.db`

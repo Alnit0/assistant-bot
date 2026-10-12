@@ -99,21 +99,22 @@ class Context:
         self.posted += 1
         return await self._channel.send(embed=embed)
 
-    async def confirm(self, text: str) -> None:
+    async def confirm(self, text: str):
         """Say briefly that something was done, e.g. "📦 Archived: <link>".
 
         For actions with nothing lasting to show (a Transient message): it deletes
         itself after CONFIRMATION_SECONDS, so the channel stays tidy. Anything
-        the user will want to read again is Kept: use reply().
+        the user will want to read again is Kept: use reply(). Returns the sent
+        message (None if nothing was left to say).
         """
         self.replies.append(text)
         self.posted += 1
-        await self._send_transient(text)
+        return await self._send_transient(text)
 
-    async def _send_transient(self, text: str, seconds: float | None = None) -> None:
+    async def _send_transient(self, text: str, seconds: float | None = None):
         text = outgoing.clean(text)
         if not text:
-            return
+            return None
         """Send a note that deletes itself (unless clean-up is switched off)."""
         if self.housekeeping:
             # No trace in the channel: #bot-log is the record. Deleted by a stored job
@@ -124,6 +125,7 @@ class Context:
             lifetime = lifecycle.delete_after() if seconds is None else lifecycle.delete_after(seconds)
             message = await self._channel.send(text, delete_after=lifetime)
         lifecycle.note_transient(getattr(message, "id", None))
+        return message
 
     def shown(self, text: str) -> None:
         """Record that the user has been shown something by other means (a question

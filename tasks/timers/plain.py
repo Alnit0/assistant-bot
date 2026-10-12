@@ -1,10 +1,11 @@
 from datetime import datetime, timezone
 
 from core import day
-from core.actions import BOOLEAN, EACH_DAY, ITEMS, SEE, Action, Field, Proposal, Request, Shown, State, is_guessed, is_reference
+from core.actions import BOOLEAN, EACH_DAY, ITEMS, SEE, Action, Answer, Field, Proposal, Request, Shown, State, is_guessed, is_reference
 from core.config import TIMEZONE
 from core.errors import UserError
 from core.lifecycle import MessageClass
+from core.llm import ANSWER_STICKS
 from core.scheduler import utc_now
 from core.timeinput import format_time
 from tasks.timers import board, control, sessions, status, store, timers
@@ -48,6 +49,17 @@ def sender(channel_id: int):
     return send
 
 
+def about(request: Request, records):
+    """What an answer about these timers or sessions does with its message once
+    it is sent: records it as theirs (`store.note_message`)."""
+    records = list(records)
+
+    async def placed(message_id: int) -> None:
+        await store.note_message(message_id, request.channel_id, records)
+
+    return placed
+
+
 def _seconds(said: str, what: str) -> int:
     try:
         return parse_duration(said)
@@ -63,23 +75,28 @@ async def state(request: Request) -> State:
     active = await store.active_timers(user_id=request.user.id)
     ended = await store.ended_timers(request.user.id, now - control.ENDED_WITHIN)
     running = await store.active_sessions(user_id=request.user.id)
+    # Any message about a timer says which one a reply to it means: its card, its
+    # alert, or a line that said what was done to it
+    replied = [(store.TIMER, timer.id) for timer in await store.timers_about(request.replied_to)]
+    replied += [(store.SESSION, session.id) for session in await store.sessions_about(request.replied_to)]
     return State(
         "Timers and the Pomodoro session now (use these ids)",
-        tuple(state_lines(active, ended, running[0] if running else None, now, request.channel_id, request.replied_to)),
+        tuple(state_lines(active, ended, running[0] if running else None, now, request.channel_id, frozenset(replied))),
         empty="no timers and no Pomodoro session",
     )
 
 
-def state_lines(active, ended, session, now: datetime, here: int | None = None, replied_to: int | None = None) -> list[str]:
+def state_lines(active, ended, session, now: datetime, here: int | None = None, replied: frozenset = frozenset()) -> list[str]:
     """A line for each timer that is going, each that ended lately (so "the tea
     timer" that has finished can be told from one that never was), and the
-    session. Pure."""
+    session. `replied` is what the message the user replied to is about, as
+    (kind, id). Pure."""
     lines = []
     for timer in active:
         text = f'{status.ref(status.TIMER, timer.id)}: "{timer.label}" · {status.timer_state(timer, now)}'
         if timer.channel_id == here:
             text += " · in this channel"
-        if replied_to is not None and replied_to in (timer.message_id, timer.notice_message_id):
+        if (store.TIMER, timer.id) in replied:
             text += " · the user replied to this one"
         lines.append(text)
     for timer in ended:
@@ -89,7 +106,7 @@ def state_lines(active, ended, session, now: datetime, here: int | None = None, 
         )
     if session is not None:
         text = f"Pomodoro session {status.session_text(session, now, here=here)}"
-        if replied_to is not None and replied_to in (session.message_id, getattr(session, "notice_message_id", None)):
+        if (store.SESSION, session.id) in replied:
             text += " · the user replied to this one"
         lines.append(text)
     return lines
@@ -131,29 +148,48 @@ async def start(request: Request, data: dict, guessed: frozenset) -> Shown:
 # ---------------------------------------------------------------------------
 # Changing timers: one acts at once; cancelling several asks first
 # ---------------------------------------------------------------------------
-async def which_timers(request: Request, data: dict) -> str:
-    """The ids a change is about, with references resolved here and never by
-    Claude. A timer the user replied to is the one meant, whatever was said.
-    "It" with no reply is the timer the user did something to last; one timer
-    going is that one. Otherwise there is nothing "it" could mean, and that
-    is said."""
+def which_one(active, now: datetime) -> str:
+    """Asked when nothing says which timer is meant: each one going, by name.
+    (Until a card can ask with buttons: G1 in docs/BACKLOG.md.)"""
+    return "\n".join(["Which timer? Say its name.", *(status.left_line(timer, now) for timer in active)])
+
+
+async def which_timers(request: Request, data: dict, guessed: frozenset = frozenset()) -> str:
+    """The ids a change is about, worked out here and never by Claude, in this
+    order. A message about one timer that the user replied to (its card, its
+    alert, a line that said what was done to it) means that timer, whatever
+    was said. A timer the user named is that one. Otherwise nothing named
+    one ("it", or a name Claude says it guessed): the one timer the last
+    message here was about, if that was in the last few minutes; or the only
+    one going. With several going and none of those, no timer is picked: the
+    user is asked which, and nothing is done."""
+    mine = request.user.id
     if request.replied_to is not None:
-        replied = await store.timer_by_message(request.replied_to)
-        if replied is not None and replied.user_id == request.user.id:
-            return status.ref(status.TIMER, replied.id)
-    if not is_reference(data["which"]):
-        return data["which"]
-    active = {timer.id: timer for timer in await store.active_timers(user_id=request.user.id)}
-    for event in reversed(await store.events(request.user.id, limit=20)):
-        if event.kind == store.TIMER and event.record_id in active:
-            return status.ref(status.TIMER, event.record_id)
+        replied = [timer for timer in await store.timers_about(request.replied_to) if timer.user_id == mine]
+        if len(replied) == 1:
+            return status.ref(status.TIMER, replied[0].id)
+    wanted = data["which"]
+    if not is_reference(wanted) and not is_guessed(guessed, "which"):
+        return wanted
+    active = await store.active_timers(user_id=mine)
+    if not active:
+        if not is_reference(wanted):
+            return wanted  # one that has ended: the action says so in its own words
+        raise UserError("No timers are running or paused.")
+    # Still going, or its alert still showing: one that has gone is nothing "it" could be now
+    lately = [
+        timer for timer in await store.latest_about(mine, request.channel_id, utc_now() - ANSWER_STICKS)
+        if timer.active or timer.status == store.FINISHED
+    ]
+    if len(lately) == 1:
+        return status.ref(status.TIMER, lately[0].id)
     if len(active) == 1:
-        return status.ref(status.TIMER, next(iter(active)))
-    raise UserError("Which timer? Say its name." if active else "No timers are running or paused.")
+        return status.ref(status.TIMER, active[0].id)
+    raise UserError(which_one(active, utc_now()))
 
 
-async def _control_value(request: Request, data: dict) -> dict:
-    return {"ids": await which_timers(request, data), "action": data["action"], "duration": data.get("duration", "")}
+async def _control_value(request: Request, data: dict, guessed: frozenset = frozenset()) -> dict:
+    return {"ids": await which_timers(request, data, guessed), "action": data["action"], "duration": data.get("duration", "")}
 
 
 async def cancels_several(request: Request, data: dict, guessed: frozenset = frozenset()) -> bool:
@@ -161,13 +197,13 @@ async def cancels_several(request: Request, data: dict, guessed: frozenset = fro
     if data["action"] != "cancel":
         return False
     try:
-        return len(await control.chosen_timers(request.user.id, await _control_value(request, data), "cancel")) > 1
+        return len(await control.chosen_timers(request.user.id, await _control_value(request, data, guessed), "cancel")) > 1
     except UserError:
         return False  # nothing to cancel: `change` says so in its own words
 
 
 async def cancel_card(request: Request, data: dict, guessed: frozenset) -> Proposal:
-    chosen = await control.chosen_timers(request.user.id, await _control_value(request, data), "cancel")
+    chosen = await control.chosen_timers(request.user.id, await _control_value(request, data, guessed), "cancel")
     now = utc_now()
     lines = tuple(f"**{timer.label}** · {status.timer_state(timer, now)} → cancelled" for timer in chosen)
     return Proposal(
@@ -205,26 +241,27 @@ async def cancel_check(request: Request, data: dict) -> str:
     return "; ".join(still)
 
 
-async def change(request: Request, data: dict, guessed: frozenset) -> str:
-    shown, _ = await control.change_timers(request.user.id, await _control_value(request, data))
-    if is_guessed(guessed, "which"):
-        shown += f"\n{GUESS} I wasn't sure which timer you meant. Tell me if it was another one."
+async def change(request: Request, data: dict, guessed: frozenset) -> Answer:
+    # A timer that was guessed is never changed: `which_timers` asks which instead
+    shown, done = await control.change_timers(request.user.id, await _control_value(request, data, guessed))
     if data["action"] == "extend" and is_guessed(guessed, "duration"):
         shown += f"\n{GUESS} I guessed how much time to add."
-    return shown
+    return Answer(shown, about(request, done))
 
 
-async def change_all(request: Request, data: dict, guessed: frozenset) -> str:
-    return await control.change_all(request.user.id, data["action"] == "pause", with_session=not data.get("leave_pomodoro", False))
+async def change_all(request: Request, data: dict, guessed: frozenset) -> Answer:
+    said = await control.change_all(request.user.id, data["action"] == "pause", with_session=not data.get("leave_pomodoro", False))
+    # About every one of them: "it" straight after this names none
+    return Answer(said, about(request, await store.active_timers(user_id=request.user.id)))
 
 
 # ---------------------------------------------------------------------------
 # Showing and asking
 # ---------------------------------------------------------------------------
-async def how_long(request: Request, data: dict, guessed: frozenset) -> str:
+async def how_long(request: Request, data: dict, guessed: frozenset) -> Answer:
     """ "how long is left on tea?": the time left on each timer asked about, a
     line each, to the second, in the format of the paused card."""
-    wanted = await which_timers(request, data)
+    wanted = await which_timers(request, data, guessed)
     if wanted.strip().lower() == status.ALL:
         found = await store.active_timers(user_id=request.user.id)
     else:
@@ -233,10 +270,7 @@ async def how_long(request: Request, data: dict, guessed: frozenset) -> str:
     if not found:
         raise UserError("I couldn't tell which timer you meant. Say its name.")
     now = utc_now()
-    said = "\n".join(status.left_line(timer, now) for timer in found)
-    if is_guessed(guessed, "which"):
-        said += f"\n{GUESS} I wasn't sure which timer you meant. Tell me if it was another one."
-    return said
+    return Answer("\n".join(status.left_line(timer, now) for timer in found), about(request, found))
 
 
 async def show_list(request: Request, data: dict, guessed: frozenset) -> Shown:
@@ -329,9 +363,9 @@ async def pomo_start(request: Request, data: dict, guessed: frozenset) -> Shown:
     return Shown(summary, also)
 
 
-async def pomo_change(request: Request, data: dict, guessed: frozenset) -> str:
-    said, _ = await control.change_session(request.user.id, {"id": "current", "action": data["action"], "duration": data.get("duration", "")})
-    return said
+async def pomo_change(request: Request, data: dict, guessed: frozenset) -> Answer:
+    said, session = await control.change_session(request.user.id, {"id": "current", "action": data["action"], "duration": data.get("duration", "")})
+    return Answer(said, about(request, [session]))
 
 
 async def pomo_status(request: Request, data: dict, guessed: frozenset) -> str:

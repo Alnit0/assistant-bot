@@ -535,11 +535,26 @@ Every step says what to press.
 | # | Do | Expect | Tests |
 |---|---|---|---|
 | 1 | Say `took the usual one`. Press **Cancel** (if it asks which pill instead, that passes too) | Never ticked off at once. A card "💊 Pills · change" with the dose and ❓, **Save** and **Cancel**; after Cancel the checklist is unchanged | R66 |
-| 2 | Say `took my pill X`. Then reply to **Pill Y**'s Taken / Skip message with `took it`; then reply `dev why` to that reply of yours. Press nothing | "✅ **Pill X** · taken …", then "✅ **Pill Y** · taken …": the pill whose message you replied to, not the one logged just before. The trace says "a reply to a message pills posted: it goes to pills first", with no router request | R67 |
+| 2 | Say `took my pill X`. Then reply to **Pill Y**'s Taken / Skip message with `took it`; then reply `dev why` to that reply of yours. Press nothing | "✅ **Pill X** · taken …", then "✅ **Pill Y** · taken …": the pill whose message you replied to, not the one logged just before. The trace says "reply to pills' message: it goes to pills first", with no router request | R67 |
 | 3 | `timer 10m tea`; say `give tea more time`. Press nothing | Either a plain line that ends "Say how much time to add, e.g. 10 minutes.", or the time is added with the amount it guessed marked ❓ ("❓ I guessed how much time to add."). Never `duration`, "tell the user" or an id like t12 | G25 |
 | 4 | Look at the tea timer's message; type `pomo` and look at its card. Press **Stop**, and reply `cancel` to the tea timer | "ends in 9 minutes (8:04 pm)" and "Ends in 25 minutes (8:19 pm)": the time in brackets is 12-hour with am or pm, whatever your Discord is set to | G26 |
 | 5 | React 🐞 to any message; open the post in #bugs and write `a note`. Press nothing. Then `dev clock reset` | No ✅ on your note and no reply; the count on the post's opening card goes up by one. The card's first line gives the time as "8:04 pm, 12 Oct" | P34 |
-| 6 | `timer 10m tea`, then `timer 10m eggs`; send three other messages; then reply to the **tea** timer's message with `give it 2 more`. Then reply `dev why` to that reply of yours. Reply `cancel` to both timers | Tea gets 2 more minutes, eggs is untouched. The trace says "a reply to a message timers posted: it goes to timers first" and shows no router request | S59 |
+| 6 | `timer 10m tea`, then `timer 10m eggs`; send three other messages; then reply to the **tea** timer's message with `give it 2 more`. Then reply `dev why` to that reply of yours. Reply `cancel` to both timers | Tea gets 2 more minutes, eggs is untouched. The trace says "reply to timers' message: it goes to timers first" and shows no router request | S59 |
+
+## 26. Retest: a reply to a line about a timer, and "which timer?"
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
+On the live bot or the dev database, after a restart (it adds one table).
+Dev mode off. Start three timers: `timer 10m tea`, `timer 10m dinner`,
+`timer 10m eggs`. Every step says what to press.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Say `pause the dinner timer`, then `give eggs 1 more`. Reply to the line "⏸️ Paused: dinner …" with `Give it 2 more`; then reply `dev why` to that reply of yours. Press nothing | "➕ Added 2m to dinner" (with or without "❓ I guessed how much time to add."); tea and eggs are untouched. The trace says "reply to timers' message: it goes to timers first" and shows no router request | G29 |
+| 2 | Say `pause everything`, then `resume everything`, then `give it 2 more`. Press nothing | "⚠️ Which timer? Say its name." with a line for tea, dinner and eggs. No timer changes | G30 |
+| 3 | Reply to the **tea** timer's own message with `pause this`; then, with no reply, say `give it 5 more minutes`. Press nothing | Tea is paused, then tea gets 5 more minutes: "it" is the timer the last line was about | T23, T3 |
+| 4 | Say `cancel it`. Then `cancel all my timers` and press the red **Cancel 2 timers**. Then `dev clock reset` | Tea is cancelled at once, with no card. Then a card for the other two, and both are cancelled | T5 |
 
 ## When you finish
 

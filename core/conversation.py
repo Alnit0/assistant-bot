@@ -7,7 +7,7 @@ from dataclasses import dataclass, field, replace
 import discord
 
 from core import actions, cards, confirm, costs, database, extraction, livelists, llm, outgoing, routing, timing, trace
-from core.actions import LIST, ITEMS, Entry, LiveReply, Request, Shown
+from core.actions import LIST, ITEMS, Answer, Entry, LiveReply, Request, Shown
 from core.cards import Card
 from core.config import CHANNELS, INBOX_CHANNEL_ID
 from core.context import Context
@@ -289,6 +289,14 @@ async def act(
                 if left_out:
                     # Not on the list itself: that message is rewritten whenever the list changes
                     await say(left_out)
+            elif isinstance(result, Answer):
+                # About things of the task's own: it is told which message said so, so a
+                # reply to that message is known to be about them
+                text = f"{result.text}\n{left_out}" if left_out else result.text
+                turn.said.append(text)
+                message_id = await cards.send(request.channel_id, Card(text))
+                if message_id is not None:
+                    await result.placed(message_id)
             else:
                 await say(f"{result}\n{left_out}" if left_out else result)
             # For a few minutes a short message that follows is this task's first
@@ -405,6 +413,11 @@ async def _latest_bot_message_id(ctx: Context) -> int | None:
         if getattr(message.author, "bot", False):
             return message.id
     return None
+
+
+def _of(name: str) -> str:
+    """A task's name as the owner of something: "pills'", "archive's"."""
+    return name + ("'" if name.endswith("s") else "'s")
 
 
 async def _owner(message_id: int | None, entries: list[Entry]) -> Entry | None:
@@ -632,12 +645,12 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
                 found = await extraction.extract(entry, ctx.text, await _state(entry, request, turn), replied=True)
                 if found.fitted or found.declined in (actions.ALREADY_SO, actions.CANNOT):
                     turn.route = costs.FOLLOW_UP
-                    turn.why.append(f"a reply to a message {entry.name} posted: it goes to {entry.name} first")
+                    turn.why.append(f"reply to {_of(entry.name)} message: it goes to {entry.name} first, and the router is not asked")
                     await act(request, found, turn)
                     settled = True
                 else:
                     turn.extracted.append(found.as_log())
-                    trace.note(f"extraction said the reply is not about {entry.name}'s message: on to the router")
+                    trace.note(f"reply to {_of(entry.name)} message, but extraction said it is not about it: on to the router")
             else:
                 trace.note("reply check: the message replied to is no task's own, so nothing claims it")
 

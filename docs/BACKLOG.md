@@ -143,6 +143,22 @@ a schema could take its place.
   live, 2026-10-12): with two called "tea", "give tea more time" adds to
   both. Later: number a duplicate when it starts ("tea 2"), so each can
   be named.
+- **Left by the timer reply fix** (2026-10-12):
+  - **Pills does not record the lines it answers with.** A reply to
+    "✅ **Zinc** · taken 9:00 am" is no task's own and goes to the
+    router; only a dose's Taken / Skip message and the checklist are
+    pills'. Timers now records its lines (`actions.Answer`); pills can
+    do the same.
+  - **`dev why` shows `"which":""` where Claude gave "it".** The
+    reference (`@that`) is taken out of the trace as an internal label
+    on its way out, and an error is logged each time. The trace should
+    show what was extracted.
+  - **Not recorded as a timer's**: the line under a started timer that
+    points out a guessed length, and the line after the card that
+    cancels several. A reply to either still goes to the router.
+  - **"it" after a timer's alert** means the timer that just finished,
+    which is a message of the bot's. The standard says "it" without a
+    reply is never one of the bot's messages: to check against it.
 - **Left by the task-check fixes** (2026-10-12):
   - **"took the usual one" does not get the ❓ card.** Recorded live on
     2026-10-12: Claude hands it over as "it" (`@that`) and says nothing

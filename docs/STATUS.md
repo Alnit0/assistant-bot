@@ -38,9 +38,12 @@ session; the end-of-task checklist updates it at the end of every task.
 - Committed and live: the task-check fixes chosen (C1, C2, C3, C5, C6,
   C9, C11). Block 25: steps 3 to 5 passed; steps 1 and 2 are to be run
   on the dev database.
-- In hand, uncommitted (2026-10-12): **a reply to a message a task
-  posted goes to that task first**, in code (step 6 of block 25, and
-  the trace in step 2), with the pills fixtures recorded live.
+- Committed and live: a reply to a message a task posted goes to that
+  task first, in code, with the pills fixtures recorded live.
+- In hand, uncommitted (2026-10-12): **every message about a timer is
+  recorded as that timer's** (found live: a reply to "⏸️ Paused: dinner"
+  went to the router), and **a guessed timer is never acted on** ("Which
+  timer? Say its name."). Block 26 is its retest.
 - Tests: `python -m pytest -q` passes. Golden conversations 1c, 1d
   and 2a are marked as gaps (they need questions on the card, G1).
   The live evals of 2026-10-12: pills 56 of 57, general 12 of 12,
@@ -67,6 +70,9 @@ live), and on 2026-10-12 the bot's nickname and status line, the
 
 ## Recently done
 
+- The timer reply fix (2026-10-12): the lines a timer answers with are
+  its messages too, and no timer is picked by a guess.
+- A reply to a task's message goes to that task first (2026-10-12).
 - The task-check fixes (2026-10-12): C1, C2, C3, C5, C6, C9, C11.
 - Step 5 (2026-10-12): the standard written into `CLAUDE.md`, the task
   contract and the skills; `task-check` run on timers, bugs and pills.
@@ -79,17 +85,13 @@ live), and on 2026-10-12 the bot's nickname and status line, the
   or creep, doses that can't fit skipped by the bot, a late log asked
   about on a card, and a time said straight after logging taken as a
   correction.
-- Button colours are one rule (green, red, blurple, grey for Cancel
-  only), applied to every button and enforced by `core/cards.py`.
-- Channel reset: `reset channel` empties the channel after asking on a
-  card (all, or all but pinned and 📌), saves a transcript first, and
-  every task puts its live messages back.
 
 ## Next up
 
-1. Steps 1, 2 and 6 of block 25 on the dev database, then this commit. Step 8 of block
-   24 (tomorrow's backup card). Blocks 21 and 22, and
-   steps 5 to 7 of block 23, are still to be reported.
+1. Block 26 (four steps, live or dev), and steps 1, 2 and 6 of block 25
+   on the dev database. Step 8 of block 24 (tomorrow's backup card).
+   Blocks 21 and 22, and steps 5 to 7 of block 23, are still to be
+   reported.
 2. The checklist redesigned with Discord's Components V2: look at
    `dev mock checklist` and say what to change; the real checklist is
    not converted until the mock-ups are approved. Then reminders.

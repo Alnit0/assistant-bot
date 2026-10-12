@@ -169,7 +169,9 @@ def leaves_out_pomodoro(args: list[str]) -> bool:
 
 async def _all(ctx: Context, pausing: bool) -> str:
     text = await change_all(ctx.user.id, pausing, with_session=not leaves_out_pomodoro(ctx.args))
-    await ctx.reply(text)
+    message = await ctx.reply(text)
+    # About every one of them: "it" straight after this names none
+    await store.note_message(getattr(message, "id", None), ctx.channel_id, await store.active_timers(user_id=ctx.user.id))
     return text
 
 

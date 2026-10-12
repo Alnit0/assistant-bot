@@ -62,8 +62,17 @@ def start(world, *things, guessed=()):
     return run(plain.start(world.request, data, frozenset(guessed)))
 
 
+def said_in(world, answer, request=None):
+    """An action's answer, posted as the conversation posts it: the task is told
+    which message it was. Returns the words."""
+    message = run(world.channel.send(answer.text))
+    run(answer.placed(message.id))
+    world.last_message = message.id
+    return answer.text
+
+
 def change(world, which, action, guessed=(), **more):
-    return run(plain.change(world.request, {"which": which, "action": action, **more}, frozenset(guessed)))
+    return said_in(world, run(plain.change(world.request, {"which": which, "action": action, **more}, frozenset(guessed))))
 
 
 def ref(timer):
@@ -152,11 +161,42 @@ def test_one_timer_is_paused_resumed_extended_and_cancelled_at_once(world):
     assert going(world) == [] and "tea" in said
 
 
-def test_a_guess_at_which_timer_is_flagged_after_what_was_done(world):
+def forget_messages():
+    """As if nothing had been said about any timer lately (their cards are still theirs)."""
+    run(store.database.run(lambda conn: conn.execute("DELETE FROM timers_messages")))
+
+
+WHICH = ["Which timer? Say its name.", "⏱️ **tea** · 5m left", "⏱️ **dinner** · 9m left"]
+
+
+def test_a_guessed_timer_is_never_acted_on_with_several_going_it_asks_which(world):
+    # QA 2026-10-12 (#545): it acted on a timer nobody named. As for a guessed pill
     start(world, ("5m", "tea"), ("9m", "dinner"))
     tea, _ = going(world)
-    said = change(world, ref(tea), "pause", guessed=["which"])
-    assert said.splitlines()[-1] == "❓ I wasn't sure which timer you meant. Tell me if it was another one."
+    forget_messages()  # nothing was said about either of them lately
+    for action in ("pause", "cancel", "extend"):
+        with pytest.raises(UserError) as asked:
+            change(world, ref(tea), action, guessed=["which"], duration="2m")
+        assert str(asked.value).splitlines() == WHICH
+        with pytest.raises(UserError) as asked:
+            change(world, actions.REFERENCE, action, duration="2m")
+        assert str(asked.value).splitlines() == WHICH, "“it” with nothing to point at is no better than a guess"
+    assert [(timer.status, timer.left(T0)) for timer in going(world)] == [(store.RUNNING, 300), (store.RUNNING, 540)], "neither was touched"
+    assert run(plain.cancels_several(world.request, {"which": "all", "action": "cancel"}, frozenset({"which"}))) is False, "no card either: it asks which"
+
+
+def test_with_one_timer_going_it_acts_at_once_whatever_was_guessed(world):
+    start(world, ("5m", "tea"))
+    (tea,) = going(world)
+    forget_messages()
+    assert change(world, "t999", "pause", guessed=["which"]) == "⏸️ Paused: tea (5m left)", "no ❓: there is only one it could be"
+    assert change(world, actions.REFERENCE, "resume") == "▶️ Resumed: tea (5m left)"
+
+
+def test_a_timer_i_name_is_acted_on_at_once_however_many_are_going(world):
+    start(world, ("5m", "tea"), ("9m", "dinner"))
+    tea, dinner = going(world)
+    assert change(world, ref(tea), "pause") == "⏸️ Paused: tea (5m left)"
     assert [timer.status for timer in going(world)] == [store.PAUSED, store.RUNNING]
 
 
@@ -172,8 +212,10 @@ def test_several_can_be_paused_at_once_without_a_card(world):
     tea, dinner = going(world)
     data = {"which": f"{ref(tea)} {ref(dinner)}", "action": "pause"}
     assert run(plain.cancels_several(world.request, data)) is False, "a pause is not a stop"
-    said = run(plain.change(world.request, data, frozenset()))
+    said = said_in(world, run(plain.change(world.request, data, frozenset())))
     assert said.splitlines() == ["⏸️ **Paused 2**", "• tea · 5m left", "• dinner · 9m left"]
+    with pytest.raises(UserError, match="Which timer"):
+        change(world, actions.REFERENCE, "resume")  # the line was about both: “it” names neither
 
 
 # --- a bulk stop asks first ---------------------------------------------------------------------
@@ -266,11 +308,11 @@ def test_a_timer_that_starts_itself_is_logged_and_only_its_extras_are_said(world
 def test_pause_everything_takes_the_pomodoro_too_unless_told_to_leave_it(world):
     start(world, ("5m", "tea"))
     run(plain.pomo_start(world.request, {"label": "writing"}, frozenset()))
-    said = run(plain.change_all(world.request, {"action": "pause", "leave_pomodoro": True}, frozenset()))
+    said = run(plain.change_all(world.request, {"action": "pause", "leave_pomodoro": True}, frozenset())).text
     assert said.splitlines()[:2] == ["⏸️ **Paused 1**", "• tea · 5m left"] and "The Pomodoro was left as it is." in said
-    said = run(plain.change_all(world.request, {"action": "resume"}, frozenset()))
+    said = run(plain.change_all(world.request, {"action": "resume"}, frozenset())).text
     assert said.splitlines()[0] == "▶️ **Resumed 1**"
-    said = run(plain.change_all(world.request, {"action": "pause"}, frozenset()))
+    said = run(plain.change_all(world.request, {"action": "pause"}, frozenset())).text
     assert said.splitlines()[0] == "⏸️ **Paused 2**" and "🍅 writing" in said
 
 
@@ -285,7 +327,7 @@ def test_the_list_is_the_live_one_and_a_new_copy_takes_the_old_ones_place(world)
 
 
 def how_long(world, which, guessed=()):
-    return run(plain.how_long(world.request, {"which": which}, frozenset(guessed)))
+    return said_in(world, run(plain.how_long(world.request, {"which": which}, frozenset(guessed))))
 
 
 def test_how_long_is_left_is_said_to_the_second_in_the_paused_cards_format(world):
@@ -294,7 +336,7 @@ def test_how_long_is_left_is_said_to_the_second_in_the_paused_cards_format(world
     world.wait(42)
     assert how_long(world, ref(tea)) == "⏱️ **tea** · 4m 18s left", "not whole minutes"
     assert how_long(world, f"{ref(tea)} {ref(roast)}").splitlines() == ["⏱️ **tea** · 4m 18s left", "⏱️ **roast** · 1h 29m left"]
-    assert len(world.channel.sent) == 2, "a line in answer: no list is posted"
+    assert len(world.channel.sent) == 4, "a line in answer each time: no list is posted"
     change(world, ref(tea), "pause")
     paused = going(world)[0]
     said = how_long(world, ref(tea))
@@ -302,15 +344,15 @@ def test_how_long_is_left_is_said_to_the_second_in_the_paused_cards_format(world
     assert said == timers.render_timer(paused).splitlines()[0], "word for word the first line of the paused card"
 
 
-def test_how_long_is_left_on_it_is_the_timer_touched_last_and_a_guess_is_marked(world):
+def test_how_long_is_left_on_it_is_the_timer_the_last_message_was_about_and_never_a_guess(world):
     start(world, ("5m", "tea"), ("10m", "eggs"))
     tea, eggs = going(world)
     change(world, ref(tea), "extend", duration="5m")
     assert how_long(world, actions.REFERENCE) == "⏱️ **tea** · 10m left", "“it” is worked out by the code"
-    assert how_long(world, ref(eggs), guessed=["which"]).splitlines() == [
-        "⏱️ **eggs** · 10m left", "❓ I wasn't sure which timer you meant. Tell me if it was another one.",
-    ]
+    assert how_long(world, ref(eggs), guessed=["which"]) == "⏱️ **tea** · 10m left", "a guess is not a name: the one just spoken of"
     assert how_long(world, "all").splitlines() == ["⏱️ **tea** · 10m left", "⏱️ **eggs** · 10m left"]
+    with pytest.raises(UserError, match="Which timer"):
+        how_long(world, actions.REFERENCE)  # the last line was about both
 
 
 def test_how_long_is_left_on_a_timer_that_is_over_or_unknown(world):
@@ -434,13 +476,109 @@ def test_a_timer_replied_to_is_the_one_meant_whatever_claude_said(world):
     assert [timer.status for timer in going(world)] == [store.PAUSED, store.RUNNING]
 
 
-def test_it_without_a_reply_is_the_timer_i_did_something_to_last(world):
+def test_it_without_a_reply_is_the_timer_the_last_message_was_about_for_five_minutes(world):
     start(world, ("5m", "tea"), ("9m", "dinner"))
     tea, dinner = going(world)
     assert run(plain.which_timers(world.request, {"which": "@that"})) == ref(dinner), "the one started last"
     change(world, ref(tea), "pause")
     assert run(plain.which_timers(world.request, {"which": "@that"})) == ref(tea), "now the one just paused"
     assert run(plain.which_timers(world.request, {"which": ref(dinner)})) == ref(dinner), "a name is a name"
+    world.wait(4 * 60)
+    assert run(plain.which_timers(world.request, {"which": "@that"})) == ref(tea)
+    world.wait(61)
+    with pytest.raises(UserError, match="Which timer"):
+        run(plain.which_timers(world.request, {"which": "@that"}))  # too long ago to be what “it” means
+    elsewhere = Request(world.owner, 555, "pause it")
+    change(world, ref(tea), "resume")
+    with pytest.raises(UserError, match="Which timer"):
+        run(plain.which_timers(elsewhere, {"which": "@that"}))  # said in another channel: nothing here to point at
+
+
+# --- QA 2026-10-12 (#545): every message about a timer is that timer's ---------------------------------------
+def replying(world, message_id, said="give it 2 more"):
+    return Request(world.owner, CHANNEL, said, replied_to=message_id)
+
+
+def test_a_reply_to_the_line_that_said_what_was_done_means_that_timer(world):
+    start(world, ("5m", "tea"), ("9m", "dinner"))
+    tea, dinner = going(world)
+    change(world, ref(dinner), "pause")
+    line = world.last_message
+    change(world, ref(tea), "extend", duration="1m")  # tea is now the one spoken of last
+    assert line not in (dinner.message_id, tea.message_id)
+    assert run(plain.which_timers(replying(world, line), {"which": "@that"})) == ref(dinner), "where I point beats what is newest"
+    assert run(plain.which_timers(replying(world, line), {"which": ref(tea)}, frozenset({"which"}))) == ref(dinner)
+    state = run(plain.state(replying(world, line)))
+    assert state.lines[1].endswith("· the user replied to this one") and "replied" not in state.lines[0]
+    answer = run(plain.change(replying(world, line), {"which": "@that", "action": "extend", "duration": "2m"}, frozenset({"duration"})))
+    assert answer.text == "➕ Added 2m to dinner\n❓ I guessed how much time to add."
+    added = said_in(world, answer)
+    assert going(world)[1].remaining_s == pytest.approx(540 + 120) and going(world)[0].left(T0) == pytest.approx(360)
+    # ... and the line that said so is dinner's as well
+    assert added and run(plain.which_timers(replying(world, world.last_message), {"which": "@that"})) == ref(dinner)
+
+
+def test_every_message_a_timer_posts_is_recorded_as_that_timers(world, monkeypatch):
+    from tasks import timers as timers_task
+
+    monkeypatch.setattr(timers, "channel_for", lambda channel_id: world.channel)
+    monkeypatch.setattr(timers, "finished_view", lambda timer_id: None)
+    start(world, ("5m", "tea"), ("9m", "dinner"))
+    tea, dinner = going(world)
+
+    def about(message_id):
+        return [timer.label for timer in run(store.timers_about(message_id))]
+
+    owns = timers_task.task.owns_message
+    assert about(tea.message_id) == ["tea"] and about(dinner.message_id) == ["dinner"], "the card it started with"
+    # The line that answers "how long is left?", and the line that says what was done
+    how_long(world, ref(tea))
+    assert about(world.last_message) == ["tea"]
+    change(world, ref(dinner), "pause")
+    assert about(world.last_message) == ["dinner"] and run(owns(world.last_message)) is True
+    # A card posted again after the channel was reset: the copy is the timer's, and so the old one stays
+    old = tea.message_id
+    assert run(timers.repost(CHANNEL, {old}, plain.sender(CHANNEL))) == 1
+    tea = run(store.get_timer(tea.id))
+    assert tea.message_id != old and about(tea.message_id) == ["tea"] and about(old) == ["tea"]
+    # The alert when it is done, and the card once the timer is over
+    run(timers._finish(tea))
+    tea = run(store.get_timer(tea.id))
+    assert tea.notice_message_id is not None and about(tea.notice_message_id) == ["tea"]
+    assert run(owns(tea.notice_message_id)) is True and run(owns(tea.message_id)) is True
+    # A line about several is about each of them, and so points at none
+    said_in(world, run(plain.change_all(world.request, {"action": "resume"}, frozenset())))
+    assert about(world.last_message) == ["dinner"], "tea is over: only dinner was left to resume"
+    assert about(424242) == [] and run(owns(424242)) is False
+
+
+def test_the_typed_reply_words_work_on_a_line_about_a_timer_and_their_own_line_is_recorded(world):
+    from tasks import timers as timers_task
+
+    start(world, ("5m", "tea"), ("9m", "dinner"))
+    tea, dinner = going(world)
+
+    class Ctx:
+        channel_id, args = CHANNEL, ["2m"]
+
+        def __init__(self, target):
+            self.reply_target_id = target
+
+        async def confirm(self, text):
+            self.said = text
+            return await world.channel.send(text)
+
+    ctx = Ctx(dinner.message_id)
+    assert run(timers_task._is_ours(ctx)) is True
+    run(timers_task.pause_reply(ctx, SimpleNamespace(id=dinner.message_id)))  # `pause`, as a reply to dinner's card
+    line = 7000 + len(world.channel.sent)
+    assert ctx.said == "⏸️ Paused: dinner (9m left)" and [timer.label for timer in run(store.timers_about(line))] == ["dinner"]
+    # `+2m` as a reply to that line, not to the card
+    again = Ctx(line)
+    assert run(timers_task._is_ours(again)) is True
+    run(timers_task.extend_reply(again, SimpleNamespace(id=line)))
+    assert again.said == "➕ Added 2m to dinner" and going(world)[1].remaining_s == pytest.approx(660)
+    assert run(timers_task._is_ours(Ctx(424242))) is False
 
 
 def test_it_with_no_timer_going_is_said_not_guessed(world):

@@ -6,6 +6,17 @@ backfilled from the git log.
 
 ## 2026-10-12
 
+- **Every message about a timer is that timer's.** Not only its card and
+  its alert: the line that says it was paused or given more time, and
+  the one that answers how long is left. A reply to any of them means
+  that timer ("Give it 2 more" as a reply to "⏸️ Paused: dinner").
+- **A timer that was guessed is never changed.** With several going and
+  nothing to say which is meant (no name, no reply, nothing said about
+  one timer in the last five minutes), the bot asks "Which timer? Say
+  its name." and lists them. With one going it acts at once.
+- `dev why` says "reply to timers' message" when a reply went to a task
+  without the router.
+
 - **A reply to a message the bot posted for a task goes to that task
   first**, in code: a dose's Taken / Skip message, a timer's card, the
   checklist. The router is only asked if the task says the reply isn't

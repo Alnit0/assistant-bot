@@ -46,32 +46,41 @@ async def _is_ours(ctx: Context) -> bool:
     target = ctx.reply_target_id
     if target is None:
         return False
-    return (await store.timer_by_message(target) or await store.session_by_message(target)) is not None
+    return len(await store.timers_about(target)) + len(await store.sessions_about(target)) == 1
 
 
 async def _target(target: discord.Message):
-    timer = await store.timer_by_message(target.id)
-    if timer is not None:
-        return timers, timer
-    session = await store.session_by_message(target.id)
-    if session is not None:
-        return sessions, session
+    """The one timer or session a message is about: its card, its alert, or a
+    line that says what was done to it."""
+    about = await store.timers_about(target.id)
+    running = await store.sessions_about(target.id)
+    if len(about) == 1 and not running:
+        return timers, about[0]
+    if len(running) == 1 and not about:
+        return sessions, running[0]
     raise UserError("That message isn't a timer or a Pomodoro session.")
+
+
+async def _said(ctx: Context, record, text: str) -> None:
+    """Say what was done, and record the line as that timer's or session's:
+    a reply to it means the same one."""
+    message = await ctx.confirm(text)
+    await store.note_message(getattr(message, "id", None), ctx.channel_id, [record])
 
 
 async def cancel_reply(ctx: Context, target: discord.Message) -> None:
     module, record = await _target(target)
-    await ctx.confirm(await (timers.cancel(record) if module is timers else sessions.stop(record)))
+    await _said(ctx, record, await (timers.cancel(record) if module is timers else sessions.stop(record)))
 
 
 async def pause_reply(ctx: Context, target: discord.Message) -> None:
     module, record = await _target(target)
-    await ctx.confirm(await module.pause(record))
+    await _said(ctx, record, await module.pause(record))
 
 
 async def resume_reply(ctx: Context, target: discord.Message) -> None:
     module, record = await _target(target)
-    await ctx.confirm(await module.resume(record))
+    await _said(ctx, record, await module.resume(record))
 
 
 async def extend_reply(ctx: Context, target: discord.Message) -> None:
@@ -80,7 +89,7 @@ async def extend_reply(ctx: Context, target: discord.Message) -> None:
     except DurationError as error:
         raise UserError(f"{error} Try `+10m`.")
     module, record = await _target(target)
-    await ctx.confirm(await module.extend(record, seconds))
+    await _said(ctx, record, await module.extend(record, seconds))
 
 
 async def acknowledge_reply(ctx: Context, target: discord.Message) -> None:
@@ -278,8 +287,9 @@ class TimersTask(Task):
         return await board.reposted(channel_id, gone)
 
     async def owns_message(self, message_id: int) -> bool:
-        # A timer's or a session's card or alert, going or over, the board and the list
-        if await store.timer_by_message(message_id) is not None or await store.session_by_message(message_id) is not None:
+        # Every message about a timer or a session, going or over (its card, its alert, a
+        # line that says what was done to it), the board and the list
+        if await store.timers_about(message_id) or await store.sessions_about(message_id):
             return True
         return await store.is_board(message_id) or await store.is_list(message_id)
 

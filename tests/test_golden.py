@@ -616,6 +616,57 @@ def test_a_reply_to_a_timers_card_goes_to_timers_first_however_old_the_card(bot)
     assert [(asked.task, "not_this" in asked.tools) for asked in bot.requests] == [("timers", True)], "no router: the card says whose it is"
 
 
+def test_give_it_2_more_as_a_reply_to_the_line_that_said_dinner_was_paused_is_dinners(bot):
+    # QA 2026-10-12 (#545), this exact sequence: several timers going; `pause` as a reply to
+    # dinner's card; then "Give it 2 more" as a reply to "⏸️ Paused: dinner". That line was no
+    # task's own, so the router was asked and the timer was the newest one by luck
+    from tasks import timers as timers_words
+    from tests.test_conversation import traces
+
+    for label in ("tea", "dinner", "eggs"):
+        run(timers_plain.start(Request(bot.owner, 100, "start"), {"timers": [{"duration": "5m", "label": label}]}, frozenset()))
+    tea, dinner, eggs = timers(bot)
+
+    async def confirm(text):
+        bot.next_id += 1
+        bot.bot_messages.append(bot.next_id)
+        return SimpleNamespace(id=bot.next_id)
+
+    typed = SimpleNamespace(channel_id=100, reply_target_id=dinner.message_id, confirm=confirm)
+    run(timers_words.pause_reply(typed, SimpleNamespace(id=dinner.message_id)))
+    paused_line = bot.next_id
+    # Something else is done since, so dinner is not the timer spoken of last
+    bot.claude(route("timers"), ("timer_change", {"which": f"t{eggs.id}", "action": "extend", "duration": "1m", "guessed": [], "not_included": []}))
+    bot.say("give eggs 1 more")
+    before = len(bot.requests)
+
+    bot.claude(("timer_change", {"which": "@that", "action": "extend", "duration": "2m", "guessed": ["duration"], "not_included": []}))
+    bot.say("Give it 2 more", reply_to=paused_line)
+    assert bot.sent[-1][1].text == "➕ Added 2m to dinner\n❓ I guessed how much time to add."
+    assert [(asked.task, "not_this" in asked.tools) for asked in bot.requests[before:]] == [("timers", True)], "no router"
+    tea, dinner, eggs = timers(bot)
+    # (the clock here is the real one, and the test takes a few seconds)
+    assert dinner.remaining_s == pytest.approx(420, abs=30) and tea.left(timers_plain.utc_now()) == pytest.approx(300, abs=30)
+    assert eggs.left(timers_plain.utc_now()) == pytest.approx(360, abs=30), "eggs was spoken of last, and is left alone"
+    assert "reply to timers' message: it goes to timers first, and the router is not asked" in traces()[-1]["why"]
+    # The line that said so is dinner's too: a reply to it means dinner again
+    bot.claude(("timer_change", {"which": "@that", "action": "resume", "guessed": [], "not_included": []}))
+    bot.say("carry on", reply_to=bot.sent[-1][0])
+    assert bot.sent[-1][1].text.startswith("▶️ Resumed: dinner")
+
+
+def test_with_several_timers_going_and_none_named_it_asks_which_and_changes_nothing(bot, dev_clock):
+    for label in ("tea", "dinner"):
+        run(timers_plain.start(Request(bot.owner, 100, "start"), {"timers": [{"duration": "30m", "label": label}]}, frozenset()))
+    dev_clock.advance(timedelta(minutes=10))  # nothing was said about either of them lately
+    bot.claude(route("timers"), ("timer_change", {"which": f"t{timers(bot)[1].id}", "action": "extend", "duration": "2m", "guessed": ["which"], "not_included": []}))
+    bot.say("give it 2 more")
+    asked = bot.sent[-1][1].text.splitlines()
+    assert asked[0] == "⚠️ Which timer? Say its name." and len(asked) == 3
+    assert asked[1].startswith("⏱️ **tea** · ") and asked[2].startswith("⏱️ **dinner** · ") and asked[2].endswith(" left")
+    assert [timer.left(timers_plain.utc_now()) for timer in timers(bot)] == [pytest.approx(1200, abs=30)] * 2, "neither was touched"
+
+
 def test_a_reply_to_a_message_no_task_posted_is_routed_as_before(bot):
     bot.claude(ROUTED["5"])
     asked, _ = bot.say("what's the capital of France?", reply_to=987654)

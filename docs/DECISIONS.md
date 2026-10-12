@@ -1074,3 +1074,14 @@ A short log of key decisions and why. Newest at the bottom.
   - The pills fixtures were recorded live once for this (US$0.13). One
     came back otherwise than hoped: "took the usual one" is handed over
     as "it", not as a guess, so it gets no ❓ card (see the backlog).
+  - Found live the same day: the line that said a timer was paused was
+    no task's own, so a reply to it went to the router and the timer was
+    picked by luck. A task now records every message about one of its
+    things, the lines it answers with included: the conversation hands
+    the message's id back (`actions.Answer`). Timers keeps them in a
+    table of its own; pills does not record its lines yet (backlog).
+  - Which timer "it" means is the timer the last message about timers
+    in the channel was about, for five minutes, and no longer the timer
+    of the last event whenever that was. With several going and nothing
+    to go by, nothing is done and the bot asks which, in a message
+    until G1 can ask on a card.

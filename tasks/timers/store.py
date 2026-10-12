@@ -125,9 +125,30 @@ def add_speed_events_and_lists(conn: sqlite3.Connection) -> None:
     )
 
 
+def add_messages(conn: sqlite3.Connection) -> None:
+    # Every message posted about a timer or a session, whatever it is: its card, its
+    # alert, and each line that says what was done to it ("⏸️ Paused: dinner"). A reply
+    # to any of them means that timer. A row a record: a line about three timers is three
+    conn.execute(
+        """
+        CREATE TABLE timers_messages (
+            message_id INTEGER NOT NULL,
+            kind TEXT NOT NULL,
+            record_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            channel_id INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
+            PRIMARY KEY (message_id, kind, record_id)
+        )
+        """
+    )
+    conn.execute("CREATE INDEX timers_messages_channel ON timers_messages (channel_id, user_id)")
+
+
 MIGRATIONS = [
     create_tables,
     add_speed_events_and_lists,
+    add_messages,
 ]
 
 # What a timers_events row is about, and what happened
@@ -504,3 +525,72 @@ async def forget_list(channel_id: int) -> None:
 
 async def is_list(message_id: int) -> bool:
     return await database.run(_is_list, message_id)
+
+
+# --- the messages about each timer and session -------------------------------------------------
+def _note_message(conn: sqlite3.Connection, message_id: int, channel_id: int, records: list) -> None:
+    for record in records:
+        conn.execute(
+            "INSERT OR IGNORE INTO timers_messages (message_id, kind, record_id, user_id, channel_id, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (message_id, TIMER if isinstance(record, Timer) else SESSION, record.id, record.user_id, channel_id, to_db(utc_now())),
+        )
+
+
+async def note_message(message_id: int | None, channel_id: int | None, records) -> None:
+    """Record a message as being about these timers and sessions: every message
+    posted about one is, so a reply to it says which one is meant."""
+    records = [record for record in records if record is not None and record.id is not None]
+    if message_id is None or channel_id is None or not records:
+        return
+    await database.run(_note_message, message_id, channel_id, records)
+
+
+def _about(conn: sqlite3.Connection, message_id: int, kind: str, table: str) -> list[int]:
+    # The card and the alert are on the record itself, which also covers the ones
+    # posted before messages were recorded here
+    rows = conn.execute(
+        f"""
+        SELECT record_id FROM timers_messages WHERE message_id = ? AND kind = ?
+        UNION SELECT id FROM {table} WHERE message_id = ? OR notice_message_id = ?
+        ORDER BY 1
+        """,
+        (message_id, kind, message_id, message_id),
+    ).fetchall()
+    return [row[0] for row in rows]
+
+
+async def timers_about(message_id: int | None) -> list[Timer]:
+    """The timers a message is about, going or over. Empty if it is no timer's."""
+    if message_id is None:
+        return []
+    ids = await database.run(_about, message_id, TIMER, "timers_timers")
+    return [timer for timer in [await get_timer(timer_id) for timer_id in ids] if timer is not None]
+
+
+async def sessions_about(message_id: int | None) -> list[Session]:
+    if message_id is None:
+        return []
+    ids = await database.run(_about, message_id, SESSION, "timers_pomodoros")
+    return [session for session in [await get_session(session_id) for session_id in ids] if session is not None]
+
+
+def _latest_about(conn: sqlite3.Connection, user_id: int, channel_id: int, since: datetime) -> list[int]:
+    newest = conn.execute(
+        "SELECT message_id FROM timers_messages WHERE user_id = ? AND channel_id = ? AND kind = ? AND created_at >= ? "
+        "ORDER BY rowid DESC LIMIT 1",
+        (user_id, channel_id, TIMER, to_db(since)),
+    ).fetchone()
+    if newest is None:
+        return []
+    rows = conn.execute("SELECT record_id FROM timers_messages WHERE message_id = ? AND kind = ?", (newest[0], TIMER)).fetchall()
+    return [row[0] for row in rows]
+
+
+async def latest_about(user_id: int, channel_id: int | None, since: datetime) -> list[Timer]:
+    """The timers the newest message about timers in a channel is about, if it
+    was posted since `since`: what "it" means straight after."""
+    if channel_id is None:
+        return []
+    ids = await database.run(_latest_about, user_id, channel_id, since)
+    return [timer for timer in [await get_timer(timer_id) for timer_id in ids] if timer is not None]
