@@ -230,11 +230,16 @@ def on_change(told) -> None:
         _after_change.append(told)
 
 
+def tell_changed() -> None:
+    """Tell whoever asked (`on_change`) that a pill or a dose has changed."""
+    for told in _after_change:
+        told()
+
+
 def changed(user_id: int) -> None:
     """A pill or a dose changed: bring the checklist up to date, in the background."""
     live.schedule(("pills-checklist", user_id), lambda: refresh(user_id))
-    for told in _after_change:
-        told()
+    tell_changed()
 
 
 # ---------------------------------------------------------------------------
@@ -304,8 +309,7 @@ async def _pressed(press: cards.Press, did: str) -> str:
     if press.message_id is not None:
         await database.run(store.db_drop_message, press.message_id)
     await refresh(press.user.id)
-    for told in _after_change:
-        told()
+    tell_changed()
     said = marked_text(after, did)
     # So that the next message isn't answered as if this were still waiting
     llm.remember(press.channel_id, f"(pressed {'Taken' if did == TAKEN else 'Skip'} on {rules.plain(dose.label)})", said)

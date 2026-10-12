@@ -193,8 +193,7 @@ async def _stale(press: cards.Press) -> str:
 async def _done(press: cards.Press, dose: Dose, did: str, at: datetime, source: str) -> str:
     after = await checklist.mark(dose, did, at, source)
     await checklist.refresh(press.user.id)
-    for told in checklist._after_change:
-        told()
+    checklist.tell_changed()
     said = checklist.marked_text(after, did)
     # So that the next message isn't answered as if this were still waiting
     llm.remember(press.channel_id, f"(pressed {'Taken' if did == checklist.TAKEN else 'Skip'} on the checklist for {rules.plain(dose.label)})", said)

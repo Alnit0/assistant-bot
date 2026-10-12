@@ -98,7 +98,7 @@ task that needs name matching: move it to core then). **Left, timers**
 | C14 | timers | Lengths are handed over as text ("5m", "50/10") and several ids as one text ("t12 t14") | `tasks/timers/plain.py:359`, `:457`; `tasks/timers/status.py:51-63`, `tasks/timers/pomodoro.py:55-79` | Contract: structured values (decided 2026-10-10 to leave) | schema, fixtures | medium |
 | C17 | timers | Words Claude might send for "the session" are accepted as a set ("current", "it", "pomodoro"…) | `tasks/timers/control.py:22` | Word lists (not listed below until now) | schema (`@that`) | small |
 | C18 | timers | Its own live lists ("Your timers", one a channel) beside `core/livelists.py`; its own send, edit and delete helpers beside `core/cards.py` | `tasks/timers/board.py:79-112`, `tasks/timers/store.py` (`timers_lists`), `tasks/timers/common.py:22-58` | Core or task: plumbing | core | medium |
-| C19 | pills | "Which of my things does this name mean" (whole name, then part, then ask) and laying a reply over an open card are general, and live in the task | `tasks/pills/rules.py:541-568`, `tasks/pills/plain.py:69` | Core or task: a general tool. **Move it to core when gym is built**: gym is the second task that needs it (exercise names), decided 2026-10-12 | core | medium |
+| C19 | pills | "Which of my things does this name mean" (whole name, then part, then ask) and laying a reply over an open card are general, and live in the task | `tasks/pills/rules.py:541-568`, `tasks/pills/plain.py:69` | Core or task: a general tool. **Name matching moved to `core/names.py` on 2026-10-13**; laying a reply over an open card is still in the task, until a second task needs it | core | small |
 
 Known gaps the run met again, already listed above: G1 (golden 1c, 1d,
 2a), G3 (golden 2b passes only by the "pill changed last" guess), G14
@@ -124,6 +124,7 @@ a schema could take its place.
 | `actions.unchosen` (`_HALF_MARKED`, `_PART_OF_DAY`) | am, pm, "morning", "evening", a 24-hour time | Takes back an am or pm Claude chose by itself | No: it checks the fixed form of a time |
 | `actions.whole_part` (`_DANGLING_END`, `_DANGLING_START`) | "of", "and", "the", "at"… left hanging at an end of a leftover | A "Not included" part is whole words, never cut off mid-phrase ("dose 1 of") | No: it checks `not_included`, whose description now asks for whole parts |
 | `actions.is_filler` (`_FILLER`) | "and", "also", "please", "too"… | Joining words are never reported as "Not included" | No: it checks `not_included` |
+| `actions._number` (`_AS_A_NUMBER`) | A number that arrived as text ("62.5", "62,5") | A decimal that came as text is still read; anything else is refused | No: the schema already says number |
 | `actions._structured` (`_BETWEEN_TIMES`) | Times sent as one text ("8am, 8pm") | A list of times that arrived as text is still read | Already replaced (`TIMES`); this is the net under it |
 | `core/durations.py` spoken forms | "3 hours apart", "an hour and a half", number words | A length that arrived as words is still read | Already replaced for pills (`MINUTES`). Timers still take "5m" as text: left so for now (decided 2026-10-10), a seconds type would replace it |
 | `core/timeinput.py` times | `8pm`, `20:00`, `noon`, `midnight` | Reads the fixed form, and any other that arrives | Already replaced (`TIME`); also reads what I type into a form |
@@ -153,6 +154,30 @@ trains are answered:
 - Built inside the task, apart, until a second task needs them:
   reading a grid from a file, mapping headings to a fixed set of
   fields, and comparing two lists of records into `field · old → new`.
+
+## Task check, 2026-10-13 (every task and the core, after the overnight batch)
+
+Run by the checks of the `task-check` skill: the contract
+(`actions.problems`: nothing), the scans for discord.py, the clock, the
+day, 24-hour times, offers and word lists, and a read of what changed.
+The tests and the golden conversations pass.
+
+**Fixed (code only):** a reaction's `applied_at` and dev mode's expiry
+took the time from `datetime.now` rather than `clock.real_now`; the
+drawn checklist reached into the checklist's private list of listeners
+(`checklist.tell_changed` now); the word-list table above gains the
+number read from text; C19's name matching is in the core.
+
+**Open, for Alex** (also in `docs/STATUS.md`):
+
+| What | Where | Why it is not fixed here |
+|---|---|---|
+| `tasks/keep` imports discord.py and is not one of the tasks allowed to | `tasks/keep/__init__.py:1` | Not from this batch; it needs the gateway layer or a say-so |
+| #commands still describes Taken and Skip as "under today's checklist" | `tasks/pills/__init__.py:72` | True while `CARDS_V2` is off; the wording for the new look is yours |
+| The spend note is sent from `core/database.py` | `core/database.py`, `_say_if_over_the_daily_limit` | It works and is tested; a module for what is said about spend would be tidier |
+| Three near copies of "tick a dose off from a button" | `checklist._pressed`, `reminders._done`, `sheet._done` | One would do; left until the old checklist goes |
+| `dev mock` has its own records beside `core/design.py`'s | `tasks/dev/mock.py` | It shares the colours and spacing; sharing the records is a small job |
+| Timers: C8, C14, C17, C18 as before | table above | Timers are low priority and left alone |
 
 ## Left for later
 

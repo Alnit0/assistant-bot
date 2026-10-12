@@ -7,6 +7,18 @@ session; the end-of-task checklist updates it at the end of every task.
 
 ## Questions for Alex
 
+- **Task check of 2026-10-13** (every task and the core; the table is
+  in `docs/BACKLOG.md`). The code-only findings are fixed. Left for
+  you:
+  - `tasks/keep` uses discord.py and is not one of the tasks allowed
+    to. Add it to the list in `CLAUDE.md`, or move its Discord calls
+    into core?
+  - #commands still says Taken and Skip are "under today's checklist".
+    With the new look they are in the pill's own box: the words for
+    that are yours, once `CARDS_V2` stays on.
+  - Smaller, in the backlog: the spend note is sent from the database
+    module; three near copies of "tick a dose off from a button";
+    `dev mock` keeps its own records beside the design's.
 - **Live's own folder** (`scripts\setup-live-folder.ps1`, prepared,
   only ever run with `-WhatIf`; "A folder of its own for live" in
   `docs/DEVELOPMENT.md`):

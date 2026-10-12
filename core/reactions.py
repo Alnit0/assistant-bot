@@ -1,7 +1,8 @@
 import sqlite3
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+
+from core import clock
 
 # ---------------------------------------------------------------------------
 # Reactions: deciding what to do once things have gone quiet.
@@ -99,7 +100,7 @@ def db_mark_applied(conn: sqlite3.Connection, key: Key, channel_id: int) -> None
     message_id, emoji, user_id = key
     conn.execute(
         "INSERT OR REPLACE INTO reaction_state (message_id, channel_id, emoji, user_id, applied_at) VALUES (?, ?, ?, ?, ?)",
-        (message_id, channel_id, emoji, user_id, datetime.now(timezone.utc).isoformat()),
+        (message_id, channel_id, emoji, user_id, clock.real_now().isoformat()),  # a record of what really happened
     )
 
 

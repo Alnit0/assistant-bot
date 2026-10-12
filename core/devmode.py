@@ -1,7 +1,9 @@
 import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, replace
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
+
+from core import clock
 
 from core.config import REACTION_DEBOUNCE_SECONDS
 from core.discord_utils import log_simple
@@ -42,7 +44,8 @@ expires_at: datetime | None = None  # UTC
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    # Dev mode expires by the real clock, whatever the dev clock says
+    return clock.real_now()
 
 
 # ---------------------------------------------------------------------------

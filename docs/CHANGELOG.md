@@ -6,6 +6,10 @@ backfilled from the git log.
 
 ## 2026-10-13
 
+- A check of every task and the core against the standard after the
+  night's changes: nothing for the user to see; two records now take
+  the real time from the one clock.
+
 - A script, ready to run by hand, that gives the live bot a folder of
   its own on `main` (`scripts\setup-live-folder.ps1`). Not run.
 
