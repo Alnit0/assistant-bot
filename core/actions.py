@@ -244,6 +244,9 @@ class LiveReply:
 
     key: str
     text: str
+    # The same list as a card with a layout (core/design.py), for a task whose list is
+    # drawn: posted in place of the text, which is still what is logged
+    card: object | None = None
 
 
 @dataclass(frozen=True)

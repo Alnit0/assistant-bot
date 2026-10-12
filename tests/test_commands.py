@@ -40,7 +40,7 @@ def page(name):
 # ---------------------------------------------------------------------------
 def test_there_is_one_message_a_task_then_housekeeping_then_the_tasks_for_testing():
     titles = [text.splitlines()[0] for text in commands.pages() if text.startswith("## ")]
-    assert titles == ["## ⚙️ Builtin", "## 🐞 Bugs", "## 💊 Pills", "## ⏱️ Timers", "## 🧹 Housekeeping", "## 🛠️ Dev", "## 🧪 Lab"]
+    assert titles == ["## ⚙️ Builtin", "## 🐞 Bugs", "## 💊 Pills", "## 🗓️ Schedule", "## ⏱️ Timers", "## 🧹 Housekeeping", "## 🛠️ Dev", "## 🧪 Lab"]
     assert all(len(text) <= 2000 for text in commands.pages()), "each fits one Discord message"
 
 

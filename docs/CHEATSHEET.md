@@ -249,6 +249,7 @@ only, any channel, no slash. It is off after every restart.
 | `dev expire 30m` | Switch itself off after this long |
 | reply `dev inspect` | What the bot knows about that message, including its lifecycle class |
 | `dev status` | What is running: live or dev, the database, uptime, the commit, the clock, the next run of each job; and how many bots are running: the one holding the lock, and any stray (the `.venv` launcher isn't counted) |
+| `my schedule` | What the bot does by itself and when (change it by saying so: "move the pills checklist to 7") |
 | `dev jobs` | What is booked, and how the last run of each job ended |
 | `dev mock` / `dev mock checklist-v2` | List the card sketches in `docs/mockups/` / post one here as a Components V2 message (its buttons only say it is a mock-up) |
 | `dev run backup` | Run one of the scheduler's handlers now (`dev run checklist`, …) |

@@ -307,6 +307,11 @@ def default_schedule(task: str, kind: str, default: timetable.Default) -> None:
     _standing[(task, kind)] = default
 
 
+def defaults() -> dict[tuple[str, str], timetable.Default]:
+    """The default schedule of every handler that has one, by (task, kind)."""
+    return dict(_standing)
+
+
 def label(task: str, kind: str) -> str:
     """A job in words: "nightly backup", "pill reminder"."""
     given = _labels.get((task, kind))
@@ -456,6 +461,40 @@ def _db_ran_on(conn: sqlite3.Connection, schedule_id: int, day: str, but_not: st
     return row is not None
 
 
+def _db_coming(conn: sqlite3.Connection, schedule: timetable.Schedule, now: datetime) -> timetable.Occurrence | None:
+    """When a schedule next runs, as it stands (or as it would stand, for one
+    not saved yet): its next occurrence, passing over today if it has
+    already run today at another time. A schedule runs once a day."""
+    coming = timetable.next_occurrence(schedule, now)
+    if coming is not None and schedule.id and _db_ran_on(conn, schedule.id, coming.stamp[:10], coming.stamp):
+        # It ran today at its old time: once a day, so the new time starts tomorrow
+        coming = timetable.next_occurrence(schedule, now, skip_day=coming.local.date())
+    return coming
+
+
+async def coming(schedule: timetable.Schedule) -> timetable.Occurrence | None:
+    """When this schedule next runs, as the engine would book it: for the list,
+    and for a card that says when a change would take effect."""
+    return await database.run(_db_coming, schedule, utc_now())
+
+
+def _db_last_of(conn: sqlite3.Connection, schedule_id: int) -> tuple[str, str] | None:
+    """How a schedule's last run ended and the local time it stood for; the
+    worst of its steps, so a routine with a failed step says so."""
+    row = conn.execute(
+        "SELECT local_at FROM scheduled_jobs WHERE schedule_id = ? AND local_at IS NOT NULL AND status IN (?, ?, ?) ORDER BY local_at DESC LIMIT 1",
+        (schedule_id, DONE, FAILED, SKIPPED),
+    ).fetchone()
+    if row is None:
+        return None
+    ended = {status for (status,) in conn.execute("SELECT status FROM scheduled_jobs WHERE schedule_id = ? AND local_at = ?", (schedule_id, row[0]))}
+    return (FAILED if FAILED in ended else SKIPPED if SKIPPED in ended else DONE), row[0]
+
+
+async def last_of(schedule_id: int) -> tuple[str, str] | None:
+    return await database.run(_db_last_of, schedule_id)
+
+
 def _db_book(conn: sqlite3.Connection, now: datetime, standing: dict) -> list[str]:
     """Make sure every schedule that is on has its next occurrence booked,
     a run for each step, by its key. Booked again, nothing changes. A run
@@ -464,10 +503,7 @@ def _db_book(conn: sqlite3.Connection, now: datetime, standing: dict) -> list[st
     must still run. Returns what was done, for the log."""
     said = _db_defaults(conn, now, standing)
     for schedule in timetable.db_all(conn, removed=True):
-        coming = timetable.next_occurrence(schedule, now)
-        if coming is not None and _db_ran_on(conn, schedule.id, coming.stamp[:10], coming.stamp):
-            # It ran today at its old time: once a day, so the new time starts tomorrow
-            coming = timetable.next_occurrence(schedule, now, skip_day=coming.local.date())
+        coming = _db_coming(conn, schedule, now)
         waiting = conn.execute(
             "SELECT id, local_at, due_at, step, skill, kind FROM scheduled_jobs WHERE schedule_id = ? AND status = ? AND local_at IS NOT NULL",
             (schedule.id, PENDING),

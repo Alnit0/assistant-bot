@@ -57,12 +57,19 @@ def find[T](things: Sequence[T], wanted: str, name: Callable[[T], str], prefix: 
     for found in (
         [thing for thing in things if tidy(name(thing)) == text],
         [thing for thing in things if text in tidy(name(thing))],
+        # Last: every word said is a word of the name, or the start of one, in any order
+        # ("evening checklist" for Evening pills checklist)
+        [thing for thing in things if _all_words_fit(words(text), words(name(thing)))],
     ):
         if len(found) == 1:
             return found[0]
         if len(found) > 1:
             raise Ambiguous(wanted.strip(), found, [name(thing) for thing in found])
     raise Unknown(wanted.strip())
+
+
+def _all_words_fit(said: list[str], of: list[str]) -> bool:
+    return bool(said) and all(any(word == each or (len(word) >= 3 and each.startswith(word)) for each in of) for word in said)
 
 
 # ---------------------------------------------------------------------------
@@ -78,6 +85,8 @@ def find[T](things: Sequence[T], wanted: str, name: Callable[[T], str], prefix: 
 # part that is one thing's whole name means that thing.
 # ---------------------------------------------------------------------------
 PART_OF_A_WORD = 3  # the fewest letters that may stand for the start of a word of a name
+
+
 _WORD = re.compile(r"[^\W_]+(?:['’][^\W_]+)*")
 
 
@@ -122,7 +131,10 @@ def unclear[T](things: Sequence[T], text: str, name: Callable[[T], str], meant: 
     """What to ask, if what was typed names more than one of `things` where
     Claude handed over one (`meant`, or None for "it"): the Ambiguous to
     raise, or None when what was typed is clear or names nothing."""
-    for part, fits in said_about(things, text, name):
+    parts = said_about(things, text, name)
+    if meant is not None and any(len(fits) == 1 and (fits[0] is meant or fits[0] == meant) for _, fits in parts):
+        return None  # another part of what was typed names this one alone ("the evening checklist")
+    for part, fits in parts:
         if len(fits) > 1 and (meant is None or any(each is meant or each == meant for each in fits)):
             return Ambiguous(part, fits, [name(each) for each in fits])
     return None

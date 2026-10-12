@@ -221,6 +221,10 @@ The router's message gains one line (about 40 tokens) only when a
 word typed could be part of the name of one of my things; nothing is
 added to its rules, so every other message costs what it did.
 
+The `schedule` task (2026-10-13) is one more line in the router's
+catalogue, about 90 tokens on every routed message (the router is not
+cached), and its own extraction rules when a message is its.
+
 ## 7. Questions (also in `docs/STATUS.md`)
 
 1. Answered 2026-10-13: the router is not skipped; of the shortcuts,

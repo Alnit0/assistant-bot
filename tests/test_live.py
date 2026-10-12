@@ -143,3 +143,35 @@ def test_what_runs_in_the_background_is_not_counted_as_the_users_wait():
 
     turn = asyncio.run(go())
     assert (turn.discord_calls, turn.discord_seconds) == (1, 0.25)
+
+
+def test_settling_never_waits_for_work_of_a_loop_that_has_gone_or_that_finished_unseen():
+    # A hang now and then in the whole suite (2026-10-13): a task that finished as its loop closed never
+    # had its clean-up run, stayed in the set of work still going, and settle span on it for ever
+    async def first_loop():
+        async def quick():
+            return None
+
+        async def never():
+            await asyncio.sleep(3600)
+
+        done = asyncio.get_running_loop().create_task(quick())
+        left = asyncio.get_running_loop().create_task(never())
+        await done
+        live._background.update({done, left})  # as if their clean-up had not run before the loop went
+
+    asyncio.run(first_loop())
+    assert len(live._background) == 2
+
+    async def second_loop():
+        ran = []
+        live.background(_note(ran))
+        await asyncio.wait_for(live.settle(), 2)
+        return ran
+
+    assert asyncio.run(second_loop()) == [True], "this loop's own work is still waited for"
+    assert not live._background
+
+
+async def _note(ran):
+    ran.append(True)

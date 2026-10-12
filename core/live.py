@@ -98,9 +98,19 @@ def _spawn(coroutine) -> asyncio.Task:
 
 
 async def settle() -> None:
-    """Wait for everything scheduled so far to finish (shutdown, and tests)."""
+    """Wait for everything scheduled so far to finish (shutdown, and tests).
+
+    Work left over from an event loop that has gone can never finish here, and
+    work that finished as its loop closed never had its clean-up run: both are
+    dropped, not waited for. (Waiting for them made this spin for ever, now
+    and then, in tests that run one loop after another: found 2026-10-13.)"""
+    here = asyncio.get_running_loop()
     while _background:
-        await asyncio.gather(*list(_background), return_exceptions=True)
+        waiting = [task for task in _background if not task.done() and task.get_loop() is here]
+        _background.intersection_update(waiting)
+        if not waiting:
+            break
+        await asyncio.gather(*waiting, return_exceptions=True)
 
 
 def reset() -> None:

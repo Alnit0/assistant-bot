@@ -1401,6 +1401,31 @@ so they are safe to run while the bot is running.
 - **`docs/TESTING.md`** lists every test: 🤖 Auto rows for what pytest
   covers, 👤 Manual rows for what only shows in Discord.
 
+## My schedule
+
+What the bot does by itself, and when, is yours to see and change.
+
+- **`my schedule`** (or `schedule`) shows the list: each schedule, the
+  days and time, where it posts and whether it notifies, its next run
+  and how the last one ended. It is kept up to date in place.
+- **Change one by saying so**, and a card shows `field · old → new`
+  and when it would next run; only **Save** writes it:
+  "move the pills checklist to 7", "checklist on weekdays only", "also
+  Saturdays", "not on Sundays", "pause the checklist until Monday",
+  "turn it back on", "make it silent", "post it in #inbox".
+- **Add another**: "also post the pills checklist at 6 pm". It is
+  called after what it runs, with the part of the day when that name
+  is taken ("Evening pills checklist"). With no time said, the card
+  asks.
+- **Remove one**: "remove the evening checklist". It stops running;
+  what it did is kept, and adding it again brings the same one back.
+- A name that fits two is asked about on the card. The bot's own (the
+  nightly backup, the end of the day) are listed in a small line and
+  are not changed here.
+- **Moved after it has run today**, it runs at the new time from
+  tomorrow: once a day.
+- A pill's own dose times are not here: they belong to the pill.
+
 ## When things run: the scheduler
 
 Nothing in a task knows what time it is for. A task says **what** to

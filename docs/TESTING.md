@@ -43,10 +43,10 @@ Last updated: 2026-10-13
 | P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
 | Q | Time, days, the schedule model, the occurrence log and cards | 19 | 17 | 2 | 2 | 17 | 0 | 0 |
 | R | Pills | 73 | 21 | 52 | 44 | 29 | 0 | 0 |
-| S | Routing and confirm cards | 69 | 18 | 51 | 16 | 52 | 0 | 1 |
+| S | Routing and confirm cards | 72 | 20 | 52 | 17 | 54 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 4 | 18 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **487** | **171** | **316** | **246** | **240** | **0** | **1** |
+| | **Total** | **490** | **173** | **317** | **247** | **242** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -615,6 +615,9 @@ the dev database (`python main.py --dev`), in #inbox.
 | S67 | 🤖 Auto | What was typed is read beside what Claude handed over | A part of the message fits a name by its words or the start of one (three letters or more), the longest part wins and a whole name is that thing alone; “it” is no part of “Testvit”. When such a part fits more than one thing and Claude handed over one of them, or “it”, the question is asked in the words that were typed. Claude is told never to complete a name and to hand over what it understood; an empty place in a list of times is left out and the item stands | ✅ Pass | 2026-10-13 | `tests/test_names.py` |
 | S68 | 👤 Manual | Block 45: `pause testv` with two pills it fits; `took` twice in a row with a gap; `reset channel` with `CARDS_V2` on | The which-one card in the words typed; “just now”; the red reset card | ⬜ Untested | | Block 45 |
 | S69 | 🤖 Auto | Part of a name is a hint for the router | A word of four letters or more that starts a word of the name of something a task holds is given to the router with the task, never the name, as “a hint, not a decision”; no hint when nothing fits. When the router chooses pills the card asks which pill; when it chooses another task that task gets the message | ✅ Pass | 2026-10-13 | `tests/test_names.py`, `tests/test_golden.py` |
+| S70 | 🤖 Auto | `my schedule`: the list | Each schedule with its days and time, where it posts, silent or notify, its next run and how the last ended; paused ones together; a routine lists its steps; the bot's own in one small line; drawn as a box a schedule with the next to run amber and no buttons; a typed word, exact, of the schedule task | ✅ Pass | 2026-10-13 | `tests/test_schedule_task.py` |
+| S71 | 🤖 Auto | Changing, adding and removing a schedule by a card | Move, days (set, add, remove, never none), pause with or without an end, resume, silent or notify and channel are `field · old → new` with when it next runs, and only Save writes; what can't be read is said and the rest kept; the bot's own are refused in a line; a name that fits two is asked on the card, also when Claude completed it, and “it” with two it could be; a correction keeps what the card held; moved after it ran today it starts tomorrow; add names it after what it runs and the part of the day, asks for a time on the card, refuses what can't be scheduled and one already there; remove keeps the row, stops its runs, and adding it back is the same row | ✅ Pass | 2026-10-13 | `tests/test_schedule_task.py`, `tests/test_names.py` |
+| S72 | 👤 Manual | Block 47: `my schedule`, add, move, pause, a name that fits two, the bot's own, remove, and the list in the new look | As the block says | ⬜ Untested | | Block 47 |
 
 ## T. Tasks in plain words
 

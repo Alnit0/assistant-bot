@@ -199,7 +199,14 @@ stage at a time, each with offline tests, a commit and a self-test run.
    job, now with a key. `dev jobs`, `dev run`, `dev fire next`, `dev
    clock` and the status line use it. "Routine" means only a schedule
    with several steps.
-2. Changing the schedule by words (the `schedule` task).
+2. **Done: changing the schedule by words** (`tasks/schedule`). `my
+   schedule` shows the list (free), and move, pause with or without an
+   end, resume, days of the week, silent or notify, channel, add and
+   remove are each a card that only Save writes. #commands gains a
+   "🗓️ Schedule" message at the next start. Not built in this stage,
+   because there is nothing yet to use it on: changing the order of a
+   routine's steps, and taking a step out of a routine (they come with
+   the briefing, when the first routine exists).
 3. The briefing, behind `BRIEFING_ENABLED`.
 4. Clean-up, behind `HUB_TIDY`.
 

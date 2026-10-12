@@ -873,6 +873,23 @@ clock.
 | 3 | Type `dev jobs` | Pending: the nightly backup, the end of the day and the pills checklist, each once, each "for" its local time. Then "Last run of each", with ✅ and a line | J68 |
 | 4 | Look at the bot's status line | "🟢 Live · up … · next: …" naming the next job in words, as before | K29 |
 
+## 47. My schedule (waiting for QA)
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
+On the dev database. About six messages to Claude (three cents).
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Type `my schedule` | "🗓️ My schedule": Pills checklist, every day at 6:00 am, #hub, silent, its next run and its last; a small line for the bot's own (end of the day, nightly backup) | S70 |
+| 2 | Say `also post the pills checklist at 6 pm`, look, **Save** | A card "🗓️ Schedule · new": **Evening pills checklist**, every day at 6:00 pm, where and when next, "also every day at 6:00 am". After Save the list from step 1 gains it by itself | S71 |
+| 3 | Say `move the evening checklist to 6:30pm and only on weekdays`, **Save** | A change card: `time · 6:00 pm → 6:30 pm`, `days · every day → Mon to Fri`, and "Next after this: …" | S71 |
+| 4 | Say `pause the evening checklist until Monday`, **Save**; look at the list | `paused · no → until Mon …`; the list shows it under ⏸️ Paused | S71 |
+| 5 | Say `move the checklist to 7`. Press **Cancel** | A card asking "Which one is “checklist”?" with a button for each of the two, and no Save | S71 |
+| 6 | Say `move the backup to 4am` | One line: the nightly backup is the bot's own and isn't changed here | S71 |
+| 7 | Say `remove the evening checklist`, **Remove** | Gone from the list; the 6:00 am one is as it was | S71 |
+| 8 | With `CARDS_V2=true`: type `my schedule` | The same list drawn: a box a schedule, the next to run amber, no buttons. Compare with `dev mock schedule-list-v2` | S72 |
+
 ## When you finish
 
 - Stop the test copy (`Ctrl + C`) and check nothing is left running:

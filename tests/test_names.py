@@ -111,6 +111,19 @@ def test_what_was_typed_is_asked_about_when_it_fits_more_than_claude_handed_over
     assert unclear("pause testv and zinc", VITS[2]) is None, "the part that is unclear is about other things, not this one"
 
 
+def test_every_word_said_being_a_word_of_the_name_finds_it_last_of_all():
+    lists = [Thing(1, "Pills checklist"), Thing(2, "Evening pills checklist"), Thing(3, "Nightly backup")]
+    assert find("evening checklist", lists).id == 2, "not a run of the name's words, but every word is one of them"
+    assert find("checklist evening", lists).id == 2 and find("back", lists).id == 3
+    with pytest.raises(names.Ambiguous):
+        find("pills check", lists)
+    with pytest.raises(names.Unknown):
+        find("evening briefing", lists)
+    # And what was typed is clear when another part of it names the one alone
+    assert names.unclear(lists, "move the evening checklist to 7", lambda thing: thing.name, lists[1]) is None
+    assert names.unclear(lists, "move the checklist to 7", lambda thing: thing.name, lists[1]).said == "checklist"
+
+
 def test_pills_check_what_was_typed_against_the_name_claude_handed_over():
     from tasks.pills import plain
 

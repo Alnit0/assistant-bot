@@ -6,6 +6,10 @@ backfilled from the git log.
 
 ## 2026-10-13
 
+- `my schedule` shows what the bot does by itself and when, and you
+  can change it by saying so: move it, pause it, pick the days, make
+  it silent or not, add another time, remove one. Each is a card first.
+
 - Nothing you see changes: the nightly backup, the end of the day and
   the 6:00 am checklist now run from one scheduler with schedules kept
   as rows. `dev jobs` also shows how the last run of each job ended,

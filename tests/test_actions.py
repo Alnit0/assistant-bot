@@ -751,6 +751,7 @@ def test_every_task_declares_its_identity_and_what_a_repeat_means():
         "timers": ((), "allow_another"),
         "bugs": (("@message",), "show_existing"),
         "channel": ((), "allow_another"),
+        "schedule": (("what", "time"), "show_existing"),
     }
     assert not hasattr(actions.Entry("x", "x", "x", (), ()), "hint"), "the hint line is gone from the contract"
 

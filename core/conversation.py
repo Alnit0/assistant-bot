@@ -311,7 +311,7 @@ async def act(
                 # A list shown on request: this copy is now the one kept up to date, and
                 # what follows it is taken to be for this task
                 turn.said.append(result.text)
-                message_id = await cards.send(request.channel_id, Card(result.text))
+                message_id = await cards.send(request.channel_id, result.card if isinstance(result.card, Card) else Card(result.text))
                 await livelists.placed(request.user.id, result.key, request.channel_id, message_id, entry.name)
                 if left_out:
                     # Not on the list itself: that message is rewritten whenever the list changes

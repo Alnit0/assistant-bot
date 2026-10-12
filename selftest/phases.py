@@ -30,6 +30,14 @@ def log(*doses: dict) -> tuple[str, dict]:
     return "pill_log", {"doses": list(doses), "guessed": [], "not_included": []}
 
 
+def scheduled(action: str, *schedules: dict) -> tuple[str, dict]:
+    return action, {"schedules": list(schedules), "guessed": [], "not_included": []}
+
+
+async def schedule_named(h: Harness, name: str):
+    return next((each for each in await h.schedules() if each.name == name and each.state != "removed"), None)
+
+
 def about(action: str, *pills: dict) -> tuple[str, dict]:
     return action, {"pills": list(pills), "guessed": [], "not_included": []}
 
@@ -227,6 +235,40 @@ async def p1(h: Harness) -> None:
         left = list(await h.pills())
         h.check(not any(name.startswith("Testvit") for name in left), f"still there: {left}")
 
+    async with h.step("1.10b", "`my schedule`", "A list, with no request to Claude: “🗓️ My schedule”, Pills checklist every day at 6:00 am in #hub, silent, with its next run; the bot's own in one small line; a plain message with CARDS_V2 off", "scheduler stage 2 (schedule-list-v2)"):
+        before = h._real_calls
+        await h.say("my schedule")
+        shown = await h.find(h.inbox, "My schedule")
+        h.check(shown is not None and "**Pills checklist** · every day at `6:00 am`" in shown.text, f"the list: {shown.text[:300] if shown else 'nothing'}")
+        h.check("#hub · silent · next: today 6:00 am" in shown.text and "The bot's own, not changed here: end of the day 12:00 am · nightly backup 3:00 am" in shown.text, f"its details: {shown.text[:500]}")
+        h.check(not shown.v2 and not shown.buttons and h._real_calls == before, "it is drawn, has buttons, or asked Claude")
+        h.memo["schedule_list"] = shown.id
+
+    async with h.step("1.10c", "Add: “also post the pills checklist at 6 pm”, then Save", "A card “🗓️ Schedule · new”: Evening pills checklist, every day at 6:00 pm, #hub, silent, its next run, and “also every day at 6:00 am”. After Save the schedule exists, its run for 6:00 pm today is booked, and the list shown before is brought up to date in place", "scheduler stage 2"):
+        mine = await h.say("also post the pills checklist at 6 pm", canned=("schedule_add", {"what": "pills checklist", "time": "6:00 pm", "guessed": [], "not_included": []}), task="schedule")
+        stored, shown = await card(h)
+        h.check(shown is not None and "Schedule" in shown.text and "**Evening pills checklist** · every day at `6:00 pm`" in shown.text, f"the card: {shown.text[:300] if shown else 'none'}")
+        h.check("also every day at `6:00 am`" in shown.text and any("Save" in label for label in shown.labels), f"the card: {shown.text[:300]} with {shown.labels}")
+        await no_marks(h, mine)
+        await h.press(shown.id, "Save", h.inbox)
+        made = await schedule_named(h, "Evening pills checklist")
+        h.check(made is not None and f"{made.at:%H:%M}" == "18:00" and made.steps == ("pills.checklist",) and made.origin == "mine", f"the schedule is {made}")
+        day_stamp = f"{config.now_nz():%Y-%m-%d}"
+        h.check(any(each[0] == "pending" and each[1] == f"{day_stamp}T18:00" for each in await h.runs("pills", "checklist")), f"no run booked for 6:00 pm today: {await h.runs('pills', 'checklist')}")
+        await h.settle(2)
+        listed = await h.get(h.inbox, h.memo["schedule_list"])
+        h.check(listed is not None and "Evening pills checklist" in listed.text, "the list shown before was not brought up to date")
+
+    async with h.step("1.10d", "Move: “move the evening checklist to 6:30pm”, then Save", "A change card: **Evening pills checklist**, `time · 6:00 pm → 6:30 pm`, and “Next after this: … today 6:30 pm”. After Save the run booked for 6:00 pm is gone and one for 6:30 pm is booked", "scheduler stage 2 (schedule-change-v1)"):
+        await h.say("move the evening checklist to 6:30pm", canned=scheduled("schedule_change", {"schedule": "evening checklist", "time": "6:30 pm"}), task="schedule")
+        stored, shown = await card(h)
+        h.check(shown is not None and "time · `6:00 pm` → `6:30 pm`" in shown.text and "**Evening pills checklist**" in shown.text, f"the card: {shown.text[:300] if shown else 'none'}")
+        h.check("Next after this: Evening pills checklist today 6:30 pm" in shown.text, f"it does not say when it next runs: {shown.text[:300]}")
+        await h.press(shown.id, "Save", h.inbox)
+        day_stamp = f"{config.now_nz():%Y-%m-%d}"
+        waiting = sorted(each[1] for each in await h.runs("pills", "checklist") if each[0] == "pending")
+        h.check(waiting == [f"{day_stamp}T06:00", f"{day_stamp}T18:30"], f"the runs booked are {waiting}")
+
     async with h.step("1.11", "6:00 am: today's checklist", "One checklist in the hub, posted without a notification, naming Testa, Testany and Testiron; a Taken / Skip message under it for Testany (no time)", "asked; 36, T15"):
         await h.clock_to(6, 0, 5)
         sheets = await held(h, "checklist")
@@ -246,8 +288,9 @@ async def p1(h: Harness) -> None:
         found = await h.runs("pills", "checklist")
         today_ = [each for each in found if each[1] == f"{day_stamp}T06:00"]
         h.check(len(today_) == 1 and today_[0][0] == "done" and today_[0][3], f"today's run: {today_}")
-        waiting = [each for each in found if each[0] == "pending"]
-        h.check(len(waiting) == 1 and waiting[0][1] > f"{day_stamp}T06:00", f"booked: {waiting}")
+        waiting = sorted(each[1] for each in found if each[0] == "pending")
+        next_day = f"{(config.now_nz() + timedelta(days=1)):%Y-%m-%d}"
+        h.check(waiting == [f"{day_stamp}T18:30", f"{next_day}T06:00"], f"booked: {waiting} (tomorrow's 6:00 am, and this evening's from the schedule added at 1.10c)")
         h.saw(f"{today_[0][2]} · {today_[0][3][:60]}")
 
     async with h.step("1.11c", "`dev jobs`", "What is booked next (the backup, the end of the day, the checklist) and how the last run of each ended, from the engine's run log", "scheduler stage 1"):
@@ -437,13 +480,15 @@ async def p2(h: Harness) -> None:
         h.check(await h.get(h.hub, sheets[0].message_id) is not None, "it is not in the hub")
 
     async with h.step("2.04b", "The schedules after the restart", "The same three rows as before the stop (none made again), no run booked twice, and the 6:00 am checklist was not posted a second time", "scheduler stage 1"):
-        made = sorted(f"{each.id}:{each.name}" for each in await h.schedules())
-        h.check(made == h.memo.get("schedules"), f"the schedules are {made}, before the stop {h.memo.get('schedules')}")
+        made = sorted(f"{each.id}:{each.name}" for each in await h.schedules() if each.origin == "default")
+        h.check(made == h.memo.get("schedules"), f"the schedules a task supplied are {made}, before the stop {h.memo.get('schedules')}")
         for task, kind in (("core", "nightly_backup"), ("core", "day_rollover"), ("pills", "checklist")):
             found = await h.runs(task, kind)
             keys = [each[2] for each in found]
             h.check(len(keys) == len(set(keys)), f"{task}/{kind} has a key twice: {keys}")
-            h.check(len([each for each in found if each[0] == "pending"]) == 1, f"{task}/{kind} is booked {len([each for each in found if each[0] == 'pending'])} times")
+            # The checklist has two schedules by now: the 6:00 am one and the evening one added at 1.10c
+            wanted = 2 if kind == "checklist" else 1
+            h.check(len([each for each in found if each[0] == "pending"]) == wanted, f"{task}/{kind} is booked {len([each for each in found if each[0] == 'pending'])} times, not {wanted}")
         day_stamp = f"{config.now_nz():%Y-%m-%d}"
         h.check(len([each for each in await h.runs("pills", "checklist") if each[1] == f"{day_stamp}T06:00"]) == 1, "today's 6:00 am checklist has more than one run")
 
@@ -492,6 +537,13 @@ async def p2(h: Harness) -> None:
         h.check(shown is not None and "Testiron" in shown.text, f"it reads: {shown.text[:160] if shown else 'gone'}")
         await h.press(shown.id, "Skip")
         h.check(not await prompts(h) and (await h.doses()).get(("Testiron", 1)) == SKIPPED, f"the doses are {await h.doses()}")
+
+    async with h.step("2.11b", "The schedule I added ran at the time I moved it to", "One run of the checklist for 6:30 pm, done, and none for 6:00 pm; the hub still has one checklist for the day (it was brought up to date, not posted again)", "scheduler stage 2"):
+        day_stamp = f"{config.now_nz():%Y-%m-%d}"
+        found = await h.runs("pills", "checklist")
+        h.check([each[0] for each in found if each[1] == f"{day_stamp}T18:30"] == ["done"], f"the runs for 6:30 pm: {[each for each in found if each[1] and each[1].startswith(day_stamp)]}")
+        h.check(not [each for each in found if each[1] == f"{day_stamp}T18:00" and each[0] == "done"], "it also ran at 6:00 pm, the time it was moved from")
+        h.check(len(await held(h, "checklist")) == 1, f"{len(await held(h, 'checklist'))} checklists are kept for today")
 
     async with h.step("2.12", "Midnight: the day is closed", "Nothing of yesterday is left open; Otherpill, never touched, is missed. Yesterday's checklist is written one last time and left in the hub (as the code does today; the clean-up spec changes this)", "pills 29; scheduler spec 18.2"):
         old = h.memo["sheet_d1"]
@@ -671,6 +723,55 @@ async def p3(h: Harness) -> None:
         h.check(await h.get(h.inbox, shown.id) is None, "the card is still there after Cancel")
         h.check(len(await h.recent(h.inbox, 50)) >= count - 1, "messages were deleted")
 
+    async with h.step("3.13b", "`my schedule` in the new look", "One drawn message: the heading, a box a schedule with the next to run amber and the other grey, and no buttons", "scheduler stage 2 (schedule-list-v2)"):
+        await h.say("my schedule")
+        shown = await h.find(h.inbox, "My schedule")
+        h.check(shown is not None and shown.v2 and not shown.buttons, f"the list is {'plain' if shown and not shown.v2 else 'missing' if shown is None else 'drawn with buttons'}")
+        h.check("**Pills checklist**" in shown.text and "**Evening pills checklist**" in shown.text, f"it lists: {shown.text[:400]}")
+        h.check(sorted(set(shown.accents)) == sorted({accent(design.DUE), accent(design.QUIET)}), f"its colours are {[hex(each) if each else None for each in shown.accents]}")
+        h.memo["schedule_list"] = shown.id
+
+    async with h.step("3.13c", "Days and notify: “make the evening checklist notify, and only on weekdays”, then Save", "A blurple change card with `days · every day → Mon to Fri` and `notify · silent → notifies`; after Save the schedule is so", "scheduler stage 2 (schedule-change-v1)"):
+        await h.say("make the evening checklist notify, and only on weekdays", canned=scheduled("schedule_change", {"schedule": "evening checklist", "notify": "notify", "days": ["mon", "tue", "wed", "thu", "fri"], "days_change": "set"}), task="schedule")
+        stored, shown = await card(h)
+        h.check(shown is not None and shown.v2 and shown.accents[:1] == [accent(design.DECISION)], f"the card is {'plain' if shown and not shown.v2 else 'missing' if shown is None else 'drawn'}")
+        h.check("days · every day → Mon to Fri" in shown.text and "notify · silent → notifies" in shown.text, f"the card: {shown.text[:300]}")
+        await h.press(shown.id, "Save", h.inbox)
+        made = await schedule_named(h, "Evening pills checklist")
+        h.check(made is not None and made.days == (0, 1, 2, 3, 4) and made.notify == "notify", f"the schedule is {made}")
+
+    async with h.step("3.13d", "Pause and resume: “pause the evening checklist”, Save; then “turn the evening checklist back on”, Save", "`paused · no → until you turn it back on`, and nothing is booked for it while paused; then `paused · … → on` and its next run is booked again", "scheduler stage 2"):
+        await h.say("pause the evening checklist", canned=scheduled("schedule_change", {"schedule": "evening checklist", "paused": "pause"}), task="schedule")
+        stored, shown = await card(h)
+        h.check(shown is not None and "paused · no → until you turn it back on" in shown.text and "not while it is paused" in shown.text, f"the card: {shown.text[:300] if shown else 'none'}")
+        await h.press(shown.id, "Save", h.inbox)
+        made = await schedule_named(h, "Evening pills checklist")
+        waiting = [each for each in await h.runs("pills", "checklist") if each[0] == "pending" and each[2].startswith(f"s{made.id}@")]
+        h.check(made.state == "paused" and not waiting, f"it is {made.state} with {waiting} booked")
+        await h.settle(2)
+        listed = await h.get(h.inbox, h.memo["schedule_list"])
+        h.check(listed is not None and "Paused" in listed.text, "the list does not show it paused")
+        await h.say("turn the evening checklist back on", canned=scheduled("schedule_change", {"schedule": "evening checklist", "paused": "resume"}), task="schedule")
+        stored, shown = await card(h)
+        h.check(shown is not None and "→ on" in shown.text, f"the card: {shown.text[:300] if shown else 'none'}")
+        await h.press(shown.id, "Save", h.inbox)
+        made = await schedule_named(h, "Evening pills checklist")
+        waiting = [each for each in await h.runs("pills", "checklist") if each[0] == "pending" and each[2].startswith(f"s{made.id}@")]
+        h.check(made.state == "on" and len(waiting) == 1, f"it is {made.state} with {waiting} booked")
+
+    async with h.step("3.13e", "Remove: “remove the evening checklist”, then Remove", "A card `… → removed` with a red Remove; after it the schedule is gone from the list, nothing is booked for it, and the 6:00 am one is untouched", "scheduler stage 2"):
+        await h.say("remove the evening checklist", canned=scheduled("schedule_remove", {"schedule": "evening checklist"}), task="schedule")
+        stored, shown = await card(h)
+        h.check(shown is not None and "→ removed" in shown.text and any("Remove" in label for label in shown.labels), f"the card: {shown.text[:300] if shown else 'none'} with {shown.labels if shown else []}")
+        await h.press(shown.id, "Remove", h.inbox)
+        h.check(await schedule_named(h, "Evening pills checklist") is None, "it is still there")
+        left = await schedule_named(h, "Pills checklist")
+        h.check(left is not None and f"{left.at:%H:%M}" == "06:00" and left.state == "on", f"Pills checklist is {left}")
+        h.check(len([each for each in await h.runs("pills", "checklist") if each[0] == "pending"]) == 1, "the runs booked are not just the 6:00 am one")
+        await h.settle(2)
+        listed = await h.get(h.inbox, h.memo["schedule_list"])
+        h.check(listed is not None and "Evening pills checklist" not in listed.text, "the list still shows it")
+
     from tasks.dev import mock
 
     refused, posted = [], []
@@ -771,6 +872,14 @@ async def p4(h: Harness) -> None:
             h.check(first == 1 and second == 1, f"{first} card(s) after the first message, {second} after the second")
     else:
         h.skip("4.07", "The spend line in #bot-log when the limit is passed", "needs real requests to Claude with money left: run with --claude", "T49, T50 (42.2, 42.3)")
+
+    async with h.step("4.07a", "The bot's own is not changed by words: “move the backup to 4am”", "One line saying the nightly backup is the bot's own and isn't changed here; no card, and it still runs at 3:00 am", "scheduler stage 2"):
+        mine = await h.say("move the backup to 4am", canned=scheduled("schedule_change", {"schedule": "backup", "time": "4:00 am"}), task="schedule")
+        said = await h.find(h.inbox, "the bot's own")
+        h.check(said is not None and "Nightly backup" in said.text, f"it said: {[each.text[:100] for each in await h.recent(h.inbox, 2)]}")
+        h.check((await card(h))[0] is None, "a card was opened")
+        own = await schedule_named(h, "Nightly backup")
+        h.check(own is not None and f"{own.at:%H:%M}" == "03:00", f"the backup is at {own.at if own else None}")
 
     async with h.step("4.07b", "`dev run backup`", "A handler run by hand, outside its schedule: “▶️ Ran: core.nightly_backup”, a second “Backup saved”, a run of its own in the log, and the night's backup still booked", "scheduler stage 1"):
         before = await h.count(h.botlog, "Backup saved")
