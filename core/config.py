@@ -115,6 +115,13 @@ KEEP_CONFIRMATIONS = flag(os.getenv("KEEP_CONFIRMATIONS"), True)
 CARDS_V2 = flag(os.getenv("CARDS_V2"), False)
 REMINDERS_ENABLED = flag(os.getenv("REMINDERS_ENABLED"), False)
 
+# What a day's requests to Claude may cost, in US dollars, before #bot-log is told (once a
+# day). Nothing is stopped: it only says so. 0 switches the note off
+try:
+    DAILY_SPEND_LIMIT = float(os.getenv("DAILY_SPEND_LIMIT") or 0.50)
+except ValueError:
+    sys.exit("DAILY_SPEND_LIMIT in .env must be a number of US dollars, e.g. 0.50")
+
 # Quiet time before reactions are acted on. Removing a reaction within it cancels
 try:
     REACTION_DEBOUNCE_SECONDS = float(os.getenv("REACTION_DEBOUNCE") or 30)

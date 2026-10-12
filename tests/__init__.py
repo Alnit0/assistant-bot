@@ -35,6 +35,7 @@ for name, value in {
     "HUB_CHANNEL_ID": "400",
     "COMMANDS_CHANNEL_ID": "",
     "KEEP_CONFIRMATIONS": "false",  # the tests check that notes tidy themselves away
+    "DAILY_SPEND_LIMIT": "",  # the default, US$0.50
     "CARDS_V2": "",  # off, as it is unless set: the design tests switch it on
     "REMINDERS_ENABLED": "",  # off, as it is unless set: the reminder tests switch it on
 }.items():

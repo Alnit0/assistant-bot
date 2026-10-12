@@ -320,6 +320,21 @@ def _add_question_to_confirm_cards(conn: sqlite3.Connection) -> None:
     conn.execute("ALTER TABLE confirm_cards ADD COLUMN question TEXT")
 
 
+def _create_spend_notices(conn: sqlite3.Connection) -> None:
+    # The days #bot-log was told that Claude spend went over the daily limit: one row a day,
+    # so it is said once, and not again after a restart
+    conn.execute(
+        """
+        CREATE TABLE spend_notices (
+            day TEXT PRIMARY KEY,
+            said_at TEXT NOT NULL,
+            spent_usd REAL NOT NULL,
+            limit_usd REAL NOT NULL
+        )
+        """
+    )
+
+
 def _add_cause_to_occurrences(conn: sqlite3.Connection) -> None:
     # Why the bot closed an occurrence, as a word for code (the task's own: "no_room").
     # `reason` stays the words that are shown; code never reads those
@@ -344,6 +359,7 @@ MIGRATIONS = [
     _add_cause_to_occurrences,
     _add_confirmation_to_confirm_cards,
     _add_question_to_confirm_cards,
+    _create_spend_notices,
 ]
 
 

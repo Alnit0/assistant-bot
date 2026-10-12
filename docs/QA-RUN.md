@@ -796,6 +796,20 @@ On the dev database, dev mode off. Put `CARDS_V2=true` and
 | 7 | Press **Skip** in Testany's box | Testany's box turns grey with "⏭️ skipped" and has no buttons | R79 |
 | 8 | Say `remove testa and testany`, press **Remove**. Type `dev clock reset`. Stop the dev bot, take `CARDS_V2` out of `.env` (or set it to false) and start it; type `pills` | Everything is the old look again: a plain checklist, plain cards | J59, J60 |
 
+## 42. The daily spend line (waiting for QA)
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
+On the dev database. Steps 2 and 3 send two messages to Claude (about
+one cent in all): skip them if you'd rather not.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Type `dev cost` | Under "Today", a small line: "US$… of today's US$0.50 limit (…%)" | J61 |
+| 2 | Stop the dev bot, put `DAILY_SPEND_LIMIT=0.001` in `.env`, start it. Say `what pills do I have?` | The answer as usual, and one card in #bot-log: "💰 Claude spend is over today's limit", with what was spent and the limit | K25 |
+| 3 | Say `what pills do I have?` again, then type `dev cost` | No second card in #bot-log. `dev cost` shows "⚠️ over today's limit: US$… of US$0.00 (DAILY_SPEND_LIMIT)" | K25, J61 |
+| 4 | Stop the dev bot and take `DAILY_SPEND_LIMIT` out of `.env` again | | |
+
 ## When you finish
 
 - Stop the test copy (`Ctrl + C`) and check nothing is left running:

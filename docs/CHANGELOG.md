@@ -6,6 +6,10 @@ backfilled from the git log.
 
 ## 2026-10-13
 
+- A daily spend line: when a day's requests to Claude cost more than
+  `DAILY_SPEND_LIMIT` (US$0.50 unless set), #bot-log says so once.
+  `dev cost` shows today's spend against the limit.
+
 - What the bot's requests to Claude cost is measured and written up
   (`docs/COSTS.md`). A message read for pills or timers costs about a
   tenth less: the schemas no longer repeat two long descriptions, and

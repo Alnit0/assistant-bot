@@ -5,7 +5,8 @@ What the bot's own requests to Claude cost, what was done about it on
 (US$1 a million tokens in, US$5 out; a cache write costs 1.25 times the
 input price, a cache read a tenth of it).
 
-`dev cost` gives the running figures (today, this month, by task and by kind of request). This file is the audit.
+`dev cost` gives the running figures (today against the daily limit,
+this month, by task and by kind of request). This file is the audit.
 
 ## 1. What each kind of request costs (measured)
 
@@ -171,6 +172,14 @@ nothing unless it cuts an answer short, which would be worse.
 | Router | US$0.0026 | unchanged (too short to cache) |
 | Chat | US$0.0024 | unchanged (too short to cache) |
 | Pills fixtures right, live | 60 of 61 | 60 of 61 |
+
+## 5. The daily spend line
+
+`DAILY_SPEND_LIMIT` in `.env` (US$0.50 unless set; 0 switches it off).
+When a day's requests to Claude pass it, #bot-log is told once: "💰
+Claude spend is over today's limit". Nothing is stopped. `dev cost`
+shows today's spend against the limit. For scale: 11 October, a QA
+evening, was US$0.13; 12 October US$0.03.
 
 ## 7. Questions (also in `docs/STATUS.md`)
 

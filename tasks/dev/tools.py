@@ -6,7 +6,7 @@ import discord
 from core import about, backup, clock, confirmations, database, day, devmode, instance_lock, lifecycle, migrations
 from core import actions, costs, reactions, scheduler, timeinput, trace, users
 from core.clock import real_now
-from core.config import DB_PATH, DEV_DATABASE, TIMEZONE
+from core.config import DAILY_SPEND_LIMIT, DB_PATH, DEV_DATABASE, TIMEZONE
 from core.durations import format_duration
 from core.context import Context
 from core.errors import UserError
@@ -143,7 +143,7 @@ async def cost(ctx: Context) -> str:
     purposes = await ctx.db.run(costs.db_purposes, since)
     today, month = costs.split(rows, now)
     state = await ctx.db.run(costs.db_state_sent, since)
-    await ctx.reply(costs.report(today, month, purposes, database.DB_PATH.name, state, actions.STATE_LINES))
+    await ctx.reply(costs.report(today, month, purposes, database.DB_PATH.name, state, actions.STATE_LINES, DAILY_SPEND_LIMIT))
     return f"today {costs.money(today.cost)} over {today.messages} message(s); this month {costs.money(month.cost)} over {month.messages}"
 
 

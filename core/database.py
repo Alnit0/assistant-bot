@@ -1,8 +1,11 @@
 import asyncio
+import logging
 import sqlite3
 
 from core import costs
-from core.config import DB_PATH, DEV_DATABASE, DEV_DB_NAME, real_now_nz
+from core.config import DAILY_SPEND_LIMIT, DB_PATH, DEV_DATABASE, DEV_DB_NAME, real_now_nz
+
+log = logging.getLogger("assistant")
 
 # ---------------------------------------------------------------------------
 # Database (raw input log)
@@ -174,7 +177,25 @@ async def recent_log(channel_id: int, user_id: int, limit: int) -> list[tuple[in
 
 async def record_cost(row_id: int, route: str, tasks=(), calls=()) -> None:
     """Note how a logged message was handled and what its requests to Claude cost."""
-    await run(costs.db_record, row_id, route, tuple(tasks), tuple(calls), real_now_nz().isoformat())
+    now = real_now_nz()
+    await run(costs.db_record, row_id, route, tuple(tasks), tuple(calls), now.isoformat())
+    if calls:
+        await _say_if_over_the_daily_limit(now)
+
+
+async def _say_if_over_the_daily_limit(now) -> None:
+    """Tell #bot-log, once a day, that the day's requests to Claude have cost
+    more than DAILY_SPEND_LIMIT. Never stops anything, and never fails the
+    message that was being handled."""
+    try:
+        spent = await run(costs.db_over_limit, now, DAILY_SPEND_LIMIT)
+        if spent is not None:
+            from core import discord_utils  # it imports this module's neighbours; kept out of the top
+
+            log.warning("Claude spend today is %s, over the daily limit of %s", costs.money(spent), costs.limit_money(DAILY_SPEND_LIMIT))
+            await discord_utils.log_simple(*costs.over_notice(spent, DAILY_SPEND_LIMIT))
+    except Exception:
+        log.exception("Could not check today's spend against the daily limit")
 
 
 async def get_stats() -> dict:

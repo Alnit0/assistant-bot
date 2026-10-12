@@ -369,3 +369,96 @@ def test_the_report_says_how_much_list_context_went_to_extraction():
     )
     assert "nothing held back" in costs.report(month, month, [], "dev.db", (1, 4, 4), 20)
     assert "List context" not in costs.report(month, month, [], "dev.db")
+
+
+# ---------------------------------------------------------------------------
+# The daily spend line
+# ---------------------------------------------------------------------------
+@pytest.fixture
+def bot_log(monkeypatch):
+    from core import discord_utils
+
+    said = []
+
+    async def log_simple(title, description=None):
+        said.append((title, description))
+
+    monkeypatch.setattr(discord_utils, "log_simple", log_simple)
+    return said
+
+
+def spend(amount_calls):
+    """Log one message to Claude that made `amount_calls` requests of US$0.11 each."""
+    async def scenario():
+        row_id = await database.log_received("something long", "chat", 5, 100, user_id=1)
+        await database.record_cost(row_id, ROUTER, ["pills"], [Call("extraction", HAIKU, 100_000, 2_000)] * amount_calls)
+
+    asyncio.run(scenario())
+
+
+def test_the_default_limit_is_fifty_cents_and_is_a_setting():
+    from core import config
+
+    assert config.DAILY_SPEND_LIMIT == 0.50
+    assert "DAILY_SPEND_LIMIT=0.50" in (config.BASE_DIR / ".env.example").read_text(encoding="utf-8")
+
+
+def test_under_the_limit_nothing_is_said(db, bot_log):
+    spend(4)  # US$0.44
+    assert bot_log == []
+
+
+def test_over_the_limit_bot_log_is_told_once_however_much_more_is_spent(db, bot_log):
+    spend(4)
+    spend(1)  # US$0.55: over
+    assert bot_log == [("💰 Claude spend is over today's limit", "US$0.5500 so far today · the limit is US$0.50 (DAILY_SPEND_LIMIT in .env). Nothing is stopped; `dev cost` shows where it went.")]
+    spend(3)
+    spend(1)
+    assert len(bot_log) == 1, "once a day, not once a message"
+
+
+def test_it_is_not_said_again_after_a_restart_and_is_said_again_on_a_new_day(db, bot_log):
+    spend(5)
+    assert len(bot_log) == 1
+    # A restart keeps nothing in memory: the day it was said is in the database
+    conn = database.connect()
+    try:
+        assert conn.execute("SELECT COUNT(*), MIN(limit_usd) FROM spend_notices").fetchone() == (1, 0.5)
+        assert costs.db_over_limit(conn, costs.day_start(datetime.now(TIMEZONE)), 0.50) is None, "said already today"
+        conn.execute("UPDATE spend_notices SET day = '2020-01-01'")
+        conn.commit()
+        assert costs.db_over_limit(conn, datetime.now(TIMEZONE), 0.50) == pytest.approx(0.55), "another day: said once more"
+    finally:
+        conn.close()
+
+
+def test_a_limit_of_nothing_switches_the_note_off_and_a_message_with_no_request_is_never_checked(db, bot_log, monkeypatch):
+    monkeypatch.setattr(database, "DAILY_SPEND_LIMIT", 0.0)
+    spend(9)
+    assert bot_log == []
+    conn = database.connect()
+    try:
+        assert costs.db_over_limit(conn, datetime.now(TIMEZONE), 0) is None and costs.db_over_limit(conn, datetime.now(TIMEZONE), -1) is None
+    finally:
+        conn.close()
+
+
+def test_a_note_that_cannot_be_sent_never_fails_the_message(db, monkeypatch):
+    from core import discord_utils
+
+    async def broken(*_):
+        raise RuntimeError("no #bot-log")
+
+    monkeypatch.setattr(discord_utils, "log_simple", broken)
+    spend(5)  # does not raise
+
+
+def test_dev_cost_shows_today_against_the_limit():
+    today = costs.add_up([Row(datetime.now(TIMEZONE), ROUTER, ("pills",), 1, 100, 10, 0, 0, 0.0317, 1.0)])
+    lines = costs.report(today, today, [], "dev.db", limit=0.50).splitlines()
+    assert lines[1].startswith("**Today** · US$0.0317") and "-# US$0.0317 of today's US$0.50 limit (6%)" in lines
+    over = costs.add_up([Row(datetime.now(TIMEZONE), ROUTER, ("pills",), 1, 100, 10, 0, 0, 0.61, 1.0)])
+    assert "-# ⚠️ over today's limit: US$0.6100 of US$0.50 (DAILY_SPEND_LIMIT)" in costs.report(over, over, [], "dev.db", limit=0.50)
+    assert "limit" not in costs.report(today, today, [], "dev.db"), "no limit set: no line"
+    empty = costs.add_up([])
+    assert "-# US$0.0000 of today's US$0.50 limit (0%)" in costs.report(empty, empty, [], "dev.db", limit=0.50)

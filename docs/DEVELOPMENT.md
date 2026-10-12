@@ -934,7 +934,7 @@ no slash commands. `help dev` lists the words.
 | `dev clock <time>` | Dev database only. Moves the clock ahead to the next time it reads that (`5:59am`, `20:00`, `noon`) |
 | `dev clock +<duration>` | Dev database only. Moves it ahead by that much (`+2h`, `+15m`; up to 24h a go) |
 | `dev clock reset` | Back to the real time |
-| `dev cost` | What the messages in this database cost: today, this month, the average per message and the most expensive task |
+| `dev cost` | What the messages in this database cost: today (against the daily limit), this month, the average per message and the most expensive task |
 | `dev why [n]` | The trace of my last message, or my last n (up to 10), a copyable block each: said, route and why, the router's answer, each extraction, each check the code ran, the card before and after, what was shown, the cost per request. Leave a note from any code with `trace.note("…")` |
 | `dev reset-db` | Dev database only. Asks, then wipes `data/dev.db` and starts it empty, with the clock back at the real time |
 
@@ -1015,6 +1015,12 @@ no slash commands. `help dev` lists the words.
   what is the same for every request first, in a block marked
   `llm.CACHED`, and what changes after it. A rule that applies to every
   action is said once in extraction's `rules`, not in each schema.
+- **The daily spend line.** `DAILY_SPEND_LIMIT` in `.env` is what a
+  day's requests to Claude may cost in US dollars (0.50 unless set; 0
+  switches the note off). The first time a day's total passes it,
+  #bot-log gets one card, "💰 Claude spend is over today's limit", and
+  no more that day, whatever restarts in between. Nothing is stopped.
+  `dev cost` shows today's spend against the limit.
 - **`dev cost`** adds up the database the bot is running on (the live one
   for real figures; the dev one has its own). Every logged message has a
   route: `shortcut` (a typed word), `button`, `reaction`, or one that

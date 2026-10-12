@@ -36,8 +36,8 @@ Last updated: 2026-10-13
 | F | Pins | 4 | 0 | 4 | 4 | 0 | 0 | 0 |
 | G | Timers | 32 | 12 | 20 | 17 | 15 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
-| J | Dev mode | 60 | 13 | 47 | 45 | 15 | 0 | 0 |
-| K | Startup and housekeeping | 24 | 12 | 12 | 10 | 14 | 0 | 0 |
+| J | Dev mode | 61 | 14 | 47 | 45 | 16 | 0 | 0 |
+| K | Startup and housekeeping | 25 | 13 | 12 | 10 | 15 | 0 | 0 |
 | L | Keep | 12 | 4 | 8 | 8 | 4 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
 | P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
@@ -46,7 +46,7 @@ Last updated: 2026-10-13
 | S | Routing and confirm cards | 66 | 16 | 50 | 15 | 50 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 4 | 18 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **461** | **150** | **311** | **241** | **219** | **0** | **1** |
+| | **Total** | **463** | **152** | **311** | **241** | **221** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -294,6 +294,7 @@ Any channel. Check the bot's status in the member list.
 | J58 | 🤖 Auto | The design in one place (`core/design.py`) | Every status has its colour and every colour and separator spacing is in one file: changing one there changes every drawn card and every sketch of `dev mock`. A layout Discord would refuse (over 40 components or 4,000 characters, a grey button that is not Cancel, two buttons with one id) is refused with the reason. A drawn card's words can be read back for an archive, a saved copy or a bug report | ✅ Pass | 2026-10-13 | `tests/test_design.py` |
 | J59 | 🤖 Auto | `CARDS_V2` off is today's look | A card with a layout is sent and rewritten exactly as before while the setting is off (it is off unless set). On, it is sent as Components V2 with no text beside it, and a card with no layout is still plain. A message that is Components V2 already is rewritten as a layout of the plain card, by an edit or a press | ✅ Pass | 2026-10-13 | `tests/test_design.py` |
 | J60 | 👤 Manual | Block 41: with `CARDS_V2=true`, look at the confirm card, a question card, today's checklist, a reminder and the too-soon card; then switch it off again | Each is drawn as in `docs/DESIGN.md` and says what it said before; the lock screen shows only the neutral line; off, everything is the old look | ⬜ Untested | | Block 41 |
+| J61 | 🤖 Auto | `dev cost` shows today against the limit | A small line under Today: what was spent of the limit and the share; over it, a ⚠️ line; no line when no limit is set | ✅ Pass | 2026-10-13 | `tests/test_costs.py` |
 
 ## K. Startup and housekeeping
 
@@ -323,6 +324,7 @@ Any channel. Check the bot's status in the member list.
 | K22 | 👤 Manual | The morning after a channel was reset: look at "💾 Backup saved" in #bot-log | It lists three files: `assistant-….db`, `specs-….zip` and `exports-….zip` | ⬜ Untested | | |
 | K23 | 🤖 Auto | A restart, intentional or a crash | With nothing missed nothing is said. Off at 6:00 am: the checklist is posted once at start by the overdue job, said once in "🔁 Caught up after a restart" with the day closed late and the jobs run late, and a second restart posts no duplicate. Doses and logs are as they were, none made twice; a line said before still means its dose; Taken on a dose message, Save and Cancel on a confirm card and both buttons of the reset card work from before the restart; a card that expired while off goes and can no longer save. Cut off half way: a message gets ⚠️ and is said once; Save is read back and never applied twice (saved: the card gets the normal confirmation with "checked after a restart" under it; not saved: the card stays open); a reset deletes nothing more and asks again; any other press is reported; a job runs again; a recovery that fails never stops the start; an input being handled as the bot starts is left alone. What was said lately is forgotten | ✅ Pass | 2026-10-12 | `tests/test_restart.py` |
 | K24 | 👤 Manual | On `--dev`: say `add Testpill`, don't press. Stop the bot (Ctrl+C) and start it again. Look at #bot-log, then press **Save** on the card. Then `dev clock 5:58am`, stop the bot, wait four minutes, start it | After the first start: no "🔁 Caught up" message, and Save saves Testpill. After the second: one "🔁 Caught up after a restart" naming the checklist posted late and the jobs run late, one checklist in the hub, and no "not posted" message at any start | ⬜ Untested | | Block 36 |
+| K25 | 🤖 Auto | The daily spend line | The limit is `DAILY_SPEND_LIMIT` (US$0.50 unless set). Under it nothing is said; the first time a day's requests to Claude pass it, #bot-log is told once, however much more is spent and whatever restarts in between (the day is kept in the database), and again on a new day. A limit of 0 switches it off, a message with no request is never checked, and a note that can't be sent never fails the message | ✅ Pass | 2026-10-13 | `tests/test_costs.py` |
 
 ## L. Keep
 

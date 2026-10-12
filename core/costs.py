@@ -235,6 +235,31 @@ def db_state_sent(conn: sqlite3.Connection, since: str) -> tuple[int, int, int]:
     return messages, sent, total
 
 
+def db_spent_on(conn: sqlite3.Connection, now: datetime) -> float:
+    """What the requests to Claude have cost so far on the NZ day of `now`:
+    the same figure `dev cost` gives for today."""
+    today = day_of(now)
+    rows = db_rows(conn, day_start(now).isoformat())
+    return add_up([row for row in rows if day_of(row.received_at) == today]).cost
+
+
+def db_over_limit(conn: sqlite3.Connection, now: datetime, limit: float) -> float | None:
+    """What today's spend is, the first time it is found over `limit`; None
+    every other time (under it, said already today, or no limit set). The day
+    is noted here, so it is said once whatever restarts in between."""
+    if limit <= 0:
+        return None
+    spent = db_spent_on(conn, now)
+    if spent <= limit:
+        return None
+    day = day_of(now).isoformat()
+    said = conn.execute(
+        "INSERT INTO spend_notices (day, said_at, spent_usd, limit_usd) VALUES (?, ?, ?, ?) ON CONFLICT(day) DO NOTHING",
+        (day, now.isoformat(), spent, limit),
+    )
+    return spent if said.rowcount else None
+
+
 # ---------------------------------------------------------------------------
 # Adding it up (pure)
 # ---------------------------------------------------------------------------
@@ -314,6 +339,11 @@ def day_of(moment: datetime) -> date:
     return moment.astimezone(TIMEZONE).date()
 
 
+def day_start(now: datetime) -> datetime:
+    """Midnight today in NZ."""
+    return now.astimezone(TIMEZONE).replace(hour=0, minute=0, second=0, microsecond=0)
+
+
 def month_start(now: datetime) -> datetime:
     """Midnight on the first of this month in NZ, to read rows from."""
     return now.astimezone(TIMEZONE).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -331,6 +361,31 @@ def split(rows: list[Row], now: datetime) -> tuple[Period, Period]:
 # ---------------------------------------------------------------------------
 def money(cost: float | None) -> str:
     return f"US${cost:.4f}" if cost is not None else "unknown"
+
+
+def limit_money(limit: float) -> str:
+    """A limit as it is written in .env: US$0.50."""
+    return f"US${limit:.2f}"
+
+
+def limit_line(spent: float, limit: float) -> str:
+    """Today's spend against the daily limit, in a small line. Nothing when no limit is set."""
+    if limit <= 0:
+        return ""
+    if spent > limit:
+        return f"-# ⚠️ over today's limit: {money(spent)} of {limit_money(limit)} (DAILY_SPEND_LIMIT)"
+    return f"-# {money(spent)} of today's {limit_money(limit)} limit ({spent / limit:.0%})"
+
+
+OVER_TITLE = "💰 Claude spend is over today's limit"
+
+
+def over_notice(spent: float, limit: float) -> tuple[str, str]:
+    """What #bot-log is told, once, on a day the limit is passed."""
+    return OVER_TITLE, (
+        f"{money(spent)} so far today · the limit is {limit_money(limit)} (DAILY_SPEND_LIMIT in .env). "
+        "Nothing is stopped; `dev cost` shows where it went."
+    )
 
 
 def _plural(count: int, word: str) -> str:
@@ -358,11 +413,13 @@ def _period_lines(title: str, period: Period) -> list[str]:
 
 def report(
     today: Period, month: Period, purposes: list[tuple[str, int, float]], database_name: str,
-    state: tuple[int, int, int] = (0, 0, 0), state_cap: int = 0,
+    state: tuple[int, int, int] = (0, 0, 0), state_cap: int = 0, limit: float = 0.0,
 ) -> str:
-    """What `dev cost` shows: today, this month, the average per message, the
-    most expensive task, and where the requests to Claude went."""
-    lines = [f"## 💰 Cost · `{database_name}`", *_period_lines("Today", today), *_period_lines("This month", month)]
+    """What `dev cost` shows: today (against the daily limit, when one is
+    set), this month, the average per message, the most expensive task, and
+    where the requests to Claude went."""
+    against = limit_line(today.cost, limit)
+    lines = [f"## 💰 Cost · `{database_name}`", *_period_lines("Today", today), *([against] if against else []), *_period_lines("This month", month)]
     dearest = month.dearest_task
     if dearest is not None:
         task, cost = dearest
