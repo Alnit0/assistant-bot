@@ -7,6 +7,10 @@ session; the end-of-task checklist updates it at the end of every task.
 
 ## Questions for Alex
 
+- **A file sent with no words** is still ignored, as before (the bot
+  only acts on a message with text). Once gym can read a plan, should a
+  file on its own go to the router too? Then a picture dropped in
+  #inbox would get an answer from chat unless told not to.
 - **The design's colours** are not final until you have looked at
   them on your phone (block 39, step 6). `docs/DESIGN.md` is marked as
   waiting for that.
@@ -17,9 +21,9 @@ session; the end-of-task checklist updates it at the end of every task.
   to be a plain message with buttons instead: say which you see.
 - **Gym** waits for your answers on how you train (the spec's section
   16). No gym code is started until then. The three core additions
-  are approved (attachments on a request, a decimal number in the
-  contract, name matching moved out of pills) and are stage 1 of the
-  gym build, so they wait with it.
+  were built on 2026-10-13 (attachments on a request, a decimal
+  number in the contract, name matching in the core with pills using
+  it).
 
 Answered on 2026-10-12, the design pass: any time and still to take is
 blue; a card that asks first because something is risky is amber;

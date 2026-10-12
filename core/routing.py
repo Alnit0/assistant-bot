@@ -162,7 +162,11 @@ ABOUT_DATA = (
 
 
 def user_turn(
-    message: str, on_screen: str = "", exchanges: list[tuple[str, str]] | None = None, about_data: bool = False
+    message: str,
+    on_screen: str = "",
+    exchanges: list[tuple[str, str]] | None = None,
+    about_data: bool = False,
+    attached: tuple[str, ...] = (),
 ) -> str:
     """What changes from message to message: the last exchanges, what is on
     screen, and the message. Never part of the cached block. `about_data` is
@@ -175,6 +179,9 @@ def user_turn(
         parts.append("\n".join(lines))
     if on_screen:
         parts.append(f"On screen, waiting for the user: {on_screen}")
+    if attached:
+        # Only the names: what is in a file is for the task that takes it
+        parts.append("Sent with the message, as a file: " + ", ".join(attached))
     parts.append(f"The message to route:\n{message}")
     return "\n\n".join(parts)
 
@@ -269,12 +276,14 @@ def with_named(found: Route, named: list[str]) -> Route:
     return Route(tuple(named), problem=found.problem, reports=found.reports)
 
 
-async def route(message: str, entries: list[Entry], on_screen: str = "", exchanges=None, about_data: bool = False) -> Route:
+async def route(
+    message: str, entries: list[Entry], on_screen: str = "", exchanges=None, about_data: bool = False, attached: tuple[str, ...] = ()
+) -> Route:
     """Ask the router. One request; the result is checked and never raises for
     something the router got wrong."""
     called = await llm.call_tool(
         system_blocks(entries),
-        user_turn(message, on_screen, exchanges, about_data),
+        user_turn(message, on_screen, exchanges, about_data, attached),
         [tool(entries)],
         choice={"type": "tool", "name": TOOL},
         purpose=costs.PURPOSE_ROUTER,

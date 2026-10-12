@@ -39,8 +39,12 @@ STRING, INTEGER, LIST, BOOLEAN, ITEMS = "string", "integer", "list", "boolean", 
 # reads a length given in words (core/durations.py) and passes on anything it
 # can't read as the text it was, for the task to show as unread on its card.
 MINUTES, TIME, TIMES = "minutes", "time", "times"
-TYPES = (STRING, INTEGER, LIST, BOOLEAN, ITEMS, MINUTES, TIME, TIMES)
-IN_AN_ITEM = (STRING, INTEGER, BOOLEAN, MINUTES, TIME, TIMES, LIST)
+# A number that need not be whole (a weight is 62.5). It comes as a number,
+# never as my words; one that came as text ("62.5", "62,5") is read in code
+NUMBER = "number"
+TYPES = (STRING, INTEGER, NUMBER, LIST, BOOLEAN, ITEMS, MINUTES, TIME, TIMES)
+IN_AN_ITEM = (STRING, INTEGER, NUMBER, BOOLEAN, MINUTES, TIME, TIMES, LIST)
+NUMBER_FORMAT = " A number, with a decimal point if it has a part (62.5), and no unit."
 
 MINUTES_FORMAT = (
     " As a whole number of minutes, worked out by you: \"3 hours\" is 180, \"an hour and a half\" is 90, "
@@ -180,6 +184,29 @@ class Proposal:
     question: Question | None = None
 
 
+@dataclass(frozen=True)
+class Attachment:
+    """A file sent with a message, for a task's plain-words code: its name, its
+    size in bytes, its kind as the sender's app gave it ("text/csv", or ""),
+    and `fetch`, awaited for the bytes. Nothing is downloaded until a task
+    asks; the router is only told the name."""
+
+    name: str
+    size: int = 0
+    content_type: str = ""
+    fetch: Callable[[], Awaitable[bytes]] | None = field(default=None, compare=False, repr=False)
+
+    @property
+    def extension(self) -> str:
+        """ "csv" for "Plan.CSV"; empty if the name has none."""
+        return self.name.rsplit(".", 1)[1].lower() if "." in self.name.strip(".") else ""
+
+    async def read(self) -> bytes:
+        if self.fetch is None:
+            raise UserError(f"I can't read {self.name}.")
+        return await self.fetch()
+
+
 @dataclass
 class Request:
     """Who is asking and where, for an action's code. Not a discord object:
@@ -197,6 +224,8 @@ class Request:
     replied_to: int | None = None
     # The user's own message (None for a press of a button)
     message_id: int | None = None
+    # The files sent with the message (none for a press of a button)
+    attachments: tuple[Attachment, ...] = ()
 
     db = database
 
@@ -774,6 +803,8 @@ def _property(entry_field: Field) -> dict:
         return {"type": "array", "items": items, "description": entry_field.description}
     if entry_field.type == MINUTES:
         return {"type": "integer", "description": entry_field.description + MINUTES_FORMAT}
+    if entry_field.type == NUMBER:
+        return {"type": "number", "description": entry_field.description + NUMBER_FORMAT}
     if entry_field.type == TIME:
         return {"type": "string", "description": entry_field.description + TIME_FORMAT}
     if entry_field.type == TIMES:
@@ -935,11 +966,38 @@ def _structured(entry_field: Field, value, where: str):
     return [each.strip() for each in value if each.strip()] or None
 
 
+_AS_A_NUMBER = re.compile(r"-?\d+(?:[.,]\d+)?")
+
+
+def _number(value, where: str):
+    """A number that need not be whole, checked: 62.5 stays 62.5 and 60.0 is
+    60. One that came as text is read here ("62.5", "62,5"); None if that
+    text was empty. Never a yes/no, never infinite."""
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        if not _AS_A_NUMBER.fullmatch(text):
+            raise Invalid(f"`{where}` must be a number, and came as {text!r}")
+        trace.note(f"`{where}` came as text ({text!r}), read as a number")
+        value = float(text.replace(",", "."))
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise Invalid(f"`{where}` must be a number")
+    if value != value or value in (float("inf"), float("-inf")):
+        raise Invalid(f"`{where}` is not a number that can be used")
+    return int(value) if float(value).is_integer() else float(value)
+
+
 def _scalar(entry_field: Field, value, where: str):
     """One text, number or yes/no value, checked. Returns it, or None if it is
     an optional text left empty."""
     if entry_field.type in (MINUTES, TIME, TIMES):
         value = _structured(entry_field, value, where)
+        if value is None and entry_field.required:
+            raise Invalid(f"`{where}` is empty")
+        return value
+    if entry_field.type == NUMBER:
+        value = _number(value, where)
         if value is None and entry_field.required:
             raise Invalid(f"`{where}` is empty")
         return value

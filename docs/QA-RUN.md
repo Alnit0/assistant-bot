@@ -762,6 +762,21 @@ that asks first because something is risky is amber) are not final
 until step 6 is done. The other redrawn sketches are in blocks 33 and
 35. Say what to change in any of them, or in the style guide.
 
+## 40. Core pieces for any task (waiting for QA)
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
+On the dev database, dev mode off. Nothing here should look different
+from before: naming a pill now goes through the core.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Say `add Testiron and Testiron forte to my pills, once a day`, press **Save**. Then say `I took testiron` | The first is logged: the whole name wins over part of one | S62 |
+| 2 | Say `skip forte` | Testiron forte is skipped: part of a name finds it when only one fits | S62 |
+| 3 | Say `pause testir` | A card that asks which one, with a button for each of the two pills, and no Save | S62 |
+| 4 | Press **Cancel**. Send a picture or any file with the words `what is this` | An ordinary answer from chat, as before: the file changes nothing yet | S64 |
+| 5 | Say `remove testiron and testiron forte`, press **Remove** | Both gone | |
+
 ## When you finish
 
 - Stop the test copy (`Ctrl + C`) and check nothing is left running:

@@ -140,16 +140,14 @@ a schema could take its place.
 ## Gym: what its spec would add to core (2026-10-12)
 
 From the core or task rule (the spec is `docs/specs/gym.md`, section
-12). **The first three were approved on 2026-10-12** and are stage 1 of
-the gym build; nothing of gym is started until the questions on how
-Alex trains are answered:
+12). **The first three were built on 2026-10-13** (`request.attachments`,
+`actions.NUMBER`, `core/names.py`, with pills using the last); nothing
+of the gym task itself is started until the questions on how Alex
+trains are answered:
 
-- **Attachments on a request** (plumbing): a message's files reach a
-  task's plain-words code, and the router is told a file is attached.
-- **A decimal number in the contract**: a weight is 62.5; today a field
-  is text, a whole number or minutes.
-- **Name matching** moves out of pills (C19): gym is the second task
-  that needs it.
+- Done: **attachments on a request** (plumbing).
+- Done: **a decimal number in the contract**.
+- Done: **name matching** moved out of pills (C19).
 - **Days of the week in the schedule model**, only if workouts go by
   weekday (already listed below).
 - Built inside the task, apart, until a second task needs them:

@@ -109,7 +109,9 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 - `core/conversation.py`: the router says which task (or chat, or
   nothing), extraction fills in one of that task's actions, and the
   task's own code does it and writes every word. Claude runs nothing and
-  has no tools. A task's plain-words code is its `plain.py` and takes a
+  has no tools. Which of my things a name means is `core/names.py`
+  (never guessed: more than one fit is asked about); a message's files
+  are `request.attachments`. A task's plain-words code is its `plain.py` and takes a
   `Request`, never a Context
 - Plain chat (`llm.ask_claude`) answers general questions only. It is
   given its own earlier answers and nothing a task said or holds
@@ -143,7 +145,8 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   that answer in it; core shows it, takes the press or the typed answer
   and makes the card again
 - Claude hands over structured values, never my words for code to
-  parse: whole minutes (`actions.MINUTES`), a time of day in one form
+  parse: whole minutes (`actions.MINUTES`), a number that need not be
+  whole (`actions.NUMBER`), a time of day in one form
   (`actions.TIME`, `TIMES`), a list of items (`actions.ITEMS`) for
   anything that could be plural, add / set / remove
   (`actions.change_field()`), what to take away as a list of settings

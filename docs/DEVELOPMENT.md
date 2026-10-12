@@ -650,7 +650,22 @@ Everything works in #inbox and in the hub.
 `8:00` when no am or pm was said, which the code then settles or marks
 ❓) and the gap as whole minutes (`min_gap_minutes`), so the code never
 depends on how a time or a length was worded. Use `actions.TIME`,
-`TIMES` and `MINUTES` for any new field that holds one.
+`TIMES` and `MINUTES` for any new field that holds one, and
+`actions.NUMBER` for a number that need not be whole (a weight of 62.5:
+it arrives as a number, 60.0 as 60, and "62,5" typed as text is read
+in code).
+
+**Files sent with a message** reach a task's plain-words code as
+`request.attachments`: each an `actions.Attachment` with its `name`,
+`size`, `content_type`, `extension` and `await attachment.read()` for
+the bytes. Nothing is downloaded until a task asks. The router is told
+only the names ("Sent with the message, as a file: plan.csv"). A
+message that is a file and no words is still ignored, as before.
+
+**Which of my things a name means** is `core/names.py` (`names.find`):
+the whole name wins over part of one, and a name that fits more than
+one raises `names.Ambiguous` with the candidates, for the task to ask
+about on its card. The task writes its own words for "there is none".
 
 **In code.** The schedule itself is core: `core/schedule.py` has the
 `Schedule` every pill's plan holds and `dues(schedule, day, so_far)`, which

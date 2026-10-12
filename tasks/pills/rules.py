@@ -2,7 +2,7 @@ import re
 from dataclasses import dataclass, replace
 from datetime import date, time, timedelta
 
-from core import durations, repeats, schedule, timeinput
+from core import durations, names, repeats, schedule, timeinput
 from core.errors import UserError
 from core.schedule import DAY_MINUTES, Schedule
 from core.timeinput import AmbiguousTime
@@ -134,12 +134,8 @@ class Ask(UserError):
         super().__init__(question)
 
 
-class Ambiguous(UserError):
-    """A name that fits more than one pill: `candidates` are the pills it could be."""
-
-    def __init__(self, said: str, candidates: list):
-        self.said, self.candidates = said, list(candidates)
-        super().__init__("Which one: " + " or ".join(f"**{pill.plan.name}**" for pill in candidates) + "?")
+# A name that fits more than one pill: `candidates` are the pills it could be
+Ambiguous = names.Ambiguous
 
 
 class TimeQuestion(UserError):
@@ -578,26 +574,16 @@ def find(pills: list[Pill], wanted: str) -> Pill:
     or if more than one fits: the user is asked, never guessed for.
     """
     candidates = listed(pills)
-    text = re.sub(r"\s+", " ", wanted.strip().lower())
-    if not text:
+    try:
+        # Which of them a name means is the core's to say (core/names.py); the words are ours
+        return names.find(candidates, wanted, lambda pill: pill.plan.name, ID_PREFIX, lambda pill: pill.id)
+    except names.Unnamed:
         raise UserError("Which pill?")
-    match = re.fullmatch(rf"{ID_PREFIX}\s*(\d+)", text)
-    if match:
-        by_id = [pill for pill in candidates if pill.id == int(match[1])]
-        if by_id:
-            return by_id[0]
-    for found in (
-        [pill for pill in candidates if pill.plan.name.lower() == text],
-        [pill for pill in candidates if text in pill.plan.name.lower()],
-    ):
-        if len(found) == 1:
-            return found[0]
-        if len(found) > 1:
-            raise Ambiguous(wanted.strip(), found)
-    if not candidates:
-        raise UserError("There are no pills yet.")
-    names = ", ".join(pill.plan.name for pill in candidates)
-    raise UserError(f"I don't have a pill called “{wanted.strip()}”. Yours: {names}.")
+    except names.Unknown:
+        if not candidates:
+            raise UserError("There are no pills yet.")
+        yours = ", ".join(pill.plan.name for pill in candidates)
+        raise UserError(f"I don't have a pill called “{wanted.strip()}”. Yours: {yours}.")
 
 
 # ---------------------------------------------------------------------------

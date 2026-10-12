@@ -4,6 +4,14 @@ What changed, newest first. One entry per task, as one to three bullets on
 what changed for the user. Entries before 2026-10-07's last one were
 backfilled from the git log.
 
+## 2026-10-13
+
+- Three core pieces any task can use, with nothing changed in what the
+  bot says: a message's files reach a task (`request.attachments`; the
+  router is told their names), a field can be a number that need not
+  be whole (`actions.NUMBER`, 62.5), and working out which of my things
+  a name means is in the core (`core/names.py`), with pills using it.
+
 ## 2026-10-12
 
 - A design pass for Components V2: a shared style guide

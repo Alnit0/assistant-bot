@@ -24,7 +24,7 @@ right, not that Discord shows it: the 👤 rows cover that.
 
 ## Summary
 
-Last updated: 2026-10-12
+Last updated: 2026-10-13
 
 | Group | Feature | Tests | 🤖 | 👤 | ⬜ | ✅ | ❌ | ⏭️ |
 |---|---|---|---|---|---|---|---|---|
@@ -36,17 +36,17 @@ Last updated: 2026-10-12
 | F | Pins | 4 | 0 | 4 | 4 | 0 | 0 | 0 |
 | G | Timers | 32 | 12 | 20 | 17 | 15 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
-| J | Dev mode | 57 | 11 | 46 | 45 | 12 | 0 | 0 |
+| J | Dev mode | 57 | 11 | 46 | 44 | 13 | 0 | 0 |
 | K | Startup and housekeeping | 24 | 12 | 12 | 10 | 14 | 0 | 0 |
 | L | Keep | 12 | 4 | 8 | 8 | 4 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
 | P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
 | Q | Time, days, the schedule model, the occurrence log and cards | 16 | 14 | 2 | 2 | 14 | 0 | 0 |
 | R | Pills | 66 | 15 | 51 | 43 | 23 | 0 | 0 |
-| S | Routing and confirm cards | 61 | 11 | 50 | 15 | 45 | 0 | 1 |
+| S | Routing and confirm cards | 64 | 14 | 50 | 15 | 48 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 4 | 18 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **450** | **140** | **310** | **241** | **208** | **0** | **1** |
+| | **Total** | **453** | **143** | **310** | **240** | **212** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -578,6 +578,9 @@ the dev database (`python main.py --dev`), in #inbox.
 | S59 | 👤 Manual | `timer 10m tea`, then `timer 10m eggs`; send three other messages; then reply to the **tea** timer's message with `give it 2 more`. Then reply `dev why` to that reply of yours | Tea gets 2 more minutes, eggs is untouched. The trace says "reply to timers' message: it goes to timers first" and shows no router request | ⬜ Untested | | |
 | S60 | 🤖 Auto | Questions on the card | A card that asks shows what it understood, the question, a blurple button an answer and Cancel, with no Save, and passes the rule for button colours; the question is kept with the card; Save can't be reached on it; pressing an answer makes the card again in place (the next question, or Save); an action that then needs no card is done at once and the card says so; a typed answer does the same and the card that asked goes; a correction after answering replaces the card. Golden 1c, 1d and 2a pass | ✅ Pass | 2026-10-12 | `tests/test_golden.py` |
 | S61 | 👤 Manual | Say `add Testiron to my pills at 8`; press **8:00 pm**; then say `actually make it 8am`; press **Save** | First a card with "daily at ❔", the question and the buttons **8:00 am**, **8:00 pm**, **Cancel** (no Save). After the press the same card reads "daily at `8:00 pm`" with **Save**. After the message a fresh card replaces it with `8:00 am`. Save saves it | ⬜ Untested | | Block 37 |
+| S62 | 🤖 Auto | Which of my things a name means (`core/names.py`) | The whole name wins over part of one; an id (`pl3`) is read when the task has them; a name that fits more than one is never guessed (the candidates are handed back); nothing named and no such thing are told apart. Pills use it and keep their own words | ✅ Pass | 2026-10-13 | `tests/test_names.py` |
+| S63 | 🤖 Auto | A decimal number in the contract (`actions.NUMBER`) | The schema says number; 62.5 stays 62.5, 60.0 is 60, `62,5` as text is read in code; a yes/no, words, a unit, not-a-number and infinity are refused; the same inside an item | ✅ Pass | 2026-10-13 | `tests/test_names.py` |
+| S64 | 🤖 Auto | Files sent with a message | A request carries them (name, size, kind, a way to fetch the bytes) and none by default; the context hands them over as plain records; the router is told the names only, and nothing when there is none | ✅ Pass | 2026-10-13 | `tests/test_names.py` |
 
 ## T. Tasks in plain words
 

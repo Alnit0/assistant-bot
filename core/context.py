@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 import discord
 
 from core import database, lifecycle, outgoing, tidy
+from core.actions import Attachment
 from core.config import CHANNELS, real_now_nz
 from core.discord_utils import COLOUR_INFO, log_error, log_simple, split_message
 from core.lifecycle import MessageClass
@@ -59,6 +60,16 @@ class Context:
     def parent_channel_id(self) -> int | None:
         """The channel this one hangs off, if it is a thread or a forum post."""
         return getattr(self._channel, "parent_id", None)
+
+    @property
+    def attachments(self) -> tuple[Attachment, ...]:
+        """The files sent with the input, as plain records: nothing is
+        downloaded until a task asks for one's bytes."""
+        files = getattr(self._message, "attachments", None) or []
+        return tuple(
+            Attachment(str(each.filename), int(getattr(each, "size", 0) or 0), str(getattr(each, "content_type", "") or ""), each.read)
+            for each in files
+        )
 
     @property
     def is_reply(self) -> bool:

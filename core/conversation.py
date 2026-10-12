@@ -475,7 +475,10 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
     row_id = await log_received(ctx.text, "chat", ctx.message_id, ctx.channel_id, user_id=ctx.user.id)
     started = time.perf_counter()
     spent = timing.current() or timing.start()
-    request = Request(ctx.user, ctx.channel_id, ctx.text, replied_to=ctx.reply_target_id, message_id=ctx.message_id)
+    request = Request(
+        ctx.user, ctx.channel_id, ctx.text, replied_to=ctx.reply_target_id, message_id=ctx.message_id, attachments=tuple(getattr(ctx, "attachments", ()))
+    )
+    attached = tuple(each.name for each in request.attachments)
     turn = Turn()
     turn.checks = trace.start()
     try:
@@ -672,6 +675,7 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
                 entries,
                 on_screen=on_screen,
                 exchanges=_exchanges(ctx.channel_id),
+                attached=attached,
             )
             turn.router = {"tasks": list(routed.tasks), "tie": routed.tie, "chat": routed.chat, "chat_part": routed.chat_part, "problem": routed.problem}
             if routed.nothing:
@@ -716,7 +720,7 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
                     trace.note("chat check: chat said the message is about my data; routed again to the task that owns it")
                     turn.route = costs.ROUTER
                     routed = await routing.route(
-                        ctx.text, entries, on_screen=on_screen, exchanges=_exchanges(ctx.channel_id), about_data=True
+                        ctx.text, entries, on_screen=on_screen, exchanges=_exchanges(ctx.channel_id), about_data=True, attached=attached
                     )
                     turn.router["second look"] = list(routed.tasks) or "no task"
                     if not routed.tasks:
