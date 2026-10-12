@@ -36,7 +36,7 @@ Last updated: 2026-10-12
 | F | Pins | 4 | 0 | 4 | 4 | 0 | 0 | 0 |
 | G | Timers | 31 | 12 | 19 | 16 | 15 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
-| J | Dev mode | 52 | 10 | 42 | 41 | 11 | 0 | 0 |
+| J | Dev mode | 54 | 11 | 43 | 42 | 12 | 0 | 0 |
 | K | Startup and housekeeping | 22 | 11 | 11 | 9 | 13 | 0 | 0 |
 | L | Keep | 12 | 4 | 8 | 8 | 4 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
@@ -46,7 +46,7 @@ Last updated: 2026-10-12
 | S | Routing and confirm cards | 59 | 10 | 49 | 14 | 44 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 4 | 18 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **429** | **132** | **297** | **228** | **200** | **0** | **1** |
+| | **Total** | **431** | **133** | **298** | **229** | **201** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -285,6 +285,8 @@ Any channel. Check the bot's status in the member list.
 | J50 | 🤖 Auto | `dev mock`: a sketch read and built | Lines inside ┃ are one Container, a blank line starts a new one, `accent:` is its colour, `[label: colour]` buttons are a row, `---` a separator, headings and subtext are left to Discord; every mistake names its line (an unknown colour, a grey button that isn't Cancel, six buttons in a row, an accent out of place, an empty sketch, more than Discord takes); the three sketches in `docs/mockups/` read; only a plain name is looked for; a mock-up's button only says it is one | ✅ Pass | 2026-10-12 | `tests/test_mock.py` |
 | J51 | 👤 Manual | Type `dev mock`. Then `dev mock checklist`, and press **Taken** on it. Then `dev mock reset-card` and `dev mock confirm-card` | The list names `checklist`, `confirm-card` and `reset-card`. Each sketch is posted as one message with boxed sections, an accent colour down the side, headings, small text and coloured buttons; your word is deleted. A button answers "🧪 Mock-up: this button does nothing yet." to you alone, and nothing changes | ✅ Pass | 2026-10-12 | Block 24, on the live bot |
 | J52 | 👤 Manual | Type `dev mock nothing` | "🧪 There is no mock-up called `nothing`." with the list of the ones there are; nothing else is posted | ✅ Pass | 2026-10-12 | Block 24, on the live bot |
+| J53 | 🤖 Auto | `dev why` shows a reference as "it" and is sent as it is | Where Claude handed over "it" or "that", the trace reads "which":"it", at any depth; the block is sent verbatim, so the action's name stays in it and no error is logged; elsewhere an action's name is still caught | ✅ Pass | 2026-10-12 | `tests/test_trace.py` |
+| J54 | 👤 Manual | `timer 10m tea`; say `give it 2 more`; reply `dev why` to that. Then reply `cancel` to the timer | The extraction line reads `timers · timer_change {"which":"it","action":"extend","duration":"2m"}`: the action's name is there and "which" is not empty | ⬜ Untested | | Block 30 |
 
 ## K. Startup and housekeeping
 

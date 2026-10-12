@@ -72,12 +72,14 @@ class Context:
             return None
         return self._message.reference.message_id
 
-    async def reply(self, text: str, *, view: discord.ui.View | None = None):
+    async def reply(self, text: str, *, view: discord.ui.View | None = None, verbatim: bool = False):
         """Send text back to where the input came from. Returns the (last) sent message.
 
-        Text too long for one message is split at line breaks.
+        Text too long for one message is split at line breaks. `verbatim` is
+        for a dev tool that shows the bot's workings (`dev why`): the names
+        of actions belong in a trace, so nothing is taken out of it.
         """
-        text = outgoing.clean(text)
+        text = text if verbatim else outgoing.clean(text)
         if not text:
             log.error("A reply with nothing left to say was not sent")
             return None

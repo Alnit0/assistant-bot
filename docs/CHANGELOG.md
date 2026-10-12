@@ -6,6 +6,10 @@ backfilled from the git log.
 
 ## 2026-10-12
 
+- `dev why` shows "it" where I said "it" or "that" (it showed an empty
+  value), keeps the action's name, and no longer logs an error each
+  time it is used.
+
 - **Every line about a pill or a dose is that pill's**, as for timers:
   "✅ Zinc · taken 9:00 am", a correction, a card once saved. A reply
   to one means that pill and that dose ("it was 8am", "actually I

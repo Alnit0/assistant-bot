@@ -143,10 +143,25 @@ def _money(cost) -> str:
     return f"US${cost:.4f}" if cost is not None else "unknown"
 
 
+# How Claude hands over "it", "that" or "this one" (`actions.REFERENCE`; that module imports this one)
+REFERENCE = "@that"
+REFERENCE_SHOWN = "it"
+
+
+def readable(value):
+    """What extraction returned, with a reference written as the word it stands
+    for: "which":"it", not the marker, which says nothing to a reader."""
+    if isinstance(value, dict):
+        return {name: readable(each) for name, each in value.items()}
+    if isinstance(value, list):
+        return [readable(each) for each in value]
+    return REFERENCE_SHOWN if value == REFERENCE else value
+
+
 def _extraction_line(found: dict) -> str:
     line = f"{found.get('task', '?')} · {found.get('action', '?')}"
     if "data" in found:
-        line += f" {_short(found['data'])}"
+        line += f" {_short(readable(found['data']))}"
     if found.get("guessed"):
         line += f" · guessed: {', '.join(found['guessed'])}"
     if found.get("not_included"):

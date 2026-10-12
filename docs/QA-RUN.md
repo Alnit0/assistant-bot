@@ -595,6 +595,16 @@ gives a fresh day). Type `pills`. Every step says what to press.
 | 1 | Say `took my pill X`, then `took my pill Y`. Reply to the line "✅ **Pill X** · taken …" with `it was 8am`. Press nothing | "✏️ **Pill X** · taken … → 8:00 am": Pill X's dose is corrected, not Pill Y's, and there is no card | R71 |
 | 2 | Reply to that same "✅ **Pill X** …" line with `actually I didn't`; then reply `dev why` to that reply of yours. Then `dev clock reset` | "↩️ **Pill X** · no longer ticked off". The trace says "reply to pills' message: it goes to pills first" and shows no router request | R71 |
 
+## 30. `dev why` and "it" (waiting for QA)
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
+On the dev database, dev mode off. Every step says what to press.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | `timer 10m tea`; say `give it 2 more`; reply `dev why` to that message of yours. Then reply `cancel` to the timer | The extraction line reads `timers · timer_change {"which":"it","action":"extend","duration":"2m"}`: the action's name is there and "which" is not empty. Nothing about an "internal label" appears in #bot-log or the log | J54 |
+
 ## When you finish
 
 - Stop the test copy (`Ctrl + C`) and check nothing is left running:

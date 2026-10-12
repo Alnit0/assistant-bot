@@ -22,6 +22,8 @@ message to that task".
    The recorded "took the usual one" fixture passes.
 3. Done: every line about a pill or a dose is recorded as that pill's,
    and a reply to one means that pill and that dose (block 29).
+4. Done: `dev why` shows a reference as "it", is sent as it is, and
+   logs no error (block 30).
 
 ## Branch and state
 

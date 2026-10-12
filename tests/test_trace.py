@@ -128,13 +128,17 @@ def test_one_message_is_found_by_its_row(db):
     assert asyncio.run(database.run(trace.db_get, 999)) is None
 
 
+sent_as = []  # whether each block `dev why` sent was sent verbatim
+
+
 def why(*args, user_id=1, reply_to=None, sent_at=None):
     from tasks.dev import tools
 
     said = []
 
-    async def reply(text):
+    async def reply(text, verbatim=False):
         said.append(text)
+        sent_as.append(verbatim)
 
     async def fetch_reply_target():
         return SimpleNamespace(created_at=sent_at)
@@ -225,3 +229,25 @@ def test_a_reply_to_one_of_the_bots_messages_means_the_message_of_mine_it_answer
     said, result = why("5", reply_to=999, sent_at=datetime(2020, 1, 1, tzinfo=timezone.utc))
     assert len(said) == 1 and said[0].startswith("🔎 Nothing is logged for that message: it is from before this database was started")
     assert result == "nothing is logged for the message replied to"
+
+
+def test_a_reference_is_shown_as_the_word_it_stands_for_and_the_trace_is_sent_as_it_is(db, caplog):
+    # QA 2026-10-12 (#545): dev why showed "which":"" and logged an error each time, because the
+    # marker for "it" and the action's name were taken out of the trace as internal labels
+    from core import actions, outgoing
+
+    assert trace.REFERENCE == actions.REFERENCE
+    found = {"task": "timers", "action": "timer_change", "data": {"which": "@that", "action": "extend", "doses": [{"pill": "@that"}]}, "guessed": ["duration"]}
+    line = trace._extraction_line(found)
+    assert line == 'timers · timer_change {"which":"it","action":"extend","doses":[{"pill":"it"}]} · guessed: duration'
+    last = log("give it 2 more", message_id=5)
+    asyncio.run(database.run(lambda conn: conn.execute("UPDATE message_log SET extracted = ? WHERE id = ?", (json.dumps([found]), last))))
+    sent_as.clear()
+    said, _ = why()
+    assert '"which":"it"' in said[0] and "timer_change" in said[0] and "@that" not in said[0]
+    assert sent_as == [True], "sent as it is: nothing is taken out of a trace, and no error is logged for it"
+    outgoing.set_internal_names(["timer_change"])
+    try:
+        assert outgoing.leaks(said[0]) == ["timer_change"], "elsewhere the name would still be caught"
+    finally:
+        outgoing.set_internal_names([])

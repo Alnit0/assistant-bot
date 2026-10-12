@@ -190,7 +190,8 @@ async def why(ctx: Context) -> str:
         await ctx.reply("🔎 Nothing is logged from you yet in this database.")
         return "nothing is logged yet"
     for row in rows:
-        await ctx.reply(trace.block(row))
+        # As it is: a trace names actions and fields, which is what it is for
+        await ctx.reply(trace.block(row), verbatim=True)
     return f"showed the trace of message(s) {', '.join('#' + str(row['id']) for row in rows)}"
 
 
