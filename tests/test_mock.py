@@ -275,15 +275,12 @@ def test_the_designed_cards_keep_the_card_rules():
     # A card that asks first because something is risky is amber, and its ⚠️ line says why
     risky = mock.read("too-soon-v2")
     assert risky.startswith("┃ accent: amber") and "⚠️" in risky and "[✅ Log it: green] [↩️ Cancel: grey]" in risky
-    # Asked again is still due (amber); snoozed is grey; a missed dose is red
+    # Asked again is still due (amber); snoozed is grey
     assert "accent: amber" in mock.read("reminder-renudge-v2") and "accent: grey" in mock.read("reminder-renudge-v2")
     # A missed dose is a ❌ line; the box is amber while a dose is still to come, red only when none is
     missed = mock.read("reminder-missed-v2")
     assert "accent: amber" in missed and "accent: red" not in missed and "❌ dose 2 · missed" in missed and "**Next:** dose 3" in missed
-    assert "accent: red
-┃ **Pill E** · ✕" in checklist.replace("
-", "
-")
+    assert "accent: red\n┃ **Pill E** · ✕" in checklist.replace("\r\n", "\n")
     design = (mock.MOCKUPS_DIR.parent / "DESIGN.md").read_text(encoding="utf-8")
     assert all(f"`{name}`" in design for name in DESIGNED)
 
