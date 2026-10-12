@@ -443,6 +443,7 @@ def test_a_late_log_is_asked_about_then_a_time_said_straight_after_corrects_it(b
 # you took it about 2 hours and 49 minutes ago." Nothing was corrected, and it read as if it had been
 MAIN = {"name": "Pill A", "per_day": 3, "times": ["8:00 am", "11:30 am", "3:00 pm"], "min_gap_minutes": 180, "latest": "4:00 pm"}
 CORRECTED = "✏️ **Pill A** (dose 1 of 3) · taken 11:49 pm → 9:00 pm · nothing left to take today"
+PICKED_18 = "**Pill A** (dose 1 of 3) · taken 11:49 pm → 9:00 pm ❓"
 NOT_UNDERSTOOD = "🤔 I didn't understand that."
 CANT_LOG = "I can't log that yet."
 
@@ -491,7 +492,10 @@ def test_18_more_than_five_minutes_later_the_router_is_asked_and_it_is_still_a_c
     dev_clock.advance(timedelta(minutes=6))
     bot.claude(ROUTED["18"], EXTRACTED["18"])
     bot.say(SAID["18"], straight_after=True)  # as it comes: by now nothing sticks
-    assert bot.sent[-1][1].text == CORRECTED.replace("11:49 pm → 9:00 pm", "11:49 pm → 9:00 pm"), "9 pm is before the dose last taken: its time put right"
+    # Still a correction (9 pm is before the dose last taken), but nothing anchors "it" any more:
+    # the pill the code picked is shown first, with ❓, and Save does it
+    assert PICKED_18 in bot.sent[-1][1].text.splitlines() and card(bot)[1] == ["Save", "Cancel"]
+    assert press(bot) == CORRECTED
     _no_chat(bot)
 
 
@@ -553,7 +557,8 @@ def test_an_acknowledgement_from_chat_is_never_sent_and_the_message_is_routed_ag
     chat = ("route", {"kind": "chat", "tasks": [], "confidence": "high", "reports_doing": False, "chat_part": ""})
     bot.claude(chat, ROUTED["18"], EXTRACTED["18"])  # the router's slip, chat's slip, then the second look
     bot.say(SAID["18"], straight_after=True)
-    assert bot.sent[-1][1].text == CORRECTED
+    assert PICKED_18 in bot.sent[-1][1].text.splitlines(), "six minutes on: the pill it picked is shown first"
+    assert press(bot) == CORRECTED
     assert not any("Got it" in shown.text for _, shown in bot.sent), "what chat wrote was never shown"
     assert llm.history_for(100) == [], "nor kept as something chat said"
 
@@ -681,3 +686,25 @@ def test_each_task_says_which_messages_are_its_own(bot):
     (pills_entry,) = pills_task.entries()
     assert run(timers_entry.owns(tea.message_id)) is True, "a timer's card is the timer's even once it has ended"
     assert run(timers_entry.owns(987654)) is False and run(pills_entry.owns(tea.message_id)) is False
+
+
+# --- an unnamed pill is only logged straight away with an anchor ------------------------------------------
+USUAL = next(tuple(entry["recorded"]) for entry in PILLS["extraction"] if entry["message"] == "took the usual one")
+
+
+def test_took_the_usual_one_as_claude_really_read_it_is_shown_on_a_card_with_the_pill_it_picked(bot, dev_clock):
+    iron_message, before = _two_pills_and_zinc_logged(bot)
+    dev_clock.advance(timedelta(minutes=10))  # nothing was said about a pill lately
+    bot.claude(route("pills"), USUAL)
+    bot.say("took the usual one")
+    lines, buttons = card(bot)
+    assert lines[0] == "💊 Pills · change" and lines[1].startswith("**Iron** · taken ") and lines[1].endswith(" ❓"), "the one pill with a dose left, as a guess"
+    assert buttons == ["Save", "Cancel"]
+
+
+def test_it_straight_after_a_log_is_that_pill_and_is_done_at_once(bot):
+    iron_message, before = _two_pills_and_zinc_logged(bot)
+    bot.claude(("pill_log", {"doses": [{"pill": "@that", "did": "not_taken"}], "guessed": [], "not_included": []}))
+    bot.say("no I didn't take it", straight_after=True)
+    assert any(shown.text.startswith("↩️ **Zinc** · no longer ticked off") for _, shown in bot.sent), "the pill the last pills message was about: no card"
+    assert not any("Pills · change" in shown.text for _, shown in bot.sent)

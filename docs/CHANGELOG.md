@@ -6,6 +6,11 @@ backfilled from the git log.
 
 ## 2026-10-12
 
+- **A pill I don't name is only logged straight away with an anchor**: a
+  reply, or a dose logged in the last five minutes. Otherwise ("took
+  the usual one", "it" hours later) the pill the bot picked is shown on
+  a card with ❓, and Save logs it.
+
 - The standard now says what "it" means without a reply: the last thing
   I mentioned, or the subject of the bot's latest task message in the
   last five minutes, and never a message with no single subject.

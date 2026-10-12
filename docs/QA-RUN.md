@@ -534,7 +534,7 @@ Every step says what to press.
 
 | # | Do | Expect | Tests |
 |---|---|---|---|
-| 1 | Say `took the usual one`. Press **Cancel** (if it asks which pill instead, that passes too) | Never ticked off at once. A card "💊 Pills · change" with the dose and ❓, **Save** and **Cancel**; after Cancel the checklist is unchanged | R66 |
+| 1 | Say `took the usual one`. Press **Cancel** (with two pills never logged it asks which pill instead: that passes too) | Never ticked off at once. A card "💊 Pills · change" with the dose and ❓, **Save** and **Cancel**; after Cancel the checklist is unchanged | R66 |
 | 2 | Say `took my pill X`. Then reply to **Pill Y**'s Taken / Skip message with `took it`; then reply `dev why` to that reply of yours. Press nothing | "✅ **Pill X** · taken …", then "✅ **Pill Y** · taken …": the pill whose message you replied to, not the one logged just before. The trace says "reply to pills' message: it goes to pills first", with no router request | R67 |
 | 3 | `timer 10m tea`; say `give tea more time`. Press nothing | Either a plain line that ends "Say how much time to add, e.g. 10 minutes.", or the time is added with the amount it guessed marked ❓ ("❓ I guessed how much time to add."). Never `duration`, "tell the user" or an id like t12 | G25 |
 | 4 | Look at the tea timer's message; type `pomo` and look at its card. Press **Stop**, and reply `cancel` to the tea timer | "ends in 9 minutes (8:04 pm)" and "Ends in 25 minutes (8:19 pm)": the time in brackets is 12-hour with am or pm, whatever your Discord is set to | G26 |
@@ -567,6 +567,20 @@ says what to press.
 |---|---|---|---|
 | 1 | `timer 10s tea`, then `timer 10m eggs`. When tea's alert rings, say `give it 5 more`. Press nothing | Tea runs again for 5 minutes ("➕ tea: 5m more"); eggs is untouched | G31 |
 | 2 | Say `pause everything`, then `resume it`. Press nothing. Then reply `cancel` to both timers | "⚠️ Which timer? Say its name." with a line for each: the line before was about both | G30 |
+
+## 28. An unnamed pill needs an anchor (waiting for QA)
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
+On the dev database (`python main.py --dev`), dev mode off, with the hub
+set and two pills with no set time (say `add pill X once a day`, press
+**Save**; `add pill Y once a day`, press **Save**). Type `pills`. Every
+step says what to press.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Say `took my pill X`. Then `dev clock +10m`. Say `took the usual one`; press **Save** | "✅ **Pill X** · taken …" at once. Ten minutes on, a card "💊 Pills · change" with "**Pill Y** · taken … ❓", **Save** and **Cancel**: Pill Y is the one with a dose left. Save ticks it off | R69 |
+| 2 | Straight after, say `no I didn't`. Press nothing. Then `dev clock reset` | "↩️ **Pill Y** · no longer ticked off", at once and with no card: the bot's last pills message was about Pill Y | R69 |
 
 ## When you finish
 

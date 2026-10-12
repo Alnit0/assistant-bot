@@ -42,11 +42,11 @@ Last updated: 2026-10-12
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
 | P | Bugs | 34 | 16 | 18 | 15 | 19 | 0 | 0 |
 | Q | Time, days, the schedule model, the occurrence log and cards | 15 | 13 | 2 | 2 | 13 | 0 | 0 |
-| R | Pills | 55 | 10 | 45 | 37 | 18 | 0 | 0 |
+| R | Pills | 57 | 11 | 46 | 38 | 19 | 0 | 0 |
 | S | Routing and confirm cards | 59 | 10 | 49 | 14 | 44 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 4 | 18 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **425** | **130** | **295** | **226** | **198** | **0** | **1** |
+| | **Total** | **427** | **131** | **296** | **227** | **199** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -482,8 +482,10 @@ are added with it.
 | R63 | 🤖 Auto | The morning's post | Started at 1:30 am on a fresh day, nothing is posted, today's 6:00 am is booked, and at 6:00 am the checklist posts in the hub and the log says so with the count; with yesterday's checklist still there, today's posts and yesterday's is left; a checklist asked for at 1:29 am does not stand in for the morning's (a fresh copy, the night's goes, the log says in place of which); a second run or a restart later in the morning posts nothing more and says why in the log and in #bot-log; nothing to take, and no hub, are each said in #bot-log; nobody with a pill is the log only | ✅ Pass | 2026-10-12 | `tests/test_pills_checklist.py`. From live, 2026-10-12: the 6:00 am post didn't come |
 | R64 | 🤖 Auto | A guessed pill is shown first | When Claude says it guessed which pill, nothing is logged: a card shows the dose with ❓, Save and Cancel, and Save logs it and reads it back. An exact name, part of a name only one pill has, and "it" log at once; a guess about the time is not a guess about the pill | ✅ Pass | 2026-10-12 | `tests/test_pills_checklist.py` |
 | R65 | 🤖 Auto | A reply says which pill | "took it" as a reply to a dose's Taken / Skip message is that pill and that dose, not the pill logged last; a pill I name still wins; a reply to a checklist with one pill on it means that pill; with several, or a reply to anything else, it falls back | ✅ Pass | 2026-10-12 | `tests/test_pills_checklist.py` |
-| R66 | 👤 Manual | With two pills: say `took the usual one`. Press **Cancel** (if it asks which pill instead, that passes too) | Never ticked off at once. A card "💊 Pills · change" with the dose and ❓, **Save** and **Cancel**; after Cancel the checklist is unchanged | ⬜ Untested | | |
+| R66 | 👤 Manual | With two pills, nothing logged in the last five minutes: say `took the usual one`. Press **Cancel** (if neither pill was ever logged and both have a dose left, it asks which pill instead) | Never ticked off at once. A card "💊 Pills · change" with the dose and ❓, **Save** and **Cancel**; after Cancel the checklist is unchanged | ⬜ Untested | | |
 | R67 | 👤 Manual | With two pills that have no set time, type `pills`; say `took my` and the first one's name; then reply to the **other** pill's Taken / Skip message with `took it`. Press nothing | The pill whose message you replied to is ticked off ("✅ **…** · taken …"), not the one logged just before | ⬜ Untested | | |
+| R68 | 🤖 Auto | An unnamed pill is only logged straight away with an anchor | "it" or "the usual one" with a reply, or within five minutes of a dose being logged, is that pill and is done at once; otherwise the pill the code picks (the one logged last, or for a dose taken the one with a dose left) is on a card with ❓, Save and Cancel; with nothing to pick from it asks which; "took the usual one" as Claude really read it gets the card; a correction said six minutes later is still a correction, shown first | ✅ Pass | 2026-10-12 | `tests/test_pills_checklist.py`, `tests/test_golden.py`, `tests/test_routing.py` |
+| R69 | 👤 Manual | With two pills, one logged more than five minutes ago: say `took the usual one`; press **Save**. Straight after, say `no I didn't` | A card "💊 Pills · change" naming the other pill with ❓; Save ticks it off. "no I didn't" then unticks that pill at once, with no card | ⬜ Untested | | Block 28 |
 
 ## S. Routing and confirm cards
 

@@ -1074,6 +1074,12 @@ A short log of key decisions and why. Newest at the bottom.
   - The pills fixtures were recorded live once for this (US$0.13). One
     came back otherwise than hoped: "took the usual one" is handed over
     as "it", not as a guess, so it gets no ❓ card (see the backlog).
+  - Decided the same day: the code, not Claude, tells an anchored "it"
+    from a pick. A pill nobody named is logged at once only with a
+    reply or within five minutes of a dose being logged; otherwise the
+    pill the code picks goes on a card with ❓ (`plain._unnamed`,
+    `Step.picked`). "Dose 2 at 12:15pm" straight after a log still logs
+    at once; hours later it is shown first.
   - Found live the same day: the line that said a timer was paused was
     no task's own, so a reply to it went to the router and the timer was
     picked by luck. A task now records every message about one of its

@@ -480,9 +480,32 @@ def test_a_time_earlier_than_the_dose_last_taken_corrects_it_however_long_ago_it
     assert log(world, {"pill": "pill a", "did": "taken", "at": "12:00 pm"}) == "⚠️ Pill A (dose 1 of 3): 12:00 pm hasn't happened yet: it's 11:00 am now."
 
 
-def test_it_with_nothing_logged_yet_is_asked_about(world):
-    add(world, MAIN)
-    assert log(world, {"pill": "@that", "did": "taken", "at": "8:00 am"}) == "⚠️ Which pill? Say its name."
+def test_it_with_nothing_logged_yet_is_asked_about_or_shown_as_a_guess(world):
+    add(world, {"name": "Zinc"}, {"name": "Iron"})
+    assert log(world, {"pill": "@that", "did": "taken", "at": "8:00 am"}) == "⚠️ Which pill? Say its name.", "two it could be"
+    assert log(world, {"did": "taken"}) == "⚠️ Which pill? Say its name.", "no pill handed over at all is no different"
+
+
+def test_an_unnamed_pill_with_no_anchor_is_shown_on_a_card_with_the_pill_the_code_picked(world):
+    # "took the usual one" comes from Claude as "it" with nothing guessed: the code decides
+    add(world, {"name": "Zinc"})
+    sheet_id = run(checklist.post(world.owner.id))
+    usual = {"doses": [{"pill": "@that", "did": "taken"}]}
+    assert run(plain.log_asks(world.request(), usual, frozenset())) is True, "the only pill with a dose left: picked, never logged unseen"
+    card = run(plain.log_card(world.request(), usual, frozenset()))
+    assert card.lines == ("**Zinc** · taken 9:00 am ❓",) and card.confirm_label == "Save" and state_of(world, "Zinc") == PENDING
+    run(plain.log_save(world.request(), card.data))
+    assert state_of(world, "Zinc") == DONE
+    # Straight after, "it" has an anchor: the pill just logged. No card
+    undo = {"doses": [{"pill": "@that", "did": "not_taken"}]}
+    assert run(plain.log_asks(world.request(), undo, frozenset())) is False
+    # Six minutes on the anchor has gone: the pill logged last is picked, and shown first
+    world.now += timedelta(minutes=6)
+    assert run(plain.log_asks(world.request(), undo, frozenset())) is True
+    assert run(plain.log_card(world.request(), undo, frozenset())).lines == ("**Zinc** · no longer ticked off ❓",)
+    # A reply is an anchor however long ago, and a name needs none
+    assert run(plain.log_asks(replying(world, sheet_id), undo, frozenset())) is False
+    assert run(plain.log_asks(world.request(), {"doses": [{"pill": "zinc", "did": "not_taken"}]}, frozenset())) is False
 
 
 def test_a_dose_is_skipped_by_the_bot_the_moment_it_can_no_longer_fit_and_comes_back_if_a_correction_makes_room(world):
@@ -577,8 +600,9 @@ def test_dose_2_by_its_number_is_logged_then_corrected_and_what_is_not_there_is_
     add(world, MAIN)
     log(world, {"pill": "pill a", "did": "taken", "at": "9:00 am"})
     world.now = day.at(DAY, time(12, 30))
-    assert run(plain.log_asks(world.request(), {"doses": [numbered(2, "12:15 pm", pill="@that")]})) is False, "in order and 3h on: nothing to ask"
-    assert log(world, numbered(2, "12:15 pm", pill="@that")).startswith("✅ **Pill A** (dose 2 of 3) · taken 12:15 pm")
+    assert run(plain.log_asks(world.request(), {"doses": [numbered(2, "12:15 pm")]})) is False, "in order and 3h on: nothing to ask"
+    assert run(plain.log_asks(world.request(), {"doses": [numbered(2, "12:15 pm", pill="@that")]})) is True, "hours after the last log, “it” is only a pick"
+    assert log(world, numbered(2, "12:15 pm")).startswith("✅ **Pill A** (dose 2 of 3) · taken 12:15 pm")
     assert log(world, numbered(2, "12:20 pm")).startswith("✏️ **Pill A** (dose 2 of 3) · taken 12:15 pm → 12:20 pm")
     early = run(plain.log_card(world.request(), {"doses": [numbered(2, "8:00 am")]}, frozenset()))
     assert early.warnings == ("That's before dose 1, taken 9:00 am. Log it anyway?",)

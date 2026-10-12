@@ -157,14 +157,6 @@ a schema could take its place.
     points out a guessed length, and the line after the card that
     cancels several. A reply to either still goes to the router.
 - **Left by the task-check fixes** (2026-10-12):
-  - **"took the usual one" does not get the ❓ card.** Recorded live on
-    2026-10-12: Claude hands it over as "it" (`@that`) and says nothing
-    was guessed, so the code takes the pill logged last, or asks which
-    if none was. The card only shows when Claude names a pill and lists
-    it as guessed. To decide: whether an unnamed pill that is not "it",
-    said with no reply and not straight after a log, should be put on a
-    card by the code (it would need to tell "the usual one" from "dose
-    2 at 12:15pm", which is meant to log at once).
   - **One fixture is not recorded**: "how long left on tea?" (timers).
   - **A reply to the checklist only says which pill when one pill is on
     it.** With several, "it" is still the pill logged last, or the bot

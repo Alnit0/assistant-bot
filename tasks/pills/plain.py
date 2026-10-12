@@ -764,6 +764,8 @@ class Step:
     at: datetime | None = None
     was: datetime | None = None  # a correction of a dose already ticked off: when it had been taken
     asks: tuple[str, ...] = ()  # what is asked about on a card first: after the latest time, out of order, too close
+    # No pill was named and nothing pointed at one: the code picked this one. Shown on a card, never done unseen
+    picked: bool = False
 
 
 def db_last_logged(conn, user_id: int) -> int | None:
@@ -771,6 +773,38 @@ def db_last_logged(conn, user_id: int) -> int | None:
     events = occurrences.db_last_change(conn, user_id, TASK)
     found = occurrences.db_get(conn, events[-1].occurrence_id) if events else None
     return found.item_id if found is not None else None
+
+
+def db_logged_lately(conn, user_id: int, since: datetime) -> int | None:
+    """The pill of the last thing the user did to a dose, if that was since `since`:
+    what the bot's latest pills message was about, and so what "it" means now."""
+    events = occurrences.db_last_change(conn, user_id, TASK)
+    if not events or events[-1].at < since:
+        return None
+    found = occurrences.db_get(conn, events[-1].occurrence_id)
+    return found.item_id if found is not None else None
+
+
+async def _unnamed(request: Request, listed: list[Dose], pointed: Pill | None, now: datetime, did: str) -> tuple[int | None, bool]:
+    """Which pill is meant when none was named ("it", "the usual one"): (its id,
+    whether the code only picked it). With an anchor it is that pill, and the
+    dose is logged straight away: a reply to a message about one pill, or the
+    pill a dose was logged for in the last few minutes. With no anchor the
+    code picks the likeliest (the pill logged last; for a dose taken or
+    skipped, one that still has a dose left today) and that is shown on a
+    card with ❓, never logged unseen. None if there is nothing to pick from."""
+    if pointed is not None:
+        return pointed.id, False
+    user_id = request.user.id
+    lately = await request.db.run(db_logged_lately, user_id, now - CORRECTION_WINDOW)
+    if lately is not None:
+        return lately, False
+    last = await request.db.run(db_last_logged, user_id)
+    if did != checklist.NOT_TAKEN:
+        left = {dose.pill.id for dose in listed if today.next_to_log(listed, dose.pill.id) is not None}
+        if last not in left and len(left) == 1:
+            return next(iter(left)), True
+    return last, last is not None
 
 
 async def _just_logged(dose: Dose, now: datetime) -> bool:
@@ -803,16 +837,22 @@ async def _step(request: Request, item: dict) -> Step:
     user_id = request.user.id
     pills, listed, today_ = await checklist.view(user_id)
     now = clock.now()
-    named = item.get("pill")
+    named, picked = item.get("pill"), False
     # Where I point beats what is newest: a reply to a dose's message or to the checklist
     pointed, pointed_dose = await _replied_to(request, listed, today_)
-    if is_reference(named):
-        # "it" is worked out here and never by Claude: the pill of the message replied to,
-        # or else the pill mentioned last, the one just logged
-        last = pointed.id if pointed is not None else await request.db.run(db_last_logged, user_id)
+    if is_reference(named) or not str(named or "").strip():
+        # "it" is worked out here and never by Claude
+        last, picked = await _unnamed(request, listed, pointed, now, item["did"])
         if last is None:
             return Step("⚠️ Which pill? Say its name.")
         named = f"{rules.ID_PREFIX}{last}"
+    step = await _for_pill(request, item, named, pills, listed, today_, now, pointed_dose)
+    step.picked = picked and step.dose is not None
+    return step
+
+
+async def _for_pill(request: Request, item: dict, named, pills, listed: list[Dose], today_: date, now: datetime, pointed_dose: Dose | None) -> Step:
+    """What an item means for the pill it is about."""
     try:
         pill = rules.find(pills, str(named))
     except UserError as error:
@@ -935,12 +975,16 @@ def _pill_guessed(guessed: frozenset, index: int) -> bool:
 
 
 async def log_asks(request: Request, data: dict, guessed: frozenset = frozenset()) -> bool:
-    """Whether logging needs a card: when which pill is meant was a guess (a
-    guess is never saved unseen), when a dose would be ticked off after its
-    pill's latest time, or when a dose named by its number would be out of
-    order or too close to another."""
+    """Whether logging needs a card: when which pill is meant was a guess,
+    Claude's or the code's own pick for a pill nobody named (a guess is never
+    saved unseen), when a dose would be ticked off after its pill's latest
+    time, or when a dose named by its number would be out of order or too
+    close to another."""
     for index, item in enumerate(data["doses"]):
-        if _pill_guessed(guessed, index) or (await _step(request, item)).asks:
+        if _pill_guessed(guessed, index):
+            return True
+        step = await _step(request, item)
+        if step.asks or step.picked:
             return True
     return False
 
@@ -965,7 +1009,7 @@ async def log_card(request: Request, data: dict, guessed: frozenset) -> Proposal
         if step.dose is None:
             warnings.append(step.say.removeprefix("⚠️ "))
             continue
-        lines.append(flag(_preview(step), _pill_guessed(guessed, index)))
+        lines.append(flag(_preview(step), _pill_guessed(guessed, index) or step.picked))
         asked = asked or bool(step.asks)
         if step.asks:
             warnings.append(f"{' '.join(step.asks)} Log it anyway?")

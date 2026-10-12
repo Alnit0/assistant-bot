@@ -9,14 +9,17 @@ session; the end-of-task checklist updates it at the end of every task.
 
 (None yet.)
 
-## Background batch (branch `feature/background`, unattended)
+## Background batch (unattended, on `feature/pills`)
 
-Worked in the tree `assistant-bot-work`, branched from `feature/pills`
-at "Record every timer message as that timer's". One commit an item,
-each with a block in `docs/QA-RUN.md` marked "waiting for QA". No live
-evals were run.
+One commit an item, pushed, each with a block in `docs/QA-RUN.md`
+marked "waiting for QA". No live evals were run and the service was
+not restarted: the live bot is still on "Send a reply to a task's
+message to that task".
 
 1. Done: the standard says what "it" means without a reply (block 27).
+2. Done: an unnamed pill is only logged straight away with an anchor;
+   otherwise the pill the code picked is on a card with ❓ (block 28).
+   The recorded "took the usual one" fixture passes.
 
 ## Branch and state
 
@@ -63,7 +66,8 @@ evals were run.
   golden 37 of 39 (not run again since the router's rule on reports
   was reworded); each miss is a known one that the code covers. The
   pills fixtures were recorded again on 2026-10-12: 57 of 59, with one
-  known miss and one new one ("took the usual one": see the backlog).
+  known miss ("took the usual one" is now right as recorded: the code
+  decides).
   One timers fixture has no recording yet.
 - Live eval spend to date: about US$4.04.
 

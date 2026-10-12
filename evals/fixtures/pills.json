@@ -1565,17 +1565,15 @@
       "data": {
         "doses": [
           {
+            "pill": "@that",
             "did": "taken"
           }
         ]
       },
-      "guessed": [
-        "doses[0].pill"
-      ],
       "also_ok": {
         "action": "none"
       },
-      "note": "task-check C6, 2026-10-12: nothing says which pill. If one is picked it must be listed as guessed, so the code shows it on a card with a question mark instead of logging it; declining is as right",
+      "note": "task-check C6, 2026-10-12: nothing says which pill, so it is handed over as a reference and the code decides: with no anchor (a reply, or a pills message about one pill in the last five minutes) the pill it picks is shown on a card with a question mark, never logged unseen. Declining is as right",
       "recorded": [
         "pill_log",
         {
@@ -1588,8 +1586,7 @@
           "guessed": [],
           "not_included": []
         }
-      ],
-      "known_miss": "recorded 2026-10-12: it comes back as `@that` with nothing listed as guessed, so the code takes it for the pill logged last (or asks which, if none was) and no card with a question mark is shown. The card only appears when Claude names a pill and says it guessed"
+      ]
     },
     {
       "task": "pills",
