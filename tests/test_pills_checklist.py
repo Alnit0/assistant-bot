@@ -429,7 +429,7 @@ def test_past_its_latest_time_with_nothing_taken_the_day_is_missed_and_no_time_i
 def test_logging_after_the_latest_time_asks_first_on_a_card(world):
     request, asked = late_night(world)
     assert asked.lines == ("**Pill A** (dose 1 of 3) · taken 10:57 pm",) and asked.kind == "change"
-    assert asked.warnings == ("That's after the latest time, 4:00 pm. Log it anyway?",) and asked.confirm_label == "Log it"
+    assert asked.warnings == ("Dose 1 was missed (due 8:00 am). That's after the latest time, 4:00 pm. Log it as taken now?",) and asked.confirm_label == "Log it"
     assert pill_a(world)[1][0] == MISSED, "nothing is logged by asking"
     world.now = day.at(DAY, time(22, 58))  # Log it is pressed a minute later: the card's time is what is saved
     assert run(plain.log_save(request, asked.data)) == "✅ **Pill A** (dose 1 of 3) · taken 10:57 pm · nothing left to take today"

@@ -417,17 +417,19 @@ async def p2(h: Harness) -> None:
         sheet = await h.get(h.hub, h.memo["sheet_d1"])
         h.check(sheet is not None and "❌" in sheet.text and "missed" in sheet.text, f"the checklist reads: {sheet.text[:300] if sheet else 'gone'}")
 
-    async with h.step("2.10", "A late log: “took testa” after it was missed", "It is ticked off all the same: at once, or after a card that asks first", "T45 (38.7)"):
-        mine = await h.say("took testa", canned=log({"pill": "Testa", "did": "taken"}), route={"kind": "task", "tasks": [TASK], "confidence": "high", "reports_doing": True, "chat_part": ""})
-        if (await h.doses()).get(("Testa", 3)) != DONE:
-            stored, shown = await card(h)
-            h.check(shown is not None and any("Log it" in label for label in shown.labels), f"not ticked off and no card that asks: {[each.text[:80] for each in await h.recent(h.inbox, 3)]}")
-            h.saw("asked first: " + next((line for line in shown.text.splitlines() if "⚠️" in line), shown.text.splitlines()[-1])[:120])
-            await h.press(shown.id, "Log it", h.inbox)
-        else:
-            h.saw("ticked off at once")
-            h.odd("“took testa” a minute after dose 3 was marked missed (an hour after it was due) ticks it off at once, with no card asking first. QA-TONIGHT step 45 expects exactly that; noted because CLAUDE.md says a late log asks first, which here means after the pill's latest time")
-        h.check((await h.doses()).get(("Testa", 3)) == DONE, f"the doses are {await h.doses()}")
+    async with h.step("2.10", "A missed dose logged as taken: `took testa`", "The typed shortcut, with no request to Claude, and it asks first: a card “Dose 3 was missed (due …). Log it as taken now?” with Log it and Cancel; nothing is ticked off until Log it", "T45 (38.7); asked 2026-10-13"):
+        before = h._real_calls
+        mine = await h.say("took testa")
+        stored, shown = await card(h)
+        h.check(shown is not None, f"no card that asks: {[each.text[:80] for each in await h.recent(h.inbox, 3)]}")
+        asked = next((line for line in shown.text.splitlines() if "⚠️" in line), "")
+        h.check("Dose 3 was missed (due " in asked and asked.rstrip().endswith("Log it as taken now?"), f"the card asks: {asked.strip()[:140] or shown.text[:140]}")
+        h.check(any("Log it" in label for label in shown.labels) and any("Cancel" in label for label in shown.labels), f"its buttons are {shown.labels}")
+        h.check((await h.doses()).get(("Testa", 3)) == MISSED, "the dose was ticked off before Log it")
+        h.check(h._real_calls == before, "a request went to Claude")
+        h.saw(asked.strip()[:120])
+        await h.press(shown.id, "Log it", h.inbox)
+        h.check((await h.doses()).get(("Testa", 3)) == DONE, f"after Log it the doses are {await h.doses()}")
         await no_marks(h, mine)
 
     async with h.step("2.11", "8:00 pm: Testiron's reminder, and Skip", "A reminder for Testiron; Skip takes it down and the dose is skipped", "38"):
@@ -699,18 +701,17 @@ async def p4(h: Harness) -> None:
         await h.press(shown.id, "Cancel", h.inbox)
         h.check(await h.get(h.inbox, shown.id) is None, "the card is still there after Cancel")
 
-    async with h.step("4.06", "`dev cost`", "Under Today a small line with what was spent against DAILY_SPEND_LIMIT", "T35, T56 (42.1, 42.3)"):
+    async with h.step("4.06", "`dev cost`", "Under Today a small line with what was spent against DAILY_SPEND_LIMIT, the limit of a tenth of a cent written as US$0.001", "T35, T56 (42.1, 42.3)"):
         await h.say("dev cost")
         shown = await h.find(h.inbox, "limit")
         h.check(shown is not None, f"no line about the limit: {[each.text[:120] for each in await h.recent(h.inbox, 2)]}")
         line = next((line for line in shown.text.splitlines() if "limit" in line), "")
         h.saw(line[:120])
-        if "US$0.00 limit" in line or "of US$0.00" in line:
-            h.odd(f"`dev cost` shows a limit under one cent as “US$0.00” ({line.strip()[:70]}). Only seen because the test sets DAILY_SPEND_LIMIT=0.0001")
+        h.check("US$0.001" in line, f"a limit under a cent is not shown to three places: {line.strip()[:90]}")
 
     spent = await h.spent()
     if spent > 0 and await h.can_ask_claude():
-        async with h.step("4.07", "The spend line: two messages to Claude with the limit at US$0.0001", "One “💰 Claude spend is over today's limit” in #selftest-log after the first, and no second one after the second", "T49, T50 (42.2, 42.3)"):
+        async with h.step("4.07", "The spend line: two messages to Claude with the limit at US$0.001", "One “💰 Claude spend is over today's limit” in #selftest-log after the first, and no second one after the second", "T49, T50 (42.2, 42.3)"):
             await h.say("what pills do I have left today?", canned=("pill_today", {"guessed": [], "not_included": []}))
             first = await h.count(h.botlog, "over today's limit")
             await h.say("what pills do I have left today?", canned=("pill_today", {"guessed": [], "not_included": []}))

@@ -104,7 +104,7 @@ At the PC: Ctrl+C, then
 | 42 | Press **Snooze 15m**. `dev clock 3:15pm` | "Snoozed until 3:15 pm"; then a fresh message replaces it and the phone buzzes again | 38.3 |
 | 43 | Press **Taken at…**, type `3:05pm`, submit | The message goes; the checklist shows dose 1 taken 3:05 pm | 38.4 |
 | 44 | `dev clock 9:00pm`, `dev clock 9:15pm`, `dev clock 9:30pm`, `dev clock 9:45pm` | One prompt, replaced three times: "reminder 1 of 3", "2 of 3", "3 of 3". Only ever one message | 38.5 |
-| 45 | `dev clock 10:00pm`. Then say `took testrem` | The message goes and the checklist shows ❌ missed. Then it is ticked off all the same | 38.6, 38.7 |
+| 45 | `dev clock 10:00pm`. Then say `took testrem`; press **Log it** | The message goes and the checklist shows ❌ missed. Then an amber card: "Dose 2 was missed (due 9:00 pm). Log it as taken now?" with **Log it** and **Cancel**; Log it ticks it off | 38.6, 38.7 |
 | 46 | Say `add Testgap to my pills at 3pm and 9pm, at least 4 hours apart`, **Save**. `dev clock 3:00pm`, press **Taken**. `dev clock 9:00pm`. On the reminder press **Taken at…**, type `5pm`, submit | A card: "**Testgap** (dose 2 of 2) · taken 5:00 pm", "⚠️ That's 2h after dose 1 … Log it anyway?", **Log it**, **Cancel**. Nothing ticked off; the reminder still there | 38.8 |
 | 47 | Press **Cancel**. Then **Taken at…**, `5pm` again, and **Log it** | After Cancel the reminder stays. After Log it: taken 5:00 pm, the reminder goes | 38.9 |
 | 48 | Say `remove testrem and testgap`, **Remove**. `dev clock reset` | Gone; the real time again | 38.10 |

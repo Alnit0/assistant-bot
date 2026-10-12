@@ -246,8 +246,12 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   (`schedule.dues`), never stored, and never depends on what time it is
   now. Whether it can still be taken is a separate question
   (`doses.outcomes`)
-- A late log, a dose taken before the gap has passed, and a time that
-  breaks the order or the gap, ask first on a card. A time for the dose
+- A late log, a dose taken before the gap has passed, a time that
+  breaks the order or the gap, and a missed dose logged as taken
+  ("Dose 1 was missed (due 11:12 am). Log it as taken now?", with what
+  it does to the next dose's time), ask first on a card: said, typed
+  as `took <pill>` or pressed, through the one check
+  (`plain.asked_about`). A time for the dose
   just logged, or a dose named by its number, corrects that dose (old →
   new), never a second one
 - Reminders (`tasks/pills/reminders.py`) are behind `REMINDERS_ENABLED`:
@@ -370,6 +374,13 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   changed (`python -m pytest -q tests/test_x.py`); run the full suite
   once, at the end. Live evals only when I ask, or at a pause where
   fixtures changed
+- Spending on Claude: **US$0.25 is the most one run may cost before
+  asking me**, each run counted by itself (a live eval, a self-test
+  with `--claude`, a rerun of language steps). It is not a limit for
+  the day: several runs a day are fine, each under it, and a run that
+  would go over it is asked about first. Say what each run cost.
+  `DAILY_SPEND_LIMIT` is something else: the bot's own alert in
+  #bot-log when a day's spend passes it, which stops nothing
 - At the end of every piece of work, follow the `end-of-task` skill:
   tests, docs, then the suggested commit command. Do not commit unless
   asked

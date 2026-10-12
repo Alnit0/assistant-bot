@@ -6,6 +6,11 @@ backfilled from the git log.
 
 ## 2026-10-13
 
+- Logging a dose that was missed asks first ("Dose 1 was missed (due
+  11:12 am). Log it as taken now?") and shows what it does to the next
+  dose's time. `took <pill>` works for a missed dose too.
+- `dev cost` writes a limit under a cent to three places.
+
 - A shortened name that fits two pills ("pause testv") is asked about
   on the card, even when Claude filled the name in by itself.
 - Too soon after a dose just logged reads "just now", not "0m after".

@@ -457,7 +457,7 @@ async def on_taken_at(press: cards.Press) -> str:
         # Too soon, or after the latest time: the same "Log it anyway?" card as when the time is said
         # in a message. Nothing is logged by asking, and the reminder stays until the dose is dealt with
         request = Request(press.user, press.channel_id, f"(Taken at… {timeinput.format_moment(at)} on the reminder for {rules.plain(dose.label)})")
-        await confirm.show(request, actions.entry(TASK), "pill_log", plain.log_anyway(dose, at, asks), frozenset())
+        await confirm.show(request, actions.entry(TASK), "pill_log", plain.log_anyway(dose, at, asks, listed), frozenset())
         return f"asked first: {' '.join(asks)}"
     return await _done(press, dose, checklist.TAKEN, at, occurrences.FORM)
 

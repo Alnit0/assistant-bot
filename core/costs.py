@@ -364,8 +364,9 @@ def money(cost: float | None) -> str:
 
 
 def limit_money(limit: float) -> str:
-    """A limit as it is written in .env: US$0.50."""
-    return f"US${limit:.2f}"
+    """A limit as it is written in .env: US$0.50. One under a cent is shown
+    to three places (US$0.001): to two it would read as no limit at all."""
+    return f"US${limit:.3f}" if 0 < limit < 0.01 else f"US${limit:.2f}"
 
 
 def limit_line(spent: float, limit: float) -> str:

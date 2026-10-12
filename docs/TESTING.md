@@ -36,17 +36,17 @@ Last updated: 2026-10-13
 | F | Pins | 4 | 0 | 4 | 4 | 0 | 0 | 0 |
 | G | Timers | 32 | 12 | 20 | 17 | 15 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
-| J | Dev mode | 66 | 17 | 49 | 47 | 19 | 0 | 0 |
+| J | Dev mode | 67 | 18 | 49 | 47 | 20 | 0 | 0 |
 | K | Startup and housekeeping | 28 | 16 | 12 | 10 | 18 | 0 | 0 |
 | L | Keep | 14 | 6 | 8 | 8 | 6 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
 | P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
 | Q | Time, days, the schedule model, the occurrence log and cards | 17 | 15 | 2 | 2 | 15 | 0 | 0 |
-| R | Pills | 72 | 20 | 52 | 44 | 28 | 0 | 0 |
+| R | Pills | 73 | 21 | 52 | 44 | 29 | 0 | 0 |
 | S | Routing and confirm cards | 69 | 18 | 51 | 16 | 52 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 4 | 18 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **480** | **165** | **315** | **245** | **234** | **0** | **1** |
+| | **Total** | **482** | **167** | **315** | **245** | **236** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -300,6 +300,7 @@ Any channel. Check the bot's status in the member list.
 | J64 | 🤖 Auto | The self-test's own parts | A typed message is the real one with the owner as author; a press does the real edit or delete; a drawn message is read back as its texts, buttons and box colours; the report lists what failed with what was expected and what happened, the discoveries (odd, slow, warnings in the log during the run, not tested) and what only Alex can check; the dev database is set aside and put back; a phase refuses the live database and a start by hand | ✅ Pass | 2026-10-13 | `tests/test_selftest.py` |
 | J65 | 👤 Manual | With live stopped: `python -m selftest`, then start live again | About nine minutes; `docs/SELFTEST.md` is written again with a result for each step; the test channels are left in place; `data/dev.db` is as it was; live is back | ⬜ Untested | | Run by Claude Code on 2026-10-13: 61 of 63 |
 | J66 | 🤖 Auto | A test that hangs | After its time limit the run stops with exit code 70, the test's name and where each thread was | ✅ Pass | 2026-10-13 | `tests/test_selftest.py` |
+| J67 | 🤖 Auto | A limit under a cent | `dev cost` writes it to three places (US$0.001); a cent or more as before | ✅ Pass | 2026-10-13 | `tests/test_pills_shortcut.py` |
 
 ## K. Startup and housekeeping
 
@@ -529,6 +530,7 @@ are added with it.
 | R82 | 👤 Manual | Block 43: type `took <pill>` for a pill with a dose left, again when none is left, and twice in a row for a pill with a gap | At once and free the first time; read as before when nothing is left; the “Log it anyway?” card when too soon | ⬜ Untested | | Block 43 |
 | R83 | 🤖 Auto | Too soon, under a minute after the dose before | “That's just now: dose 1 was taken 8:00 am.”, never “0m after”; from a minute on it is counted as before | ✅ Pass | 2026-10-13 | `tests/test_pills_shortcut.py` |
 | R84 | 🤖 Auto | A name Claude completed is asked about on the pills card | “pause testv” with Testvit and Testvit forte, handed over as “Testvit” or as an id: “Which one is “testv”?” with a button each; the answer's data names the pill by its id and is not asked again; with no message to check (Save, an answer pressed) the name stands | ✅ Pass | 2026-10-13 | `tests/test_names.py` |
+| R85 | 🤖 Auto | A missed dose logged as taken asks first | “Dose 1 was missed (due 8:00 pm). Log it as taken now?” on the amber card with Log it and Cancel, nothing logged by asking; with a line for the next dose's new time when it moves (`next: dose 2 · 11:30 am → 12:40 pm`) and none when it doesn't; said, typed as `took <pill>` (still no request to Claude) or pressed on a checklist not yet rewritten, through the one check. A dose simply waiting is not asked about | ✅ Pass | 2026-10-13 | `tests/test_pills_reminders.py`, `tests/test_pills_shortcut.py` |
 
 ## S. Routing and confirm cards
 

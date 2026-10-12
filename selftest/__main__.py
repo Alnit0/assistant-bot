@@ -43,7 +43,7 @@ PHASES = (
     ("p1", {"CARDS_V2": "false", "REMINDERS_ENABLED": "true"}, 0),
     ("p2", {"CARDS_V2": "false", "REMINDERS_ENABLED": "true"}, OFF_FOR),
     ("p3", {"CARDS_V2": "true", "REMINDERS_ENABLED": "true"}, 0),
-    ("p4", {"CARDS_V2": "false", "REMINDERS_ENABLED": "true", "DAILY_SPEND_LIMIT": "0.0001"}, 0),
+    ("p4", {"CARDS_V2": "false", "REMINDERS_ENABLED": "true", "DAILY_SPEND_LIMIT": "0.001"}, 0),
 )
 
 

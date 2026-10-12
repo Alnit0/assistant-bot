@@ -9,7 +9,7 @@ from tasks.pills.today import TASK
 #
 # It is a shortcut only when what follows "took" is exactly the name of one of
 # my pills, with nothing else, and that pill has a dose still to take today
-# (`claims`). Anything more ("took my zinc", "took zinc at 9") is not it, and
+# or one that was missed (`claims`). Anything more ("took my zinc", "took zinc at 9") is not it, and
 # goes to the router and Claude as it always did. Asked for on 2026-10-13: it
 # was nine of the twenty-four messages that went through the router.
 #
@@ -32,7 +32,8 @@ async def claims(ctx: Context, args: list[str]) -> bool:
         return False
     pills, listed, _ = await checklist.view(ctx.user.id)
     exact = [pill for pill in rules.listed(pills) if names.tidy(pill.plan.name) == wanted]
-    return len(exact) == 1 and today.next_pending(listed, exact[0].id) is not None
+    # A dose that was missed counts: it can still be logged, and the card asks first
+    return len(exact) == 1 and today.next_to_log(listed, exact[0].id) is not None
 
 
 async def took(ctx: Context) -> str:

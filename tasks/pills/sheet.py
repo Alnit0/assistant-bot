@@ -210,13 +210,19 @@ async def _asked_first(press: cards.Press, dose: Dose, listed: list[Dose], at: d
     if not asks:
         return None
     request = Request(press.user, press.channel_id, f"({how} on the checklist for {rules.plain(dose.label)})")
-    await confirm.show(request, actions.entry(TASK), "pill_log", plain.log_anyway(dose, at, asks), frozenset())
+    await confirm.show(request, actions.entry(TASK), "pill_log", plain.log_anyway(dose, at, asks, listed), frozenset())
     return f"asked first: {' '.join(asks)}"
+
+
+def _loggable(dose: Dose | None) -> bool:
+    """Whether Taken can still do something for this dose: it is waiting, or it
+    was missed (a press on a checklist not yet rewritten), which asks first."""
+    return dose is not None and (dose.is_pending or dose.occurrence.state == MISSED)
 
 
 async def on_taken(press: cards.Press) -> str:
     dose, listed = await _dose(press)
-    if dose is None or not dose.is_pending:
+    if not _loggable(dose):
         return await _stale(press)
     now = clock.now()
     return await _asked_first(press, dose, listed, now, "Taken") or await _done(press, dose, checklist.TAKEN, now, occurrences.BUTTON)

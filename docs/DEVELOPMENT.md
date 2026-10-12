@@ -571,6 +571,12 @@ Everything works in #inbox and in the hub.
 - **Logging late.** "Took my pill A" after its latest time asks first:
   "That's after the latest time, 4:00 pm. Log it anyway?" with **Log
   it** and **Cancel**.
+- **Logging a dose that was missed** asks first too: "Dose 1 was
+  missed (due 11:12 am). Log it as taken now?", and under the dose a
+  small line when the next dose's time would move (`next: dose 2 ·
+  11:30 am → 12:40 pm`). The same whether you say it, type `took
+  <pill>` or press Taken. With another dose of the pill still waiting,
+  "took pill A" means that one; name the missed one by its number.
 - **Putting a time right.** A time said straight after logging ("I took
   it at 9am"), or one earlier than the dose last taken, corrects that
   dose: "✏️ **Pill A** (dose 1 of 3) · taken 10:57 pm → 9:00 am". "It"

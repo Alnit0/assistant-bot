@@ -186,6 +186,20 @@ The two language steps rerun with real requests, offline from Discord:
 answer 5 of 5 (Claude now hands over "testv" as typed). US$0.084 in
 all, the diagnosis included.
 
+## A missed dose asks first (2026-10-13)
+
+A dose the bot marked missed and then logged as taken is asked about
+on the amber card: "Dose 1 was missed (due 11:12 am). Log it as taken
+now?", with a small line for what it does to the next dose's time
+(`next: dose 2 · 11:30 am → 12:40 pm`). Said in words, typed as `took
+<pill>` (still free) or pressed, it is the one check. `dev cost` writes
+a limit under a cent to three places.
+
+One thing noticed and left: with dose 1 missed and dose 2 still
+waiting, "took pill A" with no number means dose 2, as it always has;
+dose 1 is only meant when you name it ("dose 1 of pill A"). Say if a
+missed dose should come first.
+
 ## Specs drafted on 2026-10-13: scheduler, clean-up, briefing
 
 Spec and mock-ups only; no code. `docs/specs/scheduler.md` (handlers,
@@ -405,4 +419,5 @@ The order is the list at the top of `docs/BACKLOG.md`. First:
   schedule); a notes task is a possible future task.
 - Live eval: only when asked, or at a pause where fixtures changed; only
   for the tasks whose fixtures changed, and asked first for any run over
-  US$0.25.
+  US$0.25. That is a limit for one run, not for a day (said 2026-10-13,
+  now in `CLAUDE.md`); `DAILY_SPEND_LIMIT` is the bot's daily alert.

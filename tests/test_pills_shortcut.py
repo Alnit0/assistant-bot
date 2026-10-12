@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from core import config, design, llm, occurrences
+from core import clock, config, design, llm, occurrences
 from tasks import registry
 from tasks.pills import shortcut
 from tests.test_pills_reminders import EVENING, HUB, INBOX, PILL_A, add, at, log, run, states, world  # noqa: F401
@@ -127,6 +127,52 @@ def test_under_a_minute_after_the_dose_before_it_says_just_now_and_never_0m(worl
     sent = len(world.sent)
     run(shortcut.took(Ctx(world, "took pill a")))
     assert "⚠️ That's 20m after dose 1, taken 8:00 am. The gap is at least 3h." in world.sent[sent].card.text
+
+
+def test_took_for_a_pill_whose_dose_was_missed_is_the_shortcut_and_asks_first(world, monkeypatch):
+    async def never(*_, **__):
+        raise AssertionError("no request to Claude is made for the shortcut")
+
+    monkeypatch.setattr(llm, "call_tool", never)
+    add(world, EVENING)
+    for minute in (0, 15, 30, 45):
+        at(world, 20, minute)
+    at(world, 21, 0)
+    assert states(world)[("Evening pill", 1)] == occurrences.MISSED
+    assert claims(world, "took evening pill"), "a missed dose can still be logged, so it is still the shortcut"
+    sent = len(world.sent)
+    ctx = Ctx(world, "took evening pill")
+    assert run(shortcut.took(ctx)) == "asked first on a card" and ctx.said == []
+    asked = world.sent[sent].card
+    assert "Dose 1 was missed (due 8:00 pm). Log it as taken now?" in asked.text and [button.label for button in asked.rows[0]] == ["Log it", "Cancel"]
+    assert asked.layout[0].status == design.RISKY and states(world)[("Evening pill", 1)] == occurrences.MISSED
+
+
+def test_a_button_pressed_for_a_dose_that_was_missed_meanwhile_asks_first_too(world):
+    from tasks.pills import checklist, plain, sheet
+
+    add(world, PILL_A)
+    for minute in (0, 15, 30, 45):
+        at(world, 8, minute)
+    at(world, 9, 40)
+    _, listed, _ = run(checklist.view(world.owner.id))
+    dose = next(each for each in listed if each.number == 1)
+    assert sheet._loggable(dose) and not dose.is_pending, "Taken on a checklist not yet rewritten still does something"
+    assert plain.asked_about(dose, listed, clock.now()) == ("Dose 1 was missed (due 8:00 am).",)
+    card = plain.log_anyway(dose, clock.now(), plain.asked_about(dose, listed, clock.now()), listed)
+    assert card.warnings == ("Dose 1 was missed (due 8:00 am). Log it as taken now?",)
+    assert card.lines == ("**Pill A** (dose 1 of 3) · taken 9:40 am", "-# next: dose 2 · `11:30 am` → `12:40 pm`")
+    done = next(each for each in listed if each.number == 2)
+    assert sheet._loggable(done) and plain.asked_about(done, listed, clock.now()) == (), "dose 2 is simply waiting: nothing to ask"
+
+
+def test_a_limit_under_a_cent_is_shown_to_three_places():
+    from core import costs
+
+    assert costs.limit_money(0.001) == "US$0.001" and costs.limit_money(0.005) == "US$0.005"
+    assert costs.limit_money(0.5) == "US$0.50" and costs.limit_money(0.01) == "US$0.01" and costs.limit_money(0) == "US$0.00"
+    assert "of today's US$0.001 limit" in costs.limit_line(0.0004, 0.001)
+    assert costs.limit_line(0.0727, 0.001) == "-# ⚠️ over today's limit: US$0.0727 of US$0.001 (DAILY_SPEND_LIMIT)"
 
 
 # --- the dev bot's own settings ----------------------------------------------------------------------------------

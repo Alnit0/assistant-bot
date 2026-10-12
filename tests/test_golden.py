@@ -450,7 +450,7 @@ def test_a_late_log_is_asked_about_then_a_time_said_straight_after_corrects_it(b
     bot.claude(route("pills"), LOGGED["Taken my Pill A"])
     bot.say("Taken my Pill A")
     lines, buttons = card(bot)
-    assert lines[:3] == ["💊 Pills · change", "**Pill A** (dose 1 of 3) · taken 10:57 pm", "⚠️ That's after the latest time, 4:00 pm. Log it anyway?"]
+    assert lines[:3] == ["💊 Pills · change", "**Pill A** (dose 1 of 3) · taken 10:57 pm", "⚠️ Dose 1 was missed (due 8:00 am). That's after the latest time, 4:00 pm. Log it as taken now?"]
     assert buttons == ["Log it", "Cancel"], "asked first, on a card"
     assert press(bot) == "✅ **Pill A** (dose 1 of 3) · taken 10:57 pm · nothing left to take today", "and no dose is promised for 1:57 am"
 

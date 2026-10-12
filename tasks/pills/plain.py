@@ -2,6 +2,7 @@ from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta
 
 from core import clock, day, hub, livelists, occurrences, repeats, tidy, timeinput
+from core import schedule as core_schedule
 from core.actions import BOOLEAN, INTEGER, ITEMS, LAST, LIST, MINUTES, TIME, TIMES, Action, Answer, Choice, Field, LiveReply, Proposal, Question, Request, Shown, State
 from core.actions import EACH_DAY, SEE, SET_UP, flag, is_guessed
 from core.actions import is_reference, point_at
@@ -1109,7 +1110,7 @@ async def _for_pill(request: Request, item: dict, pill: Pill, listed: list[Dose]
         at = _moment(given, now, taken.occurrence.actual_at if taken else None) if given else now
     except UserError as error:
         return Step(f"⚠️ {rules.plain(target.label)}: {error}")
-    return Step(dose=target, did=checklist.TAKEN, at=at, asks=(*_late(pill, today_, at), *_too_soon(pill, taken, at)))
+    return Step(dose=target, did=checklist.TAKEN, at=at, asks=(*_missed(target), *_late(pill, today_, at), *_too_soon(pill, taken, at)))
 
 
 def _too_soon(pill: Pill, last: Dose | None, at: datetime) -> tuple[str, ...]:
@@ -1129,9 +1130,55 @@ def _too_soon(pill: Pill, last: Dose | None, at: datetime) -> tuple[str, ...]:
 
 
 def asked_about(dose: Dose, listed: list[Dose], at: datetime) -> tuple[str, ...]:
-    """What ticking this dose off at `at` would be asked about first: after its
-    pill's latest time, or too soon after the dose before it."""
-    return (*_late(dose.pill, dose.occurrence.day, at), *_too_soon(dose.pill, today.before(listed, dose), at))
+    """What ticking this dose off at `at` would be asked about first: it was
+    missed, it is after its pill's latest time, or it is too soon after the
+    dose before it. One place for a message, the typed shortcut and a button."""
+    return (*_missed(dose), *_late(dose.pill, dose.occurrence.day, at), *_too_soon(dose.pill, today.before(listed, dose), at))
+
+
+def _missed(dose: Dose) -> tuple[str, ...]:
+    """A dose the bot has marked missed: logging it as taken after all is
+    asked about first, never done unseen."""
+    if dose.occurrence.state != occurrences.MISSED:
+        return ()
+    due = today.shown_time(dose) or dose.due.at
+    return (f"Dose {dose.number} was missed" + (f" (due {timeinput.format_moment(due)})" if due else "") + ".",)
+
+
+def asking(dose: Dose, asks: tuple[str, ...]) -> str:
+    """The question on the card that asks first: what is unusual, then what
+    Log it would do."""
+    return f"{' '.join(asks)} " + ("Log it as taken now?" if dose.occurrence.state == occurrences.MISSED else "Log it anyway?")
+
+
+def next_change(dose: Dose, listed: list[Dose], at: datetime) -> str:
+    """What ticking this dose off at `at` would do to when the pill's next
+    dose is due, as a small line `next: dose 2 · old → new`; nothing when it
+    changes nothing or no dose is left."""
+    mine = sorted((each for each in listed if each.pill.id == dose.pill.id), key=lambda each: each.number)
+    coming = next((each for each in mine if each.number > dose.number and each.is_pending), None)
+    if coming is None:
+        return ""
+    plan = dose.pill.plan.schedule
+    by_number = {each.number: each.occurrence for each in mine}
+    so_far = []
+    for number in range(1, plan.per_day + 1):
+        there = by_number.get(number)
+        if number == dose.number:
+            so_far.append(at)
+        elif there is None or there.state == occurrences.PENDING:
+            so_far.append(core_schedule.OPEN)
+        else:
+            so_far.append(there.actual_at if there.state == occurrences.DONE and there.actual_at else core_schedule.OUT)
+    after = core_schedule.dues(plan, dose.occurrence.day, so_far)[coming.number - 1].at
+    if after is not None and after > core_schedule.limit(plan, dose.occurrence.day):
+        after = None
+    before = today.shown_time(coming)
+    if before == after or (before is not None and after is not None and before.replace(second=0, microsecond=0) == after.replace(second=0, microsecond=0)):
+        return ""
+    old = f"`{timeinput.format_moment(before)}`" if before else "no time"
+    new = f"`{timeinput.format_moment(after)}`" if after else f"too late for today ({limits.limit_text(plan)})"
+    return f"-# next: dose {coming.number} · {old} → {new}"
 
 
 def _late(pill: Pill, today_: date, at: datetime) -> tuple[str, ...]:
@@ -1185,7 +1232,7 @@ def _numbered(pill: Pill, listed: list[Dose], today_: date, item: dict, now: dat
         return Step(f"⚠️ {rules.plain(dose.label)}: {error}")
     if taken is not None and at == taken:
         return Step(f"{today.line(dose)} already")
-    asks = _out_of_place(listed, dose, at, logging=taken is None) + (() if taken is not None else _late(pill, today_, at))
+    asks = (() if taken is not None else _missed(dose)) + _out_of_place(listed, dose, at, logging=taken is None) + (() if taken is not None else _late(pill, today_, at))
     return Step(dose=dose, did=checklist.TAKEN, at=at, was=taken, asks=asks)
 
 
@@ -1250,7 +1297,11 @@ async def log_card(request: Request, data: dict, guessed: frozenset) -> Proposal
         lines.append(flag(_preview(step), _pill_guessed(guessed, index) or step.picked))
         asked = asked or bool(step.asks)
         if step.asks:
-            warnings.append(f"{' '.join(step.asks)} Log it anyway?")
+            warnings.append(asking(step.dose, step.asks))
+            _, listed, _ = await checklist.view(request.user.id)
+            moved = next_change(step.dose, listed, step.at) if step.did == checklist.TAKEN and step.was is None else ""
+            if moved:
+                lines.append(moved)
         held.append({
             "occurrence": step.dose.occurrence.id, "did": step.did, "moment": step.at.isoformat(),
             **({"was": step.was.isoformat()} if step.was is not None else {}),
@@ -1264,13 +1315,16 @@ async def log_card(request: Request, data: dict, guessed: frozenset) -> Proposal
     )
 
 
-def log_anyway(dose: Dose, at: datetime, asks: tuple[str, ...]) -> Proposal:
-    """The card that asks before a dose is ticked off at a time that is too
-    soon or after the latest time: the same card whether the time was said
-    in a message or typed into a reminder's form. Log it does it."""
+def log_anyway(dose: Dose, at: datetime, asks: tuple[str, ...], listed: list[Dose] | tuple = ()) -> Proposal:
+    """The card that asks before a dose is ticked off when it was missed, or
+    at a time that is too soon or after the latest time: the same card
+    whether the time was said in a message or typed into a reminder's form.
+    With `listed` (the day's doses) it shows what that does to the next
+    dose's time. Log it does it."""
     step = Step(dose=dose, did=checklist.TAKEN, at=at, asks=asks)
     held = {"occurrence": dose.occurrence.id, "did": step.did, "moment": at.isoformat()}
-    return Proposal(lines=(_preview(step),), data={"doses": [held]}, warnings=(f"{' '.join(asks)} Log it anyway?",), kind="change", confirm_label="Log it", risky=True)
+    moved = next_change(dose, list(listed), at) if listed else ""
+    return Proposal(lines=(_preview(step), *([moved] if moved else [])), data={"doses": [held]}, warnings=(asking(dose, asks),), kind="change", confirm_label="Log it", risky=True)
 
 
 async def _held(request: Request, data: dict) -> list[Step]:
