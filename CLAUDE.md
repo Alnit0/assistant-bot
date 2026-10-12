@@ -342,6 +342,9 @@ The rules are in `docs/specs/pills.md` and the Pills section of
 - At the end of every piece of work, follow the `end-of-task` skill:
   tests, docs, then the suggested commit command. Do not commit unless
   asked
+- Never commit or push unless the test run before it passed. In
+  PowerShell, stop the chain on failure: check `$LASTEXITCODE`, or use
+  `&&` in PowerShell 7
 - A suggested commit message never contains a double quote: it breaks
   the command in PowerShell. Use plain words, or a single quote doubled
   (`''`)
