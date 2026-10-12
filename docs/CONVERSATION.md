@@ -76,8 +76,11 @@ When two principles clash, the higher one wins.
   Skip message, a timer card, a checklist, a card) goes to that task
   first, however old the message. Only if the task says it isn't its own
   is it read afresh
-- **"that" / "it" without a reply** means the last thing I mentioned or
-  my own newest message, never one of the bot's messages
+- **"that" / "it" without a reply** means the last thing I mentioned,
+  or the subject of the bot's latest task message in the last five
+  minutes (the timer just paused, the timer whose alert just rang, the
+  pill just logged). Never a bot message with no single subject (a
+  list, a line about several things): then the bot asks which
 - **An open card is the conversation.** "make it 3", "and jam", "no,
   packing" change the card I'm looking at
 - **A list I've just asked to see is context.** "add milk" straight

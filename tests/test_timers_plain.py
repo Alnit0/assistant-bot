@@ -661,3 +661,17 @@ def test_no_refusal_is_written_for_claude_or_names_a_field_or_an_id(world):
     assert said[4] == "I can't find that Pomodoro session."
     for line in said:
         assert "tell the user" not in line.lower() and "`" not in line and "live state" not in line and "t999" not in line, line
+
+
+def test_it_straight_after_an_alert_is_the_timer_that_just_finished_and_never_a_line_about_several(world, monkeypatch):
+    # The standard: without a reply, "it" is the subject of the bot's latest task message in the
+    # last five minutes, and never a message with no single subject
+    monkeypatch.setattr(timers, "channel_for", lambda channel_id: world.channel)
+    monkeypatch.setattr(timers, "finished_view", lambda timer_id: None)
+    start(world, ("5m", "tea"), ("9m", "dinner"), ("9m", "eggs"))
+    tea, dinner, eggs = going(world)
+    run(timers._finish(tea))
+    assert run(plain.which_timers(world.request, {"which": "@that"})) == ref(tea), "its alert is the latest message, and is about tea alone"
+    said_in(world, run(plain.change_all(world.request, {"action": "pause"}, frozenset())))
+    with pytest.raises(UserError, match="Which timer"):
+        run(plain.which_timers(world.request, {"which": "@that"}))

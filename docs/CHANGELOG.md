@@ -6,6 +6,10 @@ backfilled from the git log.
 
 ## 2026-10-12
 
+- The standard now says what "it" means without a reply: the last thing
+  I mentioned, or the subject of the bot's latest task message in the
+  last five minutes, and never a message with no single subject.
+
 - **Every message about a timer is that timer's.** Not only its card and
   its alert: the line that says it was paused or given more time, and
   the one that answers how long is left. A reply to any of them means

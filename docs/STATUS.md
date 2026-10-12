@@ -5,6 +5,19 @@ session; the end-of-task checklist updates it at the end of every task.
 
 **Updated:** 2026-10-12
 
+## Questions for Alex
+
+(None yet.)
+
+## Background batch (branch `feature/background`, unattended)
+
+Worked in the tree `assistant-bot-work`, branched from `feature/pills`
+at "Record every timer message as that timer's". One commit an item,
+each with a block in `docs/QA-RUN.md` marked "waiting for QA". No live
+evals were run.
+
+1. Done: the standard says what "it" means without a reply (block 27).
+
 ## Branch and state
 
 - Branch `feature/pills`, with `feature/router` merged into it (step 4
@@ -40,8 +53,8 @@ session; the end-of-task checklist updates it at the end of every task.
   on the dev database.
 - Committed and live: a reply to a message a task posted goes to that
   task first, in code, with the pills fixtures recorded live.
-- In hand, uncommitted (2026-10-12): **every message about a timer is
-  recorded as that timer's** (found live: a reply to "⏸️ Paused: dinner"
+- Committed (not yet live: the service was not restarted): **every
+  message about a timer is recorded as that timer's** (found live: a reply to "⏸️ Paused: dinner"
   went to the router), and **a guessed timer is never acted on** ("Which
   timer? Say its name."). Block 26 is its retest.
 - Tests: `python -m pytest -q` passes. Golden conversations 1c, 1d

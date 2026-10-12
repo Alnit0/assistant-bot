@@ -556,6 +556,18 @@ Dev mode off. Start three timers: `timer 10m tea`, `timer 10m dinner`,
 | 3 | Reply to the **tea** timer's own message with `pause this`; then, with no reply, say `give it 5 more minutes`. Press nothing | Tea is paused, then tea gets 5 more minutes: "it" is the timer the last line was about | T23, T3 |
 | 4 | Say `cancel it`. Then `cancel all my timers` and press the red **Cancel 2 timers**. Then `dev clock reset` | Tea is cancelled at once, with no card. Then a card for the other two, and both are cancelled | T5 |
 
+## 27. "It" after the bot's latest message (waiting for QA)
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
+On the dev database (`python main.py --dev`), dev mode off. Every step
+says what to press.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | `timer 10s tea`, then `timer 10m eggs`. When tea's alert rings, say `give it 5 more`. Press nothing | Tea runs again for 5 minutes ("➕ tea: 5m more"); eggs is untouched | G31 |
+| 2 | Say `pause everything`, then `resume it`. Press nothing. Then reply `cancel` to both timers | "⚠️ Which timer? Say its name." with a line for each: the line before was about both | G30 |
+
 ## When you finish
 
 - Stop the test copy (`Ctrl + C`) and check nothing is left running:
