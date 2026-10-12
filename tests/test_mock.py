@@ -227,3 +227,13 @@ def test_no_reminder_sketch_names_a_pill_in_the_line_the_lock_screen_shows():
     for name in ("reminder", "reminder-renudge"):
         first = mock.read(name).splitlines()[0]
         assert first.startswith("💊 Routine due · ") and "Pill" not in first, name
+
+
+def test_the_gym_sketches_are_there_and_the_plan_cards_follow_the_card_rules():
+    assert {"gym-import", "gym-change", "gym-today", "gym-logged-set"} <= set(mock.names())
+    assert "## 🏋️ Gym · new" in mock.read("gym-import") and "## 🏋️ Gym · change" in mock.read("gym-change")
+    # A change is `field · old → new`; what is not used is named; Save is green and Cancel the one grey button
+    change = mock.read("gym-change")
+    assert "weight · 60 kg → 62.5 kg" in change and "Not used:" in change and "Not used:" in mock.read("gym-import")
+    for name in ("gym-import", "gym-change"):
+        assert "[✅ Save: green] [↩️ Cancel: grey]" in mock.read(name), name

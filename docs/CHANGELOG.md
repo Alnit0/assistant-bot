@@ -6,6 +6,10 @@ backfilled from the git log.
 
 ## 2026-10-12
 
+- Gym, the next task, has a spec (private) and four mock-ups to look
+  at with `dev mock`: `gym-import`, `gym-change`, `gym-today` and
+  `gym-logged-set`. Nothing of it is built.
+
 - A pill's setting is taken away by saying so ("iron no longer needs a
   time", "the evening pill doesn't need to be with food any more"):
   the word "none" is no longer read as an instruction. Nothing else

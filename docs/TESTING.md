@@ -36,7 +36,7 @@ Last updated: 2026-10-12
 | F | Pins | 4 | 0 | 4 | 4 | 0 | 0 | 0 |
 | G | Timers | 32 | 12 | 20 | 17 | 15 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
-| J | Dev mode | 55 | 11 | 44 | 43 | 12 | 0 | 0 |
+| J | Dev mode | 56 | 11 | 45 | 44 | 12 | 0 | 0 |
 | K | Startup and housekeeping | 22 | 11 | 11 | 9 | 13 | 0 | 0 |
 | L | Keep | 12 | 4 | 8 | 8 | 4 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
@@ -46,7 +46,7 @@ Last updated: 2026-10-12
 | S | Routing and confirm cards | 59 | 10 | 49 | 14 | 44 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 4 | 18 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **440** | **136** | **304** | **235** | **204** | **0** | **1** |
+| | **Total** | **441** | **136** | **305** | **236** | **204** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -289,6 +289,7 @@ Any channel. Check the bot's status in the member list.
 | J53 | 🤖 Auto | `dev why` shows a reference as "it" and is sent as it is | Where Claude handed over "it" or "that", the trace reads "which":"it", at any depth; the block is sent verbatim, so the action's name stays in it and no error is logged; elsewhere an action's name is still caught | ✅ Pass | 2026-10-12 | `tests/test_trace.py` |
 | J54 | 👤 Manual | `timer 10m tea`; say `give it 2 more`; reply `dev why` to that. Then reply `cancel` to the timer | The extraction line reads `timers · timer_change {"which":"it","action":"extend","duration":"2m"}`: the action's name is there and "which" is not empty | ⬜ Untested | | Block 30 |
 | J55 | 👤 Manual | Type `dev mock reminder` (look at the lock screen too), `dev mock reminder-renudge`, `dev mock reminder-missed` and `dev mock too-soon` | Each sketch is posted as a card. The lock screen for the reminder says "💊 Routine due · 11:12 am", never the pill's name | ⬜ Untested | | Block 33. The sketches are read by `tests/test_mock.py` |
+| J56 | 👤 Manual | Type `dev mock gym-import`, `dev mock gym-change`, `dev mock gym-today` and `dev mock gym-logged-set` | Each sketch is posted as a card: the plan as read with its columns, a change as `field · old → new`, today's workout with the buttons on the current exercise, and the line for a logged set | ⬜ Untested | | Block 35. The sketches are read by `tests/test_mock.py` |
 
 ## K. Startup and housekeeping
 

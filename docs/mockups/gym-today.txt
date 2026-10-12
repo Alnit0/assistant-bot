@@ -1,0 +1,23 @@
+# 🏋️ Push · 1 of 3 exercises
+-# Monday 12 October
+
+┃ accent: green
+┃ **Bench press** · ●●●
+┃ -# 3 × 8–12 · 60 kg · rest 2 min
+┃ ✅ 60 kg × 10 · 60 kg × 9 · 60 kg × 9
+┃ -# last time 60 kg × 10, 9, 8 · 5 Oct
+
+┃ accent: amber
+┃ **Overhead press** · ●○○
+┃ -# 3 × 8 · 35 kg · rest 2 min
+┃ ✅ 35 kg × 8
+┃ **Next:** set 2 · 35 kg × 8
+┃ -# last time 35 kg × 8, 8, 6 · 5 Oct
+┃ [✅ Set done: green] [✏️ Different…: blurple] [⏭️ Skip exercise: blurple]
+
+┃ accent: grey
+┃ **Triceps pushdown** · ○○○
+┃ -# 3 × 12–15 · 25 kg · rest 1 min
+┃ -# last time 25 kg × 15, 13, 12 · 5 Oct
+
+[🏁 Finish: blurple]

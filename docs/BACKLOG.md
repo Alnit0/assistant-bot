@@ -137,6 +137,23 @@ a schema could take its place.
 | `timers/control.py` `_THE_SESSION` | "current", "it", "pomodoro", "session" as the session's id | Whatever Claude sends for "the session" still finds it | Yes: `@that`, as for timers (C17) |
 | `core/router.py` (`GENERIC_VERBS`, fillers), `timers/control.py` (`_SCOPE_WORDS`…) | Typed words: `pause all timers`, "pin this" | Typed shortcuts never go to Claude, by design | No |
 
+## Gym: what its spec would add to core (2026-10-12)
+
+From the core or task rule, for a yes before any of it is built (the
+spec is `docs/specs/gym.md`, section 12):
+
+- **Attachments on a request** (plumbing): a message's files reach a
+  task's plain-words code, and the router is told a file is attached.
+- **A decimal number in the contract**: a weight is 62.5; today a field
+  is text, a whole number or minutes.
+- **Name matching** moves out of pills (C19): gym is the second task
+  that needs it.
+- **Days of the week in the schedule model**, only if workouts go by
+  weekday (already listed below).
+- Built inside the task, apart, until a second task needs them:
+  reading a grid from a file, mapping headings to a fixed set of
+  fields, and comparing two lists of records into `field · old → new`.
+
 ## Left for later
 
 - **Two running timers with the same name both get the change** (found

@@ -210,4 +210,7 @@ Deliberately out of scope until pills reminders work:
 - Pin, archive or delete by words (reactions do this)
 - Forms for setup
 - `dev qa` step-through mode
-- New tasks or dev tools
+- New dev tools
+
+New tasks are allowed again (2026-10-12). Gym is next: its spec and
+mock-ups first, and nothing built until the spec is approved.

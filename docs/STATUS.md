@@ -16,6 +16,30 @@ C15 and C16 (done, block 34), C19 (waits for gym), the timers findings
   "💊 Routine due · 11:12 am" as the message's first line. If your
   phone shows something else for a card of this kind, the prompt has
   to be a plain message with buttons instead: say which you see.
+- **Gym** (item 9): the spec is `docs/specs/gym.md` (draft 1, written
+  without an interview) and its 22 questions are in its section 16.
+  The ones the design turns on:
+  - Which workout is due: the next in turn after the last one you did,
+    or fixed weekdays? If weekdays, what happens to one you miss?
+  - How are the days laid out in the sheet (a Day column, a heading
+    row above each day, a tab a day), and is it `.csv` or `.xlsx`?
+  - Is the plan the same every week, or is there a column a week?
+  - Reps and weights that aren't plain numbers: AMRAP, timed holds,
+    12 / 10 / 8, bodyweight, per side? kg or lb?
+  - Do you log each set as you go, or the whole exercise afterwards?
+  - Does the plan ever change by saying so, or only in the sheet? If
+    you lift more than the plan says, does the plan follow?
+  - Where is today's workout posted, and does anything post by itself?
+  - Rest: is the planned rest on the line enough, or should the phone
+    buzz? (Timers are a proof of concept, so that would be new work.)
+  - What counts as a best, and do you want a suggested next weight?
+- **Gym, core additions** to say yes to before building: attachments
+  on a request, a decimal number in the contract, and name matching
+  moved out of pills (listed in `docs/BACKLOG.md`).
+- **Gym mock-ups** (block 35): four sketches. I chose: a line an
+  exercise as `3 × 8–12 · 60 kg · rest 2 min`; dots for sets; last
+  time's sets under each exercise; the buttons only on the exercise
+  you are on.
 - **Streaks** (from C15): you asked for its tests to cover streaks.
   No streak is worked out anywhere yet, so the tests pin down what one
   will read: only a missed dose breaks it, and a skip (yours, the
@@ -47,6 +71,10 @@ message to that task".
 8. Done: mock-ups for the reminder, the re-nudge, the missed line and
    the too-soon card in `docs/mockups/` (block 33), and the build plan
    below. No code for reminders was written.
+
+9. Done: the gym spec (`docs/specs/gym.md`, private) and four
+   mock-ups in `docs/mockups/` (block 35). No code. "Not now" in the
+   standard says new tasks are allowed and gym is next.
 
 On your answers of 2026-10-12: C12 (`show_existing`, declared by
 bugs), C15 (a `cause` in the occurrence log) and C16 (a `clear` list
@@ -145,7 +173,9 @@ No new features, tools or dev commands until pills reminders work
 (2026-10-10). Fixes and the agreed steps only. Nothing is added unasked.
 Exceptions asked for: channel reset (2026-10-11, needed before going
 live), and on 2026-10-12 the bot's nickname and status line, the
-#commands channel and `dev mock`.
+#commands channel and `dev mock`. New tasks are allowed again from
+2026-10-12: gym is next, spec and mock-ups first, nothing built until
+the spec is approved.
 
 ## Recently done
 
@@ -171,7 +201,7 @@ live), and on 2026-10-12 the bot's nickname and status line, the
    on the dev database. Step 8 of block 24 (tomorrow's backup card).
    Blocks 21 and 22, and steps 5 to 7 of block 23, are still to be
    reported.
-2. QA of the background batch: blocks 27 to 34 (`docs/QA-RUN.md`), and
+2. QA of the background batch: blocks 27 to 35 (`docs/QA-RUN.md`), and
    the questions at the top of this file.
 3. The checklist redesigned with Discord's Components V2: look at
    `dev mock checklist` and the reminder sketches (block 33) and say

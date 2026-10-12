@@ -658,6 +658,24 @@ note: say `add Testpill at 8am with food` and press **Save**.
 | 3 | React 🐞 to any message of yours. Take the 🐞 off, then put it on again. Then open the bug's post and press **Won't fix** | "🐞 Logged as B<n>", then "🐞 Already logged as B<n>" with the same link: one bug, not two | P37 |
 | 4 | Say `remove Testpill`. Press **Remove** | Testpill is gone | |
 
+## 35. Gym mock-ups (waiting for QA)
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
+On the dev database, dev mode off. These are sketches: the buttons only
+say they are mock-ups, and nothing of gym is built. The spec is
+`docs/specs/gym.md`; its questions are at the top of `docs/STATUS.md`.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Type `dev mock gym-import` | A card "🏋️ Gym · new": three workouts with their exercises a line each, which column was read as what (one marked ❓), the columns not used, **Save** and **Cancel** | J56 |
+| 2 | Type `dev mock gym-change` | A card "🏋️ Gym · change": only what differs, as `field · old → new`, ➕ for a new exercise and ➖ for one gone | J56 |
+| 3 | Type `dev mock gym-today` | Today's workout: a group an exercise with its sets as dots, the plan, what is logged, last time's sets, and the buttons on the exercise you are on | J56 |
+| 4 | Type `dev mock gym-logged-set` | The line said after a set is logged, and that exercise's group as it then stands | J56 |
+
+Say what to change in any of them, and answer the gym questions in
+`docs/STATUS.md` (or in the spec, section 16).
+
 ## When you finish
 
 - Stop the test copy (`Ctrl + C`) and check nothing is left running:

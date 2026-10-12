@@ -1,0 +1,22 @@
+┃ accent: blurple
+┃ ## 🏋️ Gym · new
+┃ **Push** · 3 exercises
+┃ Bench press · 3 × 8–12 · 60 kg · rest 2 min
+┃ Overhead press · 3 × 8 · 35 kg · rest 2 min
+┃ Triceps pushdown · 3 × 12–15 · 25 kg · rest 1 min
+┃ ---
+┃ **Pull** · 2 exercises
+┃ Barbell row · 3 × 8–12 · 55 kg · rest 2 min
+┃ Biceps curl · 3 × 12 · 12.5 kg · rest 1 min
+┃ ---
+┃ **Legs** · 2 exercises
+┃ Squat · 4 × 6 · 80 kg · rest 3 min
+┃ Calf raise · 3 × 15 · no weight given
+┃ ---
+┃ 🧭 **Columns**
+┃ Day → workout · Exercise → exercise · Sets → sets · Reps → reps
+┃ Load ❓ → weight · Rest → rest
+┃ -# Not used: “Tempo”, “Link”
+┃ [✅ Save: green] [↩️ Cancel: grey]
+
+-# ❓ marks a guess · reply to this card to change which column is which
