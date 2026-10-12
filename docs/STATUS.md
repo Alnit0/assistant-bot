@@ -7,6 +7,12 @@ session; the end-of-task checklist updates it at the end of every task.
 
 ## Questions for Alex
 
+- **Free shortcuts** (`docs/COSTS.md`, section 6; none added): the
+  shapes that always went to one task are "took `<pill>`" (9 of 24
+  routed messages), the pomodoro's start and stop, "channel reset" /
+  "clear channel", and "how long left on `<timer>`". Say which, if
+  any, you want. "took `<pill>`" as a shortcut would bend the rule
+  that a bare verb is never one.
 - **Costs** (`docs/COSTS.md`, section 7):
   - Skip the router when a message names exactly one of my pills (or
     timers)? Saves US$0.0026 a message and about a second.

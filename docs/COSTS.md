@@ -181,10 +181,34 @@ Claude spend is over today's limit". Nothing is stopped. `dev cost`
 shows today's spend against the limit. For scale: 11 October, a QA
 evening, was US$0.13; 12 October US$0.03.
 
+## 6. Candidates for free shortcuts (report only; none added)
+
+From the message log, 5 to 12 October: 24 messages went through the
+router on the live and dev databases. Only one exact phrase was said
+more than once, so the candidates below are shapes, each of which went
+to the same task every time:
+
+| Shape | Times | Always went to | Cost each now | Note |
+|---|---|---|---|---|
+| "took `<pill>`", "taken my `<pill>`", "I took `<pill>` at `<time>`" | 9 | pills | US$0.0042 to US$0.0131 | The big one. A message that names one of my pills could skip the router (saves US$0.0026); read wholly in code it would be free. With reminders on, **Taken** is already free |
+| "I took it at `<time>`" straight after a log | 3 | pills | US$0.0028 to US$0.0045 | Already skips the router within five minutes |
+| "stop / end the pomodoro", "start pomodoro" | 3 | timers | US$0.0013 to US$0.0107 | `pomo` exists as a typed word; these could be other spellings of it |
+| "channel reset", "clear channel" | 2 | channel | US$0.0046 | `reset channel` is the typed word; these are the same words another way round |
+| "how long left on `<timer>`" | 1 (and 2 before the router) | timers | US$0.0105 | A typed `timer <name>` could answer it |
+
+Two things to weigh before adding any: a typed shortcut must carry its
+task's name and a bare verb is never registered (`CLAUDE.md`), so "took
+`<pill>`" as a shortcut would be a change to that rule; and the word
+lists the code keeps are not meant to grow into the way something is
+understood (`docs/BACKLOG.md`). Skipping the router when a message
+names one of my own things keeps both rules and saves a fifth of an
+isolated pills message.
+
 ## 7. Questions (also in `docs/STATUS.md`)
 
 1. Skip the router when a message names exactly one of my pills (or
    timers)? Saves US$0.0026 a message and a second or so.
+2. Any of the shortcuts in section 6?
 3. Reword the router's rules to shorten them, with a full live eval
    (about US$0.30 to US$0.50)?
 4. A model with a lower caching minimum would cache the router and

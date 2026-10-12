@@ -6,6 +6,9 @@ backfilled from the git log.
 
 ## 2026-10-13
 
+- A list of phrases that always went to the same task, as candidates
+  for free shortcuts (`docs/COSTS.md`). None is added.
+
 - A daily spend line: when a day's requests to Claude cost more than
   `DAILY_SPEND_LIMIT` (US$0.50 unless set), #bot-log says so once.
   `dev cost` shows today's spend against the limit.
