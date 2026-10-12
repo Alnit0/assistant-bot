@@ -6,6 +6,11 @@ backfilled from the git log.
 
 ## 2026-10-12
 
+- **Every line about a pill or a dose is that pill's**, as for timers:
+  "✅ Zinc · taken 9:00 am", a correction, a card once saved. A reply
+  to one means that pill and that dose ("it was 8am", "actually I
+  didn't"), with no router request, whatever was logged since.
+
 - **A pill I don't name is only logged straight away with an anchor**: a
   reply, or a dose logged in the last five minutes. Otherwise ("took
   the usual one", "it" hours later) the pill the bot picked is shown on

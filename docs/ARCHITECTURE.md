@@ -202,8 +202,9 @@ every message that is no shortcut)
    on to the router. A task I name in the message still decides. A
    direct action whose reply is about things of the task's own returns
    `actions.Answer(text, placed)`: the task is told which message said
-   so and records it (timers: `timers_messages`), so a reply to that
-   line is the task's too.
+   so and records it (timers: `timers_messages`; pills: `pills_lines`),
+   so a reply to that line is the task's too. A card's Save may return
+   one as well (`confirm.on_save`): the saved card is then the line.
 2a. **Follow-up?** If there is an open confirm card and the message is a
    reply to it, or the card is the bot's latest message there and under
    five minutes old (`confirm.sticks`), the message goes straight to that
@@ -403,7 +404,7 @@ seconds.
 | `users`, `message_log` (every input, with its route, tasks, what was extracted, its trace, requests, tokens, cost and time), `llm_calls` (one row per request to Claude), `confirm_cards` (open confirm cards and tie questions), `live_lists` (where the latest copy of each list shown on request is), `scheduled_jobs`, `reaction_state`, `skill_migrations`, `occurrences`, `occurrence_events` | core (`core/migrations.py`, version in `PRAGMA user_version`) |
 | `archive_items` | archive |
 | `bugs_items`, `bugs_notes`, `bugs_events` (each closing and re-opening) | bugs |
-| `pills_pills`, `pills_drafts` (left from the old previews; unused), `pills_changes` (every plan and status change), `pills_messages` (where today's checklist and each dose's own message are); doses are rows of `occurrences` with task `pills` | pills |
+| `pills_pills`, `pills_drafts` (left from the old previews; unused), `pills_changes` (every plan and status change), `pills_messages` (where today's checklist and each dose's own message are), `pills_lines` (every line said about a pill or a dose: a reply to one says which is meant); doses are rows of `occurrences` with task `pills` | pills |
 | `timers_timers`, `timers_pomodoros`, `timers_focus_log`, `timers_boards`, `timers_events`, `timers_lists`, `timers_messages` (every message about a timer or session: a reply to one says which is meant) | timers |
 | `lab_state`, `lab_tour_runs`, `lab_tour_results` | lab |
 

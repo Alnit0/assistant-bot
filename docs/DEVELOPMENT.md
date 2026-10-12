@@ -436,8 +436,11 @@ Things to know:
   task's things is its message too: return `actions.Answer(text,
   placed)` from the action and record the message in `placed` (timers:
   `plain.about`, `store.note_message`), so a reply to "⏸️ Paused:
-  dinner" means dinner. Never act on a thing that was only guessed: ask
-  which (timers: `plain.which_timers`).
+  dinner" means dinner. A card's `apply` may return one too (pills:
+  `plain.about`, `log_answer`, `log_saved`, `_recorded`). Never act on
+  a thing that was only guessed: ask which (timers:
+  `plain.which_timers`) or show the pick on a card (pills:
+  `plain._unnamed`).
 - **A new task starts with the `new-task` skill** (the interview, the
   contract, the spec, then the build), and every task is audited with
   `task-check`.

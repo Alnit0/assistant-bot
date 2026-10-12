@@ -20,6 +20,8 @@ message to that task".
 2. Done: an unnamed pill is only logged straight away with an anchor;
    otherwise the pill the code picked is on a card with ❓ (block 28).
    The recorded "took the usual one" fixture passes.
+3. Done: every line about a pill or a dose is recorded as that pill's,
+   and a reply to one means that pill and that dose (block 29).
 
 ## Branch and state
 

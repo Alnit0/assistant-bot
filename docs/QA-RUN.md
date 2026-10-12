@@ -582,6 +582,19 @@ step says what to press.
 | 1 | Say `took my pill X`. Then `dev clock +10m`. Say `took the usual one`; press **Save** | "✅ **Pill X** · taken …" at once. Ten minutes on, a card "💊 Pills · change" with "**Pill Y** · taken … ❓", **Save** and **Cancel**: Pill Y is the one with a dose left. Save ticks it off | R69 |
 | 2 | Straight after, say `no I didn't`. Press nothing. Then `dev clock reset` | "↩️ **Pill Y** · no longer ticked off", at once and with no card: the bot's last pills message was about Pill Y | R69 |
 
+## 29. A reply to a line about a pill (waiting for QA)
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
+On the dev database, after a restart (it adds one table), dev mode off,
+with the two pills of block 28 and nothing ticked off (`dev clock +1d`
+gives a fresh day). Type `pills`. Every step says what to press.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Say `took my pill X`, then `took my pill Y`. Reply to the line "✅ **Pill X** · taken …" with `it was 8am`. Press nothing | "✏️ **Pill X** · taken … → 8:00 am": Pill X's dose is corrected, not Pill Y's, and there is no card | R71 |
+| 2 | Reply to that same "✅ **Pill X** …" line with `actually I didn't`; then reply `dev why` to that reply of yours. Then `dev clock reset` | "↩️ **Pill X** · no longer ticked off". The trace says "reply to pills' message: it goes to pills first" and shows no router request | R71 |
+
 ## When you finish
 
 - Stop the test copy (`Ctrl + C`) and check nothing is left running:

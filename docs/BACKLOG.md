@@ -144,11 +144,9 @@ a schema could take its place.
   both. Later: number a duplicate when it starts ("tea 2"), so each can
   be named.
 - **Left by the timer reply fix** (2026-10-12):
-  - **Pills does not record the lines it answers with.** A reply to
-    "✅ **Zinc** · taken 9:00 am" is no task's own and goes to the
-    router; only a dose's Taken / Skip message and the checklist are
-    pills'. Timers now records its lines (`actions.Answer`); pills can
-    do the same.
+  - **Pills lines not recorded as a pill's**: the line after Remove or
+    Delete for good (the pill has gone), and a line that only says a
+    pill couldn't be found.
   - **`dev why` shows `"which":""` where Claude gave "it".** The
     reference (`@that`) is taken out of the trace as an internal label
     on its way out, and an error is logged each time. The trace should

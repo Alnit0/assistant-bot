@@ -93,10 +93,30 @@ def checklist_messages(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX pills_messages_day ON pills_messages (user_id, day)")
 
 
+def answer_lines(conn: sqlite3.Connection) -> None:
+    # Every line the bot says about a pill or a dose ("✅ Zinc · taken 9:00 am", a
+    # correction, a card once it is saved): a reply to it means that pill and that
+    # dose. A row for each thing the line is about; `occurrence_id` is the dose, if any
+    conn.execute(
+        """
+        CREATE TABLE pills_lines (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            message_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            pill_id INTEGER NOT NULL,
+            occurrence_id INTEGER,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute("CREATE INDEX pills_lines_message ON pills_lines (message_id)")
+
+
 MIGRATIONS = [
     create_tables,
     one_schedule_model,
     checklist_messages,
+    answer_lines,
 ]
 
 
@@ -307,6 +327,30 @@ def db_last_changed(conn: sqlite3.Connection, user_id: int) -> int | None:
         (user_id,),
     ).fetchone()
     return found[0] if found else None
+
+
+def db_add_lines(conn: sqlite3.Connection, user_id: int, message_id: int, about: list[tuple[int, int | None]]) -> None:
+    """Record a line the bot said as being about these (pill id, dose's occurrence id or None)."""
+    for pill_id, occurrence_id in dict.fromkeys(about):
+        conn.execute(
+            "INSERT INTO pills_lines (message_id, user_id, pill_id, occurrence_id, created_at) VALUES (?, ?, ?, ?, ?)",
+            (message_id, user_id, pill_id, occurrence_id, to_db(utc_now())),
+        )
+
+
+def db_line(conn: sqlite3.Connection, message_id: int) -> list[tuple[int, int | None]]:
+    """What a line is about, as (pill id, occurrence id or None). Empty if the message is no line of ours."""
+    return conn.execute("SELECT pill_id, occurrence_id FROM pills_lines WHERE message_id = ? ORDER BY id", (message_id,)).fetchall()
+
+
+def db_latest_line(conn: sqlite3.Connection, user_id: int) -> list[int]:
+    """The pills the newest line said to this user is about."""
+    newest = conn.execute("SELECT message_id FROM pills_lines WHERE user_id = ? ORDER BY id DESC LIMIT 1", (user_id,)).fetchone()
+    return [pill_id for pill_id, _ in db_line(conn, newest[0])] if newest else []
+
+
+async def is_line(message_id: int) -> bool:
+    return bool(await database.run(db_line, message_id))
 
 
 def db_message_kind(conn: sqlite3.Connection, message_id: int) -> str | None:

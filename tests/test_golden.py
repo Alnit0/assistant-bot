@@ -708,3 +708,17 @@ def test_it_straight_after_a_log_is_that_pill_and_is_done_at_once(bot):
     bot.say("no I didn't take it", straight_after=True)
     assert any(shown.text.startswith("↩️ **Zinc** · no longer ticked off") for _, shown in bot.sent), "the pill the last pills message was about: no card"
     assert not any("Pills · change" in shown.text for _, shown in bot.sent)
+
+
+def test_a_reply_to_the_line_that_said_zinc_was_taken_goes_to_pills_first_and_corrects_that_dose(bot, dev_clock):
+    iron_message, before = _two_pills_and_zinc_logged(bot)
+    zinc_line = next(message_id for message_id, shown in bot.sent if shown.text.startswith("✅ **Zinc** · taken"))
+    bot.claude(route("pills"), ("pill_log", {"doses": [{"pill": "iron", "did": "taken"}], "guessed": [], "not_included": []}))
+    bot.say("took my iron")
+    dev_clock.advance(timedelta(minutes=10))
+    before = len(bot.requests)
+    bot.claude(("pill_log", {"doses": [{"pill": "@that", "did": "not_taken"}], "guessed": [], "not_included": []}))
+    bot.say("actually I didn't", reply_to=zinc_line)
+    assert any(shown.text.startswith("↩️ **Zinc** · no longer ticked off") for _, shown in bot.sent), "Zinc, though Iron was logged last and long ago"
+    assert [(asked.task, "not_this" in asked.tools) for asked in bot.requests[before:]] == [("pills", True)], "no router: the line is pills'"
+    assert not any("Pills · change" in shown.text for _, shown in bot.sent), "and no card: the reply is the anchor"

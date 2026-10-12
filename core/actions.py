@@ -205,7 +205,7 @@ class Answer:
 
 
 Prepare = Callable[[Request, dict, frozenset], Awaitable[Proposal]]
-Apply = Callable[[Request, dict], Awaitable[str]]
+Apply = Callable[[Request, dict], Awaitable["str | Answer"]]
 # `async (request, data) -> str`: read back from the database what `apply` was
 # to change and say what does not match the card's data ("" if it all does).
 # A confirmation is only ever sent after this has come back empty

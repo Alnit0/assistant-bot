@@ -96,6 +96,10 @@ class PillsTask(Task):
             return None
         return MessageClass.LIVE if kind == store.CHECKLIST else MessageClass.ALERT
 
+    async def owns_message(self, message_id):
+        # The checklist, a dose's Taken / Skip message, and every line said about a pill or a dose
+        return await self.message_class(message_id) is not None or await store.is_line(message_id)
+
     def setup(self, client) -> None:
         checklist.register()
 

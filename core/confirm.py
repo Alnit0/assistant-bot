@@ -373,6 +373,10 @@ async def on_save(press: cards.Press) -> str | None:
     # A UserError here (the name was taken meanwhile) is shown to the presser and the card stays
     request = Request(press.user, card.channel_id)
     said = await action.apply(request, card.data)
+    placed = None
+    if isinstance(said, actions.Answer):
+        # About things of the task's own: once the card says so, the task is told which message it is
+        said, placed = said.text, said.placed
     # Nothing is confirmed on the strength of `apply` having returned: the change is
     # read back from the database first, and "saved" is only said if it is there
     wrong = await action.verify(request, card.data) if action.verify is not None else ""
@@ -388,6 +392,9 @@ async def on_save(press: cards.Press) -> str | None:
     if not closed:
         raise UserError("That card was closed a moment ago.")
     await press.update(Card(said))
+    said_in = getattr(press, "message_id", None) or card.message_id
+    if placed is not None and said_in is not None:
+        await placed(said_in)
     # What a press did is part of the conversation: without it, whatever is asked
     # next is answered as if the card were still waiting
     llm.remember(card.channel_id, "(pressed the card's button)", said)

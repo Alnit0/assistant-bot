@@ -2,7 +2,7 @@ from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta
 
 from core import clock, day, hub, livelists, occurrences, repeats, tidy, timeinput
-from core.actions import BOOLEAN, INTEGER, ITEMS, LAST, MINUTES, TIME, TIMES, Action, Field, LiveReply, Proposal, Request, Shown, State
+from core.actions import BOOLEAN, INTEGER, ITEMS, LAST, MINUTES, TIME, TIMES, Action, Answer, Field, LiveReply, Proposal, Request, Shown, State
 from core.actions import EACH_DAY, SEE, SET_UP, flag, is_guessed
 from core.actions import is_reference, point_at
 from core.errors import UserError
@@ -727,19 +727,68 @@ def _not_today(pill: Pill, today_: date) -> str:
     return f"🗓️ **{pill.plan.name}** starts {timeinput.format_date(pill.plan.start)}: there is nothing to tick off today."
 
 
-async def log_doses(request: Request, data: dict, guessed: frozenset) -> str:
-    """ "took my zinc", "had pill A at 9", "skip magnesium today", "I didn't take
-    zinc": done at once, with no card (it is about today's doses, not the
-    plan), read back before it is said, and the checklist follows."""
-    said, changed = [], False
+def about(request: Request, things: list[tuple[int, int | None]]):
+    """What an answer about these pills and doses does with its message once it
+    is sent: records the line as theirs (`store.db_add_lines`), so a reply to
+    it means that pill and that dose. Each is (pill id, the dose's occurrence
+    id or None)."""
+    things = list(things)
+
+    async def placed(message_id: int) -> None:
+        if things:
+            await request.db.run(store.db_add_lines, request.user.id, message_id, things)
+
+    return placed
+
+
+def _of(step: "Step") -> list[tuple[int, int | None]]:
+    """What a step's line is about."""
+    if step.dose is not None:
+        return [(step.dose.pill.id, step.dose.occurrence.id)]
+    return [(step.pill.id, None)] if step.pill is not None else []
+
+
+async def _log(request: Request, data: dict) -> tuple[str, list[tuple[int, int | None]]]:
+    said, changed, things = [], False, []
     for item in data["doses"]:
         step = await _step(request, item)  # worked out afresh each time: the one before may have changed the day
+        things += _of(step)
         if step.dose is None:
             said.append(step.say)
             continue
         said.append(await _do(step))
         changed = True
-    return await _with_what_is_left(request.user.id, said, changed)
+    return await _with_what_is_left(request.user.id, said, changed), things
+
+
+async def log_doses(request: Request, data: dict, guessed: frozenset) -> str:
+    """ "took my zinc", "had pill A at 9", "skip magnesium today", "I didn't take
+    zinc": done at once, with no card (it is about today's doses, not the
+    plan), read back before it is said, and the checklist follows."""
+    return (await _log(request, data))[0]
+
+
+async def log_answer(request: Request, data: dict, guessed: frozenset) -> Answer:
+    """`log_doses`, as the action: its line is recorded as that pill's and that dose's."""
+    said, things = await _log(request, data)
+    return Answer(said, about(request, things))
+
+
+def _recorded(save):
+    """A plan card's Save, with the line it says recorded as the line of the
+    pills on the card."""
+
+    async def apply(request: Request, data: dict) -> Answer:
+        said = await save(request, data)
+        pills, things = await store.pills(request.user.id), []
+        for item in data.get("pills", []):
+            try:
+                things.append((rules.find(pills, str(item.get("pill") or item.get("name") or "")).id, None))
+            except UserError:
+                continue
+        return Answer(said, about(request, things))
+
+    return apply
 
 
 async def _with_what_is_left(user_id: int, said: list[str], changed: bool) -> str:
@@ -766,6 +815,7 @@ class Step:
     asks: tuple[str, ...] = ()  # what is asked about on a card first: after the latest time, out of order, too close
     # No pill was named and nothing pointed at one: the code picked this one. Shown on a card, never done unseen
     picked: bool = False
+    pill: Pill | None = None  # the pill it is about, also when there is nothing to do
 
 
 def db_last_logged(conn, user_id: int) -> int | None:
@@ -798,7 +848,9 @@ async def _unnamed(request: Request, listed: list[Dose], pointed: Pill | None, n
     user_id = request.user.id
     lately = await request.db.run(db_logged_lately, user_id, now - CORRECTION_WINDOW)
     if lately is not None:
-        return lately, False
+        # Never a line with no single subject: after "took zinc and iron", "it" names neither
+        latest = set(await request.db.run(store.db_latest_line, user_id))
+        return lately, len(latest) > 1 and lately in latest
     last = await request.db.run(db_last_logged, user_id)
     if did != checklist.NOT_TAKEN:
         left = {dose.pill.id for dose in listed if today.next_to_log(listed, dose.pill.id) is not None}
@@ -820,6 +872,15 @@ async def _replied_to(request: Request, listed: list[Dose], today_: date) -> tup
     message replied to is not one of these."""
     if request.replied_to is None:
         return None, None
+    line = await request.db.run(store.db_line, request.replied_to)
+    if line:
+        # A line the bot said: about one pill it is that pill, and that dose if it is one of today's
+        ids, doses = {pill_id for pill_id, _ in line}, {occurrence_id for _, occurrence_id in line if occurrence_id is not None}
+        if len(ids) != 1:
+            return None, None
+        dose = next((each for each in listed if each.occurrence.id in doses), None) if len(doses) == 1 else None
+        pill = await store.pill(next(iter(ids)))
+        return (pill, dose) if pill is not None and pill.user_id == request.user.id else (None, None)
     held = await request.db.run(store.db_messages, request.user.id, today_)
     message = next((each for each in held if each.message_id == request.replied_to), None)
     if message is None:
@@ -846,17 +907,17 @@ async def _step(request: Request, item: dict) -> Step:
         if last is None:
             return Step("⚠️ Which pill? Say its name.")
         named = f"{rules.ID_PREFIX}{last}"
-    step = await _for_pill(request, item, named, pills, listed, today_, now, pointed_dose)
-    step.picked = picked and step.dose is not None
-    return step
-
-
-async def _for_pill(request: Request, item: dict, named, pills, listed: list[Dose], today_: date, now: datetime, pointed_dose: Dose | None) -> Step:
-    """What an item means for the pill it is about."""
     try:
         pill = rules.find(pills, str(named))
     except UserError as error:
         return Step(f"⚠️ {error}")
+    step = await _for_pill(request, item, pill, listed, today_, now, pointed_dose)
+    step.picked, step.pill = picked and step.dose is not None, pill
+    return step
+
+
+async def _for_pill(request: Request, item: dict, pill: Pill, listed: list[Dose], today_: date, now: datetime, pointed_dose: Dose | None) -> Step:
+    """What an item means for the pill it is about."""
     if pointed_dose is not None and pointed_dose.pill.id == pill.id and item.get("dose") is None:
         # The message replied to is about one dose: that dose, as if named by its number.
         # A pill or a dose number I state still wins over where I point
@@ -1043,6 +1104,12 @@ async def log_save(request: Request, data: dict) -> str:
     return await _with_what_is_left(request.user.id, said, True)
 
 
+async def log_saved(request: Request, data: dict) -> Answer:
+    """`log_save`, as the action: the card, once saved, is the line of those doses."""
+    steps = await _held(request, data)
+    return Answer(await log_save(request, data), about(request, [thing for step in steps for thing in _of(step)]))
+
+
 async def log_check(request: Request, data: dict) -> str:
     """Read each dose back: it is in the state, and at the time, the card said."""
     wrong = []
@@ -1146,7 +1213,7 @@ ACTIONS = (
         prepare=add_card,
         purpose=SET_UP,
         say=("add Pill A at 8 am", "add Pill B twice a day, at least 6 hours apart",),
-        apply=add_save,
+        apply=_recorded(add_save),
         verify=add_check,
         # No card when every pill named is already there just as asked: that is said in a line
         card_if=add_asks,
@@ -1163,7 +1230,7 @@ ACTIONS = (
         prepare=edit_card,
         purpose=SET_UP,
         say=("move Pill A to 9 pm", "Pill B is 2 tablets now",),
-        apply=edit_save,
+        apply=_recorded(edit_save),
         verify=edit_check,
         # No card when nothing would change: the same line as adding what is already there
         card_if=edit_asks,
@@ -1177,7 +1244,7 @@ ACTIONS = (
         prepare=pause_card,
         purpose=SET_UP,
         say=("pause Pill A until the 20th",),
-        apply=pause_save,
+        apply=_recorded(pause_save),
         verify=pause_check,
     ),
     Action(
@@ -1187,7 +1254,7 @@ ACTIONS = (
         prepare=resume_card,
         purpose=SET_UP,
         say=("resume Pill A",),
-        apply=resume_save,
+        apply=_recorded(resume_save),
         verify=resume_check,
     ),
     Action(
@@ -1238,14 +1305,14 @@ ACTIONS = (
                 ),
             ),
         ),
-        run=log_doses,
+        run=log_answer,
         purpose=EACH_DAY,
         say=("took Pill A", "had Pill A at 9 am", "skip Pill B today", "I didn't take Pill A",),
         # Done at once, unless a dose would be ticked off after its pill's latest time, or one named
         # by its number would be out of order: that is asked first
         card_if=log_asks,
         prepare=log_card,
-        apply=log_save,
+        apply=log_saved,
         verify=log_check,
     ),
     Action(

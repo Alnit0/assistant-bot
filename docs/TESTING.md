@@ -42,11 +42,11 @@ Last updated: 2026-10-12
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
 | P | Bugs | 34 | 16 | 18 | 15 | 19 | 0 | 0 |
 | Q | Time, days, the schedule model, the occurrence log and cards | 15 | 13 | 2 | 2 | 13 | 0 | 0 |
-| R | Pills | 57 | 11 | 46 | 38 | 19 | 0 | 0 |
+| R | Pills | 59 | 12 | 47 | 39 | 20 | 0 | 0 |
 | S | Routing and confirm cards | 59 | 10 | 49 | 14 | 44 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 4 | 18 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **427** | **131** | **296** | **227** | **199** | **0** | **1** |
+| | **Total** | **429** | **132** | **297** | **228** | **200** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -486,6 +486,8 @@ are added with it.
 | R67 | 👤 Manual | With two pills that have no set time, type `pills`; say `took my` and the first one's name; then reply to the **other** pill's Taken / Skip message with `took it`. Press nothing | The pill whose message you replied to is ticked off ("✅ **…** · taken …"), not the one logged just before | ⬜ Untested | | |
 | R68 | 🤖 Auto | An unnamed pill is only logged straight away with an anchor | "it" or "the usual one" with a reply, or within five minutes of a dose being logged, is that pill and is done at once; otherwise the pill the code picks (the one logged last, or for a dose taken the one with a dose left) is on a card with ❓, Save and Cancel; with nothing to pick from it asks which; "took the usual one" as Claude really read it gets the card; a correction said six minutes later is still a correction, shown first | ✅ Pass | 2026-10-12 | `tests/test_pills_checklist.py`, `tests/test_golden.py`, `tests/test_routing.py` |
 | R69 | 👤 Manual | With two pills, one logged more than five minutes ago: say `took the usual one`; press **Save**. Straight after, say `no I didn't` | A card "💊 Pills · change" naming the other pill with ❓; Save ticks it off. "no I didn't" then unticks that pill at once, with no card | ⬜ Untested | | Block 28 |
+| R70 | 🤖 Auto | Every line about a pill or a dose is that pill's | The line that says a dose was taken, skipped, unticked or corrected, an "already" line, a card once it is saved (the late card too) and the line a plan card saves with are recorded as that pill's (and that dose's); a reply to one goes to pills with no router and means that pill and that dose, with no card, though another pill was logged since; a line about two pills points at neither and is no anchor for "it" | ✅ Pass | 2026-10-12 | `tests/test_pills_checklist.py`, `tests/test_golden.py` |
+| R71 | 👤 Manual | With two pills: say `took my pill X`, then `took my pill Y`. Reply to the line "✅ **Pill X** · taken …" with `it was 8am`; then reply to the same line with `actually I didn't`; reply `dev why` to that | "✏️ **Pill X** · taken … → 8:00 am", then "↩️ **Pill X** · no longer ticked off": Pill X both times, never Pill Y. The trace says "reply to pills' message" with no router request | ⬜ Untested | | Block 29 |
 
 ## S. Routing and confirm cards
 

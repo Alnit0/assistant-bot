@@ -818,3 +818,59 @@ def state_of(world, name):
     """The state of a pill's (first) dose today, as the database has it."""
     _, listed, _ = run(checklist.view(world.owner.id))
     return next(dose.occurrence.state for dose in listed if dose.pill.plan.name == name)
+
+
+# --- every line about a pill or a dose is that pill's: a reply to it means that pill and that dose -------
+def said_as(world, answer, message_id):
+    """An action's answer, posted as the conversation posts it: the task is told which message it was."""
+    run(answer.placed(message_id))
+    return answer.text
+
+
+def test_a_reply_to_the_line_that_said_a_dose_was_taken_means_that_pill_and_that_dose(world):
+    add(world, {"name": "Zinc"}, {"name": "Iron"})
+    run(checklist.post(world.owner.id))
+    zinc_line = 9001
+    said = said_as(world, run(plain.log_answer(world.request(), {"doses": [{"pill": "zinc", "did": "taken"}]}, frozenset())), zinc_line)
+    assert said.startswith("✅ **Zinc** · taken 9:00 am")
+    said_as(world, run(plain.log_answer(world.request(), {"doses": [{"pill": "iron", "did": "taken"}]}, frozenset())), 9002)  # Iron is now the pill logged last
+    it = lambda did, **more: {"doses": [{"pill": "@that", "did": did, **more}]}  # noqa: E731
+    reply = replying(world, zinc_line)
+    assert run(plain.log_asks(reply, it("taken", at="8:30 am"), frozenset())) is False, "the line is the anchor: no card"
+    assert run(plain.log_doses(reply, it("taken", at="8:30 am"), frozenset())).startswith("✏️ **Zinc** · taken 9:00 am → 8:30 am"), "that dose, corrected"
+    assert run(plain.log_doses(reply, it("taken"), frozenset())).startswith("✅ **Zinc** · taken 8:30 am") and state_of(world, "Iron") == DONE
+    assert run(plain.log_doses(reply, it("not_taken"), frozenset())).startswith("↩️ **Zinc** · no longer ticked off")
+    assert state_of(world, "Zinc") == PENDING and state_of(world, "Iron") == DONE
+    from tasks.pills import task
+
+    assert run(task.owns_message(zinc_line)) is True and run(task.owns_message(424242)) is False
+
+
+def test_a_line_about_two_pills_points_at_neither_and_is_no_anchor(world):
+    add(world, {"name": "Zinc"}, {"name": "Iron"})
+    run(checklist.post(world.owner.id))
+    both = {"doses": [{"pill": "zinc", "did": "taken"}, {"pill": "iron", "did": "taken"}]}
+    said_as(world, run(plain.log_answer(world.request(), both, frozenset())), 9001)
+    undo = {"doses": [{"pill": "@that", "did": "not_taken"}]}
+    assert run(plain.log_asks(world.request(), undo, frozenset())) is True, "straight after, but the line named two: the pick is shown first"
+    assert run(plain.log_card(world.request(), undo, frozenset())).lines == ("**Iron** · no longer ticked off ❓",)
+    assert run(plain.log_asks(replying(world, 9001), undo, frozenset())) is True, "a reply to it says no more"
+
+
+def test_a_saved_card_and_an_already_line_are_the_pills_too(world):
+    add(world, {"name": "Zinc"}, {"name": "Iron"})
+    run(checklist.post(world.owner.id))
+    # The card that asks first, once saved, is the line of the dose it logged
+    card = run(plain.log_card(world.request(), {"doses": [{"pill": "zinc", "did": "taken"}]}, frozenset({"doses[0].pill"})))
+    said_as(world, run(plain.log_saved(world.request(), card.data)), 9001)
+    assert [pill_id for pill_id, _ in run(database.run(store.db_line, 9001))] == [1] and run(database.run(store.db_line, 9001))[0][1] is not None
+    # "✅ Zinc · taken … already" is about Zinc though nothing was done
+    again = run(plain.log_answer(world.request(), {"doses": [{"pill": "zinc", "did": "taken"}]}, frozenset()))
+    assert said_as(world, again, 9002).endswith("already") and run(database.run(store.db_line, 9002)) == [(1, None)]
+    # A plan card's Save says a line about the pill it changed
+    edit = next(action for action in plain.ACTIONS if action.name == "pill_add")
+    proposal = run(plain.add_card(world.request(), {"pills": [{"name": "Magnesium"}]}, frozenset()))
+    saved = run(edit.apply(world.request(), proposal.data))
+    assert said_as(world, saved, 9003).startswith("✅ Saved") and run(database.run(store.db_line, 9003)) == [(3, None)]
+    took = run(plain.log_doses(replying(world, 9003), {"doses": [{"pill": "@that", "did": "taken"}]}, frozenset()))
+    assert took.startswith("✅ **Magnesium** · taken"), "“took it” as a reply to the line that saved it"
