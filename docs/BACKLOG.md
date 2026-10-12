@@ -30,7 +30,7 @@ low priority, nothing dropped without a reason.
    pieces are built (Details: "Gym").
 
 6a. **The scheduler, clean-up and the briefing** (specs drafted
-    2026-10-13, private; sketches `briefing-v1`, `schedule-list-v1`,
+    2026-10-13, private; sketches `briefing-v2`, `schedule-list-v2`,
     `schedule-change-v1`, `cleanup-v1`): wait for the answers at the
     top of `docs/STATUS.md` and approval. Then built in the order the
     scheduler's spec gives, the engine first with nothing visible
@@ -495,8 +495,17 @@ number read from text; C19's name matching is in the core.
   - Tasks that still send with discord.py directly (timers, archive,
     bugs, lab, dev) would record no lifetime, so their messages are
     never tidied until the gateway layer exists
-  - "Routine" in `CLAUDE.md` means what `dev run` runs; the spec uses
-    it for a schedule with several steps (asked in STATUS)
+  - "Routine" comes to mean only a schedule with several steps
+    (answered 2026-10-13). What `dev run` runs is renamed a handler,
+    in the code (`devmode.ROUTINE_NAMES`, `register_routine`, the
+    words of `dev run`) and in `CLAUDE.md`'s Words, when the engine is
+    built
+  - The briefing is edited in place when a section changes (answered
+    2026-10-13): a task has to say when its summary may have changed,
+    as a list shown on request is told
+  - In the hub what is said goes once handled (answered 2026-10-13):
+    my message and the reply are recorded as one exchange, which
+    nothing does today
   - The router needs to tell "move the briefing to 7" (the schedule)
     from "move pill A to 9 pm" (pills): fixtures and a live eval at
     build time, to be costed and asked first

@@ -8,7 +8,7 @@ backfilled from the git log.
 
 - Nothing changes in the bot: the scheduler, the clean-up and the
   briefing are specified, with four sketches to look at (`dev mock
-  briefing-v1`, `schedule-list-v1`, `schedule-change-v1`,
+  briefing-v2`, `schedule-list-v2`, `schedule-change-v1`,
   `cleanup-v1`). The standard and the design guide now say the hub
   holds only what is relevant now.
 

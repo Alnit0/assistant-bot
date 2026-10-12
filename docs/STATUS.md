@@ -7,27 +7,24 @@ session; the end-of-task checklist updates it at the end of every task.
 
 ## Questions for Alex
 
-**New on 2026-10-13: mornings, the scheduler, the hub** (the two specs
-are drafts; nothing is built until you answer and approve):
+**Still open from the scheduler, clean-up and briefing specs** (drafts
+of 2026-10-13; nothing is built until you answer these and approve):
 
-- **Do you talk to the bot in the hub?** Either you do, and your
-  messages there and its answers are tidied too at the end of the day;
-  or you talk only in another channel and the hub is status only (what
-  you type there gets a pointer line and is removed). Nothing is
-  assumed: until you say, the clean-up leaves your own messages alone.
-- **The order at 6:00 am:** tidy, then the checklist, then the briefing
-  under it (assumed), or the briefing above the checklist?
-- **One thing or two:** is the 6:00 am post one routine you move as a
-  whole (assumed), or the checklist and the briefing moved separately?
+- **The sketches `briefing-v2` and `schedule-list-v2`** replace v1 of
+  each after your answers. Approve them and the two v1 files go.
 - **Weekends:** the same time every day (assumed), or later on
   Saturday and Sunday?
 - **Silent or notify:** the morning routine silent (assumed), or
   should the briefing notify?
 - **If the bot was off at 6:00:** the checklist is posted however late
-  (as now); the briefing skipped when more than 6 hours late
-  (assumed)?
-- **The briefing as of 6:00 am** and not rewritten through the day
-  (assumed: the checklist is the live thing), or kept up to date?
+  (as now), and now the briefing too (assumed, changed: it always
+  shows the present, so a late one is still right)?
+- **"brief me" in the hub** when the briefing is there and up to date:
+  a pointer line that goes by itself (assumed), or nothing?
+- **In the hub, a message of yours that failed** (⚠️): stays until the
+  morning tidy (assumed), or goes after 2 minutes like the rest? And
+  one that needed no reply goes 2 minutes after it was handled
+  (assumed).
 - **A morning with nothing in it:** no briefing (assumed), or one that
   says so?
 - **Yesterday's line:** counts only, "5 of 6 taken · 1 missed"
@@ -37,9 +34,7 @@ are drafts; nothing is built until you answer and approve):
   to-dos exist (assumed: in that order after pills)?
 - **Buttons in the briefing:** none (assumed), so doses are ticked off
   in one place.
-- **Clean-up:** lines that report a change ("✅ Pill A · taken 8:05
-  am") outside the hub go at the end of the day (assumed), or stay? A
-  tidy with nothing wrong says nothing in #bot-log (assumed)? On a day
+- **Clean-up:** a tidy with nothing wrong says nothing in #bot-log (assumed)? On a day
   with nothing to take, yesterday's checklist still goes in the
   morning (assumed)? The tidy is the routine's first step (assumed),
   or a schedule of its own at 5:55 am?
@@ -47,8 +42,7 @@ are drafts; nothing is built until you answer and approve):
   today does not run again today (assumed). "my schedule" lists what
   the bot posts by itself, not each pill's dose times (assumed). The
   backup and the new day are listed and not changed by words
-  (assumed). "Routine" would come to mean a schedule with several
-  steps; today `CLAUDE.md` uses it for what `dev run` runs. Fine?
+  (assumed).
 - **APScheduler or our own engine:** I recommend our own (the dev
   clock, a key a run, the run log and rows you can change are what we
   need most, and APScheduler has none of them). Say if you want the
@@ -59,6 +53,17 @@ are drafts; nothing is built until you answer and approve):
   removes earlier copies of the same day. Not a failed job. The old
   ones there now can only go with `reset channel` in the hub: no id is
   kept for them.
+
+Answered on 2026-10-13, the specs: you talk in the hub, and what you
+say there and the bot's reply are tidied once handled (2 minutes after
+the reply, or when its card is saved, cancelled or expires; pinned
+stays). The morning routine is tidy, briefing, checklist, so the
+checklist is the newest message. The briefing is edited in place when
+a section changes and always shows now, with no new posts. Lines that
+report a change go at the end of the day outside the hub. "Routine"
+means only a schedule with several steps: what `dev run` runs becomes
+a handler, renamed in the code and in `CLAUDE.md` when the scheduler
+is built (not before: no code was to change).
 
 **From before:**
 
@@ -123,9 +128,10 @@ schedules as rows, one engine, a run log, a key a run, routines,
 changing it by words, clean-up and message lifetimes, the comparison
 with APScheduler, and how today's 6:00 am checklist and pill reminders
 move over with nothing you see changing) and `docs/specs/briefing.md`
-(a summary in the task contract, one card, pills now). Four sketches:
-`briefing-v1`, `schedule-list-v1`, `schedule-change-v1`, `cleanup-v1`
-(block 44). The hub's principle is in the standard and the design
+(a summary in the task contract, one card edited in place, pills
+now). Both are draft 2, with the answers of the same day worked in.
+Sketches: `briefing-v2`, `schedule-list-v2`, `schedule-change-v1`,
+`cleanup-v1` (block 44). The hub's principle is in the standard and the design
 guide. Core and task are set out in each spec: the engine, lifetimes,
 the tidy, the summary in the contract and the gathering are core; the
 words for changing a schedule are a small task, `schedule`; the

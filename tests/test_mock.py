@@ -243,7 +243,7 @@ def test_the_gym_sketches_are_there_and_the_plan_cards_follow_the_card_rules():
 DESIGNED = (
     "checklist-v2", "reminder-v1", "reminder-v1-first", "confirm-card-v2", "question-card-v1", "reset-card-v2", "gym-workout-v1",
     "too-soon-v2", "reminder-renudge-v2", "reminder-missed-v2", "gym-import-v2", "gym-change-v2", "gym-logged-set-v2",
-    "briefing-v1", "schedule-list-v1", "schedule-change-v1", "cleanup-v1",
+    "briefing-v1", "schedule-list-v1", "schedule-change-v1", "cleanup-v1", "briefing-v2", "schedule-list-v2",
 )
 
 
@@ -293,11 +293,16 @@ def test_every_sketch_carries_its_version_in_its_name_and_the_ones_replaced_are_
 
 def test_the_scheduler_and_briefing_sketches_keep_the_card_and_hub_rules():
     # The briefing is a standing message with a box a task and no buttons: things are done on the task's own message
-    briefing = mock.read("briefing-v1")
+    briefing = mock.read("briefing-v2")
     assert briefing.startswith("# ☀️ Today") and "💊 **Pills**" in briefing and "Yesterday:" in briefing and "[" not in briefing.split("🧪")[0]
+    # It always shows now: nothing says when it was written
+    assert "as of" not in briefing.split("🧪")[0]
     # The list has no buttons either: every change to a schedule is by words, on a card
-    listed = mock.read("schedule-list-v1")
+    listed = mock.read("schedule-list-v2")
     assert listed.startswith("# 🗓️ My schedule") and "⏸️ **Paused**" in listed and "[" not in listed.split("🧪")[0]
+    # The morning routine: tidy, then the briefing, then the checklist, so the checklist is the newest message
+    steps = listed.replace("\r\n", "\n")
+    assert "┃ 1. 🧹 Tidy\n┃ 2. ☀️ Briefing\n┃ 3. 💊 Pills checklist" in steps
     change = mock.read("schedule-change-v1")
     assert change.startswith("┃ accent: blurple") and "## 🗓️ Schedule · change" in change and "→" in change
     assert "[✅ Save: green] [↩️ Cancel: grey]" in change and "Not included:" in change

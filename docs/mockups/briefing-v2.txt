@@ -1,0 +1,23 @@
+# ☀️ Today
+-# Wednesday 14 October
+
+┃ accent: amber
+┃ 💊 **Pills** · 2 of 6 taken
+┃ **Next:** Pill A, dose 2 · `12:00 pm`
+┃ -# 1 to take any time
+┃ -# Yesterday: 5 of 6 taken · 1 missed
+
+┃ accent: grey
+┃ 🏋️ **Gym**
+┃ -# planned: today's workout, and when you last did it
+
+┃ accent: grey
+┃ 📅 **Calendar**
+┃ -# planned: what is on today, with times
+
+┃ accent: grey
+┃ ☑️ **To-dos**
+┃ -# planned: what is due today
+
+-# always up to date · tick doses off on today’s checklist, below · say “my schedule” to change when this is posted
+-# 🧪 briefing v2 · shown as it would read mid-morning: it is one message a day, posted above the checklist at 6:00 am and edited in place whenever a section changes, so it always shows now (v1 said “as of 6:00 am” and never changed). No buttons. Gym, Calendar and To-dos are placeholders in this sketch only: the real briefing shows a section only once its task is built. Nothing simplified to fit

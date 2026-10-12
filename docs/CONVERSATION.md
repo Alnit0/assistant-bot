@@ -63,9 +63,11 @@ When two principles clash, the higher one wins.
    It holds only live messages, edited in place where possible: the
    briefing, today's checklist and any reminder that is due. Anything
    finished, answered or out of date leaves. Nothing from a past day
-   stays, except as a summary in the briefing. (Added 2026-10-13; the
-   briefing and the clean-up that keeps the hub this way are specified
-   and not built yet.)
+   stays, except as a summary in the briefing. I talk to the bot there
+   too: what I say and its reply go once handled, 2 minutes after the
+   reply, or when the card is saved, cancelled or expires. Pinned
+   stays. (Added 2026-10-13; the briefing and the clean-up that keeps
+   the hub this way are specified and not built yet.)
 9. **Consistent everywhere.** Every task looks and behaves the same
    way. Learn it once.
 10. **Private.** Notifications never show sensitive names (e.g. pills).

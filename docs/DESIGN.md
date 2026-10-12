@@ -37,6 +37,11 @@ briefing. So in the hub:
   dose that is due
 - Yesterday is one small line in the briefing, never a message left
   behind
+- The briefing is above today's checklist and is edited in place
+  whenever a section changes, so it always shows now; the checklist is
+  the newest message
+- What I say there and the reply go once handled: 2 minutes after the
+  reply, or when the card is saved, cancelled or expires. Pinned stays
 
 The briefing and the clean-up are specified and not built yet; until
 they are, yesterday's checklist stays where it was.
@@ -178,8 +183,9 @@ button counts) and 4,000 characters; a row takes 5 buttons. So:
 | `gym-workout-v1` | A workout: done, current, to come |
 | `gym-import-v2`, `gym-change-v2` | A plan as read from a file, and a change to it |
 | `gym-logged-set-v2` | The line said after a set, and that exercise's box |
-| `briefing-v1` | The morning's briefing: a box a task, with the tasks to come as placeholders |
-| `schedule-list-v1` | “my schedule”: what the bot posts by itself and when, the next to run, what is paused |
+| `briefing-v2` | The briefing as it reads mid-morning: a box a task, always up to date, with the tasks to come as placeholders |
+| `schedule-list-v2` | “my schedule”: what the bot posts by itself and when, the next to run, what is paused; the routine as tidy, briefing, checklist |
+| `briefing-v1`, `schedule-list-v1` | The versions before the answers of 2026-10-13 (“as of 6:00 am”; the checklist before the briefing). They go when v2 is approved |
 | `schedule-change-v1` | A change to two schedules, with when each would next run |
 | `cleanup-v1` | What #bot-log is told about a tidy: only one where something went wrong |
 
