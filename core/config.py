@@ -37,7 +37,22 @@ DATA_DIR.mkdir(exist_ok=True)
 # ---------------------------------------------------------------------------
 # Settings
 # ---------------------------------------------------------------------------
-load_dotenv(BASE_DIR / ".env")
+def env_files(dev: bool, base: Path) -> list[Path]:
+    """The settings files to read, first wins. With `--dev`, `.env.dev` (if
+    there is one) comes before `.env`, so the dev bot can have a token and
+    channels of its own and take everything else from `.env`. A value set in
+    the terminal beats both."""
+    found = [base / ".env"]
+    if dev and (base / ".env.dev").exists():
+        found.insert(0, base / ".env.dev")
+    return found
+
+
+# The first file to set a name keeps it: load_dotenv never overrides what is set
+ENV_FILES = env_files(DEV_DATABASE, BASE_DIR)
+for _env_file in ENV_FILES:
+    load_dotenv(_env_file)
+DEV_ENV = BASE_DIR / ".env.dev" in ENV_FILES  # the dev bot has settings of its own
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 OWNER_ID = os.getenv("OWNER_ID")
