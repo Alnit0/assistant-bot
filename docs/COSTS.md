@@ -217,6 +217,10 @@ understood and leave out what was not said): about 170 tokens more in
 the part that is cached, so a tenth of that price on every request
 after the first.
 
+The router's message gains one line (about 40 tokens) only when a
+word typed could be part of the name of one of my things; nothing is
+added to its rules, so every other message costs what it did.
+
 ## 7. Questions (also in `docs/STATUS.md`)
 
 1. Answered 2026-10-13: the router is not skipped; of the shortcuts,

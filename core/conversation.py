@@ -162,6 +162,24 @@ async def _owners(text: str, entries: list[Entry], request: Request) -> list[str
     return found
 
 
+async def _hints(text: str, entries: list[Entry], request: Request) -> list[tuple[str, str]]:
+    """Words of the message that may be part of the name of something a task
+    holds ("testv", with a pill called Testvit): given to the router as a
+    hint, which it weighs with the rest. Nothing is decided here."""
+    named: dict[str, list[str]] = {}
+    for entry in entries:
+        if entry.names is None:
+            continue
+        try:
+            named[entry.name] = list(await entry.names(request))
+        except Exception:
+            log.exception("Task %s could not give the names of what it holds", entry.name)
+    found = routing.name_hints(text, named)
+    if found:
+        trace.note("name hint for the router: " + ", ".join(f"{word!r} may be one of {task}'s" for word, task in found))
+    return found
+
+
 NOT_UNDERSTOOD = "🤔 I didn't understand that."
 # Something I did that no task keeps track of ("I went for a run at 7"): understood, and said so
 CANT_LOG = "I can't log that yet."
@@ -676,6 +694,7 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
                 on_screen=on_screen,
                 exchanges=_exchanges(ctx.channel_id),
                 attached=attached,
+                hints=await _hints(ctx.text, entries, request),
             )
             turn.router = {"tasks": list(routed.tasks), "tie": routed.tie, "chat": routed.chat, "chat_part": routed.chat_part, "problem": routed.problem}
             if routed.nothing:
@@ -720,7 +739,8 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
                     trace.note("chat check: chat said the message is about my data; routed again to the task that owns it")
                     turn.route = costs.ROUTER
                     routed = await routing.route(
-                        ctx.text, entries, on_screen=on_screen, exchanges=_exchanges(ctx.channel_id), about_data=True, attached=attached
+                        ctx.text, entries, on_screen=on_screen, exchanges=_exchanges(ctx.channel_id), about_data=True, attached=attached,
+                        hints=await _hints(ctx.text, entries, request),
                     )
                     turn.router["second look"] = list(routed.tasks) or "no task"
                     if not routed.tasks:

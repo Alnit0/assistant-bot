@@ -272,6 +272,10 @@ class TimersTask(Task):
             sessions.JOB_KIND: sessions.on_due,
         }
 
+    def job_labels(self) -> dict:
+        # What each job is called wherever I read it (the status line, the start's message)
+        return {timers.JOB_KIND: "timer ending", sessions.JOB_KIND: "Pomodoro phase"}
+
     def migrations(self) -> list:
         return list(store.MIGRATIONS)
 

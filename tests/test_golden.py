@@ -793,3 +793,31 @@ def test_a_typed_answer_to_which_pill_logs_it_and_the_card_that_asked_goes(bot):
     bot.say("zinc")
     assert bot.sent[-1][1].text.startswith("✅ **Zinc** · taken "), "typed instead of pressed: the same"
     assert asked in bot.deleted and not [each for each in open_cards() if each.status == "open"]
+
+
+# --- part of a pill's name is a hint for the router, which still decides -----------------------------------------
+def test_part_of_a_pills_name_is_handed_to_the_router_as_a_hint_and_the_router_decides(bot):
+    bot.claude(route("pills"), ("pill_add", {"pills": [{"name": "Testvit"}, {"name": "Testvit forte"}], "guessed": [], "not_included": []}))
+    bot.say("add testvit and testvit forte to my pills")
+    press(bot)
+    # The router is told, and here it chooses pills: the code then asks which of the two is meant
+    bot.claude(route("pills"), ("pill_pause", {"pills": [{"pill": "Testvit"}], "guessed": [], "not_included": []}))
+    bot.say("pause testv")
+    asked = next(request for request in reversed(bot.requests) if request.purpose == "router")
+    assert "A hint, not a decision: “testv” could be the start of the name of one of the user's own things in pills." in asked.user
+    hint = next(line for line in asked.user.splitlines() if line.startswith("A hint"))
+    assert "Testvit" not in hint, "the hint holds the word typed and the task, never a name of mine"
+    lines, buttons = card(bot)
+    assert "Which one is “testv”?" in lines and buttons == ["Testvit", "Testvit forte", "Cancel"]
+    # It is only a hint: when the router chooses another task, that task gets the message
+    run(confirm.on_cancel(bot.Press(open_cards()[-1].id)))  # the card that asked is put away first
+    sent = len(bot.sent)
+    bot.claude(route("timers"), ("none", {"why": "unclear", "reason": "no timer is called that"}))
+    bot.say("pause testv")
+    asked = next(request for request in reversed(bot.requests) if request.purpose == "router")
+    assert "A hint, not a decision" in asked.user and bot.requests[-1].task == "timers", "the router chose timers, and timers was asked"
+    assert len(bot.sent) == sent + 1 and "Which one" not in bot.sent[-1][1].text, "no pills card: the hint decided nothing"
+    # A message that names nothing of mine carries no hint
+    bot.claude(route("timers"), ("none", {"why": "unclear", "reason": "no timer is running"}))
+    bot.say("pause everything")
+    assert "hint" not in next(request for request in reversed(bot.requests) if request.purpose == "router").user

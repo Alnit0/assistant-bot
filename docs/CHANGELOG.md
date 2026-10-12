@@ -13,6 +13,9 @@ backfilled from the git log.
   of the day"), and the catch-up card after a restart no longer shows
   the code's own names.
 - The channel reset card is drawn as a red box in the new look.
+- Part of a pill's name in a message ("pause testv") is pointed out to
+  the router as a hint, so it is less likely to go to another task.
+- Timers' jobs are named in words too ("timer ending").
 
 - A self-test: `python -m selftest` runs the dev bot against real
   Discord in channels of its own (a day of pills on the dev clock, a

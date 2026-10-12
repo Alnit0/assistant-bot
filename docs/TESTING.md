@@ -37,16 +37,16 @@ Last updated: 2026-10-13
 | G | Timers | 32 | 12 | 20 | 17 | 15 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
 | J | Dev mode | 66 | 17 | 49 | 47 | 19 | 0 | 0 |
-| K | Startup and housekeeping | 27 | 15 | 12 | 10 | 17 | 0 | 0 |
+| K | Startup and housekeeping | 28 | 16 | 12 | 10 | 18 | 0 | 0 |
 | L | Keep | 14 | 6 | 8 | 8 | 6 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
 | P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
 | Q | Time, days, the schedule model, the occurrence log and cards | 17 | 15 | 2 | 2 | 15 | 0 | 0 |
 | R | Pills | 72 | 20 | 52 | 44 | 28 | 0 | 0 |
-| S | Routing and confirm cards | 68 | 17 | 51 | 16 | 51 | 0 | 1 |
+| S | Routing and confirm cards | 69 | 18 | 51 | 16 | 52 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 4 | 18 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **478** | **163** | **315** | **245** | **232** | **0** | **1** |
+| | **Total** | **480** | **165** | **315** | **245** | **234** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -332,6 +332,7 @@ Any channel. Check the bot's status in the member list.
 | K25 | 🤖 Auto | The daily spend line | The limit is `DAILY_SPEND_LIMIT` (US$0.50 unless set). Under it nothing is said; the first time a day's requests to Claude pass it, #bot-log is told once, however much more is spent and whatever restarts in between (the day is kept in the database), and again on a new day. A limit of 0 switches it off, a message with no request is never checked, and a note that can't be sent never fails the message | ✅ Pass | 2026-10-13 | `tests/test_costs.py` |
 | K26 | 🤖 Auto | The dev bot's own settings file | With `--dev`, `.env.dev` is read before `.env` if it is there; without one nothing changes; the live bot never reads it. It is ignored by git and has an example with placeholders only | ✅ Pass | 2026-10-13 | `tests/test_pills_shortcut.py` |
 | K27 | 🤖 Auto | Every job has a name in words | The core's and the pills' jobs are registered with a label (“nightly backup”, “end of the day”, “pill reminder”, “a card's expiry”), which the status line, the late line and an error card use; one nobody named is made readable. The catch-up lines are checked: a job written the code's way is put in words, an action's name is taken out, and a line with nothing left is dropped. A press or a Save cut off is said in words | ✅ Pass | 2026-10-13 | `tests/test_restart.py` |
+| K28 | 🤖 Auto | The timers' jobs have names in words | Every task with jobs names each one: “timer ending”, “Pomodoro phase”; “timers timer due” written anywhere I read is put in words | ✅ Pass | 2026-10-13 | `tests/test_restart.py` |
 
 ## L. Keep
 
@@ -606,6 +607,7 @@ the dev database (`python main.py --dev`), in #inbox.
 | S66 | 🤖 Auto | What is cached and what every schema repeats | For a task's extraction the tools are marked for caching at `none` (so a follow-up, with `not_this` after it, reads the same cached tools) and the instructions are two blocks: the task's rules, marked, the same however the message came, then the lines that depend on that, unmarked. `guessed` and `not_included` are explained once in the instructions and only named in each schema | ✅ Pass | 2026-10-13 | `tests/test_routing.py`. Measured in `docs/COSTS.md`; live check 2026-10-13: pills 60 of 61, timers 36 of 37 |
 | S67 | 🤖 Auto | What was typed is read beside what Claude handed over | A part of the message fits a name by its words or the start of one (three letters or more), the longest part wins and a whole name is that thing alone; “it” is no part of “Testvit”. When such a part fits more than one thing and Claude handed over one of them, or “it”, the question is asked in the words that were typed. Claude is told never to complete a name and to hand over what it understood; an empty place in a list of times is left out and the item stands | ✅ Pass | 2026-10-13 | `tests/test_names.py` |
 | S68 | 👤 Manual | Block 45: `pause testv` with two pills it fits; `took` twice in a row with a gap; `reset channel` with `CARDS_V2` on | The which-one card in the words typed; “just now”; the red reset card | ⬜ Untested | | Block 45 |
+| S69 | 🤖 Auto | Part of a name is a hint for the router | A word of four letters or more that starts a word of the name of something a task holds is given to the router with the task, never the name, as “a hint, not a decision”; no hint when nothing fits. When the router chooses pills the card asks which pill; when it chooses another task that task gets the message | ✅ Pass | 2026-10-13 | `tests/test_names.py`, `tests/test_golden.py` |
 
 ## T. Tasks in plain words
 

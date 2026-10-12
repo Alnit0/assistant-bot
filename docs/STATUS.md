@@ -9,14 +9,6 @@ session; the end-of-task checklist updates it at the end of every task.
 
 **From the fixes after the self-test (2026-10-13):**
 
-- **"pause testv" with nothing said just before** went to the timers
-  task on 4 of 5 real requests (the router reads "pause" as a timer's
-  word) and was answered "🤔 I didn't understand that.". Straight
-  after anything about pills it goes to pills, and then asks which one,
-  5 of 5. Should the router be told that a message naming part of a
-  pill's name is the pills task's, as a whole name already is? It
-  would be the same code that now reads what was typed, and no request
-  to Claude.
 - **The suite's hang was not found.** Six full runs in a row passed
   with nothing stalling. A test that runs over a minute now stops the
   run with its name and where it was stuck, so the next one says so.
@@ -32,7 +24,11 @@ over what it understood, so the card asks for a missing time; under a
 minute the too-soon card says "just now"; every job has a name in
 words wherever you see it, and the catch-up card is checked for
 internal labels; the reset card is built in the new look. All done
-(block 45).
+(block 45). Then: part of a pill's name is a hint for the router, not a
+decision (a word of four letters or more that starts a word of a
+name; the router still decides); and the timers' jobs have names in
+words ("timer ending", "Pomodoro phase"), the one thing touched in
+timers. Both done, and live restarted on all of it.
 
 **Still open from the scheduler, clean-up and briefing specs** (drafts
 of 2026-10-13; nothing is built until you answer these and approve):
@@ -178,6 +174,12 @@ for the first five (the steps have not run: live stayed up).
    cut off is said in words, with the code's names in the log file.
 5. The reset card is drawn as a red box with `CARDS_V2` on.
 6. A per-test time limit (`tests/watchdog.py`).
+7. A hint for the router (`routing.name_hints`): a word I typed that
+   starts a word of the name of something a task holds, from four
+   letters. The router is given the word and the task, never the name,
+   and still decides. Not tried with real requests: whether it now
+   sends "pause testv" to pills is for the next live eval or self-test.
+8. The timers' two jobs are named in words.
 
 The two language steps rerun with real requests, offline from Discord:
 "twice a day at 8am" 5 of 5; "pause testv" straight after a pills

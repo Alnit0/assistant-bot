@@ -37,8 +37,9 @@ low priority, nothing dropped without a reason.
     changing (Details: "Scheduler, clean-up, briefing").
 
 6b. **A full self-test run** to see the fixes of 2026-10-13 in Discord
-    (its new steps have not run), and **"pause testv" with nothing said
-    before it goes to timers** (asked in `docs/STATUS.md`).
+    (its new steps have not run), and with it whether the router's new
+    hint sends "pause testv", said with nothing before it, to pills
+    (it went to timers on 4 of 5 real requests before the hint).
 
 ### Soon
 
@@ -487,8 +488,8 @@ number read from text; C19's name matching is in the core.
   has it for `dev why`. A fixture for it and for "pause testv" would
   be worth recording at the next live eval. **Left:** a card saved
   after `CARDS_V2` is switched on stays plain; `dev cost` shows a limit
-  under a cent as US$0.00; timers' jobs have no name of their own (a
-  timer's code is not touched) and are said as "timers timer due".
+  under a cent as US$0.00. (The timers' jobs were named the same day,
+  as an allowed exception: "timer ending", "Pomodoro phase".)
 - **The self-test's findings** (2026-10-13). With real requests, on two
   runs: "pause testv" (Testvit and Testvit forte both there) came back
   from Claude as `pill: "Testvit"` with nothing guessed, then as

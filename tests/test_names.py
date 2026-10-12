@@ -152,6 +152,30 @@ def test_an_empty_place_in_a_list_of_times_is_left_out_and_the_item_stands():
         actions.validate(add, {"pills": [{"name": "Testmag", "times": [8]}], "guessed": [], "not_included": []})
 
 
+# --- a hint for the router: part of a name ---------------------------------------------------------------------
+def test_a_word_that_starts_a_word_of_a_name_is_a_hint_from_four_letters():
+    held = {"pills": ["Testvit", "Testvit forte", "Evening pill", "Zinc"], "timers": ["tea", "pasta water"]}
+    assert routing.name_hints("pause testv", held) == [("testv", "pills")]
+    assert routing.name_hints("Pause TESTVIT", held) == [("testvit", "pills")], "a whole word is a start too"
+    assert routing.name_hints("skip the fort", held) == [("fort", "pills")], "the start of any word of the name"
+    assert routing.name_hints("pause tes", held) == [] and routing.name_hints("stop tea", held) == [], "under four letters is no hint"
+    assert routing.name_hints("how is zinc absorbed, and pasta?", held) == [("zinc", "pills"), ("pasta", "timers")]
+    assert routing.name_hints("good evening", held) == [("evening", "pills")], "only a hint: the router still decides"
+    assert routing.name_hints("pause it", held) == [] and routing.name_hints("testv testv", held) == [("testv", "pills")]
+    assert routing.name_hints("pause estvit", held) == [], "the start of a word, not the middle of one"
+    assert routing.name_hints("pause testv", {}) == [] and routing.name_hints("", held) == []
+    assert routing.PART_OF_A_NAME == 4
+
+
+def test_the_router_is_given_the_hint_in_words_and_no_name_of_mine():
+    hints = routing.name_hints("pause testv", {"pills": ["Testvit", "Testvit forte"]})
+    turn = routing.user_turn("pause testv", hints=hints)
+    assert "A hint, not a decision: “testv” could be the start of the name of one of the user's own things in pills." in turn
+    assert "the word may mean something else" in turn and "Testvit" not in turn, "the word typed and the task, never what I hold"
+    assert turn.endswith("The message to route:\npause testv"), "the message is still last"
+    assert "hint" not in routing.user_turn("pause testv"), "nothing is said when there is none"
+
+
 # --- a decimal number -----------------------------------------------------------------------------------------
 async def _run(request, data, guessed):
     return "done"

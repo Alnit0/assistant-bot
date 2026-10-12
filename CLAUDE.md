@@ -181,7 +181,7 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 | Card: kind of change, `field · old → new` | `actions.KINDS`, `repeats.change_line` |
 | "No, …" undoes the mistake; "no, shopping" re-routes | `confirm.is_correction`, `confirm_cards.previous`; `confirm.redirect` |
 | Declines; "that is already so" | `actions.DECLINES`, `conversation.DECLINED`, `Task.already_so`, `core/repeats.py` |
-| No reply to a remark; never silence for one of my things | the router's "nothing"; `Task.item_names`, `routing.names_item` |
+| No reply to a remark; never silence for one of my things | the router's "nothing"; `Task.item_names`, `routing.names_item`; part of a name is a hint for the router and never a decision (`routing.name_hints`) |
 | A name on its own shows the list, Live | `routing.named_alone`, the task's `show` action, `core/livelists.py` |
 | Chat never acknowledges something done | `llm.ABOUT_DATA`, `Route.reports`, `conversation.CANT_LOG`, `outgoing.acknowledges` |
 | Reactions are the status (👀, ⚠️; ✅ is reserved) | `main.py`; `conversation.what_i_can_do` |

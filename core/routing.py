@@ -2,7 +2,7 @@ import logging
 import re
 from dataclasses import dataclass
 
-from core import actions, costs, llm
+from core import actions, costs, llm, names
 from core.actions import Entry
 
 log = logging.getLogger("assistant")
@@ -161,12 +161,40 @@ ABOUT_DATA = (
 )
 
 
+PART_OF_A_NAME = 4  # the fewest letters of a typed word that may be the start of a word of a name
+
+
+def name_hints(message: str, named: dict[str, list[str]]) -> list[tuple[str, str]]:
+    """(the word typed, the task) for each word of the message that is the
+    start of a word in the name of something a task holds ("testv", with a
+    pill called Testvit): four letters or more, whatever the case. `named` is
+    each task's names. Only a hint for the router, which still decides: a
+    word such as "evening" may be part of a pill's name and mean nothing of
+    the kind. Pure."""
+    found: list[tuple[str, str]] = []
+    for word in dict.fromkeys(names.words(message)):
+        if len(word) < PART_OF_A_NAME:
+            continue
+        for task, held in named.items():
+            if any(of.startswith(word) for name in held for of in names.words(name)):
+                found.append((word, task))
+    return found
+
+
+def hint_line(hints: list[tuple[str, str]]) -> str:
+    """The hints as the router is given them. No name of the user's is in it:
+    only the word they typed and whose it might be."""
+    said = "; ".join(f"“{word}” could be the start of the name of one of the user's own things in {task}" for word, task in hints)
+    return f"A hint, not a decision: {said}. Weigh it with the rest of the message; the word may mean something else."
+
+
 def user_turn(
     message: str,
     on_screen: str = "",
     exchanges: list[tuple[str, str]] | None = None,
     about_data: bool = False,
     attached: tuple[str, ...] = (),
+    hints: list[tuple[str, str]] | tuple = (),
 ) -> str:
     """What changes from message to message: the last exchanges, what is on
     screen, and the message. Never part of the cached block. `about_data` is
@@ -182,6 +210,8 @@ def user_turn(
     if attached:
         # Only the names: what is in a file is for the task that takes it
         parts.append("Sent with the message, as a file: " + ", ".join(attached))
+    if hints:
+        parts.append(hint_line(list(hints)))
     parts.append(f"The message to route:\n{message}")
     return "\n\n".join(parts)
 
@@ -277,13 +307,15 @@ def with_named(found: Route, named: list[str]) -> Route:
 
 
 async def route(
-    message: str, entries: list[Entry], on_screen: str = "", exchanges=None, about_data: bool = False, attached: tuple[str, ...] = ()
+    message: str, entries: list[Entry], on_screen: str = "", exchanges=None, about_data: bool = False, attached: tuple[str, ...] = (),
+    hints: list[tuple[str, str]] | tuple = (),
 ) -> Route:
     """Ask the router. One request; the result is checked and never raises for
-    something the router got wrong."""
+    something the router got wrong. `hints` are words of the message that may
+    be part of the name of something a task holds (`name_hints`)."""
     called = await llm.call_tool(
         system_blocks(entries),
-        user_turn(message, on_screen, exchanges, about_data, attached),
+        user_turn(message, on_screen, exchanges, about_data, attached, hints),
         [tool(entries)],
         choice={"type": "tool", "name": TOOL},
         purpose=costs.PURPOSE_ROUTER,

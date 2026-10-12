@@ -593,6 +593,11 @@ def test_every_job_the_core_and_pills_register_has_a_name_in_words():
         assert "_" not in said and "/" not in said and said != kind, (task, kind, said)
     assert scheduler.label("pills", "remind") == "pill reminder" and scheduler.label("core", "confirm_expire") == "a card's expiry"
     assert scheduler.label("lab", "made_up") == "lab made up", "one nobody named is made readable"
+    # Every task that has jobs names each of them: nothing I read is ever "timers timer due"
+    for task in registry.loaded_tasks():
+        assert set(task.job_labels()) == set(task.job_handlers()), task.name
+    assert scheduler.label("timers", "timer_due") == "timer ending" and scheduler.label("timers", "pomo_phase_due") == "Pomodoro phase"
+    assert scheduler.in_words("Ran late: timers timer due (2m late), pomo_phase_due") == "Ran late: timer ending (2m late), Pomodoro phase"
 
 
 def test_a_line_from_a_task_is_only_kept_while_the_bot_is_starting(world):
