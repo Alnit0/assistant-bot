@@ -6,6 +6,10 @@ backfilled from the git log.
 
 ## 2026-10-12
 
+- Mock-ups for pills reminders, to look at with `dev mock`: `reminder`,
+  `reminder-renudge` (with the snoozed prompt), `reminder-missed` and
+  `too-soon`. Nothing of reminders is built yet.
+
 - **Bugs**: "Logged as B4" and "your note is saved" are only said once
   read back; "show my open bugs" is a Live list that follows new bugs,
   notes and closes. A pill's name is compared whatever the case or

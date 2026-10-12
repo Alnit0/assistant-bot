@@ -211,3 +211,19 @@ def test_dev_mock_is_a_typed_word_of_the_dev_task():
     kind, task, item = registry.find("dev mock")
     assert (kind, task.name, item.takes_args, item.permission) == ("keyword", "dev", True, "dev")
     assert MOCKUPS_DIR.name == "mockups" and MOCKUPS_DIR.parent.name == "docs"
+
+
+def test_every_sketch_in_the_repository_reads_and_fits_a_message():
+    # The reminder mock-ups among them (reminder, reminder-renudge, reminder-missed, too-soon)
+    found = mock.names()
+    assert {"checklist", "reminder", "reminder-renudge", "reminder-missed", "too-soon"} <= set(found)
+    for name in found:
+        pieces = mock.parse(mock.read(name))
+        assert 0 < mock.count(pieces) <= mock.MAX_COMPONENTS, name
+
+
+def test_no_reminder_sketch_names_a_pill_in_the_line_the_lock_screen_shows():
+    # A notification shows the first line of the message: it says a routine is due, and when
+    for name in ("reminder", "reminder-renudge"):
+        first = mock.read(name).splitlines()[0]
+        assert first.startswith("💊 Routine due · ") and "Pill" not in first, name

@@ -24,6 +24,16 @@ session; the end-of-task checklist updates it at the end of every task.
   says. Confirm, or say to move it to core now.
 - **C8, C14, C17, C18 (timers)**: left alone, as timers may be
   scrapped. Say if any should be done anyway.
+- **Reminder mock-ups** (block 33): are the four right as sketched?
+  Three things I had to choose: the re-nudge says "Reminder 2 of 3"
+  with the time of the last one; a snoozed prompt turns grey and says
+  "Snoozed until …"; a missed dose is a ❌ line in its pill's group on
+  the checklist, with when it was due.
+- **The lock screen**: the sketches put "💊 Routine due · 11:12 am" as
+  the message's first line. Whether a phone shows that line for a
+  Components V2 message can only be seen on your phone (block 33, step
+  1). If it shows something else, the prompt has to be a plain message
+  with buttons instead: say which you see.
 - **"Item 10 (restarts)"**: your note during the batch said to leave
   timers out of item 10, but the queue I was given ends at item 8 and
   has nothing about restarts. Nothing was done for it. Send the item
@@ -51,6 +61,38 @@ message to that task".
    timer code is only touched if a core change breaks its tests.
 7. Done: task-check findings C4, C10, C13 and C20 (block 32). The rest
    are in the questions above.
+8. Done: mock-ups for the reminder, the re-nudge, the missed line and
+   the too-soon card in `docs/mockups/` (block 33), and the build plan
+   below. No code for reminders was written.
+
+### Stage 3 build plan (reminders), for a go
+
+Each step ends with its tests and a QA block on `--dev` with `dev
+clock`; nothing is started until the mock-ups are approved.
+
+1. **When a prompt is due** (pure, no Discord): from `schedule.dues`
+   and the day's doses, which timed dose needs a prompt now, its
+   take-by time when that is within two hours, and nothing after the
+   pill's latest time. Tests on the Pill A worked example.
+2. **The prompt** as its own message in the hub, one a dose, recorded
+   like a dose's Taken / Skip message (`pills_messages`, a new kind) so
+   it survives a restart and a channel reset. Taken, Taken at… (a
+   one-box form), Skip: each goes through the same code as saying it,
+   the prompt is deleted and the checklist follows.
+3. **Standing job** (`scheduler.ensure`, `keep_booked`): one job for
+   the next prompt due, booked again from the plan after every change.
+   What it decided goes in the log each time; a skip says so in
+   #bot-log.
+4. **Snooze and re-nudges**: 15 minutes, up to three, each a fresh copy
+   that replaces the one before (never two prompts for a dose), then
+   missed. Prompts ignore quiet hours.
+5. **Missed and automatic skips** on the checklist, through
+   `doses.outcomes` as today; no reminder after the day's limit.
+6. **Too soon**: a dose logged before the gap has passed asks first on
+   the card (it already asks for a dose out of order or after the
+   latest time: the same card, one more reason).
+7. **Privacy**: the notification never names a pill (G14), checked by
+   a test on the first line of every prompt.
 
 ## Branch and state
 
@@ -140,12 +182,13 @@ live), and on 2026-10-12 the bot's nickname and status line, the
    on the dev database. Step 8 of block 24 (tomorrow's backup card).
    Blocks 21 and 22, and steps 5 to 7 of block 23, are still to be
    reported.
-2. The checklist redesigned with Discord's Components V2: look at
-   `dev mock checklist` and say what to change; the real checklist is
-   not converted until the mock-ups are approved. Then reminders.
-3. Pills stage 3, reminders (prompts at each dose's time, snooze,
-   re-nudges, missed, take-by, automatic skips, the latest time, the
-   too-soon question), on a go. Then corrections and questions.
+2. QA of the background batch: blocks 27 to 33 (`docs/QA-RUN.md`), and
+   the questions at the top of this file.
+3. The checklist redesigned with Discord's Components V2: look at
+   `dev mock checklist` and the reminder sketches (block 33) and say
+   what to change; nothing real is converted until they are approved.
+4. Pills stage 3, reminders, on a go: the build plan is above. Then
+   corrections and questions.
 
 ## Open decisions
 

@@ -628,6 +628,22 @@ On the dev database, dev mode off. Every step says what to press.
 | 2 | Open that bug's post in #bugs and press **Won't fix** | Back in the channel, the list has lost that bug again | P36 |
 | 3 | Say `add pill  ZINC` (two spaces, capitals) with a pill called Zinc already there; press **Cancel** if a card shows | Zinc as it is, or a change card for Zinc: never a second pill called ZINC | R72 |
 
+## 33. Reminder mock-ups (waiting for QA)
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
+On the dev database, dev mode off, with your phone locked beside you for
+step 1. These are sketches: the buttons only say they are mock-ups.
+Nothing here is built yet.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Type `dev mock reminder` and look at the notification on the lock screen, then at the message | The lock screen says "💊 Routine due · 11:12 am" and never the pill's name. The message: the pill and dose, when it is due and why, the note, a take-by line, and Taken, Taken at…, Snooze 15m, Skip | J55 |
+| 2 | Type `dev mock reminder-renudge` | Two cards: a re-nudge ("Reminder 2 of 3", when it was first asked and when the last one comes), and the same prompt while snoozed ("Snoozed until 11:27 am") | J55 |
+| 3 | Type `dev mock reminder-missed`, then `dev mock too-soon` | A checklist group with dose 2 marked ❌ missed and when it was due; then a card that says the dose is too soon after the last, with **Log it** and **Cancel** | J55 |
+
+Say what to change in any of them (wording, order, colours, buttons).
+
 ## When you finish
 
 - Stop the test copy (`Ctrl + C`) and check nothing is left running:

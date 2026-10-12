@@ -1,0 +1,9 @@
+# 💊 Today · 1 of 3 taken
+-# Sunday 12 October
+
+┃ accent: red
+┃ **Pill A** · ●✕○
+┃ -# with food
+┃ ✅ 8:12 am
+┃ ❌ dose 2 · missed · was due 11:12 am
+┃ **Next:** dose 3 · 3:00 pm
