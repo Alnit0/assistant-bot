@@ -122,6 +122,26 @@ def _read(field: str, reader, *given):
         raise Unreadable(field, str(problem))
 
 
+class Ask(UserError):
+    """Something has to be asked before there is a plan: `question` goes on the
+    card, with `options` as its likely answers, each (label, the item's
+    fields with that answer). `field` is the part it is about and `reason`
+    why it couldn't be settled; `drop` is the part of the request to leave
+    out so the rest can still be read and shown."""
+
+    def __init__(self, field: str, reason: str, question: str, options: tuple = (), drop: str = ""):
+        self.field, self.reason, self.question, self.options, self.drop = field, reason, question, tuple(options), drop or field
+        super().__init__(question)
+
+
+class Ambiguous(UserError):
+    """A name that fits more than one pill: `candidates` are the pills it could be."""
+
+    def __init__(self, said: str, candidates: list):
+        self.said, self.candidates = said, list(candidates)
+        super().__init__("Which one: " + " or ".join(f"**{pill.plan.name}**" for pill in candidates) + "?")
+
+
 class TimeQuestion(UserError):
     """One of the times could be morning or evening. `field` says whether it
     is one of the request's times (`index` says which) or its latest time,
@@ -297,15 +317,20 @@ def build(request: Request, today: date, base: Plan | None = None, moved: list[s
 
     if gap is None:
         if times and asked is not None and asked != len(times):
-            raise UserError(
-                f"That is {len(times)} time{'s' if len(times) != 1 else ''} for {asked} doses a day. "
-                "Give a time for each dose, or a minimum gap between them instead."
-            )
+            said = ", ".join(timeinput.format_time(each) for each in times)
+            reason = f"{said} is {len(times)} time{'s' if len(times) != 1 else ''} for {asked} doses a day"
+            if asked == 2 and len(times) == 1:
+                # The one likely answer: twelve hours on. Anything else is typed
+                other = time((times[0].hour + 12) % 24, times[0].minute)
+                both = [timeinput.format_time(each) for each in sorted((times[0], other))]
+                raise Ask("times", reason, "What time is the other dose?", ((timeinput.format_time(other), {"times": both}),))
+            raise Ask("times", reason, f"What time is each of the {asked} doses?")
         per_day = len(times) or asked or (old.per_day if old else 1)
     else:
         per_day = asked or (len(times) if len(times) > 1 else None) or (old.per_day if old and old.per_day > 1 else None)
         if per_day is None:
-            raise UserError("How many times a day?")
+            options = tuple((f"{count} a day", {"per_day": count}) for count in (2, 3, 4))
+            raise Ask("per_day", "a gap between doses needs the number of doses", "How many times a day?", options, drop="min_gap")
         if per_day < 2:
             raise UserError("A minimum gap needs at least 2 doses a day.")
         # Times the pill already had, for another number of doses, don't carry over
@@ -568,8 +593,7 @@ def find(pills: list[Pill], wanted: str) -> Pill:
         if len(found) == 1:
             return found[0]
         if len(found) > 1:
-            names = " or ".join(f"**{pill.plan.name}**" for pill in found)
-            raise UserError(f"Which one: {names}?")
+            raise Ambiguous(wanted.strip(), found)
     if not candidates:
         raise UserError("There are no pills yet.")
     names = ", ".join(pill.plan.name for pill in candidates)

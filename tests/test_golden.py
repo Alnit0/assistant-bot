@@ -66,6 +66,17 @@ def press(bot):
     return pressed.cards[-1].text
 
 
+def answer(bot, label):
+    """Press one of the answers under the latest card's question: the card as it then reads (it is rewritten in place)."""
+    stored = open_cards()[-1]
+    index = next(at for at, choice in enumerate(stored.question["choices"]) if choice["label"] == label)
+    pressed = bot.Press(f"{stored.id}:{index}")
+    run(confirm.on_answer(pressed))
+    shown = pressed.cards[-1]
+    bot.sent.append((bot.sent[-1][0], shown))
+    return shown.text.splitlines(), [button.label for row in shown.rows for button in row]
+
+
 def pills(bot):
     return run(pills_store.pills(bot.owner.id))
 
@@ -102,22 +113,26 @@ def test_1b_a_brief_request_gets_a_card_with_the_defaults(bot):
     assert lines[0] == "💊 Pills · new" and lines[1].lower() == "**vitamin d** · daily, any time"
 
 
-@gap("questions on the card are not built: the time is guessed as the morning and marked ❓")
 def test_1c_a_time_that_could_be_morning_or_evening_is_asked_on_the_card(bot):
     bot.claude(ROUTED["1c"], EXTRACTED["1c"])
     bot.say(SAID["1c"])
     lines, buttons = card(bot)
     assert buttons == ["8:00 am", "8:00 pm", "Cancel"], "a button per likely answer, and no Save until it is answered"
     assert "morning or the evening" in "\n".join(lines)
+    assert lines[:3] == ["💊 Pills · new", "**iron** · daily at ❔", "Is that 8:00 in the morning or the evening?"]
+    assert pills(bot) == []
 
 
-@gap("questions on the card are not built: one time for two doses is refused in a message, with no card")
 def test_1d_a_missing_second_time_is_asked_on_the_card_with_the_rest_filled_in(bot):
     bot.claude(ROUTED["1d"], EXTRACTED["1d"])
     bot.say(SAID["1d"])
     assert open_cards() and open_cards()[-1].status == "open", "a card, with what was understood"
     lines, buttons = card(bot)
     assert "**magnesium**" in lines[1] and "Save" not in buttons
+    assert lines[1:4] == ["**magnesium** · 2× daily, any time", "❔ times · 8:00 am is 1 time for 2 doses a day", "What time is the other dose?"]
+    assert buttons == ["8:00 pm", "Cancel"], "the one likely answer; any other is typed"
+    assert answer(bot, "8:00 pm")[0][1] == "**magnesium** · daily at `8:00 am`, `8:00 pm`" and card(bot)[1] == ["Save", "Cancel"]
+    assert press(bot).startswith("✅ Saved") and [pill.plan.schedule.per_day for pill in pills(bot)] == [2]
 
 
 # --- 2: correcting ------------------------------------------------------------------------------------
@@ -130,11 +145,18 @@ def test_2_a_correction_in_chat_replaces_the_card(bot):
     assert bot.deleted == [first] and card(bot)[0][1].lower() == "**iron** · daily at `8:00 am`", "replaced, and no longer a guess"
 
 
-@gap("questions on the card are not built, so there is no 8:00 pm button to tap before correcting")
 def test_2a_after_answering_a_question_a_correction_still_replaces_the_card(bot):
     bot.claude(ROUTED["1c"], EXTRACTED["1c"])
     bot.say(SAID["1c"])
     assert "8:00 pm" in card(bot)[1]
+    asked = bot.sent[-1][0]
+    lines, buttons = answer(bot, "8:00 pm")
+    assert lines[:2] == ["💊 Pills · new", "**iron** · daily at `8:00 pm`"] and buttons == ["Save", "Cancel"], "answered in place: the same card, now with Save"
+    assert bot.deleted == [] and pills(bot) == [], "and nothing is saved by answering"
+    bot.claude(EXTRACTED["2"])
+    bot.say(SAID["2"])
+    assert bot.deleted == [asked] and card(bot)[0][1].lower() == "**iron** · daily at `8:00 am`", "the correction replaces the card, as before"
+    assert press(bot) == "✅ Saved · 💊 **iron** · daily at `8:00 am`"
 
 
 def test_2b_straight_after_save_a_correction_is_a_change_card_for_what_was_just_saved(bot):
@@ -722,3 +744,52 @@ def test_a_reply_to_the_line_that_said_zinc_was_taken_goes_to_pills_first_and_co
     assert any(shown.text.startswith("↩️ **Zinc** · no longer ticked off") for _, shown in bot.sent), "Zinc, though Iron was logged last and long ago"
     assert [(asked.task, "not_this" in asked.tools) for asked in bot.requests[before:]] == [("pills", True)], "no router: the line is pills'"
     assert not any("Pills · change" in shown.text for _, shown in bot.sent), "and no card: the reply is the anchor"
+
+
+# --- questions on the card (G1): the buttons, the words, and what is kept -------------------------------
+def test_a_card_that_asks_has_a_blurple_button_an_answer_cancel_and_no_save(bot):
+    from core import cards
+
+    bot.claude(ROUTED["1c"], EXTRACTED["1c"])
+    bot.say(SAID["1c"])
+    shown = bot.sent[-1][1]
+    assert shown.text.splitlines()[-2:] == ["Is that 8:00 in the morning or the evening?", "-# or type your answer"]
+    (row,) = shown.rows
+    assert [(button.label, button.style) for button in row] == [("8:00 am", cards.PRIMARY), ("8:00 pm", cards.PRIMARY), ("Cancel", cards.SECONDARY)]
+    cards.check(shown)
+    stored = open_cards()[-1]
+    assert stored.question["text"].startswith("Is that 8:00") and [choice["label"] for choice in stored.question["choices"]] == ["8:00 am", "8:00 pm"]
+    # Save can't be reached on it, even by a stale press
+    with pytest.raises(Exception, match="Answer the question"):
+        run(confirm.on_save(bot.Press(stored.id)))
+    assert pills(bot) == []
+
+
+def test_an_answer_that_leaves_nothing_to_look_over_is_done_at_once_and_the_card_says_so(bot):
+    bot.claude(route("pills"), ("pill_add", {"pills": [{"name": "Zinc"}, {"name": "Iron"}], "guessed": [], "not_included": []}))
+    bot.say("add zinc and iron to my pills")
+    press(bot)
+    run(checklist.post(bot.owner.id))
+    bot.claude(route("pills"), ("pill_log", {"doses": [{"pill": "@that", "did": "taken"}], "guessed": [], "not_included": []}))
+    bot.say("took it")
+    lines, buttons = card(bot)
+    assert lines[:2] == ["💊 Pills · change", "Which pill?"] and buttons == ["Iron", "Zinc", "Cancel"], "asked on a card, with a button a pill"
+    stored = open_cards()[-1]
+    pressed = bot.Press(f"{stored.id}:1")
+    run(confirm.on_answer(pressed))
+    assert pressed.cards[-1].text.startswith("✅ **Zinc** · taken ") and not pressed.cards[-1].rows, "logged, and said on the card"
+    assert not [each for each in open_cards() if each.status == "open"]
+
+
+def test_a_typed_answer_to_which_pill_logs_it_and_the_card_that_asked_goes(bot):
+    bot.claude(route("pills"), ("pill_add", {"pills": [{"name": "Zinc"}, {"name": "Iron"}], "guessed": [], "not_included": []}))
+    bot.say("add zinc and iron to my pills")
+    press(bot)
+    run(checklist.post(bot.owner.id))
+    bot.claude(route("pills"), ("pill_log", {"doses": [{"pill": "@that", "did": "taken"}], "guessed": [], "not_included": []}))
+    bot.say("took it")
+    asked = bot.sent[-1][0]
+    bot.claude(("pill_log", {"doses": [{"pill": "zinc", "did": "taken"}], "guessed": [], "not_included": []}))
+    bot.say("zinc")
+    assert bot.sent[-1][1].text.startswith("✅ **Zinc** · taken "), "typed instead of pressed: the same"
+    assert asked in bot.deleted and not [each for each in open_cards() if each.status == "open"]

@@ -19,8 +19,8 @@ from dataclasses import dataclass
 #       allow_another   a second one, side by side (timers)
 #       show_existing   the one there is shown and nothing is added (a bug
 #                       report for a message that already has an open one)
-#       ask             a question on the card. Not available until cards
-#                       can ask (the gap list, G1): the contract refuses it
+#       ask             a question on the card (`actions.Question`): the
+#                       task asks which is meant
 #
 # This file does the matching, decides what a request for something that is
 # there comes to, and writes the words every task says about it, so "already
@@ -34,8 +34,8 @@ ON_REPEAT = (UPDATE, ADD_TO_AMOUNT, ALLOW_ANOTHER, ASK, SHOW_EXISTING)
 # In an `identity`: the message the thing is about (the one replied or reacted
 # to). Code knows it; it is never a field for Claude to fill
 MESSAGE = "@message"
-# Not until a card can ask a question (docs/BACKLOG.md, G1)
-NOT_BUILT = (ASK,)
+# What the contract refuses because it can't be shown yet: nothing, since cards can ask (G1)
+NOT_BUILT: tuple[str, ...] = ()
 
 # What a request to add comes to
 NEW, SAME, CHANGE, MORE, ANOTHER, QUESTION, EXISTING = "new", "same", "change", "more", "another", "question", "existing"

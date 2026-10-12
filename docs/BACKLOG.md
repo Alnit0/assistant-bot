@@ -49,18 +49,17 @@ gained time"):
 
 ## Gaps against the conversation standard (2026-10-10)
 
-What is left. The golden conversations are `tests/test_golden.py`; the
-ones marked `gap` there are 1c, 1d and 2a, all waiting on G1. G1, G3,
-G4 and G7 are deferred until pills reminders work; G14 comes with
-reminders. G9 and G13 (the old path, the old `pills` list) were removed
+What is left. The golden conversations are `tests/test_golden.py`; none
+is marked `gap` any more: G1 (questions on the card) was built on
+2026-10-12, and 1c, 1d and 2a pass. G3 and G4 are deferred until pills
+reminders work; G14 comes with reminders. G9 and G13 (the old path, the old `pills` list) were removed
 at step 4.
 
 | # | Gap | Layer | Size |
 |---|---|---|---|
-| G1 | Questions on the card: a card that asks, with a button per likely answer, no Save until answered, one question at a time, and a typed answer accepted too (golden 1c, 1d, 2a) | core (card, confirm, contract) and pills | large |
 | G3 | A correction straight after Save works only by the "pill changed last" guess, so it is marked ❓, and only for pills (golden 2b) | core and each task | medium |
 | G4 | Task ties are asked too readily: the router sees two exchanges and no record of what I have or did lately | router | medium |
-| G7 | Questions still sent as their own message: "Which timer? Say its name.", "Which one: A or B?" for pills, and a plan that can't be built | tasks, then G1 | medium |
+| G7 | Questions still sent as their own message: only timers now ("Which timer? Say its name.", C8). The pills ones are on the card (C7, 2026-10-12) | timers | small |
 | G14 | Privacy of notifications is untested: nothing notifies about a pill yet | pills stage 3 | with reminders |
 
 Done: dev bugs are numbered D1, D2… with a "dev" tag and a live number
@@ -87,13 +86,14 @@ names) and C20 (the bugs task's plain words are in `plain.py`, and only
 C12 (`show_existing` in the contract, declared by bugs), C15 (the
 occurrence log keeps a `cause` beside the reason) and C16 (a pill's
 settings are taken away by a `clear` list, never the word "none").
-**Until G1:** C7 and C8. **Until gym is built:** C19 (gym is the second
+**Fixed with G1, 2026-10-12:** C7 (every pills question is on the card:
+which pill, which of two, morning or evening, the missing time, how many
+a day). **Left, timers:** C8 (its question could go on a card now). **Until gym is built:** C19 (gym is the second
 task that needs name matching: move it to core then). **Left, timers**
 (a proof of concept that may be scrapped): C8, C14, C17 and C18.
 
 | # | Task | What | Where | Rule | Layer | Size |
 |---|---|---|---|---|---|---|
-| C7 | pills | Questions sent as a line of their own: "Which pill?", "Which one: A or B?", "What is the pill called?", "How many times a day?", "Is the gap 3 hours or 3 minutes?" | `tasks/pills/rules.py:221`, `:262`, `:301`, `:550`, `:564`; `tasks/pills/plain.py:792` | Never: a question as a separate message (G7, then G1) | task, then core | medium |
 | C8 | timers | The same: "Which timer? Say its name.", and `pomo` with other lengths asks "Restart it as `50/10`?" in a message of its own | `tasks/timers/plain.py:152`, `tasks/timers/sessions.py:238-239` | The same (G7) | task, then core | medium |
 | C14 | timers | Lengths are handed over as text ("5m", "50/10") and several ids as one text ("t12 t14") | `tasks/timers/plain.py:359`, `:457`; `tasks/timers/status.py:51-63`, `tasks/timers/pomodoro.py:55-79` | Contract: structured values (decided 2026-10-10 to leave) | schema, fixtures | medium |
 | C17 | timers | Words Claude might send for "the session" are accepted as a set ("current", "it", "pomodoro"…) | `tasks/timers/control.py:22` | Word lists (not listed below until now) | schema (`@that`) | small |

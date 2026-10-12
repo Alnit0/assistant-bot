@@ -7,13 +7,19 @@ session; the end-of-task checklist updates it at the end of every task.
 
 ## Questions for Alex
 
-- **Items 11 and 12 did not arrive.** Your message of 2026-10-12 says
-  to go ahead with item 11 (G1) and item 12 (reminders behind
-  `REMINDERS_ENABLED`, off by default) "as sent earlier", but no
-  message with their text reached me (as with item 10 before).
-  Nothing was built for them. Send the two items, or say "build G1
-  from the backlog and reminders from the build plan below" and I
-  will work from those.
+- **Questions on the card** (item 11), what I chose:
+  - Under a question the card says "-# or type your answer" (where
+    other cards say "or tell me what to change").
+  - The question for a time reads "Is that 8 in the morning or the
+    evening?", with what you typed in it ("8", "8:00").
+  - Offered answers: for one time given for two doses, the time twelve
+    hours on ("8:00 pm"); for three or more doses, no button (you type
+    them). For a gap with no number of doses: "2 a day", "3 a day",
+    "4 a day".
+  - "Which pill?" offers at most four pills (one row with Cancel); with
+    more than four still to take, the rest are typed.
+  - The timers' question ("Which timer? Say its name.") is left as a
+    message: timers are not to be touched.
 - **A Save cut off inside the save itself** (item 10, your answer 4):
   the card gets the normal confirmation with "-# checked after a
   restart" under it, because the words are kept the moment the change
@@ -30,7 +36,7 @@ session; the end-of-task checklist updates it at the end of every task.
   contract, name matching moved out of pills) and are stage 1 of the
   gym build, so they wait with it.
 
-Answered on 2026-10-12 and done or parked: C7 (waits for G1), C12,
+Answered on 2026-10-12 and done or parked: C7 (done with G1), C12,
 C15 and C16 (done, block 34), C19 (moves with gym), the timers
 findings (left), the reminder and gym mock-ups (as sketched, to be
 looked at in blocks 33 and 35), a reset cut off (keeps asking again),
@@ -69,6 +75,9 @@ restart adds two tables and two columns (`timers_messages`,
    mock-ups in `docs/mockups/` (block 35). No code. "Not now" in the
    standard says new tasks are allowed and gym is next.
 
+11. Done: questions on the card (G1, block 37). Golden 1c, 1d and 2a
+    pass, so no golden conversation is a gap any more; every pills
+    question is on the card (C7).
 10. Done: restarts (block 36). What survives one is a section of
     `docs/ARCHITECTURE.md`, with what reminders will need; on start
     the bot catches up and says so once in #bot-log; a Save or a reset
@@ -155,8 +164,8 @@ pill. Step 2 and step 4 each get a test that stops and starts the bot.
   message about a timer is recorded as that timer's** (found live: a reply to "⏸️ Paused: dinner"
   went to the router), and **a guessed timer is never acted on** ("Which
   timer? Say its name."). Block 26 is its retest.
-- Tests: `python -m pytest -q` passes. Golden conversations 1c, 1d
-  and 2a are marked as gaps (they need questions on the card, G1).
+- Tests: `python -m pytest -q` passes. No golden conversation is
+  marked as a gap (1c, 1d and 2a pass since questions on the card).
   The live evals of 2026-10-12: pills 56 of 57, general 12 of 12,
   golden 37 of 39 (not run again since the router's rule on reports
   was reworded); each miss is a known one that the code covers. The
@@ -208,7 +217,7 @@ the spec is approved.
    on the dev database. Step 8 of block 24 (tomorrow's backup card).
    Blocks 21 and 22, and steps 5 to 7 of block 23, are still to be
    reported.
-2. QA of the background batch: blocks 27 to 36 (`docs/QA-RUN.md`), and
+2. QA of the background batch: blocks 27 to 37 (`docs/QA-RUN.md`), and
    the questions at the top of this file.
 3. The checklist redesigned with Discord's Components V2: look at
    `dev mock checklist` and the reminder sketches (block 33) and say
@@ -221,10 +230,10 @@ the spec is approved.
 
 ## Open decisions
 
-- Of the `task-check` findings: C7 waits for G1; C19 waits for gym
+- Of the `task-check` findings: C7 is done with G1; C19 waits for gym
   (the second task that needs name matching); the timers ones (C8,
   C14, C17, C18) are left.
-- Deferred until pills reminders work: G1 (questions on the card), G3
+- Deferred until pills reminders work: G3
   (corrections after Save), G4 (task ties asked too often), G7 (questions
   sent as their own message). G14 (privacy of notifications) comes with
   reminders.

@@ -109,10 +109,56 @@ def test_a_plain_pill_is_one_line_and_nothing_is_saved_before_save(world):
     assert world.changed == [(world.owner.id, "pills")], "the list on screen is brought up to date"
 
 
-def test_a_time_that_could_be_morning_or_evening_is_taken_as_morning_and_flagged_never_asked(world):
+def choices(proposal):
+    """A card's question as (its words, each answer's label and the pills it stands for)."""
+    asked = proposal.question
+    return asked.text, [(choice.label, choice.data["pills"]) for choice in asked.choices]
+
+
+def test_a_time_that_could_be_morning_or_evening_is_asked_on_the_card_never_guessed(world):
     proposal = card(world, plain.add_card, {"name": "Iron", "times": "8"})
-    assert proposal.lines == ("**Iron** · daily at `8:00 am` ❓",)
-    assert proposal.data == {"pills": [{"name": "Iron", "times": ["8:00 am"]}], "_last": "Iron"}, "Save applies what the card showed"
+    assert proposal.lines == ("**Iron** · daily at ❔",) and not proposal.can_save, "everything understood, ❔ for what is asked, no Save"
+    assert choices(proposal) == ("Is that 8 in the morning or the evening?", [
+        ("8:00 am", [{"name": "Iron", "times": ["8:00 am"]}]), ("8:00 pm", [{"name": "Iron", "times": ["8:00 pm"]}]),
+    ])
+    assert proposal.data == {"pills": [{"name": "Iron", "times": "8"}], "_last": "Iron"}, "kept as it was said, for a typed answer to put right"
+    answered = card(world, plain.add_card, *proposal.question.choices[1].data["pills"])
+    assert answered.lines == ("**Iron** · daily at `8:00 pm`",) and answered.can_save and answered.question is None
+
+
+def test_one_question_at_a_time_and_the_next_comes_once_the_first_is_answered(world):
+    proposal = card(world, plain.add_card, {"name": "Iron", "times": "8, 9"}, {"name": "Zinc", "latest": "4"})
+    assert proposal.lines == ("**Iron** · daily at ❔, ❔", "**Zinc** · daily, any time", "Not after ❔"), "each thing still to ask shows as ❔"
+    assert proposal.question.text == "Is that 8 in the morning or the evening?"
+    second = card(world, plain.add_card, *proposal.question.choices[0].data["pills"])
+    assert second.lines[0] == "**Iron** · daily at `8:00 am`, ❔" and second.question.text == "Is that 9 in the morning or the evening?"
+    third = card(world, plain.add_card, *second.question.choices[1].data["pills"])
+    assert third.lines[0] == "**Iron** · daily at `8:00 am`, `9:00 pm`"
+    assert third.question.text == "Is that 4 in the morning or the evening?" and not third.can_save
+    last = card(world, plain.add_card, *third.question.choices[1].data["pills"])
+    assert last.question is None and last.can_save and last.lines[2] == "Not after `4:00 pm`"
+
+
+def test_a_gap_with_no_number_of_doses_asks_how_many_with_the_likely_answers(world):
+    proposal = card(world, plain.add_card, {"name": "Course", "min_gap_minutes": 180})
+    assert proposal.lines == ("**Course** · daily, any time", "❔ doses a day · a gap between doses needs the number of doses")
+    text, answers = choices(proposal)
+    assert text == "How many times a day?" and [label for label, _ in answers] == ["2 a day", "3 a day", "4 a day"]
+    answered = card(world, plain.add_card, *proposal.question.choices[1].data["pills"])
+    assert answered.lines[0].startswith("**Course** · 3× daily") and answered.can_save
+
+
+def test_a_name_that_fits_two_pills_is_asked_about_on_the_card_with_a_button_each(world):
+    add(world, {"name": "Vitamin D"}, {"name": "Vitamin C"}, {"name": "Iron"})
+    proposal = card(world, plain.pause_card, {"pill": "vitamin"}, {"pill": "iron"})
+    assert proposal.lines[0] == "**Iron** · active → paused until you resume it", "what was understood is on the card"
+    assert choices(proposal) == ("Which one is “vitamin”?", [("Vitamin C", [{"pill": "pl3"}, {"pill": "pl2"}]), ("Vitamin D", [{"pill": "pl3"}, {"pill": "pl1"}])])
+    both = card(world, plain.pause_card, *proposal.question.choices[1].data["pills"])
+    assert both.question is None and [line.split(" · ")[0] for line in both.lines[:2]] == ["**Iron**", "**Vitamin D**"]
+    # The same for a change, a removal and a delete: a card that asks, never a line of its own
+    for prepare in (plain.edit_card, plain.resume_card, plain.remove_card, plain.delete_card):
+        alone = card(world, prepare, {"pill": "vitamin", **({"notes": "with food"} if prepare is plain.edit_card else {})})
+        assert alone.question.text == "Which one is “vitamin”?" and [choice.label for choice in alone.question.choices] == ["Vitamin C", "Vitamin D"]
 
 
 def test_a_reply_with_the_time_replaces_the_guess_and_the_flag_goes(world):
@@ -211,10 +257,10 @@ def test_an_edit_that_cannot_fit_is_on_the_card_with_the_reason_and_no_save(worl
     assert fixed.can_save and fixed.warnings == ()
 
 
-def test_a_latest_time_that_could_be_morning_or_evening_is_taken_as_the_evening_and_flagged(world):
+def test_a_latest_time_that_could_be_morning_or_evening_is_asked_on_the_card(world):
     proposal = card(world, plain.add_card, {"name": "B", "latest": "4"})
-    assert proposal.lines == ("**B** · daily, any time ❓", "Not after `4:00 pm`")
-    assert proposal.data["pills"] == [{"name": "B", "latest": "4:00 pm"}], "Save applies what the card showed"
+    assert proposal.lines == ("**B** · daily, any time", "Not after ❔") and not proposal.can_save
+    assert choices(proposal) == ("Is that 4 in the morning or the evening?", [("4:00 am", [{"name": "B", "latest": "4:00 am"}]), ("4:00 pm", [{"name": "B", "latest": "4:00 pm"}])])
 
 
 def test_an_edit_adds_a_gap_and_a_latest_time_to_a_pill_with_times(world):
@@ -242,9 +288,11 @@ def test_another_pill_said_after_the_card_joins_it_and_one_can_be_taken_off(worl
 def test_a_pill_that_cannot_be_a_plan_is_named_on_the_card_and_the_rest_stay(world):
     add(world, {"name": "Iron"})
     proposal = card(world, plain.add_card, {"name": "Zinc"}, {"name": "iron"}, {"name": "X", "times": "8am", "per_day": 3})
-    assert proposal.lines == ("**Zinc** · daily, any time",)
-    assert proposal.warnings[0] == "**Iron** is already in your pills with these settings"
-    assert proposal.warnings[1].startswith("Not included: X (That is 1 time for 3 doses a day")
+    # One time for three doses is no longer refused: X is on the card with what was understood, and the card asks
+    assert proposal.lines == ("**Zinc** · daily, any time", "**X** · 3× daily, any time", "❔ times · 8:00 am is 1 time for 3 doses a day")
+    assert proposal.warnings == ("**Iron** is already in your pills with these settings",)
+    assert proposal.question.text == "What time is each of the 3 doses?" and proposal.question.choices == (), "nothing likely to offer: it is typed"
+    assert not proposal.can_save
 
 
 def test_when_no_pill_can_be_a_plan_the_reason_is_said_and_there_is_no_card(world):
@@ -273,7 +321,8 @@ def test_times_in_the_one_form_and_a_gap_in_minutes_make_the_same_card(world):
 
 def test_a_time_with_no_am_or_pm_is_still_the_codes_to_settle(world):
     proposal = card(world, plain.add_card, {"name": "Iron", "times": ["8:00"]})
-    assert proposal.lines == ("**Iron** · daily at `8:00 am` ❓",) and proposal.guessed == ("pills[0].times",)
+    assert proposal.lines == ("**Iron** · daily at ❔",) and proposal.guessed == ("pills[0].times",)
+    assert proposal.question.text == "Is that 8:00 in the morning or the evening?"
 
 
 def test_a_gap_of_nothing_takes_the_gap_away_and_none_takes_the_times_away(world):
@@ -396,10 +445,11 @@ def test_an_edit_by_id_a_rename_and_taking_a_note_away(world):
     assert (pills(world)[0].plan.name, pills(world)[0].plan.notes) == ("Iron II", "")
 
 
-def test_an_edit_with_an_unclear_time_is_guessed_and_flagged_and_a_reply_settles_it(world):
+def test_an_edit_with_an_unclear_time_is_asked_about_and_a_reply_settles_it(world):
     add(world, {"name": "Iron", "times": "8am"})
     first = card(world, plain.edit_card, {"pill": "iron", "times": "9"})
-    assert first.lines[1] == "schedule · daily at `8:00 am` → daily at `9:00 am` ❓"
+    assert first.lines[1] == "schedule · daily at `8:00 am` → daily at ❔" and not first.can_save
+    assert [choice.label for choice in first.question.choices] == ["9:00 am", "9:00 pm"]
     second = card(world, plain.edit_card, {"pill": "iron", "times": "9pm"}, previous=first.data)
     assert second.lines[1] == "schedule · daily at `8:00 am` → daily at `9:00 pm`"
 
@@ -494,6 +544,7 @@ def test_the_state_has_a_line_a_pill_with_its_id_and_what_it_is_today(world):
 def test_a_time_the_code_guessed_is_kept_with_the_card_as_a_guess(world):
     # Seen in the live eval on 2026-10-10: with the card showing 08:00 as if it had been
     # said, "8pm" came back as two doses, "08:00, 8pm"
+    # Now the time is asked about, not guessed; it is still kept as never said, for the same reason
     proposal = card(world, plain.add_card, {"name": "Zinc"}, {"name": "Iron", "times": "8"})
     assert proposal.guessed == ("pills[1].times",)
     assert card(world, plain.add_card, {"name": "Iron", "times": "8am"}).guessed == ()

@@ -132,6 +132,31 @@ class Field:
 
 
 @dataclass(frozen=True)
+class Choice:
+    """One likely answer to a card's question: the button's label, and what the
+    action's data is with that answer in it (as extraction would hand it
+    over: the card is made again from it). `settles` names the fields the
+    answer decides, so a guess about one of them is a guess no longer."""
+
+    label: str
+    data: dict
+    settles: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class Question:
+    """What a card has to ask before it can be saved (docs/CONVERSATION.md,
+    section 4): one question, with a button for each likely answer. An
+    answer can always be typed instead, so there may be no buttons at all."""
+
+    text: str
+    choices: tuple[Choice, ...] = ()
+
+
+MAX_CHOICES = 4  # with Cancel, one row of buttons
+
+
+@dataclass(frozen=True)
 class Proposal:
     """What a confirm card shows: every interpretation written out, guesses
     flagged, problems shown with the sensible fix already applied."""
@@ -149,6 +174,10 @@ class Proposal:
     # named as Claude names a guess ("pills[0].times"). Kept with the card beside
     # Claude's guesses, so a follow-up knows the value was never said
     guessed: tuple[str, ...] = ()
+    # What has to be answered first: one question, the most important. The card
+    # shows everything that was understood, then asks; there is no Save until
+    # it is answered, by a button or by typing
+    question: Question | None = None
 
 
 @dataclass

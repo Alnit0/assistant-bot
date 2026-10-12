@@ -315,6 +315,11 @@ def _add_confirmation_to_confirm_cards(conn: sqlite3.Connection) -> None:
     conn.execute("ALTER TABLE confirm_cards ADD COLUMN confirmation TEXT")
 
 
+def _add_question_to_confirm_cards(conn: sqlite3.Connection) -> None:
+    # The question a card is asking, with the data each answer stands for, as JSON
+    conn.execute("ALTER TABLE confirm_cards ADD COLUMN question TEXT")
+
+
 def _add_cause_to_occurrences(conn: sqlite3.Connection) -> None:
     # Why the bot closed an occurrence, as a word for code (the task's own: "no_room").
     # `reason` stays the words that are shown; code never reads those
@@ -338,6 +343,7 @@ MIGRATIONS = [
     _add_trace_to_message_log,
     _add_cause_to_occurrences,
     _add_confirmation_to_confirm_cards,
+    _add_question_to_confirm_cards,
 ]
 
 

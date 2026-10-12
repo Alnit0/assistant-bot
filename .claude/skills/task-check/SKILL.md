@@ -23,7 +23,7 @@ Audit **one task**. Fix nothing: the user chooses what to fix.
   one. No line to point at means "not shown", which is reported as a
   fail of the check, not assumed.
 - **Pass, fail, gap or n/a.** *Gap* is for something the standard asks
-  that is on the gap list in `docs/BACKLOG.md` (G1, G3, G4, G7, G14):
+  that is on the gap list in `docs/BACKLOG.md` (G3, G4, G7, G14):
   name the gap. *n/a* says why in a few words.
 - What core does for every task (the 👀, the outgoing check) is checked
   once and marked "core"; look only at whether the task bypasses it

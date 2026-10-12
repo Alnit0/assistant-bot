@@ -314,6 +314,20 @@ Things to know:
   ask with `core.confirmations.ask(channel, user, question, on_confirm)`.
   Call `ctx.shown(...)` so the core doesn't add a "Done" on top of the
   question.
+- **Asking a question** (`actions.Question`): never send one as a
+  message. Return it on the card: `Proposal(lines=…, data=…,
+  question=Question("Which one?", (Choice("Vitamin C", data_with_c),
+  Choice("Vitamin D", data_with_d))))`. The lines show everything that
+  was understood (❔ where the answer will go); each `Choice.data` is the
+  action's whole data as extraction would hand it over with that answer
+  in it, and `settles` names the fields it decides. Core draws a blurple
+  button an answer (four at most) beside Cancel, leaves Save off, and on
+  a press calls your `prepare` again with that data, in place: return
+  the next question, or none. An action with `card_if` that no longer
+  needs a card is run at once and the card says what was done. No
+  choices at all is allowed: the answer is typed. A typed answer is an
+  ordinary follow-up to the open card. One question at a time, the most
+  important first.
 - **Being safe across a restart** (`core/restart.py`, and "What survives
   a restart" in `docs/ARCHITECTURE.md`): keep nothing in memory that
   matters, and make every job safe to run twice. If start-up does
@@ -591,9 +605,9 @@ Everything works in #inbox and in the hub.
   food") and a fresh card replaces the old one. A card nobody saves
   disappears after 30 minutes. What is saved is read back from the
   database before "✅ Saved" is shown.
-- **Times.** "At 8" is taken as `8:00 am` and marked ❓ on the card (it
-  will become a question on the card: gap G1 in the backlog); say "8pm"
-  to correct it. A time the others settle is not a guess: in "8am, 11:30
+- **Times.** "At 8" is asked about on the card: "Is that 8 in the
+  morning or the evening?" with a button for each, and no Save until it
+  is answered. Press one, or just say "8pm". A time the others settle is not a guess: in "8am, 11:30
   and 3pm" the 11:30 can only be the morning. Times are always shown as
   `8:00 pm`, whatever you typed.
 - **Adding a pill you already have** never makes a second one. With the

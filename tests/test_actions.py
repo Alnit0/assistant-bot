@@ -735,11 +735,10 @@ def test_showing_the_one_there_needs_an_identity_which_may_be_the_message_it_is_
     assert actions.problems([entry(on_repeat="show_existing", identity=("@message",))]) == [], "the message is no field, and needs to be none"
 
 
-def test_asking_on_a_repeat_is_refused_until_cards_can_ask():
+def test_asking_on_a_repeat_is_allowed_now_that_cards_can_ask_and_needs_an_identity():
     named = next(each.name for each in ADD.fields)
-    assert actions.problems([entry(on_repeat="ask", identity=(named,))]) == [
-        "things: `on_repeat` ask needs questions on the card, which are not built yet (the gap list, G1)"
-    ]
+    assert actions.problems([entry(on_repeat="ask", identity=(named,))]) == []
+    assert actions.problems([entry(on_repeat="ask")]) == ["things: `on_repeat` ask needs an `identity`: the fields that make two items the same"]
 
 
 def test_every_task_declares_its_identity_and_what_a_repeat_means():

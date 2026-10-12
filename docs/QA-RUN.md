@@ -694,6 +694,22 @@ have none.
 | 5 | Stop and start the bot once more | No new checklist, no "🔁 Caught up" message and no "Pills checklist not posted": #bot-log has only "🟢 Bot started" | K24 |
 | 6 | Type `dev clock reset`; say `remove Otherpill`, press **Remove** | The clock is the real time again and Otherpill is gone | |
 
+## 37. Questions on the card (waiting for QA)
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
+On the dev database, dev mode off.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Say `add Testiron to my pills at 8` | A card: "💊 Pills · new", "**Testiron** · daily at ❔", "Is that 8 in the morning or the evening?", and the buttons **8:00 am**, **8:00 pm** (blurple) and **Cancel**. No Save | S61 |
+| 2 | Press **8:00 pm** | The same card now reads "daily at `8:00 pm`" with **Save** and **Cancel** | S61 |
+| 3 | Say `actually make it 8am`. Press **Save** | A fresh card replaces it with `8:00 am`; Save saves it | S61 |
+| 4 | Say `add Testmag to my pills, twice a day at 8am`. Then say `9pm`. Press **Save** | A card with "2× daily", a ❔ line about the one time, "What time is the other dose?" and the button **8:00 pm**. After `9pm` a fresh card with `8:00 am`, `9:00 pm` and Save | S61 |
+| 5 | Say `add Testvit C and Testvit D to my pills`, press **Save**. Say `pause testvit`. Press **Testvit C**, then **Cancel** | A card asking "Which one is “testvit”?" with a button for each. After the press: the pause card for Testvit C with Save. Cancel removes it | R76 |
+| 6 | Type `pills`. Wait six minutes, then say `took it`. Press a pill | A card "Which pill?" with a button for each pill still to take. After the press the card says it was ticked off, and the checklist shows it | R76 |
+| 7 | Say `remove testiron, testmag, testvit c and testvit d`, press **Remove** | They are gone | |
+
 ## When you finish
 
 - Stop the test copy (`Ctrl + C`) and check nothing is left running:

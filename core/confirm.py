@@ -49,6 +49,8 @@ OPEN, SAVED, CANCELLED, EXPIRED, REPLACED, PICKED = "open", "saved", "cancelled"
 FAILED = "failed"  # Save was pressed, and what was read back from the database did not match the card
 
 FOOTER = "-# or tell me what to change"
+ASKING = "-# or type your answer"  # under a card that asks a question
+ANSWER_FIRST = "Answer the question on the card first."
 LAPSED = "⌛ That card has gone and nothing was saved. Say it again to start over."
 # Under the confirmation of a Save that was cut off by a restart, once the change has been read back
 CHECKED = "-# checked after a restart"
@@ -79,6 +81,8 @@ class Stored:
     previous: dict | None = None
     # What Save said, kept as soon as the change was applied (None until then)
     confirmation: str | None = None
+    # The question the card is asking, if any: {"text": …, "choices": [{"label", "data", "settles"}]}
+    question: dict | None = None
 
     @property
     def is_open(self) -> bool:
@@ -94,6 +98,15 @@ def render(entry: Entry, proposal: Proposal, card_id: int) -> Card:
     proposal = _checked_kind(proposal)
     lines = [f"{entry.icon} {entry.title} · {proposal.kind}", *proposal.lines]
     lines += [f"{actions.WARNING_MARK} {warning}" for warning in proposal.warnings]
+    if proposal.question is not None:
+        # Everything that was understood, then the one question: a blurple button for each
+        # likely answer, Cancel, and no Save until it is answered
+        lines += [proposal.question.text, ASKING]
+        answers = tuple(
+            Button(cards.truncate_label(choice.label), CARDS, "answer", f"{card_id}:{index}", style=cards.PRIMARY)
+            for index, choice in enumerate(proposal.question.choices[: actions.MAX_CHOICES])
+        )
+        return Card("\n".join(lines), ((*answers, cards.cancel(CARDS, "cancel", str(card_id))),))
     lines.append(FOOTER)
     # Red for what takes something away (a removal, anything that can't be undone), green for Save
     if proposal.destructive or proposal.kind == "remove":
@@ -173,14 +186,30 @@ def on_screen(card: Stored) -> str:
 # ---------------------------------------------------------------------------
 # Database (blocking; called through database.run)
 # ---------------------------------------------------------------------------
-_COLUMNS = "id, user_id, channel_id, message_id, kind, task, action, data, guessed, said, status, job_id, created_at, previous, confirmation"
+_COLUMNS = "id, user_id, channel_id, message_id, kind, task, action, data, guessed, said, status, job_id, created_at, previous, confirmation, question"
 
 
 def _stored(row: tuple) -> Stored:
     return Stored(
         row[0], row[1], row[2], row[3], row[4], row[5], row[6], json.loads(row[7]),
         tuple(json.loads(row[8])), row[9], row[10], row[11], from_db(row[12]),
-        json.loads(row[13]) if row[13] else None, row[14],
+        json.loads(row[13]) if row[13] else None, row[14], json.loads(row[15]) if row[15] else None,
+    )
+
+
+def _asked(question: actions.Question | None) -> str | None:
+    """A card's question as it is kept."""
+    if question is None:
+        return None
+    choices = [{"label": choice.label, "data": choice.data, "settles": list(choice.settles)} for choice in question.choices[: actions.MAX_CHOICES]]
+    return json.dumps({"text": question.text, "choices": choices}, ensure_ascii=False)
+
+
+def db_asking(conn: sqlite3.Connection, card_id: int, proposal: Proposal, guessed) -> None:
+    """Keep what a card now shows: its data, what was guessed, and its question (or none)."""
+    conn.execute(
+        "UPDATE confirm_cards SET data = ?, guessed = ?, question = ? WHERE id = ?",
+        (json.dumps(proposal.data, ensure_ascii=False), json.dumps(sorted(guessed)), _asked(proposal.question), card_id),
     )
 
 
@@ -265,6 +294,12 @@ async def _place(card: Stored, shown: Card) -> Stored:
     return await database.run(db_get, card.id)
 
 
+async def answered_in_words(card: Stored) -> None:
+    """A card's question was answered by typing, and what was asked for is now
+    done without a card: the card that asked goes."""
+    await _take_away(card, REPLACED)
+
+
 async def _take_away(card: Stored, status: str) -> None:
     """Close a card and remove its message: something newer has taken its place,
     or the user said no."""
@@ -338,6 +373,8 @@ async def show(
         db_add, request.user.id, request.channel_id, CARD, entry.name, action_name,
         proposal.data, guessed, said, None, previous,
     )
+    if proposal.question is not None:
+        await database.run(db_asking, card.id, proposal, guessed)
     # Only the data is kept: Save applies that and nothing else
     placed = await _place(card, render(entry, proposal, card.id))
     if replaces is not None:
@@ -388,6 +425,8 @@ async def on_save(press: cards.Press) -> str | None:
         await press.update(Card("⌛ That can't be saved any more: what it belonged to has gone."))
         await database.run(db_close, card.id, EXPIRED)
         return f"no action {card.task}/{card.action}"
+    if card.question is not None:
+        raise UserError(ANSWER_FIRST)  # no card that asks has a Save: this is only a guard
     # A UserError here (the name was taken meanwhile) is shown to the presser and the card stays
     request = Request(press.user, card.channel_id)
     said = await action.apply(request, card.data)
@@ -420,6 +459,57 @@ async def on_save(press: cards.Press) -> str | None:
     llm.remember(card.channel_id, "(pressed the card's button)", said)
     llm.task_answered(card.channel_id, card.task)  # and what follows shortly is that task's first
     return f"saved {card.task}/{card.action}: {said}"
+
+
+async def on_answer(press: cards.Press) -> str | None:
+    """A button under a card's question: the card is made again with that
+    answer in it, in place. It may ask its next question, or now have Save.
+    An action that only sometimes asks first (`card_if`) and no longer needs
+    to is done at once, and the card says what was done."""
+    card_id, _, index = press.arg.partition(":")
+    card = await _open_card(press, card_id)
+    if card is None:
+        return "card had gone"
+    choices = (card.question or {}).get("choices", [])
+    entry = actions.entry(card.task)
+    action = entry.action(card.action) if entry else None
+    if action is None or not index.isdigit() or int(index) >= len(choices):
+        await press.update(Card(LAPSED))
+        await database.run(db_close, card.id, EXPIRED)
+        return f"no such answer on card {card.id}"
+    choice = choices[int(index)]
+    data = choice["data"]
+    # What the answer decides is no longer a guess
+    guessed = frozenset(name for name in card.guessed if not any(name.endswith(settled) for settled in choice.get("settles", [])))
+    request = Request(press.user, card.channel_id)
+    asks_first = action.needs_card
+    if action.card_if is not None:
+        asks_first = await action.card_if(request, data, guessed)
+    if not asks_first and action.run is not None:
+        # Nothing left to ask or to look over: done, read back by the action itself, and said on the card
+        said = await action.run(request, data, guessed)
+        placed = None
+        if isinstance(said, actions.Answer):
+            said, placed = said.text, said.placed
+        if not isinstance(said, str):
+            raise UserError("That answer can't be taken from here. Say it instead.")
+        if not await database.run(db_close, card.id, SAVED):
+            raise UserError("That card was closed a moment ago.")
+        await scheduler.cancel_job(card.job_id)
+        await press.update(Card(said))
+        said_in = getattr(press, "message_id", None) or card.message_id
+        if placed is not None and said_in is not None:
+            await placed(said_in)
+        llm.remember(card.channel_id, f"(answered “{choice['label']}” on the card)", said)
+        llm.task_answered(card.channel_id, card.task)
+        return f"answered {choice['label']}: {said}"
+    proposal = await action.prepare(request, data, guessed)
+    kept = guessed | frozenset(proposal.guessed)
+    await database.run(db_asking, card.id, proposal, kept)
+    shown = render(entry, proposal, card.id)
+    await press.update(shown)
+    llm.remember(card.channel_id, f"(answered “{choice['label']}” on the card)", shown.text)
+    return f"answered {choice['label']} on card {card.id}"
 
 
 async def on_cancel(press: cards.Press) -> str | None:
@@ -464,6 +554,7 @@ def setup() -> None:
     restart.on_cut_off(CARDS, "save", save_cut_off)
     cards.register(CARDS, "save", on_save)
     cards.register(CARDS, "cancel", on_cancel)
+    cards.register(CARDS, "answer", on_answer)
     scheduler.register_handler(JOB_TASK, JOB_KIND, expired)
 
 

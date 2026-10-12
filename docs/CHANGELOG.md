@@ -6,6 +6,13 @@ backfilled from the git log.
 
 ## 2026-10-12
 
+- **Questions are on the card.** "Add iron at 8" asks "Is that 8 in the
+  morning or the evening?" with a button for each, and there is no Save
+  until it is answered, by a press or by typing. The same for a missing
+  time, how many a day, which of two pills a name means, and "took it"
+  when nothing says which pill. No pills question is sent as a message
+  of its own any more.
+
 - #bot-log no longer says "Pills checklist not posted" when the
   checklist is simply there or there is nothing to take: only when it
   could not be posted. A Save finished across a restart shows its

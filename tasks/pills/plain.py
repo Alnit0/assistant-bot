@@ -2,7 +2,7 @@ from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta
 
 from core import clock, day, hub, livelists, occurrences, repeats, tidy, timeinput
-from core.actions import BOOLEAN, INTEGER, ITEMS, LAST, LIST, MINUTES, TIME, TIMES, Action, Answer, Field, LiveReply, Proposal, Request, Shown, State
+from core.actions import BOOLEAN, INTEGER, ITEMS, LAST, LIST, MINUTES, TIME, TIMES, Action, Answer, Choice, Field, LiveReply, Proposal, Question, Request, Shown, State
 from core.actions import EACH_DAY, SEE, SET_UP, flag, is_guessed
 from core.actions import is_reference, point_at
 from core.errors import UserError
@@ -59,6 +59,7 @@ ITEM_KEYS = {"min_gap": "min_gap_minutes"}
 # What each setting that can be taken away (rules.CLEARABLE) is called in an item
 CLEARS = {"dose": ("dose",), "notes": ("notes",), "times": ("times",), "min_gap": ("min_gap_minutes",), "latest": ("latest",), "dates": ("start", "end", "days")}
 # A part of the plan, as a card names it when it couldn't be read
+UNKNOWN = "❔"  # in place of a value the card is asking about
 UNREAD = {
     "times": "times", "per_day": "doses a day", "min_gap": "gap", "latest": "latest time",
     "start": "start", "end": "end", "days": "days",
@@ -124,44 +125,112 @@ def as_request(item: dict) -> rules.Request:
     return rules.Request(**said, clear=frozenset(clear))
 
 
+@dataclass(frozen=True)
+class Asked:
+    """A question a pill's request raises, for the card: the words, and each
+    likely answer as (label, the item's fields with that answer in them)."""
+
+    text: str
+    options: tuple[tuple[str, dict], ...] = ()
+    settles: tuple[str, ...] = ()  # the item's fields an answer decides
+
+
 @dataclass
 class Read:
-    """What was made of one pill's request, never asking."""
+    """What was made of one pill's request. Nothing is guessed: what could
+    mean two things is asked about on the card."""
 
     plan: Plan  # everything that was understood
-    request: rules.Request  # with the times that were guessed settled: what Save applies
-    guessed: bool = False  # a time that could be morning or evening was taken as one of them
+    request: rules.Request  # what Save applies
+    guessed: bool = False  # nothing is guessed any more (a time that could be either is asked about): always False
     moved: list[str] = field(default_factory=list)  # a line for each planned time moved to keep the gap
     unread: list[tuple[str, str]] = field(default_factory=list)  # (which part, why) for each part that couldn't be read
     unfit: str = ""  # why the doses can't fit in a day, if they can't
+    asks: list[Asked] = field(default_factory=list)  # what has to be asked, the first one first
+    unknown: list[str] = field(default_factory=list)  # times the plan holds only so it can be shown: each is asked about
 
     @property
     def held(self) -> bool:
-        """Whether something has to be put right before this can be saved."""
-        return bool(self.unread or self.unfit)
+        """Whether something has to be put right or answered before this can be saved."""
+        return bool(self.unread or self.unfit or self.asks)
+
+    def shown(self, text: str) -> str:
+        """A line about the plan, with ❔ where a time is still being asked about."""
+        for each in self.unknown:
+            text = text.replace(f"`{each}`", UNKNOWN, 1)
+        return text
+
+
+def _time_asked(request: rules.Request, question: TimeQuestion) -> Asked:
+    """ "8": is that the morning or the evening? Each answer is the item's times
+    (or its latest time) with that one settled."""
+    options = []
+    for chosen in question.options:
+        settled = rules.answer(request, question, chosen)
+        fields_ = {"latest": settled.latest} if question.field == "latest" else {"times": rules.split_times(settled.times)}
+        options.append((timeinput.format_time(chosen), fields_))
+    return Asked(f"Is that {question.typed} in the morning or the evening?", tuple(options), (question.field,))
 
 
 def settle(request: rules.Request, today: date, base: Plan | None = None) -> Read:
-    """The plan a request makes, never asking and never stopping at the first
-    thing wrong: a time that could be morning or evening is read as the
-    morning (a latest time as the evening) and marked as a guess; a part that
-    can't be read is set aside with its reason and the rest is still read; a
-    schedule that can't fit is kept as read with its reason. Raises UserError
-    only for what leaves nothing to show."""
-    guessed, unread = False, []
+    """The plan a request makes, never guessing and never stopping at the first
+    thing wrong. A time that could be morning or evening, a missing time and
+    a missing number of doses are questions for the card (`asks`): the rest
+    is still read, and the plan holds a stand-in so it can be shown (`shown`
+    puts ❔ in its place). A part that can't be read is set aside with its
+    reason; a schedule that can't fit is kept as read with its reason. Raises
+    UserError only for what leaves nothing to show."""
+    unread, asks, unknown = [], [], []
     for _ in range(TRIES + len(PLAN_FIELDS)):
         moved: list[str] = []
         try:
-            return Read(rules.build(request, today, base, moved), request, guessed, moved, unread)
+            return Read(rules.build(request, today, base, moved), request, False, moved, unread, "", asks, unknown)
         except TimeQuestion as question:
-            request = rules.answer(request, question, question.options[question.field == "latest"])
-            guessed = True
+            asks.append(_time_asked(request, question))
+            # Only so the rest can be read and shown: the morning (the evening for a latest time)
+            stand_in = question.options[question.field == "latest"]
+            unknown.append(timeinput.format_time(stand_in))
+            request = rules.answer(request, question, stand_in)
+        except rules.Ask as problem:
+            asks.append(Asked(problem.question, tuple((label, _as_item(fields_)) for label, fields_ in problem.options), (ITEM_KEYS.get(problem.field, problem.field),)))
+            unread.append((problem.field, problem.reason))
+            request = replace(request, **{problem.drop: ""})
         except rules.Unreadable as problem:
             unread.append((problem.field, str(problem)))
             request = replace(request, **{problem.field: ""})
         except rules.DoesNotFit as problem:
-            return Read(problem.plan, request, guessed, moved, unread, str(problem))
+            return Read(problem.plan, request, False, moved, unread, str(problem), asks, unknown)
     raise UserError("I couldn't read those times.")
+
+
+def _as_item(fields_: dict) -> dict:
+    """A plan's parts under the names an item of the action calls them."""
+    return {ITEM_KEYS.get(name, name): value for name, value in fields_.items()}
+
+
+def _asking(items: list[dict], at: int, asked: Asked, key: str, last) -> Question:
+    """The card's question about the item at `at`: each answer is the whole
+    request again, as extraction would hand it over, with that item answered."""
+    choices = tuple(
+        Choice(label, {LIST_KEY: [{**item, **fields_} if index == at else dict(item) for index, item in enumerate(items)], LAST: last}, asked.settles)
+        for label, fields_ in asked.options
+    )
+    return Question(asked.text, choices)
+
+
+def _which_one(resolved: list[dict], unclear: list[tuple[dict, list[Pill]]]) -> Question | None:
+    """The question for a name that fits more than one pill, with a button a
+    pill. `resolved` are the items already known; the others asked for come
+    after, and are asked about in their turn."""
+    if not unclear:
+        return None
+    raw, candidates = unclear[0]
+    rest = [dict(item) for item, _ in unclear[1:]]
+    choices = tuple(
+        Choice(pill.plan.name, {LIST_KEY: [*(dict(item) for item in resolved), {**raw, "pill": pill.ref}, *rest]}, ("pill",))
+        for pill in candidates
+    )
+    return Question(f"Which one is “{str(raw.get('pill', '')).strip()}”?", choices)
 
 
 def _known(existing: list[Pill], name: str) -> Pill | None:
@@ -240,18 +309,23 @@ async def _pointed(request: Request, items: list[dict], key: str) -> tuple[list[
     return point_at(items, key, last), taken_as
 
 
-def _resolve(pills: list[Pill], items: list[dict]) -> tuple[list[tuple[dict, Pill]], list[str]]:
-    """Each item with the pill it means (its `pill` set to that pill's id), and
-    what couldn't be found, in words."""
-    found, problems = [], []
+def _resolve(pills: list[Pill], items: list[dict]) -> tuple[list[tuple[dict, Pill]], list[str], list[tuple[dict, list[Pill]]]]:
+    """Each item with the pill it means (its `pill` set to that pill's id),
+    what couldn't be found, in words, and each item whose name fits more
+    than one pill, with the pills it could be: those are asked about on the
+    card, never in a message of their own."""
+    found, problems, unclear = [], [], []
     for item in items:
         try:
             pill = rules.find(pills, str(item.get("pill", "")))
+        except rules.Ambiguous as which:
+            unclear.append((item, which.candidates))
+            continue
         except UserError as error:
             problems.append(str(error))
             continue
         found.append(({**item, "pill": pill.ref}, pill))
-    return found, problems
+    return found, problems, unclear
 
 
 # ---------------------------------------------------------------------------
@@ -267,7 +341,8 @@ async def add_card(request: Request, data: dict, guessed: frozenset) -> Proposal
     seen: set[str] = set()
     own_guesses: list[str] = []
     held, changes = False, 0
-    for item in items:
+    first_ask: tuple[int, Asked] | None = None
+    for at, item in enumerate(items):
         name = str(item["name"]).strip()
         pill = _known(existing, name)
         try:
@@ -291,17 +366,20 @@ async def add_card(request: Request, data: dict, guessed: frozenset) -> Proposal
             # One format for a change, on whichever card it is: field · old → new
             lines.append(flag(repeats.there_line(pill.plan.name, WHERE), name.lower() in unsure))
             lines += [
-                flag(repeats.change_line(part, before, after), read.guessed and part == "schedule")
+                read.shown(repeats.change_line(part, before, after))
                 for part, before, after in rules.differences(pill.plan, read.plan)
             ]
             lines += _held_lines(read)
             changes += 1
         else:
             first, *rest = rules.card_lines(read.plan)
-            lines += [flag(first, read.guessed or name.lower() in unsure), *rest, *_held_lines(read)]
+            lines += [flag(read.shown(first), name.lower() in unsure), *(read.shown(line) for line in rest), *_held_lines(read)]
         warnings += _held_warnings(read)
-        if read.guessed:
-            own_guesses.append(f"pills[{len(kept)}].times")
+        if read.asks and first_ask is None:
+            first_ask = (at, read.asks[0])
+        # What is being asked about was never said: kept with the card as unsettled, so a
+        # typed answer is read as the value itself and not as one more beside it
+        own_guesses += [f"pills[{len(kept)}].{name}" for asked_ in read.asks for name in asked_.settles]
         # What can't be saved yet stays as it was said, so one reply can put it right
         fixed = dict(item) if read.held else _settled(item, read.request)
         kept.append({**fixed, "pill": pill.ref} if pill is not None else fixed)
@@ -309,9 +387,10 @@ async def add_card(request: Request, data: dict, guessed: frozenset) -> Proposal
     if not kept:
         raise UserError("; ".join(warning.removeprefix("Not included: ") for warning in warnings) or "No pill to add.")
     last = str(asked[-1]["name"]) if asked else None
+    question = _asking(items, first_ask[0], first_ask[1], "name", last) if first_ask else None
     return Proposal(
         lines=tuple(lines), data={"pills": kept, LAST: last}, warnings=tuple(warnings),
-        kind="change" if changes == len(kept) else "new", guessed=tuple(own_guesses), can_save=not held,
+        kind="change" if changes == len(kept) else "new", guessed=tuple(own_guesses), can_save=not held, question=question,
     )
 
 
@@ -435,17 +514,23 @@ async def edit_card(request: Request, data: dict, guessed: frozenset) -> Proposa
     existing = await store.pills(request.user.id)
     unsure = _unsure(data, guessed, "pill")
     asked, taken_as = await _pointed(request, data["pills"], "pill")
-    found, problems = _resolve(existing, asked)
+    found, problems, unclear = _resolve(existing, asked)
     resolved = [item for item, _ in found]
     items, missing = overlay(request.previous["pills"] if request.previous else [], resolved, "pill")
     by_ref = {pill.ref: pill for pill in existing}
-    asked_as = {item["pill"]: str(raw.get("pill", "")).strip().lower() for (item, _), raw in zip(found, asked)}
+    asked_as = {}
+    for raw in asked:
+        try:
+            asked_as[rules.find(existing, str(raw.get("pill", ""))).ref] = str(raw.get("pill", "")).strip().lower()
+        except UserError:
+            continue
     if taken_as:
         unsure = unsure | {taken_as}
     lines, kept, warnings = [], [], [*problems, *[f"{name} isn't on the card: nothing to take off" for name in missing]]
     own_guesses: list[str] = []
     held = False
-    for item in items:
+    first_ask: tuple[int, Asked] | None = None
+    for at, item in enumerate(items):
         pill = by_ref.get(item["pill"])
         if pill is None:
             continue
@@ -462,22 +547,26 @@ async def edit_card(request: Request, data: dict, guessed: frozenset) -> Proposa
         # One format for every edit: field · old → new
         lines.append(flag(f"**{pill.plan.name}**", mark))
         lines += [
-            flag(f"{name} · {before} → {after}", read.guessed and name == "schedule")
+            read.shown(f"{name} · {before} → {after}")
             for name, before, after in rules.differences(pill.plan, read.plan)
         ]
         lines += _held_lines(read)
         warnings += _held_warnings(read)
-        if read.guessed:
-            own_guesses.append(f"pills[{len(kept)}].times")
+        if read.asks and first_ask is None:
+            first_ask = (at, read.asks[0])
+        own_guesses += [f"pills[{len(kept)}].{name}" for asked_ in read.asks for name in asked_.settles]
         kept.append(dict(item) if read.held else _settled(item, read.request))
         held = held or read.held
-    if not kept:
-        raise UserError("; ".join(warning.removeprefix("Not included: ") for warning in warnings) or "Nothing to change.")
-    lines.append("-# Applies from the next dose. What is already recorded stays as it is.")
     last = resolved[-1]["pill"] if resolved else (request.previous or {}).get(LAST)
+    # Which pill is meant comes before anything about it: one question at a time
+    question = _which_one(items, unclear) or (_asking(items, first_ask[0], first_ask[1], "pill", last) if first_ask else None)
+    if not kept and question is None:
+        raise UserError("; ".join(warning.removeprefix("Not included: ") for warning in warnings) or "Nothing to change.")
+    if kept:
+        lines.append("-# Applies from the next dose. What is already recorded stays as it is.")
     return Proposal(
         lines=tuple(lines), data={"pills": kept, LAST: last}, warnings=tuple(warnings), kind="change",
-        guessed=tuple(own_guesses), can_save=not held,
+        guessed=tuple(own_guesses), can_save=not held, question=question,
     )
 
 
@@ -554,14 +643,27 @@ async def delete_check(request: Request, data: dict) -> str:
 # ---------------------------------------------------------------------------
 # Pause, resume, remove, delete: each a card naming the pills it is about
 # ---------------------------------------------------------------------------
-async def _chosen(
-    request: Request, data: dict, guessed: frozenset = frozenset()
-) -> tuple[list[tuple[dict, Pill]], list[str], date, set[str]]:
+@dataclass
+class Chosen:
+    """The pills a card is about. Unpacks as the four things the cards read;
+    `question` is what the card has to ask first, if a name fits several pills."""
+
+    chosen: list
+    warnings: list
+    today: date
+    marked: set
+    question: Question | None = None
+
+    def __iter__(self):
+        return iter((self.chosen, self.warnings, self.today, self.marked))
+
+
+async def _chosen(request: Request, data: dict, guessed: frozenset = frozenset()) -> Chosen:
     """The pills a card is about, once this message is taken in: (each item
     with its pill, what couldn't be found, today, the ids Claude guessed at)."""
     existing = await store.pills(request.user.id)
     asked, taken_as = await _pointed(request, data["pills"], "pill")
-    found, problems = _resolve(existing, asked)
+    found, problems, unclear = _resolve(existing, asked)
     resolved = [item for item, _ in found]
     items, missing = overlay(request.previous["pills"] if request.previous else [], resolved, "pill")
     by_ref = {pill.ref: pill for pill in existing}
@@ -576,7 +678,7 @@ async def _chosen(
         except UserError:
             continue
     warnings = [*problems, *[f"{name} isn't on the card: nothing to take off" for name in missing]]
-    return chosen, warnings, day.today(), marked
+    return Chosen(chosen, warnings, day.today(), marked, _which_one(items, unclear))
 
 
 def _none_left(warnings: list[str], otherwise: str) -> UserError:
@@ -584,7 +686,8 @@ def _none_left(warnings: list[str], otherwise: str) -> UserError:
 
 
 async def pause_card(request: Request, data: dict, guessed: frozenset) -> Proposal:
-    chosen, warnings, today, marked = await _chosen(request, data, guessed)
+    about = await _chosen(request, data, guessed)
+    chosen, warnings, today, marked = about
     lines, kept, held = [], [], False
     for item, pill in chosen:
         name = pill.plan.name
@@ -607,10 +710,11 @@ async def pause_card(request: Request, data: dict, guessed: frozenset) -> Propos
         when = f"paused until {timeinput.format_date(until)}" if until else "paused until you resume it"
         lines.append(flag(f"**{name}** · {rules.status_on(pill, today)} → {when}", pill.ref in marked))
         kept.append({"pill": pill.ref, **({"until": until.isoformat()} if until else {})})
-    if not kept:
+    if not kept and about.question is None:
         raise _none_left(warnings, "No pill to pause.")
-    lines.append("-# It won't be asked for while paused, and its streak is unaffected.")
-    return Proposal(lines=tuple(lines), data={"pills": kept}, warnings=tuple(warnings), kind="change", can_save=not held)
+    if kept:
+        lines.append("-# It won't be asked for while paused, and its streak is unaffected.")
+    return Proposal(lines=tuple(lines), data={"pills": kept}, warnings=tuple(warnings), kind="change", can_save=not held, question=about.question)
 
 
 async def pause_save(request: Request, data: dict) -> str:
@@ -625,7 +729,8 @@ async def pause_save(request: Request, data: dict) -> str:
 
 
 async def resume_card(request: Request, data: dict, guessed: frozenset) -> Proposal:
-    chosen, warnings, today, marked = await _chosen(request, data, guessed)
+    about = await _chosen(request, data, guessed)
+    chosen, warnings, today, marked = about
     lines, kept = [], []
     for item, pill in chosen:
         if rules.status_on(pill, today) != PAUSED:
@@ -633,9 +738,9 @@ async def resume_card(request: Request, data: dict, guessed: frozenset) -> Propo
             continue
         lines.append(flag(f"**{pill.plan.name}** · paused → active", pill.ref in marked))
         kept.append({"pill": pill.ref})
-    if not kept:
+    if not kept and about.question is None:
         raise _none_left(warnings, "No pill to resume.")
-    return Proposal(lines=tuple(lines), data={"pills": kept}, warnings=tuple(warnings), kind="change")
+    return Proposal(lines=tuple(lines), data={"pills": kept}, warnings=tuple(warnings), kind="change", question=about.question)
 
 
 async def resume_save(request: Request, data: dict) -> str:
@@ -649,14 +754,16 @@ async def resume_save(request: Request, data: dict) -> str:
 
 
 async def remove_card(request: Request, data: dict, guessed: frozenset) -> Proposal:
-    chosen, warnings, today, marked = await _chosen(request, data, guessed)
-    if not chosen:
+    about = await _chosen(request, data, guessed)
+    chosen, warnings, today, marked = about
+    if not chosen and about.question is None:
         raise _none_left(warnings, "No pill to remove.")
     lines = [flag(f"**{pill.plan.name}** · {rules.schedule_text(pill.plan)} → removed", pill.ref in marked) for _, pill in chosen]
-    lines.append("-# This stops its reminders. Its history is kept.")
+    if chosen:
+        lines.append("-# This stops its reminders. Its history is kept.")
     return Proposal(
         lines=tuple(lines), data={"pills": [{"pill": pill.ref} for _, pill in chosen]}, warnings=tuple(warnings),
-        kind="remove", confirm_label="Remove",
+        kind="remove", confirm_label="Remove", question=about.question,
     )
 
 
@@ -671,8 +778,9 @@ async def remove_save(request: Request, data: dict) -> str:
 
 
 async def delete_card(request: Request, data: dict, guessed: frozenset) -> Proposal:
-    chosen, warnings, today, marked = await _chosen(request, data, guessed)
-    if not chosen:
+    about = await _chosen(request, data, guessed)
+    chosen, warnings, today, marked = about
+    if not chosen and about.question is None:
         raise _none_left(warnings, "No pill to delete.")
     lines = tuple(
         flag(f"**{pill.plan.name}** · {rules.schedule_text(pill.plan)} → deleted, with its history", pill.ref in marked)
@@ -681,7 +789,7 @@ async def delete_card(request: Request, data: dict, guessed: frozenset) -> Propo
     return Proposal(
         lines=lines, data={"pills": [{"pill": pill.ref} for _, pill in chosen]},
         warnings=(*warnings, "This deletes the history too and can't be undone"),
-        kind="remove", destructive=True, confirm_label="Delete for good",
+        kind="remove", destructive=True, confirm_label="Delete for good", question=about.question,
     )
 
 
@@ -833,6 +941,8 @@ class Step:
     # No pill was named and nothing pointed at one: the code picked this one. Shown on a card, never done unseen
     picked: bool = False
     pill: Pill | None = None  # the pill it is about, also when there is nothing to do
+    # Which pill is meant can't be told: the pills it could be, for the card to ask (with `say` as the plain line)
+    which: tuple = ()
 
 
 def db_last_logged(conn, user_id: int) -> int | None:
@@ -922,15 +1032,28 @@ async def _step(request: Request, item: dict) -> Step:
         # "it" is worked out here and never by Claude
         last, picked = await _unnamed(request, listed, pointed, now, item["did"])
         if last is None:
-            return Step("⚠️ Which pill? Say its name.")
+            return Step("⚠️ Which pill? Say its name.", which=tuple(_could_be(listed, item["did"])))
         named = f"{rules.ID_PREFIX}{last}"
     try:
         pill = rules.find(pills, str(named))
+    except rules.Ambiguous as unclear:
+        return Step(f"⚠️ {unclear}", which=tuple(unclear.candidates))
     except UserError as error:
         return Step(f"⚠️ {error}")
     step = await _for_pill(request, item, pill, listed, today_, now, pointed_dose)
     step.picked, step.pill = picked and step.dose is not None, pill
     return step
+
+
+def _could_be(listed: list[Dose], did: str) -> list[Pill]:
+    """The pills an unnamed "I took it" could be about today: those with a dose
+    still to log, or for "I didn't take it" those with a dose ticked off."""
+    found: dict[int, Pill] = {}
+    for dose in listed:
+        fits = today.last_taken(listed, dose.pill.id) if did == checklist.NOT_TAKEN else today.next_to_log(listed, dose.pill.id)
+        if fits is not None:
+            found.setdefault(dose.pill.id, dose.pill)
+    return list(found.values())
 
 
 async def _for_pill(request: Request, item: dict, pill: Pill, listed: list[Dose], today_: date, now: datetime, pointed_dose: Dose | None) -> Step:
@@ -1062,8 +1185,8 @@ async def log_asks(request: Request, data: dict, guessed: frozenset = frozenset(
         if _pill_guessed(guessed, index):
             return True
         step = await _step(request, item)
-        if step.asks or step.picked:
-            return True
+        if step.asks or step.picked or step.which:
+            return True  # `which`: the card asks which pill, never a message of its own
     return False
 
 
@@ -1082,8 +1205,17 @@ async def log_card(request: Request, data: dict, guessed: frozenset) -> Proposal
     or out of order (what would be logged, with the time, and the question:
     Log it does it)."""
     lines, held, warnings, asked = [], [], [], False
+    question = None
     for index, item in enumerate(data["doses"]):
         step = await _step(request, item)
+        if step.which and question is None:
+            # One question, with a button a pill: each answer is the whole message again with this dose's pill named
+            text = "Which pill?" if not str(item.get("pill") or "").strip() or is_reference(item.get("pill")) else rules.plain(step.say.removeprefix("⚠️ "))
+            question = Question(text, tuple(
+                Choice(pill.plan.name, {"doses": [{**each, "pill": pill.ref} if at == index else dict(each) for at, each in enumerate(data["doses"])]}, ("pill",))
+                for pill in step.which
+            ))
+            continue
         if step.dose is None:
             warnings.append(step.say.removeprefix("⚠️ "))
             continue
@@ -1095,10 +1227,13 @@ async def log_card(request: Request, data: dict, guessed: frozenset) -> Proposal
             "occurrence": step.dose.occurrence.id, "did": step.did, "moment": step.at.isoformat(),
             **({"was": step.was.isoformat()} if step.was is not None else {}),
         })
-    if not held:
+    if not held and question is None:
         raise UserError("; ".join(warnings) or "Nothing to log.")
     # "Log it" answers a question the card asks; a guess to look over is an ordinary Save
-    return Proposal(lines=tuple(lines), data={"doses": held}, warnings=tuple(warnings), kind="change", confirm_label="Log it" if asked else "Save")
+    return Proposal(
+        lines=tuple(lines), data={"doses": held}, warnings=tuple(warnings), kind="change",
+        confirm_label="Log it" if asked else "Save", question=question,
+    )
 
 
 async def _held(request: Request, data: dict) -> list[Step]:

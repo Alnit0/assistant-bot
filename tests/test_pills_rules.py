@@ -219,7 +219,7 @@ def test_a_gap_with_no_unit_is_not_guessed_to_be_hours():
         ({"name": "A", "notes": "x" * 101}, "note is too long"),
         ({"name": "A", "times": "soon"}, "can't read “soon” as a time"),
         ({"name": "A", "times": "8am, 8:00 am"}, "Two of those times are the same"),
-        ({"name": "A", "times": "8am, 8pm", "per_day": "3"}, "2 times for 3 doses a day"),
+        ({"name": "A", "times": "8am, 8pm", "per_day": "3"}, "What time is each of the 3 doses"),
         ({"name": "A", "per_day": "lots"}, "How many times a day"),
         ({"name": "A", "per_day": "0"}, "How many times a day"),
         ({"name": "A", "per_day": "13"}, "How many times a day"),
@@ -423,3 +423,24 @@ def test_a_pill_that_is_not_there_lists_the_ones_that_are():
 # ---------------------------------------------------------------------------
 # For Claude
 # ---------------------------------------------------------------------------
+
+
+def test_what_has_to_be_asked_carries_its_question_and_its_likely_answers():
+    with pytest.raises(rules.Ask) as one:
+        build(name="A", times="8am", per_day="2")
+    assert (one.value.field, one.value.reason, one.value.question) == ("times", "8:00 am is 1 time for 2 doses a day", "What time is the other dose?")
+    assert one.value.options == (("8:00 pm", {"times": ["8:00 am", "8:00 pm"]}),), "twelve hours on, the one likely answer"
+    with pytest.raises(rules.Ask) as late:
+        build(name="A", times="9pm", per_day="2")
+    assert late.value.options == (("9:00 am", {"times": ["9:00 am", "9:00 pm"]}),)
+    with pytest.raises(rules.Ask) as many:
+        build(name="A", min_gap="3h")
+    assert (many.value.field, many.value.drop, [label for label, _ in many.value.options]) == ("per_day", "min_gap", ["2 a day", "3 a day", "4 a day"])
+
+
+def test_a_name_that_fits_more_than_one_pill_names_the_pills_it_could_be():
+    held = [pill(1, name="Vitamin D"), pill(2, name="Vitamin C"), pill(3, name="Iron")]
+    with pytest.raises(rules.Ambiguous) as which:
+        rules.find(held, "vitamin")
+    assert [each.plan.name for each in which.value.candidates] == ["Vitamin C", "Vitamin D"] and str(which.value) == "Which one: **Vitamin C** or **Vitamin D**?"
+    assert rules.find(held, "vitamin d").id == 1, "the whole name is that pill"

@@ -273,6 +273,10 @@ async def act(
             turn.said.append(f"card: {entry.name} · {proposal.kind}: " + " / ".join(shown))
         else:
             result = await action.run(request, found.data, found.guessed)
+            if replaces is not None:
+                # The open card asked something and the answer was typed: it is done, and that card goes
+                await confirm.answered_in_words(replaces)
+                trace.note(f"card {replaces.id} answered in words: done at once, and the card removed")
             left_out = f"{actions.WARNING_MARK} {not_included(found.not_included)}" if found.not_included else ""
             if isinstance(result, Shown):
                 # The task put its own message up (a timer, a session card)

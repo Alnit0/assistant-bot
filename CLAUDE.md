@@ -64,8 +64,9 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   commit.** They are `tests/test_golden.py`, replayed offline from
   `evals/fixtures/golden.json` and part of `python -m pytest -q`. One
   marked `gap` is a conversation the bot can't hold yet: it must fail
-  until that is built, and the summary names every gap. A golden
-  conversation that passed and now fails blocks the commit
+  until that is built, and the summary names every gap (none at
+  present). A golden conversation that passed and now fails blocks the
+  commit
 - A new golden conversation in the standard gets its fixtures and its
   test in the same change. A task's own conversations are checked
   against the standard by the `task-check` skill
@@ -132,6 +133,11 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 - The registry decides how every action ends; handlers use `ctx.reply`
   (lasting: Kept) or `ctx.confirm` (self-deleting: Transient) and raise
   `UserError` for problems the user can fix
+- A task never asks in a message of its own. What it has to know
+  before it can save is a `Question` on its card (`Proposal.question`),
+  with each likely answer as a `Choice` holding the action's data with
+  that answer in it; core shows it, takes the press or the typed answer
+  and makes the card again
 - Claude hands over structured values, never my words for code to
   parse: whole minutes (`actions.MINUTES`), a time of day in one form
   (`actions.TIME`, `TIMES`), a list of items (`actions.ITEMS`) for
@@ -165,7 +171,7 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 | Reactions are the status (👀, ⚠️; ✅ is reserved) | `main.py`; `conversation.what_i_can_do` |
 | Housekeeping leaves no trace; a pointer line goes | `housekeeping=True`, `lifecycle.tidy_after`, `core/tidy.py` (`pointer`) |
 | Button colours | `cards.check`, `cards.colour_problem`, `cards.cancel()` |
-| Questions on the card | not built (G1 in `docs/BACKLOG.md`): today an ambiguous time takes the morning and is marked ❓ |
+| Questions on the card: one at a time, a blurple button an answer, no Save until answered, a typed answer too | `actions.Question`, `Choice`, `Proposal.question`; `confirm.render`, `on_answer`, `answered_in_words` |
 
 ### Time and jobs
 

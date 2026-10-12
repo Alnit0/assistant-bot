@@ -486,6 +486,37 @@ def test_it_with_nothing_logged_yet_is_asked_about_or_shown_as_a_guess(world):
     assert log(world, {"did": "taken"}) == "⚠️ Which pill? Say its name.", "no pill handed over at all is no different"
 
 
+def test_with_nothing_to_go_by_the_card_asks_which_pill_with_a_button_each_never_a_message(world):
+    add(world, {"name": "Zinc"}, {"name": "Iron"}, {"name": "Evening pill", "times": ["8:00 pm"]})
+    said = {"doses": [{"pill": "@that", "did": "taken"}]}
+    assert run(plain.log_asks(world.request(), said, frozenset())) is True, "it goes on a card"
+    card = run(plain.log_card(world.request(), said, frozenset()))
+    assert card.lines == () and card.question.text == "Which pill?"
+    assert [(choice.label, choice.data) for choice in card.question.choices] == [
+        ("Iron", {"doses": [{"pill": "pl2", "did": "taken"}]}), ("Zinc", {"doses": [{"pill": "pl1", "did": "taken"}]}),
+        ("Evening pill", {"doses": [{"pill": "pl3", "did": "taken"}]}),
+    ]
+    assert state_of(world, "Zinc") == PENDING, "nothing is logged by asking"
+    # The answer names the pill: nothing is left to ask, so it is logged at once
+    answered = card.question.choices[1].data
+    assert run(plain.log_asks(world.request(), answered, frozenset())) is False
+    assert run(plain.log_doses(world.request(), answered, frozenset())).startswith("✅ **Zinc** · taken 9:00 am")
+    # "I didn't take it" offers only what is ticked off
+    undo = run(plain.log_card(world.request(), {"doses": [{"pill": "@that", "did": "not_taken"}]}, frozenset()))
+    assert undo.lines == ("**Zinc** · no longer ticked off",) or [choice.label for choice in undo.question.choices] == ["Zinc"]
+
+
+def test_a_dose_logged_under_a_name_that_fits_two_pills_asks_which_one_on_the_card(world):
+    add(world, {"name": "Vitamin D"}, {"name": "Vitamin C"})
+    said = {"doses": [{"pill": "vitamin", "did": "taken", "at": "8:00 am"}]}
+    assert run(plain.log_asks(world.request(), said, frozenset())) is True
+    card = run(plain.log_card(world.request(), said, frozenset()))
+    assert card.question.text == "Which one: Vitamin C or Vitamin D?"
+    assert [(choice.label, choice.data["doses"][0]) for choice in card.question.choices] == [
+        ("Vitamin C", {"pill": "pl2", "did": "taken", "at": "8:00 am"}), ("Vitamin D", {"pill": "pl1", "did": "taken", "at": "8:00 am"}),
+    ], "the time said goes with the answer"
+
+
 def test_an_unnamed_pill_with_no_anchor_is_shown_on_a_card_with_the_pill_the_code_picked(world):
     # "took the usual one" comes from Claude as "it" with nothing guessed: the code decides
     add(world, {"name": "Zinc"})

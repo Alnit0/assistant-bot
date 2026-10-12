@@ -1139,3 +1139,26 @@ A short log of key decisions and why. Newest at the bottom.
     that could not be posted, never of one that is simply there or of
     a day with nothing to take (the log file has every decision);
     reactions lost in the 30 seconds before a stop are left.
+- **Questions on the card (G1, 2026-10-12).** A card can ask one
+  question: everything it understood, then the question with a blurple
+  button for each likely answer, Cancel, and no Save.
+  - An answer is not a patch but the whole request again: each choice
+    holds the action's data as extraction would hand it over with that
+    answer in it. Core then calls the task's `prepare` exactly as for a
+    message, so there is one way a card is made, and the task decides
+    what is asked next. The card is rewritten in place.
+  - A typed answer is an ordinary follow-up to the open card, as a
+    correction is. Nothing new was needed for it but one thing: when
+    the answer leads to an action done at once (a dose logged), the
+    card that asked is taken away.
+  - Nothing is guessed about a time any more. "At 8" used to be taken
+    as the morning with ❓; it is now ❔ and a question. What is being
+    asked about is still kept with the card as never said, so a typed
+    "8pm" is read as the time and not as a second one.
+  - Pills asks everything on the card (C7): which pill for "took it"
+    with nothing to go by, which of two a name fits, morning or
+    evening, the time that is missing, how many a day. Where it logs a
+    dose, pressing the answer logs it and the card says so.
+  - Offered answers are only the likely ones: for one time given for
+    two doses, twelve hours on; for three or more, none (it is typed).
+  - `ask` in `on_repeat` is no longer refused by the contract.
