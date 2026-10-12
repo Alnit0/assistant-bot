@@ -7,95 +7,35 @@ session; the end-of-task checklist updates it at the end of every task.
 
 ## Questions for Alex
 
-- **Task check of 2026-10-13** (every task and the core; the table is
-  in `docs/BACKLOG.md`). The code-only findings are fixed. Left for
-  you:
-  - `tasks/keep` uses discord.py and is not one of the tasks allowed
-    to. Add it to the list in `CLAUDE.md`, or move its Discord calls
-    into core?
-  - #commands still says Taken and Skip are "under today's checklist".
-    With the new look they are in the pill's own box: the words for
-    that are yours, once `CARDS_V2` stays on.
-  - Smaller, in the backlog: the spend note is sent from the database
-    module; three near copies of "tick a dose off from a button";
-    `dev mock` keeps its own records beside the design's.
-- **Live's own folder** (`scripts\setup-live-folder.ps1`, prepared,
-  only ever run with `-WhatIf`; "A folder of its own for live" in
-  `docs/DEVELOPMENT.md`):
-  - `main` doesn't have pills yet and the live database does: the
-    script stops, with nothing changed, if the code on `main` is older
-    than the database. Merge `feature/pills` into `main` first.
-  - With two folders the lock no longer stops live and a dev copy
-    both running (each folder has its own `data\bot.lock`). Shall I
-    add a setting for one shared lock, or do you want a second bot
-    token for dev?
-- **The service is stopped.** When I checked on 2026-10-13 the
-  `assistant-bot` service was stopped and no bot was running (I did
-  not stop it and did not start it). Start it when you are ready:
-  `nssm start assistant-bot`. It will apply the new migrations.
-- **Free shortcuts** (`docs/COSTS.md`, section 6; none added): the
-  shapes that always went to one task are "took `<pill>`" (9 of 24
-  routed messages), the pomodoro's start and stop, "channel reset" /
-  "clear channel", and "how long left on `<timer>`". Say which, if
-  any, you want. "took `<pill>`" as a shortcut would bend the rule
-  that a bare verb is never one.
-- **Costs** (`docs/COSTS.md`, section 7):
-  - Skip the router when a message names exactly one of my pills (or
-    timers)? Saves US$0.0026 a message and about a second.
-  - Reword the router's rules to shorten them? It needs a full live
-    eval (about US$0.30 to US$0.50), so it was not done tonight.
-  - The router and chat are too short to be cached on Haiku 4.5 (it
-    needs 4,096 tokens). A model with a lower minimum would cache
-    them: say if you want that looked into.
-  - The timers live check gave 36 of 37 ("pause it" came back with the
-    timer's id rather than `@that`; the code's own check puts that
-    right). There was no earlier timers run to compare with.
-- **Streaks** (the logic is built, nothing is shown), what I chose:
-  - A streak is counted in **days**: a day adds one when something was
-    taken and nothing was missed. The number of doses taken in those
-    days is kept beside it. Days, doses, or both when it is shown?
-  - A day with **only skips**, or with nothing expected (paused),
-    neither breaks the streak nor adds to it.
-  - The day a dose is missed doesn't count, whatever else was taken
-    that day; the streak starts again the next day.
-  - There is a streak for each pill and one for all pills together
-    (one missed pill breaks the one for all). Which do you want to see?
-- **The new look (`CARDS_V2`, block 41)**, what I chose where the
-  design left room:
-  - On the checklist, each pill's **next dose** has Taken, Taken at…
-    and Skip, whether or not it is due yet (pressed too soon, it asks
-    first on the amber card). Or buttons only once a dose is due?
-  - With the new look on, a dose with no time **no longer gets a
-    message of its own**: its buttons are in its blue box.
-  - The heading counts **taken** only ("2 of 6 taken"); the plain
-    checklist's bar counts skipped too.
-  - A **removal that keeps its history** ("Remove") is a blurple box
-    with a red button; only what can't be undone ("Delete for good") is
-    a red box.
-  - On a confirm card, a line that opens with a name in bold starts a
-    new thing, with a separator before it.
-  - A message drawn the new way can never go back to plain text
-    (Discord's rule): with `CARDS_V2` switched off again, such a
-    message is rewritten as the same words and buttons in a layout.
-  - Not drawn the new way yet: the reset card, "which task?", timers,
-    lists (in the backlog).
-- **A file sent with no words** is still ignored, as before (the bot
-  only acts on a message with text). Once gym can read a plan, should a
-  file on its own go to the router too? Then a picture dropped in
-  #inbox would get an answer from chat unless told not to.
 - **The design's colours** are not final until you have looked at
-  them on your phone (block 39, step 6). `docs/DESIGN.md` is marked as
-  waiting for that.
-- **The lock screen** (waits for your phone; block 39, step 2, the
-  same as block 33, step 1): the sketches put
-  "💊 Routine due · 11:12 am" as the message's first line. If your
-  phone shows something else for a card of this kind, the prompt has
-  to be a plain message with buttons instead: say which you see.
+  them on your phone (`docs/QA-TONIGHT.md`, steps 2 to 5).
+- **The lock screen**: say exactly what it shows for a card of this
+  kind (steps 2 and 3 there). If it is not the neutral line, the
+  prompt has to stay a plain message with buttons.
 - **Gym** waits for your answers on how you train (the spec's section
-  16). No gym code is started until then. The three core additions
-  were built on 2026-10-13 (attachments on a request, a decimal
-  number in the contract, name matching in the core with pills using
-  it).
+  16). The three core pieces are built.
+- **The dev bot**: when you have made it, put its token and channels in
+  `.env.dev` ("A bot of its own for dev" in `docs/DEVELOPMENT.md`).
+- **Still open from the cost audit** (`docs/COSTS.md`): shorten the
+  router's rules with a full live eval (about US$0.30 to US$0.50)? A
+  model with a lower caching minimum, so the router and chat cache?
+- **Still open from the task check**: #commands says Taken and Skip
+  are "under today's checklist"; with the new look they are in the
+  pill's own box. The words are yours, once `CARDS_V2` stays on.
+- **The service was stopped** when I looked on 2026-10-13 (not by me).
+  `nssm start assistant-bot` when you want live back.
+
+Answered on 2026-10-13: on the drawn checklist each pill's next dose
+keeps its buttons before it is due; a dose with no time has no message
+of its own there; a removal that keeps its history is a blurple box
+with a red button. A streak is counted in days, one for all pills
+shown on the checklist and one a pill later in history, and showing it
+waits for stage 4. Dev gets a bot token of its own (`.env.dev`,
+built). The router is not skipped for a message that names a pill.
+"took `<exact pill name>`" with nothing else is a typed shortcut
+(built); no other shortcut. `tasks/keep` no longer uses discord.py
+(done). A file sent with no words goes to the router only once gym is
+built (in the backlog).
 
 Answered on 2026-10-12, the design pass: any time and still to take is
 blue; a card that asks first because something is risky is amber;

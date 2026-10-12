@@ -37,16 +37,16 @@ Last updated: 2026-10-13
 | G | Timers | 32 | 12 | 20 | 17 | 15 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
 | J | Dev mode | 61 | 14 | 47 | 45 | 16 | 0 | 0 |
-| K | Startup and housekeeping | 25 | 13 | 12 | 10 | 15 | 0 | 0 |
-| L | Keep | 12 | 4 | 8 | 8 | 4 | 0 | 0 |
+| K | Startup and housekeeping | 26 | 14 | 12 | 10 | 16 | 0 | 0 |
+| L | Keep | 13 | 5 | 8 | 8 | 5 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
 | P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
 | Q | Time, days, the schedule model, the occurrence log and cards | 17 | 15 | 2 | 2 | 15 | 0 | 0 |
-| R | Pills | 68 | 17 | 51 | 43 | 25 | 0 | 0 |
+| R | Pills | 70 | 18 | 52 | 44 | 26 | 0 | 0 |
 | S | Routing and confirm cards | 66 | 16 | 50 | 15 | 50 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 4 | 18 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **463** | **152** | **311** | **241** | **221** | **0** | **1** |
+| | **Total** | **467** | **155** | **312** | **242** | **224** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -325,6 +325,7 @@ Any channel. Check the bot's status in the member list.
 | K23 | 🤖 Auto | A restart, intentional or a crash | With nothing missed nothing is said. Off at 6:00 am: the checklist is posted once at start by the overdue job, said once in "🔁 Caught up after a restart" with the day closed late and the jobs run late, and a second restart posts no duplicate. Doses and logs are as they were, none made twice; a line said before still means its dose; Taken on a dose message, Save and Cancel on a confirm card and both buttons of the reset card work from before the restart; a card that expired while off goes and can no longer save. Cut off half way: a message gets ⚠️ and is said once; Save is read back and never applied twice (saved: the card gets the normal confirmation with "checked after a restart" under it; not saved: the card stays open); a reset deletes nothing more and asks again; any other press is reported; a job runs again; a recovery that fails never stops the start; an input being handled as the bot starts is left alone. What was said lately is forgotten | ✅ Pass | 2026-10-12 | `tests/test_restart.py` |
 | K24 | 👤 Manual | On `--dev`: say `add Testpill`, don't press. Stop the bot (Ctrl+C) and start it again. Look at #bot-log, then press **Save** on the card. Then `dev clock 5:58am`, stop the bot, wait four minutes, start it | After the first start: no "🔁 Caught up" message, and Save saves Testpill. After the second: one "🔁 Caught up after a restart" naming the checklist posted late and the jobs run late, one checklist in the hub, and no "not posted" message at any start | ⬜ Untested | | Block 36 |
 | K25 | 🤖 Auto | The daily spend line | The limit is `DAILY_SPEND_LIMIT` (US$0.50 unless set). Under it nothing is said; the first time a day's requests to Claude pass it, #bot-log is told once, however much more is spent and whatever restarts in between (the day is kept in the database), and again on a new day. A limit of 0 switches it off, a message with no request is never checked, and a note that can't be sent never fails the message | ✅ Pass | 2026-10-13 | `tests/test_costs.py` |
+| K26 | 🤖 Auto | The dev bot's own settings file | With `--dev`, `.env.dev` is read before `.env` if it is there; without one nothing changes; the live bot never reads it. It is ignored by git and has an example with placeholders only | ✅ Pass | 2026-10-13 | `tests/test_pills_shortcut.py` |
 
 ## L. Keep
 
@@ -345,6 +346,7 @@ alone, and archive and delete ask first (E8). Replying `pin` pins at once.
 | L10 | 👤 Manual | Reply `pin this`, and `pin me`, to a message | Each pins it, as `pin` does | ⬜ Untested | |  |
 | L11 | 👤 Manual | Reply `unpin` to a pinned message | Unpinned at once; "📌 Unpinned" for about 10 seconds | ⬜ Untested | |  |
 | L12 | 🤖 Auto | Pinning by reply | `pin`, `keep`, `save` pin and `unpin`, `unkeep` unpin, in any channel; a refusal by Discord confirms nothing | ✅ Pass | 2026-10-07 | `tests/test_keep.py` |
+| L13 | 🤖 Auto | Keep uses no discord.py | The keep task imports nothing from discord.py: pinning is `core/pins.py` | ✅ Pass | 2026-10-13 | `tests/test_pills_shortcut.py` |
 
 ## M. Message lifecycle
 
@@ -515,6 +517,8 @@ are added with it.
 | R78 | 👤 Manual | With `REMINDERS_ENABLED=true` on `--dev`: add a pill at a time, move the clock to it, look at the phone's lock screen and the message; press Snooze, move 15 minutes; leave it for an hour of clock; press Taken on another | The lock screen says only "💊 Routine due" and the time. The message names the pill with four buttons. Snooze says until when and a fresh message comes. Left alone: three reminders, then ❌ missed on the checklist. Taken ticks it off and the message goes | ⬜ Untested | | Block 38 |
 | R79 | 🤖 Auto | The checklist, drawn (`tasks/pills/sheet.py`) | A heading with how many are taken and the date, a box a pill in the colour of what is still to do (amber due, blue any time, green done, grey all skipped, red only when a dose was missed and nothing is left), the next dose's Taken / Taken at… / Skip inside its box, Paused apart. Too many pills drop buttons first, then fold what is done, and never lose one unsaid. Taken ticks it off and rewrites the checklist without removing it; too soon asks first; off, the checklist and the doses' own messages are as before | ✅ Pass | 2026-10-13 | `tests/test_design.py` |
 | R80 | 🤖 Auto | The reminder, drawn | Still posted first as the one neutral line, plain, with no pill, box or button; the pill is drawn into it by an edit, with that line on top outside an amber box. Snoozed is grey | ✅ Pass | 2026-10-13 | `tests/test_design.py` |
+| R81 | 🤖 Auto | The typed shortcut `took <pill>` | It is the shortcut only when what follows is the exact name of one of my pills, any capitals, with nothing else, and a dose is still to take: “took my zinc”, a time, two pills, part of a name and a pill already taken are read as before. It ticks the next dose off now in the same words as saying it, with no request to Claude, the line is recorded as that pill's, and too soon is asked first on the amber card. It is the only typed word that is a bare verb, and never matches by a typo | ✅ Pass | 2026-10-13 | `tests/test_pills_shortcut.py` |
+| R82 | 👤 Manual | Block 43: type `took <pill>` for a pill with a dose left, again when none is left, and twice in a row for a pill with a gap | At once and free the first time; read as before when nothing is left; the “Log it anyway?” card when too soon | ⬜ Untested | | Block 43 |
 
 ## S. Routing and confirm cards
 

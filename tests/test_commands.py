@@ -59,7 +59,8 @@ def test_the_pills_page_is_grouped_by_purpose_and_names_no_real_pill():
     assert [line for line in lines if line.startswith("**") and line.endswith("**")] == ["**Set up**", "**Each day**", "**See**", "**Buttons**"]
     each_day = lines[lines.index("**Each day**") + 1 : lines.index("**See**")]
     assert each_day[0].startswith("• `pills` (or `pill`) · today's checklist")
-    assert each_day[1] == "• “took Pill A” · “had Pill A at 9 am” · “skip Pill B today” · “I didn't take Pill A”"
+    assert each_day[1].startswith("• `took <pill's exact name>` · tick off today's next dose of that pill")
+    assert each_day[2] == "• “took Pill A” · “had Pill A at 9 am” · “skip Pill B today” · “I didn't take Pill A”"
     assert "• “add Pill A at 8 am” · “add Pill B twice a day, at least 6 hours apart”" in lines
     assert "• **✅ Taken** · under today's checklist, for a dose with no set time: tick it off as taken now" in lines
     # Placeholder names only: none of the names the router's own examples use

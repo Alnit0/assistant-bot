@@ -47,6 +47,10 @@ class Keyword:
     usage: str = ""  # the arguments, for help, e.g. "[days]"
     exact: bool = False  # never match by typo
     accepts: Callable[[list[str]], bool] | None = None  # say no to arguments that aren't ours
+    # The same, having looked something up: `async (ctx, args) -> bool`. Only with this may a
+    # word be a bare generic verb ("took"): it is a shortcut only when what follows is exactly
+    # one of the task's own things, and every other message goes on to the router as before
+    claims: Callable[[Context, list[str]], Awaitable[bool]] | None = None
     keep_command: bool = False  # leave the user's message in place after it works
     # Housekeeping (delete, archive, pin, unpin, channel reset) leaves no trace in the
     # channel: what is said about it deletes itself after about 10 seconds whatever

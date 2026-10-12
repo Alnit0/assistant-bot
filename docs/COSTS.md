@@ -196,7 +196,14 @@ to the same task every time:
 | "channel reset", "clear channel" | 2 | channel | US$0.0046 | `reset channel` is the typed word; these are the same words another way round |
 | "how long left on `<timer>`" | 1 (and 2 before the router) | timers | US$0.0105 | A typed `timer <name>` could answer it |
 
-Two things to weigh before adding any: a typed shortcut must carry its
+**Decided 2026-10-13:** "took `<pill>`" is now a typed shortcut, and
+only that: the word and the pill's exact name, nothing else
+(`tasks/pills/shortcut.py`). It costs nothing and is logged by the
+same code as saying it. "took my `<pill>`", a time, or two pills are
+read as before. No other shortcut is added, and the router is not
+skipped for a message that merely names a pill.
+
+What was weighed: a typed shortcut must carry its
 task's name and a bare verb is never registered (`CLAUDE.md`), so "took
 `<pill>`" as a shortcut would be a change to that rule; and the word
 lists the code keeps are not meant to grow into the way something is
@@ -206,11 +213,10 @@ isolated pills message.
 
 ## 7. Questions (also in `docs/STATUS.md`)
 
-1. Skip the router when a message names exactly one of my pills (or
-   timers)? Saves US$0.0026 a message and a second or so.
-2. Any of the shortcuts in section 6?
-3. Reword the router's rules to shorten them, with a full live eval
+1. Answered 2026-10-13: the router is not skipped; of the shortcuts,
+   only "took `<exact pill name>`".
+2. Reword the router's rules to shorten them, with a full live eval
    (about US$0.30 to US$0.50)?
-4. A model with a lower caching minimum would cache the router and
+3. A model with a lower caching minimum would cache the router and
    chat as well. That is a change of model, with its own prices and its
    own eval: only if you want it looked into.

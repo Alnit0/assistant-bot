@@ -522,7 +522,11 @@ def test_no_typed_shortcut_is_a_bare_generic_verb():
     for task, kind, item in everything():
         if kind == "keyword":
             for word in item.words:
-                assert not is_generic(word), f"{task}: `{word}` could be any task's; put the task's name in it"
+                # The one way a bare verb may be a shortcut: the task looks first, and takes it only
+                # when what follows is exactly one of its own things (`claims`)
+                assert not is_generic(word) or item.claims is not None, f"{task}: `{word}` could be any task's; put the task's name in it"
+    bare = [(task, word) for task, kind, item in everything() if kind == "keyword" for word in item.words if is_generic(word)]
+    assert bare == [("pills", "took")], "asked for on 2026-10-13, and no other"
     assert {"add", "edit", "remove", "delete", "pause", "resume", "list"} <= GENERIC_VERBS
     assert is_generic("Add") and is_generic(" add ") and not is_generic("pill add") and not is_generic("timer")
 

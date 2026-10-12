@@ -138,7 +138,12 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   channels and permission; destructive words are `exact`. A typed
   shortcut carries its task's name ("pill add"): a bare generic verb
   (`core/router.py`, `GENERIC_VERBS`) is never registered, so "add
-  milk" always goes to the router. Typed words never go through Claude
+  milk" always goes to the router. The one exception, asked for:
+  `took <a pill's exact name>` and nothing else
+  (`tasks/pills/shortcut.py`); a keyword may be a bare verb only with
+  `claims`, which looks first and takes the message only when the rest
+  is exactly one of the task's own things. Add no other without being
+  asked. Typed words never go through Claude
 - The registry decides how every action ends; handlers use `ctx.reply`
   (lasting: Kept) or `ctx.confirm` (self-deleting: Transient) and raise
   `UserError` for problems the user can fix
@@ -331,7 +336,9 @@ The rules are in `docs/specs/pills.md` and the Pills section of
 
 - All secrets live in `.env` (gitignored). Never hardcode or print them
 - When adding a setting, add a placeholder to `.env.example` too
-- Never commit `.env`, `data/`, `logs/`, `.venv/` or `docs/specs/`
+- `.env.dev` (read first with `--dev`, if it is there) gives the dev
+  bot a token and channels of its own. Secret like `.env`
+- Never commit `.env`, `.env.dev`, `data/`, `logs/`, `.venv/` or `docs/specs/`
 
 ## Running and testing
 

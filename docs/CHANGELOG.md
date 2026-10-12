@@ -6,6 +6,11 @@ backfilled from the git log.
 
 ## 2026-10-13
 
+- `took <pill>` (the pill's exact name and nothing else) ticks the
+  next dose off at once, with no wait and no cost. Anything more is
+  read as before.
+- The dev bot can have a token and channels of its own (`.env.dev`).
+
 - One ordered QA run of everything that is waiting
   (`docs/QA-TONIGHT.md`).
 

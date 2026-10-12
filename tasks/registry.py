@@ -84,7 +84,7 @@ def _check_registration(task: Task, kind: str, item) -> None:
 def _register_words(router: Router, task: Task, kind: str, item) -> None:
     entry = (task, item)
     for word in item.words:
-        if kind == "keyword" and is_generic(word):
+        if kind == "keyword" and is_generic(word) and item.claims is None:
             # "add" could be any task's: a shortcut carries its task's name ("pill add")
             _problem(f"{task.name}: keyword `{word}` is a bare generic verb; put the task's name in it")
             continue
@@ -415,6 +415,8 @@ async def dispatch_keyword(ctx: Context) -> bool:
     if not works_in(keyword, ctx.channel_id):
         return False
     if keyword.accepts is not None and not keyword.accepts(match.args):
+        return False
+    if keyword.claims is not None and not await keyword.claims(ctx, match.args):
         return False
     ctx.args = match.args
     ctx.housekeeping = keyword.housekeeping

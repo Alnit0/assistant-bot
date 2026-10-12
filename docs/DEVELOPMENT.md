@@ -645,6 +645,13 @@ Everything works in #inbox and in the hub.
   the card that asks a question and the "Log it anyway?" card are
   drawn as boxes too. What each says is unchanged. Off, everything
   looks as it always has. Colours and spacing are `core/design.py`.
+- **`took <pill>`** is a typed shortcut: the word and the pill's exact
+  name, nothing else ("took zinc"; any capitals). It ticks off the
+  pill's next dose now, in the same words as saying it, with no request
+  to Claude, so it is instant and free; too soon or too late still asks
+  first on a card. Anything more ("took my zinc", "took zinc at 9",
+  two pills, a pill with nothing left today) is not the shortcut and is
+  read as it always was.
 - **Pausing** stops a pill being asked for and leaves its streak alone.
   "Until the 20th" means it is taken again on the 20th, by itself.
 - **Removing** hides the pill everywhere and keeps its history for stats.
@@ -1231,6 +1238,29 @@ Polls, Manage Messages, Pin Messages, Manage Webhooks.
   meant to survive. You get "⌛ That button or form no longer works" and an
   "Interaction not answered" card in #bot-log.
 
+## A bot of its own for dev
+
+`python main.py --dev` is the live bot's own account on the dev
+database unless there is a `.env.dev` beside `.env`. With one, the dev
+bot reads `.env.dev` first and `.env` for everything it doesn't set, so
+it can be a different bot in different channels. The live bot never
+reads `.env.dev`, and it is never committed.
+
+1. In the Discord Developer Portal make a second application with a
+   bot, switch on the Message Content intent as for the first, and
+   invite it to the server.
+2. Copy `.env.dev.example` to `.env.dev`. Put in the new bot's
+   `DISCORD_TOKEN`, a name for it (`ASSISTANT_NAME`), and channels of
+   its own: at least `INBOX_CHANNEL_ID`, `BOT_LOG_CHANNEL_ID` and
+   `HUB_CHANNEL_ID`. **Two bots in one channel both answer**, so don't
+   leave the live bot's channels in place by leaving them out.
+3. `python main.py --dev`. The start card says which database; the
+   bot's nickname says which bot.
+
+One folder still runs one copy at a time (the lock is the folder's
+`data/bot.lock`). Once live has a folder of its own (below), live and
+this dev bot can run side by side, as two different bots.
+
 ## A folder of its own for live
 
 Today the service runs from the folder the code is worked on in, so the
@@ -1262,10 +1292,9 @@ yourself, at the PC.
 
 Afterwards: update live with `git pull` in the live folder and
 `nssm restart assistant-bot`; in this folder use only
-`python main.py --dev`. **The lock no longer protects you**: each
-folder has its own `data\bot.lock`, so live and a dev copy can both
-run and both answer. Stop one before starting the other until the lock
-is shared (in the backlog).
+`python main.py --dev`. Each folder has its own `data\bot.lock`, so
+live and a dev copy can both run: give dev a bot of its own first
+(above), or the same bot answers twice.
 
 ## Day-to-day workflow
 

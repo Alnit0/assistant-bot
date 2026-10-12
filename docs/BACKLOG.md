@@ -23,8 +23,9 @@ low priority, nothing dropped without a reason.
 4. **The questions at the top of `docs/STATUS.md`**: the new look, the
    streak's rules, costs and shortcuts, live's own folder.
 5. **`feature/pills` into `main`, then live's own folder**
-   (`scripts\setup-live-folder.ps1`), and one lock for the two folders
-   (Details: "One lock for two folders").
+   (`scripts\setup-live-folder.ps1`). Dev gets a bot of its own
+   (`.env.dev`, built 2026-10-13: Alex makes the bot), so the two can
+   run side by side.
 6. **Gym**: waits for the answers on how Alex trains; the three core
    pieces are built (Details: "Gym").
 
@@ -32,22 +33,23 @@ low priority, nothing dropped without a reason.
 
 7. **Pills stage 4**: a correction said long after ("I took it at 9,
    not 10"), and G3 (a correction straight after Save rests on a guess).
-8. **Show a streak** (the logic is built), **the take-by line on the
-   checklist**, a weekly summary.
+8. **Show a streak**, with stage 4 (decided 2026-10-13): counted in
+   days, one for all pills on the checklist, one a pill later in
+   history. The logic is built. Also **the take-by line on the
+   checklist** and a weekly summary.
 9. **Yesterday's doses after midnight** ("After midnight, logging
    yesterday's doses").
 10. **The rest of the cards in the new look**, and with it: one way to
     tick a dose off from a button (three near copies), `dev mock` on
     the design's own records, the old plain checklist retired.
-11. **Costs**: skip the router when a message names one of my things;
-    shorten the router's rules with a live eval (`docs/COSTS.md`).
+11. **Costs**: shorten the router's rules with a live eval
+    (`docs/COSTS.md`), if wanted. Skipping the router for a message
+    that names a pill was turned down (2026-10-13).
 12. **Days of the week in the schedule model**, in core (wanted by gym
     if workouts go by weekday, and by reminders after pills).
 13. **G4**: task ties are asked too readily.
 14. **A reaction made just before a stop is lost**: keep waiting
     reactions in the database.
-15. **`tasks/keep` uses discord.py** without being on the list of tasks
-    that may.
 16. **The outgoing check does not cover every message**, and **some
     refusals are still a bare line, not a card**.
 17. **R5 to R22 and R25 in `docs/TESTING.md`** still describe the old
@@ -60,6 +62,8 @@ low priority, nothing dropped without a reason.
 Wanted some day, or small and harmless as they are. In Details under
 the same words.
 
+- **A file sent with no words** goes to the router once gym is built
+  and can read a plan (decided 2026-10-13); until then it is ignored.
 - New things: a notes task; the section provider interface (a morning
   brief); the nightly sweep; `dev qa <block>`; pin, archive and delete
   in plain words; bulk and cross-channel actions; `reset channel` for
@@ -112,6 +116,13 @@ Only touched when a core change breaks their tests.
 
 ## Removed on 2026-10-13, and why
 
+- **`tasks/keep` uses discord.py**: fixed on 2026-10-13. Its Discord
+  calls were already in `core/pins.py`; only the names of two types
+  were left, and they are gone.
+- **One lock for two folders**: no longer needed as a change to the
+  lock. Dev gets a bot token of its own (`.env.dev`), decided
+  2026-10-13, so live in its own folder and dev in this one are two
+  different bots.
 - **`search_messages` only finds your own messages that the bot handled**: it was about the old way of handing Claude tools, which was removed at step 4 on 2026-10-10 (Claude runs nothing now).
 - **Refs from a listing last for one message**: it was about the old way of handing Claude tools, which was removed at step 4 on 2026-10-10 (Claude runs nothing now).
 - **Claude no longer remembers what it ran**: it was about the old way of handing Claude tools, which was removed at step 4 on 2026-10-10 (Claude runs nothing now).
@@ -303,7 +314,6 @@ number read from text; C19's name matching is in the core.
 
 | What | Where | Why it is not fixed here |
 |---|---|---|
-| `tasks/keep` imports discord.py and is not one of the tasks allowed to | `tasks/keep/__init__.py:1` | Not from this batch; it needs the gateway layer or a say-so |
 | #commands still describes Taken and Skip as "under today's checklist" | `tasks/pills/__init__.py:72` | True while `CARDS_V2` is off; the wording for the new look is yours |
 | The spend note is sent from `core/database.py` | `core/database.py`, `_say_if_over_the_daily_limit` | It works and is tested; a module for what is said about spend would be tidier |
 | Three near copies of "tick a dose off from a button" | `checklist._pressed`, `reminders._done`, `sheet._done` | One would do; left until the old checklist goes |
@@ -311,14 +321,6 @@ number read from text; C19's name matching is in the core.
 | Timers: C8, C14, C17, C18 as before | table above | Timers are low priority and left alone |
 
 ### Left for later
-
-- **One lock for two folders** (found preparing live's own folder,
-  2026-10-13): the lock that stops two copies of the bot is
-  `data/bot.lock`, one a folder. Once live has its own folder, a dev
-  copy started in the other is no longer refused, and both answer. A
-  setting for where the lock is (one path for both folders), or a
-  second bot token for dev, would fix it. Not built: it was not asked
-  for.
 
 - **Tests in parallel** (tried 2026-10-13): with pytest-xdist one full
   run took 30 s and the next hung at about 95%, so it is not used and

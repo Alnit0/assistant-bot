@@ -140,6 +140,12 @@ At the PC: Ctrl+C, then
 | 58 | `pills`, then say `add Testlast once a day` and **Cancel** | The old look again: a plain checklist and a plain card (a message drawn the new way earlier may keep its box) | 41.8 |
 | 59 | At the PC: Ctrl+C. Start the service when you want live back: `nssm start assistant-bot` | The live bot starts; its first start adds the new tables | |
 
+## Added after this sheet was written
+
+Block 43 of `docs/QA-RUN.md` (`took <pill>`, four steps, phone only)
+was built on 2026-10-13 after your answers. It needs a start of the dev
+bot from after that change; do it any time, on its own.
+
 ## What this run does not cover
 
 Blocks before 27 that are still to be reported (21, 22, 23 steps 5 to

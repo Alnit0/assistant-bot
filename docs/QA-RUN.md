@@ -814,6 +814,20 @@ one cent in all): skip them if you'd rather not.
 | 3 | Say `what pills do I have?` again, then type `dev cost` | No second card in #bot-log. `dev cost` shows "⚠️ over today's limit: US$… of US$0.00 (DAILY_SPEND_LIMIT)" | K25, J61 |
 | 4 | Stop the dev bot and take `DAILY_SPEND_LIMIT` out of `.env` again | | |
 
+## 43. `took <pill>` (waiting for QA)
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
+On the dev database, dev mode off. You need a pill with no set time:
+say `add Testzinc once a day` and press **Save**.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Type `took testzinc`. Press nothing | At once: "✅ **Testzinc** · taken …", your message stays, and the checklist shows it. `dev cost` afterwards shows no new message to Claude | R81 |
+| 2 | Type `took testzinc` again | An ordinary answer in the bot's usual words that it is already taken: nothing is left today, so this one went to Claude as before | R81 |
+| 3 | Say `add Testgap at 8am and 11am, at least 3 hours apart`, **Save**. Type `took testgap`, then at once `took testgap` again. Press **Cancel** | The first is ticked off. The second gives the card "⚠️ That's … after dose 1 … Log it anyway?" with **Log it** and **Cancel**; nothing more is ticked off | R81 |
+| 4 | Say `remove testzinc and testgap`, press **Remove** | Gone | |
+
 ## When you finish
 
 - Stop the test copy (`Ctrl + C`) and check nothing is left running:

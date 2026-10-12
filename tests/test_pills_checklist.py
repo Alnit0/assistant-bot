@@ -138,7 +138,7 @@ def test_the_word_and_the_question_post_today_and_point_to_it_in_a_line_that_goe
 
     monkeypatch.setattr(tidy, "pointer", pointer)  # the line that deletes itself after about ten seconds
     ctx = SimpleNamespace(user=world.owner, channel_id=INBOX, shown=shown.append)
-    (keyword,) = pills_task.keywords()
+    keyword = pills_task.keywords()[0]
     assert run(keyword.handler(ctx)) == "posted today's checklist"
     assert world.sent[0].channel == HUB and pointed == [(INBOX, "💊 Today's checklist is in <#400>.")]
     assert shown == ["pointed to the hub"], "so no Done line is added on top of the pointer"
