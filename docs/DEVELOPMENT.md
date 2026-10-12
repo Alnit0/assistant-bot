@@ -427,6 +427,12 @@ Things to know:
   to (`decide`) and writes the words (`already`, `there_line`,
   `change_line`). The bot won't route to a task that doesn't declare
   `on_repeat`, or whose identity names a field none of its actions take.
+- **A reply to one of your task's messages comes to it first.** A Discord
+  reply to a message the task posted goes to its extraction without the
+  router, and the code resolves "it" from `request.replied_to`. A task
+  owns whatever `message_class` knows; override `Task.owns_message` if
+  it posts messages with no lifecycle class (timers does, for a card
+  whose timer has ended).
 - **A new task starts with the `new-task` skill** (the interview, the
   contract, the spec, then the build), and every task is audited with
   `task-check`.

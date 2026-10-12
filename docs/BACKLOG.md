@@ -139,17 +139,26 @@ a schema could take its place.
 
 ## Left for later
 
+- **Two running timers with the same name both get the change** (found
+  live, 2026-10-12): with two called "tea", "give tea more time" adds to
+  both. Later: number a duplicate when it starts ("tea 2"), so each can
+  be named.
 - **Left by the task-check fixes** (2026-10-12):
-  - **Three fixtures are not recorded**: "took the usual one" (a guessed
-    pill), "took it" (said as a reply) and "how long left on tea?". Their
-    replays are skipped until pills and timers are run live once
-    (`python -m evals.live --live --only pills --record`, then timers).
+  - **"took the usual one" does not get the ❓ card.** Recorded live on
+    2026-10-12: Claude hands it over as "it" (`@that`) and says nothing
+    was guessed, so the code takes the pill logged last, or asks which
+    if none was. The card only shows when Claude names a pill and lists
+    it as guessed. To decide: whether an unnamed pill that is not "it",
+    said with no reply and not straight after a log, should be put on a
+    card by the code (it would need to tell "the usual one" from "dose
+    2 at 12:15pm", which is meant to log at once).
+  - **One fixture is not recorded**: "how long left on tea?" (timers).
   - **A reply to the checklist only says which pill when one pill is on
     it.** With several, "it" is still the pill logged last, or the bot
     asks which. A reply to a dose's own Taken / Skip message is exact.
-  - **Whether a reply to a dose's message reaches pills at all is the
-    router's call**, as for every reply that is not to a card. It went
-    to pills in the tests' recorded answers; nothing in code forces it.
+  - **A reply to a bug's "🐞 Logged as B4" line, or to a card that has
+    been saved or cancelled, is still the router's to place**: bugs
+    declares no message of its own, and a closed card belongs to none.
   - **A timer that didn't save can't be shown in Discord**: C3 is
     covered by unit tests only.
   - **The archive's "Originally posted" and the dev tools' job times are

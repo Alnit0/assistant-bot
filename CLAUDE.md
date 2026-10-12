@@ -151,7 +151,7 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 | A confirmation only after the change is read back | `Action.verify`; a direct action re-reads inside `run`; `llm.remember` records what a button did |
 | What I state wins | `routing.named_destinations`, `actions.unstated` |
 | A reply, "it", "that" | `actions.REFERENCE`, `as_references`, `point_at`; `Request.replied_to`; a card keeps `LAST` |
-| An open card, a list just shown, the task that just answered | `confirm.sticks`, `livelists.sticks`, `llm.task_answered` (`after_answer`) |
+| An open card, a list just shown, the task that just answered, a reply to a message a task posted | `confirm.sticks`, `livelists.sticks`, `llm.task_answered` (`after_answer`), `Task.owns_message` (`replied`) |
 | Several things in one message; set, add, remove | `actions.ITEMS`, `merge_items`; one card a task |
 | Nothing dropped | `not_included`, `conversation.uncovered`, `actions.is_filler`, `whole_part` |
 | ❓ a genuine guess only; ❔ and no Save for what can't be read | `actions.is_guessed`; `Proposal.can_save` |

@@ -81,7 +81,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 
 | Path | Responsibility |
 |---|---|
-| `base.py` | The `Task` base class with its hooks (including `message_class`, `new_day`, and for plain words `icon`, `only_for`, `examples`, `show`, `identity`, `on_repeat`, `actions()`, `action_state()`, `already_so()` and `item_names()`; and `channel_cleared`, for putting its live messages back after a channel reset), and the self-describing `Keyword`, `ReplyAction`, `Reaction` records (the last two with an optional `validate`; any of them may be `housekeeping`, which leaves no trace in the channel). For #commands a `Keyword` has a `purpose`, a task lists its buttons as `ButtonNote`s (`buttons()`), and `testing` marks a task that is not for every day; `reposted` says what a channel reset would post again. `Reaction.instant` skips the quiet period (🐞 only); `Task.claim(ctx)` takes a message because of where it was sent |
+| `base.py` | The `Task` base class with its hooks (including `message_class`, `owns_message` (which messages are its own: a reply to one is its to read first), `new_day`, and for plain words `icon`, `only_for`, `examples`, `show`, `identity`, `on_repeat`, `actions()`, `action_state()`, `already_so()` and `item_names()`; and `channel_cleared`, for putting its live messages back after a channel reset), and the self-describing `Keyword`, `ReplyAction`, `Reaction` records (the last two with an optional `validate`; any of them may be `housekeeping`, which leaves no trace in the channel). For #commands a `Keyword` has a `purpose`, a task lists its buttons as `ButtonNote`s (`buttons()`), and `testing` marks a task that is not for every day; `reposted` says what a channel reset would post again. `Reaction.instant` skips the quiet period (🐞 only); `Task.claim(ctx)` takes a message because of where it was sent |
 | `registry.py` | Discovers and loads tasks; dispatches words, reply actions and reactions; refuses invalid ones at once; decides how each ends; asks tasks what a message is (`declared_class()`); the single source of what the bot can do (`catalogue()`, `find()`, `capabilities_text()`), and sets the router's catalogue from each task's entries (`actions.set_catalogue`) and the names that may never be sent as text (`outgoing.set_internal_names`). `dispatch_claimed` hands an unmatched message to the task that claims it; an `instant` reaction is applied the moment it is added |
 | `builtin/__init__.py` | `ping`, `reset`, `buttons`, `stats`, and `help` generated from the registry |
 | `builtin/views.py` | The `buttons` test view |
@@ -195,6 +195,11 @@ every message that is no shortcut)
    this channel in the last five minutes (`llm.answering_task`) and the
    message is short, it goes to that task's extraction first, told so
    (`after_answer`). Anything but an action sends it on to the router.
+2d. **A reply to a message a task posted?** A Discord reply to a dose's
+   Taken / Skip message, a timer's card, a checklist (`Entry.owns`, from
+   `Task.owns_message`) goes to that task's extraction first, told so
+   (`replied`), however old the message. Anything but an action sends it
+   on to the router. A task I name in the message still decides.
 2a. **Follow-up?** If there is an open confirm card and the message is a
    reply to it, or the card is the bot's latest message there and under
    five minutes old (`confirm.sticks`), the message goes straight to that

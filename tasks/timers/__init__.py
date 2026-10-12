@@ -277,6 +277,12 @@ class TimersTask(Task):
     async def reposted(self, channel_id: int, gone: set[int]) -> list[str]:
         return await board.reposted(channel_id, gone)
 
+    async def owns_message(self, message_id: int) -> bool:
+        # A timer's or a session's card or alert, going or over, the board and the list
+        if await store.timer_by_message(message_id) is not None or await store.session_by_message(message_id) is not None:
+            return True
+        return await store.is_board(message_id) or await store.is_list(message_id)
+
     async def message_class(self, message_id: int) -> MessageClass | None:
         if await store.is_board(message_id) or await store.is_list(message_id):
             return MessageClass.LIVE

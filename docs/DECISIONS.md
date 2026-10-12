@@ -1062,3 +1062,15 @@ A short log of key decisions and why. Newest at the bottom.
     count on the post's card.
   - Where a time matters it is written by the bot, 12-hour; Discord's
     relative countdowns ("in 5 minutes") stay.
+- **A reply to a task's message is that task's first (2026-10-12).**
+  Where a reply to a dose's message went had been left to the router;
+  it is now decided in code, like the five-minute follow-up: each task
+  says which messages are its own (`Task.owns_message`), and a reply to
+  one goes to its extraction alone, which may hand it back.
+  - There is no time limit and no limit on length: a reply is pointing,
+    not guessing from what happened to be said last.
+  - A task named in the message ("to my pills") still decides, and an
+    open card replied to is still that card.
+  - The pills fixtures were recorded live once for this (US$0.13). One
+    came back otherwise than hoped: "took the usual one" is handed over
+    as "it", not as a guess, so it gets no ❓ card (see the backlog).

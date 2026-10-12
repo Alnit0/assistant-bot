@@ -6,6 +6,10 @@ backfilled from the git log.
 
 ## 2026-10-12
 
+- **A reply to a message the bot posted for a task goes to that task
+  first**, in code: a dose's Taken / Skip message, a timer's card, the
+  checklist. The router is only asked if the task says the reply isn't
+  its own. It works however old the message is.
 - **A pill that was guessed is never logged straight away.** It is shown
   on a card with ❓, Save and Cancel. A name that is exact, or that only
   one pill fits, still logs at once.

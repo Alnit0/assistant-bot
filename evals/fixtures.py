@@ -70,6 +70,7 @@ class ExtractionFixture:
     moved: dict | None = None
     after_list: bool = False  # the message came straight after this task's list was shown
     after_answer: bool = False  # the message came straight after this task's own code answered
+    replied: bool = False  # the message was a Discord reply to one of this task's own messages
     elsewhere: str = ""  # what else in the message is being handled, and by what ("the packing task")
     # Whether anything was asked for that can't go in the action: None doesn't check,
     # False means nothing may be reported as left out, True means something must be

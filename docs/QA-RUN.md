@@ -30,7 +30,7 @@ tests (block 12).
 | 22 | Channel reset, housekeeping that leaves no trace, and button colours | `--dev`, off then on (two restarts) | 8 | 15 |
 | 23 | Retest: the main pill, late at night | `--dev`, off (one restart) | 7 | 12 |
 | 24 | Small backlog batch: identity, #commands, mock-ups, the reset card | live, off (two restarts) | 9 | 15 |
-| 25 | Retest: the `task-check` fixes (a guessed pill, replies, plain refusals, 12-hour times) | `--dev`, off (one restart) | 6 | 10 |
+| 25 | Retest: the `task-check` fixes (a guessed pill, replies, plain refusals, 12-hour times) | `--dev`, off (one restart) | 6 | 12 |
 | | **Total** | | **191** (F2 is split over blocks 4 and 7, counted in 7) | **about 3¼ hours** |
 
 Blocks 14 to 23 need nothing from the others (19 and 20, the first pills blocks, passed on 2026-10-10 and are no longer here) (13 and 16 tested the old way of asking Claude, which is gone): run them any time after
@@ -535,10 +535,11 @@ Every step says what to press.
 | # | Do | Expect | Tests |
 |---|---|---|---|
 | 1 | Say `took the usual one`. Press **Cancel** (if it asks which pill instead, that passes too) | Never ticked off at once. A card "💊 Pills · change" with the dose and ❓, **Save** and **Cancel**; after Cancel the checklist is unchanged | R66 |
-| 2 | Say `took my pill X`. Then reply to **Pill Y**'s Taken / Skip message with `took it`. Press nothing | "✅ **Pill X** · taken …", then "✅ **Pill Y** · taken …": the pill whose message you replied to, not the one logged just before | R67 |
-| 3 | `timer 10m tea`; say `give tea more time`. Press nothing | One plain line that ends "Say how much time to add, e.g. 10 minutes.": no `duration`, no "tell the user", no id like t12 | G25 |
+| 2 | Say `took my pill X`. Then reply to **Pill Y**'s Taken / Skip message with `took it`; then reply `dev why` to that reply of yours. Press nothing | "✅ **Pill X** · taken …", then "✅ **Pill Y** · taken …": the pill whose message you replied to, not the one logged just before. The trace says "a reply to a message pills posted: it goes to pills first", with no router request | R67 |
+| 3 | `timer 10m tea`; say `give tea more time`. Press nothing | Either a plain line that ends "Say how much time to add, e.g. 10 minutes.", or the time is added with the amount it guessed marked ❓ ("❓ I guessed how much time to add."). Never `duration`, "tell the user" or an id like t12 | G25 |
 | 4 | Look at the tea timer's message; type `pomo` and look at its card. Press **Stop**, and reply `cancel` to the tea timer | "ends in 9 minutes (8:04 pm)" and "Ends in 25 minutes (8:19 pm)": the time in brackets is 12-hour with am or pm, whatever your Discord is set to | G26 |
 | 5 | React 🐞 to any message; open the post in #bugs and write `a note`. Press nothing. Then `dev clock reset` | No ✅ on your note and no reply; the count on the post's opening card goes up by one. The card's first line gives the time as "8:04 pm, 12 Oct" | P34 |
+| 6 | `timer 10m tea`, then `timer 10m eggs`; send three other messages; then reply to the **tea** timer's message with `give it 2 more`. Then reply `dev why` to that reply of yours. Reply `cancel` to both timers | Tea gets 2 more minutes, eggs is untouched. The trace says "a reply to a message timers posted: it goes to timers first" and shows no router request | S59 |
 
 ## When you finish
 

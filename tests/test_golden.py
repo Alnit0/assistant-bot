@@ -14,7 +14,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from core import actions, confirm, day, timeinput
+from core import actions, confirm, database, day, timeinput
 from tasks.pills import checklist
 from core.actions import Request
 from tests import demo
@@ -564,3 +564,69 @@ def test_an_acknowledgement_from_chat_with_no_task_to_own_it_gets_the_neutral_li
     bot.claude(chat, chat)
     bot.say("I went for a run at 7 this morning")
     assert [shown.text for _, shown in bot.sent] == [CANT_LOG]
+
+
+# --- a Discord reply to a message a task posted goes to that task first (asked for 2026-10-12) ----------------
+ADDED = lambda name: ("pill_add", {"pills": [{"name": name}], "guessed": [], "not_included": []})  # noqa: E731
+TOOK_IT = ("pill_log", {"doses": [{"pill": "@that", "did": "taken"}], "guessed": [], "not_included": []})
+
+
+def _two_pills_and_zinc_logged(bot):
+    """Zinc and Iron on today's checklist, each with its own Taken / Skip message, and Zinc
+    logged last. Returns Iron's message and how many requests were made so far."""
+    from tasks.pills import checklist as pills_checklist
+
+    for name in ("Zinc", "Iron"):
+        bot.claude(route("pills"), ADDED(name))
+        bot.say(f"add {name} to my pills, once a day")
+        press(bot)
+    run(pills_checklist.post(bot.owner.id))
+    bot.claude(route("pills"), ("pill_log", {"doses": [{"pill": "zinc", "did": "taken"}], "guessed": [], "not_included": []}))
+    bot.say("took my zinc")
+    _, listed, today_ = run(pills_checklist.view(bot.owner.id))
+    iron = next(dose for dose in listed if dose.pill.plan.name == "Iron")
+    held = run(database.run(pills_store.db_messages, bot.owner.id, today_))
+    return next(message.message_id for message in held if message.occurrence_id == iron.occurrence.id), len(bot.requests)
+
+
+def test_a_reply_to_a_doses_message_goes_to_pills_first_and_means_that_pill(bot):
+    iron_message, before = _two_pills_and_zinc_logged(bot)
+    bot.claude(TOOK_IT)  # one request, for pills: the router is not asked
+    bot.say("took it", reply_to=iron_message)
+    assert bot.sent[-1][1].text.startswith("✅ **Iron** · taken"), "the pill whose message I replied to, not the one logged last"
+    assert [(asked.task, "not_this" in asked.tools) for asked in bot.requests[before:]] == [("pills", True)]
+    _no_chat(bot)
+
+
+def test_a_reply_that_is_not_about_the_tasks_message_is_handed_back_to_the_router(bot):
+    iron_message, before = _two_pills_and_zinc_logged(bot)
+    bot.claude(("not_this", {"reason": "a general question"}), ROUTED["5"])
+    asked, _ = bot.say("what's the capital of France?", reply_to=iron_message)
+    assert asked.replies == ["Paris."] and len(bot.requests) == before + 2, "pills said it wasn't its own; then the router"
+
+
+def test_a_reply_to_a_timers_card_goes_to_timers_first_however_old_the_card(bot):
+    for label in ("tea", "dinner"):
+        run(timers_plain.start(Request(bot.owner, 100, "start"), {"timers": [{"duration": "5m", "label": label}]}, frozenset()))
+    tea, dinner = timers(bot)
+    bot.claude(("timer_change", {"which": "@that", "action": "extend", "duration": "2m", "guessed": [], "not_included": []}))
+    bot.say("give it 2 more", reply_to=tea.message_id)
+    tea, dinner = timers(bot)
+    assert tea.left(timers_plain.utc_now()) == pytest.approx(420, abs=5) and dinner.left(timers_plain.utc_now()) == pytest.approx(300, abs=5)
+    assert [(asked.task, "not_this" in asked.tools) for asked in bot.requests] == [("timers", True)], "no router: the card says whose it is"
+
+
+def test_a_reply_to_a_message_no_task_posted_is_routed_as_before(bot):
+    bot.claude(ROUTED["5"])
+    asked, _ = bot.say("what's the capital of France?", reply_to=987654)
+    assert asked.replies == ["Paris."] and [each.purpose for each in bot.requests] == ["router"], "the router alone"
+
+
+def test_each_task_says_which_messages_are_its_own(bot):
+    run(timers_plain.start(Request(bot.owner, 100, "start"), {"timers": [{"duration": "5m", "label": "tea"}]}, frozenset()))
+    (tea,) = timers(bot)
+    run(timers_plain.change(Request(bot.owner, 100, "cancel"), {"which": f"t{tea.id}", "action": "cancel"}, frozenset()))
+    (timers_entry,) = timers_task.entries()
+    (pills_entry,) = pills_task.entries()
+    assert run(timers_entry.owns(tea.message_id)) is True, "a timer's card is the timer's even once it has ended"
+    assert run(timers_entry.owns(987654)) is False and run(pills_entry.owns(tea.message_id)) is False

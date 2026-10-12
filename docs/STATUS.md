@@ -35,19 +35,21 @@ session; the end-of-task checklist updates it at the end of every task.
 - Committed: step 5 of the routing spec (`CLAUDE.md` tidied, `identity`
   and `on_repeat` in the contract, the skills `new-task` and
   `task-check`, and the first `task-check`: C1 to C20 in the backlog).
-- In hand, uncommitted (2026-10-12): **the task-check fixes chosen**: a
-  guessed pill goes on a card (C6), a reply to a dose's message says
-  which pill (C5), timers read back before confirming (C3), refusals
-  written for me (C1, C2), 12-hour text in place of Discord's clock
-  (C11), and no ✅ on a note in a bug's post (C9). Block 25 retests
-  them. Three fixtures are waiting to be recorded live.
+- Committed and live: the task-check fixes chosen (C1, C2, C3, C5, C6,
+  C9, C11). Block 25: steps 3 to 5 passed; steps 1 and 2 are to be run
+  on the dev database.
+- In hand, uncommitted (2026-10-12): **a reply to a message a task
+  posted goes to that task first**, in code (step 6 of block 25, and
+  the trace in step 2), with the pills fixtures recorded live.
 - Tests: `python -m pytest -q` passes. Golden conversations 1c, 1d
   and 2a are marked as gaps (they need questions on the card, G1).
   The live evals of 2026-10-12: pills 56 of 57, general 12 of 12,
   golden 37 of 39 (not run again since the router's rule on reports
-  was reworded); each miss is a known one that the code covers. Three
-  fixtures have no recording yet (see the backlog).
-- Live eval spend to date: about US$3.91.
+  was reworded); each miss is a known one that the code covers. The
+  pills fixtures were recorded again on 2026-10-12: 57 of 59, with one
+  known miss and one new one ("took the usual one": see the backlog).
+  One timers fixture has no recording yet.
+- Live eval spend to date: about US$4.04.
 
 ## Current goal
 
@@ -85,7 +87,7 @@ live), and on 2026-10-12 the bot's nickname and status line, the
 
 ## Next up
 
-1. Block 25 (the task-check fixes), then its commit. Step 8 of block
+1. Steps 1, 2 and 6 of block 25 on the dev database, then this commit. Step 8 of block
    24 (tomorrow's backup card). Blocks 21 and 22, and
    steps 5 to 7 of block 23, are still to be reported.
 2. The checklist redesigned with Discord's Components V2: look at

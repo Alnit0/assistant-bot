@@ -257,6 +257,7 @@ class Task:
             Entry(
                 self.name, self.icon, self.only_for, tuple(self.examples), found, live_state=self.action_state, show=self.show,
                 already=self.already_so, names=self.item_names, identity=tuple(self.identity), on_repeat=self.on_repeat,
+                owns=self.owns_message,
             )
         ]
 
@@ -338,6 +339,14 @@ class Task:
         the card that asks before a channel is reset. Changes nothing. Never a
         sensitive name (a pill's)."""
         return []
+
+    async def owns_message(self, message_id: int) -> bool:
+        """Whether a message is one this task posted for something of its own. A
+        Discord reply to it is this task's to read first (core/conversation.py):
+        where I point beats what is newest. By default: anything the task
+        gives a lifecycle class. Override when it posts messages that have
+        none (a timer's card once the timer has ended)."""
+        return await self.message_class(message_id) is not None
 
     async def message_class(self, message_id: int) -> MessageClass | None:
         """What kind of message this is, if it is one of this task's own and not

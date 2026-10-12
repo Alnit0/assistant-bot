@@ -272,7 +272,7 @@
         {
           "pills": [
             {
-              "name": "course A",
+              "name": "Course A",
               "per_day": 3,
               "min_gap_minutes": 180,
               "notes": "with food",
@@ -352,7 +352,7 @@
         {
           "pills": [
             {
-              "name": "Pill A",
+              "name": "pill A",
               "per_day": 3,
               "times": [
                 "8:00 am",
@@ -455,7 +455,7 @@
         "none",
         {
           "why": "already_so",
-          "reason": "Iron is already scheduled at 8:00 am, and the user is confirming it should remain as is. No change needed.",
+          "reason": "Iron is already scheduled at 8:00 am as stated; no change requested or needed.",
           "about": "pl2"
         }
       ]
@@ -484,7 +484,10 @@
               "min_gap_minutes": 180
             }
           ],
-          "guessed": [],
+          "guessed": [
+            "times[0]",
+            "times[1]"
+          ],
           "not_included": []
         }
       ]
@@ -630,13 +633,11 @@
             {
               "name": "pill K",
               "per_day": 2,
-              "min_gap_minutes": 180
+              "min_gap_minutes": 180,
+              "notes": "with 3 hours between them"
             }
           ],
-          "guessed": [
-            "times[0]",
-            "times[1]"
-          ],
+          "guessed": [],
           "not_included": []
         }
       ]
@@ -662,7 +663,7 @@
         {
           "pills": [
             {
-              "name": "iron",
+              "name": "Iron",
               "times": [
                 "8:00"
               ]
@@ -1237,9 +1238,7 @@
               "at": "9:00 am"
             }
           ],
-          "guessed": [
-            "at[0]"
-          ],
+          "guessed": [],
           "not_included": []
         }
       ]
@@ -1576,7 +1575,21 @@
       "also_ok": {
         "action": "none"
       },
-      "note": "task-check C6, 2026-10-12: nothing says which pill. If one is picked it must be listed as guessed, so the code shows it on a card with a question mark instead of logging it; declining is as right"
+      "note": "task-check C6, 2026-10-12: nothing says which pill. If one is picked it must be listed as guessed, so the code shows it on a card with a question mark instead of logging it; declining is as right",
+      "recorded": [
+        "pill_log",
+        {
+          "doses": [
+            {
+              "pill": "@that",
+              "did": "taken"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ],
+      "known_miss": "recorded 2026-10-12: it comes back as `@that` with nothing listed as guessed, so the code takes it for the pill logged last (or asks which, if none was) and no card with a question mark is shown. The card only appears when Claude names a pill and says it guessed"
     },
     {
       "task": "pills",
@@ -1591,7 +1604,21 @@
           }
         ]
       },
-      "note": "task-check C5, 2026-10-12: said as a Discord reply to a dose's Taken / Skip message. Which pill it is stays the code's to resolve (the message replied to, then the pill logged last)"
+      "note": "task-check C5, 2026-10-12: said as a Discord reply to a dose's Taken / Skip message. Which pill it is stays the code's to resolve (the message replied to, then the pill logged last)",
+      "replied": true,
+      "recorded": [
+        "pill_log",
+        {
+          "doses": [
+            {
+              "pill": "@that",
+              "did": "taken"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
     }
   ]
 }

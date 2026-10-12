@@ -302,7 +302,7 @@ def test_extraction_fixture(fixture):
     if fixture.recorded is None:
         pytest.skip("not recorded yet: python -m evals.live --live --dev --record")
     entry = next(entry for entry in ALL if entry.name == fixture.task)
-    found = extraction.read(entry, tuple(fixture.recorded), follow_up=fixture.card is not None or fixture.after_list or fixture.after_answer)
+    found = extraction.read(entry, tuple(fixture.recorded), follow_up=fixture.card is not None or fixture.after_list or fixture.after_answer or fixture.replied)
     problem = fixtures.extraction_problem(fixture, found)
     # A known miss is replayed (it must still be read without error) but not judged:
     # the model gives it differently from one run to the next
@@ -465,3 +465,10 @@ def test_the_router_is_told_my_data_belongs_to_its_task_and_can_be_asked_to_look
     again = routing.user_turn("what have I got to buy", about_data=True)
     assert again.startswith("This message is about the user's own data") and again.endswith("The message to route:\nwhat have I got to buy")
     assert not routing.user_turn("hello").startswith("This message is about")
+
+
+def test_a_reply_to_a_tasks_own_message_is_read_by_that_task_and_may_be_handed_back():
+    told = extraction.system_blocks(SHOPPING, replied=True)[0]["text"]
+    assert "as a Discord reply to one of this task's own messages" in told and "`@that`" in told and "`not_this`" in told
+    assert "as a Discord reply" not in extraction.system_blocks(SHOPPING)[0]["text"]
+    assert any(fixture.replied for fixture in EXTRACTIONS), "a reply to a task's own message has a fixture"

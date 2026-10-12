@@ -266,6 +266,10 @@ class Entry:
     # means, one of repeats.ON_REPEAT. Every entry declares `on_repeat`
     identity: tuple[str, ...] = ()
     on_repeat: str = ""
+    # `async (message_id) -> bool`: whether a message is one this task posted (a dose's
+    # Taken / Skip message, a timer's card, a checklist). A Discord reply to one goes to
+    # this task's extraction first, without the router
+    owns: Callable[[int], Awaitable[bool]] | None = None
 
     @property
     def title(self) -> str:

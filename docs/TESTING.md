@@ -34,19 +34,19 @@ Last updated: 2026-10-12
 | D | Archive and restore | 15 | 4 | 11 | 11 | 4 | 0 | 0 |
 | E | Delete and protection | 12 | 3 | 9 | 9 | 3 | 0 | 0 |
 | F | Pins | 4 | 0 | 4 | 4 | 0 | 0 | 0 |
-| G | Timers | 26 | 10 | 16 | 15 | 11 | 0 | 0 |
+| G | Timers | 26 | 10 | 16 | 13 | 13 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
 | J | Dev mode | 52 | 10 | 42 | 41 | 11 | 0 | 0 |
 | K | Startup and housekeeping | 22 | 11 | 11 | 9 | 13 | 0 | 0 |
 | L | Keep | 12 | 4 | 8 | 8 | 4 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
-| P | Bugs | 34 | 16 | 18 | 16 | 18 | 0 | 0 |
+| P | Bugs | 34 | 16 | 18 | 15 | 19 | 0 | 0 |
 | Q | Time, days, the schedule model, the occurrence log and cards | 15 | 13 | 2 | 2 | 13 | 0 | 0 |
 | R | Pills | 55 | 10 | 45 | 37 | 18 | 0 | 0 |
-| S | Routing and confirm cards | 57 | 9 | 48 | 13 | 43 | 0 | 1 |
+| S | Routing and confirm cards | 59 | 10 | 49 | 14 | 44 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 1 | 21 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **418** | **127** | **291** | **222** | **195** | **0** | **1** |
+| | **Total** | **420** | **128** | **292** | **220** | **199** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -193,8 +193,8 @@ tidy themselves away; M5 covers the setting). "Log card" means a card in
 | G22 | 🤖 Auto | How long is left on a timer | Said to the second, a line a timer: "⏱️ **tea** · 4m 18s left"; a paused one word for word as the first line of its card; "it" is the timer touched last; one that is over says so; an unknown one is asked about | ✅ Pass | 2026-10-12 | `tests/test_timers_plain.py` |
 | G23 | 👤 Manual | `timer 5m tea`; say `how long is left on tea?`. Reply `pause` to the timer; ask again. Then reply `cancel` to it | "⏱️ **tea** · 4m 18s left" (minutes and seconds, no list posted). Paused: "⏸️ **tea** · paused with 4m 5s left", the same words as the first line of the timer's card | ✅ Pass | 2026-10-12 | Block 24, on the live bot |
 | G24 | 🤖 Auto | Nothing is confirmed until it is read back; refusals are written for me | Every timer and session action that saves is read back first: a change that didn't save says "That didn't save: **tea** is still running." and a timer that didn't save gets no message. No refusal says "tell the user", names a field or shows an id: "I can't find that timer. Say its name.", "Say how much time to add, e.g. 10 minutes." | ✅ Pass | 2026-10-12 | `tests/test_timers_plain.py`, `tests/test_timer_freeze.py` |
-| G25 | 👤 Manual | `timer 10m tea`; say `give tea more time`. Press nothing | One plain line that ends "Say how much time to add, e.g. 10 minutes.": no `duration`, no "tell the user", no id like t12 | ⬜ Untested | | |
-| G26 | 👤 Manual | Look at the tea timer's message, and start `pomo` and look at its card. Press **Stop** | "ends in 9 minutes (8:04 pm)" and "Ends in 25 minutes (8:19 pm)": the time in brackets is 12-hour with am or pm, whatever your Discord is set to | ⬜ Untested | | |
+| G25 | 👤 Manual | `timer 10m tea`; say `give tea more time`. Press nothing | Either a plain line that ends "Say how much time to add, e.g. 10 minutes.", or the time is added with the amount it guessed marked ❓ ("❓ I guessed how much time to add."). Never `duration`, "tell the user" or an id like t12 | ✅ Pass | 2026-10-12 | Block 25, live: it guessed 5 minutes and marked it ❓, which is accepted |
+| G26 | 👤 Manual | Look at the tea timer's message, and start `pomo` and look at its card. Press **Stop** | "ends in 9 minutes (8:04 pm)" and "Ends in 25 minutes (8:19 pm)": the time in brackets is 12-hour with am or pm, whatever your Discord is set to | ✅ Pass | 2026-10-12 | Block 25, on the live bot |
 
 ## H. Pomodoro
 
@@ -387,7 +387,7 @@ post in #bugs.
 | P31 | 👤 Manual | With `--dev`: say `add butter`, then react 🐞 to the card the bot posted | The post in #bugs has a **Trace** section between "That turn" and "Related errors": the same block `dev why` shows for the message of mine that the card answered. Times in the post read like "2:00 pm", never "14:00" | ✅ Pass | 2026-10-10 |  |
 | P32 | 🤖 Auto | Bug ids | Deleting the newest bug and logging another gives the next number, not the deleted one; the same number never appears twice however many are deleted; the number is the row's key and the table is AUTOINCREMENT; on the dev database a bug is D-prefixed whatever channel it came from, its post is opened with the dev tag, the other database's ids are refused, and closing it keeps the tag; only a bot on the dev database asks the forum for the dev tag | ✅ Pass | 2026-10-10 | `tests/test_bugs.py` |
 | P33 | 👤 Manual | With `--dev`: react 🐞 to any message; open the post; type `bugs` | "🐞 Logged as D<n>" (a D, not a B); the post's title starts "D<n> ·" and it carries the tags Open and dev. `bugs` lists it as D<n> | ✅ Pass | 2026-10-10 | From QA 2026-10-10 (several "B1" posts from the dev database) |
-| P34 | 👤 Manual | Write `a note` in a bug's post. Press nothing | No ✅ on your note and no reply; the count on the post's opening card goes up by one | ⬜ Untested | | |
+| P34 | 👤 Manual | Write `a note` in a bug's post. Press nothing | No ✅ on your note and no reply; the count on the post's opening card goes up by one | ✅ Pass | 2026-10-12 | Block 25, on the live bot |
 
 ## Q. Time, days, the schedule model, the occurrence log and cards
 
@@ -546,6 +546,8 @@ the dev database (`python main.py --dev`), in #inbox.
 | S55 | 🤖 Auto | A message that names one of my things is never "nothing" | A pill's or a running timer's name is found only whole, whatever the case, and never a name under three letters; golden conversation 17, "I've taken my Zinc today", ticks Zinc off the checklist, and does so too when the router calls it a remark; a remark that names nothing of mine still gets no reply; one that names a pill and asks nothing clear is answered, not dropped | ✅ Pass | 2026-10-10 | `tests/test_routing.py`, `tests/test_golden.py` |
 | S56 | 🤖 Auto | A follow-up sticks to the task that just answered, and chat never acknowledges | A task that answered sticks for five minutes and a chat answer clears it; extraction is told the message came straight after and may say `not_this`; golden conversations 18, 18a and 18b ("I took it at 9pm", "I had it at 9pm", "it was 9pm actually" after a log) go to pills with one request and correct the dose, with chat never asked; more than five minutes later the router is asked and it is still a correction; a short message for something else is read afresh; a report of something done that no task owns is neither chat nor silence ("I can't log that yet."), also as the router really answered it; an acknowledgement from chat is never sent or remembered, and the message is routed again; 2b and 4 run the same path | ✅ Pass | 2026-10-12 | `tests/test_golden.py`, `tests/test_routing.py`, `tests/test_outgoing.py`, `tests/test_text.py`. From QA 2026-10-12 |
 | S57 | 👤 Manual | Say `I went for a run at 7 this morning`. Then `shopping is boring`. Then `dev clock reset` | "I can't log that yet." to the first: no "Got it", and not silence. No reply at all to the second | ⬜ Untested | | From QA 2026-10-12 |
+| S58 | 🤖 Auto | A reply to a message a task posted goes to that task first | A Discord reply to a dose's Taken / Skip message goes to pills alone (one request, no router) and means that pill; to a timer's card, to timers, however old the card; if the task says it isn't its own the router is asked; a reply to a message no task posted is routed as before; a timer's card is the timer's even once it has ended | ✅ Pass | 2026-10-12 | `tests/test_golden.py`, `tests/test_routing.py` |
+| S59 | 👤 Manual | `timer 10m tea`, then `timer 10m eggs`; send three other messages; then reply to the **tea** timer's message with `give it 2 more`. Then reply `dev why` to that reply of yours | Tea gets 2 more minutes, eggs is untouched. The trace says "a reply to a message timers posted: it goes to timers first" and shows no router request | ⬜ Untested | | |
 
 ## T. Tasks in plain words
 

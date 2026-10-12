@@ -72,6 +72,10 @@ When two principles clash, the higher one wins.
   used as given. Context only fills in what I left out
 - **A Discord reply wins** over newer messages. "that", "it", "make it 2", "pause",
   "dev why": all apply to the message I replied to
+- **A reply to a message the bot posted for a task** (a dose's Taken /
+  Skip message, a timer card, a checklist, a card) goes to that task
+  first, however old the message. Only if the task says it isn't its own
+  is it read afresh
 - **"that" / "it" without a reply** means the last thing I mentioned or
   my own newest message, never one of the bot's messages
 - **An open card is the conversation.** "make it 3", "and jam", "no,

@@ -407,6 +407,22 @@ async def _latest_bot_message_id(ctx: Context) -> int | None:
     return None
 
 
+async def _owner(message_id: int | None, entries: list[Entry]) -> Entry | None:
+    """The task that posted a message, among those this user may use: the first
+    whose `owns` says so. None if no task claims it (or none can say)."""
+    if message_id is None:
+        return None
+    for entry in entries:
+        if entry.owns is None:
+            continue
+        try:
+            if await entry.owns(message_id):
+                return entry
+        except Exception:
+            log.exception("Task %s could not say whether message %s is its own", entry.name, message_id)
+    return None
+
+
 async def _say(ctx: Context, turn: Turn, text: str, reply: bool = False) -> None:
     """Send a line of the conversation's own (a chat answer, "not understood") and note it."""
     if not text:
@@ -606,6 +622,24 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
                 else:
                     turn.extracted.append(found.as_log())
                     trace.note(f"extraction said the message is not about what {entry.name} just did: on to the router")
+
+        # A Discord reply to a message a task posted (a dose's Taken / Skip message, a timer's
+        # card, a checklist)? Where I point beats what is newest: that task reads it first,
+        # without the router, however long ago the message was posted. A task I name still wins
+        if not settled and ctx.is_reply and not named:
+            entry = await _owner(ctx.reply_target_id, entries)
+            if entry is not None:
+                found = await extraction.extract(entry, ctx.text, await _state(entry, request, turn), replied=True)
+                if found.fitted or found.declined in (actions.ALREADY_SO, actions.CANNOT):
+                    turn.route = costs.FOLLOW_UP
+                    turn.why.append(f"a reply to a message {entry.name} posted: it goes to {entry.name} first")
+                    await act(request, found, turn)
+                    settled = True
+                else:
+                    turn.extracted.append(found.as_log())
+                    trace.note(f"extraction said the reply is not about {entry.name}'s message: on to the router")
+            else:
+                trace.note("reply check: the message replied to is no task's own, so nothing claims it")
 
         if not settled:
             on_screen = confirm.on_screen(open_card) if open_card is not None else ""

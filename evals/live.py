@@ -84,7 +84,7 @@ def main() -> int:
             card = extraction.OpenCard(**fixture.card) if fixture.card else None
             began = time.perf_counter()
             called = await _call_extraction(entry, fixture, card, options.strict)
-            follow_up = card is not None or fixture.after_list or fixture.after_answer
+            follow_up = card is not None or fixture.after_list or fixture.after_answer or fixture.replied
             times["extraction"].append(time.perf_counter() - began)
             fixture.recorded = list(called) if called else None
             problem = fixtures.extraction_problem(fixture, extraction.read(entry, called, follow_up=follow_up))
@@ -118,9 +118,9 @@ def main() -> int:
         # A request moved from another task's card is read as it stood there
         message = extraction.standing(extraction.OpenCard(**fixture.moved)) if fixture.moved else fixture.message
         return await llm.call_tool(
-            extraction.system_blocks(entry, card is not None, fixture.after_list, fixture.after_answer),
+            extraction.system_blocks(entry, card is not None, fixture.after_list, fixture.after_answer, fixture.replied),
             extraction.user_turn(message, fixture.state, card, fixture.earlier, fixture.elsewhere),
-            extraction.tools(entry, card is not None or fixture.after_list or fixture.after_answer, strict=strict),
+            extraction.tools(entry, card is not None or fixture.after_list or fixture.after_answer or fixture.replied, strict=strict),
             choice={"type": "any"},
             purpose=costs.PURPOSE_EXTRACTION,
             task=entry.name,
