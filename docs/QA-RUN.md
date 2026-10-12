@@ -36,6 +36,10 @@ tests (block 12).
 Blocks 14 to 23 need nothing from the others (19 and 20, the first pills blocks, passed on 2026-10-10 and are no longer here) (13 and 16 tested the old way of asking Claude, which is gone): run them any time after
 block 1, and before the overnight block if that suits.
 
+**Tonight:** `docs/QA-TONIGHT.md` is one ordered run of every block
+that is waiting (27 to 42), with as few restarts as it can have. The
+blocks below keep the full wording.
+
 ## Before you start
 
 - **Run a test copy, not the service**, so restarts are quick. Terminal as

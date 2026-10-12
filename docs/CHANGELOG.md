@@ -6,6 +6,9 @@ backfilled from the git log.
 
 ## 2026-10-13
 
+- One ordered QA run of everything that is waiting
+  (`docs/QA-TONIGHT.md`).
+
 - The backlog is one prioritised list (Next, Soon, Later, with timers
   apart as low priority); what was dropped is listed with why.
 

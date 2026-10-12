@@ -3,7 +3,7 @@
 Where the work stands, in under a page. Read it at the start of every
 session; the end-of-task checklist updates it at the end of every task.
 
-**Updated:** 2026-10-12
+**Updated:** 2026-10-13
 
 ## Questions for Alex
 
@@ -121,16 +121,41 @@ looked at in blocks 33 and 35), a reset cut off (keeps asking again),
 the "not posted" line (only real problems are logged now), lost
 reactions (left, in the backlog), streaks (after reminders).
 
-## Background batch (unattended, on `feature/pills`)
+## Overnight batch of 2026-10-13 (unattended, on `feature/pills`)
+
+One commit an item, pushed. All eleven items are done:
+
+1. Core pieces for any task: a message's files on the request, a
+   number that need not be whole, name matching in the core (block 40).
+2. The new look behind `CARDS_V2`, off by default (block 41): the
+   checklist, the reminder and the confirm, question and asks-first
+   cards. Every colour and spacing is in `core/design.py`.
+3. Streaks as pure logic (`core/streaks.py`). Nothing shows one.
+5. The tests run in about a minute, from 10 minutes 55 (the same tests).
+6. A task check of every task and the core; code-only findings fixed.
+7. `scripts\setup-live-folder.ps1`, prepared and only run with
+   `-WhatIf`.
+8. The backlog is one prioritised list.
+9. `docs/COSTS.md`: every kind of request measured, the cached part
+   shared, two repeated descriptions out of every schema. Two live
+   checks, US$0.19 in all (allowed up to US$0.25): pills 60 of 61 as
+   before, timers 36 of 37.
+10. The daily spend line (`DAILY_SPEND_LIMIT`, block 42).
+11. Candidates for free shortcuts, in `docs/COSTS.md`. None added.
+4. The full suite and the golden conversations pass, and
+   `docs/QA-TONIGHT.md` is one ordered run of blocks 27 to 42.
+
+The service was not restarted by me, and was found stopped. Its next
+start adds four tables and three columns (`timers_messages`,
+`pills_lines`, `pills_prompts`, `spend_notices`, `occurrences.cause`,
+`confirm_cards.confirmation`, `confirm_cards.question`). Reminders and
+the new look stay off after it unless `.env` says otherwise.
+
+## Background batch of 2026-10-12
 
 One commit an item, pushed, each with a block in `docs/QA-RUN.md`
 marked "waiting for QA". One live eval was run, the one approved (the
-pills fixtures, US$0.13). The service was not restarted: the live bot
-is still on "Send a reply to a task's message to that task". The next
-restart adds three tables and three columns (`timers_messages`,
-`pills_lines`, `pills_prompts`, `occurrences.cause`,
-`confirm_cards.confirmation`, `confirm_cards.question`). Reminders stay
-off after it unless `.env` says otherwise.
+pills fixtures, US$0.13).
 
 1. Done: the standard says what "it" means without a reply (block 27).
 2. Done: an unnamed pill is only logged straight away with an anchor;
@@ -250,6 +275,7 @@ the spec is approved.
 
 ## Recently done
 
+- The overnight batch of 2026-10-13: see above.
 - Restarts (2026-10-12): the bot catches up at start and says so once.
 - The timer reply fix (2026-10-12): the lines a timer answers with are
   its messages too, and no timer is picked by a guess.
@@ -269,26 +295,23 @@ the spec is approved.
 
 ## Next up
 
-1. Block 26 (four steps, live or dev), and steps 1, 2 and 6 of block 25
-   on the dev database. Step 8 of block 24 (tomorrow's backup card).
-   Blocks 21 and 22, and steps 5 to 7 of block 23, are still to be
-   reported.
-2. QA of the background batch: blocks 27 to 39 (`docs/QA-RUN.md`), and
-   the questions at the top of this file.
-3. The Components V2 design: the style guide (`docs/DESIGN.md`) and
-   its thirteen sketches (blocks 33, 35 and 39) wait for the check
-   on your phone: the colours and the lock screen. Nothing real is converted yet: the checklist's redesign
-   is the first, and the reminders with it.
-4. Pills reminders: QA with block 38, then switch them on live
-   (`REMINDERS_ENABLED=true`, restart). Then corrections and
-   questions (stage 4), then streaks.
-5. Gym: waits for the answers on how you train; then its core
-   additions (approved), then the task.
+The order is the list at the top of `docs/BACKLOG.md`. First:
+
+1. `docs/QA-TONIGHT.md`: one run of blocks 27 to 42, the lock screen
+   and the sketches first, `CARDS_V2` and `REMINDERS_ENABLED` last.
+   Blocks before 27 that are still to be reported: 21, 22, 23 (steps 5
+   to 7), 24 (step 8), 25 (steps 1, 2 and 6) and 26.
+2. The questions at the top of this file.
+3. The phone check of the design, then `CARDS_V2` on for good; block
+   38, then reminders on live (`REMINDERS_ENABLED=true`, restart).
+4. `feature/pills` into `main`, then live's own folder.
+5. Gym: waits for the answers on how you train; the core pieces are
+   built.
 
 ## Open decisions
 
-- Of the `task-check` findings: C7 is done with G1; C19 waits for gym
-  (the second task that needs name matching); the timers ones (C8,
+- Of the `task-check` findings: C7 is done with G1; C19's name
+  matching is in the core (2026-10-13); the timers ones (C8,
   C14, C17, C18) are left.
 - Deferred until pills reminders work: G3
   (corrections after Save), G4 (task ties asked too often), G7 (questions
