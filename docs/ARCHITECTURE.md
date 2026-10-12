@@ -493,6 +493,14 @@ kept, and the newest 7 `specs-*.zip` of `docs/specs/` and `exports-*.zip` of
 `pre-migration-*.db` snapshots are never auto-deleted. The dev database's
 go to `data/dev-backups/`, so they never push a real backup out.
 
+## Design
+
+How a card looks is `docs/DESIGN.md`: one style for every task
+(headings, small text, a box an item with an accent colour for its
+status, separators, the button colours), written for Components V2. It
+is a design to look at: the sketches in `docs/mockups/` are posted with
+`dev mock`, and nothing real is drawn that way yet.
+
 ## Scaling notes
 
 How the bot is meant to grow. The `new-task` skill reads this first.

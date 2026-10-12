@@ -1,0 +1,34 @@
+# 💊 Today · 2 of 6 taken
+-# Sunday 12 October
+
+┃ accent: amber
+┃ **Pill A** · ●○○
+┃ -# with no food within 30 minutes
+┃ ✅ 9:00 am
+┃ **Next:** dose 2 · 12:00 pm
+┃ -# ⚠️ take by 1:00 pm so dose 3 still fits
+┃ [✅ Taken: green] [🕐 Taken at…: blurple] [⏭️ Skip: blurple]
+
+┃ accent: grey
+┃ **Pill B** · ○ · any time
+┃ [✅ Taken: green] [⏭️ Skip: blurple]
+
+┃ accent: green
+┃ **Pill C** · ● · any time
+┃ ✅ taken 7:42 am
+
+┃ accent: red
+┃ **Pill E** · ✕
+┃ ❌ missed · was due 8:00 am
+
+┃ accent: grey
+┃ **Pill F** · ⏭
+┃ -# ⏭️ skipped by the bot: not enough time before 4:00 pm
+
+---
+
+┃ accent: grey
+┃ ⏸️ **Paused**
+┃ -# Pill D · until 20 Oct
+
+-# 🧪 checklist v2 · simplified to fit: buttons only on a dose that can be acted on now (a box with three buttons is 6 of the 40 components a message takes); with more than about five such doses, only the next due keeps its buttons and the rest are lines

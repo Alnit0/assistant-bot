@@ -739,6 +739,23 @@ to `.env` and restart the service. To switch them off again: remove
 the line (or set it to false) and restart; any reminder that is up is
 removed.
 
+## 39. The design pass (waiting for QA)
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
+On the dev database, dev mode off, on your phone as well as the desktop
+(and in dark and light themes if you use both). These are sketches: the
+buttons only say they are mock-ups. The style guide is `docs/DESIGN.md`.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Type `dev mock checklist-v2` | A heading and the date, then a box an item: amber (due, with its buttons), grey (any time), green (taken), red (missed), grey (skipped by the bot), a separator, and Paused | J57 |
+| 2 | Lock your phone and type `dev mock reminder-v1-first` from the desktop; then `dev mock reminder-v1` | The lock screen shows "💊 Routine due · 11:12 am" for the first. The second is that line with an amber box under it naming the pill, with four buttons. Say what the lock screen showed for each | J57 |
+| 3 | Type `dev mock confirm-card-v2`, then `dev mock question-card-v1` | A blurple box: two pills with `field · old → new`, ❓ on the guesses, Save and Cancel. Then a card that asks, with **8:00 am**, **8:00 pm** and **Cancel**, and no Save | J57 |
+| 4 | Type `dev mock reset-card-v2`, then `dev mock gym-workout-v1` | A red box for the reset. Then a workout: green (done), amber (the exercise you are on, with its buttons), grey (to come), and Finish | J57 |
+
+Say what to change in any of them, or in the style guide.
+
 ## When you finish
 
 - Stop the test copy (`Ctrl + C`) and check nothing is left running:

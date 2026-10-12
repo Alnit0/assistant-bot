@@ -237,3 +237,36 @@ def test_the_gym_sketches_are_there_and_the_plan_cards_follow_the_card_rules():
     assert "weight · 60 kg → 62.5 kg" in change and "Not used:" in change and "Not used:" in mock.read("gym-import")
     for name in ("gym-import", "gym-change"):
         assert "[✅ Save: green] [↩️ Cancel: grey]" in mock.read(name), name
+
+
+# --- the Components V2 design pass (docs/DESIGN.md) ---------------------------------------------------
+DESIGNED = ("checklist-v2", "reminder-v1", "reminder-v1-first", "confirm-card-v2", "question-card-v1", "reset-card-v2", "gym-workout-v1")
+
+
+@pytest.mark.parametrize("name", DESIGNED)
+def test_each_designed_sketch_renders_as_a_components_v2_message_within_the_limits(name):
+    pieces = mock.parse(mock.read(name))
+    assert mock.count(pieces) <= mock.MAX_COMPONENTS and mock.length(pieces) <= mock.MAX_TEXT
+    built = mock.layout(pieces).to_components()  # what `dev mock` would send
+    assert built and all(each["type"] in (1, 10, 14, 17) for each in built)
+    if name != "reminder-v1-first":
+        assert mock.read(name).strip().splitlines()[-1].startswith("-# 🧪 "), "its last line says the version and what was simplified"
+
+
+def test_the_reminder_is_first_posted_as_one_line_that_names_no_pill():
+    first = mock.read("reminder-v1-first").strip()
+    assert first == "💊 Routine due · 11:12 am"
+    assert mock.read("reminder-v1").splitlines()[0] == first, "the same line stays on top once the pill is written in"
+    assert "Pill A" in mock.read("reminder-v1")
+
+
+def test_the_designed_cards_keep_the_card_rules():
+    assert "[✅ Save: green] [↩️ Cancel: grey]" in mock.read("confirm-card-v2") and "→" in mock.read("confirm-card-v2") and "❓" in mock.read("confirm-card-v2")
+    question = mock.read("question-card-v1")
+    assert "Save" not in question.split("🧪")[0].replace("no Save", "") and "[8:00 am: blurple] [8:00 pm: blurple] [↩️ Cancel: grey]" in question
+    assert "accent: red" in mock.read("reset-card-v2") and "[🗑️ Delete all: red]" in mock.read("reset-card-v2")
+    # A status has its colour: due amber, taken green, missed red, paused grey
+    checklist = mock.read("checklist-v2")
+    assert all(f"accent: {colour}" in checklist for colour in ("amber", "green", "red", "grey"))
+    design = (mock.MOCKUPS_DIR.parent / "DESIGN.md").read_text(encoding="utf-8")
+    assert all(f"`{name}`" in design for name in DESIGNED)

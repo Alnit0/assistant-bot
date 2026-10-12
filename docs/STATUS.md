@@ -7,6 +7,25 @@ session; the end-of-task checklist updates it at the end of every task.
 
 ## Questions for Alex
 
+- **The design pass** (block 39; `docs/DESIGN.md`):
+  - Grey is used for everything that isn't pressing: paused, any
+    time, to come, skipped, snoozed. That follows your checklist
+    sketch (Pill B and Paused are both grey). Should "any time, still
+    to take" have a colour of its own (blue is free)?
+  - A warning is a ⚠️ line inside a box and never changes the box's
+    colour; a card that asks first because something is risky (a late
+    log, too soon) would be an amber box. Right?
+  - Confirm and question cards are blurple; destructive ones red.
+  - I added `reminder-v1-first`, which you didn't list: the reminder
+    as it is first posted (the one line), so the lock screen can be
+    checked with `dev mock`.
+  - Whether a phone shows the first text of a Components V2 message
+    on the lock screen is still only known from your phone (block 39,
+    step 2). The real reminders are safe either way: they are posted
+    as the one line.
+  - The older sketches (`checklist`, `confirm-card`, `reset-card`,
+    `reminder`, `gym-today` and the rest) are left in place. Say if
+    they should go once the new ones are approved.
 - **The lock screen** (waits for block 33, step 1): the sketches put
   "💊 Routine due · 11:12 am" as the message's first line. If your
   phone shows something else for a card of this kind, the prompt has
@@ -184,11 +203,11 @@ the spec is approved.
    on the dev database. Step 8 of block 24 (tomorrow's backup card).
    Blocks 21 and 22, and steps 5 to 7 of block 23, are still to be
    reported.
-2. QA of the background batch: blocks 27 to 38 (`docs/QA-RUN.md`), and
+2. QA of the background batch: blocks 27 to 39 (`docs/QA-RUN.md`), and
    the questions at the top of this file.
-3. The checklist redesigned with Discord's Components V2: look at
-   `dev mock checklist` and the reminder sketches (block 33) and say
-   what to change; nothing real is converted until they are approved.
+3. The Components V2 design: the style guide is `docs/DESIGN.md` and
+   its sketches are block 39. Say what to change; nothing real is
+   converted until they are approved.
 4. Pills reminders: QA with block 38, then switch them on live
    (`REMINDERS_ENABLED=true`, restart). Then corrections and
    questions (stage 4), then streaks.

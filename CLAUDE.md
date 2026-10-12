@@ -41,6 +41,9 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   is Claude's job, rules are Python's). Read them before adding anything
 - `docs/DEVELOPMENT.md`: how to use and extend the bot, task by task
 - `docs/DECISIONS.md`: read before changing architecture
+- `docs/DESIGN.md`: how a card looks (headings, small text, accent
+  colours by status, separators, buttons). A design for now: nothing
+  real is drawn that way until its sketches are approved
 - `docs/TESTING.md` (test tracker) and `docs/QA-RUN.md` (manual run sheet)
 - `docs/specs/` holds the task specs and is private (gitignored; the
   nightly backup is its other copy). Read them, but never commit them,

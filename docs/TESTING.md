@@ -36,7 +36,7 @@ Last updated: 2026-10-12
 | F | Pins | 4 | 0 | 4 | 4 | 0 | 0 | 0 |
 | G | Timers | 32 | 12 | 20 | 17 | 15 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
-| J | Dev mode | 56 | 11 | 45 | 44 | 12 | 0 | 0 |
+| J | Dev mode | 57 | 11 | 46 | 45 | 12 | 0 | 0 |
 | K | Startup and housekeeping | 24 | 12 | 12 | 10 | 14 | 0 | 0 |
 | L | Keep | 12 | 4 | 8 | 8 | 4 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
@@ -46,7 +46,7 @@ Last updated: 2026-10-12
 | S | Routing and confirm cards | 61 | 11 | 50 | 15 | 45 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 4 | 18 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **449** | **140** | **309** | **240** | **208** | **0** | **1** |
+| | **Total** | **450** | **140** | **310** | **241** | **208** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -290,6 +290,7 @@ Any channel. Check the bot's status in the member list.
 | J54 | 👤 Manual | `timer 10m tea`; say `give it 2 more`; reply `dev why` to that. Then reply `cancel` to the timer | The extraction line reads `timers · timer_change {"which":"it","action":"extend","duration":"2m"}`: the action's name is there and "which" is not empty | ⬜ Untested | | Block 30 |
 | J55 | 👤 Manual | Type `dev mock reminder` (look at the lock screen too), `dev mock reminder-renudge`, `dev mock reminder-missed` and `dev mock too-soon` | Each sketch is posted as a card. The lock screen for the reminder says "💊 Routine due · 11:12 am", never the pill's name | ⬜ Untested | | Block 33. The sketches are read by `tests/test_mock.py` |
 | J56 | 👤 Manual | Type `dev mock gym-import`, `dev mock gym-change`, `dev mock gym-today` and `dev mock gym-logged-set` | Each sketch is posted as a card: the plan as read with its columns, a change as `field · old → new`, today's workout with the buttons on the current exercise, and the line for a logged set | ⬜ Untested | | Block 35. The sketches are read by `tests/test_mock.py` |
+| J57 | 👤 Manual | Type `dev mock` with each of `checklist-v2`, `reminder-v1-first`, `reminder-v1`, `confirm-card-v2`, `question-card-v1`, `reset-card-v2`, `gym-workout-v1`, on the phone and the desktop | Each posts as a card in the one style of `docs/DESIGN.md`: a box an item with its status colour, small text for detail, buttons inside the box. The lock screen shows only "💊 Routine due · 11:12 am" for the reminder | ⬜ Untested | | Block 39. Each sketch is built offline into a Components V2 message by `tests/test_mock.py` |
 
 ## K. Startup and housekeeping
 

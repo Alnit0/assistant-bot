@@ -1,0 +1,16 @@
+┃ accent: blurple
+┃ ## 💊 Pills · change
+┃ -# 2 pills
+┃ ---
+┃ **Pill A**
+┃ schedule · daily at `8:00 pm` → daily at `9:00 pm`
+┃ notes · with food → with no food within 30 minutes ❓
+┃ ---
+┃ **Pill B** ❓
+┃ dose · 1 tablet → 2 tablets
+┃ ---
+┃ -# ⚠️ Not included: “and the other one”
+┃ [✅ Save: green] [↩️ Cancel: grey]
+
+-# ❓ marks a guess · reply to this card to change it
+-# 🧪 confirm card v2 · simplified to fit: one box for the whole card, a separator between things (a box a pill would cost two more components each); a long card keeps to 4,000 characters by listing the first things and saying how many more

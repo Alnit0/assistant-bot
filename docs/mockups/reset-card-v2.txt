@@ -1,0 +1,15 @@
+┃ accent: red
+┃ ## 🧹 Channel · reset
+┃ -# #inbox
+┃ ---
+┃ **42 messages** · 3 of them pinned or 📌
+┃ -# ⏳ 5 are over 14 days old and go one at a time: about 1 minute
+┃ ---
+┃ ♻️ **Posted again afterwards**
+┃ -# Active timers: Pomodoro waiting to start
+┃ -# Today's pills checklist
+┃ ---
+┃ ⚠️ **This can't be undone**
+┃ [🗑️ Delete all: red] [📌 Delete all unpinned: blurple] [↩️ Cancel: grey]
+
+-# 🧪 reset card v2 · nothing simplified

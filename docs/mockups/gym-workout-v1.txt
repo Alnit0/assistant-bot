@@ -1,0 +1,27 @@
+# 🏋️ Push · 1 of 3 exercises
+-# Monday 12 October · started 6:05 pm
+
+┃ accent: green
+┃ **Bench press** · ●●●
+┃ -# 3 × 8–12 · 60 kg · rest 2 min
+┃ ✅ 60 kg × 10 · 60 kg × 9 · 60 kg × 9
+┃ -# last time 60 kg × 10, 9, 8 · 5 Oct
+
+┃ accent: amber
+┃ **Overhead press** · ●○○
+┃ -# 3 × 8 · 35 kg · rest 2 min
+┃ ✅ 35 kg × 8
+┃ **Next:** set 2 · 35 kg × 8
+┃ -# last time 35 kg × 8, 8, 6 · 5 Oct
+┃ [✅ Set done: green] [✏️ Different…: blurple] [⏭️ Skip exercise: blurple]
+
+┃ accent: grey
+┃ **Triceps pushdown** · ○○○
+┃ -# 3 × 12–15 · 25 kg · rest 1 min
+┃ -# last time 25 kg × 15, 13, 12 · 5 Oct
+
+---
+
+[🏁 Finish: blurple]
+
+-# 🧪 gym workout v1 · simplified to fit: buttons only on the exercise you are on. A box without buttons is 2 components, so about 14 exercises fit one message; a longer workout shows the ones done as one box of lines

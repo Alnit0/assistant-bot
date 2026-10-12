@@ -6,6 +6,12 @@ backfilled from the git log.
 
 ## 2026-10-12
 
+- A design pass for Components V2: a shared style guide
+  (`docs/DESIGN.md`) and seven sketches to look at with `dev mock`
+  (`checklist-v2`, `reminder-v1`, `reminder-v1-first`,
+  `confirm-card-v2`, `question-card-v1`, `reset-card-v2`,
+  `gym-workout-v1`). Nothing the bot posts has changed.
+
 - **Pill reminders**, switched off until tested (`REMINDERS_ENABLED`
   in `.env`). On: a message at each timed dose's time with Taken, Taken
   at…, Snooze 15m and Skip; three reminders 15 minutes apart if left,
