@@ -1054,9 +1054,13 @@ def test_a_message_inside_a_bugs_post_is_refused_in_plain_words_too(said, monkey
 
 
 def test_show_my_open_bugs_is_the_same_list_as_the_word(said):
-    assert asyncio.run(bugs.list_said(said.request("show my open bugs"), {}, frozenset())) == "🐞 No open bugs."
+    from core.actions import LiveReply
+
+    assert asyncio.run(bugs.list_said(said.request("show my open bugs"), {}, frozenset())) == LiveReply("bugs", "🐞 No open bugs.")
     said.report()
-    listed = asyncio.run(bugs.list_said(said.request("show my open bugs"), {}, frozenset()))
+    shown = asyncio.run(bugs.list_said(said.request("show my open bugs"), {}, frozenset()))
+    listed = shown.text
+    assert shown.key == "bugs", "a Live list, as every list shown on request is (golden conversation 16)"
     assert listed.splitlines()[0] == "**Open bugs (1)**" and f"[B1]({URL}1)" in listed
 
 
@@ -1182,3 +1186,67 @@ def test_a_dev_post_is_opened_with_the_dev_tag(monkeypatch):
     except Exception:
         pass  # only the opening call matters here: what tags the post is created with
     assert [tag.name for tag in made["applied_tags"]] == ["Open", "dev"] and made["name"].startswith("D1 · ")
+
+
+# --- task-check 2026-10-12: C4 (read back), C10 (a Live list), C20 (structure) ---------------------------
+def test_a_bug_is_only_said_to_be_logged_once_it_is_read_back(filing, owner, monkeypatch):
+    from tasks.bugs import filing as filed
+
+    async def lost(bug_id, thread_id, post_url):
+        return None  # the post's link goes nowhere
+
+    monkeypatch.setattr(store, "set_post", lost)
+    with pytest.raises(UserError, match="That didn't save: the bug was not logged"):
+        asyncio.run(bugs._file(owner, INBOX, snap(), [], rules.REACTION))
+    assert filed.NOT_LOGGED.startswith("That didn't save")
+
+
+def test_a_note_is_only_said_to_be_saved_once_it_is_read_back(said, monkeypatch):
+    assert said.report("it was slow").endswith(" · 📝 your note is saved with it")
+
+    async def lost(bug_id, user_id, author, content, message_id=None):
+        return 0  # the note goes nowhere
+
+    monkeypatch.setattr(store, "add_note", lost)
+    with pytest.raises(UserError, match="but your note didn't save"):
+        said.report("and wrong")
+    ctx = FakeCtx(said.request().user, channel_id=7001, parent=BUGS, text="a note in the post")
+    with pytest.raises(UserError, match="That didn't save: your note was not kept"):
+        asyncio.run(bugs.save_note(ctx))
+    assert [note.content for note in asyncio.run(store.notes(1))] == ["it was slow"]
+
+
+def test_the_list_of_open_bugs_is_live_and_follows_a_new_bug(filing, owner, monkeypatch):
+    from core import livelists
+    from tasks.bugs import listing
+
+    placed, renders = [], []
+    monkeypatch.setattr(livelists, "changed", lambda user_id, key, render: renders.append((user_id, key, render)))
+
+    async def place(user_id, key, channel_id, message_id, task=""):
+        placed.append((user_id, key, channel_id, message_id, task))
+
+    monkeypatch.setattr(livelists, "placed", place)
+
+    class Ctx(FakeCtx):
+        async def reply(self, text):
+            self.replied.append(text)
+            return SimpleNamespace(id=6001)
+
+    ctx = Ctx(owner)
+    asyncio.run(bugs.list_bugs(ctx))
+    assert ctx.replied == ["🐞 No open bugs."] and placed == [(owner.id, "bugs", ctx.channel_id, 6001, "bugs")]
+    asyncio.run(bugs._file(owner, INBOX, snap(), [], rules.REACTION))
+    assert [(user_id, key) for user_id, key, _ in renders] == [(owner.id, "bugs")], "a new bug: the list on screen follows"
+    assert asyncio.run(renders[0][2]()).startswith("**Open bugs (1)**") and listing.KEY == "bugs"
+
+
+def test_the_plain_words_code_is_plain_py_and_only_posts_py_uses_discord():
+    import inspect
+
+    from tasks.bugs import filing as filed
+    from tasks.bugs import listing, plain
+
+    assert bugs.ACTIONS is plain.ACTIONS and bugs.report_said is plain.report_said and bugs.list_said is plain.list_said
+    for module in (bugs, plain, filed, listing):
+        assert "import discord" not in inspect.getsource(module), module.__name__

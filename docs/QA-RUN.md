@@ -616,6 +616,18 @@ On the dev database, dev mode off. Every step says what to press.
 | 1 | Say `set a timer for a few minutes called tea`, then `timer 10m eggs`. Reply to the line "❓ I guessed the length: …" with `give it 2 more`; then reply `dev why` to that reply of yours | Tea gets 2 more minutes, eggs is untouched. The trace says "reply to timers' message: it goes to timers first" and shows no router request | G32 |
 | 2 | Say `cancel all my timers`; press the red **Cancel 2 timers** | "🚫 **Cancelled 2**" naming tea and eggs | G32 |
 
+## 32. Bugs: a Live list (waiting for QA)
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
+On the dev database, dev mode off. Every step says what to press.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Say `show my open bugs` and keep it in view. React 🐞 to any message of yours. Press nothing | "🐞 Logged as B<n>" with its link; the list above gains that bug by itself, with no new list posted | P36 |
+| 2 | Open that bug's post in #bugs and press **Won't fix** | Back in the channel, the list has lost that bug again | P36 |
+| 3 | Say `add pill  ZINC` (two spaces, capitals) with a pill called Zinc already there; press **Cancel** if a card shows | Zinc as it is, or a change card for Zinc: never a second pill called ZINC | R72 |
+
 ## When you finish
 
 - Stop the test copy (`Ctrl + C`) and check nothing is left running:

@@ -9,7 +9,7 @@ from core.discord_utils import log_error, log_simple, report_interaction_error, 
 from core.errors import UserError
 from core.permissions import is_allowed
 from core.users import get_user_by_discord_id
-from tasks.bugs import rules, store
+from tasks.bugs import listing, rules, store
 
 log = logging.getLogger("assistant")
 
@@ -195,6 +195,7 @@ async def _change(interaction: discord.Interaction, status: str) -> None:
     if not already:
         await store.set_status(item.id, status, user.id)
         item = await store.get(item.id)
+        listing.changed(item.user_id)  # the list of open bugs, if one is on screen
     text = rules.changed_text(item.id, status, already)
     thread = interaction.channel
     try:

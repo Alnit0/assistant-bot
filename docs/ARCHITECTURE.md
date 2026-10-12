@@ -90,7 +90,10 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `archive/rules.py` | Pure: what may be archived or deleted, names, embeds, wording |
 | `archive/store.py` | The `archive_items` records |
 | `archive/messages.py` | The Discord work: webhook repost, delete, confirmation, Restore button |
-| `bugs/__init__.py` | Registers `bug` (word and reply), the instant 🐞 reaction, `bugs`, `bugs export`; files a report; claims what is written in a bug's post and saves it as a note. In plain words: `bug_report` ("that's a bug": the last thing before my message, with what I said was wrong as its first note) and `bug_list` |
+| `bugs/__init__.py` | Registers `bug` (word and reply), the instant 🐞 reaction, `bugs`, `bugs export`; claims what is written in a bug's post and saves it as a note. No discord.py |
+| `bugs/filing.py` | Logging a bug and saving a note, for every way in: nothing is said to be logged or saved until it is read back. No Discord |
+| `bugs/listing.py` | The list of open bugs as a Live list (`core/livelists.py`): rewritten in place when a bug is logged, closed, re-opened or gets a note |
+| `bugs/plain.py` | In plain words: `bug_report` ("that's a bug": the last thing before my message, with what I said was wrong as its first note) and `bug_list` |
 | `bugs/rules.py` | Pure: ids, what may be reported, a message as plain values (`Snapshot`, `Report`), which logged turn it belongs to, which log lines go with it, and all the wording (post, title, tags, list, `docs/BUGS.md`) |
 | `bugs/store.py` | The `bugs_items` and `bugs_notes` records, the history in `bugs_events`, and the channel's recent `message_log` rows for finding the turn |
 | `bugs/capture.py` | Puts a report together: the turn, the errors from the tail of `logs/bot.log`, the commit the bot started on. No Discord |

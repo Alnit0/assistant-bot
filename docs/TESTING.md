@@ -40,13 +40,13 @@ Last updated: 2026-10-12
 | K | Startup and housekeeping | 22 | 11 | 11 | 9 | 13 | 0 | 0 |
 | L | Keep | 12 | 4 | 8 | 8 | 4 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
-| P | Bugs | 34 | 16 | 18 | 15 | 19 | 0 | 0 |
+| P | Bugs | 36 | 17 | 19 | 16 | 20 | 0 | 0 |
 | Q | Time, days, the schedule model, the occurrence log and cards | 15 | 13 | 2 | 2 | 13 | 0 | 0 |
-| R | Pills | 59 | 12 | 47 | 39 | 20 | 0 | 0 |
+| R | Pills | 60 | 12 | 48 | 40 | 20 | 0 | 0 |
 | S | Routing and confirm cards | 59 | 10 | 49 | 14 | 44 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 4 | 18 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **432** | **133** | **299** | **230** | **201** | **0** | **1** |
+| | **Total** | **435** | **134** | **301** | **232** | **202** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -396,6 +396,8 @@ post in #bugs.
 | P32 | 🤖 Auto | Bug ids | Deleting the newest bug and logging another gives the next number, not the deleted one; the same number never appears twice however many are deleted; the number is the row's key and the table is AUTOINCREMENT; on the dev database a bug is D-prefixed whatever channel it came from, its post is opened with the dev tag, the other database's ids are refused, and closing it keeps the tag; only a bot on the dev database asks the forum for the dev tag | ✅ Pass | 2026-10-10 | `tests/test_bugs.py` |
 | P33 | 👤 Manual | With `--dev`: react 🐞 to any message; open the post; type `bugs` | "🐞 Logged as D<n>" (a D, not a B); the post's title starts "D<n> ·" and it carries the tags Open and dev. `bugs` lists it as D<n> | ✅ Pass | 2026-10-10 | From QA 2026-10-10 (several "B1" posts from the dev database) |
 | P34 | 👤 Manual | Write `a note` in a bug's post. Press nothing | No ✅ on your note and no reply; the count on the post's opening card goes up by one | ✅ Pass | 2026-10-12 | Block 25, on the live bot |
+| P35 | 🤖 Auto | A bug and a note are read back; the list is Live | "Logged as B4" is said only once the bug is read back with its post, and "your note is saved" only once the note is; one that didn't save says so. "show my open bugs" and `bugs` give a Live list that follows a new bug, a note and a close. The plain-words code is `plain.py`, and only `posts.py` uses discord.py | ✅ Pass | 2026-10-12 | `tests/test_bugs.py` |
+| P36 | 👤 Manual | Say `show my open bugs` and keep it in view; react 🐞 to any message; then open that bug's post and press **Won't fix** | The list gains the new bug by itself, with no new message; after Won't fix it loses it again | ⬜ Untested | | Block 32 |
 
 ## Q. Time, days, the schedule model, the occurrence log and cards
 
@@ -491,6 +493,7 @@ are added with it.
 | R69 | 👤 Manual | With two pills, one logged more than five minutes ago: say `took the usual one`; press **Save**. Straight after, say `no I didn't` | A card "💊 Pills · change" naming the other pill with ❓; Save ticks it off. "no I didn't" then unticks that pill at once, with no card | ⬜ Untested | | Block 28 |
 | R70 | 🤖 Auto | Every line about a pill or a dose is that pill's | The line that says a dose was taken, skipped, unticked or corrected, an "already" line, a card once it is saved (the late card too) and the line a plan card saves with are recorded as that pill's (and that dose's); a reply to one goes to pills with no router and means that pill and that dose, with no card, though another pill was logged since; a line about two pills points at neither and is no anchor for "it" | ✅ Pass | 2026-10-12 | `tests/test_pills_checklist.py`, `tests/test_golden.py` |
 | R71 | 👤 Manual | With two pills: say `took my pill X`, then `took my pill Y`. Reply to the line "✅ **Pill X** · taken …" with `it was 8am`; then reply to the same line with `actually I didn't`; reply `dev why` to that | "✏️ **Pill X** · taken … → 8:00 am", then "↩️ **Pill X** · no longer ticked off": Pill X both times, never Pill Y. The trace says "reply to pills' message" with no router request | ⬜ Untested | | Block 29 |
+| R72 | 👤 Manual | With a pill called Zinc: say `add pill  ZINC` (two spaces, capitals); press **Cancel** if a card shows | Zinc as it is, or a change card for Zinc: never a second pill called ZINC | ⬜ Untested | | Block 32 |
 
 ## S. Routing and confirm cards
 

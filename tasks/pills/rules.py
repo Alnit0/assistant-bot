@@ -2,7 +2,7 @@ import re
 from dataclasses import dataclass, replace
 from datetime import date, time, timedelta
 
-from core import durations, schedule, timeinput
+from core import durations, repeats, schedule, timeinput
 from core.errors import UserError
 from core.schedule import DAY_MINUTES, Schedule
 from core.timeinput import AmbiguousTime
@@ -378,7 +378,8 @@ def _check_fits(planned: Schedule) -> None:
 def check_name(plan: Plan, others: list[Pill], own_id: int | None = None) -> None:
     """Two pills in use can't share a name: nobody could say which was meant."""
     for other in others:
-        if other.id != own_id and other.status != REMOVED and other.plan.name.lower() == plan.name.lower():
+        # Compared as every name is (core/repeats.py): whatever the case, and stray spaces aside
+        if other.id != own_id and other.status != REMOVED and repeats.normal(other.plan.name) == repeats.normal(plan.name):
             raise UserError(f"There is already a pill called **{other.plan.name}**. Edit that one, or pick another name.")
 
 

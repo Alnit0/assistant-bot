@@ -1,16 +1,16 @@
 import asyncio
 
-import discord
-
-from core import repeats
-from core.actions import EACH_DAY, SEE, Action, Field, Request
+from core import livelists, repeats
+from core.actions import EACH_DAY, SEE
 from core.config import BASE_DIR
 from core.context import Context
 from core.errors import UserError
 from core.clock import real_now
 from core.users import User
 from tasks.base import ANY, ButtonNote, Keyword, Reaction, ReplyAction, Task
-from tasks.bugs import capture, posts, rules, store
+from tasks.bugs import capture, filing, listing, posts, rules, store
+from tasks.bugs.filing import file_report as _file
+from tasks.bugs.plain import ACTIONS, list_said, report_said  # noqa: F401  (the plain-words code is plain.py)
 
 EXPORT_FILE = BASE_DIR / "docs" / "BUGS.md"
 
@@ -18,26 +18,6 @@ EXPORT_FILE = BASE_DIR / "docs" / "BUGS.md"
 # reply for that message, on its own for the latest thing in the channel). No
 # note is taken in the channel: each bug gets a post in the #bugs forum, and
 # what is written there is saved with it.
-
-
-async def _file(
-    user: User, channel_id: int, target: rules.Snapshot, before: list[rules.Snapshot], source: str,
-    exclude_message_id: int | None = None,
-) -> str:
-    """Log a bug against a message and open its post. Returns the line for the
-    channel. A message that already has an open bug is pointed to, not logged twice."""
-    existing = await store.open_for(user.id, channel_id, target.message_id)
-    if existing is not None:
-        return rules.logged_text(existing.id, existing.post_url, existing=True)
-    # Before anything is recorded: is there somewhere to put the post?
-    posts.forum()
-    report = await capture.build(
-        source=source, channel_id=channel_id, target=target, preceding=before, exclude_message_id=exclude_message_id
-    )
-    number = await store.add(user.id, report)
-    thread_id, url = await posts.create_post(number, report)
-    await store.set_post(number, thread_id, url)
-    return rules.logged_text(number, url)
 
 
 async def report_latest(ctx: Context) -> str:
@@ -52,7 +32,7 @@ async def report_latest(ctx: Context) -> str:
     return text
 
 
-async def report_reply(ctx: Context, target: discord.Message) -> str:
+async def report_reply(ctx: Context, target) -> str:
     rules.check_reportable(target)
     before = await posts.preceding(target)
     text = await _file(ctx.user, target.channel.id, rules.snapshot(target), before, rules.REPLY, ctx.message_id)
@@ -60,7 +40,7 @@ async def report_reply(ctx: Context, target: discord.Message) -> str:
     return text
 
 
-async def report_reaction(payload: discord.RawReactionActionEvent, user: User) -> str:
+async def report_reaction(payload, user: User) -> str:
     target = await posts.fetch_message(payload.channel_id, payload.message_id)
     rules.check_reportable(target)
     before = await posts.preceding(target)
@@ -70,7 +50,10 @@ async def report_reaction(payload: discord.RawReactionActionEvent, user: User) -
 
 
 async def list_bugs(ctx: Context) -> None:
-    await ctx.reply(rules.list_text(await store.open_items(ctx.user.id)))
+    """`bugs`: the open bugs. The list is Live, as "show my open bugs" gives it."""
+    message = await ctx.reply(await listing.text(ctx.user.id))
+    if getattr(message, "id", None) is not None:
+        await livelists.placed(ctx.user.id, listing.KEY, ctx.channel_id, message.id, listing.TASK)
 
 
 async def export(ctx: Context) -> str:
@@ -89,68 +72,10 @@ async def save_note(ctx: Context) -> str:
     item = await store.by_thread(ctx.channel_id)
     if item is None:
         return "not a bug's post: left alone"
-    await store.add_note(item.id, ctx.user.id, rules.OWNER, ctx.text, ctx.message_id)
-    # The count on the post's opening card, in place
-    await posts.refresh_card(await store.get(item.id))
+    # Read back before it counts as saved: the card's count is then brought up to date
+    if not await filing.add_note(item.id, ctx.user.id, ctx.text, ctx.message_id):
+        raise UserError(filing.NOTE_NOT_SAVED)
     return f"note saved for {rules.bug_id(item.id)}"
-
-
-# ---------------------------------------------------------------------------
-# In plain words (core/actions.py): "that's a bug", "show my open bugs".
-# Reporting logs something and changes no setup, so neither needs a card.
-# ---------------------------------------------------------------------------
-async def report_said(request: Request, data: dict, guessed: frozenset) -> str:
-    """Report the message replied to, or else the user's own newest message
-    before this one (never one of the bot's: the report is about that turn).
-    What they said was wrong, if they typed it, is kept as the bug's first note."""
-    if request.replied_to is not None:
-        target, source = await posts.fetch_message(request.channel_id, request.replied_to), rules.REPLY
-    else:
-        target, source = await posts.latest_before(request.channel_id, request.message_id), rules.WORD
-    rules.check_reportable(target)
-    already = await store.open_for(request.user.id, target.channel.id, target.id)
-    before = await posts.preceding(target)
-    text = await _file(request.user, target.channel.id, rules.snapshot(target), before, source, request.message_id)
-    note = (data.get("note") or "").strip()
-    item = await store.open_for(request.user.id, target.channel.id, target.id)
-    if note and item is not None:
-        await store.add_note(item.id, request.user.id, rules.OWNER, note, request.message_id)
-        await posts.refresh_card(await store.get(item.id))
-        text += " · 📝 your note is saved with it" if already is None else " · 📝 note added"
-    return text
-
-
-async def list_said(request: Request, data: dict, guessed: frozenset) -> str:
-    return rules.list_text(await store.open_items(request.user.id))
-
-
-ACTIONS = (
-    Action(
-        "bug_report",
-        "The user says the bot itself got something wrong and wants it logged as a bug: \"that's a bug\", "
-        "\"log that as a bug\", \"bug: it started two timers\" -> note \"it started two timers\". Only when "
-        "they say bug or report. A correction of what they asked for (\"no, I meant 5 minutes\") is not "
-        "a bug report: call `none`.",
-        (
-            Field(
-                "note",
-                "What the user said was wrong, in their words, if they said. Leave out if they only said it is a bug.",
-            ),
-        ),
-        needs_card=False,
-        run=report_said,
-        purpose=EACH_DAY,
-        say=("that's a bug: it started two timers",),
-    ),
-    Action(
-        "bug_list",
-        "The user asks which bugs are open (\"show my open bugs\", \"what bugs have I reported?\").",
-        needs_card=False,
-        run=list_said,
-        purpose=SEE,
-        say=("show my open bugs",),
-    ),
-)
 
 
 class BugsTask(Task):
@@ -239,12 +164,12 @@ class BugsTask(Task):
     def migrations(self) -> list:
         return list(store.MIGRATIONS)
 
-    def setup(self, client: discord.Client) -> None:
+    def setup(self, client) -> None:
         # Before connecting, so the buttons on old posts still work
         client.add_view(posts.CloseButtons())
         client.add_view(posts.ReopenButton())
 
-    async def startup(self, client: discord.Client) -> None:
+    async def startup(self, client) -> None:
         await capture.git_commit()
         await posts.ensure_tags()
 

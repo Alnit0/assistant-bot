@@ -7,6 +7,23 @@ session; the end-of-task checklist updates it at the end of every task.
 
 ## Questions for Alex
 
+- **C7 (pills questions as their own message)** waits for G1, which
+  needs your say on how a card asks. I'd put each question on the card
+  with a button an answer.
+- **C12 (bugs: a message that already has an open bug)**: the contract
+  has no word for "show the one there". I'd add a fifth `on_repeat`,
+  `show_existing`, and declare it for bugs. Say yes or name it.
+- **C15 (pills: whether the bot skipped a dose is read from the
+  reason's wording)**: I'd add a `cause` column to the occurrence log
+  beside the reason. It touches the dose rules, so I left it for a go.
+- **C16 (pills: taking a setting away is the word "none")**: I'd add a
+  `clear` list of settings to the action. It changes what Claude is
+  asked for, so the pills fixtures need a live run (about US$0.13).
+- **C19 (pills: "which of my things does this name mean" lives in the
+  task)**: I'd leave it until a second task needs it, as the finding
+  says. Confirm, or say to move it to core now.
+- **C8, C14, C17, C18 (timers)**: left alone, as timers may be
+  scrapped. Say if any should be done anyway.
 - **"Item 10 (restarts)"**: your note during the batch said to leave
   timers out of item 10, but the queue I was given ends at item 8 and
   has nothing about restarts. Nothing was done for it. Send the item
@@ -32,6 +49,8 @@ message to that task".
 6. Skipped on your word (timers may be scrapped): numbering a second
    timer of the same name. In the backlog, low priority. From here on
    timer code is only touched if a core change breaks its tests.
+7. Done: task-check findings C4, C10, C13 and C20 (block 32). The rest
+   are in the questions above.
 
 ## Branch and state
 
@@ -130,9 +149,9 @@ live), and on 2026-10-12 the bot's nickname and status line, the
 
 ## Open decisions
 
-- Of the `task-check` findings: C7 and C8 wait for G1; C13 and C15 to
-  C20 are for a later tidy-up batch; C4, C10, C12 and C14 are not
-  decided.
+- Of the `task-check` findings: C7 waits for G1; C12, C15, C16 and
+  C19 wait for an answer (see the questions at the top); the timers
+  ones (C8, C14, C17, C18) are left.
 - Deferred until pills reminders work: G1 (questions on the card), G3
   (corrections after Save), G4 (task ties asked too often), G7 (questions
   sent as their own message). G14 (privacy of notifications) comes with

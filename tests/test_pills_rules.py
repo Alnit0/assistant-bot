@@ -250,6 +250,8 @@ def test_two_pills_in_use_cannot_share_a_name():
     others = [pill(1, name="Vitamin D"), pill(2, name="Old one", status=REMOVED)]
     with pytest.raises(UserError, match="already a pill called \\*\\*Vitamin D"):
         rules.check_name(Plan("vitamin d"), others)
+    with pytest.raises(UserError, match="already a pill called"):
+        rules.check_name(Plan("  VITAMIN   D "), others)  # compared as core compares names: case and stray spaces aside
     rules.check_name(Plan("vitamin d"), others, own_id=1)  # itself, being edited
     rules.check_name(Plan("Old one"), others)  # a removed pill's name is free again
 

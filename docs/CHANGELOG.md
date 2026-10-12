@@ -6,6 +6,11 @@ backfilled from the git log.
 
 ## 2026-10-12
 
+- **Bugs**: "Logged as B4" and "your note is saved" are only said once
+  read back; "show my open bugs" is a Live list that follows new bugs,
+  notes and closes. A pill's name is compared whatever the case or
+  spacing. (Task-check findings C4, C10, C13 and C20.)
+
 - The last two timer lines are the timers' too: the line that points
   out a guessed length, and the card once it has cancelled several.
 
