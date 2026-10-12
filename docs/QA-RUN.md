@@ -710,6 +710,32 @@ On the dev database, dev mode off.
 | 6 | Type `pills`. Wait six minutes, then say `took it`. Press a pill | A card "Which pill?" with a button for each pill still to take. After the press the card says it was ticked off, and the checklist shows it | R76 |
 | 7 | Say `remove testiron, testmag, testvit c and testvit d`, press **Remove** | They are gone | |
 
+## 38. Pill reminders (waiting for QA)
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
+Reminders are off unless switched on. For this block start the dev bot
+with them on, in PowerShell (the service's own bot is left alone):
+`$env:REMINDERS_ENABLED = "true"; python main.py --dev`. Dev mode off.
+Have your phone locked beside you for step 2. The clock is moved with
+`dev clock`; each move runs whatever came due.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Say `add Testrem to my pills at 3pm and 9pm, at least 4 hours apart, with food`. Press **Save**. Type `dev clock 2:59pm` | Nothing yet: no message about Testrem beyond the card and the checklist | R78 |
+| 2 | Type `dev clock 3:00pm`. Look at the lock screen, then at the hub | The lock screen says "💊 Routine due · 3:00 pm" and nothing about Testrem. In the hub the message reads: that line, "**Testrem** · dose 1 of 2", "Due `3:00 pm`", "with food", and **Taken**, **Taken at…**, **Snooze 15m**, **Skip** | R78 |
+| 3 | Press **Snooze 15m**. Type `dev clock 3:15pm` | The message gains "Snoozed until 3:15 pm". After the move a fresh message takes its place (the old one is gone) and the phone buzzes again with the same neutral line | R78 |
+| 4 | Press **Taken at…**, type `3:05pm`, submit | The message goes; the checklist shows Testrem dose 1 taken 3:05 pm, and dose 2 at `9:00 pm` | R78 |
+| 5 | Type `dev clock 9:00pm`, then `dev clock 9:15pm`, `dev clock 9:30pm`, `dev clock 9:45pm` | A prompt at 9:00 pm, then three more, each replacing the last: "reminder 1 of 3", "2 of 3", "3 of 3", with a line saying when the next comes. Only ever one message for the dose | R78 |
+| 6 | Type `dev clock 10:00pm` | The message goes and the checklist shows ❌ Testrem (dose 2 of 2) · missed | R78 |
+| 7 | Say `took testrem` | It is ticked off all the same ("taken 10:00 pm") | R78 |
+| 8 | Say `remove testrem`, press **Remove**; type `dev clock reset`; stop the dev bot | Gone; the clock is the real time | |
+
+To switch reminders on for the live bot: add `REMINDERS_ENABLED=true`
+to `.env` and restart the service. To switch them off again: remove
+the line (or set it to false) and restart; any reminder that is up is
+removed.
+
 ## When you finish
 
 - Stop the test copy (`Ctrl + C`) and check nothing is left running:

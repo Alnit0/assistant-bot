@@ -626,6 +626,15 @@ Everything works in #inbox and in the hub.
 - **Editing** applies from the next dose; what is already recorded stays.
   Give only what changes. "No notes", "no times" (any time), "no gap",
   "no latest time" and "no end date" take a value away.
+- **Reminders** are off unless `REMINDERS_ENABLED=true` is in `.env`
+  (then restart). On, a dose with a time gets a message in the hub at
+  that time, with **Taken**, **Taken at…**, **Snooze 15m** and **Skip**.
+  The phone shows only "💊 Routine due · 11:12 am". Left alone it comes
+  again every 15 minutes, three times, and then the dose is missed (it
+  can still be ticked off by saying so). A dose with no time has its
+  Taken / Skip message under the checklist and no reminder. Nothing is
+  sent after a pill's latest time. Switching the setting off and
+  restarting removes any reminder that is up.
 - **Pausing** stops a pill being asked for and leaves its streak alone.
   "Until the 20th" means it is taken again on the 20th, by itself.
 - **Removing** hides the pill everywhere and keeps its history for stats.

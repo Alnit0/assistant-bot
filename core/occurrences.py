@@ -277,11 +277,12 @@ def db_skip(
     )
 
 
-def db_miss(conn, occurrence_id: int, reason: str | None = None, **options) -> Occurrence:
-    """Nobody did anything about it. Always the bot's own conclusion."""
+def db_miss(conn, occurrence_id: int, reason: str | None = None, cause: str | None = None, **options) -> Occurrence:
+    """Nobody did anything about it. Always the bot's own conclusion; `cause`
+    says which kind, for code (a task's own word)."""
     return db_change(
         conn, occurrence_id, MARKED_MISSED, AUTOMATIC,
-        state=MISSED, actual_at=None, automatic=True, reason=reason, cause=None, **options,
+        state=MISSED, actual_at=None, automatic=True, reason=reason, cause=cause, **options,
     )
 
 

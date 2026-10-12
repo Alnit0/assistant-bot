@@ -6,6 +6,14 @@ backfilled from the git log.
 
 ## 2026-10-12
 
+- **Pill reminders**, switched off until tested (`REMINDERS_ENABLED`
+  in `.env`). On: a message at each timed dose's time with Taken, Taken
+  at…, Snooze 15m and Skip; three reminders 15 minutes apart if left,
+  then missed; nothing after a pill's latest time; the phone only ever
+  shows "💊 Routine due" and the time.
+- Saying a dose was taken before its gap has passed now asks first
+  ("That's 2h after dose 1 … Log it anyway?").
+
 - **Questions are on the card.** "Add iron at 8" asks "Is that 8 in the
   morning or the evening?" with a button for each, and there is no Save
   until it is answered, by a press or by typing. The same for a missing

@@ -1011,7 +1011,11 @@ async def _replied_to(request: Request, listed: list[Dose], today_: date) -> tup
     held = await request.db.run(store.db_messages, request.user.id, today_)
     message = next((each for each in held if each.message_id == request.replied_to), None)
     if message is None:
-        return None, None
+        # A reminder is about one dose: a reply to it means that dose
+        from tasks.pills import reminders  # it imports this module's checks
+
+        reminded = await reminders.dose_of(request.replied_to, listed)
+        return (reminded.pill, reminded) if reminded is not None else (None, None)
     if message.kind == DOSE:
         dose = next((each for each in listed if each.occurrence.id == message.occurrence_id), None)
         return (dose.pill, dose) if dose is not None else (None, None)
@@ -1103,7 +1107,27 @@ async def _for_pill(request: Request, item: dict, pill: Pill, listed: list[Dose]
         at = _moment(given, now, taken.occurrence.actual_at if taken else None) if given else now
     except UserError as error:
         return Step(f"⚠️ {rules.plain(target.label)}: {error}")
-    return Step(dose=target, did=checklist.TAKEN, at=at, asks=_late(pill, today_, at))
+    return Step(dose=target, did=checklist.TAKEN, at=at, asks=(*_late(pill, today_, at), *_too_soon(pill, taken, at)))
+
+
+def _too_soon(pill: Pill, last: Dose | None, at: datetime) -> tuple[str, ...]:
+    """A dose taken before the gap since the one before it has passed: asked about first."""
+    plan = pill.plan.schedule
+    taken = last.occurrence.actual_at if last is not None else None
+    if plan.gap is None or taken is None:
+        return ()
+    # To the minute, as times are said and shown: three hours after 8:40 is 11:40, whatever the seconds were
+    at, taken = at.replace(second=0, microsecond=0), taken.replace(second=0, microsecond=0)
+    if not timedelta(0) <= at - taken < plan.gap:
+        return ()
+    since = rules.gap_text(max(0, round((at - taken).total_seconds() / 60)))
+    return (f"That's {since} after dose {last.number}, taken {timeinput.format_moment(taken)}. The gap is at least {rules.gap_text(plan.gap_minutes)}.",)
+
+
+def asked_about(dose: Dose, listed: list[Dose], at: datetime) -> tuple[str, ...]:
+    """What ticking this dose off at `at` would be asked about first: after its
+    pill's latest time, or too soon after the dose before it."""
+    return (*_late(dose.pill, dose.occurrence.day, at), *_too_soon(dose.pill, today.before(listed, dose), at))
 
 
 def _late(pill: Pill, today_: date, at: datetime) -> tuple[str, ...]:

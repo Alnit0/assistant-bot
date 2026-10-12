@@ -226,9 +226,16 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   (`schedule.dues`), never stored, and never depends on what time it is
   now. Whether it can still be taken is a separate question
   (`doses.outcomes`)
-- A late log, and a time that breaks the order or the gap, ask first on
-  a card. A time for the dose just logged, or a dose named by its
-  number, corrects that dose (old → new), never a second one
+- A late log, a dose taken before the gap has passed, and a time that
+  breaks the order or the gap, ask first on a card. A time for the dose
+  just logged, or a dose named by its number, corrects that dose (old →
+  new), never a second one
+- Reminders (`tasks/pills/reminders.py`) are behind `REMINDERS_ENABLED`:
+  off, nothing is ever sent. What notifies never names a pill: the
+  message is posted as the neutral line and the pill is written in
+  after. One prompt a dose; what to do next is worked out from the
+  database and the clock (`reminders.decide`), never counted in memory;
+  nothing is sent after a pill's latest time
 
 ### Messages and channels
 

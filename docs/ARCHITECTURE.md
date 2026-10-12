@@ -108,6 +108,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `pills/rules.py` | Pure: a pill's `Plan` (its name, dose and notes, its `Schedule` from `core/schedule.py`, and optionally a course's dates), building one from a `Request` in the user's words (`build`, which settles a time by the times around it when only one reading keeps them in order, raises `TimeQuestion` for one that could still be morning or evening, moves a planned time that is closer to the one before than the gap and says so, and refuses a schedule that can't fit in a day with `DoesNotFit`, which carries the plan as read so the card can show it, and a part that can't be read with `Unreadable`, which names the part), what a pill is on a day (`status_on`: active, upcoming, paused, ended), which pill a name means (`find`), and all the wording (one-line summary, the card's lines, old-and-new for an edit, the list, the live state for Claude) |
 | `pills/today.py` | Pure: the day's doses and the checklist as it is written. A `Dose` is a pill, its occurrence and when it is due today (from `core/schedule.py` and what was taken, worked out each time); `wanted` says which doses a pill has on a day, `doses` puts them in the checklist's order (no time first, then by today's due time), `checklist`, `line`, `dose_text` and `left_text` write them |
 | `pills/checklist.py` | The daily checklist, with no discord.py: `post` puts a fresh copy in the hub without a notification, with a Taken / Skip message under it for each dose with no time, and takes the old one away; `refresh` (and `changed`, in the background) brings it up to date in place and posts it again if it has gone; `mark` changes a dose through the occurrence log and reads it back, and `correct` changes the time of one already ticked off; `db_settle` closes what can no longer be taken today every time the day is looked at (`doses.outcomes`), and a job a minute after a pill's latest time looks again; the buttons; the 6:00 am job (a standing job), the post on a late start, and the end of a day (`close_past`: untouched doses are missed, single messages go, the old checklist is written one last time), which the rollover asks for and so does everything that looks at today, so a day is closed even if no job ran |
+| `pills/reminders.py` | Reminders, behind `REMINDERS_ENABLED` (off unless set: off, nothing is ever sent or booked, and a prompt left up is removed). A dose with a time gets a message of its own at that time: posted as one neutral line ("💊 Routine due · 11:12 am": what the phone shows, never a pill's name), then the pill, the dose, why it is due then, its note, a take-by line when that is within two hours, and the buttons are written into it (an edit notifies nobody). Taken, Skip, Taken at… (a one-box form, the time checked as a time said is) and Snooze 15m. Left alone it is posted again every 15 minutes, three times, each a fresh message in place of the last, then the dose is missed for good (`cause` ignored). `decide` (pure) says what to do for a dose from what is kept and the clock; `run` does it for everyone and books one job (`pills/remind`) for the next moment; it is called at start, by the job, at a day's end, when a latest time passes and whenever a dose or a plan changes. No discord.py |
 | `pills/doses.py` | Pure: what the day's limit means for a dose, from its schedule alone: whether a dose due then still fits (`fits`), and the time a dose must be taken by for those after it to fit (`take_by`). `outcomes` says what becomes of each dose still open as the day goes on: skipped by the bot, with the reason, the moment it can never be in time; missed once the limit has passed if it had its time, or if nothing was taken all day; open again if a correction makes room. `take_by` is not used by the bot yet: reminders will |
 | `pills/store.py` | The `pills_pills` records, every change to a plan or status (`pills_changes`), and where the checklist's messages are (`pills_messages`). (`pills_drafts` is a table of the old previews: no code uses it now) |
 | `timers/__init__.py` | Registers `timer`, `timers`, `pause all`, `resume all`, `pomo`, `pomo stats`, the reply actions and job handlers, and the task's plain-words entry |
@@ -141,7 +142,7 @@ database with the clock under test control), `devmode`, `dev_parsing`, `lab`, `l
 `permissions`, `scheduler`, `text` (and the chat prompt and plain chat), `outgoing` (nothing internal sent, no offers), `bugs`, `instance_lock`, `backup` (the specs and exports zips), `clock`,
 `day` (the boundary and the rollover job), `timeinput`, `schedule` (when each dose is due: the worked example), `occurrences`,
 `dev_clock` (`dev clock`, `dev reset-db` and their guards), `actions` (the contract and the checking), `routing` (the router, extraction and the replayed fixtures), `conversation` (a message end to end, confirm cards; on the demo lists of `tests/demo.py`), `livelists`, `costs` (routes, prices, the roll-up and `dev cost`), `trace` (notes, a message in lines, `dev why`), `cards`,
-`pills_rules`, `pills_doses`, `pills_today`, `pills_checklist`, `pills_day` (two whole days on a moved clock, through the real scheduler), `timers_plain` and `pills_plain`
+`pills_rules`, `pills_doses`, `pills_today`, `pills_checklist`, `pills_reminders` (reminders on the dev clock through the real scheduler: the neutral line, the buttons, the reminders, missed, the latest time, a restart), `pills_day` (two whole days on a moved clock, through the real scheduler), `timers_plain` and `pills_plain`
 (each task's actions in plain words), `golden` (the golden conversations of the conversation standard, end to end, replayed from `evals/fixtures/golden.json`; the ones the bot can't hold yet are marked as gaps), `channels`
 (channel types, the dev panel's start-up sweep, a task failing to start), `channel` (channel reset: what goes and how, the card and both buttons, the Discord work on a fake channel, and the checklist and timers being posted again), `housekeeping` (each housekeeping word as a real reply: one line that goes, the word deleted, #bot-log), `buttons` (the colour of every button there is, on cards and in discord.py views, and a line deleted by its stored job after a restart), `identity` (the nickname and the status line), `commands` (the #commands pages and keeping the channel showing them), `mock` (`dev mock`: reading a sketch, its mistakes by line, the V2 message), `restart` (the bot stopped and started again: the checklist with the bot off at 6:00 am, doses and logs, old buttons, the reset card, and a message, a Save, a reset or a job cut off half way), `repeats` (which things are the same, what a repeat comes to, the words).
 
@@ -455,22 +456,25 @@ and:
   checklist between being posted and its id being stored): a few
   milliseconds wide, and it would leave a second copy. Not handled
 
-**What pills reminders (stage 3) will need** so that a restart is safe:
+**Pills reminders across a restart** (`tasks/pills/reminders.py`,
+tested in `tests/test_pills_reminders.py`):
 
-- A prompt is a row (`pills_messages`, a new kind) and its next step is
-  a stored job, never a sleeping coroutine: the snooze's end, and each
-  re-nudge with its number in the job's payload
-- Whether a prompt is due, and which re-nudge it is on, is worked out
-  from the plan, what was taken and the first prompt's time, so that at
-  start one prompt is posted for a dose that is still due, never one a
-  re-nudge that was missed, and never two for a dose
-- Nothing after the pill's latest time, however late the bot starts: a
-  dose whose time and re-nudges all passed while the bot was off is
-  missed, said once in the start's message, and gets no prompt
-- A prompt whose button was pressed as the bot stopped is an ordinary
-  cut-off press: the dose is in the database or it isn't, and the
-  prompt is rewritten from that
-- The line in the start's message never names a pill
+- What is kept about a prompt is a row (`pills_prompts`: when it was
+  first and last posted, how many reminders have gone, a snooze) and
+  one stored job for the next moment anything is due. No time is kept
+  in memory
+- What to do is worked out each time from the day's doses, that row
+  and the clock (`reminders.decide`), never from how many jobs ran. At
+  start a dose that is due gets one prompt: the first if it was never
+  asked, the next in its turn if it was. Reminders that fell while the
+  bot was off are not counted against me, and never sent in a burst
+- Nothing is posted after a pill's latest time, however late the bot
+  starts, and a prompt still up then is taken down
+- A prompt's buttons carry the dose's id: they work after a restart. A
+  press cut off is an ordinary cut-off press: the dose is in the
+  database or it isn't, and the next look rewrites or removes the prompt
+- What was posted at start is said once in the start's message, with a
+  count and no pill's name
 
 ## Database (`data/assistant.db`; `data/dev.db` with `--dev`)
 
@@ -479,7 +483,7 @@ and:
 | `users`, `message_log` (every input, with its route, tasks, what was extracted, its trace, requests, tokens, cost and time), `llm_calls` (one row per request to Claude), `confirm_cards` (open confirm cards and tie questions), `live_lists` (where the latest copy of each list shown on request is), `scheduled_jobs`, `reaction_state`, `skill_migrations`, `occurrences`, `occurrence_events` | core (`core/migrations.py`, version in `PRAGMA user_version`) |
 | `archive_items` | archive |
 | `bugs_items`, `bugs_notes`, `bugs_events` (each closing and re-opening) | bugs |
-| `pills_pills`, `pills_drafts` (left from the old previews; unused), `pills_changes` (every plan and status change), `pills_messages` (where today's checklist and each dose's own message are), `pills_lines` (every line said about a pill or a dose: a reply to one says which is meant); doses are rows of `occurrences` with task `pills` | pills |
+| `pills_pills`, `pills_drafts` (left from the old previews; unused), `pills_changes` (every plan and status change), `pills_messages` (where today's checklist and each dose's own message are), `pills_lines` (every line said about a pill or a dose: a reply to one says which is meant), `pills_prompts` (each reminder that is up: its message, when it was first and last posted, how many times it was posted again, a snooze); doses are rows of `occurrences` with task `pills` | pills |
 | `timers_timers`, `timers_pomodoros`, `timers_focus_log`, `timers_boards`, `timers_events`, `timers_lists`, `timers_messages` (every message about a timer or session: a reply to one says which is meant) | timers |
 | `lab_state`, `lab_tour_runs`, `lab_tour_results` | lab |
 
@@ -544,8 +548,9 @@ How the bot is meant to grow. The `new-task` skill reads this first.
 
 Corrections straight after Save, fewer task ties and the timers' question
 that is still sent as its own message: see the gap list in
-`docs/BACKLOG.md` (G3, G4, G7), deferred until pills reminders work. Pills reminders, corrections and questions (stages 3 and 4 of the pills
-build order).
+`docs/BACKLOG.md` (G3, G4, G7). Pills corrections and questions (stage 4 of the
+pills build order), streaks, and the take-by line on the checklist. Reminders are built
+and switched off (`REMINDERS_ENABLED`) until they pass QA.
 
 The gateway layer (`main.py` and `builtin`'s view still use discord.py
 directly), bulk and cross-channel actions for Claude,

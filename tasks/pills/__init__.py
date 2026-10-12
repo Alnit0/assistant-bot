@@ -3,7 +3,7 @@ from core import day, hub, livelists, tidy
 from core.lifecycle import MessageClass
 from core.actions import EACH_DAY
 from tasks.base import INBOX, ButtonNote, Keyword, Task
-from tasks.pills import checklist, plain, rules, store
+from tasks.pills import checklist, plain, reminders, rules, store
 
 HUB = "hub"
 # Where the words work: #inbox, and the hub once it is set in .env
@@ -73,27 +73,37 @@ class PillsTask(Task):
         return [
             ButtonNote("✅ Taken", "under today's checklist, for a dose with no set time: tick it off as taken now"),
             ButtonNote("⏭️ Skip", "under today's checklist: leave that dose out today"),
+            ButtonNote("🕐 Taken at…", "on a reminder: tick the dose off at a time you type"),
+            ButtonNote("⏰ Snooze 15m", "on a reminder: ask again in 15 minutes"),
         ]
 
     def migrations(self):
         return store.MIGRATIONS
 
     def job_handlers(self):
-        return {checklist.JOB: checklist.post_job, checklist.LIMIT_JOB: checklist.limit_job}
+        return {checklist.JOB: checklist.post_job, checklist.LIMIT_JOB: self.limit_passed, reminders.JOB: reminders.remind_job}
+
+    async def limit_passed(self, job):
+        # A pill's latest time has passed: the checklist closes what is left, and no reminder outlives it
+        await checklist.limit_job(job)
+        await reminders.run()
 
     async def new_day(self, ended, started):
         await checklist.new_day(ended, started)
+        await reminders.run()  # yesterday's reminders go, and today's first is booked
 
     async def channel_cleared(self, channel_id, gone):
         await checklist.channel_cleared(channel_id, gone)
+        await reminders.channel_cleared(channel_id, gone)
 
     async def reposted(self, channel_id, gone):
-        return await checklist.reposted(channel_id, gone)
+        return [*await checklist.reposted(channel_id, gone), *await reminders.reposted(channel_id, gone)]
 
     async def message_class(self, message_id):
         kind = await store.message_kind(message_id)
         if kind is None:
-            return None
+            # A reminder is there to notify, and goes once it is answered
+            return MessageClass.ALERT if await reminders.is_prompt(message_id) else None
         return MessageClass.LIVE if kind == store.CHECKLIST else MessageClass.ALERT
 
     async def owns_message(self, message_id):
@@ -102,9 +112,11 @@ class PillsTask(Task):
 
     def setup(self, client) -> None:
         checklist.register()
+        reminders.register()
 
     async def startup(self, client) -> None:
         await checklist.startup()
+        await reminders.startup()
 
 
 task = PillsTask()

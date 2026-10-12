@@ -109,6 +109,9 @@ def flag(value: str | None, default: bool) -> bool:
 
 KEEP_CONFIRMATIONS = flag(os.getenv("KEEP_CONFIRMATIONS"), True)
 
+# Pill reminders: a message at each dose's time. Off unless switched on: off, no reminder is ever sent
+REMINDERS_ENABLED = flag(os.getenv("REMINDERS_ENABLED"), False)
+
 # Quiet time before reactions are acted on. Removing a reaction within it cancels
 try:
     REACTION_DEBOUNCE_SECONDS = float(os.getenv("REACTION_DEBOUNCE") or 30)

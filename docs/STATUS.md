@@ -7,6 +7,33 @@ session; the end-of-task checklist updates it at the end of every task.
 
 ## Questions for Alex
 
+- **Reminders** (item 12), what I chose where the spec left room:
+  - **The lock screen.** The message is posted as the one neutral line
+    and the pill is written into it a moment later, so no name can
+    reach the phone however it draws a notification. The prompt is an
+    ordinary message with buttons, not the coloured cards of the
+    sketches: those need Components V2, which nothing real uses yet.
+    Say if reminders should wait for that look.
+  - **A snooze is not one of the three reminders.** When it ends a
+    fresh copy comes and the count carries on.
+  - **Left alone:** the prompt, reminders at 15, 30 and 45 minutes,
+    missed at 60. Missed this way stays missed (it does not reopen by
+    itself), but saying "took it" still ticks it off.
+  - **The bot off at a dose's time:** it gets its first prompt when the
+    bot starts, if that is before the pill's latest time. Reminders
+    that fell while the bot was off are not counted against you.
+  - **Taken at… with a time that would be asked about** (too soon, or
+    after the latest time): refused in the form with the reason and
+    "To log it anyway, say it in a message." The other way would be to
+    log it from the form unasked.
+  - **Each timed dose has its own prompt**, so dose 2 can come due
+    while dose 1's reminder is still up.
+  - **Take-by** is on the prompt, and not yet on the checklist line.
+  - **A missed dose on the checklist** still reads "❌ … · missed": the
+    sketch's "was due 11:12 am" waits for the checklist's redesign.
+  - **Too soon** reads "That's 2h after dose 1, taken 8:12 am. The gap
+    is at least 3h. Log it anyway?" with **Log it** and **Cancel**.
+  - Reminders go to the hub only. With no hub set, none is sent.
 - **Questions on the card** (item 11), what I chose:
   - Under a question the card says "-# or type your answer" (where
     other cards say "or tell me what to change").
@@ -49,8 +76,10 @@ One commit an item, pushed, each with a block in `docs/QA-RUN.md`
 marked "waiting for QA". One live eval was run, the one approved (the
 pills fixtures, US$0.13). The service was not restarted: the live bot
 is still on "Send a reply to a task's message to that task". The next
-restart adds two tables and two columns (`timers_messages`,
-`pills_lines`, `occurrences.cause`, `confirm_cards.confirmation`).
+restart adds three tables and three columns (`timers_messages`,
+`pills_lines`, `pills_prompts`, `occurrences.cause`,
+`confirm_cards.confirmation`, `confirm_cards.question`). Reminders stay
+off after it unless `.env` says otherwise.
 
 1. Done: the standard says what "it" means without a reply (block 27).
 2. Done: an unnamed pill is only logged straight away with an anchor;
@@ -75,6 +104,8 @@ restart adds two tables and two columns (`timers_messages`,
    mock-ups in `docs/mockups/` (block 35). No code. "Not now" in the
    standard says new tasks are allowed and gym is next.
 
+12. Done: pill reminders (block 38), switched off: `REMINDERS_ENABLED`
+    is off unless set, and off means nothing is ever sent.
 11. Done: questions on the card (G1, block 37). Golden 1c, 1d and 2a
     pass, so no golden conversation is a gap any more; every pills
     question is on the card (C7).
@@ -89,41 +120,15 @@ bugs), C15 (a `cause` in the occurrence log) and C16 (a `clear` list
 when changing a pill) are done (block 34). The pills fixtures were
 recorded live for C16, the one run approved: US$0.13, 60 of 61.
 
-### Stage 3 build plan (reminders), for a go
+### Reminders (stage 3): built, switched off
 
-Each step ends with its tests and a QA block on `--dev` with `dev
-clock`; nothing is started until the mock-ups are approved.
-
-1. **When a prompt is due** (pure, no Discord): from `schedule.dues`
-   and the day's doses, which timed dose needs a prompt now, its
-   take-by time when that is within two hours, and nothing after the
-   pill's latest time. Tests on the Pill A worked example.
-2. **The prompt** as its own message in the hub, one a dose, recorded
-   like a dose's Taken / Skip message (`pills_messages`, a new kind) so
-   it survives a restart and a channel reset. Taken, Taken at… (a
-   one-box form), Skip: each goes through the same code as saying it,
-   the prompt is deleted and the checklist follows.
-3. **Standing job** (`scheduler.ensure`, `keep_booked`): one job for
-   the next prompt due, booked again from the plan after every change.
-   What it decided goes in the log each time; a skip says so in
-   #bot-log.
-4. **Snooze and re-nudges**: 15 minutes, up to three, each a fresh copy
-   that replaces the one before (never two prompts for a dose), then
-   missed. Prompts ignore quiet hours.
-5. **Missed and automatic skips** on the checklist, through
-   `doses.outcomes` as today; no reminder after the day's limit.
-6. **Too soon**: a dose logged before the gap has passed asks first on
-   the card (it already asks for a dose out of order or after the
-   latest time: the same card, one more reason).
-7. **Privacy**: the notification never names a pill (G14), checked by
-   a test on the first line of every prompt.
-
-Across a restart (from item 10; the list is in "What survives a
-restart" in `docs/ARCHITECTURE.md`): a prompt's next step is a stored
-job, which re-nudge it is on is worked out and not counted in memory,
-at start a dose still due gets one prompt and one past its latest time
-gets none, and what was caught up on is said once without naming a
-pill. Step 2 and step 4 each get a test that stops and starts the bot.
+`tasks/pills/reminders.py`, behind `REMINDERS_ENABLED` (off unless set
+in `.env`). All seven steps of the build plan are in: when a prompt is
+due, the prompt and its buttons, one stored job, snooze and three
+reminders, missed and nothing after the latest time, too soon on a
+card, and the notification that never names a pill. Tested offline on
+the dev clock (`tests/test_pills_reminders.py`); block 38 is the QA.
+To try it live: `REMINDERS_ENABLED=true` in `.env`, then restart.
 
 ## Branch and state
 
@@ -217,14 +222,14 @@ the spec is approved.
    on the dev database. Step 8 of block 24 (tomorrow's backup card).
    Blocks 21 and 22, and steps 5 to 7 of block 23, are still to be
    reported.
-2. QA of the background batch: blocks 27 to 37 (`docs/QA-RUN.md`), and
+2. QA of the background batch: blocks 27 to 38 (`docs/QA-RUN.md`), and
    the questions at the top of this file.
 3. The checklist redesigned with Discord's Components V2: look at
    `dev mock checklist` and the reminder sketches (block 33) and say
    what to change; nothing real is converted until they are approved.
-4. Pills stage 3, reminders, on a go: the build plan is above. Then
-   corrections and questions, then streaks (decided 2026-10-12: after
-   reminders).
+4. Pills reminders: QA with block 38, then switch them on live
+   (`REMINDERS_ENABLED=true`, restart). Then corrections and
+   questions (stage 4), then streaks.
 5. Gym: waits for the answers on how you train; then its core
    additions (approved), then the task.
 

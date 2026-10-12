@@ -125,12 +125,33 @@ def dose_causes(conn: sqlite3.Connection) -> None:
     )
 
 
+def prompts(conn: sqlite3.Connection) -> None:
+    # A row for each dose that has a reminder up, snoozed, or waiting to be posted again
+    # (tasks/pills/reminders.py). Whatever happens next is worked out from this and the clock
+    conn.execute(
+        """
+        CREATE TABLE pills_prompts (
+            occurrence_id INTEGER PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            day TEXT NOT NULL,
+            channel_id INTEGER NOT NULL,
+            message_id INTEGER,
+            asked_at TEXT NOT NULL,
+            last_at TEXT NOT NULL,
+            reminders INTEGER NOT NULL DEFAULT 0,
+            snoozed_until TEXT
+        )
+        """
+    )
+
+
 MIGRATIONS = [
     create_tables,
     one_schedule_model,
     checklist_messages,
     answer_lines,
     dose_causes,
+    prompts,
 ]
 
 

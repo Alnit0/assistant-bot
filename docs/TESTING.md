@@ -42,11 +42,11 @@ Last updated: 2026-10-12
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
 | P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
 | Q | Time, days, the schedule model, the occurrence log and cards | 16 | 14 | 2 | 2 | 14 | 0 | 0 |
-| R | Pills | 64 | 14 | 50 | 42 | 22 | 0 | 0 |
+| R | Pills | 66 | 15 | 51 | 43 | 23 | 0 | 0 |
 | S | Routing and confirm cards | 61 | 11 | 50 | 15 | 45 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 4 | 18 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **447** | **139** | **308** | **239** | **207** | **0** | **1** |
+| | **Total** | **449** | **140** | **309** | **240** | **208** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -504,6 +504,8 @@ are added with it.
 | R74 | 👤 Manual | With a pill that has a time and a note: say `<pill> no longer needs a time`, press **Save**; then `<pill> doesn't need its note any more`, press **Save** | Each time a change card for that pill: `schedule · … → daily, any time`, then `notes · … → none`. After Save the pill has neither | ⬜ Untested | | Block 34 |
 | R75 | 🤖 Auto | Pills asks on the card, never in a message | A time that could be either is ❔ with both readings as answers (a latest time too); several things to ask come one at a time; one time for two doses offers twelve hours on, for three or more it is typed; a gap with no number of doses offers 2, 3 or 4 a day; a name that fits two pills offers a button each on every card (change, pause, resume, remove, delete) with what was understood kept; "took it" with nothing to go by offers the pills it could be, and the answer logs it | ✅ Pass | 2026-10-12 | `tests/test_pills_plain.py`, `tests/test_pills_rules.py`, `tests/test_pills_checklist.py` |
 | R76 | 👤 Manual | With two pills whose names share a word (say `add Testvit C and Testvit D`, **Save**): say `pause testvit`; press one. Then, six minutes after any pill was logged, say `took it`; press a pill | A card asking "Which one is “testvit”?" with a button for each; pressing one gives the pause card for it with **Save**. Then a card asking "Which pill?" with a button a pill; pressing one ticks it off and the card says so | ⬜ Untested | | Block 37 |
+| R77 | 🤖 Auto | Reminders (`REMINDERS_ENABLED`) | Off: nothing is ever sent or booked, and a prompt left up goes. On, on the dev clock with the real scheduler: a timed dose gets one prompt at its time; every message posted to notify is the one neutral line, whatever the pill, dose, note or reminder; the prompt then says which dose, when and why (the gap), the note and take-by when within two hours; Taken, Skip, Taken at… (the form, its time checked) and Snooze (says until when, a fresh copy after, not a reminder); left alone, three reminders 15 minutes apart, each in place of the last, then missed for good, though it can still be ticked off; nothing after the latest time; a dose that can't fit or has no time gets none; midnight clears; the worked example through a day; a reply to a prompt means that dose; a channel reset; a restart (one prompt, never a burst, no second copy, buttons work, nothing past the latest time); a job run twice. Too soon asks on a card | ✅ Pass | 2026-10-12 | `tests/test_pills_reminders.py` |
+| R78 | 👤 Manual | With `REMINDERS_ENABLED=true` on `--dev`: add a pill at a time, move the clock to it, look at the phone's lock screen and the message; press Snooze, move 15 minutes; leave it for an hour of clock; press Taken on another | The lock screen says only "💊 Routine due" and the time. The message names the pill with four buttons. Snooze says until when and a fresh message comes. Left alone: three reminders, then ❌ missed on the checklist. Taken ticks it off and the message goes | ⬜ Untested | | Block 38 |
 
 ## S. Routing and confirm cards
 

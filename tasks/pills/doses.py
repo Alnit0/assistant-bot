@@ -26,6 +26,7 @@ NO_TIME = "not enough time before "
 # code reads. The reason beside it is only ever shown
 NO_ROOM = "no_room"  # it could never have been taken in time: looked at again when anything changes
 NOT_IN_PLAN = "not_in_plan"  # its pill was removed or changed during the day: final
+IGNORED = "ignored"  # missed after every reminder went unanswered (reminders.py): final
 
 
 def fits(due: Due, plan: Schedule, day: date) -> bool:
@@ -61,7 +62,8 @@ def decided_by_the_bot(occurrence) -> bool:
         return True
     if occurrence.state == SKIPPED:
         return bool(occurrence.automatic) and occurrence.cause == NO_ROOM
-    return occurrence.state == MISSED and bool(occurrence.automatic)
+    # Missed because the day's limit passed is looked at again; missed after its reminders is not
+    return occurrence.state == MISSED and bool(occurrence.automatic) and occurrence.cause != IGNORED
 
 
 def outcomes(plan: Schedule, day: date, found: dict, now: datetime) -> dict[int, tuple[str, str | None]]:

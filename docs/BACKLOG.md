@@ -51,8 +51,9 @@ gained time"):
 
 What is left. The golden conversations are `tests/test_golden.py`; none
 is marked `gap` any more: G1 (questions on the card) was built on
-2026-10-12, and 1c, 1d and 2a pass. G3 and G4 are deferred until pills
-reminders work; G14 comes with reminders. G9 and G13 (the old path, the old `pills` list) were removed
+2026-10-12, and 1c, 1d and 2a pass. G14 (a notification never names a
+pill) is built and tested with reminders, which are switched off until
+they pass QA. G3 and G4 are deferred until then. G9 and G13 (the old path, the old `pills` list) were removed
 at step 4.
 
 | # | Gap | Layer | Size |
@@ -60,7 +61,6 @@ at step 4.
 | G3 | A correction straight after Save works only by the "pill changed last" guess, so it is marked ❓, and only for pills (golden 2b) | core and each task | medium |
 | G4 | Task ties are asked too readily: the router sees two exchanges and no record of what I have or did lately | router | medium |
 | G7 | Questions still sent as their own message: only timers now ("Which timer? Say its name.", C8). The pills ones are on the card (C7, 2026-10-12) | timers | small |
-| G14 | Privacy of notifications is untested: nothing notifies about a pill yet | pills stage 3 | with reminders |
 
 Done: dev bugs are numbered D1, D2… with a "dev" tag and a live number
 is never reused; and, in batch 1 (2026-10-10), G2 (a reply to an older
@@ -163,6 +163,9 @@ Alex trains are answered:
   waits are kept in memory, so one made just before a restart is never
   acted on and gets no ✅. Take it off and put it on again. Keeping the
   waiting reactions in the database would fix it.
+- **The take-by line on the checklist** (the spec has it on the
+  checklist and the prompt): it is on the prompt only, until the
+  checklist's redesign is settled.
 - **Streaks** come after reminders (decided 2026-10-12). Only a missed
   dose breaks one; the tests of C15 pin that down.
 

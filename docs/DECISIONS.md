@@ -1162,3 +1162,34 @@ A short log of key decisions and why. Newest at the bottom.
   - Offered answers are only the likely ones: for one time given for
     two doses, twelve hours on; for three or more, none (it is typed).
   - `ask` in `on_repeat` is no longer refused by the contract.
+- **Pills reminders (stage 3, 2026-10-12), behind `REMINDERS_ENABLED`.**
+  Built from the spec, the build plan and the four sketches; off by
+  default, and off means no reminder is ever sent.
+  - **What the phone shows.** The message is posted as one neutral
+    line and the pill is written into it straight after. A notification
+    is made when a message is posted and not when it is edited, so no
+    pill's name can reach the lock screen however the phone draws it.
+    The prompt is an ordinary message with buttons, not the Components
+    V2 look of the sketches: nothing real is converted to V2 until the
+    checklist's redesign is approved.
+  - **State, not counting.** One row a prompt and one job for the next
+    moment; what to do is worked out from the row, the day's doses and
+    the clock. A restart, a late job and a job run twice all give the
+    same result. Times are kept to the minute, so "one more at 8:45 pm"
+    is exactly when it comes.
+  - **Left alone:** the prompt, then three reminders 15 minutes apart,
+    then missed 15 minutes after the last. Missed this way is final
+    (the occurrence's cause is `ignored`), unlike missed because the
+    day's limit passed, which is looked at again when anything changes.
+  - **A snooze is not one of the reminders**: when it ends a fresh copy
+    comes and the count carries on from where it was.
+  - **The bot off:** a dose never asked gets its first prompt at start;
+    reminders that fell while it was off are not counted or sent in a
+    burst. Nothing after the latest time.
+  - **Taken at…** reads the time as a time said in a message is. One
+    that a message would be asked about first (too soon, after the
+    latest time) is refused in the form with the reason, and can be
+    said in a message instead.
+  - **Too soon** is asked about on the same card as a late log.
+  - The take-by line is on the prompt only; the checklist is left as it
+    is until its redesign.
