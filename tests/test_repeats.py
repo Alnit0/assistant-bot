@@ -58,6 +58,8 @@ def test_a_task_hands_over_its_own_records_and_may_compare_in_its_own_way():
         (repeats.ADD_TO_AMOUNT, True, repeats.MORE),
         (repeats.ALLOW_ANOTHER, True, repeats.ANOTHER),
         (repeats.ASK, True, repeats.QUESTION),
+        (repeats.SHOW_EXISTING, True, repeats.EXISTING),
+        (repeats.SHOW_EXISTING, False, repeats.EXISTING),
     ],
 )
 def test_what_adding_something_that_is_there_comes_to(on_repeat, changes, kind):
@@ -77,6 +79,7 @@ def test_the_words_are_the_same_for_every_task():
     assert repeats.already("Iron", "pills") == "**Iron** is already in your pills with these settings"
     assert repeats.there_line("Iron", "pills") == "**Iron** · already in your pills"
     assert repeats.change_line("eggs", 5, 7) == "eggs · 5 → 7"
+    assert repeats.logged_already("🐞 Logged as [B4](url)") == "🐞 Already logged as [B4](url)"
     assert repeats.change_line("schedule", "daily at `8:00 pm`", "daily at `9:00 pm`") == "schedule · daily at `8:00 pm` → daily at `9:00 pm`"
 
 
@@ -84,3 +87,10 @@ def test_pills_matches_and_speaks_through_core():
     assert (pills_plain.IDENTITY, pills_plain.ON_REPEAT) == (("name",), repeats.UPDATE)
     pill = SimpleNamespace(plan=SimpleNamespace(name="Vitamin D"), status="active")
     assert pills_plain._already(pill) == "**Vitamin D** is already in your pills with these settings"
+
+
+def test_bugs_shows_the_report_a_message_already_has():
+    from tasks.bugs import rules as bugs
+
+    assert (bugs.IDENTITY, bugs.ON_REPEAT) == ((repeats.MESSAGE,), repeats.SHOW_EXISTING)
+    assert bugs.logged_text(4, None, existing=True) == "🐞 Already logged as B4"

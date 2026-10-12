@@ -644,6 +644,20 @@ Nothing here is built yet.
 
 Say what to change in any of them (wording, order, colours, buttons).
 
+## 34. Taking a setting away, and a bug logged twice (waiting for QA)
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
+On the dev database, dev mode off. You need a pill with a time and a
+note: say `add Testpill at 8am with food` and press **Save**.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Say `Testpill no longer needs a time`. Press **Save** | A change card for Testpill with `schedule · daily at 8:00 am → daily, any time`. After Save, `pills` shows it with no time | R74 |
+| 2 | Say `Testpill doesn't need to be with food any more`. Press **Save** | A change card with `notes · with food → none`. After Save the note is gone | R74 |
+| 3 | React 🐞 to any message of yours. Take the 🐞 off, then put it on again. Then open the bug's post and press **Won't fix** | "🐞 Logged as B<n>", then "🐞 Already logged as B<n>" with the same link: one bug, not two | P37 |
+| 4 | Say `remove Testpill`. Press **Remove** | Testpill is gone | |
+
 ## When you finish
 
 - Stop the test copy (`Ctrl + C`) and check nothing is left running:

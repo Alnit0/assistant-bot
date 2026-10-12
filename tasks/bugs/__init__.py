@@ -1,6 +1,6 @@
 import asyncio
 
-from core import livelists, repeats
+from core import livelists
 from core.actions import EACH_DAY, SEE
 from core.config import BASE_DIR
 from core.context import Context
@@ -91,9 +91,9 @@ class BugsTask(Task):
         "something the bot should do, and not a problem with anything outside the bot."
     )
     examples = ("that's a bug", "log that as a bug: it started two timers", "show my open bugs")
-    # Each report is its own (a message that already has an open bug is pointed to: rules.py)
-    identity = ()
-    on_repeat = repeats.ALLOW_ANOTHER
+    # A report for a message that already has an open bug shows that one (filing.py)
+    identity = rules.IDENTITY
+    on_repeat = rules.ON_REPEAT
     show = "bug_list"
 
     def actions(self) -> list:

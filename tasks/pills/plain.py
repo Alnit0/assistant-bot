@@ -2,7 +2,7 @@ from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta
 
 from core import clock, day, hub, livelists, occurrences, repeats, tidy, timeinput
-from core.actions import BOOLEAN, INTEGER, ITEMS, LAST, MINUTES, TIME, TIMES, Action, Answer, Field, LiveReply, Proposal, Request, Shown, State
+from core.actions import BOOLEAN, INTEGER, ITEMS, LAST, LIST, MINUTES, TIME, TIMES, Action, Answer, Field, LiveReply, Proposal, Request, Shown, State
 from core.actions import EACH_DAY, SEE, SET_UP, flag, is_guessed
 from core.actions import is_reference, point_at
 from core.errors import UserError
@@ -56,6 +56,8 @@ WHERE = "pills"  # as in "already in your pills"
 PLAN_FIELDS = ("name", "dose", "notes", "times", "per_day", "min_gap", "latest", "start", "end", "days")
 # Where an item of the action calls a part of the plan something else
 ITEM_KEYS = {"min_gap": "min_gap_minutes"}
+# What each setting that can be taken away (rules.CLEARABLE) is called in an item
+CLEARS = {"dose": ("dose",), "notes": ("notes",), "times": ("times",), "min_gap": ("min_gap_minutes",), "latest": ("latest",), "dates": ("start", "end", "days")}
 # A part of the plan, as a card names it when it couldn't be read
 UNREAD = {
     "times": "times", "per_day": "doses a day", "min_gap": "gap", "latest": "latest time",
@@ -87,14 +89,26 @@ def overlay(pending: list[dict], items: list[dict], key: str) -> tuple[list[dict
         if at is None:
             merged.append(rest)
         else:
-            merged[at] = {**merged[at], **rest}
+            merged[at] = _laid_over(merged[at], rest)
     return merged, missing
+
+
+def _laid_over(held: dict, rest: dict) -> dict:
+    """An item on the card with a later one over it. What the later one takes
+    away is no longer given, and what it gives is no longer taken away."""
+    taken = set(rest.get("clear") or [])
+    kept = {name: value for name, value in held.items() if not any(name in CLEARS[part] for part in taken)}
+    still = [part for part in kept.get("clear") or [] if not any(name in rest for name in CLEARS[part])]
+    both = {**kept, **rest}
+    clear = list(dict.fromkeys([*still, *(rest.get("clear") or [])]))
+    both.pop("clear", None)
+    return {**both, "clear": clear} if clear else both
 
 
 def as_request(item: dict) -> rules.Request:
     """An item as extraction gives it, in the words rules.build reads: the
     times joined up, the gap's minutes with their unit."""
-    said = {}
+    said, clear = {}, set(item.get("clear") or [])
     for name in PLAN_FIELDS:
         value = item.get(ITEM_KEYS.get(name, name))
         if value in (None, "", []):
@@ -102,9 +116,12 @@ def as_request(item: dict) -> rules.Request:
         if isinstance(value, list):
             value = ", ".join(str(each) for each in value)
         elif name == "min_gap" and isinstance(value, int):
-            value = f"{value}m" if value else "none"
+            if not value:
+                clear.add("min_gap")  # a gap of nothing is no gap: a number, not a word
+                continue
+            value = f"{value}m"
         said[name] = str(value)
-    return rules.Request(**said)
+    return rules.Request(**said, clear=frozenset(clear))
 
 
 @dataclass
@@ -1152,8 +1169,7 @@ _PLAN_FIELDS = (
     Field(
         "times",
         "The time of each dose, in the order said. \"Every 2 hours from 8am\" is a time for each dose. Leave "
-        "out for a pill with no set time. When changing a pill, the one value `none` takes its times away "
-        "(\"it no longer needs a time\").",
+        "out for a pill with no set time.",
         TIMES,
     ),
     Field("per_day", "How many doses a day, if said. Not needed when a time is given for each dose.", INTEGER),
@@ -1176,6 +1192,15 @@ _OFF_THE_CARD = Field(
     "remove",
     "Only in a follow-up to an open card: true to take this pill off the card (\"not the iron\").",
     BOOLEAN,
+)
+_CLEAR = Field(
+    "clear",
+    "The settings the user wants taken away from this pill, each by its name here: notes (\"no note any "
+    "more\"), dose, times (\"it no longer needs a time\": it becomes any time), min_gap, latest (\"it can "
+    "be taken at any hour\"), dates (\"it goes on with no end\": the course's start and end both go). "
+    "Never give a word such as none as a value in their place. Leave out when nothing is taken away.",
+    LIST,
+    choices=rules.CLEARABLE,
 )
 _WHICH = Field(
     "pill",
@@ -1222,11 +1247,11 @@ ACTIONS = (
     Action(
         "pill_edit",
         "Change a pill the user already has: its name, dose, notes, times, how often, the gap, the latest "
-        "time or its dates. Give only what changes. To take something away give \"none\" for it (notes none; "
-        "times [none] makes it any time; latest none; end none makes it go on with no end), and 0 for "
-        "min_gap_minutes to take the gap away. Examples: \"move the evening pill to 9pm\" -> pill "
-        "Evening pill, times [9:00 pm]. \"vitamin D is 2 tablets now\" -> dose 2 tablets.",
-        _one_or_more("to change", _WHICH, Field("name", "A new name for it, if it is being renamed."), *_PLAN_FIELDS, _OFF_THE_CARD),
+        "time or its dates. Give only what changes. To take a setting away, name it in `clear` and give no "
+        "value for it. Examples: \"move the evening pill to 9pm\" -> pill Evening pill, times [9:00 pm]. "
+        "\"vitamin D is 2 tablets now\" -> dose 2 tablets. \"iron no longer needs a time\" -> pill iron, "
+        "clear [times].",
+        _one_or_more("to change", _WHICH, Field("name", "A new name for it, if it is being renamed."), *_PLAN_FIELDS, _CLEAR, _OFF_THE_CARD),
         prepare=edit_card,
         purpose=SET_UP,
         say=("move Pill A to 9 pm", "Pill B is 2 tablets now",),

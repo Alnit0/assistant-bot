@@ -3,6 +3,7 @@ import re
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 
+from core import repeats
 from core.config import CHANNELS, DEV_DATABASE, TIMEZONE
 from core.database import OWN_MESSAGE_KINDS
 from core.errors import UserError
@@ -15,6 +16,10 @@ from core.timeinput import format_time
 # plain values out.
 # ---------------------------------------------------------------------------
 BUG_EMOJI = "🐞"
+# Adding what is already there (core/repeats.py): two reports are the same when
+# they are about the same message, and the open one is shown, never a second
+IDENTITY = (repeats.MESSAGE,)
+ON_REPEAT = repeats.SHOW_EXISTING
 
 OPEN, FIXED, WONTFIX = "open", "fixed", "wontfix"
 # The forum's tags, by status
@@ -271,7 +276,8 @@ def title(number: int, content: str) -> str:
 def logged_text(number: int, url: str | None, existing: bool = False) -> str:
     """The line left in the channel the bug was reported from."""
     name = f"[{bug_id(number)}]({url})" if url else bug_id(number)
-    return f"{BUG_EMOJI} {'Already logged' if existing else 'Logged'} as {name}"
+    line = f"{BUG_EMOJI} Logged as {name}"
+    return repeats.logged_already(line) if existing else line
 
 
 def closed_text(number: int, status: str, already: bool = False) -> str:

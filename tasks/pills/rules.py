@@ -36,8 +36,9 @@ MAX_TEXT = 100  # dose and notes
 MAX_PER_DAY = 12
 
 ID_PREFIX = "pl"
-# Said in place of a value, to take it away when editing
-CLEAR = frozenset({"none", "no", "clear", "remove", "-"})
+# The settings that can be taken away from a pill when changing it (`Request.clear`).
+# Named, never said as a word in place of a value
+CLEARABLE = ("dose", "notes", "times", "min_gap", "latest", "dates")
 
 
 @dataclass(frozen=True)
@@ -71,7 +72,7 @@ class Pill:
 class Request:
     """What was asked for, in the user's words. An empty value says nothing
     about that part: a new pill gets the default, an edited one keeps what it
-    has. One of CLEAR takes it away."""
+    has. `clear` names the settings to take away (CLEARABLE)."""
 
     name: str = ""
     dose: str = ""
@@ -83,11 +84,12 @@ class Request:
     start: str = ""  # "tomorrow"
     end: str = ""  # "the 20th"
     days: str = ""  # "7"
+    clear: frozenset = frozenset()  # the settings to take away: any of CLEARABLE
 
     def merged(self, later: "Request") -> "Request":
         """This request with whatever a later one says on top."""
-        given = {name: value for name, value in vars(later).items() if value.strip()}
-        return replace(self, **given)
+        given = {name: value for name, value in vars(later).items() if name != "clear" and value.strip()}
+        return replace(self, **given, clear=self.clear | later.clear)
 
 
 class DoesNotFit(UserError):
@@ -141,10 +143,6 @@ _COUNT = re.compile(r"(\d{1,2})\s*(?:x|×|times?|doses?)?(?: (?:a|per) day| dail
 
 def _given(value: str) -> bool:
     return bool(value.strip())
-
-
-def _cleared(value: str) -> bool:
-    return value.strip().lower() in CLEAR
 
 
 def split_times(text: str) -> list[str]:
@@ -261,28 +259,37 @@ def build(request: Request, today: date, base: Plan | None = None, moved: list[s
     if not name:
         raise UserError("What is the pill called?")
 
-    def optional(value: str, kept: str, what: str) -> str:
-        if not _given(value):
-            return kept
-        return "" if _cleared(value) else _text(value, MAX_TEXT, what)
+    clear = request.clear
 
-    dose = optional(request.dose, base.dose if base else "", "dose")
-    notes = optional(request.notes, base.notes if base else "", "note")
+    def optional(part: str, value: str, kept: str, what: str) -> str:
+        if part in clear:
+            return ""
+        return _text(value, MAX_TEXT, what) if _given(value) else kept
+
+    dose = optional("dose", request.dose, base.dose if base else "", "dose")
+    notes = optional("notes", request.notes, base.notes if base else "", "note")
 
     # --- schedule: only what was said changes ---
     old = base.schedule if base else None
-    if not _given(request.times):
+    said_times = _given(request.times) or "times" in clear
+    if "times" in clear:
+        times = ()
+    elif not _given(request.times):
         times = old.times if old else ()
     else:
-        times = () if _cleared(request.times) else _read("times", _times, request.times)
-    if not _given(request.min_gap):
+        times = _read("times", _times, request.times)
+    if "min_gap" in clear:
+        gap = None
+    elif not _given(request.min_gap):
         gap = old.gap_minutes if old else None
     else:
-        gap = None if _cleared(request.min_gap) else _read("min_gap", _gap, request.min_gap)
-    if not _given(request.latest):
+        gap = _read("min_gap", _gap, request.min_gap)
+    if "latest" in clear:
+        latest = None
+    elif not _given(request.latest):
         latest = old.latest if old else None
     else:
-        latest = None if _cleared(request.latest) else _read("latest", _latest, request.latest, times)
+        latest = _read("latest", _latest, request.latest, times)
     asked = _read("per_day", _count, request.per_day) if _given(request.per_day) else None
     if len(set(times)) != len(times):
         raise UserError("Two of those times are the same.")
@@ -303,7 +310,7 @@ def build(request: Request, today: date, base: Plan | None = None, moved: list[s
             raise UserError("A minimum gap needs at least 2 doses a day.")
         # Times the pill already had, for another number of doses, don't carry over
         first_only = old is not None and old.gap_minutes is not None and len(times) == 1
-        if not _given(request.times) and len(times) != per_day and not first_only:
+        if not said_times and len(times) != per_day and not first_only:
             times = ()
         if len(times) not in (0, 1, per_day):
             raise UserError(
@@ -317,7 +324,7 @@ def build(request: Request, today: date, base: Plan | None = None, moved: list[s
 
     # --- dates: a course, or none ---
     start, end = (base.start, base.end) if base else (None, None)
-    if any(_cleared(value) for value in (request.start, request.end, request.days)):
+    if "dates" in clear:
         start = end = None
     elif any(_given(value) for value in (request.start, request.end, request.days)):
         if _given(request.end) and _given(request.days):

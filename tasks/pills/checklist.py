@@ -80,7 +80,7 @@ def db_settle(conn, user_id: int, pills: list[Pill], day: date, now: datetime) -
             if state == PENDING:
                 occurrences.db_reopen(conn, dose.id, occurrences.AUTOMATIC, now=now)
             elif state == SKIPPED:
-                occurrences.db_skip(conn, dose.id, occurrences.AUTOMATIC, automatic=True, reason=reason, now=now)
+                occurrences.db_skip(conn, dose.id, occurrences.AUTOMATIC, automatic=True, reason=reason, cause=limits.NO_ROOM, now=now)
             else:
                 occurrences.db_miss(conn, dose.id, now=now)
 
@@ -398,7 +398,7 @@ def db_close(conn, started: date, now: datetime) -> list[store.Message]:
     for left in occurrences.db_pending_before(conn, TASK, started):
         pill = pills.get(left.item_id)
         if pill is None or left.seq not in [number for number, _ in today.wanted(pill, left.day)]:
-            occurrences.db_skip(conn, left.id, occurrences.AUTOMATIC, automatic=True, reason="no longer in the plan", now=now)
+            occurrences.db_skip(conn, left.id, occurrences.AUTOMATIC, automatic=True, reason="no longer in the plan", cause=limits.NOT_IN_PLAN, now=now)
             continue
         key = (left.day, left.item_id)
         if key not in decided:
@@ -408,7 +408,7 @@ def db_close(conn, started: date, now: datetime) -> list[store.Message]:
             decided[key] = limits.outcomes(plan, left.day, mine, core_schedule.limit(plan, left.day) + timedelta(seconds=1))
         state, reason = decided[key].get(left.seq, (MISSED, None))
         if state == SKIPPED:
-            occurrences.db_skip(conn, left.id, occurrences.AUTOMATIC, automatic=True, reason=reason, now=now)
+            occurrences.db_skip(conn, left.id, occurrences.AUTOMATIC, automatic=True, reason=reason, cause=limits.NO_ROOM, now=now)
         else:
             occurrences.db_miss(conn, left.id, now=now)
     return store.db_messages_before(conn, started)

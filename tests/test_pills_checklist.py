@@ -383,8 +383,8 @@ def test_a_dose_of_a_pill_removed_during_the_day_is_set_aside_not_missed(world):
     run(plain.remove_save(world.request(), {"pills": [{"pill": "iron"}]}))
     world.now = day.at(DAY + timedelta(days=1), time(0, 0))
     run(checklist.new_day(DAY, DAY + timedelta(days=1)))
-    found = {o.item_id: (o.state, o.reason) for o in run(occurrences.for_day(world.owner.id, "pills", DAY))}
-    assert found == {1: (MISSED, None), 2: (SKIPPED, "no longer in the plan")}
+    found = {o.item_id: (o.state, o.reason, o.cause) for o in run(occurrences.for_day(world.owner.id, "pills", DAY))}
+    assert found == {1: (MISSED, None, None), 2: (SKIPPED, "no longer in the plan", "not_in_plan")}
 
 
 def test_the_task_says_which_of_its_messages_are_live_and_which_wait_to_be_pressed(world):
@@ -523,6 +523,76 @@ def test_a_dose_is_skipped_by_the_bot_the_moment_it_can_no_longer_fit_and_comes_
         "Pill A (dose 2 of 3) `12:00 pm`, Pill A (dose 3 of 3) `3:00 pm`"
     )
     assert pill_a(world)[3] == (PENDING, False, None), "the bot's own skip is taken back"
+
+
+# --- streaks: only a missed dose breaks one, and the cause never changes which those are ------------------------
+def broken(world, on=DAY):
+    """The doses of a day that would break a streak: the missed ones, and nothing else."""
+    return sorted((o.item_id, o.seq) for o in run(occurrences.for_day(world.owner.id, "pills", on)) if o.state == MISSED)
+
+
+def causes(world, on=DAY):
+    return {o.seq: o.cause for o in run(occurrences.for_day(world.owner.id, "pills", on))}
+
+
+def test_a_dose_the_bot_skips_for_want_of_room_breaks_no_streak_and_is_known_by_its_cause(world):
+    request, asked = late_night(world)
+    assert broken(world) == [(1, 1), (1, 2), (1, 3)], "10:57 pm with nothing taken: all three missed"
+    run(plain.log_save(request, asked.data))
+    assert broken(world) == [] and causes(world) == {1: None, 2: "no_room", 3: "no_room"}
+    # Midnight closes the day: skipped stays skipped, so the streak stands
+    world.now = day.at(DAY + timedelta(days=1), time(0, 0))
+    run(checklist.new_day(DAY, DAY + timedelta(days=1)))
+    assert broken(world) == [] and causes(world) == {1: None, 2: "no_room", 3: "no_room"}
+
+
+def test_a_dose_that_had_its_time_and_was_not_taken_breaks_the_streak_whatever_is_skipped_beside_it(world):
+    world.now = day.at(DAY, time(9, 0))
+    add(world, MAIN)
+    run(checklist.post(world.owner.id))
+    log(world, {"pill": "pill a", "did": "taken", "at": "9:00 am"})
+    world.now = day.at(DAY + timedelta(days=1), time(0, 0))
+    run(checklist.new_day(DAY, DAY + timedelta(days=1)))
+    # Dose 2 had its time (noon) and passed: missed. Dose 3 could then never fit: set aside
+    assert broken(world) == [(1, 2)] and causes(world) == {1: None, 2: None, 3: "no_room"}
+
+
+def test_skipping_by_hand_a_removed_pill_and_a_pause_break_no_streak(world):
+    add(world, {"name": "Zinc"}, {"name": "Iron"}, {"name": "Calcium"})
+    run(checklist.post(world.owner.id))
+    log(world, {"pill": "zinc", "did": "skipped"})
+    run(plain.remove_save(world.request(), {"pills": [{"pill": "iron"}]}))
+    world.now = day.at(DAY + timedelta(days=1), time(0, 0))
+    run(checklist.new_day(DAY, DAY + timedelta(days=1)))
+    found = {o.item_id: (o.state, o.automatic, o.cause) for o in run(occurrences.for_day(world.owner.id, "pills", DAY))}
+    assert found == {1: (SKIPPED, False, None), 2: (SKIPPED, True, "not_in_plan"), 3: (MISSED, True, None)}
+    assert broken(world) == [(3, 1)], "only the one nobody touched"
+
+
+def test_a_correction_that_makes_room_takes_the_skip_and_its_cause_back(world):
+    world.now = day.at(DAY, time(12, 30))
+    add(world, MAIN)
+    run(checklist.post(world.owner.id))
+    log(world, {"pill": "pill a", "did": "taken", "at": "12:20 pm"})
+    assert causes(world)[3] == "no_room"
+    log(world, {"pill": "@that", "did": "taken", "at": "9:00 am"})
+    assert causes(world)[3] is None and broken(world) == []
+
+
+def test_doses_set_aside_before_the_log_kept_a_cause_are_given_theirs_once(world):
+    world.now = day.at(DAY, time(12, 30))
+    add(world, MAIN)
+    run(checklist.post(world.owner.id))
+    log(world, {"pill": "pill a", "did": "taken", "at": "12:20 pm"})
+
+    def as_it_was(conn):
+        conn.execute("UPDATE occurrences SET cause = NULL")
+        store.dose_causes(conn)
+
+    run(database.run(as_it_was))
+    assert causes(world)[3] == "no_room"
+    log(world, {"pill": "@that", "did": "taken", "at": "9:00 am"})
+    assert pill_a(world)[3] == (PENDING, False, None), "an old skip of the bot's is still its to take back"
 
 
 def test_with_a_dose_overdue_the_one_after_it_keeps_its_time_until_it_cannot_fit(world):

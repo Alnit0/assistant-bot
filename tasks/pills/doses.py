@@ -22,6 +22,10 @@ from core.schedule import Due, Schedule
 # changes: a dose it skipped comes back if a correction makes room for it.
 # ---------------------------------------------------------------------------
 NO_TIME = "not enough time before "
+# Why the bot set a dose aside, as the occurrence log keeps it (`cause`): what
+# code reads. The reason beside it is only ever shown
+NO_ROOM = "no_room"  # it could never have been taken in time: looked at again when anything changes
+NOT_IN_PLAN = "not_in_plan"  # its pill was removed or changed during the day: final
 
 
 def fits(due: Due, plan: Schedule, day: date) -> bool:
@@ -56,7 +60,7 @@ def decided_by_the_bot(occurrence) -> bool:
     if occurrence.state == PENDING:
         return True
     if occurrence.state == SKIPPED:
-        return bool(occurrence.automatic) and (occurrence.reason or "").startswith(NO_TIME)
+        return bool(occurrence.automatic) and occurrence.cause == NO_ROOM
     return occurrence.state == MISSED and bool(occurrence.automatic)
 
 

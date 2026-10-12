@@ -273,15 +273,29 @@ def test_an_edit_changes_only_what_it_names():
     assert build(EVENING) == EVENING
 
 
-def test_none_takes_a_value_away():
-    assert build(EVENING, notes="none").notes == ""
-    assert build(EVENING, dose="none").dose == ""
-    assert build(EVENING, times="none").schedule == Schedule(1)
+def clear(base, *settings, **said):
+    return build(base, clear=frozenset(settings), **said)
+
+
+def test_a_setting_named_to_clear_is_taken_away():
+    assert clear(EVENING, "notes").notes == ""
+    assert clear(EVENING, "dose").dose == ""
+    assert clear(EVENING, "times").schedule == Schedule(1)
     whole = Plan("Pill A", schedule=Schedule(3, (time(8, 0), time(11, 30), time(15, 0)), 180, time(16, 0)))
-    assert build(whole, min_gap="none").schedule == Schedule(3, whole.schedule.times, None, time(16, 0))
-    assert build(whole, latest="none").schedule == Schedule(3, whole.schedule.times, 180, None)
-    forever = build(COURSE, end="none")
+    assert clear(whole, "min_gap").schedule == Schedule(3, whole.schedule.times, None, time(16, 0))
+    assert clear(whole, "latest").schedule == Schedule(3, whole.schedule.times, 180, None)
+    assert clear(whole, "min_gap", "latest", "times").schedule == Schedule(3)
+    forever = clear(COURSE, "dates")
     assert (forever.start, forever.end) == (None, None)
+    assert clear(EVENING, "notes", notes="with food").notes == "", "named to clear, it goes whatever came beside it"
+
+
+def test_no_word_takes_a_setting_away_any_more():
+    # "none" was once read as "take it away": now it is a note like any other, and code reads no such word
+    assert build(EVENING, notes="none").notes == "none"
+    assert build(EVENING, dose="no").dose == "no"
+    assert not hasattr(rules, "CLEAR")
+    assert Request(notes="x", clear=frozenset({"dose"})).merged(Request(clear=frozenset({"latest"}))).clear == {"dose", "latest"}
 
 
 def test_a_gap_and_a_latest_time_can_be_added_to_planned_times():

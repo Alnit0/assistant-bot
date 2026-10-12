@@ -6,6 +6,13 @@ backfilled from the git log.
 
 ## 2026-10-12
 
+- A pill's setting is taken away by saying so ("iron no longer needs a
+  time", "the evening pill doesn't need to be with food any more"):
+  the word "none" is no longer read as an instruction. Nothing else
+  changes to look at: a bug report for a message that has one, and a
+  dose the bot set aside, behave as before, now by declaration and by
+  a stored cause. (Task-check findings C12, C15 and C16.)
+
 - Mock-ups for pills reminders, to look at with `dev mock`: `reminder`,
   `reminder-renudge` (with the snoozed prompt), `reminder-missed` and
   `too-soon`. Nothing of reminders is built yet.

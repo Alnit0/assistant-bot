@@ -151,7 +151,7 @@ def entry(**changes):
         (entry(actions=(Action("a", "A.", (Field("not_included", "N."),), needs_card=False, run=run),)), "a field can't be called that"),
         (entry(actions=(Action("a", "A.", (Field("items", "I.", "items"),), needs_card=False, run=run),)), "needs `item_fields`"),
         (entry(actions=(Action("a", "A.", (Field("x", "X.", item_fields=(Field("y", "Y."),)),), needs_card=False, run=run),)), "is not a list of items"),
-        (entry(actions=(Action("a", "A.", (Field("items", "I.", "items", item_fields=(Field("y", "Y.", "list"),)),), needs_card=False, run=run),)), "must be text, a number, yes/no, a length of time or times of day"),
+        (entry(actions=(Action("a", "A.", (Field("items", "I.", "items", item_fields=(Field("y", "Y.", "items"),)),), needs_card=False, run=run),)), "must be text, a number, yes/no, a length of time, times of day or a list of words"),
         (entry(actions=(Action("a", "A.", (Field("x", "X."), Field("x", "X again.")), needs_card=False, run=run),)), "two fields with the same name"),
         (entry(actions=(Action("a", "A.", (Field("n", "N.", INTEGER, choices=("1",)),), needs_card=False, run=run),)), "which only text can have"),
         (entry(actions=(Action("a", "A.", (Field("x", ""),), needs_card=False, run=run),)), "field x has no description"),
@@ -716,7 +716,7 @@ def test_a_morning_or_evening_claude_chose_by_itself_is_taken_back(said, given, 
 # ---------------------------------------------------------------------------
 def test_an_entry_must_say_what_adding_something_already_there_means():
     assert actions.problems([entry(on_repeat="")]) == [
-        "things: needs `on_repeat`, what adding something that is already there means: one of update, add_to_amount, allow_another, ask"
+        "things: needs `on_repeat`, what adding something that is already there means: one of update, add_to_amount, allow_another, ask, show_existing"
     ]
     assert actions.problems([entry(on_repeat="replace")])[0].startswith("things: needs `on_repeat`")
     assert actions.problems([entry(on_repeat="allow_another")]) == [], "nothing is ever the same: no identity needed"
@@ -728,6 +728,11 @@ def test_updating_or_adding_to_what_is_there_needs_an_identity_made_of_its_own_f
     named = next(each.name for each in ADD.fields)
     assert actions.problems([entry(on_repeat="update", identity=(named,))]) == []
     assert actions.problems([entry(on_repeat="update", identity=("colour",))]) == ["things: `identity` names `colour`, which is no field of any of its actions"]
+
+
+def test_showing_the_one_there_needs_an_identity_which_may_be_the_message_it_is_about():
+    assert actions.problems([entry(on_repeat="show_existing")]) == ["things: `on_repeat` show_existing needs an `identity`: the fields that make two items the same"]
+    assert actions.problems([entry(on_repeat="show_existing", identity=("@message",))]) == [], "the message is no field, and needs to be none"
 
 
 def test_asking_on_a_repeat_is_refused_until_cards_can_ask():
@@ -745,7 +750,7 @@ def test_every_task_declares_its_identity_and_what_a_repeat_means():
     assert declared == {
         "pills": (("name",), "update"),
         "timers": ((), "allow_another"),
-        "bugs": ((), "allow_another"),
+        "bugs": (("@message",), "show_existing"),
         "channel": ((), "allow_another"),
     }
     assert not hasattr(actions.Entry("x", "x", "x", (), ()), "hint"), "the hint line is gone from the contract"

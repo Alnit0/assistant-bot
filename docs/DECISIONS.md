@@ -1091,3 +1091,26 @@ A short log of key decisions and why. Newest at the bottom.
     of the last event whenever that was. With several going and nothing
     to go by, nothing is done and the bot asks which, in a message
     until G1 can ask on a card.
+- **Three task-check findings, on Alex's answers (2026-10-12).**
+  - **C12, `show_existing`.** A fifth meaning of `on_repeat`: the one
+    there is shown and nothing is added. Bugs declares it, with the
+    message a report is about as its identity (`repeats.MESSAGE`: the
+    one identity that is no field, since code knows the message and
+    Claude never fills it in). What was a rule inside the task is now
+    its declaration.
+  - **C15, a cause beside the reason.** The occurrence log keeps why
+    the bot closed something as a word for code (`cause`; pills uses
+    `no_room` and `not_in_plan`), and the reason stays the words that
+    are shown. Whether a skip is the bot's to take back is the cause.
+    Old rows were given theirs once, by a migration. Streaks are not
+    worked out anywhere yet; when they are, they read the state alone
+    (only missed breaks one), which the tests now pin down.
+  - **C16, a list of settings to clear.** Changing a pill takes
+    `clear`, a list from a fixed set (dose, notes, times, min_gap,
+    latest, dates), in place of the word "none" as a value; a gap of 0
+    still means no gap, being a number. No word is read as "take it
+    away" any more: a note of "none" would be kept as that note. An
+    item of an action may now hold a list of words (`LIST` with
+    `choices`). The pills fixtures were recorded live (US$0.13): 60 of
+    61, the one miss a known one.
+  - **C19** waits for gym, the second task that needs name matching.

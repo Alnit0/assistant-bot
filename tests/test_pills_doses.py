@@ -48,7 +48,8 @@ def found(*doses):
     made = {}
     for number, each in enumerate(doses, 1):
         state, taken, automatic, reason = (DONE, each, False, None) if not isinstance(each, (str, tuple)) else (*((each,) if isinstance(each, str) else each), None, False, None)[:4]
-        made[number] = Occurrence(number, 1, "pills", 1, DAY, number, PILL_A.planned(number - 1), None, state, taken if state == DONE else None, bool(automatic), reason)
+        cause = "no_room" if automatic and state == SKIPPED and reason else None
+        made[number] = Occurrence(number, 1, "pills", 1, DAY, number, PILL_A.planned(number - 1), None, state, taken if state == DONE else None, bool(automatic), reason, cause)
     return made
 
 
@@ -87,3 +88,13 @@ def test_logging_is_late_only_for_a_pill_with_a_latest_time():
     assert doses.is_after_limit(PILL_A, DAY, at(16, 1)) and not doses.is_after_limit(PILL_A, DAY, at(16))
     assert not doses.is_after_limit(COURSE_A, DAY, at(23, 59))
     assert doses.limit_text(PILL_A) == "4:00 pm" and doses.limit_text(COURSE_A) == "midnight"
+
+
+def test_whether_a_skip_is_the_bot_s_to_take_back_is_its_cause_never_its_wording():
+    def skipped(reason, cause, automatic=True):
+        return Occurrence(1, 1, "pills", 1, DAY, 1, None, None, SKIPPED, None, automatic, reason, cause)
+
+    assert doses.decided_by_the_bot(skipped("reworded entirely", doses.NO_ROOM)), "the words may change: the cause is what is read"
+    assert not doses.decided_by_the_bot(skipped(REASON, None)), "the old wording alone decides nothing"
+    assert not doses.decided_by_the_bot(skipped("no longer in the plan", doses.NOT_IN_PLAN)), "final: its pill changed"
+    assert not doses.decided_by_the_bot(skipped(None, None, automatic=False)), "skipped by hand is never touched"

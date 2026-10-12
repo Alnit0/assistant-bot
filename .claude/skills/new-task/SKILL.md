@@ -64,7 +64,7 @@ Write each of these down and read them back before the spec.
 - **Identity**: which fields make two items the same thing. None, if
   each is its own.
 - **On repeat**: what asking to add one that is already there means:
-  `update`, `add_to_amount`, `allow_another`, or `ask` (not available
+  `update`, `add_to_amount`, `allow_another`, `show_existing`, or `ask` (not available
   until cards can ask: `core/repeats.py`).
 - **Rules**: limits, what can't be saved, what is fixed with a ⚠️ and
   what is asked, what is private (a name that must never show in a

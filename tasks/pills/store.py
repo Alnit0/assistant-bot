@@ -112,11 +112,25 @@ def answer_lines(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX pills_lines_message ON pills_lines (message_id)")
 
 
+def dose_causes(conn: sqlite3.Connection) -> None:
+    # The doses the bot set aside before the log kept a cause: told apart, this once,
+    # by the reason they were given. From here on code reads the cause (doses.py)
+    conn.execute(
+        "UPDATE occurrences SET cause = 'no_room' WHERE task = 'pills' AND state = 'skipped' AND automatic = 1 "
+        "AND reason LIKE 'not enough time before %'"
+    )
+    conn.execute(
+        "UPDATE occurrences SET cause = 'not_in_plan' WHERE task = 'pills' AND state = 'skipped' AND automatic = 1 "
+        "AND reason = 'no longer in the plan'"
+    )
+
+
 MIGRATIONS = [
     create_tables,
     one_schedule_model,
     checklist_messages,
     answer_lines,
+    dose_causes,
 ]
 
 

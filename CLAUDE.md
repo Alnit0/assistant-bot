@@ -118,7 +118,7 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   for" line, examples, its actions with their fields, and what adding
   something that is already there means: `identity` (the fields that
   make two items the same) and `on_repeat` (update, add_to_amount,
-  allow_another, ask). `core/repeats.py` does the matching and writes
+  allow_another, show_existing, ask). `core/repeats.py` does the matching and writes
   the words; whether a thing exists is for Python to find out, never a
   reason for Claude to decline. An action that saves has a `verify`
   that reads the change back before anything is confirmed
@@ -136,7 +136,8 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   parse: whole minutes (`actions.MINUTES`), a time of day in one form
   (`actions.TIME`, `TIMES`), a list of items (`actions.ITEMS`) for
   anything that could be plural, add / set / remove
-  (`actions.change_field()`), a reference as `actions.REFERENCE`, a
+  (`actions.change_field()`), what to take away as a list of settings
+  (never a word such as "none" as a value), a reference as `actions.REFERENCE`, a
   decline as one of `actions.DECLINES`. Dates still come as I said
   them. Python does every sum and resolves every "it". Code is the
   safety net (`core/durations.py`, `core/timeinput.py`,

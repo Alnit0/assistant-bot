@@ -40,7 +40,7 @@ STRING, INTEGER, LIST, BOOLEAN, ITEMS = "string", "integer", "list", "boolean", 
 # can't read as the text it was, for the task to show as unread on its card.
 MINUTES, TIME, TIMES = "minutes", "time", "times"
 TYPES = (STRING, INTEGER, LIST, BOOLEAN, ITEMS, MINUTES, TIME, TIMES)
-IN_AN_ITEM = (STRING, INTEGER, BOOLEAN, MINUTES, TIME, TIMES)
+IN_AN_ITEM = (STRING, INTEGER, BOOLEAN, MINUTES, TIME, TIMES, LIST)
 
 MINUTES_FORMAT = (
     " As a whole number of minutes, worked out by you: \"3 hours\" is 180, \"an hour and a half\" is 90, "
@@ -715,7 +715,7 @@ def problems(entries: list[Entry]) -> list[str]:
                         found.append(f"{where}: field {entry_field.name} is a list of items, so it needs `item_fields`")
                     for inner in entry_field.item_fields:
                         if inner.type not in IN_AN_ITEM:
-                            found.append(f"{where}: an item's field {inner.name} must be text, a number, yes/no, a length of time or times of day")
+                            found.append(f"{where}: an item's field {inner.name} must be text, a number, yes/no, a length of time, times of day or a list of words")
                         if not inner.description.strip():
                             found.append(f"{where}: an item's field {inner.name} has no description for Claude")
                 elif entry_field.item_fields:
@@ -930,6 +930,19 @@ def _scalar(entry_field: Field, value, where: str):
     return value
 
 
+def _words(entry_field: Field, value, where: str) -> list[str] | None:
+    """A list of words, checked against the field's choices. None if it is empty."""
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        raise Invalid(f"`{where}` must be a list of strings")
+    value = [item.strip() for item in value if item.strip()]
+    wrong = [item for item in value if entry_field.choices and item not in entry_field.choices]
+    if wrong:
+        raise Invalid(f"`{where}` has {wrong[0]!r}, which is not one of {', '.join(entry_field.choices)}")
+    if not value and entry_field.required:
+        raise Invalid(f"`{where}` is empty")
+    return value or None
+
+
 def _item(entry_field: Field, raw, where: str) -> dict:
     """One item of a list of items, checked like a small action of its own."""
     if not isinstance(raw, dict):
@@ -944,7 +957,8 @@ def _item(entry_field: Field, raw, where: str) -> dict:
             if inner.required:
                 raise Invalid(f"`{where}.{name}` is missing")
             continue
-        value = _scalar(inner, raw[name], f"{where}.{name}")
+        check = _words if inner.type == LIST else _scalar
+        value = check(inner, raw[name], f"{where}.{name}")
         if value is not None:
             item[name] = value
     return item
@@ -1032,15 +1046,8 @@ def validate(action: Action, raw) -> Checked:
                 shifted.add(name)
             value = items
         elif entry_field.type == LIST:
-            if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
-                raise Invalid(f"`{name}` must be a list of strings")
-            value = [item.strip() for item in value if item.strip()]
-            wrong = [item for item in value if entry_field.choices and item not in entry_field.choices]
-            if wrong:
-                raise Invalid(f"`{name}` has {wrong[0]!r}, which is not one of {', '.join(entry_field.choices)}")
-            if not value:
-                if entry_field.required:
-                    raise Invalid(f"`{name}` is empty")
+            value = _words(entry_field, value, name)
+            if value is None:
                 continue
         else:
             value = _scalar(entry_field, value, name)

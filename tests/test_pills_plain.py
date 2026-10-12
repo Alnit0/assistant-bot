@@ -278,11 +278,34 @@ def test_a_time_with_no_am_or_pm_is_still_the_codes_to_settle(world):
 
 def test_a_gap_of_nothing_takes_the_gap_away_and_none_takes_the_times_away(world):
     add(world, PILL_A_AS_GIVEN)
-    proposal = card(world, plain.edit_card, {"pill": "pill a", "min_gap_minutes": 0, "latest": "none"})
+    proposal = card(world, plain.edit_card, {"pill": "pill a", "min_gap_minutes": 0, "clear": ["latest"]})
     run(plain.edit_save(world.request(), proposal.data))
     assert pills(world)[0].plan.schedule == Schedule(3, (time(8, 0), time(11, 30), time(15, 0)))
-    run(plain.edit_save(world.request(), {"pills": [{"pill": "pl1", "times": ["none"]}]}))
+    run(plain.edit_save(world.request(), {"pills": [{"pill": "pl1", "clear": ["times"]}]}))
     assert pills(world)[0].plan.schedule == Schedule(3)
+
+
+def test_on_an_open_card_what_is_taken_away_and_what_is_given_undo_each_other(world):
+    held = [{"pill": "pl1", "notes": "with food", "latest": "4:00 pm"}]
+    after, _ = plain.overlay(held, [{"pill": "pl1", "clear": ["notes"]}], "pill")
+    assert after == [{"pill": "pl1", "latest": "4:00 pm", "clear": ["notes"]}], "no note after all"
+    again, _ = plain.overlay(after, [{"pill": "pl1", "notes": "after food", "clear": ["latest"]}], "pill")
+    assert again == [{"pill": "pl1", "notes": "after food", "clear": ["latest"]}], "a note again, and no latest time"
+    dates, _ = plain.overlay([{"pill": "pl1", "clear": ["dates"]}], [{"pill": "pl1", "days": 7}], "pill")
+    assert dates == [{"pill": "pl1", "days": 7}]
+
+
+def test_the_edit_action_takes_a_list_of_settings_to_clear_and_only_those(world):
+    from core import actions
+
+    edit = next(action for action in plain.ACTIONS if action.name == "pill_edit")
+    item = actions.schema(edit)["properties"]["pills"]["items"]["properties"]
+    assert item["clear"]["items"]["enum"] == ["dose", "notes", "times", "min_gap", "latest", "dates"]
+    assert "none" not in edit.description and "clear" not in actions.schema(next(a for a in plain.ACTIONS if a.name == "pill_add"))["properties"]["pills"]["items"]["properties"]
+    checked = actions.validate(edit, {"pills": [{"pill": "pl1", "clear": ["times", " latest "]}], "guessed": [], "not_included": []})
+    assert checked.data == {"pills": [{"pill": "pl1", "clear": ["times", "latest"]}]}
+    with pytest.raises(actions.Invalid):
+        actions.validate(edit, {"pills": [{"pill": "pl1", "clear": ["colour"]}], "guessed": [], "not_included": []})
 
 
 # --- a part that can't be read: on the card with the rest, never a bare error ----------------------
@@ -367,7 +390,7 @@ def test_an_edit_shows_now_and_new_and_save_changes_only_what_was_said(world):
 def test_an_edit_by_id_a_rename_and_taking_a_note_away(world):
     add(world, {"name": "Iron", "notes": "with food"})
     (pill,) = pills(world)
-    proposal = card(world, plain.edit_card, {"pill": pill.ref, "name": "Iron II", "notes": "none"})
+    proposal = card(world, plain.edit_card, {"pill": pill.ref, "name": "Iron II", "clear": ["notes"]})
     assert proposal.lines[:3] == ("**Iron**", "name · Iron → Iron II", "notes · with food → none")
     run(plain.edit_save(world.request(), proposal.data))
     assert (pills(world)[0].plan.name, pills(world)[0].plan.notes) == ("Iron II", "")

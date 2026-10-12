@@ -238,6 +238,7 @@
           "pills": [
             {
               "name": "A",
+              "per_day": 3,
               "times": [
                 "9:00 am",
                 "12:00 pm",
@@ -398,7 +399,7 @@
         {
           "pills": [
             {
-              "pill": "Iron",
+              "pill": "pl2",
               "times": [
                 "9:00 pm"
               ],
@@ -437,7 +438,7 @@
         "none",
         {
           "why": "already_so",
-          "reason": "Iron is already at 8:00 am",
+          "reason": "Iron is already at 8:00 am; no change needed",
           "about": "pl2"
         }
       ]
@@ -455,7 +456,7 @@
         "none",
         {
           "why": "already_so",
-          "reason": "Iron is already scheduled at 8:00 am as stated; no change requested or needed.",
+          "reason": "Iron is already scheduled at 8:00 am as stated; the request asks to leave it unchanged",
           "about": "pl2"
         }
       ]
@@ -484,10 +485,7 @@
               "min_gap_minutes": 180
             }
           ],
-          "guessed": [
-            "times[0]",
-            "times[1]"
-          ],
+          "guessed": [],
           "not_included": []
         }
       ]
@@ -542,7 +540,7 @@
         {
           "pills": [
             {
-              "name": "pill G",
+              "name": "Pill G",
               "per_day": 3,
               "min_gap_minutes": 150
             }
@@ -578,7 +576,9 @@
               "min_gap_minutes": 90
             }
           ],
-          "guessed": [],
+          "guessed": [
+            "per_day: inferred as 2 from 'twice a day'"
+          ],
           "not_included": []
         }
       ]
@@ -633,11 +633,12 @@
             {
               "name": "pill K",
               "per_day": 2,
-              "min_gap_minutes": 180,
-              "notes": "with 3 hours between them"
+              "min_gap_minutes": 180
             }
           ],
-          "guessed": [],
+          "guessed": [
+            "per_day: interpreted 'twice a day' as 2 doses"
+          ],
           "not_included": []
         }
       ]
@@ -663,7 +664,7 @@
         {
           "pills": [
             {
-              "name": "Iron",
+              "name": "iron",
               "times": [
                 "8:00"
               ]
@@ -699,11 +700,11 @@
         {
           "pills": [
             {
-              "name": "Magnesium",
+              "name": "magnesium",
               "per_day": 2
             },
             {
-              "name": "Zinc",
+              "name": "zinc",
               "per_day": 2
             }
           ],
@@ -876,20 +877,90 @@
       "data": {
         "pills": [
           {
-            "times": [
-              "none"
+            "clear": [
+              "times"
             ]
           }
         ]
       },
+      "note": "task-check C16, 2026-10-12: a setting is taken away by naming it in `clear`, never by a word such as none in place of its value",
       "recorded": [
         "pill_edit",
         {
           "pills": [
             {
               "pill": "pl1",
-              "times": [
-                "none"
+              "clear": [
+                "times"
+              ]
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "the evening pill doesn't need to be with food any more",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Iron · daily at 8:00 am [active]\n- pl2: 💊 Evening pill · daily at 8:00 pm · with food [active]\n- pl3: ⏸️ Zinc · daily, any time · paused [paused]\n- pl4: 💊 Vitamin D (1 tablet) · daily, any time [active]",
+      "action": "pill_edit",
+      "data": {
+        "pills": [
+          {
+            "clear": [
+              "notes"
+            ]
+          }
+        ]
+      },
+      "note": "task-check C16, 2026-10-12: taking a note away is `clear` [notes], with no value for notes",
+      "recorded": [
+        "pill_edit",
+        {
+          "pills": [
+            {
+              "pill": "pl2",
+              "clear": [
+                "notes"
+              ]
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "vitamin D is 2 tablets now and iron can go back to any time",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Iron · daily at 8:00 am [active]\n- pl2: 💊 Evening pill · daily at 8:00 pm · with food [active]\n- pl3: ⏸️ Zinc · daily, any time · paused [paused]\n- pl4: 💊 Vitamin D (1 tablet) · daily, any time [active]",
+      "action": "pill_edit",
+      "data": {
+        "pills": [
+          {
+            "dose": "2 tablets"
+          },
+          {
+            "clear": [
+              "times"
+            ]
+          }
+        ]
+      },
+      "note": "task-check C16, 2026-10-12: a change to one pill and a setting taken away from another, in one message",
+      "recorded": [
+        "pill_edit",
+        {
+          "pills": [
+            {
+              "pill": "pl4",
+              "dose": "2 tablets"
+            },
+            {
+              "pill": "pl1",
+              "clear": [
+                "times"
               ]
             }
           ],
@@ -1238,7 +1309,9 @@
               "at": "9:00 am"
             }
           ],
-          "guessed": [],
+          "guessed": [
+            "at[0]"
+          ],
           "not_included": []
         }
       ]

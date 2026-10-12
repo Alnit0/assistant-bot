@@ -83,22 +83,22 @@ text, not Discord's clock). **Fixed in the background batch of
 2026-10-12:** C4 (a bug and a note are read back), C10 ("show my open
 bugs" is a Live list), C13 (a pill's name is compared as core compares
 names) and C20 (the bugs task's plain words are in `plain.py`, and only
-`posts.py` uses discord.py). **Until G1:** C7 and C8. **Waiting for
-Alex** (see the questions in `docs/STATUS.md`): C12, C15, C16 and C19.
-**Left, timers** (a proof of concept that may be scrapped): C8, C14,
-C17 and C18.
+`posts.py` uses discord.py). **Fixed on Alex's answers, 2026-10-12:**
+C12 (`show_existing` in the contract, declared by bugs), C15 (the
+occurrence log keeps a `cause` beside the reason) and C16 (a pill's
+settings are taken away by a `clear` list, never the word "none").
+**Until G1:** C7 and C8. **Until gym is built:** C19 (gym is the second
+task that needs name matching: move it to core then). **Left, timers**
+(a proof of concept that may be scrapped): C8, C14, C17 and C18.
 
 | # | Task | What | Where | Rule | Layer | Size |
 |---|---|---|---|---|---|---|
 | C7 | pills | Questions sent as a line of their own: "Which pill?", "Which one: A or B?", "What is the pill called?", "How many times a day?", "Is the gap 3 hours or 3 minutes?" | `tasks/pills/rules.py:221`, `:262`, `:301`, `:550`, `:564`; `tasks/pills/plain.py:792` | Never: a question as a separate message (G7, then G1) | task, then core | medium |
 | C8 | timers | The same: "Which timer? Say its name.", and `pomo` with other lengths asks "Restart it as `50/10`?" in a message of its own | `tasks/timers/plain.py:152`, `tasks/timers/sessions.py:238-239` | The same (G7) | task, then core | medium |
-| C12 | bugs | Declared "each report is its own", but a message that already has an open bug is found and pointed to in the task's own code | `tasks/bugs/__init__.py:29-31` | Contract: `identity`, `on_repeat` | contract (a fifth meaning: show the one there) | small |
 | C14 | timers | Lengths are handed over as text ("5m", "50/10") and several ids as one text ("t12 t14") | `tasks/timers/plain.py:359`, `:457`; `tasks/timers/status.py:51-63`, `tasks/timers/pomodoro.py:55-79` | Contract: structured values (decided 2026-10-10 to leave) | schema, fixtures | medium |
-| C15 | pills | Whether a skipped dose was the bot's own decision is told by how its reason is worded (`startswith`) | `tasks/pills/doses.py:59` | Code never reads the reason's words | task (a kind beside the reason) | small |
-| C16 | pills | Taking a setting away is the word "none" (`CLEAR`) | `tasks/pills/rules.py:40` | Word lists (listed below: replace with a list of settings to clear) | schema | small |
 | C17 | timers | Words Claude might send for "the session" are accepted as a set ("current", "it", "pomodoro"…) | `tasks/timers/control.py:22` | Word lists (not listed below until now) | schema (`@that`) | small |
 | C18 | timers | Its own live lists ("Your timers", one a channel) beside `core/livelists.py`; its own send, edit and delete helpers beside `core/cards.py` | `tasks/timers/board.py:79-112`, `tasks/timers/store.py` (`timers_lists`), `tasks/timers/common.py:22-58` | Core or task: plumbing | core | medium |
-| C19 | pills | "Which of my things does this name mean" (whole name, then part, then ask) and laying a reply over an open card are general, and live in the task | `tasks/pills/rules.py:541-568`, `tasks/pills/plain.py:69` | Core or task: a general tool (move when a second task needs it) | core | medium |
+| C19 | pills | "Which of my things does this name mean" (whole name, then part, then ask) and laying a reply over an open card are general, and live in the task | `tasks/pills/rules.py:541-568`, `tasks/pills/plain.py:69` | Core or task: a general tool. **Move it to core when gym is built**: gym is the second task that needs it (exercise names), decided 2026-10-12 | core | medium |
 
 Known gaps the run met again, already listed above: G1 (golden 1c, 1d,
 2a), G3 (golden 2b passes only by the "pill changed last" guess), G14
@@ -129,14 +129,12 @@ a schema could take its place.
 | `core/timeinput.py` times | `8pm`, `20:00`, `noon`, `midnight` | Reads the fixed form, and any other that arrives | Already replaced (`TIME`); also reads what I type into a form |
 | `core/timeinput.py` dates | "tomorrow", "friday", "the 20th", "20 Oct", "in 3 days" | The only reader of dates: they still come as I said them | Yes: a structured date (a weekday, a day of the month, a number of days from today). Not an ISO date from Claude: it doesn't know today |
 | `pills/rules.py` `_COUNT`, `_COUNT_WORDS`, `_days` | "twice", "3 times a day", "7 days" | Text for a number that should be a number | Already replaced (`per_day` and `days` are integers) |
-| `pills/rules.py` `CLEAR` | "none", "no", "clear", "remove" as a value | Taking a setting away when changing a pill | Yes: a list of settings to clear in the edit action |
 | `pills/rules.py` `_TIME_SEPARATOR` | "8am, 8pm", "8 and 20:00" | The times of a request, joined up inside the task | Already replaced (`TIMES`) |
 | `timers/pomodoro.py` `parse_session` | "50/10", "50 and 10" in `lengths` | A session's lengths, handed over as text | Yes: focus and break as two `MINUTES` fields |
 | `livelists.sticks` | A message of 8 words or fewer after a list | Sends a short follow-up to the list's task first | No: it is a length, not a wording; extraction can still say `not_this` |
 | `outgoing.acknowledges` (`_ACKNOWLEDGES`) | "Got it", "Noted", "Done", "So you took…" at the start of a chat reply | Chat is told never to acknowledge something I did; this stops one that slips through from being sent | No: chat's reply has no schema. The router's `reports_doing` is the structured half |
 | `outgoing.without_offer` (`_OFFER`) | "want me to…?", "anything else?" at the end of a chat reply | Plain chat is free text, and is told not to offer; this trims one that slips through | No: chat's reply has no schema |
 | `timers/control.py` `_THE_SESSION` | "current", "it", "pomodoro", "session" as the session's id | Whatever Claude sends for "the session" still finds it | Yes: `@that`, as for timers (C17) |
-| `pills/doses.py` `decided_by_the_bot` | Whether a stored skip reason starts with "no time left" | Tells the bot's own skips from mine | Yes: a kind stored beside the reason (C15) |
 | `core/router.py` (`GENERIC_VERBS`, fillers), `timers/control.py` (`_SCOPE_WORDS`…) | Typed words: `pause all timers`, "pin this" | Typed shortcuts never go to Claude, by design | No |
 
 ## Left for later

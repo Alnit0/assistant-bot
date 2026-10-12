@@ -86,6 +86,19 @@ def test_done_records_when_and_what_changed(conn):
     assert event.after == {"state": "done", "actual_at": "2026-10-08T19:04:00.000000+00:00"}
 
 
+def test_a_skip_by_the_bot_carries_a_cause_for_code_which_goes_when_the_state_does(conn):
+    made = make(conn, seq=3)
+    skipped = log.db_skip(conn, made.id, log.AUTOMATIC, automatic=True, reason="not enough time", cause="no_room", now=NOW)
+    assert (skipped.reason, skipped.cause) == ("not enough time", "no_room")
+    assert log.db_history(conn, made.id)[-1].after["cause"] == "no_room", "in the history like any other change"
+    assert log.db_reopen(conn, made.id, log.AUTOMATIC, now=NOW).cause is None
+    log.db_skip(conn, made.id, log.AUTOMATIC, automatic=True, reason="not enough time", cause="no_room", now=NOW)
+    assert log.db_done(conn, made.id, NOW, log.MESSAGE, now=NOW).cause is None
+    log.db_skip(conn, made.id, log.AUTOMATIC, automatic=True, reason="not enough time", cause="no_room", now=NOW)
+    assert log.db_miss(conn, made.id, now=NOW).cause is None
+    assert log.db_skip(conn, made.id, log.BUTTON, now=NOW).cause is None, "skipped by hand has none"
+
+
 def test_a_skip_by_the_bot_carries_its_reason(conn):
     mine, bots = make(conn, seq=1), make(conn, seq=2)
     assert not log.db_skip(conn, mine.id, log.BUTTON, now=NOW).automatic

@@ -40,13 +40,13 @@ Last updated: 2026-10-12
 | K | Startup and housekeeping | 22 | 11 | 11 | 9 | 13 | 0 | 0 |
 | L | Keep | 12 | 4 | 8 | 8 | 4 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
-| P | Bugs | 36 | 17 | 19 | 16 | 20 | 0 | 0 |
-| Q | Time, days, the schedule model, the occurrence log and cards | 15 | 13 | 2 | 2 | 13 | 0 | 0 |
-| R | Pills | 60 | 12 | 48 | 40 | 20 | 0 | 0 |
+| P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
+| Q | Time, days, the schedule model, the occurrence log and cards | 16 | 14 | 2 | 2 | 14 | 0 | 0 |
+| R | Pills | 62 | 13 | 49 | 41 | 21 | 0 | 0 |
 | S | Routing and confirm cards | 59 | 10 | 49 | 14 | 44 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 4 | 18 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **436** | **134** | **302** | **233** | **202** | **0** | **1** |
+| | **Total** | **440** | **136** | **304** | **235** | **204** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -399,6 +399,7 @@ post in #bugs.
 | P34 | 👤 Manual | Write `a note` in a bug's post. Press nothing | No ✅ on your note and no reply; the count on the post's opening card goes up by one | ✅ Pass | 2026-10-12 | Block 25, on the live bot |
 | P35 | 🤖 Auto | A bug and a note are read back; the list is Live | "Logged as B4" is said only once the bug is read back with its post, and "your note is saved" only once the note is; one that didn't save says so. "show my open bugs" and `bugs` give a Live list that follows a new bug, a note and a close. The plain-words code is `plain.py`, and only `posts.py` uses discord.py | ✅ Pass | 2026-10-12 | `tests/test_bugs.py` |
 | P36 | 👤 Manual | Say `show my open bugs` and keep it in view; react 🐞 to any message; then open that bug's post and press **Won't fix** | The list gains the new bug by itself, with no new message; after Won't fix it loses it again | ⬜ Untested | | Block 32 |
+| P37 | 👤 Manual | React 🐞 to a message; take the 🐞 off and put it on again | "🐞 Logged as B<n>", then "🐞 Already logged as B<n>" with the same link: never a second bug | ⬜ Untested | | Block 34 |
 
 ## Q. Time, days, the schedule model, the occurrence log and cards
 
@@ -421,7 +422,8 @@ manual test uses the dev clock on the dev database (`python main.py --dev`).
 | Q12 | 🤖 Auto | Standing jobs follow the clock | A job booked for "the next midnight" or "the next 6:00 am" while the clock was ahead is booked again for the real time when the clock goes back; one that is overdue is never moved later; asking twice books one | ✅ Pass | 2026-10-10 | `tests/test_pills_day.py`, `tests/test_day.py`, `tests/test_backup.py` |
 | Q13 | 🤖 Auto | Button colours, and lines deleted by a stored job | A button is blurple unless it says otherwise and Cancel is the one grey button, with ↩️; a card with any other grey button, or a Cancel that isn't that one, is refused before it is sent; the confirm card (Save green, Remove and Delete for good and a bulk cancel red, Cancel grey), the question on a tie (tasks blurple, Neither grey), the pills dose message (Taken green, Skip blurple); no grey button on a timer, a session or the dev panel; the Confirm / Cancel question, the bug buttons and Restore follow the rule; a housekeeping line is booked and deleted when its time comes, even if that was while the bot was off, and nothing is booked while clean-up is off | ✅ Pass | 2026-10-11 | `tests/test_buttons.py` |
 | Q14 | 👤 Manual | Look at the buttons as you go: say `add zinc to my pills` (don't press); say `remove zinc` on a saved pill (don't press); type `pills` in the hub; let a timer finish (`timer 10s tea`); in a test channel with nothing pinned or 📌, type `reset channel` | **Save** is green and **Cancel** grey with ↩️. **Remove** is red. **Taken** is green and **Skip** blurple. On the timer's alert **+5 min**, **Restart** and **Dismiss** are all blurple: nothing but Cancel is grey anywhere. The reset card has **Delete all** (red) and **Cancel** only: no "Delete all unpinned" when nothing is pinned or 📌 | ⬜ Untested | | From 2026-10-11 |
-| Q15 | 🤖 Auto | Adding what is already there: `identity` and `on_repeat` | Every task declares what a repeat means, and one that doesn't is not routed to; update and add_to_amount need an identity made of the task's own fields; `ask` is refused until cards can ask; the same name is the same thing whatever the case or spacing; a repeat comes to new, same, change, more, another or a question; "already in your pills" and `field · old → new` are written by core; pills, timers, bugs and channel declare name / update and none / allow_another, and the `hint` line is gone | ✅ Pass | 2026-10-12 | `tests/test_repeats.py`, `tests/test_actions.py` |
+| Q15 | 🤖 Auto | Adding what is already there: `identity` and `on_repeat` | Every task declares what a repeat means, and one that doesn't is not routed to; update and add_to_amount need an identity made of the task's own fields; `ask` is refused until cards can ask; `show_existing` needs an identity, which may be the message a thing is about; the same name is the same thing whatever the case or spacing; a repeat comes to new, same, change, more, another, a question or the existing one; "already in your pills" and `field · old → new` are written by core; pills declares name / update, bugs message / show_existing, timers and channel none / allow_another, and the `hint` line is gone | ✅ Pass | 2026-10-12 | `tests/test_repeats.py`, `tests/test_actions.py` |
+| Q16 | 🤖 Auto | Why the bot closed something is a cause, never its wording | The occurrence log keeps a `cause` beside the reason, recorded in the history and gone when the state changes (reopened, done, missed, skipped by hand). A dose skipped for want of room has `no_room` and one whose pill was removed `not_in_plan`; only the first is the bot's to take back, whatever the reason says. Streaks: only a missed dose would break one, and the cause never changes which those are (a no-room skip, a skip by hand and a removed pill break none; a dose that had its time does); a correction that makes room takes the skip and its cause back; old rows are given their cause once | ✅ Pass | 2026-10-12 | `tests/test_occurrences.py`, `tests/test_pills_doses.py`, `tests/test_pills_checklist.py` |
 
 ## R. Pills
 
@@ -495,6 +497,8 @@ are added with it.
 | R70 | 🤖 Auto | Every line about a pill or a dose is that pill's | The line that says a dose was taken, skipped, unticked or corrected, an "already" line, a card once it is saved (the late card too) and the line a plan card saves with are recorded as that pill's (and that dose's); a reply to one goes to pills with no router and means that pill and that dose, with no card, though another pill was logged since; a line about two pills points at neither and is no anchor for "it" | ✅ Pass | 2026-10-12 | `tests/test_pills_checklist.py`, `tests/test_golden.py` |
 | R71 | 👤 Manual | With two pills: say `took my pill X`, then `took my pill Y`. Reply to the line "✅ **Pill X** · taken …" with `it was 8am`; then reply to the same line with `actually I didn't`; reply `dev why` to that | "✏️ **Pill X** · taken … → 8:00 am", then "↩️ **Pill X** · no longer ticked off": Pill X both times, never Pill Y. The trace says "reply to pills' message" with no router request | ⬜ Untested | | Block 29 |
 | R72 | 👤 Manual | With a pill called Zinc: say `add pill  ZINC` (two spaces, capitals); press **Cancel** if a card shows | Zinc as it is, or a change card for Zinc: never a second pill called ZINC | ⬜ Untested | | Block 32 |
+| R73 | 🤖 Auto | A setting is taken away by a list, never a word | The edit action takes `clear` (dose, notes, times, min_gap, latest, dates) and only those; each named setting goes, whatever came beside it; "none" is a note like any other; on an open card what is taken away and what is given undo each other; adding a pill takes no `clear`. Recorded live 2026-10-12: 60 of 61 | ✅ Pass | 2026-10-12 | `tests/test_pills_rules.py`, `tests/test_pills_plain.py`, `evals/fixtures/pills.json` |
+| R74 | 👤 Manual | With a pill that has a time and a note: say `<pill> no longer needs a time`, press **Save**; then `<pill> doesn't need its note any more`, press **Save** | Each time a change card for that pill: `schedule · … → daily, any time`, then `notes · … → none`. After Save the pill has neither | ⬜ Untested | | Block 34 |
 
 ## S. Routing and confirm cards
 

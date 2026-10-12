@@ -1,3 +1,4 @@
+from core import repeats
 from core.errors import UserError
 from core.users import User
 from tasks.bugs import capture, listing, posts, rules, store
@@ -17,9 +18,10 @@ async def file_report(
 ) -> str:
     """Log a bug against a message and open its post. Returns the line for the
     channel. A message that already has an open bug is pointed to, not logged twice."""
-    existing = await store.open_for(user.id, channel_id, target.message_id)
-    if existing is not None:
-        return rules.logged_text(existing.id, existing.post_url, existing=True)
+    # The same message again: what that means is the task's declaration (core/repeats.py)
+    repeat = repeats.decide(rules.ON_REPEAT, await store.open_for(user.id, channel_id, target.message_id))
+    if repeat.kind == repeats.EXISTING:
+        return rules.logged_text(repeat.there.id, repeat.there.post_url, existing=True)
     # Before anything is recorded: is there somewhere to put the post?
     posts.forum()
     report = await capture.build(

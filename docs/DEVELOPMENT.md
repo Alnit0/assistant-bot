@@ -421,8 +421,11 @@ Things to know:
   - `identity`: the fields that make two items the same thing
     (`("name",)` for a pill; `()` when each is its own, like a timer).
   - `on_repeat`: `update` (it is a change to the one there),
-    `add_to_amount` (more of it), `allow_another` (a second one), or
-    `ask` (not available until cards can ask).
+    `add_to_amount` (more of it), `allow_another` (a second one),
+    `show_existing` (the one there is shown and nothing is added: a bug
+    report for a message that has one; its identity is
+    `repeats.MESSAGE`, the message it is about), or `ask` (not available
+    until cards can ask).
   `core/repeats.py` does the matching (`find`), says what a request comes
   to (`decide`) and writes the words (`already`, `there_line`,
   `change_line`). The bot won't route to a task that doesn't declare

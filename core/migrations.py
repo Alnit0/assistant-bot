@@ -309,6 +309,12 @@ def _add_trace_to_message_log(conn: sqlite3.Connection) -> None:
     conn.execute("ALTER TABLE message_log ADD COLUMN trace TEXT")
 
 
+def _add_cause_to_occurrences(conn: sqlite3.Connection) -> None:
+    # Why the bot closed an occurrence, as a word for code (the task's own: "no_room").
+    # `reason` stays the words that are shown; code never reads those
+    conn.execute("ALTER TABLE occurrences ADD COLUMN cause TEXT")
+
+
 MIGRATIONS = [
     _create_message_log,
     _create_users,
@@ -324,6 +330,7 @@ MIGRATIONS = [
     _add_task_to_live_lists,
     _add_previous_to_confirm_cards,
     _add_trace_to_message_log,
+    _add_cause_to_occurrences,
 ]
 
 

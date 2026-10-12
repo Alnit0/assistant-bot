@@ -7,37 +7,20 @@ session; the end-of-task checklist updates it at the end of every task.
 
 ## Questions for Alex
 
-- **C7 (pills questions as their own message)** waits for G1, which
-  needs your say on how a card asks. I'd put each question on the card
-  with a button an answer.
-- **C12 (bugs: a message that already has an open bug)**: the contract
-  has no word for "show the one there". I'd add a fifth `on_repeat`,
-  `show_existing`, and declare it for bugs. Say yes or name it.
-- **C15 (pills: whether the bot skipped a dose is read from the
-  reason's wording)**: I'd add a `cause` column to the occurrence log
-  beside the reason. It touches the dose rules, so I left it for a go.
-- **C16 (pills: taking a setting away is the word "none")**: I'd add a
-  `clear` list of settings to the action. It changes what Claude is
-  asked for, so the pills fixtures need a live run (about US$0.13).
-- **C19 (pills: "which of my things does this name mean" lives in the
-  task)**: I'd leave it until a second task needs it, as the finding
-  says. Confirm, or say to move it to core now.
-- **C8, C14, C17, C18 (timers)**: left alone, as timers may be
-  scrapped. Say if any should be done anyway.
-- **Reminder mock-ups** (block 33): are the four right as sketched?
-  Three things I had to choose: the re-nudge says "Reminder 2 of 3"
-  with the time of the last one; a snoozed prompt turns grey and says
-  "Snoozed until …"; a missed dose is a ❌ line in its pill's group on
-  the checklist, with when it was due.
-- **The lock screen**: the sketches put "💊 Routine due · 11:12 am" as
-  the message's first line. Whether a phone shows that line for a
-  Components V2 message can only be seen on your phone (block 33, step
-  1). If it shows something else, the prompt has to be a plain message
-  with buttons instead: say which you see.
-- **"Item 10 (restarts)"**: your note during the batch said to leave
-  timers out of item 10, but the queue I was given ends at item 8 and
-  has nothing about restarts. Nothing was done for it. Send the item
-  and I will leave timers out of it.
+Answered on 2026-10-12 and done or parked: C7 (waits for G1), C12,
+C15 and C16 (done, block 34), C19 (waits for gym), the timers findings
+(left), the reminder mock-ups (as sketched, to be looked at in block
+33).
+
+- **The lock screen** (waits for block 33, step 1): the sketches put
+  "💊 Routine due · 11:12 am" as the message's first line. If your
+  phone shows something else for a card of this kind, the prompt has
+  to be a plain message with buttons instead: say which you see.
+- **Streaks** (from C15): you asked for its tests to cover streaks.
+  No streak is worked out anywhere yet, so the tests pin down what one
+  will read: only a missed dose breaks it, and a skip (yours, the
+  bot's for want of room, a removed pill) never does. Say if a streak
+  should be built before reminders or after.
 
 ## Background batch (unattended, on `feature/pills`)
 
@@ -64,6 +47,11 @@ message to that task".
 8. Done: mock-ups for the reminder, the re-nudge, the missed line and
    the too-soon card in `docs/mockups/` (block 33), and the build plan
    below. No code for reminders was written.
+
+On your answers of 2026-10-12: C12 (`show_existing`, declared by
+bugs), C15 (a `cause` in the occurrence log) and C16 (a `clear` list
+when changing a pill) are done (block 34). The pills fixtures were
+recorded live for C16, the one run approved: US$0.13, 60 of 61.
 
 ### Stage 3 build plan (reminders), for a go
 
@@ -140,9 +128,10 @@ clock`; nothing is started until the mock-ups are approved.
   was reworded); each miss is a known one that the code covers. The
   pills fixtures were recorded again on 2026-10-12: 57 of 59, with one
   known miss ("took the usual one" is now right as recorded: the code
-  decides).
+  decides). Recorded again the same day for the `clear` list: 60 of 61,
+  the miss a known one ("and zinc once a day").
   One timers fixture has no recording yet.
-- Live eval spend to date: about US$4.04.
+- Live eval spend to date: about US$4.17.
 
 ## Current goal
 
@@ -182,7 +171,7 @@ live), and on 2026-10-12 the bot's nickname and status line, the
    on the dev database. Step 8 of block 24 (tomorrow's backup card).
    Blocks 21 and 22, and steps 5 to 7 of block 23, are still to be
    reported.
-2. QA of the background batch: blocks 27 to 33 (`docs/QA-RUN.md`), and
+2. QA of the background batch: blocks 27 to 34 (`docs/QA-RUN.md`), and
    the questions at the top of this file.
 3. The checklist redesigned with Discord's Components V2: look at
    `dev mock checklist` and the reminder sketches (block 33) and say
@@ -192,9 +181,9 @@ live), and on 2026-10-12 the bot's nickname and status line, the
 
 ## Open decisions
 
-- Of the `task-check` findings: C7 waits for G1; C12, C15, C16 and
-  C19 wait for an answer (see the questions at the top); the timers
-  ones (C8, C14, C17, C18) are left.
+- Of the `task-check` findings: C7 waits for G1; C19 waits for gym
+  (the second task that needs name matching); the timers ones (C8,
+  C14, C17, C18) are left.
 - Deferred until pills reminders work: G1 (questions on the card), G3
   (corrections after Save), G4 (task ties asked too often), G7 (questions
   sent as their own message). G14 (privacy of notifications) comes with

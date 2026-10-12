@@ -15,7 +15,9 @@ from core.scheduler import from_db, to_db
 # to a task's item. It starts pending and ends done, skipped or missed, and it
 # remembers the plan it came from (planned_time), when it is due today
 # (due_at, which a task may move), when it was actually done (actual_at), and
-# whether a skip was the bot's own doing and why.
+# whether a skip was the bot's own doing and why: `cause` is a word for code
+# (the task's own), `reason` the words that are shown. Code reads the cause,
+# never the reason.
 #
 # Nothing is ever changed without a trace: every change goes through
 # db_change, which writes an event with the values before and after. Changes
@@ -40,7 +42,7 @@ REOPENED, MOVED, CORRECTED, REVERTED = "reopened", "moved", "corrected", "revert
 BUTTON, FORM, MESSAGE, AUTOMATIC = "button", "form", "message", "automatic"
 
 # What a change may touch
-FIELDS = ("state", "due_at", "actual_at", "automatic", "reason")
+FIELDS = ("state", "due_at", "actual_at", "automatic", "reason", "cause")
 
 
 @dataclass(frozen=True)
@@ -56,7 +58,8 @@ class Occurrence:
     state: str
     actual_at: datetime | None  # when it was really done
     automatic: bool  # the bot's own doing, not the user's
-    reason: str | None
+    reason: str | None  # the words shown
+    cause: str | None = None  # why the bot closed it, for code: one of the task's own words
 
     @property
     def is_pending(self) -> bool:
@@ -84,7 +87,7 @@ def new_change_id() -> str:
 # ---------------------------------------------------------------------------
 # Rows
 # ---------------------------------------------------------------------------
-_COLUMNS = "id, user_id, task, item_id, day, seq, planned_time, due_at, state, actual_at, automatic, reason"
+_COLUMNS = "id, user_id, task, item_id, day, seq, planned_time, due_at, state, actual_at, automatic, reason, cause"
 _EVENT_COLUMNS = "id, occurrence_id, change_id, at, kind, source, before, after, note"
 
 
@@ -102,6 +105,7 @@ def _occurrence(row: tuple) -> Occurrence:
         actual_at=from_db(row[9]) if row[9] else None,
         automatic=bool(row[10]),
         reason=row[11],
+        cause=row[12],
     )
 
 
@@ -258,17 +262,18 @@ def db_change(
 def db_done(conn, occurrence_id: int, at: datetime, source: str, **options) -> Occurrence:
     """It was done at `at`."""
     return db_change(
-        conn, occurrence_id, MARKED_DONE, source, state=DONE, actual_at=at, automatic=False, reason=None, **options
+        conn, occurrence_id, MARKED_DONE, source, state=DONE, actual_at=at, automatic=False, reason=None, cause=None, **options
     )
 
 
 def db_skip(
-    conn, occurrence_id: int, source: str, automatic: bool = False, reason: str | None = None, **options
+    conn, occurrence_id: int, source: str, automatic: bool = False, reason: str | None = None, cause: str | None = None, **options
 ) -> Occurrence:
-    """Skipped: by the user, or by the bot with a reason (`automatic`)."""
+    """Skipped: by the user, or by the bot (`automatic`) with its cause for code
+    and its reason in words."""
     return db_change(
         conn, occurrence_id, MARKED_SKIPPED, source,
-        state=SKIPPED, actual_at=None, automatic=automatic, reason=reason, **options,
+        state=SKIPPED, actual_at=None, automatic=automatic, reason=reason, cause=cause, **options,
     )
 
 
@@ -276,7 +281,7 @@ def db_miss(conn, occurrence_id: int, reason: str | None = None, **options) -> O
     """Nobody did anything about it. Always the bot's own conclusion."""
     return db_change(
         conn, occurrence_id, MARKED_MISSED, AUTOMATIC,
-        state=MISSED, actual_at=None, automatic=True, reason=reason, **options,
+        state=MISSED, actual_at=None, automatic=True, reason=reason, cause=None, **options,
     )
 
 
@@ -284,7 +289,7 @@ def db_reopen(conn, occurrence_id: int, source: str, **options) -> Occurrence:
     """Back to pending, as if nothing had been done about it."""
     return db_change(
         conn, occurrence_id, REOPENED, source,
-        state=PENDING, actual_at=None, automatic=False, reason=None, **options,
+        state=PENDING, actual_at=None, automatic=False, reason=None, cause=None, **options,
     )
 
 

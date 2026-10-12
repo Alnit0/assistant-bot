@@ -10,11 +10,15 @@ from dataclasses import dataclass
 #
 #   identity    the fields that make two items the same thing: ("name",) for a
 #               pill. Empty when nothing a task holds is ever "the same" as
-#               something asked for (each timer is its own, each bug report).
+#               something asked for (each timer is its own). `MESSAGE` is
+#               the one name that is no field: the message a thing is about
+#               (a bug report is the same as another for the same message).
 #   on_repeat   what asking to add one that is already there means:
 #       update          it is a change to the one there (pills)
 #       add_to_amount   more of it: the amounts are added (a shopping list)
-#       allow_another   a second one, side by side (timers, bug reports)
+#       allow_another   a second one, side by side (timers)
+#       show_existing   the one there is shown and nothing is added (a bug
+#                       report for a message that already has an open one)
 #       ask             a question on the card. Not available until cards
 #                       can ask (the gap list, G1): the contract refuses it
 #
@@ -25,13 +29,16 @@ from dataclasses import dataclass
 #
 # Pure: no Discord, no database. A task hands over what it holds.
 # ---------------------------------------------------------------------------
-UPDATE, ADD_TO_AMOUNT, ALLOW_ANOTHER, ASK = "update", "add_to_amount", "allow_another", "ask"
-ON_REPEAT = (UPDATE, ADD_TO_AMOUNT, ALLOW_ANOTHER, ASK)
+UPDATE, ADD_TO_AMOUNT, ALLOW_ANOTHER, ASK, SHOW_EXISTING = "update", "add_to_amount", "allow_another", "ask", "show_existing"
+ON_REPEAT = (UPDATE, ADD_TO_AMOUNT, ALLOW_ANOTHER, ASK, SHOW_EXISTING)
+# In an `identity`: the message the thing is about (the one replied or reacted
+# to). Code knows it; it is never a field for Claude to fill
+MESSAGE = "@message"
 # Not until a card can ask a question (docs/BACKLOG.md, G1)
 NOT_BUILT = (ASK,)
 
 # What a request to add comes to
-NEW, SAME, CHANGE, MORE, ANOTHER, QUESTION = "new", "same", "change", "more", "another", "question"
+NEW, SAME, CHANGE, MORE, ANOTHER, QUESTION, EXISTING = "new", "same", "change", "more", "another", "question", "existing"
 
 
 def normal(value) -> str:
@@ -72,7 +79,7 @@ def find(identity: Iterable[str], wanted: dict, existing: Iterable, values: Call
 class Repeat:
     """What asking to add something comes to. `there` is the one already held."""
 
-    kind: str  # NEW, SAME, CHANGE, MORE, ANOTHER or QUESTION
+    kind: str  # NEW, SAME, CHANGE, MORE, ANOTHER, QUESTION or EXISTING
     there: object = None
 
 
@@ -85,6 +92,8 @@ def decide(on_repeat: str, there, changes: bool = True) -> Repeat:
         return Repeat(MORE, there)
     if on_repeat == ASK:
         return Repeat(QUESTION, there)
+    if on_repeat == SHOW_EXISTING:
+        return Repeat(EXISTING, there)
     return Repeat(CHANGE if changes else SAME, there)
 
 
@@ -99,7 +108,7 @@ def problems(who: str, identity: tuple[str, ...], on_repeat: str, fields: set[st
     elif on_repeat != ALLOW_ANOTHER and not identity:
         found.append(f"{who}: `on_repeat` {on_repeat} needs an `identity`: the fields that make two items the same")
     for name in identity:
-        if name not in fields:
+        if name != MESSAGE and name not in fields:
             found.append(f"{who}: `identity` names `{name}`, which is no field of any of its actions")
     return found
 
@@ -111,6 +120,12 @@ def already(name: str, where: str) -> str:
     """Said when adding what is there would change nothing: "**Iron** is already
     in your pills with these settings". `where` is the task's or list's name."""
     return f"**{name}** is already in your {where} with these settings"
+
+
+def logged_already(line: str) -> str:
+    """A "Logged as …" line, for the one that was there all along: "🐞 Logged
+    as B4" becomes "🐞 Already logged as B4"."""
+    return line.replace("Logged as", "Already logged as", 1)
 
 
 def there_line(name: str, where: str) -> str:
