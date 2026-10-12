@@ -11,20 +11,12 @@ session; the end-of-task checklist updates it at the end of every task.
 of 2026-10-13; nothing is built until you answer these and approve):
 
 - **The sketches `briefing-v2` and `schedule-list-v2`** replace v1 of
-  each after your answers. Approve them and the two v1 files go.
+  each. The two v1 files stay until you have checked the v2s in block
+  44 (`docs/QA-RUN.md`), and go when you say they are right.
 - **Weekends:** the same time every day (assumed), or later on
   Saturday and Sunday?
 - **Silent or notify:** the morning routine silent (assumed), or
   should the briefing notify?
-- **If the bot was off at 6:00:** the checklist is posted however late
-  (as now), and now the briefing too (assumed, changed: it always
-  shows the present, so a late one is still right)?
-- **"brief me" in the hub** when the briefing is there and up to date:
-  a pointer line that goes by itself (assumed), or nothing?
-- **In the hub, a message of yours that failed** (⚠️): stays until the
-  morning tidy (assumed), or goes after 2 minutes like the rest? And
-  one that needed no reply goes 2 minutes after it was handled
-  (assumed).
 - **A morning with nothing in it:** no briefing (assumed), or one that
   says so?
 - **Yesterday's line:** counts only, "5 of 6 taken · 1 missed"
@@ -63,7 +55,13 @@ a section changes and always shows now, with no new posts. Lines that
 report a change go at the end of the day outside the hub. "Routine"
 means only a schedule with several steps: what `dev run` runs becomes
 a handler, renamed in the code and in `CLAUDE.md` when the scheduler
-is built (not before: no code was to change).
+is built (not before: no code was to change). Also right, as assumed:
+after Save your message and the card go at once and the confirmation 2
+minutes later; in the hub a message of yours that failed keeps its ⚠️
+until the morning tidy, and one that needed no reply goes 2 minutes
+after it was handled; "brief me" in the hub brings the briefing up to
+date in place and answers with a pointer line that goes by itself; a
+briefing missed while the bot was off is posted however late.
 
 **From before:**
 
