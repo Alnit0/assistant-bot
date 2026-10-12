@@ -7,12 +7,6 @@ session; the end-of-task checklist updates it at the end of every task.
 
 ## Questions for Alex
 
-- **A Save cut off inside the save itself** (item 10, your answer 4):
-  the card gets the normal confirmation with "-# checked after a
-  restart" under it, because the words are kept the moment the change
-  is applied. In the few milliseconds before that the words don't
-  exist yet; then the card says "✅ Saved." with the same line under
-  it. Say if that should read otherwise.
 - **The lock screen** (waits for block 33, step 1): the sketches put
   "💊 Routine due · 11:12 am" as the message's first line. If your
   phone shows something else for a card of this kind, the prompt has
@@ -27,7 +21,9 @@ Answered on 2026-10-12, reminders and questions on the card: kept as
 built, with three changes made (reminders stay a plain message and are
 converted with the checklist's redesign; Taken at… with a time that
 needs asking shows the "Log it anyway?" card; reminders on with no hub
-is said once in #bot-log).
+is said once in #bot-log). The fallback wording for a Save cut off
+inside the save itself ("✅ Saved." with "checked after a restart"
+under it) is fine as it is.
 
 Answered on 2026-10-12 and done or parked: C7 (done with G1), C12,
 C15 and C16 (done, block 34), C19 (moves with gym), the timers
