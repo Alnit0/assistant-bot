@@ -1,0 +1,18 @@
+┃ accent: blurple
+┃ ## 🗓️ Schedule · change
+┃ -# 2 schedules
+┃ ---
+┃ **Morning routine**
+┃ time · `6:00 am` → `7:00 am`
+┃ days · every day → Mon to Fri ❓
+┃ ---
+┃ **Evening briefing**
+┃ notify · silent → notifies
+┃ paused · until Mon 19 Oct → on
+┃ ---
+┃ -# Next after this: Morning routine tomorrow (Thu) 7:00 am · Evening briefing today 6:00 pm
+┃ -# ⚠️ Not included: “and the gym one”
+┃ [✅ Save: green] [↩️ Cancel: grey]
+
+-# ❓ marks a guess · reply to this card to change it
+-# 🧪 schedule change v1 · the confirm card as it is for any task: only what differs, as field · old → new, and under it when each would next run so a wrong day shows before Save. Simplified to fit: one box for the whole card, a separator between schedules

@@ -146,6 +146,10 @@ Block 43 of `docs/QA-RUN.md` (`took <pill>`, four steps, phone only)
 was built on 2026-10-13 after your answers. It needs a start of the dev
 bot from after that change; do it any time, on its own.
 
+Block 44 (four sketches for the briefing, the schedule and the tidy;
+`dev mock` only) was added the same day. Nothing in it is built; look
+at them with the questions at the top of `docs/STATUS.md`.
+
 ## What this run does not cover
 
 Blocks before 27 that are still to be reported (21, 22, 23 steps 5 to

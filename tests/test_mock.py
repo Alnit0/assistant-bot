@@ -243,6 +243,7 @@ def test_the_gym_sketches_are_there_and_the_plan_cards_follow_the_card_rules():
 DESIGNED = (
     "checklist-v2", "reminder-v1", "reminder-v1-first", "confirm-card-v2", "question-card-v1", "reset-card-v2", "gym-workout-v1",
     "too-soon-v2", "reminder-renudge-v2", "reminder-missed-v2", "gym-import-v2", "gym-change-v2", "gym-logged-set-v2",
+    "briefing-v1", "schedule-list-v1", "schedule-change-v1", "cleanup-v1",
 )
 
 
@@ -288,3 +289,18 @@ def test_the_designed_cards_keep_the_card_rules():
 def test_every_sketch_carries_its_version_in_its_name_and_the_ones_replaced_are_gone():
     assert set(mock.names()) == set(DESIGNED)
     assert all(name.removesuffix("-first").rpartition("-v")[2].isdigit() for name in mock.names())
+
+
+def test_the_scheduler_and_briefing_sketches_keep_the_card_and_hub_rules():
+    # The briefing is a standing message with a box a task and no buttons: things are done on the task's own message
+    briefing = mock.read("briefing-v1")
+    assert briefing.startswith("# ☀️ Today") and "💊 **Pills**" in briefing and "Yesterday:" in briefing and "[" not in briefing.split("🧪")[0]
+    # The list has no buttons either: every change to a schedule is by words, on a card
+    listed = mock.read("schedule-list-v1")
+    assert listed.startswith("# 🗓️ My schedule") and "⏸️ **Paused**" in listed and "[" not in listed.split("🧪")[0]
+    change = mock.read("schedule-change-v1")
+    assert change.startswith("┃ accent: blurple") and "## 🗓️ Schedule · change" in change and "→" in change
+    assert "[✅ Save: green] [↩️ Cancel: grey]" in change and "Not included:" in change
+    # A tidy has no buttons, and says that one with nothing wrong posts nothing
+    tidy = mock.read("cleanup-v1")
+    assert "[" not in tidy.split("🧪")[0] and "posts nothing" in tidy

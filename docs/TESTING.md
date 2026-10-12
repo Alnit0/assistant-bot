@@ -36,7 +36,7 @@ Last updated: 2026-10-13
 | F | Pins | 4 | 0 | 4 | 4 | 0 | 0 | 0 |
 | G | Timers | 32 | 12 | 20 | 17 | 15 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
-| J | Dev mode | 61 | 14 | 47 | 45 | 16 | 0 | 0 |
+| J | Dev mode | 63 | 15 | 48 | 46 | 17 | 0 | 0 |
 | K | Startup and housekeeping | 26 | 14 | 12 | 10 | 16 | 0 | 0 |
 | L | Keep | 13 | 5 | 8 | 8 | 5 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
@@ -46,7 +46,7 @@ Last updated: 2026-10-13
 | S | Routing and confirm cards | 66 | 16 | 50 | 15 | 50 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 4 | 18 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **467** | **155** | **312** | **242** | **224** | **0** | **1** |
+| | **Total** | **469** | **156** | **313** | **243** | **225** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -295,6 +295,8 @@ Any channel. Check the bot's status in the member list.
 | J59 | 🤖 Auto | `CARDS_V2` off is today's look | A card with a layout is sent and rewritten exactly as before while the setting is off (it is off unless set). On, it is sent as Components V2 with no text beside it, and a card with no layout is still plain. A message that is Components V2 already is rewritten as a layout of the plain card, by an edit or a press | ✅ Pass | 2026-10-13 | `tests/test_design.py` |
 | J60 | 👤 Manual | Block 41: with `CARDS_V2=true`, look at the confirm card, a question card, today's checklist, a reminder and the too-soon card; then switch it off again | Each is drawn as in `docs/DESIGN.md` and says what it said before; the lock screen shows only the neutral line; off, everything is the old look | ⬜ Untested | | Block 41 |
 | J61 | 🤖 Auto | `dev cost` shows today against the limit | A small line under Today: what was spent of the limit and the share; over it, a ⚠️ line; no line when no limit is set | ✅ Pass | 2026-10-13 | `tests/test_costs.py` |
+| J62 | 👤 Manual | Block 44: `dev mock` with each of `briefing-v1`, `schedule-list-v1`, `schedule-change-v1`, `cleanup-v1` | Each is posted as drawn in its sketch: the briefing and the list with no buttons, the change card blurple with Save and Cancel, the tidy report saying a clean tidy posts nothing | ⬜ Untested | | Block 44 |
+| J63 | 🤖 Auto | The briefing, schedule and tidy sketches | Each reads, fits a message and is named in the design guide; the briefing and the list have no buttons, the change card is blurple with `field · old → new`, Save and Cancel, and the tidy sketch says a tidy with nothing wrong posts nothing | ✅ Pass | 2026-10-13 | `tests/test_mock.py` |
 
 ## K. Startup and housekeeping
 

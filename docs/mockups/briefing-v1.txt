@@ -1,0 +1,23 @@
+# ☀️ Today
+-# Wednesday 14 October · as of 6:00 am
+
+┃ accent: amber
+┃ 💊 **Pills** · 0 of 6 taken
+┃ **Next:** Pill A, dose 1 · `8:00 am`
+┃ -# 2 to take any time
+┃ -# Yesterday: 5 of 6 taken · 1 missed
+
+┃ accent: grey
+┃ 🏋️ **Gym**
+┃ -# planned: today's workout, and when you last did it
+
+┃ accent: grey
+┃ 📅 **Calendar**
+┃ -# planned: what is on today, with times
+
+┃ accent: grey
+┃ ☑️ **To-dos**
+┃ -# planned: what is due today
+
+-# tick doses off on today’s checklist · say “my schedule” to change when this is posted
+-# 🧪 briefing v1 · a box a task that has something to say, coloured by its status; no buttons (things are ticked off on the task's own message). Gym, Calendar and To-dos are placeholders in this sketch only: the real briefing shows a section only once its task is built. Nothing simplified to fit

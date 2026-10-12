@@ -59,6 +59,13 @@ When two principles clash, the higher one wins.
    is deleted too; a card that asked first goes whether I say yes or
    no. What was done is recorded in #bot-log instead. Only a failure
    stays: ⚠️ on my message, so that I see it.
+   **The hub is a clean place to check in on what is relevant now.**
+   It holds only live messages, edited in place where possible: the
+   briefing, today's checklist and any reminder that is due. Anything
+   finished, answered or out of date leaves. Nothing from a past day
+   stays, except as a summary in the briefing. (Added 2026-10-13; the
+   briefing and the clean-up that keeps the hub this way are specified
+   and not built yet.)
 9. **Consistent everywhere.** Every task looks and behaves the same
    way. Learn it once.
 10. **Private.** Notifications never show sensitive names (e.g. pills).

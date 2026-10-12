@@ -7,6 +7,61 @@ session; the end-of-task checklist updates it at the end of every task.
 
 ## Questions for Alex
 
+**New on 2026-10-13: mornings, the scheduler, the hub** (the two specs
+are drafts; nothing is built until you answer and approve):
+
+- **Do you talk to the bot in the hub?** Either you do, and your
+  messages there and its answers are tidied too at the end of the day;
+  or you talk only in another channel and the hub is status only (what
+  you type there gets a pointer line and is removed). Nothing is
+  assumed: until you say, the clean-up leaves your own messages alone.
+- **The order at 6:00 am:** tidy, then the checklist, then the briefing
+  under it (assumed), or the briefing above the checklist?
+- **One thing or two:** is the 6:00 am post one routine you move as a
+  whole (assumed), or the checklist and the briefing moved separately?
+- **Weekends:** the same time every day (assumed), or later on
+  Saturday and Sunday?
+- **Silent or notify:** the morning routine silent (assumed), or
+  should the briefing notify?
+- **If the bot was off at 6:00:** the checklist is posted however late
+  (as now); the briefing skipped when more than 6 hours late
+  (assumed)?
+- **The briefing as of 6:00 am** and not rewritten through the day
+  (assumed: the checklist is the live thing), or kept up to date?
+- **A morning with nothing in it:** no briefing (assumed), or one that
+  says so?
+- **Yesterday's line:** counts only, "5 of 6 taken · 1 missed"
+  (assumed), or naming what was missed?
+- **Anything else first thing:** a streak, the weather, what the bot
+  did overnight? And the order of sections once gym, calendar and
+  to-dos exist (assumed: in that order after pills)?
+- **Buttons in the briefing:** none (assumed), so doses are ticked off
+  in one place.
+- **Clean-up:** lines that report a change ("✅ Pill A · taken 8:05
+  am") outside the hub go at the end of the day (assumed), or stay? A
+  tidy with nothing wrong says nothing in #bot-log (assumed)? On a day
+  with nothing to take, yesterday's checklist still goes in the
+  morning (assumed)? The tidy is the routine's first step (assumed),
+  or a schedule of its own at 5:55 am?
+- **The scheduler:** a schedule moved to a later time after it ran
+  today does not run again today (assumed). "my schedule" lists what
+  the bot posts by itself, not each pill's dose times (assumed). The
+  backup and the new day are listed and not changed by words
+  (assumed). "Routine" would come to mean a schedule with several
+  steps; today `CLAUDE.md` uses it for what `dev run` runs. Fine?
+- **APScheduler or our own engine:** I recommend our own (the dev
+  clock, a key a run, the run log and rows you can change are what we
+  need most, and APScheduler has none of them). Say if you want the
+  library anyway.
+- **Yesterday's checklist is still in the hub because the code leaves
+  it there on purpose**: at the end of a day it is written one last
+  time and left, and its id is then forgotten; the morning post only
+  removes earlier copies of the same day. Not a failed job. The old
+  ones there now can only go with `reset channel` in the hub: no id is
+  kept for them.
+
+**From before:**
+
 - **The design's colours** are not final until you have looked at
   them on your phone (`docs/QA-TONIGHT.md`, steps 2 to 5).
 - **The lock screen**: say exactly what it shows for a card of this
@@ -60,6 +115,21 @@ findings (left), the reminder and gym mock-ups (as sketched, to be
 looked at in blocks 33 and 35), a reset cut off (keeps asking again),
 the "not posted" line (only real problems are logged now), lost
 reactions (left, in the backlog), streaks (after reminders).
+
+## Specs drafted on 2026-10-13: scheduler, clean-up, briefing
+
+Spec and mock-ups only; no code. `docs/specs/scheduler.md` (handlers,
+schedules as rows, one engine, a run log, a key a run, routines,
+changing it by words, clean-up and message lifetimes, the comparison
+with APScheduler, and how today's 6:00 am checklist and pill reminders
+move over with nothing you see changing) and `docs/specs/briefing.md`
+(a summary in the task contract, one card, pills now). Four sketches:
+`briefing-v1`, `schedule-list-v1`, `schedule-change-v1`, `cleanup-v1`
+(block 44). The hub's principle is in the standard and the design
+guide. Core and task are set out in each spec: the engine, lifetimes,
+the tidy, the summary in the contract and the gathering are core; the
+words for changing a schedule are a small task, `schedule`; the
+briefing task holds only its sections' order and its own words.
 
 ## Overnight batch of 2026-10-13 (unattended, on `feature/pills`)
 
@@ -247,6 +317,8 @@ The order is the list at the top of `docs/BACKLOG.md`. First:
 4. `feature/pills` into `main`, then live's own folder.
 5. Gym: waits for the answers on how you train; the core pieces are
    built.
+6. The scheduler, clean-up and the briefing: the specs wait for your
+   answers and approval; then the build order in the scheduler's spec.
 
 ## Open decisions
 
@@ -257,8 +329,9 @@ The order is the list at the top of `docs/BACKLOG.md`. First:
   (corrections after Save), G4 (task ties asked too often), G7 (questions
   sent as their own message). G14 (privacy of notifications) comes with
   reminders.
-- After pills reminders: schedules with days of the week, in core (see
-  the backlog); a notes task is a possible future task.
+- After pills reminders: schedules with days of the week, in core (now
+  part of the scheduler's spec: one "which days" for a pill and for a
+  schedule); a notes task is a possible future task.
 - Live eval: only when asked, or at a pause where fixtures changed; only
   for the tasks whose fixtures changed, and asked first for any run over
   US$0.25.

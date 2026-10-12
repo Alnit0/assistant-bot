@@ -20,6 +20,27 @@ something is risky. Everything else is still a plain message.
 (its first block): after the phone check, a change is an edit there and
 nowhere else. `dev mock` draws its sketches with the same values.
 
+## The hub
+
+The hub is a clean place to check in on what is relevant now
+(`docs/CONVERSATION.md`, principle 8). It holds only live messages,
+edited in place where possible: the briefing, today's checklist and any
+reminder that is due. Anything finished, answered or out of date
+leaves, and nothing from a past day stays, except as a summary in the
+briefing. So in the hub:
+
+- Every message is a standing message or one that notifies; a card
+  that asks for a decision goes when it is answered
+- A change is an edit of the message that is there, not a new one
+  under it
+- One of each: one briefing, one checklist for today, one prompt a
+  dose that is due
+- Yesterday is one small line in the briefing, never a message left
+  behind
+
+The briefing and the clean-up are specified and not built yet; until
+they are, yesterday's checklist stays where it was.
+
 ## The pieces
 
 | Piece | Written | Used for |
@@ -157,6 +178,10 @@ button counts) and 4,000 characters; a row takes 5 buttons. So:
 | `gym-workout-v1` | A workout: done, current, to come |
 | `gym-import-v2`, `gym-change-v2` | A plan as read from a file, and a change to it |
 | `gym-logged-set-v2` | The line said after a set, and that exercise's box |
+| `briefing-v1` | The morning's briefing: a box a task, with the tasks to come as placeholders |
+| `schedule-list-v1` | “my schedule”: what the bot posts by itself and when, the next to run, what is paused |
+| `schedule-change-v1` | A change to two schedules, with when each would next run |
+| `cleanup-v1` | What #bot-log is told about a tidy: only one where something went wrong |
 
 A new version of a sketch gets the next number in its name; the old one
 stays until the new one is approved, and is then removed. Each ends

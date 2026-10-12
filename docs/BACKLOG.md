@@ -29,6 +29,13 @@ low priority, nothing dropped without a reason.
 6. **Gym**: waits for the answers on how Alex trains; the three core
    pieces are built (Details: "Gym").
 
+6a. **The scheduler, clean-up and the briefing** (specs drafted
+    2026-10-13, private; sketches `briefing-v1`, `schedule-list-v1`,
+    `schedule-change-v1`, `cleanup-v1`): wait for the answers at the
+    top of `docs/STATUS.md` and approval. Then built in the order the
+    scheduler's spec gives, the engine first with nothing visible
+    changing (Details: "Scheduler, clean-up, briefing").
+
 ### Soon
 
 7. **Pills stage 4**: a correction said long after ("I took it at 9,
@@ -46,7 +53,8 @@ low priority, nothing dropped without a reason.
     (`docs/COSTS.md`), if wanted. Skipping the router for a message
     that names a pill was turned down (2026-10-13).
 12. **Days of the week in the schedule model**, in core (wanted by gym
-    if workouts go by weekday, and by reminders after pills).
+    if workouts go by weekday, and by reminders after pills). Comes
+    with the scheduler (6a): one "which days" for both.
 13. **G4**: task ties are asked too readily.
 14. **A reaction made just before a stop is lost**: keep waiting
     reactions in the database.
@@ -64,8 +72,9 @@ the same words.
 
 - **A file sent with no words** goes to the router once gym is built
   and can read a plan (decided 2026-10-13); until then it is ignored.
-- New things: a notes task; the section provider interface (a morning
-  brief); the nightly sweep; `dev qa <block>`; pin, archive and delete
+- New things: a notes task; a reminders task ("remind me at 3 pm": a
+  one-off job on the scheduler, once that is built); the nightly sweep
+  (now the scheduler's clean-up, 6a); `dev qa <block>`; pin, archive and delete
   in plain words; bulk and cross-channel actions; `reset channel` for
   another channel by name; chat outside #inbox.
 - Pills: a pill whose doses can't fit is refused, not fixed; the Edit
@@ -460,9 +469,37 @@ number read from text; C19's name matching is in the core.
 - **`reset channel` from #inbox for another channel by name** ("reset
   #bot-log"); forum channels are excluded with a plain reason (asked for
   2026-10-12).
-- **The section provider interface** (for a morning brief) is not built:
-  nothing would use it yet. `core/hub.py` has the hub channel and the
-  progress bar only.
+- **The section provider interface** (for a morning brief) is not built.
+  Specified on 2026-10-13 as an optional summary in the task contract,
+  with the briefing as its first user (6a). `core/hub.py` has the hub
+  channel and the progress bar only.
+- **Scheduler, clean-up, briefing** (specified 2026-10-13, not built).
+  What was found while writing it, to carry into the build:
+  - Three things book themselves today, each with its own code (the
+    backup, the day rollover, the 6:00 am checklist), and the time of
+    each is a constant. They move onto schedule rows one at a time
+  - Pill reminders keep their one stored job and `reminders.decide`:
+    only the job gains a key. Turning each nudge into a job of its own
+    would count in the scheduler what is now worked out, which the
+    pills rules forbid
+  - The dev clock going back needs care once a run has a key: runs
+    recorded for moments now in the future must not block the real ones
+  - **Yesterday's checklist stays in the hub by design**
+    (`checklist.close_past` writes it one last time, leaves it and
+    drops its row; `checklist.post` removes earlier copies of the same
+    day only). The clean-up changes that: the checklist is replaced by
+    the next one. The old ones there now have no id kept and go only
+    with `reset channel`
+  - The transcript code of `reset channel` is in `tasks/channel`; the
+    clean-up needs it in core
+  - Tasks that still send with discord.py directly (timers, archive,
+    bugs, lab, dev) would record no lifetime, so their messages are
+    never tidied until the gateway layer exists
+  - "Routine" in `CLAUDE.md` means what `dev run` runs; the spec uses
+    it for a schedule with several steps (asked in STATUS)
+  - The router needs to tell "move the briefing to 7" (the schedule)
+    from "move pill A to 9 pm" (pills): fixtures and a live eval at
+    build time, to be costed and asked first
 - **The outgoing check does not cover every message.** What the timers,
   archive, bugs, lab and dev tasks send with discord.py directly does not
   pass `core/outgoing.py`. All of it is written in code, so nothing

@@ -1,0 +1,24 @@
+# 🗓️ My schedule
+-# 2 on · 1 paused · times are New Zealand time
+
+┃ accent: amber
+┃ **Morning routine** · every day at `6:00 am`
+┃ 1. 🧹 Tidy
+┃ 2. 💊 Pills checklist
+┃ 3. ☀️ Briefing
+┃ -# #hub · silent · next: tomorrow 6:00 am · last: today 6:00 am ✅
+
+┃ accent: grey
+┃ 🏋️ **Today's workout** · Mon, Wed, Fri at `5:00 pm`
+┃ -# #hub · notifies · next: today 5:00 pm · last: Mon 5:00 pm ⚠️ failed, see #bot-log
+
+---
+
+┃ accent: grey
+┃ ⏸️ **Paused**
+┃ -# Evening briefing · every day at 6:00 pm · until Mon 19 Oct
+
+-# The bot's own, not changed here: nightly backup 3:00 am · new day 12:00 am
+-# Pill times belong to each pill: say “pills”
+-# say what to change: “move the morning routine to 7”, “pause the briefing until Monday”
+-# 🧪 schedule list v1 · a box a schedule; the next to run is amber, the rest grey, paused ones together. No buttons: every change is by words, on a card. Today's workout is a placeholder (gym is not built). Simplified to fit: with more than about fifteen schedules the later ones become lines in one box

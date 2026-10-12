@@ -828,6 +828,19 @@ say `add Testzinc once a day` and press **Save**.
 | 3 | Say `add Testgap at 8am and 11am, at least 3 hours apart`, **Save**. Type `took testgap`, then at once `took testgap` again. Press **Cancel** | The first is ticked off. The second gives the card "⚠️ That's … after dose 1 … Log it anyway?" with **Log it** and **Cancel**; nothing more is ticked off | R81 |
 | 4 | Say `remove testzinc and testgap`, press **Remove** | Gone | |
 
+## 44. Sketches: briefing, schedule, tidy (waiting for QA)
+
+In the dev channel, on either database. Nothing here is built: these
+are sketches posted by `dev mock`, and their answers are the questions
+at the top of `docs/STATUS.md`.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Type `dev mock briefing-v1` | "☀️ Today" with the date and "as of 6:00 am"; an amber Pills box with the count, the next dose and a line about yesterday; grey placeholder boxes for Gym, Calendar and To-dos; no buttons | J62 |
+| 2 | Type `dev mock schedule-list-v1` | "🗓️ My schedule": the morning routine in amber with its three steps, where it posts, silent, its next and last run; a grey box for a second schedule; Paused under a separator; small lines for the bot's own and for pill times; no buttons | J62 |
+| 3 | Type `dev mock schedule-change-v1` | A blurple card "🗓️ Schedule · change": two schedules, each `field · old → new`, ❓ on the guess, when each next runs, **Save** and **Cancel** | J62 |
+| 4 | Type `dev mock cleanup-v1` | What #bot-log would be told when a tidy went wrong: a channel a box, what was removed, kept and left, and why. Its last line says a tidy with nothing wrong posts nothing | J62 |
+
 ## When you finish
 
 - Stop the test copy (`Ctrl + C`) and check nothing is left running:

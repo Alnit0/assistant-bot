@@ -1,0 +1,14 @@
+🧹 **Tidy · 2 messages could not be removed**
+-# Wednesday 14 October · 6:00 am · morning routine, step 1
+
+┃ accent: amber
+┃ **#hub** · 5 removed · 1 kept (📌) · 2 left
+┃ ⚠️ 2 could not be deleted: Missing Permissions (Manage Messages)
+┃ -# tried on 3 mornings; they are left now. Delete them by hand, or `reset channel` there
+
+┃ accent: green
+┃ **#inbox** · 12 removed
+┃ -# a copy was saved: inbox-2026-10-14.txt
+
+-# Nothing was changed in the database: only messages were removed
+-# 🧪 cleanup v1 · this is the only kind of tidy that is posted in #bot-log: one where something went wrong. A tidy that removed what it should posts nothing anywhere (its line is in the log file and `dev jobs`), and nothing is ever said in the channel that was tidied. Nothing simplified

@@ -577,6 +577,14 @@ that is still sent as its own message: see the gap list in
 pills build order), streaks, and the take-by line on the checklist. Reminders are built
 and switched off (`REMINDERS_ENABLED`) until they pass QA.
 
+Specified on 2026-10-13 and not started (`docs/specs/scheduler.md`,
+`docs/specs/briefing.md`): schedules as rows that are changed by words,
+one engine with a run log and a key a run, routines, message lifetimes
+and the tidy that keeps the hub clean, and the briefing with an
+optional summary in the task contract. Until then the scheduler is as
+described above (one-off jobs, and standing jobs that book themselves),
+and yesterday's checklist is left in the hub.
+
 The gateway layer (`main.py` and `builtin`'s view still use discord.py
 directly), bulk and cross-channel actions for Claude,
 quiet hours, the sweep and the summary (`dev
