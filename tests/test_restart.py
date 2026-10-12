@@ -27,6 +27,8 @@ NOT_POSTED = "💊 Pills checklist not posted"
 
 @pytest.fixture
 def world(make_db, monkeypatch, owner, tmp_path):
+    # The schedules the bot has when it runs: the end of the day, and (registered by the pills task) the 6:00 am post
+    monkeypatch.setattr(scheduler, "_standing", {(day.JOB_TASK, day.JOB_KIND): day.DEFAULT})
     make_db({"pills": store.MIGRATIONS})
     seen = SimpleNamespace(
         owner=owner, sent=[], edited=[], deleted=[], bot_log=[], marked=[], next_id=7000, now=day.at(DAY, time(9, 0)),
@@ -451,7 +453,7 @@ def test_a_job_cut_off_by_the_stop_runs_again(world, monkeypatch):
     add(world, *THREE)
     world.now = day.at(DAY, time(6, 0))
     run(checklist.book_next())
-    run(database.run(lambda conn: conn.execute("UPDATE scheduled_jobs SET due_at = ?, status = 'running'", (scheduler.to_db(world.now),))))
+    run(database.run(lambda conn: conn.execute("UPDATE scheduled_jobs SET due_at = ?, status = 'running' WHERE kind = ?", (scheduler.to_db(world.now), checklist.JOB))))
     lines = stop_and_start(world, monkeypatch, day.at(DAY, time(6, 0, 30)))
     assert lines == ["1 job cut off by the stop ran again"], "30 seconds on is not late"
     assert len(checklists(world)) == 1

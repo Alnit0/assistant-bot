@@ -186,6 +186,29 @@ The two language steps rerun with real requests, offline from Discord:
 answer 5 of 5 (Claude now hands over "testv" as typed). US$0.084 in
 all, the diagnosis included.
 
+## The scheduler, stage by stage (started 2026-10-13)
+
+Built from `docs/specs/scheduler.md` and `docs/specs/briefing.md`, a
+stage at a time, each with offline tests, a commit and a self-test run.
+
+1. **Done: the engine, with nothing that shows changed.** Handlers,
+   schedules as rows (`core/timetable.py`), one engine
+   (`core/scheduler.py`), the run log with a key a run, missed-run
+   rules, one-off jobs. The nightly backup, the end of the day and the
+   6:00 am checklist run from schedules; pill reminders keep their one
+   job, now with a key. `dev jobs`, `dev run`, `dev fire next`, `dev
+   clock` and the status line use it. "Routine" means only a schedule
+   with several steps.
+2. Changing the schedule by words (the `schedule` task).
+3. The briefing, behind `BRIEFING_ENABLED`.
+4. Clean-up, behind `HUB_TIDY`.
+
+The first start on this code adds two tables and five columns
+(`schedules`, `schedule_steps`; on `scheduled_jobs`: `run_key`,
+`schedule_id`, `step`, `local_at`, `note`), makes the three schedules
+and replaces the jobs that were waiting for the backup, the end of the
+day and the checklist with their schedules' own runs, in one change.
+
 ## A missed dose asks first (2026-10-13)
 
 A dose the bot marked missed and then logged as taken is asked about

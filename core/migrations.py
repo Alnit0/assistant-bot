@@ -320,6 +320,51 @@ def _add_question_to_confirm_cards(conn: sqlite3.Connection) -> None:
     conn.execute("ALTER TABLE confirm_cards ADD COLUMN question TEXT")
 
 
+def _create_schedules(conn: sqlite3.Connection) -> None:
+    # When the bot does things by itself, as rows (core/timetable.py), and what a run of a
+    # job needs to be one run: a key that is unique, the schedule and step it belongs to, the
+    # local date and time it stands for, and the line saying what it decided. The jobs that
+    # were waiting stay where they are: each gets a key from its id.
+    conn.execute(
+        """
+        CREATE TABLE schedules (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER REFERENCES users(id),
+            name TEXT NOT NULL,
+            at TEXT NOT NULL,
+            zone TEXT NOT NULL,
+            days TEXT NOT NULL,
+            notify TEXT NOT NULL,
+            channel TEXT NOT NULL,
+            state TEXT NOT NULL,
+            paused_until TEXT,
+            missed TEXT NOT NULL,
+            origin TEXT NOT NULL,
+            default_key TEXT,
+            locked INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL,
+            changed_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE schedule_steps (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            schedule_id INTEGER NOT NULL REFERENCES schedules(id),
+            position INTEGER NOT NULL,
+            handler TEXT NOT NULL,
+            UNIQUE (schedule_id, position)
+        )
+        """
+    )
+    for column in ("run_key TEXT", "schedule_id INTEGER", "step INTEGER", "local_at TEXT", "note TEXT"):
+        conn.execute(f"ALTER TABLE scheduled_jobs ADD COLUMN {column}")
+    conn.execute("UPDATE scheduled_jobs SET run_key = 'job:' || id")
+    conn.execute("CREATE UNIQUE INDEX scheduled_jobs_key ON scheduled_jobs (run_key)")
+    conn.execute("CREATE INDEX scheduled_jobs_schedule ON scheduled_jobs (schedule_id, status)")
+
+
 def _create_spend_notices(conn: sqlite3.Connection) -> None:
     # The days #bot-log was told that Claude spend went over the daily limit: one row a day,
     # so it is said once, and not again after a restart
@@ -360,6 +405,7 @@ MIGRATIONS = [
     _add_confirmation_to_confirm_cards,
     _add_question_to_confirm_cards,
     _create_spend_notices,
+    _create_schedules,
 ]
 
 

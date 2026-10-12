@@ -4,35 +4,49 @@ import logging
 import re
 import sqlite3
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, time, timedelta, timezone
 from time import perf_counter
 
-from core import clock, database, devmode
+from core import clock, database, devmode, timetable
 from core.config import TIMEZONE
 from core.discord_utils import log_error
 
 log = logging.getLogger("assistant")
 
 # ---------------------------------------------------------------------------
-# Scheduler
+# Scheduler: the one part of the bot that knows when things happen.
 #
-# Jobs live in the scheduled_jobs table, so they survive a restart. A task
-# adds a job ("call my handler for kind X at this moment, with this payload")
-# and registers a handler for each kind it uses. One loop looks for due jobs
-# every TICK_SECONDS, and also wakes at the exact moment of the next due job
-# when that is sooner, so short timers fire on time.
+#   Handlers   A task says what to do for a kind of job ("pills", "checklist"),
+#              never when. Each has a name in words for wherever it is shown.
+#   Schedules  Rows saying when a handler runs: a time on the wall clock, the
+#              days, silent or notify, the channel, on or off
+#              (core/timetable.py). A task supplies a default the first time;
+#              after that the row is the user's.
+#   Engine     One loop. Each look it makes sure every schedule's next
+#              occurrence is booked, runs what is due, and records how each
+#              run ended. Nothing else works out a time.
+#   Run log    The scheduled_jobs table: one row a run, pending until it runs.
+#              A one-off job ("in 15 minutes, look at that dose again") is a
+#              row with no schedule.
+#
+# One run, one key. A scheduled run's key is its schedule, the local date and
+# time it stands for and its step, so the same occurrence is never booked or
+# run twice, whatever restarts in between. A one-off may be given a key by
+# whoever books it.
 #
 # Jobs that came due while the bot was off run at the next start, with
-# job.late_by saying how overdue they are.
+# job.late_by saying how overdue they are. Of several occurrences of one
+# schedule that were missed, only the latest runs (the others are recorded
+# as passed over), and a schedule may say that one too late is not run at
+# all (its missed-run rule).
 #
-# The time is the clock's (core/clock.py), so jobs follow the dev clock. When
-# that is moved ahead, everything that came due on the way runs at once, in
+# The time is the clock's (core/clock.py), so everything follows the dev
+# clock. When that is moved ahead, what came due on the way runs at once, in
 # due order, and the time jumped over doesn't count as lateness: a job is
 # late when the bot wasn't there to run it, not when time was skipped.
 #
-# Moments are stored in UTC. Anything on a local-time schedule (the nightly
-# backup) works out its next moment in code with next_run().
+# Moments are stored in UTC; a schedule is local time and its zone.
 # ---------------------------------------------------------------------------
 TICK_SECONDS = 15
 LATE_AFTER_SECONDS = 60  # a job this overdue counts as late
@@ -40,9 +54,12 @@ LATE_AFTER_SECONDS = 60  # a job this overdue counts as late
 PENDING, RUNNING, DONE, FAILED, CANCELLED = "pending", "running", "done", "failed", "cancelled"
 # A job that ran and decided not to do its work, having said why (`report`)
 SKIPPED = "skipped"
+# An occurrence the engine itself set aside: passed over for a later one, or too late under
+# its schedule's rule. Nothing went wrong, so this is never trouble
+MISSED = "missed"
 # How a job that ran can have ended: the last of these, for each kind of job, says whether
 # that kind is in trouble (`troubled`)
-_ENDED = (DONE, FAILED, SKIPPED)
+_ENDED = (DONE, FAILED, SKIPPED, MISSED)
 
 
 @dataclass(frozen=True)
@@ -54,6 +71,16 @@ class Job:
     payload: dict
     due_at: datetime  # UTC
     late_by: float = 0.0  # seconds overdue when it ran
+    key: str | None = None  # what makes this run one run
+    schedule_id: int | None = None  # the schedule it is an occurrence of; None for a one-off
+    step: int | None = None  # which of the schedule's steps
+    local_at: str | None = None  # the local date and time it stands for ("2026-10-14T06:00")
+    # For an occurrence that stands in for earlier ones the bot was off for: when the earliest
+    # of them was due, and how many were passed over
+    first_due: datetime | None = None
+    passed_over: int = 0
+    notify: str = timetable.SILENT  # from the schedule
+    channel: str = "hub"  # from the schedule: a channel by its role
 
     @property
     def is_late(self) -> bool:
@@ -66,6 +93,8 @@ _handlers: dict[tuple[str, str], JobHandler] = {}
 # What each kind of job is called wherever the user reads it (the status line, the start's
 # message, an error card): never its kind, which is the code's own word
 _labels: dict[tuple[str, str], str] = {}
+# The schedule each handler gets the first time, by (task, kind)
+_standing: dict[tuple[str, str], timetable.Default] = {}
 _ticker: asyncio.Task | None = None
 _wake: asyncio.Event | None = None
 _warned_unhandled: set[tuple[str, str]] = set()
@@ -106,7 +135,8 @@ def seconds_until_next_look(now: datetime, next_due: datetime | None) -> float:
 
 
 def next_run(at: time, now: datetime) -> datetime:
-    """The next moment after `now` when the clock in NZ reads `at`."""
+    """The next moment after `now` when the clock in NZ reads `at`. (For words
+    such as `dev clock 6am`; a schedule's occurrences are core/timetable.py's.)"""
     today = now.astimezone(TIMEZONE).date()
     candidate = datetime.combine(today, at, tzinfo=TIMEZONE)
     # Compare as timestamps: these are real moments, whatever daylight saving is doing
@@ -115,25 +145,49 @@ def next_run(at: time, now: datetime) -> datetime:
     return candidate
 
 
+def handler_name(task: str, kind: str) -> str:
+    """A handler as a schedule's step names it: "pills.checklist"."""
+    return f"{task}.{kind}"
+
+
+def handler_parts(name: str) -> tuple[str, str]:
+    task, _, kind = name.partition(".")
+    return task, kind
+
+
 # ---------------------------------------------------------------------------
 # Database (blocking; called through database.run)
 # ---------------------------------------------------------------------------
-_COLUMNS = "id, user_id, skill, kind, payload, due_at"
+_COLUMNS = "id, user_id, skill, kind, payload, due_at, run_key, schedule_id, step, local_at"
 
 
 def _job(row: tuple, now: datetime | None = None) -> Job:
     due_at = from_db(row[5])
     late_by = seconds_late(due_at, now) if now is not None else 0.0
-    return Job(row[0], row[1], row[2], row[3], json.loads(row[4]), due_at, late_by)
+    payload = json.loads(row[4])
+    first = payload.get("_first_due") if isinstance(payload, dict) else None
+    return Job(
+        row[0], row[1], row[2], row[3], payload, due_at, late_by, row[6], row[7], row[8], row[9],
+        first_due=from_db(first) if first else None, passed_over=int(payload.get("_passed_over", 0)) if isinstance(payload, dict) else 0,
+    )
 
 
-def _db_add(conn: sqlite3.Connection, user_id, task: str, kind: str, payload: dict, due_at: datetime) -> int:
+def _db_add(
+    conn: sqlite3.Connection, user_id, task: str, kind: str, payload: dict, due_at: datetime, key: str | None = None,
+    schedule_id: int | None = None, step: int | None = None, local_at: str | None = None,
+) -> int | None:
+    """Book a job. With a key that is already there: its id if it is still
+    waiting (nothing is booked twice), None if that run is over."""
+    if key is not None:
+        there = conn.execute("SELECT id, status FROM scheduled_jobs WHERE run_key = ?", (key,)).fetchone()
+        if there is not None:
+            return there[0] if there[1] == PENDING else None
     cursor = conn.execute(
         """
-        INSERT INTO scheduled_jobs (user_id, skill, kind, payload, due_at, status, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO scheduled_jobs (user_id, skill, kind, payload, due_at, status, created_at, run_key, schedule_id, step, local_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        (user_id, task, kind, json.dumps(payload), to_db(due_at), PENDING, to_db(utc_now())),
+        (user_id, task, kind, json.dumps(payload), to_db(due_at), PENDING, to_db(utc_now()), key, schedule_id, step, local_at),
     )
     return cursor.lastrowid
 
@@ -161,26 +215,31 @@ def _db_claim(conn: sqlite3.Connection, job_id: int) -> bool:
     return cursor.rowcount == 1
 
 
-def _db_finish(conn: sqlite3.Connection, job_id: int, status: str, late_by: float, error: str | None) -> None:
+def _db_finish(conn: sqlite3.Connection, job_id: int, status: str, late_by: float, error: str | None, note: str | None = None) -> None:
     conn.execute(
-        "UPDATE scheduled_jobs SET status = ?, late_by_s = ?, error = ?, finished_at = ? WHERE id = ?",
-        (status, late_by, error, to_db(utc_now()), job_id),
+        "UPDATE scheduled_jobs SET status = ?, late_by_s = ?, error = ?, finished_at = ?, note = COALESCE(?, note) WHERE id = ?",
+        (status, late_by, error, to_db(utc_now()), note, job_id),
     )
 
 
 def _db_cancel(conn: sqlite3.Connection, job_id: int) -> bool:
+    # Its key goes with it: what was cancelled may be booked again
     cursor = conn.execute(
-        "UPDATE scheduled_jobs SET status = ?, finished_at = ? WHERE id = ? AND status = ?",
+        "UPDATE scheduled_jobs SET status = ?, finished_at = ?, run_key = run_key || '~cancelled' || id WHERE id = ? AND status = ?",
         (CANCELLED, to_db(utc_now()), job_id, PENDING),
     )
     return cursor.rowcount == 1
 
 
-def _db_reschedule(conn: sqlite3.Connection, job_id: int, due_at: datetime) -> bool:
-    cursor = conn.execute(
-        "UPDATE scheduled_jobs SET due_at = ? WHERE id = ? AND status = ?",
-        (to_db(due_at), job_id, PENDING),
-    )
+def _db_reschedule(conn: sqlite3.Connection, job_id: int, due_at: datetime, key: str | None = None) -> bool:
+    if key is not None and conn.execute("SELECT 1 FROM scheduled_jobs WHERE run_key = ? AND id != ?", (key, job_id)).fetchone():
+        key = f"{key}+{job_id}"  # that moment has had a run already: this one is still its own
+    if key is not None:
+        cursor = conn.execute(
+            "UPDATE scheduled_jobs SET due_at = ?, run_key = ? WHERE id = ? AND status = ?", (to_db(due_at), key, job_id, PENDING)
+        )
+    else:
+        cursor = conn.execute("UPDATE scheduled_jobs SET due_at = ? WHERE id = ? AND status = ?", (to_db(due_at), job_id, PENDING))
     return cursor.rowcount == 1
 
 
@@ -226,7 +285,7 @@ def _db_troubled(conn: sqlite3.Connection) -> list[tuple[str, str, str]]:
 
 
 # ---------------------------------------------------------------------------
-# For tasks and the core
+# For tasks and the core: handlers, and their names in words
 # ---------------------------------------------------------------------------
 def register_handler(task: str, kind: str, handler: JobHandler, label: str = "") -> None:
     """Say which function runs jobs of this kind for this task, and what the
@@ -240,6 +299,14 @@ def register_handler(task: str, kind: str, handler: JobHandler, label: str = "")
         _labels.pop((task, kind), None)
 
 
+def default_schedule(task: str, kind: str, default: timetable.Default) -> None:
+    """Say when a handler runs unless the user says otherwise. The first time
+    the engine looks it becomes a row (core/timetable.py), and from then on
+    the row is what counts: this is only what a fresh database gets, except
+    for one that is `locked`, which always follows the code."""
+    _standing[(task, kind)] = default
+
+
 def label(task: str, kind: str) -> str:
     """A job in words: "nightly backup", "pill reminder"."""
     given = _labels.get((task, kind))
@@ -247,6 +314,11 @@ def label(task: str, kind: str) -> str:
         return given
     words = kind.replace("_", " ")
     return words if task == "core" else f"{task} {words}"
+
+
+def handlers() -> list[tuple[str, str]]:
+    """Every (task, kind) that has a handler, in name order."""
+    return sorted(_handlers)
 
 
 def internal_names() -> dict[str, str]:
@@ -274,50 +346,27 @@ def in_words(text: str) -> str:
     return text
 
 
+# ---------------------------------------------------------------------------
+# One-off jobs
+# ---------------------------------------------------------------------------
 async def add_job(
-    task: str, kind: str, due_at: datetime, payload: dict | None = None, user_id: int | None = None
-) -> int:
-    """Ask for `kind` to be handled at `due_at`. Returns the job's id."""
-    job_id = await database.run(_db_add, user_id, task, kind, payload or {}, due_at)
+    task: str, kind: str, due_at: datetime, payload: dict | None = None, user_id: int | None = None, key: str | None = None
+) -> int | None:
+    """Ask for `kind` to be handled at `due_at`. Returns the job's id.
+
+    With a `key`, the run is booked once: asking again while it waits returns
+    the same job, and asking after it has run books nothing and returns None."""
+    job_id = await database.run(_db_add, user_id, task, kind, payload or {}, due_at, key)
     if _wake is not None:
         _wake.set()  # it might be due before the loop's next look
     return job_id
 
 
-# ---------------------------------------------------------------------------
-# Standing jobs: the ones that book themselves for "the next time the clock
-# reads X" (the day rollover, the nightly backup, a task's morning post). When
-# one is due depends on what time it is, so it has to be worked out again
-# whenever the clock goes back (`dev clock reset`) or the jobs are gone (`dev
-# reset-db`): a job left booked from a later time would simply never come.
-# ---------------------------------------------------------------------------
-_standing: dict[str, Callable[[], Awaitable[None]]] = {}
-
-
-def keep_booked(name: str, book: Callable[[], Awaitable[None]]) -> None:
-    """Register a standing job. `book` makes sure it is booked for the right
-    moment as the clock now reads (with `ensure`), and is safe to call at any
-    time. `name` says whose it is; registering again replaces it."""
-    _standing[name] = book
-
-
-async def rebook_standing() -> None:
-    """Book every standing job again for the time it now is. Called when the
-    clock has gone back or the jobs were wiped. One failing is logged and the
-    others are still booked."""
-    for name, book in list(_standing.items()):
-        try:
-            await book()
-        except Exception:
-            log.exception("Could not book the standing job %s", name)
-    wake()
-
-
 async def ensure(task: str, kind: str, due_at: datetime, user_id: int | None = None) -> None:
-    """Make sure exactly this is booked: one pending job of this kind, due no
-    later than `due_at`. None pending: it is booked. One booked for a later
-    moment (it was booked before the clock went back): it is moved. One due
-    earlier is left alone: it is overdue and must still run."""
+    """Make sure exactly this one-off is booked: one pending job of this kind,
+    due no later than `due_at`. None pending: it is booked. One booked for a
+    later moment (it was booked before the clock went back): it is moved.
+    One due earlier is left alone: it is overdue and must still run."""
     pending = await pending_jobs(task, kind)
     if not pending:
         await add_job(task, kind, due_at, user_id=user_id)
@@ -333,11 +382,12 @@ async def cancel_job(job_id: int | None) -> bool:
     return await database.run(_db_cancel, job_id)
 
 
-async def reschedule_job(job_id: int | None, due_at: datetime) -> bool:
-    """Move a job that hasn't run yet. False if it already ran or doesn't exist."""
+async def reschedule_job(job_id: int | None, due_at: datetime, key: str | None = None) -> bool:
+    """Move a job that hasn't run yet (and give it a new key, if its key says
+    when). False if it already ran or doesn't exist."""
     if job_id is None:
         return False
-    moved = await database.run(_db_reschedule, job_id, due_at)
+    moved = await database.run(_db_reschedule, job_id, due_at, key)
     if moved and _wake is not None:
         _wake.set()
     return moved
@@ -359,13 +409,200 @@ def wake() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Schedules: the rows, and booking their occurrences
+# ---------------------------------------------------------------------------
+def _db_owner(conn: sqlite3.Connection) -> int | None:
+    row = conn.execute("SELECT id FROM users WHERE role = 'owner' ORDER BY id LIMIT 1").fetchone()
+    return row[0] if row else None
+
+
+def _db_defaults(conn: sqlite3.Connection, now: datetime, standing: dict) -> list[str]:
+    """Each handler's default as a row, made once. One the user removed is
+    still a row and is not made again. A locked one follows the code."""
+    said = []
+    for (task, kind), default in standing.items():
+        name = handler_name(task, kind)
+        there = timetable.db_for_default(conn, name)
+        if there is None:
+            timetable.db_add(
+                conn, now, user_id=None if default.locked else _db_owner(conn), name=default.name, at=default.at, steps=(name,),
+                days=default.days, notify=default.notify, channel=default.channel, missed=default.missed,
+                origin=timetable.FROM_A_TASK, default_key=name, locked=default.locked,
+            )
+            said.append(f"schedule made for {name}: {default.name}, {timetable.days_text(default.days)} at {default.at:%H:%M}")
+            # A job of this kind left waiting from before there were schedules would run beside
+            # the schedule's own: it goes in the same change, so there is never a moment with two.
+            # One that is already overdue is left to run: it is owed, and the schedule's first
+            # run is a later occurrence
+            for (job_id,) in conn.execute(
+                "SELECT id FROM scheduled_jobs WHERE skill = ? AND kind = ? AND status = ? AND schedule_id IS NULL AND due_at > ?",
+                (task, kind, PENDING, to_db(now)),
+            ).fetchall():
+                _db_cancel(conn, job_id)
+                said.append(f"the job that was waiting for {name} is replaced by its schedule")
+        elif default.locked and (there.at, there.days) != (default.at.replace(tzinfo=None, second=0, microsecond=0), tuple(default.days)):
+            timetable.db_update(conn, there.id, now, at=default.at, days=default.days)
+            said.append(f"schedule for {name} follows the code again: {default.at:%H:%M}")
+    return said
+
+
+def _db_ran_on(conn: sqlite3.Connection, schedule_id: int, day: str, but_not: str) -> bool:
+    """Whether the schedule has already run on this local day, at another time
+    than `but_not` (it was moved after it ran)."""
+    row = conn.execute(
+        "SELECT 1 FROM scheduled_jobs WHERE schedule_id = ? AND substr(local_at, 1, 10) = ? AND local_at != ? AND status IN (?, ?, ?) LIMIT 1",
+        (schedule_id, day, but_not, DONE, FAILED, SKIPPED),
+    ).fetchone()
+    return row is not None
+
+
+def _db_book(conn: sqlite3.Connection, now: datetime, standing: dict) -> list[str]:
+    """Make sure every schedule that is on has its next occurrence booked,
+    a run for each step, by its key. Booked again, nothing changes. A run
+    booked for a time the schedule no longer says (it was moved, paused, or
+    the clock went back) is taken out. An overdue run is never touched: it
+    must still run. Returns what was done, for the log."""
+    said = _db_defaults(conn, now, standing)
+    for schedule in timetable.db_all(conn, removed=True):
+        coming = timetable.next_occurrence(schedule, now)
+        if coming is not None and _db_ran_on(conn, schedule.id, coming.stamp[:10], coming.stamp):
+            # It ran today at its old time: once a day, so the new time starts tomorrow
+            coming = timetable.next_occurrence(schedule, now, skip_day=coming.local.date())
+        waiting = conn.execute(
+            "SELECT id, local_at, due_at, step, skill, kind FROM scheduled_jobs WHERE schedule_id = ? AND status = ? AND local_at IS NOT NULL",
+            (schedule.id, PENDING),
+        ).fetchall()
+        for job_id, local_at, due_at, step, task, kind in waiting:
+            if from_db(due_at) <= now:
+                continue
+            # Its time, or the step it was booked for, is no longer what the schedule says
+            still_a_step = step is not None and 1 <= step <= len(schedule.steps) and schedule.steps[step - 1] == handler_name(task, kind)
+            if coming is None or local_at != coming.stamp or not still_a_step:
+                _db_cancel(conn, job_id)
+                said.append(f"{schedule.name}: the run of {handler_name(task, kind)} booked for {local_at} is no longer what the schedule says; taken out")
+        if coming is None:
+            continue
+        for step, name in enumerate(schedule.steps, start=1):
+            task, kind = handler_parts(name)
+            key = timetable.run_key(schedule.id, coming.stamp, step)
+            if conn.execute("SELECT 1 FROM scheduled_jobs WHERE run_key = ?", (key,)).fetchone() is None:
+                _db_add(conn, schedule.user_id, task, kind, {}, coming.moment, key, schedule.id, step, coming.stamp)
+                said.append(f"{schedule.name}: {name} booked for {coming.stamp}")
+    return said
+
+
+async def book() -> None:
+    """Bring the booked runs in line with the schedules, as the clock now
+    reads. Safe to call at any time and as often as wanted."""
+    for line in await database.run(_db_book, utc_now(), dict(_standing)):
+        log.info("Scheduler: %s", line)
+
+
+def _db_prepare(conn: sqlite3.Connection, job: Job, now: datetime) -> tuple[Job | None, str, bool]:
+    """What to do with a due run of a schedule: (the job to run, or None if it
+    is set aside; why; whether that is worth saying after a restart).
+
+    Of several occurrences the bot was off for, only the latest runs: an
+    earlier one is set aside and the latest is booked in its place, told
+    when the first was due and how many were passed over. One that is later
+    than its schedule's rule allows is set aside too."""
+    schedule = timetable.db_get(conn, job.schedule_id)
+    on_day = datetime.fromisoformat(job.local_at).date()
+    if schedule is None or schedule.state == timetable.REMOVED or not schedule.is_on(on_day) or on_day.weekday() not in schedule.days:
+        return None, "its schedule is off that day, or gone", False
+    latest = timetable.last_occurrence(schedule, now)
+    if latest is None:
+        return None, "its schedule has no occurrence to run", False
+    if latest.stamp > job.local_at:
+        between = timetable.between(schedule, job.due_at, now)
+        first = job.first_due or job.due_at
+        payload = {**job.payload, "_first_due": to_db(first), "_passed_over": job.passed_over + max(1, len(between))}
+        _db_add(conn, job.user_id, job.task, job.kind, payload, latest.moment, timetable.run_key(schedule.id, latest.stamp, job.step or 1), schedule.id, job.step, latest.stamp)
+        return None, f"passed over: the occurrence of {latest.stamp} runs in its place", False
+    limit = timetable.skip_limit(schedule.missed)
+    if limit is not None and job.late_by > limit.total_seconds():
+        return None, f"skipped: {job.late_by / 60:.0f} minutes late, and its limit is {limit.total_seconds() / 60:.0f}", True
+    return replace(job, notify=schedule.notify, channel=schedule.channel), "", False
+
+
+def _db_fire(conn: sqlite3.Connection, job_id: int, now: datetime) -> bool:
+    """Make a waiting job due now, as a run of its own: it no longer stands for
+    an occurrence, so the real one is still booked and still runs."""
+    cursor = conn.execute(
+        "UPDATE scheduled_jobs SET due_at = ?, run_key = 'fired:' || id, local_at = NULL WHERE id = ? AND status = ?", (to_db(now), job_id, PENDING)
+    )
+    return cursor.rowcount == 1
+
+
+async def fire(job_id: int) -> bool:
+    """`dev fire next`: run a waiting job now. False if it already ran."""
+    fired = await database.run(_db_fire, job_id, utc_now())
+    wake()
+    return fired
+
+
+async def run_now(task: str, kind: str) -> int | None:
+    """`dev run`: run a handler now, outside any schedule, as a job of its own
+    in the run log. Returns the job's id."""
+    job_id = await add_job(task, kind, utc_now(), {"manual": True}, key=f"manual:{handler_name(task, kind)}:{to_db(clock.real_now())}")
+    await run_all_due()
+    return job_id
+
+
+def _db_clock_went_back(conn: sqlite3.Connection, now: datetime) -> int:
+    """Runs recorded for moments that are now in the future (the dev clock was
+    moved ahead, and is back) would block the real ones by their keys: their
+    keys are freed. They stay in the log, marked."""
+    cursor = conn.execute(
+        """
+        UPDATE scheduled_jobs SET run_key = run_key || '~moved' || id, note = COALESCE(note || ' · ', '') || 'ran on a clock that was then moved back'
+        WHERE run_key IS NOT NULL AND status NOT IN (?, ?) AND due_at > ?
+        """,
+        (PENDING, RUNNING, to_db(now)),
+    )
+    return cursor.rowcount
+
+
+async def clock_went_back() -> None:
+    """The dev clock has gone back (or the jobs were wiped): free the keys of
+    runs that are now in the future, and book every schedule again for the
+    time it now is. One booked for a later day is taken out by `book`."""
+    freed = await database.run(_db_clock_went_back, utc_now())
+    if freed:
+        log.info("Scheduler: the clock went back; %s run(s) from the time ahead no longer block the real ones", freed)
+    await book()
+    wake()
+
+
+def _db_last_runs(conn: sqlite3.Connection, limit: int = 50) -> list[tuple]:
+    """The latest finished run of each kind of job: (task, kind, status, when it was due, late by, note)."""
+    marks = ", ".join("?" for _ in _ENDED)
+    return conn.execute(
+        f"""
+        SELECT skill, kind, status, due_at, late_by_s, note FROM scheduled_jobs AS job
+        WHERE status IN ({marks}) AND id = (
+            SELECT id FROM scheduled_jobs WHERE skill = job.skill AND kind = job.kind AND status IN ({marks}) ORDER BY finished_at DESC, id DESC LIMIT 1
+        )
+        ORDER BY finished_at DESC, id DESC LIMIT ?
+        """,
+        (*_ENDED, *_ENDED, limit),
+    ).fetchall()
+
+
+async def last_runs() -> list[tuple]:
+    return await database.run(_db_last_runs)
+
+
+# ---------------------------------------------------------------------------
 # How a job ended. One that raises has failed. A handler that catches its own
 # failure, or decides not to do its work, says so with `report`: the job is
 # then recorded as failed or skipped instead of done, and that kind of job
 # counts as in trouble until one of its runs works (the bot's status says so:
 # core/identity.py). The handler still says why itself, in the log and #bot-log.
+# What it decided, in a line, is kept with the run (`note`).
 # ---------------------------------------------------------------------------
 _reported: dict[int, str] = {}
+_notes: dict[int, str] = {}
 
 
 def report(job: Job, ended: str) -> None:
@@ -374,6 +611,12 @@ def report(job: Job, ended: str) -> None:
     if ended not in (FAILED, SKIPPED):
         raise ValueError(f"A job reports itself as failed or skipped, not {ended!r}")
     _reported[job.id] = ended
+
+
+def note(job: Job, said: str) -> None:
+    """Called by a job's handler while it runs: what it decided and why, in a
+    line, kept in the run log ("posted, 6 doses"; "nothing to take today")."""
+    _notes[job.id] = said[:300]
 
 
 async def troubled() -> list[tuple[str, str, str]]:
@@ -386,11 +629,12 @@ async def troubled() -> list[tuple[str, str, str]]:
 # ---------------------------------------------------------------------------
 # The loop
 # ---------------------------------------------------------------------------
-async def run_due(now: datetime | None = None, done: list | None = None) -> int:
-    """Run every job that is due. Returns how many ran; each is added to
-    `done`, if given."""
+async def run_due(now: datetime | None = None, done: list | None = None, set_aside: list | None = None) -> int:
+    """Run every job that is due. Returns how many were dealt with; each that
+    ran is added to `done`, and each the engine set aside under its
+    schedule's missed-run rule to `set_aside`, if given."""
     now = now or utc_now()
-    ran = 0
+    dealt = 0
     for job in await database.run(_db_due, now):
         handler = _handlers.get((job.task, job.kind))
         if handler is None:
@@ -401,6 +645,16 @@ async def run_due(now: datetime | None = None, done: list | None = None) -> int:
             continue
         if not await database.run(_db_claim, job.id):
             continue
+        if job.schedule_id is not None and job.local_at is not None:
+            ready, why, worth_saying = await database.run(_db_prepare, job, now)
+            if ready is None:
+                await database.run(_db_finish, job.id, MISSED, job.late_by, None, why)
+                log.info("Scheduler: %s (%s) %s", label(job.task, job.kind), job.local_at, why)
+                if worth_saying and set_aside is not None:
+                    set_aside.append(job)
+                dealt += 1
+                continue
+            job = ready
         if job.is_late:
             log.info("Running %s/%s job %s late by %.0fs", job.task, job.kind, job.id, job.late_by)
         started = perf_counter()
@@ -409,13 +663,13 @@ async def run_due(now: datetime | None = None, done: list | None = None) -> int:
         except Exception as error:
             _reported.pop(job.id, None)
             log.exception("Scheduled job %s (%s/%s) failed", job.id, job.task, job.kind)
-            await database.run(_db_finish, job.id, FAILED, job.late_by, repr(error))
+            await database.run(_db_finish, job.id, FAILED, job.late_by, repr(error), _notes.pop(job.id, None))
             await log_error(f"Scheduled job failed: {label(job.task, job.kind)}", repr(error))
             outcome = "failed"
         else:
             # Done, unless the handler said this run failed or was skipped (`report`)
             outcome = _reported.pop(job.id, DONE)
-            await database.run(_db_finish, job.id, outcome, job.late_by, None)
+            await database.run(_db_finish, job.id, outcome, job.late_by, None, _notes.pop(job.id, None))
         await devmode.debug(
             f"Job {job.id}: {job.task}/{job.kind}",
             [
@@ -424,33 +678,37 @@ async def run_due(now: datetime | None = None, done: list | None = None) -> int:
                 f"Payload: {job.payload}",
             ],
         )
-        ran += 1
+        dealt += 1
         if done is not None:
             done.append(job)
-    return ran
+    return dealt
 
 
-async def run_all_due(done: list | None = None) -> int:
-    """Run due jobs until none is left: a job may book another that is already
-    due (the clock was moved ahead, or the bot was off for a while). A job
-    nobody handles is left waiting and doesn't keep this going."""
+async def run_all_due(done: list | None = None, set_aside: list | None = None) -> int:
+    """Book what the schedules say and run due jobs until none is left: a job
+    may book another that is already due (the clock was moved ahead, or the
+    bot was off for a while). A job nobody handles is left waiting and
+    doesn't keep this going."""
     total = 0
-    while ran := await run_due(done=done):
+    await book()
+    while ran := await run_due(done=done, set_aside=set_aside):
         total += ran
+        await book()
     return total
 
 
-async def catch_up() -> tuple[int, list[Job]]:
+async def catch_up() -> tuple[int, list[Job], list[Job]]:
     """When the bot starts, before the loop: jobs a crash left running go back
     in the queue, and everything that came due while the bot was off runs
-    now. Returns how many were put back and the jobs that ran late, for the
-    start's message (core/restart.py)."""
+    now. Returns how many were put back, the jobs that ran late and those
+    that were skipped as too late, for the start's message (core/restart.py)."""
     again = await database.run(_db_recover)
     if again:
         log.info("Scheduler: %s interrupted job(s) put back in the queue", again)
     done: list[Job] = []
-    await run_all_due(done)
-    return again, [job for job in done if job.is_late]
+    skipped: list[Job] = []
+    await run_all_due(done, skipped)
+    return again, [job for job in done if job.is_late], skipped
 
 
 async def _loop() -> None:

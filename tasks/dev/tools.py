@@ -94,27 +94,55 @@ async def inspect(ctx: Context, target: discord.Message) -> str:
 # ---------------------------------------------------------------------------
 # dev jobs, dev run, dev fire next
 # ---------------------------------------------------------------------------
+_ENDED = {scheduler.DONE: "✅", scheduler.FAILED: "❌ failed", scheduler.SKIPPED: "⚠️ skipped", scheduler.MISSED: "⏭️ set aside"}
+
+
 async def jobs(ctx: Context) -> str:
+    """What is booked next, and how the last run of each kind of job ended:
+    the engine's own run log (core/scheduler.py)."""
     pending = await scheduler.all_pending()
     lines = [f"🗓️ **Pending jobs** ({len(pending)})"]
     lines += [
-        f"`#{job.id}` {job.task}/{job.kind} · due {_stamp(job.due_at)} ({_stamp(job.due_at, 't')})"
+        f"`#{job.id}` {job.task}/{job.kind} · due {_stamp(job.due_at)} ({_stamp(job.due_at, 't')})" + (f" · for {job.local_at.replace('T', ' ')}" if job.local_at else "")
         for job in pending[:JOBS_SHOWN]
     ]
     if len(pending) > JOBS_SHOWN:
         lines.append(f"…and {len(pending) - JOBS_SHOWN} more")
     if not pending:
         lines.append("Nothing is booked.")
+    last = await scheduler.last_runs()
+    if last:
+        lines.append("**Last run of each**")
+        for task, kind, status, due_at, late_by, note in last[:JOBS_SHOWN]:
+            late = f" · {format_duration(late_by)} late" if late_by and late_by > scheduler.LATE_AFTER_SECONDS else ""
+            lines.append(f"{_ENDED.get(status, status)} {task}/{kind} · {_stamp(scheduler.from_db(due_at))}{late}" + (f" · {note}" if note else ""))
     lines.append(TAG)
-    await ctx.reply("\n".join(lines))
+    await ctx.reply("\n".join(lines)[:1990])
     return f"{len(pending)} pending job(s)"
+
+
+def handler_for(asked: str) -> tuple[str, str]:
+    """The handler a word of `dev run` means: its name ("core.nightly_backup"),
+    its kind, a word of its kind ("backup") or its name in words. One that
+    fits none, or more than one, is said with the names there are."""
+    wanted = asked.strip().lower()
+    known = scheduler.handlers()
+    fits = [
+        (task, kind) for task, kind in known
+        if wanted in (scheduler.handler_name(task, kind), kind, scheduler.label(task, kind).lower().replace(" ", "-")) or wanted in kind.split("_")
+    ]
+    if len(fits) == 1:
+        return fits[0]
+    names = ", ".join(scheduler.handler_name(task, kind) for task, kind in (fits or known))
+    raise UserError(f"“{asked}” is more than one handler: {names}." if fits else f"I don't know a handler called “{asked}”. Try: {names}.")
 
 
 async def run(ctx: Context) -> str:
     if len(ctx.args) != 1:
-        raise UserError(f"Usage: `dev run {'|'.join(devmode.ROUTINE_NAMES)}`.")
-    name = ctx.args[0].lower()
-    await devmode.run_routine(name)
+        raise UserError("Usage: `dev run <handler>`, for example `dev run backup`. `dev jobs` shows what there is.")
+    task, kind = handler_for(ctx.args[0])
+    await scheduler.run_now(task, kind)
+    name = scheduler.handler_name(task, kind)
     await ctx.confirm(f"▶️ Ran: {name}. The result is in #bot-log.")
     return f"ran {name}"
 
@@ -124,7 +152,7 @@ async def fire_next(ctx: Context) -> str:
     if not pending:
         raise UserError("There are no pending jobs to fire.")
     job = pending[0]
-    if not await scheduler.reschedule_job(job.id, utc_now()):
+    if not await scheduler.fire(job.id):
         raise UserError(f"Job {job.id} ran or was cancelled before I could fire it.")
     await ctx.confirm(f"🔥 Fired job #{job.id}: {job.task}/{job.kind}")
     return f"fired job {job.id} ({job.task}/{job.kind}), which was due {job.due_at.isoformat(timespec='seconds')}"
@@ -216,9 +244,9 @@ async def reset_db(ctx: Context) -> str:
     async def wipe() -> str:
         await asyncio.to_thread(_start_empty, registry.task_migrations())
         clock.reset()
-        # Every standing job went with the rest (the rollover, the backup, a task's
-        # morning post): each is booked again, for the time it now is
-        await scheduler.rebook_standing()
+        # Every schedule and every booked run went with the rest: the defaults are made
+        # again and each is booked for the time it now is
+        await scheduler.clock_went_back()
         return f"🧹 `{DB_PATH.name}` wiped, clock back at the real time. Restart the bot if anything looks stale."
 
     await confirmations.ask(

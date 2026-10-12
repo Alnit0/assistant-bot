@@ -937,9 +937,9 @@ no slash commands. `help dev` lists the words.
 | `dev cleanup on\|off` | `off`: nothing is deleted automatically, so every command, confirmation and alert stays on screen |
 | `dev expire <duration>` | Switches itself off after this long (`30m`, `2h`) |
 | reply `dev inspect` | What the bot knows about the message you replied to |
-| `dev jobs` | The scheduler's pending jobs |
+| `dev jobs` | What the scheduler has booked, and how the last run of each kind of job ended, with its line |
 | `dev mock [<name>]` | Posts the card sketched in `docs/mockups/<name>.txt` here as a Components V2 message; on its own, lists the sketches. See "Mock-ups" below |
-| `dev run backup\|sweep\|summary` | Runs a maintenance routine now |
+| `dev run <handler>` | Runs one of the scheduler's handlers now, outside its schedule (`dev run backup`, `dev run checklist`). It is a run of its own in the log and never stands in for the scheduled one |
 | `dev fire next` | Runs the next pending job now, whenever it was due |
 | `dev seed <n>` | Posts n sample messages (up to 20), tagged as test data |
 | `dev clean` | Deletes the tagged messages in this channel |
@@ -1045,17 +1045,16 @@ no slash commands. `help dev` lists the words.
   with `database.record_cost(row_id, route, tasks, calls)`, and each
   request to Claude says what it was for through
   `timing.record_claude(..., purpose=, task=)`.
-- **Not built yet:** quiet hours, the sweep and the summary. `dev quiet` is
-  stored and shown and changes nothing so far; `dev run sweep` and `dev run
-  summary` fail with "not built" on the #bot-log card.
+- **Not built yet:** quiet hours. `dev quiet` is stored and shown and
+  changes nothing so far.
 
 **In code.** `core/devmode.py` holds the state and is what other code asks:
 `reaction_debounce()`, `speed()`, `real_seconds()`, `nominal_seconds()`,
 `is_verbose()`, `quiet_hours_ignored()`. Each gives the normal value when
 dev mode is off, so callers never check whether it is on. Add a debug card
 with `await devmode.debug(title, lines)`; it does nothing unless verbose is
-on. A maintenance routine becomes runnable with `dev run <name>` by calling
-`devmode.register_task(name, function)` (names are listed in `TASK_NAMES`).
+on. `dev run <name>` runs any handler the scheduler has
+(`scheduler.register_handler`): there is no list of its own.
 The words, panel and tools are in `tasks/dev/`.
 
 **Time in code.** Never call `datetime.now()` or `time.time()` for
@@ -1401,6 +1400,43 @@ so they are safe to run while the bot is running.
   `tests.helpers.DatabaseTestCase`. There is no pytest-asyncio.
 - **`docs/TESTING.md`** lists every test: 🤖 Auto rows for what pytest
   covers, 👤 Manual rows for what only shows in Discord.
+
+## When things run: the scheduler
+
+Nothing in a task knows what time it is for. A task says **what** to
+do for a kind of job (a handler) and, if it should happen by itself,
+**when a fresh database should start doing it** (a default schedule);
+`core/scheduler.py` does the rest.
+
+- **A schedule is a row** (`schedules`, `core/timetable.py`): a time on
+  the wall clock in `Pacific/Auckland`, the days of the week, silent or
+  notify, a channel by its role, on or off, and its steps. The three
+  there are today: Nightly backup (3:00 am) and End of the day
+  (midnight), which are the bot's own and follow the settings, and
+  Pills checklist (6:00 am), which is yours. Changing one by words
+  comes with the `schedule` task; until then the rows keep the times
+  they always had.
+- **Local time, always.** 6:00 am is when the wall clock reads 6:00
+  am, summer and winter. On the night the clocks go forward a time that
+  doesn't exist runs at the moment they jump to; on the night they go
+  back a time that happens twice runs once, at the first.
+- **One run, one key**: the schedule, the local date and time it stands
+  for, and the step. The same occurrence is never booked or run twice,
+  whatever restarts in between.
+- **If the bot was off**: what came due runs at the next start, late,
+  once. Of several mornings missed only the latest runs. A schedule can
+  say "skip when more than so late" instead (none does yet).
+- **To add something that runs by itself** in a task: return its
+  function from `job_handlers()` and its name in words from
+  `job_labels()`, and call `scheduler.default_schedule(task, kind,
+  timetable.Default("Its name", time(6, 0)))` where the task registers
+  its buttons. The handler does its work and says what it decided with
+  `scheduler.note(job, "…")`. It never books anything for "next time".
+- **A one-off** ("in 15 minutes") is `scheduler.add_job`, with a `key`
+  when booking it twice would matter.
+- `dev jobs` shows what is booked and how the last run of each ended;
+  `dev run <handler>` runs one now; `dev fire next` runs the next
+  booked one now. Neither stands in for the scheduled run.
 
 ## The self-test
 

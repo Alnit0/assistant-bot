@@ -122,7 +122,7 @@ def test_on_the_live_database_the_clock_can_still_be_read():
     assert "dev database" in ctx.said[0]
 
 
-def test_on_the_dev_database_the_clock_moves_and_the_scheduler_is_woken(dev_clock, monkeypatch, dev_off):
+def test_on_the_dev_database_the_clock_moves_and_the_scheduler_is_woken(db, dev_clock, monkeypatch, dev_off):
     monkeypatch.setattr(dev, "DEV_DATABASE", True)
     woken = []
     monkeypatch.setattr(scheduler, "wake", lambda: woken.append(True))
@@ -132,6 +132,7 @@ def test_on_the_dev_database_the_clock_moves_and_the_scheduler_is_woken(dev_cloc
     assert abs(clock.offset() - timedelta(hours=2)) < timedelta(seconds=1)
     assert woken == [True]
     assert "(2h ahead)" in ctx.said[0]
+    woken.clear()
 
     asyncio.run(dev.dev_clock(context("reset")))
     assert not clock.is_shifted()

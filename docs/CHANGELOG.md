@@ -6,6 +6,11 @@ backfilled from the git log.
 
 ## 2026-10-13
 
+- Nothing you see changes: the nightly backup, the end of the day and
+  the 6:00 am checklist now run from one scheduler with schedules kept
+  as rows. `dev jobs` also shows how the last run of each job ended,
+  and `dev run` runs any of them by name.
+
 - Logging a dose that was missed asks first ("Dose 1 was missed (due
   11:12 am). Log it as taken now?") and shows what it does to the next
   dose's time. `took <pill>` works for a missed dose too.

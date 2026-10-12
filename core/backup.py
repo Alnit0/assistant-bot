@@ -4,7 +4,7 @@ import sqlite3
 import zipfile
 from pathlib import Path
 
-from core import scheduler
+from core import scheduler, timetable
 from core.config import BACKUP_DIR, BACKUP_KEEP, BACKUP_TIME, EXPORTS_DIR, SPECS_DIR, now_nz
 from core.database import connect
 from core.discord_utils import log_error, log_simple
@@ -126,26 +126,23 @@ async def run_nightly_backup() -> bool:
 # ---------------------------------------------------------------------------
 # Scheduling: one job in the scheduler at a time, which books the next when it runs
 # ---------------------------------------------------------------------------
-async def schedule_next_backup() -> None:
-    """Make sure a nightly backup is booked, for the next BACKUP_TIME on the NZ clock."""
-    due_at = scheduler.next_run(BACKUP_TIME, now_nz())
-    await scheduler.ensure(JOB_TASK, JOB_KIND, due_at)
-    log.info("Next nightly backup: %s", due_at.isoformat())
-
-
-scheduler.keep_booked(f"{JOB_TASK}/{JOB_KIND}", schedule_next_backup)
+# When it runs is a schedule (core/timetable.py), the bot's own: BACKUP_TIME on the NZ clock,
+# every day, however late. Locked: it follows the setting, and is not changed by words
+DEFAULT = timetable.Default("Nightly backup", BACKUP_TIME, channel="bot-log", locked=True)
+scheduler.default_schedule(JOB_TASK, JOB_KIND, DEFAULT)
 
 
 async def nightly_backup_job(job: scheduler.Job) -> None:
-    """Scheduler handler: back up now, then book tomorrow's.
+    """Scheduler handler: back up now. When is the engine's business: it books
+    tomorrow's from the schedule.
 
     If the bot was off at backup time this runs late, at the next start.
     """
     if job.is_late:
         log.info("Nightly backup is running %.0f minutes late", job.late_by / 60)
-    try:
-        if await run_nightly_backup() is False:
-            # Said in #bot-log already; recorded too, so the bot's status shows it until a backup works
-            scheduler.report(job, scheduler.FAILED)
-    finally:
-        await schedule_next_backup()
+    if await run_nightly_backup() is False:
+        # Said in #bot-log already; recorded too, so the bot's status shows it until a backup works
+        scheduler.report(job, scheduler.FAILED)
+        scheduler.note(job, "a part of the backup could not be saved")
+    else:
+        scheduler.note(job, "saved")

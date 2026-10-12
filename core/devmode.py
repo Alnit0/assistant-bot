@@ -183,22 +183,7 @@ async def debug(title: str, lines: list[str]) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Things `dev run <name>` can run. Whatever owns the routine registers it; a name
-# listed here with nothing registered is a feature that isn't built yet.
+# What `dev run <name>` runs is a handler of the scheduler (core/scheduler.py), by its
+# name: there is no list of its own here any more. "Routine" now means only a schedule
+# with several steps.
 # ---------------------------------------------------------------------------
-ROUTINE_NAMES = ("backup", "sweep", "summary")
-
-_routines: dict[str, Callable[[], Awaitable[None]]] = {}
-
-
-def register_routine(name: str, routine: Callable[[], Awaitable[None]]) -> None:
-    _routines[name] = routine
-
-
-async def run_routine(name: str) -> None:
-    if name not in ROUTINE_NAMES:
-        raise UserError(f"I don't know “{name}”. Try: {', '.join(ROUTINE_NAMES)}.")
-    routine = _routines.get(name)
-    if routine is None:
-        raise UserError(f"There is nothing to run for “{name}” yet: it isn't built.")
-    await routine()

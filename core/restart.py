@@ -148,6 +148,13 @@ def late_line(jobs: list) -> str:
     return "Ran late, as the bot was off when they were due: " + ", ".join(parts)
 
 
+def skipped_line(jobs: list) -> str:
+    """The runs that were not done because they were too late to be worth it,
+    under their schedule's own rule: "morning briefing (7h late)"."""
+    parts = [f"{identity.job_name(job.task, job.kind)} ({identity.uptime(job.late_by)} late)" for job in jobs]
+    return "Skipped as too late, as its schedule says: " + ", ".join(parts)
+
+
 def checked(lines: list[str]) -> list[str]:
     """The lines as they may be shown: the same check as everything the bot
     says (core/outgoing.py: no internal label), and no job by the code's own
@@ -169,11 +176,13 @@ async def catch_up() -> list[str]:
             except Exception as error:
                 log.exception("Could not put right the input cut off in log row %s", cut.row_id)
                 lines.append(f"Log row {cut.row_id} was cut off by the stop and could not be checked: {error!r}")
-        again, late = await scheduler.catch_up()
+        again, late, skipped = await scheduler.catch_up()
         if again:
             lines.append(f"{again} job{'' if again == 1 else 's'} cut off by the stop ran again")
         if late:
             lines.append(late_line(late))
+        if skipped:
+            lines.append(skipped_line(skipped))
         lines += _lines
     except Exception:
         log.exception("Catching up after the restart failed")

@@ -43,7 +43,7 @@ def world(make_db, monkeypatch, owner, dev_clock):
     monkeypatch.setattr(llm, "_exchanges", {})
     # The jobs and listeners the bot has when it runs: the day rollover and the pills task's own
     monkeypatch.setattr(scheduler, "_handlers", {})
-    monkeypatch.setattr(scheduler, "_standing", {"core/day_rollover": day.schedule_next})
+    monkeypatch.setattr(scheduler, "_standing", {(day.JOB_TASK, day.JOB_KIND): day.DEFAULT})
     monkeypatch.setattr(day, "_listeners", {})
     scheduler.register_handler(day.JOB_TASK, day.JOB_KIND, day.rollover_job)
     scheduler.register_handler("pills", checklist.JOB, checklist.post_job)
@@ -200,7 +200,7 @@ def test_jobs_booked_while_the_clock_was_ahead_come_back_with_it(world):
     assert jobs() == {("core", "day_rollover"): day.end_of(tomorrow), ("pills", "checklist"): scheduler.next_run(time(6, 0), clock.now())}
 
     clock.reset()
-    run(scheduler.rebook_standing())  # what `dev clock reset` and `dev reset-db` now do
+    run(scheduler.clock_went_back())  # what `dev clock reset` and `dev reset-db` now do
     assert jobs() == {("core", "day_rollover"): day.end_of(today_), ("pills", "checklist"): scheduler.next_run(time(6, 0), clock.now())}
     assert jobs()[("pills", "checklist")] <= day.at(tomorrow, time(6, 0))
 

@@ -14,9 +14,15 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   archive, keep, …) with a `Task` object. Called "skills" until 2026-10-09
 - **Skill**: only a Claude Code Skill, a procedure in `.claude/skills/`
 - **To-dos**: the planned list of things to do. Never "tasks"
-- **Job**: something the scheduler runs later. **Routine**: what `dev run`
-  runs (backup). An asyncio task is always written `asyncio.Task`; don't
-  name a variable holding one `task`
+- **Job**: something the scheduler runs later; one run of one is a row
+  of the run log. **Handler**: what a task says to do for a kind of job
+  (`pills.checklist`), never when. **Schedule**: a row saying when a
+  handler runs (`core/timetable.py`; in the code "timetable", since
+  `core/schedule.py` is how often a thing is done in a day).
+  **Routine**: a schedule with several steps, and nothing else (until
+  2026-10-13 it also meant what `dev run` runs: that is a handler). An
+  asyncio task is always written `asyncio.Task`; don't name a variable
+  holding one `task`
 - The database keeps two old names, which no migration has renamed: the
   `skill_migrations` table and the `skill` column of `scheduled_jobs`
 
@@ -202,9 +208,17 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 - Times the user types are read by `core/timeinput.py` and shown with its
   `format_time` ("8:04 am"), everywhere; a timer's "05:00 left" is a
   length of time
-- A job that books itself for "the next time the clock reads X" is a
-  standing job: booked with `scheduler.ensure` and registered with
-  `scheduler.keep_booked`. Never "already pending? then leave it"
+- **Only the engine knows when** (`core/scheduler.py`). Something that
+  happens "every day at X" is a schedule: its task gives a default
+  (`scheduler.default_schedule`, a `timetable.Default`) and a handler
+  that says what to do, and never books its own next run, reads the
+  clock to decide whether to run, or keeps the time as a constant that
+  is consulted again. The default is made into a row once; after that
+  the row is mine (a `locked` one, the bot's own, follows the code)
+- A run has a key (its schedule, the local date and time it stands for,
+  its step), so nothing runs twice. A one-off job is `add_job`, with a
+  `key` when booking it twice would matter. Whatever changes a schedule
+  calls `scheduler.book()` after
 - A restart loses nothing that matters and repeats nothing
   (`core/restart.py`; "What survives a restart" in
   `docs/ARCHITECTURE.md`): state is in the database, a job is safe to

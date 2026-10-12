@@ -103,27 +103,40 @@ class DevModeTest(unittest.TestCase):
         self.assertEqual(devmode.nominal_seconds(25), 1500)
 
 
-class TasksTest(unittest.IsolatedAsyncioTestCase):
+class HandlersForDevRunTest(unittest.TestCase):
+    """`dev run <handler>`: what used to be a list of "routines" here is the
+    scheduler's own handlers, by name. A routine is now only a schedule with
+    several steps."""
+
     def setUp(self):
-        saved = dict(devmode._routines)
-        self.addCleanup(lambda: (devmode._routines.clear(), devmode._routines.update(saved)))
-        devmode._routines.clear()
+        from core import scheduler
 
-    async def test_a_registered_routine_runs(self):
-        ran = []
+        saved = (dict(scheduler._handlers), dict(scheduler._labels))
+        self.addCleanup(lambda: (scheduler._handlers.clear(), scheduler._handlers.update(saved[0]), scheduler._labels.clear(), scheduler._labels.update(saved[1])))
+        scheduler._handlers.clear()
+        scheduler._labels.clear()
 
-        async def routine():
-            ran.append(True)
+        async def handler(job):
+            pass
 
-        devmode.register_routine("backup", routine)
-        await devmode.run_routine("backup")
-        self.assertEqual(ran, [True])
+        scheduler.register_handler("core", "nightly_backup", handler, "nightly backup")
+        scheduler.register_handler("pills", "checklist", handler, "pills checklist")
+        scheduler.register_handler("pills", "remind", handler, "pill reminder")
 
-    async def test_unknown_and_unbuilt_routines_are_refused(self):
-        with self.assertRaises(UserError):
-            await devmode.run_routine("nonsense")
-        with self.assertRaises(UserError):
-            await devmode.run_routine("sweep")
+    def test_a_handler_is_found_by_its_name_its_kind_a_word_of_it_or_its_name_in_words(self):
+        from tasks.dev import tools
+
+        self.assertEqual(tools.handler_for("backup"), ("core", "nightly_backup"))
+        self.assertEqual(tools.handler_for("core.nightly_backup"), ("core", "nightly_backup"))
+        self.assertEqual(tools.handler_for("Checklist"), ("pills", "checklist"))
+        self.assertEqual(tools.handler_for("pill-reminder"), ("pills", "remind"))
+
+    def test_one_that_is_unknown_is_refused_with_the_names_there_are(self):
+        from tasks.dev import tools
+
+        with self.assertRaisesRegex(UserError, "I don't know a handler called “sweep”. Try: core.nightly_backup, pills.checklist, pills.remind."):
+            tools.handler_for("sweep")
+        self.assertFalse(hasattr(devmode, "run_routine") or hasattr(devmode, "ROUTINE_NAMES"), "the dev meaning of routine is gone")
 
 
 class DebouncerDelayTest(unittest.IsolatedAsyncioTestCase):

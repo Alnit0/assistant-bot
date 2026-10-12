@@ -36,17 +36,17 @@ Last updated: 2026-10-13
 | F | Pins | 4 | 0 | 4 | 4 | 0 | 0 | 0 |
 | G | Timers | 32 | 12 | 20 | 17 | 15 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
-| J | Dev mode | 67 | 18 | 49 | 47 | 20 | 0 | 0 |
-| K | Startup and housekeeping | 28 | 16 | 12 | 10 | 18 | 0 | 0 |
+| J | Dev mode | 68 | 19 | 49 | 47 | 21 | 0 | 0 |
+| K | Startup and housekeeping | 30 | 17 | 13 | 11 | 19 | 0 | 0 |
 | L | Keep | 14 | 6 | 8 | 8 | 6 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
 | P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
-| Q | Time, days, the schedule model, the occurrence log and cards | 17 | 15 | 2 | 2 | 15 | 0 | 0 |
+| Q | Time, days, the schedule model, the occurrence log and cards | 19 | 17 | 2 | 2 | 17 | 0 | 0 |
 | R | Pills | 73 | 21 | 52 | 44 | 29 | 0 | 0 |
 | S | Routing and confirm cards | 69 | 18 | 51 | 16 | 52 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 4 | 18 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **482** | **167** | **315** | **245** | **236** | **0** | **1** |
+| | **Total** | **487** | **171** | **316** | **246** | **240** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -301,6 +301,7 @@ Any channel. Check the bot's status in the member list.
 | J65 | 👤 Manual | With live stopped: `python -m selftest`, then start live again | About nine minutes; `docs/SELFTEST.md` is written again with a result for each step; the test channels are left in place; `data/dev.db` is as it was; live is back | ⬜ Untested | | Run by Claude Code on 2026-10-13: 61 of 63 |
 | J66 | 🤖 Auto | A test that hangs | After its time limit the run stops with exit code 70, the test's name and where each thread was | ✅ Pass | 2026-10-13 | `tests/test_selftest.py` |
 | J67 | 🤖 Auto | A limit under a cent | `dev cost` writes it to three places (US$0.001); a cent or more as before | ✅ Pass | 2026-10-13 | `tests/test_pills_shortcut.py` |
+| J68 | 🤖 Auto | `dev run <handler>` | A handler is found by its name, its kind, a word of its kind or its name in words; one that is unknown is refused with the names there are; the dev meaning of routine is gone | ✅ Pass | 2026-10-13 | `tests/test_devmode.py` |
 
 ## K. Startup and housekeeping
 
@@ -334,6 +335,8 @@ Any channel. Check the bot's status in the member list.
 | K26 | 🤖 Auto | The dev bot's own settings file | With `--dev`, `.env.dev` is read before `.env` if it is there; without one nothing changes; the live bot never reads it. It is ignored by git and has an example with placeholders only | ✅ Pass | 2026-10-13 | `tests/test_pills_shortcut.py` |
 | K27 | 🤖 Auto | Every job has a name in words | The core's and the pills' jobs are registered with a label (“nightly backup”, “end of the day”, “pill reminder”, “a card's expiry”), which the status line, the late line and an error card use; one nobody named is made readable. The catch-up lines are checked: a job written the code's way is put in words, an action's name is taken out, and a line with nothing left is dropped. A press or a Save cut off is said in words | ✅ Pass | 2026-10-13 | `tests/test_restart.py` |
 | K28 | 🤖 Auto | The timers' jobs have names in words | Every task with jobs names each one: “timer ending”, “Pomodoro phase”; “timers timer due” written anywhere I read is put in words | ✅ Pass | 2026-10-13 | `tests/test_restart.py` |
+| K29 | 🤖 Auto | The backup, the end of the day and the checklist run from schedules | Each is booked once from its schedule, runs at its local time, and the engine books the next (the handler books nothing); a missed one runs late at the next start; a failed backup is trouble until one works; the listeners are told the day that ended, the first of them when days were passed over | ✅ Pass | 2026-10-13 | `tests/test_scheduler.py`, `tests/test_day.py`, `tests/test_pills_checklist.py`, `tests/test_restart.py` |
+| K30 | 👤 Manual | Block 46: a day on the live bot after the scheduler's stage 1 | The 6:00 am checklist once, the 3:00 am backup once, `dev jobs` as described, the status line as before | ⬜ Untested | | Block 46 |
 
 ## L. Keep
 
@@ -445,6 +448,8 @@ manual test uses the dev clock on the dev database (`python main.py --dev`).
 | Q15 | 🤖 Auto | Adding what is already there: `identity` and `on_repeat` | Every task declares what a repeat means, and one that doesn't is not routed to; update and add_to_amount need an identity made of the task's own fields; `ask` is refused until cards can ask; `show_existing` needs an identity, which may be the message a thing is about; the same name is the same thing whatever the case or spacing; a repeat comes to new, same, change, more, another, a question or the existing one; "already in your pills" and `field · old → new` are written by core; pills declares name / update, bugs message / show_existing, timers and channel none / allow_another, and the `hint` line is gone | ✅ Pass | 2026-10-12 | `tests/test_repeats.py`, `tests/test_actions.py` |
 | Q16 | 🤖 Auto | Why the bot closed something is a cause, never its wording | The occurrence log keeps a `cause` beside the reason, recorded in the history and gone when the state changes (reopened, done, missed, skipped by hand). A dose skipped for want of room has `no_room` and one whose pill was removed `not_in_plan`; only the first is the bot's to take back, whatever the reason says. Streaks: only a missed dose would break one, and the cause never changes which those are (a no-room skip, a skip by hand and a removed pill break none; a dose that had its time does); a correction that makes room takes the skip and its cause back; old rows are given their cause once | ✅ Pass | 2026-10-12 | `tests/test_occurrences.py`, `tests/test_pills_doses.py`, `tests/test_pills_checklist.py` |
 | Q17 | 🤖 Auto | Streaks from the occurrence log (`core/streaks.py`) | Days in a row with something done and nothing missed. Only a missed one breaks it, and the day it was missed doesn't count; a skip never does, by hand or by the bot, whatever its cause; a skipped day, a day with nothing expected and what is still waiting today neither break nor add. The doses of the streak are counted, the longest run is remembered, each pill has its own, and the order of the rows doesn't matter | ✅ Pass | 2026-10-13 | `tests/test_streaks.py`. Not shown anywhere yet |
+| Q18 | 🤖 Auto | A schedule is wall-clock time | 6:00 am is 6:00 am by the wall clock on every day of both changeover weeks; a time that doesn't exist runs once at the moment the clocks jump to; a time that happens twice runs once, at the first, under one key; days of the week, paused until a day, removed, and once a day | ✅ Pass | 2026-10-13 | `tests/test_timetable.py` |
+| Q19 | 🤖 Auto | The engine books and runs schedules | A default becomes a row once and is booked once; a time I changed stays mine and a default I removed is not made again; a locked one follows the code; a run has a key and nothing is booked or run twice, also after a restart; a routine's steps run in order, each recorded, one failing never stops the rest, and after a crash those done are not done again; off for days, only the latest runs and is told how many were passed over; a skip-when-too-late rule sets a run aside and it is said; the dev clock moved ahead is not lateness and moved back frees the real runs; a one-off with a key is booked once; `fire` and `run_now` never block the scheduled run; a job waiting from before schedules is replaced | ✅ Pass | 2026-10-13 | `tests/test_timetable.py` |
 
 ## R. Pills
 

@@ -1,7 +1,7 @@
 import logging
 from datetime import date, datetime, time, timedelta
 
-from core import cards, clock, config, database, discord_utils, hub, lifecycle, live, llm, occurrences, restart, scheduler, timeinput
+from core import cards, clock, config, database, discord_utils, hub, lifecycle, live, llm, occurrences, restart, scheduler, timeinput, timetable
 from core import day as days
 from core import schedule as core_schedule
 from core.cards import Button, Card
@@ -40,7 +40,8 @@ log = logging.getLogger("assistant")
 #
 # No discord.py: messages and buttons go through core/cards.py.
 # ---------------------------------------------------------------------------
-POST_AT = time(6, 0)
+POST_AT = time(6, 0)  # the time a fresh database's schedule gets; after that the schedule's row says
+DEFAULT = timetable.Default("Pills checklist", POST_AT)
 JOB = "checklist"
 LIMIT_JOB = "limit"  # looks again when a pill's latest time passes
 TAKEN, SKIP, NOT_TAKEN = "taken", "skipped", "not_taken"
@@ -328,8 +329,10 @@ async def on_skip(press: cards.Press) -> str:
 def register() -> None:
     cards.register(TASK, TAKEN, on_taken)
     cards.register(TASK, SKIP, on_skip)
-    # The 6:00 am post is booked for "the next 6:00 am": booked again if the clock goes back
-    scheduler.keep_booked(f"{TASK}/{JOB}", book_next)
+    # When the checklist is posted is a schedule (core/timetable.py): every day at 6:00 am in
+    # the hub, without a notification, however late. That is what a fresh database gets;
+    # after that the row is the user's to change
+    scheduler.default_schedule(TASK, JOB, DEFAULT)
 
 
 # ---------------------------------------------------------------------------
@@ -392,18 +395,20 @@ async def _decide(what: str, late: bool = False) -> bool:
 
 
 async def book_next() -> None:
-    """Make sure the next 6:00 am post is booked, as the clock now reads."""
-    await scheduler.ensure(TASK, JOB, scheduler.next_run(POST_AT, clock.now()))
+    """Make sure the next post is booked, as the clock now reads and as its
+    schedule says (the engine books every schedule; this is the same call)."""
+    await scheduler.book()
 
 
 async def post_job(job: scheduler.Job) -> None:
-    """Scheduler handler: 6:00 am. Post each user's checklist, then book tomorrow's."""
-    try:
-        if await _decide(f"job {job.id}" + (f", {job.late_by / 60:.0f} minutes late" if job.is_late else ""), late=job.is_late):
-            # A real problem, not a morning with nothing to do: the bot's status shows it until a post works
-            scheduler.report(job, scheduler.SKIPPED)
-    finally:
-        await book_next()
+    """Scheduler handler: the morning's checklist. Post each user's. (When is
+    the engine's business: it books tomorrow's from the schedule.)"""
+    if await _decide(f"job {job.id}" + (f", {job.late_by / 60:.0f} minutes late" if job.is_late else ""), late=job.is_late):
+        # A real problem, not a morning with nothing to do: the bot's status shows it until a post works
+        scheduler.report(job, scheduler.SKIPPED)
+        scheduler.note(job, "not posted: the hub channel is not set or can't be found")
+    else:
+        scheduler.note(job, "posted, or already there, or nothing to take today (the log file says which)")
 
 
 async def startup() -> None:

@@ -42,6 +42,8 @@ def world(make_db, monkeypatch, owner):
     monkeypatch.setattr(clock, "now", lambda: seen.now)
     monkeypatch.setattr(hub, "channel_id", lambda: HUB)
     monkeypatch.setattr(llm, "_exchanges", {})
+    # When the checklist is posted is its schedule's: 6:00 am, as a fresh database gets it
+    monkeypatch.setattr(scheduler, "_standing", {("pills", checklist.JOB): checklist.DEFAULT})
     seen.bot_log = []
 
     async def log_simple(title, description=None):
@@ -325,6 +327,8 @@ def test_at_six_it_is_posted_and_the_next_morning_is_booked(world):
     world.now = day.at(DAY, time(6, 0))
     run(checklist.post_job(job()))
     assert [m.card.text.splitlines()[0] for m in world.sent] == ["## 💊 Pills · ▱▱▱▱▱ 0 of 1", "💊 **Zinc**"]
+    world.now = day.at(DAY, time(6, 0, 1))
+    run(scheduler.book())  # the engine's next look: the handler books nothing itself any more
     (booked,) = run(scheduler.pending_jobs("pills", checklist.JOB))
     assert booked.due_at == day.at(DAY + timedelta(days=1), time(6, 0))
 

@@ -159,9 +159,9 @@ async def dev_clock(ctx: Context) -> str:
         return said
     if moment is None:
         clock.reset()
-        # The clock went back: a job booked for "the next midnight" or "the next 6:00 am"
-        # while it read a later day would never come. Each is booked again for the time it now is
-        await scheduler.rebook_standing()
+        # The clock went back: a run booked while it read a later day would never come, and
+        # one that ran "tomorrow" would block the real one. The engine puts both right
+        await scheduler.clock_went_back()
     else:
         clock.advance_to(moment)
     # Whatever came due on the way runs now, in order
@@ -315,10 +315,10 @@ class DevTask(Task):
             ),
             setting(
                 "dev run",
-                "run a maintenance routine now",
+                "run one of the scheduler's handlers now, outside its schedule",
                 tools.run,
                 ["dev run backup"],
-                "|".join(devmode.ROUTINE_NAMES),
+                "<handler>",
             ),
             word(
                 "dev fire next",

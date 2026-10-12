@@ -105,11 +105,37 @@ async def p1(h: Harness) -> None:
         h.check(await h.find(h.inbox, "Online and ready") is not None, "no “Online and ready” in #selftest-inbox")
         h.check(config.DEV_DATABASE and clock.shiftable(), "this is not the dev database")
 
+    async with h.step("1.01b", "The schedules the engine made at start", "Three rows, each once: Nightly backup and End of the day (the bot's own, locked) and Pills checklist at 6:00 am every day in the hub, silent; each with exactly one run booked, with a key", "scheduler stage 1"):
+        made = {each.name: each for each in await h.schedules()}
+        h.check(sorted(made) == ["End of the day", "Nightly backup", "Pills checklist"], f"the schedules are {sorted(made)}")
+        sheet = made["Pills checklist"]
+        h.check((f"{sheet.at:%H:%M}", sheet.days, sheet.notify, sheet.channel, sheet.locked, sheet.steps) == ("06:00", (0, 1, 2, 3, 4, 5, 6), "silent", "hub", False, ("pills.checklist",)), f"Pills checklist is {sheet}")
+        h.check(made["Nightly backup"].locked and made["End of the day"].locked and made["Nightly backup"].user_id is None, "the bot's own are not locked, or have an owner")
+        for task, kind in (("core", "nightly_backup"), ("core", "day_rollover"), ("pills", "checklist")):
+            waiting = [each for each in await h.runs(task, kind) if each[0] == "pending"]
+            h.check(len(waiting) == 1 and waiting[0][2] and waiting[0][2].startswith("s") and "@" in waiting[0][2], f"{task}/{kind} has {waiting} booked")
+        h.memo["schedules"] = sorted(f"{each.id}:{each.name}" for each in made.values())
+        h.saw(", ".join(f"{name} {each.at:%H:%M}" for name, each in sorted(made.items())))
+
     async with h.step("1.02", "The dev clock is moved to tomorrow, 5:50 am", "The clock reads 5:50 am tomorrow; the day rolled over with nothing posted in the hub", "asked"):
         await h.clock_to(5, 50, day_offset=1)
         h.check(f"{config.now_nz():%H:%M}" == "05:50", f"the clock reads {config.now_nz():%a %H:%M}")
         h.check(not [each for each in await h.recent(h.hub, 5)], "something was posted in the hub before any pill exists")
         h.saw(f"{config.now_nz():%a %d %b %H:%M}")
+
+    async with h.step("1.02b", "Midnight and 3:00 am went by on the way", "The end of the day and the nightly backup each ran once from their schedules, for those local times, and each is booked again for the next day; “💾 Backup saved” is in #selftest-log (the copy is in the run's own folder)", "scheduler stage 1"):
+        day_stamp = f"{config.now_nz():%Y-%m-%d}"
+        for task, kind, at in (("core", "day_rollover", "00:00"), ("core", "nightly_backup", "03:00")):
+            found = await h.runs(task, kind)
+            done = [each for each in found if each[0] == "done" and each[1] == f"{day_stamp}T{at}"]
+            h.check(len(done) == 1, f"{task}/{kind} for {day_stamp} {at}: {found}")
+            h.check(len([each for each in found if each[0] == "pending"]) == 1, f"{task}/{kind} is not booked once for the next day: {found}")
+        h.check(await h.find(h.botlog, "Backup saved") is not None, "no “Backup saved” in #selftest-log")
+        from core import backup
+
+        saved = sorted(path.name for path in backup.BACKUP_DIR.glob("*.db"))
+        h.check(len(saved) == 1, f"the backups in the run's folder: {saved}")
+        h.saw(f"backup {saved[0]}")
 
     await save_new(
         h, "1.03", "add Testa to my pills at 8am, 11am and 2pm, at least 3 hours apart, not after 4pm, with food",
@@ -214,6 +240,21 @@ async def p1(h: Harness) -> None:
         h.check(not shown.v2, "the checklist is drawn the new way with CARDS_V2 off")
         h.memo["sheet_d1"] = shown.id
         h.saw(shown.text.splitlines()[0][:80])
+
+    async with h.step("1.11b", "The run log for the 6:00 am checklist", "One run for today's 6:00 am, done, with its key and a line saying what it decided; tomorrow's 6:00 am booked once", "scheduler stage 1"):
+        day_stamp = f"{config.now_nz():%Y-%m-%d}"
+        found = await h.runs("pills", "checklist")
+        today_ = [each for each in found if each[1] == f"{day_stamp}T06:00"]
+        h.check(len(today_) == 1 and today_[0][0] == "done" and today_[0][3], f"today's run: {today_}")
+        waiting = [each for each in found if each[0] == "pending"]
+        h.check(len(waiting) == 1 and waiting[0][1] > f"{day_stamp}T06:00", f"booked: {waiting}")
+        h.saw(f"{today_[0][2]} · {today_[0][3][:60]}")
+
+    async with h.step("1.11c", "`dev jobs`", "What is booked next (the backup, the end of the day, the checklist) and how the last run of each ended, from the engine's run log", "scheduler stage 1"):
+        await h.say("dev jobs")
+        shown = await h.find(h.inbox, "Pending jobs")
+        h.check(shown is not None and "Last run of each" in shown.text, f"`dev jobs` said: {shown.text[:200] if shown else 'nothing'}")
+        h.check(all(name in shown.text for name in ("core/nightly_backup", "core/day_rollover", "pills/checklist")), f"it lists: {shown.text[:400]}")
 
     async with h.step("1.12", "`pills` typed in #selftest-inbox", "A fresh copy at the bottom of the hub; the old checklist and its messages are gone", "T15, R48"):
         old = h.memo["sheet_d1"]
@@ -394,6 +435,17 @@ async def p2(h: Harness) -> None:
         sheets = await held(h, "checklist")
         h.check(len(sheets) == 1 and sheets[0].message_id == h.memo.get("sheet_d1"), f"the checklist kept is {[each.message_id for each in sheets]}, before the stop {h.memo.get('sheet_d1')}")
         h.check(await h.get(h.hub, sheets[0].message_id) is not None, "it is not in the hub")
+
+    async with h.step("2.04b", "The schedules after the restart", "The same three rows as before the stop (none made again), no run booked twice, and the 6:00 am checklist was not posted a second time", "scheduler stage 1"):
+        made = sorted(f"{each.id}:{each.name}" for each in await h.schedules())
+        h.check(made == h.memo.get("schedules"), f"the schedules are {made}, before the stop {h.memo.get('schedules')}")
+        for task, kind in (("core", "nightly_backup"), ("core", "day_rollover"), ("pills", "checklist")):
+            found = await h.runs(task, kind)
+            keys = [each[2] for each in found]
+            h.check(len(keys) == len(set(keys)), f"{task}/{kind} has a key twice: {keys}")
+            h.check(len([each for each in found if each[0] == "pending"]) == 1, f"{task}/{kind} is booked {len([each for each in found if each[0] == 'pending'])} times")
+        day_stamp = f"{config.now_nz():%Y-%m-%d}"
+        h.check(len([each for each in await h.runs("pills", "checklist") if each[1] == f"{day_stamp}T06:00"]) == 1, "today's 6:00 am checklist has more than one run")
 
     async with h.step("2.05", "A card from before the restart: Save is pressed", "Otherpill is saved: the button still works and applies exactly what the card showed", "T37 (36.2)"):
         await h.press(h.memo["open_card"], "Save", h.inbox)
@@ -720,12 +772,28 @@ async def p4(h: Harness) -> None:
     else:
         h.skip("4.07", "The spend line in #bot-log when the limit is passed", "needs real requests to Claude with money left: run with --claude", "T49, T50 (42.2, 42.3)")
 
+    async with h.step("4.07b", "`dev run backup`", "A handler run by hand, outside its schedule: “▶️ Ran: core.nightly_backup”, a second “Backup saved”, a run of its own in the log, and the night's backup still booked", "scheduler stage 1"):
+        before = await h.count(h.botlog, "Backup saved")
+        await h.say("dev run backup")
+        said = await h.find(h.inbox, "Ran: core.nightly_backup")
+        h.check(said is not None, f"`dev run backup` said: {[each.text[:80] for each in await h.recent(h.inbox, 2)]}")
+        h.check(await h.count(h.botlog, "Backup saved") == before + 1, "no second “Backup saved” in #selftest-log")
+        found = await h.runs("core", "nightly_backup")
+        h.check(any(each[2] and each[2].startswith("manual:core.nightly_backup") and each[0] == "done" for each in found), f"no run of its own in the log: {found[-3:]}")
+        h.check(len([each for each in found if each[0] == "pending"]) == 1, "the night's backup is no longer booked once")
+
     async with h.step("4.08", "`dev clock reset`", "The clock is the real time again, and the standing jobs are booked for the real day", "T57"):
         await h.say("dev clock reset")
         h.check(not clock.is_shifted(), "the clock is still moved")
         jobs = await scheduler.all_pending()
-        late = [job for job in jobs if job.kind in ("day_rollover", "post", "checklist") and job.due_at - clock.now() > timedelta(hours=25)]
+        late = [job for job in jobs if job.kind in ("day_rollover", "nightly_backup", "checklist") and job.due_at - clock.now() > timedelta(hours=25)]
         h.check(not late, f"jobs booked more than a day ahead: {[(job.task, job.kind, job.due_at.isoformat()) for job in late]}")
+        booked = {job.kind for job in jobs if job.schedule_id is not None}
+        h.check({"day_rollover", "nightly_backup", "checklist"} <= booked, f"after the clock went back only these are booked from a schedule: {sorted(booked)}")
+        real_today = f"{config.real_now_nz():%Y-%m-%d}"
+        sheet = next(job for job in jobs if job.kind == "checklist")
+        h.check(sheet.local_at and sheet.local_at[:10] >= real_today and sheet.due_at > clock.now(), f"the checklist is booked for {sheet.local_at}")
+        h.saw(f"checklist booked for {sheet.local_at}")
 
 
 PHASES = {"p1": p1, "p2": p2, "p3": p3, "p4": p4}

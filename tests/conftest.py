@@ -7,7 +7,7 @@ import tests  # noqa: F401  isort: skip
 
 import pytest
 
-from core import backup, clock, database, devmode, live, migrations, users
+from core import backup, clock, database, devmode, live, migrations, scheduler, users
 from tests import watchdog
 
 
@@ -16,7 +16,8 @@ def fails_fast_if_it_hangs(request):
     """A test that runs for more than a minute stops the run, saying which
     test it was and where it was stuck (tests/watchdog.py). A run once hung
     with nothing to say where (2026-10-13)."""
-    timer = watchdog.watch(request.node.nodeid)
+    capture = request.config.pluginmanager.getplugin("capturemanager")
+    timer = watchdog.watch(request.node.nodeid, release=(lambda: capture.suspend_global_capture(in_=True)) if capture is not None else None)
     yield
     timer.cancel()
 
@@ -28,6 +29,15 @@ def no_waiting_between_edits(monkeypatch):
     being rate-limited here, so there is no wait (tests/test_live.py sets
     its own interval to test the holding back)."""
     monkeypatch.setattr(live, "MIN_INTERVAL", 0.0)
+
+
+@pytest.fixture(autouse=True)
+def no_schedules_unless_asked_for(monkeypatch):
+    """The bot's own schedules (the backup, the end of the day, the pills
+    checklist) are registered when their modules load, and the engine makes
+    rows and books runs for them whenever it looks. A test gets none of that
+    unless it asks: it sets `scheduler._standing` to the ones it is about."""
+    monkeypatch.setattr(scheduler, "_standing", {})
 
 
 _migrated: dict[tuple, bytes] = {}  # a migrated, empty database for each set of migrations asked for

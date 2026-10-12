@@ -55,8 +55,6 @@ INTERACTION_GRACE = 2.0
 scheduler.register_handler(backup.JOB_TASK, backup.JOB_KIND, backup.nightly_backup_job, backup.JOB_LABEL)
 scheduler.register_handler(day.JOB_TASK, day.JOB_KIND, day.rollover_job, day.JOB_LABEL)
 tidy.setup()
-# What `dev run <name>` can run (the sweep and summary register theirs when they exist)
-devmode.register_routine("backup", backup.run_nightly_backup)
 
 
 # ---------------------------------------------------------------------------
@@ -170,8 +168,8 @@ async def on_ready():
     if slash_status == "not set up yet":
         slash_status = await setup_slash_commands()
         await registry.startup(client)
-        await backup.schedule_next_backup()
-        await day.schedule_next()
+        # Every schedule's next run (the backup, the end of the day, a task's morning post)
+        await scheduler.book()
         # After the tasks are ready: what was cut off by the stop is put right, the jobs
         # that came due while we were off run now, and all of it is said once in #bot-log
         await restart.catch_up()

@@ -860,6 +860,19 @@ The catch-up card's wording (a job named in words, no "pills/…") is
 checked by the self-test's step 2.01 and by `tests/test_restart.py`:
 there is nothing to do by hand.
 
+## 46. The scheduler, stage 1: nothing should look different (waiting for QA)
+
+On the live bot, over a day. There is nothing new to see; this is the
+check that nothing went missing. The self-test runs the same on the dev
+clock.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Look at the hub the morning after the restart | Today's checklist, posted at 6:00 am, once | K29 |
+| 2 | Look at #bot-log the same morning | "💾 Backup saved" from 3:00 am, once. No "🔁 Caught up" unless the bot really was off | K29 |
+| 3 | Type `dev jobs` | Pending: the nightly backup, the end of the day and the pills checklist, each once, each "for" its local time. Then "Last run of each", with ✅ and a line | J68 |
+| 4 | Look at the bot's status line | "🟢 Live · up … · next: …" naming the next job in words, as before | K29 |
+
 ## When you finish
 
 - Stop the test copy (`Ctrl + C`) and check nothing is left running:

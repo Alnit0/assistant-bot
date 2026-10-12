@@ -53,7 +53,7 @@ def world(make_db, monkeypatch, owner, dev_clock):
     monkeypatch.setattr(llm, "_exchanges", {})
     monkeypatch.setattr(llm, "_answered", {})
     monkeypatch.setattr(scheduler, "_handlers", {})
-    monkeypatch.setattr(scheduler, "_standing", {"core/day_rollover": day.schedule_next})
+    monkeypatch.setattr(scheduler, "_standing", {(day.JOB_TASK, day.JOB_KIND): day.DEFAULT})
     monkeypatch.setattr(day, "_listeners", {})
     monkeypatch.setattr(restart, "_lines", [])
     monkeypatch.setattr(restart, "_catching_up", False)
@@ -62,6 +62,8 @@ def world(make_db, monkeypatch, owner, dev_clock):
     monkeypatch.setattr(actions, "_entries", {})
     actions.set_catalogue(pills_task.entries())
     _set_up()
+    # The 6:00 am post is the checklist tests' business: here a checklist is there only when a test asks for one
+    scheduler._standing.pop(("pills", checklist.JOB), None)
     live.reset()
     seen.request = lambda replied_to=None: Request(owner, INBOX, "said", replied_to=replied_to)
     # Tomorrow, early: the clock only moves forward

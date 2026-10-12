@@ -3,8 +3,11 @@ import tests  # noqa: F401  isort: skip  (first: sets safe test settings before 
 import asyncio
 import unittest
 from datetime import datetime, time, timedelta, timezone
+from types import SimpleNamespace
 
-from core import backup, clock, scheduler
+import pytest
+
+from core import backup, clock, database, scheduler
 from core.config import TIMEZONE
 from tests.helpers import DatabaseTestCase
 
@@ -281,65 +284,89 @@ class DevClockTest(DatabaseTestCase):
         self.assertEqual(await scheduler.run_all_due(), 0)
 
 
-class NightlyBackupTest(DatabaseTestCase):
-    def setUp(self):
-        super().setUp()
-        self.backups = 0
-        self._real_run = backup.run_nightly_backup
+# --- the nightly backup, on its schedule ---------------------------------------------------------------------------
+@pytest.fixture
+def nightly(db, dev_clock, monkeypatch):
+    """The backup's handler and schedule, with the saving itself replaced by a count."""
+    counted = SimpleNamespace(backups=0, result=None)
 
-        async def fake_backup():
-            self.backups += 1
+    async def fake_backup():
+        counted.backups += 1
+        if isinstance(counted.result, Exception):
+            raise counted.result
+        return counted.result
 
-        backup.run_nightly_backup = fake_backup
-        scheduler.register_handler(backup.JOB_TASK, backup.JOB_KIND, backup.nightly_backup_job)
+    async def no_log(*args):
+        pass
 
-    def tearDown(self):
-        backup.run_nightly_backup = self._real_run
-        super().tearDown()
+    monkeypatch.setattr(backup, "run_nightly_backup", fake_backup)
+    monkeypatch.setattr(scheduler, "log_error", no_log)
+    monkeypatch.setattr(scheduler, "_handlers", dict(scheduler._handlers))
+    monkeypatch.setattr(scheduler, "_standing", {(backup.JOB_TASK, backup.JOB_KIND): backup.DEFAULT})
+    scheduler.register_handler(backup.JOB_TASK, backup.JOB_KIND, backup.nightly_backup_job)
+    return counted
 
-    async def test_exactly_one_backup_is_booked_at_3am_nz(self):
-        await backup.schedule_next_backup()
-        await backup.schedule_next_backup()  # a second start must not book a second one
-        jobs = await scheduler.pending_jobs(backup.JOB_TASK, backup.JOB_KIND)
-        self.assertEqual(len(jobs), 1)
-        local = jobs[0].due_at.astimezone(TIMEZONE)
-        self.assertEqual((local.hour, local.minute), (3, 0))
-        self.assertGreater(jobs[0].due_at, scheduler.utc_now())
 
-    async def test_running_the_backup_books_the_next_one(self):
-        await backup.schedule_next_backup()
-        first = (await scheduler.pending_jobs(backup.JOB_TASK))[0]
-        await scheduler.run_due(first.due_at + timedelta(seconds=1))
-        self.assertEqual(self.backups, 1)
-        following = await scheduler.pending_jobs(backup.JOB_TASK)
-        self.assertEqual(len(following), 1)
-        self.assertNotEqual(following[0].id, first.id)
+def _backups():
+    return asyncio.run(scheduler.pending_jobs(backup.JOB_TASK, backup.JOB_KIND))
 
-    async def test_a_backup_missed_while_offline_runs_at_the_next_start(self):
-        await scheduler.add_job(backup.JOB_TASK, backup.JOB_KIND, scheduler.utc_now() - timedelta(hours=9))
-        await scheduler.run_due()
-        self.assertEqual(self.backups, 1)
-        self.assertEqual(self.query("SELECT status, late_by_s > 32000 FROM scheduled_jobs ORDER BY id LIMIT 1"), [("done", 1)])
-        self.assertEqual(len(await scheduler.pending_jobs(backup.JOB_TASK)), 1, "and tomorrow's is booked")
 
-    async def test_a_backup_that_could_not_be_saved_is_recorded_as_failed_and_the_next_is_still_booked(self):
-        async def incomplete():
-            return False  # it said why in #bot-log itself
+def test_exactly_one_backup_is_booked_at_3am_nz(nightly):
+    asyncio.run(scheduler.book())
+    asyncio.run(scheduler.book())  # a second start must not book a second one
+    (job,) = _backups()
+    local = job.due_at.astimezone(TIMEZONE)
+    assert (local.hour, local.minute) == (3, 0) and job.due_at > scheduler.utc_now()
+    assert job.key == f"s{job.schedule_id}@{local:%Y-%m-%dT%H:%M}#1", "one run, one key: the schedule, the local time it stands for, the step"
 
-        backup.run_nightly_backup = incomplete
-        await scheduler.add_job(backup.JOB_TASK, backup.JOB_KIND, scheduler.utc_now() - timedelta(minutes=1))
-        await scheduler.run_due()
-        self.assertEqual(await scheduler.troubled(), [(backup.JOB_TASK, backup.JOB_KIND, scheduler.FAILED)])
-        self.assertEqual(len(await scheduler.pending_jobs(backup.JOB_TASK)), 1)
 
-    async def test_the_next_backup_is_booked_even_if_this_one_fails(self):
-        async def broken():
-            raise OSError("disk full")
+def test_running_the_backup_books_the_next_one(nightly):
+    asyncio.run(scheduler.book())
+    (first,) = _backups()
+    clock.advance_to(first.due_at + timedelta(seconds=1))
+    asyncio.run(scheduler.run_all_due())
+    (following,) = _backups()
+    assert nightly.backups == 1 and following.id != first.id and following.due_at - first.due_at == timedelta(days=1)
 
-        backup.run_nightly_backup = broken
-        await scheduler.add_job(backup.JOB_TASK, backup.JOB_KIND, scheduler.utc_now() - timedelta(seconds=1))
-        await scheduler.run_due()
-        self.assertEqual(self.query("SELECT status FROM scheduled_jobs ORDER BY id"), [("failed",), ("pending",)])
+
+def test_a_backup_missed_while_offline_runs_at_the_next_start(nightly, monkeypatch):
+    asyncio.run(scheduler.book())
+    (first,) = _backups()
+    # Nine hours go by with nothing running: real time, not time the dev clock skipped
+    later = first.due_at + timedelta(hours=9)
+    monkeypatch.setattr(clock, "now", lambda: later)
+    monkeypatch.setattr(clock, "skipped_between", lambda start, end: 0.0)
+    again, late, skipped = asyncio.run(scheduler.catch_up())
+    assert nightly.backups == 1 and [job.id for job in late] == [first.id] and not skipped
+    conn = database.connect()
+    try:
+        assert conn.execute("SELECT status, late_by_s > 32000, note FROM scheduled_jobs WHERE id = ?", (first.id,)).fetchone() == ("done", 1, "saved")
+    finally:
+        conn.close()
+    assert len(_backups()) == 1, "and tomorrow's is booked"
+
+
+def test_a_backup_that_could_not_be_saved_is_recorded_as_failed_and_the_next_is_still_booked(nightly):
+    nightly.result = False  # it said why in #bot-log itself
+    asyncio.run(scheduler.book())
+    (first,) = _backups()
+    clock.advance_to(first.due_at + timedelta(seconds=1))
+    asyncio.run(scheduler.run_all_due())
+    assert asyncio.run(scheduler.troubled()) == [(backup.JOB_TASK, backup.JOB_KIND, scheduler.FAILED)]
+    assert len(_backups()) == 1
+
+
+def test_the_next_backup_is_booked_even_if_this_one_fails(nightly):
+    nightly.result = OSError("disk full")
+    asyncio.run(scheduler.book())
+    (first,) = _backups()
+    clock.advance_to(first.due_at + timedelta(seconds=1))
+    asyncio.run(scheduler.run_all_due())
+    conn = database.connect()
+    try:
+        assert conn.execute("SELECT status FROM scheduled_jobs ORDER BY id").fetchall() == [("failed",), ("pending",)]
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":

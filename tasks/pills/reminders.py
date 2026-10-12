@@ -316,8 +316,15 @@ async def _run(user_id: int) -> tuple[datetime | None, int]:
     return nearest, posted
 
 
+def job_key(due_at: datetime) -> str:
+    """The reminders' one job, as a run with a key: the moment it looks."""
+    return f"{TASK}.{JOB}@{to_db(due_at)}"
+
+
 async def _book(due_at: datetime | None) -> None:
-    """One job for the next moment anything is due; none when nothing is."""
+    """One job for the next moment anything is due; none when nothing is. A
+    one-off of the scheduler's with a key, so the same look is never booked
+    twice. What is done when it runs is still worked out then (`decide`)."""
     pending = await scheduler.pending_jobs(TASK, JOB)
     for extra in pending[1:]:
         await scheduler.cancel_job(extra.id)
@@ -326,9 +333,11 @@ async def _book(due_at: datetime | None) -> None:
             await scheduler.cancel_job(pending[0].id)
     elif pending:
         if pending[0].due_at != due_at:
-            await scheduler.reschedule_job(pending[0].id, due_at)
-    else:
-        await scheduler.add_job(TASK, JOB, due_at)
+            await scheduler.reschedule_job(pending[0].id, due_at, job_key(due_at))
+    elif await scheduler.add_job(TASK, JOB, due_at, key=job_key(due_at)) is None:
+        # A look at this very moment has already run (the clock was moved, or a look ran late and
+        # nothing has changed since). It is still wanted: booked as a look of its own
+        await scheduler.add_job(TASK, JOB, due_at, key=f"{job_key(due_at)}+{to_db(clock.real_now())}")
 
 
 async def run() -> int:

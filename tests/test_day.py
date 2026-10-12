@@ -58,8 +58,9 @@ def test_seconds_left_today():
 # ---------------------------------------------------------------------------
 @pytest.fixture
 def rollover(db, monkeypatch):
-    """A database, the rollover's handler registered, and no listeners but the test's."""
+    """A database, the rollover's handler and schedule registered, and no listeners but the test's."""
     monkeypatch.setattr(day, "_listeners", {})
+    monkeypatch.setattr(scheduler, "_standing", {(day.JOB_TASK, day.JOB_KIND): day.DEFAULT})
     monkeypatch.setattr(scheduler, "_handlers", dict(scheduler._handlers))
     scheduler.register_handler(day.JOB_TASK, day.JOB_KIND, day.rollover_job)
     errors = []
@@ -81,7 +82,7 @@ def test_exactly_one_rollover_is_booked_for_the_end_of_today(rollover):
     assert [job.due_at for job in jobs] == [day.end_of(day.today())]
 
 
-def test_listeners_are_told_which_day_ended_and_the_next_is_booked(rollover):
+def test_listeners_are_told_which_day_ended_and_the_next_is_booked(rollover, dev_clock):
     told = []
 
     async def listener(ended, started):
@@ -90,15 +91,15 @@ def test_listeners_are_told_which_day_ended_and_the_next_is_booked(rollover):
     async def scenario():
         day.on_new_day("test", listener)
         await day.schedule_next()
-        midnight = day.end_of(day.today())
-        ran = await scheduler.run_due(midnight + timedelta(seconds=1))
+        clock.advance_to(day.end_of(day.today()) + timedelta(seconds=1))
+        ran = await scheduler.run_all_due()
         return ran, await scheduler.pending_jobs(day.JOB_TASK, day.JOB_KIND)
 
     today = day.today()
     ran, following = asyncio.run(scenario())
     assert ran == 1
-    assert told == [(today, today)], "the clock itself has not moved in this test, only the scheduler's look"
-    assert len(following) == 1, "the next one is booked"
+    assert told == [(today, today + timedelta(days=1))]
+    assert [job.due_at for job in following] == [day.end_of(today + timedelta(days=1))], "the engine books the next one from the schedule"
 
 
 def test_after_days_away_the_listener_gets_the_gap(rollover, dev_clock):
@@ -120,7 +121,7 @@ def test_after_days_away_the_listener_gets_the_gap(rollover, dev_clock):
     assert [job.due_at for job in following] == [day.end_of(began + timedelta(days=3))]
 
 
-def test_one_listener_failing_does_not_stop_the_others_or_the_next_booking(rollover):
+def test_one_listener_failing_does_not_stop_the_others_or_the_next_booking(rollover, dev_clock):
     told = []
 
     async def broken(ended, started):
@@ -133,7 +134,8 @@ def test_one_listener_failing_does_not_stop_the_others_or_the_next_booking(rollo
         day.on_new_day("broken", broken)
         day.on_new_day("fine", fine)
         await day.schedule_next()
-        await scheduler.run_due(day.end_of(day.today()) + timedelta(seconds=1))
+        clock.advance_to(day.end_of(day.today()) + timedelta(seconds=1))
+        await scheduler.run_all_due()
         return await scheduler.pending_jobs(day.JOB_TASK, day.JOB_KIND)
 
     following = asyncio.run(scenario())

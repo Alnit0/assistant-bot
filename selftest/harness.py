@@ -64,12 +64,12 @@ class Harness:
         self.user = await get_user_by_discord_id(owner_id)
         self._call_tool = llm.call_tool
         llm.call_tool = self._call_tool_or_canned
-        # The nightly backup is not part of this: moving the clock past 3:00 am would take a
-        # backup of the test's database and push one of the dev database's own out of its folder
+        # The nightly backup runs for real when the clock passes 3:00 am, into the run's own
+        # folder: never into the dev database's backups, where it would push one of them out
         from core import backup
 
-        for job in await scheduler.pending_jobs(backup.JOB_TASK, backup.JOB_KIND):
-            await scheduler.cancel_job(job.id)
+        backup.BACKUP_DIR = self.out.parent / "backups"
+        backup.BACKUP_DIR.mkdir(parents=True, exist_ok=True)
 
     async def _call_tool_or_canned(self, system, user, tools, *, choice, purpose, task="", max_tokens=600):
         if self.cut_here:
@@ -261,6 +261,21 @@ class Harness:
         found = await occurrences.for_day(self.user.id, "pills", day)
         names = {pill.id: pill.plan.name for pill in await database.run(store.db_all_pills)}
         return {(names.get(each.item_id, "?"), each.seq): each.state for each in found}
+
+    async def schedules(self) -> list:
+        """Every schedule as the engine keeps it (core/timetable.py)."""
+        from core import timetable
+
+        return await database.run(timetable.db_all, True)
+
+    async def runs(self, task: str, kind: str) -> list[tuple]:
+        """The run log for one kind of job, oldest first: (status, the local time it stands for, its key, its note)."""
+        def read(conn):
+            return conn.execute(
+                "SELECT status, local_at, run_key, note FROM scheduled_jobs WHERE skill = ? AND kind = ? ORDER BY id", (task, kind)
+            ).fetchall()
+
+        return await database.run(read)
 
     async def pills(self) -> dict[str, object]:
         from tasks.pills import store
