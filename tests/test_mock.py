@@ -214,9 +214,9 @@ def test_dev_mock_is_a_typed_word_of_the_dev_task():
 
 
 def test_every_sketch_in_the_repository_reads_and_fits_a_message():
-    # The reminder mock-ups among them (reminder-v1, reminder-renudge, reminder-missed, too-soon)
+    # The reminder mock-ups among them
     found = mock.names()
-    assert {"checklist-v2", "reminder-v1", "reminder-renudge", "reminder-missed", "too-soon"} <= set(found)
+    assert {"checklist-v2", "reminder-v1", "reminder-renudge-v2", "reminder-missed-v2", "too-soon-v2"} <= set(found)
     for name in found:
         pieces = mock.parse(mock.read(name))
         assert 0 < mock.count(pieces) <= mock.MAX_COMPONENTS, name
@@ -224,23 +224,26 @@ def test_every_sketch_in_the_repository_reads_and_fits_a_message():
 
 def test_no_reminder_sketch_names_a_pill_in_the_line_the_lock_screen_shows():
     # A notification shows the first line of the message: it says a routine is due, and when
-    for name in ("reminder-v1", "reminder-v1-first", "reminder-renudge"):
+    for name in ("reminder-v1", "reminder-v1-first", "reminder-renudge-v2"):
         first = mock.read(name).splitlines()[0]
         assert first.startswith("💊 Routine due · ") and "Pill" not in first, name
 
 
 def test_the_gym_sketches_are_there_and_the_plan_cards_follow_the_card_rules():
-    assert {"gym-import", "gym-change", "gym-workout-v1", "gym-logged-set"} <= set(mock.names())
-    assert "## 🏋️ Gym · new" in mock.read("gym-import") and "## 🏋️ Gym · change" in mock.read("gym-change")
+    assert {"gym-import-v2", "gym-change-v2", "gym-workout-v1", "gym-logged-set-v2"} <= set(mock.names())
+    assert "## 🏋️ Gym · new" in mock.read("gym-import-v2") and "## 🏋️ Gym · change" in mock.read("gym-change-v2")
     # A change is `field · old → new`; what is not used is named; Save is green and Cancel the one grey button
-    change = mock.read("gym-change")
-    assert "weight · 60 kg → 62.5 kg" in change and "Not used:" in change and "Not used:" in mock.read("gym-import")
-    for name in ("gym-import", "gym-change"):
+    change = mock.read("gym-change-v2")
+    assert "weight · 60 kg → 62.5 kg" in change and "Not used:" in change and "Not used:" in mock.read("gym-import-v2")
+    for name in ("gym-import-v2", "gym-change-v2"):
         assert "[✅ Save: green] [↩️ Cancel: grey]" in mock.read(name), name
 
 
 # --- the Components V2 design pass (docs/DESIGN.md) ---------------------------------------------------
-DESIGNED = ("checklist-v2", "reminder-v1", "reminder-v1-first", "confirm-card-v2", "question-card-v1", "reset-card-v2", "gym-workout-v1")
+DESIGNED = (
+    "checklist-v2", "reminder-v1", "reminder-v1-first", "confirm-card-v2", "question-card-v1", "reset-card-v2", "gym-workout-v1",
+    "too-soon-v2", "reminder-renudge-v2", "reminder-missed-v2", "gym-import-v2", "gym-change-v2", "gym-logged-set-v2",
+)
 
 
 @pytest.mark.parametrize("name", DESIGNED)
@@ -270,10 +273,15 @@ def test_the_designed_cards_keep_the_card_rules():
     assert all(f"accent: {colour}" in checklist for colour in ("amber", "blue", "green", "red", "grey"))
     assert "┃ accent: blue\n┃ **Pill B** · ○ · any time" in checklist.replace("\r\n", "\n")
     # A card that asks first because something is risky is amber, and its ⚠️ line says why
-    assert mock.read("too-soon").startswith("┃ accent: amber") and "⚠️" in mock.read("too-soon")
+    risky = mock.read("too-soon-v2")
+    assert risky.startswith("┃ accent: amber") and "⚠️" in risky and "[✅ Log it: green] [↩️ Cancel: grey]" in risky
+    # Asked again is still due (amber); snoozed is grey; a missed dose is red
+    assert "accent: amber" in mock.read("reminder-renudge-v2") and "accent: grey" in mock.read("reminder-renudge-v2")
+    assert "accent: red" in mock.read("reminder-missed-v2")
     design = (mock.MOCKUPS_DIR.parent / "DESIGN.md").read_text(encoding="utf-8")
     assert all(f"`{name}`" in design for name in DESIGNED)
 
 
-def test_a_sketch_that_has_an_approved_new_version_is_gone():
-    assert not {"checklist", "confirm-card", "reset-card", "reminder", "gym-today"} & set(mock.names())
+def test_every_sketch_carries_its_version_in_its_name_and_the_ones_replaced_are_gone():
+    assert set(mock.names()) == set(DESIGNED)
+    assert all(name.removesuffix("-first").rpartition("-v")[2].isdigit() for name in mock.names())

@@ -498,9 +498,9 @@ go to `data/dev-backups/`, so they never push a real backup out.
 How a card looks is `docs/DESIGN.md`: one style for every task
 (headings, small text, a box an item with an accent colour for its
 status, separators, the button colours), written for Components V2. Its
-colours and sketches are approved (2026-10-12): the sketches in
-`docs/mockups/` are posted with `dev mock`, and nothing real is drawn
-that way yet.
+colours are not final until they are checked on the phone (block 39 of
+`docs/QA-RUN.md`): the sketches in `docs/mockups/` are posted with
+`dev mock`, and nothing real is drawn that way yet.
 
 ## Scaling notes
 

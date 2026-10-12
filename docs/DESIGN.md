@@ -7,11 +7,12 @@ buttons in one message). `docs/CONVERSATION.md` says what a card must
 say and when; this file says how that is drawn, and where the two
 touch, the standard wins.
 
-**Status (2026-10-12):** the colours and the sketches are approved
-(Alex, 2026-10-12); the lock screen waits for a check on the phone.
-Nothing real is drawn this way yet: the sketches in `docs/mockups/` are
-posted with `dev mock <name>`, and the bot's own cards are still plain
-messages until each is converted.
+**Status (2026-10-12): waiting for the check on the phone (block 39 of
+`docs/QA-RUN.md`).** The colours below are the ones chosen so far and
+are not final until Alex has looked at them on the phone; the lock
+screen waits for the same check. Nothing real is drawn this way yet:
+the sketches in `docs/mockups/` are posted with `dev mock <name>`, and
+the bot's own cards are still plain messages until each is converted.
 
 ## The pieces
 
@@ -56,7 +57,8 @@ do has no buttons.
 
 ## Accent colours
 
-A box's colour is its status, the same in every task.
+A box's colour is its status, the same in every task. Not final:
+waiting for the check on the phone (block 39).
 
 | Status | Accent | Means |
 |---|---|---|
@@ -119,15 +121,16 @@ button counts) and 4,000 characters; a row takes 5 buttons. So:
 |---|---|
 | `checklist-v2` | Today's checklist: due, any time, taken, missed, skipped by the bot, paused |
 | `reminder-v1`, `reminder-v1-first` | A reminder as it reads, and as it is first posted (the line the phone shows) |
+| `reminder-renudge-v2` | A reminder asked again, and the same one while snoozed |
+| `reminder-missed-v2` | A pill on the checklist with a missed dose |
+| `too-soon-v2` | The amber card: it asks first because something is risky |
 | `confirm-card-v2` | A change to two things, with ❓ guesses, old → new and a part not included |
 | `question-card-v1` | A card that asks, with an answer a button and no Save |
 | `reset-card-v2` | A destructive card |
 | `gym-workout-v1` | A workout: done, current, to come |
+| `gym-import-v2`, `gym-change-v2` | A plan as read from a file, and a change to it |
+| `gym-logged-set-v2` | The line said after a set, and that exercise's box |
 
 A new version of a sketch gets the next number in its name; the old one
 stays until the new one is approved, and is then removed. Each ends
 with a small 🧪 line saying its version and what was simplified to fit.
-
-Six earlier sketches have no new version yet and are kept as they are:
-`too-soon` (the amber card that asks first), `reminder-renudge`,
-`reminder-missed`, `gym-import`, `gym-change` and `gym-logged-set`.

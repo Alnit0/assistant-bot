@@ -42,8 +42,9 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 - `docs/DEVELOPMENT.md`: how to use and extend the bot, task by task
 - `docs/DECISIONS.md`: read before changing architecture
 - `docs/DESIGN.md`: how a card looks (headings, small text, accent
-  colours by status, separators, buttons). Approved, and a design for
-  now: nothing real is drawn that way until it is converted
+  colours by status, separators, buttons). A design for now, its
+  colours waiting for a check on the phone: nothing real is drawn that
+  way until it is converted
 - `docs/TESTING.md` (test tracker) and `docs/QA-RUN.md` (manual run sheet)
 - `docs/specs/` holds the task specs and is private (gitignored; the
   nightly backup is its other copy). Read them, but never commit them,

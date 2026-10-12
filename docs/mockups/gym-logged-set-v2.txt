@@ -9,3 +9,4 @@
 ┃ [✅ Set done: green] [✏️ Different…: blurple] [⏭️ Skip exercise: blurple]
 
 -# reply to the line to correct that set · “no, that was 7”
+-# 🧪 gym logged set v2 · the line said after a set, and that exercise's box as it then stands in the workout. Nothing simplified

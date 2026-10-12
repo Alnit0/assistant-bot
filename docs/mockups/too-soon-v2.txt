@@ -1,0 +1,11 @@
+┃ accent: amber
+┃ ## 💊 Pills · change
+┃ ---
+┃ **Pill A** (dose 2 of 3) · taken `10:12 am`
+┃ ---
+┃ ⚠️ That's 2h after dose 1, taken 8:12 am. The gap is at least 3h.
+┃ **Log it anyway?**
+┃ [✅ Log it: green] [↩️ Cancel: grey]
+
+-# reply to this card to change the time
+-# 🧪 too soon v2 · the amber card: it asks first because something is risky, and the ⚠️ line says why. Nothing simplified

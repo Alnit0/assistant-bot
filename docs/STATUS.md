@@ -7,12 +7,13 @@ session; the end-of-task checklist updates it at the end of every task.
 
 ## Questions for Alex
 
-- **The design's other sketches:** I removed the five with an
-  approved new version (`checklist`, `confirm-card`, `reset-card`,
-  `reminder`, `gym-today`). Six have no new version and are kept:
-  `too-soon`, `reminder-renudge`, `reminder-missed`, `gym-import`,
-  `gym-change`, `gym-logged-set`. Say if they should go too, or be
-  redrawn in the new style.
+- **The design's colours** are not final until you have looked at
+  them on your phone (block 39, step 6). `docs/DESIGN.md` is marked as
+  waiting for that.
+- **A pill with a missed dose and another still to come**
+  (`reminder-missed-v2`) is drawn red, as the first sketch had it. By
+  the guide it could be amber instead (there is a next dose with a
+  time). Say which.
 - **The lock screen** (waits for your phone; block 39, step 2, the
   same as block 33, step 1): the sketches put
   "💊 Routine due · 11:12 am" as the message's first line. If your
@@ -27,7 +28,9 @@ session; the end-of-task checklist updates it at the end of every task.
 Answered on 2026-10-12, the design pass: any time and still to take is
 blue; a card that asks first because something is risky is amber;
 confirm and question cards blurple, destructive ones red;
-`reminder-v1-first` stays; the old sketches go.
+`reminder-v1-first` stays; the old sketches go, and the six with no
+new version are redrawn as v2 (done). None of the colours is final
+until the check on the phone.
 
 Answered on 2026-10-12, reminders and questions on the card: kept as
 built, with three changes made (reminders stay a plain message and are
@@ -199,8 +202,8 @@ the spec is approved.
 2. QA of the background batch: blocks 27 to 39 (`docs/QA-RUN.md`), and
    the questions at the top of this file.
 3. The Components V2 design: the style guide (`docs/DESIGN.md`) and
-   its sketches (block 39) are approved, bar the lock-screen check on
-   your phone. Nothing real is converted yet: the checklist's redesign
+   its thirteen sketches (blocks 33, 35 and 39) wait for the check
+   on your phone: the colours and the lock screen. Nothing real is converted yet: the checklist's redesign
    is the first, and the reminders with it.
 4. Pills reminders: QA with block 38, then switch them on live
    (`REMINDERS_ENABLED=true`, restart). Then corrections and

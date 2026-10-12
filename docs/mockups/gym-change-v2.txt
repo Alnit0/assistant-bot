@@ -1,5 +1,7 @@
 ┃ accent: blurple
 ┃ ## 🏋️ Gym · change
+┃ -# 2 workouts
+┃ ---
 ┃ **Push**
 ┃ Bench press · weight · 60 kg → 62.5 kg
 ┃ Overhead press · sets · 3 → 4
@@ -12,6 +14,8 @@
 ┃ -# Pull: no change
 ┃ -# Not used: “Tempo”, “Link”
 ┃ -# What you have logged stays as it is. The new plan starts with your next workout
+┃ ---
 ┃ [✅ Save: green] [↩️ Cancel: grey]
 
 -# reply to this card to change which column is which
+-# 🧪 gym change v2 · simplified to fit: one box for the whole card, only what differs, a separator between workouts

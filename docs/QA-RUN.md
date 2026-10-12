@@ -639,8 +639,8 @@ Nothing here is built yet.
 | # | Do | Expect | Tests |
 |---|---|---|---|
 | 1 | Lock your phone and type `dev mock reminder-v1-first` from the desktop; then `dev mock reminder-v1` (the same as block 39, step 2: do it once) | The lock screen says "💊 Routine due · 11:12 am" and never the pill's name. The second message: the pill and dose, when it is due and why, the note, and Taken, Taken at…, Snooze 15m, Skip | J55 |
-| 2 | Type `dev mock reminder-renudge` | Two cards: a re-nudge ("Reminder 2 of 3", when it was first asked and when the last one comes), and the same prompt while snoozed ("Snoozed until 11:27 am") | J55 |
-| 3 | Type `dev mock reminder-missed`, then `dev mock too-soon` | A checklist group with dose 2 marked ❌ missed and when it was due; then a card that says the dose is too soon after the last, with **Log it** and **Cancel** | J55 |
+| 2 | Type `dev mock reminder-renudge-v2` | Two cards: a re-nudge ("Reminder 2 of 3", when it was first asked and when the last one comes), and the same prompt while snoozed ("Snoozed until 11:27 am") | J55 |
+| 3 | Type `dev mock reminder-missed-v2`, then `dev mock too-soon-v2` | A red box on the checklist with dose 2 marked ❌ missed and when it was due; then an amber card that says the dose is too soon after the last and asks "Log it anyway?", with **Log it** and **Cancel** | J55 |
 
 Say what to change in any of them (wording, order, colours, buttons).
 
@@ -668,10 +668,10 @@ say they are mock-ups, and nothing of gym is built. The spec is
 
 | # | Do | Expect | Tests |
 |---|---|---|---|
-| 1 | Type `dev mock gym-import` | A card "🏋️ Gym · new": three workouts with their exercises a line each, which column was read as what (one marked ❓), the columns not used, **Save** and **Cancel** | J56 |
-| 2 | Type `dev mock gym-change` | A card "🏋️ Gym · change": only what differs, as `field · old → new`, ➕ for a new exercise and ➖ for one gone | J56 |
+| 1 | Type `dev mock gym-import-v2` | A card "🏋️ Gym · new": three workouts with their exercises a line each, which column was read as what (one marked ❓), the columns not used, **Save** and **Cancel** | J56 |
+| 2 | Type `dev mock gym-change-v2` | A card "🏋️ Gym · change": only what differs, as `field · old → new`, ➕ for a new exercise and ➖ for one gone | J56 |
 | 3 | Type `dev mock gym-workout-v1` | Today's workout: a group an exercise with its sets as dots, the plan, what is logged, last time's sets, and the buttons on the exercise you are on | J56 |
-| 4 | Type `dev mock gym-logged-set` | The line said after a set is logged, and that exercise's group as it then stands | J56 |
+| 4 | Type `dev mock gym-logged-set-v2` | The line said after a set is logged, and that exercise's group as it then stands | J56 |
 
 Say what to change in any of them, and answer the gym questions in
 `docs/STATUS.md` (or in the spec, section 16).
@@ -754,10 +754,13 @@ buttons only say they are mock-ups. The style guide is `docs/DESIGN.md`.
 | 3 | Type `dev mock confirm-card-v2`, then `dev mock question-card-v1` | A blurple box: two pills with `field · old → new`, ❓ on the guesses, Save and Cancel. Then a card that asks, with **8:00 am**, **8:00 pm** and **Cancel**, and no Save | J57 |
 | 4 | Type `dev mock reset-card-v2`, then `dev mock gym-workout-v1` | A red box for the reset. Then a workout: green (done), amber (the exercise you are on, with its buttons), grey (to come), and Finish | J57 |
 
-The colours were approved on 2026-10-12 (any time and still to take is
-blue; a card that asks first because something is risky is amber, as
-`dev mock too-soon` shows) and the sketches these replace are gone. Say
-what to change in any of them, or in the style guide.
+| 5 | Type `dev mock too-soon-v2` | An amber box: "💊 Pills · change", the dose and its time, a ⚠️ line saying why, "**Log it anyway?**", **Log it** and **Cancel** | J57 |
+| 6 | Look at the colours on your phone, in each theme you use: amber, blue, green, red, grey and blurple | Each can be told from the others, and each status still has its mark and its words. Say which, if any, to change | J57 |
+
+The colours chosen so far (any time and still to take is blue; a card
+that asks first because something is risky is amber) are not final
+until step 6 is done. The other redrawn sketches are in blocks 33 and
+35. Say what to change in any of them, or in the style guide.
 
 ## When you finish
 

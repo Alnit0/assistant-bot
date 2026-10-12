@@ -7,3 +7,5 @@
 ┃ ✅ 8:12 am
 ┃ ❌ dose 2 · missed · was due 11:12 am
 ┃ **Next:** dose 3 · 3:00 pm
+
+-# 🧪 reminder missed v2 · simplified to fit: only the pill with the missed dose is shown, and no buttons, since dose 3 is not yet due

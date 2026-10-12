@@ -7,8 +7,13 @@
 ┃ -# ⏰ Reminder 2 of 3 · first asked 11:12 am · one more at 11:57 am
 ┃ [✅ Taken: green] [🕐 Taken at…: blurple] [⏰ Snooze 15m: blurple] [⏭️ Skip: blurple]
 
+---
+
 ┃ accent: grey
 ┃ **Pill A** · dose 2 of 3
-┃ Due `11:12 am` · *with food*
+┃ Due `11:12 am` · 3h after dose 1 at 8:12 am
+┃ -# with food
 ┃ -# 💤 Snoozed until 11:27 am
 ┃ [✅ Taken: green] [🕐 Taken at…: blurple] [⏰ Snooze 15m: blurple] [⏭️ Skip: blurple]
+
+-# 🧪 reminder re-nudge v2 · simplified to fit: two states of one reminder in one sketch, the re-nudge (amber) and the same reminder while snoozed (grey). A real reminder is one box under its line
