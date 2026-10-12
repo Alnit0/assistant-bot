@@ -15,6 +15,11 @@ NAMES = [entry.name for entry in ENTRIES]
 SHOPPING = demo.SHOPPING
 
 
+def told_to(*given, **how):
+    """Extraction's instructions as one text: the cached part, then what depends on how the message came."""
+    return "\n".join(block["text"] for block in extraction.system_blocks(*given, **how))
+
+
 def _every_entry():
     """The demo tasks and the real ones: every fixture file is replayed."""
     from tasks import registry
@@ -86,7 +91,7 @@ def test_a_report_of_something_done_is_marked_whatever_else_the_router_says():
 
 
 def test_straight_after_the_tasks_own_answer_extraction_is_told_so_and_may_say_not_this():
-    told = extraction.system_blocks(SHOPPING, after_answer=True)[0]["text"]
+    told = told_to(SHOPPING, after_answer=True)
     assert "has just answered the user" in told and "`not_this`" in told and "has just been shown this task's list" not in told
     assert "not_this" in [tool["name"] for tool in extraction.tools(SHOPPING, True)]
 
@@ -170,15 +175,38 @@ def test_extraction_is_given_one_tasks_actions_and_a_way_to_say_none():
     assert "demo_pack_change" not in str(tools), "never another task's"
 
 
+def test_what_is_the_same_for_every_request_to_a_task_comes_first_and_is_the_cached_part():
+    # Tools, then the instructions: the cache holds everything up to a mark, so what changes with
+    # how the message came (a follow-up's extra rules, `not_this`) comes after the marks
+    plain, follow_up = extraction.tools(SHOPPING), extraction.tools(SHOPPING, follow_up=True)
+    assert follow_up[: len(plain)] == plain, "a follow-up reads the same cached tools"
+    assert [tool["name"] for tool in follow_up if "cache_control" in tool] == ["none"]
+    assert "cache_control" not in follow_up[-1]
+    base = extraction.system_blocks(SHOPPING)
+    assert len(base) == 1 and base[0]["cache_control"] == llm.CACHED
+    for how in ({"follow_up": True}, {"after_list": True}, {"after_answer": True}, {"replied": True}):
+        first, extra = extraction.system_blocks(SHOPPING, **how)
+        assert first == base[0], f"the cached block is the same {how}"
+        assert "cache_control" not in extra and extra["text"].startswith("- ")
+
+
+def test_guessed_and_not_included_are_explained_once_in_the_instructions_and_only_named_in_each_tool():
+    told = told_to(SHOPPING)
+    assert "`times[0]`, `items[2].quantity`" in told and "never one cut off mid-phrase" in told and "is NOT a guess" in told
+    for tool in extraction.tools(SHOPPING)[:-1]:
+        properties = tool["input_schema"]["properties"]
+        assert len(properties["guessed"]["description"]) < 200 and len(properties["not_included"]["description"]) < 200
+
+
 def test_extraction_is_told_to_guess_and_flag_never_to_ask_and_to_write_nothing():
-    text = extraction.system_blocks(SHOPPING)[0]["text"]
+    text = told_to(SHOPPING)
     assert "Never ask a question" in text and "best guess" in text and "`guessed`" in text
     assert "Write no text" in text
     assert "takes ALL of them" in text and "Never keep only the first" in text, "several things in one request"
     assert "Nothing may be dropped" in text and "`not_included`" in text
     assert "is NOT a guess" in text and "Never list a default" in text, "a default is not flagged"
     assert "A card is open" not in text
-    follow_up = extraction.system_blocks(SHOPPING, follow_up=True)[0]["text"]
+    follow_up = told_to(SHOPPING, follow_up=True)
     assert "A card is open" in follow_up and "`not_this`" in follow_up
     assert "return ONLY the changes THIS message makes" in follow_up and "Do no sums" in follow_up
     assert "They are KEPT by the bot's code: they are not yours to send back" in follow_up
@@ -186,7 +214,7 @@ def test_extraction_is_told_to_guess_and_flag_never_to_ask_and_to_write_nothing(
     assert "goes back as it stands on the card" in follow_up, "every field that is not a list of items"
     assert "do NOT work out which thing is meant: put `@that` where its name or id would go" in text, "pronouns are the code's"
     assert "is copied exactly and is never a guess" in text and "it never overrides what they said" in text, "what is stated wins"
-    after_list = extraction.system_blocks(SHOPPING, after_list=True)[0]["text"]
+    after_list = told_to(SHOPPING, after_list=True)
     assert "has just been shown this task's list" in after_list and "`not_this`" in after_list and "A card is open" not in after_list
     assert extraction.system_blocks(SHOPPING)[0]["cache_control"] == llm.CACHED
 
@@ -468,7 +496,7 @@ def test_the_router_is_told_my_data_belongs_to_its_task_and_can_be_asked_to_look
 
 
 def test_a_reply_to_a_tasks_own_message_is_read_by_that_task_and_may_be_handed_back():
-    told = extraction.system_blocks(SHOPPING, replied=True)[0]["text"]
+    told = told_to(SHOPPING, replied=True)
     assert "as a Discord reply to one of this task's own messages" in told and "`@that`" in told and "`not_this`" in told
-    assert "as a Discord reply" not in extraction.system_blocks(SHOPPING)[0]["text"]
+    assert "as a Discord reply" not in told_to(SHOPPING)
     assert any(fixture.replied for fixture in EXTRACTIONS), "a reply to a task's own message has a fixture"

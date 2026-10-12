@@ -43,10 +43,10 @@ Last updated: 2026-10-13
 | P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
 | Q | Time, days, the schedule model, the occurrence log and cards | 17 | 15 | 2 | 2 | 15 | 0 | 0 |
 | R | Pills | 68 | 17 | 51 | 43 | 25 | 0 | 0 |
-| S | Routing and confirm cards | 65 | 15 | 50 | 15 | 49 | 0 | 1 |
+| S | Routing and confirm cards | 66 | 16 | 50 | 15 | 50 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 4 | 18 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **460** | **149** | **311** | **241** | **218** | **0** | **1** |
+| | **Total** | **461** | **150** | **311** | **241** | **219** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -588,6 +588,7 @@ the dev database (`python main.py --dev`), in #inbox.
 | S63 | 🤖 Auto | A decimal number in the contract (`actions.NUMBER`) | The schema says number; 62.5 stays 62.5, 60.0 is 60, `62,5` as text is read in code; a yes/no, words, a unit, not-a-number and infinity are refused; the same inside an item | ✅ Pass | 2026-10-13 | `tests/test_names.py` |
 | S64 | 🤖 Auto | Files sent with a message | A request carries them (name, size, kind, a way to fetch the bytes) and none by default; the context hands them over as plain records; the router is told the names only, and nothing when there is none | ✅ Pass | 2026-10-13 | `tests/test_names.py` |
 | S65 | 🤖 Auto | The confirm card, the question card and the card that asks first, drawn | The same words as the plain card, in one box: blurple for a decision (a separator between things, the warning above the buttons, the hint under the box); the question in bold with an answer a button and no Save; amber when it asks first because something is risky (pills' too soon and too late); red only for what can't be undone. A card of many things stays within the limits | ✅ Pass | 2026-10-13 | `tests/test_design.py` |
+| S66 | 🤖 Auto | What is cached and what every schema repeats | For a task's extraction the tools are marked for caching at `none` (so a follow-up, with `not_this` after it, reads the same cached tools) and the instructions are two blocks: the task's rules, marked, the same however the message came, then the lines that depend on that, unmarked. `guessed` and `not_included` are explained once in the instructions and only named in each schema | ✅ Pass | 2026-10-13 | `tests/test_routing.py`. Measured in `docs/COSTS.md`; live check 2026-10-13: pills 60 of 61, timers 36 of 37 |
 
 ## T. Tasks in plain words
 

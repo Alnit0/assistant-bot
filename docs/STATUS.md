@@ -7,6 +7,17 @@ session; the end-of-task checklist updates it at the end of every task.
 
 ## Questions for Alex
 
+- **Costs** (`docs/COSTS.md`, section 7):
+  - Skip the router when a message names exactly one of my pills (or
+    timers)? Saves US$0.0026 a message and about a second.
+  - Reword the router's rules to shorten them? It needs a full live
+    eval (about US$0.30 to US$0.50), so it was not done tonight.
+  - The router and chat are too short to be cached on Haiku 4.5 (it
+    needs 4,096 tokens). A model with a lower minimum would cache
+    them: say if you want that looked into.
+  - The timers live check gave 36 of 37 ("pause it" came back with the
+    timer's id rather than `@that`; the code's own check puts that
+    right). There was no earlier timers run to compare with.
 - **Streaks** (the logic is built, nothing is shown), what I chose:
   - A streak is counted in **days**: a day adds one when something was
     taken and nothing was missed. The number of doses taken in those

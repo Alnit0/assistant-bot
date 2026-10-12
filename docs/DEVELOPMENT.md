@@ -1008,6 +1008,13 @@ no slash commands. `help dev` lists the words.
     6pm?": say which.
   - Times Discord renders itself (a timer's "ends in…") go by the real
     time and will look wrong after a move.
+- **What the requests to Claude cost, and why**, is `docs/COSTS.md`:
+  each kind of request measured, which prompts are long enough to be
+  cached (Haiku 4.5 needs 4,096 tokens: only pills and timers
+  extraction are), and what each is sent. When adding to a prompt, put
+  what is the same for every request first, in a block marked
+  `llm.CACHED`, and what changes after it. A rule that applies to every
+  action is said once in extraction's `rules`, not in each schema.
 - **`dev cost`** adds up the database the bot is running on (the live one
   for real figures; the dev one has its own). Every logged message has a
   route: `shortcut` (a typed word), `button`, `reaction`, or one that

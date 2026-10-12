@@ -71,14 +71,16 @@ def rules(entry: Entry) -> str:
         "list of items takes ALL of them, each as its own item, in the order they were said. Never keep "
         "only the first.\n"
         f"- Nothing may be dropped. Anything the user asked of THIS task that you cannot put into the action "
-        f"goes in `{actions.NOT_INCLUDED}`, word for word, and the user is told. Leave it empty when "
-        "everything is covered. A part of the message that is plainly for something else is not yours to "
-        "report when you are told it is being handled elsewhere.\n"
+        f"goes in `{actions.NOT_INCLUDED}`, word for word, and the user is told, so nothing is dropped "
+        "unseen. Each is a whole part (a whole request, or the whole phrase), never one cut off mid-phrase. "
+        "Leave it empty when everything is covered. A part of the message that is plainly for something "
+        "else is not yours to report when you are told it is being handled elsewhere.\n"
         "- Never ask a question and never leave a detail out because it is unclear: give your best guess, "
-        f"and name what you guessed in `{actions.GUESSED}`. The user is shown each guess marked for them to "
+        f"and name what you guessed in `{actions.GUESSED}`: each by its field, with its place in a list "
+        "where it has one (`times[0]`, `items[2].quantity`). The user is shown each guess marked for them to "
         "accept or correct, so a marked guess is always better than nothing.\n"
         "- A guess is a value you chose between readings: a time that could be morning or evening, a "
-        "vague amount (\"a few\"), something implied but not said. A field the user simply didn't mention "
+        "vague amount (\"a few\"), a kind of schedule that wasn't stated, something implied but not said. A field the user simply didn't mention "
         "is NOT a guess: leave it out and its default applies (no amount means one). Never list a default, "
         "and never list a field the user stated outright.\n"
         "- Copy names and wording as the user gave them. Follow each field's description for its form.\n"
@@ -150,23 +152,30 @@ REPLY_RULES = (
 def system_blocks(
     entry: Entry, follow_up: bool = False, after_list: bool = False, after_answer: bool = False, replied: bool = False
 ) -> list[dict]:
-    """The instructions for this task: fixed text, marked for caching."""
-    text = (
-        rules(entry) + (FOLLOW_UP_RULES if follow_up else "") + (AFTER_LIST_RULES if after_list else "")
+    """The instructions for this task. What is the same for every request to
+    this task comes first and is marked for caching; what depends on how the
+    message came (a follow-up, after a list, after an answer, a reply) is a
+    block of its own after it, so every kind of request shares the cached part."""
+    extra = (
+        (FOLLOW_UP_RULES if follow_up else "") + (AFTER_LIST_RULES if after_list else "")
         + (AFTER_ANSWER_RULES if after_answer else "") + (REPLY_RULES if replied else "")
     )
-    return [{"type": "text", "text": text, "cache_control": llm.CACHED}]
+    blocks = [{"type": "text", "text": rules(entry), "cache_control": llm.CACHED}]
+    if extra:
+        # It carries on the list of rules above: the two blocks read as one text
+        blocks.append({"type": "text", "text": extra.lstrip("\n")})
+    return blocks
 
 
 def tools(entry: Entry, follow_up: bool = False, strict: bool | None = None) -> list[dict]:
     """The task's actions as tools, and the ways of saying none of them fits."""
     strict = STRICT_SCHEMAS if strict is None else strict
     found = [actions.tool(action, strict) for action in entry.actions]
-    found.append(actions.NONE_TOOL)
+    # Cache everything up to and including `none`: the same tools for every request to this
+    # task. `not_this` comes after the mark, so a follow-up reads the same cached tools
+    found.append({**actions.NONE_TOOL, "cache_control": llm.CACHED})
     if follow_up:
         found.append(actions.NOT_THIS_TOOL)
-    # Cache everything up to and including the last tool definition
-    found[-1] = {**found[-1], "cache_control": llm.CACHED}
     return found
 
 

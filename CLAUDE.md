@@ -47,6 +47,8 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   pills checklist, the reminder and the confirm, question and
   asks-first cards
 - `docs/TESTING.md` (test tracker) and `docs/QA-RUN.md` (manual run sheet)
+- `docs/COSTS.md`: what each request to Claude costs and why; read it
+  before changing a prompt or a schema
 - `docs/specs/` holds the task specs and is private (gitignored; the
   nightly backup is its other copy). Read them, but never commit them,
   and never quote them in commit messages or public docs (everything

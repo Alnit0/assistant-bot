@@ -6,6 +6,11 @@ backfilled from the git log.
 
 ## 2026-10-13
 
+- What the bot's requests to Claude cost is measured and written up
+  (`docs/COSTS.md`). A message read for pills or timers costs about a
+  tenth less: the schemas no longer repeat two long descriptions, and
+  every kind of request to a task shares the same cached part.
+
 - Streaks can be worked out (only a missed dose breaks one; a skip
   never does). Nothing shows one yet.
 

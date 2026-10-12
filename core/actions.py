@@ -826,20 +826,19 @@ def schema(action: Action) -> dict:
     properties[GUESSED] = {
         "type": "array",
         "items": {"type": "string"},
+        # Short on purpose: this is in every action's schema, and the rule is said once, in the
+        # instructions (core/extraction.py, `rules`)
         "description": (
-            "What you genuinely guessed rather than read from the user's words: a time that could be morning or "
-            "evening, a vague amount, a kind of schedule that wasn't stated. Name each by its field, with its "
-            "place in a list where it has one: `times[0]`, `items[2].quantity`. A field you left out because "
-            "the user didn't say (so its default applies) is not a guess: don't list it. Empty if none."
+            "The fields you genuinely guessed, each named by its path (`times[0]`, `items[2].quantity`). "
+            "A field left to its default is not a guess. Empty if none."
         ),
     }
     properties[NOT_INCLUDED] = {
         "type": "array",
         "items": {"type": "string"},
         "description": (
-            "Every part of what the user asked for that you could NOT put into this action, each copied "
-            "word for word. Each is a whole part (a whole request, or the whole phrase), never one cut off "
-            "mid-phrase. The user is told, so nothing is dropped unseen. Empty if all of it is covered."
+            "Every part of what the user asked for that you could NOT put into this action, each a whole "
+            "part copied word for word. Empty if all of it is covered."
         ),
     }
     return {

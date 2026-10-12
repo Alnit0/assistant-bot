@@ -612,7 +612,7 @@ def test_a_leftover_is_said_as_whole_words_of_a_real_part():
     # QA 2026-10-12: "I took dose 1 of Pill A at 9am" gave "⚠️ Not included: dose 1 of"
     raw = {"items": [{"item": "socks"}], "guessed": [], "not_included": ["dose 1 of", "of", "and the"]}
     assert actions.validate(BUY, raw).not_included == ("dose 1",)
-    assert "never one cut off" in actions.schema(BUY)["properties"]["not_included"]["description"]
+    assert "whole" in actions.schema(BUY)["properties"]["not_included"]["description"], "the rule itself is said once, in extraction's instructions"
 
 
 # --- lengths of time and times of day come structured -----------------------------------------------
