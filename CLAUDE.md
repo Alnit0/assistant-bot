@@ -351,6 +351,10 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   core.instance_lock`, which asks the lock (the source of truth) and
   says how many bots are running. Don't count `python.exe` lines: one
   bot is two of them (the `.venv` launcher and its child)
+- `python -m selftest` starts the dev bot against real Discord (about
+  nine minutes; `docs/DEVELOPMENT.md`, "The self-test"). Only when I
+  ask: live must be stopped for it, started again after, and checked.
+  Real requests to Claude only with `--claude`, within the cost rule
 - Routine test run: `python -m pytest -q` (about a minute). Tests use a
   temporary database and made-up settings, never the real ones. Don't
   run them in parallel (`-n`): a run hung that way

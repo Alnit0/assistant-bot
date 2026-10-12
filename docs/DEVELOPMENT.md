@@ -1390,6 +1390,51 @@ so they are safe to run while the bot is running.
 - **`docs/TESTING.md`** lists every test: 🤖 Auto rows for what pytest
   covers, 👤 Manual rows for what only shows in Discord.
 
+## The self-test
+
+`python -m selftest` runs the dev bot against real Discord and checks
+what it does, in place of the parts of a QA run a bot can do. The
+report is `docs/SELFTEST.md`, written again by every full run.
+
+- **Live must be stopped first** (`nssm stop assistant-bot`): the dev
+  bot uses the same token. It refuses to start while anything holds the
+  lock. Start live again afterwards and check it is back
+  (`nssm start assistant-bot`, `python -m core.instance_lock`)
+- **It takes about nine minutes**: four starts of the dev bot, with 75
+  seconds off between the first two
+- **Channels of its own**: the category `selftest` with
+  #selftest-hub, #selftest-inbox and #selftest-log, made the first time
+  and emptied at the start of every run. They are left in place.
+  `python -m selftest --clear` empties them; `--remove` deletes them
+- **An empty database**: `data/dev.db` and the dev clock are moved
+  aside for the run and put back after, so your own dev data is as it
+  was. The run's database is kept in `data/selftest/run-<time>/`
+- **Input is simulated, output is real.** A typed message is posted by
+  the bot and handed to its own `on_message` as if you had sent it; a
+  press calls the handler behind the button, which edits or deletes the
+  real message. Then the message is read back from Discord, and the
+  doses from the database, before a step passes
+- **Requests to Claude**: none unless you add `--claude`. Without it
+  every language step uses the answer recorded for it; with it they go
+  to the real API until `--budget` (US$0.20 unless given) is spent,
+  about 8 cents a run
+- **What it runs**: a day of made-up pills on the dev clock (the 6:00
+  am checklist, doses on time, too soon, late and missed, a correction,
+  questions on the card, reminders), the bot cut off in the middle of a
+  message and the catch-up after, every card in the old look and the
+  new, and each look's messages edited under the other
+- **What it can't see** is listed at the end of the report: how
+  anything looks, the lock screen, whether the phone buzzed, your own
+  reactions, and a real tap
+
+Its code is `selftest/`: `phases.py` holds the steps, each saying
+which step of `docs/QA-TONIGHT.md` or block of `docs/QA-RUN.md` it
+stands for; `harness.py` what a step can do; `discordside.py` the
+stand-ins for a typed message and a press, and the reading back.
+`--only p1,p2` runs some of the starts while working on the test
+itself (the report then goes beside the run's database, not in
+`docs/`).
+
 ## Service commands (Terminal as Admin)
 
 ```powershell

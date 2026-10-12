@@ -6,6 +6,11 @@ backfilled from the git log.
 
 ## 2026-10-13
 
+- A self-test: `python -m selftest` runs the dev bot against real
+  Discord in channels of its own (a day of pills on the dev clock, a
+  restart in the middle, every card in both looks) and writes
+  `docs/SELFTEST.md`. Nothing changes in the bot itself.
+
 - Nothing changes in the bot: the scheduler, the clean-up and the
   briefing are specified, with four sketches to look at (`dev mock
   briefing-v2`, `schedule-list-v2`, `schedule-change-v1`,

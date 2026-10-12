@@ -7,6 +7,29 @@ session; the end-of-task checklist updates it at the end of every task.
 
 ## Questions for Alex
 
+**From the self-test of 2026-10-13** (`docs/SELFTEST.md`: 61 of 63
+steps passed with real requests to Claude; two full runs, US$0.16 in
+all). Two things failed, both in how Claude reads a message, and both
+came out differently on the two runs:
+
+- **"pause testv" with Testvit and Testvit forte** never asked which
+  one. Claude chose for itself: once it handed over "Testvit" with no
+  ❓, once "it" (so Testvit forte, with ❓). The names code would have
+  asked, but it was never given "testv". Fix it in the instructions
+  (hand over the name as said, never complete it), or have the code
+  check a name Claude hands over against what was typed? The second is
+  the safer one and costs nothing.
+- **"add Testmag to my pills, twice a day at 8am"** was answered "🤔 I
+  didn't understand that." on the second run (Claude's pill had nothing
+  usable in it); on the first it gave the card that asks for the other
+  time. Worth a fixture and a look at why.
+- Smaller things it noticed are under Discoveries in the report: "0m
+  after dose 1" on the too-soon card, "pills remind" as a job's name in
+  the catch-up card, and the reset card and a card saved after a switch
+  staying in the old look. Say which you want changed.
+- **What is still yours** is the list at the end of the report: the
+  lock screen, the colours as they look, the wording, the sketches.
+
 **Still open from the scheduler, clean-up and briefing specs** (drafts
 of 2026-10-13; nothing is built until you answer these and approve):
 
@@ -118,6 +141,16 @@ findings (left), the reminder and gym mock-ups (as sketched, to be
 looked at in blocks 33 and 35), a reset cut off (keeps asking again),
 the "not posted" line (only real problems are logged now), lost
 reactions (left, in the backlog), streaks (after reminders).
+
+## The self-test (2026-10-13)
+
+`python -m selftest` (live stopped first) runs the dev bot against real
+Discord in channels of its own and writes `docs/SELFTEST.md`: 63 steps
+over four starts, about nine minutes. It covers what a bot can do of
+`docs/QA-TONIGHT.md` parts 3 and 5 to 8 and of blocks 40 to 44; the
+rest is listed there as yours. Live was stopped from 9:31 am to 10:20
+am for it and is back. No row of `docs/TESTING.md` was marked passed
+from it: its presses are simulated, so your manual rows stay yours.
 
 ## Specs drafted on 2026-10-13: scheduler, clean-up, briefing
 

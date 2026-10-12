@@ -36,7 +36,7 @@ Last updated: 2026-10-13
 | F | Pins | 4 | 0 | 4 | 4 | 0 | 0 | 0 |
 | G | Timers | 32 | 12 | 20 | 17 | 15 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
-| J | Dev mode | 63 | 15 | 48 | 46 | 17 | 0 | 0 |
+| J | Dev mode | 65 | 16 | 49 | 47 | 18 | 0 | 0 |
 | K | Startup and housekeeping | 26 | 14 | 12 | 10 | 16 | 0 | 0 |
 | L | Keep | 13 | 5 | 8 | 8 | 5 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
@@ -46,7 +46,7 @@ Last updated: 2026-10-13
 | S | Routing and confirm cards | 66 | 16 | 50 | 15 | 50 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 4 | 18 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **469** | **156** | **313** | **243** | **225** | **0** | **1** |
+| | **Total** | **471** | **157** | **314** | **244** | **226** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -297,6 +297,8 @@ Any channel. Check the bot's status in the member list.
 | J61 | 🤖 Auto | `dev cost` shows today against the limit | A small line under Today: what was spent of the limit and the share; over it, a ⚠️ line; no line when no limit is set | ✅ Pass | 2026-10-13 | `tests/test_costs.py` |
 | J62 | 👤 Manual | Block 44: `dev mock` with each of `briefing-v2`, `schedule-list-v2`, `schedule-change-v1`, `cleanup-v1` | Each is posted as drawn in its sketch: the briefing and the list with no buttons, the change card blurple with Save and Cancel, the tidy report saying a clean tidy posts nothing | ⬜ Untested | | Block 44 |
 | J63 | 🤖 Auto | The briefing, schedule and tidy sketches | Each reads, fits a message and is named in the design guide; the briefing and the list have no buttons, the change card is blurple with `field · old → new`, Save and Cancel, and the tidy sketch says a tidy with nothing wrong posts nothing | ✅ Pass | 2026-10-13 | `tests/test_mock.py` |
+| J64 | 🤖 Auto | The self-test's own parts | A typed message is the real one with the owner as author; a press does the real edit or delete; a drawn message is read back as its texts, buttons and box colours; the report lists what failed with what was expected and what happened, the discoveries (odd, slow, warnings in the log during the run, not tested) and what only Alex can check; the dev database is set aside and put back; a phase refuses the live database and a start by hand | ✅ Pass | 2026-10-13 | `tests/test_selftest.py` |
+| J65 | 👤 Manual | With live stopped: `python -m selftest`, then start live again | About nine minutes; `docs/SELFTEST.md` is written again with a result for each step; the test channels are left in place; `data/dev.db` is as it was; live is back | ⬜ Untested | | Run by Claude Code on 2026-10-13: 61 of 63 |
 
 ## K. Startup and housekeeping
 

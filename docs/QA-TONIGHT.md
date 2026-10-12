@@ -150,6 +150,17 @@ Block 44 (four sketches for the briefing, the schedule and the tidy;
 `dev mock` only) was added the same day. Nothing in it is built; look
 at them with the questions at the top of `docs/STATUS.md`.
 
+## What the self-test has already run
+
+`docs/SELFTEST.md` (2026-10-13) ran these with simulated typing and
+presses and read the results back from Discord: steps 15 (the
+checklist), 22, 23 (failed: see the report), 25 to 27, 35 to 39, 41 to
+45, 49 to 58, and blocks 43 and 44 (that Discord accepts each sketch).
+What it could not see is still yours and is listed at its end: the
+lock screen (2, 3, 41, 52), the colours and the look (4 to 10, 49 to
+55), timers (11 to 14), a picture (24), bugs (32 to 34) and step 29.
+No step was marked passed in `docs/TESTING.md` from it.
+
 ## What this run does not cover
 
 Blocks before 27 that are still to be reported (21, 22, 23 steps 5 to
