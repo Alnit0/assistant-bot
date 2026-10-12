@@ -195,10 +195,10 @@ now?", with a small line for what it does to the next dose's time
 <pill>` (still free) or pressed, it is the one check. `dev cost` writes
 a limit under a cent to three places.
 
-One thing noticed and left: with dose 1 missed and dose 2 still
-waiting, "took pill A" with no number means dose 2, as it always has;
-dose 1 is only meant when you name it ("dose 1 of pill A"). Say if a
-missed dose should come first.
+Answered on 2026-10-13, and kept as it is: "took pill A" logs the
+current dose (with dose 1 missed and dose 2 waiting, that is dose 2). A
+missed dose is only logged when it is named ("dose 1 of pill A") or
+when nothing else is left.
 
 ## Specs drafted on 2026-10-13: scheduler, clean-up, briefing
 
