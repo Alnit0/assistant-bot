@@ -21,6 +21,9 @@ backfilled from the git log.
   `reminder-missed-v2`, `gym-import-v2`, `gym-change-v2` and
   `gym-logged-set-v2`. Every sketch now has its version in its name.
   The colours are not final until they are checked on the phone.
+- A pill's box is red only when a dose was missed and nothing is left
+  to take today; with a dose still to come it is amber, and the missed
+  dose is a ❌ line (`reminder-missed-v2`).
 
 - **Pill reminders**, switched off until tested (`REMINDERS_ENABLED`
   in `.env`). On: a message at each timed dose's time with Taken, Taken

@@ -640,7 +640,7 @@ Nothing here is built yet.
 |---|---|---|---|
 | 1 | Lock your phone and type `dev mock reminder-v1-first` from the desktop; then `dev mock reminder-v1` (the same as block 39, step 2: do it once) | The lock screen says "💊 Routine due · 11:12 am" and never the pill's name. The second message: the pill and dose, when it is due and why, the note, and Taken, Taken at…, Snooze 15m, Skip | J55 |
 | 2 | Type `dev mock reminder-renudge-v2` | Two cards: a re-nudge ("Reminder 2 of 3", when it was first asked and when the last one comes), and the same prompt while snoozed ("Snoozed until 11:27 am") | J55 |
-| 3 | Type `dev mock reminder-missed-v2`, then `dev mock too-soon-v2` | A red box on the checklist with dose 2 marked ❌ missed and when it was due; then an amber card that says the dose is too soon after the last and asks "Log it anyway?", with **Log it** and **Cancel** | J55 |
+| 3 | Type `dev mock reminder-missed-v2`, then `dev mock too-soon-v2` | An amber box on the checklist (a dose is still to come) with dose 2 marked ❌ missed and when it was due; then an amber card that says the dose is too soon after the last and asks "Log it anyway?", with **Log it** and **Cancel** | J55 |
 
 Say what to change in any of them (wording, order, colours, buttons).
 

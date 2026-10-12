@@ -10,10 +10,6 @@ session; the end-of-task checklist updates it at the end of every task.
 - **The design's colours** are not final until you have looked at
   them on your phone (block 39, step 6). `docs/DESIGN.md` is marked as
   waiting for that.
-- **A pill with a missed dose and another still to come**
-  (`reminder-missed-v2`) is drawn red, as the first sketch had it. By
-  the guide it could be amber instead (there is a next dose with a
-  time). Say which.
 - **The lock screen** (waits for your phone; block 39, step 2, the
   same as block 33, step 1): the sketches put
   "💊 Routine due · 11:12 am" as the message's first line. If your
@@ -30,7 +26,9 @@ blue; a card that asks first because something is risky is amber;
 confirm and question cards blurple, destructive ones red;
 `reminder-v1-first` stays; the old sketches go, and the six with no
 new version are redrawn as v2 (done). None of the colours is final
-until the check on the phone.
+until the check on the phone. A pill's box is red only when a dose
+was missed and nothing is left to take today; with a dose still to
+come it is amber and the missed dose is a ❌ line.
 
 Answered on 2026-10-12, reminders and questions on the card: kept as
 built, with three changes made (reminders stay a plain message and are

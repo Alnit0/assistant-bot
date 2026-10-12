@@ -65,7 +65,7 @@ waiting for the check on the phone (block 39).
 | Due | amber | Something to do now or next, with a time |
 | Any time, still to take | blue | To do today, with no time it is due at |
 | Taken / done | green | Finished |
-| Missed | red | Its time passed and nothing was done |
+| Missed, and nothing left to take today | red | Its time passed and nothing was done |
 | Paused, to come, skipped, snoozed | grey | Nothing to do now |
 | A decision (a confirm card, a question) | blurple | Waiting for me to choose |
 | A card that asks first because something is risky (a late log, too soon) | amber | Waiting for me to choose, and the ⚠️ line says why |
@@ -73,6 +73,11 @@ waiting for the check on the phone (block 39).
 
 A warning is a ⚠️ line inside a box and never a colour of its own: the
 box keeps the colour of its status.
+
+A box with several doses (or sets) takes the colour of what is still to
+do. A missed dose is a ❌ line in the box; the box is red only when a
+dose was missed and nothing is left to take today. While a dose is
+still to come it is amber (or blue, for any time).
 
 Colour is never the only sign: every status also has its mark (✅ ❌ ⏸️
 ⏭️ ⚠️) and its words, since colours differ between themes and some
