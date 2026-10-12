@@ -6,6 +6,9 @@ backfilled from the git log.
 
 ## 2026-10-13
 
+- A script, ready to run by hand, that gives the live bot a folder of
+  its own on `main` (`scripts\setup-live-folder.ps1`). Not run.
+
 - A list of phrases that always went to the same task, as candidates
   for free shortcuts (`docs/COSTS.md`). None is added.
 

@@ -22,6 +22,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `.env`, `.env.example` | Secrets and settings (`.env` is gitignored); every setting has a placeholder in `.env.example` |
 | `data/` | `assistant.db`, `bot.lock`, `backups/`, `exports/` (a transcript of each channel that was reset; zipped by the nightly backup); with `--dev`: `dev.db`, `dev-backups/`, `dev-clock.json` (all gitignored) |
 | `logs/` | `bot.log` (rotating), `service-*.log` (gitignored) |
+| `scripts/` | `setup-live-folder.ps1`: run by hand, once, to give the live bot a folder of its own on `main` and point the NSSM service at it (prints each step first; `-WhatIf` only prints). Nothing in the bot uses it |
 | `requirements.txt`, `requirements-dev.txt`, `pytest.ini` | Dependencies (dev adds pytest) and test settings |
 
 ## `core/`

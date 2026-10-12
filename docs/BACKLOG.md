@@ -156,6 +156,14 @@ trains are answered:
 
 ## Left for later
 
+- **One lock for two folders** (found preparing live's own folder,
+  2026-10-13): the lock that stops two copies of the bot is
+  `data/bot.lock`, one a folder. Once live has its own folder, a dev
+  copy started in the other is no longer refused, and both answer. A
+  setting for where the lock is (one path for both folders), or a
+  second bot token for dev, would fix it. Not built: it was not asked
+  for.
+
 - **Tests in parallel** (tried 2026-10-13): with pytest-xdist one full
   run took 30 s and the next hung at about 95%, so it is not used and
   not installed. The serial run is 56 s. Worth another look only if the

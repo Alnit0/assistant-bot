@@ -1231,6 +1231,42 @@ Polls, Manage Messages, Pin Messages, Manage Webhooks.
   meant to survive. You get "⌛ That button or form no longer works" and an
   "Interaction not answered" card in #bot-log.
 
+## A folder of its own for live
+
+Today the service runs from the folder the code is worked on in, so the
+live bot runs whatever branch is checked out there.
+`scripts\setup-live-folder.ps1` gives live a second folder on `main`.
+It is prepared and has only ever been run with `-WhatIf`: run it
+yourself, at the PC.
+
+1. Make sure `main` has everything live needs. The script checks that
+   the code on `main` knows the live database and stops, with nothing
+   changed, if the database is newer (live runs `feature/pills` today:
+   merge it into `main` first, or pass `-Branch`).
+2. Open a Terminal as Administrator in this folder and look first:
+   ```powershell
+   .\scripts\setup-live-folder.ps1 -WhatIf
+   ```
+   It prints the service as it is, as it would be, and every step.
+3. Run it for real (add `-Start` to start the service at the end):
+   ```powershell
+   .\scripts\setup-live-folder.ps1 -Start
+   ```
+   It stops the service, clones into `..\assistant-bot-live` (or
+   `-Target`), copies `.env` and `data\` (not the lock, the dev
+   database or its backups), makes the `.venv`, checks the database
+   against the code, and points the service at the new folder. Each
+   step is printed before it is done, and a failed step stops it.
+4. To go back: `nssm stop assistant-bot`, run the lines in
+   `service-before.txt` in the new folder, `nssm start assistant-bot`.
+
+Afterwards: update live with `git pull` in the live folder and
+`nssm restart assistant-bot`; in this folder use only
+`python main.py --dev`. **The lock no longer protects you**: each
+folder has its own `data\bot.lock`, so live and a dev copy can both
+run and both answer. Stop one before starting the other until the lock
+is shared (in the backlog).
+
 ## Day-to-day workflow
 
 1. Stop the service (Terminal as Admin): `nssm stop assistant-bot`

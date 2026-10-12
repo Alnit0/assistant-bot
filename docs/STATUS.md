@@ -7,6 +7,20 @@ session; the end-of-task checklist updates it at the end of every task.
 
 ## Questions for Alex
 
+- **Live's own folder** (`scripts\setup-live-folder.ps1`, prepared,
+  only ever run with `-WhatIf`; "A folder of its own for live" in
+  `docs/DEVELOPMENT.md`):
+  - `main` doesn't have pills yet and the live database does: the
+    script stops, with nothing changed, if the code on `main` is older
+    than the database. Merge `feature/pills` into `main` first.
+  - With two folders the lock no longer stops live and a dev copy
+    both running (each folder has its own `data\bot.lock`). Shall I
+    add a setting for one shared lock, or do you want a second bot
+    token for dev?
+- **The service is stopped.** When I checked on 2026-10-13 the
+  `assistant-bot` service was stopped and no bot was running (I did
+  not stop it and did not start it). Start it when you are ready:
+  `nssm start assistant-bot`. It will apply the new migrations.
 - **Free shortcuts** (`docs/COSTS.md`, section 6; none added): the
   shapes that always went to one task are "took `<pill>`" (9 of 24
   routed messages), the pomodoro's start and stop, "channel reset" /
