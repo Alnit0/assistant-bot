@@ -6,6 +6,9 @@ backfilled from the git log.
 
 ## 2026-10-13
 
+- The backlog is one prioritised list (Next, Soon, Later, with timers
+  apart as low priority); what was dropped is listed with why.
+
 - A check of every task and the core against the standard after the
   night's changes: nothing for the user to see; two records now take
   the real time from the one clock.

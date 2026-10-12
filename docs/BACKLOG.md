@@ -1,10 +1,152 @@
 # Backlog
 
-Things found and not yet finished: failed manual tests (copied here by the
-`qa` skill), and anything noticed while working on something else and left for later. Remove
-an item once it is fixed and its tests pass.
+Things found and not yet finished. **The list** below is the one place
+that says what comes first; under it, **Details** keeps what was found,
+where and why, as it was written at the time. An item leaves the list
+when it is fixed and its tests pass, or when a line under "Removed" says
+why it went.
 
-## Fixed in code, waiting for a manual retest
+Tidied on 2026-10-13: one list in three groups, timers apart and marked
+low priority, nothing dropped without a reason.
+
+## The list
+
+### Next
+
+1. **QA of what is waiting** (blocks 27 to 42): one ordered run is
+   `docs/QA-TONIGHT.md`.
+2. **The design's check on the phone** (block 39): the colours and the
+   lock screen. Then `CARDS_V2` on for good, and #commands' words for
+   the buttons in a pill's box.
+3. **Pill reminders on live** (block 38, then `REMINDERS_ENABLED=true`
+   and a restart).
+4. **The questions at the top of `docs/STATUS.md`**: the new look, the
+   streak's rules, costs and shortcuts, live's own folder.
+5. **`feature/pills` into `main`, then live's own folder**
+   (`scripts\setup-live-folder.ps1`), and one lock for the two folders
+   (Details: "One lock for two folders").
+6. **Gym**: waits for the answers on how Alex trains; the three core
+   pieces are built (Details: "Gym").
+
+### Soon
+
+7. **Pills stage 4**: a correction said long after ("I took it at 9,
+   not 10"), and G3 (a correction straight after Save rests on a guess).
+8. **Show a streak** (the logic is built), **the take-by line on the
+   checklist**, a weekly summary.
+9. **Yesterday's doses after midnight** ("After midnight, logging
+   yesterday's doses").
+10. **The rest of the cards in the new look**, and with it: one way to
+    tick a dose off from a button (three near copies), `dev mock` on
+    the design's own records, the old plain checklist retired.
+11. **Costs**: skip the router when a message names one of my things;
+    shorten the router's rules with a live eval (`docs/COSTS.md`).
+12. **Days of the week in the schedule model**, in core (wanted by gym
+    if workouts go by weekday, and by reminders after pills).
+13. **G4**: task ties are asked too readily.
+14. **A reaction made just before a stop is lost**: keep waiting
+    reactions in the database.
+15. **`tasks/keep` uses discord.py** without being on the list of tasks
+    that may.
+16. **The outgoing check does not cover every message**, and **some
+    refusals are still a bare line, not a card**.
+17. **R5 to R22 and R25 in `docs/TESTING.md`** still describe the old
+    pills flow.
+18. **"Alex" and "Auckland, New Zealand" are hard-coded** in Claude's
+    instructions.
+
+### Later
+
+Wanted some day, or small and harmless as they are. In Details under
+the same words.
+
+- New things: a notes task; the section provider interface (a morning
+  brief); the nightly sweep; `dev qa <block>`; pin, archive and delete
+  in plain words; bulk and cross-channel actions; `reset channel` for
+  another channel by name; chat outside #inbox.
+- Pills: a pill whose doses can't fit is refused, not fixed; the Edit
+  buttons on a pill; more than 25 pills; pills setup and the way Claude
+  is handed tools (the old note); what is left from stage 3.
+- Channel reset and housekeeping, left as they are; `reset` is a bare
+  verb that is still a shortcut.
+- Reactions: unpinning by reply doesn't clear an applied 📌; a refused
+  reaction is forgotten by a restart; only archive and delete are
+  checked at once.
+- Dev tools: the dev clock outlives the dev database; "🧪 dev test
+  data" under every dev tool's reply; `dev reset-db` leaves cards
+  behind; `dev cleanup off` leaves working buttons behind; `dev
+  inspect` forgets Transient after a restart; the lab's own button
+  colours; lab messages outside the lifecycle; tests in parallel.
+- Bugs: everything under "Bugs: left for later" (forum handling to
+  core, screenshots, a closed post written in, the card's count, old
+  posts' buttons, a report with no post, rotated logs, hand-made posts,
+  typed words waiting for the post).
+- Core: forum handling and the lifecycle of typed words' #bot-log
+  cards; switching task straight after an answer costs one more
+  request; why one "make it 2" didn't stick on 2026-10-09;
+  `python -m tasks.bugs.cli` always reads the live database;
+  `KEEP_CONFIRMATIONS` makes channels busier.
+- The word lists in Python (the table in Details): none may grow into
+  the way something is understood.
+- Manual retests still owed from 2026-10-07 (the table in Details).
+
+### Timers (low priority: a proof of concept that may be scrapped)
+
+Only touched when a core change breaks their tests.
+
+- C8 and G7: "Which timer? Say its name." and the Pomodoro's restart
+  question are still messages of their own.
+- C14: lengths and several ids are handed over as text. C17: a set of
+  words for "the session". C18: their own live lists and send helpers
+  beside the core's.
+- Two running timers with the same name both get the change; two
+  timers with the same label look alike in a reply.
+- What the timer reply fix left; timers still take a length as text;
+  `core/durations.py` has the timers' limits in it.
+- A Pomodoro left waiting for Start for more than 2 hours; an old
+  paused timer never draws attention to itself; timer cards under a
+  moved dev clock; Discord rate-limited the board; timer actions in
+  plain words have no Undo button.
+- The live check of 2026-10-13: "pause it" came back with the timer's
+  id rather than `@that` (the code puts it right).
+
+## Removed on 2026-10-13, and why
+
+- **`search_messages` only finds your own messages that the bot handled**: it was about the old way of handing Claude tools, which was removed at step 4 on 2026-10-10 (Claude runs nothing now).
+- **Refs from a listing last for one message**: it was about the old way of handing Claude tools, which was removed at step 4 on 2026-10-10 (Claude runs nothing now).
+- **Claude no longer remembers what it ran**: it was about the old way of handing Claude tools, which was removed at step 4 on 2026-10-10 (Claude runs nothing now).
+- **The "done" check still goes by wording**: it was about the old way of handing Claude tools, which was removed at step 4 on 2026-10-10 (Claude runs nothing now); a confirmation is only ever written by a task's code after the change is read back.
+- **Natural-language requests are slow, and the plan is waiting on four**: the plan was carried out (state with the message, no closing request, 👀 on receipt) and the path it sped up is gone.
+- **Lists posted before this change are still snapshots**: a note about messages of 2026-10-07, not something to do.
+- **Events start with this change**: a note about data from before 2026-10-07, not something to do.
+- **Every chat message now carries the tools**: it was about the old way of handing Claude tools, which was removed at step 4 on 2026-10-10 (Claude runs nothing now).
+- **A protected message deleted through Claude asks twice**: it was about the old way of handing Claude tools, which was removed at step 4 on 2026-10-10 (Claude runs nothing now); delete is by reaction or reply word only.
+- **Proposals and button questions are held in memory**: confirm cards and their questions are kept in the database now (`confirm_cards`), and a Save cut off by a restart has a recovery.
+- **Undo exists only where an action declares one**: it was about the old way of handing Claude tools, which was removed at step 4 on 2026-10-10 (Claude runs nothing now).
+- **Reactions are not tools**: it was about the old way of handing Claude tools, which was removed at step 4 on 2026-10-10 (Claude runs nothing now).
+- **Recent messages go to the API when Claude looks for a target**: it was about the old way of handing Claude tools, which was removed at step 4 on 2026-10-10 (Claude runs nothing now).
+- **A false "it's running again" straight after a read is no longer**: it was about the old way of handing Claude tools, which was removed at step 4 on 2026-10-10 (Claude runs nothing now).
+- **A request whose second step needs the first one's result stops**: it was about the old way of handing Claude tools, which was removed at step 4 on 2026-10-10 (Claude runs nothing now); several things in one message are one card a task now.
+- **The speed-up is measured on Claude's side only**: it was about the old way of handing Claude tools, which was removed at step 4 on 2026-10-10 (Claude runs nothing now).
+- **The prompt cache lasts 5 minutes**: measured and written up in `docs/COSTS.md` (section 2).
+- **`pause all` through Claude and `timer_control` with `all` overlap**: it was about the old way of handing Claude tools, which was removed at step 4 on 2026-10-10 (Claude runs nothing now).
+- **"Stop all timers called tea" got "I don't have a timer called tea" (2026-10-07)**: its retest (N51) was a test of the old tools path, which is gone.
+- **"Cancel all timers" cancelled four and asked for the rest again (2026-10-07)**: its retest (N52) was a test of the old tools path, which is gone.
+- **Plain-word requests took 7 to 10 seconds, 30 or more after a restart**: its retest (N50) was a test of the old tools path, which is gone.
+- **Claude couldn't say what was running or how long was left ("check the channel above")**: its retest (N29) was a test of the old tools path, which is gone.
+- **Pause, resume, cancel and extend searched the last 20 messages for the timer ("I don't see**: its retest (N30) was a test of the old tools path, which is gone.
+- **"✅ Done." with no tool call and no timer; "Done." twice to `dev mode off` / `on`**: its retest (N31) was a test of the old tools path, which is gone.
+- **"[Tool calls this turn: …]" at the end of replies**: its retest (N32) was a test of the old tools path, which is gone.
+- **Claude couldn't switch dev mode on**: its retest (N33) was a test of the old tools path, which is gone.
+- **"Look further back" could only see the last 20 messages**: its retest (N34) was a test of the old tools path, which is gone.
+- **"Resume my tea timer": "Tea's running again – 9m 21s left", but tea stayed paused**: its retest was a test of the old tools path, which is gone.
+- **"I don't have a record of what the times were"**: its retest (N42) was a test of the old tools path, which is gone.
+
+## Details
+
+What follows is kept as it was written, for the where and the why.
+
+### Fixed in code, waiting for a manual retest
 
 From the QA findings of 2026-10-07. Each is done and unit tested; the rows
 in `docs/TESTING.md` are ⬜ Untested until they are run in Discord.
@@ -16,9 +158,6 @@ in `docs/TESTING.md` are ⬜ Untested until they are run in Discord.
 | Replying `pin` (or `pin me`, `pin this`) did nothing | There was no `pin` reply action: `pin` / `unpin` added, and filler words accepted on every reply action | L9, L10, L11, D15 |
 | "Hive" was hard-coded | `ASSISTANT_NAME` setting | K10 |
 | `pomo` while a session runs was an error | It re-shows the card (or points to it from another channel); `dev off` when off and a second `lab channels` no longer fail either | H9, H17, J30, B21 |
-| "Stop all timers called tea" got "I don't have a timer called tea" (2026-10-07) | Claude answered from memory without looking. The live state now comes with every message, and `timer_control` with `all` and a label matches in code, any case, every match; `stop` is cancel | N51 |
-| "Cancel all timers" cancelled four and asked for the rest again (2026-10-07) | One call each ran into the limit of 5 per message. `timer_control` takes several ids or `all` in one call | N52 |
-| Plain-word requests took 7 to 10 seconds, 30 or more after a restart | Strict tool schemas off; state sent with the message; no closing request after a confirmed action; Live edits and log cards in the background; 👀 on receipt | N50 |
 | Claude offered to do things it has no tool for | Its instructions always say it has no tools and must never offer to act | A17 |
 
 From the first run of tool calling against the real API (2026-10-07,
@@ -26,13 +165,7 @@ From the first run of tool calling against the real API (2026-10-07,
 
 | Finding | What changed | Retest |
 |---|---|---|
-| Claude couldn't say what was running or how long was left ("check the channel above") | `list_timers` and `get_pomodoro_status` read the live state from the database | N29 |
-| Pause, resume, cancel and extend searched the last 20 messages for the timer ("I don't see a Pomodoro session" while one ran); no `unpause` | `timer_control` and `pomodoro_control` act by the id the read tools give; the reply actions are no longer offered to Claude; `unpause` added as a reply word | N30 |
-| "✅ Done." with no tool call and no timer; "Done." twice to `dev mode off` / `on` | Nothing is added to Claude's replies in the history (it was copying the note); a "done" with nothing run is sent back to it once, then overruled, with a #bot-log card | N31 |
-| "[Tool calls this turn: …]" at the end of replies | The note is gone from the history, and any that Claude writes is taken out before sending | N32 |
 | `dev mode on` / `dev mode off` were not words | `dev mode on\|off` added | J32 |
-| Claude couldn't switch dev mode on | The switch is offered to it always (owner only); the other dev tools still only while dev mode is on | N33 |
-| "Look further back" could only see the last 20 messages | `search_messages` looks through your logged messages in the channel (500, 30 days) and asks before acting on a match | N34 |
 | A Pomodoro asked for while one was going: card again, a note, the alert and Claude's reply; the lengths asked for ignored | Through Claude: one reply, nothing posted, and an offer to restart at those lengths. Typed: the card and one Restart question | H19, H21 |
 
 From the run of 2026-10-07, 22:53 to 22:58 (reported as "paused timers
@@ -43,11 +176,9 @@ gained time"):
 | Paused timers seemed to gain time (dinner 24s, then 2m 50s) | Nothing gained time: both were frozen at the right figures (dinner paused at 22:55:21 with 2m 50s, breakfast at 22:55:23 with 3m 36s). The 22:54 "Your timers" message was a snapshot whose countdowns ran on to the old end times. The list is now live: one per channel, rewritten on every change | G16 |
 | Was dev speed involved? | Not that evening: the bot restarted at 22:52 and dev mode was never on. But the check found a real fault: pausing read dev mode's speed of the moment, so a timer started at 1x and paused at 60x would have gained 60 times its time left. Each clock now keeps the speed it was started at | G17 |
 | A timer whose time was up could be paused at 0s | It is finished instead, and `pause all` leaves it alone and says so | G17, G19 |
-| "Resume my tea timer": "Tea's running again – 9m 21s left", but tea stayed paused | `timer_control` was never called: Claude read the list and reported a change. The check only knew replies opening with "Done". It now also catches a change reported as news with nothing run; read tools end by saying nothing was changed; control tools report the state read back after saving | N41 |
 | "Pause all timers" asked which, took four calls and left the Pomodoro | `pause all` / `resume all` are typed words (so no Claude call when typed) and tools; they include the Pomodoro unless told otherwise and list what was done | G21, N40 |
-| "I don't have a record of what the times were" | `timers_events` records every change with the time left; `timer_history` reads it | N42 |
 
-## Gaps against the conversation standard (2026-10-10)
+### Gaps against the conversation standard (2026-10-10)
 
 What is left. The golden conversations are `tests/test_golden.py`; none
 is marked `gap` any more: G1 (questions on the card) was built on
@@ -70,7 +201,7 @@ the code), G10 (card kinds are new, change, remove), G11 (12-hour times
 in bug posts and `dev why`) and G12 (a looser redirect replaces the old
 card).
 
-## Found by `task-check` (2026-10-12)
+### Found by `task-check` (2026-10-12)
 
 The first run of the skill, on timers, bugs and pills, in the standard's
 own order of importance. "Size" is how big the fix looks.
@@ -105,7 +236,7 @@ Known gaps the run met again, already listed above: G1 (golden 1c, 1d,
 (nothing notifies about a pill yet). One fixture has no recording
 ("how long left on tea?").
 
-## Word lists and phrase patterns in Python (2026-10-10)
+### Word lists and phrase patterns in Python (2026-10-10)
 
 Language is Claude's job and rules are Python's (see the Scaling notes in
 `docs/ARCHITECTURE.md`): these are safety nets, listed so that none grows
@@ -138,7 +269,7 @@ a schema could take its place.
 | `timers/control.py` `_THE_SESSION` | "current", "it", "pomodoro", "session" as the session's id | Whatever Claude sends for "the session" still finds it | Yes: `@that`, as for timers (C17) |
 | `core/router.py` (`GENERIC_VERBS`, fillers), `timers/control.py` (`_SCOPE_WORDS`…) | Typed words: `pause all timers`, "pin this" | Typed shortcuts never go to Claude, by design | No |
 
-## Gym: what its spec would add to core (2026-10-12)
+### Gym: what its spec would add to core (2026-10-12)
 
 From the core or task rule (the spec is `docs/specs/gym.md`, section
 12). **The first three were built on 2026-10-13** (`request.attachments`,
@@ -155,7 +286,7 @@ trains are answered:
   reading a grid from a file, mapping headings to a fixed set of
   fields, and comparing two lists of records into `field · old → new`.
 
-## Task check, 2026-10-13 (every task and the core, after the overnight batch)
+### Task check, 2026-10-13 (every task and the core, after the overnight batch)
 
 Run by the checks of the `task-check` skill: the contract
 (`actions.problems`: nothing), the scans for discord.py, the clock, the
@@ -179,7 +310,7 @@ number read from text; C19's name matching is in the core.
 | `dev mock` has its own records beside `core/design.py`'s | `tasks/dev/mock.py` | It shares the colours and spacing; sharing the records is a small job |
 | Timers: C8, C14, C17, C18 as before | table above | Timers are low priority and left alone |
 
-## Left for later
+### Left for later
 
 - **One lock for two folders** (found preparing live's own folder,
   2026-10-13): the lock that stops two copies of the bot is
@@ -430,7 +561,7 @@ number read from text; C19's name matching is in the core.
 - **The nightly sweep is not built.** Kept messages are never removed
   automatically until it is; when built it must skip Protected ones.
 
-## Bugs: left for later
+### Bugs: left for later
 
 Built on 2026-10-09 and unit tested; the manual rows (P12 to P24, P28,
 P29, M5) are ⬜ Untested in `docs/TESTING.md`.
@@ -463,7 +594,7 @@ P29, M5) are ⬜ Untested in `docs/TESTING.md`.
   expect confirmations to vanish: run QA with it off (the run sheet says
   so).
 
-## Found in that run, left for later
+### Found in that run, left for later
 
 - **Bulk and cross-channel actions** ("archive all messages in #dev"):
   Claude can only act on one message at a time, in the channel it is
@@ -477,79 +608,20 @@ P29, M5) are ⬜ Untested in `docs/TESTING.md`.
   never dismissed. Something should nudge about these, or expire them.
 - **Two timers with the same label** look alike in a reply; Claude is
   told to ask which when a label fits more than one.
-- **`search_messages` only finds your own messages that the bot handled**
-  (chat, typed words that stayed). The bot's replies have no row of their
-  own in `message_log`, so "archive what you said about Spain" finds
-  nothing further back than the last 20. A fallback to Discord's own
-  history (slower: 100 messages a request) would cover it.
-- **Refs from a listing last for one message.** "yes" to "delete m3?"
-  costs a refused call and a second listing before it works.
-- **Claude no longer remembers what it ran**, only what it said. It reads
-  timers afresh each time; for anything else ("undo that pin") it has
-  its own words to go on, or a new listing.
-- **The "done" check still goes by wording.** It knows a reply that
-  opens with "Done" or ✅, a made-up tool note, and a change reported as
-  news ("running again", "I've paused", "is now", "has been", "all
-  three paused"). "Your tea timer is running, 9m left" after only a
-  look reads like a description and gets through. The lasting answer is
-  fewer chances to slip: the state given to Claude with each message, so
-  the action is its first call (item 3 of the speed plan below).
-- **Natural-language requests are slow, and the plan is waiting on four
-  answers.** Proposed: timings on the card, state in the user turn, no
-  second Claude call when the result is already shown, 👀 on receipt.
-  Open: harness or manual timing; whether skipping the last call may cut
-  a multi-step request short; lasting or self-deleting result line; 👀
-  as well as typing. Since then, typed `pause all` / `resume all` need
-  no Claude call at all.
-- **Lists posted before this change are still snapshots.** Old "Your
-  timers" messages aren't tracked and go on counting down; delete them.
-- **Events start with this change.** Nothing before it is in
-  `timers_events`, and Claude says so when asked.
 - **Discord rate-limited the board** during the four-call pause (a 429
   on its edit, retried after 3s). `pause all` now refreshes once; a card,
   the board and each live list are still one edit each per change.
 - **Timer actions through Claude have no Undo button** now that they go
   by id; ask it to resume or pause again instead.
 
-## Tool calling: left for later
+### Tool calling: left for later
 
 Built on 2026-10-07 and unit tested with a mocked Claude. First run against
 the real API the same day: the schemas were accepted and the cache was
 read on every message after the first (4,973 tokens, 6,996 with the dev tools).
 
-- **Every chat message now carries the tools**, used or not ("Tool tokens"
-  on the card). If that cost matters, the next step is to send them only
-  when the message looks like a request.
-- **A protected message deleted through Claude asks twice**: Claude's
-  Confirm / Cancel, then the existing "That message is pinned" question.
-- **Proposals and button questions are held in memory.** A restart forgets
-  a pending "ok", an Undo button and a "Which message?" question.
-- **Undo exists only where an action declares one**: pin, unpin and
-  archive. Cancelling a timer or extending one cannot be undone.
 - **Claude only chats in #inbox**, so the "dev tools in the dev channel"
   rule has no effect until chat is enabled there.
-- **Reactions are not tools.** Claude tells you which one to add.
-- **Recent messages go to the API when Claude looks for a target**: up to
-  20 one-line previews from the channel when it calls `recent_messages`,
-  and up to 5 older ones when it calls `search_messages`.
-- **A false "it's running again" straight after a read is no longer
-  caught** (2026-10-09). The wider honesty check now only questions a
-  reply when no tool succeeded at all, so a true account after
-  `timer_history` is not sent back; the price is the 22:56 case of
-  2026-10-07 (`list_timers`, then "Tea's running again" with nothing
-  resumed). Less likely now that the state comes with the message and
-  the read tools are rarely called. A flat "Done" is still caught.
-- **A request whose second step needs the first one's result stops
-  after the first** ("start a timer and pin it"): a confirmed action
-  ends the turn. Ask for the second step separately.
-- **The speed-up is measured on Claude's side only** (benchmark with
-  canned tools: 1.3 to 1.5s, one round trip). The live numbers in
-  Discord, with the real sends, are N50 to N52.
 - **Typed words still wait for their #bot-log card** and Live edits
   made from buttons are unchanged; only tool calls moved theirs to the
   background.
-- **The prompt cache lasts 5 minutes**, so a message after a quiet
-  spell rewrites it (about 1.7s instead of 1.3s). A 1-hour cache would
-  cost double to write.
-- **`pause all` through Claude and `timer_control` with `all` overlap**:
-  the first includes the Pomodoro, the second is timers only.
