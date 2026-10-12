@@ -314,6 +314,16 @@ Things to know:
   ask with `core.confirmations.ask(channel, user, question, on_confirm)`.
   Call `ctx.shown(...)` so the core doesn't add a "Done" on top of the
   question.
+- **Being safe across a restart** (`core/restart.py`, and "What survives
+  a restart" in `docs/ARCHITECTURE.md`): keep nothing in memory that
+  matters, and make every job safe to run twice. If start-up does
+  something late because the bot was off, say so with
+  `restart.caught_up("…")`: the line goes in the start's one message in
+  #bot-log, and is dropped when the bot is not starting. If a button of
+  yours does something that must not be left half done, register
+  `restart.on_cut_off(task, action, recover)`: `recover(cut, arg)` is
+  called at start for a press the bot stopped in the middle of, puts it
+  right without doing it twice, and returns its line.
 - **Doing something later:** book a job with
   `await scheduler.add_job(self.name, "kind", due_at, payload, user_id)`
   (`core/scheduler.py`) and return `{"kind": handler}` from `job_handlers()`.

@@ -4,7 +4,7 @@ import logging
 import discord
 from discord import app_commands
 
-from core import backup, cards, clock, conversation, database, day, devmode, identity, instance_lock, interactions, lifecycle, live, scheduler, tidy, timing
+from core import backup, cards, clock, conversation, database, day, devmode, identity, instance_lock, interactions, lifecycle, live, restart, scheduler, tidy, timing
 from core.config import (
     CLAUDE_MODEL,
     DB_PATH,
@@ -172,7 +172,9 @@ async def on_ready():
         await registry.startup(client)
         await backup.schedule_next_backup()
         await day.schedule_next()
-    # After the tasks are ready: jobs that came due while we were off run now
+        # After the tasks are ready: what was cut off by the stop is put right, the jobs
+        # that came due while we were off run now, and all of it is said once in #bot-log
+        await restart.catch_up()
     scheduler.start()
     # Which bot this is, for anyone looking: the nickname and the status line
     await identity.start()

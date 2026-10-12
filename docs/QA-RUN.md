@@ -676,6 +676,24 @@ say they are mock-ups, and nothing of gym is built. The spec is
 Say what to change in any of them, and answer the gym questions in
 `docs/STATUS.md` (or in the spec, section 16).
 
+## 36. Restarts (waiting for QA)
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
+On the dev database (`python main.py --dev` in a terminal, with the
+service's own bot left alone: stop the dev bot with Ctrl+C). Dev mode
+off. You need one pill: say `add Testpill` and press **Save** if you
+have none.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Say `add Otherpill`. Don't press. Stop the bot (Ctrl+C) and start it again. Look at #bot-log | "🟢 Bot started" and no "🔁 Caught up after a restart": nothing was missed. (If the bot was off for over a minute while a line was waiting to be tidied away, one naming `tidy` is right) | K24 |
+| 2 | Press **Save** on the Otherpill card from before the restart | Saved: `pills` lists Otherpill. The card worked although the bot restarted | K24 |
+| 3 | Type `pills`. Stop and start the bot. Press **Taken** under the checklist for Testpill | The same checklist as before the restart (no second one), and Testpill is ticked off on it | K24 |
+| 4 | Type `dev clock 5:58am`. Stop the bot, wait four minutes, start it | One new checklist in the hub. In #bot-log one "🔁 Caught up after a restart" saying the checklist was posted and the bot was off at 6:00 am, and the jobs that ran late. No "Pills checklist not posted" message | K24 |
+| 5 | Stop and start the bot once more | No new checklist and no "🔁 Caught up" message | K24 |
+| 6 | Type `dev clock reset`; say `remove Otherpill`, press **Remove** | The clock is the real time again and Otherpill is gone | |
+
 ## When you finish
 
 - Stop the test copy (`Ctrl + C`) and check nothing is left running:

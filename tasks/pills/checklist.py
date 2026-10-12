@@ -1,7 +1,7 @@
 import logging
 from datetime import date, datetime, time, timedelta
 
-from core import cards, clock, database, discord_utils, hub, lifecycle, live, llm, occurrences, scheduler, timeinput
+from core import cards, clock, database, discord_utils, hub, lifecycle, live, llm, occurrences, restart, scheduler, timeinput
 from core import day as days
 from core import schedule as core_schedule
 from core.cards import Button, Card
@@ -339,10 +339,12 @@ async def _post_if_due(user_id: int) -> tuple[bool, str, bool]:
     return True, doses, False
 
 
-async def _decide(what: str) -> bool:
+async def _decide(what: str, late: bool = False) -> bool:
     """Post or not for each user, and say what was decided and why: in the log
     always, and in #bot-log when nothing was posted. True if a checklist
-    that should have been posted could not be."""
+    that should have been posted could not be. One posted `late` because
+    the bot was off at 6:00 am is said in the start's own message
+    (core/restart.py), once."""
     stuck = False
     now = clock.now()
     when = f"{days.today(now).isoformat()} {timeinput.format_moment(now)}"
@@ -353,6 +355,8 @@ async def _decide(what: str) -> bool:
         posted, why, problem = await _post_if_due(user_id)
         stuck = stuck or problem
         log.info("Pills checklist, %s (%s), user %s: %s: %s", what, when, user_id, "posted" if posted else "not posted", why)
+        if posted and late:
+            restart.caught_up(f"Today's pills checklist was posted at {timeinput.format_moment(now)}: the bot was off at {timeinput.format_time(POST_AT)}")
         if not posted:
             await discord_utils.log_simple("💊 Pills checklist not posted", f"{what.capitalize()}: {why}.")
     return stuck
@@ -366,7 +370,7 @@ async def book_next() -> None:
 async def post_job(job: scheduler.Job) -> None:
     """Scheduler handler: 6:00 am. Post each user's checklist, then book tomorrow's."""
     try:
-        if await _decide(f"job {job.id}" + (f", {job.late_by / 60:.0f} minutes late" if job.is_late else "")):
+        if await _decide(f"job {job.id}" + (f", {job.late_by / 60:.0f} minutes late" if job.is_late else ""), late=job.is_late):
             # A real problem, not a morning with nothing to do: the bot's status shows it until a post works
             scheduler.report(job, scheduler.SKIPPED)
     finally:
@@ -380,7 +384,11 @@ async def startup() -> None:
         log.info("HUB_CHANNEL_ID is not set: the pills checklist is only posted when asked for")
         return
     now = clock.now()
-    if now >= days.at(days.today(now), POST_AT):
+    if any(job.due_at <= now for job in await scheduler.pending_jobs(TASK, JOB)):
+        # The bot was off at 6:00 am and the job is still waiting: it runs as soon as the
+        # scheduler starts, and is the one to post. Two deciding would say it twice
+        log.info("Pills checklist: the 6:00 am job is overdue and runs now; nothing is posted from start-up")
+    elif now >= days.at(days.today(now), POST_AT):
         await _decide("start-up after 6:00 am")
     else:
         log.info("Pills checklist: started before 6:00 am, nothing to post yet")
@@ -421,6 +429,10 @@ async def close_past() -> None:
     asked before anything is shown or marked: a day is over because the
     clock says so, not because a job happened to run."""
     now = clock.now()
+    open_before = len(await database.run(occurrences.db_pending_before, TASK, days.today(now)))
+    if open_before:
+        # Only said when the bot is starting: closing a day on time is nothing to report
+        restart.caught_up(f"{open_before} pill dose{'' if open_before == 1 else 's'} left open on an earlier day {'was' if open_before == 1 else 'were'} closed late")
     for message in await database.run(db_close, days.today(now), now):
         if message.kind == CHECKLIST:
             pills = await store.pills(message.user_id)

@@ -1114,3 +1114,21 @@ A short log of key decisions and why. Newest at the bottom.
     `choices`). The pills fixtures were recorded live (US$0.13): 60 of
     61, the one miss a known one.
   - **C19** waits for gym, the second task that needs name matching.
+- **Restarts (2026-10-12).** What happens when the bot is restarted or
+  dies was checked for the morning checklist, doses, old buttons, the
+  reset card and an action cut off half way, and written down ("What
+  survives a restart" in `docs/ARCHITECTURE.md`).
+  - Nothing new is stored to make a restart safe. An input cut off
+    half way is a `message_log` row still "received": the log was
+    already written before anything is handled.
+  - On start the bot says what it caught up on in one message in
+    #bot-log, and nothing when there is nothing. The same work done on
+    time is not reported.
+  - With the 6:00 am job still waiting at start, the job posts the
+    checklist and start-up leaves it alone: two deciding said it twice
+    ("not posted: already posted").
+  - A Save cut off is never applied again: the change is read back,
+    as after any Save. A reset cut off never carries on by itself: it
+    asks again. Both are the cautious reading; the words on the card
+    are in the questions.
+  - Timers were left out.

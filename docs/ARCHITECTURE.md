@@ -45,7 +45,8 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `database.py` | `connect()`, `wipe_dev()` (deletes the dev database and refuses any other), the async `message_log` helpers (`log_received`, `log_result`, `recent_log` for looking further back), `run(func)` in a worker thread |
 | `migrations.py` | Numbered schema migrations, core and per task, applied at startup |
 | `backup.py` | Nightly backup (a scheduler job that books its successor): the database, and `docs/specs/` and `data/exports/` each as a zip beside it; pre-migration snapshots. A backup that could not be saved whole is recorded as a failed job |
-| `users.py` | The `User` record, `ensure_owner()`, cached lookup by Discord id |
+| `users.py` | The `User` record, `ensure_owner()`, cached lookup by Discord id, and `get_user` by our own id |
+| `restart.py` | Starting again after a restart or a crash (see **What survives a restart**). `catch_up()`, once from `on_ready`: every input still "received" in `message_log` from before this start was cut off half way, so it is marked interrupted, a message of mine gets ⚠️ in place of 👀, and a button press is put right by its task if the task said how (`on_cut_off`); then the scheduler's own catch-up runs. A task that does something late at start says so with `caught_up`, and everything goes in one message in #bot-log ("🔁 Caught up after a restart"); with nothing to say, nothing is posted. Keeps no state of its own |
 | `permissions.py` | `is_allowed(user, action)`: the one permission check |
 | `errors.py` | `UserError`: a problem the user can fix |
 | `context.py` | `Context` handed to tasks for a typed word, reply action or reaction: user, channel, args, `reply` (Kept) / `confirm` / `note` (Transient), database, #bot-log; `posted` counts what a handler put in the channel; `parent_channel_id` is the forum or channel a post or thread hangs off. Everything it sends passes `core/outgoing.py`. With `housekeeping` set (by the registry, from the registration) what `confirm` and `note` say always tidies itself away |
@@ -69,7 +70,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `conversation.py` | A message in plain words, cheapest first: about the open card (extraction only), anything else (router, then extraction per task), or chat (a plain reply, no tools). Moves a card's items to another task in code on "no, packing", and drops from "Not included" what another card or the plain answer covers (`uncovered`). When extraction declines, says the line for that kind of decline, and "didn't understand" only when that is what happened: for "already so" the task's own line (`Entry.already`), with core's plain one (`DECLINED`) as the fallback. A message the router calls "nothing" that names one of the user's things (`Entry.names`) goes to the task that holds it instead of being dropped. Hands what was extracted to the task's own code, which writes every word shown; logs the route, tasks, what was extracted, the outcome and each request's cost |
 | `cards.py` | Buttons, dropdowns and forms for tasks that may not use discord.py: a task writes a `Card` of plain records (`Button`, `Select`, `Form`) and registers what each action does; the component's id (`card.b:<task>:<action>:<arg>`) carries everything, so cards work after a restart. `handle` answers every press first, checks `is_allowed`, logs it in `message_log` (kind `card`), shows a `UserError` to the presser alone and reports anything else. `post` / `send` / `edit` / `delete` put cards in channels. Holds the rule for button colours (green the positive main action, red destructive, blurple every other choice, grey Cancel only, made with `cancel()`): `check` refuses a card that breaks it, and `colour_problem` judges any button by plain values |
 | `confirmations.py` | Buttons under a short message: `ask` (Confirm / Cancel) and `choose` (which of a few), for the tasks that still use discord.py directly (archive, timers, dev). In memory, with timeouts. What was confirmed is recorded in #bot-log; asked as `housekeeping`, the line saying how it went always goes after about 10 seconds |
-| `scheduler.py` | Database-backed jobs: `add_job`, a ticker that runs due ones until none is left (`run_all_due`), catch-up at startup (`job.is_late`). Standing jobs, the ones booked for "the next time the clock reads X": `ensure` books one or moves one that is booked too late, never one that is overdue; `keep_booked` registers how each is booked and `rebook_standing` books them all again when the clock has gone back or the jobs were wiped. Its time is the clock's: when the dev clock jumps, `wake()` runs what came due in order, and time jumped over is not lateness. How a job ended is kept with it (done, failed, skipped): one that raises has failed, a handler says the rest with `report(job, FAILED \| SKIPPED)`, and `troubled()` names each kind of job whose latest run did not work |
+| `scheduler.py` | Database-backed jobs: `add_job`, a ticker that runs due ones until none is left (`run_all_due`), catch-up at startup (`catch_up`: jobs left running by a crash go back in the queue and everything overdue runs, `job.is_late`, before the ticker starts). Standing jobs, the ones booked for "the next time the clock reads X": `ensure` books one or moves one that is booked too late, never one that is overdue; `keep_booked` registers how each is booked and `rebook_standing` books them all again when the clock has gone back or the jobs were wiped. Its time is the clock's: when the dev clock jumps, `wake()` runs what came due in order, and time jumped over is not lateness. How a job ended is kept with it (done, failed, skipped): one that raises has failed, a handler says the rest with `report(job, FAILED \| SKIPPED)`, and `troubled()` names each kind of job whose latest run did not work |
 | `devmode.py` | Dev mode's in-memory state (the dev clock is not part of it: `clock.py`); other code asks it for values (`reaction_debounce()`, `speed()`, `is_verbose()`, `cleanup_enabled()`, `debug()`, `register_task()`) |
 | `interactions.py` | Permission check and logging for slash commands and context menus |
 | `llm.py` | The Claude client, with two kinds of request and nothing else: `call_tool` (one request that must come back as a tool call: the router and extraction) and `ask_claude` (plain chat: no tools, no access to the user's data, told so, and told never to offer). Two memories per channel, kept apart: chat's own questions and answers (`history_for`), and what was said and shown (`exchanges_for`), which only the router reads. `ABOUT_DATA` is what chat answers when a message is about the user's data after all, or reports something the user did (chat can record nothing and must not acknowledge it). `task_answered` / `answering_task` keep which task's own code answered last in each channel, for five minutes: a short message that follows is that task's first |
@@ -142,7 +143,7 @@ database with the clock under test control), `devmode`, `dev_parsing`, `lab`, `l
 `dev_clock` (`dev clock`, `dev reset-db` and their guards), `actions` (the contract and the checking), `routing` (the router, extraction and the replayed fixtures), `conversation` (a message end to end, confirm cards; on the demo lists of `tests/demo.py`), `livelists`, `costs` (routes, prices, the roll-up and `dev cost`), `trace` (notes, a message in lines, `dev why`), `cards`,
 `pills_rules`, `pills_doses`, `pills_today`, `pills_checklist`, `pills_day` (two whole days on a moved clock, through the real scheduler), `timers_plain` and `pills_plain`
 (each task's actions in plain words), `golden` (the golden conversations of the conversation standard, end to end, replayed from `evals/fixtures/golden.json`; the ones the bot can't hold yet are marked as gaps), `channels`
-(channel types, the dev panel's start-up sweep, a task failing to start), `channel` (channel reset: what goes and how, the card and both buttons, the Discord work on a fake channel, and the checklist and timers being posted again), `housekeeping` (each housekeeping word as a real reply: one line that goes, the word deleted, #bot-log), `buttons` (the colour of every button there is, on cards and in discord.py views, and a line deleted by its stored job after a restart), `identity` (the nickname and the status line), `commands` (the #commands pages and keeping the channel showing them), `mock` (`dev mock`: reading a sketch, its mistakes by line, the V2 message), `repeats` (which things are the same, what a repeat comes to, the words).
+(channel types, the dev panel's start-up sweep, a task failing to start), `channel` (channel reset: what goes and how, the card and both buttons, the Discord work on a fake channel, and the checklist and timers being posted again), `housekeeping` (each housekeeping word as a real reply: one line that goes, the word deleted, #bot-log), `buttons` (the colour of every button there is, on cards and in discord.py views, and a line deleted by its stored job after a restart), `identity` (the nickname and the status line), `commands` (the #commands pages and keeping the channel showing them), `mock` (`dev mock`: reading a sketch, its mistakes by line, the V2 message), `restart` (the bot stopped and started again: the checklist with the bot off at 6:00 am, doses and logs, old buttons, the reset card, and a message, a Save, a reset or a job cut off half way), `repeats` (which things are the same, what a repeat comes to, the words).
 
 ## Data flows
 
@@ -399,6 +400,75 @@ each task's `setup`; slash commands and menus live in the `CommandTree` in
 `main.py` and are logged by `core/interactions.py`. Handlers answer first
 and log second; `main.on_interaction` reports any left unanswered after 2
 seconds.
+
+## What survives a restart
+
+A restart is the service being restarted or the process dying: the
+same thing to the code. Everything that matters is in the database, and
+on start `core/restart.py` catches up, says what it did once in
+#bot-log, never posts a second copy of anything and never says a thing
+was done that wasn't. `tests/test_restart.py` stops and starts the bot
+for each row marked ✔. Timers are left out (a proof of concept).
+
+| What | Where it is kept | After a restart |
+|---|---|---|
+| Pills, their plans, every dose and when it was taken | `pills_pills`, `occurrences`, `occurrence_events` | As they were. A dose is never made twice or reset (`db_ensure`) ✔ |
+| Today's checklist and each dose's Taken / Skip message | `pills_messages` (the message ids) | Found again and brought up to date in place: no second copy. One that has gone from the channel is posted again ✔ |
+| The 6:00 am checklist, with the bot off at 6 | `scheduled_jobs` (the job is still waiting) | The overdue job posts it at start, once. Start-up leaves it to the job when one is waiting, and posts it itself only when none is. Said in the start's message ✔ |
+| A day that ended while the bot was off | `scheduled_jobs` (the rollover), and `checklist.close_past` whatever happens | Closed at start as it stood: what was taken stays taken, the rest is missed or set aside; today starts from the plan ✔ |
+| Every line said about a pill or a dose | `pills_lines` | A reply to one still means that pill and dose ✔ |
+| Buttons made with `core/cards.py` (Taken, Skip, Save, Cancel, the reset card, the tie question) | Nothing: the button's id carries its task, action and record | Work as before: the handler is found again by name ✔ |
+| An open confirm card | `confirm_cards`, and its expiry in `scheduled_jobs` | Save applies exactly what it showed. One that expired while the bot was off goes at start, and can no longer save ✔ |
+| The reset card | Nothing: the channel is read again when a button is pressed | Counts and deletes what is there then ✔ |
+| A list shown on request (Live) | `live_lists` | Still rewritten in place |
+| A bug's post and its buttons | `bugs_items`; the buttons are persistent views | Work as before |
+| Jobs (backup, rollover, 6:00 am, tidy, expiry) | `scheduled_jobs` | Each that came due runs at start, late, in due order; one left running by a crash runs again. Listed in the start's message ✔ |
+| The dev clock (dev database only) | A file beside the dev database | Still moved |
+
+**Cut off half way.** Every input is written to `message_log` as
+"received" before it is handled and given its outcome after, so a row
+still "received" from before this start is something the bot was in the
+middle of. At start each is marked "interrupted" (so it is found once)
+and:
+
+| What was cut off | What happens at start |
+|---|---|
+| A message of mine | ⚠️ in place of 👀 on it, as on any message that failed; I say it again ✔ |
+| Save on a confirm card | Nothing is applied twice. The change is read back (the action's `verify`): if it is there the card is closed and says it was saved; if not, the card is left open as it was ✔ |
+| A channel reset | Nothing more is deleted. The card, left saying "Deleting…", asks again for what is still there; if only its own two messages were left, they go ✔ |
+| Any other press (Taken, Skip…) | Reported, and nothing else: what the press had already written is in the database and shows on the checklist at start; pressing again is safe ✔ |
+| A job | Runs again from the start. Every job is written to be run twice |
+
+**Lost, by design or not yet handled**
+
+- What was said lately (`llm`'s histories and exchanges, which task
+  just answered): the five-minute follow-up starts again, so "it"
+  straight after a restart goes to the router ✔
+- A reaction made in the 30 seconds before the stop (the debounce is in
+  memory): it is not acted on and gets no ✅. Take it off and put it on
+  again. Reactions made while the bot is off are not seen at all
+- A task waiting for my next message (`registry.expect_message`), and
+  dev mode
+- A message sent to Discord and not yet recorded when the bot died (the
+  checklist between being posted and its id being stored): a few
+  milliseconds wide, and it would leave a second copy. Not handled
+
+**What pills reminders (stage 3) will need** so that a restart is safe:
+
+- A prompt is a row (`pills_messages`, a new kind) and its next step is
+  a stored job, never a sleeping coroutine: the snooze's end, and each
+  re-nudge with its number in the job's payload
+- Whether a prompt is due, and which re-nudge it is on, is worked out
+  from the plan, what was taken and the first prompt's time, so that at
+  start one prompt is posted for a dose that is still due, never one a
+  re-nudge that was missed, and never two for a dose
+- Nothing after the pill's latest time, however late the bot starts: a
+  dose whose time and re-nudges all passed while the bot was off is
+  missed, said once in the start's message, and gets no prompt
+- A prompt whose button was pressed as the bot stopped is an ordinary
+  cut-off press: the dose is in the database or it isn't, and the
+  prompt is rewritten from that
+- The line in the start's message never names a pill
 
 ## Database (`data/assistant.db`; `data/dev.db` with `--dev`)
 

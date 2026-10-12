@@ -5,7 +5,7 @@ import sqlite3
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 
-from core import actions, cards, database, lifecycle, llm, scheduler
+from core import actions, cards, database, lifecycle, llm, restart, scheduler, users
 from core.actions import Entry, Proposal, Request
 from core.cards import Button, Card
 from core.discord_utils import log_error
@@ -50,6 +50,8 @@ FAILED = "failed"  # Save was pressed, and what was read back from the database 
 
 FOOTER = "-# or tell me what to change"
 LAPSED = "⌛ That card has gone and nothing was saved. Say it again to start over."
+# On a card whose Save was cut off by a restart, once the change has been read back
+SAVED_OVER_A_RESTART = "✅ Saved. The bot restarted while saving: the change was read back and is there."
 
 
 @dataclass(frozen=True)
@@ -411,8 +413,36 @@ async def on_cancel(press: cards.Press) -> str | None:
     return f"cancelled card {press.arg}"
 
 
+async def save_cut_off(cut: restart.CutOff, arg: str) -> str:
+    """Save was pressed and the bot stopped before it had finished
+    (core/restart.py). Nothing is applied a second time: the change is read
+    back, as after any Save. If it is there the card is closed and says so;
+    if it isn't, the card is left open, exactly as it was, to be pressed again."""
+    card = await database.run(db_get, int(arg)) if arg.isdigit() else None
+    if card is None:
+        return "Save was pressed on a card that is no longer kept: nothing to check"
+    name = f"{card.task}/{card.action}"
+    entry = actions.entry(card.task)
+    action = entry.action(card.action) if entry else None
+    if card.status != SAVED:
+        if not card.is_open:
+            return f"Save of {name} was cut off by the stop, on a card already closed ({card.status}): nothing to do"
+        user = await users.get_user(card.user_id)
+        if action is None or action.verify is None or user is None:
+            return f"Save of {name} was cut off by the stop and can't be checked: its card is still open"
+        wrong = await action.verify(Request(user, card.channel_id), card.data)
+        if wrong:
+            return f"Save of {name} was cut off by the stop before it took ({wrong}): its card is still open, press Save again"
+        await database.run(db_close, card.id, SAVED)
+        await scheduler.cancel_job(card.job_id)
+    if card.message_id is not None:
+        await cards.edit(card.channel_id, card.message_id, Card(SAVED_OVER_A_RESTART))
+    return f"Save of {name} was cut off by the stop after it took: read back, and its card now says it is saved"
+
+
 def setup() -> None:
     """Register the buttons and the expiry. Before the bot connects."""
+    restart.on_cut_off(CARDS, "save", save_cut_off)
     cards.register(CARDS, "save", on_save)
     cards.register(CARDS, "cancel", on_cancel)
     scheduler.register_handler(JOB_TASK, JOB_KIND, expired)

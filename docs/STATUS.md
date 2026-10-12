@@ -40,6 +40,22 @@ C15 and C16 (done, block 34), C19 (waits for gym), the timers findings
   exercise as `3 × 8–12 · 60 kg · rest 2 min`; dots for sets; last
   time's sets under each exercise; the buttons only on the exercise
   you are on.
+- **Restarts** (item 10), three things I chose and one to decide:
+  - A Save cut off by a restart, once read back, makes the card say
+    "✅ Saved. The bot restarted while saving: the change was read back
+    and is there." Say if it should read otherwise.
+  - A channel reset cut off half way never carries on by itself: its
+    card asks again for what is still there. The other sensible way is
+    to finish the reset at start; I took the one that deletes nothing
+    unasked.
+  - On every restart after 6:00 am, #bot-log still gets "💊 Pills
+    checklist not posted … it was already posted at 6:00 am; brought up
+    to date in place". It is true, and it was there before. Keep it,
+    or say nothing when the checklist is simply there?
+  - To decide: a reaction made in the 30 seconds before a stop is
+    lost (it gets no ✅; take it off and put it on again). Keeping the
+    waiting reactions in the database would fix it. Worth doing, or
+    leave?
 - **Streaks** (from C15): you asked for its tests to cover streaks.
   No streak is worked out anywhere yet, so the tests pin down what one
   will read: only a missed dose breaks it, and a skip (yours, the
@@ -49,9 +65,11 @@ C15 and C16 (done, block 34), C19 (waits for gym), the timers findings
 ## Background batch (unattended, on `feature/pills`)
 
 One commit an item, pushed, each with a block in `docs/QA-RUN.md`
-marked "waiting for QA". No live evals were run and the service was
-not restarted: the live bot is still on "Send a reply to a task's
-message to that task".
+marked "waiting for QA". One live eval was run, the one approved (the
+pills fixtures, US$0.13). The service was not restarted: the live bot
+is still on "Send a reply to a task's message to that task". The next
+restart adds two tables and a column (`timers_messages`, `pills_lines`,
+`occurrences.cause`).
 
 1. Done: the standard says what "it" means without a reply (block 27).
 2. Done: an unnamed pill is only logged straight away with an anchor;
@@ -75,6 +93,12 @@ message to that task".
 9. Done: the gym spec (`docs/specs/gym.md`, private) and four
    mock-ups in `docs/mockups/` (block 35). No code. "Not now" in the
    standard says new tasks are allowed and gym is next.
+
+10. Done: restarts (block 36). What survives one is a section of
+    `docs/ARCHITECTURE.md`, with what reminders will need; on start
+    the bot catches up and says so once in #bot-log; a Save or a reset
+    cut off half way is put right without being done twice; a message
+    it was in the middle of gets ⚠️. Timers left out.
 
 On your answers of 2026-10-12: C12 (`show_existing`, declared by
 bugs), C15 (a `cause` in the occurrence log) and C16 (a `clear` list
@@ -109,6 +133,13 @@ clock`; nothing is started until the mock-ups are approved.
    latest time: the same card, one more reason).
 7. **Privacy**: the notification never names a pill (G14), checked by
    a test on the first line of every prompt.
+
+Across a restart (from item 10; the list is in "What survives a
+restart" in `docs/ARCHITECTURE.md`): a prompt's next step is a stored
+job, which re-nudge it is on is worked out and not counted in memory,
+at start a dose still due gets one prompt and one past its latest time
+gets none, and what was caught up on is said once without naming a
+pill. Step 2 and step 4 each get a test that stops and starts the bot.
 
 ## Branch and state
 
@@ -179,6 +210,7 @@ the spec is approved.
 
 ## Recently done
 
+- Restarts (2026-10-12): the bot catches up at start and says so once.
 - The timer reply fix (2026-10-12): the lines a timer answers with are
   its messages too, and no timer is picked by a guess.
 - A reply to a task's message goes to that task first (2026-10-12).
@@ -201,7 +233,7 @@ the spec is approved.
    on the dev database. Step 8 of block 24 (tomorrow's backup card).
    Blocks 21 and 22, and steps 5 to 7 of block 23, are still to be
    reported.
-2. QA of the background batch: blocks 27 to 35 (`docs/QA-RUN.md`), and
+2. QA of the background batch: blocks 27 to 36 (`docs/QA-RUN.md`), and
    the questions at the top of this file.
 3. The checklist redesigned with Discord's Components V2: look at
    `dev mock checklist` and the reminder sketches (block 33) and say

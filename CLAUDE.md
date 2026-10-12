@@ -183,6 +183,13 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 - A job that books itself for "the next time the clock reads X" is a
   standing job: booked with `scheduler.ensure` and registered with
   `scheduler.keep_booked`. Never "already pending? then leave it"
+- A restart loses nothing that matters and repeats nothing
+  (`core/restart.py`; "What survives a restart" in
+  `docs/ARCHITECTURE.md`): state is in the database, a job is safe to
+  run twice, and on start the bot catches up, says so once in #bot-log
+  (`restart.caught_up`), never posts a second copy and never says a
+  thing was done that wasn't. A press that must not be left half done
+  has a recovery (`restart.on_cut_off`)
 - Nothing may depend on a job having run to be right: a day that is over
   is closed by the rollover and, failing that, by whatever looks at
   today next (`checklist.close_past`)

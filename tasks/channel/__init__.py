@@ -2,7 +2,7 @@ import asyncio
 import logging
 from pathlib import Path
 
-from core import cards, clearing, clock, confirm, livelists, llm, repeats
+from core import cards, clearing, clock, confirm, livelists, llm, repeats, restart
 from core.actions import Action, Request, Shown
 from core.cards import Button, Card
 from core.config import EXPORTS_DIR, real_now_nz
@@ -177,6 +177,32 @@ async def _reset(press: cards.Press, keep_protected: bool) -> str:
     return done
 
 
+async def reset_cut_off(cut: restart.CutOff, arg: str) -> str:
+    """The bot stopped in the middle of a reset (core/restart.py). Nothing more
+    is deleted by itself: the card, left saying "Deleting…", asks again for
+    the channel as it now stands, or goes if the deleting had finished."""
+    channel_id, asked_by = _read(arg)
+    found = await clearing.scan(channel_id)
+    if found.missing:
+        return f"The reset of {found.mention} was cut off by the stop, and I can't read the channel now: nothing more was deleted"
+    own = {message_id for message_id in (cut.message_id, asked_by) if message_id}
+    left = [message for message in found.messages if message.id not in own]
+    if not left:
+        # Everything had gone: only the reset's own two messages were still to go
+        for message_id in own:
+            await cards.delete(channel_id, message_id)
+        return f"The reset of {found.mention} was cut off by the stop at its very end: nothing was left to delete, and its card is gone"
+    rest = clearing.Scan(found.channel_id, found.mention, tuple(m for m in found.messages if m.id != cut.message_id), name=found.name)
+    card = asking_card(rest, asked_by, await posted_again(rest))
+    if card is not None and cut.message_id is not None:
+        await cards.edit(channel_id, cut.message_id, card)
+    count = len(left)
+    return (
+        f"The reset of {found.mention} was cut off by the stop: {count} message{'' if count == 1 else 's'} still there. "
+        "Nothing more is deleted until a button is pressed: its card asks again"
+    )
+
+
 async def on_all(press: cards.Press) -> str:
     return await _reset(press, keep_protected=False)
 
@@ -235,6 +261,9 @@ class ChannelTask(Task):
         cards.register(TASK, ALL, on_all)
         cards.register(TASK, UNPINNED, on_unpinned)
         cards.register(TASK, CANCEL, on_cancel)
+        # A reset the bot stopped in the middle of asks again when it starts
+        restart.on_cut_off(TASK, ALL, reset_cut_off)
+        restart.on_cut_off(TASK, UNPINNED, reset_cut_off)
 
 
 task = ChannelTask()

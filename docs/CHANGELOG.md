@@ -6,6 +6,12 @@ backfilled from the git log.
 
 ## 2026-10-12
 
+- After a restart or a crash the bot catches up and says so once in
+  #bot-log ("🔁 Caught up after a restart"): the checklist if it was
+  off at 6:00 am, a day closed late, jobs run late. A message it was
+  in the middle of gets ⚠️; a Save or a channel reset cut off half way
+  is put right without being done twice.
+
 - Gym, the next task, has a spec (private) and four mock-ups to look
   at with `dev mock`: `gym-import`, `gym-change`, `gym-today` and
   `gym-logged-set`. Nothing of it is built.

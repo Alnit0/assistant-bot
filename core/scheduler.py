@@ -341,8 +341,9 @@ async def troubled() -> list[tuple[str, str, str]]:
 # ---------------------------------------------------------------------------
 # The loop
 # ---------------------------------------------------------------------------
-async def run_due(now: datetime | None = None) -> int:
-    """Run every job that is due. Returns how many ran."""
+async def run_due(now: datetime | None = None, done: list | None = None) -> int:
+    """Run every job that is due. Returns how many ran; each is added to
+    `done`, if given."""
     now = now or utc_now()
     ran = 0
     for job in await database.run(_db_due, now):
@@ -379,17 +380,32 @@ async def run_due(now: datetime | None = None) -> int:
             ],
         )
         ran += 1
+        if done is not None:
+            done.append(job)
     return ran
 
 
-async def run_all_due() -> int:
+async def run_all_due(done: list | None = None) -> int:
     """Run due jobs until none is left: a job may book another that is already
     due (the clock was moved ahead, or the bot was off for a while). A job
     nobody handles is left waiting and doesn't keep this going."""
     total = 0
-    while ran := await run_due():
+    while ran := await run_due(done=done):
         total += ran
     return total
+
+
+async def catch_up() -> tuple[int, list[Job]]:
+    """When the bot starts, before the loop: jobs a crash left running go back
+    in the queue, and everything that came due while the bot was off runs
+    now. Returns how many were put back and the jobs that ran late, for the
+    start's message (core/restart.py)."""
+    again = await database.run(_db_recover)
+    if again:
+        log.info("Scheduler: %s interrupted job(s) put back in the queue", again)
+    done: list[Job] = []
+    await run_all_due(done)
+    return again, [job for job in done if job.is_late]
 
 
 async def _loop() -> None:

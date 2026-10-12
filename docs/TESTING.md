@@ -37,7 +37,7 @@ Last updated: 2026-10-12
 | G | Timers | 32 | 12 | 20 | 17 | 15 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
 | J | Dev mode | 56 | 11 | 45 | 44 | 12 | 0 | 0 |
-| K | Startup and housekeeping | 22 | 11 | 11 | 9 | 13 | 0 | 0 |
+| K | Startup and housekeeping | 24 | 12 | 12 | 10 | 14 | 0 | 0 |
 | L | Keep | 12 | 4 | 8 | 8 | 4 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
 | P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
@@ -46,7 +46,7 @@ Last updated: 2026-10-12
 | S | Routing and confirm cards | 59 | 10 | 49 | 14 | 44 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 4 | 18 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **441** | **136** | **305** | **236** | **204** | **0** | **1** |
+| | **Total** | **443** | **137** | **306** | **237** | **205** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -317,6 +317,8 @@ Any channel. Check the bot's status in the member list.
 | K20 | 👤 Manual | Only when you next run the dev database (otherwise report `K20 skip`): start with `python main.py --dev`; look at the bot. `dev clock +13h`; look again. Stop it and start the live bot | "<base> · DEV" and "🧪 DEV database"; after the clock moves, "🧪 DEV database · clock +13h". Back on live the nickname is the base name again | ⬜ Untested | | |
 | K21 | 👤 Manual | Make a #commands channel that only the bot can write in, put its id in `.env` as `COMMANDS_CHANNEL_ID`, restart. Read the channel. Restart once more | One message a task (Builtin, Bugs, Pills, Timers), then Housekeeping, Dev and Lab; pills are only ever "Pill A" and "Pill B". #bot-log has "📖 #commands updated". After the second restart nothing in the channel changed and there is no second card | ✅ Pass | 2026-10-12 | Block 24, on the live bot |
 | K22 | 👤 Manual | The morning after a channel was reset: look at "💾 Backup saved" in #bot-log | It lists three files: `assistant-….db`, `specs-….zip` and `exports-….zip` | ⬜ Untested | | |
+| K23 | 🤖 Auto | A restart, intentional or a crash | With nothing missed nothing is said. Off at 6:00 am: the checklist is posted once at start by the overdue job, said once in "🔁 Caught up after a restart" with the day closed late and the jobs run late, and a second restart posts no duplicate. Doses and logs are as they were, none made twice; a line said before still means its dose; Taken on a dose message, Save and Cancel on a confirm card and both buttons of the reset card work from before the restart; a card that expired while off goes and can no longer save. Cut off half way: a message gets ⚠️ and is said once; Save is read back and never applied twice (saved: the card says so; not saved: the card stays open); a reset deletes nothing more and asks again; any other press is reported; a job runs again; a recovery that fails never stops the start; an input being handled as the bot starts is left alone. What was said lately is forgotten | ✅ Pass | 2026-10-12 | `tests/test_restart.py` |
+| K24 | 👤 Manual | On `--dev`: say `add Testpill`, don't press. Stop the bot (Ctrl+C) and start it again. Look at #bot-log, then press **Save** on the card. Then `dev clock 5:58am`, stop the bot, wait four minutes, start it | After the first start: no "🔁 Caught up" message, and Save saves Testpill. After the second: one "🔁 Caught up after a restart" naming the checklist posted late and the jobs run late, one checklist in the hub, and no "not posted" message | ⬜ Untested | | Block 36 |
 
 ## L. Keep
 

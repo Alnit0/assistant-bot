@@ -81,3 +81,19 @@ async def get_user_by_discord_id(discord_id: int) -> User | None:
     if discord_id not in _cache:
         _cache[discord_id] = await asyncio.to_thread(_get_user_by_discord_id, discord_id)
     return _cache[discord_id]
+
+
+def _get_user(user_id: int) -> User | None:
+    conn = connect()
+    try:
+        row = conn.execute(
+            "SELECT id, discord_id, display_name, timezone, role, created_at FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+    finally:
+        conn.close()
+    return User(*row) if row else None
+
+
+async def get_user(user_id: int) -> User | None:
+    """A user by our own id (the `user_id` every record carries), or None."""
+    return await asyncio.to_thread(_get_user, user_id)
