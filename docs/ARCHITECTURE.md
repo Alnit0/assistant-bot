@@ -434,7 +434,7 @@ and:
 | What was cut off | What happens at start |
 |---|---|
 | A message of mine | ⚠️ in place of 👀 on it, as on any message that failed; I say it again ✔ |
-| Save on a confirm card | Nothing is applied twice. The change is read back (the action's `verify`): if it is there the card is closed and says it was saved; if not, the card is left open as it was ✔ |
+| Save on a confirm card | Nothing is applied twice. The change is read back (the action's `verify`): if it is there the card is closed and gets the normal confirmation (kept in `confirm_cards.confirmation` the moment the change is applied) with "-# checked after a restart" under it; if not, the card is left open as it was ✔ |
 | A channel reset | Nothing more is deleted. The card, left saying "Deleting…", asks again for what is still there; if only its own two messages were left, they go ✔ |
 | Any other press (Taken, Skip…) | Reported, and nothing else: what the press had already written is in the database and shows on the checklist at start; pressing again is safe ✔ |
 | A job | Runs again from the start. Every job is written to be run twice |

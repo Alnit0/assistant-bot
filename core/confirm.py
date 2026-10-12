@@ -50,8 +50,11 @@ FAILED = "failed"  # Save was pressed, and what was read back from the database 
 
 FOOTER = "-# or tell me what to change"
 LAPSED = "⌛ That card has gone and nothing was saved. Say it again to start over."
-# On a card whose Save was cut off by a restart, once the change has been read back
-SAVED_OVER_A_RESTART = "✅ Saved. The bot restarted while saving: the change was read back and is there."
+# Under the confirmation of a Save that was cut off by a restart, once the change has been read back
+CHECKED = "-# checked after a restart"
+# The confirmation itself is the task's own, kept when the change was applied. If the bot
+# stopped before even that was kept, the change is there and its words are not
+SAVED_PLAIN = "✅ Saved."
 
 
 @dataclass(frozen=True)
@@ -74,6 +77,8 @@ class Stored:
     # The data of the card this one replaced, for the same action: what it was
     # before the user's last change. None for a first card
     previous: dict | None = None
+    # What Save said, kept as soon as the change was applied (None until then)
+    confirmation: str | None = None
 
     @property
     def is_open(self) -> bool:
@@ -168,14 +173,14 @@ def on_screen(card: Stored) -> str:
 # ---------------------------------------------------------------------------
 # Database (blocking; called through database.run)
 # ---------------------------------------------------------------------------
-_COLUMNS = "id, user_id, channel_id, message_id, kind, task, action, data, guessed, said, status, job_id, created_at, previous"
+_COLUMNS = "id, user_id, channel_id, message_id, kind, task, action, data, guessed, said, status, job_id, created_at, previous, confirmation"
 
 
 def _stored(row: tuple) -> Stored:
     return Stored(
         row[0], row[1], row[2], row[3], row[4], row[5], row[6], json.loads(row[7]),
         tuple(json.loads(row[8])), row[9], row[10], row[11], from_db(row[12]),
-        json.loads(row[13]) if row[13] else None,
+        json.loads(row[13]) if row[13] else None, row[14],
     )
 
 
@@ -216,6 +221,17 @@ def db_latest_open(conn: sqlite3.Connection, user_id: int, channel_id: int) -> S
 def db_by_message(conn: sqlite3.Connection, message_id: int) -> Stored | None:
     row = conn.execute(f"SELECT {_COLUMNS} FROM confirm_cards WHERE message_id = ?", (message_id,)).fetchone()
     return _stored(row) if row else None
+
+
+def db_confirmed(conn: sqlite3.Connection, card_id: int, confirmation: str) -> None:
+    """Keep what Save said, before anything is shown."""
+    conn.execute("UPDATE confirm_cards SET confirmation = ? WHERE id = ?", (confirmation, card_id))
+
+
+def after_restart(confirmation: str | None) -> str:
+    """The card of a Save that was cut off and has been read back: the normal
+    confirmation, and under it that it was checked."""
+    return f"{confirmation or SAVED_PLAIN}\n{CHECKED}"
 
 
 def db_placed(conn: sqlite3.Connection, card_id: int, message_id: int | None, job_id: int | None) -> None:
@@ -379,6 +395,8 @@ async def on_save(press: cards.Press) -> str | None:
     if isinstance(said, actions.Answer):
         # About things of the task's own: once the card says so, the task is told which message it is
         said, placed = said.text, said.placed
+    # Kept at once: should the bot stop before the card is rewritten, these are the words it gets at start
+    await database.run(db_confirmed, card.id, said)
     # Nothing is confirmed on the strength of `apply` having returned: the change is
     # read back from the database first, and "saved" is only said if it is there
     wrong = await action.verify(request, card.data) if action.verify is not None else ""
@@ -416,8 +434,9 @@ async def on_cancel(press: cards.Press) -> str | None:
 async def save_cut_off(cut: restart.CutOff, arg: str) -> str:
     """Save was pressed and the bot stopped before it had finished
     (core/restart.py). Nothing is applied a second time: the change is read
-    back, as after any Save. If it is there the card is closed and says so;
-    if it isn't, the card is left open, exactly as it was, to be pressed again."""
+    back, as after any Save. If it is there the card is closed and gets the
+    normal confirmation, with a line under it; if it isn't, the card is left
+    open, exactly as it was, to be pressed again."""
     card = await database.run(db_get, int(arg)) if arg.isdigit() else None
     if card is None:
         return "Save was pressed on a card that is no longer kept: nothing to check"
@@ -436,8 +455,8 @@ async def save_cut_off(cut: restart.CutOff, arg: str) -> str:
         await database.run(db_close, card.id, SAVED)
         await scheduler.cancel_job(card.job_id)
     if card.message_id is not None:
-        await cards.edit(card.channel_id, card.message_id, Card(SAVED_OVER_A_RESTART))
-    return f"Save of {name} was cut off by the stop after it took: read back, and its card now says it is saved"
+        await cards.edit(card.channel_id, card.message_id, Card(after_restart(card.confirmation)))
+    return f"Save of {name} was cut off by the stop after it took: read back, and its card now says so"
 
 
 def setup() -> None:

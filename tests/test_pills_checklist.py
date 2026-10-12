@@ -757,22 +757,23 @@ def test_a_checklist_asked_for_in_the_night_does_not_stand_in_for_the_morning_s(
     assert len(world.sent) == 2
     why = "it was already posted at 6:00 am; brought up to date in place"
     assert f"not posted: {why}" in caplog.text
-    assert world.bot_log == [(NOT_POSTED, f"Job 62: {why}."), (NOT_POSTED, f"Start-up after 6:00 am: {why}.")]
+    assert world.bot_log == [], "the checklist is simply there: nothing to say in #bot-log"
 
 
-def test_a_morning_with_no_post_says_why_in_the_log_and_in_bot_log(world, monkeypatch, caplog):
+def test_a_morning_with_no_post_says_why_in_the_log_and_only_a_real_problem_in_bot_log(world, monkeypatch, caplog):
     world.now = day.at(DAY, time(6, 0))
     with caplog.at_level("INFO", logger="assistant"):
         run(checklist.post_job(six()))
     assert "not posted: nobody has a pill" in caplog.text and world.bot_log == [], "no pills at all: the log only"
     add(world, {"name": "Iron"})
     run(plain.pause_save(world.request(), {"pills": [{"pill": "iron"}]}))
-    run(checklist.post_job(six()))
-    assert world.bot_log == [(NOT_POSTED, "Job 61: there is nothing to take today.")]
+    with caplog.at_level("INFO", logger="assistant"):
+        run(checklist.post_job(six()))
+    assert "not posted: there is nothing to take today" in caplog.text and world.bot_log == [], "nothing to take is no problem"
     run(plain.resume_save(world.request(), {"pills": [{"pill": "iron"}]}))
     monkeypatch.setattr(hub, "channel_id", lambda: None)
     run(checklist.post_job(six()))
-    assert world.bot_log[-1] == (NOT_POSTED, "Job 61: the hub channel is not set or can't be found.") and world.sent == []
+    assert world.bot_log == [(NOT_POSTED, "Job 61: the hub channel is not set or can't be found.")] and world.sent == []
 
 
 def test_only_a_hub_that_cannot_be_found_makes_the_morning_job_a_skipped_one(world, monkeypatch):

@@ -691,7 +691,7 @@ have none.
 | 2 | Press **Save** on the Otherpill card from before the restart | Saved: `pills` lists Otherpill. The card worked although the bot restarted | K24 |
 | 3 | Type `pills`. Stop and start the bot. Press **Taken** under the checklist for Testpill | The same checklist as before the restart (no second one), and Testpill is ticked off on it | K24 |
 | 4 | Type `dev clock 5:58am`. Stop the bot, wait four minutes, start it | One new checklist in the hub. In #bot-log one "🔁 Caught up after a restart" saying the checklist was posted and the bot was off at 6:00 am, and the jobs that ran late. No "Pills checklist not posted" message | K24 |
-| 5 | Stop and start the bot once more | No new checklist and no "🔁 Caught up" message | K24 |
+| 5 | Stop and start the bot once more | No new checklist, no "🔁 Caught up" message and no "Pills checklist not posted": #bot-log has only "🟢 Bot started" | K24 |
 | 6 | Type `dev clock reset`; say `remove Otherpill`, press **Remove** | The clock is the real time again and Otherpill is gone | |
 
 ## When you finish

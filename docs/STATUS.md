@@ -7,60 +7,35 @@ session; the end-of-task checklist updates it at the end of every task.
 
 ## Questions for Alex
 
-Answered on 2026-10-12 and done or parked: C7 (waits for G1), C12,
-C15 and C16 (done, block 34), C19 (waits for gym), the timers findings
-(left), the reminder mock-ups (as sketched, to be looked at in block
-33).
-
+- **Items 11 and 12 did not arrive.** Your message of 2026-10-12 says
+  to go ahead with item 11 (G1) and item 12 (reminders behind
+  `REMINDERS_ENABLED`, off by default) "as sent earlier", but no
+  message with their text reached me (as with item 10 before).
+  Nothing was built for them. Send the two items, or say "build G1
+  from the backlog and reminders from the build plan below" and I
+  will work from those.
+- **A Save cut off inside the save itself** (item 10, your answer 4):
+  the card gets the normal confirmation with "-# checked after a
+  restart" under it, because the words are kept the moment the change
+  is applied. In the few milliseconds before that the words don't
+  exist yet; then the card says "✅ Saved." with the same line under
+  it. Say if that should read otherwise.
 - **The lock screen** (waits for block 33, step 1): the sketches put
   "💊 Routine due · 11:12 am" as the message's first line. If your
   phone shows something else for a card of this kind, the prompt has
   to be a plain message with buttons instead: say which you see.
-- **Gym** (item 9): the spec is `docs/specs/gym.md` (draft 1, written
-  without an interview) and its 22 questions are in its section 16.
-  The ones the design turns on:
-  - Which workout is due: the next in turn after the last one you did,
-    or fixed weekdays? If weekdays, what happens to one you miss?
-  - How are the days laid out in the sheet (a Day column, a heading
-    row above each day, a tab a day), and is it `.csv` or `.xlsx`?
-  - Is the plan the same every week, or is there a column a week?
-  - Reps and weights that aren't plain numbers: AMRAP, timed holds,
-    12 / 10 / 8, bodyweight, per side? kg or lb?
-  - Do you log each set as you go, or the whole exercise afterwards?
-  - Does the plan ever change by saying so, or only in the sheet? If
-    you lift more than the plan says, does the plan follow?
-  - Where is today's workout posted, and does anything post by itself?
-  - Rest: is the planned rest on the line enough, or should the phone
-    buzz? (Timers are a proof of concept, so that would be new work.)
-  - What counts as a best, and do you want a suggested next weight?
-- **Gym, core additions** to say yes to before building: attachments
-  on a request, a decimal number in the contract, and name matching
-  moved out of pills (listed in `docs/BACKLOG.md`).
-- **Gym mock-ups** (block 35): four sketches. I chose: a line an
-  exercise as `3 × 8–12 · 60 kg · rest 2 min`; dots for sets; last
-  time's sets under each exercise; the buttons only on the exercise
-  you are on.
-- **Restarts** (item 10), three things I chose and one to decide:
-  - A Save cut off by a restart, once read back, makes the card say
-    "✅ Saved. The bot restarted while saving: the change was read back
-    and is there." Say if it should read otherwise.
-  - A channel reset cut off half way never carries on by itself: its
-    card asks again for what is still there. The other sensible way is
-    to finish the reset at start; I took the one that deletes nothing
-    unasked.
-  - On every restart after 6:00 am, #bot-log still gets "💊 Pills
-    checklist not posted … it was already posted at 6:00 am; brought up
-    to date in place". It is true, and it was there before. Keep it,
-    or say nothing when the checklist is simply there?
-  - To decide: a reaction made in the 30 seconds before a stop is
-    lost (it gets no ✅; take it off and put it on again). Keeping the
-    waiting reactions in the database would fix it. Worth doing, or
-    leave?
-- **Streaks** (from C15): you asked for its tests to cover streaks.
-  No streak is worked out anywhere yet, so the tests pin down what one
-  will read: only a missed dose breaks it, and a skip (yours, the
-  bot's for want of room, a removed pill) never does. Say if a streak
-  should be built before reminders or after.
+- **Gym** waits for your answers on how you train (the spec's section
+  16). No gym code is started until then. The three core additions
+  are approved (attachments on a request, a decimal number in the
+  contract, name matching moved out of pills) and are stage 1 of the
+  gym build, so they wait with it.
+
+Answered on 2026-10-12 and done or parked: C7 (waits for G1), C12,
+C15 and C16 (done, block 34), C19 (moves with gym), the timers
+findings (left), the reminder and gym mock-ups (as sketched, to be
+looked at in blocks 33 and 35), a reset cut off (keeps asking again),
+the "not posted" line (only real problems are logged now), lost
+reactions (left, in the backlog), streaks (after reminders).
 
 ## Background batch (unattended, on `feature/pills`)
 
@@ -68,8 +43,8 @@ One commit an item, pushed, each with a block in `docs/QA-RUN.md`
 marked "waiting for QA". One live eval was run, the one approved (the
 pills fixtures, US$0.13). The service was not restarted: the live bot
 is still on "Send a reply to a task's message to that task". The next
-restart adds two tables and a column (`timers_messages`, `pills_lines`,
-`occurrences.cause`).
+restart adds two tables and two columns (`timers_messages`,
+`pills_lines`, `occurrences.cause`, `confirm_cards.confirmation`).
 
 1. Done: the standard says what "it" means without a reply (block 27).
 2. Done: an unnamed pill is only logged straight away with an anchor;
@@ -239,7 +214,10 @@ the spec is approved.
    `dev mock checklist` and the reminder sketches (block 33) and say
    what to change; nothing real is converted until they are approved.
 4. Pills stage 3, reminders, on a go: the build plan is above. Then
-   corrections and questions.
+   corrections and questions, then streaks (decided 2026-10-12: after
+   reminders).
+5. Gym: waits for the answers on how you train; then its core
+   additions (approved), then the task.
 
 ## Open decisions
 

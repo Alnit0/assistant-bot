@@ -341,8 +341,8 @@ async def _post_if_due(user_id: int) -> tuple[bool, str, bool]:
 
 async def _decide(what: str, late: bool = False) -> bool:
     """Post or not for each user, and say what was decided and why: in the log
-    always, and in #bot-log when nothing was posted. True if a checklist
-    that should have been posted could not be. One posted `late` because
+    always, and in #bot-log only when a checklist that should have been
+    posted could not be (True is returned then). One posted `late` because
     the bot was off at 6:00 am is said in the start's own message
     (core/restart.py), once."""
     stuck = False
@@ -357,7 +357,9 @@ async def _decide(what: str, late: bool = False) -> bool:
         log.info("Pills checklist, %s (%s), user %s: %s: %s", what, when, user_id, "posted" if posted else "not posted", why)
         if posted and late:
             restart.caught_up(f"Today's pills checklist was posted at {timeinput.format_moment(now)}: the bot was off at {timeinput.format_time(POST_AT)}")
-        if not posted:
+        if problem:
+            # Only a real problem is said in #bot-log: a checklist that is simply there, or a
+            # day with nothing to take, is in the log file and nowhere else
             await discord_utils.log_simple("💊 Pills checklist not posted", f"{what.capitalize()}: {why}.")
     return stuck
 

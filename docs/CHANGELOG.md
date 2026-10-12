@@ -6,6 +6,11 @@ backfilled from the git log.
 
 ## 2026-10-12
 
+- #bot-log no longer says "Pills checklist not posted" when the
+  checklist is simply there or there is nothing to take: only when it
+  could not be posted. A Save finished across a restart shows its
+  normal confirmation with "checked after a restart" under it.
+
 - After a restart or a crash the bot catches up and says so once in
   #bot-log ("🔁 Caught up after a restart"): the checklist if it was
   off at 6:00 am, a day closed late, jobs run late. A message it was

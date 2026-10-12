@@ -1132,3 +1132,10 @@ A short log of key decisions and why. Newest at the bottom.
     asks again. Both are the cautious reading; the words on the card
     are in the questions.
   - Timers were left out.
+  - Decided by Alex the same day: a Save that was applied shows the
+    normal confirmation with "-# checked after a restart" under it (so
+    Save keeps its words in the database before it shows them); a reset
+    cut off keeps asking again; #bot-log is only told of a checklist
+    that could not be posted, never of one that is simply there or of
+    a day with nothing to take (the log file has every decision);
+    reactions lost in the 30 seconds before a stop are left.

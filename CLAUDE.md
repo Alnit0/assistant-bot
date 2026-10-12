@@ -194,8 +194,9 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   is closed by the rollover and, failing that, by whatever looks at
   today next (`checklist.close_past`)
 - A job never does nothing in silence: what it decided and why goes in
-  the log every time, and a line in #bot-log when it skips. One that
-  failed or skipped for a real problem says so with `scheduler.report`
+  the log every time. #bot-log is for real problems only: one that
+  failed or skipped for a real problem says so there and with
+  `scheduler.report`; a morning with nothing to do says nothing there
 - Expected things with a state on a day (doses, later reminders and
   routines) are rows in the occurrence log (`core/occurrences.py`),
   changed only through its `db_change` family

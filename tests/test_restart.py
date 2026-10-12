@@ -256,7 +256,7 @@ def test_a_second_restart_the_same_morning_posts_no_duplicate_and_claims_nothing
     assert stop_and_start(world, monkeypatch, day.at(DAY, time(8, 10))) == []
     assert len(world.sent) == posted and len(checklists(world, before)) == 1
     assert caught(world) == [], "nothing was missed this time: no second message about catching up"
-    assert world.bot_log == [(NOT_POSTED, "Start-up after 6:00 am: it was already posted at 8:02 am; brought up to date in place.")]
+    assert world.bot_log == [], "the checklist is simply there: nothing is said at all"
 
 
 def test_off_over_six_with_the_job_gone_start_up_posts_it_itself(world, monkeypatch):
@@ -398,10 +398,11 @@ def test_save_cut_off_after_the_change_took_is_read_back_and_the_card_says_saved
     run(plain.add_save(world.request(), card.data))  # Save had written the pill when the bot stopped
     press_cut_off(world, card)
     lines = stop_and_start(world, monkeypatch, day.at(DAY, time(9, 1)))
-    assert lines == ["Save of pills/pill_add was cut off by the stop after it took: read back, and its card now says it is saved"]
+    assert lines == ["Save of pills/pill_add was cut off by the stop after it took: read back, and its card now says so"]
     assert names(world) == ["Zinc"], "once"
     assert run(database.run(confirm.db_get, card.id)).status == confirm.SAVED
-    assert world.edited[-1][0] == card.message_id and world.edited[-1][1].text == confirm.SAVED_OVER_A_RESTART and not world.edited[-1][1].rows
+    # The bot stopped inside the save, before its words were kept: the change is there, so it says so plainly
+    assert world.edited[-1][0] == card.message_id and world.edited[-1][1].text == "✅ Saved.\n-# checked after a restart" and not world.edited[-1][1].rows
     assert run(scheduler.pending_jobs(confirm.JOB_TASK, confirm.JOB_KIND)) == [], "it will not expire later and say nothing was saved"
 
 
@@ -419,11 +420,31 @@ def test_save_cut_off_before_the_change_took_leaves_the_card_open_and_claims_not
 
 def test_save_cut_off_after_the_card_was_closed_only_puts_the_words_on_it(world, monkeypatch):
     card = add_card(world)
-    run(plain.add_save(world.request(), card.data))
+    said = run(plain.add_save(world.request(), card.data))
+    run(database.run(confirm.db_confirmed, card.id, said))
     run(database.run(confirm.db_close, card.id, confirm.SAVED))  # closed, and the bot stopped before the card was rewritten
     press_cut_off(world, card)
     stop_and_start(world, monkeypatch, day.at(DAY, time(9, 1)))
-    assert world.edited[-1] == (card.message_id, cards.Card(confirm.SAVED_OVER_A_RESTART)) and names(world) == ["Zinc"]
+    assert said.startswith("✅ ") and "Zinc" in said
+    assert world.edited[-1] == (card.message_id, cards.Card(f"{said}\n-# checked after a restart")) and names(world) == ["Zinc"]
+
+
+def test_save_keeps_its_words_the_moment_the_change_is_applied(world, monkeypatch):
+    # The usual place to be cut off is while Discord is being told: by then the words are in the database
+    card = add_card(world)
+
+    class Dies(Press):
+        async def update(self, shown):
+            raise ConnectionError("the bot stopped here")
+
+    with pytest.raises(ConnectionError):
+        run(cards._actions[(confirm.CARDS, "save")].handler(Dies(world.owner, card.id, card.message_id)))
+    kept = run(database.run(confirm.db_get, card.id))
+    assert kept.status == confirm.SAVED and kept.confirmation.startswith("✅ ") and "Zinc" in kept.confirmation
+    press_cut_off(world, card)
+    stop_and_start(world, monkeypatch, day.at(DAY, time(9, 1)))
+    assert world.edited[-1] == (card.message_id, cards.Card(f"{kept.confirmation}\n-# checked after a restart"))
+    assert names(world) == ["Zinc"], "once"
 
 
 def test_a_job_cut_off_by_the_stop_runs_again(world, monkeypatch):

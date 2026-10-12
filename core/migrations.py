@@ -309,6 +309,12 @@ def _add_trace_to_message_log(conn: sqlite3.Connection) -> None:
     conn.execute("ALTER TABLE message_log ADD COLUMN trace TEXT")
 
 
+def _add_confirmation_to_confirm_cards(conn: sqlite3.Connection) -> None:
+    # What Save said, kept the moment the change is applied: if the bot stops before the
+    # card is rewritten, the card can still be given the same words when it starts
+    conn.execute("ALTER TABLE confirm_cards ADD COLUMN confirmation TEXT")
+
+
 def _add_cause_to_occurrences(conn: sqlite3.Connection) -> None:
     # Why the bot closed an occurrence, as a word for code (the task's own: "no_room").
     # `reason` stays the words that are shown; code never reads those
@@ -331,6 +337,7 @@ MIGRATIONS = [
     _add_previous_to_confirm_cards,
     _add_trace_to_message_log,
     _add_cause_to_occurrences,
+    _add_confirmation_to_confirm_cards,
 ]
 
 

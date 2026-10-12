@@ -139,8 +139,10 @@ a schema could take its place.
 
 ## Gym: what its spec would add to core (2026-10-12)
 
-From the core or task rule, for a yes before any of it is built (the
-spec is `docs/specs/gym.md`, section 12):
+From the core or task rule (the spec is `docs/specs/gym.md`, section
+12). **The first three were approved on 2026-10-12** and are stage 1 of
+the gym build; nothing of gym is started until the questions on how
+Alex trains are answered:
 
 - **Attachments on a request** (plumbing): a message's files reach a
   task's plain-words code, and the router is told a file is attached.
@@ -155,6 +157,14 @@ spec is `docs/specs/gym.md`, section 12):
   fields, and comparing two lists of records into `field · old → new`.
 
 ## Left for later
+
+- **A reaction made just before a stop is lost** (found checking
+  restarts, 2026-10-12; left on Alex's word): the 30 seconds a reaction
+  waits are kept in memory, so one made just before a restart is never
+  acted on and gets no ✅. Take it off and put it on again. Keeping the
+  waiting reactions in the database would fix it.
+- **Streaks** come after reminders (decided 2026-10-12). Only a missed
+  dose breaks one; the tests of C15 pin that down.
 
 - **Two running timers with the same name both get the change** (found
   live, 2026-10-12; **low priority**: timers are a proof of concept and
