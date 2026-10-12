@@ -516,7 +516,7 @@ ends by saying what to press.
 | 3 | In #inbox: type `pills`. Wait 15 seconds. Press nothing | The checklist is posted in the hub. In #inbox "💊 Today's checklist is in #hub." appears and is gone within about 10 seconds; your word is deleted; nothing is left | M10 |
 | 4 | `timer 5m tea`; say `how long is left on tea?`. Reply `pause` to the timer; ask again. Then reply `cancel` to it | "⏱️ **tea** · 4m 18s left" (minutes and seconds, no list posted). Paused: "⏸️ **tea** · paused with 4m 5s left", the same words as the first line of the timer's card | G23 |
 | 5 | In a test channel: type `pomo` and don't press Start. Type `reset channel`; press **Cancel**. Then press **Stop** on the session | The card has "♻️ Posted again afterwards:" and "• Active timers: Pomodoro waiting to start" above "⚠️ This can't be undone". After Cancel nothing changed | U10 |
-| 6 | Type `dev mock`. Then `dev mock checklist`, and press **Taken** on it. Then `dev mock reset-card` and `dev mock confirm-card` | The list names `checklist`, `confirm-card` and `reset-card`. Each sketch is posted as one message with boxed sections, an accent colour down the side, headings, small text and coloured buttons; your word is deleted. A button answers "🧪 Mock-up: this button does nothing yet." to you alone, and nothing changes | J51 |
+| 6 | Type `dev mock`. Then `dev mock checklist-v2`, and press **Taken** on it. Then `dev mock reset-card-v2` and `dev mock confirm-card-v2` | The list names `checklist-v2`, `confirm-card-v2` and `reset-card-v2`. Each sketch is posted as one message with boxed sections, an accent colour down the side, headings, small text and coloured buttons; your word is deleted. A button answers "🧪 Mock-up: this button does nothing yet." to you alone, and nothing changes | J51 |
 | 7 | Type `dev mock nothing`. Press nothing | "🧪 There is no mock-up called `nothing`." with the list of the ones there are; nothing else is posted | J52 |
 | 8 | Tomorrow morning: look at "💾 Backup saved" in #bot-log, and at the bot's status. Press nothing | The card lists `assistant-….db`, `specs-….zip` and, if a channel was ever reset, `exports-….zip`. The status is "🟢 Live · …", not a ⚠️ line | K22 |
 | 9 | Only when you next run the dev database (otherwise report `K20 skip`): `python main.py --dev`; look at the bot. `dev clock +13h`; look again. Stop it and start the live bot | "<base> · DEV" and "🧪 DEV database"; after the clock moves, "🧪 DEV database · clock +13h". Back on live the nickname is the base name again | K20 |
@@ -638,7 +638,7 @@ Nothing here is built yet.
 
 | # | Do | Expect | Tests |
 |---|---|---|---|
-| 1 | Type `dev mock reminder` and look at the notification on the lock screen, then at the message | The lock screen says "💊 Routine due · 11:12 am" and never the pill's name. The message: the pill and dose, when it is due and why, the note, a take-by line, and Taken, Taken at…, Snooze 15m, Skip | J55 |
+| 1 | Lock your phone and type `dev mock reminder-v1-first` from the desktop; then `dev mock reminder-v1` (the same as block 39, step 2: do it once) | The lock screen says "💊 Routine due · 11:12 am" and never the pill's name. The second message: the pill and dose, when it is due and why, the note, and Taken, Taken at…, Snooze 15m, Skip | J55 |
 | 2 | Type `dev mock reminder-renudge` | Two cards: a re-nudge ("Reminder 2 of 3", when it was first asked and when the last one comes), and the same prompt while snoozed ("Snoozed until 11:27 am") | J55 |
 | 3 | Type `dev mock reminder-missed`, then `dev mock too-soon` | A checklist group with dose 2 marked ❌ missed and when it was due; then a card that says the dose is too soon after the last, with **Log it** and **Cancel** | J55 |
 
@@ -670,7 +670,7 @@ say they are mock-ups, and nothing of gym is built. The spec is
 |---|---|---|---|
 | 1 | Type `dev mock gym-import` | A card "🏋️ Gym · new": three workouts with their exercises a line each, which column was read as what (one marked ❓), the columns not used, **Save** and **Cancel** | J56 |
 | 2 | Type `dev mock gym-change` | A card "🏋️ Gym · change": only what differs, as `field · old → new`, ➕ for a new exercise and ➖ for one gone | J56 |
-| 3 | Type `dev mock gym-today` | Today's workout: a group an exercise with its sets as dots, the plan, what is logged, last time's sets, and the buttons on the exercise you are on | J56 |
+| 3 | Type `dev mock gym-workout-v1` | Today's workout: a group an exercise with its sets as dots, the plan, what is logged, last time's sets, and the buttons on the exercise you are on | J56 |
 | 4 | Type `dev mock gym-logged-set` | The line said after a set is logged, and that exercise's group as it then stands | J56 |
 
 Say what to change in any of them, and answer the gym questions in
@@ -749,12 +749,15 @@ buttons only say they are mock-ups. The style guide is `docs/DESIGN.md`.
 
 | # | Do | Expect | Tests |
 |---|---|---|---|
-| 1 | Type `dev mock checklist-v2` | A heading and the date, then a box an item: amber (due, with its buttons), grey (any time), green (taken), red (missed), grey (skipped by the bot), a separator, and Paused | J57 |
+| 1 | Type `dev mock checklist-v2` | A heading and the date, then a box an item: amber (due, with its buttons), blue (any time, still to take), green (taken), red (missed), grey (skipped by the bot), a separator, and Paused | J57 |
 | 2 | Lock your phone and type `dev mock reminder-v1-first` from the desktop; then `dev mock reminder-v1` | The lock screen shows "💊 Routine due · 11:12 am" for the first. The second is that line with an amber box under it naming the pill, with four buttons. Say what the lock screen showed for each | J57 |
 | 3 | Type `dev mock confirm-card-v2`, then `dev mock question-card-v1` | A blurple box: two pills with `field · old → new`, ❓ on the guesses, Save and Cancel. Then a card that asks, with **8:00 am**, **8:00 pm** and **Cancel**, and no Save | J57 |
 | 4 | Type `dev mock reset-card-v2`, then `dev mock gym-workout-v1` | A red box for the reset. Then a workout: green (done), amber (the exercise you are on, with its buttons), grey (to come), and Finish | J57 |
 
-Say what to change in any of them, or in the style guide.
+The colours were approved on 2026-10-12 (any time and still to take is
+blue; a card that asks first because something is risky is amber, as
+`dev mock too-soon` shows) and the sketches these replace are gone. Say
+what to change in any of them, or in the style guide.
 
 ## When you finish
 

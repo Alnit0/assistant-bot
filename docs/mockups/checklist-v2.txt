@@ -9,7 +9,7 @@
 ┃ -# ⚠️ take by 1:00 pm so dose 3 still fits
 ┃ [✅ Taken: green] [🕐 Taken at…: blurple] [⏭️ Skip: blurple]
 
-┃ accent: grey
+┃ accent: blue
 ┃ **Pill B** · ○ · any time
 ┃ [✅ Taken: green] [⏭️ Skip: blurple]
 

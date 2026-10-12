@@ -11,6 +11,11 @@ backfilled from the git log.
   (`checklist-v2`, `reminder-v1`, `reminder-v1-first`,
   `confirm-card-v2`, `question-card-v1`, `reset-card-v2`,
   `gym-workout-v1`). Nothing the bot posts has changed.
+- The design's colours are settled: a dose for any time that is still
+  to take is blue, a card that asks first because something is risky
+  is amber, confirm and question cards blurple, destructive ones red.
+  The five sketches with an approved new version are removed
+  (`checklist`, `confirm-card`, `reset-card`, `reminder`, `gym-today`).
 
 - **Pill reminders**, switched off until tested (`REMINDERS_ENABLED`
   in `.env`). On: a message at each timed dose's time with Taken, Taken

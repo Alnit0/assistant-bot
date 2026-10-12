@@ -250,7 +250,7 @@ only, any channel, no slash. It is off after every restart.
 | reply `dev inspect` | What the bot knows about that message, including its lifecycle class |
 | `dev status` | What is running: live or dev, the database, uptime, the commit, the clock, the next run of each job; and how many bots are running: the one holding the lock, and any stray (the `.venv` launcher isn't counted) |
 | `dev jobs` | Pending scheduler jobs |
-| `dev mock` / `dev mock checklist` | List the card sketches in `docs/mockups/` / post one here as a Components V2 message (its buttons only say it is a mock-up) |
+| `dev mock` / `dev mock checklist-v2` | List the card sketches in `docs/mockups/` / post one here as a Components V2 message (its buttons only say it is a mock-up) |
 | `dev run backup` | Run a maintenance routine now (`sweep` and `summary` aren't built yet) |
 | `dev fire next` | Run the next pending job now |
 | `dev seed 5` | Post 5 sample messages, tagged as test data |

@@ -309,7 +309,7 @@ class DevTask(Task):
                 "post a card sketched in docs/mockups/<name>.txt here as a Components V2 message, to look at a "
                 "design before it is built; on its own, lists the sketches. Its buttons only say it is a mock-up",
                 mock.mock,
-                ["dev mock", "dev mock checklist"],
+                ["dev mock", "dev mock checklist-v2"],
                 takes_args=True,
                 usage="[<name>]",
             ),

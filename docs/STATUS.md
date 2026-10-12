@@ -7,26 +7,14 @@ session; the end-of-task checklist updates it at the end of every task.
 
 ## Questions for Alex
 
-- **The design pass** (block 39; `docs/DESIGN.md`):
-  - Grey is used for everything that isn't pressing: paused, any
-    time, to come, skipped, snoozed. That follows your checklist
-    sketch (Pill B and Paused are both grey). Should "any time, still
-    to take" have a colour of its own (blue is free)?
-  - A warning is a ⚠️ line inside a box and never changes the box's
-    colour; a card that asks first because something is risky (a late
-    log, too soon) would be an amber box. Right?
-  - Confirm and question cards are blurple; destructive ones red.
-  - I added `reminder-v1-first`, which you didn't list: the reminder
-    as it is first posted (the one line), so the lock screen can be
-    checked with `dev mock`.
-  - Whether a phone shows the first text of a Components V2 message
-    on the lock screen is still only known from your phone (block 39,
-    step 2). The real reminders are safe either way: they are posted
-    as the one line.
-  - The older sketches (`checklist`, `confirm-card`, `reset-card`,
-    `reminder`, `gym-today` and the rest) are left in place. Say if
-    they should go once the new ones are approved.
-- **The lock screen** (waits for block 33, step 1): the sketches put
+- **The design's other sketches:** I removed the five with an
+  approved new version (`checklist`, `confirm-card`, `reset-card`,
+  `reminder`, `gym-today`). Six have no new version and are kept:
+  `too-soon`, `reminder-renudge`, `reminder-missed`, `gym-import`,
+  `gym-change`, `gym-logged-set`. Say if they should go too, or be
+  redrawn in the new style.
+- **The lock screen** (waits for your phone; block 39, step 2, the
+  same as block 33, step 1): the sketches put
   "💊 Routine due · 11:12 am" as the message's first line. If your
   phone shows something else for a card of this kind, the prompt has
   to be a plain message with buttons instead: say which you see.
@@ -35,6 +23,11 @@ session; the end-of-task checklist updates it at the end of every task.
   are approved (attachments on a request, a decimal number in the
   contract, name matching moved out of pills) and are stage 1 of the
   gym build, so they wait with it.
+
+Answered on 2026-10-12, the design pass: any time and still to take is
+blue; a card that asks first because something is risky is amber;
+confirm and question cards blurple, destructive ones red;
+`reminder-v1-first` stays; the old sketches go.
 
 Answered on 2026-10-12, reminders and questions on the card: kept as
 built, with three changes made (reminders stay a plain message and are
@@ -205,9 +198,10 @@ the spec is approved.
    reported.
 2. QA of the background batch: blocks 27 to 39 (`docs/QA-RUN.md`), and
    the questions at the top of this file.
-3. The Components V2 design: the style guide is `docs/DESIGN.md` and
-   its sketches are block 39. Say what to change; nothing real is
-   converted until they are approved.
+3. The Components V2 design: the style guide (`docs/DESIGN.md`) and
+   its sketches (block 39) are approved, bar the lock-screen check on
+   your phone. Nothing real is converted yet: the checklist's redesign
+   is the first, and the reminders with it.
 4. Pills reminders: QA with block 38, then switch them on live
    (`REMINDERS_ENABLED=true`, restart). Then corrections and
    questions (stage 4), then streaks.

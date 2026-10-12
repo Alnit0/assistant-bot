@@ -7,10 +7,11 @@ buttons in one message). `docs/CONVERSATION.md` says what a card must
 say and when; this file says how that is drawn, and where the two
 touch, the standard wins.
 
-**Status (2026-10-12):** a design to look at. Nothing real is drawn
-this way yet: the sketches in `docs/mockups/` are posted with `dev mock
-<name>`, and the bot's own cards are still plain messages until the
-sketches are approved.
+**Status (2026-10-12):** the colours and the sketches are approved
+(Alex, 2026-10-12); the lock screen waits for a check on the phone.
+Nothing real is drawn this way yet: the sketches in `docs/mockups/` are
+posted with `dev mock <name>`, and the bot's own cards are still plain
+messages until each is converted.
 
 ## The pieces
 
@@ -60,12 +61,16 @@ A box's colour is its status, the same in every task.
 | Status | Accent | Means |
 |---|---|---|
 | Due | amber | Something to do now or next, with a time |
+| Any time, still to take | blue | To do today, with no time it is due at |
 | Taken / done | green | Finished |
 | Missed | red | Its time passed and nothing was done |
-| Paused, any time, to come, skipped, snoozed | grey | Nothing pressing |
-| Warning | amber, with ⚠️ on the line | A line inside a box, never a colour of its own: the box keeps its status |
+| Paused, to come, skipped, snoozed | grey | Nothing to do now |
 | A decision (a confirm card, a question) | blurple | Waiting for me to choose |
+| A card that asks first because something is risky (a late log, too soon) | amber | Waiting for me to choose, and the ⚠️ line says why |
 | Destructive (a reset, delete for good) | red | Can't be undone |
+
+A warning is a ⚠️ line inside a box and never a colour of its own: the
+box keeps the colour of its status.
 
 Colour is never the only sign: every status also has its mark (✅ ❌ ⏸️
 ⏭️ ⚠️) and its words, since colours differ between themes and some
@@ -120,5 +125,9 @@ button counts) and 4,000 characters; a row takes 5 buttons. So:
 | `gym-workout-v1` | A workout: done, current, to come |
 
 A new version of a sketch gets the next number in its name; the old one
-stays until the new one is approved. Each ends with a small 🧪 line
-saying its version and what was simplified to fit.
+stays until the new one is approved, and is then removed. Each ends
+with a small 🧪 line saying its version and what was simplified to fit.
+
+Six earlier sketches have no new version yet and are kept as they are:
+`too-soon` (the amber card that asks first), `reminder-renudge`,
+`reminder-missed`, `gym-import`, `gym-change` and `gym-logged-set`.

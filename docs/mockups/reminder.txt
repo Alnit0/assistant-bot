@@ -1,8 +1,0 @@
-💊 Routine due · 11:12 am
-
-┃ accent: amber
-┃ **Pill A** · dose 2 of 3
-┃ Due `11:12 am` · 3h after dose 1 at 8:12 am
-┃ -# with food
-┃ -# ⚠️ Take by 12:50 pm so dose 3 still fits
-┃ [✅ Taken: green] [🕐 Taken at…: blurple] [⏰ Snooze 15m: blurple] [⏭️ Skip: blurple]

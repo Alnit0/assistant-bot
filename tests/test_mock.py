@@ -107,10 +107,10 @@ def test_more_than_discord_takes_is_refused():
 # The files
 # ---------------------------------------------------------------------------
 def test_the_sketches_in_the_repository_all_read(tmp_path):
-    assert {"checklist", "confirm-card", "reset-card"} <= set(mock.names())
+    assert {"checklist-v2", "confirm-card-v2", "reset-card-v2"} <= set(mock.names())
     for name in mock.names():
         assert mock.parse(mock.read(name)), name
-    assert mock.parse(mock.read("checklist"))[0] == Text("# 💊 Today · 2 of 5 taken\n-# Sunday 12 October")
+    assert mock.parse(mock.read("checklist-v2"))[0] == Text("# 💊 Today · 2 of 6 taken\n-# Sunday 12 October")
     assert mock.names(tmp_path / "missing") == []
 
 
@@ -214,9 +214,9 @@ def test_dev_mock_is_a_typed_word_of_the_dev_task():
 
 
 def test_every_sketch_in_the_repository_reads_and_fits_a_message():
-    # The reminder mock-ups among them (reminder, reminder-renudge, reminder-missed, too-soon)
+    # The reminder mock-ups among them (reminder-v1, reminder-renudge, reminder-missed, too-soon)
     found = mock.names()
-    assert {"checklist", "reminder", "reminder-renudge", "reminder-missed", "too-soon"} <= set(found)
+    assert {"checklist-v2", "reminder-v1", "reminder-renudge", "reminder-missed", "too-soon"} <= set(found)
     for name in found:
         pieces = mock.parse(mock.read(name))
         assert 0 < mock.count(pieces) <= mock.MAX_COMPONENTS, name
@@ -224,13 +224,13 @@ def test_every_sketch_in_the_repository_reads_and_fits_a_message():
 
 def test_no_reminder_sketch_names_a_pill_in_the_line_the_lock_screen_shows():
     # A notification shows the first line of the message: it says a routine is due, and when
-    for name in ("reminder", "reminder-renudge"):
+    for name in ("reminder-v1", "reminder-v1-first", "reminder-renudge"):
         first = mock.read(name).splitlines()[0]
         assert first.startswith("💊 Routine due · ") and "Pill" not in first, name
 
 
 def test_the_gym_sketches_are_there_and_the_plan_cards_follow_the_card_rules():
-    assert {"gym-import", "gym-change", "gym-today", "gym-logged-set"} <= set(mock.names())
+    assert {"gym-import", "gym-change", "gym-workout-v1", "gym-logged-set"} <= set(mock.names())
     assert "## 🏋️ Gym · new" in mock.read("gym-import") and "## 🏋️ Gym · change" in mock.read("gym-change")
     # A change is `field · old → new`; what is not used is named; Save is green and Cancel the one grey button
     change = mock.read("gym-change")
@@ -265,8 +265,15 @@ def test_the_designed_cards_keep_the_card_rules():
     question = mock.read("question-card-v1")
     assert "Save" not in question.split("🧪")[0].replace("no Save", "") and "[8:00 am: blurple] [8:00 pm: blurple] [↩️ Cancel: grey]" in question
     assert "accent: red" in mock.read("reset-card-v2") and "[🗑️ Delete all: red]" in mock.read("reset-card-v2")
-    # A status has its colour: due amber, taken green, missed red, paused grey
+    # A status has its colour: due amber, any time and still to take blue, taken green, missed red, paused grey
     checklist = mock.read("checklist-v2")
-    assert all(f"accent: {colour}" in checklist for colour in ("amber", "green", "red", "grey"))
+    assert all(f"accent: {colour}" in checklist for colour in ("amber", "blue", "green", "red", "grey"))
+    assert "┃ accent: blue\n┃ **Pill B** · ○ · any time" in checklist.replace("\r\n", "\n")
+    # A card that asks first because something is risky is amber, and its ⚠️ line says why
+    assert mock.read("too-soon").startswith("┃ accent: amber") and "⚠️" in mock.read("too-soon")
     design = (mock.MOCKUPS_DIR.parent / "DESIGN.md").read_text(encoding="utf-8")
     assert all(f"`{name}`" in design for name in DESIGNED)
+
+
+def test_a_sketch_that_has_an_approved_new_version_is_gone():
+    assert not {"checklist", "confirm-card", "reset-card", "reminder", "gym-today"} & set(mock.names())
