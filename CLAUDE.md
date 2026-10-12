@@ -344,7 +344,9 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   asked
 - Never commit or push unless the test run before it passed. In
   PowerShell, stop the chain on failure: check `$LASTEXITCODE`, or use
-  `&&` in PowerShell 7
+  `&&` in PowerShell 7. Never pipe a test run whose exit code gates a
+  commit: if the output must be shortened, save it to a file and check
+  the exit code first (or use `set -o pipefail` in Bash)
 - A suggested commit message never contains a double quote: it breaks
   the command in PowerShell. Use plain words, or a single quote doubled
   (`''`)
