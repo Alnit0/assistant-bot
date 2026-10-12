@@ -1,5 +1,6 @@
 import re
 
+from core import design
 from core.errors import UserError
 
 # ---------------------------------------------------------------------------
@@ -32,7 +33,7 @@ def check_archivable(
         raise UserError("That message is already in the archive.")
     if bot_log_channel_id is not None and message.channel.id == bot_log_channel_id:
         raise UserError("Messages in #bot-log stay where they are.")
-    if not (message.content or message.attachments or message.embeds):
+    if not (design.words(message) or message.attachments or message.embeds):
         raise UserError("There's nothing in that message I can copy (no text, files or embeds).")
 
     for attachment in message.attachments:

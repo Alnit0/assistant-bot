@@ -6,6 +6,13 @@ backfilled from the git log.
 
 ## 2026-10-13
 
+- A new look, switched off (`CARDS_V2` in `.env`): today's pills
+  checklist as one message with a box a pill and its buttons inside
+  it, and the reminder, the confirm card, the question card and the
+  "Log it anyway?" card drawn as coloured boxes. Off, nothing looks
+  different. Every colour and spacing is in one file
+  (`core/design.py`).
+
 - The tests run in about a minute instead of eleven (the same tests):
   nothing for the user to see.
 

@@ -110,6 +110,9 @@ def flag(value: str | None, default: bool) -> bool:
 KEEP_CONFIRMATIONS = flag(os.getenv("KEEP_CONFIRMATIONS"), True)
 
 # Pill reminders: a message at each dose's time. Off unless switched on: off, no reminder is ever sent
+# Cards drawn as Components V2 (docs/DESIGN.md; core/design.py). Off unless
+# set: off, every card looks as it always has
+CARDS_V2 = flag(os.getenv("CARDS_V2"), False)
 REMINDERS_ENABLED = flag(os.getenv("REMINDERS_ENABLED"), False)
 
 # Quiet time before reactions are acted on. Removing a reaction within it cancels

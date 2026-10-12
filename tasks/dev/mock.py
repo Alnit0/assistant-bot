@@ -4,7 +4,7 @@ from pathlib import Path
 
 import discord
 
-from core import cards
+from core import cards, design
 from core.config import MOCKUPS_DIR
 from core.context import Context
 from core.discord_utils import report_interaction_error, safe_reply
@@ -33,10 +33,8 @@ from core.users import get_user_by_discord_id
 # bottom, the discord.py that turns the records into a message.
 # ---------------------------------------------------------------------------
 BAR = "┃"
-ACCENTS = {
-    "green": 0x57F287, "red": 0xED4245, "amber": 0xFAA61A, "yellow": 0xFEE75C, "blurple": 0x5865F2,
-    "blue": 0x3498DB, "grey": 0x95A5A6, "gray": 0x95A5A6,
-}
+# The colours are the design's own (core/design.py), so a sketch shows what a real card would
+ACCENTS = {**design.COLOURS, "gray": design.COLOURS["grey"]}
 # The colours a button can be, by the names of the rule for button colours (core/cards.py)
 BUTTON_STYLES = {"green": cards.SUCCESS, "red": cards.DANGER, "blurple": cards.PRIMARY, "grey": cards.SECONDARY, "gray": cards.SECONDARY}
 MAX_COMPONENTS = 40  # Discord's limit for one message, everything counted
@@ -271,7 +269,8 @@ def layout(pieces) -> discord.ui.LayoutView:
         if isinstance(piece, Text):
             return discord.ui.TextDisplay(piece.content)
         if isinstance(piece, Separator):
-            return discord.ui.Separator()
+            spacing = discord.SeparatorSpacing.large if design.SEPARATOR_LARGE else discord.SeparatorSpacing.small
+            return discord.ui.Separator(visible=design.SEPARATOR_LINE, spacing=spacing)
         if isinstance(piece, Row):
             return discord.ui.ActionRow(*(MockButton(next(numbers), button.label, _DISCORD_STYLES[button.style]) for button in piece.buttons))
         return discord.ui.Container(

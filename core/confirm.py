@@ -5,7 +5,7 @@ import sqlite3
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 
-from core import actions, cards, database, lifecycle, llm, restart, scheduler, users
+from core import actions, cards, database, design, lifecycle, llm, restart, scheduler, users
 from core.actions import Entry, Proposal, Request
 from core.cards import Button, Card
 from core.discord_utils import log_error
@@ -96,7 +96,8 @@ def render(entry: Entry, proposal: Proposal, card_id: int) -> Card:
     """The card for a proposal: what kind of change, every interpretation,
     the warnings, and the buttons."""
     proposal = _checked_kind(proposal)
-    lines = [f"{entry.icon} {entry.title} · {proposal.kind}", *proposal.lines]
+    heading = f"{entry.icon} {entry.title} · {proposal.kind}"
+    lines = [heading, *proposal.lines]
     lines += [f"{actions.WARNING_MARK} {warning}" for warning in proposal.warnings]
     if proposal.question is not None:
         # Everything that was understood, then the one question: a blurple button for each
@@ -106,7 +107,8 @@ def render(entry: Entry, proposal: Proposal, card_id: int) -> Card:
             Button(cards.truncate_label(choice.label), CARDS, "answer", f"{card_id}:{index}", style=cards.PRIMARY)
             for index, choice in enumerate(proposal.question.choices[: actions.MAX_CHOICES])
         )
-        return Card("\n".join(lines), ((*answers, cards.cancel(CARDS, "cancel", str(card_id))),))
+        row = (*answers, cards.cancel(CARDS, "cancel", str(card_id)))
+        return Card("\n".join(lines), (row,), _designed(heading, proposal, row, ASKING))
     lines.append(FOOTER)
     # Red for what takes something away (a removal, anything that can't be undone), green for Save
     if proposal.destructive or proposal.kind == "remove":
@@ -114,7 +116,36 @@ def render(entry: Entry, proposal: Proposal, card_id: int) -> Card:
     else:
         confirm = Button(proposal.confirm_label, CARDS, "save", str(card_id), emoji="✅", style=cards.SUCCESS)
     cancel = cards.cancel(CARDS, "cancel", str(card_id))
-    return Card("\n".join(lines), ((confirm, cancel) if proposal.can_save else (cancel,),))
+    row = (confirm, cancel) if proposal.can_save else (cancel,)
+    return Card("\n".join(lines), (row,), _designed(heading, proposal, row, FOOTER))
+
+
+def things(lines: tuple[str, ...]) -> list[str]:
+    """A card's lines as its things, for the separators between them: a line
+    that opens with a name in bold starts a new thing, and what follows
+    belongs to it."""
+    found: list[list[str]] = []
+    for line in lines:
+        if line.startswith("**") or not found:
+            found.append([line])
+        else:
+            found[-1].append(line)
+    return ["\n".join(each) for each in found]
+
+
+def _designed(heading: str, proposal: Proposal, row: tuple, hint: str) -> tuple:
+    """The same card as Components V2 (docs/DESIGN.md): one box, blurple for a
+    decision, amber for one that asks first because something is risky, red
+    for what can't be undone. Drawn only when CARDS_V2 is on."""
+    status = design.DESTRUCTIVE if proposal.destructive else design.RISKY if proposal.risky else design.DECISION
+    question = proposal.question.text if proposal.question is not None else ""
+
+    def drawn(blocks: list[str]) -> tuple:
+        return design.decision(heading, blocks, status=status, warnings=proposal.warnings, question=question, row=row, hint=hint)
+
+    pieces = drawn(things(proposal.lines))
+    # A separator between things while they fit; a card of many things is one block
+    return pieces if not design.problem(pieces) else drawn(["\n".join(proposal.lines)])
 
 
 def render_tie(entries: list[Entry], card_id: int, said: str) -> Card:

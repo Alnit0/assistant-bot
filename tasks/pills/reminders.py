@@ -4,7 +4,7 @@ import sqlite3
 from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta
 
-from core import actions, cards, clock, config, confirm, database, discord_utils, hub, lifecycle, llm, occurrences, restart, scheduler, timeinput
+from core import actions, cards, clock, config, confirm, database, design, discord_utils, hub, lifecycle, llm, occurrences, restart, scheduler, timeinput
 from core import day as days
 from core.actions import Request
 from core.cards import Button, Card, Field, Form
@@ -164,12 +164,18 @@ def text(dose: Dose, listed: list[Dose], prompt: Prompt, now: datetime) -> str:
 
 def card(dose: Dose, listed: list[Dose], prompt: Prompt, now: datetime) -> Card:
     which = str(dose.occurrence.id)
-    return Card(text(dose, listed, prompt, now), ((
+    row = (
         Button("Taken", TASK, P_TAKEN, which, emoji="✅", style=cards.SUCCESS),
         Button("Taken at…", TASK, P_AT, which, emoji="🕐", style=cards.PRIMARY),
         Button("Snooze 15m", TASK, P_SNOOZE, which, emoji="⏰", style=cards.PRIMARY),
         Button("Skip", TASK, P_SKIP, which, emoji="⏭️", style=cards.PRIMARY),
-    ),))
+    )
+    said = text(dose, listed, prompt, now)
+    # As Components V2 (CARDS_V2): the neutral line stays on top, outside the box, and the
+    # pill is in a box under it: amber while it is due, grey while it is snoozed
+    first, name, *rest = said.split("\n")
+    status = design.QUIET if prompt.snoozed_until is not None else design.DUE
+    return Card(said, (row,), design.notifying(first, design.item(status, name, *rest, row=row)))
 
 
 # ---------------------------------------------------------------------------

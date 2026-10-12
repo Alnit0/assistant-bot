@@ -96,6 +96,9 @@ class Context:
             return None
         self.replies.append(text)
         self.posted += 1
+        if isinstance(view, discord.ui.LayoutView):
+            # A Components V2 card: all it says is in its components, and it takes no text beside them
+            return await self._channel.send(view=view)
         chunks = split_message(text) or [text]
         for chunk in chunks[:-1]:
             await self._channel.send(chunk)

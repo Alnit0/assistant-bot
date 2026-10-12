@@ -5,7 +5,7 @@ from collections.abc import Awaitable, Callable
 import discord
 from discord import app_commands
 
-from core import confirmations, interactions
+from core import confirmations, design, interactions
 from core.config import ARCHIVE_CHANNEL_ID, ASSISTANT_NAME, BOT_LOG_CHANNEL_ID
 from core.context import Context
 from core.database import log_received, log_result
@@ -114,7 +114,7 @@ async def archive_message(message: discord.Message, user_id: int | None = None) 
     embeds = rules.own_embeds(message.embeds, MAX_EMBEDS - 1)
     embeds.append(build_info_embed(message))
     copy_fields = dict(
-        content=message.content,
+        content=design.words(message),
         username=rules.safe_username(message.author.display_name),
         avatar_url=message.author.display_avatar.url,
         embeds=embeds,
@@ -181,7 +181,7 @@ async def archive_message(message: discord.Message, user_id: int | None = None) 
 async def delete_message(message: discord.Message) -> str:
     """Delete a message for good. Returns a one-line summary."""
     check_deletable(message)
-    preview = rules.delete_preview(message.content)
+    preview = rules.delete_preview(design.words(message))
     summary = (
         f"deleted a message by {message.author.display_name} from #{message.channel.name} "
         f"({len(message.attachments)} file(s)): {preview}"

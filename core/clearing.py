@@ -4,7 +4,7 @@ from datetime import datetime
 
 import discord
 
-from core import channels, discord_utils, lifecycle, outgoing, protection, tidy
+from core import channels, design, discord_utils, lifecycle, outgoing, protection, tidy
 from core.errors import UserError
 
 log = logging.getLogger("assistant")
@@ -52,7 +52,7 @@ class Scan:
 def _said(message) -> str:
     """What a message says: its text, and for one that is only an embed (a log
     card) the embed's title and text."""
-    parts = [message.content] if getattr(message, "content", "") else []
+    parts = [design.words(message)] if design.words(message) else []
     for embed in getattr(message, "embeds", None) or []:
         parts += [f"[{part}]" for part in (getattr(embed, "title", None), getattr(embed, "description", None)) if part]
     return "\n".join(parts)

@@ -1,7 +1,7 @@
 import logging
 from datetime import date, datetime, time, timedelta
 
-from core import cards, clock, database, discord_utils, hub, lifecycle, live, llm, occurrences, restart, scheduler, timeinput
+from core import cards, clock, config, database, discord_utils, hub, lifecycle, live, llm, occurrences, restart, scheduler, timeinput
 from core import day as days
 from core import schedule as core_schedule
 from core.cards import Button, Card
@@ -107,6 +107,15 @@ def dose_card(dose: Dose) -> Card:
     )
 
 
+def sheet_card(listed: list[Dose], pills: list[Pill], day: date) -> Card:
+    """Today's checklist as a card: the plain message it has always been, and
+    the same day as Components V2 (tasks/pills/sheet.py), which is what is
+    drawn when CARDS_V2 is on."""
+    from tasks.pills import sheet  # it uses this module
+
+    return Card(today.checklist(listed, pills, day), (), sheet.layout(listed, pills, day, clock.now()))
+
+
 async def _remove(message: store.Message) -> None:
     """Take one of our messages away and forget where it was."""
     if lifecycle.deletes(MessageClass.LIVE if message.kind == CHECKLIST else MessageClass.ALERT):
@@ -115,8 +124,9 @@ async def _remove(message: store.Message) -> None:
 
 
 async def _dose_messages(user_id: int, day: date, listed: list[Dose], held: list[store.Message], channel_id: int) -> None:
-    """One message for each dose with no time that is still to take, and none for any other."""
-    want = {dose.occurrence.id: dose for dose in listed if dose.is_pending and dose.is_untimed}
+    """One message for each dose with no time that is still to take, and none for any other.
+    None at all when the checklist is drawn as Components V2: its buttons are in its own box."""
+    want = {dose.occurrence.id: dose for dose in listed if dose.is_pending and dose.is_untimed and not config.CARDS_V2}
     have = {message.occurrence_id: message for message in held if message.kind == DOSE}
     for occurrence_id, message in have.items():
         if occurrence_id not in want:
@@ -139,7 +149,7 @@ async def post(user_id: int, channel_id: int | None = None) -> int | None:
     pills, listed, day = await view(user_id)
     for old in await database.run(store.db_messages, user_id, day):
         await _remove(old)
-    message_id = await cards.send(channel_id, Card(today.checklist(listed, pills, day)), silent=True)
+    message_id = await cards.send(channel_id, sheet_card(listed, pills, day), silent=True)
     if message_id is None:
         return None
     await database.run(store.db_add_message, user_id, day, CHECKLIST, None, channel_id, message_id)
@@ -156,7 +166,7 @@ async def refresh(user_id: int) -> None:
     sheet = next((message for message in held if message.kind == CHECKLIST), None)
     if sheet is None:
         return
-    if not await cards.edit(sheet.channel_id, sheet.message_id, Card(today.checklist(listed, pills, day))):
+    if not await cards.edit(sheet.channel_id, sheet.message_id, sheet_card(listed, pills, day)):
         log.info("Today's pills checklist has gone from channel %s: posting it again", sheet.channel_id)
         await database.run(store.db_drop_message, sheet.message_id)
         await post(user_id, sheet.channel_id)
@@ -452,8 +462,7 @@ async def close_past() -> None:
         if message.kind == CHECKLIST:
             pills = await store.pills(message.user_id)
             found = await occurrences.for_day(message.user_id, TASK, message.day)
-            text = today.checklist(today.doses(pills, found, message.day), pills, message.day)
-            await cards.edit(message.channel_id, message.message_id, Card(text))
+            await cards.edit(message.channel_id, message.message_id, sheet_card(today.doses(pills, found, message.day), pills, message.day))
             await database.run(store.db_drop_message, message.message_id)
         else:
             await _remove(message)

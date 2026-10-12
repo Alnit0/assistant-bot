@@ -1256,7 +1256,7 @@ async def log_card(request: Request, data: dict, guessed: frozenset) -> Proposal
     # "Log it" answers a question the card asks; a guess to look over is an ordinary Save
     return Proposal(
         lines=tuple(lines), data={"doses": held}, warnings=tuple(warnings), kind="change",
-        confirm_label="Log it" if asked else "Save", question=question,
+        confirm_label="Log it" if asked else "Save", question=question, risky=asked,
     )
 
 
@@ -1266,7 +1266,7 @@ def log_anyway(dose: Dose, at: datetime, asks: tuple[str, ...]) -> Proposal:
     in a message or typed into a reminder's form. Log it does it."""
     step = Step(dose=dose, did=checklist.TAKEN, at=at, asks=asks)
     held = {"occurrence": dose.occurrence.id, "did": step.did, "moment": at.isoformat()}
-    return Proposal(lines=(_preview(step),), data={"doses": [held]}, warnings=(f"{' '.join(asks)} Log it anyway?",), kind="change", confirm_label="Log it")
+    return Proposal(lines=(_preview(step),), data={"doses": [held]}, warnings=(f"{' '.join(asks)} Log it anyway?",), kind="change", confirm_label="Log it", risky=True)
 
 
 async def _held(request: Request, data: dict) -> list[Step]:

@@ -637,6 +637,14 @@ Everything works in #inbox and in the hub.
   with no hub that can be found, #bot-log says so once and nothing is
   sent. Switching the setting off and
   restarting removes any reminder that is up.
+- **The new look** is off unless `CARDS_V2=true` is in `.env` (then
+  restart). On, today's checklist is one message with a box a pill, in
+  the colour of what is still to do, and **Taken**, **Taken at…** and
+  **Skip** inside the box for its next dose (a dose with no time no
+  longer gets a message of its own); the reminder, the confirm card,
+  the card that asks a question and the "Log it anyway?" card are
+  drawn as boxes too. What each says is unchanged. Off, everything
+  looks as it always has. Colours and spacing are `core/design.py`.
 - **Pausing** stops a pill being asked for and leaves its streak alone.
   "Until the 20th" means it is taken again on the 20th, by itself.
 - **Removing** hides the pill everywhere and keeps its history for stats.

@@ -35,6 +35,7 @@ for name, value in {
     "HUB_CHANNEL_ID": "400",
     "COMMANDS_CHANNEL_ID": "",
     "KEEP_CONFIRMATIONS": "false",  # the tests check that notes tidy themselves away
+    "CARDS_V2": "",  # off, as it is unless set: the design tests switch it on
     "REMINDERS_ENABLED": "",  # off, as it is unless set: the reminder tests switch it on
 }.items():
     os.environ[name] = value

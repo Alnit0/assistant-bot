@@ -167,8 +167,12 @@ trains are answered:
   waits are kept in memory, so one made just before a restart is never
   acted on and gets no ✅. Take it off and put it on again. Keeping the
   waiting reactions in the database would fix it.
-- **Reminders in Components V2** (the coloured cards of the sketches):
-  with the checklist's redesign, not before (decided 2026-10-12).
+- Done 2026-10-13, behind `CARDS_V2`: reminders, the checklist and
+  the confirm, question and asks-first cards in Components V2.
+- **Cards not yet drawn the new way** (`CARDS_V2`): the reset card and
+  the other destructive cards outside confirm cards, the "which task?"
+  question, timers and sessions, a list shown on request, the dose's
+  own message (not posted while the new look is on), the gym cards.
 - **The take-by line on the checklist** (the spec has it on the
   checklist and the prompt): it is on the prompt only, until the
   checklist's redesign is settled.

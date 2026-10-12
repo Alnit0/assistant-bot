@@ -3,7 +3,7 @@ from core import day, hub, livelists, tidy
 from core.lifecycle import MessageClass
 from core.actions import EACH_DAY
 from tasks.base import INBOX, ButtonNote, Keyword, Task
-from tasks.pills import checklist, plain, reminders, rules, store
+from tasks.pills import checklist, plain, reminders, rules, sheet, store
 
 HUB = "hub"
 # Where the words work: #inbox, and the hub once it is set in .env
@@ -112,6 +112,7 @@ class PillsTask(Task):
 
     def setup(self, client) -> None:
         checklist.register()
+        sheet.register()
         reminders.register()
 
     async def startup(self, client) -> None:

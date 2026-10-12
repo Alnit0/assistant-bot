@@ -42,9 +42,10 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 - `docs/DEVELOPMENT.md`: how to use and extend the bot, task by task
 - `docs/DECISIONS.md`: read before changing architecture
 - `docs/DESIGN.md`: how a card looks (headings, small text, accent
-  colours by status, separators, buttons). A design for now, its
-  colours waiting for a check on the phone: nothing real is drawn that
-  way until it is converted
+  colours by status, separators, buttons), its colours waiting for a
+  check on the phone. Built behind `CARDS_V2` (off by default) for the
+  pills checklist, the reminder and the confirm, question and
+  asks-first cards
 - `docs/TESTING.md` (test tracker) and `docs/QA-RUN.md` (manual run sheet)
 - `docs/specs/` holds the task specs and is private (gitignored; the
   nightly backup is its other copy). Read them, but never commit them,
@@ -253,6 +254,11 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   information now lives somewhere else. Pinned or 📌 messages are never
   swept. `KEEP_CONFIRMATIONS` keeps Transient messages, never
   housekeeping's
+- How a card looks is `core/design.py` and nowhere else: a task gives
+  a box its status (due, done, missed…), never a colour, and builds a
+  layout with `design.item`, `standing`, `decision` or `notifying`. A
+  `Card` always has its plain text and rows as well: that is what is
+  drawn with `CARDS_V2` off, and what is logged
 - Edit in place rather than posting again. What must notify me (timer
   done, a phase change, reminders) posts a new message, deleted once
   acknowledged. A list shown on request is Live (`core/livelists.py`:

@@ -3,7 +3,7 @@ import re
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 
-from core import repeats
+from core import design, repeats
 from core.config import CHANNELS, DEV_DATABASE, TIMEZONE
 from core.database import OWN_MESSAGE_KINDS
 from core.errors import UserError
@@ -153,7 +153,7 @@ class Report:
 
 def message_text(message) -> str:
     """What a message says, including a card's title and text and a count of files."""
-    parts = [(getattr(message, "content", "") or "").strip()]
+    parts = [design.words(message)]
     for embed in getattr(message, "embeds", None) or []:
         card = " · ".join(
             part for part in (getattr(embed, "title", None), getattr(embed, "description", None)) if part

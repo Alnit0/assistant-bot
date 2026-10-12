@@ -36,17 +36,17 @@ Last updated: 2026-10-13
 | F | Pins | 4 | 0 | 4 | 4 | 0 | 0 | 0 |
 | G | Timers | 32 | 12 | 20 | 17 | 15 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
-| J | Dev mode | 57 | 11 | 46 | 44 | 13 | 0 | 0 |
+| J | Dev mode | 60 | 13 | 47 | 45 | 15 | 0 | 0 |
 | K | Startup and housekeeping | 24 | 12 | 12 | 10 | 14 | 0 | 0 |
 | L | Keep | 12 | 4 | 8 | 8 | 4 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
 | P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
 | Q | Time, days, the schedule model, the occurrence log and cards | 16 | 14 | 2 | 2 | 14 | 0 | 0 |
-| R | Pills | 66 | 15 | 51 | 43 | 23 | 0 | 0 |
-| S | Routing and confirm cards | 64 | 14 | 50 | 15 | 48 | 0 | 1 |
+| R | Pills | 68 | 17 | 51 | 43 | 25 | 0 | 0 |
+| S | Routing and confirm cards | 65 | 15 | 50 | 15 | 49 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 4 | 18 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **453** | **143** | **310** | **240** | **212** | **0** | **1** |
+| | **Total** | **459** | **148** | **311** | **241** | **217** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -291,6 +291,9 @@ Any channel. Check the bot's status in the member list.
 | J55 | 👤 Manual | Type `dev mock reminder-v1-first` and `dev mock reminder-v1` (look at the lock screen too), `dev mock reminder-renudge-v2`, `dev mock reminder-missed-v2` and `dev mock too-soon-v2` | Each sketch is posted as a card. The lock screen for the reminder says "💊 Routine due · 11:12 am", never the pill's name | ⬜ Untested | | Block 33. The sketches are read by `tests/test_mock.py` |
 | J56 | 👤 Manual | Type `dev mock gym-import-v2`, `dev mock gym-change-v2`, `dev mock gym-workout-v1` and `dev mock gym-logged-set-v2` | Each sketch is posted as a card: the plan as read with its columns, a change as `field · old → new`, today's workout with the buttons on the current exercise, and the line for a logged set | ⬜ Untested | | Block 35. The sketches are read by `tests/test_mock.py` |
 | J57 | 👤 Manual | Type `dev mock` with each of `checklist-v2`, `reminder-v1-first`, `reminder-v1`, `confirm-card-v2`, `question-card-v1`, `reset-card-v2`, `gym-workout-v1`, `too-soon-v2`, on the phone and the desktop, and look at the colours on the phone in each theme you use | Each posts as a card in the one style of `docs/DESIGN.md`: a box an item with its status colour (any time and still to take is blue), small text for detail, buttons inside the box; the card that asks first is amber. Each colour can be told from the others. The lock screen shows only "💊 Routine due · 11:12 am" for the reminder | ⬜ Untested | | Block 39. Each sketch is built offline into a Components V2 message by `tests/test_mock.py` |
+| J58 | 🤖 Auto | The design in one place (`core/design.py`) | Every status has its colour and every colour and separator spacing is in one file: changing one there changes every drawn card and every sketch of `dev mock`. A layout Discord would refuse (over 40 components or 4,000 characters, a grey button that is not Cancel, two buttons with one id) is refused with the reason. A drawn card's words can be read back for an archive, a saved copy or a bug report | ✅ Pass | 2026-10-13 | `tests/test_design.py` |
+| J59 | 🤖 Auto | `CARDS_V2` off is today's look | A card with a layout is sent and rewritten exactly as before while the setting is off (it is off unless set). On, it is sent as Components V2 with no text beside it, and a card with no layout is still plain. A message that is Components V2 already is rewritten as a layout of the plain card, by an edit or a press | ✅ Pass | 2026-10-13 | `tests/test_design.py` |
+| J60 | 👤 Manual | Block 41: with `CARDS_V2=true`, look at the confirm card, a question card, today's checklist, a reminder and the too-soon card; then switch it off again | Each is drawn as in `docs/DESIGN.md` and says what it said before; the lock screen shows only the neutral line; off, everything is the old look | ⬜ Untested | | Block 41 |
 
 ## K. Startup and housekeeping
 
@@ -507,6 +510,8 @@ are added with it.
 | R76 | 👤 Manual | With two pills whose names share a word (say `add Testvit C and Testvit D`, **Save**): say `pause testvit`; press one. Then, six minutes after any pill was logged, say `took it`; press a pill | A card asking "Which one is “testvit”?" with a button for each; pressing one gives the pause card for it with **Save**. Then a card asking "Which pill?" with a button a pill; pressing one ticks it off and the card says so | ⬜ Untested | | Block 37 |
 | R77 | 🤖 Auto | Reminders (`REMINDERS_ENABLED`) | Off: nothing is ever sent or booked, and a prompt left up goes. On, on the dev clock with the real scheduler: a timed dose gets one prompt at its time; every message posted to notify is the one neutral line, whatever the pill, dose, note or reminder; the prompt then says which dose, when and why (the gap), the note and take-by when within two hours; Taken, Skip, Taken at… (the form, its time checked; one that is too soon or after the latest time gets the same "Log it anyway?" card as saying it, and Cancel leaves the reminder up) and Snooze (says until when, a fresh copy after, not a reminder); left alone, three reminders 15 minutes apart, each in place of the last, then missed for good, though it can still be ticked off; nothing after the latest time; a dose that can't fit or has no time gets none; midnight clears; the worked example through a day; a reply to a prompt means that dose; a channel reset; a restart (one prompt, never a burst, no second copy, buttons work, nothing past the latest time); a job run twice; on with no hub is said once in #bot-log, at start too, and never when off. Too soon asks on a card | ✅ Pass | 2026-10-12 | `tests/test_pills_reminders.py` |
 | R78 | 👤 Manual | With `REMINDERS_ENABLED=true` on `--dev`: add a pill at a time, move the clock to it, look at the phone's lock screen and the message; press Snooze, move 15 minutes; leave it for an hour of clock; press Taken on another | The lock screen says only "💊 Routine due" and the time. The message names the pill with four buttons. Snooze says until when and a fresh message comes. Left alone: three reminders, then ❌ missed on the checklist. Taken ticks it off and the message goes | ⬜ Untested | | Block 38 |
+| R79 | 🤖 Auto | The checklist, drawn (`tasks/pills/sheet.py`) | A heading with how many are taken and the date, a box a pill in the colour of what is still to do (amber due, blue any time, green done, grey all skipped, red only when a dose was missed and nothing is left), the next dose's Taken / Taken at… / Skip inside its box, Paused apart. Too many pills drop buttons first, then fold what is done, and never lose one unsaid. Taken ticks it off and rewrites the checklist without removing it; too soon asks first; off, the checklist and the doses' own messages are as before | ✅ Pass | 2026-10-13 | `tests/test_design.py` |
+| R80 | 🤖 Auto | The reminder, drawn | Still posted first as the one neutral line, plain, with no pill, box or button; the pill is drawn into it by an edit, with that line on top outside an amber box. Snoozed is grey | ✅ Pass | 2026-10-13 | `tests/test_design.py` |
 
 ## S. Routing and confirm cards
 
@@ -581,6 +586,7 @@ the dev database (`python main.py --dev`), in #inbox.
 | S62 | 🤖 Auto | Which of my things a name means (`core/names.py`) | The whole name wins over part of one; an id (`pl3`) is read when the task has them; a name that fits more than one is never guessed (the candidates are handed back); nothing named and no such thing are told apart. Pills use it and keep their own words | ✅ Pass | 2026-10-13 | `tests/test_names.py` |
 | S63 | 🤖 Auto | A decimal number in the contract (`actions.NUMBER`) | The schema says number; 62.5 stays 62.5, 60.0 is 60, `62,5` as text is read in code; a yes/no, words, a unit, not-a-number and infinity are refused; the same inside an item | ✅ Pass | 2026-10-13 | `tests/test_names.py` |
 | S64 | 🤖 Auto | Files sent with a message | A request carries them (name, size, kind, a way to fetch the bytes) and none by default; the context hands them over as plain records; the router is told the names only, and nothing when there is none | ✅ Pass | 2026-10-13 | `tests/test_names.py` |
+| S65 | 🤖 Auto | The confirm card, the question card and the card that asks first, drawn | The same words as the plain card, in one box: blurple for a decision (a separator between things, the warning above the buttons, the hint under the box); the question in bold with an answer a button and no Save; amber when it asks first because something is risky (pills' too soon and too late); red only for what can't be undone. A card of many things stays within the limits | ✅ Pass | 2026-10-13 | `tests/test_design.py` |
 
 ## T. Tasks in plain words
 

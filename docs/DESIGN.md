@@ -7,12 +7,18 @@ buttons in one message). `docs/CONVERSATION.md` says what a card must
 say and when; this file says how that is drawn, and where the two
 touch, the standard wins.
 
-**Status (2026-10-12): waiting for the check on the phone (block 39 of
+**Status (2026-10-13): waiting for the check on the phone (block 39 of
 `docs/QA-RUN.md`).** The colours below are the ones chosen so far and
 are not final until Alex has looked at them on the phone; the lock
-screen waits for the same check. Nothing real is drawn this way yet:
-the sketches in `docs/mockups/` are posted with `dev mock <name>`, and
-the bot's own cards are still plain messages until each is converted.
+screen waits for the same check. Five cards are built this way, behind
+`CARDS_V2` (off unless set in `.env`; off, every card looks as it
+always has): today's pills checklist, the reminder, the confirm card,
+the card that asks a question and the card that asks first because
+something is risky. Everything else is still a plain message.
+
+**Every colour and spacing value is in one file, `core/design.py`**
+(its first block): after the phone check, a change is an edit there and
+nowhere else. `dev mock` draws its sketches with the same values.
 
 ## The pieces
 
@@ -119,6 +125,22 @@ button counts) and 4,000 characters; a row takes 5 buttons. So:
 - A question offers at most four answers, in one row with Cancel
 
 `dev mock` refuses a sketch that breaks a limit, with the reason.
+
+## In code
+
+- `core/design.py`: the values, the records a layout is made of
+  (`Text`, `Box`, `Separator`, `Row`) and the shapes of this file
+  (`item` for a box, `standing` for a standing message, `decision` for
+  a card that asks, `notifying` for a message that notifies). Pure
+- `core/cards.py`: a `Card` may carry a `layout` beside its text and
+  rows. It is drawn only when `CARDS_V2` is on (`cards.designed`); the
+  text is always there, for the log and for off
+- A task says what a card holds and which status a box has, never a
+  colour: `tasks/pills/sheet.py` is the checklist
+- A message that is Components V2 can never go back to plain text:
+  rewriting one with a plain card puts the same words and buttons in
+  as a layout (`cards._drawn`), so switching `CARDS_V2` off again is
+  safe
 
 ## The sketches
 

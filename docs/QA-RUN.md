@@ -777,6 +777,25 @@ from before: naming a pill now goes through the core.
 | 4 | Press **Cancel**. Send a picture or any file with the words `what is this` | An ordinary answer from chat, as before: the file changes nothing yet | S64 |
 | 5 | Say `remove testiron and testiron forte`, press **Remove** | Both gone | |
 
+## 41. The new look, switched on (waiting for QA)
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
+On the dev database, dev mode off. Put `CARDS_V2=true` and
+`REMINDERS_ENABLED=true` in `.env` and start the dev bot. Do block 39
+(the sketches and the colours on your phone) before this one.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Say `add Testa to my pills at 8am, 11:30am and 3pm, at least 3 hours apart, not after 4pm, with food`, press **Save**. Before pressing, look at the card | A blurple box: "💊 Pills · new", a line under it, the pill's line, then **Save** and **Cancel** inside the box, and "or tell me what to change" in small text under it | S65 |
+| 2 | Say `add Testb twice a day at 8`. Press nothing yet | A blurple box that ends with the question in bold and a button for each answer, **Cancel**, and no Save. Press **Cancel** | S65 |
+| 3 | Say `add Testany once a day`, **Save**. Type `dev clock 7:55am` then `pills` | One message: "💊 Today · 0 of 4 taken" and the date, then a box a pill: Testa amber with "Due"/"Next" and **Taken**, **Taken at…**, **Skip**; Testany blue, "any time", with the same three buttons. No separate message for Testany | R79 |
+| 4 | Lock your phone. Type `dev clock 8:00am` | The lock screen shows only "💊 Routine due · 8:00 am". In the hub: that line with an amber box under it naming Testa, with four buttons | R80 |
+| 5 | On the checklist (not the reminder), press **Taken** in Testa's box | The checklist stays where it is and is rewritten: Testa shows "✅ dose 1 · 8:00 am" and "**Next:** dose 2"; the reminder goes | R79 |
+| 6 | Press **Taken** in Testa's box again straight away | An amber box: "💊 Pills · change", the dose, "⚠️ That's … after dose 1 … Log it anyway?", **Log it** and **Cancel**. Nothing is ticked off. Press **Cancel** | R79, S65 |
+| 7 | Press **Skip** in Testany's box | Testany's box turns grey with "⏭️ skipped" and has no buttons | R79 |
+| 8 | Say `remove testa and testany`, press **Remove**. Type `dev clock reset`. Stop the dev bot, take `CARDS_V2` out of `.env` (or set it to false) and start it; type `pills` | Everything is the old look again: a plain checklist, plain cards | J59, J60 |
+
 ## When you finish
 
 - Stop the test copy (`Ctrl + C`) and check nothing is left running:

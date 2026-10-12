@@ -7,6 +7,25 @@ session; the end-of-task checklist updates it at the end of every task.
 
 ## Questions for Alex
 
+- **The new look (`CARDS_V2`, block 41)**, what I chose where the
+  design left room:
+  - On the checklist, each pill's **next dose** has Taken, Taken at…
+    and Skip, whether or not it is due yet (pressed too soon, it asks
+    first on the amber card). Or buttons only once a dose is due?
+  - With the new look on, a dose with no time **no longer gets a
+    message of its own**: its buttons are in its blue box.
+  - The heading counts **taken** only ("2 of 6 taken"); the plain
+    checklist's bar counts skipped too.
+  - A **removal that keeps its history** ("Remove") is a blurple box
+    with a red button; only what can't be undone ("Delete for good") is
+    a red box.
+  - On a confirm card, a line that opens with a name in bold starts a
+    new thing, with a separator before it.
+  - A message drawn the new way can never go back to plain text
+    (Discord's rule): with `CARDS_V2` switched off again, such a
+    message is rewritten as the same words and buttons in a layout.
+  - Not drawn the new way yet: the reset card, "which task?", timers,
+    lists (in the backlog).
 - **A file sent with no words** is still ignored, as before (the bot
   only acts on a message with text). Once gym can read a plan, should a
   file on its own go to the router too? Then a picture dropped in

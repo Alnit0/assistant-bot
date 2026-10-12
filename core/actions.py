@@ -170,6 +170,9 @@ class Proposal:
     warnings: tuple[str, ...] = ()  # shown with ⚠️
     kind: str = "new"  # the kind of change, for the first line: one of KINDS
     destructive: bool = False  # can't be undone: a card of its own kind
+    # The card asks first because something is risky (a late log, too soon): its
+    # warning says why. Only how it is drawn (docs/DESIGN.md: amber)
+    risky: bool = False
     confirm_label: str = "Save"
     # False while something on the card has to be put right first (its reason
     # is one of the warnings): the card has Cancel only, and a reply fixes it

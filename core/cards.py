@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 import discord
 
-from core import database, discord_utils, outgoing
+from core import config, database, design, discord_utils, outgoing
 from core.context import Context
 from core.database import log_received, log_result
 from core.discord_utils import report_interaction_error, safe_reply
@@ -125,10 +125,21 @@ class Form:
 
 @dataclass(frozen=True)
 class Card:
-    """A message: its text, and rows of buttons (a tuple of them) or one dropdown."""
+    """A message: its text, and rows of buttons (a tuple of them) or one dropdown.
+
+    `layout` is the same card as Components V2 (core/design.py records, in
+    the one style of docs/DESIGN.md). It is drawn only when CARDS_V2 is on;
+    off, or for a card with no layout, the message is `text` and `rows`, as
+    it always was. `text` is always there: it is what is logged and checked."""
 
     text: str
     rows: tuple[tuple[Button, ...] | Select, ...] = ()
+    layout: tuple = ()
+
+
+def designed(card: Card) -> bool:
+    """Whether this card is drawn as Components V2."""
+    return bool(card.layout) and config.CARDS_V2
 
 
 def make_id(kind: str, task: str, action: str, arg: str = "") -> str:
@@ -208,6 +219,27 @@ def check(card: Card) -> None:
             if custom_id in seen:
                 raise ValueError(f"Two components on one card share the id {custom_id!r}")
             seen.add(custom_id)
+    if card.layout:
+        check_layout(card.layout)
+
+
+def check_layout(pieces: tuple) -> None:
+    """Refuse a layout Discord would refuse, or one that breaks the rule for
+    button colours. Raises ValueError, as `check` does."""
+    wrong = design.problem(pieces)
+    if wrong:
+        raise ValueError(f"A card's layout has {wrong}")
+    seen: set[str] = set()
+    for button in design.buttons(pieces):
+        wrong = colour_problem(button.label, button.style, button.emoji)
+        if wrong:
+            raise ValueError(wrong)
+        if len(button.label) > MAX_LABEL:
+            raise ValueError(f"A button's label is at most {MAX_LABEL} characters")
+        custom_id = make_id(_BUTTON, button.task, button.action, button.arg)
+        if custom_id in seen:
+            raise ValueError(f"Two components on one card share the id {custom_id!r}")
+        seen.add(custom_id)
 
 
 def check_form(form: Form) -> None:
@@ -254,10 +286,12 @@ class Press:
         """Rewrite the message the component is on, in place."""
         check(card)
         self.shown.append(card.text)
+        flags = getattr(getattr(self._interaction, "message", None), "flags", None)
+        drawn = _drawn(card, was_designed=bool(getattr(flags, "components_v2", False)))
         if self._answered():
-            await self._interaction.edit_original_response(content=card.text, view=view(card))
+            await self._interaction.edit_original_response(**drawn)
         else:
-            await self._interaction.response.edit_message(content=card.text, view=view(card))
+            await self._interaction.response.edit_message(**drawn)
 
     async def say(self, text: str) -> None:
         """Tell the presser something only they see."""
@@ -445,6 +479,41 @@ def view(card: Card) -> discord.ui.View | None:
     return built
 
 
+def layout_view(pieces: tuple) -> discord.ui.LayoutView:
+    """A layout (core/design.py records) as a Components V2 message. Every
+    colour and spacing comes from core/design.py."""
+    check_layout(pieces)
+
+    def built(piece):
+        if isinstance(piece, design.Text):
+            return discord.ui.TextDisplay(outgoing.clean(piece.content) or piece.content)
+        if isinstance(piece, design.Separator):
+            spacing = discord.SeparatorSpacing.large if piece.large else discord.SeparatorSpacing.small
+            return discord.ui.Separator(visible=piece.line, spacing=spacing)
+        if isinstance(piece, design.Row):
+            return discord.ui.ActionRow(*(_CardButton(button) for button in piece.buttons))
+        if isinstance(piece, Select):
+            return discord.ui.ActionRow(_CardSelect(piece))
+        return discord.ui.Container(*(built(child) for child in piece.children), accent_colour=discord.Colour(design.colour(piece.status)))
+
+    drawn = discord.ui.LayoutView(timeout=None)
+    for piece in pieces:
+        drawn.add_item(built(piece))
+    return drawn
+
+
+def _drawn(card: Card, was_designed: bool = False) -> dict:
+    """What a message is rewritten with: the card's layout when CARDS_V2 is on
+    and it has one; else its text and rows. A message that is Components V2
+    already can never go back to plain text, so a plain card rewrites it as a
+    layout of that same text and those same rows."""
+    if designed(card):
+        return {"content": None, "view": layout_view(card.layout)}
+    if was_designed:
+        return {"content": None, "view": layout_view(design.plain(card.text, card.rows))}
+    return {"content": card.text, "view": view(card)}
+
+
 def setup(client: discord.Client) -> None:
     """Before connecting, so components on cards from before a restart still answer."""
     client.add_dynamic_items(_CardButton, _CardSelect)
@@ -455,7 +524,8 @@ def setup(client: discord.Client) -> None:
 # ---------------------------------------------------------------------------
 async def post(ctx: Context, card: Card) -> int | None:
     """Send a card as the reply to what the user sent. Returns the message's id."""
-    built = view(card)
+    check(card)
+    built = layout_view(card.layout) if designed(card) else view(card)
     message = await ctx.reply(card.text, view=built)  # checked there (core/outgoing.py)
     return getattr(message, "id", None)
 
@@ -478,7 +548,9 @@ async def send(channel_id: int, card: Card, *, silent: bool = False) -> int | No
     if not text:
         log.error("A card with nothing left to say was not sent")
         return None
-    if built is None:
+    if designed(card):
+        message = await channel.send(view=layout_view(card.layout), silent=silent)
+    elif built is None:
         message = await channel.send(text, silent=silent)
     else:
         message = await channel.send(text, view=built, silent=silent)
@@ -490,8 +562,24 @@ async def edit(channel_id: int, message_id: int, card: Card) -> bool:
     channel = _channel(channel_id)
     if channel is None:
         return False
+    check(card)
+    message = channel.get_partial_message(message_id)
+    plain = Card(outgoing.clean(card.text) or card.text, card.rows)
     try:
-        await channel.get_partial_message(message_id).edit(content=outgoing.clean(card.text) or card.text, view=view(card))
+        if designed(card):
+            await message.edit(**_drawn(card))
+            return True
+        try:
+            await message.edit(**_drawn(plain))
+        except discord.NotFound:
+            raise
+        except discord.HTTPException as error:
+            if error.status != 400:
+                raise
+            # The message is Components V2 (it was drawn while CARDS_V2 was on), and one can
+            # never go back to plain text: the same words and buttons, as a layout
+            log.info("Card %s could not be rewritten as plain text (%s): rewriting it as a layout", message_id, error)
+            await message.edit(**_drawn(plain, was_designed=True))
     except discord.NotFound:
         return False
     except discord.HTTPException as error:
