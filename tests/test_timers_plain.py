@@ -125,6 +125,9 @@ def test_several_timers_in_one_message_all_start(world):
 def test_a_guessed_length_is_pointed_out_with_a_question_mark(world):
     result = start(world, ("5m", "tea"), "10m", guessed=["timers[0].duration"])
     assert result.also == "❓ I guessed the length: **tea** · 5m. Tell me if it should be something else."
+    run(result.placed(8001))
+    assert [timer.label for timer in run(store.timers_about(8001))] == ["tea"], "the line is about the timer whose length was guessed"
+    assert start(world, ("5m", "eggs")).placed is None, "nothing guessed: no line to record"
 
 
 def test_a_length_that_is_too_long_is_refused_in_the_tasks_words(world):
@@ -239,16 +242,18 @@ def test_the_card_names_each_timer_and_confirm_cancels_exactly_those(world):
     assert len(going(world)) == 2, "nothing until it is confirmed"
 
     start(world, ("1m", "eggs"))  # started after the card: not on it, so not cancelled
-    said = run(plain.cancel_saved(world.request, proposal.data))
+    said = said_in(world, run(plain.cancel_saved(world.request, proposal.data)))
     assert said.splitlines() == ["🚫 **Cancelled 2**", "• tea", "• dinner"]
     assert [timer.label for timer in going(world)] == ["eggs"]
+    # The card, once it says so, is a line about both: the task's own, pointing at neither
+    assert sorted(timer.label for timer in run(store.timers_about(world.last_message))) == ["dinner", "tea"]
 
 
 def test_a_timer_that_ended_before_confirm_is_counted_not_failed(world):
     start(world, ("5m", "tea"), ("9m", "dinner"))
     tea, dinner = going(world)
     run(timers.cancel(tea))
-    said = run(plain.cancel_saved(world.request, {"ids": [tea.id, dinner.id]}))
+    said = run(plain.cancel_saved(world.request, {"ids": [tea.id, dinner.id]})).text
     assert said.splitlines() == ["🚫 **Cancelled 1**", "• dinner", "Left alone: 1 had already ended"]
     with pytest.raises(UserError, match="None of those timers is still going"):
         run(plain.cancel_saved(world.request, {"ids": [tea.id, dinner.id]}))
@@ -302,6 +307,8 @@ def test_a_timer_that_starts_itself_is_logged_and_only_its_extras_are_said(world
     assert len(world.channel.sent) == 1, "the timer's own message"
     assert said == ["❓ I guessed the length: **tea** · 5m. Tell me if it should be something else."]
     assert turn.said[0] == "started 1 timer(s): tea 5m"
+    # That line is tea's as well: a reply to it means tea
+    assert [timer.label for timer in run(store.timers_about(1))] == ["tea"]
 
 
 # --- everything at once -----------------------------------------------------------------------------

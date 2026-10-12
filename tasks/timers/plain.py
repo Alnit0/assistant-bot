@@ -119,7 +119,7 @@ async def start(request: Request, data: dict, guessed: frozenset) -> Shown:
     """Start each timer asked for. Each posts its own message with its buttons;
     what was guessed or could not be started is said after them."""
     send = sender(request.channel_id)
-    started, unsure, refused = [], [], []
+    started, unsure, refused, guessed_ones = [], [], [], []
     for index, item in enumerate(data["timers"]):
         label = (item.get("label") or "").strip()
         name = label or item["duration"]
@@ -135,6 +135,7 @@ async def start(request: Request, data: dict, guessed: frozenset) -> Shown:
         started.append(f"{timer.label} {format_duration(seconds)}")
         if is_guessed(guessed, "timers", index, "duration"):
             unsure.append(f"**{timer.label}** · {format_duration(seconds)}")
+            guessed_ones.append(timer)
     if not started:
         raise UserError("No timer started: " + "; ".join(refused))
     also = []
@@ -142,7 +143,8 @@ async def start(request: Request, data: dict, guessed: frozenset) -> Shown:
         also.append(f"{GUESS} I guessed the length: {', '.join(unsure)}. Tell me if it should be something else.")
     if refused:
         also.append("⚠️ Not started: " + "; ".join(refused))
-    return Shown(f"started {len(started)} timer(s): " + ", ".join(started), "\n".join(also))
+    # The line that points out a guessed length is about the timers it names
+    return Shown(f"started {len(started)} timer(s): " + ", ".join(started), "\n".join(also), about(request, guessed_ones) if guessed_ones else None)
 
 
 # ---------------------------------------------------------------------------
@@ -216,9 +218,10 @@ async def cancel_card(request: Request, data: dict, guessed: frozenset) -> Propo
     )
 
 
-async def cancel_saved(request: Request, data: dict) -> str:
-    """Confirmed: cancel each timer on the card that is still going."""
-    done, gone = [], 0
+async def cancel_saved(request: Request, data: dict) -> Answer:
+    """Confirmed: cancel each timer on the card that is still going. The card,
+    once it says so, is a line about each of them."""
+    done, gone, cancelled = [], 0, []
     for timer_id in data["ids"]:
         timer = await store.get_timer(timer_id)
         if timer is None or timer.user_id != request.user.id or not timer.active:
@@ -226,9 +229,10 @@ async def cancel_saved(request: Request, data: dict) -> str:
             continue
         await timers.cancel(timer)
         done.append(timer.label)
+        cancelled.append(timer)
     if not done:
         raise UserError("None of those timers is still going, so nothing was cancelled.")
-    return status.control_text("cancel", done, [f"{gone} had already ended"] if gone else [])
+    return Answer(status.control_text("cancel", done, [f"{gone} had already ended"] if gone else []), about(request, cancelled))
 
 
 async def cancel_check(request: Request, data: dict) -> str:

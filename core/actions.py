@@ -187,10 +187,13 @@ class Shown:
     """What a direct action returns when it has put its own message in the
     channel (a timer's message with its buttons, a session card): nothing more
     is posted for it. `summary` is for the log; `also`, if there is any, is
-    said as well (a guess to point out, something that could not be done)."""
+    said as well (a guess to point out, something that could not be done).
+    `placed(message_id)`, if given, is awaited with the message `also` was
+    said in, so the task can record that line as its own (see `Answer`)."""
 
     summary: str
     also: str = ""
+    placed: Callable[[int], Awaitable[None]] | None = None
 
 
 @dataclass(frozen=True)

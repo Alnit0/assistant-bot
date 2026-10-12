@@ -140,16 +140,15 @@ a schema could take its place.
 ## Left for later
 
 - **Two running timers with the same name both get the change** (found
-  live, 2026-10-12): with two called "tea", "give tea more time" adds to
-  both. Later: number a duplicate when it starts ("tea 2"), so each can
-  be named.
+  live, 2026-10-12; **low priority**: timers are a proof of concept and
+  may be scrapped): with two called "tea", "give tea more time" adds to
+  both. Later: a second timer with a name already running becomes "tea
+  2", then "tea 3", shown that way everywhere. Skipped in the background
+  batch of 2026-10-12 on Alex's word.
 - **Left by the timer reply fix** (2026-10-12):
   - **Pills lines not recorded as a pill's**: the line after Remove or
     Delete for good (the pill has gone), and a line that only says a
     pill couldn't be found.
-  - **Not recorded as a timer's**: the line under a started timer that
-    points out a guessed length, and the line after the card that
-    cancels several. A reply to either still goes to the router.
 - **Left by the task-check fixes** (2026-10-12):
   - **One fixture is not recorded**: "how long left on tea?" (timers).
   - **A reply to the checklist only says which pill when one pill is on

@@ -7,7 +7,10 @@ session; the end-of-task checklist updates it at the end of every task.
 
 ## Questions for Alex
 
-(None yet.)
+- **"Item 10 (restarts)"**: your note during the batch said to leave
+  timers out of item 10, but the queue I was given ends at item 8 and
+  has nothing about restarts. Nothing was done for it. Send the item
+  and I will leave timers out of it.
 
 ## Background batch (unattended, on `feature/pills`)
 
@@ -24,6 +27,11 @@ message to that task".
    and a reply to one means that pill and that dose (block 29).
 4. Done: `dev why` shows a reference as "it", is sent as it is, and
    logs no error (block 30).
+5. Done: the guessed-length line and the bulk-cancel line are recorded
+   as the timers' (block 31).
+6. Skipped on your word (timers may be scrapped): numbering a second
+   timer of the same name. In the backlog, low priority. From here on
+   timer code is only touched if a core change breaks its tests.
 
 ## Branch and state
 

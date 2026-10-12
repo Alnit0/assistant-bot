@@ -278,7 +278,12 @@ async def act(
                 # The task put its own message up (a timer, a session card)
                 turn.said.append(result.summary)
                 also = "\n".join(part for part in (result.also, left_out) if part)
-                if also:
+                if also and result.placed is not None:
+                    turn.said.append(also)
+                    message_id = await cards.send(request.channel_id, Card(also))
+                    if message_id is not None:
+                        await result.placed(message_id)
+                elif also:
                     await say(also)
             elif isinstance(result, LiveReply):
                 # A list shown on request: this copy is now the one kept up to date, and

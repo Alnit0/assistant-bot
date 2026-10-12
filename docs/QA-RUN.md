@@ -605,6 +605,17 @@ On the dev database, dev mode off. Every step says what to press.
 |---|---|---|---|
 | 1 | `timer 10m tea`; say `give it 2 more`; reply `dev why` to that message of yours. Then reply `cancel` to the timer | The extraction line reads `timers · timer_change {"which":"it","action":"extend","duration":"2m"}`: the action's name is there and "which" is not empty. Nothing about an "internal label" appears in #bot-log or the log | J54 |
 
+## 31. The last two timer lines (waiting for QA)
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
+On the dev database, dev mode off. Every step says what to press.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Say `set a timer for a few minutes called tea`, then `timer 10m eggs`. Reply to the line "❓ I guessed the length: …" with `give it 2 more`; then reply `dev why` to that reply of yours | Tea gets 2 more minutes, eggs is untouched. The trace says "reply to timers' message: it goes to timers first" and shows no router request | G32 |
+| 2 | Say `cancel all my timers`; press the red **Cancel 2 timers** | "🚫 **Cancelled 2**" naming tea and eggs | G32 |
+
 ## When you finish
 
 - Stop the test copy (`Ctrl + C`) and check nothing is left running:

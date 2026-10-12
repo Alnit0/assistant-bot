@@ -34,7 +34,7 @@ Last updated: 2026-10-12
 | D | Archive and restore | 15 | 4 | 11 | 11 | 4 | 0 | 0 |
 | E | Delete and protection | 12 | 3 | 9 | 9 | 3 | 0 | 0 |
 | F | Pins | 4 | 0 | 4 | 4 | 0 | 0 | 0 |
-| G | Timers | 31 | 12 | 19 | 16 | 15 | 0 | 0 |
+| G | Timers | 32 | 12 | 20 | 17 | 15 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
 | J | Dev mode | 54 | 11 | 43 | 42 | 12 | 0 | 0 |
 | K | Startup and housekeeping | 22 | 11 | 11 | 9 | 13 | 0 | 0 |
@@ -46,7 +46,7 @@ Last updated: 2026-10-12
 | S | Routing and confirm cards | 59 | 10 | 49 | 14 | 44 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 4 | 18 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **431** | **133** | **298** | **229** | **201** | **0** | **1** |
+| | **Total** | **432** | **133** | **299** | **230** | **201** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -195,11 +195,12 @@ tidy themselves away; M5 covers the setting). "Log card" means a card in
 | G24 | 🤖 Auto | Nothing is confirmed until it is read back; refusals are written for me | Every timer and session action that saves is read back first: a change that didn't save says "That didn't save: **tea** is still running." and a timer that didn't save gets no message. No refusal says "tell the user", names a field or shows an id: "I can't find that timer. Say its name.", "Say how much time to add, e.g. 10 minutes." | ✅ Pass | 2026-10-12 | `tests/test_timers_plain.py`, `tests/test_timer_freeze.py` |
 | G25 | 👤 Manual | `timer 10m tea`; say `give tea more time`. Press nothing | Either a plain line that ends "Say how much time to add, e.g. 10 minutes.", or the time is added with the amount it guessed marked ❓ ("❓ I guessed how much time to add."). Never `duration`, "tell the user" or an id like t12 | ✅ Pass | 2026-10-12 | Block 25, live: it guessed 5 minutes and marked it ❓, which is accepted |
 | G26 | 👤 Manual | Look at the tea timer's message, and start `pomo` and look at its card. Press **Stop** | "ends in 9 minutes (8:04 pm)" and "Ends in 25 minutes (8:19 pm)": the time in brackets is 12-hour with am or pm, whatever your Discord is set to | ✅ Pass | 2026-10-12 | Block 25, on the live bot |
-| G27 | 🤖 Auto | Every message about a timer is that timer's | Its card, a card posted again after a reset (and the old one), its alert, the line that answers how long is left, and each line that says what was done to it, typed or in plain words; a line about several is about each. A reply to the line "⏸️ Paused: dinner" means dinner, not the timer spoken of last, with no router request, and the line that answers is dinner's too; the typed reply words (`pause`, `+2m`) work on such a line | ✅ Pass | 2026-10-12 | `tests/test_timers_plain.py`, `tests/test_golden.py`. From QA 2026-10-12 |
+| G27 | 🤖 Auto | Every message about a timer is that timer's | Its card, a card posted again after a reset (and the old one), its alert, the line that answers how long is left, and each line that says what was done to it, typed or in plain words; a line about several is about each. A reply to the line "⏸️ Paused: dinner" means dinner, not the timer spoken of last, with no router request, and the line that answers is dinner's too; the typed reply words (`pause`, `+2m`) work on such a line; the line that points out a guessed length is that timer's, and the card that cancelled several is a line about each | ✅ Pass | 2026-10-12 | `tests/test_timers_plain.py`, `tests/test_golden.py`. From QA 2026-10-12 |
 | G28 | 🤖 Auto | A guessed timer is never acted on | With several going and no name, no reply and nothing said about one timer in the last five minutes, "it" or a name Claude guessed changes nothing: "Which timer? Say its name." with a line for each. With one going it acts at once, with no ❓; a named timer always acts at once; a line about several points at none; straight after an alert "it" is the timer that just finished | ✅ Pass | 2026-10-12 | `tests/test_timers_plain.py`, `tests/test_golden.py`. From QA 2026-10-12 |
 | G29 | 👤 Manual | `timer 10m tea`, `timer 10m dinner`, `timer 10m eggs`. Say `pause the dinner timer`, then `give eggs 1 more`. Reply to the line "⏸️ Paused: dinner …" with `Give it 2 more`; then reply `dev why` to that reply of yours. Press nothing | "➕ Added 2m to dinner" (with or without "❓ I guessed how much time to add."); tea and eggs are untouched. The trace says "reply to timers' message: it goes to timers first" and shows no router request | ⬜ Untested | | From QA 2026-10-12 |
 | G30 | 👤 Manual | With those three timers: say `pause everything`, then `resume everything`, then `give it 2 more`. Then say `cancel all my timers` and press the red **Cancel 3 timers** | "⚠️ Which timer? Say its name." with a line for tea, dinner and eggs, and no timer changes. Then the three are cancelled | ⬜ Untested | | From QA 2026-10-12 |
 | G31 | 👤 Manual | `timer 10s tea`, then `timer 10m eggs`. When the alert for tea rings, say `give it 5 more` | Tea runs again for 5 minutes; eggs is untouched: "it" is the subject of the latest task message from the bot | ⬜ Untested | | Block 27 |
+| G32 | 👤 Manual | Say `set a timer for a few minutes called tea`, then `timer 10m eggs`. Reply to the line "❓ I guessed the length: …" with `give it 2 more`; reply `dev why` to that. Then say `cancel all my timers` and press the red button | Tea gets 2 more minutes, eggs is untouched; the trace says "reply to timers' message" with no router request. Then both are cancelled | ⬜ Untested | | Block 31 |
 
 ## H. Pomodoro
 

@@ -6,6 +6,9 @@ backfilled from the git log.
 
 ## 2026-10-12
 
+- The last two timer lines are the timers' too: the line that points
+  out a guessed length, and the card once it has cancelled several.
+
 - `dev why` shows "it" where I said "it" or "that" (it showed an empty
   value), keeps the action's name, and no longer logs an error each
   time it is used.
