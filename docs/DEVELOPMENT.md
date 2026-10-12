@@ -1266,7 +1266,7 @@ one whose PID is in `data/bot.lock`.
 
 ```powershell
 pip install -r requirements-dev.txt   # once: adds pytest
-python -m pytest -q                   # everything (the routine run)
+python -m pytest -q                   # everything (the routine run, about a minute)
 python -m pytest tests/test_router.py # one file
 python -m pytest -k archive           # tests with "archive" in the name
 ```
@@ -1286,6 +1286,13 @@ so they are safe to run while the bot is running.
   "which reactions count?") goes in a module with no Discord calls and gets
   tests; the Discord-facing code calls it. `tasks/archive/` is the pattern:
   `rules.py` decides, `store.py` remembers, `messages.py` talks to Discord.
+- **Why the run is quick** (`tests/conftest.py`, 2026-10-13: 10 min 55 s
+  down to 56 s, same tests): each set of migrations is run once and
+  every test starts from a copy of that empty database (`make_db`); a
+  test's database doesn't wait for the disk after each write; and the
+  two seconds a live message waits between edits (`live.MIN_INTERVAL`)
+  are nothing in a test. Running in parallel (pytest-xdist) was tried
+  and is not used: one run took 30 s and the next hung.
 - **New tests are plain pytest functions** with `assert`. The older
   `unittest` classes are left as they are; pytest runs both.
 - **Fixtures** are in `tests/conftest.py`: `make_db` / `db` (a temporary

@@ -6,6 +6,9 @@ backfilled from the git log.
 
 ## 2026-10-13
 
+- The tests run in about a minute instead of eleven (the same tests):
+  nothing for the user to see.
+
 - Three core pieces any task can use, with nothing changed in what the
   bot says: a message's files reach a task (`request.attachments`; the
   router is told their names), a field can be a number that need not

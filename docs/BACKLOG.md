@@ -156,6 +156,12 @@ trains are answered:
 
 ## Left for later
 
+- **Tests in parallel** (tried 2026-10-13): with pytest-xdist one full
+  run took 30 s and the next hung at about 95%, so it is not used and
+  not installed. The serial run is 56 s. Worth another look only if the
+  suite grows slow again: find the test that blocks when two workers
+  run at once.
+
 - **A reaction made just before a stop is lost** (found checking
   restarts, 2026-10-12; left on Alex's word): the 30 seconds a reaction
   waits are kept in memory, so one made just before a restart is never

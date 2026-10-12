@@ -35,11 +35,14 @@ _workers: dict[object, asyncio.Task] = {}
 _background: set[asyncio.Task] = set()
 
 
-def wait_needed(last: float | None, now: float, interval: float = MIN_INTERVAL) -> float:
+def wait_needed(last: float | None, now: float, interval: float | None = None) -> float:
     """How long to hold a refresh back so that two of the same message are at
-    least `interval` apart. Nothing if it has never run, or not lately."""
+    least `interval` apart (MIN_INTERVAL unless given). Nothing if it has
+    never run, or not lately."""
     if last is None:
         return 0.0
+    if interval is None:
+        interval = MIN_INTERVAL  # read when asked, so a test can make it nothing
     return max(0.0, last + interval - now)
 
 

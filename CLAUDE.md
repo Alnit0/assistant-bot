@@ -336,8 +336,9 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   core.instance_lock`, which asks the lock (the source of truth) and
   says how many bots are running. Don't count `python.exe` lines: one
   bot is two of them (the `.venv` launcher and its child)
-- Routine test run: `python -m pytest -q`. Tests use a temporary database
-  and made-up settings, never the real ones
+- Routine test run: `python -m pytest -q` (about a minute). Tests use a
+  temporary database and made-up settings, never the real ones. Don't
+  run them in parallel (`-n`): a run hung that way
 - Speed: while working, run only the tests related to what is being
   changed (`python -m pytest -q tests/test_x.py`); run the full suite
   once, at the end. Live evals only when I ask, or at a pause where
