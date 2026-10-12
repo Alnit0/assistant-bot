@@ -4,10 +4,10 @@ import sqlite3
 from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta
 
-from core import cards, clock, config, database, hub, lifecycle, llm, occurrences, restart, scheduler, timeinput
+from core import actions, cards, clock, config, confirm, database, discord_utils, hub, lifecycle, llm, occurrences, restart, scheduler, timeinput
 from core import day as days
+from core.actions import Request
 from core.cards import Button, Card, Field, Form
-from core.errors import UserError
 from core.lifecycle import MessageClass
 from core.schedule import AFTER_PREVIOUS
 from core.scheduler import from_db, to_db
@@ -233,6 +233,18 @@ async def dose_of(message_id: int, listed: list[Dose]) -> Dose | None:
 # Doing it
 # ---------------------------------------------------------------------------
 _running = asyncio.Lock()
+NO_HUB = ("💊 Pill reminders can't be sent", "Reminders are on, but the hub channel is not set or can't be found. Nothing is sent until it is.")
+_said_no_hub = False
+
+
+async def _hub_missing(missing: bool) -> None:
+    """Reminders are on and there is nowhere to post them: said once in
+    #bot-log, and not again until the hub has been found in between."""
+    global _said_no_hub
+    if missing and not _said_no_hub:
+        log.warning("Pills reminders: on, and the hub channel can't be found")
+        await discord_utils.log_simple(*NO_HUB)
+    _said_no_hub = missing
 
 
 async def _take_down(prompt: Prompt) -> None:
@@ -245,10 +257,9 @@ async def _post(dose: Dose, listed: list[Dose], old: Prompt | None, reminders: i
     """Put a fresh copy of a dose's prompt up, in place of the one before.
     First the neutral line, which is what notifies; then the pill is written
     into it. False if there is nowhere to post it."""
-    channel_id = hub.channel_id() or (old.channel_id if old else None)
-    if channel_id is None:
-        return False
-    message_id = await cards.send(channel_id, Card(notice(dose, reminders)))
+    channel_id = hub.channel_id()
+    message_id = await cards.send(channel_id, Card(notice(dose, reminders))) if channel_id is not None else None
+    await _hub_missing(message_id is None)
     if message_id is None:
         return False
     if old is not None and old.message_id is not None and lifecycle.deletes(MessageClass.ALERT):
@@ -345,6 +356,8 @@ async def startup() -> None:
     """When the bot starts: catch up. One prompt for each dose that is due, and the next look booked."""
     if not enabled():
         log.info("Pills reminders are off (REMINDERS_ENABLED): no reminder is sent")
+    elif hub.channel_id() is None:
+        await _hub_missing(True)  # known at once, not only when the first dose comes due
     waiting = any(job.due_at <= clock.now() for job in await scheduler.pending_jobs(TASK, JOB))
     if waiting and enabled():
         return  # the overdue job runs as the scheduler starts, and says what it caught up on
@@ -435,8 +448,11 @@ async def on_taken_at(press: cards.Press) -> str:
     at = plain._moment(str(press.fields.get("at", "")).strip(), now, before.occurrence.actual_at if before else None)
     asks = plain.asked_about(dose, listed, at)
     if asks:
-        # What a message would ask about on a card first is not logged from a form unseen
-        raise UserError(f"{' '.join(asks)} To log it anyway, say it in a message.")
+        # Too soon, or after the latest time: the same "Log it anyway?" card as when the time is said
+        # in a message. Nothing is logged by asking, and the reminder stays until the dose is dealt with
+        request = Request(press.user, press.channel_id, f"(Taken at… {timeinput.format_moment(at)} on the reminder for {rules.plain(dose.label)})")
+        await confirm.show(request, actions.entry(TASK), "pill_log", plain.log_anyway(dose, at, asks), frozenset())
+        return f"asked first: {' '.join(asks)}"
     return await _done(press, dose, checklist.TAKEN, at, occurrences.FORM)
 
 

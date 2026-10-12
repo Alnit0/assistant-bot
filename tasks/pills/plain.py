@@ -1260,6 +1260,15 @@ async def log_card(request: Request, data: dict, guessed: frozenset) -> Proposal
     )
 
 
+def log_anyway(dose: Dose, at: datetime, asks: tuple[str, ...]) -> Proposal:
+    """The card that asks before a dose is ticked off at a time that is too
+    soon or after the latest time: the same card whether the time was said
+    in a message or typed into a reminder's form. Log it does it."""
+    step = Step(dose=dose, did=checklist.TAKEN, at=at, asks=asks)
+    held = {"occurrence": dose.occurrence.id, "did": step.did, "moment": at.isoformat()}
+    return Proposal(lines=(_preview(step),), data={"doses": [held]}, warnings=(f"{' '.join(asks)} Log it anyway?",), kind="change", confirm_label="Log it")
+
+
 async def _held(request: Request, data: dict) -> list[Step]:
     """The steps a card holds, on the doses as they are now."""
     _, listed, _ = await checklist.view(request.user.id)

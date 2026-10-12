@@ -8,7 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from core import cards, clock, config, database, day, discord_utils, hub, live, llm, occurrences, restart, scheduler
+from core import actions, cards, clock, config, confirm, database, day, discord_utils, hub, live, llm, occurrences, restart, scheduler
 from core.actions import Request
 from core.errors import UserError
 from core.occurrences import DONE, MISSED, PENDING, SKIPPED
@@ -58,6 +58,9 @@ def world(make_db, monkeypatch, owner, dev_clock):
     monkeypatch.setattr(restart, "_lines", [])
     monkeypatch.setattr(restart, "_catching_up", False)
     monkeypatch.setattr(config, "REMINDERS_ENABLED", True)
+    monkeypatch.setattr(reminders, "_said_no_hub", False)
+    monkeypatch.setattr(actions, "_entries", {})
+    actions.set_catalogue(pills_task.entries())
     _set_up()
     live.reset()
     seen.request = lambda replied_to=None: Request(owner, INBOX, "said", replied_to=replied_to)
@@ -77,6 +80,7 @@ def _set_up():
     day.on_new_day("pills", pills_task.new_day)
     checklist.register()
     reminders.register()
+    confirm.setup()
 
 
 def run(coroutine):
@@ -279,14 +283,44 @@ def test_taken_at_opens_a_one_box_form_and_the_time_typed_is_checked_as_a_time_s
     assert run(occurrences.history(taken.id))[-1].source == occurrences.FORM
 
 
-def test_a_time_in_the_form_that_would_be_asked_about_is_not_logged_unseen(world):
+def test_a_time_in_the_form_that_needs_asking_gets_the_same_log_it_anyway_card_as_saying_it(world):
     add(world, PILL_A)
     at(world, 8, 0)
     press(world, reminders.P_TAKEN)
     at(world, 11, 30)
-    with pytest.raises(UserError, match="That's 2h after dose 1, taken 8:00 am. The gap is at least 3h. To log it anyway, say it in a message."):
-        press(world, reminders.P_AT, {"at": "10:00 am"})
-    assert states(world)[("Pill A", 2)] == PENDING and len(prompts(world)) == 1
+    pressed, said = press(world, reminders.P_AT, {"at": "10:00 am"})
+    assert not pressed.removed and states(world)[("Pill A", 2)] == PENDING and len(prompts(world)) == 1, "nothing is logged by asking, and the reminder stays"
+    asked = world.sent[-1]
+    assert asked.channel == HUB and asked.card.text.splitlines()[:3] == [
+        "💊 Pills · change", "**Pill A** (dose 2 of 3) · taken 10:00 am",
+        "⚠️ That's 2h after dose 1, taken 8:00 am. The gap is at least 3h. Log it anyway?",
+    ]
+    assert [button.label for button in asked.card.rows[0]] == ["Log it", "Cancel"]
+    # Word for word the card that saying it gives
+    typed = run(plain.log_card(world.request(), {"doses": [{"pill": "pill a", "did": "taken", "at": "10:00 am"}]}, frozenset()))
+    stored = run(database.run(confirm.db_by_message, asked.id))
+    assert (typed.lines, typed.warnings, typed.confirm_label) == (("**Pill A** (dose 2 of 3) · taken 10:00 am",), ("That's 2h after dose 1, taken 8:00 am. The gap is at least 3h. Log it anyway?",), "Log it")
+    assert stored.data == typed.data and stored.action == "pill_log"
+    # Log it logs it at that time, and the reminder goes
+    answered = Press(world, asked.id, stored.id)
+    run(cards._actions[(confirm.CARDS, "save")].handler(answered))
+    assert answered.shown[-1].text.startswith("✅ **Pill A** (dose 2 of 3) · taken 10:00 am")
+    assert states(world)[("Pill A", 2)] == DONE and prompts(world) == []
+
+
+def test_cancel_on_that_card_logs_nothing_and_leaves_the_reminder_up(world):
+    add(world, PILL_A)
+    at(world, 8, 0)
+    press(world, reminders.P_TAKEN)
+    at(world, 11, 30)
+    press(world, reminders.P_AT, {"at": "10:00 am"})
+    asked = world.sent[-1]
+    stored = run(database.run(confirm.db_by_message, asked.id))
+    cancelled = Press(world, asked.id, stored.id)
+    run(cards._actions[(confirm.CARDS, "cancel")].handler(cancelled))
+    assert cancelled.removed and states(world)[("Pill A", 2)] == PENDING and len(prompts(world)) == 1
+    at(world, 11, 45)
+    assert notices(world)[-1] == "💊 Routine due · 11:30 am · reminder 1 of 3", "and it goes on reminding"
 
 
 def test_snooze_keeps_the_prompt_says_until_when_and_a_fresh_copy_comes_when_it_ends(world):
@@ -502,6 +536,36 @@ def test_a_job_run_twice_or_asked_again_and_again_never_makes_a_second_prompt(wo
         run(reminders.run())
         run(reminders.remind_job(scheduler.Job(99, None, "pills", reminders.JOB, {}, clock.now())))
     assert len(notices(world)) == 1 and len(run(scheduler.pending_jobs("pills", reminders.JOB))) == 1
+
+
+# --- no hub ---------------------------------------------------------------------------------------------------
+def test_on_with_no_hub_to_post_in_it_is_said_once_in_bot_log_and_again_only_after_the_hub_came_back(world, monkeypatch):
+    add(world, EVENING, {"name": "Later", "times": ["9:00 pm"]})
+    monkeypatch.setattr(hub, "channel_id", lambda: None)
+    at(world, 20, 0)
+    at(world, 20, 15)
+    at(world, 21, 0)
+    run(reminders.run())
+    assert notices(world) == [] and world.bot_log == [reminders.NO_HUB], "once, however many doses came due"
+    assert states(world)[("Evening pill", 1)] == PENDING, "never missed for want of somewhere to ask"
+    monkeypatch.setattr(hub, "channel_id", lambda: HUB)
+    run(reminders.run())
+    assert len(notices(world)) == 2 and world.bot_log == [reminders.NO_HUB], "found again: both are asked, and nothing more is said"
+    monkeypatch.setattr(hub, "channel_id", lambda: None)
+    run(reminders.channel_cleared(HUB, {prompts(world)[0][0]}))
+    assert world.bot_log == [reminders.NO_HUB, reminders.NO_HUB], "gone again later: said again, once"
+
+
+def test_at_start_with_reminders_on_and_no_hub_it_is_said_at_once_and_never_when_they_are_off(world, monkeypatch):
+    monkeypatch.setattr(hub, "channel_id", lambda: None)
+    run(reminders.startup())
+    run(reminders.startup())
+    assert world.bot_log == [reminders.NO_HUB]
+    world.bot_log.clear()
+    monkeypatch.setattr(reminders, "_said_no_hub", False)
+    monkeypatch.setattr(config, "REMINDERS_ENABLED", False)
+    run(reminders.startup())
+    assert world.bot_log == [], "off: nothing is sent, so nothing is wrong"
 
 
 # --- too soon -------------------------------------------------------------------------------------------------

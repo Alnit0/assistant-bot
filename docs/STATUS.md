@@ -7,46 +7,6 @@ session; the end-of-task checklist updates it at the end of every task.
 
 ## Questions for Alex
 
-- **Reminders** (item 12), what I chose where the spec left room:
-  - **The lock screen.** The message is posted as the one neutral line
-    and the pill is written into it a moment later, so no name can
-    reach the phone however it draws a notification. The prompt is an
-    ordinary message with buttons, not the coloured cards of the
-    sketches: those need Components V2, which nothing real uses yet.
-    Say if reminders should wait for that look.
-  - **A snooze is not one of the three reminders.** When it ends a
-    fresh copy comes and the count carries on.
-  - **Left alone:** the prompt, reminders at 15, 30 and 45 minutes,
-    missed at 60. Missed this way stays missed (it does not reopen by
-    itself), but saying "took it" still ticks it off.
-  - **The bot off at a dose's time:** it gets its first prompt when the
-    bot starts, if that is before the pill's latest time. Reminders
-    that fell while the bot was off are not counted against you.
-  - **Taken at… with a time that would be asked about** (too soon, or
-    after the latest time): refused in the form with the reason and
-    "To log it anyway, say it in a message." The other way would be to
-    log it from the form unasked.
-  - **Each timed dose has its own prompt**, so dose 2 can come due
-    while dose 1's reminder is still up.
-  - **Take-by** is on the prompt, and not yet on the checklist line.
-  - **A missed dose on the checklist** still reads "❌ … · missed": the
-    sketch's "was due 11:12 am" waits for the checklist's redesign.
-  - **Too soon** reads "That's 2h after dose 1, taken 8:12 am. The gap
-    is at least 3h. Log it anyway?" with **Log it** and **Cancel**.
-  - Reminders go to the hub only. With no hub set, none is sent.
-- **Questions on the card** (item 11), what I chose:
-  - Under a question the card says "-# or type your answer" (where
-    other cards say "or tell me what to change").
-  - The question for a time reads "Is that 8 in the morning or the
-    evening?", with what you typed in it ("8", "8:00").
-  - Offered answers: for one time given for two doses, the time twelve
-    hours on ("8:00 pm"); for three or more doses, no button (you type
-    them). For a gap with no number of doses: "2 a day", "3 a day",
-    "4 a day".
-  - "Which pill?" offers at most four pills (one row with Cancel); with
-    more than four still to take, the rest are typed.
-  - The timers' question ("Which timer? Say its name.") is left as a
-    message: timers are not to be touched.
 - **A Save cut off inside the save itself** (item 10, your answer 4):
   the card gets the normal confirmation with "-# checked after a
   restart" under it, because the words are kept the moment the change
@@ -62,6 +22,12 @@ session; the end-of-task checklist updates it at the end of every task.
   are approved (attachments on a request, a decimal number in the
   contract, name matching moved out of pills) and are stage 1 of the
   gym build, so they wait with it.
+
+Answered on 2026-10-12, reminders and questions on the card: kept as
+built, with three changes made (reminders stay a plain message and are
+converted with the checklist's redesign; Taken at… with a time that
+needs asking shows the "Log it anyway?" card; reminders on with no hub
+is said once in #bot-log).
 
 Answered on 2026-10-12 and done or parked: C7 (done with G1), C12,
 C15 and C16 (done, block 34), C19 (moves with gym), the timers

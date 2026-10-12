@@ -1188,8 +1188,14 @@ A short log of key decisions and why. Newest at the bottom.
     burst. Nothing after the latest time.
   - **Taken at…** reads the time as a time said in a message is. One
     that a message would be asked about first (too soon, after the
-    latest time) is refused in the form with the reason, and can be
-    said in a message instead.
+    latest time) gets the same "Log it anyway?" card, and the reminder
+    stays up until the dose is dealt with (Alex, 2026-10-12: not a
+    refusal, as first built).
+  - **Hub only.** With reminders on and no hub that can be found,
+    #bot-log is told once (and again only if the hub came back in
+    between); a dose is never missed for want of somewhere to ask.
+  - **Plain messages now** (Alex, 2026-10-12): reminders don't wait for
+    Components V2, and are converted with the checklist's redesign.
   - **Too soon** is asked about on the same card as a late log.
   - The take-by line is on the prompt only; the checklist is left as it
     is until its redesign.

@@ -729,7 +729,10 @@ Have your phone locked beside you for step 2. The clock is moved with
 | 5 | Type `dev clock 9:00pm`, then `dev clock 9:15pm`, `dev clock 9:30pm`, `dev clock 9:45pm` | A prompt at 9:00 pm, then three more, each replacing the last: "reminder 1 of 3", "2 of 3", "3 of 3", with a line saying when the next comes. Only ever one message for the dose | R78 |
 | 6 | Type `dev clock 10:00pm` | The message goes and the checklist shows ❌ Testrem (dose 2 of 2) · missed | R78 |
 | 7 | Say `took testrem` | It is ticked off all the same ("taken 10:00 pm") | R78 |
-| 8 | Say `remove testrem`, press **Remove**; type `dev clock reset`; stop the dev bot | Gone; the clock is the real time | |
+| 8 | Say `add Testgap to my pills at 3pm and 9pm, at least 4 hours apart`, **Save**. Type `dev clock 3:00pm` (the next day's), press **Taken**. Type `dev clock 9:00pm`. On the 9:00 pm reminder press **Taken at…**, type `5pm`, submit | A card in the hub: "💊 Pills · change", "**Testgap** (dose 2 of 2) · taken 5:00 pm", "⚠️ That's 2h after dose 1, taken 3:00 pm. The gap is at least 4h. Log it anyway?", with **Log it** and **Cancel**. Nothing is ticked off yet and the reminder is still there | R78 |
+| 9 | Press **Cancel** on that card. Then **Taken at…** again, `5pm`, and this time **Log it** | After Cancel: the card goes, the reminder stays. After Log it: the card says dose 2 was taken 5:00 pm, the reminder goes and the checklist shows it | R78 |
+| 10 | Say `remove testrem and testgap`, press **Remove**; type `dev clock reset`; stop the dev bot | Gone; the clock is the real time | |
+| 11 | Only if you want to see it: start the dev bot with reminders on and `HUB_CHANNEL_ID` taken out of `.env` for that run, then put it back | #bot-log says once "💊 Pill reminders can't be sent": reminders are on and the hub can't be found. No reminder is sent anywhere else | R78 |
 
 To switch reminders on for the live bot: add `REMINDERS_ENABLED=true`
 to `.env` and restart the service. To switch them off again: remove

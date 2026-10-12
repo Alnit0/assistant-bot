@@ -633,7 +633,9 @@ Everything works in #inbox and in the hub.
   again every 15 minutes, three times, and then the dose is missed (it
   can still be ticked off by saying so). A dose with no time has its
   Taken / Skip message under the checklist and no reminder. Nothing is
-  sent after a pill's latest time. Switching the setting off and
+  sent after a pill's latest time. Reminders go to the hub only: on
+  with no hub that can be found, #bot-log says so once and nothing is
+  sent. Switching the setting off and
   restarting removes any reminder that is up.
 - **Pausing** stops a pill being asked for and leaves its streak alone.
   "Until the 20th" means it is taken again on the 20th, by itself.
