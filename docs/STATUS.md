@@ -7,6 +7,16 @@ session; the end-of-task checklist updates it at the end of every task.
 
 ## Questions for Alex
 
+- **Streaks** (the logic is built, nothing is shown), what I chose:
+  - A streak is counted in **days**: a day adds one when something was
+    taken and nothing was missed. The number of doses taken in those
+    days is kept beside it. Days, doses, or both when it is shown?
+  - A day with **only skips**, or with nothing expected (paused),
+    neither breaks the streak nor adds to it.
+  - The day a dose is missed doesn't count, whatever else was taken
+    that day; the streak starts again the next day.
+  - There is a streak for each pill and one for all pills together
+    (one missed pill breaks the one for all). Which do you want to see?
 - **The new look (`CARDS_V2`, block 41)**, what I chose where the
   design left room:
   - On the checklist, each pill's **next dose** has Taken, Taken at…

@@ -41,12 +41,12 @@ Last updated: 2026-10-13
 | L | Keep | 12 | 4 | 8 | 8 | 4 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
 | P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
-| Q | Time, days, the schedule model, the occurrence log and cards | 16 | 14 | 2 | 2 | 14 | 0 | 0 |
+| Q | Time, days, the schedule model, the occurrence log and cards | 17 | 15 | 2 | 2 | 15 | 0 | 0 |
 | R | Pills | 68 | 17 | 51 | 43 | 25 | 0 | 0 |
 | S | Routing and confirm cards | 65 | 15 | 50 | 15 | 49 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 4 | 18 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **459** | **148** | **311** | **241** | **217** | **0** | **1** |
+| | **Total** | **460** | **149** | **311** | **241** | **218** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -431,6 +431,7 @@ manual test uses the dev clock on the dev database (`python main.py --dev`).
 | Q14 | 👤 Manual | Look at the buttons as you go: say `add zinc to my pills` (don't press); say `remove zinc` on a saved pill (don't press); type `pills` in the hub; let a timer finish (`timer 10s tea`); in a test channel with nothing pinned or 📌, type `reset channel` | **Save** is green and **Cancel** grey with ↩️. **Remove** is red. **Taken** is green and **Skip** blurple. On the timer's alert **+5 min**, **Restart** and **Dismiss** are all blurple: nothing but Cancel is grey anywhere. The reset card has **Delete all** (red) and **Cancel** only: no "Delete all unpinned" when nothing is pinned or 📌 | ⬜ Untested | | From 2026-10-11 |
 | Q15 | 🤖 Auto | Adding what is already there: `identity` and `on_repeat` | Every task declares what a repeat means, and one that doesn't is not routed to; update and add_to_amount need an identity made of the task's own fields; `ask` is refused until cards can ask; `show_existing` needs an identity, which may be the message a thing is about; the same name is the same thing whatever the case or spacing; a repeat comes to new, same, change, more, another, a question or the existing one; "already in your pills" and `field · old → new` are written by core; pills declares name / update, bugs message / show_existing, timers and channel none / allow_another, and the `hint` line is gone | ✅ Pass | 2026-10-12 | `tests/test_repeats.py`, `tests/test_actions.py` |
 | Q16 | 🤖 Auto | Why the bot closed something is a cause, never its wording | The occurrence log keeps a `cause` beside the reason, recorded in the history and gone when the state changes (reopened, done, missed, skipped by hand). A dose skipped for want of room has `no_room` and one whose pill was removed `not_in_plan`; only the first is the bot's to take back, whatever the reason says. Streaks: only a missed dose would break one, and the cause never changes which those are (a no-room skip, a skip by hand and a removed pill break none; a dose that had its time does); a correction that makes room takes the skip and its cause back; old rows are given their cause once | ✅ Pass | 2026-10-12 | `tests/test_occurrences.py`, `tests/test_pills_doses.py`, `tests/test_pills_checklist.py` |
+| Q17 | 🤖 Auto | Streaks from the occurrence log (`core/streaks.py`) | Days in a row with something done and nothing missed. Only a missed one breaks it, and the day it was missed doesn't count; a skip never does, by hand or by the bot, whatever its cause; a skipped day, a day with nothing expected and what is still waiting today neither break nor add. The doses of the streak are counted, the longest run is remembered, each pill has its own, and the order of the rows doesn't matter | ✅ Pass | 2026-10-13 | `tests/test_streaks.py`. Not shown anywhere yet |
 
 ## R. Pills
 

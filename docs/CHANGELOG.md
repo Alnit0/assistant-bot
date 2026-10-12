@@ -6,6 +6,9 @@ backfilled from the git log.
 
 ## 2026-10-13
 
+- Streaks can be worked out (only a missed dose breaks one; a skip
+  never does). Nothing shows one yet.
+
 - A new look, switched off (`CARDS_V2` in `.env`): today's pills
   checklist as one message with a box a pill and its buttons inside
   it, and the reminder, the confirm card, the question card and the

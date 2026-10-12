@@ -176,8 +176,10 @@ trains are answered:
 - **The take-by line on the checklist** (the spec has it on the
   checklist and the prompt): it is on the prompt only, until the
   checklist's redesign is settled.
-- **Streaks** come after reminders (decided 2026-10-12). Only a missed
-  dose breaks one; the tests of C15 pin that down.
+- **Streaks**: the rule is built as pure logic (`core/streaks.py`,
+  2026-10-13): only a missed dose breaks one, a skip never does. Still
+  to do: showing one (where, and in what words) and the questions in
+  `docs/STATUS.md`.
 
 - **Two running timers with the same name both get the change** (found
   live, 2026-10-12; **low priority**: timers are a proof of concept and
