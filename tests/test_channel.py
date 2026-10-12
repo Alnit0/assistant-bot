@@ -62,6 +62,30 @@ def test_messages_under_14_days_go_a_hundred_at_a_time_and_older_ones_singly():
     assert rules.plan([], False, NOW) == rules.Plan((), (), 0)
 
 
+def test_the_card_is_also_drawn_as_a_red_box_with_its_buttons_inside():
+    from core import design
+    from core.cards import Button
+
+    row = (Button("Delete all", "channel", "all", "100:", emoji="🗑️", style=cards.DANGER), cards.cancel("channel", "cancel", "100:"))
+    drawn = rules.card_layout("<#100>", 42, 3, 5, ("Today's pills checklist",), row)
+    assert design.problem(drawn) == "" and len(drawn) == 1 and drawn[0].status == design.DESTRUCTIVE, "one box, red: it can't be undone"
+    cards.check_layout(drawn)
+    assert design.texts(drawn) == [
+        "## 🧹 Channel · reset\n-# <#100>",
+        "**42 messages** · 3 of them pinned or 📌\n-# ⏳ 5 of them are over 14 days old and can only be deleted one at a time: that will be slow, about 1 minute",
+        "♻️ **Posted again afterwards**\n-# Today's pills checklist",
+        "⚠️ **This can't be undone**",
+    ]
+    assert [button.label for button in design.buttons(drawn)] == ["Delete all", "Cancel"]
+    plain = rules.card_layout("<#100>", 1, 0, 0)
+    assert design.texts(plain) == ["## 🧹 Channel · reset\n-# <#100>", "**1 message** · 0 of them pinned or 📌", "⚠️ **This can't be undone**"]
+    # The card a channel gets carries both: the words for the old look and the log, the box for the new
+    found = Scan(100, "<#100>", (Found(1, NOW, False), Found(2, NOW, True, "pinned")), (), "inbox")
+    asking = channel_task.asking_card(found)
+    assert asking.text.startswith("🧹 Channel · reset") and asking.layout and asking.layout[0].status == design.DESTRUCTIVE
+    assert [button.label for button in design.buttons(asking.layout)] == [button.label for button in asking.rows[0]] == ["Delete all", "Delete all unpinned", "Cancel"]
+
+
 def test_the_card_that_is_asking_is_never_touched_or_counted():
     todo = rules.plan(MIXED, False, NOW, leave=frozenset({3}))
     assert 3 not in todo.ids and rules.counts(MIXED, NOW, frozenset({3})) == (5, 2, 2)

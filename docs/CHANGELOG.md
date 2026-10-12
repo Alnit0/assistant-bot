@@ -6,6 +6,14 @@ backfilled from the git log.
 
 ## 2026-10-13
 
+- A shortened name that fits two pills ("pause testv") is asked about
+  on the card, even when Claude filled the name in by itself.
+- Too soon after a dose just logged reads "just now", not "0m after".
+- Jobs are named in words wherever you see them ("pill reminder", "end
+  of the day"), and the catch-up card after a restart no longer shows
+  the code's own names.
+- The channel reset card is drawn as a red box in the new look.
+
 - A self-test: `python -m selftest` runs the dev bot against real
   Discord in channels of its own (a day of pills on the dev clock, a
   restart in the middle, every card in both looks) and writes

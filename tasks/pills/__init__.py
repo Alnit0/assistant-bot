@@ -97,6 +97,10 @@ class PillsTask(Task):
     def job_handlers(self):
         return {checklist.JOB: checklist.post_job, checklist.LIMIT_JOB: self.limit_passed, reminders.JOB: reminders.remind_job}
 
+    def job_labels(self):
+        # What each is called where I read it; a reminder's never names a pill
+        return {checklist.JOB: "pills checklist", checklist.LIMIT_JOB: "pills latest-time check", reminders.JOB: "pill reminder"}
+
     async def limit_passed(self, job):
         # A pill's latest time has passed: the checklist closes what is left, and no reminder outlives it
         await checklist.limit_job(job)

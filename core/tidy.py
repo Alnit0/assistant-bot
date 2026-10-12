@@ -57,4 +57,4 @@ async def pointer(channel_id: int | None, text: str) -> None:
 
 
 def setup() -> None:
-    scheduler.register_handler(JOB_TASK, JOB_KIND, tidy_job)
+    scheduler.register_handler(JOB_TASK, JOB_KIND, tidy_job, "tidying a line away")

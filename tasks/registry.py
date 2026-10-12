@@ -162,8 +162,9 @@ def load() -> None:
                 _problem(f"{name}: reaction {reaction.emoji} already belongs to {_reactions[key][0].name}")
                 continue
             _reactions[key] = (task, reaction)
+        labels = task.job_labels()
         for kind, handler in job_handlers.items():
-            scheduler.register_handler(task.name, kind, handler)
+            scheduler.register_handler(task.name, kind, handler, labels.get(kind, ""))
         if type(task).new_day is not Task.new_day:
             day.on_new_day(task.name, task.new_day)
         for event, handler in events.items():

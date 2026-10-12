@@ -63,3 +63,66 @@ def find[T](things: Sequence[T], wanted: str, name: Callable[[T], str], prefix: 
         if len(found) > 1:
             raise Ambiguous(wanted.strip(), found, [name(thing) for thing in found])
     raise Unknown(wanted.strip())
+
+
+# ---------------------------------------------------------------------------
+# What I typed, beside what Claude handed over. Claude is told to pass a name
+# on as I said it, and sometimes completes it instead ("testv" comes back as
+# "Testvit" when there is a Testvit forte too), or calls it "it". So the words
+# I typed are looked at as well: a part of them that fits more than one thing
+# is asked about, whatever Claude made of it.
+#
+# A part of the message fits a thing when its words are words of the thing's
+# name, in order, or the start of one (three letters or more): "testv" fits
+# Testvit and Testvit forte; "it" fits neither. The longest part wins, and a
+# part that is one thing's whole name means that thing.
+# ---------------------------------------------------------------------------
+PART_OF_A_WORD = 3  # the fewest letters that may stand for the start of a word of a name
+_WORD = re.compile(r"[^\W_]+(?:['’][^\W_]+)*")
+
+
+def words(text: str) -> list[str]:
+    return _WORD.findall(text.lower())
+
+
+def _fits(said: list[str], name: list[str]) -> bool:
+    """Whether the words said are words of the name, in order and together,
+    each the same or (three letters or more) the start of one."""
+    for start in range(len(name) - len(said) + 1):
+        if all(word == of or (len(word) >= PART_OF_A_WORD and of.startswith(word)) for word, of in zip(said, name[start:])):
+            return True
+    return False
+
+
+def said_about[T](things: Sequence[T], text: str, name: Callable[[T], str]) -> list[tuple[str, list[T]]]:
+    """The parts of what was typed that name one or more of `things`: (the
+    words, the things they fit), the longest part first, and no part from
+    inside a longer one. A part that is one thing's whole name fits that
+    thing alone."""
+    typed = words(text)
+    named = [(thing, words(name(thing))) for thing in things]
+    taken: set[int] = set()
+    found: list[tuple[str, list[T]]] = []
+    for length in range(max((len(each) for _, each in named), default=0), 0, -1):
+        for start in range(len(typed) - length + 1):
+            span = range(start, start + length)
+            if taken.intersection(span):
+                continue
+            part = typed[start : start + length]
+            fits = [thing for thing, of in named if _fits(part, of)]
+            if not fits:
+                continue
+            whole = [thing for thing, of in named if of == part]
+            found.append((" ".join(part), whole if len(whole) == 1 else fits))
+            taken.update(span)
+    return found
+
+
+def unclear[T](things: Sequence[T], text: str, name: Callable[[T], str], meant: T | None = None) -> Ambiguous | None:
+    """What to ask, if what was typed names more than one of `things` where
+    Claude handed over one (`meant`, or None for "it"): the Ambiguous to
+    raise, or None when what was typed is clear or names nothing."""
+    for part, fits in said_about(things, text, name):
+        if len(fits) > 1 and (meant is None or any(each is meant or each == meant for each in fits)):
+            return Ambiguous(part, fits, [name(each) for each in fits])
+    return None

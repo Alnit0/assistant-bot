@@ -101,7 +101,9 @@ def asking_card(found: clearing.Scan, asked_by: int | None = None, again: tuple[
     if protected:
         # Only offered when it would do something different: with nothing pinned or 📌 it is "Delete all"
         choices.append(Button("Delete all unpinned", TASK, UNPINNED, which, emoji="📌", style=cards.PRIMARY))
-    return Card(rules.card_text(found.mention, total, protected, old, again), ((*choices, _cancel(found.channel_id, asked_by)),))
+    row = (*choices, _cancel(found.channel_id, asked_by))
+    # The same words drawn as a red box when CARDS_V2 is on (docs/DESIGN.md: destructive)
+    return Card(rules.card_text(found.mention, total, protected, old, again), (row,), rules.card_layout(found.mention, total, protected, old, again, row))
 
 
 # ---------------------------------------------------------------------------

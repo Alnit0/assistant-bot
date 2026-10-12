@@ -841,6 +841,25 @@ at the top of `docs/STATUS.md`.
 | 3 | Type `dev mock schedule-change-v1` | A blurple card "🗓️ Schedule · change": two schedules, each `field · old → new`, ❓ on the guess, when each next runs, **Save** and **Cancel** | J62 |
 | 4 | Type `dev mock cleanup-v1` | What #bot-log would be told when a tidy went wrong: a channel a box, what was removed, kept and left, and why. Its last line says a tidy with nothing wrong posts nothing | J62 |
 
+## 45. After the self-test: names, "just now", the reset card (waiting for QA)
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
+On the dev database, dev mode off. Steps 1 to 3 send about four
+messages to Claude (two cents).
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Say `add Testvit and Testvit forte to my pills, once a day`, **Save**. Say `took my testvit`, then at once `pause testv` | Testvit is ticked off (the whole name wins). Then a card "Which one is “testv”?" with **Testvit**, **Testvit forte** and **Cancel**, and no Save | R84, S67, S68 |
+| 2 | Press **Testvit forte**, then **Cancel** | The card becomes the pause card for Testvit forte, with Save: it is not asked again. Cancel removes it | R84 |
+| 3 | Say `add Testgap at 8am and 11am, at least 3 hours apart`, **Save**. Type `took testgap`, then at once `took testgap` again. Press **Cancel** | The second gives "⚠️ That's just now: dose 1 was taken …. The gap is at least 3h." and "Log it anyway?"; never "0m after" | R83, S68 |
+| 4 | With `CARDS_V2=true` (stop the dev bot, `$env:CARDS_V2 = "true"; python main.py --dev`): type `reset channel` in #inbox, look, press **Cancel** | A red box: "🧹 Channel · reset", the channel in small text, the count in bold, "⚠️ **This can't be undone**", and **Delete all** (red) and **Cancel** inside it | L14, S68 |
+| 5 | Say `remove testvit, testvit forte and testgap`, **Remove**. Stop the dev bot and take `CARDS_V2` out again (`Remove-Item Env:CARDS_V2`) | Gone | |
+
+The catch-up card's wording (a job named in words, no "pills/…") is
+checked by the self-test's step 2.01 and by `tests/test_restart.py`:
+there is nothing to do by hand.
+
 ## When you finish
 
 - Stop the test copy (`Ctrl + C`) and check nothing is left running:

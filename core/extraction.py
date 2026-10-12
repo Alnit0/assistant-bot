@@ -93,6 +93,15 @@ def rules(entry: Entry) -> str:
         "is never a guess. What is on screen or in the state only fills in what they left out; it never "
         "overrides what they said.\n"
         "- Take ids and existing names from the state given with the message, when there is one.\n"
+        "- Never complete a name. When the user gives only part of one, or a shortened one (\"testv\"), put "
+        "exactly what they typed where the name goes, even when you can see which thing in the state they "
+        "probably mean. More than one may fit, and the bot's code finds which, or asks. Only a whole name the "
+        "user gave is swapped for its id.\n"
+        "- Hand over everything you did understand, even when something else is missing or unclear. Fill in "
+        "the fields that were said and leave the rest out: never a blank, a null or a placeholder for what "
+        "was not said (\"twice a day at 8am\" is two doses a day and the one time, 8:00 am). The bot's code "
+        "asks the user for what is missing. A part you could not use is never a reason to call "
+        f"`{NONE}`.\n"
         "- Whether the thing already exists, or is already as asked, is for the bot's code to find out, "
         "not you: when an action could carry the request (\"add X\" when X is in the state), fill that "
         "action in with what the user said. The code compares it with what is there and tells the user.\n"
@@ -330,5 +339,7 @@ async def extract(
             trace.note(f"stated check: no longer a guess, it was said outright: {', '.join(sorted(found.guessed - kept))}")
             found = replace(found, guessed=kept)
     if not found.fitted and not found.not_this:
-        log.info("Extraction for %s fitted nothing: %s", entry.name, found.reason)
+        # With what Claude actually sent: "nothing fitted" is otherwise impossible to look into afterwards
+        log.info("Extraction for %s fitted nothing: %s · Claude called %r", entry.name, found.reason, called)
+        trace.note(f"nothing fitted: {found.reason}; Claude called {called!r}"[:600])
     return found

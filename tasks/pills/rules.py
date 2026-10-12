@@ -567,16 +567,23 @@ def differences(old: Plan, new: Plan) -> list[tuple[str, str, str]]:
 # ---------------------------------------------------------------------------
 # Which pill is meant
 # ---------------------------------------------------------------------------
-def find(pills: list[Pill], wanted: str) -> Pill:
+def find(pills: list[Pill], wanted: str, said: str = "") -> Pill:
     """The pill a name or an id ("pl3") means, among those not removed.
 
     The whole name wins over part of one. Raises UserError if there is none,
-    or if more than one fits: the user is asked, never guessed for.
+    or if more than one fits: the user is asked, never guessed for. `said` is
+    the message the name came from: Claude sometimes completes a name ("testv"
+    arrives as "Testvit"), so what was typed is checked too, and a part of it
+    that fits this pill and another is asked about all the same.
     """
     candidates = listed(pills)
     try:
         # Which of them a name means is the core's to say (core/names.py); the words are ours
-        return names.find(candidates, wanted, lambda pill: pill.plan.name, ID_PREFIX, lambda pill: pill.id)
+        pill = names.find(candidates, wanted, lambda pill: pill.plan.name, ID_PREFIX, lambda pill: pill.id)
+        typed = names.unclear(candidates, said, lambda pill: pill.plan.name, pill) if said else None
+        if typed is not None:
+            raise typed
+        return pill
     except names.Unnamed:
         raise UserError("Which pill?")
     except names.Unknown:

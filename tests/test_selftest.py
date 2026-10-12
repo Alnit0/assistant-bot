@@ -163,3 +163,18 @@ def test_a_phase_refuses_the_live_database_and_a_start_by_hand(tmp_path):
     assert live.returncode == 2 and "only runs on the dev database" in live.stdout
     by_hand = subprocess.run([sys.executable, "-m", "selftest.phase", "--dev", "p1", str(tmp_path / "out.json")], capture_output=True, text=True, cwd=config.BASE_DIR, env=env)
     assert by_hand.returncode == 2 and "python -m selftest" in by_hand.stdout and not (tmp_path / "out.json").exists()
+
+
+# --- a test that hangs ---------------------------------------------------------------------------------------
+def test_a_test_that_hangs_stops_the_run_with_its_name_and_where_it_was():
+    from tests import watchdog
+
+    code = "import time; from tests import watchdog; watchdog.watch('tests/test_x.py::test_stuck', 0.3); time.sleep(20)"
+    done = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, cwd=config.BASE_DIR, timeout=15)
+    assert done.returncode == watchdog.EXIT_CODE != 0
+    assert "TIMEOUT: tests/test_x.py::test_stuck ran for more than 0.3 seconds" in done.stderr
+    assert "Thread" in done.stderr and "time.sleep" not in done.stdout, "where each thread was, for finding the cause"
+    assert watchdog.SECONDS >= 30, "long enough that a slow machine never trips it"
+    timer = watchdog.watch("tests/test_x.py::test_fine", 30)
+    timer.cancel()
+    assert timer.daemon, "a watcher never keeps the run alive"

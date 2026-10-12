@@ -146,6 +146,19 @@ async def p1(h: Harness) -> None:
         await h.press(shown.id, "Cancel", h.inbox)
         h.check((await card(h))[0] is None and "Testmag" not in await h.pills(), "the card is still open, or Testmag was saved")
 
+    async with h.step("1.07b", "The same request with an empty place where the second time would go", "What Claude understood is still used: a card for Testmag asking for the other dose's time, never “I didn't understand that”. Cancel removes it", "self-test of 2026-10-13, fix 2"):
+        # Always the recorded answer: this is the malformed shape itself, which the real API only sometimes sends
+        h._canned = None
+        was, h.claude = h.claude, False
+        try:
+            await h.say("add Testmag to my pills, twice a day at 8am", canned=add({"name": "Testmag", "per_day": 2, "times": ["8:00 am", None]}))
+        finally:
+            h.claude = was
+        stored, shown = await card(h)
+        h.check(shown is not None and "Testmag" in shown.text and "?" in shown.text and not any("Save" in label for label in shown.labels), f"the card: {shown.text[:200] if shown else 'none'}; the newest line: {[each.text[:60] for each in await h.recent(h.inbox, 2)]}")
+        await h.press(shown.id, "Cancel", h.inbox)
+        h.check("Testmag" not in await h.pills(), "Testmag was saved")
+
     async with h.step("1.08", "Names: “add Testvit and Testvit forte”, “I took testvit”, “skip forte”", "The whole name wins: Testvit is taken, not Testvit forte. Part of a name finds the only fit: Testvit forte is skipped", "T22 (40.1, 40.2)"):
         await h.say("add Testvit and Testvit forte to my pills, once a day", canned=add({"name": "Testvit", "per_day": 1}, {"name": "Testvit forte", "per_day": 1}))
         stored, shown = await card(h)
@@ -165,6 +178,20 @@ async def p1(h: Harness) -> None:
         h.check("Testvit" in labels and "forte" in labels and not any("Save" in label for label in shown.labels), f"the card reads: {shown.text[:160]} with {shown.labels}")
         await h.press(shown.id, "Cancel", h.inbox)
         h.saw(" / ".join(shown.labels))
+
+    for key, handed, how in (("1.09b", "Testvit", "completed to a whole name"), ("1.09c", "@that", "handed over as “it”")):
+        async with h.step(key, f"“pause testv” when Claude does not pass the name on as typed ({how})", "The code checks what was typed: “testv” fits two pills, so the card still asks which one, with a button each and no Save", "self-test of 2026-10-13, fix 1"):
+            was, h.claude = h.claude, False  # always the recorded answer: it is Claude's mistake that is being tested
+            try:
+                await h.say("pause testv", canned=about("pill_pause", {"pill": handed}))
+            finally:
+                h.claude = was
+            stored, shown = await card(h)
+            h.check(shown is not None, f"no card was posted: {[each.text[:60] for each in await h.recent(h.inbox, 2)]}")
+            labels = " ".join(shown.labels)
+            h.check("Testvit" in labels and "forte" in labels and not any("Save" in label for label in shown.labels), f"the card reads: {shown.text[:160]} with {shown.labels}")
+            h.check("testv" in shown.text, f"the question does not quote what was typed: {shown.text[:160]}")
+            await h.press(shown.id, "Cancel", h.inbox)
 
     async with h.step("1.10", "“remove testvit and testvit forte”, then Remove", "A remove card with a red Remove; after it both are gone", "T25 (40.5)"):
         await h.say("remove testvit and testvit forte", canned=about("pill_remove", {"pill": "Testvit"}, {"pill": "Testvit forte"}))
@@ -252,8 +279,9 @@ async def p1(h: Harness) -> None:
         h.check((await h.doses()).get(("Testa", 2)) == PENDING and (await card(h))[0] is None, "after Cancel the dose changed or the card is still open")
         warned = next((line for line in shown.text.splitlines() if "⚠️" in line), "")
         h.saw(warned[:120])
-        if "0m after" in warned:
-            h.odd(f"The too-soon card says “{warned.strip()[:60]}…”: “0m after” reads oddly for a dose logged less than a minute before")
+        h.check("0m" not in warned, f"it still counts in minutes under a minute: {warned.strip()[:100]}")
+        if f"{config.now_nz():%H:%M}" == "08:00":  # dose 1 was taken at 8:00 and it is still 8:00
+            h.check("just now" in warned, f"under a minute after dose 1 it does not say “just now”: {warned.strip()[:100]}")
 
     async with h.step("1.18", "The next reminder, and Snooze 15m", "When dose 2 falls due a reminder is posted; Snooze rewrites the same message with “Snoozed until …”", "T42 (38.3)"):
         due = await remind_due(h)
@@ -344,8 +372,8 @@ async def p2(h: Harness) -> None:
         h.check("cut off" in said, f"it does not mention the message that was cut off: {said[:300]}")
         h.check("Testa" not in said and "Testiron" not in said and "Testany" not in said, f"it names a pill: {said[:300]}")
         h.saw(" / ".join(line for line in said.splitlines()[1:4])[:260])
-        if "pills remind" in said:
-            h.odd("The catch-up card calls the reminder job by its internal name, “pills remind”. It names no pill, but it is not a phrase you would know")
+        h.check("pills remind" not in said and "pills/" not in said and "_" not in said, f"a job or an action is named the code's way: {said[:300]}")
+        h.check("pill reminder" in said, f"the reminder that ran late is not called “pill reminder”: {said[:300]}")
         if "reminder" not in said.lower().replace("pills remind", ""):
             h.odd("The catch-up card does not say that a reminder was posted at start (the architecture notes say it is said once, with a count and no pill's name)")
 
@@ -577,14 +605,14 @@ async def p3(h: Harness) -> None:
         h.check(shown is not None and shown.v2 and "3 tablets" in shown.text and "→" in shown.text, f"the card: {shown.text[:200] if shown else 'none'}")
         h.memo["v2_card"] = shown.id
 
-    async with h.step("3.13", "The reset card in the new look: `reset channel`, then Cancel", "A red box that says it can't be undone, with a red Delete all; Cancel removes it and deletes nothing", "39.4"):
+    async with h.step("3.13", "The reset card in the new look: `reset channel`, then Cancel", "A red box (Components V2) with the channel under the heading, the count, that it can't be undone, and a red Delete all inside it; Cancel removes it and deletes nothing", "39.4; self-test of 2026-10-13, fix 5"):
         count = len(await h.recent(h.inbox, 50))
         await h.say("reset channel")
         shown = await h.find(h.inbox, "can't be undone")
         h.check(shown is not None and any("Delete all" in label for label in shown.labels), f"no reset card: {[each.text[:60] for each in await h.recent(h.inbox, 3)]}")
         h.saw(f"{'drawn' if shown.v2 else 'plain'}, colours {[hex(each) if each else None for each in shown.accents]}")
-        if not shown.v2:
-            h.odd("With CARDS_V2 on the reset card is still a plain message: it is not one of the five cards built in the new look (docs/DESIGN.md says so)")
+        h.check(shown.v2 and shown.accents[:1] == [accent(design.DESTRUCTIVE)], f"it is {'drawn' if shown.v2 else 'plain'} with colours {[hex(each) if each else None for each in shown.accents]}")
+        h.check("## 🧹 Channel · reset" in shown.text and "messages**" in shown.text, f"it reads: {shown.text[:200]}")
         await h.press(shown.id, "Cancel", h.inbox)
         h.check(await h.get(h.inbox, shown.id) is None, "the card is still there after Cancel")
         h.check(len(await h.recent(h.inbox, 50)) >= count - 1, "messages were deleted")
@@ -663,6 +691,13 @@ async def p4(h: Harness) -> None:
         h.check(shown is not None and not shown.v2 and any("Save" in label for label in shown.labels), f"the card is {'drawn' if shown and shown.v2 else 'missing' if shown is None else 'plain with ' + str(shown.labels)}")
         await h.press(shown.id, "Cancel", h.inbox)
         h.check("Testlast" not in await h.pills(), "Testlast was saved")
+
+    async with h.step("4.05b", "The reset card with the new look off: `reset channel`, then Cancel", "A plain message with the same words and buttons; Cancel removes it", "T58; self-test of 2026-10-13, fix 5"):
+        await h.say("reset channel")
+        shown = await h.find(h.inbox, "can't be undone")
+        h.check(shown is not None and not shown.v2 and any("Delete all" in label for label in shown.labels), f"the reset card is {'drawn' if shown and shown.v2 else 'missing' if shown is None else 'plain with ' + str(shown.labels)}")
+        await h.press(shown.id, "Cancel", h.inbox)
+        h.check(await h.get(h.inbox, shown.id) is None, "the card is still there after Cancel")
 
     async with h.step("4.06", "`dev cost`", "Under Today a small line with what was spent against DAILY_SPEND_LIMIT", "T35, T56 (42.1, 42.3)"):
         await h.say("dev cost")

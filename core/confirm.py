@@ -561,9 +561,11 @@ async def save_cut_off(cut: restart.CutOff, arg: str) -> str:
     card = await database.run(db_get, int(arg)) if arg.isdigit() else None
     if card is None:
         return "Save was pressed on a card that is no longer kept: nothing to check"
-    name = f"{card.task}/{card.action}"
     entry = actions.entry(card.task)
     action = entry.action(card.action) if entry else None
+    # In words, for #bot-log: an action's name ("pill_add") is the code's own and stays in the log file
+    name = f"a {card.task} card"
+    log.info("The Save cut off by the stop was %s/%s (card %s)", card.task, card.action, card.id)
     if card.status != SAVED:
         if not card.is_open:
             return f"Save of {name} was cut off by the stop, on a card already closed ({card.status}): nothing to do"
@@ -586,7 +588,7 @@ def setup() -> None:
     cards.register(CARDS, "save", on_save)
     cards.register(CARDS, "cancel", on_cancel)
     cards.register(CARDS, "answer", on_answer)
-    scheduler.register_handler(JOB_TASK, JOB_KIND, expired)
+    scheduler.register_handler(JOB_TASK, JOB_KIND, expired, "a card's expiry")
 
 
 async def message_class(message_id: int) -> MessageClass | None:

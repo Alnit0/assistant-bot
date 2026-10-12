@@ -72,6 +72,86 @@ def test_pills_ask_the_core_and_keep_their_own_words():
         rules.find([], "iron")
 
 
+# --- what was typed, beside what Claude handed over -----------------------------------------------------------
+VITS = [Thing(1, "Testvit"), Thing(2, "Testvit forte"), Thing(3, "Zinc")]
+
+
+def said_about(text, things=VITS):
+    return [(part, [thing.id for thing in fits]) for part, fits in names.said_about(things, text, lambda thing: thing.name)]
+
+
+def test_a_part_of_what_was_typed_fits_a_name_by_its_words_or_the_start_of_one():
+    assert said_about("pause testv") == [("testv", [1, 2])], "the start of a word of two names"
+    assert said_about("pause testvit") == [("testvit", [1])], "one thing's whole name is that thing alone"
+    assert said_about("pause testvit forte until friday") == [("testvit forte", [2])], "the longest part wins, and nothing from inside it"
+    assert said_about("skip forte") == [("forte", [2])]
+    assert said_about("pause it") == [] and said_about("took the usual one") == [], "“it” is inside “Testvit” and is no part of its name"
+    assert said_about("is te ok") == [], "under three letters is no start of a word"
+    assert said_about("took TESTVIT and zinc") == [("testvit", [1]), ("zinc", [3])]
+    assert said_about("took my bench") == [] and said_about("") == []
+
+
+def test_words_of_a_name_count_in_order_and_together():
+    presses = [Thing(1, "Bench press"), Thing(2, "Overhead press"), Thing(4, "Press")]
+    assert said_about("log bench press", presses) == [("bench press", [1])]
+    assert said_about("log press", presses) == [("press", [4])], "the whole name of one"
+    assert said_about("log press", presses[:2]) == [("press", [1, 2])]
+    assert said_about("press the bench", presses[:2]) == [("press", [1, 2]), ("bench", [1])], "not in the name's order: two parts"
+
+
+def test_what_was_typed_is_asked_about_when_it_fits_more_than_claude_handed_over():
+    def unclear(text, meant):
+        return names.unclear(VITS, text, lambda thing: thing.name, meant)
+
+    asked = unclear("pause testv", VITS[0])
+    assert isinstance(asked, names.Ambiguous) and asked.said == "testv" and asked.labels == ["Testvit", "Testvit forte"]
+    assert unclear("pause testv", None).labels == ["Testvit", "Testvit forte"], "handed over as “it”: asked all the same"
+    assert unclear("pause testvit", VITS[0]) is None and unclear("pause testvit forte", VITS[1]) is None
+    assert unclear("pause it", VITS[0]) is None and unclear("", VITS[0]) is None
+    assert unclear("pause testv and zinc", VITS[2]) is None, "the part that is unclear is about other things, not this one"
+
+
+def test_pills_check_what_was_typed_against_the_name_claude_handed_over():
+    from tasks.pills import plain
+
+    pills = [rules.Pill(1, 1, rules.Plan("Testvit")), rules.Pill(2, 1, rules.Plan("Testvit forte")), rules.Pill(3, 1, rules.Plan("Zinc"))]
+    with pytest.raises(names.Ambiguous) as which:
+        rules.find(pills, "Testvit", "pause testv")
+    assert which.value.said == "testv" and [pill.id for pill in which.value.candidates] == [1, 2]
+    with pytest.raises(names.Ambiguous):
+        rules.find(pills, "pl2", "pause testv")
+    assert rules.find(pills, "Testvit", "pause testvit").id == 1 and rules.find(pills, "pl2", "skip forte").id == 2
+    assert rules.find(pills, "Testvit").id == 1, "with no message to check (a press of Save or of an answer), the name stands"
+    # On a card it is a question with a button a pill, in the words that were typed
+    found, problems, unclear = plain._resolve(pills, [{"pill": "Testvit"}, {"pill": "Zinc"}], "pause testv and zinc")
+    assert [pill.id for _, pill in found] == [3] and not problems
+    assert [(item["pill"], [pill.id for pill in could_be]) for item, could_be in unclear] == [("testv", [1, 2])]
+    question = plain._which_one([item for item, _ in found], unclear)
+    assert question.text == "Which one is “testv”?" and [choice.label for choice in question.choices] == ["Testvit", "Testvit forte"]
+    # The answer's own data names the pill by its id, and comes with no message: it is not asked again
+    again, _, still = plain._resolve(pills, question.choices[1].data["pills"], "")
+    assert sorted(pill.id for _, pill in again) == [2, 3] and not still
+
+
+def test_claude_is_told_never_to_complete_a_name_and_to_hand_over_what_it_understood():
+    from core import extraction
+    from tasks.pills import task as pills_task
+
+    told = extraction.rules(pills_task.entries()[0])
+    assert "Never complete a name" in told and "exactly what they typed" in told
+    assert "Hand over everything you did understand" in told and "never a blank, a null or a placeholder" in told
+
+
+def test_an_empty_place_in_a_list_of_times_is_left_out_and_the_item_stands():
+    from tasks.pills import plain
+
+    add = next(action for action in plain.ACTIONS if action.name == "pill_add")
+    checked = actions.validate(add, {"pills": [{"name": "Testmag", "per_day": 2, "times": ["8:00 am", None, " "]}], "guessed": [], "not_included": []})
+    assert checked.data == {"pills": [{"name": "Testmag", "per_day": 2, "times": ["8:00 am"]}]}, "what was understood is kept"
+    with pytest.raises(Invalid):
+        actions.validate(add, {"pills": [{"name": "Testmag", "times": [8]}], "guessed": [], "not_included": []})
+
+
 # --- a decimal number -----------------------------------------------------------------------------------------
 async def _run(request, data, guessed):
     return "done"

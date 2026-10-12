@@ -18,6 +18,7 @@ EXPORTS_PREFIX = "exports-"
 # How the nightly backup is known to the scheduler
 JOB_TASK = "core"
 JOB_KIND = "nightly_backup"
+JOB_LABEL = "nightly backup"  # what it is called wherever I read it
 
 
 def _copy_database(target: Path) -> None:

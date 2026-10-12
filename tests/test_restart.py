@@ -320,7 +320,7 @@ def test_a_taken_press_cut_off_is_reported_and_the_checklist_is_right_either_way
     start(world)
     row = cut_off(world, "card: pills/taken 2", "card", message_id=7003, channel_id=HUB)
     lines = stop_and_start(world, monkeypatch, day.at(DAY, time(9, 5)))
-    assert lines == ["A press of pills/taken was cut off by the stop. Nothing was done about it: press it again if it didn't take"]
+    assert lines == ["A press of a button of pills's was cut off by the stop. Nothing was done about it: press it again if it didn't take"]
     assert status_of(row) == ("interrupted", "the bot stopped before this was finished")
     assert world.marked == [], "a press is no message of mine: nothing is marked"
     assert states(world)["Magnesium"] == PENDING and "💊 **Magnesium**" in sheet(world), "never shown as taken when it wasn't"
@@ -350,7 +350,7 @@ def test_a_card_that_expired_while_the_bot_was_off_goes_at_start_and_can_no_long
     card = add_card(world)
     lines = stop_and_start(world, monkeypatch, day.at(DAY, time(10, 0)))
     assert card.message_id in world.deleted and run(database.run(confirm.db_get, card.id)).status == confirm.EXPIRED
-    assert lines == ["Ran late, as the bot was off when they were due: confirm expire (30m late)"]
+    assert lines == ["Ran late, as the bot was off when they were due: a card's expiry (30m late)"]
     press = pressed(world, confirm.CARDS, "save", card.id, card.message_id)
     assert press.shown[-1].text == confirm.LAPSED and names(world) == []
 
@@ -398,7 +398,7 @@ def test_save_cut_off_after_the_change_took_is_read_back_and_the_card_says_saved
     run(plain.add_save(world.request(), card.data))  # Save had written the pill when the bot stopped
     press_cut_off(world, card)
     lines = stop_and_start(world, monkeypatch, day.at(DAY, time(9, 1)))
-    assert lines == ["Save of pills/pill_add was cut off by the stop after it took: read back, and its card now says so"]
+    assert lines == ["Save of a pills card was cut off by the stop after it took: read back, and its card now says so"]
     assert names(world) == ["Zinc"], "once"
     assert run(database.run(confirm.db_get, card.id)).status == confirm.SAVED
     # The bot stopped inside the save, before its words were kept: the change is there, so it says so plainly
@@ -411,7 +411,7 @@ def test_save_cut_off_before_the_change_took_leaves_the_card_open_and_claims_not
     press_cut_off(world, card)
     edits = len(world.edited)
     (line,) = stop_and_start(world, monkeypatch, day.at(DAY, time(9, 1)))
-    assert line.startswith("Save of pills/pill_add was cut off by the stop before it took (") and line.endswith("its card is still open, press Save again")
+    assert line.startswith("Save of a pills card was cut off by the stop before it took (") and line.endswith("its card is still open, press Save again")
     assert names(world) == [] and len(world.edited) == edits and card.message_id not in world.deleted
     assert run(database.run(confirm.db_get, card.id)).status == confirm.OPEN
     pressed(world, confirm.CARDS, "save", card.id, card.message_id)
@@ -548,13 +548,51 @@ def test_a_press_is_read_from_its_log_line():
     assert restart.CutOff(1, "chat", "card: confirm/save 12", INBOX, 9, 1).press is None, "only a press is a press"
 
 
-def test_the_line_for_jobs_run_late_groups_them():
+def test_the_line_for_jobs_run_late_groups_them_and_names_each_in_words(monkeypatch):
     def job(kind, late, task="core"):
         return scheduler.Job(1, None, task, kind, {}, day.at(DAY, time(6, 0)), late)
 
-    assert restart.late_line([job("tidy", 100), job("tidy", 7300), job("checklist", 7300, "pills")]) == (
-        "Ran late, as the bot was off when they were due: tidy ×2, pills checklist (2h late)"
+    monkeypatch.setattr(scheduler, "_labels", {("core", "tidy"): "tidying a line away", ("pills", "checklist"): "pills checklist", ("pills", "remind"): "pill reminder"})
+    assert restart.late_line([job("tidy", 100), job("tidy", 7300), job("checklist", 7300, "pills"), job("remind", 70, "pills")]) == (
+        "Ran late, as the bot was off when they were due: tidying a line away ×2, pills checklist (2h late), pill reminder (1m late)"
     )
+
+
+def test_the_catch_up_lines_are_checked_like_everything_the_bot_says(monkeypatch):
+    from core import outgoing
+
+    monkeypatch.setattr(scheduler, "_labels", {("pills", "remind"): "pill reminder", ("core", "day_rollover"): "end of the day", ("core", "tidy"): "tidying a line away"})
+    monkeypatch.setattr(outgoing, "_names", {"pill_add"})
+    lines = restart.checked([
+        "Ran late, as the bot was off when they were due: pills remind (1m late)",
+        "pills/remind ran again, and so did day_rollover",
+        "Save of pill_add was cut off",
+        "pill_add",
+        "a tidy line that names no job is left as it is",
+    ])
+    assert lines == [
+        "Ran late, as the bot was off when they were due: pill reminder (1m late)",
+        "pill reminder ran again, and so did end of the day",
+        "Save of was cut off",
+        "a tidy line that names no job is left as it is",
+    ], "a job is put in words, an action's name is taken out, and a line with nothing left is dropped"
+
+
+def test_every_job_the_core_and_pills_register_has_a_name_in_words():
+    from core import backup, confirm, tidy
+    from tasks import registry
+    from tasks.pills import task as pills_task
+
+    assert backup.JOB_LABEL == "nightly backup" and day.JOB_LABEL == "end of the day"
+    assert set(pills_task.job_labels()) == set(pills_task.job_handlers()), "a label for every kind of job"
+    assert pills_task.job_labels()["remind"] == "pill reminder"
+    registry.load()
+    confirm.setup()
+    tidy.setup()
+    for (task, kind), said in scheduler._labels.items():
+        assert "_" not in said and "/" not in said and said != kind, (task, kind, said)
+    assert scheduler.label("pills", "remind") == "pill reminder" and scheduler.label("core", "confirm_expire") == "a card's expiry"
+    assert scheduler.label("lab", "made_up") == "lab made up", "one nobody named is made readable"
 
 
 def test_a_line_from_a_task_is_only_kept_while_the_bot_is_starting(world):

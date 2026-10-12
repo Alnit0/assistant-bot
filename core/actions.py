@@ -1,3 +1,4 @@
+import logging
 import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
@@ -5,6 +6,8 @@ from dataclasses import dataclass, field
 from core import database, durations, repeats, trace
 from core.errors import UserError
 from core.users import User
+
+log = logging.getLogger("assistant")
 
 # ---------------------------------------------------------------------------
 # Actions: what a task can be asked to do in plain words, as the routing
@@ -963,9 +966,13 @@ def _structured(entry_field: Field, value, where: str):
     # TIMES: a list, or the times in one text ("8am, 8pm")
     if isinstance(value, str):
         value = _BETWEEN_TIMES.split(value)
-    if not isinstance(value, list) or not all(isinstance(each, str) for each in value):
+    if not isinstance(value, list):
         raise Invalid(f"`{where}` must be a list of times of day")
-    return [each.strip() for each in value if each.strip()] or None
+    # A place left empty (a null for the time that wasn't said) is not a time: it is left out, and
+    # the task's own rules ask for what is missing. Anything else that is no text is refused
+    if not all(each is None or isinstance(each, str) for each in value):
+        raise Invalid(f"`{where}` must be a list of times of day")
+    return [each.strip() for each in value if each is not None and each.strip()] or None
 
 
 _AS_A_NUMBER = re.compile(r"-?\d+(?:[.,]\d+)?")
@@ -1121,8 +1128,10 @@ def validate(action: Action, raw) -> Checked:
             for index, each in enumerate(value):
                 try:
                     items.append(_item(entry_field, each, f"{name}[{index}]"))
-                except Invalid:
+                except Invalid as problem:
                     # In the user's terms: what the item was, not what was wrong with its form
+                    trace.note(f"{problem}: the item is left out ({each!r})")
+                    log.info("An item of %s.%s could not be used (%s): %r", action.name, name, problem, each)
                     dropped.add(index)
                     left_out.append(", ".join(str(part) for part in each.values()) if isinstance(each, dict) and each else str(each))
             if not items:

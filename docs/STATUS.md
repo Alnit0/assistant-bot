@@ -7,28 +7,32 @@ session; the end-of-task checklist updates it at the end of every task.
 
 ## Questions for Alex
 
-**From the self-test of 2026-10-13** (`docs/SELFTEST.md`: 61 of 63
-steps passed with real requests to Claude; two full runs, US$0.16 in
-all). Two things failed, both in how Claude reads a message, and both
-came out differently on the two runs:
+**From the fixes after the self-test (2026-10-13):**
 
-- **"pause testv" with Testvit and Testvit forte** never asked which
-  one. Claude chose for itself: once it handed over "Testvit" with no
-  ❓, once "it" (so Testvit forte, with ❓). The names code would have
-  asked, but it was never given "testv". Fix it in the instructions
-  (hand over the name as said, never complete it), or have the code
-  check a name Claude hands over against what was typed? The second is
-  the safer one and costs nothing.
-- **"add Testmag to my pills, twice a day at 8am"** was answered "🤔 I
-  didn't understand that." on the second run (Claude's pill had nothing
-  usable in it); on the first it gave the card that asks for the other
-  time. Worth a fixture and a look at why.
-- Smaller things it noticed are under Discoveries in the report: "0m
-  after dose 1" on the too-soon card, "pills remind" as a job's name in
-  the catch-up card, and the reset card and a card saved after a switch
-  staying in the old look. Say which you want changed.
-- **What is still yours** is the list at the end of the report: the
-  lock screen, the colours as they look, the wording, the sketches.
+- **"pause testv" with nothing said just before** went to the timers
+  task on 4 of 5 real requests (the router reads "pause" as a timer's
+  word) and was answered "🤔 I didn't understand that.". Straight
+  after anything about pills it goes to pills, and then asks which one,
+  5 of 5. Should the router be told that a message naming part of a
+  pill's name is the pills task's, as a whole name already is? It
+  would be the same code that now reads what was typed, and no request
+  to Claude.
+- **The suite's hang was not found.** Six full runs in a row passed
+  with nothing stalling. A test that runs over a minute now stops the
+  run with its name and where it was stuck, so the next one says so.
+- **A full self-test is needed to see the fixes in Discord** (the new
+  steps are written and have not run: live stayed up). Say when.
+- **What is still yours** is the list at the end of `docs/SELFTEST.md`:
+  the lock screen, the colours as they look, the wording, the sketches.
+
+Answered on 2026-10-13, after the self-test: the code checks a name
+Claude hands over against what was typed and asks when it fits more
+than one pill, and Claude is told not to complete names; Claude hands
+over what it understood, so the card asks for a missing time; under a
+minute the too-soon card says "just now"; every job has a name in
+words wherever you see it, and the catch-up card is checked for
+internal labels; the reset card is built in the new look. All done
+(block 45).
 
 **Still open from the scheduler, clean-up and briefing specs** (drafts
 of 2026-10-13; nothing is built until you answer these and approve):
@@ -151,6 +155,34 @@ over four starts, about nine minutes. It covers what a bot can do of
 rest is listed there as yours. Live was stopped from 9:31 am to 10:20
 am for it and is back. No row of `docs/TESTING.md` was marked passed
 from it: its presses are simulated, so your manual rows stay yours.
+
+## Fixes after the self-test (2026-10-13)
+
+Six things, asked for after the run, with tests and self-test steps
+for the first five (the steps have not run: live stayed up).
+
+1. A name Claude hands over is checked against what was typed
+   (`core/names.py`: `said_about`, `unclear`). "pause testv" with
+   Testvit and Testvit forte asks which, whatever Claude made of it.
+   Claude is also told never to complete a name.
+2. "twice a day at 8am": the cause was not reproduced (9 of 9 real
+   requests offline gave the right card, before and after). What
+   Claude sent the one time it failed was not kept, so it is now
+   logged whenever nothing fits. An empty place in a list of times no
+   longer loses the pill, and Claude is told to hand over what it
+   understood and leave out what was not said.
+3. "just now" under a minute on the too-soon card.
+4. Every job has a name in words (`scheduler.label`): "pill
+   reminder", "end of the day", "a card's expiry". The catch-up card
+   is checked like everything the bot says; a Save or a press that was
+   cut off is said in words, with the code's names in the log file.
+5. The reset card is drawn as a red box with `CARDS_V2` on.
+6. A per-test time limit (`tests/watchdog.py`).
+
+The two language steps rerun with real requests, offline from Discord:
+"twice a day at 8am" 5 of 5; "pause testv" straight after a pills
+answer 5 of 5 (Claude now hands over "testv" as typed). US$0.084 in
+all, the diagnosis included.
 
 ## Specs drafted on 2026-10-13: scheduler, clean-up, briefing
 

@@ -52,8 +52,8 @@ INTERACTION_GRACE = 2.0
 
 # Running totals since the bot started
 
-scheduler.register_handler(backup.JOB_TASK, backup.JOB_KIND, backup.nightly_backup_job)
-scheduler.register_handler(day.JOB_TASK, day.JOB_KIND, day.rollover_job)
+scheduler.register_handler(backup.JOB_TASK, backup.JOB_KIND, backup.nightly_backup_job, backup.JOB_LABEL)
+scheduler.register_handler(day.JOB_TASK, day.JOB_KIND, day.rollover_job, day.JOB_LABEL)
 tidy.setup()
 # What `dev run <name>` can run (the sweep and summary register theirs when they exist)
 devmode.register_routine("backup", backup.run_nightly_backup)

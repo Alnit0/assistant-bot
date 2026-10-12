@@ -115,6 +115,20 @@ def test_too_soon_is_asked_first_on_the_card_and_nothing_is_logged(world):
     assert asked.layout[0].status == design.RISKY
 
 
+def test_under_a_minute_after_the_dose_before_it_says_just_now_and_never_0m(world):
+    add(world, PILL_A)
+    at(world, 8, 0)
+    run(shortcut.took(Ctx(world, "took pill a")))
+    sent = len(world.sent)
+    run(shortcut.took(Ctx(world, "took pill a")))  # seconds later, the same minute
+    asked = world.sent[sent].card.text
+    assert "⚠️ That's just now: dose 1 was taken 8:00 am. The gap is at least 3h." in asked and "0m" not in asked
+    at(world, 8, 20)
+    sent = len(world.sent)
+    run(shortcut.took(Ctx(world, "took pill a")))
+    assert "⚠️ That's 20m after dose 1, taken 8:00 am. The gap is at least 3h." in world.sent[sent].card.text
+
+
 # --- the dev bot's own settings ----------------------------------------------------------------------------------
 def test_with_dev_a_settings_file_of_its_own_comes_first_and_without_one_nothing_changes(tmp_path):
     (tmp_path / ".env").write_text("DISCORD_TOKEN=live", encoding="utf-8")

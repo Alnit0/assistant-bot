@@ -36,17 +36,17 @@ Last updated: 2026-10-13
 | F | Pins | 4 | 0 | 4 | 4 | 0 | 0 | 0 |
 | G | Timers | 32 | 12 | 20 | 17 | 15 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
-| J | Dev mode | 65 | 16 | 49 | 47 | 18 | 0 | 0 |
-| K | Startup and housekeeping | 26 | 14 | 12 | 10 | 16 | 0 | 0 |
-| L | Keep | 13 | 5 | 8 | 8 | 5 | 0 | 0 |
+| J | Dev mode | 66 | 17 | 49 | 47 | 19 | 0 | 0 |
+| K | Startup and housekeeping | 27 | 15 | 12 | 10 | 17 | 0 | 0 |
+| L | Keep | 14 | 6 | 8 | 8 | 6 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
 | P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
 | Q | Time, days, the schedule model, the occurrence log and cards | 17 | 15 | 2 | 2 | 15 | 0 | 0 |
-| R | Pills | 70 | 18 | 52 | 44 | 26 | 0 | 0 |
-| S | Routing and confirm cards | 66 | 16 | 50 | 15 | 50 | 0 | 1 |
+| R | Pills | 72 | 20 | 52 | 44 | 28 | 0 | 0 |
+| S | Routing and confirm cards | 68 | 17 | 51 | 16 | 51 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 4 | 18 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **471** | **157** | **314** | **244** | **226** | **0** | **1** |
+| | **Total** | **478** | **163** | **315** | **245** | **232** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -299,6 +299,7 @@ Any channel. Check the bot's status in the member list.
 | J63 | 🤖 Auto | The briefing, schedule and tidy sketches | Each reads, fits a message and is named in the design guide; the briefing and the list have no buttons, the change card is blurple with `field · old → new`, Save and Cancel, and the tidy sketch says a tidy with nothing wrong posts nothing | ✅ Pass | 2026-10-13 | `tests/test_mock.py` |
 | J64 | 🤖 Auto | The self-test's own parts | A typed message is the real one with the owner as author; a press does the real edit or delete; a drawn message is read back as its texts, buttons and box colours; the report lists what failed with what was expected and what happened, the discoveries (odd, slow, warnings in the log during the run, not tested) and what only Alex can check; the dev database is set aside and put back; a phase refuses the live database and a start by hand | ✅ Pass | 2026-10-13 | `tests/test_selftest.py` |
 | J65 | 👤 Manual | With live stopped: `python -m selftest`, then start live again | About nine minutes; `docs/SELFTEST.md` is written again with a result for each step; the test channels are left in place; `data/dev.db` is as it was; live is back | ⬜ Untested | | Run by Claude Code on 2026-10-13: 61 of 63 |
+| J66 | 🤖 Auto | A test that hangs | After its time limit the run stops with exit code 70, the test's name and where each thread was | ✅ Pass | 2026-10-13 | `tests/test_selftest.py` |
 
 ## K. Startup and housekeeping
 
@@ -330,6 +331,7 @@ Any channel. Check the bot's status in the member list.
 | K24 | 👤 Manual | On `--dev`: say `add Testpill`, don't press. Stop the bot (Ctrl+C) and start it again. Look at #bot-log, then press **Save** on the card. Then `dev clock 5:58am`, stop the bot, wait four minutes, start it | After the first start: no "🔁 Caught up" message, and Save saves Testpill. After the second: one "🔁 Caught up after a restart" naming the checklist posted late and the jobs run late, one checklist in the hub, and no "not posted" message at any start | ⬜ Untested | | Block 36 |
 | K25 | 🤖 Auto | The daily spend line | The limit is `DAILY_SPEND_LIMIT` (US$0.50 unless set). Under it nothing is said; the first time a day's requests to Claude pass it, #bot-log is told once, however much more is spent and whatever restarts in between (the day is kept in the database), and again on a new day. A limit of 0 switches it off, a message with no request is never checked, and a note that can't be sent never fails the message | ✅ Pass | 2026-10-13 | `tests/test_costs.py` |
 | K26 | 🤖 Auto | The dev bot's own settings file | With `--dev`, `.env.dev` is read before `.env` if it is there; without one nothing changes; the live bot never reads it. It is ignored by git and has an example with placeholders only | ✅ Pass | 2026-10-13 | `tests/test_pills_shortcut.py` |
+| K27 | 🤖 Auto | Every job has a name in words | The core's and the pills' jobs are registered with a label (“nightly backup”, “end of the day”, “pill reminder”, “a card's expiry”), which the status line, the late line and an error card use; one nobody named is made readable. The catch-up lines are checked: a job written the code's way is put in words, an action's name is taken out, and a line with nothing left is dropped. A press or a Save cut off is said in words | ✅ Pass | 2026-10-13 | `tests/test_restart.py` |
 
 ## L. Keep
 
@@ -351,6 +353,7 @@ alone, and archive and delete ask first (E8). Replying `pin` pins at once.
 | L11 | 👤 Manual | Reply `unpin` to a pinned message | Unpinned at once; "📌 Unpinned" for about 10 seconds | ⬜ Untested | |  |
 | L12 | 🤖 Auto | Pinning by reply | `pin`, `keep`, `save` pin and `unpin`, `unkeep` unpin, in any channel; a refusal by Discord confirms nothing | ✅ Pass | 2026-10-07 | `tests/test_keep.py` |
 | L13 | 🤖 Auto | Keep uses no discord.py | The keep task imports nothing from discord.py: pinning is `core/pins.py` | ✅ Pass | 2026-10-13 | `tests/test_pills_shortcut.py` |
+| L14 | 🤖 Auto | The reset card in the new look | The asking card carries a layout as well as its words: one red box with the channel under the heading, the count, what is posted again, “This can't be undone” and the buttons inside it, within the design's limits | ✅ Pass | 2026-10-13 | `tests/test_channel.py` |
 
 ## M. Message lifecycle
 
@@ -523,6 +526,8 @@ are added with it.
 | R80 | 🤖 Auto | The reminder, drawn | Still posted first as the one neutral line, plain, with no pill, box or button; the pill is drawn into it by an edit, with that line on top outside an amber box. Snoozed is grey | ✅ Pass | 2026-10-13 | `tests/test_design.py` |
 | R81 | 🤖 Auto | The typed shortcut `took <pill>` | It is the shortcut only when what follows is the exact name of one of my pills, any capitals, with nothing else, and a dose is still to take: “took my zinc”, a time, two pills, part of a name and a pill already taken are read as before. It ticks the next dose off now in the same words as saying it, with no request to Claude, the line is recorded as that pill's, and too soon is asked first on the amber card. It is the only typed word that is a bare verb, and never matches by a typo | ✅ Pass | 2026-10-13 | `tests/test_pills_shortcut.py` |
 | R82 | 👤 Manual | Block 43: type `took <pill>` for a pill with a dose left, again when none is left, and twice in a row for a pill with a gap | At once and free the first time; read as before when nothing is left; the “Log it anyway?” card when too soon | ⬜ Untested | | Block 43 |
+| R83 | 🤖 Auto | Too soon, under a minute after the dose before | “That's just now: dose 1 was taken 8:00 am.”, never “0m after”; from a minute on it is counted as before | ✅ Pass | 2026-10-13 | `tests/test_pills_shortcut.py` |
+| R84 | 🤖 Auto | A name Claude completed is asked about on the pills card | “pause testv” with Testvit and Testvit forte, handed over as “Testvit” or as an id: “Which one is “testv”?” with a button each; the answer's data names the pill by its id and is not asked again; with no message to check (Save, an answer pressed) the name stands | ✅ Pass | 2026-10-13 | `tests/test_names.py` |
 
 ## S. Routing and confirm cards
 
@@ -599,6 +604,8 @@ the dev database (`python main.py --dev`), in #inbox.
 | S64 | 🤖 Auto | Files sent with a message | A request carries them (name, size, kind, a way to fetch the bytes) and none by default; the context hands them over as plain records; the router is told the names only, and nothing when there is none | ✅ Pass | 2026-10-13 | `tests/test_names.py` |
 | S65 | 🤖 Auto | The confirm card, the question card and the card that asks first, drawn | The same words as the plain card, in one box: blurple for a decision (a separator between things, the warning above the buttons, the hint under the box); the question in bold with an answer a button and no Save; amber when it asks first because something is risky (pills' too soon and too late); red only for what can't be undone. A card of many things stays within the limits | ✅ Pass | 2026-10-13 | `tests/test_design.py` |
 | S66 | 🤖 Auto | What is cached and what every schema repeats | For a task's extraction the tools are marked for caching at `none` (so a follow-up, with `not_this` after it, reads the same cached tools) and the instructions are two blocks: the task's rules, marked, the same however the message came, then the lines that depend on that, unmarked. `guessed` and `not_included` are explained once in the instructions and only named in each schema | ✅ Pass | 2026-10-13 | `tests/test_routing.py`. Measured in `docs/COSTS.md`; live check 2026-10-13: pills 60 of 61, timers 36 of 37 |
+| S67 | 🤖 Auto | What was typed is read beside what Claude handed over | A part of the message fits a name by its words or the start of one (three letters or more), the longest part wins and a whole name is that thing alone; “it” is no part of “Testvit”. When such a part fits more than one thing and Claude handed over one of them, or “it”, the question is asked in the words that were typed. Claude is told never to complete a name and to hand over what it understood; an empty place in a list of times is left out and the item stands | ✅ Pass | 2026-10-13 | `tests/test_names.py` |
+| S68 | 👤 Manual | Block 45: `pause testv` with two pills it fits; `took` twice in a row with a gap; `reset channel` with `CARDS_V2` on | The which-one card in the words typed; “just now”; the red reset card | ⬜ Untested | | Block 45 |
 
 ## T. Tasks in plain words
 

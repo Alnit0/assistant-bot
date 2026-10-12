@@ -3,6 +3,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
+from core import design
 from core.clearing import Found
 from core.config import TIMEZONE
 from core.timeinput import format_time
@@ -89,6 +90,20 @@ def card_text(mention: str, total: int, protected: int, old: int, again=()) -> s
         lines += [AGAIN, *(f"• {what}" for what in again)]
     lines.append(NOT_UNDONE)
     return "\n".join(lines)
+
+
+def card_layout(mention: str, total: int, protected: int, old: int, again=(), row=()) -> tuple:
+    """The same card in the one style of docs/DESIGN.md (drawn when CARDS_V2 is
+    on): a red box, since it can't be undone, with the channel under the
+    heading, the counts, what is posted again afterwards, the warning, and
+    the buttons inside the box."""
+    counts = f"**{_messages(total)}** · {protected} of them pinned or 📌"
+    if old:
+        counts += "\n" + design.small(slow_text(old))
+    things = [counts]
+    if again:
+        things.append("\n".join(["♻️ **Posted again afterwards**", *(design.small(what) for what in again)]))
+    return design.decision(HEADING, things, status=design.DESTRUCTIVE, context=mention, warnings=(f"**{NOT_UNDONE.removeprefix(design.WARNING).strip()}**",), row=row)
 
 
 def cannot_text(mention: str, missing) -> str:

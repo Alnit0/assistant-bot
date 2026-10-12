@@ -309,17 +309,19 @@ async def _pointed(request: Request, items: list[dict], key: str) -> tuple[list[
     return point_at(items, key, last), taken_as
 
 
-def _resolve(pills: list[Pill], items: list[dict]) -> tuple[list[tuple[dict, Pill]], list[str], list[tuple[dict, list[Pill]]]]:
+def _resolve(pills: list[Pill], items: list[dict], said: str = "") -> tuple[list[tuple[dict, Pill]], list[str], list[tuple[dict, list[Pill]]]]:
     """Each item with the pill it means (its `pill` set to that pill's id),
     what couldn't be found, in words, and each item whose name fits more
     than one pill, with the pills it could be: those are asked about on the
-    card, never in a message of their own."""
+    card, never in a message of their own. `said` is the message: a name
+    Claude completed is asked about as the part of it that was typed."""
     found, problems, unclear = [], [], []
     for item in items:
         try:
-            pill = rules.find(pills, str(item.get("pill", "")))
+            pill = rules.find(pills, str(item.get("pill", "")), said)
         except rules.Ambiguous as which:
-            unclear.append((item, which.candidates))
+            # Asked about in the words that were typed ("testv"), not the ones Claude made of them
+            unclear.append(({**item, "pill": which.said}, which.candidates))
             continue
         except UserError as error:
             problems.append(str(error))
@@ -514,7 +516,7 @@ async def edit_card(request: Request, data: dict, guessed: frozenset) -> Proposa
     existing = await store.pills(request.user.id)
     unsure = _unsure(data, guessed, "pill")
     asked, taken_as = await _pointed(request, data["pills"], "pill")
-    found, problems, unclear = _resolve(existing, asked)
+    found, problems, unclear = _resolve(existing, asked, request.text)
     resolved = [item for item, _ in found]
     items, missing = overlay(request.previous["pills"] if request.previous else [], resolved, "pill")
     by_ref = {pill.ref: pill for pill in existing}
@@ -663,7 +665,7 @@ async def _chosen(request: Request, data: dict, guessed: frozenset = frozenset()
     with its pill, what couldn't be found, today, the ids Claude guessed at)."""
     existing = await store.pills(request.user.id)
     asked, taken_as = await _pointed(request, data["pills"], "pill")
-    found, problems, unclear = _resolve(existing, asked)
+    found, problems, unclear = _resolve(existing, asked, request.text)
     resolved = [item for item, _ in found]
     items, missing = overlay(request.previous["pills"] if request.previous else [], resolved, "pill")
     by_ref = {pill.ref: pill for pill in existing}
@@ -1039,7 +1041,7 @@ async def _step(request: Request, item: dict) -> Step:
             return Step("⚠️ Which pill? Say its name.", which=tuple(_could_be(listed, item["did"])))
         named = f"{rules.ID_PREFIX}{last}"
     try:
-        pill = rules.find(pills, str(named))
+        pill = rules.find(pills, str(named), request.text)
     except rules.Ambiguous as unclear:
         return Step(f"⚠️ {unclear}", which=tuple(unclear.candidates))
     except UserError as error:
@@ -1120,8 +1122,10 @@ def _too_soon(pill: Pill, last: Dose | None, at: datetime) -> tuple[str, ...]:
     at, taken = at.replace(second=0, microsecond=0), taken.replace(second=0, microsecond=0)
     if not timedelta(0) <= at - taken < plan.gap:
         return ()
-    since = rules.gap_text(max(0, round((at - taken).total_seconds() / 60)))
-    return (f"That's {since} after dose {last.number}, taken {timeinput.format_moment(taken)}. The gap is at least {rules.gap_text(plan.gap_minutes)}.",)
+    minutes = max(0, round((at - taken).total_seconds() / 60))
+    # Under a minute there is no length worth saying: "0m after" reads as a mistake
+    when = f"{rules.gap_text(minutes)} after dose {last.number}, taken {timeinput.format_moment(taken)}" if minutes else f"just now: dose {last.number} was taken {timeinput.format_moment(taken)}"
+    return (f"That's {when}. The gap is at least {rules.gap_text(plan.gap_minutes)}.",)
 
 
 def asked_about(dose: Dose, listed: list[Dose], at: datetime) -> tuple[str, ...]:

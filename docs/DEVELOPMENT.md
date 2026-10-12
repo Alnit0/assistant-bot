@@ -1357,6 +1357,12 @@ python -m pytest tests/test_router.py # one file
 python -m pytest -k archive           # tests with "archive" in the name
 ```
 
+A test that hangs does not sit there: after a minute the run stops
+with "TIMEOUT: <the test> ran for more than 60 seconds" and where each
+thread was (`tests/watchdog.py`; exit code 70, so nothing that waits
+for a pass goes ahead). `TEST_TIMEOUT` in the environment changes the
+minute.
+
 The tests in `tests/` cover the decision logic: the word router, duration
 parsing, Pomodoro phases and pause arithmetic, which reactions count and
 what to apply or undo, the debounce timer, protection, archive and delete

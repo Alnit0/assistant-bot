@@ -211,6 +211,12 @@ understood (`docs/BACKLOG.md`). Skipping the router when a message
 names one of my own things keeps both rules and saves a fifth of an
 isolated pills message.
 
+**2026-10-13, after the self-test.** Two rules were added to what
+every extraction is told (never complete a name; hand over what was
+understood and leave out what was not said): about 170 tokens more in
+the part that is cached, so a tenth of that price on every request
+after the first.
+
 ## 7. Questions (also in `docs/STATUS.md`)
 
 1. Answered 2026-10-13: the router is not skipped; of the shortcuts,

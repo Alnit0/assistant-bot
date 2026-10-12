@@ -28,6 +28,7 @@ log = logging.getLogger("assistant")
 # ---------------------------------------------------------------------------
 JOB_TASK = "core"
 JOB_KIND = "day_rollover"
+JOB_LABEL = "end of the day"  # what it is called wherever I read it
 
 _OFFSET = timedelta(hours=DAY_BOUNDARY.hour, minutes=DAY_BOUNDARY.minute)
 

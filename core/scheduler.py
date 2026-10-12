@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import re
 import sqlite3
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
@@ -62,6 +63,9 @@ class Job:
 JobHandler = Callable[[Job], Awaitable[None]]
 
 _handlers: dict[tuple[str, str], JobHandler] = {}
+# What each kind of job is called wherever the user reads it (the status line, the start's
+# message, an error card): never its kind, which is the code's own word
+_labels: dict[tuple[str, str], str] = {}
 _ticker: asyncio.Task | None = None
 _wake: asyncio.Event | None = None
 _warned_unhandled: set[tuple[str, str]] = set()
@@ -224,9 +228,50 @@ def _db_troubled(conn: sqlite3.Connection) -> list[tuple[str, str, str]]:
 # ---------------------------------------------------------------------------
 # For tasks and the core
 # ---------------------------------------------------------------------------
-def register_handler(task: str, kind: str, handler: JobHandler) -> None:
-    """Say which function runs jobs of this kind for this task."""
+def register_handler(task: str, kind: str, handler: JobHandler, label: str = "") -> None:
+    """Say which function runs jobs of this kind for this task, and what the
+    job is called in words ("nightly backup"): `label` is what the user reads
+    wherever a job is named. Without one the kind is made readable, which is
+    only good enough for a job nobody is shown."""
     _handlers[(task, kind)] = handler
+    if label:
+        _labels[(task, kind)] = label
+    else:
+        _labels.pop((task, kind), None)
+
+
+def label(task: str, kind: str) -> str:
+    """A job in words: "nightly backup", "pill reminder"."""
+    given = _labels.get((task, kind))
+    if given:
+        return given
+    words = kind.replace("_", " ")
+    return words if task == "core" else f"{task} {words}"
+
+
+def internal_names() -> dict[str, str]:
+    """Each way a job is written in the code ("pills/remind", "pills remind",
+    "day_rollover"), with the words it should have been said in: for the
+    check on what the user is shown (`in_words`)."""
+    found: dict[str, str] = {}
+    for (task, kind), said in _labels.items():
+        found[f"{task}/{kind}"] = said
+        plain = kind.replace("_", " ") if task == "core" else f"{task} {kind.replace('_', ' ')}"
+        if plain != said and " " in plain:  # one plain word ("tidy") is a word anyone may write
+            found[plain] = said
+        if "_" in kind:
+            found[kind] = said
+    return found
+
+
+def in_words(text: str) -> str:
+    """A text the user will read, with any job named the code's way put in
+    words. One found is a bug in whatever wrote the text: it is logged."""
+    for internal, said in sorted(internal_names().items(), key=lambda each: -len(each[0])):
+        if re.search(rf"(?<![\w/]){re.escape(internal)}(?![\w/])", text):
+            log.error("A job's internal name was about to be shown to the user: %s in %r", internal, text[:200])
+            text = re.sub(rf"(?<![\w/]){re.escape(internal)}(?![\w/])", said, text)
+    return text
 
 
 async def add_job(
@@ -365,7 +410,7 @@ async def run_due(now: datetime | None = None, done: list | None = None) -> int:
             _reported.pop(job.id, None)
             log.exception("Scheduled job %s (%s/%s) failed", job.id, job.task, job.kind)
             await database.run(_db_finish, job.id, FAILED, job.late_by, repr(error))
-            await log_error(f"Scheduled job failed: {job.task}/{job.kind}", repr(error))
+            await log_error(f"Scheduled job failed: {label(job.task, job.kind)}", repr(error))
             outcome = "failed"
         else:
             # Done, unless the handler said this run failed or was skipped (`report`)

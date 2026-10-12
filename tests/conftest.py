@@ -8,6 +8,17 @@ import tests  # noqa: F401  isort: skip
 import pytest
 
 from core import backup, clock, database, devmode, live, migrations, users
+from tests import watchdog
+
+
+@pytest.fixture(autouse=True)
+def fails_fast_if_it_hangs(request):
+    """A test that runs for more than a minute stops the run, saying which
+    test it was and where it was stuck (tests/watchdog.py). A run once hung
+    with nothing to say where (2026-10-13)."""
+    timer = watchdog.watch(request.node.nodeid)
+    yield
+    timer.cancel()
 
 
 @pytest.fixture(autouse=True)

@@ -36,11 +36,9 @@ low priority, nothing dropped without a reason.
     scheduler's spec gives, the engine first with nothing visible
     changing (Details: "Scheduler, clean-up, briefing").
 
-6b. **Found by the self-test** (2026-10-13, `docs/SELFTEST.md`): a
-    name that fits two pills is completed by Claude instead of being
-    asked about ("pause testv"), and "add Testmag to my pills, twice a
-    day at 8am" was once not understood. Both wait for a say-so in
-    `docs/STATUS.md`.
+6b. **A full self-test run** to see the fixes of 2026-10-13 in Discord
+    (its new steps have not run), and **"pause testv" with nothing said
+    before it goes to timers** (asked in `docs/STATUS.md`).
 
 ### Soon
 
@@ -479,6 +477,18 @@ number read from text; C19's name matching is in the core.
   Specified on 2026-10-13 as an optional summary in the task contract,
   with the briefing as its first user (6a). `core/hub.py` has the hub
   channel and the progress bar only.
+- **After the self-test, fixed on 2026-10-13**: the name check against
+  what was typed, "just now", job names in words and the check on the
+  catch-up card, the reset card in the new look. **Not found:** why
+  "add Testmag to my pills, twice a day at 8am" once came back with a
+  pill that could not be used. Nine real requests offline gave the
+  right answer every time; the raw answer is logged from now on
+  ("Extraction for … fitted nothing … Claude called …"), and the trace
+  has it for `dev why`. A fixture for it and for "pause testv" would
+  be worth recording at the next live eval. **Left:** a card saved
+  after `CARDS_V2` is switched on stays plain; `dev cost` shows a limit
+  under a cent as US$0.00; timers' jobs have no name of their own (a
+  timer's code is not touched) and are said as "timers timer due".
 - **The self-test's findings** (2026-10-13). With real requests, on two
   runs: "pause testv" (Testvit and Testvit forte both there) came back
   from Claude as `pill: "Testvit"` with nothing guessed, then as

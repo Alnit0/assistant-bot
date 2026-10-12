@@ -296,6 +296,13 @@ class Task:
         """
         return {}
 
+    def job_labels(self) -> dict[str, str]:
+        """What each kind of job is called in words, by kind ("remind" ->
+        "pill reminder"): what I read on the status line, in the start's
+        message and on an error card. A kind is the code's own word and is
+        never shown; give every kind of `job_handlers` a label."""
+        return {}
+
     async def new_day(self, ended: date, started: date) -> None:
         """Runs when a day ends (core/day.py): `ended` is the day that was over
         when the rollover came due, `started` the day it is now. They are a day

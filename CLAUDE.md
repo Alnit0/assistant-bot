@@ -44,8 +44,8 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 - `docs/DESIGN.md`: how a card looks (headings, small text, accent
   colours by status, separators, buttons), its colours waiting for a
   check on the phone. Built behind `CARDS_V2` (off by default) for the
-  pills checklist, the reminder and the confirm, question and
-  asks-first cards
+  pills checklist, the reminder, the confirm, question and
+  asks-first cards, and the channel reset card
 - `docs/TESTING.md` (test tracker) and `docs/QA-RUN.md` (manual run sheet)
 - `docs/COSTS.md`: what each request to Claude costs and why; read it
   before changing a prompt or a schema
@@ -113,7 +113,8 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   nothing), extraction fills in one of that task's actions, and the
   task's own code does it and writes every word. Claude runs nothing and
   has no tools. Which of my things a name means is `core/names.py`
-  (never guessed: more than one fit is asked about); a message's files
+  (never guessed: more than one fit is asked about, and a name Claude
+  hands over is checked against what I typed: `names.unclear`); a message's files
   are `request.attachments`. A task's plain-words code is its `plain.py` and takes a
   `Request`, never a Context
 - Plain chat (`llm.ask_claude`) answers general questions only. It is
@@ -214,6 +215,10 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 - Nothing may depend on a job having run to be right: a day that is over
   is closed by the rollover and, failing that, by whatever looks at
   today next (`checklist.close_past`)
+- A job has a name in words, given with its handler
+  (`scheduler.register_handler(..., label)`, `Task.job_labels`). Its
+  kind is the code's own word and is never shown to me: anything I
+  read names a job with `scheduler.label`
 - A job never does nothing in silence: what it decided and why goes in
   the log every time. #bot-log is for real problems only: one that
   failed or skipped for a real problem says so there and with
@@ -355,6 +360,9 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   nine minutes; `docs/DEVELOPMENT.md`, "The self-test"). Only when I
   ask: live must be stopped for it, started again after, and checked.
   Real requests to Claude only with `--claude`, within the cost rule
+- A test that runs for more than a minute stops the run with its name
+  and where it was stuck (`tests/watchdog.py`, exit code 70). Look
+  into it; never raise the limit to get past it
 - Routine test run: `python -m pytest -q` (about a minute). Tests use a
   temporary database and made-up settings, never the real ones. Don't
   run them in parallel (`-n`): a run hung that way

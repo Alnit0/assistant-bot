@@ -72,9 +72,9 @@ def uptime(seconds: float) -> str:
 
 
 def job_name(task: str, kind: str) -> str:
-    """A job in words: "nightly backup", "pills checklist"."""
-    kind = kind.replace("_", " ")
-    return kind if task == "core" else f"{task} {kind}"
+    """A job in words: "nightly backup", "pills checklist". The words are the
+    ones the job was registered with (core/scheduler.py, `label`)."""
+    return scheduler.label(task, kind)
 
 
 def next_job(pending, now: datetime) -> str:

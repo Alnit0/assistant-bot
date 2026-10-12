@@ -7,7 +7,7 @@ from datetime import datetime
 
 import discord
 
-from core import database, discord_utils, identity, scheduler
+from core import database, discord_utils, identity, outgoing, scheduler
 from core.config import real_now_nz
 
 log = logging.getLogger(__name__)
@@ -126,7 +126,9 @@ async def _put_right(cut: CutOff) -> str:
         task, action, arg = press
         recover = _recoveries.get((task, action))
         if recover is None:
-            return f"A press of {task}/{action} was cut off by the stop. Nothing was done about it: press it again if it didn't take"
+            # Which button, in the code's own words, is for the log file: the card says whose it was
+            log.info("The press cut off by the stop was %s/%s %s (log row %s)", task, action, arg, cut.row_id)
+            return f"A press of a button of {task}'s was cut off by the stop. Nothing was done about it: press it again if it didn't take"
         return await recover(cut, arg)
     said = cut.content if len(cut.content) <= SHOWN else cut.content[: SHOWN - 1] + "…"
     if cut.kind in OWN_MESSAGES and await mark(cut.channel_id, cut.message_id):
@@ -144,6 +146,14 @@ def late_line(jobs: list) -> str:
         for name, late in names.items()
     ]
     return "Ran late, as the bot was off when they were due: " + ", ".join(parts)
+
+
+def checked(lines: list[str]) -> list[str]:
+    """The lines as they may be shown: the same check as everything the bot
+    says (core/outgoing.py: no internal label), and no job by the code's own
+    name for it. A line with nothing left to say is dropped."""
+    said = [outgoing.clean(scheduler.in_words(line)) for line in lines]
+    return [line for line in said if line.strip()]
 
 
 async def catch_up() -> list[str]:
@@ -170,6 +180,7 @@ async def catch_up() -> list[str]:
     finally:
         _lines.clear()
         _catching_up = False
+    lines = checked(lines)
     for line in lines:
         log.info("Caught up: %s", line)
     if lines:

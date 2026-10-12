@@ -10,11 +10,12 @@ touch, the standard wins.
 **Status (2026-10-13): waiting for the check on the phone (block 39 of
 `docs/QA-RUN.md`).** The colours below are the ones chosen so far and
 are not final until Alex has looked at them on the phone; the lock
-screen waits for the same check. Five cards are built this way, behind
+screen waits for the same check. Six cards are built this way, behind
 `CARDS_V2` (off unless set in `.env`; off, every card looks as it
 always has): today's pills checklist, the reminder, the confirm card,
-the card that asks a question and the card that asks first because
-something is risky. Everything else is still a plain message.
+the card that asks a question, the card that asks first because
+something is risky, and the channel reset card. Everything else is
+still a plain message.
 
 **Every colour and spacing value is in one file, `core/design.py`**
 (its first block): after the phone check, a change is an edit there and
