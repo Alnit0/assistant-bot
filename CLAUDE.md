@@ -469,16 +469,23 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   then live must be stopped for it, started again after, and checked
   (its status says "🧪 Self-test running · back about <time>"
   meanwhile). Real requests
-  to Claude only with `--claude`, within the cost rule. With nothing
-  said it runs only the stages (day, briefing, tidy) touched by what
-  changed since each last passed; `--full` is the whole run, about
+  to Claude are the exception: answers are recorded unless prompts,
+  schemas or routing changed since the last real run, it is the Sunday
+  full run, or I ask (`--claude`), and never once the month's self-test
+  spend is over `SELFTEST_MONTHLY_LIMIT`. When you run one yourself,
+  read its one-line summary and the history
+  (`data/selftest/history.csv`) and open logs only for a failure. With
+  nothing said it runs only the stages (day, briefing, tidy) touched by
+  what changed since each last passed; `--full` is the whole run, about
   fifteen minutes. The PC has 8 GB: it says how much memory is free
   before it starts and stops there when that is low; tell me, and
   never pass `--anyway` without my say. Nothing else is edited or run
   while it is going
 - The nightly self-test (`core/nightly.py`, behind `NIGHTLY_SELFTEST`)
   is live starting `python -m selftest --nightly` at 3:00 am as a
-  process of its own: the dev bot runs it, with recorded answers. Live
+  process of its own: the dev bot runs it; nothing on a weeknight with
+  no new commits since every stage passed, real requests only on the
+  Sunday full run or when prompts, schemas or routing changed. Live
   never waits for it and never reports its steps; a run that could not
   start is a real problem and is said in #bot-log. The phone is pinged
   only for a failing step (`selftest/notify.py`; the topic is never

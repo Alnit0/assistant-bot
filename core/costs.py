@@ -414,7 +414,7 @@ def _period_lines(title: str, period: Period) -> list[str]:
 
 def report(
     today: Period, month: Period, purposes: list[tuple[str, int, float]], database_name: str,
-    state: tuple[int, int, int] = (0, 0, 0), state_cap: int = 0, limit: float = 0.0,
+    state: tuple[int, int, int] = (0, 0, 0), state_cap: int = 0, limit: float = 0.0, selftest: tuple[float, float] | None = None,
 ) -> str:
     """What `dev cost` shows: today (against the daily limit, when one is
     set), this month, the average per message, the most expensive task, and
@@ -439,6 +439,11 @@ def report(
             "-# Requests this month: "
             + " · ".join(f"{purpose} {count} ({money(cost)})" for purpose, count, cost in purposes)
         )
+    if selftest is not None:
+        # The self-test runs on the dev database: what it spends is not in the figures above
+        spent, cap = selftest
+        over = " · over the limit: recorded answers only until next month" if spent >= cap else ""
+        lines.append(f"Self-test this month: US${spent:.2f} of US${cap:.2f}{over}")
     messages, sent, total = state
     if messages:
         held_back = f", {total - sent:,} held back by the cap" if total > sent else ", nothing held back"

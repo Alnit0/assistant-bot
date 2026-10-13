@@ -27,7 +27,7 @@ from pathlib import Path
 
 import discord
 
-from core import config, instance_lock
+from core import config, health, instance_lock
 from core.timeinput import format_time
 from selftest import bugs, notify, record, report, stages
 
@@ -410,7 +410,8 @@ def run_phase(name: str, settings: dict, channels: dict[str, int], claude: bool,
 
 def main() -> int:
     parser = argparse.ArgumentParser(prog="python -m selftest")
-    parser.add_argument("--claude", action="store_true", help="send the language steps to the real API (within --budget)")
+    parser.add_argument("--claude", action="store_true", help="send the language steps to the real API (within --budget and the month's limit), whatever has changed")
+    parser.add_argument("--recorded", action="store_true", help="recorded answers only, whatever has changed")
     parser.add_argument("--budget", type=float, default=0.20, help="stop sending real requests once this much is spent (US$)")
     parser.add_argument("--full", action="store_true", help="the whole run, every stage")
     parser.add_argument("--stages", default="", help="the stages to run: day, briefing, tidy (tidy runs the briefing's start too)")
@@ -455,6 +456,11 @@ def main() -> int:
         print(f"No such stage: {', '.join(unknown)}. The stages are {', '.join(stages.ORDER)}.")
         return 2
     passed = stages.read_passed(PASSED)
+    if asked.nightly and not asked.full and stages.nothing_new(stages.head(config.BASE_DIR), passed):
+        # A weeknight with no new commit since everything last passed: nothing to learn, nothing run
+        print("--- no new commits since every stage last passed: nothing is run tonight")
+        quiet_night()
+        return 0
     if asked.full:
         chosen = list(stages.ORDER)
         print("--- the full run, as asked", flush=True)
@@ -488,6 +494,16 @@ def main() -> int:
     began = datetime.now()
     stamp = began.strftime("%Y%m%d-%H%M%S")
     commit = stages.head(config.BASE_DIR)
+    # Recorded answers unless there is a reason to pay: asked for, the Sunday full run, or
+    # prompts, schemas or routing changed since the last real run. Never over the month's limit
+    runs = record.read(HISTORY)
+    spent_month, limit = health.month_spend(runs, f"{began:%Y-%m}"), config.SELFTEST_MONTHLY_LIMIT
+    real, why_real = stages.use_real(
+        asked.claude, asked.recorded, asked.nightly and asked.full,
+        stages.language_changed(stages.changed_since(config.BASE_DIR, stages.last_real(runs))), spent_month, limit,
+    )
+    budget = min(asked.budget, max(0.0, limit - spent_month))
+    print(f"--- {why_real}" + (f" (up to US${budget:.2f}; US${spent_month:.2f} of US${limit:.2f} spent this month)" if real else ""), flush=True)
     print(f"--- starts {', '.join(wanted)}: about {round(minutes)} minutes", flush=True)
     if not separate():
         # Live is off for this: the account's status says so, and when it is expected back
@@ -511,7 +527,7 @@ def main() -> int:
                 time.sleep(off_for)
             print(f"--- {name} {settings}", flush=True)
             so_far = [each for _, _, earlier in phases for each in earlier["results"]]
-            found = run_phase(name, settings, channels, asked.claude, asked.budget, memo, stamp, {
+            found = run_phase(name, settings, channels, real, budget, memo, stamp, {
                 "SELFTEST_TOTAL": expected, "SELFTEST_DONE": len(so_far),
                 "SELFTEST_FAILED": sum(1 for each in so_far if each["status"] in ("fail", "error")),
                 "SELFTEST_ENDS": began.timestamp() + minutes * 60,
@@ -531,11 +547,11 @@ def main() -> int:
             print(f"--- the dev bot's name: {asyncio.run(plain_name(channels['inbox']))}", flush=True)
         except Exception as error:
             print(f"--- the dev bot's name could not be put back ({type(error).__name__}): its next start does it", flush=True)
-    path = report.write(phases, spent, asked.claude, stamp, partial=not whole, began=began, ended=datetime.now(), ran=", ".join(chosen) if chosen and not whole else "")
+    path = report.write(phases, spent, real, stamp, partial=not whole, began=began, ended=datetime.now(), ran=", ".join(chosen) if chosen and not whole else "")
     results = [each for _, _, found in phases for each in found["results"]]
     bad = [each for each in results if each["status"] in ("fail", "error")]
     ran = "full" if whole else ", ".join(chosen) or "starts " + ",".join(wanted)
-    keep(record.row(stamp, commit, ("nightly, " if asked.nightly else "") + ran, results, spent, asked.claude, int((datetime.now() - began).total_seconds())), results, stamp, channels, asked.nightly)
+    keep(record.row(stamp, commit, ("nightly, " if asked.nightly else "") + ran, results, spent, real, int((datetime.now() - began).total_seconds())), results, stamp, channels, asked.nightly)
     # A stage that ran whole with nothing failed has passed on this commit: it is not run again until something touches it
     failed = {name for name, _, found in phases if found.get("exit") != 0 or any(each["status"] in ("fail", "error") for each in found["results"])}
     if commit:

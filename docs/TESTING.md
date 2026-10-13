@@ -41,12 +41,12 @@ Last updated: 2026-10-13
 | L | Keep | 14 | 6 | 8 | 8 | 6 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
 | P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
-| Q | Time, days, the schedule model, the occurrence log and cards | 27 | 25 | 2 | 2 | 25 | 0 | 0 |
+| Q | Time, days, the schedule model, the occurrence log and cards | 28 | 26 | 2 | 2 | 26 | 0 | 0 |
 | R | Pills | 79 | 26 | 53 | 45 | 34 | 0 | 0 |
 | S | Routing and confirm cards | 77 | 24 | 53 | 18 | 58 | 0 | 1 |
 | T | Tasks in plain words | 26 | 7 | 19 | 4 | 22 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **521** | **200** | **321** | **251** | **269** | **0** | **1** |
+| | **Total** | **522** | **201** | **321** | **251** | **270** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -466,6 +466,7 @@ manual test uses the dev clock on the dev database (`python main.py --dev`).
 | Q25 | 🤖 Auto | The self-test's channels by id only | The channels are the ids `.env.dev` gives, whatever they are called; one not set, or one that is also live's, stops the run with its name; they are fetched by id, the server is never listed and nothing is created; a deleted channel or the wrong kind stops the run with “nothing was made in its place”; a missing channel stops before the dev database is moved or a bot is started | ✅ Pass | 2026-10-13 | `tests/test_selftest.py` |
 | Q26 | 🤖 Auto | No account is named in the self-test report | An account name with its id becomes “live”, “the dev bot”, “you” or “another account” with the last four digits; a name learnt from one line, or from the bot's log, is taken out everywhere; a known id standing alone is cut to four digits; channel ids and step numbers are untouched; the report is masked when written; `docs/SELFTEST.md` is checked for display names like every other file | ✅ Pass | 2026-10-13 | `tests/test_selftest.py`, `tests/test_two_bots.py` |
 | Q27 | 🤖 Auto | The design options | Every option is a sketch Discord would take, two or three a card with A (as built) first, posted card by card; they are not among the sketches `dev mock` lists; the summary lists each with what differs, says how to pick and fits one message; they are only ever posted as the dev bot | ✅ Pass | 2026-10-13 | `tests/test_selftest.py` |
+| Q28 | 🤖 Auto | Keeping the self-test's cost low | Real requests only for what can change what Claude is asked (prompts, schemas, routing), the Sunday full run, or when asked; recorded answers otherwise, and each reason is said; over the month's limit nothing is spent whatever the reason; the last real run and a night with nothing new are read from what is kept; a weeknight with no new commits starts no bot and leaves its line; the month is added up from the history, over the limit it is a level 1 item, and `dev cost` shows it | ✅ Pass | 2026-10-13 | `tests/test_nightly.py` |
 
 ## R. Pills
 

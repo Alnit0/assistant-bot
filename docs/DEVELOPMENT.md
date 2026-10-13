@@ -1772,7 +1772,11 @@ report is `docs/SELFTEST.md`, written again by every full run.
   `data/selftest/passed.json`
 - **Memory**: the PC has 8 GB, and a run has been stopped by it
   before. The run says how much is free before it starts, and with
-  under 1.5 GB free it does not start (`--anyway` goes ahead)
+  under 1.9 GB free it does not start (`--anyway` goes ahead). Measured
+  on 2026-10-13: a full run's own processes peak at about 180 MB (the
+  runner 63, the dev bot 121) and take at most 240 MB off what is
+  free; the line is there because the rest of the PC ran short at 1.6
+  GB free and a run was stopped
 - **Channels of its own, found by id and never made**: the three it
   writes in (an inbox, a hub, a log) and a forum for its bugs are the
   ones `.env.dev` names (`INBOX_CHANNEL_ID`, `HUB_CHANNEL_ID`,
@@ -1793,10 +1797,13 @@ report is `docs/SELFTEST.md`, written again by every full run.
   press calls the handler behind the button, which edits or deletes the
   real message. Then the message is read back from Discord, and the
   doses from the database, before a step passes
-- **Requests to Claude**: none unless you add `--claude`. Without it
-  every language step uses the answer recorded for it; with it they go
-  to the real API until `--budget` (US$0.20 unless given) is spent,
-  about 8 cents a run
+- **Requests to Claude**: recorded answers unless there is a reason to
+  pay. With nothing said, a run uses real requests only when prompts,
+  schemas or routing changed since the last real run; `--claude` asks
+  for them whatever changed, `--recorded` refuses them. Real requests
+  stop at `--budget` (US$0.20 unless given; about 16 cents a full run)
+  and are never sent once the month's self-test spend is over
+  `SELFTEST_MONTHLY_LIMIT` (US$2). `dev cost` shows the month's spend
 - **What it runs**: a day of made-up pills on the dev clock (the 6:00
   am checklist, doses on time, too soon, late and missed, a correction,
   questions on the card, reminders), the bot cut off in the middle of a
@@ -1886,8 +1893,20 @@ It needs the dev bot (a token of its own in `.env.dev`).
 - **What is run**: the stages touched by what changed since each last
   passed, and everything on a Sunday. On a night nothing changed,
   nothing is run.
-- **Recorded answers only**: a night costs nothing. Real requests are
-  for the runs you ask for.
+- **A night with no new commits runs nothing**: when every stage last
+  passed on the commit that is checked out, a weeknight leaves its
+  line in the log channel and starts no bot. (The Sunday full run
+  still happens.)
+- **Recorded answers are the rule**: they cost nothing. A run sends
+  real requests only on the Sunday full run, or when prompts, schemas
+  or routing changed since the last run with real requests
+  (`core/router.py`, `routing.py`, `extraction.py`, `llm.py`,
+  `actions.py`, `conversation.py`, and a task's `plain.py` or
+  `__init__.py`). The run's first lines say which, and why.
+- **A month's cap**: `SELFTEST_MONTHLY_LIMIT` (US$2 unless set). Once
+  the month's runs have spent it, every run uses recorded answers
+  only, live's status line says "⚠️ self-test spend · US$2.05", and
+  `dev cost` shows the month's figure. It starts again with the month.
 - **What it leaves**: the run's summary in the self-test's log channel
   (a line there too on a night with nothing to run), a line in
   `data/selftest/history.csv` ("nightly, …"), and a bug for the first
@@ -1895,7 +1914,7 @@ It needs the dev bot (a token of its own in `.env.dev`).
 - **Your phone** is pinged (ntfy, priority 5, the topic in
   `.env.notify`) only if a step failed or the run did not finish. A
   night that passed is silent there.
-- **A run that could not start** (no dev bot, under 1.5 GB of memory
+- **A run that could not start** (no dev bot, under 1.9 GB of memory
   free, a channel in `.env.dev` gone) is said in #bot-log, and the
   schedule's last run reads as it ended. What the run printed is in
   `logs/selftest-nightly.log`.

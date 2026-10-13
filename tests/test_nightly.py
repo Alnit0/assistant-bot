@@ -210,3 +210,95 @@ def test_a_night_with_nothing_to_run_still_leaves_a_line_in_the_log_channel(monk
     monkeypatch.setattr(runner, "settings_channels", lambda: {"bot-log": 9})
     runner.quiet_night()
     assert said[0][0] == 9 and said[0][1].startswith(record.MARK) and "nothing was run" in said[0][1], "kept through the emptying, like every run's summary"
+
+
+# --- keeping the self-test's cost low (2026-10-13) --------------------------------------------------------------------
+from selftest import stages  # noqa: E402
+
+
+def test_real_requests_are_only_for_what_can_change_what_claude_is_asked():
+    for path in ("core/router.py", "core/routing.py", "core/extraction.py", "core/llm.py", "core/actions.py", "tasks/pills/plain.py", "tasks/schedule/__init__.py", "tasks\\pills\\plain.py"):
+        assert stages.is_language(path), path
+    for path in ("core/scheduler.py", "tasks/pills/checklist.py", "tasks/pills/sheet.py", "docs/DESIGN.md", "selftest/phases.py", "tests/test_x.py", "core/identity.py"):
+        assert not stages.is_language(path), path
+    assert stages.language_changed(["core/scheduler.py", "tasks/pills/plain.py", "docs/x.md"]) == ["tasks/pills/plain.py"]
+    assert stages.language_changed([]) == [] and stages.language_changed(None) is None
+
+
+def test_recorded_answers_are_the_rule_and_each_reason_to_pay_is_said():
+    def real(**given):
+        base = {"asked_real": False, "asked_recorded": False, "sunday_full": False, "language": [], "spent": 0.5, "limit": 2.0}
+        return stages.use_real(**{**base, **given})
+
+    assert real() == (False, "recorded answers: nothing about prompts, schemas or routing has changed since the last real run")
+    assert real(language=["core/router.py"]) == (True, "real requests: prompts, schemas or routing changed since the last real run (core/router.py)")
+    assert real(language=["a", "b", "c", "d", "e"])[1].endswith("(a, b, c and 2 more)")
+    assert real(sunday_full=True) == (True, "real requests: the Sunday full run")
+    assert real(asked_real=True) == (True, "real requests, as asked")
+    assert real(asked_recorded=True, language=["core/router.py"], sunday_full=True) == (False, "recorded answers, as asked")
+    assert real(language=None) == (True, "real requests: no run with real requests is on record")
+    for reason in ({"asked_real": True}, {"sunday_full": True}, {"language": ["core/router.py"]}, {"language": None}):
+        used, why = real(spent=2.0, **reason)
+        assert used is False and why == "recorded answers only: this month's self-test spend is US$2.00, over the limit of US$2.00 (SELFTEST_MONTHLY_LIMIT)", "over the month's limit nothing is spent, whatever the reason"
+
+
+def test_the_last_real_run_and_a_night_with_nothing_new_are_read_from_what_is_kept():
+    rows = [
+        {"commit": "aaa1111", "claude": "real", "note": ""}, {"commit": "bbb2222", "claude": "recorded", "note": ""},
+        {"commit": "ccc3333", "claude": "real", "note": "did not finish: stopped before the end"}, {"commit": "", "claude": "real", "note": ""},
+    ]
+    assert stages.last_real(rows) == "aaa1111", "a run that did not finish, or has no commit, is not one to measure from"
+    assert stages.last_real([]) is None
+    same = {"day": "abc", "briefing": "abc", "tidy": "abc"}
+    assert stages.nothing_new("abc", same) and not stages.nothing_new("def", same)
+    assert not stages.nothing_new("abc", {"day": "abc", "briefing": "abc"}), "a stage that has never passed is something new"
+    assert not stages.nothing_new(None, same)
+
+
+def test_a_weeknight_with_no_new_commits_runs_nothing_and_leaves_its_line(monkeypatch, capsys):
+    said, prepared = [], []
+    monkeypatch.setattr(runner.instance_lock, "holder", lambda path: None)
+    monkeypatch.setattr(runner.stages, "head", lambda root: "abc")
+    monkeypatch.setattr(runner.stages, "read_passed", lambda path: {"day": "abc", "briefing": "abc", "tidy": "abc"})
+    monkeypatch.setattr(runner, "quiet_night", lambda: said.append("line"))
+    monkeypatch.setattr(runner, "prepare_channels", lambda *a, **k: prepared.append(1))
+    monkeypatch.setattr(sys, "argv", ["selftest", "--nightly"])
+    assert runner.main() == 0 and said == ["line"] and prepared == [], "no bot is started and nothing is emptied"
+    assert "no new commits since every stage last passed" in capsys.readouterr().out
+
+
+def test_the_self_test_s_month_is_added_up_from_its_history_and_over_the_limit_it_is_a_problem(tmp_path, monkeypatch):
+    from core import attention, health
+
+    rows = [
+        {"date": "2026-09-30 03:00", "spend_usd": "0.9000"}, {"date": "2026-10-01 03:00", "spend_usd": "0.1500"},
+        {"date": "2026-10-13 20:01", "spend_usd": "1.9000"}, {"date": "2026-10-14 03:00", "spend_usd": ""}, {"date": "2026-10-15 03:00", "spend_usd": "x"},
+    ]
+    assert health.month_spend(rows, "2026-10") == pytest.approx(2.05) and health.month_spend(rows, "2026-11") == 0
+    assert health.spend_problem(1.99, 2.0) is None
+    item = health.spend_problem(2.05, 2.0)
+    assert item.urgency == attention.PROBLEM and attention.status_line(item) == "⚠️ self-test spend · US$2.05"
+    folder = tmp_path / "selftest"
+    folder.mkdir()
+    (folder / "history.csv").write_text("date,commit,ran,steps,passed,failed,failed_steps,spend_usd,claude,seconds,note\n2026-10-01 03:00,a,full,3,3,0,,1.2000,real,5,\n2026-10-13 03:00,a,full,3,3,0,,0.9000,real,5,\n", encoding="utf-8")
+    monkeypatch.setattr(config, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(config, "DEV_DATABASE", False)
+    monkeypatch.setattr(config, "SELFTEST_MONTHLY_LIMIT", 2.0)
+    now = datetime(2026, 10, 13, 9, 0, tzinfo=timezone.utc)
+    assert health.selftest_spend(now) == (pytest.approx(2.1), 2.0)
+    monkeypatch.setattr(health, "selftest_spend", lambda now=None: (2.1, 2.0))
+    found = asyncio.run(health.selftest(1, now))
+    assert [attention.status_line(item) for item in found] == ["⚠️ self-test spend · US$2.10"], "live shows it at level 1 (the run itself passed)"
+    assert config.SELFTEST_MONTHLY_LIMIT == 2.0
+
+
+def test_dev_cost_shows_what_the_self_test_has_spent_this_month():
+    from core import costs
+
+    nothing = costs.Period() if hasattr(costs, "Period") else None
+    if nothing is None:
+        pytest.skip("no empty period to report on")
+    said = costs.report(nothing, nothing, [], "assistant.db", selftest=(1.24, 2.0))
+    assert "Self-test this month: US$1.24 of US$2.00" in said
+    assert "Self-test this month: US$2.31 of US$2.00 · over the limit: recorded answers only until next month" in costs.report(nothing, nothing, [], "assistant.db", selftest=(2.31, 2.0))
+    assert "Self-test" not in costs.report(nothing, nothing, [], "assistant.db")

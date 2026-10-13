@@ -249,6 +249,12 @@ def hours(text: str | None, default: tuple[time, time]) -> tuple[time, time]:
 # item pings, and the rest waits for the briefing (core/attention.py). Read and shown
 # now; used when pings move onto the attention model
 QUIET_HOURS = hours(os.getenv("QUIET_HOURS"), (time(22, 0), time(6, 0)))
+# What the self-test may spend on real requests in a calendar month, in US dollars. Over
+# it, runs use recorded answers only and live says so (core/health.py)
+try:
+    SELFTEST_MONTHLY_LIMIT = float(os.getenv("SELFTEST_MONTHLY_LIMIT") or 2.0)
+except ValueError:
+    sys.exit("SELFTEST_MONTHLY_LIMIT in .env must be a number of US dollars, e.g. 2")
 # The weekly pills summary (tasks/pills/history.py): on Sunday evening the week is posted
 # in the hub. Off unless switched on
 WEEKLY_SUMMARY = flag(os.getenv("WEEKLY_SUMMARY"), False)

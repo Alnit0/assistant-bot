@@ -45,14 +45,46 @@ async def jobs(user_id: int, now: datetime) -> list[Item]:
     return found
 
 
-def last_run(folder) -> dict | None:
-    """The self-test's latest run, as its line of history; None with no history."""
+def history(folder) -> list[dict]:
+    """The self-test's runs, a line each, oldest first; none with no history."""
     try:
         with (folder / "history.csv").open(encoding="utf-8", newline="") as source:
-            rows = list(csv.DictReader(source))
+            return list(csv.DictReader(source))
     except OSError:
-        return None
+        return []
+
+
+def last_run(folder) -> dict | None:
+    """The self-test's latest run, as its line of history; None with no history."""
+    rows = history(folder)
     return rows[-1] if rows else None
+
+
+def month_spend(rows: list[dict], month: str) -> float:
+    """What the self-test's runs spent on real requests in a month ("2026-10"), from the history."""
+    total = 0.0
+    for row in rows:
+        if (row.get("date") or "").startswith(month):
+            try:
+                total += float(row.get("spend_usd") or 0)
+            except ValueError:
+                pass
+    return total
+
+
+def selftest_spend(now: datetime | None = None) -> tuple[float, float]:
+    """(spent this month, the month's limit), by the real clock: money is real."""
+    from core import clock
+
+    month = f"{(now or clock.real_now()).astimezone(config.TIMEZONE):%Y-%m}"
+    return month_spend(history(config.DATA_DIR / SELFTEST_DIR), month), config.SELFTEST_MONTHLY_LIMIT
+
+
+def spend_problem(spent: float, limit: float) -> Item | None:
+    """The item for a month in which the self-test has spent its limit: from then on its runs use recorded answers only."""
+    if spent < limit:
+        return None
+    return Item("the self-test has spent this month's limit: recorded answers only until next month", PROBLEM, short=("self-test spend", f"US${spent:.2f}"))
 
 
 def selftest_problem(row: dict | None, bugs: dict) -> Item | None:
@@ -81,8 +113,8 @@ async def selftest(user_id: int, now: datetime) -> list[Item]:
         bugs = {str(step): int(number) for step, number in json.loads((folder / "bugs.json").read_text(encoding="utf-8")).items()}
     except (OSError, ValueError, AttributeError, TypeError):
         bugs = {}
-    found = selftest_problem(last_run(folder), bugs)
-    return [found] if found is not None else []
+    found = [selftest_problem(last_run(folder), bugs), spend_problem(*selftest_spend())]
+    return [each for each in found if each is not None]
 
 
 async def morning(user_id: int, now: datetime) -> list[Item]:

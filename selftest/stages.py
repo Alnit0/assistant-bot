@@ -35,7 +35,13 @@ RULES = (
     (("tasks/",), ("day",)),
 )
 
-LOW_MEMORY = 1500 * 1024 * 1024  # under this much free, a run has been stopped by the PC before (8 GB in all)
+# Under this much free, a run is not started. Measured on 2026-10-13 (one full run, sampled every two
+# seconds): the run's own processes peak at about 180 MB (the runner 63, the dev bot 121) and free memory
+# dropped by at most 240 MB while it ran. So the run is small; what stops one is the rest of the PC (8 GB)
+# running short, at which point Claude Code ends background commands. Runs started with 1.7 GB free or
+# more all finished; one started at 1.6 GB was stopped. The line is that 1.6 GB plus the run's own 0.25 GB,
+# rounded up: with 1.9 GB free at the start, the PC keeps about 1.65 GB while the run is at its peak
+LOW_MEMORY = 1900 * 1024 * 1024
 
 
 def phases_for(stages) -> list[str]:
@@ -67,6 +73,61 @@ def touched(changed: dict[str, list[str] | None]) -> dict[str, str]:
         if because:
             found[stage] = ", ".join(because[:3]) + (f" and {len(because) - 3} more" if len(because) > 3 else "")
     return found
+
+
+# --- when a run is worth what it costs --------------------------------------------------------------------------
+# Recorded answers are the rule: they cost nothing. Real requests to Claude are for when what
+# Claude is given or asked may have changed: the prompts, the schemas (a task's actions and
+# their fields) and the routing.
+LANGUAGE = ("core/router.py", "core/routing.py", "core/extraction.py", "core/llm.py", "core/actions.py", "core/conversation.py")
+LANGUAGE_IN_A_TASK = ("/plain.py", "/__init__.py")  # where a task says its actions, their fields and its examples
+
+
+def is_language(path: str) -> bool:
+    """Whether a changed file can change what Claude is asked or how its answer is read."""
+    path = path.replace("\\", "/")
+    return path in LANGUAGE or (path.startswith("tasks/") and path.endswith(LANGUAGE_IN_A_TASK))
+
+
+def language_changed(paths: list[str] | None) -> list[str] | None:
+    """Of the files changed since the last run with real requests, the ones
+    that are about prompts, schemas or routing. None when that can't be told
+    (no such run on record): then a real run is due."""
+    return None if paths is None else [path for path in paths if is_language(path)]
+
+
+def use_real(asked_real: bool, asked_recorded: bool, sunday_full: bool, language: list[str] | None, spent: float, limit: float) -> tuple[bool, str]:
+    """Whether this run sends real requests, and why, in words for the run's
+    first lines. The month's cap comes before everything: over it, nothing is spent."""
+    if spent >= limit:
+        return False, f"recorded answers only: this month's self-test spend is US${spent:.2f}, over the limit of US${limit:.2f} (SELFTEST_MONTHLY_LIMIT)"
+    if asked_recorded:
+        return False, "recorded answers, as asked"
+    if asked_real:
+        return True, "real requests, as asked"
+    if sunday_full:
+        return True, "real requests: the Sunday full run"
+    if language is None:
+        return True, "real requests: no run with real requests is on record"
+    if language:
+        shown = ", ".join(language[:3]) + (f" and {len(language) - 3} more" if len(language) > 3 else "")
+        return True, f"real requests: prompts, schemas or routing changed since the last real run ({shown})"
+    return False, "recorded answers: nothing about prompts, schemas or routing has changed since the last real run"
+
+
+def last_real(rows: list[dict]) -> str | None:
+    """The commit of the latest finished run with real requests, from the history. None with none."""
+    for row in reversed(rows):
+        if row.get("claude") == "real" and not row.get("note") and row.get("commit"):
+            return row["commit"]
+    return None
+
+
+def nothing_new(head_commit: str | None, passed: dict[str, str]) -> bool:
+    """A night with nothing to do: every stage last passed on the very commit
+    that is checked out. (Edits that are not committed do not make a night's
+    run: they are still being worked on.)"""
+    return bool(head_commit) and all(passed.get(stage) == head_commit for stage in ORDER)
 
 
 # --- what git says ---------------------------------------------------------------------------------------------

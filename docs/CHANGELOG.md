@@ -6,6 +6,11 @@ backfilled from the git log.
 
 ## 2026-10-13
 
+- The self-test costs less: recorded answers unless prompts, schemas
+  or routing changed (or it is the Sunday full run), nothing on a
+  night with no new commits, and a monthly cap (`SELFTEST_MONTHLY_LIMIT`,
+  US$2) shown in `dev cost`.
+
 - The status line under the bot's name now shows the one thing to look
   at first: "💊 due 12pm", "💊 2/5 · 12pm", "⚠️ backup failed", "🌅
   6am", or nothing. No more "🟢 Live · up 7h". During a self-test the
