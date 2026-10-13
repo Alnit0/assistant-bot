@@ -37,7 +37,7 @@ Last updated: 2026-10-13
 | G | Timers | 32 | 12 | 20 | 17 | 15 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
 | J | Dev mode | 68 | 19 | 49 | 47 | 21 | 0 | 0 |
-| K | Startup and housekeeping | 30 | 17 | 13 | 11 | 19 | 0 | 0 |
+| K | Startup and housekeeping | 32 | 18 | 14 | 12 | 20 | 0 | 0 |
 | L | Keep | 14 | 6 | 8 | 8 | 6 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
 | P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
@@ -46,7 +46,7 @@ Last updated: 2026-10-13
 | S | Routing and confirm cards | 74 | 21 | 53 | 18 | 55 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 4 | 18 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **492** | **174** | **318** | **248** | **243** | **0** | **1** |
+| | **Total** | **494** | **175** | **319** | **249** | **244** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -337,6 +337,8 @@ Any channel. Check the bot's status in the member list.
 | K28 | 🤖 Auto | The timers' jobs have names in words | Every task with jobs names each one: “timer ending”, “Pomodoro phase”; “timers timer due” written anywhere I read is put in words | ✅ Pass | 2026-10-13 | `tests/test_restart.py` |
 | K29 | 🤖 Auto | The backup, the end of the day and the checklist run from schedules | Each is booked once from its schedule, runs at its local time, and the engine books the next (the handler books nothing); a missed one runs late at the next start; a failed backup is trouble until one works; the listeners are told the day that ended, the first of them when days were passed over | ✅ Pass | 2026-10-13 | `tests/test_scheduler.py`, `tests/test_day.py`, `tests/test_pills_checklist.py`, `tests/test_restart.py` |
 | K30 | 👤 Manual | Block 46: a day on the live bot after the scheduler's stage 1 | The 6:00 am checklist once, the 3:00 am backup once, `dev jobs` as described, the status line as before | ⬜ Untested | | Block 46 |
+| K31 | 🤖 Auto | Message lifetimes and the tidy | Off: nothing is recorded or removed, and it joins no routine. On: a message in the hub lasts the day and “kept” there is the day too; elsewhere only what is declared has a row; a newer message in a slot replaces the older at once, the copy written first; my message in the hub and the reply go 2 minutes after the reply, with a card they wait and go when it is saved (the confirmation 2 minutes later), cancelled or expired; one that failed stays until the morning tidy; pinned or 📌 is kept and not tried again; a message with no row is never touched; with the copy not written nothing is deleted and #bot-log is told; one that can't be deleted is tried three times, then left and said once; `dev cleanup off` stops it; a line that reports a change elsewhere goes at the end of its day; the tidy is the routine's first step and says what it did | ✅ Pass | 2026-10-13 | `tests/test_messages.py` |
+| K32 | 👤 Manual | Block 49: the hub with `HUB_TIDY` on | As the block says | ⬜ Untested | | Block 49 |
 
 ## L. Keep
 

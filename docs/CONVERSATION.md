@@ -66,8 +66,9 @@ When two principles clash, the higher one wins.
    stays, except as a summary in the briefing. I talk to the bot there
    too: what I say and its reply go once handled, 2 minutes after the
    reply, or when the card is saved, cancelled or expires. Pinned
-   stays. (Added 2026-10-13; the briefing and the clean-up that keeps
-   the hub this way are specified and not built yet.)
+   stays. (Added 2026-10-13. Built behind two switches, both off until
+   turned on: `BRIEFING_ENABLED` for the briefing and `HUB_TIDY` for the
+   clean-up.)
 9. **Consistent everywhere.** Every task looks and behaves the same
    way. Learn it once.
 10. **Private.** Notifications never show sensitive names (e.g. pills).

@@ -6,6 +6,11 @@ backfilled from the git log.
 
 ## 2026-10-13
 
+- A clean hub, switched off until you turn it on (`HUB_TIDY`): what
+  you say there and the reply go 2 minutes after the reply, yesterday's
+  checklist goes when today's is posted, pinned stays, and a copy of
+  what is removed is saved first.
+
 - A briefing, switched off until you turn it on (`BRIEFING_ENABLED`):
   one card in the hub each morning, above the checklist, saying what
   today holds and how yesterday went, kept up to date in place; and

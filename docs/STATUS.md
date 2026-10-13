@@ -215,7 +215,13 @@ stage at a time, each with offline tests, a commit and a self-test run.
    `.env`, then restart. The 6:00 am schedule is then called "Morning
    routine" (briefing, pills checklist); off again, it is the checklist
    alone under its own name.
-4. Clean-up, behind `HUB_TIDY`.
+4. **Done: clean-up, behind `HUB_TIDY` (off).** Message lifetimes
+   (`core/messages.py`), the morning tidy as the routine's first step,
+   a copy to `data/exports/` first, pinned kept, and what you say in
+   the hub tidied 2 minutes after the reply or with its card. Messages
+   with no lifetime recorded are left alone. To turn it on:
+   `HUB_TIDY=true` in `.env`, then restart; the old checklists in the
+   hub from before it need one `reset channel` there.
 
 The first start on this code adds two tables and five columns
 (`schedules`, `schedule_steps`; on `scheduled_jobs`: `run_key`,

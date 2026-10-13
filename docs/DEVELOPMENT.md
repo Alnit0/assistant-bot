@@ -1401,6 +1401,42 @@ so they are safe to run while the bot is running.
 - **`docs/TESTING.md`** lists every test: 🤖 Auto rows for what pytest
   covers, 👤 Manual rows for what only shows in Discord.
 
+## A clean hub
+
+Off unless `HUB_TIDY=true` is in `.env` (then restart). Off, nothing is
+recorded and nothing is removed by it: the hub is as it always was.
+
+- **What you say in the hub and the reply go once it is handled**: 2
+  minutes after the reply. If the reply is a card, they wait for it:
+  on Save your message goes at once and the confirmation 2 minutes
+  later; on Cancel, or when the card expires, both go. A message that
+  needed no reply goes after 2 minutes too. One that failed keeps its
+  ⚠️ until the morning.
+- **One of each**: a newer checklist takes the place of the older,
+  yesterday's included; a newer briefing takes the place of the older.
+- **Every morning, first thing in the routine, the tidy** removes what
+  the bot posted in the hub on an earlier day, and a line that reported
+  a change in another channel the day before. `my schedule` shows it
+  as step 1 of the morning routine.
+- **Pinned or 📌 is always kept.** Pin something inside its 2 minutes
+  and it stays.
+- **Only messages go.** Nothing a task keeps is changed. What a message
+  said is written to `data/exports/tidy-<channel>-<day>.txt` first (in
+  the nightly backup); if that can't be written, nothing is removed.
+- **Nothing is said about it** in the channel. #bot-log hears only
+  when something could not be removed.
+- **What it never touches**: a message with no lifetime recorded. That
+  is everything from before you switched it on, anything a timer, a
+  bug, the archive or a dev tool posts, and what you say outside the
+  hub. `reset channel` is still the way to clear those.
+- `dev cleanup off` stops it, like every other clean-up.
+
+For a task: after sending, `await messages.record(message_id,
+channel_id, lifetime=messages.REPLACED, slot="mytask.thing")` for a
+thing there is one of at a time, or `lifetime=messages.DAY` for a line
+that reports a change. With nothing said, a message in the hub lasts
+the day and one elsewhere is left alone.
+
 ## The briefing
 
 Off unless `BRIEFING_ENABLED=true` is in `.env` (then restart). Off,

@@ -45,8 +45,9 @@ briefing. So in the hub:
 - What I say there and the reply go once handled: 2 minutes after the
   reply, or when the card is saved, cancelled or expires. Pinned stays
 
-The briefing and the clean-up are specified and not built yet; until
-they are, yesterday's checklist stays where it was.
+The briefing is behind `BRIEFING_ENABLED` and the clean-up behind
+`HUB_TIDY`, both off until turned on; with the clean-up off,
+yesterday's checklist stays where it was.
 
 ## The pieces
 

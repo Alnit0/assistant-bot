@@ -909,6 +909,27 @@ or two (`add Testbrief once a day`, **Save**). One message to Claude.
 | 7 | With `CARDS_V2=true` as well: `brief me` in #inbox. Compare with `dev mock briefing-v2` | A box a task in the colour of its status; nothing says "as of" | S74 |
 | 8 | Stop the dev bot, `Remove-Item Env:BRIEFING_ENABLED`, start it, type `my schedule` | "Pills checklist" again, alone; no briefing is posted the next morning | S73 |
 
+## 49. A clean hub (waiting for QA)
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
+On the dev database, started with both on:
+`$env:BRIEFING_ENABLED = "true"; $env:HUB_TIDY = "true"; python main.py --dev`.
+You need a pill with no time (`add Testtidy once a day`, **Save**) and
+today's checklist in the hub (`pills`).
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Type `my schedule` | The morning routine has three steps: 1. morning tidy, 2. briefing, 3. pills checklist | K31 |
+| 2 | In the hub, type `took testtidy`. Wait a little over two minutes | "✅ **Testtidy** · taken …" appears; then your message and that line both go by themselves, with nothing said. The checklist and the briefing stay | K31 |
+| 3 | In the hub, say `add Testcard once a day`. Wait three minutes. Then press **Cancel** | The card stays while it is open, however long. On Cancel the card and your message go at once | K31 |
+| 4 | Say the same again, press **Save**. Wait two minutes | Your message goes at once; the "✅ Saved" line stays two minutes, then goes. `pills` shows Testcard | K31 |
+| 5 | In the hub, type `took testcard`, and pin the bot's reply within two minutes | After two minutes your message is gone and the pinned reply is still there | K31 |
+| 6 | In #inbox, type `took testtidy` on a day it is still to take (or any dose) | Nothing goes after two minutes there | K31 |
+| 7 | `dev clock 5:59am`, then `dev clock 6:00am` | Yesterday's checklist and briefing go; today's briefing, then today's checklist. Yesterday's "✅ … taken" line in #inbox is gone. Nothing in #bot-log about it | K31 |
+| 8 | Look in `data\exports` on the PC | A file `tidy-<hub's name>-<date>.txt` with what was removed | K31 |
+| 9 | Stop the dev bot, remove both settings (`Remove-Item Env:BRIEFING_ENABLED, Env:HUB_TIDY`), start it | Nothing is tidied any more; `my schedule` shows "Pills checklist" alone | K31 |
+
 ## When you finish
 
 - Stop the test copy (`Ctrl + C`) and check nothing is left running:
