@@ -70,6 +70,11 @@ class Harness:
 
         backup.BACKUP_DIR = self.out.parent / "backups"
         backup.BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+        # The same for the copies taken before anything is removed (a channel reset, the tidy):
+        # the run's own folder, never data/exports
+        from tasks import channel
+
+        config.EXPORTS_DIR = channel.EXPORT_DIR = self.out.parent / "exports"
 
     async def _call_tool_or_canned(self, system, user, tools, *, choice, purpose, task="", max_tokens=600):
         if self.cut_here:

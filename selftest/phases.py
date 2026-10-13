@@ -1083,12 +1083,13 @@ async def p6(h: Harness) -> None:
         tidy_cards = [each for each in await h.recent(h.botlog, 50) if "Tidy" in each.all_text]
         h.check(not tidy_cards and len(await h.recent(h.botlog, 50)) <= log_before + 1, f"#selftest-log was told: {[each.all_text[:80] for each in tidy_cards]}")
 
-    async with h.step("6.04", "A copy was saved first", "data/exports has a tidy file for the hub with my words and the reply in it", "scheduler stage 4"):
-        found = sorted(config.EXPORTS_DIR.glob("tidy-selftest-hub-*.txt"))
-        h.check(bool(found), f"no tidy file in {config.EXPORTS_DIR}")
-        said = found[-1].read_text(encoding="utf-8")
+    async with h.step("6.04", "A copy was saved first", "The exports folder (the run's own, never data/exports) has a tidy file for the hub, for that day, with my words and the reply in it", "scheduler stage 4"):
+        path = messages.transcript_path(h.hub.name, clock.now())  # the file for the day it was removed on
+        h.check(path.exists(), f"no {path.name} in {path.parent}")
+        said = path.read_text(encoding="utf-8")
         h.check("took testany" in said and "Testany" in said and "taken" in said, f"the copy holds: {said[-300:]}")
-        h.saw(found[-1].name)
+        h.check(path.parent == h.out.parent / "exports", f"the copy is in {path.parent}, not the run's own folder")
+        h.saw(path.name)
 
     async with h.step("6.05", "Something I say in the hub that leads to a card, then Cancel", "The card waits; on Cancel the card and my message both go at once", "scheduler stage 4"):
         mine = await h.say("add Testhub to my pills once a day", channel=h.hub, canned=add({"name": "Testhub", "per_day": 1}))
