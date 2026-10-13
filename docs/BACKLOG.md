@@ -13,33 +13,30 @@ low priority, nothing dropped without a reason.
 
 ### Next
 
-1. **QA of what is waiting** (blocks 27 to 42): one ordered run is
-   `docs/QA-TONIGHT.md`.
-2. **The design's check on the phone** (block 39): the colours and the
-   lock screen. Then `CARDS_V2` on for good, and #commands' words for
-   the buttons in a pill's box.
-3. **Pill reminders on live** (block 38, then `REMINDERS_ENABLED=true`
-   and a restart).
-4. **The questions at the top of `docs/STATUS.md`**: the new look, the
-   streak's rules, costs and shortcuts, live's own folder.
+Put in the order of the priorities of 2026-10-14 (the hub's look and
+how it reads, then how well it understands, then everything else).
+What was here and is done has gone: the QA of blocks 27 to 42 as one
+run (the self-test covers most of them: `docs/QA-RUN.md` says which),
+reminders on live, the scheduler, the clean-up and the briefing, and
+the full self-test run.
+
+1. **The hub's look.** Alex's picks from design round 2 (questions 12
+   to 22 of `docs/QUESTIONS.md`), built: titles and rules, the
+   progress marks, a total for the day. Then the check on the phone
+   (the short list at the top of `docs/QA-RUN.md`), then `CARDS_V2` on
+   for live, and #commands' words for the buttons in a pill's box.
+2. **What the briefing shows**: whatever Alex's look at the real hub
+   turns up.
+3. **How well it understands**: the two golden conversations that
+   failed once near midnight (question 39); a correction straight
+   after Save for schedules (question 8); task ties asked too often
+   (G4).
+4. **The other questions** in `docs/QUESTIONS.md`.
 5. **`feature/pills` into `main`, then live's own folder**
-   (`scripts\setup-live-folder.ps1`). Dev gets a bot of its own
-   (`.env.dev`, built 2026-10-13: Alex makes the bot), so the two can
-   run side by side.
-6. **Gym**: waits for the answers on how Alex trains; the three core
-   pieces are built (Details: "Gym").
-
-6a. **The scheduler, clean-up and the briefing** (specs drafted
-    2026-10-13, private; sketches `briefing-v2`, `schedule-list-v2`,
-    `schedule-change-v1`, `cleanup-v1`): wait for the answers at the
-    top of `docs/STATUS.md` and approval. Then built in the order the
-    scheduler's spec gives, the engine first with nothing visible
-    changing (Details: "Scheduler, clean-up, briefing").
-
-6b. **A full self-test run** to see the fixes of 2026-10-13 in Discord
-    (its new steps have not run), and with it whether the router's new
-    hint sends "pause testv", said with nothing before it, to pills
-    (it went to timers on 4 of 5 real requests before the hint).
+   (`scripts\setup-live-folder.ps1`).
+6. **Gym**: waits for the answers on how Alex trains (questions 23 to
+   28); the three core pieces are built (Details: "Gym"). Then the
+   calendar, after its four (29 to 32).
 
 ### Soon
 
@@ -427,8 +424,6 @@ number read from text; C19's name matching is in the core.
     for" line by rule, which reads a little stiffly for some tasks.
   - **The status shows dev mode in front of the line** ("🛠️ Dev mode ·
     🟢 Live · …"), as the old status did. Not asked for either way.
-  - **The header of `docs/QA-RUN.md` still counts the tests as of
-    2026-10-10.**
 - **Left over from removing the old path** (step 4, 2026-10-10): the
   `pills_drafts` table is unused; the cost reports keep the `tools`
   route for rows logged before the removal; "How to add a task" in

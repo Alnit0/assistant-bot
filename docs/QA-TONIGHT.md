@@ -1,5 +1,11 @@
 # QA tonight
 
+**Superseded on 2026-10-14.** Do not run this: the self-test now
+covers most of blocks 27 to 42, and the service is no longer stopped
+for a test. What is left for you is the short list at the top of
+`docs/QA-RUN.md`. This file stays only because the self-test's report
+(`docs/SELFTEST.md`, "Only you can check") names its steps.
+
 One ordered run of every block that is waiting (27 to 42 of
 `docs/QA-RUN.md`), on the dev database. Written on 2026-10-13. The
 steps are short forms of the ones in the run sheet: the block and step

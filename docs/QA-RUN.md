@@ -1,46 +1,112 @@
 # QA run sheet
 
-One pass through 188 of the 212 👤 Manual tests in `docs/TESTING.md` that are
-⬜ Untested (as of 2026-10-10); the other 24 are for pills stages not built yet
-(group R) or need a setup of their own, and join as each can be run. Blocks share setup and each one leaves things
-ready for the next, so run them in order.
+What is left to check by hand, and where every block stands. Gone
+through on 2026-10-14 against the self-test's report
+(`docs/SELFTEST.md`, the full run of 11:42 am: 116 of 117 steps) and
+against what is built and switched on.
 
-**Time:** about 3¼ hours at the keyboard, plus two nights for the backup
-tests (block 12).
+- **Start with the short list below**: the ten things only you can
+  check, because they are about how something looks or reads. It is
+  all that is asked of you.
+- **Covered** means the self-test does that step against real Discord
+  on every full run, and reads the result back. Its presses are
+  simulated, so no row of `docs/TESTING.md` is marked passed from it:
+  those rows stay yours, and stay ⬜ Untested until you report them.
+- **By hand** means nothing runs it for you (a bot cannot react, reply
+  or attach a file as you), and it is not about looks: run it when you
+  want to, not before anything else.
+- **Retired** blocks are out of date and are no longer here. Their
+  wording is kept in `docs/archive/QA-RUN-retired.md`.
 
-| Block | What | Dev mode | Tests | Minutes |
-|---|---|---|---|---|
-| 1 | Start-up | off | 3 | 5 |
-| 2 | Builtin words and chat | off | 12 | 9 |
-| 3 | Reactions at the real 30 seconds | off | 6 | 5 |
-| 4 | Pins | off | 4 | 5 |
-| 5 | Dev mode switch and panel | on and off | 14 | 12 |
-| 6 | Archive, delete, keep and protection | on, debounce 2s | 28 | 27 |
-| 7 | Timers and dev tools | on, speed 1x then 60x | 16 | 16 |
-| 8 | Pomodoro | on, speed 60x then 1x | 14 | 13 |
-| 9 | Lab tour and restarts | on, then off (restart) | 13 | 27 |
-| 10 | Rest of the lab | off | 8 | 8 |
-| 11 | Phone notifications | off | 5 | 11 |
-| 12 | Overnight backups | off | 2 | 2 nights |
-| 14 | Bugs and kept confirmations | off (two restarts) | 16 | 21 |
-| 15 | Dev database and clock | `--dev`, on and off (three restarts) | 10 | 13 |
-| 17 | Traces: `dev why` and bug reports | `--dev`, off (one restart) | 3 | 5 |
-| 18 | Retest: one path for every message | `--dev`, off (one restart) | 9 | 12 |
-| 21 | Pills: the daily checklist | `--dev`, off (two restarts) | 13 | 20 |
-| 22 | Channel reset, housekeeping that leaves no trace, and button colours | `--dev`, off then on (two restarts) | 8 | 15 |
-| 23 | Retest: the main pill, late at night | `--dev`, off (one restart) | 7 | 12 |
-| 24 | Small backlog batch: identity, #commands, mock-ups, the reset card | live, off (two restarts) | 9 | 15 |
-| 25 | Retest: the `task-check` fixes (a guessed pill, replies, plain refusals, 12-hour times) | `--dev`, off (one restart) | 6 | 12 |
-| | **Total** | | **191** (F2 is split over blocks 4 and 7, counted in 7) | **about 3¼ hours** |
+Block numbers never change: other docs name them.
 
-Blocks 14 to 23 need nothing from the others (19 and 20, the first pills blocks, passed on 2026-10-10 and are no longer here) (13 and 16 tested the old way of asking Claude, which is gone): run them any time after
-block 1, and before the overnight block if that suits.
+## Only you can check
 
-**Tonight:** `docs/QA-TONIGHT.md` is one ordered run of every block
-that is waiting (27 to 42), with as few restarts as it can have. The
-blocks below keep the full wording.
+Most useful first, by today's priorities: what the hub shows and how it
+reads, then the rest. Each is a look, on your phone unless it says
+otherwise. Say what to change in any of them, in your own words.
+
+| # | Look at | How | What to say |
+|---|---|---|---|
+| 1 | **This morning's hub** (blocks 48, 56) | Open the hub: the briefing posted at 6:00 am, with the weather section and "updated …" small under it, and today's checklist under that. Look again in the afternoon: the same briefing, edited in place | Does it read right at a glance? The order, the words, what is small and what is bold, anything missing or too much |
+| 2 | **Design round 2** (questions 12 to 20 of `docs/QUESTIONS.md`) | The 13 sketches in the dev bot's forum, in the design-options post | A letter for each. Whether the block bar "███████░░░ 70%" wraps anywhere on your phone. This is what the new look waits for |
+| 3 | **The colours, in each theme you use** (block 39, steps 1 and 6) | `dev mock checklist-v2` | Whether amber, blue, green, red, grey and blurple can be told apart, and which to change |
+| 4 | **How the new cards read** (block 39, steps 3 to 5; block 41) | `dev mock confirm-card-v2`, `dev mock question-card-v1`, `dev mock too-soon-v2`, `dev mock reset-card-v2` | The boxes, the hint under a card, the buttons inside a pill's box: spacing, wording, order. After 2 to 4, `CARDS_V2` can go on for live (question 21) |
+| 5 | **The status line** (block 52) | Under live's name, a few times through a day | "💊 2/5 · 12pm", "💊 due 12pm", "🌅 6am": whether each reads right and fits, and never names a pill |
+| 6 | **The lock screen for a real reminder** (block 38, step 2; question 11) | When a dose next falls due, read the notification before opening it | The exact words. It should be "💊 Routine due · 8:00 am" and nothing about the pill. Whether the phone buzzes again when the reminder is posted again 15 minutes later |
+| 7 | **The last-chance nudge** (block 57, step 6) | Only when one comes | That the lock screen says "💊 Last chance today · take by …" and names no pill |
+| 8 | **"Needs a look" and "worth knowing"** (block 55, rows 1 and 5) | Only when something has gone wrong, or after a restart you did not ask for | Whether the box on top of the briefing, the ping and the status line say the same thing, and whether the small line at the foot reads well |
+| 9 | **The gym sketches** (block 35) | `dev mock gym-import-v2`, `gym-change-v2`, `gym-workout-v1`, `gym-logged-set-v2` | What to change, with your answers to questions 23 to 28 |
+| 10 | **Button colours** (block 22, step 8) | As you use it | Save green, Cancel grey, Remove red, Taken green, Skip blurple: say if one is wrong |
+
+Beyond these, wording everywhere: the self-test checks a line for the
+words that matter (a name, a time, a mark), not for whether it reads
+well. Say what jars when you meet it.
+
+## Every block
+
+| Block | What | State | |
+|---|---|---|---|
+| 1 | Start-up | By hand, not covered | Step 1 (a start says nothing) is the self-test's 1.01. Steps 2 and 3 (a second copy, a second account) are not in it. |
+| 2 | Builtin words and chat | By hand, not covered | Not in the self-test. Out of date in two places: step 5's "Message handled" card and step 12's "🔧 Tool: timer" card belong to the old way of asking Claude, which is gone (block 18). |
+| 3 | Reactions at the real 30 seconds | By hand, not covered | A bot cannot react as you. |
+| 4 | Pins | By hand, not covered | Not in the self-test. |
+| 5 | Dev mode switch and panel | By hand, not covered | Not in the self-test. The status line's words have changed since (block 52): dev mode is now an item on it. |
+| 6 | Archive, delete, keep and protection | By hand, not covered | Reactions, reply words and the context menu: a bot cannot make them as you. |
+| 7 | Timers and dev tools | By hand, parked | Timers are frozen and not in the self-test. Step 13's `dev run backup` is the self-test's 4.07b. |
+| 8 | Pomodoro | By hand, parked | Timers are frozen and not in the self-test. |
+| 9 | Lab tour and restarts | By hand, not covered | The lab, timers and reactions: not in the self-test. Step 6 expects a start card: a start posts nothing now (block 1). |
+| 10 | Rest of the lab | By hand, not covered | The lab: not in the self-test. |
+| 11 | Phone notifications | By hand, parked | The lab's test notifications. Notifications are low priority. |
+| 12 | Overnight backups | Covered by the self-test | Step 1 is the self-test's 1.02b, and live's log has the 3:00 am backup of 2026-10-14 (the database, the specs and the exports). Step 2 (a backup missed while the bot was off) is not in it. |
+| 14 | Bugs and kept confirmations | By hand, not covered | 🐞 and the #bugs forum: a bot cannot react as you, and the forum is live's. |
+| 15 | Dev database and clock | Partly covered | The self-test moves the dev clock (1.02, 4.08), runs midnight and 3:00 am on the way (1.02b) and reads `dev cost` (4.06). The rest is by hand. Written before the dev bot had its own account and before costs were shown in NZ$: the words of steps 2, 3 and 9 are older than both. |
+| 17 | Traces: `dev why` and bug reports | Retired | Its steps use the demo shopping list (`add butter`, `and jam`), which went with the old path (block 18, step 8). |
+| 18 | Retest: one path for every message | By hand, not covered | Not in the self-test (`dev why`, chat, a remark that gets no reply). The golden conversations cover the routing offline. |
+| 21 | Pills: the daily checklist | Covered by the self-test | The self-test's 1.03, 1.11 to 1.13, 1.16, 2.04, 2.11 to 2.13 and 3.10b. Not in it: "I didn't take" (step 8) and pausing a pill (step 9). The wording is older than reminders and the tidy: a timed dose has its reminder now (step 10), and yesterday's checklist goes in the morning (step 12). |
+| 22 | Channel reset, housekeeping that leaves no trace, and button colours | Partly covered | Only the card and Cancel are in the self-test (3.13, 4.05b): nothing in it deletes a channel's messages. Steps 2 to 7 are by hand. Step 8, the button colours, is on the short list. |
+| 23 | Retest: the main pill, late at night | Partly covered | The self-test has a missed dose logged as taken (2.10) and a correction in words (1.21). The rest is by hand. Step 1's card is worded differently since 2026-10-13: "Dose 1 was missed (due …). Log it as taken now?". |
+| 24 | Small backlog batch, on the live bot | Partly covered | Step 6 (`dev mock`) is the self-test's 3.14. Step 1 is out of date: the status line no longer reads "🟢 Live · up …" (block 52). Step 2: #commands is edited in place since 2026-10-14. The rest is by hand. |
+| 25 | Retest: the `task-check` fixes | By hand, not covered | Replies, timers and 🐞: not in the self-test. |
+| 26 | Retest: a reply to a line about a timer, and "which timer?" | By hand, parked | Timers are frozen and not in the self-test. |
+| 27 | "It" after the bot's latest message | By hand, parked | Timers are frozen and not in the self-test. |
+| 28 | An unnamed pill needs an anchor | By hand, not covered | Not in the self-test. "took the usual one" is a golden conversation, offline. |
+| 29 | A reply to a line about a pill | By hand, not covered | The self-test replies to nothing. |
+| 30 | `dev why` and "it" | By hand, parked | Timers are frozen and not in the self-test. |
+| 31 | The last two timer lines | By hand, parked | Timers are frozen and not in the self-test. |
+| 32 | Bugs: a Live list | By hand, not covered | 🐞 and the #bugs forum: a bot cannot react as you. |
+| 33 | Reminder mock-ups | Retired | It says nothing of reminders is built. They are built and on for live (block 38, the self-test's 1.15 to 2.11). The lock screen is now checked on a real reminder: the short list, 6. |
+| 34 | Taking a setting away, and a bug logged twice | By hand, not covered | Not in the self-test. |
+| 35 | Gym mock-ups | Yours: on the short list | The self-test checks only that Discord takes each sketch (3.14). How they read is the short list's 9. |
+| 36 | Restarts | Covered by the self-test | The self-test's 1.23, 1.24, 2.01 to 2.05 and 3.01. |
+| 37 | Questions on the card | Covered by the self-test | The self-test's 1.05 to 1.07b and 1.09. Not in it: step 3 ("actually make it 8am") and step 6 (the six minutes are real time). |
+| 38 | Pill reminders | Covered by the self-test | The self-test's 1.15, 1.16, 1.18 to 1.20 and 2.06 to 2.11; reminders are on for live. Not in it: steps 8 and 9 (too soon, from Taken at…) and step 11 (no hub). The lock screen and the buzz are the short list's 6. |
+| 39 | The design pass | Yours: on the short list | The self-test checks that Discord takes each sketch and that the colours are the values in `core/design.py` (3.14, 3.15). How they look is the short list's 3 and 4. |
+| 40 | Core pieces for any task | Covered by the self-test | The self-test's 1.08 to 1.10. Not in it: step 4 (a picture: it cannot attach a file as you). |
+| 41 | The new look, switched on | Covered by the self-test | The self-test's 3.01 to 3.13 and 4.01 to 4.05. How it reads on the phone is the short list's 4. `CARDS_V2` is off for live. |
+| 42 | The daily spend line | Retired | The setting is `DAILY_SPEND_LIMIT_NZD` now and the amounts are in NZ$. The line in `dev cost` is the self-test's 4.06; the card in #bot-log (4.07) only runs with real requests. |
+| 43 | `took <pill>` | Covered by the self-test | The self-test's 1.13, 1.14 and 1.17. |
+| 44 | Sketches: briefing, schedule, tidy | Retired | Sketches of the briefing, the schedule list and the tidy, from before they were built. All three are built and on for live: look at the real ones (the short list, 1). |
+| 45 | After the self-test: names, "just now", the reset card | Covered by the self-test | The self-test's 1.09 to 1.09c, 1.17 and 3.13. |
+| 46 | The scheduler, stage 1: nothing should look different | Covered by the self-test | The self-test's 1.01b, 1.02b and 1.11 to 1.11c; and live's log for 2026-10-14 has the backup, the end of the day and the 6:00 am routine each once. Step 4's words are out of date: the status line is block 52's. |
+| 47 | My schedule | Covered by the self-test | The self-test's 1.10b to 1.10d, 2.11b, 3.13b to 3.13e and 4.07a. Not in it: step 5 ("which one is checklist?"). |
+| 48 | The briefing | Covered by the self-test | The self-test's 5.01 to 5.07 and 1.11a. The briefing is on for live. How it reads is the short list's 1. |
+| 49 | A clean hub | Covered by the self-test | The self-test's 6.01 to 6.09. The tidy is on for live. |
+| 50 | Messages sent while live was off | By hand, not covered | A bot cannot write as you while another is stopped. Needs you to stop and start live. |
+| 51 | Days of the week, and last night's dose | Partly covered | The self-test has the weekdays card (1.04c) and last night's dose (2.12b). Steps 2 to 4, 6 and 7 are by hand. |
+| 52 | The status line | Yours: on the short list | The self-test checks what the line would read (1.01a, 1.11d, 1.15b). How it looks under live's name is the short list's 5. |
+| 53 | Alerts on the phone, quiet hours and the briefing's order | By hand, parked | Needs ntfy, which is off and low priority. Row 8 (the box's words) is the short list's 8. |
+| 54 | Direct messages to live | By hand, parked | Direct messages are off (`DMS_ENABLED`, question 5) and the self-test cannot send one. |
+| 55 | What needs you: the box, the ping and the 7:00 am check | Partly covered | Row 4 was seen on live on 2026-10-14: the 7:00 am check ran, nothing needed a look, nothing was said. Row 6 is the self-test's 1.10b. Rows 1 to 3 and 5 need something to go wrong: how they read is the short list's 8. |
+| 56 | Weather in the briefing | Yours: on the short list | The self-test draws the section from a recorded forecast (5.01c), and live's run log for 2026-10-14 has the 5:50 am fetch and the 8:50 and 11:50 am refreshes. Rows 1 and 2 are the short list's 1. Row 4 (a fetch that fails) is by hand. |
+| 57 | One dose is one log | Covered by the self-test | The self-test's 1.17, 1.17b, 2.09 and 2.09b; steps 2, 5 and 7 are golden conversations 19, 19a and 20, offline. The lock screen for the last chance is the short list's 7. |
 
 ## Before you start
+
+For the blocks marked by hand, as written on 2026-10-10. It was written
+before the dev bot had an account of its own (`docs/DEVELOPMENT.md`,
+"A bot of its own for dev"), so it has you stop the service: read it
+with that in mind.
 
 - **Run a test copy, not the service**, so restarts are quick. Terminal as
   Admin: `nssm stop assistant-bot`. Leave the bot stopped; block 1 starts it.
@@ -67,7 +133,10 @@ blocks below keep the full wording.
   all automatic deletion until `dev cleanup on` or `dev off`. Leave it on
   for this sheet: the expected results assume the normal tidying.
 
-## 1. Start-up
+## 1. Start-up (by hand, not covered)
+
+**State, 2026-10-14:** Step 1 (a start says nothing) is the self-test's
+1.01. Steps 2 and 3 (a second copy, a second account) are not in it.
 
 **As soon as the bot is up:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -79,7 +148,11 @@ Dev mode: off (it always is after a start).
 | 2 | In a second terminal: `python main.py` | It logs "Another copy of the bot is already running (PID …)" and exits. Step 1 of block 2 then gets one reply, not two | K2 |
 | 3 | From the second account: type `ping` in #inbox and react 📦 on any message. Wait 35 seconds | No reply, no archive, nothing from Claude. Remove that 📦 afterwards | K3 |
 
-## 2. Builtin words and chat
+## 2. Builtin words and chat (by hand, not covered)
+
+**State, 2026-10-14:** Not in the self-test. Out of date in two places:
+step 5's "Message handled" card and step 12's "🔧 Tool: timer" card
+belong to the old way of asking Claude, which is gone (block 18).
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -100,7 +173,9 @@ Dev mode: off. In #inbox unless it says otherwise.
 | 11 | In #scratch: `ping` | Nothing: no reply, no Claude. **Leave the message there** (target for block 6) | A12 |
 | 12 | Back in #inbox: `Set a timer for 5 minutes` | A 5-minute timer starts, exactly as `timer 5m` would; your message stays; Claude adds one short line. A "🔧 Tool: timer" log card as well as "Message handled". Reply `cancel` to the timer | A17 |
 
-## 3. Reactions at the real 30 seconds
+## 3. Reactions at the real 30 seconds (by hand, not covered)
+
+**State, 2026-10-14:** A bot cannot react as you.
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -119,7 +194,9 @@ type four messages first: `one`, `two`, `three`, `keep me`.
 Leaves three archived copies in #archive (used in blocks 6 and 9) and the
 kept `keep me` (used in block 9).
 
-## 4. Pins
+## 4. Pins (by hand, not covered)
+
+**State, 2026-10-14:** Not in the self-test.
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -132,7 +209,10 @@ Dev mode: off.
 | 3 | In #scratch: type `pin me` and pin it by hand. **Leave it pinned** (target for block 6) | The notice is deleted there too; log card | F3 |
 | 4 | A minute after step 1, look at the status message, then `lab pin stop` | It was updated on the minute; `stop` unpins it; the unpin is logged | B4 |
 
-## 5. Dev mode switch and panel
+## 5. Dev mode switch and panel (by hand, not covered)
+
+**State, 2026-10-14:** Not in the self-test. The status line's words
+have changed since (block 52): dev mode is now an item on it.
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -156,7 +236,10 @@ the member list.
 | 13 | `dev mode on`, then `dev mode off` | Same as `dev on` and `dev off`: the panel is posted and pinned, then unpinned and deleted, with the status and log cards as in steps 2 and 9. No "Message handled" card: Claude is not called | J32 |
 | 14 | `dev status`, then `python -m core.instance_lock` in PowerShell | "🩺 **Status**": "🧪 **Dev** bot · database `dev.db`" (on live: "🟢 **Live** bot · database `assistant.db`"), "Up … · code at feature/pills @ … when it started", "Clock: … (the real time)", a "Next …" line for each kind of job, then "**Bot instances**": "1 bot is running: PID …, started … (it holds the lock)", and a "Not counted" line for the `.venv` launcher. No ⚠️ line. `python -m core.instance_lock` in PowerShell prints the same | J33 |
 
-## 6. Archive, delete, keep and protection
+## 6. Archive, delete, keep and protection (by hand, not covered)
+
+**State, 2026-10-14:** Reactions, reply words and the context menu: a
+bot cannot make them as you.
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -204,7 +287,10 @@ Targets already there: your `ping` (block 2) and the pinned `pin me`
 
 Leaves dev mode on, and archived copies in #archive (needed for block 9).
 
-## 7. Timers and dev tools
+## 7. Timers and dev tools (by hand, parked)
+
+**State, 2026-10-14:** Timers are frozen and not in the self-test. Step
+13's `dev run backup` is the self-test's 4.07b.
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -235,7 +321,9 @@ no other timer or Pomodoro is running.
 
 Leaves dev mode on at speed 60x, verbose off.
 
-## 8. Pomodoro
+## 8. Pomodoro (by hand, parked)
+
+**State, 2026-10-14:** Timers are frozen and not in the self-test.
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -262,7 +350,11 @@ focus rounds only count in the stats at 1x.
 
 Leaves dev mode on at 1x, nothing running.
 
-## 9. Lab tour and restarts
+## 9. Lab tour and restarts (by hand, not covered)
+
+**State, 2026-10-14:** The lab, timers and reactions: not in the
+self-test. Step 6 expects a start card: a start posts nothing now (block
+1).
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -307,7 +399,9 @@ switched off by the first restart, which is itself a test.
 | 22 | Wait 35 seconds, look at `offline` | Not archived. Remove the 📦, dismiss the alert, **Stop** the session | C8 |
 | 23 | Only if you set the name in step 19 (otherwise report `K10 skip`): in #inbox, `buttons` and press **Wave**; ask Claude its name | "👋 Hello from Marvin!"; Claude says Marvin. Put `.env` back afterwards (it takes effect at the next start) | K10 |
 
-## 10. Rest of the lab
+## 10. Rest of the lab (by hand, not covered)
+
+**State, 2026-10-14:** The lab: not in the self-test.
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -324,7 +418,10 @@ In #scratch. Dev mode: off. Each is one word and a look.
 | 7 | `lab countdown 30 1` | Counts down by editing itself; summary reports edits and any rate limiting | B14 |
 | 8 | `/lab chart`, then `lab chart abc` | Slash version posts the charts with a private "done" note; the bad argument gets ⚠️ and a usage line on the log card | B18 |
 
-## 11. Phone notifications
+## 11. Phone notifications (by hand, parked)
+
+**State, 2026-10-14:** The lab's test notifications. Notifications are
+low priority.
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -339,7 +436,11 @@ everything from the phone, in #scratch.
 | 3 | `lab notify mention delay 30`, lock the phone | Answered at once; about 30 seconds later the @mention arrives and the phone notifies | B7 |
 | 4 | `lab channels delay 30`, then `lab channels` again straight away; lock the phone; then reply with anything in #reminders, #gym, #admin and #inbox | The second says a channel test is already running (for 5 seconds), with no ⚠️. One test message per channel: normal, @mention, silent, and a link to the #reminders one. Each reply gets ✅; one results card with response times appears in #scratch | B17, B21 |
 
-## 12. Overnight backups
+## 12. Overnight backups (covered by the self-test)
+
+**State, 2026-10-14:** Step 1 is the self-test's 1.02b, and live's log
+has the 3:00 am backup of 2026-10-14 (the database, the specs and the
+exports). Step 2 (a backup missed while the bot was off) is not in it.
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -350,7 +451,10 @@ Two separate nights. Dev mode: off.
 | 1 | Night one: leave the bot running past 3am NZ. Check in the morning | "💾 Backup saved" log card naming the database copy and the specs zip; the newest 7 `assistant-*.db` and `specs-*.zip` kept in `data\backups\` | K5 |
 | 2 | Night two: stop the bot before 3am, start it in the morning | The missed backup runs at startup, with its own log card | K6 |
 
-## 14. Bugs and kept confirmations
+## 14. Bugs and kept confirmations (by hand, not covered)
+
+**State, 2026-10-14:** 🐞 and the #bugs forum: a bot cannot react as you,
+and the forum is live's.
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -373,7 +477,13 @@ a real post: close them as you go (steps 10 to 12) or afterwards.
 | 12 | Delete the forum's Fixed tag (Edit Channel, Tags). Restart the bot (`Ctrl + C`, `python main.py`). Look at the forum's tags, then press **Fixed** on step 4's post and **Re-open** on step 5's | The tag is back. Without Manage Channels: one error card in #bot-log, naming that permission and the missing tags. Both buttons from before the restart work: the first is closed as Fixed, tagged and archived, with Re-open on its card; the second is open again | P24, P22 |
 | 13 | Set `KEEP_CONFIRMATIONS=true` in `.env` (or remove the line) and restart. Reply `pin` to a message, and react 📦 to a message in #archive | "📌 Pinned" stays in the channel and your `pin` is still deleted; the ⚠️ reason for the 📦 stays too. Reply `unpin` afterwards, and press Fixed or Won't fix on step 1's post | M5 |
 
-## 15. Dev database and clock
+## 15. Dev database and clock (partly covered)
+
+**State, 2026-10-14:** The self-test moves the dev clock (1.02, 4.08),
+runs midnight and 3:00 am on the way (1.02b) and reads `dev cost`
+(4.06). The rest is by hand. Written before the dev bot had its own
+account and before costs were shown in NZ$: the words of steps 2, 3 and
+9 are older than both.
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -393,20 +503,10 @@ nothing here touches your real history. `dev verbose` on helps for step 8.
 | 9 | In #inbox say `set a timer for 1 minute`, then type `dev cost` | A card that stays: "## 💰 Cost · `dev.db`"; **Today** with the cost, the number of messages and how many went to Claude; the averages per message; a line counting messages by route (`shortcut`, `button`, `tools` with its cost); **This month** the same; "Most expensive task this month: **timers**"; the tokens and requests of the month | J44 |
 | 10 | `timer 10m`, then `dev reset-db`; press **Cancel**; again, press **Confirm** | Cancel: nothing changes (`timers` still lists it). Confirm: "🧹 `dev.db` wiped…"; `timers` and `stats` are empty; `dev jobs` shows only the backup and the day rollover; the clock is the real time. Delete the orphaned timer message by hand, then `dev off` and stop the bot | J42 |
 
-## 17. Traces: `dev why` and bug reports
+## 18. Retest: one path for every message (by hand, not covered)
 
-**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
-
-On the dev database (`python main.py --dev`), in #inbox, dev mode off.
-Restart the bot first: it adds a column to the message log.
-
-| # | Do | Expect | Tests |
-|---|---|---|---|
-| 1 | Say `add butter`; then, pressing nothing, `and jam`. Type `dev why`, then `dev why 3`. Press nothing | One block in a code box that can be copied whole: "#<n> · <time> · chat · ok", "said: and jam", "route: follow-up (card … is open and the message sticks to it…)", "router: not asked", an "extraction:" line with what came back, "python:" lines for each check (sticky, correction, restatement, merge), "card before:" and "card after:", "shown:", and "cost: US$… · 1 request(s)". `dev why 3` posts three blocks, oldest first; the `dev why` words themselves are never among them | J47 |
-| 2 | React 🐞 to the card the bot posted; open the new post in #bugs. Then press **Cancel** on the card | The post in #bugs has a **Trace** section between "That turn" and "Related errors": the same block `dev why` shows for the message of mine that the card answered | P31 |
-| 3 | Type `dev cost` | The card ends with "-# List context sent to extraction this month: … of … lines over … messages, … (at most 20 a task a message)" | J48 |
-
-## 18. Retest: one path for every message
+**State, 2026-10-14:** Not in the self-test (`dev why`, chat, a remark
+that gets no reply). The golden conversations cover the routing offline.
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -428,7 +528,13 @@ to your message with `dev why` and paste the block when you report it.
 | 8 | Say `add milk to the shopping list`. Press nothing | No shopping card: the demo lists are no longer part of the bot. A short plain answer, "🤔 I didn't understand that.", or nothing; never a card and never "added" | S51 |
 | 9 | On a fresh `dev.db`, or replying to a message sent before the last `dev reset-db`: reply to it with `dev why 5`. Press nothing | One plain line: "🔎 Nothing is logged for that message: it is from before this database was started…". No ⚠️ on your message | S44 |
 
-## 21. Pills: the daily checklist
+## 21. Pills: the daily checklist (covered by the self-test)
+
+**State, 2026-10-14:** The self-test's 1.03, 1.11 to 1.13, 1.16, 2.04,
+2.11 to 2.13 and 3.10b. Not in it: "I didn't take" (step 8) and pausing
+a pill (step 9). The wording is older than reminders and the tidy: a
+timed dose has its reminder now (step 10), and yesterday's checklist
+goes in the morning (step 12).
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -462,7 +568,11 @@ again.)
 | 11 | Restart the bot (still `--dev`); type `dev jobs`. Then say `took my pill A` again | No second checklist and no second set of messages in the hub. `dev jobs` shows one `pills/checklist` job, for the next 6:00 am. The second dose of Pill A is ticked off on the same checklist message | R27 |
 | 12 | `dev clock 11:59pm`, then `dev clock +2m`. Look at the hub; then `dev clock 6:00am` | The untouched doses show ❌ missed on yesterday's checklist, which is otherwise left as it was; their own messages are deleted. `dev clock 6:00am` then posts a fresh checklist for the new day, everything pending | R26 |
 
-## 22. Channel reset, housekeeping that leaves no trace, and button colours
+## 22. Channel reset, housekeeping that leaves no trace, and button colours (partly covered)
+
+**State, 2026-10-14:** Only the card and Cancel are in the self-test
+(3.13, 4.05b): nothing in it deletes a channel's messages. Steps 2 to 7
+are by hand. Step 8, the button colours, is on the short list.
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -484,7 +594,12 @@ another (wait for its ✅). Every step ends by saying what to press.
 | 7 | Reply `pin` to a message, and within 5 seconds stop the bot (Ctrl + C). Wait 20 seconds, then start it again | "📌 Pinned" is still there while the bot is off, and is deleted within a few seconds of it starting: a restart doesn't leave the line behind | M8 |
 | 8 | Look at the buttons as you go: say `add zinc to my pills` (don't press); say `remove zinc` on a saved pill (don't press); type `pills` in the hub; let a timer finish (`timer 10s tea`); in a test channel with nothing pinned or 📌, type `reset channel` | **Save** is green and **Cancel** grey with ↩️. **Remove** is red. **Taken** is green and **Skip** blurple. On the timer's alert **+5 min**, **Restart** and **Dismiss** are all blurple: nothing but Cancel is grey anywhere. The reset card has **Delete all** (red) and **Cancel** only: no "Delete all unpinned" when nothing is pinned or 📌 | Q14 |
 
-## 23. Retest: the main pill, late at night
+## 23. Retest: the main pill, late at night (partly covered)
+
+**State, 2026-10-14:** The self-test has a missed dose logged as taken
+(2.10) and a correction in words (1.21). The rest is by hand. Step 1's
+card is worded differently since 2026-10-13: "Dose 1 was missed (due …).
+Log it as taken now?".
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -503,7 +618,12 @@ Every step ends by saying what to press.
 | 6 | Say `I took dose 1 of pill A at 12:15pm`. Press **Cancel** | A card: "**Pill A** (dose 1 of 3) · taken 8:45 am → 12:15 pm" and "⚠️ That's the same time as dose 2, taken 12:15 pm. Log it anyway?", with **Log it** and **Cancel**. After Cancel the checklist still shows dose 1 taken 8:45 am | R62 |
 | 7 | Say `I went for a run at 7 this morning`. Then `shopping is boring`. Then `dev clock reset` | "I can't log that yet." to the first: no "Got it", and not silence. No reply at all to the second | S57 |
 
-## 24. Small backlog batch, on the live bot
+## 24. Small backlog batch, on the live bot (partly covered)
+
+**State, 2026-10-14:** Step 6 (`dev mock`) is the self-test's 3.14. Step
+1 is out of date: the status line no longer reads "🟢 Live · up …" (block
+52). Step 2: #commands is edited in place since 2026-10-14. The rest is
+by hand.
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -525,7 +645,9 @@ ends by saying what to press.
 | 8 | Tomorrow morning: look at "💾 Backup saved" in #bot-log, and at the bot's status. Press nothing | The card lists `assistant-….db`, `specs-….zip` and, if a channel was ever reset, `exports-….zip`. The status is "🟢 Live · …", not a ⚠️ line | K22 |
 | 9 | Only when you next run the dev database (otherwise report `K20 skip`): `python main.py --dev`; look at the bot. `dev clock +13h`; look again. Stop it and start the live bot | The dev bot has its own plain name (no "· DEV") and the status "🧪 DEV database"; after the clock moves, "🧪 DEV database · clock +13h". Live's name does not change | K20 |
 
-## 25. Retest: the `task-check` fixes
+## 25. Retest: the `task-check` fixes (by hand, not covered)
+
+**State, 2026-10-14:** Replies, timers and 🐞: not in the self-test.
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -545,7 +667,9 @@ Every step says what to press.
 | 5 | React 🐞 to any message; open the post in #bugs and write `a note`. Press nothing. Then `dev clock reset` | No ✅ on your note and no reply; the count on the post's opening card goes up by one. The card's first line gives the time as "8:04 pm, 12 Oct" | P34 |
 | 6 | `timer 10m tea`, then `timer 10m eggs`; send three other messages; then reply to the **tea** timer's message with `give it 2 more`. Then reply `dev why` to that reply of yours. Reply `cancel` to both timers | Tea gets 2 more minutes, eggs is untouched. The trace says "reply to timers' message: it goes to timers first" and shows no router request | S59 |
 
-## 26. Retest: a reply to a line about a timer, and "which timer?"
+## 26. Retest: a reply to a line about a timer, and "which timer?" (by hand, parked)
+
+**State, 2026-10-14:** Timers are frozen and not in the self-test.
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -560,7 +684,9 @@ Dev mode off. Start three timers: `timer 10m tea`, `timer 10m dinner`,
 | 3 | Reply to the **tea** timer's own message with `pause this`; then, with no reply, say `give it 5 more minutes`. Press nothing | Tea is paused, then tea gets 5 more minutes: "it" is the timer the last line was about | T23, T3 |
 | 4 | Say `cancel it`. Then `cancel all my timers` and press the red **Cancel 2 timers**. Then `dev clock reset` | Tea is cancelled at once, with no card. Then a card for the other two, and both are cancelled | T5 |
 
-## 27. "It" after the bot's latest message (waiting for QA)
+## 27. "It" after the bot's latest message (by hand, parked)
+
+**State, 2026-10-14:** Timers are frozen and not in the self-test.
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -572,7 +698,10 @@ says what to press.
 | 1 | `timer 10s tea`, then `timer 10m eggs`. When tea's alert rings, say `give it 5 more`. Press nothing | Tea runs again for 5 minutes ("➕ tea: 5m more"); eggs is untouched | G31 |
 | 2 | Say `pause everything`, then `resume it`. Press nothing. Then reply `cancel` to both timers | "⚠️ Which timer? Say its name." with a line for each: the line before was about both | G30 |
 
-## 28. An unnamed pill needs an anchor (waiting for QA)
+## 28. An unnamed pill needs an anchor (by hand, not covered)
+
+**State, 2026-10-14:** Not in the self-test. "took the usual one" is a
+golden conversation, offline.
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -586,7 +715,9 @@ step says what to press.
 | 1 | Say `took my pill X`. Then `dev clock +10m`. Say `took the usual one`; press **Save** | "✅ **Pill X** · taken …" at once. Ten minutes on, a card "💊 Pills · change" with "**Pill Y** · taken … ❓", **Save** and **Cancel**: Pill Y is the one with a dose left. Save ticks it off | R69 |
 | 2 | Straight after, say `no I didn't`. Press nothing. Then `dev clock reset` | "↩️ **Pill Y** · no longer ticked off", at once and with no card: the bot's last pills message was about Pill Y | R69 |
 
-## 29. A reply to a line about a pill (waiting for QA)
+## 29. A reply to a line about a pill (by hand, not covered)
+
+**State, 2026-10-14:** The self-test replies to nothing.
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -599,7 +730,9 @@ gives a fresh day). Type `pills`. Every step says what to press.
 | 1 | Say `took my pill X`, then `took my pill Y`. Reply to the line "✅ **Pill X** · taken …" with `it was 8am`. Press nothing | "✏️ **Pill X** · taken … → 8:00 am": Pill X's dose is corrected, not Pill Y's, and there is no card | R71 |
 | 2 | Reply to that same "✅ **Pill X** …" line with `actually I didn't`; then reply `dev why` to that reply of yours. Then `dev clock reset` | "↩️ **Pill X** · no longer ticked off". The trace says "reply to pills' message: it goes to pills first" and shows no router request | R71 |
 
-## 30. `dev why` and "it" (waiting for QA)
+## 30. `dev why` and "it" (by hand, parked)
+
+**State, 2026-10-14:** Timers are frozen and not in the self-test.
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -609,7 +742,9 @@ On the dev database, dev mode off. Every step says what to press.
 |---|---|---|---|
 | 1 | `timer 10m tea`; say `give it 2 more`; reply `dev why` to that message of yours. Then reply `cancel` to the timer | The extraction line reads `timers · timer_change {"which":"it","action":"extend","duration":"2m"}`: the action's name is there and "which" is not empty. Nothing about an "internal label" appears in #bot-log or the log | J54 |
 
-## 31. The last two timer lines (waiting for QA)
+## 31. The last two timer lines (by hand, parked)
+
+**State, 2026-10-14:** Timers are frozen and not in the self-test.
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -620,7 +755,9 @@ On the dev database, dev mode off. Every step says what to press.
 | 1 | Say `set a timer for a few minutes called tea`, then `timer 10m eggs`. Reply to the line "❓ I guessed the length: …" with `give it 2 more`; then reply `dev why` to that reply of yours | Tea gets 2 more minutes, eggs is untouched. The trace says "reply to timers' message: it goes to timers first" and shows no router request | G32 |
 | 2 | Say `cancel all my timers`; press the red **Cancel 2 timers** | "🚫 **Cancelled 2**" naming tea and eggs | G32 |
 
-## 32. Bugs: a Live list (waiting for QA)
+## 32. Bugs: a Live list (by hand, not covered)
+
+**State, 2026-10-14:** 🐞 and the #bugs forum: a bot cannot react as you.
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -632,23 +769,9 @@ On the dev database, dev mode off. Every step says what to press.
 | 2 | Open that bug's post in #bugs and press **Won't fix** | Back in the channel, the list has lost that bug again | P36 |
 | 3 | Say `add pill  ZINC` (two spaces, capitals) with a pill called Zinc already there; press **Cancel** if a card shows | Zinc as it is, or a change card for Zinc: never a second pill called ZINC | R72 |
 
-## 33. Reminder mock-ups (waiting for QA)
+## 34. Taking a setting away, and a bug logged twice (by hand, not covered)
 
-**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
-
-On the dev database, dev mode off, with your phone locked beside you for
-step 1. These are sketches: the buttons only say they are mock-ups.
-Nothing here is built yet.
-
-| # | Do | Expect | Tests |
-|---|---|---|---|
-| 1 | Lock your phone and type `dev mock reminder-v1-first` from the desktop; then `dev mock reminder-v1` (the same as block 39, step 2: do it once) | The lock screen says "💊 Routine due · 11:12 am" and never the pill's name. The second message: the pill and dose, when it is due and why, the note, and Taken, Taken at…, Snooze 15m, Skip | J55 |
-| 2 | Type `dev mock reminder-renudge-v2` | Two cards: a re-nudge ("Reminder 2 of 3", when it was first asked and when the last one comes), and the same prompt while snoozed ("Snoozed until 11:27 am") | J55 |
-| 3 | Type `dev mock reminder-missed-v2`, then `dev mock too-soon-v2` | An amber box on the checklist (a dose is still to come) with dose 2 marked ❌ missed and when it was due; then an amber card that says the dose is too soon after the last and asks "Log it anyway?", with **Log it** and **Cancel** | J55 |
-
-Say what to change in any of them (wording, order, colours, buttons).
-
-## 34. Taking a setting away, and a bug logged twice (waiting for QA)
+**State, 2026-10-14:** Not in the self-test.
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -662,13 +785,16 @@ note: say `add Testpill at 8am with food` and press **Save**.
 | 3 | React 🐞 to any message of yours. Take the 🐞 off, then put it on again. Then open the bug's post and press **Won't fix** | "🐞 Logged as B<n>", then "🐞 Already logged as B<n>" with the same link: one bug, not two | P37 |
 | 4 | Say `remove Testpill`. Press **Remove** | Testpill is gone | |
 
-## 35. Gym mock-ups (waiting for QA)
+## 35. Gym mock-ups (yours: on the short list)
+
+**State, 2026-10-14:** The self-test checks only that Discord takes each
+sketch (3.14). How they read is the short list's 9.
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
 On the dev database, dev mode off. These are sketches: the buttons only
 say they are mock-ups, and nothing of gym is built. The spec is
-`docs/specs/gym.md`; its questions are at the top of `docs/STATUS.md`.
+`docs/specs/gym.md`; its questions are in `docs/QUESTIONS.md` (23 to 28).
 
 | # | Do | Expect | Tests |
 |---|---|---|---|
@@ -678,9 +804,12 @@ say they are mock-ups, and nothing of gym is built. The spec is
 | 4 | Type `dev mock gym-logged-set-v2` | The line said after a set is logged, and that exercise's group as it then stands | J56 |
 
 Say what to change in any of them, and answer the gym questions in
-`docs/STATUS.md` (or in the spec, section 16).
+`docs/QUESTIONS.md` (23 to 28; the rest are in the spec, section 16).
 
-## 36. Restarts (waiting for QA)
+## 36. Restarts (covered by the self-test)
+
+**State, 2026-10-14:** The self-test's 1.23, 1.24, 2.01 to 2.05 and
+3.01.
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -698,7 +827,11 @@ have none.
 | 5 | Stop and start the bot once more | No new checklist, no "🔁 Caught up" message and no "Pills checklist not posted": #bot-log has nothing new | K24 |
 | 6 | Type `dev clock reset`; say `remove Otherpill`, press **Remove** | The clock is the real time again and Otherpill is gone | |
 
-## 37. Questions on the card (waiting for QA)
+## 37. Questions on the card (covered by the self-test)
+
+**State, 2026-10-14:** The self-test's 1.05 to 1.07b and 1.09. Not in
+it: step 3 ("actually make it 8am") and step 6 (the six minutes are real
+time).
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -714,7 +847,12 @@ On the dev database, dev mode off.
 | 6 | Type `pills`. Wait six minutes, then say `took it`. Press a pill | A card "Which pill?" with a button for each pill still to take. After the press the card says it was ticked off, and the checklist shows it | R76 |
 | 7 | Say `remove testiron, testmag, testvit c and testvit d`, press **Remove** | They are gone | |
 
-## 38. Pill reminders (waiting for QA)
+## 38. Pill reminders (covered by the self-test)
+
+**State, 2026-10-14:** The self-test's 1.15, 1.16, 1.18 to 1.20 and 2.06
+to 2.11; reminders are on for live. Not in it: steps 8 and 9 (too soon,
+from Taken at…) and step 11 (no hub). The lock screen and the buzz are
+the short list's 6.
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -743,7 +881,11 @@ to `.env` and restart the service. To switch them off again: remove
 the line (or set it to false) and restart; any reminder that is up is
 removed.
 
-## 39. The design pass (waiting for QA)
+## 39. The design pass (yours: on the short list)
+
+**State, 2026-10-14:** The self-test checks that Discord takes each
+sketch and that the colours are the values in `core/design.py` (3.14,
+3.15). How they look is the short list's 3 and 4.
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -766,7 +908,10 @@ that asks first because something is risky is amber) are not final
 until step 6 is done. The other redrawn sketches are in blocks 33 and
 35. Say what to change in any of them, or in the style guide.
 
-## 40. Core pieces for any task (waiting for QA)
+## 40. Core pieces for any task (covered by the self-test)
+
+**State, 2026-10-14:** The self-test's 1.08 to 1.10. Not in it: step 4
+(a picture: it cannot attach a file as you).
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -781,7 +926,11 @@ from before: naming a pill now goes through the core.
 | 4 | Press **Cancel**. Send a picture or any file with the words `what is this` | An ordinary answer from chat, as before: the file changes nothing yet | S64 |
 | 5 | Say `remove testiron and testiron forte`, press **Remove** | Both gone | |
 
-## 41. The new look, switched on (waiting for QA)
+## 41. The new look, switched on (covered by the self-test)
+
+**State, 2026-10-14:** The self-test's 3.01 to 3.13 and 4.01 to 4.05.
+How it reads on the phone is the short list's 4. `CARDS_V2` is off for
+live.
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -800,21 +949,9 @@ On the dev database, dev mode off. Put `CARDS_V2=true` and
 | 7 | Press **Skip** in Testany's box | Testany's box turns grey with "⏭️ skipped" and has no buttons | R79 |
 | 8 | Say `remove testa and testany`, press **Remove**. Type `dev clock reset`. Stop the dev bot, take `CARDS_V2` out of `.env` (or set it to false) and start it; type `pills` | Everything is the old look again: a plain checklist, plain cards | J59, J60 |
 
-## 42. The daily spend line (waiting for QA)
+## 43. `took <pill>` (covered by the self-test)
 
-**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
-
-On the dev database. Steps 2 and 3 send two messages to Claude (about
-one cent in all): skip them if you'd rather not.
-
-| # | Do | Expect | Tests |
-|---|---|---|---|
-| 1 | Type `dev cost` | Under "Today", a small line: "US$… of today's US$0.50 limit (…%)" | J61 |
-| 2 | Stop the dev bot, put `DAILY_SPEND_LIMIT=0.001` in `.env`, start it. Say `what pills do I have?` | The answer as usual, and one card in #bot-log: "💰 Claude spend is over today's limit", with what was spent and the limit | K25 |
-| 3 | Say `what pills do I have?` again, then type `dev cost` | No second card in #bot-log. `dev cost` shows "⚠️ over today's limit: US$… of US$0.00 (DAILY_SPEND_LIMIT)" | K25, J61 |
-| 4 | Stop the dev bot and take `DAILY_SPEND_LIMIT` out of `.env` again | | |
-
-## 43. `took <pill>` (waiting for QA)
+**State, 2026-10-14:** The self-test's 1.13, 1.14 and 1.17.
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -828,20 +965,9 @@ say `add Testzinc once a day` and press **Save**.
 | 3 | Say `add Testgap at 8am and 11am, at least 3 hours apart`, **Save**. Type `took testgap`, then at once `took testgap` again. Press **Cancel** | The first is ticked off. The second gives the card "⚠️ That's … after dose 1 … Log it anyway?" with **Log it** and **Cancel**; nothing more is ticked off | R81 |
 | 4 | Say `remove testzinc and testgap`, press **Remove** | Gone | |
 
-## 44. Sketches: briefing, schedule, tidy (waiting for QA)
+## 45. After the self-test: names, "just now", the reset card (covered by the self-test)
 
-In the dev channel, on either database. Nothing here is built: these
-are sketches posted by `dev mock`, and their answers are the questions
-at the top of `docs/STATUS.md`.
-
-| # | Do | Expect | Tests |
-|---|---|---|---|
-| 1 | Type `dev mock briefing-v2` | "☀️ Today" with the date (no "as of": it is kept up to date in place); an amber Pills box with the count, the next dose and a line about yesterday; grey placeholder boxes for Gym, Calendar and To-dos; no buttons | J62 |
-| 2 | Type `dev mock schedule-list-v2` | "🗓️ My schedule": the morning routine in amber with its three steps (tidy, briefing, checklist), where it posts, silent, its next and last run; a grey box for a second schedule; Paused under a separator; small lines for the bot's own and for pill times; no buttons | J62 |
-| 3 | Type `dev mock schedule-change-v1` | A blurple card "🗓️ Schedule · change": two schedules, each `field · old → new`, ❓ on the guess, when each next runs, **Save** and **Cancel** | J62 |
-| 4 | Type `dev mock cleanup-v1` | What #bot-log would be told when a tidy went wrong: a channel a box, what was removed, kept and left, and why. Its last line says a tidy with nothing wrong posts nothing | J62 |
-
-## 45. After the self-test: names, "just now", the reset card (waiting for QA)
+**State, 2026-10-14:** The self-test's 1.09 to 1.09c, 1.17 and 3.13.
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -860,7 +986,12 @@ The catch-up card's wording (a job named in words, no "pills/…") is
 checked by the self-test's step 2.01 and by `tests/test_restart.py`:
 there is nothing to do by hand.
 
-## 46. The scheduler, stage 1: nothing should look different (waiting for QA)
+## 46. The scheduler, stage 1: nothing should look different (covered by the self-test)
+
+**State, 2026-10-14:** The self-test's 1.01b, 1.02b and 1.11 to 1.11c;
+and live's log for 2026-10-14 has the backup, the end of the day and
+the 6:00 am routine each once. Step 4's words are out of date: the
+status line is block 52's.
 
 On the live bot, over a day. There is nothing new to see; this is the
 check that nothing went missing. The self-test runs the same on the dev
@@ -873,7 +1004,10 @@ clock.
 | 3 | Type `dev jobs` | Pending: the nightly backup, the end of the day and the pills checklist, each once, each "for" its local time. Then "Last run of each", with ✅ and a line | J68 |
 | 4 | Look at the bot's status line | "🟢 Live · up … · next: …" naming the next job in words, as before | K29 |
 
-## 47. My schedule (waiting for QA)
+## 47. My schedule (covered by the self-test)
+
+**State, 2026-10-14:** The self-test's 1.10b to 1.10d, 2.11b, 3.13b to
+3.13e and 4.07a. Not in it: step 5 ("which one is checklist?").
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -890,7 +1024,10 @@ On the dev database. About six messages to Claude (three cents).
 | 7 | Say `remove the evening checklist`, **Remove** | Gone from the list; the 6:00 am one is as it was | S71 |
 | 8 | With `CARDS_V2=true`: type `my schedule` | The same list drawn: a box a schedule, the next to run amber, no buttons. Compare with `dev mock schedule-list-v2` | S72 |
 
-## 48. The briefing (waiting for QA)
+## 48. The briefing (covered by the self-test)
+
+**State, 2026-10-14:** The self-test's 5.01 to 5.07 and 1.11a. The
+briefing is on for live. How it reads is the short list's 1.
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -909,7 +1046,10 @@ or two (`add Testbrief once a day`, **Save**). One message to Claude.
 | 7 | With `CARDS_V2=true` as well: `brief me` in #inbox. Compare with `dev mock briefing-v2` | A box a task in the colour of its status; nothing says "as of" | S74 |
 | 8 | Stop the dev bot, `Remove-Item Env:BRIEFING_ENABLED`, start it, type `my schedule` | "Pills checklist" again, alone; no briefing is posted the next morning | S73 |
 
-## 49. A clean hub (waiting for QA)
+## 49. A clean hub (covered by the self-test)
+
+**State, 2026-10-14:** The self-test's 6.01 to 6.09. The tidy is on for
+live.
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -930,7 +1070,10 @@ today's checklist in the hub (`pills`).
 | 8 | Look in `data\exports` on the PC | A file `tidy-<hub's name>-<date>.txt` with what was removed | K31 |
 | 9 | Stop the dev bot, remove both settings (`Remove-Item Env:BRIEFING_ENABLED, Env:HUB_TIDY`), start it | Nothing is tidied any more; `my schedule` shows "Pills checklist" alone | K31 |
 
-## 50. Messages sent while live was off (waiting for QA)
+## 50. Messages sent while live was off (by hand, not covered)
+
+**State, 2026-10-14:** A bot cannot write as you while another is
+stopped. Needs you to stop and start live.
 
 On live. It needs live to have been running on this code for at least
 a minute before it is stopped.
@@ -943,7 +1086,10 @@ a minute before it is stopped.
 | 4 | Leave the hub's card. `nssm restart assistant-bot` | No second card for `pills`: the one that is there still works. Press **Handle it now**: the checklist is shown | R86 |
 | 5 | Type something in #selftest-inbox | Live does not answer: that channel is the dev bot's | R87 |
 
-## 51. Days of the week, and last night's dose (waiting for QA)
+## 51. Days of the week, and last night's dose (partly covered)
+
+**State, 2026-10-14:** The self-test has the weekdays card (1.04c) and
+last night's dose (2.12b). Steps 2 to 4, 6 and 7 are by hand.
 
 **First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
 
@@ -959,7 +1105,11 @@ On the dev database (`python main.py --dev`, in the dev bot's inbox).
 | 6 | Add a pill with an evening time (`add Testeve at 8pm`, **Save**) and leave it untaken. `dev clock` past midnight to 12:30 am. Say `I took testeve at 9pm` | A card first: "It is past midnight and 9:00 pm has not come yet today, so this is yesterday's dose. … Log it as taken now?" with **Log it** and **Cancel**. Log it: "… taken 9:00 pm · yesterday" | T29 |
 | 7 | `dev clock` to 9am. Say `took <that pill> yesterday at 8` (a dose of yesterday still missed) | A card first: "“8:00” could be morning or evening: taken as 8:00 pm." | T29 |
 
-## 52. The status line (waiting for QA)
+## 52. The status line (yours: on the short list)
+
+**State, 2026-10-14:** The self-test checks what the line would read
+(1.01a, 1.11d, 1.15b). How it looks under live's name is the short
+list's 5.
 
 On live, on your phone or the desktop: look under the bot's name in
 the member list.
@@ -973,7 +1123,10 @@ the member list.
 | 5 | Type `dev status` | It says how long the bot has been up | K37 |
 | 6 | Start a self-test (`python -m selftest --stages briefing`) and look at the dev bot | Its nickname ends "· testing" and its status line counts up: "🧪 3/14 · 2m"; after the run the nickname is plain again | K37 |
 
-## 53. Alerts on the phone, quiet hours and the briefing's order (waiting for QA)
+## 53. Alerts on the phone, quiet hours and the briefing's order (by hand, parked)
+
+**State, 2026-10-14:** Needs ntfy, which is off and low priority. Row 8
+(the box's words) is the short list's 8.
 
 Needs `NTFY_BOT_TOPIC` in `.env` (a topic of the bot's own, subscribed
 to in the ntfy app) and `NOTIFY_NTFY=true`, then a restart of live.
@@ -992,7 +1145,10 @@ check rows 1, 5 and 7 with Discord's own notification.
 | 7 | A dose due at noon | It notifies as ever | K41 |
 | 8 | With a job that did not work (its bug is open), look at the briefing and the status line | The briefing has "⚠️ Needs a look" on top with the same words as the status line ("⚠️ B14 · backup failed") | K42 |
 
-## 54. Direct messages to live (waiting for QA)
+## 54. Direct messages to live (by hand, parked)
+
+**State, 2026-10-14:** Direct messages are off (`DMS_ENABLED`, question
+5) and the self-test cannot send one.
 
 Needs `DMS_ENABLED=true` in `.env`, then a restart of live.
 
@@ -1004,7 +1160,12 @@ Needs `DMS_ENABLED=true` in `.env`, then a restart of live.
 | 4 | "took <a pill>" there | The same card or confirmation as in #inbox, silent | R92 |
 | 5 | Have someone else send live a direct message (or use a second account) | Ignored | R92 |
 
-## 55. What needs you: the box, the ping and the 7:00 am check (waiting for QA)
+## 55. What needs you: the box, the ping and the 7:00 am check (partly covered)
+
+**State, 2026-10-14:** Row 4 was seen on live on 2026-10-14: the 7:00 am
+check ran, nothing needed a look, nothing was said. Row 6 is the
+self-test's 1.10b. Rows 1 to 3 and 5 need something to go wrong: how
+they read is the short list's 8.
 
 On live, with the briefing on. Rows 1 to 3 need something to be wrong:
 the simplest is `dev run` of a job that fails, on the dev bot, or wait
@@ -1019,7 +1180,12 @@ for a real one.
 | 5 | After a restart you did not ask for (restart the PC) | The next briefing has a small line at its foot: "🗒️ 3:02 am · The PC restarted: the bot was off for about 12m". No ping | K50 |
 | 6 | Say `my schedule` | "Needs-a-look check · every day at 7:00 am"; every line ends "last: … ✅" (or "⚠️ failed", or "not run yet"), the bot's own a small line each | K51 |
 
-## 56. Weather in the briefing (waiting for QA)
+## 56. Weather in the briefing (yours: on the short list)
+
+**State, 2026-10-14:** The self-test draws the section from a recorded
+forecast (5.01c), and live's run log for 2026-10-14 has the 5:50 am
+fetch and the 8:50 and 11:50 am refreshes. Rows 1 and 2 are the short
+list's 1. Row 4 (a fetch that fails) is by hand.
 
 On live, with the briefing on.
 
@@ -1030,7 +1196,11 @@ On live, with the briefing on.
 | 3 | Say `my schedule` | "Weather fetch · every day at 5:50 am" and "Weather refresh · every day at 8:50 am", each with its last run | T33 |
 | 4 | With the PC offline at 5:50 am (or `WEATHER_LAT` taken out) | The section says "Weather unavailable"; "⚠️ Needs a look" has "weather fetch failed" with its bug; at 7:00 am one ping | T33 |
 
-## 57. One dose is one log (waiting for QA)
+## 57. One dose is one log (covered by the self-test)
+
+**State, 2026-10-14:** The self-test's 1.17, 1.17b, 2.09 and 2.09b;
+steps 2, 5 and 7 are golden conversations 19, 19a and 20, offline. The
+lock screen for the last chance is the short list's 7.
 
 On the dev bot (`--dev`), with reminders on. After the morning of
 2026-10-14.

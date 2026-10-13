@@ -6,6 +6,12 @@ backfilled from the git log.
 
 ## 2026-10-14
 
+- Docs only: `docs/STATUS.md` is one page again (where things stand,
+  what is switched on, what waits on you, what is next), with its
+  history in `docs/archive/`. `docs/QA-RUN.md` opens with the ten
+  checks only you can do and says for every block whether the
+  self-test covers it; four out-of-date blocks are retired.
+
 - A pill reminder that Discord refuses is tried again after 1, 2 and
   5 minutes, then every 5, and is never posted twice. The last-chance
   nudge too.
