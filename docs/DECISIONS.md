@@ -1280,3 +1280,8 @@ A short log of key decisions and why. Newest at the bottom.
   handler that reports failure has dealt with it. In a routine the
   steps after the one that raised still run at once, so its second
   try comes after them.
+- **Priorities (Alex, 2026-10-14).** The hub is a daily overview and a
+  place to talk to the bot; reminders are not relied on yet. First
+  what the hub shows and how it reads, then how well the bot
+  understands, then the rest; notifications and ntfy are low
+  priority. No fallback to ntfy for a reminder Discord can't take.

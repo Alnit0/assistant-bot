@@ -5,6 +5,20 @@ session; the end-of-task checklist updates it at the end of every task.
 
 **Updated:** 2026-10-14
 
+## Priorities (Alex, 2026-10-14)
+
+The hub is a daily overview I check, plus a place to talk to the bot
+and do more. I am not relying on the bot for reminders yet. So, most
+important first:
+
+1. **What the hub shows and how it reads**: the briefing, the design,
+   progress.
+2. **How well it understands what I say.**
+3. Everything else.
+
+Notifications and ntfy are low priority. When work has to be chosen,
+ordered, or cut short, it follows this list.
+
 ## The morning of 2026-10-14: one dose that became two logs
 
 Reported by Alex with traces. One dose, taken at 9:20 am, ended up as
@@ -86,9 +100,8 @@ minute and a reminder was lost).**
   second try has ended. A job that reports its own failure (a backup
   that could not be written, a self-test with a failed step) is not
   run again.
-- **Not built: a fallback to ntfy** when Discord stays unreachable.
-  Your message left the choice open ("<ONE OF THESE>" A or B), so the
-  bot still sends nothing to ntfy (question 45).
+- **No fallback to ntfy** when Discord stays unreachable: decided
+  (Alex, 2026-10-14, B). The bot sends nothing to ntfy.
 - D4, the dev bug from the outage, was closed by the phase 1 rerun.
 - Self-test as the dev bot with live up (11:42 am, recorded answers,
   nothing spent): 116 of 117 passed, none failed, one skipped for

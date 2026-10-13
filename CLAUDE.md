@@ -11,6 +11,19 @@ A personal AI assistant used through Discord, running 24/7 on a home
 server (Windows 11 mini PC, 8 GB). Python 3.14, discord.py, the
 Anthropic API, SQLite. One user, built to be multi-user ready.
 
+## Priorities
+
+The hub is a daily overview I check, plus a place to talk to the bot
+and do more. I am not relying on the bot for reminders yet. Most
+important first, when work is chosen, ordered or cut short:
+
+1. What the hub shows and how it reads: the briefing, the design,
+   progress
+2. How well it understands what I say
+3. Everything else
+
+Notifications and ntfy are low priority.
+
 ## Words
 
 - **Task**: one of the bot's features, a folder under `tasks/`.

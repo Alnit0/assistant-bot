@@ -19,12 +19,6 @@ added here, nowhere else.
     doses three hours apart with no latest time, dose 1's last chance
     is at 5:30 pm ("take by 6:00 pm"), not at 11:30 pm. → Keep.
 
-45. A pill reminder that still can't reach Discord after 5 minutes:
-    (A) send only the neutral line ("💊 Routine due · 8:00 am") to ntfy
-    on a topic of its own, the one exception to the bot's ntfy being
-    off, or (B) no fallback for now? Your message had both, unchosen.
-    → A: it is the one case where Discord can't tell you.
-
 ## Reminders and what reaches you
 
 1. Something that goes wrong between 10:00 pm and 7:00 am posts
