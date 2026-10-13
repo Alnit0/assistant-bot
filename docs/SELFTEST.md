@@ -8,15 +8,18 @@ the bot posts, edits and deletes is real, and is read back from Discord and
 from the database before a step passes. How it works and what it can't
 see: `docs/DEVELOPMENT.md`, "The self-test".
 
-**Run:** 2026-10-13 13:14, 10 min 53 s
-**Result:** 81 passed, 1 failed, 0 broke, 0 skipped, of 82 steps
-**Requests to Claude:** real for 24 steps · US$0.1205 spent
+**Run:** 2026-10-13 13:47, 12 min 20 s
+**Result:** 88 passed, 2 failed, 2 broke, 0 skipped, of 92 steps
+**Requests to Claude:** real for 25 steps · US$0.1323 spent
 
 ## What failed
 
 | Step | What | Expected | What happened | From |
 |---|---|---|---|---|
-| 4.07a | The bot's own is not changed by words: “move the backup to 4am” | One line saying the nightly backup is the bot's own and isn't changed here; no card, and it still runs at 3:00 am | it said: ["🤷 I understood that, but it isn't something I can do yet.", 'move the backup to 4am'] | scheduler stage 2 |
+| 5.01b | A fresh day, 9:00 am: the morning routine ran at 6:00 on the way | One briefing in the hub and the checklist under it, both without a notification; the routine's two steps each ran once for 6:00 am, the briefing first; it has the line about yesterday | the checklist (1559369825443385426) is not under the briefing (1559369827594805419) | scheduler stage 3 |
+| 5.03 | `brief me` in the hub | Nothing new is posted: the briefing that is there is brought up to date in place, and a line says so | KeyError('briefing_hub') at phases.py:969 | scheduler stage 3 |
+| 5.05 | “what's on today?” in plain words | The router sends it to the briefing, which answers with its card; my message is left with no ⚠️ | no briefing was posted in answer | scheduler stage 3 |
+| 5.07 | The next morning at 6:00: the routine again | A new briefing, then the checklist under it; yesterday's briefing is gone; one briefing in the hub; the line about yesterday counts the dose ticked off at 5.04 | KeyError('briefing_hub') at phases.py:999 | scheduler stage 3 |
 
 ## Discoveries
 
@@ -29,20 +32,26 @@ What is worth a look whether or not its step passed.
 
 **Warnings and errors in `logs/bot.log` during the run**
 
-- `ERROR assistant: Could not load task briefing`
-- `WARNING assistant: Claude spend today is US$0.1080, over the daily limit of US$0.001`
+- `WARNING discord.http: We are being rate limited. DELETE https://discord.com/api/v10/channels/1558950156831817931/messages/1559366502245859389 responded with 429. Retrying in 0.49 seconds.`
+- `WARNING discord.http: We are being rate limited. DELETE https://discord.com/api/v10/channels/1558950156831817931/messages/1559366503890165762 responded with 429. Retrying in 0.30 seconds.`
+- `WARNING discord.http: We are being rate limited. DELETE https://discord.com/api/v10/channels/1558950156831817931/messages/1559366505798566076 responded with 429. Retrying in 0.30 seconds.`
+- `WARNING assistant: Claude spend today is US$0.1179, over the daily limit of US$0.001`
+- `WARNING discord.http: We are being rate limited. DELETE https://discord.com/api/v10/channels/1558950156831817931/messages/1559367017776025683 responded with 429. Retrying in 0.30 seconds.`
+- `WARNING discord.http: We are being rate limited. DELETE https://discord.com/api/v10/channels/1558950156831817931/messages/1559367036499656706 responded with 429. Retrying in 0.30 seconds.`
+- `WARNING discord.http: We are being rate limited. DELETE https://discord.com/api/v10/channels/1558950156831817931/messages/1559367038663921756 responded with 429. Retrying in 0.30 seconds.`
+- `ERROR assistant: Self-test step 5.03 broke`
+- `ERROR assistant: Self-test step 5.07 broke`
 
 **Slow steps** (12 seconds or more; a step is mostly waiting for Discord, and each input is given about a second to settle)
 
-- 3.14 Every sketch in docs/mockups (19) posted with `dev mock`: 61s
+- 3.14 Every sketch in docs/mockups (19) posted with `dev mock`: 60s
 - 1.08 Names: “add Testvit and Testvit forte”, “I took testvit”, “skip forte”: 19s
 - 3.13d Pause and resume: “pause the evening checklist”, Save; then “turn the evening checklist back on”, Save: 18s
 - 1.07 A typed answer: “add Testmag to my pills, twice a day at 8am”, then “9pm”: 14s
-- 1.10c Add: “also post the pills checklist at 6 pm”, then Save: 14s
+- 1.10c Add: “also post the pills checklist at 6 pm”, then Save: 13s
 - 4.07 The spend line: two messages to Claude with the limit at US$0.001: 13s
-- 3.10b A pill with no time is added with the new look on: “add Testlate once a day”: 12s
 
-The whole run took 10 min 53 s, 75 seconds of it with the bot off on purpose.
+The whole run took 12 min 20 s, 75 seconds of it with the bot off on purpose.
 
 **In the specs and not tested here**
 
@@ -60,7 +69,7 @@ The whole run took 10 min 53 s, 75 seconds of it with the bot off on purpose.
 
 ## Start 1: the old look, reminders on. A day of pills up to the afternoon, then the bot is cut off mid-message
 
-Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 218s; the process ended with 0.
+Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 233s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -83,6 +92,7 @@ Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 218s; the process end
 | 1.10c | Add: “also post the pills checklist at 6 pm”, then Save | ✅ pass | A card “🗓️ Schedule · new”: Evening pills checklist, every day at 6:00 pm, #hub, silent, its next run, and “also every day at 6:00 am”. After Save the schedule exists, its run for 6:00 pm today is booked, and the list shown before is brought up to date in place |  | real request | scheduler stage 2 |
 | 1.10d | Move: “move the evening checklist to 6:30pm”, then Save | ✅ pass | A change card: **Evening pills checklist**, `time · 6:00 pm → 6:30 pm`, and “Next after this: … today 6:30 pm”. After Save the run booked for 6:00 pm is gone and one for 6:30 pm is booked |  | real request | scheduler stage 2 (schedule-change-v1) |
 | 1.11 | 6:00 am: today's checklist | ✅ pass | One checklist in the hub, posted without a notification, naming Testa, Testany and Testiron; a Taken / Skip message under it for Testany (no time) | ## 💊 Pills · ▱▱▱▱▱ 0 of 5 |  | asked; 36, T15 |
+| 1.11a | With BRIEFING_ENABLED off, the morning is as it always was | ✅ pass | No briefing in the hub, and the 6:00 am schedule is the checklist alone, under its own name |  |  | scheduler stage 3: off |
 | 1.11b | The run log for the 6:00 am checklist | ✅ pass | One run for today's 6:00 am, done, with its key and a line saying what it decided; tomorrow's 6:00 am booked once | s3@2026-10-14T06:00#1 · posted, or already there, or nothing to take today (the log |  | scheduler stage 1 |
 | 1.11c | `dev jobs` | ✅ pass | What is booked next (the backup, the end of the day, the checklist) and how the last run of each ended, from the engine's run log |  |  | scheduler stage 1 |
 | 1.12 | `pills` typed in #selftest-inbox | ✅ pass | A fresh copy at the bottom of the hub; the old checklist and its messages are gone |  |  | T15, R48 |
@@ -101,7 +111,7 @@ Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 218s; the process end
 
 ## Start 2: the same settings, after 75 seconds off. The catch-up, then the rest of the day and the next morning
 
-Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 68s; the process ended with 0.
+Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 71s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -124,7 +134,7 @@ Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 68s; the process ende
 
 ## Start 3: `CARDS_V2` on. Every card posted and edited in the new look, and the old look's messages edited under it
 
-Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`. Took 192s; the process ended with 0.
+Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`. Took 194s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -151,7 +161,7 @@ Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`. Took 192s; the process ende
 
 ## Start 4: `CARDS_V2` off again, and a tiny spend limit. The new look's messages edited under the old, and the spend line
 
-Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`, `DAILY_SPEND_LIMIT=0.001`. Took 79s; the process ended with 0.
+Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`, `DAILY_SPEND_LIMIT=0.001`. Took 81s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -162,11 +172,27 @@ Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`, `DAILY_SPEND_LIMIT=0.001`.
 | 4.04 | `pills` with the new look off | ✅ pass | A fresh checklist in the old look (a plain message), in place of the drawn one | ## 💊 Pills · ▰▰▱▱▱ 3 of 6 |  | T58 (41.8) |
 | 4.05 | A new card with the new look off: “add Testlast once a day”, then Cancel | ✅ pass | A plain card with Save and Cancel; Cancel removes it |  | real request | T58 (41.8) |
 | 4.05b | The reset card with the new look off: `reset channel`, then Cancel | ✅ pass | A plain message with the same words and buttons; Cancel removes it |  |  | T58; self-test of 2026-10-13, fix 5 |
-| 4.06 | `dev cost` | ✅ pass | Under Today a small line with what was spent against DAILY_SPEND_LIMIT, the limit of a tenth of a cent written as US$0.001 | -# ⚠️ over today's limit: US$0.1080 of US$0.001 (DAILY_SPEND_LIMIT) |  | T35, T56 (42.1, 42.3) |
+| 4.06 | `dev cost` | ✅ pass | Under Today a small line with what was spent against DAILY_SPEND_LIMIT, the limit of a tenth of a cent written as US$0.001 | -# ⚠️ over today's limit: US$0.1179 of US$0.001 (DAILY_SPEND_LIMIT) |  | T35, T56 (42.1, 42.3) |
 | 4.07 | The spend line: two messages to Claude with the limit at US$0.001 | ✅ pass | One “💰 Claude spend is over today's limit” in #selftest-log after the first, and no second one after the second |  | real request | T49, T50 (42.2, 42.3) |
-| 4.07a | The bot's own is not changed by words: “move the backup to 4am” | ❌ fail | One line saying the nightly backup is the bot's own and isn't changed here; no card, and it still runs at 3:00 am | it said: ["🤷 I understood that, but it isn't something I can do yet.", 'move the backup to 4am'] | real request | scheduler stage 2 |
+| 4.07a | The bot's own is not changed by words: “move the backup to 4am” | ✅ pass | One line saying the nightly backup is the bot's own and isn't changed here; no card, and it still runs at 3:00 am |  | real request | scheduler stage 2 |
 | 4.07b | `dev run backup` | ✅ pass | A handler run by hand, outside its schedule: “▶️ Ran: core.nightly_backup”, a second “Backup saved”, a run of its own in the log, and the night's backup still booked |  |  | scheduler stage 1 |
 | 4.08 | `dev clock reset` | ✅ pass | The clock is the real time again, and the standing jobs are booked for the real day | checklist booked for 2026-10-14T06:00 |  | T57 |
+
+## Start 5: `BRIEFING_ENABLED` on (the starts before it had it off). The morning routine, “brief me”, and the briefing kept up to date in place
+
+Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `BRIEFING_ENABLED=true`. Took 65s; the process ended with 0.
+
+| Step | What | Result | Expected | Saw | Claude | From |
+|---|---|---|---|---|---|---|
+| 5.01 | A start with BRIEFING_ENABLED on | ✅ pass | The 6:00 am schedule is the same row, now called Morning routine, with two steps: the briefing, then the pills checklist; both are booked for the next 6:00 am |  |  | scheduler stage 3 |
+| 5.01b | A fresh day, 9:00 am: the morning routine ran at 6:00 on the way | ❌ fail | One briefing in the hub and the checklist under it, both without a notification; the routine's two steps each ran once for 6:00 am, the briefing first; it has the line about yesterday | the checklist (1559369825443385426) is not under the briefing (1559369827594805419) |  | scheduler stage 3 |
+| 5.02 | `brief me` in #selftest-inbox | ✅ pass | With no request to Claude, a copy there: “☀️ Today”, the date, a Pills box with its count and the next dose; drawn, in the colour of its status, with no buttons | 💊 **Pills** · 0 of 6 taken / **Next:** Testa, dose 1 · `8:00 am` |  | scheduler stage 3 (briefing-v2) |
+| 5.03 | `brief me` in the hub | 💥 broke | Nothing new is posted: the briefing that is there is brought up to date in place, and a line says so | KeyError('briefing_hub') at phases.py:969 |  | scheduler stage 3 |
+| 5.04 | A dose is ticked off: `took testany` | ✅ pass | The briefing in the hub is edited in place: its count goes up by one; no new briefing is posted, there or in #selftest-inbox | 0 → 1 taken, in place |  | scheduler stage 3 |
+| 5.05 | “what's on today?” in plain words | ❌ fail | The router sends it to the briefing, which answers with its card; my message is left with no ⚠️ | no briefing was posted in answer | real request | scheduler stage 3 |
+| 5.06 | `my schedule` with a routine in it | ✅ pass | Morning routine, every day at 6:00 am, with its steps numbered: 1. briefing, 2. pills checklist |  |  | scheduler stage 3 |
+| 5.07 | The next morning at 6:00: the routine again | 💥 broke | A new briefing, then the checklist under it; yesterday's briefing is gone; one briefing in the hub; the line about yesterday counts the dose ticked off at 5.04 | KeyError('briefing_hub') at phases.py:999 |  | scheduler stage 3 |
+| 5.08 | `dev clock reset` | ✅ pass | The clock is the real time again |  |  | housekeeping |
 
 ## Only you can check
 
@@ -192,5 +218,5 @@ Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`, `DAILY_SPEND_LIMIT=0.001`.
 - The category `selftest` and its three channels are left in place, holding the last run. Every run empties them first.
 - To empty them now: `python -m selftest --clear`. To delete them and the category: `python -m selftest --remove` (the next run makes them again). Both work over HTTP, with live running.
 - `data/dev.db` and the dev clock are as they were before the run: they are moved aside for it and put back after.
-- The run's own database and each start's results are kept in `data/selftest/run-20261013-131440/` (never in git). Delete the folder when you like.
+- The run's own database and each start's results are kept in `data/selftest/run-20261013-134708/` (never in git). Delete the folder when you like.
 

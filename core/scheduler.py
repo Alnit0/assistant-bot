@@ -759,16 +759,34 @@ async def run_due(now: datetime | None = None, done: list | None = None, set_asi
     return dealt
 
 
+_one_at_a_time: tuple[asyncio.AbstractEventLoop, asyncio.Lock] | None = None
+
+
+def _turn() -> asyncio.Lock:
+    """One pass at a time (a lock of the running loop's own). The loop is not
+    the only caller: `dev run`, a moved clock and the self-test ask too, and
+    two passes at once would each take what the other had not claimed yet,
+    so a routine's steps could finish out of order (the checklist posted
+    before the briefing: found 2026-10-13)."""
+    global _one_at_a_time
+    loop = asyncio.get_running_loop()
+    if _one_at_a_time is None or _one_at_a_time[0] is not loop:
+        _one_at_a_time = (loop, asyncio.Lock())
+    return _one_at_a_time[1]
+
+
 async def run_all_due(done: list | None = None, set_aside: list | None = None) -> int:
     """Book what the schedules say and run due jobs until none is left: a job
     may book another that is already due (the clock was moved ahead, or the
     bot was off for a while). A job nobody handles is left waiting and
-    doesn't keep this going."""
+    doesn't keep this going. One pass at a time: a second caller waits for
+    the first, and then finds little or nothing left to do."""
     total = 0
-    await book()
-    while ran := await run_due(done=done, set_aside=set_aside):
-        total += ran
+    async with _turn():
         await book()
+        while ran := await run_due(done=done, set_aside=set_aside):
+            total += ran
+            await book()
     return total
 
 

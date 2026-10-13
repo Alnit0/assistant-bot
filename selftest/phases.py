@@ -914,7 +914,8 @@ async def p4(h: Harness) -> None:
 # ---------------------------------------------------------------------------
 # Start 5: the briefing switched on (the clock is the real time again)
 # ---------------------------------------------------------------------------
-BRIEFING = "☀️ Today"
+# What only the real briefing says (the sketches posted at 3.14 say "☀️ Today" too)
+BRIEFING = "tick things off on their own message"
 
 
 async def briefing_in_hub(h: Harness):
@@ -939,13 +940,14 @@ async def p5(h: Harness) -> None:
     async with h.step("5.01b", "A fresh day, 9:00 am: the morning routine ran at 6:00 on the way", "One briefing in the hub and the checklist under it, both without a notification; the routine's two steps each ran once for 6:00 am, the briefing first; it has the line about yesterday", "scheduler stage 3"):
         await h.clock_to(9, 0, day_offset=3)
         fresh = await briefing_in_hub(h)
-        h.check(fresh is not None and BRIEFING in fresh.text and await h.count(h.hub, BRIEFING) == 1, f"{await h.count(h.hub, BRIEFING)} briefings in the hub")
+        h.check(fresh is not None and "☀️ Today" in fresh.text and await h.count(h.hub, BRIEFING) == 1, f"{await h.count(h.hub, BRIEFING)} briefings in the hub")
         sheet = await sheet_id(h)
         h.check(sheet is not None and sheet > fresh.id, f"the checklist ({sheet}) is not under the briefing ({fresh.id})")
         h.check(fresh.silent, "the briefing was posted with a notification")
         day_stamp = f"{config.now_nz():%Y-%m-%d}"
-        done = [(each[0], each[2][-2:]) for each in await h.runs("briefing", "post") if each[1] == f"{day_stamp}T06:00"] + [(each[0], each[2][-2:]) for each in await h.runs("pills", "checklist") if each[1] == f"{day_stamp}T06:00"]
-        h.check(done == [("done", "#1"), ("done", "#2")], f"the routine's runs for 6:00 am: {done}")
+        # Only the runs that were done: one booked for this morning days ago, on the moved clock, and taken out since is still in the log
+        done = [each[2].split("~")[0][-2:] for each in [*await h.runs("briefing", "post"), *await h.runs("pills", "checklist")] if each[1] == f"{day_stamp}T06:00" and each[0] == "done"]
+        h.check(done == ["#1", "#2"], f"the routine's runs done for 6:00 am: {done}")
         h.check("Yesterday: " in fresh.text, f"no line about yesterday: {fresh.text[:400]}")
         h.memo["briefing_hub"] = fresh.id
         h.saw(" / ".join(line for line in fresh.text.splitlines() if "Pills" in line or "Yesterday" in line)[:200])
@@ -954,7 +956,7 @@ async def p5(h: Harness) -> None:
         before = h._real_calls
         await h.say("brief me")
         shown = await h.find(h.inbox, BRIEFING)
-        h.check(shown is not None and "💊 **Pills** · " in shown.text and "taken" in shown.text, f"the briefing: {shown.text[:300] if shown else 'nothing'}")
+        h.check(shown is not None and "☀️ Today" in shown.text and "💊 **Pills** · " in shown.text and "taken" in shown.text, f"the briefing: {shown.text[:300] if shown else 'nothing'}")
         h.check(f"{config.now_nz():%A} {config.now_nz().day} {config.now_nz():%B}" in shown.text and "as of" not in shown.text, f"its date line: {shown.text.splitlines()[:2]}")
         h.check(shown.v2 and not shown.buttons and set(shown.accents) <= {accent(status) for status in design.ACCENTS}, f"drawn: {shown.v2}, buttons {shown.labels}, colours {[hex(each) if each else None for each in shown.accents]}")
         h.check(h._real_calls == before, "a request went to Claude")
@@ -967,6 +969,12 @@ async def p5(h: Harness) -> None:
         h.check(again is not None and again.id == h.memo["briefing_hub"] and await h.count(h.hub, BRIEFING) == 1, f"{await h.count(h.hub, BRIEFING)} briefings in the hub")
         h.check(await h.find(h.hub, "The briefing above is up to date") is not None, "no line saying it is up to date")
 
+    async with h.step("5.03b", "“what's on today?” in plain words", "The router sends it to the briefing, which answers with its card there; my message is left with no ⚠️. (Asked before any pill is logged: straight after one, the same words are taken as about the pills)", "scheduler stage 3"):
+        mine = await h.say("what's on today?", canned=("briefing_show", {"guessed": [], "not_included": []}), task="briefing")
+        await no_marks(h, mine)
+        shown = await h.find(h.inbox, BRIEFING)
+        h.check(shown is not None and shown.id != h.memo["briefing_inbox"], f"no briefing was posted in answer: {[each.text[:80] for each in await h.recent(h.inbox, 3) if each.id not in h.typed]}")
+
     async with h.step("5.04", "A dose is ticked off: `took testany`", "The briefing in the hub is edited in place: its count goes up by one; no new briefing is posted, there or in #selftest-inbox", "scheduler stage 3"):
         before = await briefing_in_hub(h)
         count = int(before.text.split("💊 **Pills** · ")[1].split(" of ")[0])
@@ -976,16 +984,13 @@ async def p5(h: Harness) -> None:
         h.check(after is not None and after.id == before.id, "the briefing in the hub was replaced, not edited")
         now = int(after.text.split("💊 **Pills** · ")[1].split(" of ")[0])
         h.check(now == count + 1, f"its count went from {count} to {now}")
-        h.check(await h.count(h.hub, BRIEFING) == 1 and await h.count(h.inbox, BRIEFING) == 1, "a second briefing was posted")
-        copy = await h.get(h.inbox, h.memo["briefing_inbox"])
-        h.check(copy is not None and f"· {now} of " in copy.text, "the copy in #selftest-inbox was not brought up to date too")
-        h.saw(f"{count} → {now} taken, in place")
+        h.check(await h.count(h.hub, BRIEFING) == 1, f"{await h.count(h.hub, BRIEFING)} briefings in the hub")
+        from core import livelists
 
-    async with h.step("5.05", "“what's on today?” in plain words", "The router sends it to the briefing, which answers with its card; my message is left with no ⚠️", "scheduler stage 3"):
-        mine = await h.say("what's on today?", canned=("briefing_show", {"guessed": [], "not_included": []}), task="briefing")
-        await no_marks(h, mine)
-        shown = await h.find(h.inbox, BRIEFING)
-        h.check(shown is not None and shown.id != h.memo["briefing_inbox"], "no briefing was posted in answer")
+        copy = await database.run(livelists.db_get, h.user.id, "briefing")
+        latest = await h.get(h.inbox, copy.message_id) if copy is not None else None
+        h.check(latest is not None and f"· {now} of " in latest.text, "the copy in #selftest-inbox was not brought up to date too")
+        h.saw(f"{count} → {now} taken, in place")
 
     async with h.step("5.06", "`my schedule` with a routine in it", "Morning routine, every day at 6:00 am, with its steps numbered: 1. briefing, 2. pills checklist", "scheduler stage 3"):
         await h.say("my schedule")
@@ -1004,8 +1009,9 @@ async def p5(h: Harness) -> None:
         h.check(fresh.silent, "the briefing was posted with a notification")
         h.check("Yesterday: " in fresh.text and "taken" in fresh.text.split("Yesterday: ")[1], f"no line about yesterday: {fresh.text[:400]}")
         day_stamp = f"{config.now_nz():%Y-%m-%d}"
-        done = [(each[0], each[2][-2:]) for each in await h.runs("briefing", "post") if each[1] == f"{day_stamp}T06:00"] + [(each[0], each[2][-2:]) for each in await h.runs("pills", "checklist") if each[1] == f"{day_stamp}T06:00"]
-        h.check(done == [("done", "#1"), ("done", "#2")], f"the routine's runs for 6:00 am: {done}")
+        # Only the runs that were done: one booked for this morning days ago, on the moved clock, and taken out since is still in the log
+        done = [each[2].split("~")[0][-2:] for each in [*await h.runs("briefing", "post"), *await h.runs("pills", "checklist")] if each[1] == f"{day_stamp}T06:00" and each[0] == "done"]
+        h.check(done == ["#1", "#2"], f"the routine's runs done for 6:00 am: {done}")
         h.saw(next((line for line in fresh.text.splitlines() if "Yesterday" in line), "")[:120])
 
     async with h.step("5.08", "`dev clock reset`", "The clock is the real time again", "housekeeping"):

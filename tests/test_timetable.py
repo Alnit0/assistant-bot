@@ -238,6 +238,31 @@ def test_a_routine_runs_its_steps_in_order_each_recorded_and_one_failing_does_no
     assert [name for name, _, _ in engine.ran] == ["third", "first"]
 
 
+def test_two_passes_at_once_never_put_a_routine_s_steps_out_of_order(engine, monkeypatch):
+    # Found by the self-test: the bot's own loop and a second caller each ran what was due, the second
+    # took the checklist while the first was still posting the briefing, and the checklist came first
+    finished = []
+
+    def slow(name, seconds):
+        async def ran(job):
+            await asyncio.sleep(seconds)
+            finished.append(name)
+
+        return ran
+
+    scheduler.register_handler("test", "second", slow("briefing", 0.2))
+    scheduler.register_handler("test", "first", slow("checklist", 0.0))
+    scheduler.join_routine("test.first", "test.second", order=20, name="Morning routine")
+    run(scheduler.book())
+    clock.advance_to(day.at(engine.day + timedelta(days=1), time(6, 0, 1)))
+
+    async def both():
+        return await asyncio.gather(scheduler.run_all_due(), scheduler.run_all_due())
+
+    ran = run(both())
+    assert finished == ["briefing", "checklist"] and sorted(ran) == [0, 2], "the second pass waited, and found nothing left"
+
+
 def test_what_joins_a_routine_follows_what_is_switched_on_and_the_rest_stays_mine(engine, monkeypatch):
     run(scheduler.book())
     (made,) = schedules()
