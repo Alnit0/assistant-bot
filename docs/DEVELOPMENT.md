@@ -1699,6 +1699,10 @@ report is `docs/SELFTEST.md`, written again by every full run.
   - a run stopped before its end (the PC low on memory, a closed
     window) is put right by the next one: the dev database it had set
     aside goes back, and it gets its line, "did not finish"
+- **No account is named in the report**: it is committed, and bots are
+  renamed freely. A name with its id is written as "live", "the dev
+  bot", "you" or "another account", and of an id at most the last
+  four digits are shown (`report.masked`)
 - **What it can't see** is listed at the end of the report: how
   anything looks, the lock screen, whether the phone buzzed, your own
   reactions, and a real tap

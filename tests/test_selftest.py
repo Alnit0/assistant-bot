@@ -691,3 +691,40 @@ def test_after_a_run_the_history_the_table_and_the_summary_are_each_kept_whateve
     monkeypatch.setattr(runner, "say", no_discord)
     runner.keep(record.row("20261013-160000", "837b16c", "tidy", results, 0.0, False, 60), results, "20261013-160000", {"bot-log": 9})
     assert len(record.read(work / "history.csv")) == 2 and "the summary could not be posted" in capsys.readouterr().out
+
+
+# --- no account is named in the report --------------------------------------------------------------------------------
+def test_account_names_and_ids_are_masked_in_the_report():
+    live_id, dev_id, me = 1556590004254400001, 1559399708345110002, 264000000000000003
+    known = {live_id: "live", dev_id: "the dev bot", me: "you"}
+    said = (
+        f"- `ERROR assistant: Not started: this start is meant to be the dev bot (id {dev_id}, BOT_USER_ID in .env.dev) but its token logs in as Kitsune 🦊#3846 (id {live_id}).`\n"
+        f"- `WARNING assistant: Logged in as Kappa#7322 (id {dev_id})`\n"
+        f"- Kappa said hello to Kitsune 🦊, and Kappa#7322 again; a message from Someone (id 999000000000000004); the owner {me}\n"
+        "- a channel 1559301750371127398 and a step 6.04 are left as they are\n"
+    )
+    out = report.masked(said, known)
+    assert "but its token logs in as live (id …0001)" in out and "Logged in as the dev bot (id …0002)" in out
+    assert "meant to be the dev bot (id …0002, BOT_USER_ID" in out, "an id that stands alone is cut to its last four digits too"
+    assert "the dev bot said hello to live, and the dev bot again" in out, "a name learnt from one line is taken out of every other"
+    assert "from another account (id …0004)" in out and "the owner …0003" in out
+    assert "1559301750371127398" in out and "6.04" in out, "what is not an account is not touched"
+    for gone in ("Kitsune", "Kappa", "3846", "7322", str(live_id), str(dev_id), str(me)):
+        assert gone not in out, gone
+    assert report.masked("nothing to hide", known) == "nothing to hide"
+    learnt = report.masked("Oni is offline", known, names={"Oni#0001": live_id})
+    assert learnt == "live is offline", "a name from the bot's log is taken out though the report never gives its id"
+
+
+def test_the_report_is_masked_when_it_is_written(tmp_path, monkeypatch):
+    live_id = 1556590004254400001
+    log = tmp_path / "dev-bot.log"
+    log.write_text(f"2026-10-13 16:53:25,053 INFO assistant: Logged in as Kappa#7322 (id {live_id})\n", encoding="utf-8")
+    monkeypatch.setattr(report, "LOG", log)
+    monkeypatch.setattr(report, "PATH", tmp_path / "SELFTEST.md")
+    monkeypatch.setattr(report, "accounts", lambda: {live_id: "live"})
+    step = {"phase": "p1", "key": "1.01", "title": "The bot starts", "expect": "x", "source": "asked", "status": "fail", "saw": f"posted by Kappa#7322, id {live_id}", "claude": "", "odd": "", "seconds": 1}
+    path = report.write([("p1", {}, {"results": [step], "seconds": 5})], 0.0, False, "20261013-165300")
+    written = path.read_text(encoding="utf-8")
+    assert "Kappa" not in written and str(live_id) not in written and "posted by live, id …0001" in written
+    assert report.names_in_log(tmp_path / "missing.log") == {}

@@ -552,8 +552,8 @@ def test_no_bot_is_called_by_a_display_name_anywhere_a_person_reads():
     for folder, patterns in ((".", ("*.md", "*.py", "*.example")), ("core", ("*.py",)), ("tasks", ("**/*.py",)), ("selftest", ("*.py",)), ("docs", ("*.md",)), ("scripts", ("*.ps1",)), ("tests", ("*.py",))):
         for pattern in patterns:
             for path in (config.BASE_DIR / folder).glob(pattern):
-                if "specs" in path.parts or path.name == "SELFTEST.md":
-                    continue  # private, or written by a run: it quotes what Discord answered
+                if "specs" in path.parts:
+                    continue  # private, never committed
                 if names.search(path.read_text(encoding="utf-8", errors="replace")):
                     found.append(str(path.relative_to(config.BASE_DIR)))
     assert found == [], f"a display name is written in: {found}"

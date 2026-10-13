@@ -54,6 +54,62 @@ def log_trouble(began: datetime, ended: datetime, path: Path = LOG) -> list[tupl
     return [(count, said) for said, count in found.items()]
 
 
+# ---------------------------------------------------------------------------
+# No account is named in the report. It is committed, and a bot is renamed in
+# Discord freely: an account is "live", "the dev bot" or "you", and of an id
+# at most the last four digits are shown.
+# ---------------------------------------------------------------------------
+_ACCOUNT = re.compile(r"(?P<lead>\b(?:as|else:|by|from)\s+)(?P<name>[^\n|`]{1,80}?) \(id (?P<id>\d{15,20})\)")
+OTHER = "another account"
+
+
+def accounts() -> dict[int, str]:
+    """{account id: what it is called here}, from the settings files."""
+    from dotenv import dotenv_values
+
+    live = dotenv_values(config.BASE_DIR / ".env")
+    dev = dotenv_values(config.BASE_DIR / ".env.dev") if (config.BASE_DIR / ".env.dev").exists() else {}
+    found = {}
+    for value, label in ((live.get("OWNER_ID"), "you"), (dev.get("BOT_USER_ID"), "the dev bot"), (live.get("BOT_USER_ID"), "live")):
+        if (value or "").strip().isdigit():
+            found[int(value)] = label
+    return found
+
+
+def names_in(said: str) -> dict[str, int]:
+    """The account names a text gives away, each with its id: "Logged in as <name> (id <id>)"."""
+    return {found["name"].strip(): int(found["id"]) for found in _ACCOUNT.finditer(said)}
+
+
+def masked(said: str, known: dict[int, str] | None = None, names: dict[str, int] | None = None) -> str:
+    """The text with every account name and id taken out. `names` are ones
+    learnt elsewhere (the bot's log), to be taken out wherever they stand."""
+    known = accounts() if known is None else known
+    names = {**(names or {}), **names_in(said)}
+
+    def short(account_id: int | str) -> str:
+        return f"…{str(account_id)[-4:]}"
+
+    said = _ACCOUNT.sub(lambda found: f"{found['lead']}{known.get(int(found['id']), OTHER)} (id {short(found['id'])})", said)
+    # Longest first, so a name is not left half replaced by a shorter one inside it
+    for name, account_id in sorted(names.items(), key=lambda each: -len(each[0])):
+        label = known.get(account_id, OTHER)
+        for form in (name, name.split("#")[0].strip()):
+            if len(form) >= 3:
+                said = said.replace(form, label)
+    for account_id in known:
+        said = said.replace(str(account_id), short(account_id))
+    return said
+
+
+def names_in_log(path: Path | None = None) -> dict[str, int]:
+    """The account names the bot's own log gives away. {} if it can't be read."""
+    try:
+        return names_in((path or LOG).read_text(encoding="utf-8", errors="replace"))
+    except OSError:
+        return {}
+
+
 def _cell(text: str) -> str:
     return " ".join(str(text).replace("|", "¦").split())
 
@@ -130,5 +186,6 @@ def text(phases, cost: float, claude: bool, stamp: str, partial: bool = False, b
 def write(phases, cost: float, claude: bool, stamp: str, partial: bool = False, began: datetime | None = None, ended: datetime | None = None, ran: str = "") -> Path:
     path = PATH if not partial else config.DATA_DIR / "selftest" / f"run-{stamp}" / "SELFTEST-partial.md"
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(text(phases, cost, claude, stamp, partial, began, ended, ran).replace("\n", "\r\n").encode("utf-8"))
+    written = masked(text(phases, cost, claude, stamp, partial, began, ended, ran), names=names_in_log())
+    path.write_bytes(written.replace("\n", "\r\n").encode("utf-8"))
     return path
