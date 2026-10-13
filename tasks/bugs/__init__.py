@@ -49,6 +49,17 @@ async def report_reaction(payload, user: User) -> str:
     return text
 
 
+async def needs_me(user_id: int, now) -> list:
+    """The bugs that need me now: one with a fix ready is mine to retest. A
+    bug that is only waiting to be fixed is not."""
+    from core.attention import PROBLEM, Item
+
+    return [
+        Item(f"{item.summary}: a fix is ready to retest", PROBLEM, can_act=True, link=item.post_url or "", bug=rules.bug_id(item.id), short=("retest",))
+        for item in await store.open_items(user_id) if item.fix_ready
+    ]
+
+
 async def list_bugs(ctx: Context) -> None:
     """`bugs`: the open bugs. The list is Live, as "show my open bugs" gives it."""
     shown = await listing.card(ctx.user.id)
@@ -100,6 +111,9 @@ class BugsTask(Task):
 
     def actions(self) -> list:
         return list(ACTIONS)
+
+    async def attention(self, user_id, now):
+        return await needs_me(user_id, now)
 
     def keywords(self) -> list[Keyword]:
         return [

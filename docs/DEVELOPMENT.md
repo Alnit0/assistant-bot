@@ -1195,6 +1195,13 @@ A delayed `lab notify` is answered straight away and sent in the
 background. It is held in memory only, so restarting the bot before it
 fires cancels it. What was sent is logged when it finishes.
 
+### The status line
+
+Live's status line is the top attention item ("💊 2/5 · 12pm", "⚠️
+backup failed", blank with nothing to look at): see "Attention items"
+above and `docs/DESIGN.md`. It no longer says "🟢 Live" or the uptime:
+`dev status` shows how long the bot has been up.
+
 ### `lab tour`: the guided test run
 
 Type `lab tour` (best in #inbox, since two steps need it). One card appears
@@ -1606,6 +1613,36 @@ its label. `--check` only reads them. A sketch is a text file in the
 format `dev mock` reads; `INDEX` in that folder lists each with its
 label and what is different. To add a variant, add its file and its
 line there. Reply in the post with a letter for each card.
+
+## Attention items: what the status line shows
+
+The status line under live's name is the top item of one ranking
+(`core/attention.py`; how it reads is in `docs/DESIGN.md`, "The
+status line"). To have your task's things on it, override
+`Task.attention(user_id, now)` and return `attention.Item`s:
+
+```python
+Item("a dose is due", TIMED, when=due, can_act=True, short=(f"due {attention.short_time(due)}",))
+Item("the next dose", TIMED, when=coming, can_act=True, short=("2/5", attention.short_time(coming)))
+Item("doses to take any time", USEFUL, short=("2/5",))
+Item("the import failed", PROBLEM, bug="B14", link=url, short=("import failed",))
+```
+
+- Say the urgency (`PROBLEM`, `TIMED`, `USEFUL`) and the time; the
+  core says the rank. A timed item whose time has come is "due", one
+  later today is "next", one for another day is not ranked.
+- `short` is what the status line shows: numbers and short times.
+  **Never one of my things' names** (a pill's): `what` may name it,
+  for the briefing later.
+- Only read; ask Claude nothing. Call `attention.changed()` whenever
+  your items may be different (pills does when the checklist is
+  brought up to date).
+- A part of the core registers instead: `attention.provide(name, icon,
+  provider)` (`core/health.py`: failed jobs, a failed self-test, the
+  next morning routine).
+
+`QUIET_HOURS` (default `22:00-06:00`) is read for pings, which are not
+on the model yet: nothing uses it today.
 
 ## The new look for a card of your task
 

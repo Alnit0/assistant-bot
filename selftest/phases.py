@@ -113,6 +113,18 @@ async def p1(h: Harness) -> None:
         h.check(await h.find(h.inbox, "Online and ready") is not None, "no “Online and ready” in #selftest-inbox")
         h.check(config.DEV_DATABASE and clock.shiftable(), "this is not the dev database")
 
+    async with h.step("1.01a", "The dev bot's status line and nickname during a self-test", "The status line says how far the run is: 🧪, steps done (of all, once that is known), the minutes left, and ❌ with a count once a step has failed. The nickname ends “· testing”", "attention spec, part 2"):
+        import re
+
+        from core import identity
+
+        line = await identity.current_line()
+        h.check(re.fullmatch(r"🧪 \d+(/\d+)? · \d+m( · ❌\d+)?", line) is not None, f"the status line reads: {line!r}")
+        if config.BOT_NAME:
+            nick = h.inbox.guild.me.nick or ""
+            h.check(nick.endswith(" · testing"), "the nickname does not end “· testing”")
+        h.saw(line)
+
     async with h.step("1.01b", "The schedules the engine made at start", "Three rows, each once: Nightly backup and End of the day (the bot's own, locked) and Pills checklist at 6:00 am every day in the hub, silent; each with exactly one run booked, with a key", "scheduler stage 1"):
         made = {each.name: each for each in await h.schedules()}
         h.check(sorted(made) == ["End of the day", "Nightly backup", "Pills checklist"], f"the schedules are {sorted(made)}")
@@ -305,6 +317,18 @@ async def p1(h: Harness) -> None:
         h.memo["sheet_d1"] = shown.id
         h.saw(shown.text.splitlines()[0][:80])
 
+    async with h.step("1.11d", "What live's status line would read now (6:00 am, nothing taken, Testa due at 8:00 am)", "The top attention item is the next dose with a time, in its short form: 💊, taken/all, and “8am”. No pill is named", "attention spec, part 2"):
+        import re
+
+        from core import attention
+
+        items = await attention.gather(h.user.id, clock.now())
+        line = attention.status_line(attention.top(items, clock.now()))
+        h.check(re.fullmatch(r"💊 0/\d+ · 8am", line) is not None, f"it would read: {line!r} from {[(item.task, item.urgency, item.short) for item in items]}")
+        h.check(not any(name in line for name in ("Testa", "Testany", "Testiron")), f"a pill is named: {line}")
+        h.check(any(item.task == "morning" and item.icon == "🌅" for item in items), f"the next morning routine is not handed in: {[(item.task, item.short) for item in items]}")
+        h.saw(line)
+
     async with h.step("1.11a", "With BRIEFING_ENABLED off, the morning is as it always was", "No briefing in the hub, and the 6:00 am schedule is the checklist alone, under its own name", "scheduler stage 3: off"):
         h.check(not config.BRIEFING_ENABLED, "BRIEFING_ENABLED is on in this start")
         h.check(await h.count(h.hub, "☀️ Today") == 0, "a briefing was posted")
@@ -373,6 +397,13 @@ async def p1(h: Harness) -> None:
         h.check([label.split()[-1] if label else "" for label in shown.labels] and all(any(word in label for label in shown.labels) for word in ("Taken", "Taken at", "Snooze", "Skip")), f"its buttons are {shown.labels}")
         h.memo["prompt"] = shown.id
         h.saw(first)
+
+    async with h.step("1.15b", "With the 8:00 am dose due and not taken, live's status line would say so", "The top attention item is the dose that is due: “💊 due 8am”", "attention spec, part 2"):
+        from core import attention
+
+        line = attention.status_line(attention.top(await attention.gather(h.user.id, clock.now()), clock.now()))
+        h.check(line == "💊 due 8am", f"it would read: {line!r}")
+        h.saw(line)
 
     async with h.step("1.16", "Taken is pressed on the reminder", "The reminder goes; dose 1 is taken; the checklist shows it", "38.4"):
         await h.press(h.memo["prompt"], "Taken")

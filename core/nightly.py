@@ -3,7 +3,7 @@ import logging
 import sys
 from datetime import datetime, time
 
-from core import config, scheduler, timetable
+from core import attention, config, scheduler, timetable
 from core.discord_utils import log_error
 
 log = logging.getLogger("assistant")
@@ -73,6 +73,7 @@ def how_it_ended(code: int | None) -> str:
 
 async def _watch(process, full: bool) -> None:
     code = await process.wait()
+    attention.changed()  # the run's line of history is written: a failing step is live's to show
     wrong = how_it_ended(code)
     if wrong:
         log.error("Nightly self-test did not run: %s (exit code %s; logs/%s)", wrong, code, LOG_NAME)

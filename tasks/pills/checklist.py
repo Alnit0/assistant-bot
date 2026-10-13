@@ -2,7 +2,7 @@ import logging
 from dataclasses import replace
 from datetime import date, datetime, time, timedelta
 
-from core import cards, clock, config, database, discord_utils, hub, lifecycle, live, llm, messages, occurrences, restart, scheduler, summaries, timeinput, timetable
+from core import attention, cards, clock, config, database, discord_utils, hub, lifecycle, live, llm, messages, occurrences, restart, scheduler, summaries, timeinput, timetable
 from core import day as days
 from core import schedule as core_schedule
 from core.cards import Button, Card
@@ -204,6 +204,7 @@ async def refresh(user_id: int) -> None:
     Nothing to do if it hasn't been posted today; posted afresh if it has gone."""
     # Whatever shows a summary of the pills (the briefing) is told: something about today changed
     summaries.changed(TASK, user_id)
+    attention.changed()  # and what of today's doses deserves a look (tasks/pills/attention.py)
     pills, listed, day = await view(user_id)
     held = await database.run(store.db_messages, user_id, day)
     sheet = next((message for message in held if message.kind == CHECKLIST), None)

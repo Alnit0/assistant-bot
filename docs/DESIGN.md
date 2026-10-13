@@ -59,6 +59,48 @@ The briefing is behind `BRIEFING_ENABLED` and the clean-up behind
 `HUB_TIDY`, both off until turned on; with the clean-up off,
 yesterday's checklist stays where it was.
 
+## The status line
+
+Three words, used the same way everywhere: the **status line** is the
+custom status text under a bot's name; the **presence** is the online
+dot, which Discord sets and the bot never does; the **nickname** is
+the name (below).
+
+Live's status line is one thing: **the top item of the attention
+model** (`core/attention.py`), in its short form.
+
+- **Format**: the item's icon, then numbers and short 12-hour times
+  joined by " · ": `💊 2/5 · 12pm`. A time is "12pm", "6am", "8:30am".
+  Never a pill's name, never a sentence, never more than one item.
+- **What is on it**, first that applies:
+
+| Level | When | Reads |
+|---|---|---|
+| 1 | Something is wrong and needs me (a job that failed, a self-test that failed, a bug to retest); the bug's id first, if one was filed | `⚠️ B14 · backup failed`, `⚠️ backup failed`, `⚠️ D3 · self-test failed`, `⚠️ B4 · retest` |
+| 2 | Something is due now or overdue | `💊 due 12pm` |
+| 3 | The next timed thing today | `💊 2/5 · 12pm` |
+| 4 | Something useful that has no time: doses with no time still to take; otherwise when the morning routine next runs | `💊 2/5`, `🌅 6am` |
+| 5 | Nothing | blank |
+
+- Within a level, the soonest. When nothing timed is left today it
+  falls to level 4, else it is blank.
+- **No "🟢 Live" and no uptime**: the presence dot says it is on, and
+  the uptime is in `dev status`.
+- **It changes when a state changes** (a dose ticked off, a job that
+  ends, the moment a timed thing falls due, the day ending), never on
+  a timer, and is sent to Discord only when it reads differently.
+- "🛠️ Dev mode" stays in front while dev mode is on.
+
+Other bots, other lines:
+
+| Bot | Status line |
+|---|---|
+| The dev bot during a self-test | `🧪 41/103 · 6m`: steps done of all, minutes left; `🧪 41/103 · 6m · ❌2` once steps have failed |
+| The dev bot otherwise | `🧪 DEV database · clock +13h` |
+| A self-test on live's own account (no dev bot) | `🧪 Self-test running · back about 4:15 pm` |
+
+The status line is silent, so quiet hours never apply to it.
+
 ## The bots' names
 
 A bot is called what I named it: `BOT_NAME` in its settings file,
@@ -67,8 +109,8 @@ then always as **Name · state**:
 
 | Bot | Nickname | Where its states show |
 |---|---|---|
-| Live | its plain name, always | the status line ("🟢 Live · up 7h · next: …", "⚠️ … failed · see #bot-log") |
-| The dev bot | its plain name; **Name · testing** while a self-test runs, plain again when it ends | the nickname, and the status line ("🧪 DEV database · clock +13h") |
+| Live | its plain name, always | the status line ("💊 2/5 · 12pm", "⚠️ backup failed") |
+| The dev bot | its plain name; **Name · testing** while a self-test runs, plain again when it ends | the nickname, and the status line ("🧪 41/103 · 6m", "🧪 DEV database · clock +13h") |
 
 Nothing else renames a bot: no marker for the dev database (the old
 "· DEV" is gone), no state for live. With no `BOT_NAME` the nickname

@@ -96,6 +96,19 @@ PHASE_TIMEOUT = 20 * 60
 PASSED = WORK / "passed.json"  # {stage: the commit it last passed on}
 HISTORY = WORK / "history.csv"  # a line a run, only ever added to (selftest/record.py)
 BUGS = WORK / "bugs.json"  # {step: the dev bug it has} (selftest/bugs.py)
+STEPS = WORK / "steps.json"  # {start: how many steps it had last time}: for "41/103" on the dev bot's status line
+
+
+def steps_known() -> dict[str, int]:
+    try:
+        return {str(name): int(count) for name, count in json.loads(STEPS.read_text(encoding="utf-8")).items()}
+    except (OSError, ValueError, AttributeError, TypeError):
+        return {}
+
+
+def steps_expected(known: dict[str, int], wanted: list[str]) -> int:
+    """How many steps this run should have, from the last time each start ran; 0 when one of them never has."""
+    return sum(known[name] for name in wanted) if all(name in known for name in wanted) else 0
 
 # (name, the settings it starts with, seconds to stay off before it)
 PHASES = (
@@ -369,7 +382,7 @@ def keep(line: dict, results: list[dict], stamp: str, channels: dict[str, int], 
         print(f"--- {len(gone)} old run folder{'' if len(gone) == 1 else 's'} removed (the last {record.KEEP_RUNS} are kept, and one with a failure for {record.KEEP_FAILED_DAYS} days)", flush=True)
 
 
-def run_phase(name: str, settings: dict, channels: dict[str, int], claude: bool, budget: float, memo: dict, stamp: str) -> dict:
+def run_phase(name: str, settings: dict, channels: dict[str, int], claude: bool, budget: float, memo: dict, stamp: str, progress: dict | None = None) -> dict:
     out = WORK / f"run-{stamp}" / f"{name}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     # Never this process's own environment: it has read .env, so live's token is in it, and a
@@ -377,6 +390,7 @@ def run_phase(name: str, settings: dict, channels: dict[str, int], claude: bool,
     env = config.environment_for_child()
     env.update(settings)
     env["SELFTEST_SEPARATE"] = "1" if separate() else "0"
+    env.update({name: str(value) for name, value in (progress or {}).items()})  # how far the whole run is, for the status line
     if separate():
         env["DISCORD_TOKEN"] = token()  # the dev bot's, handed over explicitly: never left to what is inherited
     if os.environ.get("SELFTEST_BACK"):
@@ -486,6 +500,8 @@ def main() -> int:
         return 5
     saved = set_aside(stamp)
     phases, memo = [], {}
+    known = steps_known()
+    expected = steps_expected(known, wanted)
     try:
         for name, settings, off_for in PHASES:
             if wanted and name not in wanted:
@@ -494,12 +510,23 @@ def main() -> int:
                 print(f"--- the bot stays off for {off_for}s before {name}", flush=True)
                 time.sleep(off_for)
             print(f"--- {name} {settings}", flush=True)
-            found = run_phase(name, settings, channels, asked.claude, asked.budget, memo, stamp)
+            so_far = [each for _, _, earlier in phases for each in earlier["results"]]
+            found = run_phase(name, settings, channels, asked.claude, asked.budget, memo, stamp, {
+                "SELFTEST_TOTAL": expected, "SELFTEST_DONE": len(so_far),
+                "SELFTEST_FAILED": sum(1 for each in so_far if each["status"] in ("fail", "error")),
+                "SELFTEST_ENDS": began.timestamp() + minutes * 60,
+            })
             memo = found.get("memo", memo)
             phases.append((name, settings, found))
+            if found["results"] and found.get("exit") == 0:
+                known[name] = len(found["results"])
     finally:
         spent = report.spent(config.DATA_DIR / "dev.db")
         put_back(saved, stamp)
+        try:
+            STEPS.write_text(json.dumps(known, indent=1), encoding="utf-8")
+        except OSError:
+            pass
         try:
             print(f"--- the dev bot's name: {asyncio.run(plain_name(channels['inbox']))}", flush=True)
         except Exception as error:

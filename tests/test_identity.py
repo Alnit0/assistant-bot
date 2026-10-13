@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from core import clock, devmode, discord_utils, identity, scheduler, tidy
+from core import clock, devmode, discord_utils, identity, scheduler
 
 NOW = datetime(2026, 10, 12, 8, 0, tzinfo=timezone.utc)  # 9:00 pm in NZ
 NONE = timedelta(0)
@@ -42,39 +42,37 @@ def test_the_nickname_is_the_name_it_was_given_with_a_suffix_only_for_a_real_sta
 # ---------------------------------------------------------------------------
 # The status line (pure)
 # ---------------------------------------------------------------------------
-def test_live_says_how_long_it_has_been_up_and_what_runs_next():
-    pending = [job(tidy.JOB_TASK, tidy.JOB_KIND, timedelta(seconds=5)), job("core", "nightly_backup", timedelta(hours=6)), job("pills", "checklist", timedelta(hours=9))]
-    next_up = identity.next_job(pending, NOW)
-    assert next_up == "nightly backup 3:00 am", "a line being tidied away is not worth naming"
-    assert identity.status_line(False, 7 * 3600 + 120, next_up, NONE) == "🟢 Live · up 7h · next: nightly backup 3:00 am"
-    assert identity.status_line(False, 60, "", NONE) == "🟢 Live · up 1m", "nothing booked: nothing said about it"
-
-
-def test_a_job_more_than_a_day_off_is_named_with_its_day_and_a_tasks_job_with_its_task():
-    assert identity.next_job([job("pills", "checklist", timedelta(hours=33))], NOW) == "pills checklist Wed 6:00 am"
-    assert identity.next_job([], NOW) == ""
+def test_live_s_status_line_is_the_top_attention_item_and_nothing_else():
+    assert identity.status_line(False, NONE, "💊 2/5 · 12pm") == "💊 2/5 · 12pm"
+    assert identity.status_line(False, NONE, "⚠️ B14 · backup failed") == "⚠️ B14 · backup failed"
+    assert identity.status_line(False, NONE, "") == "", "nothing to look at: a blank status line"
+    assert "Live" not in identity.status_line(False, NONE, "🌅 6am") and "up " not in identity.status_line(False, NONE, "🌅 6am"), "no “Live”, no uptime: the presence dot says it is on"
 
 
 @pytest.mark.parametrize("seconds, said", [(0, "0m"), (59 * 60, "59m"), (3600, "1h"), (47 * 3600, "47h"), (49 * 3600, "2d")])
 def test_uptime_is_one_unit(seconds, said):
-    assert identity.uptime(seconds) == said
+    assert identity.uptime(seconds) == said, "still used where a late job is said (and by `dev status`)"
 
 
-def test_dev_says_so_and_how_far_the_clock_is_moved():
-    assert identity.status_line(True, 3600, "nightly backup 3:00 am", NONE) == "🧪 DEV database"
-    assert identity.status_line(True, 3600, "", timedelta(hours=13)) == "🧪 DEV database · clock +13h"
-    assert identity.status_line(True, 3600, "", timedelta(hours=1, minutes=30)) == "🧪 DEV database · clock +1h 30m"
+def test_the_dev_bot_says_which_database_and_how_far_the_clock_is_moved():
+    assert identity.status_line(True, NONE, "💊 due 12pm") == "🧪 DEV database", "outside a self-test it says which bot it is, not what is due"
+    assert identity.status_line(True, timedelta(hours=13)) == "🧪 DEV database · clock +13h"
+    assert identity.status_line(True, timedelta(hours=1, minutes=30)) == "🧪 DEV database · clock +1h 30m"
 
 
-def test_a_job_that_failed_or_was_skipped_takes_the_line_over():
-    trouble = [("core", "nightly_backup", "failed"), ("pills", "checklist", "skipped")]
-    assert identity.status_line(False, 3600, "x", NONE, trouble[1:]) == "⚠️ pills checklist skipped · see #bot-log"
-    assert identity.status_line(True, 3600, "x", timedelta(hours=2), trouble) == "⚠️ nightly backup failed (+1 more) · see #bot-log"
+def test_the_dev_bot_in_a_self_test_says_how_far_the_run_is():
+    assert identity.selftest_line(41, 103, 6) == "🧪 41/103 · 6m"
+    assert identity.selftest_line(41, 103, 6, 2) == "🧪 41/103 · 6m · ❌2", "once steps fail"
+    assert identity.selftest_line(41, 0, 6) == "🧪 41 · 6m", "the number of steps is not known the first time"
+    assert identity.selftest_line(103, 103, -2) == "🧪 103/103 · 0m", "a run that takes longer than expected is never minus two minutes"
+    assert identity.status_line(True, timedelta(hours=13), "", progress="🧪 41/103 · 6m") == "🧪 41/103 · 6m"
+    assert identity.status_line(True, NONE, "", True, "4:15 pm", "🧪 41/103 · 6m") == "🧪 Self-test running · back about 4:15 pm", "a run on live's own account says when live is back, before anything"
 
 
 def test_dev_mode_is_said_in_front_and_the_line_fits_discord():
-    assert identity.status_line(False, 7200, "", NONE, dev_mode=True) == "🛠️ Dev mode · 🟢 Live · up 2h"
-    assert len(identity.status_line(False, 7200, "x" * 300, NONE)) == identity.MAX_STATUS
+    assert identity.status_line(False, NONE, "💊 2/5 · 12pm", dev_mode=True) == "🛠️ Dev mode · 💊 2/5 · 12pm"
+    assert identity.status_line(False, NONE, "", dev_mode=True) == "🛠️ Dev mode"
+    assert len(identity.status_line(False, NONE, "x" * 300)) == identity.MAX_STATUS
 
 
 # ---------------------------------------------------------------------------
@@ -100,7 +98,7 @@ def server(monkeypatch):
     seen = SimpleNamespace(member=Member("Hive"), logged=[], presence=[])
 
     async def change_presence(activity=None):
-        seen.presence.append(activity.name)
+        seen.presence.append(activity.name if activity is not None else None)  # None: the status line is blank
 
     async def log_simple(title, description=None):
         seen.logged.append((title, description))
@@ -172,25 +170,89 @@ def test_only_the_dev_bot_in_a_self_test_has_a_state_in_its_name():
     assert identity.STATE_MARK == " · "
 
 
-def test_the_status_is_only_sent_when_it_reads_differently(server, db, dev_off, monkeypatch):
+@pytest.fixture
+def looking(server, db, dev_off, monkeypatch, owner):
+    """Live, with attention items handed in by the test."""
+    held = SimpleNamespace(items=[], now=NOW)
+
+    async def gather(user_id, now):
+        return list(held.items)
+
+    async def who(discord_id):
+        return owner
+
     monkeypatch.setattr(identity, "DEV_DATABASE", False)
-    monkeypatch.setattr(identity.about, "STARTED", clock.real_now() - timedelta(hours=7, minutes=5))
+    monkeypatch.setattr(identity, "SELFTEST_BACK", "")
+    monkeypatch.setattr(identity, "_progress", "")
+    monkeypatch.setattr(identity, "_wake", None)
+    monkeypatch.setattr(identity.attention, "gather", gather)
+    monkeypatch.setattr(identity, "get_user_by_discord_id", who)
+    monkeypatch.setattr(clock, "now", lambda: held.now)
+    held.server = server
+    return held
+
+
+def _item(short, urgency, minutes=None, **more):
+    from core.attention import Item
+
+    return Item("x", urgency, when=NOW + timedelta(minutes=minutes) if minutes is not None else None, short=short, icon=more.pop("icon", "💊"), **more)
+
+
+def test_the_status_line_is_only_sent_when_it_reads_differently_and_blank_is_no_status(looking):
+    from core.attention import TIMED
 
     async def scenario():
-        await scheduler.add_job("core", "nightly_backup", NOW.replace(year=2030, hour=14))  # 3:00 am NZ
+        looking.items = [_item(("2/5", "9:30pm"), TIMED, 30)]
         first = await identity.refresh()
         again = await identity.refresh()
         devmode.enable()
         third = await identity.refresh()
-        return first, again, third
+        devmode.disable()
+        looking.items = []
+        fourth = await identity.refresh()
+        return first, again, third, fourth
 
-    assert run(scenario()) == (True, False, True)
-    assert server.presence == ["🟢 Live · up 7h · next: nightly backup Sun 3:00 am", "🛠️ Dev mode · 🟢 Live · up 7h · next: nightly backup Sun 3:00 am"]
+    assert run(scenario()) == (True, False, True, True)
+    assert looking.server.presence == ["💊 2/5 · 9:30pm", "🛠️ Dev mode · 💊 2/5 · 9:30pm", None], "nothing to look at clears the status line"
 
 
-def test_a_failed_job_shows_until_its_next_run_works(server, db, dev_off, monkeypatch):
+def test_it_looks_again_at_the_moment_the_next_timed_item_falls_due_and_never_on_a_ticker(looking, monkeypatch):
+    from core.attention import TIMED
+
+    waits = []
+
+    class Loop:
+        def call_later(self, seconds, callback):
+            waits.append((round(seconds), callback))
+            return SimpleNamespace(cancel=lambda: waits.append("cancelled"))
+
+    monkeypatch.setattr(identity.asyncio, "get_running_loop", lambda: Loop())
+    looking.items = [_item(("2/5", "9:30pm"), TIMED, 30), _item(("3/5", "10pm"), TIMED, 60)]
+    run(identity.refresh())
+    assert waits == [(30 * 60 + 1, identity.look_again)], "one wait, for the soonest item still to come"
+    looking.items = []
+    run(identity.refresh())
+    assert waits[1] == "cancelled" and waits[2] == (3 * 3600 + 1, identity.look_again), "with nothing timed left, the end of the day (9 pm now: three hours)"
+    assert not hasattr(identity, "EVERY_SECONDS") and not hasattr(identity, "_loop"), "there is no ticker any more"
+
+
+def test_a_failed_job_shows_until_its_next_run_works(server, db, dev_off, monkeypatch, owner):
+    from core import attention, health
+
     monkeypatch.setattr(identity, "DEV_DATABASE", False)
-    monkeypatch.setattr(identity.about, "STARTED", clock.real_now())
+    monkeypatch.setattr(identity, "_progress", "")
+    monkeypatch.setattr(identity, "_wake", None)
+    monkeypatch.setattr(attention, "_providers", {})
+    monkeypatch.setattr(attention, "_listeners", [])
+    monkeypatch.setattr(scheduler, "_after_run", [])
+    told = []
+    health.setup()
+    attention.on_change(lambda: told.append(1))
+
+    async def who(discord_id):
+        return owner
+
+    monkeypatch.setattr(identity, "get_user_by_discord_id", who)
 
     async def no_log(*args):
         pass
@@ -202,7 +264,7 @@ def test_a_failed_job_shows_until_its_next_run_works(server, db, dev_off, monkey
         if outcome["fail"]:
             raise OSError("disk full")
 
-    scheduler.register_handler("core", "nightly_backup", handler)
+    scheduler.register_handler("core", "nightly_backup", handler, "nightly backup")
 
     async def scenario():
         await scheduler.add_job("core", "nightly_backup", scheduler.utc_now() - timedelta(minutes=1))
@@ -214,7 +276,8 @@ def test_a_failed_job_shows_until_its_next_run_works(server, db, dev_off, monkey
         await identity.refresh()
 
     run(scenario())
-    assert server.presence == ["⚠️ nightly backup failed · see #bot-log", "🟢 Live · up 0m"]
+    assert server.presence == ["⚠️ backup failed", None], "it stays until that job next works; then there is nothing to say"
+    assert len(told) >= 2, "a pass that ran a job says the items may have changed"
 
 
 def test_a_status_discord_refuses_never_raises(server, db, dev_off, monkeypatch):

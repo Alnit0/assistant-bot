@@ -1,4 +1,4 @@
-from core import livelists
+from core import attention, livelists
 from core.cards import Card
 from tasks.bugs import rules, store
 
@@ -30,3 +30,4 @@ def changed(user_id: int | None) -> None:
         return await card(user_id)
 
     livelists.changed(user_id, KEY, render)
+    attention.changed()  # a bug with a fix ready to retest is one of the things that need me

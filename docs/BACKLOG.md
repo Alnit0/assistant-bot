@@ -43,6 +43,14 @@ low priority, nothing dropped without a reason.
 
 ### Soon
 
+- **The briefing and pings on the attention model** (asked
+  2026-10-13: built for the status line only). The briefing should
+  take its order and what is on top from `attention.ranked`; pings
+  should be the urgent items only, with quiet hours (`QUIET_HOURS`,
+  10:00 pm to 6:00 am: only level 1 pings, the rest waits for the
+  briefing). Pill reminders stay as they are until then. Also there,
+  as an option: the dev bot as an always-on caretaker that reads only
+  live's health (`docs/specs/attention.md`, section 8).
 - **The offline card in the new look** ("I was offline when you sent
   this"): plain for now, to follow `CARDS_V2` (said 2026-10-13).
 - **A routine's steps by words** (asked 2026-10-13, later): change

@@ -4,6 +4,7 @@ from core.lifecycle import MessageClass
 from core.actions import EACH_DAY
 from tasks.base import INBOX, ButtonNote, Keyword, Task
 from tasks.pills import checklist, plain, reminders, rules, sheet, shortcut, store
+from tasks.pills import attention as pills_attention
 from tasks.pills import summary as pills_summary
 
 HUB = "hub"
@@ -94,6 +95,10 @@ class PillsTask(Task):
 
     def migrations(self):
         return store.MIGRATIONS
+
+    async def attention(self, user_id, now):
+        # Today's doses as the core's attention model sees them: due, next, or simply left
+        return await pills_attention.items(user_id, now)
 
     def job_handlers(self):
         return {

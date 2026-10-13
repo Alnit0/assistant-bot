@@ -4,7 +4,7 @@ import logging
 import discord
 from discord import app_commands
 
-from core import account, backup, cards, clock, conversation, database, day, devmode, identity, instance_lock, interactions, lifecycle, live, messages, missed, nightly, restart, scheduler, tidy, timing
+from core import account, backup, cards, clock, conversation, database, day, devmode, health, identity, instance_lock, interactions, lifecycle, live, messages, missed, nightly, restart, scheduler, tidy, timing
 from core.config import SEPARATE_BOT
 from core.config import mine as my_channel
 from core.config import (
@@ -57,6 +57,7 @@ INTERACTION_GRACE = 2.0
 scheduler.register_handler(backup.JOB_TASK, backup.JOB_KIND, backup.nightly_backup_job, backup.JOB_LABEL)
 scheduler.register_handler(day.JOB_TASK, day.JOB_KIND, day.rollover_job, day.JOB_LABEL)
 nightly.setup()  # live's own: the self-test the dev bot runs at night, behind NIGHTLY_SELFTEST
+health.setup()  # the core's own attention items: what is wrong with the bot itself, and the next morning
 tidy.setup()
 messages.setup()
 

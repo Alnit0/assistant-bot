@@ -17,6 +17,36 @@ failure for 30 days (built: it happens after the next run); the
 self-test marks Fixed only bugs it opened itself (built, and checked
 against the bug's own record, not only the list of numbers).
 
+**From the attention model and the status line (2026-10-13; the spec
+is `docs/specs/attention.md`, the status line is built from it):**
+
+- **A bug for a system problem.** "⚠️ B14 · backup failed" needs a
+  bug to exist, and nothing files one for a failed job today, so it
+  reads "⚠️ backup failed". Should a failed job file a bug by itself,
+  as a failing self-test step does?
+- **Bugs at level 1**: only a bug with a fix ready to retest ("⚠️ B4 ·
+  retest") is handed in. Every open bug, or none, instead?
+- **The dev bot outside a self-test** keeps "🧪 DEV database · clock
+  +13h". Or the same attention line as live?
+- **A missed dose** is not a level 1 problem: it is in the briefing's
+  line about yesterday. Or should it show as "💊 missed" for the rest
+  of the day?
+- **"🌅 6am"** shows whenever nothing else is left, during the day
+  too. Only in the evening instead? And with the morning routine
+  paused the line is blank.
+- **Several things due at once** show only the soonest, with no "+2".
+- **"🛠️ Dev mode"** is still said in front of live's line.
+- **"backup failed"**: the job is called "nightly backup"; on the
+  status line "nightly " is dropped, to match your example.
+- **Quiet hours** (`QUIET_HOURS`, 10:00 pm to 6:00 am) are a setting
+  that nothing uses yet: pings are not on the model. Should the
+  6:00 am briefing list what was held back overnight?
+- **The dev bot as caretaker** is in the spec as a later option, with
+  what it costs (a second process all day, about 100 to 150 MB; the
+  self-test could not then start the dev bot itself; long-lived state
+  on the dev side). A Windows scheduled task that pings your phone
+  when the service is down would buy the same for almost nothing.
+
 **From the unattended batch of 2026-10-13 (six stages, all built;
 every self-test run as the dev bot with live left up; US$1.08 spent on
 seven runs, each under US$0.17):**

@@ -959,6 +959,20 @@ On the dev database (`python main.py --dev`, in the dev bot's inbox).
 | 6 | Add a pill with an evening time (`add Testeve at 8pm`, **Save**) and leave it untaken. `dev clock` past midnight to 12:30 am. Say `I took testeve at 9pm` | A card first: "It is past midnight and 9:00 pm has not come yet today, so this is yesterday's dose. … Log it as taken now?" with **Log it** and **Cancel**. Log it: "… taken 9:00 pm · yesterday" | T29 |
 | 7 | `dev clock` to 9am. Say `took <that pill> yesterday at 8` (a dose of yesterday still missed) | A card first: "“8:00” could be morning or evening: taken as 8:00 pm." | T29 |
 
+## 52. The status line (waiting for QA)
+
+On live, on your phone or the desktop: look under the bot's name in
+the member list.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Look, with a dose with a time still to come today | "💊 2/5 · 12pm" (taken/all, then the next time). No "🟢 Live", no uptime, no pill's name | K37 |
+| 2 | Wait for that time to pass without ticking it off (or look when one is overdue) | "💊 due 12pm", within a few seconds of the time | K37 |
+| 3 | Tick everything with a time off, leaving one with no time | "💊 4/5" | K37 |
+| 4 | Tick the last one off | "🌅 6am" (when the morning routine next runs) | K37 |
+| 5 | Type `dev status` | It says how long the bot has been up | K37 |
+| 6 | Start a self-test (`python -m selftest --stages briefing`) and look at the dev bot | Its nickname ends "· testing" and its status line counts up: "🧪 3/14 · 2m"; after the run the nickname is plain again | K37 |
+
 ## When you finish
 
 - Stop the test copy (`Ctrl + C`) and check nothing is left running:

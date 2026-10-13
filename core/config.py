@@ -236,6 +236,19 @@ REMINDERS_ENABLED = flag(os.getenv("REMINDERS_ENABLED"), False)
 # The briefing (tasks/briefing): one card a day in the hub that says what today holds, kept up
 # to date in place, and "brief me". Off unless set: off, nothing of it exists
 BRIEFING_ENABLED = flag(os.getenv("BRIEFING_ENABLED"), False)
+def hours(text: str | None, default: tuple[time, time]) -> tuple[time, time]:
+    """A stretch of the day as written in .env ("22:00-06:00"): (from, to)."""
+    try:
+        start, end = (part.strip() for part in (text or "").split("-", 1))
+        return time.fromisoformat(start), time.fromisoformat(end)
+    except ValueError:
+        return default
+
+
+# Quiet hours apply to pings only (the status line is silent): in them only a level 1
+# item pings, and the rest waits for the briefing (core/attention.py). Read and shown
+# now; used when pings move onto the attention model
+QUIET_HOURS = hours(os.getenv("QUIET_HOURS"), (time(22, 0), time(6, 0)))
 # The weekly pills summary (tasks/pills/history.py): on Sunday evening the week is posted
 # in the hub. Off unless switched on
 WEEKLY_SUMMARY = flag(os.getenv("WEEKLY_SUMMARY"), False)

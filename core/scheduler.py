@@ -713,6 +713,16 @@ _reported: dict[int, str] = {}
 _notes: dict[int, str] = {}
 
 
+# Told, with nothing, whenever a pass has run at least one job: whatever shows how the
+# bot is doing (core/attention.py) looks again. Called, not awaited
+_after_run: list[Callable[[], None]] = []
+
+
+def on_ran(listener: Callable[[], None]) -> None:
+    if listener not in _after_run:
+        _after_run.append(listener)
+
+
 def report(job: Job, ended: str) -> None:
     """Called by a job's handler while it runs: this run is to be recorded as
     FAILED or SKIPPED, not as done."""
@@ -789,6 +799,12 @@ async def run_due(now: datetime | None = None, done: list | None = None, set_asi
         dealt += 1
         if done is not None:
             done.append(job)
+    if dealt:
+        for listener in list(_after_run):
+            try:
+                listener()
+            except Exception:
+                log.exception("Could not tell a listener that jobs have run")
     return dealt
 
 

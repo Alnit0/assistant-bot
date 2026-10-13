@@ -429,6 +429,22 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   say "the dev bot" with the dev bot's id, stop it at once. The dev
   bot registers no slash commands, and its bugs have a forum of their
   own
+- Three words: the **status line** is the custom status text under a
+  bot's name, the **presence** is the online dot (Discord sets it,
+  the bot never does), the **nickname** is the name. Use them so, in
+  docs and code
+- One attention model (`core/attention.py`): tasks hand the core
+  attention items through their contract (`Task.attention`: what,
+  when, urgency, whether I can act, a link or a bug's id, and the
+  short pieces for the status line), the core's own parts register a
+  provider (`core/health.py`), and the core ranks them once
+  (`attention.ranked`: a problem, due now, next today, useful,
+  nothing). The status line shows the top item (`core/identity.py`);
+  the briefing and pings move onto the same ranking later. No surface
+  ranks anything itself, and a task never says a rank. The status line
+  is icon, numbers and short times joined by " · ", never a pill's
+  name, blank when there is nothing; it is brought up to date when a
+  state changes (`attention.changed()`), never by a ticker
 - A bot's nickname is `BOT_NAME` in its settings file, set by me, and
   taken on every start. A suffix only for a real state, always "Name ·
   state": the dev bot is "Name · testing" during a self-test and its

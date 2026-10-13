@@ -51,6 +51,11 @@ class Harness:
         self._record: dict | None = None
         self.cut_here = False  # the next request to Claude is where the process dies
         self.recorded_only = False  # while it is set, a recorded answer is used even when real requests are on
+        # How far the whole run is, for the dev bot's status line ("🧪 41/103 · 6m"): told by the launcher
+        self.steps_before = int(os.getenv("SELFTEST_DONE") or 0)
+        self.failed_before = int(os.getenv("SELFTEST_FAILED") or 0)
+        self.steps_in_all = int(os.getenv("SELFTEST_TOTAL") or 0)
+        self.ends_at = float(os.getenv("SELFTEST_ENDS") or 0)
 
     # --- setting up -------------------------------------------------------------------------------------
     async def setup(self) -> None:
@@ -123,7 +128,24 @@ class Harness:
             self._record = None
             self.results.append(record)
             self.save()
+            self.tell_progress()
             print(f"[{record['status']:5}] {key} {title}" + (f" :: {record['saw'][:200]}" if record["status"] != PASS else ""), flush=True)
+
+    def progress(self) -> tuple[int, int, int, int]:
+        """(steps done in the whole run, steps in all or 0, minutes left, steps failed)."""
+        done = self.steps_before + len(self.results)
+        failed = self.failed_before + sum(1 for each in self.results if each["status"] in (FAIL, ERROR))
+        left = max(0, round((self.ends_at - stopwatch.time()) / 60)) if self.ends_at else 0
+        return done, max(self.steps_in_all, done) if self.steps_in_all else 0, left, failed
+
+    def tell_progress(self) -> None:
+        """The dev bot's status line follows the run. Never in the way of a step."""
+        try:
+            from core import identity
+
+            identity.set_progress(*self.progress())
+        except Exception:
+            log.exception("Could not bring the status line up to date with the run")
 
     def skip(self, key: str, title: str, why: str, source: str = "") -> None:
         self.results.append({"phase": self.phase, "key": key, "title": title, "expect": "", "source": source, "status": SKIP, "saw": why, "claude": "", "odd": "", "seconds": 0})

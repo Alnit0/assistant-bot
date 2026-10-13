@@ -262,6 +262,7 @@ class Task:
                 self.name, self.icon, self.only_for, tuple(self.examples), found, live_state=self.action_state, show=self.show,
                 already=self.already_so, names=self.item_names, identity=tuple(self.identity), on_repeat=self.on_repeat,
                 owns=self.owns_message, summary=self.summary if type(self).summary is not Task.summary else None,
+                attention=self.attention if type(self).attention is not Task.attention else None,
             )
         ]
 
@@ -272,6 +273,15 @@ class Task:
         is in the task's own words. Say when it may have changed with
         `summaries.changed(self.name, user_id)`. Only used if overridden."""
         return None
+
+    async def attention(self, user_id: int, now) -> list:
+        """What of this task's may deserve a look now, as `attention.Item`s:
+        what, when, how urgent (a problem, timed, or useful), whether I can
+        act on it, a link or a bug's id, and the short pieces the status line
+        shows (numbers and short times: never a name). The core ranks them;
+        a task never does. It only reads and asks Claude nothing; say when it
+        may have changed with `attention.changed()`. Only used if overridden."""
+        return []
 
     async def item_names(self, request: Request) -> list[str]:
         """The names of the user's things this task holds now (their pills, their

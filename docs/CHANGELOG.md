@@ -6,6 +6,11 @@ backfilled from the git log.
 
 ## 2026-10-13
 
+- The status line under the bot's name now shows the one thing to look
+  at first: "💊 due 12pm", "💊 2/5 · 12pm", "⚠️ backup failed", "🌅
+  6am", or nothing. No more "🟢 Live · up 7h". During a self-test the
+  dev bot's reads "🧪 41/103 · 6m".
+
 - Design options to look at on your phone: two or three sketches of
   each main card, posted by the dev bot in its forum. Nothing in the
   real cards changes until you pick.

@@ -37,7 +37,7 @@ Last updated: 2026-10-13
 | G | Timers | 32 | 12 | 20 | 17 | 15 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
 | J | Dev mode | 68 | 19 | 49 | 47 | 21 | 0 | 0 |
-| K | Startup and housekeeping | 35 | 21 | 14 | 12 | 23 | 0 | 0 |
+| K | Startup and housekeeping | 38 | 23 | 15 | 13 | 25 | 0 | 0 |
 | L | Keep | 14 | 6 | 8 | 8 | 6 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
 | P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
@@ -46,7 +46,7 @@ Last updated: 2026-10-13
 | S | Routing and confirm cards | 77 | 24 | 53 | 18 | 58 | 0 | 1 |
 | T | Tasks in plain words | 26 | 7 | 19 | 4 | 22 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **518** | **198** | **320** | **250** | **267** | **0** | **1** |
+| | **Total** | **521** | **200** | **321** | **251** | **269** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -342,6 +342,9 @@ Any channel. Check the bot's status in the member list.
 | K33 | 🤖 Auto | The pills summary only reads | No row is made and no state is written to answer it: a day with no rows yet says nothing, and a dose that can no longer be taken reads as on the checklist with nothing written; the end of the day makes the new day's rows from the plan (asked twice, no second row), and posts nothing | ✅ Pass | 2026-10-13 | `tests/test_briefing.py`, `tests/test_pills_checklist.py` |
 | K34 | 🤖 Auto | Nicknames: the name given, a suffix only for a real state | The nickname is `BOT_NAME`, taken on start whatever the bot was called (the old “· DEV” goes); “Name · testing” for the dev bot in a self-test and plain again after, put back by the run when it ends; no name given, nothing is renamed; live is never renamed; without Change Nickname it says so once | ✅ Pass | 2026-10-13 | `tests/test_identity.py`, `tests/test_two_bots.py` |
 | K35 | 🤖 Auto | The remaining cards in the new look | My pills, a day and the week looked back on, the weekly summary, the open bugs, the offline card and the “which task?” card each carry a layout Discord accepts beside the words they always had: a box an item in the colour of its status, no buttons on a list, the same buttons on a card that asks; more items than fit share one box; with the look off nothing changes | ✅ Pass | 2026-10-13 | `tests/test_pills_history.py`, `tests/test_pills_checklist.py`, `tests/test_bugs.py`, `tests/test_two_bots.py` |
+| K36 | 🤖 Auto | The attention model | An item's level follows its urgency, its time and the clock; one ranking, lower level first and soonest first within a level, a timed item for another day unranked; it changes by the clock when a timed item falls due; items are gathered from every task that hands some in and the core's own providers, one that fails is left out; whoever hands them in says when they may have changed | ✅ Pass | 2026-10-13 | `tests/test_attention.py` |
+| K37 | 🤖 Auto | The status line | Live's is the top attention item in its short form (icon, numbers and short 12-hour times joined by “ · ”), a problem pointing at its bug, blank with nothing; no “Live”, no uptime; sent only when it reads differently; it looks again at the moment the next timed item falls due and has no ticker; pills hand in what is due, what is next and what is simply left, never a pill's name, writing nothing; a failed job, a failed or unfinished self-test (with its bug) and a bug to retest are level 1; the dev bot in a self-test says how far the run is | ✅ Pass | 2026-10-13 | `tests/test_attention.py`, `tests/test_identity.py` |
+| K38 | 👤 Manual | Block 52: the status line on live | As the block says | ⬜ Untested | | Block 52 |
 
 ## L. Keep
 

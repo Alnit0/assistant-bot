@@ -4,18 +4,18 @@ from datetime import datetime, timedelta
 
 import discord
 
-from core import about, clock, devmode, discord_utils, scheduler, tidy
-from core import config
-from core.config import DEV_DATABASE, INBOX_CHANNEL_ID, SELFTEST_BACK, TIMEZONE
+from core import attention, clock, config, devmode, discord_utils, live, scheduler
+from core import day as days
+from core.config import DEV_DATABASE, INBOX_CHANNEL_ID, SELFTEST_BACK
+from core.users import get_user_by_discord_id
 from core.discord_utils import log_simple
 from core.durations import format_duration
-from core.timeinput import format_time
 
 log = logging.getLogger("assistant")
 
 # ---------------------------------------------------------------------------
-# Who the bot is seen to be: its nickname in the server and its status line,
-# so the live bot and the dev database can be told apart at a glance.
+# Who the bot is seen to be: its nickname in the server and its status line.
+# (The presence, the online dot, is Discord's: the bot never sets it.)
 #
 # Nickname: the name I gave it, BOT_NAME in its settings file, used on every
 # start. A suffix only for a real state, always "Name · state". There is one:
@@ -23,27 +23,37 @@ log = logging.getLogger("assistant")
 # again after. Live keeps its plain name: its states are in the status line.
 # With no BOT_NAME the nickname is left as it is. Nothing else renames a bot.
 #
-# Status, in order:
-#   a self-test that had to stop live           🧪 Self-test running · back about 4:15 pm
-#   a job's latest run failed or was skipped   ⚠️ nightly backup failed · see #bot-log
-#   the dev database                           🧪 DEV database · clock +13h
-#   live                                       🟢 Live · up 7h · next: nightly backup 3:00 am
+# Status line: the custom status text under the name. On live it is the top
+# item of the attention model (core/attention.py), in its short form: the
+# icon, then numbers and short 12-hour times joined by " · ", and never a
+# pill's name. Nothing to look at is a blank status line.
+#   something wrong that needs me            ⚠️ B14 · backup failed
+#   due now or overdue                       💊 due 12pm
+#   the next timed thing today               💊 2/5 · 12pm
+#   something useful that isn't timed        🌅 6am
+#   nothing                                  (blank)
+# Other bots, other lines:
+#   the dev bot during a self-test           🧪 41/103 · 6m   (· ❌2 once steps fail)
+#   the dev bot otherwise                    🧪 DEV database · clock +13h
+#   a self-test on live's account (no dev bot)   🧪 Self-test running · back about 4:15 pm
 # with "🛠️ Dev mode" in front while dev mode is on.
 #
-# The status is looked at again every few minutes and only sent to Discord
-# when it reads differently. A change I make myself (dev mode, the dev clock)
-# shows at once.
+# It is brought up to date when a state changes: whoever hands in attention
+# items says so (`attention.changed`), and the moment the next timed item
+# falls due is waited for, once. There is no ticker. It is only sent to
+# Discord when it reads differently.
 # ---------------------------------------------------------------------------
 STATE_MARK = " · "
 MAX_NICKNAME = 32  # Discord's limit
 MAX_STATUS = 128
-EVERY_SECONDS = 5 * 60
 DEV_MODE = "🛠️ Dev mode"
-# Jobs that are the bot tidying up after itself: never the "next job" worth showing
-_NOT_SHOWN = {(tidy.JOB_TASK, tidy.JOB_KIND)}
+SELFTEST_ICON = "🧪"
+FAILED_MARK = "❌"
 
-_ticker: asyncio.Task | None = None
 _shown: str | None = None
+_started = False
+_wake: asyncio.TimerHandle | None = None  # the one wait for the next timed item to fall due
+_progress = ""  # the dev bot during a self-test: its line, set by the run itself
 
 
 # ---------------------------------------------------------------------------
@@ -78,38 +88,34 @@ def job_name(task: str, kind: str) -> str:
     return scheduler.label(task, kind)
 
 
-def next_job(pending, now: datetime) -> str:
-    """The next job worth naming and when: "nightly backup 3:00 am" (with the
-    day if it is more than a day off). "" if nothing is booked."""
-    for job in pending:  # soonest first
-        if (job.task, job.kind) in _NOT_SHOWN:
-            continue
-        local = job.due_at.astimezone(TIMEZONE)
-        day = f"{local:%a} " if job.due_at - now > timedelta(hours=24) else ""
-        return f"{job_name(job.task, job.kind)} {day}{format_time(local.time())}"
-    return ""
+def selftest_line(done: int, total: int, minutes_left: int, failed: int = 0) -> str:
+    """The dev bot's status line during a self-test: steps done of all, the
+    minutes left, and how many failed once any has: "🧪 41/103 · 6m · ❌2".
+    With the number of steps not known, the count alone."""
+    pieces = [f"{done}/{total}" if total else str(done), f"{max(0, minutes_left)}m"]
+    if failed:
+        pieces.append(f"{FAILED_MARK}{failed}")
+    return f"{SELFTEST_ICON} {' · '.join(pieces)}"
 
 
-def status_line(
-    dev: bool, up_seconds: float, next_up: str, ahead: timedelta, trouble=(), dev_mode: bool = False, selftest_back: str = ""
-) -> str:
-    """The status line. `trouble` is (task, kind, "failed" or "skipped") for each
-    kind of job whose latest run didn't work, the most recent first.
-    `selftest_back` is when live is expected back, in a self-test that runs
-    as live's own account because there is no dev bot: live is stopped for
-    it, and that comes before everything else."""
+def status_line(dev: bool, ahead: timedelta, top: str = "", dev_mode: bool = False, selftest_back: str = "", progress: str = "") -> str:
+    """The status line. `top` is the attention model's top item in its short
+    form (live's line; "" is blank). `progress` is a self-test's own line on
+    the dev bot. `selftest_back` is when live is expected back, in a
+    self-test that runs as live's own account because there is no dev bot:
+    live is stopped for it, and that comes before everything else."""
     if selftest_back:
-        return f"🧪 Self-test running · back about {selftest_back}"[:MAX_STATUS]
-    if trouble:
-        task, kind, ended = trouble[0]
-        more = f" (+{len(trouble) - 1} more)" if len(trouble) > 1 else ""
-        line = f"⚠️ {job_name(task, kind)} {ended}{more} · see #bot-log"
-    elif dev:
+        return f"{SELFTEST_ICON} Self-test running · back about {selftest_back}"[:MAX_STATUS]
+    if progress:
+        return progress[:MAX_STATUS]
+    if dev:
         moved = f" · clock +{format_duration(ahead.total_seconds())}" if ahead.total_seconds() >= 1 else ""
-        line = f"🧪 DEV database{moved}"
+        line = f"{SELFTEST_ICON} DEV database{moved}"
     else:
-        line = f"🟢 Live · up {uptime(up_seconds)}" + (f" · next: {next_up}" if next_up else "")
-    return (f"{DEV_MODE} · {line}" if dev_mode else line)[:MAX_STATUS]
+        line = top
+    if dev_mode:
+        line = f"{DEV_MODE} · {line}" if line else DEV_MODE
+    return line[:MAX_STATUS]
 
 
 # ---------------------------------------------------------------------------
@@ -153,45 +159,82 @@ async def set_nickname() -> str:
     return f"{current} -> {wanted}"
 
 
-async def current_line() -> str:
-    """The status as things stand now."""
-    up = (clock.real_now() - about.STARTED).total_seconds()
-    pending = await scheduler.all_pending()
-    return status_line(
-        DEV_DATABASE, up, next_job(pending, clock.now()), clock.offset(), await scheduler.troubled(), devmode.enabled, SELFTEST_BACK
-    )
+async def _items(now: datetime) -> list:
+    """Live's attention items now (the owner's). None for a bot whose line is not made of them."""
+    if DEV_DATABASE:
+        return []
+    owner = await get_user_by_discord_id(config.OWNER_ID)
+    return await attention.gather(owner.id, now) if owner is not None else []
+
+
+async def current_line(items: list | None = None, now: datetime | None = None) -> str:
+    """The status line as things stand now."""
+    now = now or clock.now()
+    items = await _items(now) if items is None else items
+    top = attention.status_line(attention.top(items, now))
+    return status_line(DEV_DATABASE, clock.offset(), top, devmode.enabled, SELFTEST_BACK, _progress)
+
+
+def _wait_for(when: datetime | None, now: datetime) -> None:
+    """Look again at the moment the next timed item falls due, or the day ends:
+    the only waiting there is, and for one moment at a time."""
+    global _wake
+    if _wake is not None:
+        _wake.cancel()
+        _wake = None
+    day_end = days.end_of(days.day_of(now))
+    moment = min(when, day_end) if when is not None else day_end
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        return
+    _wake = loop.call_later(max(1.0, (moment - now).total_seconds() + 1.0), look_again)
 
 
 async def refresh() -> bool:
-    """Bring the status up to date. Only sent to Discord when it reads
-    differently from what is shown. Never raises. True if it was sent."""
+    """Bring the status line up to date. Only sent to Discord when it reads
+    differently from what is shown; nothing to show is a blank status line.
+    Never raises. True if it was sent."""
     global _shown
     client = discord_utils.client
     if client is None:
         return False
     try:
-        line = await current_line()
+        now = clock.now()
+        items = await _items(now)
+        _wait_for(attention.next_change(items, now), now)
+        line = await current_line(items, now)
         if line == _shown:
             return False
-        await client.change_presence(activity=discord.CustomActivity(name=line))
+        await client.change_presence(activity=discord.CustomActivity(name=line) if line else None)
         _shown = line
         return True
     except Exception as error:
-        log.warning("Could not change the bot's status: %s", error)
+        log.warning("Could not change the bot's status line: %s", error)
         return False
 
 
-async def _loop() -> None:
-    while True:
-        await refresh()
-        await asyncio.sleep(EVERY_SECONDS)
+def look_again() -> None:
+    """A state changed: bring the status line up to date soon, in the
+    background. Called, not awaited; asked many times at once it is done once."""
+    live.schedule(("status line",), refresh)
+
+
+def set_progress(done: int, total: int, minutes_left: int, failed: int = 0) -> None:
+    """A self-test says how far it is: the dev bot's status line while it runs."""
+    global _progress
+    _progress = selftest_line(done, total, minutes_left, failed)
+    look_again()
 
 
 async def start() -> None:
-    """Once the bot is connected: the nickname, then the status and its ticker.
-    Safe to call again (on_ready fires after reconnects)."""
-    global _ticker
-    if _ticker is not None and not _ticker.done():
+    """Once the bot is connected: the nickname, then the status line, and from
+    then on whenever a state changes. Safe to call again (on_ready fires after
+    reconnects)."""
+    global _started
+    if _started:
         return
+    _started = True
     await set_nickname()
-    _ticker = asyncio.create_task(_loop(), name="identity status")
+    attention.on_change(look_again)
+    await refresh()
