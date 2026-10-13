@@ -1,230 +1,206 @@
 # Review: everything on `feature/pills` since `main`
 
-Written 2026-10-13, for reading before the branch is merged. Nothing
-here is merged: `main` is where it was on 2026-10-09 (the last commit
-there keeps the specs private).
+Brought up to date on 2026-10-14 (first written 2026-10-13), for
+reading before the branch is merged. Nothing here is merged: `main` is
+where it was on 2026-10-09.
 
-The branch is about 120 commits over five days. Roughly a third of what
-changed is the bot itself (`core/`, `tasks/`, `main.py`), a third is
-tests, and the rest is docs, mock-ups and the self-test.
+The branch is 135 commits over six days. Roughly a third of what
+changed is the bot itself (`core/`, `tasks/`, `interfaces/`,
+`main.py`), a third is tests, and the rest is docs, sketches and the
+self-test.
 
-How to read this: part 1 is what you would notice using the bot, part 2
-is what changed underneath, part 3 is what could go wrong. Each switch is
-listed with whether live has it on today.
+Part 1 is what you would notice using the bot, part 2 what changed
+underneath, part 3 what could go wrong. What changed since the first
+version of this review is marked **(new)**.
 
 ## 1. What you'd notice
 
-### On live today, with no switch to turn on
+### On live today
 
 - **Plain words go one way.** Every message that is not a typed word
   goes to the router, which picks a task (or chat, or nothing); that
   task fills in one action, and its own code does it and writes every
-  word. The old path is gone. Chat answers general questions only and
-  never claims to have done something.
+  word. Chat answers general questions only and never claims to have
+  done something.
 - **A card before anything is saved.** Adding or changing one of your
   things shows a confirm card with the kind of change and
-  `field · old → new`; only Save writes it. A question the bot has is on
-  that card, one at a time, with a button for each likely answer, and a
-  typed answer works too. "No, …" straight after undoes the mistake;
-  "no, shopping" sends it to the other task.
+  `field · old → new`; only Save writes it. A question is on that
+  card, one at a time, a button for each likely answer. "No, …"
+  straight after undoes the mistake.
 - **Reactions are the status.** 👀 while it works, ⚠️ for a problem. A
-  remark gets no reply; something about one of your things is never met
-  with silence.
-- **Several things in one message**, and set / add / remove, are
-  handled together, one card a task, and nothing you said is dropped
-  without being told.
-- **Pills.** Setting a pill up by words; a plan with times, a minimum
-  gap, a latest time, notes and (new) certain days of the week; today's
-  checklist as one message edited in place, with a fresh copy at 6:00 am;
-  logging by saying it, by `took <the pill's exact name>` or by pressing;
-  a late log, a dose too soon, a time out of order and a missed dose
-  logged as taken all ask first. A dose of last night can be logged
-  after midnight. "What did I take yesterday?", the week and a streak
-  are answered from the record.
-- **Pill reminders** (`REMINDERS_ENABLED`, **on** since 2026-10-13). A
-  dose that is due posts one neutral line in the hub ("💊 Routine due ·
-  12:00 pm"), and the pill is written in after, so a lock screen never
-  shows which pill. Up to three reminders, 15 minutes apart, then the
-  dose is missed. Taken, Taken at…, Skip and Snooze are on the prompt.
+  remark gets no reply.
+- **Pills.** A plan with times, a minimum gap, a latest time, notes
+  and days of the week; today's checklist as one message edited in
+  place; logging by saying it, by `took <the pill's exact name>` or by
+  pressing; anything doubtful asks first. Yesterday, the week and a
+  streak are answered from the record.
+- **Pill reminders** ping you at any hour, with a neutral line on the
+  lock screen ("💊 Routine due · 12:00 pm").
+- **(new) The hub holds what matters.** Each morning at 6:00 am: the
+  tidy (yesterday's messages go, a copy saved), then the briefing,
+  then the checklist. The briefing is one "☀️ Today" card, edited in
+  place all day:
+  - "⚠️ Needs a look" on top, with a bug's id, for anything wrong: a
+    job that failed, reminders that can't be sent, spend or memory
+    over its limit;
+  - a section a task: pills, and **weather** ("14° to 20° · drizzle",
+    "61% rain after 1pm · wind 15 km/h N"), kept current through the
+    day;
+  - "💸 Yesterday: NZ$…" with the amounts hidden until tapped;
+  - small "🗒️" lines for what is worth knowing: an unexpected restart,
+    a self-test that did not run.
+- **(new) You are told when something needs you.** By day the bot
+  mentions you in the hub with one line ("⚠️ B14 · backup failed at
+  3:00 am"), which goes once it is dealt with. Between 10:00 pm and
+  7:00 am it waits; at 7:00 am one ping if anything is waiting. You no
+  longer need to read #bot-log, which is unchanged.
+- **(new) Costs are in NZ$** wherever you see them, at a rate fetched
+  each morning. The daily alert is at NZ$1.00.
+- **(new) A start says nothing**: no "Online and ready", no start
+  card. If the PC restarted or the bot crashed, one line says so.
 - **The status line under the bot's name** shows the one thing most
-  worth a look: "💊 due 12pm", "💊 2/5 · 12pm", "💊 missed 9am", "💊 all
-  5 taken", "⚠️ B14 · backup failed", "🌅 6am", or nothing.
-- **My schedule.** "my schedule" lists what the bot does by itself and
-  when; you can move, pause, change the days of, add and remove a
-  schedule by words, each with a card.
-- **After a restart** the bot catches up, says so once in #bot-log, and
-  repeats nothing. What you sent while it was off gets a card ("I was
-  offline when you sent this") with Handle it now and Ignore: nothing is
-  acted on without asking.
-- **Bugs.** 🐞 on a message, the word `bug`, or saying so files a post
-  in the #bugs forum. The bot now files its own too: a job that did not
-  work (one bug a kind of job, a note when it repeats and when it works
-  again) and its memory use going over 300 MB or growing for a day.
-- **Channel reset** (`reset channel`), which always asks first, and
-  housekeeping that leaves no trace in a channel.
-- **`dev` words** grew: `dev why`, `dev cost` (with the day's and the
-  self-test's spend), `dev jobs`, `dev status` (with memory use).
+  worth a look: "💊 due 12pm", "⚠️ B14 · backup failed", "🌅 6am".
+- **My schedule** lists what the bot does by itself and when, **(new)**
+  with every line's last run and whether it worked. Yours to move:
+  the morning routine, the 7:00 am check, the weather fetch and
+  refresh. The bot's own: backup, end of day, exchange rate, the
+  nightly self-test.
+- **After a restart** the bot catches up and repeats nothing. What
+  you sent while it was off gets a card that asks before acting.
+- **Bugs.** 🐞, the word `bug`, or saying so. The bot files its own
+  for a job that did not work and for its memory use.
 
-### Behind a switch, off on live today
+### The switches
 
-| Switch | What you would see with it on |
-|---|---|
-| `CARDS_V2` | The new look (Components V2): the checklist, reminders, confirm and question cards, the lists, the week, bugs, the reset card. Waiting for your check of the colours on the phone |
-| `BRIEFING_ENABLED` | One "☀️ Today" card in the hub each morning, a section a task, edited in place all day. Now in the ranking's order, with what needs a look on top and what quiet hours held back overnight |
-| `HUB_TIDY` | A clean hub: what you say there and the reply go once handled, nothing of a past day stays, a copy is saved first, pinned is kept |
-| `WEEKLY_SUMMARY` | On Sunday at 7:00 pm, the week's pills in the hub |
-| `DMS_ENABLED` | You can talk to live in a direct message as in #inbox: only you, silent replies, never a pill's name in a first line |
-| `NOTIFY_NTFY` | Alerts pushed to your phone through ntfy as well as Discord, neutral words only; tapping opens the Discord message. Needs `NTFY_BOT_TOPIC` |
-
-`QUIET_HOURS_ENABLED` is **on** since 2026-10-13: between 10:00 pm and
-6:00 am an alert is posted without a sound and listed in the morning's
-briefing until it is dealt with. A pill reminder always gets through,
-with its sound, and it is the only thing that pings today, so nothing
-you would notice has changed yet.
-
-`NIGHTLY_SELFTEST` is **on** in `.env` from tonight's restart: at
-3:00 am the dev bot runs the stages that changed (everything on
-Sundays), with live left running; your phone is pinged only if a step
-fails; nothing runs on a night with no new commits.
+| Switch | On live | What it is |
+|---|---|---|
+| `REMINDERS_ENABLED` | **on** | Pill reminders |
+| `QUIET_HOURS_ENABLED` | **on** | 10:00 pm to 7:00 am: only pill reminders ping |
+| `HUB_TIDY` | **on (new)** | The hub is cleared each morning and after each exchange |
+| `BRIEFING_ENABLED` | **on (new)** | The briefing |
+| `WEATHER_ENABLED` | **on (new)** | The weather section |
+| `NIGHTLY_SELFTEST` | **on** | At 3:00 am the dev bot tests what changed; your phone is pinged only if a step fails |
+| `CARDS_V2` | off | The new look. Waiting for your picks (design round 2) |
+| `WEEKLY_SUMMARY` | off | Sunday 7:00 pm, the week's pills |
+| `DMS_ENABLED` | off | Talking to the bot in a direct message |
+| `NOTIFY_NTFY` | off | Alerts pushed to your phone through ntfy. The bot sends nothing there |
 
 ### Outside Discord
 
 - **Two bots.** Live, and the dev bot with its own token, database,
   lock, log and channels. The self-test runs as the dev bot and never
   stops live.
-- **Phone notifications from Claude Code** through ntfy ("finished",
-  "needs you"), quiet at night.
-- **Names.** Each bot takes its name from `BOT_NAME`; the dev bot shows
-  "· testing" during a self-test.
+- **Phone notifications from Claude Code** through ntfy, quiet at night.
+- **(new) Design round 2**: 13 sketches in the design-options post.
+- **(new) One list of open questions**: `docs/QUESTIONS.md`.
 
 ## 2. What changed underneath
 
-- **One way in** (`core/conversation.py`, `core/router.py`,
-  `core/extraction.py`, `core/confirm.py`): router, then extraction,
-  then the task's own code. Claude runs nothing and has no tools.
-- **The task contract** (`core/actions.py`): every task declares its
-  icon, what it is only for, examples, actions with their fields, what
-  makes two items the same and what repeating one means, a `verify`
-  that reads a change back, and optionally a summary and attention
-  items. A task that breaks the contract is refused at start.
+- **One way in** (`core/conversation.py`, `router.py`,
+  `extraction.py`, `confirm.py`): router, extraction, the task's own
+  code. Claude runs nothing and has no tools.
+- **The task contract** (`core/actions.py`): what a task is, what its
+  actions take, what repeating one means, a `verify` that reads a
+  change back, and optionally a summary and attention items.
 - **Structured values.** Claude hands over minutes, numbers, times,
-  lists, references and declines in fixed forms; Python does every sum
-  and resolves every "it". A name Claude hands over is checked against
-  what you typed; a time you stated wins over one Claude substituted.
-- **The standard and its tests.** `docs/CONVERSATION.md` is the
-  standard for how the bot talks; its golden conversations are replayed
-  offline in every test run and must pass before a commit.
-- **The scheduler** (`core/scheduler.py`, `core/timetable.py`): one
-  engine; a schedule is a row; a run has a key so nothing runs twice; a
-  run log, pruned daily; routines with ordered steps. The backup, the
-  end of the day and the 6:00 am checklist moved onto it.
-- **Time** (`core/clock.py`, `core/day.py`): one clock, one idea of the
-  day, a dev clock that refuses to work on the live database.
-- **Pills** (`tasks/pills/`): the schedule model, doses as rows of the
-  occurrence log, due times worked out and never stored, the checklist
-  written from those rows, reminders decided from the database and the
-  clock.
-- **Messages** (`core/lifecycle.py`, `core/messages.py`,
-  `core/livelists.py`, `core/outgoing.py`): every message has a class
-  and, in the hub, a lifetime; lists shown on request stay live;
-  everything sent is checked on the way out.
-- **Cards** (`core/cards.py`, `core/design.py`): plain records with
-  actions registered by name, so a button works after a restart; how a
-  card looks is in one file.
-- **Attention** (`core/attention.py`, `core/health.py`,
-  `core/identity.py`): tasks and the core hand in items, the core ranks
-  them once, and the status line, the briefing and pings each show a
-  slice of that one ranking.
-- **Notify** (`core/notify.py`): the one way an alert leaves the bot.
-  Each kind is set to Discord, ntfy or both in one table; quiet hours
-  and the level come from the ranking. Pill reminders are its first
-  user.
-- **Which bot is this** (`core/account.py`, `core/instance_lock.py`,
-  `core/config.py`): a start asks Discord which account its token is,
-  compares it with `BOT_USER_ID`, and exits having touched nothing if it
-  is the wrong one; only then is the lock taken. A child process gets a
-  clean environment.
+  lists, references; Python does every sum. A name or a time you
+  stated wins over what Claude substituted.
+- **The standard and its tests.** `docs/CONVERSATION.md`; its golden
+  conversations are replayed offline in every test run.
+- **The scheduler** (`core/scheduler.py`, `timetable.py`): one engine;
+  a schedule is a row; a run has a key; a run log; routines.
+- **Time** (`core/clock.py`, `day.py`): one clock, one idea of the day.
+- **Pills** (`tasks/pills/`): doses as rows of the occurrence log, due
+  times worked out and never stored.
+- **Messages** (`core/lifecycle.py`, `messages.py`, `livelists.py`,
+  `outgoing.py`): a class and a lifetime for every message.
+- **Attention** (`core/attention.py`, `health.py`, `identity.py`): one
+  ranking; the status line, the briefing and pings each show a slice.
+- **Notify and alerts** (`core/notify.py`, **(new)** `core/alerts.py`):
+  an alert leaves the bot one way; where each kind goes, and whether it
+  gets through quiet hours, is one table.
+- **(new) Money** (`core/money.py`): US$ recorded, NZ$ shown; the rate
+  is a daily job with the last known rate and a setting behind it.
+- **(new) One door to Discord** (`core/surface.py`,
+  `interfaces/discord/`): new code may not import discord.py; a test
+  holds the list of files that still do, and it only gets shorter.
+  Core went from 16 such files to 5. Timers are frozen.
+- **(new) Weather** (`tasks/weather/`): the first task built on the
+  plain-data side only, with nothing for the router.
+- **Which bot is this** (`core/account.py`): a start asks Discord
+  which account its token is before anything else.
 - **The self-test** (`selftest/`): the dev bot against real Discord,
-  about 110 steps in three stages, recorded answers by default, a
-  history, a summary message, a dev bug for the first failing step of a
-  stage, a memory stop line, a monthly spend cap.
-- **Costs** (`core/costs.py`, `docs/COSTS.md`): cost logged a message,
-  the cached part of a prompt shared across every kind of request, an
-  alert when a day passes `DAILY_SPEND_LIMIT`.
-- **Database.** New core tables: schedules, the run log, occurrences,
-  confirm cards, live lists, bot messages, missed messages, spend
-  notices, held alerts. Pills tables and their migrations. Migrations
-  only ever append; a snapshot is saved before an upgrade.
-- **Tests.** About 2,700 offline tests in about a minute, each on a
-  copy of one migrated database; a watchdog stops a test that hangs.
-- **Docs.** `STATUS`, `ARCHITECTURE`, `DEVELOPMENT`, `DECISIONS`,
-  `DESIGN`, `TESTING`, `QA-RUN`, `COSTS`, `BACKLOG`, `SELFTEST`,
-  `CHANGELOG`, and the project skills in `.claude/skills/`.
+  about 115 steps, recorded answers by default, a history, a dev bug
+  for a failing step, a monthly cap. **(new)** It sets every switch
+  itself, so live's settings never decide a step.
+- **Database.** New core tables since `main`: schedules, the run log,
+  occurrences, confirm cards, live lists, bot messages, missed
+  messages, spend notices, held alerts, **(new)** needs-a-look,
+  exchange rates; the weather's forecasts. Migrations only append; a
+  snapshot is saved before an upgrade.
+- **Tests.** About 2,730 offline tests in under two minutes. **(new)**
+  They set every switch themselves and read no real data folder.
+- **Docs.** **(new)** `CLAUDE.md` is the short form and
+  `docs/RULES.md` the rules in full; `QUESTIONS.md`, `INTERFACE.md`,
+  this file.
 
 ## 3. Risks
 
 **Before merging**
 
-1. **Size.** 120 commits and most of the bot rewritten since `main`.
-   There is no going back commit by commit in any useful way: the fall
-   back is the branch point and a database backup from before it.
-   Live has run from this branch throughout, so `main` is the part
-   that is untested, not this.
-2. **The database only goes forward.** Many migrations since `main`.
-   A snapshot is taken before each upgrade and the nightly backup is
-   the other copy; going back to `main`'s code means restoring one.
-3. **Manual QA is behind.** `docs/TESTING.md` has many manual rows
-   still untested, and `docs/QA-RUN.md` blocks 27 onwards have not all
-   been run on the phone. The offline tests and the self-test cover
-   the logic; they do not cover how it feels or looks.
-4. **The new look has not been checked on the phone.** `CARDS_V2`
-   stays off until the colours are approved; both looks are kept and
-   tested, which doubles the surface.
+1. **Size.** 135 commits and most of the bot rewritten since
+   `main`. The way back is the branch point and a database backup from
+   before it. Live has run from this branch throughout.
+2. **The database only goes forward.** A snapshot is taken before each
+   upgrade, and the nightly backup is the other copy.
+3. **Manual QA is behind.** About 250 manual rows are untested;
+   QA-RUN blocks 27 onwards, and all of 53 to 56 from the last two
+   nights, have not been run on the phone.
+4. **The new look has not been approved.** Both looks are kept and
+   tested until `CARDS_V2` goes on.
 
 **In daily use**
 
-5. **Reminders are on.** They are the one thing that pings you. A wrong
-   plan, a clock change or a missed restart shows here first. The
-   guards: one prompt a dose, nothing after a pill's latest time, the
-   state in the database, and a late start catches up without posting
-   twice.
-6. **Quiet hours hold everything but a pill reminder.** That is one
-   word in the table (`through`) for each kind: a future kind that
-   must wake you (an early flight) has to be marked, or it waits for
-   the briefing.
-7. **ntfy is someone else's server.** A push carries only neutral
-   words and a link, but the topic is the only secret: anyone who
-   learns it can read and send. A failed push is logged and nothing
-   else; a kind set to ntfy only would then tell you nothing, which is
-   why pill reminders are set to both.
-8. **Claude decides the route.** A message can still go to the wrong
-   task or be read wrongly. The net: a card before every save, the
-   checks on names and times, the golden conversations. Word lists
-   used as a net are listed in `docs/BACKLOG.md` and must not grow.
-9. **Cost.** Every plain message is one or two requests to Claude.
-   The daily alert stops nothing. The self-test is capped by the month
-   (US$2) and uses recorded answers unless prompts, schemas or routing
-   changed.
-10. **One PC, 8 GB.** Live and the dev bot share it. The self-test
-    refuses to start under 1.9 GB free; the nightly run at 3:00 am is
-    the first thing to be stopped if memory is short, and it says so.
-11. **Two bots, one folder.** A wrong token in the wrong file is
-    caught by the account check, but only if `BOT_USER_ID` in each file
-    is right. Live and development still share the working folder: a
-    half-finished edit is what live starts from at its next restart.
-    The script that gives live its own folder on `main` is written and
-    not yet used.
-12. **Timers are frozen** as a proof of concept and may be scrapped;
-    they still run and are still tested.
-13. **Switch combinations.** Five switches off on live (the hub tidy
-    went on on 2026-10-14) means the
-    combination live runs is the best tested one; turning several on
-    together (the briefing, the tidy and the new look) has been
-    self-tested on the dev bot but not lived with.
+5. **(new) Much went live in one night**: the hub tidy, the briefing,
+   the weather, the pings and NZ$. Each was self-tested on the dev
+   bot; none has been lived with. If the morning is wrong, the three
+   switches (`BRIEFING_ENABLED`, `WEATHER_ENABLED`, `HUB_TIDY`) turn
+   each off again with a restart.
+6. **(new) The bot now pings you for its own problems.** A job that
+   fails every night would ping every morning at 7:00 until fixed.
+   That is the point, but a false alarm is now loud. Dev mode and the
+   self-test's month never ping.
+7. **(new) The hub is cleared every morning.** A copy is saved to
+   `data/exports/` first and pinned messages stay, but anything you
+   meant to keep there must be pinned.
+8. **Reminders are on**, and are the one thing that gets through
+   quiet hours.
+9. **(new) Two more outside services**, both free and without a key:
+   Open-Meteo (weather) and Frankfurter (the exchange rate). Each
+   failing is handled (the section says so; the last rate is used),
+   but each is someone else's server, asked from your PC.
+10. **ntfy** carries only neutral words, and the bot's side of it is
+    off.
+11. **Claude decides the route.** The net: a card before every save,
+    the checks on names and times, the golden conversations.
+12. **Cost.** The daily alert stops nothing. The self-test is capped
+    by the month (NZ$3.50); October's is spent, so it runs on recorded
+    answers until November.
+13. **One PC, 8 GB.** The self-test refuses to start under 1.9 GB free.
+14. **Two bots, one folder.** A half-finished edit is what live
+    starts from at its next restart. The script that gives live its
+    own folder on `main` is written and not used.
+15. **(new) An unexpected stop is only recognised** as the PC
+    restarting or a crash with an error. A kill from Task Manager
+    reads as planned.
+16. **Timers are frozen**: they work, are tested, and will not be
+    carried over if the bot ever leaves Discord.
 
 **Not done, by decision**
 
-- Gym is designed (mock-ups) and not built. Calendar is a spec only.
-- Archive, pin and delete stay reactions or reply words, never plain
-  words.
-- The dev bot as an always-on caretaker of live is in the backlog.
+- Gym is designed and not built. Calendar is a spec only. Both wait
+  for answers in `docs/QUESTIONS.md`.
+- The rest of the door to Discord (stages 3 to 8 of
+  `docs/INTERFACE.md`) and the read-only web page over Tailscale are
+  in the backlog.
+- Archive, pin and delete stay reactions or reply words.

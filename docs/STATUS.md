@@ -120,8 +120,8 @@ design and the hub principle point. Each is yours to overturn.
 
 **Item 2, a slim CLAUDE.md**
 
-28. **`CLAUDE.md` went from 36.3 KB (595 lines) to 9.8 KB (179
-    lines), 27% of what it was.** The whole of the old file is
+28. **`CLAUDE.md` went from 36.3 KB (595 lines) to 9.5 KB (179
+    lines), 26% of what it was.** The whole of the old file is
     `docs/RULES.md`, word for word, and is the one that counts where
     the two differ. The short form keeps the words, what to read
     first, a "Never" list, and the rules needed on most turns, each
