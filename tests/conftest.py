@@ -47,6 +47,7 @@ def no_schedules_unless_asked_for(monkeypatch):
     monkeypatch.setattr(attention, "_listeners", [])
     monkeypatch.setattr(scheduler, "_after_run", [])
     monkeypatch.setattr(scheduler, "_on_trouble", [])
+    monkeypatch.setattr(scheduler, "_on_worked", [])
 
 
 _migrated: dict[tuple, bytes] = {}  # a migrated, empty database for each set of migrations asked for

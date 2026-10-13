@@ -31,6 +31,26 @@ async def find(key: str) -> str:
     return rules.bug_id(item.id) if item is not None else ""
 
 
+OVER = "Worked again"  # how the note begins that says a problem is over
+
+
+async def over(key: str, text: str) -> str:
+    """Say on the open bug for this kind of problem that it is over, once: a
+    bug whose latest note already says so is left alone. The bug stays open:
+    closing it is mine. Returns its id, or "" with no open bug."""
+    item = await _open(key)
+    if item is None:
+        return ""
+    notes = await store.notes(item.id)
+    if notes and notes[-1].author == rules.THE_BOT and notes[-1].content.startswith(OVER):
+        return rules.bug_id(item.id)
+    await store.add_note(item.id, item.user_id, rules.THE_BOT, text, None)
+    await posts.refresh_card(await store.get(item.id))
+    listing.changed(item.user_id)
+    log.info("Bug %s (%s): worked again, noted; it stays open", rules.bug_id(item.id), key)
+    return rules.bug_id(item.id)
+
+
 async def file(key: str, summary: str, details: str) -> str:
     """File a bug for this kind of problem, or add a note to the one that is open. Returns its id."""
     when = datetime.now(timezone.utc).isoformat()

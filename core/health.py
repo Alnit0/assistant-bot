@@ -43,15 +43,21 @@ _SHORTER = ("nightly ",)  # "nightly backup failed" is "backup failed" on a stat
 # --- a bug for a system problem: filed by the bugs task, asked for here --------------------------------------------------
 # `async (key, summary, details) -> the bug's id ("B14"), or ""`: file a bug for this kind of
 # problem, or add a note to the one that is open. `async (key) -> id or ""`: the open one, if any
+# `async (key, text) -> id or ""`: say on the open bug that its problem is over, once; never closes it
 File = Callable[[str, str, str], Awaitable[str]]
 Find = Callable[[str], Awaitable[str]]
+Over = Callable[[str, str], Awaitable[str]]
 _file: File | None = None
 _find: Find | None = None
+_over: Over | None = None
+# The kinds of job whose latest run did not work: when one of them next works, its bug is told.
+# Kept here so that a run that works costs nothing to look at unless its kind was in trouble
+_in_trouble: set[tuple[str, str]] = set()
 
 
-def set_bugs(file: File, find: Find) -> None:
-    global _file, _find
-    _file, _find = file, find
+def set_bugs(file: File, find: Find, over: Over | None = None) -> None:
+    global _file, _find, _over
+    _file, _find, _over = file, find, over
 
 
 async def file_bug(key: str, summary: str, details: str) -> str:
@@ -85,8 +91,42 @@ async def job_trouble(job, outcome: str, detail: str) -> None:
     """A run did not work (told by the scheduler): its kind of job gets a bug, or a note on the one it has."""
     label = scheduler.label(job.task, job.kind)
     summary = f"{label} {'failed' if outcome == scheduler.FAILED else 'was not done'}"
+    _in_trouble.add((job.task, job.kind))
     filed = await file_bug(job_key(job.task, job.kind), summary[0].upper() + summary[1:], detail or "No reason was given.")
     log.info("A run that did not work (%s): %s", summary, f"bug {filed}" if filed else "no bug could be filed")
+
+
+def worked_again(label: str, when: datetime) -> str:
+    """The note a bug gets when its kind of job next works. The bug stays open: closing it is mine."""
+    local = when.astimezone(config.TIMEZONE)
+    from core.timeinput import format_time  # times are written one way everywhere
+
+    return f"Worked again: the {label} ran without a problem on {local:%a} {local.day} {local:%b} at {format_time(local.time())}. This bug is still open: close it with Fixed when you are satisfied."
+
+
+async def job_worked(job) -> None:
+    """A run worked (told by the scheduler). If its kind of job had not been
+    working, its open bug gets a note saying so, once. The bug is never closed here."""
+    if (job.task, job.kind) not in _in_trouble:
+        return
+    _in_trouble.discard((job.task, job.kind))
+    if _over is None:
+        return
+    try:
+        noted = await _over(job_key(job.task, job.kind), worked_again(scheduler.label(job.task, job.kind), clock.real_now()))
+    except Exception:
+        log.exception("Could not note on its bug that %s/%s worked again", job.task, job.kind)
+        return
+    log.info("A kind of job that had not been working worked again (%s): %s", scheduler.label(job.task, job.kind), f"noted on {noted}" if noted else "it has no open bug")
+
+
+async def remember_trouble() -> None:
+    """On start: the kinds of job whose latest run did not work (the run log
+    knows), so that the next one that works is noticed after a restart too."""
+    try:
+        _in_trouble.update((task, kind) for task, kind, _ in await scheduler.troubled())
+    except Exception:
+        log.exception("Could not read which jobs were not working")
 
 
 def job_problem(label: str, ended: str) -> str:
@@ -234,6 +274,7 @@ def start() -> None:
     global _memory_watch
     if _memory_watch is None or _memory_watch.done():
         _memory_watch = asyncio.create_task(_watch_memory(), name="health: memory")
+        asyncio.create_task(remember_trouble(), name="health: jobs in trouble")
 
 
 def history(folder) -> list[dict]:
@@ -328,3 +369,4 @@ def setup() -> None:
     attention.provide("morning", MORNING_ICON, morning)
     scheduler.on_ran(attention.changed)
     scheduler.on_trouble(job_trouble)
+    scheduler.on_worked(job_worked)

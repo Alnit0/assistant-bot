@@ -185,7 +185,7 @@ class BugsTask(Task):
         client.add_view(posts.CloseButtons())
         client.add_view(posts.ReopenButton())
         # The bot's own problems are filed as bugs here: one for each kind (tasks/bugs/system.py)
-        health.set_bugs(system.file, system.find)
+        health.set_bugs(system.file, system.find, system.over)
 
     async def startup(self, client) -> None:
         await capture.git_commit()

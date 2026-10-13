@@ -17,6 +17,7 @@ from tasks.pills import checklist, today
 #   only doses with no time are left                          useful  💊 2/5
 #   a dose was missed, and none is due now                    timed   💊 missed 9am
 #   everything is taken (until the evening, a setting)        useful  💊 all 5 taken
+#   everything is dealt with, some of it skipped (the same)   useful  💊 4/5 · 1 skipped
 #   after that, or with nothing to take                       nothing
 #
 # Whether a timed one is "due" or "next" is the core's to say, from its time.
@@ -39,8 +40,9 @@ async def items(user_id: int, now: datetime) -> list[Item]:
         if missed:
             return [Item("a dose was missed", TIMED, when=missed[-1], can_act=True, short=(f"{MISSED_WORD} {attention.short_time(missed[-1])}",))]
         # The day is done: said until the evening, and then the line looks ahead
-        said = f"all {len(listed)} taken" if taken == len(listed) else f"{progress} taken"
-        return [Item("everything is dealt with", USEFUL, short=(said,), until=days.at(day, config.STATUS_DONE_UNTIL))]
+        skipped = len(listed) - taken
+        said = (f"all {len(listed)} taken",) if not skipped else (progress, f"{skipped} skipped")
+        return [Item("everything is dealt with", USEFUL, short=said, until=days.at(day, config.STATUS_DONE_UNTIL))]
     timed = sorted(((moment, dose) for dose in pending if (moment := today.shown_time(dose)) is not None), key=lambda each: each[0])
     found = []
     overdue = [moment for moment, _ in timed if moment <= now]

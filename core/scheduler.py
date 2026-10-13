@@ -722,6 +722,15 @@ _after_run: list[Callable[[], None]] = []
 _on_trouble: list[Callable[[Job, str, str], Awaitable[None]]] = []
 
 
+# `async (job)`: told of every run that worked
+_on_worked: list[Callable[[Job], Awaitable[None]]] = []
+
+
+def on_worked(listener: Callable[[Job], Awaitable[None]]) -> None:
+    if listener not in _on_worked:
+        _on_worked.append(listener)
+
+
 def on_trouble(listener: Callable[[Job, str, str], Awaitable[None]]) -> None:
     if listener not in _on_trouble:
         _on_trouble.append(listener)
@@ -798,6 +807,13 @@ async def run_due(now: datetime | None = None, done: list | None = None, set_asi
             outcome = _reported.pop(job.id, DONE)
             detail = _notes.pop(job.id, None)
             await database.run(_db_finish, job.id, outcome, job.late_by, None, detail)
+        if outcome == DONE:
+            # And one that worked: a kind of job that had not been working is put right in its bug (core/health.py)
+            for listener in list(_on_worked):
+                try:
+                    await listener(job)
+                except Exception:
+                    log.exception("Could not tell a listener that %s/%s worked", job.task, job.kind)
         if outcome in (FAILED, SKIPPED):
             # A run that did not work is someone's to know about beyond the log (a bug is filed: core/health.py)
             for listener in list(_on_trouble):

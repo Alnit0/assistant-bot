@@ -79,7 +79,7 @@ model** (`core/attention.py`), in its short form.
 | 1 | Something is wrong and needs me: a job that did not work, a self-test that failed, the self-test's month spent, the bot's memory use, a bug to retest, dev mode left on. The bug's id first: a problem of the bot's own files its bug itself | `⚠️ B14 · backup failed`, `⚠️ D3 · self-test failed`, `⚠️ self-test spend · US$2.05`, `⚠️ B9 · memory 312 MB`, `⚠️ B4 · retest`, `🛠️ dev mode` |
 | 2 | Something is due now or overdue; or a dose was missed and none is due now (until the next one falls due, or the day ends) | `💊 due 12pm`, `💊 missed 9am` |
 | 3 | The next timed thing today | `💊 2/5 · 12pm` |
-| 4 | Something useful that has no time: doses with no time still to take; a day with everything taken, until 8:00 pm (`STATUS_DONE_UNTIL`); otherwise when the morning routine next runs | `💊 2/5`, `💊 all 5 taken`, `🌅 6am` |
+| 4 | Something useful that has no time: doses with no time still to take; a day with everything taken (or dealt with, some of it skipped), until 8:00 pm (`STATUS_DONE_UNTIL`); otherwise when the morning routine next runs | `💊 2/5`, `💊 all 5 taken`, `💊 4/5 · 1 skipped`, `🌅 6am` |
 | 5 | Nothing | blank |
 
 - Within a level, the soonest. When nothing timed is left today it

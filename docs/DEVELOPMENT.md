@@ -1202,8 +1202,9 @@ fires cancels it. What was sent is logged when it finishes.
   kind of job ("by the bot itself", in the forum like any other); when
   it happens again while that bug is open, the bug gets a note, never
   a second bug. The status line points at it ("⚠️ B14 · backup
-  failed") until that job next works. The bug stays open until you
-  press Fixed or Won't fix: the bot never closes one.
+  failed") until that job next works. When it does, the bug gets one
+  note, "Worked again: …", and stays open until you press Fixed or
+  Won't fix: the bot never closes one.
 - **Memory**: `dev status` shows what the bot holds now, its peak
   since it started and how it moved over the last day. Every hour the
   figure is written in the log ("Memory: 95 MB (peak 101 MB since the

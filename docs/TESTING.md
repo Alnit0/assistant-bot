@@ -43,10 +43,10 @@ Last updated: 2026-10-13
 | P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
 | Q | Time, days, the schedule model, the occurrence log and cards | 28 | 26 | 2 | 2 | 26 | 0 | 0 |
 | R | Pills | 79 | 26 | 53 | 45 | 34 | 0 | 0 |
-| S | Routing and confirm cards | 79 | 26 | 53 | 18 | 60 | 0 | 1 |
+| S | Routing and confirm cards | 80 | 27 | 53 | 18 | 61 | 0 | 1 |
 | T | Tasks in plain words | 26 | 7 | 19 | 4 | 22 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **525** | **204** | **321** | **251** | **273** | **0** | **1** |
+| | **Total** | **526** | **205** | **321** | **251** | **274** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -649,6 +649,7 @@ the dev database (`python main.py --dev`), in #inbox.
 | S77 | 🤖 Auto | A correction straight after Save (G3) | Golden 2b: the change card is for what was just saved, old → new, with no ❓; with two pills it is the saved card's pill, not the one changed last; the pill is the one mentioned last on the card or the only one it held, and with several and none mentioned nothing is made up; another task's card says nothing; once the task has done anything else, or after a few minutes, the saved card is forgotten | ✅ Pass | 2026-10-13 | `tests/test_golden.py`, `tests/test_pills_plain.py` |
 | S78 | 🤖 Auto | A system problem files its own bug | The scheduler tells of a run that did not work and not of one that did; its kind of job gets a bug known by its words, and the item points at it; the bugs task files one bug a kind, a repeat is a note (not Claude Code's “fix ready”), another kind is another bug, one I closed is followed by a new one, and with no forum it is on record all the same; filing never stops what it is filed for | ✅ Pass | 2026-10-13 | `tests/test_attention.py` |
 | S79 | 🤖 Auto | The bot's memory use | It is a problem over the limit or when each quarter of a day of hourly readings is higher than the one before by 15 MB or more; the hour's reading is logged; a problem files a bug once a day, shows on live as a level 1 item pointing at it, and never on the dev bot; `dev status` shows now, the peak and the day's change | ✅ Pass | 2026-10-13 | `tests/test_attention.py` |
+| S80 | 🤖 Auto | A job that works again says so on its bug | The scheduler tells of a run that worked; a kind of job that had not been working gets one “Worked again” note on its open bug when it next works, also after a restart, and one that was working all along costs nothing; failing again and working again are each said; the bug is never closed by the bot; a day finished with a skip reads “4/5 · 1 skipped” until the evening | ✅ Pass | 2026-10-13 | `tests/test_attention.py` |
 
 ## T. Tasks in plain words
 

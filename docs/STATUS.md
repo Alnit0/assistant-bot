@@ -31,16 +31,11 @@ is `docs/specs/attention.md`, the status line is built from it):**
   was stopped by the PC). Today four of nine runs started between 1.7
   and 1.9 GB: with this line they would have waited. Say if you would
   rather have it at 1.75 GB with less margin.
-- **A failed job's bug is never closed by the bot**, also when the
-  job works again: the status line stops pointing at it, and the bug
-  waits for your Fixed. Say if a note "worked again" should be added.
 - **Memory is the bot's private bytes** (what it holds of its own:
   about 90 MB today), not the working set Windows shows by default in
   Task Manager, which goes up and down. "Keeps growing for a day"
   means each quarter of the last 24 hourly readings higher than the
   one before, by 15 MB or more in all.
-- **A day done by skipping** (nothing missed, not all taken) reads
-  "💊 4/5 taken" until 8:00 pm, not "all 5 taken".
 - **The dev bot as caretaker** is in the spec as a later option, with
   what it costs (a second process all day, about 100 to 150 MB; the
   self-test could not then start the dev bot itself; long-lived state
@@ -58,7 +53,10 @@ dev mode", and no longer a mark in front (built); the briefing lists
 what quiet hours held back once pings are on the model (in the
 backlog). Live's memory use is in `dev status`, logged every hour, and
 a level 1 item with its own bug over 300 MB or after a day of growth
-(built). The design options of stage 6 were posted (the post "🎨
+(built). When a job that had not been working next works, its bug gets
+one "Worked again" note and stays open (built); a day finished with a
+skip reads "💊 4/5 · 1 skipped" until 8:00 pm (built). These two go
+live with the next restart. The design options of stage 6 were posted (the post "🎨
 Design options · 2026-10-13" in the dev bot's forum).
 
 **From the unattended batch of 2026-10-13 (six stages, all built;

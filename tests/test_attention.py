@@ -157,7 +157,8 @@ def test_a_day_dealt_with_by_skipping_says_how_many_were_taken(world):
     world.now = at(9)
     log(world, {"pill": "zinc", "did": "taken"})
     log(world, {"pill": "iron", "did": "skipped"})
-    assert _line(world, at(9, 5))[0] == "💊 1/2 taken", "not “all”: one was skipped"
+    assert _line(world, at(9, 5))[0] == "💊 1/2 · 1 skipped", "not “all”: one was skipped, and that is said"
+    assert _line(world, at(20))[0] == "", "until 8:00 pm, like a day with everything taken"
 
 
 def test_a_missed_dose_is_said_until_the_next_one_is_due_or_the_day_ends(world):
@@ -476,3 +477,109 @@ def test_the_harness_tells_the_status_line_after_every_step(monkeypatch):
     assert identity.selftest_line(*told[0]) == "🧪 42/103 · 6m · ❌2"
     harness.steps_in_all = 41
     assert harness.progress()[:2] == (42, 42), "more steps than last time: the total follows, never 42/41"
+
+
+# --- a job that works again says so on its bug, which stays open ---------------------------------------------------
+def test_a_kind_of_job_that_works_again_is_noted_on_its_bug_once_and_only_if_it_had_not_been_working(monkeypatch):
+    noted = []
+
+    async def over(key, text):
+        noted.append((key, text))
+        return "B14"
+
+    async def file(key, summary, details):
+        return "B14"
+
+    async def find(key):
+        return "B14"
+
+    monkeypatch.setattr(health, "_file", file)
+    monkeypatch.setattr(health, "_find", find)
+    monkeypatch.setattr(health, "_over", over)
+    monkeypatch.setattr(health, "_in_trouble", set())
+    monkeypatch.setattr(scheduler, "_labels", {("core", "nightly_backup"): "nightly backup"})
+    monkeypatch.setattr(health.clock, "real_now", lambda: datetime(2026, 10, 14, 14, 0, 30, tzinfo=timezone.utc))  # 3:00 am on Thursday in NZ
+    job = scheduler.Job(1, None, "core", "nightly_backup", {}, NOW)
+    asyncio.run(health.job_worked(job))
+    assert noted == [], "a job that was working all along costs nothing and notes nothing"
+    asyncio.run(health.job_trouble(job, scheduler.FAILED, "OSError('disk full')"))
+    asyncio.run(health.job_worked(job))
+    assert noted == [("the nightly backup job", "Worked again: the nightly backup ran without a problem on Thu 15 Oct at 3:00 am. This bug is still open: close it with Fixed when you are satisfied.")]
+    asyncio.run(health.job_worked(job))
+    assert len(noted) == 1, "said once: the nights after it are simply nights"
+
+
+def test_after_a_restart_the_jobs_that_were_not_working_are_still_known(monkeypatch):
+    async def troubled():
+        return [("core", "nightly_backup", scheduler.FAILED)]
+
+    monkeypatch.setattr(scheduler, "troubled", troubled)
+    monkeypatch.setattr(health, "_in_trouble", set())
+    asyncio.run(health.remember_trouble())
+    assert health._in_trouble == {("core", "nightly_backup")}
+
+
+def test_the_note_is_added_once_and_the_bug_is_never_closed(make_db, owner, monkeypatch):
+    from tasks.bugs import listing, posts, store, system
+    from tasks.bugs import rules as bug_rules
+
+    make_db({"bugs": store.MIGRATIONS})
+
+    async def who(discord_id):
+        return owner
+
+    async def create_post(number, report, channel=None):
+        return 7000 + number, f"https://discord.test/{number}"
+
+    async def refresh_card(item):
+        pass
+
+    async def commit():
+        return "abc1234"
+
+    monkeypatch.setattr(system, "get_user_by_discord_id", who)
+    monkeypatch.setattr(posts, "create_post", create_post)
+    monkeypatch.setattr(posts, "refresh_card", refresh_card)
+    monkeypatch.setattr(system.capture, "git_commit", commit)
+    monkeypatch.setattr(listing, "changed", lambda user_id: None)
+    assert asyncio.run(system.over("the nightly backup job", "Worked again: …")) == "", "no open bug: nothing to note"
+    name = asyncio.run(system.file("the nightly backup job", "Nightly backup failed", "disk full"))
+    number = bug_rules.parse_id(name)
+    assert asyncio.run(system.over("the nightly backup job", "Worked again: the nightly backup ran without a problem.")) == name
+    asyncio.run(system.over("the nightly backup job", "Worked again: the nightly backup ran without a problem."))
+    notes = asyncio.run(store.notes(number))
+    assert [note.content[:12] for note in notes] == ["Worked again"] and notes[0].author == bug_rules.THE_BOT, "once"
+    assert asyncio.run(store.get(number)).status == bug_rules.OPEN, "it is never closed by the bot"
+    asyncio.run(system.file("the nightly backup job", "Nightly backup failed", "disk full again"))
+    asyncio.run(system.over("the nightly backup job", "Worked again: the nightly backup ran without a problem."))
+    assert [note.content[:12] for note in asyncio.run(store.notes(number))] == ["Worked again", "Again: Night", "Worked again"], "failing again and working again are each said"
+
+
+def test_the_scheduler_tells_of_a_run_that_worked(db, monkeypatch):
+    worked = []
+
+    async def listener(job):
+        worked.append(job.kind)
+
+    async def no_log(*args):
+        pass
+
+    monkeypatch.setattr(scheduler, "log_error", no_log)
+    scheduler.on_worked(listener)
+
+    async def fails(job):
+        raise OSError("disk full")
+
+    async def works(job):
+        pass
+
+    scheduler.register_handler("test", "fails", fails)
+    scheduler.register_handler("test", "works", works)
+
+    async def scenario():
+        for kind in ("fails", "works"):
+            await scheduler.add_job("test", kind, scheduler.utc_now() - timedelta(minutes=1))
+        await scheduler.run_all_due()
+
+    asyncio.run(scenario())
+    assert worked == ["works"]
