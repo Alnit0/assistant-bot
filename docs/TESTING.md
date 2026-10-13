@@ -42,11 +42,11 @@ Last updated: 2026-10-14
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
 | P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
 | Q | Time, days, the schedule model, the occurrence log and cards | 28 | 26 | 2 | 2 | 26 | 0 | 0 |
-| R | Pills | 86 | 32 | 54 | 46 | 40 | 0 | 0 |
+| R | Pills | 88 | 34 | 54 | 46 | 42 | 0 | 0 |
 | S | Routing and confirm cards | 80 | 27 | 53 | 18 | 61 | 0 | 1 |
 | T | Tasks in plain words | 29 | 9 | 20 | 5 | 24 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **555** | **227** | **328** | **258** | **296** | **0** | **1** |
+| | **Total** | **557** | **229** | **328** | **258** | **298** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -586,6 +586,8 @@ are added with it.
 | R96 | 🤖 Auto | A correction of which dose moves the log | “That was dose 1” after a log: a change card dose 2 → dose 1 with its time and what becomes of dose 2; nothing changes by asking; Save moves it as one change (taken back as one), read back; never a second log; with a time given, or one that breaks the gap (“Move it anyway?”); with nothing to move it is the dose named; checked with no card open, and the trace says so; golden 19 and 19a as Claude really answers | ✅ Pass | 2026-10-14 | `tests/test_pills_reminders.py`, `tests/test_golden.py` |
 | R97 | 🤖 Auto | A card that would add a dose names the one just logged | Within an hour of the last log of that pill: “You already logged dose 1 at 9:20 am. … Add another dose?”, said, typed as `took <pill>`, pressed on the checklist or through Taken at…; after an hour the card reads as before; it is when it was logged that counts; trace #562 replayed; golden 20 | ✅ Pass | 2026-10-14 | `tests/test_pills_reminders.py`, `tests/test_pills_shortcut.py`, `tests/test_golden.py` |
 | R98 | 👤 Manual | One dose is one log, on the phone | QA-RUN block 57 | ⬜ Untested | |  |
+| R99 | 🤖 Auto | One last chance for a dose left alone | 30 minutes before the last moment a dose can be taken with every dose after it fitting the day: one message that notifies, “💊 Last chance today · take by …” with no pill or dose in that line; the pill, why and Taken, Taken at…, Skip under it, no Snooze; it goes at that moment with the dose still to take; never a second; none when taken first, or when the reminders ran that late; the decision a piece at a time | ✅ Pass | 2026-10-14 | `tests/test_pills_reminders.py` |
+| R100 | 🤖 Auto | A correction moves only today's logs unasked | With nothing ticked off today the card says so and asks which day, a button for each of the latest days with a log; the day picked, or said with it, is moved on a card that names the day and read back; today is untouched; with nothing to move anywhere it says so and logs nothing | ✅ Pass | 2026-10-14 | `tests/test_pills_reminders.py`, `tests/test_golden.py` |
 
 ## S. Routing and confirm cards
 

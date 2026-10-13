@@ -6,6 +6,7 @@ from datetime import date, datetime, timedelta
 
 from core import actions, attention, cards, clock, config, confirm, database, design, discord_utils, hub, lifecycle, llm, notify, occurrences, restart, scheduler, timeinput
 from core import day as days
+from core import schedule as core_schedule
 from core.actions import Request
 from core.cards import Button, Card, Field, Form
 from core.lifecycle import MessageClass
@@ -25,6 +26,12 @@ log = logging.getLogger("assistant")
 # still to take: reminders running out is no deadline, and a dose is missed
 # only once it can no longer be taken today (tasks/pills/doses.py). Only ever
 # one prompt a dose.
+#
+# A dose left like that gets one more nudge, its last chance: 30 minutes
+# before the last moment it can be taken with every dose after it still
+# fitting the day (`fits_until`). It notifies like any reminder, through the
+# notify service, and names no pill in what the phone shows ("💊 Last chance
+# today · take by 6:00 pm"). At that moment it goes, and that is the end.
 #
 # REMINDERS_ENABLED (off unless set) gates all of it: off, no reminder is ever
 # sent, nothing is booked, and any prompt left from when it was on is removed.
@@ -54,7 +61,10 @@ SNOOZE = timedelta(minutes=15)
 TAKE_BY_WITHIN = timedelta(hours=2)  # the take-by line shows only when it is this close
 
 P_TAKEN, P_AT, P_SNOOZE, P_SKIP = "prompt_taken", "prompt_at", "prompt_snooze", "prompt_skip"
-POST, STOP, DROP, WAIT = "post", "stop", "drop", "wait"
+LAST_CHANCE = timedelta(minutes=30)  # before a dose stops fitting the day: one more nudge, the last
+# What `reminders` says once the three are over: waiting for the last chance, that nudge up, all done
+OVER, LAST_UP, FINISHED = REMINDERS + 1, REMINDERS + 2, REMINDERS + 3
+POST, STOP, DROP, WAIT, LAST, END = "post", "stop", "drop", "wait", "last", "end"
 KIND = "pills.reminder"  # what kind of alert a prompt is: where it goes is core/notify.py's to say
 AGAIN = "A pill reminder"  # what a channel reset would post again: no pill is named
 
@@ -80,7 +90,7 @@ class Prompt:
     message_id: int | None  # None once the message has gone (a channel reset): it is posted again
     asked_at: datetime  # when it was first posted
     last_at: datetime  # when the copy now up was posted
-    reminders: int = 0  # how many times it has been posted again; one more than REMINDERS once it is over
+    reminders: int = 0  # how many times it has been posted again; past REMINDERS once they are over (OVER, LAST_UP, FINISHED)
     snoozed_until: datetime | None = None
 
     @property
@@ -88,6 +98,11 @@ class Prompt:
         """Every reminder went unanswered: the message has gone and nothing more
         is posted for this dose. It is kept so that it is not asked about again."""
         return self.reminders > REMINDERS
+
+    @property
+    def is_last_chance(self) -> bool:
+        """The message up is the last-chance nudge."""
+        return self.reminders == LAST_UP
 
 
 # ---------------------------------------------------------------------------
@@ -99,10 +114,28 @@ def wants_prompt(dose: Dose, now: datetime) -> bool:
     return dose.is_pending and today.shown_time(dose) is not None and not limits.is_after_limit(dose.pill.plan.schedule, dose.occurrence.day, now)
 
 
-def decide(dose: Dose, prompt: Prompt | None, now: datetime) -> tuple[str, datetime | None, int]:
-    """What to do about one dose now: (POST, STOP, DROP or WAIT, when to look
-    again, which reminder a POST is: 0 for the first prompt). STOP is the end
-    of its reminders: the prompt goes, and the dose stays to take.
+def fits_until(dose: Dose, listed: list[Dose]) -> datetime:
+    """The last moment a dose can be taken with every dose of its pill still
+    to come after it fitting the day: the day's limit, less the gap for each
+    of those. Past it, a dose stops fitting."""
+    plan = dose.pill.plan.schedule
+    later = sum(1 for each in listed if each.pill.id == dose.pill.id and each.number > dose.number and each.is_pending)
+    by = limits.take_by(plan, dose.occurrence.day, later) if later else None
+    return by if by is not None else core_schedule.limit(plan, dose.occurrence.day)
+
+
+def by_text(dose: Dose, by: datetime) -> str:
+    """That moment as it is said: "6:00 pm", or "midnight"."""
+    plan = dose.pill.plan.schedule
+    return "midnight" if plan.latest is None and by == core_schedule.limit(plan, dose.occurrence.day) else timeinput.format_moment(by)
+
+
+def decide(dose: Dose, prompt: Prompt | None, now: datetime, by: datetime | None = None) -> tuple[str, datetime | None, int]:
+    """What to do about one dose now: (POST, STOP, DROP, WAIT, LAST or END,
+    when to look again, which reminder a POST is: 0 for the first prompt).
+    STOP is the end of its reminders: the prompt goes, and the dose stays to
+    take. LAST is its last chance, 30 minutes before `by` (`fits_until`), and
+    END takes that down at `by`. Without `by` no last chance is given.
 
     Worked out from what is kept, never from how many jobs ran: however long
     the bot was off, a dose that is due gets one prompt, the next in its
@@ -113,7 +146,23 @@ def decide(dose: Dose, prompt: Prompt | None, now: datetime) -> tuple[str, datet
     if prompt is not None and prompt.is_over:
         # Its reminders are over. Only if it has since come to be due later (the dose before it
         # was taken late) does it start afresh, at that time
-        return (DROP, due, 0) if due > minute(prompt.last_at) else (WAIT, None, prompt.reminders)
+        if due > minute(prompt.last_at):
+            return DROP, due, 0
+        if by is None or prompt.reminders >= FINISHED:
+            return WAIT, None, prompt.reminders
+        by = minute(by)
+        if prompt.is_last_chance:
+            # It goes at the moment it named: half an hour after it was posted (what is left may have
+            # changed since, and with it the moment worked out now)
+            by = min(by, minute(prompt.last_at) + LAST_CHANCE)
+            if now >= by:
+                return END, None, prompt.reminders
+            return (LAST, by, prompt.reminders) if prompt.message_id is None else (WAIT, by, prompt.reminders)
+        nudge = by - LAST_CHANCE
+        if nudge <= minute(prompt.last_at) or now >= by:
+            # It was asked about that late anyway, or the moment has passed: no nudge
+            return WAIT, None, prompt.reminders
+        return (LAST, by, prompt.reminders) if now >= nudge else (WAIT, nudge, prompt.reminders)
     if prompt is None:
         return (POST, next_look, 0) if now >= due else (WAIT, due, 0)
     if prompt.snoozed_until is not None:
@@ -134,9 +183,11 @@ def decide(dose: Dose, prompt: Prompt | None, now: datetime) -> tuple[str, datet
 # ---------------------------------------------------------------------------
 # The words (pure)
 # ---------------------------------------------------------------------------
-def notice(dose: Dose, reminders: int = 0) -> str:
+def notice(dose: Dose, reminders: int = 0, by: str = "") -> str:
     """The one line the phone shows. It says a routine is due and when: never
     which pill, its dose or its note."""
+    if reminders == LAST_UP:
+        return f"💊 Last chance today · take by {by}"
     line = f"💊 Routine due · {timeinput.format_moment(dose.due.at)}"
     return f"{line} · reminder {reminders} of {REMINDERS}" if reminders else line
 
@@ -153,7 +204,8 @@ def _take_by(dose: Dose, now: datetime) -> str | None:
 
 def text(dose: Dose, listed: list[Dose], prompt: Prompt, now: datetime) -> str:
     """The prompt as it reads once the pill is written into it."""
-    lines = [notice(dose, prompt.reminders)]
+    by = by_text(dose, fits_until(dose, listed))
+    lines = [notice(dose, prompt.reminders, by)]
     lines.append(f"**{dose.pill.plan.name}**" + (f" · dose {dose.number} of {dose.of}" if dose.of > 1 else ""))
     due = f"Due `{timeinput.format_moment(dose.due.at)}`"
     before = today.before(listed, dose)
@@ -163,6 +215,11 @@ def text(dose: Dose, listed: list[Dose], prompt: Prompt, now: datetime) -> str:
     lines.append(due)
     if dose.pill.plan.notes:
         lines.append(f"-# {dose.pill.plan.notes}")
+    if prompt.is_last_chance:
+        later = [each.number for each in listed if each.pill.id == dose.pill.id and each.number > dose.number and each.is_pending]
+        lines.append(f"-# ⚠️ After {by} " + (f"dose {later[-1]} no longer fits today" if later else "it can no longer be taken today"))
+        lines.append(f"-# ⏰ The last reminder for this dose · first asked {timeinput.format_moment(prompt.asked_at)}")
+        return "\n".join(lines)
     take_by = _take_by(dose, now)
     if take_by:
         lines.append(take_by)
@@ -184,6 +241,8 @@ def card(dose: Dose, listed: list[Dose], prompt: Prompt, now: datetime) -> Card:
         Button("Snooze 15m", TASK, P_SNOOZE, which, emoji="⏰", style=cards.PRIMARY),
         Button("Skip", TASK, P_SKIP, which, emoji="⏭️", style=cards.PRIMARY),
     )
+    if prompt.is_last_chance:
+        row = tuple(button for button in row if button.action != P_SNOOZE)  # there is nothing left to snooze into
     said = text(dose, listed, prompt, now)
     # As Components V2 (CARDS_V2): the neutral line stays on top, outside the box, and the
     # pill is in a box under it: amber while it is due, grey while it is snoozed
@@ -283,7 +342,7 @@ async def _post(dose: Dose, listed: list[Dose], old: Prompt | None, reminders: i
         message_id = await notify.post(
             KIND,
             channel_id,
-            Card(notice(dose, reminders)),
+            Card(notice(dose, reminders, by_text(dose, fits_until(dose, listed)))),
             user_id=dose.pill.user_id,
             item=attention.Item("a dose is due", attention.TIMED, when=dose.due.at, can_act=True),
             key=str(dose.occurrence.id),
@@ -317,7 +376,7 @@ async def _run(user_id: int) -> tuple[datetime | None, int]:
         return None, 0
     for dose in listed:
         prompt = kept.get(dose.occurrence.id)
-        what, again, reminders = decide(dose, prompt, now)
+        what, again, reminders = decide(dose, prompt, now, fits_until(dose, listed))
         if what == POST:
             if await _post(dose, listed, prompt, reminders, now):
                 posted += 1
@@ -330,8 +389,21 @@ async def _run(user_id: int) -> tuple[datetime | None, int]:
             # still to take, so what is kept stays, as over: it is never asked about a second time
             if prompt.message_id is not None and lifecycle.deletes(MessageClass.ALERT):
                 await cards.delete(prompt.channel_id, prompt.message_id)
-            await database.run(db_keep, replace(prompt, message_id=None, reminders=REMINDERS + 1, snoozed_until=None))
-            log.info("Pills reminders: dose %s was not answered after %s reminders: no more are sent, and it is still to take", dose.occurrence.id, REMINDERS)
+            await database.run(db_keep, replace(prompt, message_id=None, reminders=OVER, snoozed_until=None))
+            log.info("Pills reminders: dose %s was not answered after %s reminders: it is still to take, and gets one last chance", dose.occurrence.id, REMINDERS)
+            # When that is (if at all) is worked out from what is now kept
+            _, again, _ = decide(dose, replace(prompt, message_id=None, reminders=OVER, snoozed_until=None), now, fits_until(dose, listed))
+        elif what == LAST:
+            if await _post(dose, listed, replace(prompt, message_id=None), LAST_UP, now):
+                posted += 1
+                log.info("Pills reminders: dose %s given its last chance", dose.occurrence.id)
+            else:
+                again = None
+        elif what == END:
+            if prompt.message_id is not None and lifecycle.deletes(MessageClass.ALERT):
+                await cards.delete(prompt.channel_id, prompt.message_id)
+            await database.run(db_keep, replace(prompt, message_id=None, reminders=FINISHED))
+            log.info("Pills reminders: the last chance for dose %s has passed: nothing more is sent", dose.occurrence.id)
         elif what == DROP:
             await _take_down(prompt)
             if dose.occurrence.state in (occurrences.DONE, occurrences.SKIPPED):

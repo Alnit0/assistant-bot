@@ -1252,3 +1252,16 @@ A short log of key decisions and why. Newest at the bottom.
   card. And for when Claude does not say so: a card that would add a
   dose within an hour of the last log names that log and asks "Add
   another dose?".
+- **One last chance (Alex, 2026-10-14).** A dose whose reminders went
+  unanswered gets one more nudge, 30 minutes before it stops fitting
+  the day, as a reminder (kind `pills.reminder`, so through quiet
+  hours) and with no pill in the line that notifies. "Stops fitting"
+  is the last moment the dose can be taken with every dose still to
+  come after it fitting (`reminders.fits_until`). What is kept is the
+  prompt's row, counted past the three (over, last chance up,
+  finished): no new table. The message goes half an hour after it
+  was posted, whatever has changed in between.
+- **Corrections of which dose are today's (Alex, 2026-10-14).** "That
+  was dose N" moves a log of today unasked. With none, the card says
+  so and asks which day, offering the latest days that have a log; a
+  day said with it is that day. A correction never logs a dose.

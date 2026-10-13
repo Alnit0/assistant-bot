@@ -984,3 +984,21 @@ def test_20_more_than_an_hour_after_the_last_log_the_card_reads_as_it_did(bot, d
     bot.claude(ROUTED["20"], EXTRACTED["20"])
     bot.say(SAID["20"])
     assert "⚠️ That's 1h 17m after dose 1, taken 9:20 am. The gap is at least 3h. Log it anyway?" in card(bot)[0]
+
+
+def test_19_the_morning_after_only_today_s_logs_are_moved_unasked_and_the_card_asks_which_day(bot, dev_clock):
+    from datetime import time
+
+    _one_dose_at_9_20(bot, dev_clock, dose_1_missed=True)
+    dev_clock.advance_to(day.at(day.today() + timedelta(days=1), time(7, 0)))
+    bot.claude(ROUTED["19"], EXTRACTED["19"])
+    bot.say(SAID["19"])
+    lines, buttons = card(bot)
+    assert any("Pill A has no dose ticked off today. Which day was it?" in line for line in lines), lines
+    assert buttons == ["Yesterday", "Cancel"], "it says so and asks: nothing is moved, and nothing is logged"
+    assert all(state == "pending" for state, _ in _doses(bot).values())
+    lines, buttons = answer(bot, "Yesterday")
+    assert f"{MOVED} · yesterday ❓" in lines or f"{MOVED} · yesterday" in lines
+    assert "-# dose 2 · not taken yesterday" in lines and buttons == ["Save", "Cancel"]
+    assert press(bot).startswith(f"✏️ {MOVED} · yesterday")
+    assert all(state == "pending" for state, _ in _doses(bot).values()), "today is as it was"

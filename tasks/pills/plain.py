@@ -990,6 +990,10 @@ class Step:
     moved_from: Dose | None = None
     # A dose of the same pill I logged in the last hour, when this would add another: the card says so
     another: Dose | None = None
+    # A small line under a move's own: what becomes of the dose the log is moved away from
+    extra: str = ""
+    # "That was dose 1" with nothing logged today: the earlier days it could be about, for the card to ask
+    days: tuple = ()
 
 
 def db_last_logged(conn, user_id: int) -> int | None:
@@ -1117,6 +1121,9 @@ async def _for_pill(request: Request, item: dict, pill: Pill, listed: list[Dose]
         # A pill or a dose number I state still wins over where I point
         item = {**item, "dose": pointed_dose.number}
     said_day = str(item.get("day") or "")
+    if item.get("correction") and item["did"] == checklist.TAKEN and item.get("dose") is not None:
+        # "That was dose 1": checked against what I logged, card or no card. That log moves; nothing is ever added
+        return await _correcting(request, item, pill, listed, today_, now, said_day)
     if said_day in DAYS_BEFORE:
         # "took zinc last night at 11": a dose of the day before, whatever today looks like
         return await _yesterday(request, item, pill, now, said_day)
@@ -1124,11 +1131,6 @@ async def _for_pill(request: Request, item: dict, pill: Pill, listed: list[Dose]
         return Step(_not_today(pill, today_))
     did, name = item["did"], pill.plan.name
     if item.get("dose") is not None:
-        if item.get("correction") and did == checklist.TAKEN:
-            # "That was dose 1": checked against what I logged, card or no card. That log moves; nothing is added
-            moved = await _moved(pill, listed, today_, item, now)
-            if moved is not None:
-                return moved
         # A dose I name by its number is that dose, exactly: never the one the code would have picked
         return _numbered(pill, listed, today_, item, now)
     taken = today.last_taken(listed, pill.id)
@@ -1395,26 +1397,62 @@ def _without(listed: list[Dose], gone: Dose) -> list[Dose]:
     return [Dose(each.pill, replace(each.occurrence, state=occurrences.PENDING, actual_at=None), each.due) if each.occurrence.id == gone.occurrence.id else each for each in listed]
 
 
-async def _moved(pill: Pill, listed: list[Dose], today_: date, item: dict, now: datetime) -> Step | None:
+MOVE_DAYS = 7  # how far back "which day was it?" looks for a day with a log
+MOVE_CHOICES = 3  # and how many of those days it offers
+
+
+def day_said(on: date, today_: date) -> str:
+    """An earlier day in a sentence: "yesterday", or "on Mon 12 Oct"."""
+    return "yesterday" if on == today_ - timedelta(days=1) else f"on {on:%a} {on.day} {on:%b}"
+
+
+def _day_label(on: date, today_: date) -> str:
+    return "Yesterday" if on == today_ - timedelta(days=1) else f"{on:%a} {on.day} {on:%b}"
+
+
+async def _days_logged(request: Request, pill: Pill, today_: date) -> tuple[date, ...]:
+    """The latest earlier days on which a dose of this pill was ticked off, newest first."""
+    found = await request.db.run(occurrences.db_between, request.user.id, checklist.TASK, today_ - timedelta(days=MOVE_DAYS), today_ - timedelta(days=1), pill.id)
+    logged = sorted({each.day for each in found if each.state == occurrences.DONE and each.actual_at is not None}, reverse=True)
+    return tuple(logged[:MOVE_CHOICES])
+
+
+async def _correcting(request: Request, item: dict, pill: Pill, listed: list[Dose], today_: date, now: datetime, said_day: str) -> Step:
     """ "That was dose 1", about a dose already logged: that log is moved to the
     dose I say, with the time it has (or the one I give with it). Always shown
-    on a card, old → new, and never a second log. None when there is nothing
-    to move: no dose of the pill is ticked off, or the one I name already is."""
-    number = item["dose"]
+    on a card, old → new, and never a second log: a correction logs nothing.
+
+    Only today's logs are moved unasked. With nothing ticked off today it says
+    so and asks which day (a button for each of the latest days with a log);
+    a day I name, or pick there, is that day."""
+    name, number = pill.plan.name, item["dose"]
+    on = date.fromisoformat(item["on"]) if item.get("on") else (today_ - timedelta(days=1) if said_day in DAYS_BEFORE else today_)
+    earlier = on != today_
+    if earlier:
+        _, listed, _ = await checklist.read(request.user.id, on)
     target = next((each for each in listed if each.pill.id == pill.id and each.number == number), None)
     if target is None or target.occurrence.state == occurrences.DONE:
-        return None
+        if not earlier:
+            return _numbered(pill, listed, today_, item, now)  # no such dose, or it is that dose already: said as it is
+        return Step(f"💊 **{name}** had no dose {number} {day_said(on, today_)}." if target is None else f"{today.line(target)} · {day_said(on, today_)} already")
     last = await _last_logged(listed, pill.id)
     if last is None:
-        return None
+        if earlier:
+            return Step(f"💊 **{name}** has no dose ticked off {day_said(on, today_)}: there is nothing to move.")
+        nothing = f"💊 **{name}** has no dose ticked off today: there is nothing to move."
+        return Step(nothing, days=await _days_logged(request, pill, today_))
     logged_as = last[0]
     given, was = str(item.get("at", "")).strip(), logged_as.occurrence.actual_at
+    if given and earlier:
+        return Step("⚠️ For an earlier day the log is moved with the time it has: give the new time on its own afterwards.")
     try:
         at = _moment(given, now, None) if given else was
     except UserError as error:
         return Step(f"⚠️ {rules.plain(target.label)}: {error}")
-    asks = (*_out_of_place(_without(listed, logged_as), target, at, logging=False), *_late(pill, today_, at))
-    return Step(dose=target, did=checklist.TAKEN, at=at, was=was if at != was else None, asks=asks, moved_from=logged_as)
+    asks = (*_out_of_place(_without(listed, logged_as), target, at, logging=False), *_late(pill, on, at))
+    step = Step(dose=target, did=checklist.TAKEN, at=at, was=was if at != was else None, asks=asks, moved_from=logged_as, day=on if earlier else None)
+    step.extra = f"-# dose {logged_as.number} · not taken {day_said(on, today_).removeprefix('on ')}" if earlier else freed(step, listed)
+    return step
 
 
 def freed(step: Step, listed: list[Dose]) -> str:
@@ -1473,7 +1511,7 @@ async def _do(step: Step) -> str:
         if step.moved_from.occurrence.state != occurrences.DONE:
             raise UserError(f"{rules.plain(step.moved_from.label)} has changed since: nothing was moved.")
         await checklist.move(step.moved_from, step.dose, step.at, occurrences.MESSAGE)
-        return "✏️ " + checklist.moved_text(step.moved_from, step.dose, step.at, step.was)
+        return "✏️ " + _move_line(step)
     if step.was is not None:
         return checklist.corrected_text(await checklist.correct(step.dose, step.at, occurrences.MESSAGE), step.was)
     said = checklist.marked_text(await checklist.mark(step.dose, step.did, step.at, occurrences.MESSAGE), step.did)
@@ -1497,15 +1535,21 @@ async def log_asks(request: Request, data: dict, guessed: frozenset = frozenset(
         if _pill_guessed(guessed, index):
             return True
         step = await _step(request, item)
-        if step.asks or step.picked or step.which or step.moved_from is not None:
+        if step.asks or step.picked or step.which or step.days or step.moved_from is not None:
             return True  # `which`: the card asks which pill, never a message of its own; a log is never moved unseen
     return False
+
+
+def _move_line(step: Step) -> str:
+    """A log moved from one dose to another, and the day when it is not today's."""
+    said = checklist.moved_text(step.moved_from, step.dose, step.at, step.was)
+    return f"{said} · {day_said(step.day, day.today()).removeprefix('on ')}" if step.day is not None else said
 
 
 def _preview(step: Step) -> str:
     """A step on the card, before it is done."""
     if step.moved_from is not None:
-        return checklist.moved_text(step.moved_from, step.dose, step.at, step.was)
+        return _move_line(step)
     if step.was is not None:
         return f"{step.dose.label} · taken {timeinput.format_moment(step.was)} → {timeinput.format_moment(step.at)}"
     if step.did == checklist.TAKEN:
@@ -1531,6 +1575,15 @@ async def log_card(request: Request, data: dict, guessed: frozenset) -> Proposal
                 for pill in step.which
             ))
             continue
+        if step.days and question is None:
+            # Only today's logs are moved unasked: it says so, and asks which day, a button a day
+            today_ = day.today()
+            question = Question(f"{rules.plain(step.say.removeprefix('💊 ')).removesuffix(': there is nothing to move.')}. Which day was it?", tuple(
+                Choice(_day_label(on, today_), {"doses": [{**each, "on": on.isoformat()} if at == index else dict(each) for at, each in enumerate(data["doses"])]}, ("on",))
+                for on in step.days
+            ))
+            trace.note("correction check: nothing of that pill is logged today, and only today's logs are moved unasked: the card asks which day")
+            continue
         if step.dose is None:
             warnings.append(step.say.removeprefix("⚠️ "))
             continue
@@ -1540,8 +1593,8 @@ async def log_card(request: Request, data: dict, guessed: frozenset) -> Proposal
             trace.note(f"recent-log check: dose {step.another.number} was logged in the last hour, so the card says so before it adds another")
         if step.moved_from is not None:
             trace.note(f"correction check: against what was logged, not only an open card: the log of dose {step.moved_from.number} is moved to dose {step.dose.number}, and nothing is added")
-            _, listed, _ = await checklist.view(request.user.id)
-            lines.append(freed(step, listed))
+            if step.extra:
+                lines.append(step.extra)
             if step.asks:
                 warnings.append(asking(step.dose, step.asks, moving=True))
         elif step.asks:
@@ -1588,13 +1641,14 @@ async def _held(request: Request, data: dict) -> list[Step]:
         if on is not None:
             # A dose of the day before: looked up on its own day, which is never changed by looking
             _, before, _ = await checklist.read(request.user.id, on)
-            dose = next((each for each in before if each.occurrence.id == item["occurrence"]), None)
+            pool = {each.occurrence.id: each for each in before}
         else:
-            dose = by_id.get(item["occurrence"])
+            pool = by_id
+        dose = pool.get(item["occurrence"])
         if dose is None:
             raise UserError("That dose isn't on today's checklist any more." if on is None else "That dose of yesterday's is no longer there.")
         was = datetime.fromisoformat(item["was"]) if item.get("was") else None
-        moved_from = by_id.get(item["moved_from"]) if item.get("moved_from") is not None else None
+        moved_from = pool.get(item["moved_from"]) if item.get("moved_from") is not None else None
         if item.get("moved_from") is not None and moved_from is None:
             raise UserError("That dose isn't on today's checklist any more.")
         steps.append(Step(dose=dose, did=item["did"], at=datetime.fromisoformat(item["moment"]), was=was, day=on, moved_from=moved_from))

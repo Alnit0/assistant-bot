@@ -20,8 +20,8 @@ dose 2 taken 9:20 am and dose 1 taken 9:27 am.
   more are sent, and the dose stays to take; it is missed only once it
   can no longer be taken today, as worked out from the day's limit.
   **This is my reading of "the deadline fix": the message that
-  described it never reached this session** (question 43 in
-  `docs/QUESTIONS.md`).
+  described it never reached this session**; you have since confirmed
+  it is what you meant.
 - **"That was dose 1" is a correction of what was logged**, card or no
   card: the log moves to the dose named, keeps its time, and is shown
   on a change card ("dose 2 → dose 1 · taken 9:20 am", and what becomes
@@ -36,6 +36,34 @@ dose 2 taken 9:20 am and dose 1 taken 9:27 am.
 - Self-test as the dev bot with live up, after the change: 114 of 115
   passed, none failed, one skipped for needing real requests
   (recorded answers, nothing spent). Offline: 2746 passed, 1 skipped.
+
+**Your answers to 43 to 45, built the same morning**
+
+- 43: a dose is missed only when it can no longer be taken today.
+  Kept as built.
+- 44: **one last-chance nudge.** A dose whose reminders went unanswered
+  gets one more message, 30 minutes before the last moment it can be
+  taken with every dose after it still fitting the day (the day's
+  limit, less the gap for each dose still to come). It notifies like
+  a reminder, through the notify service, and the phone shows only
+  "💊 Last chance today · take by 6:00 pm". It has Taken, Taken at…
+  and Skip (no Snooze), goes at that moment, and is never sent twice
+  for a dose. None when the reminders themselves ran that late.
+  Like every pill reminder it gets through quiet hours: for a pill
+  with no latest time it comes at 11:30 pm ("take by midnight").
+- 45: **"that was dose N" moves only today's logs unasked.** With
+  nothing ticked off today the card says so and asks which day, with
+  a button for each of the latest days that have a log (up to three,
+  a week back); "that was dose 1 yesterday" is that day without
+  asking. A correction never logs a dose: with nothing to move it says
+  so.
+
+- Self-test as the dev bot with live up, after these two: the full run
+  (10:35 am) passed 109 of 116. All six failures (1.14 to 1.17, 1.20)
+  were Discord answering 503 for half a minute, which also failed a
+  reminder's post; phase 1 run again passed 41 of 41. The new steps
+  (2.09b, the last chance) passed. Recorded answers, nothing spent.
+  Offline: 2751 passed, 1 skipped.
 
 ## Decided overnight (2026-10-14)
 
@@ -216,7 +244,7 @@ for needing real requests). Claude spend for the batch: NZ$0.68
 
 ## Questions for Alex
 
-**The open questions are one list now: `docs/QUESTIONS.md`** (45 of
+**The open questions are one list now: `docs/QUESTIONS.md`** (44 of
 them, each with a suggested answer, so you can reply "yes to all
 suggestions except 4 and 7"). What follows here is the history: how
 each came up and what was answered. Nothing new is added below.

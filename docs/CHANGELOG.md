@@ -13,6 +13,11 @@ backfilled from the git log.
   dose 1 with its time, on a change card. It never adds a second log.
 - A card that would add a dose within an hour of the last one says
   so: "You already logged dose 2 at 9:20 am. Add another dose?"
+- A dose whose reminders went unanswered gets one last-chance nudge,
+  30 minutes before it stops fitting the day: "💊 Last chance today ·
+  take by 6:00 pm".
+- "That was dose N" moves only today's logs unasked; for an earlier
+  day the card says so and asks which day.
 
 - Weather in the briefing: today's low and high, a word for the sky,
   the chance of rain and roughly when, and the wind. Fetched at

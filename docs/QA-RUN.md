@@ -1042,6 +1042,8 @@ On the dev bot (`--dev`), with reminders on. After the morning of
 | 3 | Say `took testr` | A card: "⚠️ You already logged dose 1 at 9:20 am. That's 3m later. The gap is at least 3h. Add another dose?" with **Log it** and **Cancel**. Press **Log it** | R97 |
 | 4 | Say `that was dose 3`; look, then **Save** | A change card: "**Testr** · dose 2 → dose 3 · taken 9:23 am", "dose 2 · still to take · `12:20 pm`", a ⚠️ line about the gap after dose 1 and "Move it anyway?". After the press: "✏️ **Testr** · dose 2 → dose 3 · …". The checklist shows doses 1 and 3 taken and dose 2 to take: two logs, as before | R96 |
 | 5 | Reply to your `that was dose 3` with `dev why` | The trace has "correction check: against what was logged, not only an open card: the log of dose 2 is moved to dose 3, and nothing is added" | R96 |
+| 6 | Say `add Testlast to my pills at 8pm`, **Save**. Type `dev clock 8:00pm`, `8:15pm`, `8:30pm`, `8:45pm`, `9:00pm`, then `dev clock 11:30pm`. Look at the lock screen and the hub | At 9:00 pm the reminder goes. At 11:30 pm the phone buzzes with "💊 Last chance today · take by midnight" and nothing about Testlast; in the hub that line, the pill, "After midnight it can no longer be taken today", and **Taken**, **Taken at…**, **Skip** (no Snooze). `dev clock 11:45pm`: nothing new | R99 |
+| 7 | Press **Taken**. Type `dev clock 7:00am` (the next day). Say `that was dose 1` about Testr | The card asks "Testr has no dose ticked off today. Which day was it?" with **Yesterday**. Press it: a change card ending "· yesterday", with **Save** and **Cancel**. Nothing is logged today | R100 |
 
 ## When you finish
 

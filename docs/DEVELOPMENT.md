@@ -582,7 +582,10 @@ Everything works in #inbox and in the hub.
   9:20 am" with a small line for what becomes of dose 2 ("dose 2 ·
   still to take · `12:20 pm`"), **Save** and **Cancel**. It never adds
   a second log. It is checked against what you logged, whether or not
-  a card is open.
+  a card is open. Only today's logs are moved unasked: with nothing
+  ticked off today the card says so and asks "Which day was it?", a
+  button for each of the latest days with a log (or say the day:
+  "that was dose 1 yesterday"). A correction never logs a dose.
 - **A second dose within the hour is said in so many words.** When a
   card would add a dose and you logged one of that pill in the last
   hour, it reads "You already logged dose 1 at 9:20 am. That's 7m
@@ -650,7 +653,10 @@ Everything works in #inbox and in the hub.
   again every 15 minutes, three times, and then it goes and nothing
   more is sent for that dose. The dose is still to take: it is missed
   only once it can no longer be taken today (the pill's latest time,
-  or midnight). A dose with no time has its
+  or midnight). It gets **one last chance**: 30 minutes before the
+  last moment it can be taken with every dose after it still fitting
+  the day, a message that notifies ("💊 Last chance today · take by
+  6:00 pm") with Taken, Taken at… and Skip. It goes at that moment. A dose with no time has its
   Taken / Skip message under the checklist and no reminder. Nothing is
   sent after a pill's latest time. Reminders go to the hub only: on
   with no hub that can be found, #bot-log says so once and nothing is

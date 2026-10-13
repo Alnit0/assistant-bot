@@ -591,9 +591,26 @@ async def p2(h: Harness) -> None:
         await h.clock_by(minutes=15, seconds=10)
         h.check(await h.count(h.hub, NEUTRAL) == 0, "a quarter of an hour on, a reminder was posted again")
 
+    async with h.step("2.09b", "Half an hour before Testa's latest time: one last chance", "At 3:30 pm one more message, which notifies: “💊 Last chance today · take by 4:00 pm”, with no pill in that line; under it the pill, the dose and why. Taken, Taken at… and Skip, no Snooze. Only the one", "asked 2026-10-14"):
+        await h.clock_to(15, 30, 5)
+        up = [each for each in await prompts(h) if each.message_id]
+        h.check(len(up) == 1, f"{len(up)} messages are up for a dose")
+        shown = await h.get(h.hub, up[0].message_id) if up else None
+        h.check(shown is not None and shown.text.startswith("💊 Last chance today · take by 4:00 pm"), f"it reads: {shown.text[:160] if shown else 'nothing'}")
+        first = shown.text.splitlines()[0]
+        h.check("Testa" not in first and "dose" not in first, f"its first line names the pill or the dose: {first}")
+        h.check("Testa" in shown.text and "dose 3 of 3" in shown.text and "The last reminder for this dose" in shown.text, f"the rest reads: {shown.text[:300]}")
+        h.check(not shown.silent, "it was posted silently: it would not notify")
+        h.check(any("Taken" in label for label in shown.labels) and any("Skip" in label for label in shown.labels) and not any("Snooze" in label for label in shown.labels), f"its buttons are {shown.labels}")
+        h.saw(first)
+        await h.clock_by(minutes=15, seconds=5)
+        h.check(len([each for each in await prompts(h) if each.message_id]) == 1 and await h.count(h.hub, "💊 Last chance today") == 1, "a quarter of an hour on there is not exactly one")
+        h.memo["last_chance"] = up[0].message_id
+
     async with h.step("2.10", "Past Testa's latest time the dose is missed; logged as taken then: `took testa`", "At 4:00 pm dose 3 is missed. The typed shortcut, with no request to Claude, asks first: a card “Dose 3 was missed (due …). … Log it as taken now?” with Log it and Cancel; nothing is ticked off until Log it", "T45 (38.7); asked 2026-10-13"):
         if (config.now_nz().hour, config.now_nz().minute) < (16, 1):
             await h.clock_to(16, 1, 5)
+        h.check(await h.get(h.hub, h.memo.get("last_chance")) is None, "the last-chance message is still up after 4:00 pm")
         before = h._real_calls
         mine = await h.say("took testa")
         stored, shown = await card(h)

@@ -306,12 +306,17 @@ The rules are in `docs/specs/pills.md` and the Pills section of
 - Reminders running out is no deadline: after the last one nothing
   more is sent for that dose and it stays to take
   (`reminders.decide`, STOP). A dose is missed only when it can no
-  longer be taken today (`doses.outcomes`)
+  longer be taken today (`doses.outcomes`). It gets one last-chance
+  nudge 30 minutes before it stops fitting the day
+  (`reminders.fits_until`), through the notify service, with no pill
+  in the line that notifies, and never a second
 - "That was dose 1" about a dose already logged is a correction of
   that log, checked against what was logged and not only an open
   card: Claude marks it (`correction` in `pill_log`), the code moves
   the log to the dose named with its time (`checklist.move`, one
-  change) on a change card, and never makes a second log. A card that
+  change) on a change card, and never makes a second log. Only today's
+  logs are moved unasked: for an earlier day the card says so and asks
+  which day. A card that
   would add a dose when one was logged in the last hour says so
   ("You already logged dose 2 at 9:20 am. Add another dose?",
   `plain.logged_lately`)
