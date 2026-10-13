@@ -173,7 +173,17 @@ def checklist(listed: list[Dose], pills: list[Pill], day: date) -> str:
         for pill in paused:
             until = f" until {timeinput.format_date(pill.paused_until)}" if pill.paused_until else ""
             lines.append(f"⏸️ **{pill.plan.name}** · paused{until}")
+    off = not_today(pills, day)
+    if off:
+        lines += ["", "### 🗓️ Not today"]
+        lines += [f"🗓️ **{pill.plan.name}** · {rules.days_text(pill.plan.schedule.days)}" for pill in off]
     return "\n".join(lines)
+
+
+def not_today(pills: list[Pill], day: date) -> list[Pill]:
+    """The pills in use that are simply not taken on this day of the week, by
+    name: shown under the day's doses with their days, and never counted."""
+    return sorted((pill for pill in pills if rules.is_off_day(pill, day)), key=lambda pill: pill.plan.name.lower())
 
 
 def left_text(listed: list[Dose]) -> str:

@@ -31,6 +31,25 @@ against the bug's own record, not only the list of numbers).
   the same time as the nightly backup (3:00 am): say if it should be
   later.
 
+- **Corrections straight after Save** (stage 2, G3): built for pills.
+  Other tasks' cards can use the same thing (`Request.just_saved`) but
+  none does yet: after saving a schedule, "no, 7pm" still asks which
+  schedule when there is more than one. Say if you want it there too.
+- **Days of the week** (stage 3). On a day a pill is not taken, the
+  checklist lists it at the bottom under "🗓️ Not today" with its days,
+  uncounted (as paused pills are listed). You said "shown on the
+  checklist": say if you meant something else (its days on its line on
+  the days it is taken, say). The words: "Mon to Fri at `8:00 am`",
+  "Mon, Wed, Fri, any time", "2× a day, Sat, Sun, any time".
+  Different times on different days are not built.
+- **Last night's dose** (stage 3). Decided without you: only "taken"
+  can be logged for yesterday, and only the day before; with no time
+  given the card proposes the planned time, or **11:59 pm** for a pill
+  with no time (a made-up time, shown before it is saved: say what it
+  should be); the "not come yet" reading stops at 4:00 am; an explicit
+  "last night at 11" is logged without the missed-dose card, though
+  that dose is by then marked missed.
+
 **From the two bots (2026-10-13):**
 
 - **The self-test's channels are found only by the ids in `.env.dev`**

@@ -943,6 +943,22 @@ a minute before it is stopped.
 | 4 | Leave the hub's card. `nssm restart assistant-bot` | No second card for `pills`: the one that is there still works. Press **Handle it now**: the checklist is shown | R86 |
 | 5 | Type something in #selftest-inbox | Live does not answer: that channel is the dev bot's | R87 |
 
+## 51. Days of the week, and last night's dose (waiting for QA)
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
+On the dev database (`python main.py --dev`, in the dev bot's inbox).
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Say `add Testdays to my pills on weekdays only at 8am`; **Save** | The card and the Saved line read "**Testdays** · Mon to Fri at `8:00 am`" | T28 |
+| 2 | `dev clock` to next Saturday 9am; type `pills` | Testdays has no dose; at the bottom "🗓️ Not today" lists "Testdays · Mon to Fri". The count does not include it | T28 |
+| 3 | Say `took testdays` | "🗓️ **Testdays** is taken Mon to Fri: there is nothing to tick off today." | T28 |
+| 4 | Say `testdays is every day again`; **Save** | "schedule · Mon to Fri at `8:00 am` → daily at `8:00 am`"; the checklist gains its dose | T28 |
+| 5 | Leave it untaken. `dev clock` to 12:30 am the next day. Say `took testdays last night at 11` | At once: "✅ **Testdays** · taken 11:00 pm · yesterday …"; today's dose is still to take | T29 |
+| 6 | Add a pill with an evening time (`add Testeve at 8pm`, **Save**) and leave it untaken. `dev clock` past midnight to 12:30 am. Say `I took testeve at 9pm` | A card first: "It is past midnight and 9:00 pm has not come yet today, so this is yesterday's dose. … Log it as taken now?" with **Log it** and **Cancel**. Log it: "… taken 9:00 pm · yesterday" | T29 |
+| 7 | `dev clock` to 9am. Say `took <that pill> yesterday at 8` (a dose of yesterday still missed) | A card first: "“8:00” could be morning or evening: taken as 8:00 pm." | T29 |
+
 ## When you finish
 
 - Stop the test copy (`Ctrl + C`) and check nothing is left running:

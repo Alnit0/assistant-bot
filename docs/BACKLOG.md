@@ -458,10 +458,6 @@ number read from text; C19's name matching is in the core.
   samples, so on the live bot it reads as if the jobs were test data.
   They are not. To do if wanted: a second mark, "🧪 dev tool", for
   tool output, with `dev clean` removing both.
-- **After midnight, logging yesterday's doses** (asked for 2026-10-12).
-  "I took it at 9pm" said at 12:30 am means yesterday. Until about
-  4:00 am, a time later than now refers to yesterday's checklist, shown
-  on a card first. Today it is refused ("hasn't happened yet").
 - **Switching task straight after an answer costs one more request**
   (2026-10-12): a short message within five minutes of a task's answer
   goes to that task first, and only on to the router if it says the

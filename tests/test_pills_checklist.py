@@ -9,7 +9,9 @@ import pytest
 from core import cards, clock, database, day, hub, live, llm, occurrences, scheduler, tidy
 from core.actions import Request, Shown
 from core.occurrences import DONE, MISSED, PENDING, SKIPPED
-from tasks.pills import checklist, plain, store, today
+from core.errors import UserError
+from tasks.pills import checklist, plain, rules, store, today
+from tasks.pills import sheet as sheet_module
 from tasks.pills import task as pills_task
 
 HUB, INBOX = 400, 100
@@ -982,3 +984,144 @@ def test_a_saved_card_and_an_already_line_are_the_pills_too(world):
     assert said_as(world, saved, 9003).startswith("✅ Saved") and run(database.run(store.db_line, 9003)) == [(3, None)]
     took = run(plain.log_doses(replying(world, 9003), {"doses": [{"pill": "@that", "did": "taken"}]}, frozenset()))
     assert took.startswith("✅ **Magnesium** · taken"), "“took it” as a reply to the line that saved it"
+
+
+# --- days of the week (2026-10-13): a pill taken on certain days only ---------------------------------------------------
+TUESDAY = DAY + timedelta(days=1)
+
+
+def _card(world, action, *items):
+    return run(action(world.request(), {"pills": list(items)}, frozenset()))
+
+
+def test_a_pill_on_certain_days_says_so_on_its_card_and_is_saved_with_them(world):
+    proposal = _card(world, plain.add_card, {"name": "Gym vitamin", "times": ["8:00 am"], "weekdays": ["mon", "wed", "fri"]})
+    assert proposal.lines == ("**Gym vitamin** · Mon, Wed, Fri at `8:00 am`",)
+    assert run(plain.add_save(world.request(), proposal.data)) == "✅ Saved · 💊 **Gym vitamin** · Mon, Wed, Fri at `8:00 am`"
+    (pill,) = run(store.pills(world.owner.id))
+    assert pill.plan.schedule.days == (0, 2, 4) and pill.plan.schedule.is_on(DAY) and not pill.plan.schedule.is_on(TUESDAY)
+    assert _card(world, plain.add_card, {"name": "Work pill", "weekdays": ["mon", "tue", "wed", "thu", "fri"]}).lines == ("**Work pill** · Mon to Fri, any time",)
+    assert _card(world, plain.add_card, {"name": "Twice", "per_day": 2, "weekdays": ["sat", "sun"]}).lines == ("**Twice** · 2× a day, Sat, Sun, any time",)
+    every = _card(world, plain.add_card, {"name": "All week", "weekdays": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]})
+    assert every.lines == ("**All week** · daily, any time",), "every day of the week is simply daily"
+
+
+def test_it_is_on_the_checklist_on_its_days_and_listed_with_its_days_on_the_others(world):
+    add(world, {"name": "Gym vitamin", "weekdays": ["mon", "wed", "fri"]}, {"name": "Zinc"})
+    run(checklist.post(world.owner.id))
+    assert "Gym vitamin" in sheet(world) and "Not today" not in sheet(world), "Monday is one of its days"
+    world.now = day.at(TUESDAY, time(9, 0))
+    run(checklist.new_day(DAY, TUESDAY))
+    pills, listed, _ = run(checklist.view(world.owner.id))
+    assert [dose.pill.plan.name for dose in listed] == ["Zinc"], "no dose is expected on a day that is not one of its days"
+    text = today.checklist(listed, pills, TUESDAY)
+    assert text.endswith("### 🗓️ Not today\n🗓️ **Gym vitamin** · Mon, Wed, Fri") and "of 1" in text.splitlines()[0] or "1" in text.splitlines()[0]
+    assert log(world, {"pill": "gym vitamin", "did": "taken"}) == "🗓️ **Gym vitamin** is taken Mon, Wed, Fri: there is nothing to tick off today."
+    drawn = sheet_module.layout(listed, pills, TUESDAY, world.now)
+    said = " ".join(str(piece) for piece in drawn)
+    assert "Not today" in said and "Gym vitamin · Mon, Wed, Fri" in said, "the drawn checklist shows it too"
+
+
+def test_the_days_are_changed_and_taken_away_on_a_change_card(world):
+    add(world, {"name": "Gym vitamin", "times": ["8:00 am"], "weekdays": ["mon", "wed", "fri"]})
+    proposal = _card(world, plain.edit_card, {"pill": "gym vitamin", "weekdays": ["sat", "sun"]})
+    assert proposal.lines[1] == "schedule · Mon, Wed, Fri at `8:00 am` → Sat, Sun at `8:00 am`"
+    run(plain.edit_save(world.request(), proposal.data))
+    assert run(store.pills(world.owner.id))[0].plan.schedule.days == (5, 6)
+    proposal = _card(world, plain.edit_card, {"pill": "gym vitamin", "clear": ["weekdays"]})
+    assert proposal.lines[1] == "schedule · Sat, Sun at `8:00 am` → daily at `8:00 am`"
+    run(plain.edit_save(world.request(), proposal.data))
+    assert run(store.pills(world.owner.id))[0].plan.schedule.days == ()
+    proposal = _card(world, plain.edit_card, {"pill": "gym vitamin", "notes": "with food"})
+    run(plain.edit_save(world.request(), proposal.data))
+    assert run(store.pills(world.owner.id))[0].plan.schedule.days == (), "a change that says nothing about days keeps them as they are"
+
+
+def test_days_come_as_a_list_of_days_and_nothing_else_is_read(world):
+    assert rules._weekdays("mon, wed, fri") == (0, 2, 4) and rules._weekdays("sun mon") == (0, 6)
+    assert rules._weekdays("monday, TUESDAY") == (0, 1), "a day's full name is its first three letters"
+    for wrong in ("weekdays", "every other day", ""):
+        with pytest.raises(UserError):
+            rules._weekdays(wrong)
+    add_action = next(action for action in plain.ACTIONS if action.name == "pill_add")
+    from core import actions as core_actions
+
+    item = core_actions.schema(add_action)["properties"]["pills"]["items"]["properties"]
+    assert item["weekdays"]["items"]["enum"] == ["mon", "tue", "wed", "thu", "fri", "sat", "sun"], "which days a phrase means is Claude's to say, as a list"
+
+
+def test_a_pill_from_before_days_of_the_week_is_taken_every_day(world):
+    add(world, {"name": "Zinc"})
+    (pill,) = run(store.pills(world.owner.id))
+    assert pill.plan.schedule.days == () and all(pill.plan.schedule.is_on(DAY + timedelta(days=offset)) for offset in range(7))
+    assert rules.is_taken_on(pill, TUESDAY) and not rules.is_off_day(pill, TUESDAY)
+
+
+# --- a dose of the day before, logged after midnight -----------------------------------------------------------------
+def _after_midnight(world, hour=0, minute=30):
+    """Monday evening's checklist is up; then the day ends and it is Tuesday, early."""
+    world.now = day.at(DAY, time(21, 0))
+    run(checklist.post(world.owner.id))
+    world.now = day.at(TUESDAY, time(hour, minute))
+    run(checklist.new_day(DAY, TUESDAY))
+
+
+def _states(world, on):
+    pills = {pill.id: pill.plan.name for pill in run(store.pills(world.owner.id))}
+    return {pills[each.item_id]: (each.state, each.actual_at) for each in run(occurrences.for_day(world.owner.id, "pills", on))}
+
+
+def test_took_it_last_night_at_11_is_yesterday_s_dose_and_is_done_at_once(world):
+    add(world, {"name": "Zinc"}, {"name": "Evening pill", "times": ["8:00 pm"]})
+    _after_midnight(world)
+    data = {"doses": [{"pill": "zinc", "did": "taken", "at": "11:00", "day": "last_night"}]}
+    assert run(plain.log_asks(world.request(), data)) is False, "said in so many words, with a time that reads one way: nothing to ask"
+    said = log(world, *data["doses"])
+    assert said.startswith("✅ **Zinc** · taken 11:00 pm · yesterday")
+    assert _states(world, DAY)["Zinc"] == (DONE, day.at(DAY, time(23, 0))), "last night at 11 is the evening"
+    assert _states(world, TUESDAY)["Zinc"][0] == PENDING, "and today's dose is still to take"
+    assert "yesterday already" in log(world, *data["doses"]), "said again, nothing is logged twice"
+
+
+def test_a_time_that_has_not_come_yet_after_midnight_is_asked_about_as_yesterday_s(world):
+    add(world, {"name": "Evening pill", "times": ["8:00 pm"]})
+    _after_midnight(world)
+    data = {"doses": [{"pill": "evening pill", "did": "taken", "at": "9:00 pm"}]}
+    assert run(plain.log_asks(world.request(), data)) is True, "nobody said yesterday: it is asked first"
+    proposal = run(plain.log_card(world.request(), data, frozenset()))
+    assert proposal.lines == ("**Evening pill** · taken 9:00 pm · yesterday",) and proposal.confirm_label == "Log it"
+    assert proposal.warnings[0].startswith("It is past midnight and 9:00 pm has not come yet today, so this is yesterday's dose.")
+    assert _states(world, DAY)["Evening pill"][0] == MISSED, "nothing is changed until Log it"
+    assert run(plain.log_save(world.request(), proposal.data)).startswith("✅ **Evening pill** · taken 9:00 pm · yesterday")
+    assert _states(world, DAY)["Evening pill"] == (DONE, day.at(DAY, time(21, 0))) and run(plain.log_check(world.request(), proposal.data)) == ""
+
+
+def test_later_in_the_day_a_time_still_to_come_is_simply_refused(world):
+    add(world, {"name": "Evening pill", "times": ["8:00 pm"]})
+    _after_midnight(world, 5, 0)
+    assert log(world, {"pill": "evening pill", "did": "taken", "at": "9:00 pm"}) == "⚠️ Evening pill: 9:00 pm hasn't happened yet: it's 5:00 am now."
+    said = log(world, {"pill": "evening pill", "did": "taken", "at": "9:00 pm", "day": "yesterday"})
+    assert said.startswith("✅ **Evening pill** · taken 9:00 pm · yesterday"), "said to be yesterday, it is, at any hour"
+
+
+def test_yesterday_with_a_time_that_reads_two_ways_or_none_asks_first(world):
+    add(world, {"name": "Zinc"}, {"name": "Evening pill", "times": ["8:00 pm"]})
+    _after_midnight(world, 9, 0)
+    either = {"doses": [{"pill": "zinc", "did": "taken", "at": "8:00", "day": "yesterday"}]}
+    assert run(plain.log_asks(world.request(), either)) is True
+    proposal = run(plain.log_card(world.request(), either, frozenset()))
+    assert proposal.lines == ("**Zinc** · taken 8:00 pm · yesterday",) and proposal.warnings[0].startswith("“8:00” could be morning or evening: taken as 8:00 pm.")
+    none = {"doses": [{"pill": "evening pill", "did": "taken", "day": "yesterday"}]}
+    proposal = run(plain.log_card(world.request(), none, frozenset()))
+    assert proposal.lines == ("**Evening pill** · taken 8:00 pm · yesterday",) and proposal.warnings[0].startswith("No time was given: its planned time is used (8:00 pm).")
+    none = {"doses": [{"pill": "zinc", "did": "taken", "day": "yesterday"}]}
+    assert run(plain.log_card(world.request(), none, frozenset())).warnings[0].startswith("No time was given: the end of the day is used (11:59 pm).")
+
+
+def test_what_cannot_be_yesterday_s_is_said(world):
+    add(world, {"name": "Zinc"})
+    _after_midnight(world)
+    add(world, {"name": "New today"})
+    assert log(world, {"pill": "new today", "did": "taken", "day": "yesterday"}) == "💊 **New today** had nothing to take yesterday."
+    assert log(world, {"pill": "zinc", "did": "skipped", "day": "yesterday"}) == "⚠️ For yesterday I can only log a dose as taken."
+    assert log(world, {"pill": "zinc", "did": "taken", "dose": 2, "at": "9:00 pm", "day": "yesterday"}) == "💊 **Zinc** had 1 dose yesterday, not a dose 2."

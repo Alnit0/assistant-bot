@@ -116,6 +116,14 @@ def _paused(pills: list[Pill], day: date) -> list[design.Box]:
     return [design.item(design.QUIET, "⏸️ **Paused**", *lines)]
 
 
+def _not_today(pills: list[Pill], day: date) -> list[design.Box]:
+    """The pills that are not taken on this day of the week, with their days."""
+    off = today.not_today(pills, day)
+    if not off:
+        return []
+    return [design.item(design.QUIET, "🗓️ **Not today**", *(design.small(f"{pill.plan.name} · {rules.days_text(pill.plan.schedule.days)}") for pill in off))]
+
+
 def _folded(groups: list[list[Dose]], limit: int) -> design.Box:
     """Pills with nothing left to do today, as one box of lines. Never drops
     one without saying how many more there are."""
@@ -142,7 +150,7 @@ def layout(listed: list[Dose], pills: list[Pill], day: date, now: datetime) -> t
     with nothing left to do are folded into one box of lines."""
     groups = _groups(listed)
     context = f"{day:%A} {day.day} {day:%B}"
-    later = _paused(pills, day)
+    later = [*_paused(pills, day), *_not_today(pills, day)]
 
     def built(buttons_on: set[int], folded: bool) -> tuple:
         open_, closed = [], []

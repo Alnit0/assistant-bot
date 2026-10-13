@@ -278,6 +278,18 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   (`plain.asked_about`). A time for the dose
   just logged, or a dose named by its number, corrects that dose (old →
   new), never a second one
+- A dose of the day before is logged after midnight only as taken
+  (`plain._yesterday`). Said in so many words with a time that reads
+  one way ("took zinc last night at 11") it is done at once and its
+  line says "yesterday"; when the day or the time had to be worked out
+  (a time that has not come yet, before 4:00 am; "at 8" with no
+  morning or evening; no time at all) it asks first on a card. Which
+  day I said is handed over by Claude as a value (`day`), never worked
+  out from the time
+- A pill may be taken on certain days of the week only
+  (`Schedule.days`, `rules.is_taken_on`): no dose is expected on its
+  other days, and it is listed under the checklist with its days ("Not
+  today"), never counted. The days come as a list (`weekdays`)
 - Reminders (`tasks/pills/reminders.py`) are behind `REMINDERS_ENABLED`:
   off, nothing is ever sent. What notifies never names a pill: the
   message is posted as the neutral line and the pill is written in

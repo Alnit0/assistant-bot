@@ -1082,6 +1082,28 @@ giving where the change came from (`BUTTON`, `FORM`, `MESSAGE`,
 that belong together, inside one `database.run`, and
 `db_last_change` / `db_revert` will treat them as one.
 
+### Days of the week, and a dose of last night
+
+- **A pill on certain days only**: "add zinc on weekdays only", "iron
+  is Mon Wed Fri", "make it weekends". The card and the lists show the
+  days where "daily" would stand ("**Zinc** · Mon to Fri at `8:00 am`",
+  "2× a day, Sat, Sun, any time"). On its other days no dose is
+  expected, nothing reminds, and the streak is not touched; the
+  checklist lists it at the bottom, uncounted, under "🗓️ Not today"
+  with its days. "Zinc is every day again" takes the days away. Every
+  day of the week is simply daily.
+- **A dose of the day before, logged after midnight**: "took zinc last
+  night at 11", "I took my evening pill yesterday at 9pm". Yesterday's
+  dose (missed by then) is logged as taken at that time and the line
+  ends "· yesterday". It is done at once when you say the day and the
+  time reads one way ("last night at 11" is the evening). It **asks
+  first, on a card with Log it**, when something had to be worked out:
+  a time that has not come yet today, said before 4:00 am with no day
+  ("I took it at 9pm" at half past midnight); a time that could be
+  morning or evening ("yesterday at 8"); or no time at all (the planned
+  time is used, or 11:59 pm for a pill with none). Only "taken" can be
+  logged for yesterday, and only for the day before.
+
 ### Mock-ups: `dev mock`
 
 A card is sketched in a text file in `docs/mockups/` and posted as a real

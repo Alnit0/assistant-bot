@@ -165,6 +165,15 @@ async def p1(h: Harness) -> None:
         h.check(not plan.schedule.times, f"Cancel changed the pill: {plan.schedule.times}")
         h.saw(next((line for line in shown.text.splitlines() if "→" in line), "")[:120])
 
+    async with h.step("1.04c", "Days of the week: “add Testdays to my pills on weekdays only”", "A card “💊 Pills · new” naming Testdays, Mon to Fri, with Save. Cancel: nothing is saved", "asked 2026-10-13 (stage 3)"):
+        await h.say("add Testdays to my pills on weekdays only", canned=add({"name": "Testdays", "weekdays": ["mon", "tue", "wed", "thu", "fri"]}))
+        stored, shown = await card(h)
+        h.check(shown is not None and "Testdays" in shown.text and "Mon to Fri" in shown.text, f"the card reads: {shown.text[:200] if shown else 'nothing'}")
+        h.check(any("Save" in label for label in shown.labels), f"its buttons are {shown.labels}")
+        await h.press(shown.id, "Cancel", h.inbox)
+        h.check("Testdays" not in await h.pills(), "Cancel saved the pill")
+        h.saw(next((line for line in shown.text.splitlines() if "Testdays" in line), "")[:120])
+
     async with h.step("1.05", "A question on the card: “add Testiron to my pills at 8”", "A card with “daily at ❔”, the question morning or evening, a button for 8:00 am and 8:00 pm, Cancel, and no Save", "T25 (37.1)"):
         await h.say("add Testiron to my pills at 8", canned=add({"name": "Testiron", "times": ["8:00"]}, guessed=["times[0]"]))
         stored, shown = await card(h)
@@ -574,6 +583,21 @@ async def p2(h: Harness) -> None:
         h.check(left is not None and "Otherpill" in left.text, "yesterday's checklist has gone, or does not show Otherpill")
         h.saw("yesterday's checklist is still in the hub")
         h.odd("Yesterday's checklist stays in the hub after midnight and after the next morning's is posted. That is what the code does today; the clean-up spec replaces it")
+
+    async with h.step("2.12b", "Just after midnight: “took otherpill last night at 11”", "Yesterday's missed dose is logged as taken at 11:00 pm, and the line says “yesterday”. (If the day had to be worked out from the time, it is asked first on a card: Log it)", "asked 2026-10-13 (stage 3)"):
+        await h.say("took otherpill last night at 11", canned=log({"pill": "otherpill", "did": "taken", "at": "11:00", "day": "last_night"}))
+        said = await h.find(h.inbox, "Otherpill", "yesterday")
+        stored, asked = await card(h)
+        if asked is not None and any("Log it" in label for label in asked.labels):
+            h.odd("it was asked first on a card: the day was not handed over as said, and was worked out from the time")
+            h.check("yesterday" in asked.text, f"the card reads: {asked.text[:200]}")
+            await h.press(asked.id, "Log it", h.inbox)
+            said = await h.get(h.inbox, asked.id)
+        h.check(said is not None and "taken" in said.text and "11:00 pm" in said.text and "yesterday" in said.text, f"the line reads: {said.text[:200] if said else [each.text[:80] for each in await h.recent(h.inbox, 3)]}")
+        states = await h.doses(day_offset=-1)
+        h.check(states.get(("Otherpill", 1)) == DONE, f"yesterday's Otherpill is {states.get(('Otherpill', 1))}")
+        h.check((await h.doses()).get(("Otherpill", 1)) == PENDING, f"today's Otherpill is {(await h.doses()).get(('Otherpill', 1))}")
+        h.saw(said.text.splitlines()[0][:140])
 
     async with h.step("2.13", "6:00 am the next day: a fresh checklist", "A new message for the new day with every dose still to take; one checklist for today", "asked; 23"):
         await h.clock_to(6, 0, 5)

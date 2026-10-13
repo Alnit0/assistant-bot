@@ -349,7 +349,7 @@ def test_the_edit_action_takes_a_list_of_settings_to_clear_and_only_those(world)
 
     edit = next(action for action in plain.ACTIONS if action.name == "pill_edit")
     item = actions.schema(edit)["properties"]["pills"]["items"]["properties"]
-    assert item["clear"]["items"]["enum"] == ["dose", "notes", "times", "min_gap", "latest", "dates"]
+    assert item["clear"]["items"]["enum"] == ["dose", "notes", "times", "min_gap", "latest", "dates", "weekdays"]
     assert "none" not in edit.description and "clear" not in actions.schema(next(a for a in plain.ACTIONS if a.name == "pill_add"))["properties"]["pills"]["items"]["properties"]
     checked = actions.validate(edit, {"pills": [{"pill": "pl1", "clear": ["times", " latest "]}], "guessed": [], "not_included": []})
     assert checked.data == {"pills": [{"pill": "pl1", "clear": ["times", "latest"]}]}

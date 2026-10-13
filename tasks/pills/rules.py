@@ -2,7 +2,7 @@ import re
 from dataclasses import dataclass, replace
 from datetime import date, time, timedelta
 
-from core import durations, names, repeats, schedule, timeinput
+from core import durations, names, repeats, schedule, timeinput, timetable
 from core.errors import UserError
 from core.schedule import DAY_MINUTES, Schedule
 from core.timeinput import AmbiguousTime
@@ -38,7 +38,8 @@ MAX_PER_DAY = 12
 ID_PREFIX = "pl"
 # The settings that can be taken away from a pill when changing it (`Request.clear`).
 # Named, never said as a word in place of a value
-CLEARABLE = ("dose", "notes", "times", "min_gap", "latest", "dates")
+CLEARABLE = ("dose", "notes", "times", "min_gap", "latest", "dates", "weekdays")
+DAY_WORDS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")  # as a list of days is handed over
 
 
 @dataclass(frozen=True)
@@ -84,6 +85,7 @@ class Request:
     start: str = ""  # "tomorrow"
     end: str = ""  # "the 20th"
     days: str = ""  # "7"
+    weekdays: str = ""  # "mon, wed, fri": the days of the week it is taken on
     clear: frozenset = frozenset()  # the settings to take away: any of CLEARABLE
 
     def merged(self, later: "Request") -> "Request":
@@ -242,6 +244,23 @@ def _gap(text: str) -> int:
     return minutes
 
 
+def _weekdays(text: str) -> tuple[int, ...]:
+    """The days of the week as they are handed over ("mon, wed, fri"), as
+    numbers, Monday 0. Every day of the week is no days at all: it is taken
+    daily. Which days a phrase means ("weekdays only") is Claude's to say."""
+    found = []
+    for word in re.split(r"[,\s]+", text.strip().lower()):
+        if not word:
+            continue
+        if word[:3] not in DAY_WORDS:
+            raise UserError(f"“{word}” is not a day of the week.")
+        found.append(DAY_WORDS.index(word[:3]))
+    days = tuple(sorted(set(found)))
+    if not days:
+        raise UserError("Which days of the week?")
+    return () if len(days) == 7 else days
+
+
 def _days(text: str) -> int:
     match = re.fullmatch(r"(\d{1,3})\s*(?:days?)?", text.strip().lower())
     if not match or int(match[1]) < 1:
@@ -306,6 +325,12 @@ def build(request: Request, today: date, base: Plan | None = None, moved: list[s
         latest = old.latest if old else None
     else:
         latest = _read("latest", _latest, request.latest, times)
+    if "weekdays" in clear:
+        weekdays: tuple[int, ...] = ()
+    elif not _given(request.weekdays):
+        weekdays = old.days if old else ()
+    else:
+        weekdays = _read("weekdays", _weekdays, request.weekdays)
     asked = _read("per_day", _count, request.per_day) if _given(request.per_day) else None
     if len(set(times)) != len(times):
         raise UserError("Two of those times are the same.")
@@ -339,7 +364,7 @@ def build(request: Request, today: date, base: Plan | None = None, moved: list[s
                 "Give a time for each dose, or for the first one only."
             )
 
-    planned, moves = schedule.spaced(Schedule(per_day, times, gap, latest))
+    planned, moves = schedule.spaced(Schedule(per_day, times, gap, latest, weekdays))
     if moved is not None:
         moved.extend(_move_text(move, gap) for move in moves)
 
@@ -432,8 +457,20 @@ def status_on(pill: Pill, today: date) -> str:
 
 
 def is_taken_on(pill: Pill, day: date) -> bool:
-    """Whether doses are expected on that day."""
-    return status_on(pill, day) == ACTIVE
+    """Whether doses are expected on that day: the pill is in use, and it is
+    one of its days of the week."""
+    return status_on(pill, day) == ACTIVE and pill.plan.schedule.is_on(day)
+
+
+def is_off_day(pill: Pill, day: date) -> bool:
+    """In use, and simply not one of its days of the week."""
+    return status_on(pill, day) == ACTIVE and not pill.plan.schedule.is_on(day)
+
+
+def days_text(days: tuple[int, ...]) -> str:
+    """The days of the week a pill is taken on, in words: "Mon to Fri", "Sat,
+    Sun", "Mon, Wed, Fri". As a schedule's days are written (core/timetable.py)."""
+    return timetable.days_text(tuple(days))
 
 
 # ---------------------------------------------------------------------------
@@ -454,11 +491,13 @@ def _clock(value: time) -> str:
 def _schedule_parts(planned: Schedule) -> tuple[str, list[str]]:
     """A schedule as (how often and when, its conditions): every setting that
     was filled in is written out, and none that wasn't."""
-    count = "daily" if planned.per_day == 1 else f"{planned.per_day}× daily"
+    # On certain days of the week only, the days stand where "daily" would: "Mon, Wed, Fri at `8:00 am`"
+    daily = days_text(planned.days) if planned.days else "daily"
+    count = daily if planned.per_day == 1 else (f"{planned.per_day}× a day, {daily}" if planned.days else f"{planned.per_day}× daily")
     times = ", ".join(_clock(value) for value in planned.times)
     conditions = []
     if planned.gap_minutes is None:
-        head = f"daily at {times}" if planned.times else f"{count}, any time"
+        head = f"{daily} at {times}" if planned.times else f"{count}, any time"
     elif len(planned.times) > 1:
         head = f"{count} · {times}"
         conditions.append(f"at least {gap_text(planned.gap_minutes)} apart")

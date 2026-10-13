@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field, replace
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 
 from core import clock, day, hub, livelists, occurrences, repeats, tidy, timeinput
 from core import schedule as core_schedule
@@ -54,16 +54,16 @@ IDENTITY = ("name",)
 ON_REPEAT = repeats.UPDATE
 WHERE = "pills"  # as in "already in your pills"
 
-PLAN_FIELDS = ("name", "dose", "notes", "times", "per_day", "min_gap", "latest", "start", "end", "days")
+PLAN_FIELDS = ("name", "dose", "notes", "times", "per_day", "min_gap", "latest", "start", "end", "days", "weekdays")
 # Where an item of the action calls a part of the plan something else
 ITEM_KEYS = {"min_gap": "min_gap_minutes"}
 # What each setting that can be taken away (rules.CLEARABLE) is called in an item
-CLEARS = {"dose": ("dose",), "notes": ("notes",), "times": ("times",), "min_gap": ("min_gap_minutes",), "latest": ("latest",), "dates": ("start", "end", "days")}
+CLEARS = {"dose": ("dose",), "notes": ("notes",), "times": ("times",), "min_gap": ("min_gap_minutes",), "latest": ("latest",), "dates": ("start", "end", "days"), "weekdays": ("weekdays",)}
 # A part of the plan, as a card names it when it couldn't be read
 UNKNOWN = "❔"  # in place of a value the card is asking about
 UNREAD = {
     "times": "times", "per_day": "doses a day", "min_gap": "gap", "latest": "latest time",
-    "start": "start", "end": "end", "days": "days",
+    "start": "start", "end": "end", "days": "days", "weekdays": "days of the week",
 }
 TRIES = rules.MAX_PER_DAY + 1
 
@@ -887,6 +887,8 @@ def _not_today(pill: Pill, today_: date) -> str:
         return f"⏸️ **{pill.plan.name}** is paused: there is nothing to tick off today."
     if state == ENDED:
         return f"🏁 **{pill.plan.name}** has ended: there is nothing to tick off."
+    if rules.is_off_day(pill, today_):
+        return f"🗓️ **{pill.plan.name}** is taken {rules.days_text(pill.plan.schedule.days)}: there is nothing to tick off today."
     return f"🗓️ **{pill.plan.name}** starts {timeinput.format_date(pill.plan.start)}: there is nothing to tick off today."
 
 
@@ -981,6 +983,8 @@ class Step:
     pill: Pill | None = None  # the pill it is about, also when there is nothing to do
     # Which pill is meant can't be told: the pills it could be, for the card to ask (with `say` as the plain line)
     which: tuple = ()
+    # A dose of the day before, logged after midnight: that day. None for today's
+    day: date | None = None
 
 
 def db_last_logged(conn, user_id: int) -> int | None:
@@ -1104,6 +1108,10 @@ async def _for_pill(request: Request, item: dict, pill: Pill, listed: list[Dose]
         # The message replied to is about one dose: that dose, as if named by its number.
         # A pill or a dose number I state still wins over where I point
         item = {**item, "dose": pointed_dose.number}
+    said_day = str(item.get("day") or "")
+    if said_day in DAYS_BEFORE:
+        # "took zinc last night at 11": a dose of the day before, whatever today looks like
+        return await _yesterday(request, item, pill, now, said_day)
     if not rules.is_taken_on(pill, today_):
         return Step(_not_today(pill, today_))
     did, name = item["did"], pill.plan.name
@@ -1144,8 +1152,78 @@ async def _for_pill(request: Request, item: dict, pill: Pill, listed: list[Dose]
     try:
         at = _moment(given, now, taken.occurrence.actual_at if taken else None) if given else now
     except UserError as error:
+        if given and _small_hours(now):
+            # Past midnight, a time that has not come yet today was last night: asked first, never assumed
+            before = await _yesterday(request, item, pill, now, "")
+            if before.dose is not None:
+                return before
         return Step(f"⚠️ {rules.plain(target.label)}: {error}")
     return Step(dose=target, did=checklist.TAKEN, at=at, asks=(*_missed(target), *_late(pill, today_, at), *_too_soon(pill, taken, at)))
+
+
+# --- a dose of the day before, logged after midnight ---------------------------------------------
+YESTERDAY, LAST_NIGHT = "yesterday", "last_night"
+DAYS_BEFORE = (YESTERDAY, LAST_NIGHT)
+SMALL_HOURS = time(4, 0)  # until then, a time later than now is taken as last night's (and asked about)
+
+
+def _small_hours(now: datetime) -> bool:
+    return day.local_time(now) < SMALL_HOURS
+
+
+def _time_on(said: str, on: date, not_before: datetime | None, not_after: datetime, evening: bool) -> tuple[datetime, bool]:
+    """A time of day as I said it, placed on a day that is over: (the moment,
+    whether it could as well have been the other half of the day). "Last
+    night at 11" is the evening, and that is no guess."""
+    try:
+        return day.at(on, timeinput.parse_time(said)), False
+    except timeinput.AmbiguousTime as unsure:
+        fits = sorted(moment for moment in (day.at(on, option) for option in unsure.options) if (not_before is None or moment >= not_before) and moment <= not_after)
+        if not fits:
+            raise UserError(f"{said} doesn't fit yesterday's doses.")
+        return fits[-1], len(fits) > 1 and not evening
+
+
+async def _yesterday(request: Request, item: dict, pill: Pill, now: datetime, said_day: str) -> Step:
+    """What "I took it last night" means for the day before's doses. Said in
+    so many words with a time that reads one way, it is done at once; when
+    the day or the time had to be worked out, the step asks first.
+    `said_day` is "" when nobody said yesterday: the time alone points there."""
+    name, on = pill.plan.name, day.day_of(now) - timedelta(days=1)
+    if item["did"] != checklist.TAKEN:
+        return Step("⚠️ For yesterday I can only log a dose as taken.")
+    _, listed, _ = await checklist.read(request.user.id, on)
+    mine = sorted((dose for dose in listed if dose.pill.id == pill.id), key=lambda dose: dose.number)
+    if not mine:
+        return Step(f"💊 **{name}** had nothing to take yesterday.")
+    wanted = item.get("dose")
+    if wanted is not None:
+        target = next((dose for dose in mine if dose.number == wanted), None)
+        if target is None:
+            return Step(f"💊 **{name}** had {len(mine)} dose{'' if len(mine) == 1 else 's'} yesterday, not a dose {wanted}.")
+    else:
+        target = next((dose for dose in mine if dose.occurrence.state != occurrences.DONE), None)
+    if target is None or target.occurrence.state == occurrences.DONE:
+        return Step(f"{today.line(target or mine[-1])} · yesterday already")
+    earlier = [dose.occurrence.actual_at for dose in mine if dose.number < target.number and dose.occurrence.state == occurrences.DONE and dose.occurrence.actual_at]
+    last_moment = min(day.end_of(on) - timedelta(minutes=1), now)
+    given, asks = str(item.get("at", "")).strip(), []
+    if given:
+        try:
+            at, either = _time_on(given, on, max(earlier) if earlier else None, last_moment, said_day == LAST_NIGHT)
+        except UserError as error:
+            return Step(f"⚠️ {rules.plain(target.label)}: {error}")
+        if earlier and at < max(earlier):
+            return Step(f"⚠️ {rules.plain(target.label)}: {timeinput.format_moment(at)} is before the dose before it, at {timeinput.format_moment(max(earlier))}.")
+        if either:
+            asks.append(f"“{given}” could be morning or evening: taken as {timeinput.format_moment(at)}.")
+    else:
+        planned = today.shown_time(target) or target.due.at
+        at = min(planned, last_moment) if planned is not None else last_moment
+        asks.append(f"No time was given: {'its planned time' if planned is not None else 'the end of the day'} is used ({timeinput.format_moment(at)}).")
+    if not said_day:
+        asks.insert(0, f"It is past midnight and {timeinput.format_moment(at)} has not come yet today, so this is yesterday's dose.")
+    return Step(dose=target, did=checklist.TAKEN, at=at, asks=(*asks, *_late(pill, on, at)), day=on)
 
 
 def _too_soon(pill: Pill, last: Dose | None, at: datetime) -> tuple[str, ...]:
@@ -1275,7 +1353,8 @@ async def _do(step: Step) -> str:
     """Make the change a step stands for, read back, and say it in a line."""
     if step.was is not None:
         return checklist.corrected_text(await checklist.correct(step.dose, step.at, occurrences.MESSAGE), step.was)
-    return checklist.marked_text(await checklist.mark(step.dose, step.did, step.at, occurrences.MESSAGE), step.did)
+    said = checklist.marked_text(await checklist.mark(step.dose, step.did, step.at, occurrences.MESSAGE), step.did)
+    return f"{said} · yesterday" if step.day is not None else said
 
 
 # --- a dose logged after the pill's latest time is asked about first ------------------------------
@@ -1305,7 +1384,7 @@ def _preview(step: Step) -> str:
     if step.was is not None:
         return f"{step.dose.label} · taken {timeinput.format_moment(step.was)} → {timeinput.format_moment(step.at)}"
     if step.did == checklist.TAKEN:
-        return f"{step.dose.label} · taken {timeinput.format_moment(step.at)}"
+        return f"{step.dose.label} · taken {timeinput.format_moment(step.at)}" + (" · yesterday" if step.day is not None else "")
     return f"{step.dose.label} · " + ("skipped" if step.did == checklist.SKIP else "no longer ticked off")
 
 
@@ -1334,12 +1413,13 @@ async def log_card(request: Request, data: dict, guessed: frozenset) -> Proposal
         if step.asks:
             warnings.append(asking(step.dose, step.asks))
             _, listed, _ = await checklist.view(request.user.id)
-            moved = next_change(step.dose, listed, step.at) if step.did == checklist.TAKEN and step.was is None else ""
+            moved = next_change(step.dose, listed, step.at) if step.did == checklist.TAKEN and step.was is None and step.day is None else ""
             if moved:
                 lines.append(moved)
         held.append({
             "occurrence": step.dose.occurrence.id, "did": step.did, "moment": step.at.isoformat(),
             **({"was": step.was.isoformat()} if step.was is not None else {}),
+            **({"day": step.day.isoformat()} if step.day is not None else {}),
         })
     if not held and question is None:
         raise UserError("; ".join(warnings) or "Nothing to log.")
@@ -1368,11 +1448,17 @@ async def _held(request: Request, data: dict) -> list[Step]:
     by_id = {dose.occurrence.id: dose for dose in listed}
     steps = []
     for item in data["doses"]:
-        dose = by_id.get(item["occurrence"])
+        on = date.fromisoformat(item["day"]) if item.get("day") else None
+        if on is not None:
+            # A dose of the day before: looked up on its own day, which is never changed by looking
+            _, before, _ = await checklist.read(request.user.id, on)
+            dose = next((each for each in before if each.occurrence.id == item["occurrence"]), None)
+        else:
+            dose = by_id.get(item["occurrence"])
         if dose is None:
-            raise UserError("That dose isn't on today's checklist any more.")
+            raise UserError("That dose isn't on today's checklist any more." if on is None else "That dose of yesterday's is no longer there.")
         was = datetime.fromisoformat(item["was"]) if item.get("was") else None
-        steps.append(Step(dose=dose, did=item["did"], at=datetime.fromisoformat(item["moment"]), was=was))
+        steps.append(Step(dose=dose, did=item["did"], at=datetime.fromisoformat(item["moment"]), was=was, day=on))
     return steps
 
 
@@ -1448,6 +1534,14 @@ _PLAN_FIELDS = (
     Field("start", "For a course only: its first day, " + AS_SAID),
     Field("end", "For a course only: its last day, " + AS_SAID),
     Field("days", "For a course only: how many days it lasts, in place of end.", INTEGER),
+    Field(
+        "weekdays",
+        "Only when it is taken on certain days of the week: those days. \"weekdays only\" -> [mon, tue, wed, thu, fri]; "
+        "\"Mon Wed Fri\" -> [mon, wed, fri]; \"at weekends\" -> [sat, sun]. Give the full list it is taken on from now "
+        "on. Leave out for a pill taken every day, and when the user says nothing about days.",
+        LIST,
+        choices=rules.DAY_WORDS,
+    ),
 )
 _OFF_THE_CARD = Field(
     "remove",
@@ -1458,7 +1552,8 @@ _CLEAR = Field(
     "clear",
     "The settings the user wants taken away from this pill, each by its name here: notes (\"no note any "
     "more\"), dose, times (\"it no longer needs a time\": it becomes any time), min_gap, latest (\"it can "
-    "be taken at any hour\"), dates (\"it goes on with no end\": the course's start and end both go). "
+    "be taken at any hour\"), dates (\"it goes on with no end\": the course's start and end both go), "
+    "weekdays (\"every day again\", \"not only on weekdays any more\": it is taken daily). "
     "Never give a word such as none as a value in their place. Leave out when nothing is taken away.",
     LIST,
     choices=rules.CLEARABLE,
@@ -1567,7 +1662,7 @@ ACTIONS = (
     ),
     Action(
         "pill_log",
-        "The user says they took, skipped or did not take a pill TODAY. Examples: \"took my zinc\" -> pill "
+        "The user says they took, skipped or did not take a pill today (or, said in so many words, yesterday). Examples: \"took my zinc\" -> pill "
         "zinc, did taken. \"I've taken my zinc today\" -> pill zinc, did taken. \"had pill A at 9\" -> pill "
         "pill A, did taken, at 9:00. \"took iron and vitamin D\" -> one item each. \"skip magnesium today\" -> "
         "did skipped. \"I didn't take zinc\", \"I haven't actually taken zinc\" -> did not_taken (it is marked "
@@ -1582,6 +1677,13 @@ ACTIONS = (
                     _WHICH,
                     Field("did", "What happened to today's dose.", choices=(checklist.TAKEN, checklist.SKIP, checklist.NOT_TAKEN), required=True),
                     Field("at", "For taken only: the time it was taken, if the user gave one. Leave out for just now.", TIME),
+                    Field(
+                        "day",
+                        "Only when the user SAYS the dose was the day before: \"last night\", \"yesterday evening\" -> last_night; "
+                        "\"yesterday\", \"yesterday morning\" -> yesterday (\"took zinc last night at 11\" -> pill zinc, did taken, "
+                        "at 11:00, day last_night). Leave out otherwise: never work the day out from the time.",
+                        choices=("yesterday", "last_night"),
+                    ),
                     Field(
                         "dose",
                         "Only when the user says WHICH of the day's doses by its number (\"dose 1\", \"my second dose\", "

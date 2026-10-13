@@ -145,6 +145,11 @@ def prompts(conn: sqlite3.Connection) -> None:
     )
 
 
+def weekdays(conn: sqlite3.Connection) -> None:
+    # The days of the week a pill is taken on, as "0,2,4" (Monday is 0); empty: every day
+    conn.execute("ALTER TABLE pills_pills ADD COLUMN weekdays TEXT NOT NULL DEFAULT ''")
+
+
 MIGRATIONS = [
     create_tables,
     one_schedule_model,
@@ -152,13 +157,14 @@ MIGRATIONS = [
     answer_lines,
     dose_causes,
     prompts,
+    weekdays,
 ]
 
 
 # ---------------------------------------------------------------------------
 # Rows
 # ---------------------------------------------------------------------------
-_COLUMNS = "id, user_id, name, dose, notes, times, per_day, gap_minutes, latest_time, start_date, end_date, status, paused_until"
+_COLUMNS = "id, user_id, name, dose, notes, times, per_day, gap_minutes, latest_time, start_date, end_date, status, paused_until, weekdays"
 
 
 def _day(text: str | None) -> date | None:
@@ -175,6 +181,7 @@ def _pill(row: tuple) -> Pill:
             times=tuple(time.fromisoformat(value) for value in json.loads(row[5])),
             gap_minutes=row[7],
             latest=time.fromisoformat(row[8]) if row[8] else None,
+            days=tuple(int(each) for each in (row[13] or "").split(",") if each.strip()),
         ),
         start=_day(row[9]),
         end=_day(row[10]),
@@ -193,6 +200,7 @@ def _plan_values(plan: Plan) -> tuple:
         plan.schedule.latest.strftime("%H:%M") if plan.schedule.latest else None,
         plan.start.isoformat() if plan.start else None,
         plan.end.isoformat() if plan.end else None,
+        ",".join(str(each) for each in plan.schedule.days),
     )
 
 
@@ -200,7 +208,7 @@ def plan_json(plan: Plan | None) -> str | None:
     """A plan as kept in pills_changes."""
     if plan is None:
         return None
-    names = ("name", "dose", "notes", "times", "per_day", "gap_minutes", "latest", "start", "end")
+    names = ("name", "dose", "notes", "times", "per_day", "gap_minutes", "latest", "start", "end", "weekdays")
     return json.dumps(dict(zip(names, _plan_values(plan))))
 
 
@@ -237,9 +245,9 @@ def db_add(conn: sqlite3.Connection, user_id: int, plan: Plan, now: datetime | N
     cursor = conn.execute(
         """
         INSERT INTO pills_pills
-            (user_id, name, dose, notes, times, per_day, gap_minutes, latest_time, start_date, end_date,
+            (user_id, name, dose, notes, times, per_day, gap_minutes, latest_time, start_date, end_date, weekdays,
              status, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (user_id, *_plan_values(plan), ACTIVE, to_db(now), to_db(now)),
     )
@@ -255,7 +263,7 @@ def db_edit(conn: sqlite3.Connection, pill_id: int, plan: Plan, now: datetime | 
         """
         UPDATE pills_pills
         SET name = ?, dose = ?, notes = ?, times = ?, per_day = ?, gap_minutes = ?, latest_time = ?,
-            start_date = ?, end_date = ?, updated_at = ?
+            start_date = ?, end_date = ?, weekdays = ?, updated_at = ?
         WHERE id = ?
         """,
         (*_plan_values(plan), to_db(now), pill_id),

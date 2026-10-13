@@ -6,6 +6,11 @@ backfilled from the git log.
 
 ## 2026-10-13
 
+- Pills: a pill can be taken on certain days of the week ("weekdays
+  only", "Mon Wed Fri"), and "took zinc last night at 11" after
+  midnight logs yesterday's dose (asking first when the day or the
+  time is not plain).
+
 - "No, I meant 9pm" straight after Save changes what was just saved,
   on a change card (old → new), and no longer counts as a guess.
 

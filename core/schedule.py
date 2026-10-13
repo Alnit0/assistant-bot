@@ -15,7 +15,9 @@ from core import day as days
 #   gap_minutes   the shortest time allowed between two, measured from when
 #                 the earlier one was actually done
 #   latest        nothing is due after this time of day
-# Every setting but per_day is optional. (Days of the week come here later.)
+#   days          the days of the week it is done on (Monday is 0); none means
+#                 every day
+# Every setting but per_day is optional.
 #
 # The rule for when one is due:
 #   the later of its planned time and (the one before, done + the gap).
@@ -34,6 +36,11 @@ class Schedule:
     times: tuple[time, ...] = ()
     gap_minutes: int | None = None
     latest: time | None = None
+    days: tuple[int, ...] = ()  # the weekdays it is done on, Monday 0; empty: every day
+
+    def is_on(self, day: date) -> bool:
+        """Whether it is done at all on that day of the week."""
+        return not self.days or day.weekday() in self.days
 
     @property
     def gap(self) -> timedelta | None:
