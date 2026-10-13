@@ -104,7 +104,7 @@ def checked(folder: Path = FOLDER) -> list[tuple[str, str, str, list]]:
 
 async def _earlier_post(client, forum):
     """The design-options post that is already there, the latest one, or None. Asked over HTTP: there is no cache."""
-    found = await client.http.get_active_threads(forum.guild_id)
+    found = await client.http.get_active_threads(forum.guild.id)
     mine = [each for each in found.get("threads", []) if str(each.get("parent_id")) == str(forum.id) and (each.get("name") or "").startswith(TITLE)]
     if mine:
         return await client.fetch_channel(int(max(mine, key=lambda each: int(each["id"]))["id"]))

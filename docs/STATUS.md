@@ -77,6 +77,11 @@ design and the hub principle point. Each is yours to overturn.
 
 ## Questions for Alex
 
+**The open questions are one list now: `docs/QUESTIONS.md`** (42 of
+them, each with a suggested answer, so you can reply "yes to all
+suggestions except 4 and 7"). What follows here is the history: how
+each came up and what was answered. Nothing new is added below.
+
 **The hub tidy is on (2026-10-14).** `HUB_TIDY=true` is in `.env` and
 live was restarted with it. Before that the hub was cleared once, as
 `reset channel` with Delete all unpinned does: 24 messages removed,
