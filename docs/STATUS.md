@@ -7,15 +7,40 @@ session; the end-of-task checklist updates it at the end of every task.
 
 ## Questions for Alex
 
-**From the fixes after the self-test (2026-10-13):**
+**From the scheduler build (2026-10-13), all four stages done:**
 
-- **The suite's hang was not found.** Six full runs in a row passed
-  with nothing stalling. A test that runs over a minute now stops the
-  run with its name and where it was stuck, so the next one says so.
-- **A full self-test is needed to see the fixes in Discord** (the new
-  steps are written and have not run: live stayed up). Say when.
+- **The last self-test did not finish.** Stage 4's run with real
+  requests passed 102 of 103 steps; the one that failed (6.04, the
+  copy saved before a removal) was the test reading the wrong file,
+  not the bot: the right file held the words. The test is fixed (its
+  copies now go to the run's own folder, never `data/exports`), but
+  the run to prove it was stopped by the PC after three minutes (low
+  on memory), so that step has not been seen passing in Discord. Say
+  when you want the run again (about 15 minutes with live stopped,
+  about US$0.15).
+- **Changing the order of a routine's steps, and taking a step out**,
+  are not built: the steps and their order come from the code (tidy,
+  briefing, checklist). Wanted by words?
+- **The run log is never pruned.** The spec says how long rows are
+  kept; nothing deletes them yet. Build it now, or when the table has
+  grown?
+- **A line that reports a change outside the hub** goes at the end of
+  its day only when it is a Save confirmation, a task's answer line or
+  the reply to `took <pill>`. Other direct replies there are left
+  alone. Enough, or all of them?
+- **A schedule you add is named by its part of the day** ("Evening
+  pills checklist"). Right, or should the card ask for a name?
+- **"it" for a schedule** is only understood when there is one it can
+  be; otherwise the card asks which.
+- **The briefing's pills section makes today's dose rows** if they are
+  not there yet (the same rows the checklist would make at 6:00 am).
+  It changes nothing you would see, but it is a write from something
+  meant only to read. Leave it, or make the summary read-only?
+- **The sketches**: the v1 files of `briefing` and `schedule-list`
+  stay until you have checked the v2s (block 44), and go when you say.
 - **What is still yours** is the list at the end of `docs/SELFTEST.md`:
-  the lock screen, the colours as they look, the wording, the sketches.
+  the lock screen, the colours as they look, the wording, the sketches,
+  and blocks 46 to 49 of `docs/QA-RUN.md`.
 
 Answered on 2026-10-13, after the self-test: the code checks a name
 Claude hands over against what was typed and asks when it fits more
@@ -30,12 +55,8 @@ name; the router still decides); and the timers' jobs have names in
 words ("timer ending", "Pomodoro phase"), the one thing touched in
 timers. Both done, and live restarted on all of it.
 
-**Still open from the scheduler, clean-up and briefing specs** (drafts
-of 2026-10-13; nothing is built until you answer these and approve):
+**Built on these assumptions; say if any is wrong:**
 
-- **The sketches `briefing-v2` and `schedule-list-v2`** replace v1 of
-  each. The two v1 files stay until you have checked the v2s in block
-  44 (`docs/QA-RUN.md`), and go when you say they are right.
 - **Weekends:** the same time every day (assumed), or later on
   Saturday and Sunday?
 - **Silent or notify:** the morning routine silent (assumed), or
@@ -58,16 +79,11 @@ of 2026-10-13; nothing is built until you answer these and approve):
   the bot posts by itself, not each pill's dose times (assumed). The
   backup and the new day are listed and not changed by words
   (assumed).
-- **APScheduler or our own engine:** I recommend our own (the dev
-  clock, a key a run, the run log and rows you can change are what we
-  need most, and APScheduler has none of them). Say if you want the
-  library anyway.
-- **Yesterday's checklist is still in the hub because the code leaves
-  it there on purpose**: at the end of a day it is written one last
-  time and left, and its id is then forgotten; the morning post only
-  removes earlier copies of the same day. Not a failed job. The old
-  ones there now can only go with `reset channel` in the hub: no id is
-  kept for them.
+- **Our own engine, not APScheduler** (the dev clock, a key a run,
+  the run log and rows you can change are what we need most).
+- **Yesterday's checklist stays in the hub while `HUB_TIDY` is off.**
+  On, it goes when today's is posted. The old ones there now have no
+  id kept for them: one `reset channel` in the hub clears them.
 
 Answered on 2026-10-13, the specs: you talk in the hub, and what you
 say there and the bot's reply are tidied once handled (2 minutes after
@@ -103,8 +119,6 @@ briefing missed while the bot was off is posted however late.
 - **Still open from the task check**: #commands says Taken and Skip
   are "under today's checklist"; with the new look they are in the
   pill's own box. The words are yours, once `CARDS_V2` stays on.
-- **The service was stopped** when I looked on 2026-10-13 (not by me).
-  `nssm start assistant-bot` when you want live back.
 
 Answered on 2026-10-13: on the drawn checklist each pill's next dose
 keeps its buttons before it is due; a dose with no time has no message
