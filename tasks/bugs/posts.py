@@ -51,6 +51,25 @@ def forum() -> discord.ForumChannel:
     return channel
 
 
+async def fetched_forum() -> discord.ForumChannel:
+    """The #bugs forum for a caller with no connection to the gateway (the
+    self-test recording its failures, selftest/bugs.py): nothing is remembered
+    there, so it is asked for. Raises UserError like `forum`."""
+    channel_id = CHANNELS.get("bugs")
+    if channel_id is None:
+        raise UserError("BUGS_CHANNEL_ID isn't set in .env, so there is nowhere to log bugs.")
+    client = discord_utils.client
+    if client is None:
+        raise UserError("I'm not connected to Discord.")
+    try:
+        channel = await client.fetch_channel(channel_id)
+    except discord.HTTPException as error:
+        raise UserError("I can't see the #bugs channel. Check BUGS_CHANNEL_ID.") from error
+    if not isinstance(channel, discord.ForumChannel):
+        raise UserError("BUGS_CHANNEL_ID must be a forum channel.")
+    return channel
+
+
 # --- reading what is reported -------------------------------------------------
 async def preceding(message: discord.Message, count: int = rules.PRECEDING) -> list[rules.Snapshot]:
     """The messages just before this one in its channel, oldest first."""
@@ -125,9 +144,10 @@ async def ensure_tags() -> None:
     log.info("Created the forum tags: %s", ", ".join(missing))
 
 
-async def create_post(number: int, report: rules.Report) -> tuple[int, str]:
-    """Open the bug's forum post. Returns (thread id, link to it)."""
-    channel = forum()
+async def create_post(number: int, report: rules.Report, channel: discord.ForumChannel | None = None) -> tuple[int, str]:
+    """Open the bug's forum post. Returns (thread id, link to it). `channel`
+    is the forum when the caller has fetched it itself."""
+    channel = channel or forum()
     first, *rest = rules.post_sections(number, report)
     try:
         created = await channel.create_thread(
@@ -173,6 +193,28 @@ async def refresh_card(item: store.Item) -> None:
         await opening.edit(content=card(item), view=view_for(item.status), allowed_mentions=QUIET)
     except (discord.HTTPException, UserError) as error:
         log.info("Could not update the card of %s: %s", rules.bug_id(item.id), error)
+
+
+async def bring_up_to_date(item: store.Item | None, said: str, channel: discord.ForumChannel | None = None) -> None:
+    """A bug changed with no button pressed (the self-test's own, when its
+    step fails again or passes again): the card, a line in the post saying
+    what happened, the tag, and archived or not, as after a press. Never
+    raises: the record is the database, and the post is its picture."""
+    if item is None or item.thread_id is None:
+        return
+    try:
+        thread = await _channel(item.thread_id)
+        if getattr(thread, "archived", False):
+            # Nothing in an archived post can be edited or added to: open it first
+            await thread.edit(archived=False)
+        await thread.get_partial_message(item.thread_id).edit(content=card(item), view=view_for(item.status), allowed_mentions=QUIET)
+        for chunk in split_message(said):
+            await thread.send(chunk, allowed_mentions=QUIET)
+        # Last, because a message sent to an archived post would open it again
+        names = rules.tags_after([tag.name for tag in thread.applied_tags], item.status)
+        await thread.edit(applied_tags=_tags(channel or forum(), names), archived=item.status != rules.OPEN)
+    except (discord.HTTPException, UserError) as error:
+        log.warning("Could not bring the post of %s up to date: %s", rules.bug_id(item.id), error)
 
 
 async def _change(interaction: discord.Interaction, status: str) -> None:

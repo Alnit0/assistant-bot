@@ -344,7 +344,11 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   was slow" as the first note). Each bug gets a post in the #bugs forum;
   what I write there is saved as a note. Nothing in #bugs is sent to
   Claude
-- Claude Code never closes a bug: I press Fixed or Won't fix on the post
+- Claude Code never closes a bug: I press Fixed or Won't fix on the post.
+  The one exception is the self-test's own bugs (`selftest/bugs.py`): a
+  step that fails is a dev bug (D number) with what was expected and
+  seen, noted when it fails again, and marked Fixed by the self-test
+  when the step passes again
 
 ### Notifications and interactions
 

@@ -6,6 +6,12 @@ backfilled from the git log.
 
 ## 2026-10-13
 
+- A self-test run leaves a record that lasts: a line in
+  `data/selftest/history.csv`, a table of the latest runs in
+  `docs/SELFTEST.md`, one summary message in #selftest-log, and a dev
+  bug in the forum for each failing step, marked Fixed when the step
+  passes again.
+
 - The briefing's pills section only reads now: the day's doses are
   made as the day before ends. The run log no longer grows for ever
   (housekeeping runs are kept 30 days, the rest a year). Nothing you

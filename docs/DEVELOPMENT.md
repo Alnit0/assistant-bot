@@ -1585,6 +1585,27 @@ report is `docs/SELFTEST.md`, written again by every full run.
   questions on the card, reminders), the bot cut off in the middle of a
   message and the catch-up after, every card in the old look and the
   new, and each look's messages edited under the other
+- **What lasts of a run**, whatever kind it was and however it ended:
+  - a line in `data/selftest/history.csv`, only ever added to: date,
+    commit, what ran, steps, passed, failed, the failed steps' ids,
+    spend, real or recorded answers, how long. The latest 15 are a
+    table at the top of `docs/SELFTEST.md`, brought up to date by
+    every run
+  - one message in #selftest-log ("🧪 Self-test · …"): what ran, what
+    failed, the spend, and the bugs touched. The emptying before a run
+    leaves these, so the channel is a list of runs
+  - **a bug for each failing step**, in the #bugs forum as a dev bug
+    (D number, the "dev" tag), with what was expected and what was
+    seen. Failing again adds a note to the same bug (and re-opens it
+    if it had been marked Fixed; a Won't fix stays as you left it);
+    passing again marks it Fixed with a note. Which step has which bug
+    is `data/selftest/bugs.json`. They live in `data/dev.db`, so `dev
+    reset-db` forgets them, and the next failure opens a new one
+  - the run's own folder, `data/selftest/run-<time>/`: its database,
+    each start's steps (`p1.json` …), its backups and exports
+  - a run stopped before its end (the PC low on memory, a closed
+    window) is put right by the next one: the dev database it had set
+    aside goes back, and it gets its line, "did not finish"
 - **What it can't see** is listed at the end of the report: how
   anything looks, the lock screen, whether the phone buzzed, your own
   reactions, and a real tap
@@ -1594,7 +1615,9 @@ which step of `docs/QA-TONIGHT.md` or block of `docs/QA-RUN.md` it
 stands for; `harness.py` what a step can do; `discordside.py` the
 stand-ins for a typed message and a press, and the reading back.
 `stages.py` says which stages a change touches and whether there is
-room on the PC. A run that begins at start 5 makes its own pills
+room on the PC; `record.py` writes the history and the summary's
+words; `bugs.py` (a process of its own on the dev database, over HTTP
+only) keeps the bugs. A run that begins at start 5 makes its own pills
 first (`phases.seed`, recorded answers only). `docs/SELFTEST.md` is
 written by a full run only: the report of part of one goes beside
 the run's database (`data/selftest/run-<time>/SELFTEST-partial.md`).

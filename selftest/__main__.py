@@ -25,7 +25,7 @@ from pathlib import Path
 import discord
 
 from core import config, instance_lock
-from selftest import report, stages
+from selftest import bugs, record, report, stages
 
 # ---------------------------------------------------------------------------
 # The self-test's own run: channels, the database set aside, a start of the
@@ -43,6 +43,8 @@ DEV_FILES = ("dev.db", "dev.db-wal", "dev.db-shm", "dev-clock.json")
 OFF_FOR = 75  # seconds the bot stays off between the phase that is cut off and the next: a job is late after 60
 PHASE_TIMEOUT = 20 * 60
 PASSED = WORK / "passed.json"  # {stage: the commit it last passed on}
+HISTORY = WORK / "history.csv"  # a line a run, only ever added to (selftest/record.py)
+BUGS = WORK / "bugs.json"  # {step: the dev bug it has} (selftest/bugs.py)
 
 # (name, the settings it starts with, seconds to stay off before it)
 PHASES = (
@@ -73,10 +75,10 @@ async def prepare_channels(purge: bool = True) -> dict[str, int]:
             if channel is None:
                 channel = await guild.create_text_channel(name, category=category, reason="The bot's self-test", topic="Written and emptied by the bot's self-test (python -m selftest). Nothing here is real.")
             elif purge:
-                while True:
-                    batch = [message async for message in channel.history(limit=100)]
-                    if not batch:
-                        break
+                # Everything goes but the summaries of earlier runs: they are the record that stays
+                going = [message async for message in channel.history(limit=None) if not (message.content or "").startswith(record.MARK)]
+                for start in range(0, len(going), 100):
+                    batch = going[start:start + 100]
                     recent = [message for message in batch if (discord.utils.utcnow() - message.created_at).days < 13]
                     # One that has gone meanwhile (a line that deletes itself) is what was wanted
                     try:
@@ -141,6 +143,98 @@ def put_back(saved: Path | None, stamp: str) -> None:
         for path in saved.iterdir():
             shutil.move(str(path), str(config.DATA_DIR / path.name))
         saved.rmdir()
+
+
+def results_of(folder: Path) -> list[dict]:
+    """The steps a run recorded, start by start, from what it left in its folder."""
+    found = []
+    for path in sorted(folder.glob("p*.json")):
+        try:
+            found += json.loads(path.read_text(encoding="utf-8")).get("results", [])
+        except (OSError, ValueError):
+            pass
+    return found
+
+
+def recover() -> list[dict]:
+    """A run that was stopped before its end (the PC was low on memory, the
+    window was closed) left the dev database set aside and no line of history.
+    Put the database back, keep what the run had got to, and record it as not
+    finished. Returns the lines added."""
+    added = []
+    for saved in sorted(WORK.glob("saved-*")):
+        if not saved.is_dir():
+            continue
+        stamp = saved.name[len("saved-"):]
+        spent = report.spent(config.DATA_DIR / "dev.db")  # the stopped run's own database is still in the way
+        put_back(saved, stamp)
+        line = record.row(stamp, "", "?", results_of(WORK / f"run-{stamp}"), spent, False, 0, note=record.UNFINISHED)
+        record.append(HISTORY, line)
+        added.append(line)
+    return added
+
+
+async def say(channel_id: int, text: str) -> None:
+    """One message in a channel, over HTTP only."""
+    client = discord.Client(intents=discord.Intents.none())
+    await client.login(config.TOKEN)
+    try:
+        channel = await client.fetch_channel(channel_id)
+        await channel.send(text, allowed_mentions=discord.AllowedMentions.none())
+    finally:
+        await client.close()
+
+
+def file_bugs(line: dict, results: list[dict], stamp: str, channel_id: int) -> tuple[list[str], str]:
+    """Bring the bugs up to date with a run, in a process of its own on the dev
+    database (it is back in its place by now). Returns (a line a bug touched,
+    what went wrong if anything did). With nothing failed and no bug on record
+    there is nothing to do, and nothing is started."""
+    if not record.failed_steps(results) and not bugs.has_known(BUGS):
+        return [], ""
+    source = WORK / f"run-{stamp}" / "results.json"
+    source.parent.mkdir(parents=True, exist_ok=True)
+    kept = [{name: each.get(name, "") for name in ("key", "title", "expect", "saw", "status")} for each in results]
+    source.write_text(json.dumps({"date": line["date"], "commit": line["commit"], "channel_id": channel_id, "results": kept}, ensure_ascii=False, indent=1), encoding="utf-8")
+    try:
+        done = subprocess.run(
+            [sys.executable, "-m", "selftest.bugs", "--dev", str(source)], cwd=config.BASE_DIR, capture_output=True, text=True, encoding="utf-8",
+            timeout=300, env={**os.environ, "PYTHONIOENCODING": "utf-8"},
+        )
+    except subprocess.TimeoutExpired:
+        return [], "the bugs were not brought up to date: it took too long"
+    lines = []
+    for each in done.stdout.splitlines():
+        try:
+            act = json.loads(each)
+        except ValueError:
+            continue
+        lines.append(bugs.line(act["what"], act["bug"] or "no bug", act["step"], act.get("url")))
+    problem = "" if done.returncode == 0 else f"the bugs were not brought up to date: {(done.stderr or '').strip().splitlines()[-1][:200] if (done.stderr or '').strip() else 'exit ' + str(done.returncode)}"
+    return lines, problem
+
+
+def keep(line: dict, results: list[dict], stamp: str, channels: dict[str, int]) -> None:
+    """What lasts of a run: its line of history, the table in the report, a
+    bug a failing step, and one message in #selftest-log. Each by itself: one
+    that can't be done is said, and the others are still done."""
+    try:
+        record.append(HISTORY, line)
+        record.put_view(report.PATH, record.read(HISTORY))
+    except OSError as error:
+        print(f"--- the history could not be written: {error}", flush=True)
+    try:
+        touched, problem = file_bugs(line, results, stamp, channels.get("bot-log", 0))
+    except Exception as error:
+        touched, problem = [], f"the bugs were not brought up to date: {error}"
+    for each in touched:
+        print(f"--- bug: {each}", flush=True)
+    if problem:
+        print(f"--- {problem}", flush=True)
+    try:
+        asyncio.run(say(channels["bot-log"], record.summary(line, touched, problem)))
+    except Exception as error:
+        print(f"--- the summary could not be posted in #selftest-log: {error}", flush=True)
 
 
 def run_phase(name: str, settings: dict, channels: dict[str, int], claude: bool, budget: float, memo: dict, stamp: str) -> dict:
@@ -222,6 +316,8 @@ def main() -> int:
         print("--- not started. Close something and ask again, or `--anyway` to go ahead.")
         return 4
 
+    for line in recover():
+        print(f"--- the run of {line['date']} did not finish: the dev database it had set aside is back in its place, and it is in the history", flush=True)
     began = datetime.now()
     stamp = began.strftime("%Y%m%d-%H%M%S")
     commit = stages.head(config.BASE_DIR)
@@ -246,6 +342,8 @@ def main() -> int:
     path = report.write(phases, spent, asked.claude, stamp, partial=not whole, began=began, ended=datetime.now(), ran=", ".join(chosen) if chosen and not whole else "")
     results = [each for _, _, found in phases for each in found["results"]]
     bad = [each for each in results if each["status"] in ("fail", "error")]
+    ran = "full" if whole else ", ".join(chosen) or "starts " + ",".join(wanted)
+    keep(record.row(stamp, commit, ran, results, spent, asked.claude, int((datetime.now() - began).total_seconds())), results, stamp, channels)
     # A stage that ran whole with nothing failed has passed on this commit: it is not run again until something touches it
     failed = {name for name, _, found in phases if found.get("exit") != 0 or any(each["status"] in ("fail", "error") for each in found["results"])}
     if commit:

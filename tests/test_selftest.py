@@ -264,3 +264,267 @@ def test_a_run_that_begins_at_the_briefing_makes_its_own_pills_with_recorded_ans
     assert "recorded_only = True" in source and "finally" in source and all(name in source for name in ("Testa", "Testany", "Testiron", "Testlate"))
     assert "await seed(h)" in inspect.getsource(phases.p5)
     assert 'h.memo["began_here"] = True' in source and 'h.memo.get("began_here")' in inspect.getsource(phases.p5), "the day before such a run has nothing recorded, and the step knows"
+
+
+# --- what lasts of a run: the history, the summary, the bugs ---------------------------------------------------------
+from selftest import bugs as selftest_bugs  # noqa: E402
+from selftest import record  # noqa: E402
+from tests.test_bugs import bugs_db  # noqa: E402, F401
+
+
+def _steps(*pairs):
+    return [{"key": key, "title": f"step {key}", "expect": "it works", "saw": "" if status == "pass" else "it did not", "status": status} for key, status in pairs]
+
+
+def test_a_run_is_one_line_of_history_and_the_file_is_only_ever_added_to(tmp_path):
+    where = tmp_path / "selftest" / "history.csv"
+    assert record.read(where) == [], "no file yet is no runs"
+    first = record.row("20261013-152146", "837b16cabcdef", "tidy", _steps(("5.01", "pass"), ("6.04", "fail"), ("6.05", "error"), ("6.06", "skip")), 0.015, True, 245)
+    assert first == {
+        "date": "2026-10-13 15:21", "commit": "837b16c", "ran": "tidy", "steps": "4", "passed": "1", "failed": "2",
+        "failed_steps": "6.04 6.05", "spend_usd": "0.0150", "claude": "real", "seconds": "245", "note": "",
+    }
+    record.append(where, first)
+    before = where.read_bytes()
+    record.append(where, record.row("20261014-090000", None, "full", _steps(("1.01", "pass")), 0, False, 900))
+    assert where.read_bytes().startswith(before), "what was there is never rewritten"
+    assert where.read_text(encoding="utf-8").count("date,commit") == 1, "the heading is written once"
+    rows = record.read(where)
+    assert [each["date"] for each in rows] == ["2026-10-13 15:21", "2026-10-14 09:00"]
+    assert (rows[1]["commit"], rows[1]["claude"], rows[1]["failed"], rows[1]["failed_steps"]) == ("", "recorded", "0", "")
+
+
+def test_the_report_shows_the_latest_runs_newest_first_and_the_rest_of_it_is_left_as_it_was(tmp_path):
+    rows = [record.row(f"202610{day:02d}-090000", "abc1234", "full", _steps(("1.01", "pass")), 0.1, True, 600) for day in range(1, 20)]
+    rows.append(record.row("20261020-090000", "def5678", "day", _steps(("1.01", "fail"), ("1.02", "pass")), 0.05, False, 61))
+    lines = record.view(rows)
+    table = [each for each in lines if each.startswith("| 2026")]
+    assert len(table) == record.SHOWN and "The latest 15 of 20 runs" in "\n".join(lines)
+    assert table[0] == "| 2026-10-20 09:00 | `def5678` | day | 1 of 2 | **1** | 1.01 | US$0.0500 (recorded) | 1 min 01 s |"
+    assert table[1] == "| 2026-10-19 09:00 | `abc1234` | full | 1 of 1 | 0 | · | US$0.1000 | 10 min 00 s |"
+    assert record.view([])[2] == "No run on record yet."
+
+    document = "# Self-test\n\nintro\n\n## What failed\n\nNothing.\n"
+    once = record.with_view(document, rows[:1])
+    twice = record.with_view(once, rows)
+    assert once.index(record.START) < once.index("## What failed") and "2026-10-20" not in once
+    assert twice.count(record.START) == 1 and twice.count("## Run history") == 1 and "2026-10-20 09:00" in twice
+    assert twice.startswith("# Self-test\n\nintro\n\n") and twice.endswith("## What failed\n\nNothing.\n"), "only the table changes"
+    assert record.with_view("# Self-test\n", rows).count(record.END) == 1, "a report with no place for it gets it at the end"
+    path = tmp_path / "SELFTEST.md"
+    path.write_bytes(document.replace("\n", "\r\n").encode("utf-8"))
+    record.put_view(path, rows)
+    raw = path.read_bytes()
+    assert raw.count(b"\n") == raw.count(b"\r\n") and b"Run history" in raw, "the file keeps its line endings"
+
+
+def test_the_one_message_a_run_leaves_in_the_log_says_what_ran_what_failed_and_what_it_cost():
+    fine = record.summary(record.row("20261013-152146", "837b16c", "tidy", _steps(*[(f"5.{n:02d}", "pass") for n in range(24)]), 0.015, True, 245))
+    assert fine.splitlines() == ["🧪 Self-test · 2026-10-13 15:21 · tidy · commit `837b16c`", "✅ 24 of 24 steps passed · US$0.0150 spent · 4 min 05 s"]
+    bad = record.summary(
+        record.row("20261013-152146", "837b16c", "full", _steps(("5.01", "pass"), ("6.04", "fail"), ("6.05", "error")), 0.0, False, 900),
+        ["D3 opened · step 6.04", "D2 failed again · step 6.05"], "the bugs were not brought up to date: no forum",
+    )
+    assert bad.splitlines()[1:] == [
+        "❌ 2 of 3 steps failed: 6.04 6.05 · US$0.0000 spent (recorded answers) · 15 min 00 s",
+        "🐞 D3 opened · step 6.04", "🐞 D2 failed again · step 6.05", "⚠️ the bugs were not brought up to date: no forum",
+    ]
+    stopped = record.summary(record.row("20261013-145437", "", "?", _steps(("1.01", "pass")), 0.059, False, 0, note=record.UNFINISHED))
+    assert "⚠️ did not finish: stopped before the end (1 of 1 steps had passed)" in stopped and "commit `?`" in stopped
+    for said in (fine, bad, stopped):
+        assert said.startswith(record.MARK) and len(said) <= 1900
+        # The steps look in #selftest-log for the bot's own cards by these words: a summary left there must not hold them
+        assert not any(word in said for word in ("Tidy", "Backup saved", "Caught up", "Bot started", "Claude spend"))
+
+
+def test_what_is_done_about_a_step_depends_on_whether_it_has_a_bug_and_how_that_bug_stands():
+    known = {"1.01": 1, "1.02": 2, "1.03": 3, "1.04": 4, "1.05": 5, "1.06": 6, "1.07": 7}
+    states = {1: "open", 2: "fixed", 3: "wontfix", 5: "open", 6: "fixed", 7: "open"}  # 4 is no longer in the database
+    results = _steps(
+        ("1.00", "fail"), ("1.01", "fail"), ("1.02", "error"), ("1.03", "fail"), ("1.04", "fail"),
+        ("1.05", "pass"), ("1.06", "pass"), ("1.07", "skip"), ("1.08", "pass"),
+    )
+    Act = selftest_bugs.Act
+    assert selftest_bugs.decide(results, known, states, "open", "fixed") == [
+        Act(selftest_bugs.NEW, "1.00"),  # no bug yet
+        Act(selftest_bugs.AGAIN, "1.01", 1),  # the same bug, a note
+        Act(selftest_bugs.REOPENED, "1.02", 2),  # it had been marked Fixed
+        Act(selftest_bugs.AGAIN, "1.03", 3),  # Won't fix stays as it was left: a note only
+        Act(selftest_bugs.NEW, "1.04"),  # its bug went with the database
+        Act(selftest_bugs.FIXED, "1.05", 5),  # passes again
+    ], "one already Fixed that passes, one skipped and one with no bug that passes change nothing"
+    assert selftest_bugs.decide(_steps(("9.01", "pass")), known, states, "open", "fixed") == [], "a step that was not part of the run is left alone"
+
+
+def test_a_bug_s_words_say_the_step_what_was_expected_and_what_was_seen():
+    step = {"key": "6.04", "title": "A copy was saved first", "expect": "The file is there", "saw": "no file" + "!" * 2000, "status": "fail"}
+    said = selftest_bugs.content(step)
+    assert said.startswith("Self-test step 6.04: A copy was saved first\nExpected: The file is there\nSeen: no file") and said.endswith("…") and len(said) < 1100
+    assert selftest_bugs.note(selftest_bugs.FIXED, step, "2026-10-13 15:21", "837b16c") == "Passed again in the self-test of 2026-10-13 15:21 · commit `837b16c`: marked Fixed by the self-test."
+    assert selftest_bugs.note(selftest_bugs.AGAIN, step, "2026-10-13 15:21", "").startswith("Failed again in the self-test of 2026-10-13 15:21 · commit `?`.\nSeen: no file")
+    assert selftest_bugs.note(selftest_bugs.REOPENED, step, "d", "c").startswith("Failed again, so re-opened, in the self-test of d")
+    assert selftest_bugs.line("opened", "D3", "6.04", "https://x/1") == "[D3](<https://x/1>) opened · step 6.04" and selftest_bugs.line("fixed", "D3", "6.04") == "D3 fixed · step 6.04"
+
+
+def test_a_failing_step_gets_one_bug_which_is_noted_fixed_and_re_opened_as_the_step_goes(bugs_db, owner, monkeypatch, tmp_path):
+    from tasks.bugs import posts, store
+    from tasks.bugs import rules as bug_rules
+
+    made, shown = [], []
+
+    async def create_post(number, report, channel=None):
+        if "6.05" in report.target.content:
+            raise RuntimeError("Discord said no")
+        made.append(number)
+        return 7000 + number, f"https://discord.test/{number}"
+
+    async def bring_up_to_date(item, said, channel=None):
+        shown.append((item.id, item.status, said.splitlines()[0]))
+
+    monkeypatch.setattr(posts, "create_post", create_post)
+    monkeypatch.setattr(posts, "bring_up_to_date", bring_up_to_date)
+    where = tmp_path / "selftest" / "bugs.json"
+    assert not selftest_bugs.has_known(where)
+
+    def after(*pairs):
+        return {"date": "2026-10-13 15:21", "commit": "837b16c", "channel_id": 5, "results": _steps(*pairs)}
+
+    first = run(selftest_bugs.apply(after(("6.04", "fail"), ("6.05", "fail"), ("6.06", "pass")), where, owner.id))
+    number = selftest_bugs.read_known(where)["6.04"]
+    name = bug_rules.bug_id(number)
+    assert first[0] == {"step": "6.04", "bug": name, "what": "opened", "url": f"https://discord.test/{number}"}
+    assert first[1]["step"] == "6.05" and first[1]["what"].startswith("could not be recorded") and "6.05" not in selftest_bugs.read_known(where), "one that can't be recorded does not stop the others, and is tried again next time"
+    item = run(store.get(number))
+    assert item.status == bug_rules.OPEN and item.report.source == bug_rules.SELFTEST and item.report.commit == "837b16c"
+    assert item.report.target.content == "Self-test step 6.04: step 6.04\nExpected: it works\nSeen: it did not"
+    card = bug_rules.opening_text(number, item.report)
+    assert "by the self-test" in card and "from the self-test" in card and "> Expected: it works" in card, "the post reads like any other bug's"
+
+    again = run(selftest_bugs.apply(after(("6.04", "error")), where, owner.id))
+    assert again == [{"step": "6.04", "bug": name, "what": "failed again", "url": f"https://discord.test/{number}"}] and made == [number], "no second bug"
+    item = run(store.get(number))
+    notes = run(store.notes(number))
+    assert item.status == bug_rules.OPEN and len(notes) == 1 and notes[0].author == bug_rules.SELF_TEST and notes[0].content.startswith("Failed again in the self-test")
+    assert not item.fix_ready, "the self-test's note is not Claude Code saying a fix is ready"
+
+    run(selftest_bugs.apply(after(("6.06", "pass")), where, owner.id))
+    assert run(store.get(number)).status == bug_rules.OPEN, "a run the step was not part of leaves its bug alone"
+
+    passed = run(selftest_bugs.apply(after(("6.04", "pass")), where, owner.id))
+    assert passed[0]["what"] == "fixed" and run(store.get(number)).status == bug_rules.FIXED
+    assert shown[-1] == (number, bug_rules.FIXED, "Passed again in the self-test of 2026-10-13 15:21 · commit `837b16c`: marked Fixed by the self-test.")
+    assert run(selftest_bugs.apply(after(("6.04", "pass")), where, owner.id)) == [], "passing again says nothing more"
+
+    back = run(selftest_bugs.apply(after(("6.04", "fail")), where, owner.id))
+    assert back[0]["what"] == "re-opened" and back[0]["bug"] == name and run(store.get(number)).status == bug_rules.OPEN and made == [number]
+    assert [event.event for event in run(store.events(number))] == [bug_rules.FIXED, bug_rules.REOPENED]
+
+
+def test_a_post_changed_with_no_press_gets_its_card_a_line_its_tag_and_is_archived_when_closed(monkeypatch):
+    from tasks.bugs import posts
+    from tasks.bugs import rules as bug_rules
+
+    did = []
+    tag = lambda name: SimpleNamespace(name=name)  # noqa: E731
+    forum = SimpleNamespace(available_tags=[tag("Open"), tag("Fixed"), tag("Won't fix"), tag("dev")])
+
+    class Opening:
+        async def edit(self, **kwargs):
+            did.append(("card", kwargs["content"].splitlines()[-1][:12]))
+
+    class Thread:
+        archived = True
+        applied_tags = [tag("Open"), tag("dev")]
+
+        def get_partial_message(self, message_id):
+            return Opening()
+
+        async def edit(self, **kwargs):
+            did.append(("edit", {key: ([each.name for each in value] if key == "applied_tags" else value) for key, value in kwargs.items()}))
+
+        async def send(self, text, **kwargs):
+            did.append(("said", text))
+
+    async def channel(thread_id):
+        return Thread()
+
+    monkeypatch.setattr(posts, "_channel", channel)
+    report = bug_rules.Report(bug_rules.SELFTEST, 5, "the self-test", bug_rules.Snapshot(0, "self-test", "Self-test step 6.04: x", "2026-10-13T02:21:00+00:00"), reported_at="2026-10-13T02:21:00+00:00")
+    item = SimpleNamespace(id=3, thread_id=7003, status=bug_rules.FIXED, report=report, changed_at="2026-10-13T02:30:00+00:00", note_count=1)
+    run(posts.bring_up_to_date(item, "Passed again.", forum))
+    assert did[0] == ("edit", {"archived": False}), "an archived post is opened first: nothing in it can be edited"
+    assert did[1][0] == "card" and did[2] == ("said", "Passed again.")
+    assert did[3] == ("edit", {"applied_tags": ["Fixed", "dev"], "archived": True}), "the tag follows the status, the dev tag stays, and a closed bug's post is archived last"
+    run(posts.bring_up_to_date(None, "x", forum))
+    run(posts.bring_up_to_date(SimpleNamespace(id=4, thread_id=None), "x", forum))
+    assert len(did) == 4, "a bug with no post has nothing to bring up to date"
+
+
+# --- the runner: a run that was stopped, and what is kept after one -------------------------------------------------
+def _runner_in(tmp_path, monkeypatch):
+    data = tmp_path / "data"
+    work = data / "selftest"
+    work.mkdir(parents=True)
+    monkeypatch.setattr(config, "DATA_DIR", data)
+    monkeypatch.setattr(runner, "WORK", work)
+    monkeypatch.setattr(runner, "HISTORY", work / "history.csv")
+    monkeypatch.setattr(runner, "BUGS", work / "bugs.json")
+    monkeypatch.setattr(report, "PATH", tmp_path / "SELFTEST.md")
+    return data, work
+
+
+def test_a_run_that_was_stopped_is_put_right_and_recorded_before_the_next(tmp_path, monkeypatch):
+    import json
+
+    data, work = _runner_in(tmp_path, monkeypatch)
+    assert runner.recover() == [], "nothing left behind: nothing to do"
+    (work / "saved-20261013-145437").mkdir()
+    (work / "saved-20261013-145437" / "dev.db").write_text("mine", encoding="utf-8")
+    (data / "dev.db").write_text("the stopped run's", encoding="utf-8")
+    (work / "run-20261013-145437").mkdir()
+    (work / "run-20261013-145437" / "p1.json").write_text(json.dumps({"results": _steps(("1.01", "pass"), ("1.02", "pass"))}), encoding="utf-8")
+    (added,) = runner.recover()
+    assert (data / "dev.db").read_text(encoding="utf-8") == "mine", "the dev database that was set aside is back"
+    assert (work / "run-20261013-145437" / "dev.db").read_text(encoding="utf-8") == "the stopped run's" and not (work / "saved-20261013-145437").exists()
+    assert (added["date"], added["steps"], added["passed"], added["failed"], added["note"]) == ("2026-10-13 14:54", "2", "2", "0", record.UNFINISHED)
+    assert record.read(work / "history.csv") == [added] and runner.recover() == [], "said once"
+
+
+def test_with_nothing_failed_and_no_bug_on_record_no_process_is_started_for_bugs(tmp_path, monkeypatch):
+    data, work = _runner_in(tmp_path, monkeypatch)
+    started = []
+    monkeypatch.setattr(runner.subprocess, "run", lambda *args, **kwargs: started.append(args) or SimpleNamespace(returncode=0, stdout='{"step": "6.04", "bug": "D3", "what": "fixed", "url": null}\nnoise\n', stderr=""))
+    line = record.row("20261013-152146", "837b16c", "tidy", _steps(("6.04", "pass")), 0.0, False, 60)
+    assert runner.file_bugs(line, _steps(("6.04", "pass")), "20261013-152146", 5) == ([], "") and started == []
+    (work / "bugs.json").write_text('{"6.04": 3}', encoding="utf-8")
+    assert runner.file_bugs(line, _steps(("6.04", "pass")), "20261013-152146", 5) == (["D3 fixed · step 6.04"], ""), "a bug on record is looked at even when everything passed: it may be fixed now"
+    command = started[0][0]
+    assert command[1:4] == ["-m", "selftest.bugs", "--dev"] and command[4].endswith("results.json"), "on the dev database, never the live one"
+    monkeypatch.setattr(runner.subprocess, "run", lambda *args, **kwargs: SimpleNamespace(returncode=1, stdout="", stderr="Traceback\nUserError: no forum\n"))
+    assert runner.file_bugs(line, _steps(("6.04", "fail")), "20261013-152146", 5) == ([], "the bugs were not brought up to date: UserError: no forum")
+
+
+def test_after_a_run_the_history_the_table_and_the_summary_are_each_kept_whatever_happens_to_the_others(tmp_path, monkeypatch, capsys):
+    data, work = _runner_in(tmp_path, monkeypatch)
+    posted = []
+
+    def no_bugs(*args):
+        raise RuntimeError("the forum is gone")
+
+    async def say(channel_id, text):
+        posted.append((channel_id, text))
+
+    monkeypatch.setattr(runner, "file_bugs", no_bugs)
+    monkeypatch.setattr(runner, "say", say)
+    results = _steps(("6.04", "fail"), ("6.05", "pass"))
+    runner.keep(record.row("20261013-152146", "837b16c", "tidy", results, 0.015, True, 245), results, "20261013-152146", {"bot-log": 9})
+    assert [each["failed_steps"] for each in record.read(work / "history.csv")] == ["6.04"]
+    assert "| 2026-10-13 15:21 | `837b16c` | tidy | 1 of 2 | **1** | 6.04 |" in (tmp_path / "SELFTEST.md").read_text(encoding="utf-8")
+    assert posted[0][0] == 9 and "❌ 1 of 2 steps failed: 6.04" in posted[0][1] and "⚠️ the bugs were not brought up to date: the forum is gone" in posted[0][1]
+
+    async def no_discord(channel_id, text):
+        raise RuntimeError("offline")
+
+    monkeypatch.setattr(runner, "say", no_discord)
+    runner.keep(record.row("20261013-160000", "837b16c", "tidy", results, 0.0, False, 60), results, "20261013-160000", {"bot-log": 9})
+    assert len(record.read(work / "history.csv")) == 2 and "the summary could not be posted" in capsys.readouterr().out
