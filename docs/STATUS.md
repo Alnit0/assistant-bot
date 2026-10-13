@@ -17,7 +17,25 @@ failure for 30 days (built: it happens after the next run); the
 self-test marks Fixed only bugs it opened itself (built, and checked
 against the bug's own record, not only the list of numbers).
 
-**From the unattended batch of 2026-10-13 (six stages):**
+**From the unattended batch of 2026-10-13 (six stages, all built;
+every self-test run as the dev bot with live left up; US$1.08 spent on
+seven runs, each under US$0.17):**
+
+- **Design options are waiting for your picks** (stage 6): a post
+  "🎨 Design options · 2026-10-13" in the dev bot's forum
+  (#selftest-bugs), 15 sketches of the five cards, option A of each
+  being the card as built. Reply there with a letter for each. I put
+  them in the forum, not in the dev bot's other channels, because
+  those are emptied at the start of every self-test. Nothing in the
+  real cards changes until you pick.
+- **One real fault was found and fixed by the self-test**: to a typed
+  "9pm", in answer to a card whose button offered 8:00 pm, Claude
+  handed over 8:00 pm. Code now puts back a time you stated
+  (`actions.restated`). It was the first bug the self-test filed (D1)
+  and marked Fixed by itself.
+- **The new switches, all off** (set in `.env`, then restart live):
+  `NIGHTLY_SELFTEST=true` (the 3:00 am self-test), `WEEKLY_SUMMARY=true`
+  (Sunday 7:00 pm in the hub). `CARDS_V2=true` draws the new cards too.
 
 - **Nightly self-test** (stage 1, built behind `NIGHTLY_SELFTEST`,
   off). To turn it on: `NIGHTLY_SELFTEST=true` in `.env`, restart
