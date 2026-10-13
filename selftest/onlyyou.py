@@ -14,7 +14,7 @@ ONLY_YOU = (
     ("QA-TONIGHT 24 (40.4)", "A picture sent with words: the test cannot attach a file as you"),
     ("QA-TONIGHT 32 to 34 (32.1, 32.2, 34.3)", "Bugs: 🐞 as a reaction of yours, and Won't fix in the #bugs forum. A bot cannot react as you, and the forum is live's"),
     ("QA-TONIGHT 29 (37.6)", "“took it” six minutes after anything else: the wait is real time, not the dev clock's"),
-    ("QA-TONIGHT 59", "Live after its restart: the test starts the service and checks the lock and the start card; that it behaves is yours"),
+    ("QA-TONIGHT 59", "Live after its restart: the test starts the service and checks the lock and the log; that it behaves is yours"),
     ("Block 44", "The four new sketches (briefing, schedule list, schedule change, tidy): whether they are what you want. The test only checks Discord accepts them"),
     ("Wording everywhere", "Every line the bot says is checked for the words that matter (a name, a time, a mark), not for whether it reads well"),
     ("Real presses", "Every press in this run was simulated: the handler behind the button was called and it edited the real message. That Discord delivers a real tap to that handler is checked by discord.py's own routing and by you pressing one"),

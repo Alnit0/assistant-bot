@@ -19,7 +19,7 @@ from core.config import (
 )
 from core.context import Context
 from core.discord_utils import (
-    COLOUR_INFO,
+    COLOUR_ERROR,
     bind_client,
     interaction_gone,
     log_error,
@@ -203,23 +203,21 @@ async def on_ready():
     # Which bot this is, for anyone looking: the nickname and the status line
     await identity.start()
 
-    channel = client.get_channel(INBOX_CHANNEL_ID)
-    if channel:
-        dev_database = " · 🧪 **DEV DATABASE**" if DEV_DATABASE else ""
-        await channel.send(f"👋 Online and ready. Type `help` for commands.{dev_database}")
-    else:
+    if client.get_channel(INBOX_CHANNEL_ID) is None:
         log.warning("Could not find the inbox channel. Check INBOX_CHANNEL_ID.")
 
-    embed = discord.Embed(title="🟢 Bot started", colour=COLOUR_INFO, timestamp=real_now_nz())
-    embed.add_field(name="Model", value=CLAUDE_MODEL, inline=True)
-    embed.add_field(name="History limit", value=f"{MAX_HISTORY} messages", inline=True)
-    embed.add_field(
-        name="Database", value=f"{DB_PATH.name} (DEV DATABASE)" if DEV_DATABASE else DB_PATH.name, inline=True
+    # A start says nothing in a channel: the presence and the status line show the bot is up, and a
+    # restart nobody asked for is one line with the catch-up (core/restart.py). What it started
+    # with is in the log file; only something wrong with a task is a card in #bot-log
+    log.info(
+        "Started: model %s, history %s messages, database %s%s%s; slash commands: %s",
+        CLAUDE_MODEL, MAX_HISTORY, DB_PATH.name, " (DEV DATABASE)" if DEV_DATABASE else "",
+        f", clock moved ahead to {now_nz():%a %d %b, %I:%M %p}" if clock.is_shifted() else "", slash_status,
     )
-    if clock.is_shifted():
-        embed.add_field(name="Clock", value=f"{now_nz():%a %d %b, %I:%M %p} (moved ahead)", inline=True)
+    if not registry.problems() and not registry.missing_descriptions():
+        return
+    embed = discord.Embed(title="⚠️ Started with a problem", colour=COLOUR_ERROR, timestamp=real_now_nz())
     embed.add_field(name="Tasks", value=truncate(registry.summary()), inline=False)
-    embed.add_field(name="Slash commands", value=truncate(slash_status), inline=False)
     if registry.problems():
         embed.add_field(
             name="⚠️ Skipped", value=truncate("\n".join(registry.problems())), inline=False
@@ -424,7 +422,13 @@ def start() -> None:
     registry.load()
     migrate(registry.task_migrations())
     ensure_owner()
-    client.run(TOKEN, log_handler=None)
+    try:
+        client.run(TOKEN, log_handler=None)
+    except Exception as error:
+        # The run ended by itself: the next start says so, once (core/restart.py)
+        log.exception("The bot stopped with an error")
+        restart.note_crash(error)
+        raise
 
 
 if __name__ == "__main__":

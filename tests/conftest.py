@@ -27,6 +27,15 @@ def fails_fast_if_it_hangs(request):
 
 
 @pytest.fixture(autouse=True)
+def the_pc_has_not_restarted(monkeypatch):
+    """When this PC really started has nothing to do with a test's own clock: a
+    test that wants a restart of the PC says when (core/restart.py)."""
+    from core import restart
+
+    monkeypatch.setattr(restart, "booted_at", lambda: None)
+
+
+@pytest.fixture(autouse=True)
 def no_waiting_between_edits(monkeypatch):
     """A live message is edited at most once every two seconds, and a test
     that changes one twice would sit through that wait for real. Nothing is

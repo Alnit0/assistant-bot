@@ -75,7 +75,7 @@ Dev mode: off (it always is after a start).
 
 | # | Do | Expect | Tests |
 |---|---|---|---|
-| 1 | In the project folder: `python main.py` | "👋 Online and ready" in #inbox; "🟢 Bot started" log card listing tasks and synced slash commands, no ⚠️ fields | K1 |
+| 1 | In the project folder: `python main.py` | Nothing is posted: no hello in #inbox, no start card in #bot-log. The bot shows online with its status line; the terminal has a "Started:" line with the database and the slash commands | K1 |
 | 2 | In a second terminal: `python main.py` | It logs "Another copy of the bot is already running (PID …)" and exits. Step 1 of block 2 then gets one reply, not two | K2 |
 | 3 | From the second account: type `ping` in #inbox and react 📦 on any message. Wait 35 seconds | No reply, no archive, nothing from Claude. Remove that 📦 afterwards | K3 |
 
@@ -383,11 +383,11 @@ nothing here touches your real history. `dev verbose` on helps for step 8.
 | # | Do | Expect | Tests |
 |---|---|---|---|
 | 1 | Start the bot normally (`python main.py`): `dev clock`, `dev clock +1h`, `dev reset-db`. Stop it again | The first shows the real time and says it can only be moved on the dev database; the other two get ⚠️, with the reason on the log card; nothing changes and no question is asked | J43 |
-| 2 | Start it with `python main.py --dev` | "👋 Online and ready… · 🧪 **DEV DATABASE**" in #inbox; the bot's status reads "🧪 DEV DATABASE"; the start card's Database field says `dev.db (DEV DATABASE)`; `stats` shows the dev database's own (empty at first) totals | J36 |
+| 2 | Start it with `python main.py --dev` | Nothing is posted in #inbox; the bot's status reads "🧪 DEV DATABASE"; the terminal's "Started:" line says `dev.db (DEV DATABASE)`; `stats` shows the dev database's own (empty at first) totals | J36 |
 | 3 | `dev on` | The panel has a "🧪 **DEV DATABASE** · `dev.db`" line and a "Clock: … (the real time)" line; the status reads "🛠️ Dev mode · 🧪 DEV DATABASE" | J37 |
 | 4 | `timer 30m`, then `dev clock +1h` | "🕰️ Clock: … (1h ahead)"; the timer finishes at once with its alert; the panel's Clock line shows 1h ahead; `dev clock` alone shows the same. Dismiss the alert | J38 |
 | 5 | `dev clock 6`, then `dev clock 6am` | The first gets ⚠️ ("6am or 6pm?" on the log card) and the clock stays; the second moves to the next 6:00 am, later than where it was | J39 |
-| 6 | `dev off`, then `Ctrl + C` and `python main.py --dev` again, then `dev clock` | The clock is still as far ahead as before, through both; the start card has a Clock field | J40 |
+| 6 | `dev off`, then `Ctrl + C` and `python main.py --dev` again, then `dev clock` | The clock is still as far ahead as before, through both; the terminal's "Started:" line says the clock is moved ahead | J40 |
 | 7 | `dev clock reset` | "🕰️ Clock: … (the real time)" | J41 |
 | 8 | `dev jobs`, then `dev clock 11:59pm`, `dev clock +2m`, `dev jobs` | First: a `core/day_rollover` job due at the coming midnight. After the two moves: it has run (a 🛠️ job card in #bot-log if verbose is on) and the next one is booked for the midnight after | Q7 |
 | 9 | In #inbox say `set a timer for 1 minute`, then type `dev cost` | A card that stays: "## 💰 Cost · `dev.db`"; **Today** with the cost, the number of messages and how many went to Claude; the averages per message; a line counting messages by route (`shortcut`, `button`, `tools` with its cost); **This month** the same; "Most expensive task this month: **timers**"; the tokens and requests of the month | J44 |
@@ -691,11 +691,11 @@ have none.
 
 | # | Do | Expect | Tests |
 |---|---|---|---|
-| 1 | Say `add Otherpill`. Don't press. Stop the bot (Ctrl+C) and start it again. Look at #bot-log | "🟢 Bot started" and no "🔁 Caught up after a restart": nothing was missed. (If the bot was off for over a minute while a line was waiting to be tidied away, one naming `tidy` is right) | K24 |
+| 1 | Say `add Otherpill`. Don't press. Stop the bot (Ctrl+C) and start it again. Look at #bot-log | Nothing new in #bot-log: no start card, no "🔁 Caught up after a restart": nothing was missed. (If the bot was off for over a minute while a line was waiting to be tidied away, one naming `tidy` is right) | K24 |
 | 2 | Press **Save** on the Otherpill card from before the restart | Saved: `pills` lists Otherpill. The card worked although the bot restarted | K24 |
 | 3 | Type `pills`. Stop and start the bot. Press **Taken** under the checklist for Testpill | The same checklist as before the restart (no second one), and Testpill is ticked off on it | K24 |
 | 4 | Type `dev clock 5:58am`. Stop the bot, wait four minutes, start it | One new checklist in the hub. In #bot-log one "🔁 Caught up after a restart" saying the checklist was posted and the bot was off at 6:00 am, and the jobs that ran late. No "Pills checklist not posted" message | K24 |
-| 5 | Stop and start the bot once more | No new checklist, no "🔁 Caught up" message and no "Pills checklist not posted": #bot-log has only "🟢 Bot started" | K24 |
+| 5 | Stop and start the bot once more | No new checklist, no "🔁 Caught up" message and no "Pills checklist not posted": #bot-log has nothing new | K24 |
 | 6 | Type `dev clock reset`; say `remove Otherpill`, press **Remove** | The clock is the real time again and Otherpill is gone | |
 
 ## 37. Questions on the card (waiting for QA)

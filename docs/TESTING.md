@@ -37,7 +37,7 @@ Last updated: 2026-10-14
 | G | Timers | 32 | 12 | 20 | 17 | 15 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
 | J | Dev mode | 68 | 19 | 49 | 47 | 21 | 0 | 0 |
-| K | Startup and housekeeping | 45 | 29 | 16 | 14 | 31 | 0 | 0 |
+| K | Startup and housekeeping | 47 | 30 | 17 | 15 | 32 | 0 | 0 |
 | L | Keep | 14 | 6 | 8 | 8 | 6 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
 | P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
@@ -46,7 +46,7 @@ Last updated: 2026-10-14
 | S | Routing and confirm cards | 80 | 27 | 53 | 18 | 61 | 0 | 1 |
 | T | Tasks in plain words | 26 | 7 | 19 | 4 | 22 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **535** | **213** | **322** | **252** | **282** | **0** | **1** |
+| | **Total** | **537** | **214** | **323** | **253** | **283** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -269,11 +269,11 @@ Any channel. Check the bot's status in the member list.
 | J33 | 👤 Manual | Type `dev status` while running a test copy from `.venv` | "🩺 **Status**": "🧪 **Dev** bot · database `dev.db`" (on live: "🟢 **Live** bot · database `assistant.db`"), "Up … · code at feature/pills @ … when it started", "Clock: … (the real time)", a "Next …" line for each kind of job, then "**Bot instances**": "1 bot is running: PID …, started … (it holds the lock)", and a "Not counted" line for the `.venv` launcher. No ⚠️ line. `python -m core.instance_lock` in PowerShell prints the same | ⬜ Untested | | |
 | J34 | 🤖 Auto | The bot's clock | The real time unless moved; refuses to move on the live database; only forward (`reset` is the one way back); keeps ticking from where it is put; the offset survives a restart and is never picked up by the live bot; an unreadable one is ignored; time jumped over is counted | ✅ Pass | 2026-10-09 | `tests/test_clock.py` |
 | J35 | 🤖 Auto | `dev clock`, `dev reset-db` and their guards | A time is the next moment the clock reads it (past today's: tomorrow's); `+2h` adds; `reset` goes back; "6" is asked about, not guessed; on the live database moving the clock and wiping are refused with the reason and nothing changes, and only a file named as the dev database can be wiped; the status and panel say DEV DATABASE only with `--dev` | ✅ Pass | 2026-10-09 | `tests/test_dev_clock.py` |
-| J36 | 👤 Manual | Stop the bot; start it with `python main.py --dev` | "👋 Online and ready… · 🧪 **DEV DATABASE**" in #inbox; the bot's status reads "🧪 DEV DATABASE"; the start card's Database field says `dev.db (DEV DATABASE)`; `stats` shows the dev database's own (empty at first) totals | ⬜ Untested | | |
+| J36 | 👤 Manual | Stop the bot; start it with `python main.py --dev` | Nothing is posted in #inbox; the bot's status reads "🧪 DEV DATABASE"; the terminal's "Started:" line says `dev.db (DEV DATABASE)`; `stats` shows the dev database's own (empty at first) totals | ⬜ Untested | | |
 | J37 | 👤 Manual | With `--dev`: `dev on` | The panel has a "🧪 **DEV DATABASE** · `dev.db`" line and a "Clock: … (the real time)" line; the status reads "🛠️ Dev mode · 🧪 DEV DATABASE" | ⬜ Untested | | |
 | J38 | 👤 Manual | With `--dev`: `timer 30m`, then `dev clock +1h` | "🕰️ Clock: … (1h ahead)"; the timer finishes at once with its alert; the panel's Clock line shows 1h ahead; `dev clock` alone shows the same | ⬜ Untested | | |
 | J39 | 👤 Manual | With `--dev`: `dev clock 6`, then `dev clock 6am` | The first gets ⚠️ ("6am or 6pm?" on the log card) and the clock stays; the second moves to the next 6:00 am, later than where it was | ⬜ Untested | | |
-| J40 | 👤 Manual | With `--dev` and the clock moved: `dev off`, then restart with `python main.py --dev`, then `dev clock` | The clock is still as far ahead as before, through both; the start card has a Clock field | ⬜ Untested | | |
+| J40 | 👤 Manual | With `--dev` and the clock moved: `dev off`, then restart with `python main.py --dev`, then `dev clock` | The clock is still as far ahead as before, through both; the terminal's "Started:" line says the clock is moved ahead | ⬜ Untested | | |
 | J41 | 👤 Manual | With `--dev`: `dev clock reset` | "🕰️ Clock: … (the real time)" | ⬜ Untested | | |
 | J42 | 👤 Manual | With `--dev`: `timer 10m`, then `dev reset-db`; press **Cancel**; again, press **Confirm** | Cancel: nothing changes (`timers` still lists it). Confirm: "🧹 `dev.db` wiped…"; `timers` and `stats` are empty; `dev jobs` shows only the backup and the day rollover; the clock is the real time | ⬜ Untested | | |
 | J43 | 👤 Manual | Without `--dev` (the live database): `dev clock`, `dev clock +1h`, `dev reset-db` | The first shows the real time and says it can only be moved on the dev database; the other two get ⚠️, with the reason on the log card; nothing changes and no question is asked | ⬜ Untested | | |
@@ -307,7 +307,7 @@ Any channel. Check the bot's status in the member list.
 
 | ID | Type | Test | Expected result | Status | Date | Notes |
 |---|---|---|---|---|---|---|
-| K1 | 👤 Manual | Start the bot | "👋 Online and ready" in #inbox; "🟢 Bot started" log card listing tasks and synced slash commands, with no ⚠️ fields | ⬜ Untested | | |
+| K1 | 👤 Manual | Start the bot | Nothing is posted: no hello in #inbox and no start card in #bot-log; the bot shows online with its status line | ⬜ Untested | | |
 | K2 | 👤 Manual | Start a second copy while one is running | The second logs an error and exits; no double replies | ⬜ Untested | | |
 | K3 | 👤 Manual | Have another account message the bot and react 📦 | Ignored completely | ⬜ Untested | | |
 | K4 | 👤 Manual | Make a word fail (e.g. `timer banana`) | Your message stays with ⚠️; details only on the log card | ⬜ Untested | | |
@@ -352,6 +352,8 @@ Any channel. Check the bot's status in the member list.
 | K43 | 👤 Manual | A push on the phone | QA-RUN block 53: the title and the neutral line on the lock screen, and tapping opens Discord at the reminder | ⬜ Untested | | Needs `NTFY_BOT_TOPIC` |
 | K44 | 🤖 Auto | No discord.py in new code | Core and tasks import discord.py only in the files on a list that only gets shorter; the core never imports the interface or holds the client; the plain half of a card holds nothing of Discord | ✅ Pass | 2026-10-14 | `tests/test_interface.py` |
 | K45 | 🤖 Auto | The door to the interface | A place is a plain record; text, pins, reactions and edits go by ids; Discord's errors come back as Gone or Failed with status and code; with nothing bound nothing is found; Discord answers every verb the door has; a card reaches Discord through it | ✅ Pass | 2026-10-14 | `tests/test_interface.py` |
+| K46 | 🤖 Auto | A start says nothing; an unexpected restart is one line | No hello and no start card; a restart asked for and a first start have no line; the PC restarting and a crash are each the first line of the one catch-up message, with how long the bot was off; a crash is noted on the way out and said once | ✅ Pass | 2026-10-14 | `tests/test_restart.py` |
+| K47 | 👤 Manual | After the PC restarts | Restart the PC. #bot-log gets one message, "⚠️ Back after an unexpected stop", starting "The PC restarted: the bot was off for about …"; #inbox gets nothing. Then `nssm restart assistant-bot`: nothing is posted anywhere | ⬜ Untested | |  |
 
 ## L. Keep
 
@@ -513,7 +515,7 @@ are added with it.
 | R27 | 👤 Manual | Tick one dose off, then restart the bot (still `--dev`); type `dev jobs` | No second checklist and no second set of messages: the ones there are still the live ones (tick another off to see the same message change). `dev jobs` shows one `pills/checklist` job, for the next 6:00 am | ⬜ Untested | | Stage 2; rewritten 2026-10-10 for the checklist as built |
 | R37 | 🤖 Auto | Building a plan from what was said | Every shape of the one schedule model (any time, planned times, a gap with the first dose when ready or at a time, a latest time, and all of them together) and courses with inclusive dates, each in its wording, on one line and as the card shows it; a time settled by the times around it; planned times closer than the gap moved and said; a schedule that can't fit refused; unclear times asked about one at a time and a bare gap never taken for hours; twenty kinds of nonsense refused with a short reason; an edit changes only what it names, `none` takes a value away, a gap and a latest time can be added to planned times, and times for another number of doses don't carry over; active, upcoming, paused (ending by itself) and ended worked out from the day; the list in its three groups; a pill found by id, name or part of one, asked about when two fit; a gap read in any form a length comes in; a part that can't be read refused by name, so the rest can be shown | ✅ Pass | 2026-10-10 | `tests/test_pills_rules.py` |
 | R38 | 🤖 Auto | A dose and the day's limit | The worked example: after dose 2 at 12:30 pm dose 3 (3:30 pm) fits before 4:00 pm, and after 1:15 pm (4:15 pm) it does not; a dose due exactly at the latest time fits, and one with no time always does; dose 2 must be taken by 1:00 pm for dose 3 to fit; with no latest time the limit is midnight, and with no gap there is no take-by time | ✅ Pass | 2026-10-10 | `tests/test_pills_doses.py`. Not used by the bot until the checklist and reminders |
-| R39 | 👤 Manual | With `--dev`, after pills were saved before this change: restart the bot, then say `my pills`. Press nothing | The bot starts with no ⚠️ on the start card. Every pill is listed with the schedule it had: a pill with no time reads "daily, any time", one with a gap "…, at least 3h apart, first dose when ready" | ✅ Pass | 2026-10-10 | Stage 1 (the one schedule model) |
+| R39 | 👤 Manual | With `--dev`, after pills were saved before this change: restart the bot, then say `my pills`. Press nothing | The bot starts with no "⚠️ Started with a problem" card in #bot-log. Every pill is listed with the schedule it had: a pill with no time reads "daily, any time", one with a gap "…, at least 3h apart, first dose when ready" | ✅ Pass | 2026-10-10 | Stage 1 (the one schedule model) |
 | R40 | 👤 Manual | Say `add pill A to my pills, 3 times a day at 8am, 11:30 and 3pm, at least 3 hours apart, not after 4pm, without food`; press **Save** | One card, "💊 Pills · new", with two lines: "**Pill A** · 3× daily · `8:00 am`, `11:30 am`, `3:00 pm`" and "At least 3h apart · not after `4:00 pm` · *without food*". No ❓ and no ⚠️. Save: "✅ Saved · 💊 **Pill A** · 3× daily · `8:00 am`, `11:30 am`, `3:00 pm` · at least 3h apart · not after `4:00 pm` · *without food*" | ⬜ Untested | | Stage 1. Block 19, step 2 of 2026-10-10 could not show this: Pill A was already saved (now R45). Needs a database with no Pill A |
 | R41 | 👤 Manual | Say `add pill C to my pills, 3 times a day at 8am, 11:30am and 2pm, at least 3 hours apart`; press **Cancel** | A card whose first line ends "`8:00 am`, `11:30 am`, `2:30 pm`", with "⚠️ 11:30 am to 2:00 pm is under 3h: the third dose moves to 2:30 pm". Cancel: nothing is saved | ✅ Pass | 2026-10-10 | Stage 1 |
 | R42 | 👤 Manual | With Pill A saved (R40): say `pill A can be taken until 5pm`; press **Save**. Then `my pills` | A card "💊 Pills · change": "**Pill A**", then "schedule · … not after `4:00 pm` → … not after `5:00 pm`", the times and the gap unchanged. Save: "✅ Updated · …"; the list shows `5:00 pm` | ✅ Pass | 2026-10-10 | Stage 1 |

@@ -7,6 +7,28 @@ session; the end-of-task checklist updates it at the end of every task.
 
 ## Questions for Alex
 
+**From removing the start message (2026-10-14).** Decided without
+you, say if wrong:
+
+- **The "🟢 Bot started" card in #bot-log is gone too**, not only
+  "👋 Online and ready": you said a planned restart leaves no trace,
+  and that card was one. What it listed (model, database, tasks,
+  slash commands) is one "Started:" line in the log file. **If a task
+  could not start, a card is still posted**: "⚠️ Started with a
+  problem", with what was skipped.
+- **What counts as unexpected**: the PC started after the bot last
+  noted it was running ("The PC restarted: the bot was off for about
+  12m"), or the run ended by itself with an error ("The bot stopped by
+  itself with an error and was started again: off for about 1m"; the
+  error itself is in the log file). It is the first line of the one
+  catch-up message, whose title is then "⚠️ Back after an unexpected
+  stop". **Everything else reads as asked for**, which includes the
+  process being killed from Task Manager (or by Windows for memory)
+  with no restart of the PC: the service manager ends the bot the same
+  way when you restart it by hand, and nothing tells the two apart.
+  With Windows' fast start-up, a shut-down and power-on may not count
+  as the PC restarting (a Restart does).
+
 **From the interface work (2026-10-14; `docs/INTERFACE.md`, section
 0). Decided by you: timers frozen; a read-only web page later, over
 Tailscale (backlog). Built: the rule (no discord.py in new code,

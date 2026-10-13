@@ -126,8 +126,15 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   `migrations()`); never edit an old one
 - Database calls from the event loop are `async`. Always `await` them
 - The assistant's name comes from `ASSISTANT_NAME`; never hard-code it
-- A task's `startup` failing is logged and shown on the start card; the
-  other tasks still start. Keep it that way
+- A task's `startup` failing is logged and shown on a card in #bot-log
+  ("⚠️ Started with a problem"); the other tasks still start. Keep it
+  that way
+- **A start says nothing in a channel**: no hello, no start card. That
+  the bot is up is its presence and its status line; what it started
+  with is in the log file. A restart that was asked for leaves no
+  trace. One that was not (the PC restarted, or the run ended with an
+  error: `core/restart.py`, `stopped_line`, `note_crash`) is the first
+  line of the one catch-up message in #bot-log
 
 ### One way in for plain words
 

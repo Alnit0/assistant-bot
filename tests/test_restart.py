@@ -607,3 +607,64 @@ def test_a_line_from_a_task_is_only_kept_while_the_bot_is_starting(world):
     run(restart.catch_up())
     assert caught(world) == ["• posted late"]
     assert restart.caught_up("done on time, later") is False and restart._lines == []
+
+
+# --- a start says nothing; a restart nobody asked for is one line -----------------------------------------------------
+from datetime import datetime, timezone  # noqa: E402
+
+AT = datetime(2026, 10, 14, 3, 0, tzinfo=timezone.utc)
+
+
+def test_a_restart_that_was_asked_for_and_a_first_start_have_no_line():
+    assert restart.stopped_line(None, "", AT, AT) == "", "a first start: there is no earlier run to speak of"
+    assert restart.stopped_line(AT - timedelta(minutes=1), "", AT - timedelta(days=3), AT) == "", "the service restarted by hand"
+    assert restart.stopped_line(AT - timedelta(minutes=1), "", None, AT) == "", "where the PC can't be asked, nothing is claimed"
+
+
+def test_the_pc_restarting_and_a_crash_are_each_said_with_how_long_the_bot_was_off():
+    alive = AT - timedelta(minutes=12)
+    assert restart.stopped_line(alive, "", AT - timedelta(minutes=3), AT) == "The PC restarted: the bot was off for about 12m"
+    assert restart.stopped_line(alive, "RuntimeError: boom", AT - timedelta(days=3), AT) == "The bot stopped by itself with an error and was started again: off for about 12m"
+    assert restart.stopped_line(alive, "", alive + timedelta(seconds=30), AT) == "", "the PC was already up when the bot last ran: the same run of the PC"
+    assert "PC restarted" in restart.stopped_line(alive, "RuntimeError: boom", AT - timedelta(minutes=3), AT), "both: the PC is the reason"
+
+
+def _alive(at, ended=None):
+    def write(conn):
+        conn.execute("INSERT INTO bot_alive (id, at, ended) VALUES (1, ?, ?) ON CONFLICT (id) DO UPDATE SET at = excluded.at, ended = excluded.ended", (at.isoformat(), ended))
+
+    run(database.run(write))
+
+
+def test_an_unexpected_restart_is_the_first_line_of_the_one_catch_up_message_and_a_planned_one_leaves_nothing(world, monkeypatch):
+    now = clock.real_now()
+    _alive(now - timedelta(minutes=20))
+    monkeypatch.setattr(restart, "booted_at", lambda: now - timedelta(minutes=2))
+    monkeypatch.setattr(restart, "_lines", ["The checklist was posted late"])
+    lines = run(restart.catch_up())
+    assert lines[0].startswith("The PC restarted: the bot was off for about 2") and len(lines) == 2, "with what was caught up, in the same message"
+    ((title, body),) = world.bot_log
+    assert title == restart.UNEXPECTED and body.splitlines()[0].startswith("• The PC restarted")
+    # The next restart is one somebody asked for: nothing is said, anywhere
+    world.bot_log.clear()
+    monkeypatch.setattr(restart, "booted_at", lambda: now - timedelta(hours=5))
+    _alive(now - timedelta(minutes=1))
+    assert run(restart.catch_up()) == [] and world.bot_log == []
+
+
+def test_a_crash_is_noted_on_the_way_out_and_said_once(world, monkeypatch):
+    _alive(clock.real_now() - timedelta(minutes=1))
+    restart.note_crash(RuntimeError("boom"))
+    (line,) = run(restart.catch_up())
+    assert line.startswith("The bot stopped by itself with an error") and world.bot_log[-1][0] == restart.UNEXPECTED
+    assert "boom" not in line, "the error itself is for the log file"
+    world.bot_log.clear()
+    assert run(restart.catch_up()) == [] and world.bot_log == [], "said once: the note is cleared when it is read"
+
+
+def test_a_start_posts_no_hello_and_no_start_card():
+    import pathlib
+
+    text = pathlib.Path(restart.__file__).parent.parent.joinpath("main.py").read_text(encoding="utf-8")
+    assert "Online and ready" not in text and "Bot started" not in text, "the presence and the status line say the bot is up"
+    assert "Started with a problem" in text, "a task that could not start is still a card in #bot-log"

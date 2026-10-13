@@ -6,6 +6,11 @@ backfilled from the git log.
 
 ## 2026-10-14
 
+- A start says nothing any more: no "👋 Online and ready" in #inbox and
+  no "🟢 Bot started" card. A restart you asked for leaves no trace; if
+  the PC restarted or the bot crashed, #bot-log says so in one line,
+  with what was caught up.
+
 - Nothing you would see: the bot's core now reaches Discord through
   one door, and new code may no longer use discord.py directly
   (`docs/INTERFACE.md`). Timers are frozen as they are.

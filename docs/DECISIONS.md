@@ -60,7 +60,9 @@ A short log of key decisions and why. Newest at the bottom.
   migration for no change in behaviour.
 - **A task that fails to load is skipped, not fatal:** the bot runs 24/7,
   so one broken feature should not take the rest down. Problems are shown
-  in the terminal and on the start card in #bot-log.
+  in the terminal and on a card in #bot-log (since 2026-10-14 only when
+  there is a problem: a start with nothing wrong says nothing in a
+  channel, and its presence and status line show the bot is up).
 - **Per-task migration versions in a `skill_migrations` table:**
   `PRAGMA user_version` can only hold one number, which stays with the core.
   Task tables are prefixed with the task's name.

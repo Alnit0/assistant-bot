@@ -241,7 +241,7 @@ class GreeterTask(Task):
 task = GreeterTask()
 ```
 
-3. Restart the bot. The terminal and the "🟢 Bot started" card in #bot-log
+3. Restart the bot. The terminal and the log file (and, only if something is wrong, a "⚠️ Started with a problem" card in #bot-log)
    list the tasks that loaded, anything that was skipped and why, and any
    registration with no description. `help` picks up the new word
    automatically, and so does Claude.
@@ -1000,7 +1000,7 @@ no slash commands. `help dev` lists the words.
   for its backups. Everything else is the same: the same Discord server
   and channels, the same `.env`. It is created empty on its first start.
   The bot's status reads "🧪 DEV DATABASE" for as long as it runs, the
-  hello in #inbox and the start card say so, and the dev panel has a
+  log file says so at start, and the dev panel has a
   "🧪 **DEV DATABASE**" line. `dev reset-db` wipes it (Confirm / Cancel
   first); cards already in Discord are left behind, so restart the bot
   if anything looks stale.
@@ -1283,7 +1283,7 @@ reply there:
   cancels a test in progress.
 
 Slash commands are synced to the server the inbox channel is in, every time
-the bot starts. The "🟢 Bot started" card shows how many were synced.
+the bot starts. The log file's "Started:" line says how many were synced.
 
 **Permissions the bot's role needs** (a missing one gives a message, not a
 crash): Send Messages, Embed Links, Attach Files, Read Message History,

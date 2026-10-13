@@ -107,11 +107,11 @@ async def save_new(h: Harness, key: str, said: str, canned, name: str, source: s
 # Start 1
 # ---------------------------------------------------------------------------
 async def p1(h: Harness) -> None:
-    async with h.step("1.01", "The dev bot starts in the test channels", "“🟢 Bot started” in #selftest-log naming dev.db, and “👋 Online and ready” in #selftest-inbox", "asked"):
-        started = await h.find(h.botlog, "Bot started")
-        h.check(started is not None and "dev.db" in started.all_text, f"#selftest-log has: {[each.all_text[:60] for each in await h.recent(h.botlog, 5)]}")
-        h.check(await h.find(h.inbox, "Online and ready") is not None, "no “Online and ready” in #selftest-inbox")
+    async with h.step("1.01", "The dev bot starts in the test channels and says nothing about it", "On the dev database, with no “Online and ready” in #selftest-inbox and no start card in #selftest-log: a start leaves no trace", "asked"):
         h.check(config.DEV_DATABASE and clock.shiftable(), "this is not the dev database")
+        h.check(await h.find(h.inbox, "Online and ready") is None, "“Online and ready” was posted in #selftest-inbox")
+        said = [each.all_text[:60] for each in await h.recent(h.botlog, 5)]
+        h.check(not any("Bot started" in each or "Started with a problem" in each or "unexpected stop" in each for each in said), f"#selftest-log has: {said}")
 
     async with h.step("1.01a", "The dev bot's status line and nickname during a self-test", "The status line says how far the run is: 🧪, steps done (of all, once that is known), the minutes left, and ❌ with a count once a step has failed. The nickname ends “· testing”", "attention spec, part 2"):
         import re

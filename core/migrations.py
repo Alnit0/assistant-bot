@@ -456,6 +456,12 @@ def _create_held_alerts(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX held_alerts_by_user ON held_alerts (user_id, held_at)")
 
 
+def _add_ended_to_bot_alive(conn: sqlite3.Connection) -> None:
+    # How the last run ended, when it ended by itself with an error (core/restart.py): read
+    # and cleared at the next start, which then says so once in #bot-log
+    conn.execute("ALTER TABLE bot_alive ADD COLUMN ended TEXT")
+
+
 MIGRATIONS = [
     _create_message_log,
     _create_users,
@@ -479,6 +485,7 @@ MIGRATIONS = [
     _create_bot_messages,
     _create_missed_messages,
     _create_held_alerts,
+    _add_ended_to_bot_alive,
 ]
 
 
