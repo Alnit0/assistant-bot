@@ -6,6 +6,11 @@ backfilled from the git log.
 
 ## 2026-10-13
 
+- Pills, looking back: "what did I take yesterday?", "show my week",
+  and a streak in days in the briefing's pills section. A weekly
+  summary on Sunday evening, switched off until you turn it on
+  (`WEEKLY_SUMMARY`).
+
 - Pills: a pill can be taken on certain days of the week ("weekdays
   only", "Mon Wed Fri"), and "took zinc last night at 11" after
   midnight logs yesterday's dose (asking first when the day or the

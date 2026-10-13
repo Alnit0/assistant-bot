@@ -1104,6 +1104,29 @@ that belong together, inside one `database.run`, and
   time is used, or 11:59 pm for a pill with none). Only "taken" can be
   logged for yesterday, and only for the day before.
 
+### Looking back: yesterday, the week, the streak
+
+- **"What did I take yesterday?"** A reply from the record: "💊
+  **Yesterday** · Mon 12 Oct · 4 of 5 taken · 1 missed", then a line a
+  dose as the checklist words it. A pill paused, changed or removed
+  since is still shown as it was that day.
+- **"Show my week"**: the week today is in, Monday to Sunday, a line a
+  day up to today: `` `Tue 13` ✅✅❌ 2 of 3 `` (✅ taken, ⏭️ skipped, ❌
+  missed, ▫️ still to take), with the count for the week on the first
+  line and the streak on the last.
+- **The streak** is counted in days, one for all pills: a day counts
+  when something was taken and nothing was missed. Only a missed dose
+  breaks it; a skip, a pause and a day with nothing to take never do.
+  It is said from two days up ("🔥 Streak · 5 days"): in the week, in
+  the weekly summary, and in the briefing's pills section.
+- **The weekly summary** is off unless `WEEKLY_SUMMARY=true` is in
+  `.env` (then restart). On Sunday at 7:00 pm the week is posted in
+  the hub ("💊 **Your week** · …"), without a notification; a newer
+  one takes the older one's place. It is a schedule: `my schedule`
+  shows it as "Weekly pills summary" and moves it ("move the weekly
+  pills summary to 8pm", "make it notify"). A week with nothing to
+  take posts nothing.
+
 ### Mock-ups: `dev mock`
 
 A card is sketched in a text file in `docs/mockups/` and posted as a real

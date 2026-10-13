@@ -96,11 +96,17 @@ class PillsTask(Task):
         return store.MIGRATIONS
 
     def job_handlers(self):
-        return {checklist.JOB: checklist.post_job, checklist.LIMIT_JOB: self.limit_passed, reminders.JOB: reminders.remind_job}
+        return {
+            checklist.JOB: checklist.post_job, checklist.LIMIT_JOB: self.limit_passed, reminders.JOB: reminders.remind_job,
+            history.WEEK_JOB: history.week_job,
+        }
 
     def job_labels(self):
         # What each is called where I read it; a reminder's never names a pill
-        return {checklist.JOB: "pills checklist", checklist.LIMIT_JOB: "pills latest-time check", reminders.JOB: "pill reminder"}
+        return {
+            checklist.JOB: "pills checklist", checklist.LIMIT_JOB: "pills latest-time check", reminders.JOB: "pill reminder",
+            history.WEEK_JOB: history.WEEK_LABEL,
+        }
 
     async def limit_passed(self, job):
         # A pill's latest time has passed: the checklist closes what is left, and no reminder outlives it
@@ -133,6 +139,7 @@ class PillsTask(Task):
         checklist.register()
         sheet.register()
         reminders.register()
+        history.register()
 
     async def summary(self, user_id, day):
         return await pills_summary.summary(user_id, day)

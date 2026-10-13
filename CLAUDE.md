@@ -290,6 +290,12 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   (`Schedule.days`, `rules.is_taken_on`): no dose is expected on its
   other days, and it is listed under the checklist with its days ("Not
   today"), never counted. The days come as a list (`weekdays`)
+- Looking back is read from the occurrence log and writes nothing
+  (`tasks/pills/history.py`): a day that is over, the week (Monday to
+  Sunday), and the streak, counted in days, one for all pills, broken
+  only by a missed dose, shown from two days up. The weekly summary is
+  behind `WEEKLY_SUMMARY`: a schedule (Sunday 7:00 pm, the hub), never
+  a job of the task's own
 - Reminders (`tasks/pills/reminders.py`) are behind `REMINDERS_ENABLED`:
   off, nothing is ever sent. What notifies never names a pill: the
   message is posted as the neutral line and the pill is written in

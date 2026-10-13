@@ -7,7 +7,7 @@ from core.actions import BOOLEAN, INTEGER, ITEMS, LAST, LIST, MINUTES, TIME, TIM
 from core.actions import EACH_DAY, SEE, SET_UP, flag, is_guessed
 from core.actions import is_reference, point_at
 from core.errors import UserError
-from tasks.pills import checklist, rules, store, today
+from tasks.pills import checklist, history, rules, store, today
 from tasks.pills import doses as limits
 from tasks.pills.store import DOSE
 from tasks.pills.today import Dose
@@ -1711,6 +1711,17 @@ ACTIONS = (
         run=show_today,
         purpose=SEE,
         say=("what's left to take today?",),
+    ),
+    Action(
+        "pill_history",
+        "The user asks what they took on a day that is over, or how the week went (\"what did I take yesterday?\", "
+        "\"did I take everything yesterday?\" -> period yesterday; \"show my week\", \"how did I do this week?\", "
+        "\"my pills this week\" -> period week). Not for today: that is pill_today.",
+        (Field("period", "Which stretch of time: yesterday, or the week.", choices=(history.YESTERDAY, history.WEEK), required=True),),
+        needs_card=False,
+        run=history.show,
+        purpose=SEE,
+        say=("what did I take yesterday?", "show my week"),
     ),
     Action(
         "pill_list",

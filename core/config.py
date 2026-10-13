@@ -236,6 +236,9 @@ REMINDERS_ENABLED = flag(os.getenv("REMINDERS_ENABLED"), False)
 # The briefing (tasks/briefing): one card a day in the hub that says what today holds, kept up
 # to date in place, and "brief me". Off unless set: off, nothing of it exists
 BRIEFING_ENABLED = flag(os.getenv("BRIEFING_ENABLED"), False)
+# The weekly pills summary (tasks/pills/history.py): on Sunday evening the week is posted
+# in the hub. Off unless switched on
+WEEKLY_SUMMARY = flag(os.getenv("WEEKLY_SUMMARY"), False)
 # The nightly self-test (core/nightly.py): at 3:00 am live starts a self-test as the dev
 # bot. Off unless switched on
 NIGHTLY_SELFTEST = flag(os.getenv("NIGHTLY_SELFTEST"), False)

@@ -599,6 +599,20 @@ async def p2(h: Harness) -> None:
         h.check((await h.doses()).get(("Otherpill", 1)) == PENDING, f"today's Otherpill is {(await h.doses()).get(('Otherpill', 1))}")
         h.saw(said.text.splitlines()[0][:140])
 
+    async with h.step("2.12c", "“what did I take yesterday?”", "A reply from the record: “Yesterday”, the date, the count, and a line a dose, with Otherpill taken at 11:00 pm", "asked 2026-10-13 (stage 4)"):
+        await h.say("what did I take yesterday?", canned=("pill_history", {"period": "yesterday", "guessed": [], "not_included": []}))
+        said = await h.find(h.inbox, "Yesterday", "taken")
+        h.check(said is not None and "**Yesterday**" in said.text and " of " in said.text.splitlines()[0], f"the reply: {[each.text[:100] for each in await h.recent(h.inbox, 2) if each.id not in h.typed]}")
+        h.check("Otherpill" in said.text and "11:00 pm" in said.text, f"it does not show last night's dose: {said.text[:300]}")
+        h.saw(said.text.splitlines()[0][:140])
+
+    async with h.step("2.12d", "“show my week”", "The week so far, a line a day up to today with a mark a dose, and the count for the week", "asked 2026-10-13 (stage 4)"):
+        await h.say("show my week", canned=("pill_history", {"period": "week", "guessed": [], "not_included": []}))
+        said = await h.find(h.inbox, "This week")
+        h.check(said is not None and " taken" in said.text.splitlines()[0], f"the reply: {[each.text[:100] for each in await h.recent(h.inbox, 2) if each.id not in h.typed]}")
+        h.check(len(said.text.splitlines()) >= 2 and any(mark in said.text for mark in ("✅", "❌")), f"no line for a day: {said.text[:300]}")
+        h.saw(" / ".join(said.text.splitlines()[:3])[:200])
+
     async with h.step("2.13", "6:00 am the next day: a fresh checklist", "A new message for the new day with every dose still to take; one checklist for today", "asked; 23"):
         await h.clock_to(6, 0, 5)
         sheets = await held(h, "checklist")
@@ -1061,6 +1075,18 @@ async def p5(h: Harness) -> None:
         shown = await h.find(h.inbox, "My schedule")
         h.check(shown is not None and "**Morning routine** · every day at `6:00 am`" in shown.text, f"the list: {shown.text[:300] if shown else 'nothing'}")
         h.check("1. briefing" in shown.text and "2. pills checklist" in shown.text, f"its steps: {shown.text[:400]}")
+
+    async with h.step("5.06b", "With WEEKLY_SUMMARY on: its schedule, and the summary when it runs", "A schedule “Weekly pills summary”, Sunday at 7:00 pm in the hub, silent. Run now, it posts the week in the hub: “Your week”, the count, a line a day", "asked 2026-10-13 (stage 4)"):
+        from tasks.pills import history
+
+        h.check(config.WEEKLY_SUMMARY, "WEEKLY_SUMMARY is not on in this start")
+        weekly = await schedule_named(h, "Weekly pills summary")
+        h.check(weekly is not None and (f"{weekly.at:%H:%M}", weekly.days, weekly.notify, weekly.channel) == ("19:00", (6,), "silent", "hub"), f"the schedule is {weekly}")
+        await scheduler.run_now("pills", history.WEEK_JOB)
+        await h.settle(2)
+        posted = await h.find(h.hub, "Your week")
+        h.check(posted is not None and " taken" in posted.text.splitlines()[0] and posted.silent, f"the hub has: {[each.text[:60] for each in await h.recent(h.hub, 4)]}")
+        h.saw(posted.text.splitlines()[0][:140])
 
     async with h.step("5.07", "The next morning at 6:00: the routine again", "A new briefing, then the checklist under it; yesterday's briefing is gone; one briefing in the hub; the line about yesterday counts the dose ticked off at 5.04", "scheduler stage 3"):
         old = h.memo["briefing_hub"]

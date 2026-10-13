@@ -3,7 +3,7 @@ from datetime import date, timedelta
 from core import design, occurrences, timeinput
 from core.actions import Summary
 from core.occurrences import DONE, MISSED, SKIPPED
-from tasks.pills import checklist, sheet, today
+from tasks.pills import checklist, history, sheet, today
 from tasks.pills.today import TASK, Dose
 
 # ---------------------------------------------------------------------------
@@ -69,5 +69,7 @@ async def summary(user_id: int, day: date) -> Summary | None:
         return None
     before = yesterday(await occurrences.for_day(user_id, TASK, day - timedelta(days=1)))
     glance = sheet.title(listed).partition(" · ")[2]  # the checklist's own count: "2 of 6 taken"
-    lines = tuple(line for line in (next_line(listed),) if line)
+    # The streak, in days, one for all pills: said from two days up (tasks/pills/history.py)
+    streak = history.streak_line(await history.streak_days(user_id, day))
+    lines = tuple(line for line in (next_line(listed), streak) if line)
     return Summary(glance=glance, status=status(listed), lines=lines, hint=any_time(listed), before=before)

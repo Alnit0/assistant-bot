@@ -50,6 +50,24 @@ against the bug's own record, not only the list of numbers).
   "last night at 11" is logged without the missed-dose card, though
   that dose is by then marked missed.
 
+- **History, the streak and the weekly summary** (stage 4, the
+  summary behind `WEEKLY_SUMMARY`, off; to turn it on:
+  `WEEKLY_SUMMARY=true` in `.env`, restart live). Decided without
+  you, all of it things you see, so say what to change:
+  - **The week is Monday to Sunday**, the one today is in, for "show
+    my week" and for the summary alike (not the last seven days).
+  - **The summary is Sunday at 7:00 pm**, in the hub, silent. Move it
+    with `my schedule`.
+  - **The streak is said from two days up**, as "🔥 Streak · 5 days",
+    as a line of the briefing's pills section, at the end of the week
+    and in the summary. The briefing spec had said no streak in the
+    briefing; you asked for it there now, so it is there.
+  - **A day's line in the week** is `` `Tue 13` ✅✅❌ 2 of 3 ``: one
+    mark a dose, in the pills' own order, without their names.
+  - Only **yesterday** and **the week** can be asked for; "what did I
+    take on Monday" is not built. No history for one pill alone, and no
+    streak a pill ("one a pill later in history" was the earlier plan).
+
 **From the two bots (2026-10-13):**
 
 - **The self-test's channels are found only by the ids in `.env.dev`**
