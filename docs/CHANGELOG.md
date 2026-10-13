@@ -6,6 +6,10 @@ backfilled from the git log.
 
 ## 2026-10-13
 
+- Design options to look at on your phone: two or three sketches of
+  each main card, posted by the dev bot in its forum. Nothing in the
+  real cards changes until you pick.
+
 - With `CARDS_V2` on, more is drawn in the new look: the list of your
   pills, yesterday and the week, the weekly summary, the open bugs,
   the "I was offline" card and the "which task?" question.

@@ -728,3 +728,42 @@ def test_the_report_is_masked_when_it_is_written(tmp_path, monkeypatch):
     written = path.read_text(encoding="utf-8")
     assert "Kappa" not in written and str(live_id) not in written and "posted by live, id …0001" in written
     assert report.names_in_log(tmp_path / "missing.log") == {}
+
+
+# --- the design options (stage 6): sketches only, posted for a look on the phone ------------------------------------
+def test_every_design_option_is_a_sketch_discord_would_take_and_a_of_each_is_there():
+    from selftest import options
+
+    found = options.checked()
+    names = [name for name, _, _, _ in found]
+    by_card = {card: [name for name in names if name.rsplit("-", 1)[0] == card] for card in options.CARDS}
+    assert all(2 <= len(mine) <= 3 and mine[0].endswith("-a") for mine in by_card.values()), f"two or three of each, A first: {by_card}"
+    assert names == [name for card in options.CARDS for name in by_card[card]], "posted card by card, in the order of their letters"
+    assert sorted(path.stem for path in options.FOLDER.glob("*.txt")) == sorted(names), "every sketch in the folder is listed, and nothing else is"
+    for name, label, differs, pieces in found:
+        assert label.count(" · ") == 1 and label.split(" · ")[1] == name[-1].upper() and differs, (name, label)
+    from tasks.dev import mock
+
+    assert not set(names) & set(mock.names()), "they are not among the sketches `dev mock` lists, so the self-test does not post them every run"
+
+
+def test_the_summary_lists_every_option_and_says_how_to_pick_and_fits_one_message():
+    from selftest import options
+
+    said, each_one = options.summary(options.listed()), options.catalogue(options.listed())
+    assert len(said) <= 2000 and len(each_one) <= 2000, f"{len(said)} and {len(each_one)} characters: Discord takes 2,000 a message"
+    assert said.startswith("**Design options** · sketches only: nothing in the real cards changes until you pick.")
+    assert f"{len(options.listed())} sketches of 5 cards" in said
+    for _, label, differs in options.listed():
+        assert f"- **{label.split(' · ')[1]}** · {differs}" in each_one
+    assert "`checklist B, reminder A, briefing B, confirm A, question C`" in said
+    assert options.label_line("Checklist · B", "grouped") == "### Checklist · B\n-# grouped"
+
+
+def test_the_options_are_only_ever_posted_as_the_dev_bot(monkeypatch):
+    from selftest import options
+
+    monkeypatch.setattr(options.config, "test_bot_token", lambda: None)
+    with pytest.raises(SystemExit) as stopped:
+        run(options.post(datetime(2026, 10, 13)))
+    assert "There is no dev bot" in str(stopped.value) and "nothing posted" in str(stopped.value)

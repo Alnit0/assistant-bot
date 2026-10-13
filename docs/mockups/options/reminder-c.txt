@@ -1,0 +1,8 @@
+💊 Routine due · 11:12 am
+
+┃ accent: amber
+┃ **Pill A** · ●○○
+┃ **Take by** `12:50 pm` · due `11:12 am`
+┃ -# dose 2 of 3 · with food · dose 3 still fits if taken by then
+┃ [✅ Taken: green] [🕐 Taken at…: blurple] [⏰ Snooze 15m: blurple] [⏭️ Skip: blurple]
+-# 🧪 Reminder · C · with the day at a glance: the dose marks (●○○) beside the name, and the take-by time as the main line when there is one

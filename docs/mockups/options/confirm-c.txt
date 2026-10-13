@@ -1,0 +1,19 @@
+┃ accent: blurple
+┃ ## 💊 Pills · change
+┃ ---
+┃ **Pill A** · schedule
+┃ -# was daily at 8:00 pm
+┃ daily at `9:00 pm`
+┃ **Pill A** · notes ❓
+┃ -# was with food
+┃ with no food within 30 minutes
+┃ ---
+┃ **Pill B** ❓ · dose
+┃ -# was 1 tablet
+┃ 2 tablets
+┃ ---
+┃ -# ⚠️ Not included: “and the other one”
+┃ [✅ Save: green] [↩️ Cancel: grey]
+
+-# ❓ marks a guess · reply to this card to change it
+-# 🧪 Confirm card · C · old and new on lines of their own: the new value stands out, the old one is small above it

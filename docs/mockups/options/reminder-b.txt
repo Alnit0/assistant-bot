@@ -1,0 +1,8 @@
+💊 Routine due · 11:12 am
+
+┃ accent: amber
+┃ **Pill A** · dose 2 of 3 · `11:12 am`
+┃ -# with food
+┃ [✅ Taken: green] [⏰ Snooze 15m: blurple]
+┃ [🕐 Taken at…: blurple] [⏭️ Skip: blurple]
+-# 🧪 Reminder · B · short: the pill and its note only, with the two main buttons first and the two others on a second row (bigger targets on a phone)

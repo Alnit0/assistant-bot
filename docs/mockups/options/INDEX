@@ -1,0 +1,16 @@
+# One line a sketch: its file, its label, and what is different about it. Read by selftest/options.py
+checklist-a | Checklist · A | as it is now: a box a pill, in the colour of what is still to do, with its buttons inside
+checklist-b | Checklist · B | grouped: one box for what is due, one for any time, one for what is done. Shorter; buttons only for the next dose of each group
+checklist-c | Checklist · C | next first: the one dose to take now is a box of its own at the top with its buttons; everything else is lines under it
+reminder-a | Reminder · A | as it is now: the neutral line, then a box with the pill, when it is due and why, its note, and four buttons in one row
+reminder-b | Reminder · B | short: the pill and its note only, with the two main buttons first and the two others on a second row (bigger targets on a phone)
+reminder-c | Reminder · C | with the day at a glance: the dose marks (●○○) beside the name, and the take-by time as the main line when there is one
+briefing-a | Briefing · A | as it is now: a box a task, in the colour of its status
+briefing-b | Briefing · B | one box for the whole day: a line a task, the detail in small text under it
+briefing-c | Briefing · C | no boxes: plain lines with a separator between tasks. The lightest; no colour for a task's status
+confirm-a | Confirm card · A | as it is now: one blurple box for the whole card, a separator between things, the buttons at the bottom of it
+confirm-b | Confirm card · B | a box a thing: each pill in its own box, and the warning and the buttons in a last box of their own
+confirm-c | Confirm card · C | old and new on lines of their own: the new value stands out, the old one is small above it
+question-a | Question card · A | as it is now: what was understood, a separator, then the question in bold and an answer a button
+question-b | Question card · B | the question first: it is the heading of the card, and what was understood is small text under it
+question-c | Question card · C | the answers as the main thing: one button a row, each a whole line to tap, Cancel last

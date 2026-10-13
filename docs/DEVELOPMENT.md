@@ -1596,6 +1596,17 @@ asks Claude nothing, and is in the task's own words; the icon and the name come
 from the task. Call `summaries.changed(self.name, user_id)` whenever it
 may read differently. No briefing code changes.
 
+## Design options on your phone
+
+`python -m selftest.options` posts the sketches of
+`docs/mockups/options/` as the dev bot, over HTTP only (no bot is
+started, live is not touched): a new post "🎨 Design options · <date>"
+in the dev bot's forum, with a summary first, then each sketch under
+its label. `--check` only reads them. A sketch is a text file in the
+format `dev mock` reads; `INDEX` in that folder lists each with its
+label and what is different. To add a variant, add its file and its
+line there. Reply in the post with a letter for each card.
+
 ## The new look for a card of your task
 
 With `CARDS_V2=true` a `Card` that carries a `layout` is drawn as

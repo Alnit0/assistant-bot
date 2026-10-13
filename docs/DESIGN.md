@@ -212,6 +212,18 @@ button counts) and 4,000 characters; a row takes 5 buttons. So:
   as a layout (`cards._drawn`), so switching `CARDS_V2` off again is
   safe
 
+## Options to pick from
+
+`docs/mockups/options/` holds two or three sketched variants of each
+main card (the checklist, the reminder, the briefing, the confirm
+card, the question card). Option A of each is the card as it is built;
+the others try one idea each (grouped, next first, shorter, the
+question first…). `python -m selftest.options` posts them, as the dev
+bot, in a post of its forum called "🎨 Design options", each under a
+line saying which it is and what differs, with a summary to answer
+with picks. They are sketches: nothing in a real card changes until a
+pick is made and built.
+
 ## The sketches
 
 | Sketch | Shows |

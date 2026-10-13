@@ -1,0 +1,16 @@
+# ☀️ Today
+-# Wednesday 14 October
+
+┃ accent: amber
+┃ 💊 **Pills** · 2 of 6 taken
+┃ **Next:** Pill A, dose 2 · `12:00 pm`
+┃ 🔥 Streak · 5 days
+┃ -# 1 to take any time
+┃ -# Yesterday: 5 of 6 taken · 1 missed
+
+┃ accent: grey
+┃ 🏋️ **Gym**
+┃ -# (a task still to come: shown here only to see the shape)
+
+-# always up to date · tick things off on their own message · say “my schedule” to change when this is posted
+-# 🧪 Briefing · A · as it is now: a box a task, in the colour of its status

@@ -1,0 +1,12 @@
+┃ accent: blurple
+┃ ## 💊 Pills · new
+┃ **Iron** · daily at ❔
+┃ -# with food
+┃ ---
+┃ **Is that 8 in the morning or the evening?**
+┃ [8:00 am: blurple]
+┃ [8:00 pm: blurple]
+┃ [↩️ Cancel: grey]
+
+-# or type your answer
+-# 🧪 Question card · C · the answers as the main thing: one button a row, each a whole line to tap, Cancel last

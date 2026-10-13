@@ -1,0 +1,18 @@
+## 💊 Pills · change
+-# 2 pills
+
+┃ accent: blurple
+┃ **Pill A**
+┃ schedule · daily at `8:00 pm` → daily at `9:00 pm`
+┃ notes · with food → with no food within 30 minutes ❓
+
+┃ accent: blurple
+┃ **Pill B** ❓
+┃ dose · 1 tablet → 2 tablets
+
+┃ accent: blurple
+┃ -# ⚠️ Not included: “and the other one”
+┃ [✅ Save: green] [↩️ Cancel: grey]
+
+-# ❓ marks a guess · reply to this card to change it
+-# 🧪 Confirm card · B · a box a thing: each pill in its own box, and the warning and the buttons in a last box of their own
