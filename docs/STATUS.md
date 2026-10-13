@@ -24,40 +24,36 @@ against the bug's own record, not only the list of numbers).
   created. A missing id or a deleted channel stops the run with a
   message. `--remove` deletes the four channels and leaves the
   category.
-- **A self-test ran as Tanuki beside live for eight minutes** (16:32
+- **A self-test ran as live's account beside live for eight minutes** (16:32
   to 16:40): its starts inherited live's token from the launcher.
   Nothing reached a real channel and live handled nothing in that
   time; the nickname it changed is put back. Fixed, with a hard guard:
   every start checks its account against `BOT_USER_ID` before the
   lock, and exits untouched if it is the wrong one (`core/account.py`).
-- **`BOT_USER_ID` is now needed in `.env`** (I added Tanuki's id, and
-  Testu's to `.env.dev`): a start without it does not start. If the
-  service ever exits with code 4 it is this check; `nssm set
-  assistant-bot AppExit 4 Exit` stops the service retrying on it (not
-  set: say if you want it).
-- **The dev bot has a forum of its own, #selftest-bugs**, which I
-  made in the selftest category: you said it must never post in your
-  real channels, and the self-test's bugs (D numbers) need a forum.
-  They go there now, not in #bugs. Say if you would rather have them
-  in #bugs (then `BUGS_CHANNEL_ID` in `.env.dev` is that forum).
-- **Live no longer acts in the selftest channels** (they are the dev
-  bot's), so that two bots never answer one message. Anything you type
-  there is for the dev bot, when it is running.
-- **The dev bot adds its own slash commands** to the server beside
-  live's (Discord shows which bot each belongs to). Say if they should
-  not be registered for it.
+- **`BOT_USER_ID` is now needed in `.env`** (I added live's id, and
+  the dev bot's to `.env.dev`): a start without it does not start. If
+  the service ever exits with code 4 it is this check, and the service
+  does not retry on it (`AppExit 4 Exit`, set 2026-10-13).
+- **Live no longer acts in the dev bot's channels**, so that two bots
+  never answer one message. Anything you type there is for the dev
+  bot, when it is running.
 - **The dev bot has no name of its own**: `ASSISTANT_NAME` is empty in
-  `.env.dev`, so it calls itself what live does. Its Discord name and
-  the "· DEV" on its nickname tell them apart.
-- **The offline card has no new-look version**: it is a plain message
-  with two buttons, whatever `CARDS_V2` says. Say if you want it drawn
-  like the other cards.
+  `.env.dev`, so it calls itself what live does. In Discord the "· DEV"
+  on its nickname tells them apart.
 - **The status "🧪 Self-test running · back about <time>"** is shown
   only in the fallback (no dev bot), by the self-test's own bot on
   live's account, since a stopped bot has no status. With the dev bot
   live is never stopped, so you will not normally see it.
 - **Reactions made while live was off are not read back**, only
   messages. In the backlog already ("lost reactions").
+
+Answered on 2026-10-13, the two bots: the service does not retry
+after a wrong-account exit (`AppExit 4 Exit`, set); the dev bot's bug
+forum stays separate; the dev bot registers no slash commands (built,
+and the two it had registered are removed); the offline card's plain
+look is fine for now and follows `CARDS_V2` later (in the backlog);
+the bots are "live" and "the dev bot" everywhere, never a display
+name.
 
 **From the scheduler build (2026-10-13):**
 

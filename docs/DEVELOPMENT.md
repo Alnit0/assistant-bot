@@ -1265,8 +1265,8 @@ run at the same time, from this one folder.
 - **Every start proves which bot it is, first.** Before the lock, the
   database or the gateway, a start asks Discord (over HTTP, so the
   account does not even come online) which account its token belongs
-  to, and compares that with `BOT_USER_ID`: Tanuki's id in `.env`,
-  Testu's in `.env.dev`. Not that account, or no id set: it logs why
+  to, and compares that with `BOT_USER_ID`: live's id in `.env`,
+  the dev bot's in `.env.dev`. Not that account, or no id set: it logs why
   ("Not started: this start is meant to be … but its token logs in as
   …") and exits with code 4, having posted, renamed and touched
   nothing. Once connected it looks once more and disconnects at once
@@ -1275,8 +1275,8 @@ run at the same time, from this one folder.
   for the right account.
 - **Which bot a process is follows the token it will really use**, not
   what the files say, and the self-test's launcher hands each start
-  Testu's token explicitly, in an environment with nothing of live's in
-  it. (On 2026-10-13 a self-test ran as Tanuki beside live for eight
+  the dev bot's token explicitly, in an environment with nothing of live's in
+  it. (On 2026-10-13 a self-test ran as live's account beside live for eight
   minutes: its starts had inherited live's token from the launcher,
   which had read `.env`. Nothing reached a real channel; the guard
   above is what now makes that impossible.)
@@ -1301,8 +1301,12 @@ run at the same time, from this one folder.
   Developer Portal, a second application with a bot, the Message
   Content and Server Members intents switched on, invited to the
   server; its token in `.env.dev`.
-- **It adds its own slash commands** to the server, beside live's:
-  Discord shows each with the bot it belongs to.
+- **It registers no slash commands**, so the server shows only
+  live's. (Each start of the dev bot also clears any it once had.)
+  Typed words, replies and reactions work for it as for live.
+- **The names**: in code, docs and messages they are "live" and "the
+  dev bot", never a display name: rename them in Discord as you like.
+  Which is which is the account id (`BOT_USER_ID`).
 - **Typing to the dev bot by hand**: start `python main.py --dev` and
   write in #selftest-inbox. Live does not answer there. The self-test
   empties those channels at the start of every run.

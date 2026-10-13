@@ -396,16 +396,20 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   --dev` is the dev bot while `.env.dev` has its own token, and live's
   own account on another database (so never beside live) when it has
   not
-- The two bots are **Tanuki** (live) and **Testu** (the dev bot); say
-  "Testu" or "the dev bot", never "the test bot". Every start asks
+- The two bots are **live** and **the dev bot**. Call them that in
+  code, docs and messages, never by a display name (I rename bots in
+  Discord freely) and never "the test bot": an account is told apart
+  by its id (`BOT_USER_ID`), not its name. Every start asks
   Discord who its token is before anything else (`core/account.py`)
   and exits, having touched nothing, unless it is the account in
-  `BOT_USER_ID` (`.env` for live, `.env.dev` for Testu); the lock is
+  `BOT_USER_ID` (`.env` for live, `.env.dev` for the dev bot); the lock is
   taken only after that. Never weaken that check. A process that
   starts a bot gives it `config.environment_for_child()`, never its
   own environment, which holds live's token. When a self-test starts,
   read its "logged in as" line in the first seconds: if it does not
-  name Testu, stop it at once
+  say "the dev bot" with the dev bot's id, stop it at once. The dev
+  bot registers no slash commands, and its bugs have a forum of their
+  own
 - Two bots in one server both see everything: each acts only in its own
   channels (`config.mine`). The dev bot takes no channel from `.env`,
   only what `.env.dev` names (the self-test's channels); live leaves

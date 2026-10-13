@@ -5,6 +5,7 @@ import discord
 from discord import app_commands
 
 from core import account, backup, cards, clock, conversation, database, day, devmode, identity, instance_lock, interactions, lifecycle, live, messages, missed, restart, scheduler, tidy, timing
+from core.config import SEPARATE_BOT
 from core.config import mine as my_channel
 from core.config import (
     CLAUDE_MODEL,
@@ -69,7 +70,9 @@ async def setup_slash_commands() -> str:
         return "not synced (inbox channel not found)"
     guild = channel.guild
 
-    for command in registry.app_commands():
+    # The dev bot registers none: the server shows only live's. Its empty list is still
+    # sent, so any it registered on an earlier start go
+    for command in slash_commands_for(SEPARATE_BOT, registry.app_commands()):
         tree.add_command(command, guild=guild)
     try:
         # Replaces whatever was there before, so commands of disabled tasks disappear
@@ -78,8 +81,17 @@ async def setup_slash_commands() -> str:
         log.exception("Could not sync slash commands")
         await log_error("Slash command sync failed", str(error))
         return "sync failed (see the error card)"
+    if SEPARATE_BOT:
+        log.info("Slash commands: none registered (the dev bot has none; any it had in %s are removed)", guild.name)
+        return "none: the dev bot registers no slash commands"
     log.info("Slash commands synced to %s: %s", guild.name, len(synced))
     return f"{len(synced)} synced to {guild.name}"
+
+
+def slash_commands_for(dev_bot: bool, commands: list) -> list:
+    """The slash commands and context menus this bot registers with the server:
+    the tasks' own for live, none for the dev bot."""
+    return [] if dev_bot else list(commands)
 
 
 @tree.error

@@ -43,6 +43,8 @@ low priority, nothing dropped without a reason.
 
 ### Soon
 
+- **The offline card in the new look** ("I was offline when you sent
+  this"): plain for now, to follow `CARDS_V2` (said 2026-10-13).
 - **A routine's steps by words** (asked 2026-10-13, later): change
   their order, and take a step out. Today the steps and their order
   come from the code (tidy, briefing, checklist).

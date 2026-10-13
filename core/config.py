@@ -124,7 +124,7 @@ def test_bot_token() -> str | None:
     return _TEST_BOT.get("DISCORD_TOKEN") or None
 
 TOKEN = os.getenv("DISCORD_TOKEN")
-# The account this start is meant to log in as: Tanuki's id in .env, Testu's in .env.dev.
+# The account this start is meant to log in as: live's id in .env, the dev bot's in .env.dev.
 # Checked against Discord before the lock is taken (core/account.py). For the dev bot it is
 # only ever .env.dev's: live's id from .env would be the wrong answer, and is not taken
 _BOT_USER_ID = ((_TEST_BOT.get("BOT_USER_ID") or "") if SEPARATE_BOT else (os.getenv("BOT_USER_ID") or "")).strip()

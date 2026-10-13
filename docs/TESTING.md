@@ -42,11 +42,11 @@ Last updated: 2026-10-13
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
 | P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
 | Q | Time, days, the schedule model, the occurrence log and cards | 25 | 23 | 2 | 2 | 23 | 0 | 0 |
-| R | Pills | 77 | 24 | 53 | 45 | 32 | 0 | 0 |
+| R | Pills | 78 | 25 | 53 | 45 | 33 | 0 | 0 |
 | S | Routing and confirm cards | 75 | 22 | 53 | 18 | 56 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 4 | 18 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **506** | **186** | **320** | **250** | **255** | **0** | **1** |
+| | **Total** | **507** | **187** | **320** | **250** | **256** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -549,6 +549,7 @@ are added with it.
 | R87 | 🤖 Auto | Two bots from one folder | A token of its own in `.env.dev` makes the dev bot a second bot; it takes no channel from `.env`; each bot acts only in its own channels and their threads; the two locks are held at once; the status counts both and neither is a stray; the self-test looks only at the dev bot's lock, and without a dev bot refuses while live runs; a self-test that stopped live says so first in the status with when live is back; the bot takes only my words in a channel that is its own | ✅ Pass | 2026-10-13 | `tests/test_two_bots.py` |
 | R88 | 👤 Manual | Block 50: messages sent while live was off | As the block says | ⬜ Untested | | Block 50 |
 | R89 | 🤖 Auto | The account is checked before anything else | Which bot a process is follows the token it will really log in with; a start is handed a clean environment and the dev bot's token explicitly; the account is asked first and the lock taken only after it passes; a wrong account, or no expected id, exits with code 4 before the lock, the database or the gateway, and logs why; Discord not answering is asked again and exits with code 1; connected as the wrong account it disconnects at once and the bot does nothing else; a real process with this machine's settings and another account's answer exits having done nothing | ✅ Pass | 2026-10-13 | `tests/test_two_bots.py` |
+| R90 | 🤖 Auto | No slash commands for the dev bot, and no display names | The dev bot registers no slash commands and live registers the tasks' own; no bot is called by a display name in code, docs or messages: they are “live” and “the dev bot” | ✅ Pass | 2026-10-13 | `tests/test_two_bots.py` |
 
 ## S. Routing and confirm cards
 

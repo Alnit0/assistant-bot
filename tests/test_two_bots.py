@@ -387,7 +387,7 @@ def test_the_launcher_hands_a_start_a_clean_environment_and_the_start_refuses_to
 # --- the hard guard: the account is checked before the lock, and a wrong one touches nothing ---------------------------
 from core import account  # noqa: E402
 
-TANUKI, TESTU = 1556, 1559
+LIVE_ID, DEV_ID = 1556, 1559
 
 
 @pytest.fixture
@@ -406,13 +406,13 @@ def test_a_start_goes_on_only_as_the_account_it_is_meant_to_be(monkeypatch):
     monkeypatch.setattr(config, "SEPARATE_BOT", False)
     monkeypatch.setattr(config, "DEV_DATABASE", False)
     monkeypatch.setattr(config, "DEV_ENV", False)
-    assert account.problem(TANUKI, TANUKI, "Tanuki#1") == ""
-    wrong = account.problem(TANUKI, TESTU, "Testu#2")
-    assert "meant to be live (Tanuki) (id 1556, BOT_USER_ID in .env)" in wrong and "logs in as Testu#2 (id 1559)" in wrong
-    assert "BOT_USER_ID is not set in .env" in account.problem(None, TANUKI), "with no expected id it can't tell, so it does not go on"
+    assert account.problem(LIVE_ID, LIVE_ID, "Live#1") == ""
+    wrong = account.problem(LIVE_ID, DEV_ID, "Dev#2")
+    assert "meant to be live (id 1556, BOT_USER_ID in .env)" in wrong and "logs in as Dev#2 (id 1559)" in wrong
+    assert "BOT_USER_ID is not set in .env" in account.problem(None, LIVE_ID), "with no expected id it can't tell, so it does not go on"
     monkeypatch.setattr(config, "SEPARATE_BOT", True)
     monkeypatch.setattr(config, "DEV_ENV", True)
-    assert "meant to be the dev bot (Testu) (id 1559, BOT_USER_ID in .env.dev)" in account.problem(TESTU, TANUKI, "Tanuki#1")
+    assert "meant to be the dev bot (id 1559, BOT_USER_ID in .env.dev)" in account.problem(DEV_ID, LIVE_ID, "Live#1")
 
 
 @pytest.fixture
@@ -428,27 +428,27 @@ def starting(monkeypatch):
     monkeypatch.setattr(main, "ensure_owner", lambda: did.append("owner"))
     monkeypatch.setattr(main.client, "run", lambda *args, **kwargs: did.append("connect"))
     monkeypatch.setattr(account, "WAIT_SECONDS", 0)
-    monkeypatch.setattr(config, "EXPECTED_BOT_ID", TANUKI)
+    monkeypatch.setattr(config, "EXPECTED_BOT_ID", LIVE_ID)
     return main, did
 
 
 def test_the_account_is_checked_first_and_the_lock_is_taken_only_after_it_passes(starting, monkeypatch):
     main, did = starting
-    monkeypatch.setattr(account, "_ask", lambda token: did.append("who am I") or (TANUKI, "Tanuki#1"))
+    monkeypatch.setattr(account, "_ask", lambda token: did.append("who am I") or (LIVE_ID, "Live#1"))
     main.start()
     assert did == ["who am I", "lock", "tasks", "database", "owner", "connect"]
 
 
 def test_a_start_on_the_wrong_account_exits_before_the_lock_the_database_or_the_gateway(starting, monkeypatch, said):
     main, did = starting
-    monkeypatch.setattr(account, "_ask", lambda token: (TESTU, "Testu#2"))
+    monkeypatch.setattr(account, "_ask", lambda token: (DEV_ID, "Dev#2"))
     with pytest.raises(SystemExit) as stopped:
         main.start()
     assert stopped.value.code == account.EXIT_WRONG_ACCOUNT == 4 and did == [], "nothing after the check happened: no lock, no database, no connection"
-    assert "Not started" in said[-1] and "logs in as Testu#2" in said[-1] and "the lock was not taken" in said[-1], "and it logs why"
+    assert "Not started" in said[-1] and "logs in as Dev#2" in said[-1] and "the lock was not taken" in said[-1], "and it logs why"
 
     monkeypatch.setattr(config, "EXPECTED_BOT_ID", None)
-    monkeypatch.setattr(account, "_ask", lambda token: did.append("asked") or (TANUKI, "Tanuki#1"))
+    monkeypatch.setattr(account, "_ask", lambda token: did.append("asked") or (LIVE_ID, "Live#1"))
     with pytest.raises(SystemExit) as stopped:
         main.start()
     assert stopped.value.code == 4 and did == [], "no expected id set: it does not start, and does not even ask"
@@ -474,16 +474,16 @@ def test_connected_as_the_wrong_account_it_disconnects_at_once_and_does_nothing_
     did = []
 
     class Client:
-        user = SimpleNamespace(id=TESTU, __str__=lambda self: "Testu#2")
+        user = SimpleNamespace(id=DEV_ID, __str__=lambda self: "Dev#2")
 
         async def close(self):
             did.append("disconnected")
 
-    monkeypatch.setattr(config, "EXPECTED_BOT_ID", TANUKI)
+    monkeypatch.setattr(config, "EXPECTED_BOT_ID", LIVE_ID)
     monkeypatch.setattr(account, "_leave", lambda: did.append("exit"))
     assert run(account.still_right(Client())) is False and did == ["disconnected", "exit"]
     assert said[-1].startswith("Disconnecting: ") and "Nothing was posted, renamed or changed" in said[-1]
-    monkeypatch.setattr(config, "EXPECTED_BOT_ID", TESTU)
+    monkeypatch.setattr(config, "EXPECTED_BOT_ID", DEV_ID)
     assert run(account.still_right(Client())) is True and did == ["disconnected", "exit"]
 
     # And the bot's own on_ready stops there: no slash commands, no tasks started, no nickname, no message
@@ -500,7 +500,7 @@ def test_connected_as_the_wrong_account_it_disconnects_at_once_and_does_nothing_
     monkeypatch.setattr(main.registry, "startup", must_not)
     monkeypatch.setattr(main.identity, "start", must_not)
     monkeypatch.setattr(main.scheduler, "start", must_not)
-    monkeypatch.setattr(main, "client", SimpleNamespace(user=SimpleNamespace(id=TESTU), get_channel=must_not))
+    monkeypatch.setattr(main, "client", SimpleNamespace(user=SimpleNamespace(id=DEV_ID), get_channel=must_not))
     run(main.on_ready())
     assert did[-1] == "checked"
 
@@ -521,7 +521,7 @@ def test_a_real_start_as_the_dev_bot_with_another_account_s_answer_exits_having_
         "import main\n"
         "did = []\n"
         "main.setup_logging = lambda: None\n"
-        "account._ask = lambda token: (config.EXPECTED_BOT_ID + 1, 'Tanuki#1')\n"
+        "account._ask = lambda token: (config.EXPECTED_BOT_ID + 1, 'Live#1')\n"
         "instance_lock.acquire = lambda *a: did.append('lock')\n"
         "main.instance_lock.acquire = instance_lock.acquire\n"
         "main.migrate = lambda *a: did.append('database')\n"
@@ -533,3 +533,28 @@ def test_a_real_start_as_the_dev_bot_with_another_account_s_answer_exits_having_
     )
     done = subprocess.run([sys.executable, "-c", code, "--dev"], cwd=config.BASE_DIR, env=env, capture_output=True, text=True, timeout=90)
     assert done.stdout.strip().endswith("exit 4 [] True"), done.stdout + done.stderr[-600:]
+
+
+def test_the_dev_bot_registers_no_slash_commands_and_live_registers_the_tasks_own():
+    import main
+
+    commands = [SimpleNamespace(name="timer"), SimpleNamespace(name="Archive")]
+    assert main.slash_commands_for(False, commands) == commands
+    assert main.slash_commands_for(True, commands) == [], "the server shows only live's"
+
+
+def test_no_bot_is_called_by_a_display_name_anywhere_a_person_reads():
+    """Bots are renamed in Discord freely: they are "live" and "the dev bot", and an id tells them apart."""
+    import re
+
+    names = re.compile("|".join(("Tan" + "uki", "Tes" + "tu", "Tsuk" + "umo")))
+    found = []
+    for folder, patterns in ((".", ("*.md", "*.py", "*.example")), ("core", ("*.py",)), ("tasks", ("**/*.py",)), ("selftest", ("*.py",)), ("docs", ("*.md",)), ("scripts", ("*.ps1",)), ("tests", ("*.py",))):
+        for pattern in patterns:
+            for path in (config.BASE_DIR / folder).glob(pattern):
+                if "specs" in path.parts or path.name == "SELFTEST.md":
+                    continue  # private, or written by a run: it quotes what Discord answered
+                if names.search(path.read_text(encoding="utf-8", errors="replace")):
+                    found.append(str(path.relative_to(config.BASE_DIR)))
+    assert found == [], f"a display name is written in: {found}"
+    assert account.mode() in ("live", "the dev bot", "live's account on the dev database")

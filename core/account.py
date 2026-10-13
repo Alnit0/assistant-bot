@@ -13,7 +13,8 @@ log = logging.getLogger("assistant")
 # ---------------------------------------------------------------------------
 # Is this the account it is meant to be?
 #
-# There are two bots: live (Tanuki) and the dev bot (Testu). A start that
+# There are two bots: live and the dev bot. They are told apart by their
+# account ids, never by a name (a bot is renamed in Discord freely). A start that
 # logged in as the wrong one would answer as it, rename it and write to the
 # wrong database's channels (it happened on 2026-10-13: a self-test ran as
 # live, beside live). So every start asks Discord who its token is, over HTTP
@@ -33,8 +34,8 @@ WAIT_SECONDS = 5
 def mode() -> str:
     """Which bot this start is meant to be, in words."""
     if config.SEPARATE_BOT:
-        return "the dev bot (Testu)"
-    return "live's account on the dev database" if config.DEV_DATABASE else "live (Tanuki)"
+        return "the dev bot"
+    return "live's account on the dev database" if config.DEV_DATABASE else "live"
 
 
 def settings_file() -> str:
