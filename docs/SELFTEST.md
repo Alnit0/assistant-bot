@@ -8,13 +8,15 @@ the bot posts, edits and deletes is real, and is read back from Discord and
 from the database before a step passes. How it works and what it can't
 see: `docs/DEVELOPMENT.md`, "The self-test".
 
-**Run:** 2026-10-13 12:22, 9 min 40 s
-**Result:** 73 passed, 0 failed, 0 broke, 0 skipped, of 73 steps
-**Requests to Claude:** real for 18 steps · US$0.0831 spent
+**Run:** 2026-10-13 13:00, 10 min 45 s
+**Result:** 81 passed, 1 failed, 0 broke, 0 skipped, of 82 steps
+**Requests to Claude:** real for 24 steps · US$0.1304 spent
 
 ## What failed
 
-Nothing.
+| Step | What | Expected | What happened | From |
+|---|---|---|---|---|
+| 1.07 | A typed answer: “add Testmag to my pills, twice a day at 8am”, then “9pm” | A card asking for the other dose's time with no Save; after “9pm” a card with 8:00 am and 9:00 pm and Save. Then Cancel removes it | the second card: 💊 Pills · new **Testmag** · 2× daily, any time ❔ times · 9:00 pm is 1 time for 2 doses a day What time is the other dose? -# or type your answer with ['9:00 am', '↩️ Cancel'] | T27 (37.4) |
 
 ## Discoveries
 
@@ -27,16 +29,18 @@ What is worth a look whether or not its step passed.
 
 **Warnings and errors in `logs/bot.log` during the run**
 
-- `WARNING assistant: Claude spend today is US$0.0797, over the daily limit of US$0.001`
+- `WARNING assistant: Claude spend today is US$0.1178, over the daily limit of US$0.001`
 
 **Slow steps** (12 seconds or more; a step is mostly waiting for Discord, and each input is given about a second to settle)
 
-- 3.14 Every sketch in docs/mockups (19) posted with `dev mock`: 60s
+- 3.14 Every sketch in docs/mockups (19) posted with `dev mock`: 63s
 - 1.08 Names: “add Testvit and Testvit forte”, “I took testvit”, “skip forte”: 20s
-- 1.07 A typed answer: “add Testmag to my pills, twice a day at 8am”, then “9pm”: 14s
-- 3.09 A question card in the new look: “add Testb to my pills at 8”: 12s
+- 3.13d Pause and resume: “pause the evening checklist”, Save; then “turn the evening checklist back on”, Save: 18s
+- 1.10c Add: “also post the pills checklist at 6 pm”, then Save: 13s
+- 1.07 A typed answer: “add Testmag to my pills, twice a day at 8am”, then “9pm”: 13s
+- 4.07 The spend line: two messages to Claude with the limit at US$0.001: 12s
 
-The whole run took 9 min 40 s, 75 seconds of it with the bot off on purpose.
+The whole run took 10 min 45 s, 75 seconds of it with the bot off on purpose.
 
 **In the specs and not tested here**
 
@@ -54,7 +58,7 @@ The whole run took 9 min 40 s, 75 seconds of it with the bot off on purpose.
 
 ## Start 1: the old look, reminders on. A day of pills up to the afternoon, then the bot is cut off mid-message
 
-Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 196s; the process ended with 0.
+Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 224s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -66,13 +70,16 @@ Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 196s; the process end
 | 1.04 | “add Testany to my pills once a day”, then Save | ✅ pass | A card “💊 Pills · new” naming Testany with Save and Cancel; after Save the pill exists and the card is its confirmation | ✅ Saved · 💊 **Testany** · daily, any time | real request | T15 |
 | 1.05 | A question on the card: “add Testiron to my pills at 8” | ✅ pass | A card with “daily at ❔”, the question morning or evening, a button for 8:00 am and 8:00 pm, Cancel, and no Save | 8:00 am / 8:00 pm / ↩️ Cancel | real request | T25 (37.1) |
 | 1.06 | The answer is pressed: 8:00 pm, then Save | ✅ pass | The same message is rewritten with 8:00 pm and Save; Save adds Testiron at 8:00 pm |  |  | T26 (37.2) |
-| 1.07 | A typed answer: “add Testmag to my pills, twice a day at 8am”, then “9pm” | ✅ pass | A card asking for the other dose's time with no Save; after “9pm” a card with 8:00 am and 9:00 pm and Save. Then Cancel removes it |  | real request | T27 (37.4) |
+| 1.07 | A typed answer: “add Testmag to my pills, twice a day at 8am”, then “9pm” | ❌ fail | A card asking for the other dose's time with no Save; after “9pm” a card with 8:00 am and 9:00 pm and Save. Then Cancel removes it | the second card: 💊 Pills · new **Testmag** · 2× daily, any time ❔ times · 9:00 pm is 1 time for 2 doses a day What time is the other dose? -# or type your answer with ['9:00 am', '↩️ Cancel'] | real request | T27 (37.4) |
 | 1.07b | The same request with an empty place where the second time would go | ✅ pass | What Claude understood is still used: a card for Testmag asking for the other dose's time, never “I didn't understand that”. Cancel removes it |  | recorded answer | self-test of 2026-10-13, fix 2 |
 | 1.08 | Names: “add Testvit and Testvit forte”, “I took testvit”, “skip forte” | ✅ pass | The whole name wins: Testvit is taken, not Testvit forte. Part of a name finds the only fit: Testvit forte is skipped | {'Testvit': 'done', 'Testvit forte': 'skipped'} | real request | T22 (40.1, 40.2) |
 | 1.09 | A name that fits two: “pause testv” | ✅ pass | A card asking which one, a button for each of the two, no Save. Cancel removes it | Testvit / Testvit forte / ↩️ Cancel | real request | T23 (40.3) |
 | 1.09b | “pause testv” when Claude does not pass the name on as typed (completed to a whole name) | ✅ pass | The code checks what was typed: “testv” fits two pills, so the card still asks which one, with a button each and no Save |  | recorded answer | self-test of 2026-10-13, fix 1 |
 | 1.09c | “pause testv” when Claude does not pass the name on as typed (handed over as “it”) | ✅ pass | The code checks what was typed: “testv” fits two pills, so the card still asks which one, with a button each and no Save |  | recorded answer | self-test of 2026-10-13, fix 1 |
 | 1.10 | “remove testvit and testvit forte”, then Remove | ✅ pass | A remove card with a red Remove; after it both are gone |  | real request | T25 (40.5) |
+| 1.10b | `my schedule` | ✅ pass | A list, with no request to Claude: “🗓️ My schedule”, Pills checklist every day at 6:00 am in #hub, silent, with its next run; the bot's own in one small line; a plain message with CARDS_V2 off |  |  | scheduler stage 2 (schedule-list-v2) |
+| 1.10c | Add: “also post the pills checklist at 6 pm”, then Save | ✅ pass | A card “🗓️ Schedule · new”: Evening pills checklist, every day at 6:00 pm, #hub, silent, its next run, and “also every day at 6:00 am”. After Save the schedule exists, its run for 6:00 pm today is booked, and the list shown before is brought up to date in place |  | real request | scheduler stage 2 |
+| 1.10d | Move: “move the evening checklist to 6:30pm”, then Save | ✅ pass | A change card: **Evening pills checklist**, `time · 6:00 pm → 6:30 pm`, and “Next after this: … today 6:30 pm”. After Save the run booked for 6:00 pm is gone and one for 6:30 pm is booked |  | real request | scheduler stage 2 (schedule-change-v1) |
 | 1.11 | 6:00 am: today's checklist | ✅ pass | One checklist in the hub, posted without a notification, naming Testa, Testany and Testiron; a Taken / Skip message under it for Testany (no time) | ## 💊 Pills · ▱▱▱▱▱ 0 of 5 |  | asked; 36, T15 |
 | 1.11b | The run log for the 6:00 am checklist | ✅ pass | One run for today's 6:00 am, done, with its key and a line saying what it decided; tomorrow's 6:00 am booked once | s3@2026-10-14T06:00#1 · posted, or already there, or nothing to take today (the log |  | scheduler stage 1 |
 | 1.11c | `dev jobs` | ✅ pass | What is booked next (the backup, the end of the day, the checklist) and how the last run of each ended, from the engine's run log |  |  | scheduler stage 1 |
@@ -92,7 +99,7 @@ Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 196s; the process end
 
 ## Start 2: the same settings, after 75 seconds off. The catch-up, then the rest of the day and the next morning
 
-Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 71s; the process ended with 0.
+Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 70s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -108,13 +115,14 @@ Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 71s; the process ende
 | 2.09 | After the third reminder the dose is missed | ✅ pass | The reminder goes, the dose is missed, and the checklist shows ❌ |  |  | T45 (38.6) |
 | 2.10 | A missed dose logged as taken: `took testa` | ✅ pass | The typed shortcut, with no request to Claude, and it asks first: a card “Dose 3 was missed (due …). Log it as taken now?” with Log it and Cancel; nothing is ticked off until Log it | ⚠️ Dose 3 was missed (due 2:06 pm). Log it as taken now? |  | T45 (38.7); asked 2026-10-13 |
 | 2.11 | 8:00 pm: Testiron's reminder, and Skip | ✅ pass | A reminder for Testiron; Skip takes it down and the dose is skipped |  |  | 38 |
+| 2.11b | The schedule I added ran at the time I moved it to | ✅ pass | One run of the checklist for 6:30 pm, done, and none for 6:00 pm; the hub still has one checklist for the day (it was brought up to date, not posted again) |  |  | scheduler stage 2 |
 | 2.12 | Midnight: the day is closed | ✅ pass | Nothing of yesterday is left open; Otherpill, never touched, is missed. Yesterday's checklist is written one last time and left in the hub (as the code does today; the clean-up spec changes this) | yesterday's checklist is still in the hub |  | pills 29; scheduler spec 18.2 |
 | 2.13 | 6:00 am the next day: a fresh checklist | ✅ pass | A new message for the new day with every dose still to take; one checklist for today |  |  | asked; 23 |
 | 2.14 | Left for the next start, in the old look: an open change card and a reminder | ✅ pass | A change card “dose · … → 2 tablets” with Save, and at 8:00 am a reminder for Testa |  | real request | asked: switching looks |
 
 ## Start 3: `CARDS_V2` on. Every card posted and edited in the new look, and the old look's messages edited under it
 
-Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`. Took 151s; the process ended with 0.
+Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`. Took 192s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -132,12 +140,16 @@ Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`. Took 151s; the process ende
 | 3.11 | A reminder in the new look | ✅ pass | When dose 2 falls due: posted as the one neutral line and drawn after (an edit), an amber box naming Testa, four buttons. Left up for the next start |  |  | T52 (41.4) |
 | 3.12 | Left for the next start, in the new look: an open change card | ✅ pass | A blurple change card “dose · 2 tablets → 3 tablets” with Save |  | real request | asked: switching back |
 | 3.13 | The reset card in the new look: `reset channel`, then Cancel | ✅ pass | A red box (Components V2) with the channel under the heading, the count, that it can't be undone, and a red Delete all inside it; Cancel removes it and deletes nothing | drawn, colours ['0xed4245'] |  | 39.4; self-test of 2026-10-13, fix 5 |
+| 3.13b | `my schedule` in the new look | ✅ pass | One drawn message: the heading, a box a schedule with the next to run amber and the other grey, and no buttons |  |  | scheduler stage 2 (schedule-list-v2) |
+| 3.13c | Days and notify: “make the evening checklist notify, and only on weekdays”, then Save | ✅ pass | A blurple change card with `days · every day → Mon to Fri` and `notify · silent → notifies`; after Save the schedule is so |  | real request | scheduler stage 2 (schedule-change-v1) |
+| 3.13d | Pause and resume: “pause the evening checklist”, Save; then “turn the evening checklist back on”, Save | ✅ pass | `paused · no → until you turn it back on`, and nothing is booked for it while paused; then `paused · … → on` and its next run is booked again |  | real request | scheduler stage 2 |
+| 3.13e | Remove: “remove the evening checklist”, then Remove | ✅ pass | A card `… → removed` with a red Remove; after it the schedule is gone from the list, nothing is booked for it, and the 6:00 am one is untouched |  | real request | scheduler stage 2 |
 | 3.14 | Every sketch in docs/mockups (19) posted with `dev mock` | ✅ pass | Discord accepts each one as a Components V2 message (the reminder's first line alone is plain text) | 19 posted |  | T2 to T10, block 44 |
 | 3.15 | The checklist sketch's colours | ✅ pass | Its boxes carry the values of core/design.py for amber, blue, green, red and grey (how they look is yours to judge) |  |  | T4 (39.1) |
 
 ## Start 4: `CARDS_V2` off again, and a tiny spend limit. The new look's messages edited under the old, and the spend line
 
-Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`, `DAILY_SPEND_LIMIT=0.001`. Took 68s; the process ended with 0.
+Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`, `DAILY_SPEND_LIMIT=0.001`. Took 81s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -148,8 +160,9 @@ Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`, `DAILY_SPEND_LIMIT=0.001`.
 | 4.04 | `pills` with the new look off | ✅ pass | A fresh checklist in the old look (a plain message), in place of the drawn one | ## 💊 Pills · ▰▰▱▱▱ 3 of 6 |  | T58 (41.8) |
 | 4.05 | A new card with the new look off: “add Testlast once a day”, then Cancel | ✅ pass | A plain card with Save and Cancel; Cancel removes it |  | real request | T58 (41.8) |
 | 4.05b | The reset card with the new look off: `reset channel`, then Cancel | ✅ pass | A plain message with the same words and buttons; Cancel removes it |  |  | T58; self-test of 2026-10-13, fix 5 |
-| 4.06 | `dev cost` | ✅ pass | Under Today a small line with what was spent against DAILY_SPEND_LIMIT, the limit of a tenth of a cent written as US$0.001 | -# ⚠️ over today's limit: US$0.0797 of US$0.001 (DAILY_SPEND_LIMIT) |  | T35, T56 (42.1, 42.3) |
+| 4.06 | `dev cost` | ✅ pass | Under Today a small line with what was spent against DAILY_SPEND_LIMIT, the limit of a tenth of a cent written as US$0.001 | -# ⚠️ over today's limit: US$0.1178 of US$0.001 (DAILY_SPEND_LIMIT) |  | T35, T56 (42.1, 42.3) |
 | 4.07 | The spend line: two messages to Claude with the limit at US$0.001 | ✅ pass | One “💰 Claude spend is over today's limit” in #selftest-log after the first, and no second one after the second |  | real request | T49, T50 (42.2, 42.3) |
+| 4.07a | The bot's own is not changed by words: “move the backup to 4am” | ✅ pass | One line saying the nightly backup is the bot's own and isn't changed here; no card, and it still runs at 3:00 am |  | real request | scheduler stage 2 |
 | 4.07b | `dev run backup` | ✅ pass | A handler run by hand, outside its schedule: “▶️ Ran: core.nightly_backup”, a second “Backup saved”, a run of its own in the log, and the night's backup still booked |  |  | scheduler stage 1 |
 | 4.08 | `dev clock reset` | ✅ pass | The clock is the real time again, and the standing jobs are booked for the real day | checklist booked for 2026-10-14T06:00 |  | T57 |
 
@@ -177,5 +190,5 @@ Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`, `DAILY_SPEND_LIMIT=0.001`.
 - The category `selftest` and its three channels are left in place, holding the last run. Every run empties them first.
 - To empty them now: `python -m selftest --clear`. To delete them and the category: `python -m selftest --remove` (the next run makes them again). Both work over HTTP, with live running.
 - `data/dev.db` and the dev clock are as they were before the run: they are moved aside for it and put back after.
-- The run's own database and each start's results are kept in `data/selftest/run-20261013-122220/` (never in git). Delete the folder when you like.
+- The run's own database and each start's results are kept in `data/selftest/run-20261013-130023/` (never in git). Delete the folder when you like.
 

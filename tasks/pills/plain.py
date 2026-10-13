@@ -71,11 +71,13 @@ TRIES = rules.MAX_PER_DAY + 1
 # ---------------------------------------------------------------------------
 # From what was said to a plan
 # ---------------------------------------------------------------------------
-def overlay(pending: list[dict], items: list[dict], key: str) -> tuple[list[dict], list[str]]:
+def overlay(pending: list[dict], items: list[dict], key: str, asked: tuple[str, ...] = ()) -> tuple[list[dict], list[str]]:
     """An open card's pills with a message's changes laid over them: (the
     pills as they now stand, the names it was asked to take off that weren't
     on it). A pill named again keeps what it had and takes what is new; one
-    with `remove` leaves the card. Pure."""
+    with `remove` leaves the card. `asked` is what the card's question was
+    about: a time given in answer to "What time is the other dose?" is the
+    other dose's, not a new time for the first. Pure."""
     merged = [dict(item) for item in pending]
     missing: list[str] = []
     for item in items:
@@ -91,8 +93,24 @@ def overlay(pending: list[dict], items: list[dict], key: str) -> tuple[list[dict
         if at is None:
             merged.append(rest)
         else:
-            merged[at] = _laid_over(merged[at], rest)
+            merged[at] = _laid_over(merged[at], _answering(merged[at], rest, asked))
     return merged, missing
+
+
+def _answering(held: dict, rest: dict, asked: tuple[str, ...]) -> dict:
+    """The later item, read as the answer to the card's question when it is
+    one. The card asked for the time of a dose that had none; the message
+    gives fewer times than there are doses, and none the card has already:
+    those are the missing ones, added to the card's own. (Claude hands over
+    only what the message said: sometimes every time, sometimes the new one.)"""
+    if "times" not in asked or not held.get("times") or not rest.get("times"):
+        return rest
+    doses = int(rest.get("per_day") or held.get("per_day") or 0)
+    had, given = [str(each) for each in held["times"]], [str(each) for each in rest["times"]]
+    same = {each.strip().lower() for each in had} & {each.strip().lower() for each in given}
+    if doses and not same and len(had) < doses and len(given) < doses and len(had) + len(given) <= doses:
+        return {**rest, "times": [*had, *given]}
+    return rest
 
 
 def _laid_over(held: dict, rest: dict) -> dict:
@@ -338,7 +356,7 @@ async def add_card(request: Request, data: dict, guessed: frozenset) -> Proposal
     today = day.today()
     existing = await store.pills(request.user.id)
     asked, _ = await _pointed(request, data["pills"], "name")
-    items, missing = overlay(request.previous["pills"] if request.previous else [], asked, "name")
+    items, missing = overlay(request.previous["pills"] if request.previous else [], asked, "name", request.asked)
     unsure = _unsure(data, guessed, "name")
     lines, kept, warnings = [], [], [f"{name} isn't on the card: nothing to take off" for name in missing]
     seen: set[str] = set()

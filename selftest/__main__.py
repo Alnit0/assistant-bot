@@ -70,10 +70,17 @@ async def prepare_channels(purge: bool = True) -> dict[str, int]:
                     if not batch:
                         break
                     recent = [message for message in batch if (discord.utils.utcnow() - message.created_at).days < 13]
-                    if len(recent) > 1:
-                        await channel.delete_messages(recent)
+                    # One that has gone meanwhile (a line that deletes itself) is what was wanted
+                    try:
+                        if len(recent) > 1:
+                            await channel.delete_messages(recent)
+                    except discord.NotFound:
+                        recent = []
                     for message in batch if len(recent) <= 1 else [each for each in batch if each not in recent]:
-                        await message.delete()
+                        try:
+                            await message.delete()
+                        except discord.NotFound:
+                            pass
             found[role] = channel.id
         return found
     finally:

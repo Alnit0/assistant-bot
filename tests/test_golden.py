@@ -135,6 +135,30 @@ def test_1d_a_missing_second_time_is_asked_on_the_card_with_the_rest_filled_in(b
     assert press(bot).startswith("✅ Saved") and [pill.plan.schedule.per_day for pill in pills(bot)] == [2]
 
 
+def test_1d_a_typed_answer_that_gives_only_the_new_time_is_the_other_dose_s_time(bot):
+    # The self-test of 2026-10-13, with real requests: "9pm" came back as times [9:00 pm] alone, the
+    # first time was replaced by it, and the card asked for "the other dose" again
+    from tasks.pills import plain as pills_plain
+
+    bot.claude(ROUTED["1d"], EXTRACTED["1d"])
+    bot.say(SAID["1d"])
+    assert confirm.asked_about(open_cards()[-1]) == ("times",), "the card knows which field its question is about"
+    bot.claude(("pill_add", {"pills": [{"name": "magnesium", "times": ["9:00 pm"], "per_day": 2}], "guessed": [], "not_included": []}))
+    bot.say("9pm")
+    lines, buttons = card(bot)
+    assert lines[1] == "**magnesium** · daily at `8:00 am`, `9:00 pm`" and buttons == ["Save", "Cancel"], "the answer filled in what was missing"
+    # Handed over whole, it is the same card
+    held = [{"name": "magnesium", "times": ["8:00 am"], "per_day": 2}]
+    both = pills_plain.overlay(held, [{"name": "magnesium", "times": ["8:00 am", "9:00 pm"], "per_day": 2}], "name", ("times",))[0]
+    assert both[0]["times"] == ["8:00 am", "9:00 pm"]
+    # With no question about times on the card, a time said is the new time: a correction, as before
+    assert pills_plain.overlay(held, [{"name": "magnesium", "times": ["9:00 pm"]}], "name")[0][0]["times"] == ["9:00 pm"]
+    assert pills_plain.overlay(held, [{"name": "magnesium", "times": ["9:00 pm"]}], "name", ("pill",))[0][0]["times"] == ["9:00 pm"]
+    # Every dose already has its time: nothing is missing, so it is a replacement
+    full = [{"name": "magnesium", "times": ["8:00 am", "8:00 pm"], "per_day": 2}]
+    assert pills_plain.overlay(full, [{"name": "magnesium", "times": ["9:00 pm"]}], "name", ("times",))[0][0]["times"] == ["9:00 pm"]
+
+
 # --- 2: correcting ------------------------------------------------------------------------------------
 def test_2_a_correction_in_chat_replaces_the_card(bot):
     bot.claude(ROUTED["1c"], EXTRACTED["1c"])

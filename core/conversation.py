@@ -554,7 +554,7 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
             if card is None:
                 await act(request, found, turn)
                 return
-            await act(replace(request, previous=on_card.data), found, turn, replaces=card, undone=undoing)
+            await act(replace(request, previous=on_card.data, asked=confirm.asked_about(card)), found, turn, replaces=card, undone=undoing)
 
         # "No, shopping": the request on the card was meant for another task. Only
         # the card is re-routed: the redirect's own words are never handed to

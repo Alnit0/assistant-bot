@@ -226,6 +226,10 @@ class Request:
     # message changes (see merge_items), so code, not Claude, carries the rest
     # of the card over and does any sums
     previous: dict | None = None
+    # With `previous`: the fields the open card's question was asking about ("times"),
+    # none when it asked nothing. A message that gives one of them is the answer to that
+    # question: the task fills in what was missing, and does not take it as a replacement
+    asked: tuple[str, ...] = ()
     # The message the user replied to, if they replied to one ("pause this")
     replied_to: int | None = None
     # The user's own message (None for a press of a button)

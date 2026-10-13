@@ -206,6 +206,13 @@ def is_correction(text: str) -> bool:
     return bool(_CORRECTION.match(text))
 
 
+def asked_about(card: Stored) -> tuple[str, ...]:
+    """The fields an open card's question is about (what its answers settle):
+    for the task, when a message that follows the card gives one of them."""
+    choices = (card.question or {}).get("choices", []) if card is not None else []
+    return tuple(dict.fromkeys(name for choice in choices for name in choice.get("settles", [])))
+
+
 def on_screen(card: Stored) -> str:
     """An open card in a line, for the router to read."""
     entry = actions.entry(card.task)
