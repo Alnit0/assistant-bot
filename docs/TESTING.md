@@ -41,12 +41,12 @@ Last updated: 2026-10-14
 | L | Keep | 14 | 6 | 8 | 8 | 6 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
 | P | Bugs | 38 | 18 | 20 | 17 | 21 | 0 | 0 |
-| Q | Time, days, the schedule model, the occurrence log and cards | 28 | 26 | 2 | 2 | 26 | 0 | 0 |
-| R | Pills | 88 | 34 | 54 | 46 | 42 | 0 | 0 |
+| Q | Time, days, the schedule model, the occurrence log and cards | 29 | 27 | 2 | 2 | 27 | 0 | 0 |
+| R | Pills | 89 | 35 | 54 | 46 | 43 | 0 | 0 |
 | S | Routing and confirm cards | 80 | 27 | 53 | 18 | 61 | 0 | 1 |
 | T | Tasks in plain words | 29 | 9 | 20 | 5 | 24 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **558** | **230** | **328** | **258** | **299** | **0** | **1** |
+| | **Total** | **560** | **232** | **328** | **258** | **301** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -488,6 +488,7 @@ manual test uses the dev clock on the dev database (`python main.py --dev`).
 | Q26 | 🤖 Auto | No account is named in the self-test report | An account name with its id becomes “live”, “the dev bot”, “you” or “another account” with the last four digits; a name learnt from one line, or from the bot's log, is taken out everywhere; a known id standing alone is cut to four digits; channel ids and step numbers are untouched; the report is masked when written; `docs/SELFTEST.md` is checked for display names like every other file | ✅ Pass | 2026-10-13 | `tests/test_selftest.py`, `tests/test_two_bots.py` |
 | Q27 | 🤖 Auto | The design options | Every option is a sketch Discord would take, two or three a card with A (as built) first, posted card by card; they are not among the sketches `dev mock` lists; the summary lists each with what differs, says how to pick and fits one message; they are only ever posted as the dev bot | ✅ Pass | 2026-10-13 | `tests/test_selftest.py` |
 | Q28 | 🤖 Auto | Keeping the self-test's cost low | Real requests only for what can change what Claude is asked (prompts, schemas, routing), the Sunday full run, or when asked; recorded answers otherwise, and each reason is said; over the month's limit nothing is spent whatever the reason; the last real run and a night with nothing new are read from what is kept; a weeknight with no new commits starts no bot and leaves its line; the month is added up from the history, over the limit it is a level 1 item, and `dev cost` shows it | ✅ Pass | 2026-10-13 | `tests/test_nightly.py` |
+| Q29 | 🤖 Auto | A job that raises is tried once more a minute later | The first try is recorded as retried and nothing is said or in trouble; the second is the same run of the same schedule and is left alone by booking; if it works the schedule's last run reads done, if it raises too it has failed and is not tried a third time; a handler that reports failure itself is not run again; a routine's other steps go on | ✅ Pass | 2026-10-14 | `tests/test_timetable.py`, `tests/test_scheduler.py` |
 
 ## R. Pills
 
@@ -589,6 +590,7 @@ are added with it.
 | R98 | 👤 Manual | One dose is one log, on the phone | QA-RUN block 57 | ⬜ Untested | |  |
 | R99 | 🤖 Auto | One last chance for a dose left alone | 30 minutes before the last moment a dose can be taken with every dose after it fitting the day: one message that notifies, “💊 Last chance today · take by …” with no pill or dose in that line; the pill, why and Taken, Taken at…, Skip under it, no Snooze; it goes at that moment with the dose still to take; never a second; none when taken first, or when the reminders ran that late; the decision a piece at a time | ✅ Pass | 2026-10-14 | `tests/test_pills_reminders.py` |
 | R100 | 🤖 Auto | A correction moves only today's logs unasked | With nothing ticked off today the card says so and asks which day, a button for each of the latest days with a log; the day picked, or said with it, is moved on a card that names the day and read back; today is untouched; with nothing to move anywhere it says so and logs nothing | ✅ Pass | 2026-10-14 | `tests/test_pills_reminders.py`, `tests/test_golden.py` |
+| R101 | 🤖 Auto | A reminder Discord refuses is tried again and never posted twice | After 1, 2 and 5 minutes, then every 5, with the job not failing; a try that went through after all, or a line posted without the pill written in, is taken up and finished with nothing posted again; two doses due at once never take up the same line; an older bare line is not taken up; with the hub unreadable nothing is posted; a later reminder keeps the copy before it up meanwhile; tries end when the dose can no longer be taken; the last chance the same, until its moment | ✅ Pass | 2026-10-14 | `tests/test_pills_reminders.py` |
 
 ## S. Routing and confirm cards
 

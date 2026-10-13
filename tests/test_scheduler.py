@@ -121,8 +121,15 @@ class SchedulerDatabaseTest(DatabaseTestCase):
         await scheduler.add_job("test", "broken", now - timedelta(seconds=2))
         await scheduler.add_job("test", "ping", now - timedelta(seconds=1))
         self.assertEqual(await scheduler.run_due(now), 2)
-        self.assertEqual(self.statuses(), [("broken", "failed"), ("ping", "done")])
-        self.assertEqual(self.query("SELECT error FROM scheduled_jobs WHERE kind = 'broken'"), [("RuntimeError('kaboom')",)])
+        # One that raises is tried once more a minute later: until then it has not failed
+        self.assertEqual(self.statuses(), [("broken", "retried"), ("ping", "done"), ("broken", "pending")])
+        self.assertEqual(await scheduler.troubled(), [])
+        self.assertEqual(await scheduler.run_due(now + timedelta(seconds=59)), 0)
+        self.assertEqual(await scheduler.run_due(now + timedelta(seconds=61)), 1)
+        self.assertEqual(self.statuses(), [("broken", "retried"), ("ping", "done"), ("broken", "failed")])
+        self.assertEqual(await scheduler.troubled(), [("test", "broken", "failed")])
+        self.assertEqual(self.query("SELECT error FROM scheduled_jobs WHERE kind = 'broken'"), [("RuntimeError('kaboom')",), ("RuntimeError('kaboom')",)])
+        self.assertEqual(await scheduler.run_due(now + timedelta(minutes=10)), 0, "never a third try")
         self.assertEqual(len(self.ran), 1)
 
     async def test_a_job_whose_latest_run_failed_or_was_skipped_is_in_trouble_until_one_works(self):
@@ -364,7 +371,14 @@ def test_the_next_backup_is_booked_even_if_this_one_fails(nightly):
     asyncio.run(scheduler.run_all_due())
     conn = database.connect()
     try:
-        assert conn.execute("SELECT status FROM scheduled_jobs ORDER BY id").fetchall() == [("failed",), ("pending",)]
+        assert sorted(conn.execute("SELECT status FROM scheduled_jobs").fetchall()) == [("pending",), ("pending",), ("retried",)], "tomorrow's, and this one's second try"
+    finally:
+        conn.close()
+    clock.advance(timedelta(seconds=61))
+    asyncio.run(scheduler.run_all_due())
+    conn = database.connect()
+    try:
+        assert sorted(conn.execute("SELECT status FROM scheduled_jobs").fetchall()) == [("failed",), ("pending",), ("retried",)]
     finally:
         conn.close()
 

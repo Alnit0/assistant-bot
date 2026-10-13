@@ -258,6 +258,7 @@ def test_a_failed_job_shows_until_its_next_run_works(server, db, dev_off, monkey
         pass
 
     monkeypatch.setattr(scheduler, "log_error", no_log)
+    monkeypatch.setattr(scheduler, "RETRY_AFTER", timedelta(0))  # its one second try runs in the same pass, and fails too
     outcome = {"fail": True}
 
     async def handler(job):

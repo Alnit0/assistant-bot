@@ -145,6 +145,13 @@ def prompts(conn: sqlite3.Connection) -> None:
     )
 
 
+def prompt_attempts(conn: sqlite3.Connection) -> None:
+    # A reminder Discord refused is tried again (tasks/pills/reminders.py): how many times it has
+    # failed so far, and when it was last tried. Both empty once it is up
+    conn.execute("ALTER TABLE pills_prompts ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0")
+    conn.execute("ALTER TABLE pills_prompts ADD COLUMN tried_at TEXT")
+
+
 def weekdays(conn: sqlite3.Connection) -> None:
     # The days of the week a pill is taken on, as "0,2,4" (Monday is 0); empty: every day
     conn.execute("ALTER TABLE pills_pills ADD COLUMN weekdays TEXT NOT NULL DEFAULT ''")
@@ -158,6 +165,7 @@ MIGRATIONS = [
     dose_causes,
     prompts,
     weekdays,
+    prompt_attempts,
 ]
 
 

@@ -2,7 +2,7 @@ import asyncio
 import os
 from datetime import timedelta
 
-from core import clock, config, confirm, database, design, occurrences, scheduler
+from core import clock, config, confirm, database, design, occurrences, scheduler, surface
 from core import day as days
 from selftest.harness import Harness
 
@@ -625,8 +625,37 @@ async def p2(h: Harness) -> None:
         h.check((await h.doses()).get(("Testa", 3)) == DONE, f"after Log it the doses are {await h.doses()}")
         await no_marks(h, mine)
 
-    async with h.step("2.11", "8:00 pm: Testiron's reminder, and Skip", "A reminder for Testiron; Skip takes it down and the dose is skipped", "38"):
-        await h.clock_to(20, 0, 5)
+    async with h.step("2.10b", "8:00 pm: Discord takes Testiron's reminder and still answers that it failed", "The job does not fail and nothing is posted again at once. A minute later the hub is read first: the line that went through is found and the pill is written into it. One reminder in the hub, never two", "asked 2026-10-14"):
+        door, lost = surface._door(), {}
+        real = door.send_card
+
+        async def goes_through_and_fails(channel_id, card, text, silent=False):
+            message_id = await real(channel_id, card, text, silent=silent)
+            if text.startswith(NEUTRAL) and not lost:
+                lost["id"] = message_id
+                raise surface.Failed("503 Service Unavailable (the self-test's own: the post went through)")
+            return message_id
+
+        door.send_card = goes_through_and_fails
+        try:
+            await h.clock_to(20, 0, 5)
+            up = await prompts(h)
+            h.check(bool(lost), "the reminder was never posted")
+            h.check(len(up) == 1 and up[0].attempts == 1 and up[0].message_id is None, f"what is kept: {[(each.message_id, each.attempts) for each in up]}")
+            h.check(("pills", "remind", "failed") not in await scheduler.troubled(), "the reminders' job is recorded as failed")
+            h.check((await h.doses()).get(("Testiron", 1)) == PENDING, f"the doses are {await h.doses()}")
+            bare = await h.get(h.hub, lost.get("id"))
+            h.check(bare is not None and bare.text.strip() == NEUTRAL + "8:00 pm", f"in the hub: {bare.text[:120] if bare else 'nothing'}")
+            await h.clock_by(minutes=1, seconds=2)
+        finally:
+            door.send_card = real
+        up = await prompts(h)
+        h.check(len(up) == 1 and up[0].message_id == lost.get("id") and up[0].attempts == 0, f"what is kept: {[(each.message_id, each.attempts) for each in up]}, the line that went through is {lost.get('id')}")
+        h.check(await h.count(h.hub, NEUTRAL) == 1, f"{await h.count(h.hub, NEUTRAL)} reminders are in the hub")
+        shown = await h.get(h.hub, lost.get("id"))
+        h.check(shown is not None and "Testiron" in shown.text and any("Taken" in label for label in shown.labels), f"it reads: {shown.text[:160] if shown else 'gone'}")
+
+    async with h.step("2.11", "Testiron's reminder, and Skip", "A reminder for Testiron; Skip takes it down and the dose is skipped", "38"):
         up = await prompts(h)
         h.check(len(up) == 1 and up[0].message_id, f"{len(up)} prompts are kept")
         shown = await h.get(h.hub, up[0].message_id)

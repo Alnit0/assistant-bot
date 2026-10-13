@@ -298,6 +298,7 @@ def test_the_scheduler_tells_of_a_run_that_did_not_work_and_not_of_one_that_did(
 
     monkeypatch.setattr(scheduler, "_on_trouble", [])
     monkeypatch.setattr(scheduler, "log_error", no_log)
+    monkeypatch.setattr(scheduler, "RETRY_AFTER", timedelta(0))  # the one second try runs in the same pass: told once, when that has failed too
     scheduler.on_trouble(listener)
 
     async def fails(job):

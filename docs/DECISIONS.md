@@ -1265,3 +1265,18 @@ A short log of key decisions and why. Newest at the bottom.
   was dose N" moves a log of today unasked. With none, the card says
   so and asks which day, offering the latest days that have a log; a
   day said with it is that day. A correction never logs a dose.
+- **Retries (Alex, 2026-10-14).** Discord answered 503 for half a
+  minute; the reminders' job raised, was recorded as failed, and that
+  reminder was never sent. Two rules now. A pill reminder keeps its
+  own count in its row and is tried after 1, 2 and 5 minutes, then
+  every 5, while the dose can still be taken: because a refused post
+  may have gone through, each new try first reads the hub for the
+  bare line (a finished prompt always has more than that line) and
+  takes it up. Its age is judged by Discord's real time, never the
+  bot's clock. Every other job that raises gets one second try a
+  minute later, recorded as the same run of its schedule; the first
+  is `retried`, which nothing counts as an ending, so no bug is
+  filed and no ping sent for a blip. Only a raise is retried: a
+  handler that reports failure has dealt with it. In a routine the
+  steps after the one that raised still run at once, so its second
+  try comes after them.

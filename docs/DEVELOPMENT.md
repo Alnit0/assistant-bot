@@ -656,7 +656,11 @@ Everything works in #inbox and in the hub.
   or midnight). It gets **one last chance**: 30 minutes before the
   last moment it can be taken with every dose after it still fitting
   the day, a message that notifies ("💊 Last chance today · take by
-  6:00 pm") with Taken, Taken at… and Skip. It goes at that moment. A dose with no time has its
+  6:00 pm") with Taken, Taken at… and Skip. It goes at that moment.
+  A reminder (or last chance) that Discord refuses is tried again
+  after 1, 2 and 5 minutes, then every 5, while the dose can still be
+  taken today; before each try the hub is read, so one that went
+  through after all is finished and never posted twice. A dose with no time has its
   Taken / Skip message under the checklist and no reminder. Nothing is
   sent after a pill's latest time. Reminders go to the hub only: on
   with no hub that can be found, #bot-log says so once and nothing is

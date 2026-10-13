@@ -94,7 +94,7 @@ async def inspect(ctx: Context, target: discord.Message) -> str:
 # ---------------------------------------------------------------------------
 # dev jobs, dev run, dev fire next
 # ---------------------------------------------------------------------------
-_ENDED = {scheduler.DONE: "✅", scheduler.FAILED: "❌ failed", scheduler.SKIPPED: "⚠️ skipped", scheduler.MISSED: "⏭️ set aside"}
+_ENDED = {scheduler.DONE: "✅", scheduler.FAILED: "❌ failed", scheduler.SKIPPED: "⚠️ skipped", scheduler.MISSED: "⏭️ set aside", scheduler.RETRIED: "🔁 tried again"}
 
 
 async def jobs(ctx: Context) -> str:

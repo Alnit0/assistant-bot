@@ -60,6 +60,13 @@ MISSED = "missed"
 # How a job that ran can have ended: the last of these, for each kind of job, says whether
 # that kind is in trouble (`troubled`)
 _ENDED = (DONE, FAILED, SKIPPED, MISSED)
+# A run that raised is tried once more, a minute later (a blip at Discord's end should not cost a
+# run). The first try is then recorded as retried, which is no ending: whether that kind of job is
+# in trouble, and how its schedule's last run went, is what the second try says
+RETRIED = "retried"
+RETRY_AFTER = timedelta(minutes=1)
+RETRY = "_retry"  # in the payload of the second try: it is not tried a third time
+RETRY_KEY = "+retry"
 
 
 @dataclass(frozen=True)
@@ -224,6 +231,18 @@ def _db_finish(conn: sqlite3.Connection, job_id: int, status: str, late_by: floa
         "UPDATE scheduled_jobs SET status = ?, late_by_s = ?, error = ?, finished_at = ?, note = COALESCE(?, note) WHERE id = ?",
         (status, late_by, error, to_db(utc_now()), note, job_id),
     )
+
+
+def _db_retry(conn: sqlite3.Connection, job: Job, error: str, note: str | None, due_at: datetime) -> bool:
+    """Book the one second try of a run that raised, as the same run of the same
+    schedule, and record the first as retried. False if it can't be booked
+    (it is there already): the run has then simply failed."""
+    key = f"{job.key or f'job{job.id}'}{RETRY_KEY}"
+    if conn.execute("SELECT 1 FROM scheduled_jobs WHERE run_key = ?", (key,)).fetchone() is not None:
+        return False
+    _db_add(conn, job.user_id, job.task, job.kind, {**job.payload, RETRY: 1}, due_at, key, job.schedule_id, job.step, job.local_at)
+    _db_finish(conn, job.id, RETRIED, job.late_by, error, note or "it raised: tried once more a minute later")
+    return True
 
 
 def _db_cancel(conn: sqlite3.Connection, job_id: int) -> bool:
@@ -577,12 +596,12 @@ def _db_book(conn: sqlite3.Connection, now: datetime, standing: dict) -> list[st
     for schedule in timetable.db_all(conn, removed=True):
         coming = _db_coming(conn, schedule, now)
         waiting = conn.execute(
-            "SELECT id, local_at, due_at, step, skill, kind FROM scheduled_jobs WHERE schedule_id = ? AND status = ? AND local_at IS NOT NULL",
+            "SELECT id, local_at, due_at, step, skill, kind, run_key FROM scheduled_jobs WHERE schedule_id = ? AND status = ? AND local_at IS NOT NULL",
             (schedule.id, PENDING),
         ).fetchall()
-        for job_id, local_at, due_at, step, task, kind in waiting:
-            if from_db(due_at) <= now:
-                continue
+        for job_id, local_at, due_at, step, task, kind, run_key in waiting:
+            if from_db(due_at) <= now or (run_key or "").endswith(RETRY_KEY):
+                continue  # overdue, or the second try of a run that raised: it must still run
             # Its time, or the step it was booked for, is no longer what the schedule says
             still_a_step = step is not None and 1 <= step <= len(schedule.steps) and schedule.steps[step - 1] == handler_name(task, kind)
             if coming is None or local_at != coming.stamp or not still_a_step:
@@ -809,9 +828,17 @@ async def run_due(now: datetime | None = None, done: list | None = None, set_asi
         except Exception as error:
             _reported.pop(job.id, None)
             log.exception("Scheduled job %s (%s/%s) failed", job.id, job.task, job.kind)
-            await database.run(_db_finish, job.id, FAILED, job.late_by, repr(error), _notes.pop(job.id, None))
-            await log_error(f"Scheduled job failed: {label(job.task, job.kind)}", repr(error))
-            outcome, detail = "failed", repr(error)
+            said = _notes.pop(job.id, None)
+            if RETRY not in job.payload and await database.run(_db_retry, job, repr(error), said, utc_now() + RETRY_AFTER):
+                # Once more in a minute, and nothing is said until that try has ended
+                log.warning("Scheduler: %s raised and is tried once more in a minute", label(job.task, job.kind))
+                outcome, detail = RETRIED, repr(error)
+                if _wake is not None:
+                    _wake.set()
+            else:
+                await database.run(_db_finish, job.id, FAILED, job.late_by, repr(error), said)
+                await log_error(f"Scheduled job failed: {label(job.task, job.kind)}", repr(error))
+                outcome, detail = "failed", repr(error)
         else:
             # Done, unless the handler said this run failed or was skipped (`report`)
             outcome = _reported.pop(job.id, DONE)

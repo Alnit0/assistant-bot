@@ -110,7 +110,8 @@ Anthropic API, SQLite. One user, built to be multi-user ready.
   line with the catch-up
 - A job never does nothing in silence (`scheduler.note`), has a name
   in words (`scheduler.label`), and a real problem is
-  `scheduler.report`
+  `scheduler.report`. One that raises is run once more a minute
+  later: a handler must be safe to run twice
 - Nothing may depend on a job having run to be right
 
 ## Pills [Pills]

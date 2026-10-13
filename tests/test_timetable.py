@@ -219,12 +219,16 @@ def test_a_routine_runs_its_steps_in_order_each_recorded_and_one_failing_does_no
     tomorrow = engine.day + timedelta(days=1)
     to(tomorrow, 6, 0, 1)
     assert [name for name, _, _ in engine.ran] == ["second", "third", "first"]
-    done = rows("SELECT kind, step, status, run_key FROM scheduled_jobs WHERE local_at = ? ORDER BY step", (stamp(tomorrow),))
+    done = rows("SELECT kind, step, status, run_key FROM scheduled_jobs WHERE local_at = ? ORDER BY step, id", (stamp(tomorrow),))
     assert done == [
-        ("second", 1, "done", f"s{made.id}@{stamp(tomorrow)}#1"), ("third", 2, "failed", f"s{made.id}@{stamp(tomorrow)}#2"),
+        ("second", 1, "done", f"s{made.id}@{stamp(tomorrow)}#1"),
+        ("third", 2, "retried", f"s{made.id}@{stamp(tomorrow)}#2"), ("third", 2, "pending", f"s{made.id}@{stamp(tomorrow)}#2+retry"),
         ("first", 3, "done", f"s{made.id}@{stamp(tomorrow)}#3"),
-    ]
+    ], "the step that raised is tried once more in a minute; the rest go on"
+    to(tomorrow, 6, 1, 2)
+    assert rows("SELECT status FROM scheduled_jobs WHERE local_at = ? AND step = 2 ORDER BY id", (stamp(tomorrow),)) == [("retried",), ("failed",)]
     assert run(scheduler.troubled()) == [("test", "third", "failed")]
+    assert run(scheduler.last_of(made.id)) == ("failed", stamp(tomorrow))
     # Cut off half way: the steps already done are not done again
     after = tomorrow + timedelta(days=1)
     clock.advance_to(day.at(after, time(6, 0, 1)))
@@ -236,6 +240,51 @@ def test_a_routine_runs_its_steps_in_order_each_recorded_and_one_failing_does_no
     engine.ran.clear()
     run(scheduler.catch_up())
     assert [name for name, _, _ in engine.ran] == ["third", "first"]
+
+
+def test_a_run_that_raises_is_tried_once_more_a_minute_later_and_says_nothing_if_that_works(engine, monkeypatch):
+    # Asked 2026-10-14, after Discord answered 503 for half a minute and a job was simply lost
+    told = []
+
+    async def trouble(job, outcome, detail):
+        told.append((job.kind, outcome))
+
+    async def log_error(title, details):
+        told.append(title)
+
+    monkeypatch.setattr(scheduler, "_on_trouble", [trouble])
+    monkeypatch.setattr(scheduler, "log_error", log_error)
+    run(scheduler.book())
+    (made,) = schedules()
+    tomorrow = engine.day + timedelta(days=1)
+    key = f"s{made.id}@{stamp(tomorrow)}#1"
+    engine.fail.add("first")
+    to(tomorrow, 6, 0, 1)
+    assert rows("SELECT status, run_key FROM scheduled_jobs WHERE local_at = ? ORDER BY id", (stamp(tomorrow),)) == [("retried", key), ("pending", f"{key}+retry")]
+    assert told == [] and run(scheduler.troubled()) == [], "nothing is said, and nothing is in trouble, until the second try has ended"
+    run(scheduler.book())
+    assert rows("SELECT status FROM scheduled_jobs WHERE run_key = ?", (f"{key}+retry",)) == [("pending",)], "booking the schedules again leaves the second try alone"
+    engine.fail.clear()
+    to(tomorrow, 6, 0, 59)
+    assert len(engine.ran) == 1, "a minute later, not before"
+    to(tomorrow, 6, 1, 2)
+    assert [name for name, _, _ in engine.ran] == ["first", "first"]
+    assert rows("SELECT status FROM scheduled_jobs WHERE local_at = ? ORDER BY id", (stamp(tomorrow),)) == [("retried",), ("done",)]
+    assert told == [] and run(scheduler.troubled()) == [] and run(scheduler.last_of(made.id)) == ("done", stamp(tomorrow))
+    assert engine.ran[1][1] == stamp(tomorrow), "the second try is the same run of the same schedule"
+
+
+def test_a_run_a_handler_reports_as_failed_itself_is_not_tried_again(engine):
+    async def gives_up(job):
+        engine.ran.append(("gave up", job.local_at, 0))
+        scheduler.report(job, scheduler.FAILED)
+
+    scheduler.register_handler("test", "first", gives_up)
+    run(scheduler.book())
+    tomorrow = engine.day + timedelta(days=1)
+    to(tomorrow, 6, 0, 1)
+    to(tomorrow, 6, 5)
+    assert len(engine.ran) == 1 and rows("SELECT status FROM scheduled_jobs WHERE local_at = ?", (stamp(tomorrow),)) == [("failed",)], "it dealt with its own failure: only one that raises is retried"
 
 
 def test_two_passes_at_once_never_put_a_routine_s_steps_out_of_order(engine, monkeypatch):

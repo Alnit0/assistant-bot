@@ -8,7 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from core import actions, cards, clock, config, confirm, database, day, discord_utils, hub, live, llm, occurrences, restart, scheduler
+from core import actions, cards, clock, config, confirm, database, day, discord_utils, hub, live, llm, occurrences, restart, scheduler, surface
 from core.actions import Request
 from core.errors import UserError
 from core.occurrences import DONE, MISSED, PENDING, SKIPPED
@@ -26,21 +26,47 @@ LAST_CHANCE = "💊 Last chance today · take by "
 def world(make_db, monkeypatch, owner, dev_clock):
     make_db({"pills": store.MIGRATIONS})
     seen = SimpleNamespace(owner=owner, sent=[], edited=[], deleted=[], bot_log=[], next_id=9000)
+    # Discord not answering: how many posts are still to be refused (`refuse`), how many go through and are
+    # still answered as failed (`lost`), how many edits fail (`no_edit`), and whether the hub can be read
+    seen.refuse, seen.lost, seen.no_edit, seen.unreadable, seen.tries, seen.hub = 0, 0, 0, False, 0, []
 
     async def send(channel_id, card, silent=False):
         cards.check(card)
+        seen.tries += 1
+        if seen.refuse:
+            seen.refuse -= 1
+            raise surface.Failed("503 Service Unavailable (error code: 0): envoy overloaded")
         seen.next_id += 1
         seen.sent.append(SimpleNamespace(id=seen.next_id, channel=channel_id, card=card, silent=silent))
+        seen.hub.append(SimpleNamespace(id=seen.next_id, channel=channel_id, content=card.text, author=SimpleNamespace(id=1), created_at=clock.real_now()))
+        if seen.lost:
+            seen.lost -= 1
+            raise surface.Failed("503 Service Unavailable (error code: 0): upstream connect error")
         return seen.next_id
 
     async def edit(channel_id, message_id, card):
         cards.check(card)
+        if seen.no_edit:
+            seen.no_edit -= 1
+            return False
         seen.edited.append((message_id, card))
+        for message in seen.hub:
+            if message.id == message_id:
+                message.content = card.text
         return True
 
     async def delete(channel_id, message_id):
         seen.deleted.append(message_id)
+        seen.hub[:] = [message for message in seen.hub if message.id != message_id]
         return True
+
+    async def history(channel_id, limit=None, after=None, oldest_first=False):
+        if seen.unreadable:
+            raise surface.Failed("503 Service Unavailable")
+        return [message for message in reversed(seen.hub) if message.channel == channel_id][:limit]
+
+    monkeypatch.setattr(surface, "history", history)
+    monkeypatch.setattr(surface, "me", lambda: 1)
 
     async def log_simple(title, description=None):
         seen.bot_log.append((title, description))
@@ -857,3 +883,152 @@ def test_only_today_s_logs_are_moved_unasked_for_an_earlier_day_it_says_so_and_a
     # Said with the day ("that was dose 1 yesterday"), nothing is asked: it is that day
     again = {"doses": [{"pill": "pill a", "did": "taken", "dose": 3, "correction": True, "day": "yesterday"}]}
     assert run(plain.log_card(world.request(), again, frozenset())).lines[0] == "**Pill A** · dose 1 → dose 3 · taken 9:20 am · yesterday"
+
+
+# --- Discord refuses a post: tried again after 1, 2 and 5 minutes, then every 5 (asked 2026-10-14) ----------
+def kept(world):
+    return run(database.run(reminders.db_prompts, world.owner.id))
+
+
+def test_a_reminder_discord_refuses_is_tried_again_after_1_2_and_5_minutes_then_every_5_until_it_is_up(world):
+    add(world, EVENING)
+    world.refuse = 5
+    looks = []
+    for minute in (0, 1, 3, 8, 13):
+        at(world, 20, minute)
+        looks.append(remind_job()[0])
+        assert prompts(world) == [] and states(world)[("Evening pill", 1)] == PENDING, "the job has not failed, and nothing is up yet"
+    assert looks == [reminders.minute(day.at(world.day, time(20, each))) for each in (1, 3, 8, 13, 18)]
+    assert (kept(world)[0].attempts, kept(world)[0].reminders, world.tries) == (5, 0, 5)
+    at(world, 20, 17)
+    assert world.tries == 5, "not before its turn"
+    at(world, 20, 18)
+    ((_, lines, buttons),) = prompts(world)
+    assert notices(world) == ["💊 Routine due · 8:00 pm"] and lines[1] == "**Evening pill**" and "Snooze 15m" in buttons, "the first prompt, late, once"
+    assert (kept(world)[0].attempts, kept(world)[0].tried_at) == (0, None)
+    at(world, 20, 33)
+    assert notices(world)[-1] == "💊 Routine due · 8:00 pm · reminder 1 of 3", "and its reminders follow from when it went up"
+
+
+def test_a_try_that_went_through_after_all_is_taken_up_and_never_posted_twice(world):
+    add(world, EVENING)
+    world.lost = 1  # Discord takes the post and still answers that it failed
+    at(world, 20, 0)
+    assert len(world.sent) == 1 and prompts(world) == [] and kept(world)[0].attempts == 1
+    at(world, 20, 1)
+    assert len(world.sent) == 1 and world.tries == 1, "the hub was read first: the bare line was there, so nothing was posted again"
+    ((message_id, lines, _),) = prompts(world)
+    assert message_id == world.sent[0].id and lines[:2] == ["💊 Routine due · 8:00 pm", "**Evening pill**"], "and the pill is written into that one"
+    assert kept(world)[0].attempts == 0
+
+
+def test_a_line_that_went_up_without_the_pill_written_into_it_is_finished_at_the_next_try(world):
+    add(world, EVENING)
+    world.no_edit = 1
+    at(world, 20, 0)
+    assert len(world.sent) == 1 and kept(world)[0].attempts == 1 and kept(world)[0].message_id is None
+    at(world, 20, 1)
+    ((message_id, lines, buttons),) = prompts(world)
+    assert len(world.sent) == 1 and message_id == world.sent[0].id and lines[1] == "**Evening pill**" and buttons[0] == "Taken"
+
+
+def test_two_doses_due_at_once_never_take_up_the_same_line(world):
+    add(world, EVENING, {"name": "Other pill", "times": ["8:00 pm"]})
+    world.lost = 1
+    world.refuse = 0
+    at(world, 20, 0)  # the first goes through and is answered as failed; the second is posted as usual
+    assert len(world.sent) == 2 and len(prompts(world)) == 1
+    at(world, 20, 1)
+    assert len(world.sent) == 2 and sorted(lines[1] for _, lines, _ in prompts(world)) == ["**Evening pill**", "**Other pill**"]
+    assert len({message_id for message_id, _, _ in prompts(world)}) == 2
+
+
+def test_with_the_hub_unreadable_nothing_is_posted_for_it_cannot_be_told(world):
+    add(world, EVENING)
+    world.refuse = 1
+    at(world, 20, 0)
+    world.unreadable = True
+    at(world, 20, 1)
+    assert world.tries == 1 and kept(world)[0].attempts == 2 and remind_job() == [reminders.minute(day.at(world.day, time(20, 3)))]
+    world.unreadable = False
+    at(world, 20, 3)
+    assert len(prompts(world)) == 1 and len(world.sent) == 1
+
+
+def test_a_reminder_after_the_first_is_tried_again_too_with_the_copy_before_it_left_up_meanwhile(world):
+    add(world, EVENING)
+    at(world, 20, 0)
+    ((first, _, _),) = prompts(world)
+    world.refuse = 2
+    at(world, 20, 15)
+    at(world, 20, 16)
+    assert [each[0] for each in prompts(world)] == [first] and first not in world.deleted, "the first prompt stays while its reminder can't be posted"
+    assert (kept(world)[0].reminders, kept(world)[0].attempts) == (1, 2)
+    at(world, 20, 18)
+    ((second, lines, _),) = prompts(world)
+    assert second != first and first in world.deleted and lines[0] == "💊 Routine due · 8:00 pm · reminder 1 of 3"
+    assert notices(world) == ["💊 Routine due · 8:00 pm", "💊 Routine due · 8:00 pm · reminder 1 of 3"], "reminder 1, once"
+
+
+def test_tries_go_on_while_the_dose_can_still_be_taken_today_and_stop_when_it_cannot(world):
+    add(world, {**EVENING, "latest": "9:00 pm"})
+    world.refuse = 1000
+    for minute in (0, 1, 3, 8, 13, 18, 58):
+        at(world, 20, minute)
+    assert world.tries == 7 and states(world)[("Evening pill", 1)] == PENDING and kept(world)[0].attempts == 7
+    at(world, 21, 0)
+    tried = world.tries
+    at(world, 21, 1)
+    at(world, 21, 30)
+    assert world.tries == tried and kept(world) == [] and remind_job() == []
+
+
+def test_the_last_chance_is_tried_again_the_same_way_until_its_moment(world):
+    add(world, EVENING)
+    for minute in (0, 15, 30, 45):
+        at(world, 20, minute)
+    at(world, 21, 0)
+    world.refuse = 2
+    at(world, 23, 30)
+    at(world, 23, 31)
+    assert last_chances(world) == [] and (kept(world)[0].reminders, kept(world)[0].attempts) == (reminders.LAST_UP, 2)
+    at(world, 23, 33)
+    assert last_chances(world) == ["💊 Last chance today · take by midnight"] and len(prompts(world)) == 1
+    at(world, 23, 45)
+    assert len(last_chances(world)) == 1, "once"
+
+
+def test_a_last_chance_that_never_gets_through_ends_at_its_moment(world):
+    add(world, PILL_A)
+    for minute in (0, 15, 30, 45):
+        at(world, 8, minute)
+    at(world, 9, 0)
+    world.refuse, before = 1000, world.tries
+    for hour, minute in ((9, 30), (9, 31), (9, 33), (9, 38), (9, 43), (9, 48), (9, 53), (9, 58), (10, 0)):
+        at(world, hour, minute)
+    tried = world.tries
+    assert tried - before == 8 and kept(world)[0].reminders == reminders.FINISHED
+    at(world, 10, 5)
+    assert world.tries == tried and last_chances(world) == []
+
+
+def test_how_long_until_the_next_try(world):
+    add(world, EVENING)
+    _, listed, _ = run(checklist.view(world.owner.id))
+    due = day.at(world.day, time(20, 0))
+    waits = []
+    for attempts in (1, 2, 3, 4, 9):
+        failed = reminders.Prompt(listed[0].occurrence.id, 1, world.day, HUB, None, due, due, 0, None, attempts, due)
+        waits.append((reminders.retry_at(failed) - due).total_seconds() / 60)
+        assert reminders.decide(listed[0], failed, due) == (reminders.WAIT, reminders.retry_at(failed), 0)
+    assert waits == [1, 2, 5, 5, 5]
+
+
+def test_a_bare_line_older_than_the_tries_is_not_taken_up(world):
+    add(world, EVENING)
+    old = SimpleNamespace(id=77, channel=HUB, content="💊 Routine due · 8:00 pm", author=SimpleNamespace(id=1), created_at=clock.real_now() - timedelta(hours=20))
+    world.hub.append(old)  # left from another day, never finished
+    world.refuse = 1
+    at(world, 20, 0)
+    at(world, 20, 1)
+    assert len(world.sent) == 1 and prompts(world)[0][0] == world.sent[0].id, "a new one is posted: that old line is not this reminder"

@@ -4,7 +4,7 @@ import sqlite3
 from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta
 
-from core import actions, attention, cards, clock, config, confirm, database, design, discord_utils, hub, lifecycle, llm, notify, occurrences, restart, scheduler, timeinput
+from core import actions, attention, cards, clock, config, confirm, database, design, discord_utils, hub, lifecycle, llm, messages, notify, occurrences, restart, scheduler, surface, timeinput
 from core import day as days
 from core import schedule as core_schedule
 from core.actions import Request
@@ -32,6 +32,13 @@ log = logging.getLogger("assistant")
 # fitting the day (`fits_until`). It notifies like any reminder, through the
 # notify service, and names no pill in what the phone shows ("💊 Last chance
 # today · take by 6:00 pm"). At that moment it goes, and that is the end.
+#
+# A post that Discord refuses is tried again: after 1, 2 and 5 minutes, then
+# every 5, until it is up or the dose stops fitting the day (the last chance:
+# until its moment). What failed is kept in the prompt's row (`attempts`,
+# `tried_at`), so a restart carries on where it was. Before each new try the
+# hub is read: an earlier try that did go through (the bare line is there)
+# is taken up and finished, and never posted a second time.
 #
 # REMINDERS_ENABLED (off unless set) gates all of it: off, no reminder is ever
 # sent, nothing is booked, and any prompt left from when it was on is removed.
@@ -61,6 +68,8 @@ SNOOZE = timedelta(minutes=15)
 TAKE_BY_WITHIN = timedelta(hours=2)  # the take-by line shows only when it is this close
 
 P_TAKEN, P_AT, P_SNOOZE, P_SKIP = "prompt_taken", "prompt_at", "prompt_snooze", "prompt_skip"
+RETRY_MINUTES = (1, 2, 5)  # after the first, second and third try that failed; then every 5
+LOOK_BACK = 50  # how many of the hub's latest messages are read for a try that went through after all
 LAST_CHANCE = timedelta(minutes=30)  # before a dose stops fitting the day: one more nudge, the last
 # What `reminders` says once the three are over: waiting for the last chance, that nudge up, all done
 OVER, LAST_UP, FINISHED = REMINDERS + 1, REMINDERS + 2, REMINDERS + 3
@@ -92,6 +101,9 @@ class Prompt:
     last_at: datetime  # when the copy now up was posted
     reminders: int = 0  # how many times it has been posted again; past REMINDERS once they are over (OVER, LAST_UP, FINISHED)
     snoozed_until: datetime | None = None
+    # A post that Discord refused: `reminders` is then the one being tried, and `message_id` the copy still up
+    attempts: int = 0  # how many tries have failed
+    tried_at: datetime | None = None  # when the last of them was
 
     @property
     def is_over(self) -> bool:
@@ -130,6 +142,12 @@ def by_text(dose: Dose, by: datetime) -> str:
     return "midnight" if plan.latest is None and by == core_schedule.limit(plan, dose.occurrence.day) else timeinput.format_moment(by)
 
 
+def retry_at(prompt: Prompt) -> datetime:
+    """When a post that failed is tried again: 1, 2 and 5 minutes after the
+    first three tries, and every 5 minutes after that."""
+    return prompt.tried_at + timedelta(minutes=RETRY_MINUTES[min(prompt.attempts, len(RETRY_MINUTES)) - 1])
+
+
 def decide(dose: Dose, prompt: Prompt | None, now: datetime, by: datetime | None = None) -> tuple[str, datetime | None, int]:
     """What to do about one dose now: (POST, STOP, DROP, WAIT, LAST or END,
     when to look again, which reminder a POST is: 0 for the first prompt).
@@ -143,6 +161,18 @@ def decide(dose: Dose, prompt: Prompt | None, now: datetime, by: datetime | None
     if not wants_prompt(dose, now):
         return (DROP if prompt is not None else WAIT), None, 0
     due, next_look = minute(dose.due.at), minute(now) + EVERY
+    if prompt is not None and prompt.attempts and prompt.tried_at is not None:
+        # Discord refused it: tried again in its turn, until it is up or the dose stops fitting the day
+        end = minute(by) if by is not None and by > due else None
+        if prompt.is_last_chance and end is not None:
+            end = min(end, minute(prompt.last_at) + LAST_CHANCE)
+        if end is not None and now >= end:
+            return END, None, prompt.reminders
+        again = retry_at(prompt)
+        if now < again:
+            # Its next try, or the moment there is no more point in one, whichever comes first
+            return WAIT, (min(again, end) if end is not None else again), prompt.reminders
+        return (LAST, end, prompt.reminders) if prompt.is_last_chance else (POST, next_look, prompt.reminders)
     if prompt is not None and prompt.is_over:
         # Its reminders are over. Only if it has since come to be due later (the dose before it
         # was taken late) does it start afresh, at that time
@@ -254,11 +284,14 @@ def card(dose: Dose, listed: list[Dose], prompt: Prompt, now: datetime) -> Card:
 # ---------------------------------------------------------------------------
 # What is kept (blocking; called through database.run)
 # ---------------------------------------------------------------------------
-_COLUMNS = "occurrence_id, user_id, day, channel_id, message_id, asked_at, last_at, reminders, snoozed_until"
+_COLUMNS = "occurrence_id, user_id, day, channel_id, message_id, asked_at, last_at, reminders, snoozed_until, attempts, tried_at"
 
 
 def _prompt(row: tuple) -> Prompt:
-    return Prompt(row[0], row[1], date.fromisoformat(row[2]), row[3], row[4], from_db(row[5]), from_db(row[6]), row[7], from_db(row[8]) if row[8] else None)
+    return Prompt(
+        row[0], row[1], date.fromisoformat(row[2]), row[3], row[4], from_db(row[5]), from_db(row[6]), row[7], from_db(row[8]) if row[8] else None,
+        row[9] or 0, from_db(row[10]) if row[10] else None,
+    )
 
 
 def db_prompts(conn: sqlite3.Connection, user_id: int | None = None) -> list[Prompt]:
@@ -280,10 +313,11 @@ def db_by_message(conn: sqlite3.Connection, message_id: int) -> Prompt | None:
 
 def db_keep(conn: sqlite3.Connection, prompt: Prompt) -> None:
     conn.execute(
-        f"INSERT OR REPLACE INTO pills_prompts ({_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        f"INSERT OR REPLACE INTO pills_prompts ({_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (
             prompt.occurrence_id, prompt.user_id, prompt.day.isoformat(), prompt.channel_id, prompt.message_id,
             to_db(prompt.asked_at), to_db(prompt.last_at), prompt.reminders, to_db(prompt.snoozed_until) if prompt.snoozed_until else None,
+            prompt.attempts, to_db(prompt.tried_at) if prompt.tried_at else None,
         ),
     )
 
@@ -331,23 +365,70 @@ async def _take_down(prompt: Prompt) -> None:
     await database.run(db_forget, prompt.occurrence_id)
 
 
-async def _post(dose: Dose, listed: list[Dose], old: Prompt | None, reminders: int, now: datetime) -> bool:
+async def _went_through(channel_id: int, line: str, old: Prompt, now: datetime) -> int | None:
+    """A try that Discord said had failed and that is in the hub all the same:
+    a message of the bot's that is the bare line and nothing else (the pill
+    was never written into it), no older than the tries are, and not a
+    message kept for any dose. Its id, or None. Raises surface.Failed if the
+    hub can't be read: then nothing is posted, for it can't be told."""
+    kept = {prompt.message_id for prompt in await database.run(db_prompts)}
+    # How long this has been tried for, by the bot's clock; a message's own time is Discord's, the real one
+    me, window, real = surface.me(), (now - old.asked_at) + timedelta(minutes=2), clock.real_now()
+    for message in await surface.history(channel_id, limit=LOOK_BACK):
+        if message.author.id == me and message.id not in kept and (message.content or "").strip() == line and real - message.created_at <= window:
+            return message.id
+    return None
+
+
+async def _keep_failed(dose: Dose, channel_id: int, old: Prompt | None, reminders: int, now: datetime, message_id: int | None, why) -> datetime:
+    """A try failed: kept, with when, so that it is tried again in its turn. Returns when."""
+    first = old is None or not old.attempts
+    failed = Prompt(
+        dose.occurrence.id, dose.pill.user_id, dose.occurrence.day, channel_id, message_id,
+        old.asked_at if old else minute(now),
+        # A last chance counts its half hour from its first try; a reminder keeps the time of the copy that is up
+        minute(now) if old is None or (reminders == LAST_UP and first) else old.last_at,
+        reminders, None, (old.attempts if old else 0) + 1, minute(now),  # to the minute, as every look is
+    )
+    await database.run(db_keep, failed)
+    log.warning("Pills reminders: dose %s could not be posted (try %s): %s. Tried again at %s", dose.occurrence.id, failed.attempts, why, timeinput.format_moment(retry_at(failed)))
+    return retry_at(failed)
+
+
+async def _post(dose: Dose, listed: list[Dose], old: Prompt | None, reminders: int, now: datetime) -> bool | datetime:
     """Put a fresh copy of a dose's prompt up, in place of the one before.
     First the neutral line, which is what notifies (through the notify
     service: Discord, my phone, or held by quiet hours); then the pill is
-    written into it. False if there is nowhere to post it."""
+    written into it. True when it is up; False if there is nowhere to post
+    it; when Discord refused, the moment it is tried again.
+
+    A try after one that failed first reads the hub: if that one went
+    through after all, it is taken up and finished, and nothing is posted
+    a second time."""
     channel_id = hub.channel_id()
+    if channel_id is None:
+        await _hub_missing(True)
+        return False
+    line = notice(dose, reminders, by_text(dose, fits_until(dose, listed)))
     message_id = None
-    if channel_id is not None:
-        message_id = await notify.post(
-            KIND,
-            channel_id,
-            Card(notice(dose, reminders, by_text(dose, fits_until(dose, listed)))),
-            user_id=dose.pill.user_id,
-            item=attention.Item("a dose is due", attention.TIMED, when=dose.due.at, can_act=True),
-            key=str(dose.occurrence.id),
-            private=tuple(sorted({each.pill.plan.name for each in listed})),
-        )
+    try:
+        if old is not None and old.attempts:
+            message_id = await _went_through(channel_id, line, old, now)
+        if message_id is not None:
+            log.info("Pills reminders: an earlier try for dose %s had gone through (message %s): finished, not posted again", dose.occurrence.id, message_id)
+            await messages.record(message_id, channel_id)
+        else:
+            message_id = await notify.post(
+                KIND,
+                channel_id,
+                Card(line),
+                user_id=dose.pill.user_id,
+                item=attention.Item("a dose is due", attention.TIMED, when=dose.due.at, can_act=True),
+                key=str(dose.occurrence.id),
+                private=tuple(sorted({each.pill.plan.name for each in listed})),
+            )
+    except surface.Failed as error:
+        return await _keep_failed(dose, channel_id, old, reminders, now, old.message_id if old else None, error)
     await _hub_missing(message_id is None)
     if message_id is None:
         return False
@@ -355,7 +436,9 @@ async def _post(dose: Dose, listed: list[Dose], old: Prompt | None, reminders: i
         await cards.delete(old.channel_id, old.message_id)
     prompt = Prompt(dose.occurrence.id, dose.pill.user_id, dose.occurrence.day, channel_id, message_id, old.asked_at if old else minute(now), minute(now), reminders)
     await database.run(db_keep, prompt)
-    await cards.edit(channel_id, message_id, card(dose, listed, prompt, now))
+    if not await cards.edit(channel_id, message_id, card(dose, listed, prompt, now)):
+        # The line is up and the pill is not in it: the next try finds it there and finishes it
+        return await _keep_failed(dose, channel_id, replace(prompt, attempts=old.attempts if old else 0), reminders, now, None, "the line was posted, but the pill could not be written into it")
     return True
 
 
@@ -378,12 +461,16 @@ async def _run(user_id: int) -> tuple[datetime | None, int]:
         prompt = kept.get(dose.occurrence.id)
         what, again, reminders = decide(dose, prompt, now, fits_until(dose, listed))
         if what == POST:
-            if await _post(dose, listed, prompt, reminders, now):
+            sent = await _post(dose, listed, prompt, reminders, now)
+            if sent is True:
                 posted += 1
                 log.info("Pills reminders: dose %s posted (reminder %s of %s)", dose.occurrence.id, reminders, REMINDERS)
-            else:
+            elif sent is False:
                 log.warning("Pills reminders: dose %s is due and there is no hub channel to post in", dose.occurrence.id)
                 again = None
+            else:
+                # Discord refused: when to look again is worked out from what is now kept
+                _, again, _ = decide(dose, await database.run(db_prompt, dose.occurrence.id), now, fits_until(dose, listed))
         elif what == STOP:
             # The last reminder went unanswered: the message goes and nothing more is sent. The dose is
             # still to take, so what is kept stays, as over: it is never asked about a second time
@@ -394,11 +481,14 @@ async def _run(user_id: int) -> tuple[datetime | None, int]:
             # When that is (if at all) is worked out from what is now kept
             _, again, _ = decide(dose, replace(prompt, message_id=None, reminders=OVER, snoozed_until=None), now, fits_until(dose, listed))
         elif what == LAST:
-            if await _post(dose, listed, replace(prompt, message_id=None), LAST_UP, now):
+            sent = await _post(dose, listed, replace(prompt, message_id=None), LAST_UP, now)
+            if sent is True:
                 posted += 1
                 log.info("Pills reminders: dose %s given its last chance", dose.occurrence.id)
-            else:
+            elif sent is False:
                 again = None
+            else:
+                _, again, _ = decide(dose, await database.run(db_prompt, dose.occurrence.id), now, fits_until(dose, listed))
         elif what == END:
             if prompt.message_id is not None and lifecycle.deletes(MessageClass.ALERT):
                 await cards.delete(prompt.channel_id, prompt.message_id)

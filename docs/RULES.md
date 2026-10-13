@@ -272,6 +272,14 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   (`scheduler.register_handler(..., label)`, `Task.job_labels`). Its
   kind is the code's own word and is never shown to me: anything I
   read names a job with `scheduler.label`
+- A run that raises is tried once more, a minute later, as the same
+  run of the same schedule (`scheduler.RETRIED`): nothing is said and
+  nothing is in trouble until that second try has ended. A handler
+  that reports its own failure is not run again. A handler must
+  therefore be safe to run twice. Pill reminders do their own: a post
+  Discord refuses is tried again after 1, 2 and 5 minutes, then every
+  5, and the hub is read before each try so that nothing is posted
+  twice (`reminders._went_through`)
 - A job never does nothing in silence: what it decided and why goes in
   the log every time. #bot-log is for real problems only: one that
   failed or skipped for a real problem says so there and with

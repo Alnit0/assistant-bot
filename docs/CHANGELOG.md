@@ -6,6 +6,12 @@ backfilled from the git log.
 
 ## 2026-10-14
 
+- A pill reminder that Discord refuses is tried again after 1, 2 and
+  5 minutes, then every 5, and is never posted twice. The last-chance
+  nudge too.
+- Any other scheduled job that fails with an error is tried once more
+  a minute later before it counts as failed.
+
 - #commands is brought up to date by editing its messages in place.
   A message is added or deleted only when the number of sections
   changes; the lot is never deleted and posted again.

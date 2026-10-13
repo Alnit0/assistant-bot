@@ -68,8 +68,33 @@ dose 2 taken 9:20 am and dose 1 taken 9:27 am.
 **Bug posts (asked 2026-10-14).** A bug the bot or the self-test files
 itself no longer ends with the three questions, only the line about
 notes and the buttons. The questions stay on a bug you report: with
-🐞, and also with the word `bug` or by saying so (my reading: those
-are yours too; say if you want them on 🐞 alone).
+🐞, the word `bug` or a reply (confirmed).
+
+**Retries (asked 2026-10-14, after Discord answered 503 for half a
+minute and a reminder was lost).**
+
+- **A pill reminder Discord refuses is tried again**: after 1, 2 and 5
+  minutes, then every 5, while the dose can still be taken today. The
+  job no longer fails. Before each new try the hub is read: if an
+  earlier try went through after all (the bare line is there), the
+  pill is written into that one and nothing is posted twice. With the
+  hub unreadable nothing is posted, for it can't be told. The same
+  for the last-chance nudge, until its moment. What failed is kept in
+  the prompt's row, so a restart carries on.
+- **Any other scheduled job that raises is tried once more a minute
+  later.** Nothing is said, and nothing counts as failed, until that
+  second try has ended. A job that reports its own failure (a backup
+  that could not be written, a self-test with a failed step) is not
+  run again.
+- **Not built: a fallback to ntfy** when Discord stays unreachable.
+  Your message left the choice open ("<ONE OF THESE>" A or B), so the
+  bot still sends nothing to ntfy (question 45).
+- D4, the dev bug from the outage, was closed by the phase 1 rerun.
+- Self-test as the dev bot with live up (11:42 am, recorded answers,
+  nothing spent): 116 of 117 passed, none failed, one skipped for
+  needing real requests. New step 2.10b: Discord takes a reminder and
+  answers that it failed; a minute later it is finished, not posted
+  twice. Offline: 2770 passed, 1 skipped.
 
 **#commands (asked 2026-10-14).** The logs of the last week had 25
 rate-limit answers (429) from Discord, 22 of them from #commands being
