@@ -34,6 +34,9 @@ CARD_LIMIT = 2000  # Discord's limit for one message
 REACTION, REPLY, WORD = "reaction", "reply", "word"
 SELFTEST = "selftest"  # a step of the self-test that failed (selftest/bugs.py): nobody reported it
 SYSTEM = "system"  # a problem of the bot's own (a job that did not work, its memory): it filed it itself
+# A bug I reported myself: the only kind whose post asks me the three questions. One the bot or the
+# self-test files already holds what was expected, what happened and whether it repeated
+MINE = (REACTION, REPLY, WORD)
 SOURCES = {REACTION: f"a {BUG_EMOJI} reaction", REPLY: "a reply", WORD: "the word", SELFTEST: "the self-test", SYSTEM: "the bot itself"}
 
 # Who wrote a note: the owner in the post, or Claude Code after a fix
@@ -53,13 +56,13 @@ TURN_SLACK = timedelta(seconds=5)  # our clock and Discord's are not the same cl
 LOG_BEFORE, LOG_AFTER = timedelta(seconds=5), timedelta(seconds=30)
 
 IN_POST = "That is already in a bug's post: write the note there instead."
+NOTES = "-# Anything you write in this post is saved as a note (✅). Press Fixed or Won't fix when it is settled."
 QUESTIONS = (
     "**To help fix it, reply here with:**\n"
     "1. What did you expect?\n"
     "2. What happened instead?\n"
     "3. Has it happened before?\n"
-    "-# Anything you write in this post is saved as a note (✅). "
-    "Press Fixed or Won't fix when it is settled."
+    + NOTES
 )
 
 
@@ -416,9 +419,10 @@ def opening_text(
 
 def post_sections(number: int, report: Report) -> list[str]:
     """The forum post, a message at a time: the first is the opening card, the
-    last is the questions."""
+    last is the questions for a bug I reported, and only the line about
+    notes for one the bot or the self-test filed itself."""
     rest = sections(report, brief=True)[1:]
-    return [opening_text(number, report)] + [f"**{heading}**\n{text}" for heading, text in rest] + [QUESTIONS]
+    return [opening_text(number, report)] + [f"**{heading}**\n{text}" for heading, text in rest] + [QUESTIONS if report.source in MINE else NOTES]
 
 
 def missing_tags(existing: list[str]) -> list[str]:

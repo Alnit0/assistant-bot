@@ -65,6 +65,12 @@ dose 2 taken 9:20 am and dose 1 taken 9:27 am.
   (2.09b, the last chance) passed. Recorded answers, nothing spent.
   Offline: 2751 passed, 1 skipped.
 
+**Bug posts (asked 2026-10-14).** A bug the bot or the self-test files
+itself no longer ends with the three questions, only the line about
+notes and the buttons. The questions stay on a bug you report: with
+🐞, and also with the word `bug` or by saying so (my reading: those
+are yours too; say if you want them on 🐞 alone).
+
 ## Decided overnight (2026-10-14)
 
 Choices the batch's prompt did not settle, made as the standard, the

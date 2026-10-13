@@ -220,6 +220,17 @@ def test_the_post_opens_with_the_message_and_ends_with_the_questions():
         assert question in rules.QUESTIONS
 
 
+@pytest.mark.parametrize("source, asks", [(rules.REACTION, True), (rules.REPLY, True), (rules.WORD, True), (rules.SELFTEST, False), (rules.SYSTEM, False)])
+def test_only_a_bug_i_reported_asks_me_the_three_questions(source, asks):
+    # Asked 2026-10-14: one the bot or the self-test files already holds what was expected, what happened and whether it repeated
+    from dataclasses import replace
+
+    last = rules.post_sections(4, replace(report(), source=source))[-1]
+    assert (last == rules.QUESTIONS) is asks and last.endswith(rules.NOTES), "how to add a note and close it is said either way"
+    for question in ("What did you expect?", "What happened instead?", "Has it happened before?"):
+        assert (question in last) is asks
+
+
 def test_a_report_with_nothing_found_says_so():
     parts = rules.post_sections(1, report(preceding=[]))
     assert parts[1].endswith("Nothing before it in the channel.")

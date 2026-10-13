@@ -131,7 +131,7 @@ the channel you are in; `help <task or word>` gives details.
   the #bugs forum (`BUGS_CHANNEL_ID`, a forum channel where the bot may
   Create Posts, Send Messages in Threads and Manage Threads). The post has
   the message, the five before it, that turn's tool calls, timings and log
-  errors, and the commit, then three questions. Whatever you write in the
+  errors, and the commit, then three questions (only on a bug you reported: one the bot or the self-test files itself has none). Whatever you write in the
   post is saved as a note (the count on its card goes up; no ✅); the bot never answers there and
   nothing is sent to Claude. The opening card counts the notes. **Fixed**
   and **Won't fix** tag the post and archive it, and leave a **Re-open**

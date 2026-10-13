@@ -6,6 +6,9 @@ backfilled from the git log.
 
 ## 2026-10-14
 
+- A bug the bot or the self-test files itself no longer asks you the
+  three questions. A bug you report still does.
+
 - A dose is no longer marked missed when its reminders run out: after
   the third reminder nothing more is sent and it stays to take. It is
   missed only once it can no longer be taken today.

@@ -40,13 +40,13 @@ Last updated: 2026-10-14
 | K | Startup and housekeeping | 58 | 38 | 20 | 18 | 40 | 0 | 0 |
 | L | Keep | 14 | 6 | 8 | 8 | 6 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
-| P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
+| P | Bugs | 38 | 18 | 20 | 17 | 21 | 0 | 0 |
 | Q | Time, days, the schedule model, the occurrence log and cards | 28 | 26 | 2 | 2 | 26 | 0 | 0 |
 | R | Pills | 88 | 34 | 54 | 46 | 42 | 0 | 0 |
 | S | Routing and confirm cards | 80 | 27 | 53 | 18 | 61 | 0 | 1 |
 | T | Tasks in plain words | 29 | 9 | 20 | 5 | 24 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **557** | **229** | **328** | **258** | **298** | **0** | **1** |
+| | **Total** | **558** | **230** | **328** | **258** | **299** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -451,6 +451,7 @@ post in #bugs.
 | P35 | 🤖 Auto | A bug and a note are read back; the list is Live | "Logged as B4" is said only once the bug is read back with its post, and "your note is saved" only once the note is; one that didn't save says so. "show my open bugs" and `bugs` give a Live list that follows a new bug, a note and a close. The plain-words code is `plain.py`, and only `posts.py` uses discord.py | ✅ Pass | 2026-10-12 | `tests/test_bugs.py` |
 | P36 | 👤 Manual | Say `show my open bugs` and keep it in view; react 🐞 to any message; then open that bug's post and press **Won't fix** | The list gains the new bug by itself, with no new message; after Won't fix it loses it again | ⬜ Untested | | Block 32 |
 | P37 | 👤 Manual | React 🐞 to a message; take the 🐞 off and put it on again | "🐞 Logged as B<n>", then "🐞 Already logged as B<n>" with the same link: never a second bug | ⬜ Untested | | Block 34 |
+| P38 | 🤖 Auto | Only a bug I reported asks the three questions | A report by 🐞, a reply or the word ends with the questions; one filed by the self-test or the bot itself ends with only the line about notes | ✅ Pass | 2026-10-14 | `tests/test_bugs.py` |
 
 ## Q. Time, days, the schedule model, the occurrence log and cards
 
