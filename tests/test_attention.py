@@ -249,7 +249,7 @@ def test_dev_mode_left_on_is_something_that_needs_me_on_live_only(monkeypatch):
 
 
 # --- a system problem files a bug by itself, one for each kind -------------------------------------------------------
-def test_a_job_that_did_not_work_gets_a_bug_and_its_item_points_at_it(monkeypatch):
+def test_a_job_that_did_not_work_gets_a_bug_and_its_item_points_at_it(db, monkeypatch):
     filed = []
 
     async def file(key, summary, details):

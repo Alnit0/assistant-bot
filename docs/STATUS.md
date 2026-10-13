@@ -153,6 +153,20 @@ design and the hub principle point. Each is yours to overturn.
     shown only when there is nothing else to show; `dev cost` says it
     too. Say if you want it back at level 1.
 
+**One thing that went wrong, and was put right**
+
+32. **Tonight's test runs wrote 28 rows into live's database.** The
+    new "worth knowing" notes (item 5) are written by code that the
+    nightly run's tests call, and those tests asked for no test
+    database, so the writes went to `data/assistant.db`: 28 notes
+    saying "The nightly self-test did not run…". Nothing read them
+    (they would have shown as small lines in this morning's briefing).
+    I deleted exactly those 28 rows (by their words and the two hours
+    they were written in), checked no other table had anything from
+    tests, and the tests now always get a database of their own, with
+    a test that says so. A snapshot from before is
+    `data/backups/pre-migration-v23-2026-10-14_022704.db`.
+
 ## Questions for Alex
 
 **The open questions are one list now: `docs/QUESTIONS.md`** (42 of

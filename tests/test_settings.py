@@ -18,3 +18,10 @@ def test_every_switch_is_set_by_the_tests_themselves_so_the_real_env_never_decid
 def test_with_nothing_set_every_new_switch_is_off():
     assert not any((config.BRIEFING_ENABLED, config.WEEKLY_SUMMARY, config.DMS_ENABLED, config.NIGHTLY_SELFTEST, config.HUB_TIDY, config.QUIET_HOURS_ENABLED, config.NOTIFY_NTFY))
     assert config.NTFY_BOT_TOPIC == "" and not config.CARDS_V2 and not config.REMINDERS_ENABLED
+
+
+def test_a_test_that_asks_for_no_database_never_has_the_real_one():
+    from core import database
+
+    assert database.DB_PATH.name == "no-database-asked-for.db" and database.DB_PATH != config.BASE_DIR / "data" / "assistant.db"
+    assert not (config.DATA_DIR / "assistant.db").exists(), "the data folder is the test's own too"

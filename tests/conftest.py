@@ -33,6 +33,9 @@ def no_real_data_folder(monkeypatch, tmp_path):
     from core import config
 
     monkeypatch.setattr(config, "DATA_DIR", tmp_path / "data")
+    # And the database: a test that asks for none gets an empty file of its own, never this PC's
+    # live one (on 2026-10-14 tests of the nightly run wrote 28 notes into it through new code)
+    monkeypatch.setattr(database, "DB_PATH", tmp_path / "no-database-asked-for.db")
 
 
 @pytest.fixture(autouse=True)
