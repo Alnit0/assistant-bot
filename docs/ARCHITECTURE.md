@@ -12,6 +12,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | Path | Responsibility |
 |---|---|
 | `main.py` | Entry point (`--dev` runs it on the dev database): creates the Discord client, wires Discord events to the registry, hands every plain message to `core/conversation.py`, keeps the 👀 / ⚠️ status reactions on the user's message, and holds the slash command tree |
+| `CLAUDE.md`, `docs/RULES.md` | The rules: `CLAUDE.md` is the short form read on every turn, `docs/RULES.md` the rules in full, which is right where they differ |
 | `core/` | Shared building blocks. Never imports from `tasks/` or `interfaces/` |
 | `interfaces/` | What the bot is used through. One today, `interfaces/discord/`: the only place for new code that imports discord.py. `surface.py` is the door's verbs on the shared client (Discord's errors become `surface.Gone` / `surface.Failed` there); `render.py` draws a `Card` as components (buttons, dropdowns, forms, Components V2 layouts, each finding its action from its id) and wraps a press as an `Answer`. Bound at start (`interfaces.discord.bind()`), imported by neither core nor a task. `docs/INTERFACE.md` |
 | `tasks/` | One folder per feature, loaded by `tasks/registry.py` |

@@ -118,6 +118,30 @@ design and the hub principle point. Each is yours to overturn.
     never the network. The place in `.env` is Auckland city centre;
     it is in nothing committed and is never logged.
 
+**Item 2, a slim CLAUDE.md**
+
+28. **`CLAUDE.md` went from 36.3 KB (595 lines) to 9.8 KB (179
+    lines), 27% of what it was.** The whole of the old file is
+    `docs/RULES.md`, word for word, and is the one that counts where
+    the two differ. The short form keeps the words, what to read
+    first, a "Never" list, and the rules needed on most turns, each
+    section naming the part of RULES.md to read before working there.
+    Moved out entirely: the table of where the standard lives in the
+    code, the histories, the reasons and the examples.
+29. **One line is new in the short form**, taken from your batch
+    rules rather than the old file: "new features behind a switch,
+    off by default, unless I say otherwise".
+
+**Item 1, interface groundwork**
+
+30. **Already done earlier in the night** (the commit "One door to
+    Discord"), exactly as this batch asks: timers frozen, the web page
+    over Tailscale in the backlog, the rule in `CLAUDE.md`,
+    `docs/RULES.md` and `docs/INTERFACE.md` with `task-check` and a
+    test enforcing it, and stages 1 and 2. Nothing more was needed.
+    Since then two new pieces were built on the plain-data side only:
+    `core/alerts.py` and `tasks/weather/`.
+
 ## Questions for Alex
 
 **The open questions are one list now: `docs/QUESTIONS.md`** (42 of
