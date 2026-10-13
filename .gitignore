@@ -23,3 +23,6 @@ docs/BUGS.md
 #Spec sheets
 docs/specs/
 .env.notify
+
+# Claude Code's local settings (hooks for this machine only)
+.claude/settings.local.json

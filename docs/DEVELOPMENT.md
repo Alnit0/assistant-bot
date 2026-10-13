@@ -1713,6 +1713,29 @@ the run's database (`data/selftest/run-<time>/SELFTEST-partial.md`).
 `--only p1,p2` runs some of the starts while working on the test
 itself.
 
+## Phone notifications from Claude Code (ntfy)
+
+Claude Code tells your phone when it has finished a response and when
+it is waiting for you, through [ntfy](https://ntfy.sh). Nothing to do
+with the bot: it is for working on this repository.
+
+- **The topic** is in `.env.notify` (git ignores it): the topic alone
+  on one line, or `NTFY_TOPIC=<topic>`. Anyone who has it can read and
+  send your notifications, so it is never printed or committed.
+  Subscribe to it in the ntfy app.
+- **`scripts\notify.ps1`** posts to `https://ntfy.sh/<topic>`:
+  `-Kind finished` is "✅ Claude Code finished" (priority 3, with the
+  first line of the summary), `-Kind waiting` is "⏸️ Claude Code needs
+  you" (priority 5). It says nothing and exits 0 whatever goes wrong.
+- **The hooks** are in `.claude\settings.local.json` (this machine
+  only, ignored by git): `Stop` for finished; `Notification` for a
+  permission prompt, and `PreToolUse` on a question, for waiting.
+- **To turn them off**: add `"disableAllHooks": true` to
+  `.claude\settings.local.json`, or delete the `hooks` part of it (or
+  the file). Renaming `.env.notify` also silences it.
+- **To test by hand**: `powershell -File scripts\notify.ps1 -Kind
+  finished -Text "hello"`.
+
 ## Service commands (Terminal as Admin)
 
 ```powershell
