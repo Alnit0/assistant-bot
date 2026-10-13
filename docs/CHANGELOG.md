@@ -6,6 +6,10 @@ backfilled from the git log.
 
 ## 2026-10-13
 
+- Each bot is called what you named it (`BOT_NAME` in its settings
+  file). The dev bot shows "· testing" during a self-test; the "· DEV"
+  marker is gone.
+
 - Every start of either bot checks which Discord account it is before
   doing anything, and exits untouched if it is the wrong one.
 

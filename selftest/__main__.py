@@ -64,6 +64,28 @@ def confirm_account(client) -> None:
         raise RuntimeError(f"the self-test's own calls would be made as {client.user} (id {client.user.id}), not the dev bot (BOT_USER_ID in .env.dev)")
 
 
+async def plain_name(channel_id: int) -> str:
+    """The run is over: the dev bot is called its plain name again (it was
+    "Name · testing" while its starts ran). Over HTTP, as the dev bot. Returns
+    what was done. Only with a dev bot, and only when it has a BOT_NAME."""
+    name = config.test_bot_name()
+    if not separate() or not name:
+        return "nothing to put back"
+    client = discord.Client(intents=discord.Intents.none())
+    await client.login(token())
+    try:
+        confirm_account(client)
+        channel = await client.fetch_channel(channel_id)
+        guild = await client.fetch_guild(channel.guild.id)
+        me = await guild.fetch_member(client.user.id)
+        if me.nick == name[:32]:
+            return "already its plain name"
+        await me.edit(nick=name[:32], reason="The self-test is over: its plain name again")
+        return "its plain name again"
+    finally:
+        await client.close()
+
+
 def back_about(now: datetime, minutes: float) -> str:
     """When live is expected back, for the status of a run that stopped it: "4:15 pm"."""
     return format_time((now + timedelta(minutes=minutes + 2)).time())
@@ -461,6 +483,10 @@ def main() -> int:
     finally:
         spent = report.spent(config.DATA_DIR / "dev.db")
         put_back(saved, stamp)
+        try:
+            print(f"--- the dev bot's name: {asyncio.run(plain_name(channels['inbox']))}", flush=True)
+        except Exception as error:
+            print(f"--- the dev bot's name could not be put back ({type(error).__name__}): its next start does it", flush=True)
     path = report.write(phases, spent, asked.claude, stamp, partial=not whole, began=began, ended=datetime.now(), ran=", ".join(chosen) if chosen and not whole else "")
     results = [each for _, _, found in phases for each in found["results"]]
     bad = [each for each in results if each["status"] in ("fail", "error")]

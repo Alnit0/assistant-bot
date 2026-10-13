@@ -1,7 +1,7 @@
 # Phone notifications for Claude Code, through ntfy (https://ntfy.sh).
 #
 # Run by the hooks in .claude/settings.local.json:
-#   -Kind finished   Claude Code has finished a response   (priority 3)
+#   -Kind finished   Claude Code has finished a response   (priority 5)
 #   -Kind waiting    Claude Code is waiting for you        (priority 5)
 #
 # The topic is NTFY_TOPIC in .env.notify, beside this folder. It is a secret:
@@ -56,7 +56,7 @@ try {
         if ($told -and $told.message) { $body = [string]$told.message }
     } else {
         $title = [char]::ConvertFromUtf32(0x2705) + ' Claude Code finished'
-        $priority = '3'
+        $priority = '5'
         $body = 'Finished.'
         if ($told -and $told.last_assistant_message) {
             # The first line of the summary that says something, without its Markdown

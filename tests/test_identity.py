@@ -24,18 +24,18 @@ def job(task, kind, due_in):
 # The nickname (pure)
 # ---------------------------------------------------------------------------
 @pytest.mark.parametrize(
-    "current, dev, wanted",
+    "name, state, wanted",
     [
-        ("Hive", False, "Hive"),
-        ("Hive", True, "Hive · DEV"),
-        ("Hive · DEV", True, "Hive · DEV"),  # started on dev twice: marked once
-        ("Hive · DEV", False, "Hive"),  # back on live: the base name again
-        ("Hive · DEV · DEV", False, "Hive"),
-        ("A" * 32, True, "A" * 26 + " · DEV"),  # Discord allows 32 characters
+        ("Hive", "", "Hive"),
+        ("  Hive ", "", "Hive"),
+        ("Hive", "testing", "Hive · testing"),  # a real state, always "Name · state"
+        ("", "testing", ""),  # no name given: the nickname is left alone
+        ("A" * 40, "", "A" * 32),  # Discord allows 32 characters
+        ("A" * 32, "testing", "A" * 22 + " · testing"),
     ],
 )
-def test_the_nickname_is_the_base_name_on_live_and_marked_on_dev(current, dev, wanted):
-    assert identity.nickname(current, dev) == wanted
+def test_the_nickname_is_the_name_it_was_given_with_a_suffix_only_for_a_real_state(name, state, wanted):
+    assert identity.nickname(name, state) == wanted
     assert len(wanted) <= identity.MAX_NICKNAME
 
 
@@ -114,45 +114,62 @@ def server(monkeypatch):
     return seen
 
 
-def test_on_live_a_base_name_is_left_alone(server, monkeypatch):
-    monkeypatch.setattr(identity, "DEV_DATABASE", False)
+def _named(monkeypatch, name, state=""):
+    monkeypatch.setattr(identity.config, "BOT_NAME", name)
+    monkeypatch.setattr(identity.config, "NAME_STATE", state)
+
+
+def test_a_bot_that_already_has_its_name_is_left_alone(server, monkeypatch):
+    _named(monkeypatch, "Hive")
     assert run(identity.set_nickname()) == "already Hive"
     assert server.member.edits == [] and server.logged == []
 
 
-def test_on_dev_the_name_is_marked_and_back_on_live_it_is_the_base_name_again(server, monkeypatch):
-    monkeypatch.setattr(identity, "DEV_DATABASE", True)
-    assert run(identity.set_nickname()) == "Hive -> Hive · DEV"
-    assert run(identity.set_nickname()) == "already Hive · DEV", "the name it has at the start is read each time"
-    monkeypatch.setattr(identity, "DEV_DATABASE", False)
+def test_on_start_the_bot_takes_the_name_it_was_given_whatever_it_was_called(server, monkeypatch):
+    server.member = Member("Hive · DEV")  # the old marker goes with the first start
+    _named(monkeypatch, "Hive")
     assert run(identity.set_nickname()) == "Hive · DEV -> Hive"
-    assert server.member.edits == ["Hive · DEV", "Hive"] and server.logged == []
+    server.member = Member(None)  # no nickname yet
+    assert run(identity.set_nickname()) == "hive-bot -> Hive"
 
 
-def test_with_no_nickname_the_base_is_the_bots_own_name(server, monkeypatch):
-    server.member = Member(None)
-    monkeypatch.setattr(identity, "DEV_DATABASE", True)
-    run(identity.set_nickname())
-    assert server.member.edits == ["hive-bot · DEV"]
+def test_the_dev_bot_says_testing_during_a_self_test_and_is_plain_again_after(server, monkeypatch):
+    _named(monkeypatch, "Hive", "testing")
+    assert run(identity.set_nickname()) == "Hive -> Hive · testing"
+    assert run(identity.set_nickname()) == "already Hive · testing"
+    _named(monkeypatch, "Hive")
+    assert run(identity.set_nickname()) == "Hive · testing -> Hive"
+    assert server.member.edits == ["Hive · testing", "Hive"] and server.logged == []
+
+
+def test_with_no_name_given_nothing_is_renamed(server, monkeypatch):
+    server.member = Member("Whatever I called it")
+    _named(monkeypatch, "", "testing")
+    assert run(identity.set_nickname()) == "left as it is (BOT_NAME is not set)" and server.member.edits == []
 
 
 def test_without_change_nickname_it_says_so_once_in_bot_log_and_changes_nothing(server, monkeypatch):
-    server.member = Member("Hive", may=False)
-    monkeypatch.setattr(identity, "DEV_DATABASE", True)
+    server.member = Member("Old", may=False)
+    _named(monkeypatch, "Hive")
     assert run(identity.set_nickname()) == "Change Nickname is missing"
     assert server.member.edits == []
     ((title, said),) = server.logged
-    assert title == "🏷️ Nickname not changed" and "**Change Nickname**" in said and "**Hive · DEV**" in said
-    monkeypatch.setattr(identity, "DEV_DATABASE", False)
+    assert title == "🏷️ Nickname not changed" and "**Change Nickname**" in said and "**Hive**" in said
+    server.member = Member("Hive", may=False)
     run(identity.set_nickname())
-    assert len(server.logged) == 1, "nothing to change on live: nothing more is said"
+    assert len(server.logged) == 1, "nothing to change: nothing more is said"
 
 
 def test_a_name_discord_refuses_is_reported_not_raised(server, monkeypatch):
-    server.member = Member("Hive", refuse=True)
-    monkeypatch.setattr(identity, "DEV_DATABASE", True)
+    server.member = Member("Old", refuse=True)
+    _named(monkeypatch, "Hive")
     assert run(identity.set_nickname()) == "refused by Discord"
     assert server.logged[0][0] == "🏷️ Nickname not changed"
+
+
+def test_only_the_dev_bot_in_a_self_test_has_a_state_in_its_name():
+    assert identity.config.NAME_STATE == "", "this is not a self-test's bot"
+    assert identity.STATE_MARK == " · "
 
 
 def test_the_status_is_only_sent_when_it_reads_differently(server, db, dev_off, monkeypatch):

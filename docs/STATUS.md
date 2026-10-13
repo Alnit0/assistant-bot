@@ -37,9 +37,13 @@ against the bug's own record, not only the list of numbers).
 - **Live no longer acts in the dev bot's channels**, so that two bots
   never answer one message. Anything you type there is for the dev
   bot, when it is running.
-- **The dev bot has no name of its own**: `ASSISTANT_NAME` is empty in
-  `.env.dev`, so it calls itself what live does. In Discord the "· DEV"
-  on its nickname tells them apart.
+- **The dev bot has no name of its own in what it says**:
+  `ASSISTANT_NAME` is empty in `.env.dev`, so it calls itself what live
+  does. Its nickname in Discord is its own (`BOT_NAME`).
+- **Nicknames** (2026-10-13): each bot takes `BOT_NAME` from its
+  settings file on start; the dev bot is "Name · testing" during a
+  self-test; "· DEV" is gone. If a self-test is stopped before its end
+  the dev bot stays "· testing" until its next start or the next run.
 - **The status "🧪 Self-test running · back about <time>"** is shown
   only in the fallback (no dev bot), by the self-test's own bot on
   live's account, since a stopped bot has no status. With the dev bot

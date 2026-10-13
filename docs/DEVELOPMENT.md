@@ -1305,8 +1305,12 @@ run at the same time, from this one folder.
   live's. (Each start of the dev bot also clears any it once had.)
   Typed words, replies and reactions work for it as for live.
 - **The names**: in code, docs and messages they are "live" and "the
-  dev bot", never a display name: rename them in Discord as you like.
-  Which is which is the account id (`BOT_USER_ID`).
+  dev bot", never a display name. Which is which is the account id
+  (`BOT_USER_ID`). What each is called in Discord is `BOT_NAME` in its
+  settings file: change it there (and restart that bot), since a bot
+  takes that name again on every start. The dev bot is "<name> ·
+  testing" while a self-test runs and its plain name after; live's
+  name never changes (`docs/DESIGN.md`, "The bots' names").
 - **Typing to the dev bot by hand**: start `python main.py --dev` and
   write in #selftest-inbox. Live does not answer there. The self-test
   empties those channels at the start of every run.
@@ -1732,9 +1736,9 @@ with the bot: it is for working on this repository.
   send your notifications, so it is never printed or committed.
   Subscribe to it in the ntfy app.
 - **`scripts\notify.ps1`** posts to `https://ntfy.sh/<topic>`:
-  `-Kind finished` is "✅ Claude Code finished" (priority 3, with the
-  first line of the summary), `-Kind waiting` is "⏸️ Claude Code needs
-  you" (priority 5). It says nothing and exits 0 whatever goes wrong.
+  `-Kind finished` is "✅ Claude Code finished" (with the first line
+  of the summary), `-Kind waiting` is "⏸️ Claude Code needs you"; both
+  are priority 5. It says nothing and exits 0 whatever goes wrong.
 - **The hooks** are in `.claude\settings.local.json` (this machine
   only, ignored by git): `Stop` for finished; `Notification` for a
   permission prompt, and `PreToolUse` on a question, for waiting.

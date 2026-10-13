@@ -523,7 +523,7 @@ ends by saying what to press.
 | 6 | Type `dev mock`. Then `dev mock checklist-v2`, and press **Taken** on it. Then `dev mock reset-card-v2` and `dev mock confirm-card-v2` | The list names `checklist-v2`, `confirm-card-v2` and `reset-card-v2`. Each sketch is posted as one message with boxed sections, an accent colour down the side, headings, small text and coloured buttons; your word is deleted. A button answers "🧪 Mock-up: this button does nothing yet." to you alone, and nothing changes | J51 |
 | 7 | Type `dev mock nothing`. Press nothing | "🧪 There is no mock-up called `nothing`." with the list of the ones there are; nothing else is posted | J52 |
 | 8 | Tomorrow morning: look at "💾 Backup saved" in #bot-log, and at the bot's status. Press nothing | The card lists `assistant-….db`, `specs-….zip` and, if a channel was ever reset, `exports-….zip`. The status is "🟢 Live · …", not a ⚠️ line | K22 |
-| 9 | Only when you next run the dev database (otherwise report `K20 skip`): `python main.py --dev`; look at the bot. `dev clock +13h`; look again. Stop it and start the live bot | "<base> · DEV" and "🧪 DEV database"; after the clock moves, "🧪 DEV database · clock +13h". Back on live the nickname is the base name again | K20 |
+| 9 | Only when you next run the dev database (otherwise report `K20 skip`): `python main.py --dev`; look at the bot. `dev clock +13h`; look again. Stop it and start the live bot | The dev bot has its own plain name (no "· DEV") and the status "🧪 DEV database"; after the clock moves, "🧪 DEV database · clock +13h". Live's name does not change | K20 |
 
 ## 25. Retest: the `task-check` fixes
 

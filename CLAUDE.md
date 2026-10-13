@@ -410,6 +410,12 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   say "the dev bot" with the dev bot's id, stop it at once. The dev
   bot registers no slash commands, and its bugs have a forum of their
   own
+- A bot's nickname is `BOT_NAME` in its settings file, set by me, and
+  taken on every start. A suffix only for a real state, always "Name ·
+  state": the dev bot is "Name · testing" during a self-test and its
+  plain name again after. Live keeps its plain name; its states are in
+  the status line. Nothing else renames a bot, there is no "· DEV"
+  marker, and a bot's name is never written where a person reads
 - Two bots in one server both see everything: each acts only in its own
   channels (`config.mine`). The dev bot takes no channel from `.env`,
   only what `.env.dev` names (the self-test's channels); live leaves

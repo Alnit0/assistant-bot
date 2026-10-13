@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import discord
 
 from core import about, clock, devmode, discord_utils, scheduler, tidy
+from core import config
 from core.config import DEV_DATABASE, INBOX_CHANNEL_ID, SELFTEST_BACK, TIMEZONE
 from core.discord_utils import log_simple
 from core.durations import format_duration
@@ -16,8 +17,11 @@ log = logging.getLogger("assistant")
 # Who the bot is seen to be: its nickname in the server and its status line,
 # so the live bot and the dev database can be told apart at a glance.
 #
-# Nickname: the name it has in the server is its base name. On the dev
-# database it is "<base> · DEV"; on live it is the base name again.
+# Nickname: the name I gave it, BOT_NAME in its settings file, used on every
+# start. A suffix only for a real state, always "Name · state". There is one:
+# the dev bot is "Name · testing" while a self-test runs, and its plain name
+# again after. Live keeps its plain name: its states are in the status line.
+# With no BOT_NAME the nickname is left as it is. Nothing else renames a bot.
 #
 # Status, in order:
 #   a self-test that had to stop live           🧪 Self-test running · back about 4:15 pm
@@ -30,7 +34,7 @@ log = logging.getLogger("assistant")
 # when it reads differently. A change I make myself (dev mode, the dev clock)
 # shows at once.
 # ---------------------------------------------------------------------------
-DEV_SUFFIX = " · DEV"
+STATE_MARK = " · "
 MAX_NICKNAME = 32  # Discord's limit
 MAX_STATUS = 128
 EVERY_SECONDS = 5 * 60
@@ -45,21 +49,17 @@ _shown: str | None = None
 # ---------------------------------------------------------------------------
 # Pure: what the nickname and the status should read
 # ---------------------------------------------------------------------------
-def base_name(current: str) -> str:
-    """The name without the dev mark, so a start on live after one on the dev
-    database finds the base name again."""
-    name, mark = current.strip(), DEV_SUFFIX.strip()
-    while name.endswith(mark):
-        name = name[: -len(mark)].rstrip()
-    return name
-
-
-def nickname(current: str, dev: bool) -> str:
-    """What the nickname should be, given what it is now."""
-    base = base_name(current)
-    if not dev:
-        return base
-    return base[: MAX_NICKNAME - len(DEV_SUFFIX)].rstrip() + DEV_SUFFIX
+def nickname(name: str, state: str = "") -> str:
+    """What the nickname should be: the name it was given, and "Name · state"
+    while it is in a state worth showing. "" with no name given: the nickname
+    is then left alone."""
+    name = name.strip()
+    if not name:
+        return ""
+    if not state:
+        return name[:MAX_NICKNAME].rstrip()
+    suffix = STATE_MARK + state
+    return name[: MAX_NICKNAME - len(suffix)].rstrip() + suffix
 
 
 def uptime(seconds: float) -> str:
@@ -130,7 +130,10 @@ async def set_nickname() -> str:
     if member is None:
         return "the server was not found"
     current = member.nick or member.name
-    wanted = nickname(current, DEV_DATABASE)
+    wanted = nickname(config.BOT_NAME, config.NAME_STATE)
+    if not wanted:
+        log.info("Nickname: BOT_NAME is not set, so it is left as it is")
+        return "left as it is (BOT_NAME is not set)"
     if wanted == current:
         return f"already {current}"
     if not member.guild_permissions.change_nickname:
@@ -141,7 +144,7 @@ async def set_nickname() -> str:
         )
         return "Change Nickname is missing"
     try:
-        await member.edit(nick=wanted, reason="Says which database this bot is on")
+        await member.edit(nick=wanted, reason="The name it was given (BOT_NAME), with its state if it has one")
     except discord.HTTPException as error:
         log.warning("Could not change the nickname to %s: %s", wanted, error)
         await log_simple("🏷️ Nickname not changed", f"Discord refused **{wanted}**: {error}")

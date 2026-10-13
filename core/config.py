@@ -199,6 +199,19 @@ def mine(channel_id: int | None, parent_id: int | None = None) -> bool:
 # its status says so, with when live is expected back (core/identity.py)
 SELFTEST_BACK = (os.getenv("SELFTEST_BACK") or "").strip() if os.getenv("SELFTEST") == "1" and not SEPARATE_BOT else ""
 
+# The bot's nickname in the server: set by me, used on start (core/identity.py). The dev
+# bot's is only ever .env.dev's: it never takes live's name
+BOT_NAME = ((_TEST_BOT.get("BOT_NAME") or "") if SEPARATE_BOT else (os.getenv("BOT_NAME") or "")).strip()
+# A real state the nickname shows, as "Name · state". There is one: the dev bot while a
+# self-test runs. Live keeps its plain name; what it is doing is in its status line
+NAME_STATE = "testing" if SEPARATE_BOT and os.getenv("SELFTEST") == "1" else ""
+
+
+def test_bot_name() -> str:
+    """The dev bot's own name (BOT_NAME in `.env.dev`), for a process that is not it."""
+    return (_TEST_BOT.get("BOT_NAME") or "").strip()
+
+
 # How long a "done" confirmation stays in the channel before deleting itself
 try:
     CONFIRMATION_SECONDS = float(os.getenv("CONFIRMATION_SECONDS") or 5)

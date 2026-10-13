@@ -558,3 +558,49 @@ def test_no_bot_is_called_by_a_display_name_anywhere_a_person_reads():
                     found.append(str(path.relative_to(config.BASE_DIR)))
     assert found == [], f"a display name is written in: {found}"
     assert account.mode() in ("live", "the dev bot", "live's account on the dev database")
+
+
+# --- names: given by me, a suffix only for a real state ----------------------------------------------------------------
+def test_when_a_self_test_ends_the_dev_bot_is_called_its_plain_name_again(monkeypatch):
+    did = []
+
+    class Me:
+        nick = "Hive · testing"
+
+        async def edit(self, nick=None, reason=None):
+            did.append(nick)
+            Me.nick = nick
+
+    class Guild:
+        async def fetch_member(self, user_id):
+            return Me()
+
+    class Client:
+        user = SimpleNamespace(id=config.test_bot_id() or 1)
+
+        def __init__(self, **kwargs):
+            pass
+
+        async def login(self, token):
+            pass
+
+        async def close(self):
+            pass
+
+        async def fetch_channel(self, channel_id):
+            return SimpleNamespace(guild=SimpleNamespace(id=5))
+
+        async def fetch_guild(self, guild_id):
+            return Guild()
+
+    monkeypatch.setattr(runner.discord, "Client", Client)
+    monkeypatch.setattr(runner, "confirm_account", lambda client: None)
+    monkeypatch.setattr(runner.config, "test_bot_token", lambda: "dev-token")
+    monkeypatch.setattr(runner.config, "test_bot_name", lambda: "Hive")
+    assert run(runner.plain_name(7)) == "its plain name again" and did == ["Hive"]
+    assert run(runner.plain_name(7)) == "already its plain name" and did == ["Hive"]
+    monkeypatch.setattr(runner.config, "test_bot_name", lambda: "")
+    assert run(runner.plain_name(7)) == "nothing to put back", "no name given: nothing is renamed"
+    monkeypatch.setattr(runner.config, "test_bot_name", lambda: "Hive")
+    monkeypatch.setattr(runner.config, "test_bot_token", lambda: None)
+    assert run(runner.plain_name(7)) == "nothing to put back" and did == ["Hive"], "without a dev bot the run is live's account, and live is never renamed"

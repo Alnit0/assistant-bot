@@ -49,6 +49,21 @@ The briefing is behind `BRIEFING_ENABLED` and the clean-up behind
 `HUB_TIDY`, both off until turned on; with the clean-up off,
 yesterday's checklist stays where it was.
 
+## The bots' names
+
+A bot is called what I named it: `BOT_NAME` in its settings file,
+taken on every start. Its nickname changes only for a real state, and
+then always as **Name · state**:
+
+| Bot | Nickname | Where its states show |
+|---|---|---|
+| Live | its plain name, always | the status line ("🟢 Live · up 7h · next: …", "⚠️ … failed · see #bot-log") |
+| The dev bot | its plain name; **Name · testing** while a self-test runs, plain again when it ends | the nickname, and the status line ("🧪 DEV database · clock +13h") |
+
+Nothing else renames a bot: no marker for the dev database (the old
+"· DEV" is gone), no state for live. With no `BOT_NAME` the nickname
+is left as it is.
+
 ## The pieces
 
 | Piece | Written | Used for |
