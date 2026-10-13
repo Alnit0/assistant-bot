@@ -135,12 +135,15 @@ def test_the_pages_are_built_from_what_is_registered_and_nothing_else():
 # ---------------------------------------------------------------------------
 # Keeping the channel showing exactly the pages (core/mirror.py)
 # ---------------------------------------------------------------------------
-def test_what_to_do_is_nothing_an_edit_or_a_rebuild():
-    assert mirror.plan(["a", "b"], ["a", "b"]) == (mirror.SAME, [])
-    assert mirror.plan(["a ", "b"], ["a", "b\n"]) == (mirror.SAME, []), "Discord trims what it stores"
-    assert mirror.plan(["a", "b", "c"], ["a", "B", "C"]) == (mirror.EDIT, [1, 2])
-    assert mirror.plan(["a"], ["a", "b"]) == (mirror.REBUILD, [])
-    assert mirror.plan([], ["a"]) == (mirror.REBUILD, [])
+def test_what_to_do_is_nothing_edits_in_place_and_only_the_difference_in_number_added_or_deleted():
+    assert mirror.plan(["a", "b"], ["a", "b"]) == ([], 0, 0)
+    assert mirror.plan(["a ", "b"], ["a", "b\n"]) == ([], 0, 0), "Discord trims what it stores"
+    assert mirror.plan(["a", "b", "c"], ["a", "B", "C"]) == ([1, 2], 0, 0)
+    assert mirror.plan(["a"], ["a", "b"]) == ([], 1, 0), "one more: the one there stays as it is"
+    assert mirror.plan(["a", "c"], ["a", "b", "c"]) == ([1], 1, 0), "a section in the middle: those after it move down by edits"
+    assert mirror.plan(["a", "b", "c"], ["a", "c"]) == ([1], 0, 1), "one fewer: the last goes, never the lot"
+    assert mirror.plan([], ["a"]) == ([], 1, 0)
+    assert mirror.done_text(0, 0, 0) == "unchanged" and mirror.done_text(9, 1, 0) == "9 edited, 1 added" and mirror.done_text(1, 0, 2) == "1 edited, 2 deleted"
 
 
 class Message:
@@ -197,18 +200,30 @@ def test_a_page_that_changed_is_edited_in_place(channel):
     assert there.edits == [(11, "TWO")] and there.deleted == [] and there.sent == []
 
 
-def test_more_or_fewer_pages_and_the_channel_is_written_again_in_order(channel):
-    there = channel(Channel("one", "two"))
+def test_one_more_section_is_edits_in_place_and_one_message_added_never_the_lot_again(channel):
+    # Asked 2026-10-14: deleting and posting all of #commands at every change drew a 429 from Discord each time
+    there = channel(Channel("one", "three"))
     someone_elses = Message(there, 99, "hello", author=7)
     there.messages.append(someone_elses)
-    assert run(mirror.sync(COMMANDS, ["one", "two", "three"])) == "rebuilt: 3 messages"
-    assert there.deleted == [10, 11] and there.sent == [("one", True), ("two", True), ("three", True)], "posted without a notification"
+    assert run(mirror.sync(COMMANDS, ["one", "two", "three"])) == "1 edited, 1 added"
+    assert there.deleted == [] and there.edits == [(11, "two")] and there.sent == [("three", True)], "posted without a notification"
+    assert [message.content for message in there.messages if message.author.id == 1] == ["one", "two", "three"], "in order"
+    assert someone_elses in there.messages
+
+
+def test_one_section_fewer_is_edits_in_place_and_only_the_last_message_deleted(channel):
+    there = channel(Channel("one", "two", "three"))
+    someone_elses = Message(there, 99, "hello", author=7)
+    there.messages.append(someone_elses)
+    assert run(mirror.sync(COMMANDS, ["one", "three"])) == "1 edited, 1 deleted"
+    assert there.deleted == [12] and there.edits == [(11, "three")] and there.sent == []
+    assert [message.content for message in there.messages if message.author.id == 1] == ["one", "three"]
     assert someone_elses in there.messages, "only the bot's own messages are its to delete"
 
 
 def test_an_empty_channel_is_filled(channel):
     there = channel(Channel())
-    assert run(mirror.sync(COMMANDS, ["one"])) == "rebuilt: 1 message"
+    assert run(mirror.sync(COMMANDS, ["one"])) == "1 added"
     assert there.sent == [("one", True)]
 
 
@@ -240,7 +255,7 @@ def test_start_up_writes_the_channel_once_and_leaves_it_alone_the_next_time(chan
     monkeypatch.setattr(commands, "COMMANDS_CHANNEL_ID", COMMANDS)
     there = channel(Channel())
     wanted = commands.pages()
-    assert run(commands.update()) == f"rebuilt: {len(wanted)} messages"
+    assert run(commands.update()) == f"{len(wanted)} added"
     assert [message.content for message in there.messages] == wanted
-    assert logged == [("📖 #commands updated", f"<#{COMMANDS}>: rebuilt: {len(wanted)} messages.")]
+    assert logged == [("📖 #commands updated", f"<#{COMMANDS}>: {len(wanted)} added.")]
     assert run(commands.update()) == "unchanged" and len(logged) == 1 and there.edits == [], "nothing changed: nothing touched, nothing said"

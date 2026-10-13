@@ -71,6 +71,13 @@ notes and the buttons. The questions stay on a bug you report: with
 🐞, and also with the word `bug` or by saying so (my reading: those
 are yours too; say if you want them on 🐞 alone).
 
+**#commands (asked 2026-10-14).** The logs of the last week had 25
+rate-limit answers (429) from Discord, 22 of them from #commands being
+deleted and posted again at a start whenever its content had changed.
+It is now edited in place: with one more section the extra message is
+posted at the end, with one fewer the last is deleted, and the rest
+are edits. Live from the next restart.
+
 ## Decided overnight (2026-10-14)
 
 Choices the batch's prompt did not settle, made as the standard, the

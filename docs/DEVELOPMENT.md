@@ -1176,7 +1176,9 @@ files.
 
 - **#commands** (`COMMANDS_CHANNEL_ID`) is written from the task
   registry every time the bot starts, and only touched when it would
-  read differently (`tasks/builtin/commands.py`, `core/mirror.py`). A
+  read differently, by editing its messages in place: one is added or
+  deleted only when the number of sections changes
+  (`tasks/builtin/commands.py`, `core/mirror.py`). A
   typed word says which group it goes in with `purpose=`
   (`actions.SET_UP`, `EACH_DAY`, `SEE`); a plain-words action with
   `purpose=` and `say=` (what one might type: placeholder names only); a

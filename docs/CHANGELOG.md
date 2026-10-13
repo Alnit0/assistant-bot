@@ -6,6 +6,10 @@ backfilled from the git log.
 
 ## 2026-10-14
 
+- #commands is brought up to date by editing its messages in place.
+  A message is added or deleted only when the number of sections
+  changes; the lot is never deleted and posted again.
+
 - A bug the bot or the self-test files itself no longer asks you the
   three questions. A bug you report still does.
 
