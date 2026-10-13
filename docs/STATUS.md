@@ -19,6 +19,11 @@ against the bug's own record, not only the list of numbers).
 
 **From the two bots (2026-10-13):**
 
+- **The self-test's channels are found only by the ids in `.env.dev`**
+  now (you renamed the category): never by name, and nothing is ever
+  created. A missing id or a deleted channel stops the run with a
+  message. `--remove` deletes the four channels and leaves the
+  category.
 - **A self-test ran as Tanuki beside live for eight minutes** (16:32
   to 16:40): its starts inherited live's token from the launcher.
   Nothing reached a real channel and live handled nothing in that

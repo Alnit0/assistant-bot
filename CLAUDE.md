@@ -409,7 +409,9 @@ The rules are in `docs/specs/pills.md` and the Pills section of
 - Two bots in one server both see everything: each acts only in its own
   channels (`config.mine`). The dev bot takes no channel from `.env`,
   only what `.env.dev` names (the self-test's channels); live leaves
-  those alone. Never give the dev bot one of my real channels
+  those alone. The self-test finds its channels by those ids alone,
+  never by name, and never creates a channel or a category: a missing
+  one stops the run, and I am told. Never give the dev bot one of my real channels
 - Prefer checks that import the code without starting the bot. Never
   leave a bot process running; confirm with `python -m
   core.instance_lock`, which asks the lock (the source of truth) and

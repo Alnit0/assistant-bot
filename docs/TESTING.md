@@ -41,12 +41,12 @@ Last updated: 2026-10-13
 | L | Keep | 14 | 6 | 8 | 8 | 6 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
 | P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
-| Q | Time, days, the schedule model, the occurrence log and cards | 24 | 22 | 2 | 2 | 22 | 0 | 0 |
+| Q | Time, days, the schedule model, the occurrence log and cards | 25 | 23 | 2 | 2 | 23 | 0 | 0 |
 | R | Pills | 77 | 24 | 53 | 45 | 32 | 0 | 0 |
 | S | Routing and confirm cards | 75 | 22 | 53 | 18 | 56 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 4 | 18 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **505** | **185** | **320** | **250** | **254** | **0** | **1** |
+| | **Total** | **506** | **186** | **320** | **250** | **255** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -458,6 +458,7 @@ manual test uses the dev clock on the dev database (`python main.py --dev`).
 | Q22 | 🤖 Auto | A failing self-test step is a bug | No bug yet: one is opened with the step, what was expected and what was seen, and reads like any other bug's post; failing again adds a note to the same bug (not Claude Code's “fix ready”); Fixed and failing again is re-opened; Won't fix gets a note only; a bug that went with the database is opened anew; passing again marks it Fixed with a note; a step not in the run, or skipped, changes nothing; one that can't be recorded does not stop the others; a post changed with no press gets its card, a line, its tag, and is archived when closed | ✅ Pass | 2026-10-13 | `tests/test_selftest.py` |
 | Q23 | 🤖 Auto | After a self-test run, and after one that was stopped | The history, the table and the summary are each kept whatever happens to the others; with nothing failed and no bug on record no process is started for bugs, and it is always the dev database; a run stopped before its end has its dev database put back and its line (“did not finish”) by the next run, once | ✅ Pass | 2026-10-13 | `tests/test_selftest.py` |
 | Q24 | 🤖 Auto | One bug a stage, the self-test's own only, and old run folders | Only the first step to fail in a stage gets a bug (starts 1 to 4 are one stage), and the steps that failed after it are listed in it; a step with a bug of its own that fails after another is told in its own bug; a number on record that is now someone else's bug, or the self-test's about another step, is never noted on or closed; old run folders go but the last ten, and one with a failure or that never finished stays 30 days; nothing but run folders is removed | ✅ Pass | 2026-10-13 | `tests/test_selftest.py` |
+| Q25 | 🤖 Auto | The self-test's channels by id only | The channels are the ids `.env.dev` gives, whatever they are called; one not set, or one that is also live's, stops the run with its name; they are fetched by id, the server is never listed and nothing is created; a deleted channel or the wrong kind stops the run with “nothing was made in its place”; a missing channel stops before the dev database is moved or a bot is started | ✅ Pass | 2026-10-13 | `tests/test_selftest.py` |
 
 ## R. Pills
 

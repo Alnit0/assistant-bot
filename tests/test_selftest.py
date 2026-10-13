@@ -5,6 +5,8 @@ import sys
 from datetime import datetime
 from types import SimpleNamespace
 
+import pytest
+
 from core import config
 from selftest import __main__ as runner
 from selftest import onlyyou, phases, report
@@ -135,8 +137,91 @@ def test_the_phases_run_the_old_look_twice_then_the_new_then_the_old_again_with_
 
 
 def test_its_channels_are_its_own_and_never_the_real_ones():
-    assert set(runner.CHANNELS) == {"hub", "inbox", "bot-log"} and set(runner.ENV_NAMES) == {"hub", "inbox", "bot-log", "bugs"}
-    assert all(name.startswith("selftest-") for name in runner.CHANNELS.values()) and runner.FORUM.startswith("selftest-"), "the dev bot's bugs have a forum of their own too"
+    assert set(runner.ENV_NAMES) == {"hub", "inbox", "bot-log", "bugs"}
+    dev = {"HUB_CHANNEL_ID": "8", "INBOX_CHANNEL_ID": "7", "BOT_LOG_CHANNEL_ID": "9", "BUGS_CHANNEL_ID": "50"}
+    live = {"HUB_CHANNEL_ID": "400", "INBOX_CHANNEL_ID": "100", "GYM_CHANNEL_ID": "600", "DISCORD_TOKEN": "x"}
+    assert runner.channel_ids(dev, live) == {"hub": 8, "inbox": 7, "bot-log": 9, "bugs": 50}, "the ids .env.dev gives, whatever the channels are called"
+    with pytest.raises(runner.NoChannel) as stopped:
+        runner.channel_ids({**dev, "HUB_CHANNEL_ID": "", "BUGS_CHANNEL_ID": None}, live)
+    assert "HUB_CHANNEL_ID, BUGS_CHANNEL_ID are not set in .env.dev" in str(stopped.value) and "makes none" in str(stopped.value)
+    with pytest.raises(runner.NoChannel) as stopped:
+        runner.channel_ids({**dev, "INBOX_CHANNEL_ID": "600"}, live)
+    assert "INBOX_CHANNEL_ID (it is live's GYM_CHANNEL_ID)" in str(stopped.value), "a run empties its channels: never one of live's"
+
+
+def test_the_channels_are_found_by_id_alone_and_nothing_is_ever_made(monkeypatch):
+    import discord
+
+    made, asked = [], []
+
+    class Text(discord.TextChannel):
+        def __init__(self, channel_id, name):
+            self.id, self.name = channel_id, name
+
+        def history(self, limit=None):
+            async def none():
+                return
+                yield
+
+            return none()
+
+    class Forum(discord.ForumChannel):
+        def __init__(self, channel_id, name):
+            self.id, self.name = channel_id, name
+
+    there = {7: Text(7, "renamed-by-me"), 8: Text(8, "also-renamed"), 9: Text(9, "log"), 50: Forum(50, "bugs-elsewhere")}
+
+    class Client:
+        user = SimpleNamespace(id=1)
+
+        def __init__(self, **kwargs):
+            pass
+
+        async def login(self, token):
+            pass
+
+        async def close(self):
+            pass
+
+        async def fetch_channel(self, channel_id):
+            asked.append(channel_id)
+            if channel_id not in there:
+                raise discord.NotFound(SimpleNamespace(status=404, reason="Not Found"), "Unknown Channel")
+            return there[channel_id]
+
+        def __getattr__(self, name):
+            if name.startswith(("create", "fetch_guild")):
+                made.append(name)
+            raise AttributeError(name)
+
+    ids = {"hub": 8, "inbox": 7, "bot-log": 9, "bugs": 50}
+    monkeypatch.setattr(runner.discord, "Client", Client)
+    monkeypatch.setattr(runner, "settings_channels", lambda: dict(ids))
+    monkeypatch.setattr(runner, "confirm_account", lambda client: None)
+    assert run(runner.prepare_channels()) == ids and sorted(asked) == [7, 8, 9, 50] and made == [], "by id, whatever they are called now; the server is never listed and nothing is created"
+    del there[8]
+    with pytest.raises(runner.NoChannel) as stopped:
+        run(runner.prepare_channels())
+    assert "HUB_CHANNEL_ID in .env.dev is 8, and there is no such channel" in str(stopped.value) and "Nothing was made in its place" in str(stopped.value) and made == []
+    there[8] = Forum(8, "a forum")
+    with pytest.raises(runner.NoChannel) as stopped:
+        run(runner.prepare_channels())
+    assert "which is not a text channel" in str(stopped.value)
+
+
+def test_a_missing_channel_stops_the_run_before_anything_is_started_or_moved(monkeypatch, capsys):
+    async def none(purge=True):
+        raise runner.NoChannel("HUB_CHANNEL_ID in .env.dev is 8, and there is no such channel (deleted?).")
+
+    moved = []
+    monkeypatch.setattr(runner.instance_lock, "holder", lambda path: None)
+    monkeypatch.setattr(runner.stages, "free_memory", lambda: 4 * 1024**3)
+    monkeypatch.setattr(runner, "recover", lambda: [])
+    monkeypatch.setattr(runner, "prepare_channels", none)
+    monkeypatch.setattr(runner, "set_aside", lambda stamp: moved.append(stamp))
+    monkeypatch.setattr(sys, "argv", ["selftest", "--stages", "briefing"])
+    assert runner.main() == 5 and moved == [], "the dev database is not moved and no bot is started"
+    assert "not started: HUB_CHANNEL_ID in .env.dev is 8" in capsys.readouterr().out
 
 
 def test_the_dev_database_is_set_aside_and_put_back_as_it_was(tmp_path, monkeypatch):

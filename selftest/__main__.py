@@ -39,9 +39,8 @@ from selftest import bugs, record, report, stages
 # put back at the end, so the run starts from an empty database and leaves
 # the user's own dev data as it was.
 # ---------------------------------------------------------------------------
-CATEGORY = "selftest"
-CHANNELS = {"hub": "selftest-hub", "inbox": "selftest-inbox", "bot-log": "selftest-log"}
-FORUM = "selftest-bugs"  # the dev bot's own forum for its bugs, so it never posts in the real one
+# The self-test's channels are the ones `.env.dev` names by id: three it writes in and
+# empties, and a forum for its bugs. Never found by name, never made (`channel_ids`)
 ENV_NAMES = {"hub": "HUB_CHANNEL_ID", "inbox": "INBOX_CHANNEL_ID", "bot-log": "BOT_LOG_CHANNEL_ID", "bugs": "BUGS_CHANNEL_ID"}
 
 
@@ -87,71 +86,106 @@ PHASES = (
 )
 
 
+class NoChannel(Exception):
+    """One of the self-test's channels can't be used. Nothing is ever made in its place."""
+
+
+def channel_ids(dev: dict, live: dict) -> dict[str, int]:
+    """The self-test's channels: the ids `.env.dev` gives, and nothing else.
+    They are never looked for by name (a channel may be renamed or moved) and
+    never made. Raises NoChannel for one that is not set, and for one that is
+    also one of live's own: the run empties its channels."""
+    found, missing = {}, []
+    for role, name in ENV_NAMES.items():
+        value = (dev.get(name) or "").strip()
+        if value.isdigit():
+            found[role] = int(value)
+        else:
+            missing.append(name)
+    if missing:
+        raise NoChannel(f"{', '.join(missing)} {'is' if len(missing) == 1 else 'are'} not set in .env.dev. The self-test finds its channels only by those ids and makes none: put the channel's id there.")
+    real = {name: int(value) for name, value in live.items() if name.endswith("_CHANNEL_ID") and (value or "").strip().isdigit()}
+    shared = [f"{ENV_NAMES[role]} (it is live's {name})" for role, channel_id in found.items() for name, value in real.items() if value == channel_id]
+    if shared:
+        raise NoChannel(f"{'; '.join(shared)}: a channel in .env.dev is one of live's in .env. The self-test empties its channels, so it will not use it.")
+    return found
+
+
+def settings_channels() -> dict[str, int]:
+    from dotenv import dotenv_values
+
+    path = config.BASE_DIR / ".env.dev"
+    return channel_ids(dotenv_values(path) if path.exists() else {}, dotenv_values(config.BASE_DIR / ".env"))
+
+
+async def _fetch(client, role: str, channel_id: int):
+    """One of the self-test's channels, by its id. Raises NoChannel if it is
+    not there, can't be seen, or is not the kind of channel it has to be."""
+    name = ENV_NAMES[role]
+    try:
+        channel = await client.fetch_channel(channel_id)
+    except discord.NotFound:
+        raise NoChannel(f"{name} in .env.dev is {channel_id}, and there is no such channel (deleted?). Nothing was made in its place: put the right id there.") from None
+    except discord.HTTPException as error:
+        raise NoChannel(f"{name} in .env.dev is {channel_id}, and it can't be seen ({error.status}). Nothing was made in its place.") from None
+    wanted = discord.ForumChannel if role == "bugs" else discord.TextChannel
+    if not isinstance(channel, wanted):
+        raise NoChannel(f"{name} in .env.dev is {channel_id}, which is not a {'forum' if role == 'bugs' else 'text channel'}.")
+    return channel
+
+
 async def prepare_channels(purge: bool = True) -> dict[str, int]:
-    """Find or make the self-test's category and channels, over HTTP only (no
-    gateway connection, so this never disturbs a running bot), and empty them."""
+    """Find the self-test's channels by the ids in `.env.dev` and empty the
+    three it writes in, over HTTP only (no gateway connection, so this never
+    disturbs a running bot). Whatever they are called and wherever they have
+    been moved, the ids are what counts; nothing is ever created. The forum
+    for its bugs is never emptied: the posts are the record."""
+    wanted = settings_channels()
     client = discord.Client(intents=discord.Intents.none())
     await client.login(token())
     try:
         confirm_account(client)
-        inbox = await client.fetch_channel(int(config.INBOX_CHANNEL_ID))
-        guild = await client.fetch_guild(inbox.guild.id)
-        existing = await guild.fetch_channels()
-        category = next((each for each in existing if isinstance(each, discord.CategoryChannel) and each.name == CATEGORY), None)
-        if category is None:
-            category = await guild.create_category(CATEGORY, reason="The bot's self-test")
-        found: dict[str, int] = {}
-        for role, name in CHANNELS.items():
-            channel = next((each for each in existing if isinstance(each, discord.TextChannel) and each.name == name), None)
-            if channel is None:
-                channel = await guild.create_text_channel(name, category=category, reason="The bot's self-test", topic="Written and emptied by the bot's self-test (python -m selftest). Nothing here is real.")
-            elif purge:
-                # Everything goes but the summaries of earlier runs: they are the record that stays
-                going = [message async for message in channel.history(limit=None) if not (message.content or "").startswith(record.MARK)]
-                for start in range(0, len(going), 100):
-                    batch = going[start:start + 100]
-                    recent = [message for message in batch if (discord.utils.utcnow() - message.created_at).days < 13]
-                    # One that has gone meanwhile (a line that deletes itself) is what was wanted
+        found = {role: await _fetch(client, role, channel_id) for role, channel_id in wanted.items()}
+        for role, channel in found.items():
+            if role == "bugs" or not purge:
+                continue
+            # Everything goes but the summaries of earlier runs: they are the record that stays
+            going = [message async for message in channel.history(limit=None) if not (message.content or "").startswith(record.MARK)]
+            for start in range(0, len(going), 100):
+                batch = going[start:start + 100]
+                recent = [message for message in batch if (discord.utils.utcnow() - message.created_at).days < 13]
+                # One that has gone meanwhile (a line that deletes itself) is what was wanted
+                try:
+                    if len(recent) > 1:
+                        await channel.delete_messages(recent)
+                except discord.NotFound:
+                    recent = []
+                for message in batch if len(recent) <= 1 else [each for each in batch if each not in recent]:
                     try:
-                        if len(recent) > 1:
-                            await channel.delete_messages(recent)
+                        await message.delete()
                     except discord.NotFound:
-                        recent = []
-                    for message in batch if len(recent) <= 1 else [each for each in batch if each not in recent]:
-                        try:
-                            await message.delete()
-                        except discord.NotFound:
-                            pass
-            found[role] = channel.id
-        if separate():
-            # The dev bot's bugs get a forum of their own, never emptied: the posts are the record
-            forum = next((each for each in existing if isinstance(each, discord.ForumChannel) and each.name == FORUM), None)
-            if forum is None:
-                forum = await guild.create_forum(FORUM, category=category, reason="The bot's self-test", topic="Bugs the bot's self-test found (python -m selftest). A step that fails gets a post; it is marked Fixed when the step passes again.")
-            found["bugs"] = forum.id
-        return found
+                        pass
+        return {role: channel.id for role, channel in found.items()}
     finally:
         await client.close()
 
 
 async def remove_channels() -> list[str]:
-    """Delete the self-test's channels and its category. Over HTTP only."""
+    """Delete the self-test's channels: the ones `.env.dev` names by id, and
+    no other. Their category is left: it may hold other things. Over HTTP only."""
+    wanted = settings_channels()
     client = discord.Client(intents=discord.Intents.none())
     await client.login(token())
     try:
-        inbox = await client.fetch_channel(int(config.INBOX_CHANNEL_ID))
-        guild = await client.fetch_guild(inbox.guild.id)
-        existing = await guild.fetch_channels()
+        confirm_account(client)
         gone = []
-        for each in existing:
-            ours = isinstance(each, discord.TextChannel) and each.name in CHANNELS.values()
-            if ours or (isinstance(each, discord.ForumChannel) and each.name == FORUM):
-                await each.delete(reason="The bot's self-test, removed on request")
-                gone.append(f"#{each.name}")
-        for each in existing:
-            if isinstance(each, discord.CategoryChannel) and each.name == CATEGORY:
-                await each.delete(reason="The bot's self-test, removed on request")
-                gone.append(f"the category {each.name}")
+        for role, channel_id in wanted.items():
+            try:
+                channel = await client.fetch_channel(channel_id)
+            except discord.HTTPException:
+                continue
+            await channel.delete(reason="The bot's self-test, removed on request")
+            gone.append(f"#{channel.name}")
         return gone
     finally:
         await client.close()
@@ -332,21 +366,24 @@ def main() -> int:
     parser.add_argument("--stages", default="", help="the stages to run: day, briefing, tidy (tidy runs the briefing's start too)")
     parser.add_argument("--anyway", action="store_true", help="go ahead although free memory is low")
     parser.add_argument("--only", default="", help="starts to run, e.g. p1,p2 (for working on the test itself)")
-    parser.add_argument("--channels", action="store_true", help="only find or make the channels, and say their ids")
+    parser.add_argument("--channels", action="store_true", help="only check that the channels .env.dev names by id are there")
     parser.add_argument("--clear", action="store_true", help="only empty the self-test's channels")
-    parser.add_argument("--remove", action="store_true", help="only delete the self-test's channels and category")
+    parser.add_argument("--remove", action="store_true", help="only delete the self-test's channels (the ones .env.dev names)")
     asked = parser.parse_args()
 
-    if asked.clear:
-        print("Emptied:", asyncio.run(prepare_channels(purge=True)))
-        return 0
-    if asked.remove:
-        print("Deleted:", ", ".join(asyncio.run(remove_channels())) or "nothing: they were not there")
-        return 0
-
-    if asked.channels:
-        print(asyncio.run(prepare_channels(purge=False)))
-        return 0
+    try:
+        if asked.clear:
+            print("Emptied:", asyncio.run(prepare_channels(purge=True)))
+            return 0
+        if asked.remove:
+            print("Deleted:", ", ".join(asyncio.run(remove_channels())) or "nothing: they were not there")
+            return 0
+        if asked.channels:
+            print("Found, by the ids in .env.dev:", asyncio.run(prepare_channels(purge=False)))
+            return 0
+    except NoChannel as error:
+        print(f"Stopped: {error}")
+        return 5
     if separate():
         held = instance_lock.holder(instance_lock.TEST_LOCK)
         if held is not None:
@@ -402,7 +439,12 @@ def main() -> int:
     if not separate():
         # Live is off for this: the account's status says so, and when it is expected back
         os.environ["SELFTEST_BACK"] = back_about(began, minutes)
-    channels = asyncio.run(prepare_channels())
+    try:
+        channels = asyncio.run(prepare_channels())
+    except NoChannel as error:
+        # Before anything is started or moved: nothing to put back
+        print(f"--- not started: {error}", flush=True)
+        return 5
     saved = set_aside(stamp)
     phases, memo = [], {}
     try:

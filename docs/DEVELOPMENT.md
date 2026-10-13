@@ -1294,8 +1294,8 @@ run at the same time, from this one folder.
   bot's `DISCORD_TOKEN`, and `INBOX_CHANNEL_ID`, `BOT_LOG_CHANNEL_ID`,
   `BOT_USER_ID` (its own account id), and `INBOX_CHANNEL_ID`,
   `BOT_LOG_CHANNEL_ID`, `HUB_CHANNEL_ID` and `BUGS_CHANNEL_ID` set to the self-test's
-  channels (`python -m selftest --channels` makes them if they are not
-  there and prints their ids). `ASSISTANT_NAME` there gives it a name
+  channels (`python -m selftest --channels` checks they are there; it
+  makes none). `ASSISTANT_NAME` there gives it a name
   of its own in what it says.
 - **Setting the dev bot up** (done once, 2026-10-13): in the Discord
   Developer Portal, a second application with a bot, the Message
@@ -1639,10 +1639,18 @@ report is `docs/SELFTEST.md`, written again by every full run.
 - **Memory**: the PC has 8 GB, and a run has been stopped by it
   before. The run says how much is free before it starts, and with
   under 1.5 GB free it does not start (`--anyway` goes ahead)
-- **Channels of its own**: the category `selftest` with
-  #selftest-hub, #selftest-inbox and #selftest-log, made the first time
-  and emptied at the start of every run. They are left in place.
-  `python -m selftest --clear` empties them; `--remove` deletes them
+- **Channels of its own, found by id and never made**: the three it
+  writes in (an inbox, a hub, a log) and a forum for its bugs are the
+  ones `.env.dev` names (`INBOX_CHANNEL_ID`, `HUB_CHANNEL_ID`,
+  `BOT_LOG_CHANNEL_ID`, `BUGS_CHANNEL_ID`). Rename them or move them
+  to another category as you like: only the ids count, and nothing is
+  ever looked for by name. If an id is not set, or its channel has
+  gone, the run stops before it starts and says which; it never makes
+  a channel in its place, and it refuses a channel that is also one of
+  live's (it empties its channels). The three are emptied at the start
+  of every run, but for the earlier runs' summaries; the forum never.
+  `python -m selftest --channels` only checks they are there;
+  `--clear` empties them; `--remove` deletes them
 - **An empty database**: `data/dev.db` and the dev clock are moved
   aside for the run and put back after, so your own dev data is as it
   was. The run's database is kept in `data/selftest/run-<time>/`
