@@ -263,3 +263,4 @@ def test_a_run_that_begins_at_the_briefing_makes_its_own_pills_with_recorded_ans
     source = inspect.getsource(phases.seed)
     assert "recorded_only = True" in source and "finally" in source and all(name in source for name in ("Testa", "Testany", "Testiron", "Testlate"))
     assert "await seed(h)" in inspect.getsource(phases.p5)
+    assert 'h.memo["began_here"] = True' in source and 'h.memo.get("began_here")' in inspect.getsource(phases.p5), "the day before such a run has nothing recorded, and the step knows"

@@ -942,6 +942,7 @@ async def seed(h: Harness) -> None:
         await save_new(h, "0.04", "add Testlate to my pills once a day", add({"name": "Testlate", "per_day": 1}), "Testlate", "set up")
     finally:
         h.recorded_only = False
+    h.memo["began_here"] = True
 
 
 async def p5(h: Harness) -> None:
@@ -969,7 +970,12 @@ async def p5(h: Harness) -> None:
         # Only the runs that were done: one booked for this morning days ago, on the moved clock, and taken out since is still in the log
         done = [each[2].split("~")[0][-2:] for each in [*await h.runs("briefing", "post"), *await h.runs("pills", "checklist")] if each[1] == f"{day_stamp}T06:00" and each[0] == "done"]
         h.check(done == ["#1", "#2"], f"the routine's runs done for 6:00 am: {done}")
-        h.check("Yesterday: " in fresh.text, f"no line about yesterday: {fresh.text[:400]}")
+        if h.memo.get("began_here"):
+            # The clock has just gone three days on from an empty story: nothing was to take the day
+            # before, so there is no line (5.07 is where it is looked at: the day after a real one)
+            h.check("Yesterday: " not in fresh.text, f"a line about a day nothing was recorded on: {fresh.text[:400]}")
+        else:
+            h.check("Yesterday: " in fresh.text, f"no line about yesterday: {fresh.text[:400]}")
         h.memo["briefing_hub"] = fresh.id
         h.saw(" / ".join(line for line in fresh.text.splitlines() if "Pills" in line or "Yesterday" in line)[:200])
 
