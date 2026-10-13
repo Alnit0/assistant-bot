@@ -1,7 +1,9 @@
 import asyncio
 import logging
 
-from core import attention, cards, clock, config, database, hub, livelists, messages, notify, repeats, scheduler, summaries, tidy, timeinput
+from datetime import timedelta
+
+from core import attention, cards, clock, config, database, health, hub, livelists, messages, money, notify, repeats, scheduler, summaries, tidy, timeinput
 from core import day as days
 from core.actions import SEE, Action, LiveReply, Request, Shown
 from core.cards import Card
@@ -58,7 +60,22 @@ async def card_for(user_id: int) -> Card | None:
     if not (sections or problems or held or notes):
         return None
     hours = " to ".join(timeinput.format_time(each) for each in config.QUIET_HOURS)
-    return Card(rules.text(sections, today, problems, held, hours, notes), (), rules.layout(sections, today, problems, held, hours, notes))
+    spend = await spend_line(today)
+    return Card(rules.text(sections, today, problems, held, hours, notes, spend), (), rules.layout(sections, today, problems, held, hours, notes, spend))
+
+
+async def spend_line(today) -> str:
+    """Yesterday's Claude spend, in NZ$, or "" for a day with none. Live's own: the dev bot's briefing has no money in it."""
+    if config.DEV_DATABASE:
+        return ""
+    try:
+        you, testing = await health.spent_on(today - timedelta(days=1))
+    except Exception:
+        log.exception("Yesterday's spend could not be read for the briefing")
+        return ""
+    if money.nzd(you + testing) < 0.005:
+        return ""
+    return rules.spend_line(money.shown(you), money.shown(testing), money.shown(you + testing))
 
 
 _said: dict[int, str] = {}  # what the briefing last read as, a user: an edit that would change nothing is not made

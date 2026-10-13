@@ -537,7 +537,7 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   to Claude are the exception: answers are recorded unless prompts,
   schemas or routing changed since the last real run, it is the Sunday
   full run, or I ask (`--claude`), and never once the month's self-test
-  spend is over `SELFTEST_MONTHLY_LIMIT`. When you run one yourself,
+  spend is over `SELFTEST_MONTHLY_LIMIT_NZD`. When you run one yourself,
   read its one-line summary and the history
   (`data/selftest/history.csv`) and open logs only for a failure. With
   nothing said it runs only the stages (day, briefing, tidy) touched by
@@ -565,13 +565,20 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   changed (`python -m pytest -q tests/test_x.py`); run the full suite
   once, at the end. Live evals only when I ask, or at a pause where
   fixtures changed
-- Spending on Claude: **US$0.25 is the most one run may cost before
+- Spending on Claude: **NZ$0.40 is the most one run may cost before
   asking me**, each run counted by itself (a live eval, a self-test
   with `--claude`, a rerun of language steps). It is not a limit for
   the day: several runs a day are fine, each under it, and a run that
-  would go over it is asked about first. Say what each run cost.
-  `DAILY_SPEND_LIMIT` is something else: the bot's own alert in
-  #bot-log when a day's spend passes it, which stops nothing
+  would go over it is asked about first. Say what each run cost, in
+  NZ$. `DAILY_SPEND_LIMIT_NZD` (NZ$1.00) is something else: the bot's
+  own alert when a day's spend passes it, which stops nothing
+- **Money is shown in NZ$ and recorded in US$** (`core/money.py`).
+  Anything I read (dev cost, a ping, the briefing, the status line)
+  goes through `costs.money` / `money.shown`; what is stored, and what
+  #bot-log and the log file record, stays US$ (`costs.usd`). The rate
+  is fetched once a day by a job of the bot's own; failing that the
+  last known one, failing that `USD_TO_NZD`. Limits are round NZ$
+  (`…_NZD`), compared in US$ at the rate of the moment
 - At the end of every piece of work, follow the `end-of-task` skill:
   tests, docs, then the suggested commit command. Do not commit unless
   asked

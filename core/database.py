@@ -3,7 +3,7 @@ import logging
 import sqlite3
 
 from core import costs
-from core.config import DAILY_SPEND_LIMIT, DB_PATH, DEV_DATABASE, DEV_DB_NAME, real_now_nz
+from core.config import DB_PATH, DEV_DATABASE, DEV_DB_NAME, real_now_nz
 
 log = logging.getLogger("assistant")
 
@@ -185,15 +185,16 @@ async def record_cost(row_id: int, route: str, tasks=(), calls=()) -> None:
 
 async def _say_if_over_the_daily_limit(now) -> None:
     """Tell #bot-log, once a day, that the day's requests to Claude have cost
-    more than DAILY_SPEND_LIMIT. Never stops anything, and never fails the
+    more than DAILY_SPEND_LIMIT_NZD. Never stops anything, and never fails the
     message that was being handled."""
     try:
-        spent = await run(costs.db_over_limit, now, DAILY_SPEND_LIMIT)
+        limit = costs.daily_limit()
+        spent = await run(costs.db_over_limit, now, limit)
         if spent is not None:
             from core import discord_utils  # it imports this module's neighbours; kept out of the top
 
-            log.warning("Claude spend today is %s, over the daily limit of %s", costs.money(spent), costs.limit_money(DAILY_SPEND_LIMIT))
-            await discord_utils.log_simple(*costs.over_notice(spent, DAILY_SPEND_LIMIT))
+            log.warning("Claude spend today is %s (%s), over the daily limit of %s", costs.money(spent), costs.usd(spent), costs.limit_money(limit))
+            await discord_utils.log_simple(*costs.over_notice(spent, limit))
     except Exception:
         log.exception("Could not check today's spend against the daily limit")
 

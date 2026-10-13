@@ -35,7 +35,9 @@ for name, value in {
     "HUB_CHANNEL_ID": "400",
     "COMMANDS_CHANNEL_ID": "",
     "KEEP_CONFIRMATIONS": "false",  # the tests check that notes tidy themselves away
-    "DAILY_SPEND_LIMIT": "",  # the default, US$0.50
+    "DAILY_SPEND_LIMIT_NZD": "0.50",
+    "SELFTEST_MONTHLY_LIMIT_NZD": "2",
+    "USD_TO_NZD": "1",  # one for one, so the amounts in the tests read the same: tests/test_money.py has the real sums
     "CARDS_V2": "",  # off, as it is unless set: the design tests switch it on
     "REMINDERS_ENABLED": "",  # off, as it is unless set: the reminder tests switch it on
     # Every other switch too: off, whatever this PC's own .env has turned on (tests/test_settings.py)

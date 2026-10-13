@@ -175,7 +175,10 @@ nothing unless it cuts an answer short, which would be worse.
 
 ## 5. The daily spend line
 
-`DAILY_SPEND_LIMIT` in `.env` (US$0.50 unless set; 0 switches it off).
+`DAILY_SPEND_LIMIT_NZD` in `.env` (NZ$1.00 unless set; 0 switches it off;
+until 2026-10-14 it was `DAILY_SPEND_LIMIT`, in US$). Costs are shown
+in NZ$ and recorded in US$ (`core/money.py`): the figures in this file
+are US$, as billed.
 When a day's requests to Claude pass it, #bot-log is told once: "💰
 Claude spend is over today's limit". Nothing is stopped. `dev cost`
 shows today's spend against the limit. For scale: 11 October, a QA

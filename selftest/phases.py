@@ -125,9 +125,9 @@ async def p1(h: Harness) -> None:
             h.check(nick.endswith(" · testing"), "the nickname does not end “· testing”")
         h.saw(line)
 
-    async with h.step("1.01b", "The schedules the engine made at start", "Three rows, each once: Nightly backup and End of the day (the bot's own, locked) and Pills checklist at 6:00 am every day in the hub, silent; each with exactly one run booked, with a key", "scheduler stage 1"):
+    async with h.step("1.01b", "The schedules the engine made at start", "Five rows, each once: Nightly backup, End of the day and Exchange rate (the bot's own, locked), Pills checklist at 6:00 am every day in the hub, silent, and the Needs-a-look check at 7:00 am; each with exactly one run booked, with a key", "scheduler stage 1"):
         made = {each.name: each for each in await h.schedules()}
-        h.check(sorted(made) == ["End of the day", "Nightly backup", "Pills checklist"], f"the schedules are {sorted(made)}")
+        h.check(sorted(made) == ["End of the day", "Exchange rate", "Needs-a-look check", "Nightly backup", "Pills checklist"], f"the schedules are {sorted(made)}")
         sheet = made["Pills checklist"]
         h.check((f"{sheet.at:%H:%M}", sheet.days, sheet.notify, sheet.channel, sheet.locked, sheet.steps) == ("06:00", (0, 1, 2, 3, 4, 5, 6), "silent", "hub", False, ("pills.checklist",)), f"Pills checklist is {sheet}")
         h.check(made["Nightly backup"].locked and made["End of the day"].locked and made["Nightly backup"].user_id is None, "the bot's own are not locked, or have an owner")
@@ -956,13 +956,14 @@ async def p4(h: Harness) -> None:
         await h.press(shown.id, "Cancel", h.inbox)
         h.check(await h.get(h.inbox, shown.id) is None, "the card is still there after Cancel")
 
-    async with h.step("4.06", "`dev cost`", "Under Today a small line with what was spent against DAILY_SPEND_LIMIT, the limit of a tenth of a cent written as US$0.001", "T35, T56 (42.1, 42.3)"):
+    async with h.step("4.06", "`dev cost`", "Under Today a small line with what was spent against DAILY_SPEND_LIMIT_NZD, the limit of a tenth of a cent written as NZ$0.001, and which exchange rate is in use", "T35, T56 (42.1, 42.3)"):
         await h.say("dev cost")
         shown = await h.find(h.inbox, "limit")
         h.check(shown is not None, f"no line about the limit: {[each.text[:120] for each in await h.recent(h.inbox, 2)]}")
         line = next((line for line in shown.text.splitlines() if "limit" in line), "")
         h.saw(line[:120])
-        h.check("US$0.001" in line, f"a limit under a cent is not shown to three places: {line.strip()[:90]}")
+        h.check("NZ$0.001" in line, f"a limit under a cent is not shown to three places, in NZ$: {line.strip()[:90]}")
+        h.check("US$1 = NZ$" in shown.text, "dev cost does not say which exchange rate is in use")
 
     spent = await h.spent()
     if spent > 0 and await h.can_ask_claude():

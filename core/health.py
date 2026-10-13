@@ -6,7 +6,7 @@ import sys
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
 
-from core import attention, clock, config, costs, database, devmode, hub, scheduler, timetable
+from core import attention, clock, config, costs, database, devmode, hub, money, scheduler, timetable
 from core.attention import PROBLEM, USEFUL, Item
 
 log = logging.getLogger("assistant")
@@ -163,7 +163,7 @@ SPEND_ICON = "💰"
 
 async def spend(user_id: int, now: datetime) -> list[Item]:
     """A level 1 item on a day whose Claude spend has passed the daily limit: it goes with the day."""
-    limit = config.DAILY_SPEND_LIMIT
+    limit = costs.daily_limit()
     if limit <= 0:
         return []
     spent = await database.run(costs.db_spent_on, now)
@@ -326,14 +326,36 @@ def selftest_spend(now: datetime | None = None) -> tuple[float, float]:
     from core import clock
 
     month = f"{(now or clock.real_now()).astimezone(config.TIMEZONE):%Y-%m}"
-    return month_spend(history(config.DATA_DIR / SELFTEST_DIR), month), config.SELFTEST_MONTHLY_LIMIT
+    return month_spend(history(config.DATA_DIR / SELFTEST_DIR), month), selftest_limit()
+
+
+def selftest_limit() -> float:
+    """The self-test's month in US$, as its spend is recorded: SELFTEST_MONTHLY_LIMIT_NZD at the rate in use."""
+    return money.usd(config.SELFTEST_MONTHLY_LIMIT_NZD)
+
+
+def day_spend(rows: list[dict], day) -> float:
+    """What the self-test's runs spent (US$) on one day, from the history."""
+    total = 0.0
+    for row in rows:
+        if (row.get("date") or "").startswith(f"{day:%Y-%m-%d}"):
+            try:
+                total += float(row.get("spend_usd") or 0)
+            except ValueError:
+                pass
+    return total
+
+
+async def spent_on(day) -> tuple[float, float]:
+    """(the bot's own use, the self-tests) in US$ on one day: what the briefing's spend line is made of. Read only."""
+    return await database.run(costs.db_spent_day, day), day_spend(history(config.DATA_DIR / SELFTEST_DIR), day)
 
 
 def spend_problem(spent: float, limit: float) -> Item | None:
     """The item for a month in which the self-test has spent its limit: from then on its runs use recorded answers only."""
     if spent < limit:
         return None
-    return Item("the self-test has spent this month's limit: recorded answers only until next month", PROBLEM, short=("self-test spend", f"US${spent:.2f}"), ping=False)
+    return Item("the self-test has spent this month's limit: recorded answers only until next month", PROBLEM, short=("self-test spend", money.shown(spent)), ping=False)
 
 
 def selftest_problem(row: dict | None, bugs: dict) -> Item | None:

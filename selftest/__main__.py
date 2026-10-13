@@ -27,7 +27,7 @@ from pathlib import Path
 
 import discord
 
-from core import config, health, instance_lock
+from core import config, health, instance_lock, money
 from core.timeinput import format_time
 from selftest import bugs, notify, record, report, stages
 
@@ -110,12 +110,20 @@ def steps_expected(known: dict[str, int], wanted: list[str]) -> int:
     """How many steps this run should have, from the last time each start ran; 0 when one of them never has."""
     return sum(known[name] for name in wanted) if all(name in known for name in wanted) else 0
 
+# Every switch is said for every start, so that what live's own .env has turned on never decides
+# a step: off, and the limits at their defaults, unless the start says otherwise
+SWITCHES = {
+    "CARDS_V2": "false", "REMINDERS_ENABLED": "false", "BRIEFING_ENABLED": "false", "WEEKLY_SUMMARY": "false", "DMS_ENABLED": "false",
+    "NIGHTLY_SELFTEST": "false", "HUB_TIDY": "false", "QUIET_HOURS_ENABLED": "false", "QUIET_HOURS": "22:00-07:00", "NOTIFY_NTFY": "false",
+    "NTFY_BOT_TOPIC": "", "WEATHER_ENABLED": "false", "DAILY_SPEND_LIMIT_NZD": "1.00", "SELFTEST_MONTHLY_LIMIT_NZD": "3.50", "USD_TO_NZD": "1.70",
+}
+
 # (name, the settings it starts with, seconds to stay off before it)
 PHASES = (
     ("p1", {"CARDS_V2": "false", "REMINDERS_ENABLED": "true"}, 0),
     ("p2", {"CARDS_V2": "false", "REMINDERS_ENABLED": "true"}, OFF_FOR),
     ("p3", {"CARDS_V2": "true", "REMINDERS_ENABLED": "true"}, 0),
-    ("p4", {"CARDS_V2": "false", "REMINDERS_ENABLED": "true", "DAILY_SPEND_LIMIT": "0.001"}, 0),
+    ("p4", {"CARDS_V2": "false", "REMINDERS_ENABLED": "true", "DAILY_SPEND_LIMIT_NZD": "0.001", "USD_TO_NZD": "1.70"}, 0),
     ("p5", {"CARDS_V2": "true", "REMINDERS_ENABLED": "true", "BRIEFING_ENABLED": "true", "WEEKLY_SUMMARY": "true"}, 0),
     ("p6", {"CARDS_V2": "true", "REMINDERS_ENABLED": "true", "BRIEFING_ENABLED": "true", "HUB_TIDY": "true"}, 0),
 )
@@ -388,6 +396,7 @@ def run_phase(name: str, settings: dict, channels: dict[str, int], claude: bool,
     # Never this process's own environment: it has read .env, so live's token is in it, and a
     # start that inherited that would log in as live. The start reads the files for itself
     env = config.environment_for_child()
+    env.update(SWITCHES)
     env.update(settings)
     env["SELFTEST_SEPARATE"] = "1" if separate() else "0"
     env.update({name: str(value) for name, value in (progress or {}).items()})  # how far the whole run is, for the status line
@@ -497,13 +506,14 @@ def main() -> int:
     # Recorded answers unless there is a reason to pay: asked for, the Sunday full run, or
     # prompts, schemas or routing changed since the last real run. Never over the month's limit
     runs = record.read(HISTORY)
-    spent_month, limit = health.month_spend(runs, f"{began:%Y-%m}"), config.SELFTEST_MONTHLY_LIMIT
+    money.load_from(config.DATA_DIR / "assistant.db")  # the rate live last fetched: limits are NZ$, spend is recorded in US$
+    spent_month, limit = health.month_spend(runs, f"{began:%Y-%m}"), health.selftest_limit()
     real, why_real = stages.use_real(
         asked.claude, asked.recorded, asked.nightly and asked.full,
         stages.language_changed(stages.changed_since(config.BASE_DIR, stages.last_real(runs))), spent_month, limit,
     )
     budget = min(asked.budget, max(0.0, limit - spent_month))
-    print(f"--- {why_real}" + (f" (up to US${budget:.2f}; US${spent_month:.2f} of US${limit:.2f} spent this month)" if real else ""), flush=True)
+    print(f"--- {why_real}" + (f" (up to {money.shown(budget)}; {money.shown(spent_month)} of {money.shown(limit)} spent this month)" if real else ""), flush=True)
     print(f"--- starts {', '.join(wanted)}: about {round(minutes)} minutes", flush=True)
     if not separate():
         # Live is off for this: the account's status says so, and when it is expected back

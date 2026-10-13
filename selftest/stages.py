@@ -8,6 +8,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from core import money
+
 # ---------------------------------------------------------------------------
 # The run is one story in six starts of the dev bot. It is cut into three
 # stages that can each be run alone:
@@ -100,7 +102,7 @@ def use_real(asked_real: bool, asked_recorded: bool, sunday_full: bool, language
     """Whether this run sends real requests, and why, in words for the run's
     first lines. The month's cap comes before everything: over it, nothing is spent."""
     if spent >= limit:
-        return False, f"recorded answers only: this month's self-test spend is US${spent:.2f}, over the limit of US${limit:.2f} (SELFTEST_MONTHLY_LIMIT)"
+        return False, f"recorded answers only: this month's self-test spend is {money.shown(spent)}, over the limit of {money.shown(limit)} (SELFTEST_MONTHLY_LIMIT_NZD)"
     if asked_recorded:
         return False, "recorded answers, as asked"
     if asked_real:

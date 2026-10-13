@@ -1028,8 +1028,15 @@ no slash commands. `help dev` lists the words.
   what is the same for every request first, in a block marked
   `llm.CACHED`, and what changes after it. A rule that applies to every
   action is said once in extraction's `rules`, not in each schema.
-- **The daily spend line.** `DAILY_SPEND_LIMIT` in `.env` is what a
-  day's requests to Claude may cost in US dollars (0.50 unless set; 0
+- **Money is in NZ$.** Every cost you read (`dev cost`, a ping, the
+  briefing, the status line) is NZ$; what is stored stays US$, which
+  is what Anthropic bills. The rate is fetched once a day at 5:30 am
+  ("Exchange rate" in `my schedule`, from Frankfurter, the European
+  Central Bank's rates: free, no key). If that fails the last known
+  rate goes on being used; with none yet, `USD_TO_NZD` in `.env`
+  (1.70). The last line of `dev cost` says which rate and from when.
+- **The daily spend line.** `DAILY_SPEND_LIMIT_NZD` in `.env` is what a
+  day's requests to Claude may cost in NZ dollars (1.00 unless set; 0
   switches the note off). The first time a day's total passes it,
   #bot-log gets one card, "💰 Claude spend is over today's limit", and
   no more that day, whatever restarts in between. Nothing is stopped.
@@ -1823,7 +1830,7 @@ report is `docs/SELFTEST.md`, written again by every full run.
   for them whatever changed, `--recorded` refuses them. Real requests
   stop at `--budget` (US$0.20 unless given; about 16 cents a full run)
   and are never sent once the month's self-test spend is over
-  `SELFTEST_MONTHLY_LIMIT` (US$2). `dev cost` shows the month's spend
+  `SELFTEST_MONTHLY_LIMIT_NZD` (NZ$3.50). `dev cost` shows the month's spend
 - **What it runs**: a day of made-up pills on the dev clock (the 6:00
   am checklist, doses on time, too soon, late and missed, a correction,
   questions on the card, reminders), the bot cut off in the middle of a
@@ -2037,7 +2044,7 @@ It needs the dev bot (a token of its own in `.env.dev`).
   (`core/router.py`, `routing.py`, `extraction.py`, `llm.py`,
   `actions.py`, `conversation.py`, and a task's `plain.py` or
   `__init__.py`). The run's first lines say which, and why.
-- **A month's cap**: `SELFTEST_MONTHLY_LIMIT` (US$2 unless set). Once
+- **A month's cap**: `SELFTEST_MONTHLY_LIMIT_NZD` (NZ$3.50 unless set). Once
   the month's runs have spent it, every run uses recorded answers
   only, live's status line says "⚠️ self-test spend · US$2.05", and
   `dev cost` shows the month's figure. It starts again with the month.

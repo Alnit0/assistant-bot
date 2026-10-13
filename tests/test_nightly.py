@@ -239,7 +239,7 @@ def test_recorded_answers_are_the_rule_and_each_reason_to_pay_is_said():
     assert real(language=None) == (True, "real requests: no run with real requests is on record")
     for reason in ({"asked_real": True}, {"sunday_full": True}, {"language": ["core/router.py"]}, {"language": None}):
         used, why = real(spent=2.0, **reason)
-        assert used is False and why == "recorded answers only: this month's self-test spend is US$2.00, over the limit of US$2.00 (SELFTEST_MONTHLY_LIMIT)", "over the month's limit nothing is spent, whatever the reason"
+        assert used is False and why == "recorded answers only: this month's self-test spend is NZ$2.00, over the limit of NZ$2.00 (SELFTEST_MONTHLY_LIMIT_NZD)", "over the month's limit nothing is spent, whatever the reason"
 
 
 def test_the_last_real_run_and_a_night_with_nothing_new_are_read_from_what_is_kept():
@@ -277,19 +277,19 @@ def test_the_self_test_s_month_is_added_up_from_its_history_and_over_the_limit_i
     assert health.month_spend(rows, "2026-10") == pytest.approx(2.05) and health.month_spend(rows, "2026-11") == 0
     assert health.spend_problem(1.99, 2.0) is None
     item = health.spend_problem(2.05, 2.0)
-    assert item.urgency == attention.PROBLEM and attention.status_line(item) == "⚠️ self-test spend · US$2.05"
+    assert item.urgency == attention.PROBLEM and attention.status_line(item) == "⚠️ self-test spend · NZ$2.05"
     folder = tmp_path / "selftest"
     folder.mkdir()
     (folder / "history.csv").write_text("date,commit,ran,steps,passed,failed,failed_steps,spend_usd,claude,seconds,note\n2026-10-01 03:00,a,full,3,3,0,,1.2000,real,5,\n2026-10-13 03:00,a,full,3,3,0,,0.9000,real,5,\n", encoding="utf-8")
     monkeypatch.setattr(config, "DATA_DIR", tmp_path)
     monkeypatch.setattr(config, "DEV_DATABASE", False)
-    monkeypatch.setattr(config, "SELFTEST_MONTHLY_LIMIT", 2.0)
+    monkeypatch.setattr(config, "SELFTEST_MONTHLY_LIMIT_NZD", 2.0)
     now = datetime(2026, 10, 13, 9, 0, tzinfo=timezone.utc)
     assert health.selftest_spend(now) == (pytest.approx(2.1), 2.0)
     monkeypatch.setattr(health, "selftest_spend", lambda now=None: (2.1, 2.0))
     found = asyncio.run(health.selftest(1, now))
-    assert [attention.status_line(item) for item in found] == ["⚠️ self-test spend · US$2.10"], "live shows it at level 1 (the run itself passed)"
-    assert config.SELFTEST_MONTHLY_LIMIT == 2.0
+    assert [attention.status_line(item) for item in found] == ["⚠️ self-test spend · NZ$2.10"], "live shows it at level 1 (the run itself passed)"
+    assert config.SELFTEST_MONTHLY_LIMIT_NZD == 2.0
 
 
 def test_dev_cost_shows_what_the_self_test_has_spent_this_month():
@@ -299,6 +299,6 @@ def test_dev_cost_shows_what_the_self_test_has_spent_this_month():
     if nothing is None:
         pytest.skip("no empty period to report on")
     said = costs.report(nothing, nothing, [], "assistant.db", selftest=(1.24, 2.0))
-    assert "Self-test this month: US$1.24 of US$2.00" in said
-    assert "Self-test this month: US$2.31 of US$2.00 · over the limit: recorded answers only until next month" in costs.report(nothing, nothing, [], "assistant.db", selftest=(2.31, 2.0))
+    assert "Self-test this month: NZ$1.24 of NZ$2.00" in said
+    assert "Self-test this month: NZ$2.31 of NZ$2.00 · over the limit: recorded answers only until next month" in costs.report(nothing, nothing, [], "assistant.db", selftest=(2.31, 2.0))
     assert "Self-test" not in costs.report(nothing, nothing, [], "assistant.db")

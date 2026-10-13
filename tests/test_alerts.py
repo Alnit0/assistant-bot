@@ -122,12 +122,12 @@ def test_claude_spend_over_the_day_s_limit_needs_a_look_until_the_day_is_over(wo
         return spent["today"]
 
     monkeypatch.setattr(health.database, "run", run_db)
-    monkeypatch.setattr(config, "DAILY_SPEND_LIMIT", 0.5)
+    monkeypatch.setattr(config, "DAILY_SPEND_LIMIT_NZD", 0.5)
     assert run(health.spend(1, clock.now())) == []
     spent["today"] = 0.61
     (item,) = run(health.spend(1, clock.now()))
     assert item.urgency == PROBLEM and item.what.startswith("Claude spend today is over the limit: ") and item.ping
-    monkeypatch.setattr(config, "DAILY_SPEND_LIMIT", 0)
+    monkeypatch.setattr(config, "DAILY_SPEND_LIMIT_NZD", 0)
     assert run(health.spend(1, clock.now())) == [], "no limit set: nothing to be over"
 
 

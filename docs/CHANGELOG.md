@@ -6,6 +6,12 @@ backfilled from the git log.
 
 ## 2026-10-14
 
+- Costs are in NZ$ wherever you see them (`dev cost`, pings, the
+  briefing, the status line), at a rate fetched each morning. The
+  daily alert is at NZ$1.00 and the self-test's month at NZ$3.50.
+- The briefing has one line for yesterday's spend, hidden until
+  tapped: "💸 Yesterday: ||NZ$0.42 · you NZ$0.12 · testing NZ$0.30||".
+
 - What needs you now reaches you: it is in the briefing's "⚠️ Needs a
   look" box with its bug, and by day the bot pings you in the hub
   with one line. Between 10:00 pm and 7:00 am it waits, and at 7:00 am

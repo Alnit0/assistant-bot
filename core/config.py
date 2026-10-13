@@ -260,12 +260,20 @@ try:
     MEMORY_LIMIT_MB = float(os.getenv("MEMORY_LIMIT_MB") or 300)
 except ValueError:
     sys.exit("MEMORY_LIMIT_MB in .env must be a number of megabytes, e.g. 300")
-# What the self-test may spend on real requests in a calendar month, in US dollars. Over
+# Money is shown in NZ$ and recorded in US$ (core/money.py). The rate is fetched once a day;
+# until one has been, this is it
+try:
+    USD_TO_NZD = float(os.getenv("USD_TO_NZD") or 1.70)
+except ValueError:
+    sys.exit("USD_TO_NZD in .env must be a number, e.g. 1.70")
+if USD_TO_NZD <= 0:
+    sys.exit("USD_TO_NZD in .env must be more than 0, e.g. 1.70")
+# What the self-test may spend on real requests in a calendar month, in NZ dollars. Over
 # it, runs use recorded answers only and live says so (core/health.py)
 try:
-    SELFTEST_MONTHLY_LIMIT = float(os.getenv("SELFTEST_MONTHLY_LIMIT") or 2.0)
+    SELFTEST_MONTHLY_LIMIT_NZD = float(os.getenv("SELFTEST_MONTHLY_LIMIT_NZD") or 3.50)
 except ValueError:
-    sys.exit("SELFTEST_MONTHLY_LIMIT in .env must be a number of US dollars, e.g. 2")
+    sys.exit("SELFTEST_MONTHLY_LIMIT_NZD in .env must be a number of NZ dollars, e.g. 3.50")
 # The weekly pills summary (tasks/pills/history.py): on Sunday evening the week is posted
 # in the hub. Off unless switched on
 WEEKLY_SUMMARY = flag(os.getenv("WEEKLY_SUMMARY"), False)
@@ -289,12 +297,12 @@ NIGHTLY_SELFTEST = flag(os.getenv("NIGHTLY_SELFTEST"), False)
 # when today's is posted. Off unless set: off, nothing is recorded and nothing is deleted by it
 HUB_TIDY = flag(os.getenv("HUB_TIDY"), False)
 
-# What a day's requests to Claude may cost, in US dollars, before #bot-log is told (once a
-# day). Nothing is stopped: it only says so. 0 switches the note off
+# What a day's requests to Claude may cost, in NZ dollars, before I am told (once a day).
+# Nothing is stopped: it only says so. 0 switches it off
 try:
-    DAILY_SPEND_LIMIT = float(os.getenv("DAILY_SPEND_LIMIT") or 0.50)
+    DAILY_SPEND_LIMIT_NZD = float(os.getenv("DAILY_SPEND_LIMIT_NZD") or 1.00)
 except ValueError:
-    sys.exit("DAILY_SPEND_LIMIT in .env must be a number of US dollars, e.g. 0.50")
+    sys.exit("DAILY_SPEND_LIMIT_NZD in .env must be a number of NZ dollars, e.g. 1.00")
 
 # Quiet time before reactions are acted on. Removing a reaction within it cancels
 try:

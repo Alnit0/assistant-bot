@@ -10,7 +10,7 @@ from core import cards, costs, database, migrations, timing
 from core.config import TIMEZONE
 from core.costs import BUTTON, CHAT, FOLLOW_UP, REACTION, ROUTER, SHORTCUT, TOOLS, Call, Row
 
-HAIKU = "claude-haiku-4-5"  # US$1 a million in, US$5 out, in the test settings as in the real ones
+HAIKU = "claude-haiku-4-5"  # NZ$1 a million in, NZ$5 out, in the test settings as in the real ones
 
 
 def nz(*parts) -> datetime:
@@ -72,7 +72,7 @@ def test_cached_tokens_cost_a_tenth_to_read_and_a_quarter_more_to_write():
 def test_a_model_with_no_known_price_costs_unknown_not_nothing():
     assert costs.price("some-new-model", 1000, 1000) is None
     assert Call("router", "some-new-model", 1000, 10).cost is None
-    assert costs.money(None) == "unknown" and costs.money(0.0421) == "US$0.0421"
+    assert costs.money(None) == "unknown" and costs.money(0.0421) == "NZ$0.0421"
 
 
 def test_the_requests_of_a_turn_become_calls_with_what_they_were_for():
@@ -209,24 +209,25 @@ def test_tokens_are_added_up_by_kind():
 def test_the_report_gives_today_the_month_the_averages_and_the_dearest_task():
     today, month = costs.split(ROWS, NOW)
     text = costs.report(today, month, [("tools", 5, 0.04), ("router", 1, 0.002)], "assistant.db")
-    assert text.splitlines() == [
+    assert text.splitlines()[-1] == "-# Shown in NZ$, recorded in US$: US$1 = NZ$1.0000 (USD_TO_NZD in .env: no rate has been fetched yet)"
+    assert text.splitlines()[:-1] == [
         "## 💰 Cost · `assistant.db`",
-        "**Today** · US$0.0070 · 6 messages, 3 to Claude",
-        "-# average US$0.0012 a message · US$0.0023, 1.7 requests and 2.0s a message to Claude",
-        "-# button 1 · shortcut 1 · reaction 1 · follow-up 1 (US$0.0010) · router 1 (US$0.0040) · chat 1 (US$0.0020)",
-        "**This month** · US$0.0470 · 9 messages, 5 to Claude",
-        "-# average US$0.0052 a message · US$0.0094, 2.0 requests and 3.2s a message to Claude",
-        "-# button 1 · shortcut 2 · reaction 1 · follow-up 1 (US$0.0010) · router 1 (US$0.0040) · chat 1 (US$0.0020) · tools 2 (US$0.0400)",
-        "Most expensive task this month: **timers** · US$0.0250 (53% of the month)",
-        "-# then pills US$0.0200 · no task US$0.0020",
+        "**Today** · NZ$0.0070 · 6 messages, 3 to Claude",
+        "-# average NZ$0.0012 a message · NZ$0.0023, 1.7 requests and 2.0s a message to Claude",
+        "-# button 1 · shortcut 1 · reaction 1 · follow-up 1 (NZ$0.0010) · router 1 (NZ$0.0040) · chat 1 (NZ$0.0020)",
+        "**This month** · NZ$0.0470 · 9 messages, 5 to Claude",
+        "-# average NZ$0.0052 a message · NZ$0.0094, 2.0 requests and 3.2s a message to Claude",
+        "-# button 1 · shortcut 2 · reaction 1 · follow-up 1 (NZ$0.0010) · router 1 (NZ$0.0040) · chat 1 (NZ$0.0020) · tools 2 (NZ$0.0400)",
+        "Most expensive task this month: **timers** · NZ$0.0250 (53% of the month)",
+        "-# then pills NZ$0.0200 · no task NZ$0.0020",
         "-# Tokens this month: 4,600 in · 25,000 read from cache · 100 written to it · 780 out",
-        "-# Requests this month: tools 5 (US$0.0400) · router 1 (US$0.0020)",
+        "-# Requests this month: tools 5 (NZ$0.0400) · router 1 (NZ$0.0020)",
     ]
 
 
 def test_with_nothing_logged_the_report_says_so():
     empty = costs.add_up([])
-    assert costs.report(empty, empty, [], "dev.db").splitlines() == [
+    assert costs.report(empty, empty, [], "dev.db").splitlines()[:-1] == [
         "## 💰 Cost · `dev.db`", "**Today** · nothing yet", "**This month** · nothing yet",
     ]
 
@@ -345,12 +346,12 @@ def test_dev_cost_reports_this_database(db):
     result = asyncio.run(scenario())
     lines = said[0].splitlines()
     assert lines[0] == "## 💰 Cost · `test.db`"
-    assert lines[1] == "**Today** · US$0.0028 · 2 messages, 1 to Claude"
+    assert lines[1] == "**Today** · NZ$0.0028 · 2 messages, 1 to Claude"
     assert "2.0 requests and 3.0s a message to Claude" in lines[2]
-    assert lines[3] == "-# shortcut 1 · tools 1 (US$0.0028)"
-    assert "Most expensive task this month: **timers** · US$0.0028 (100% of the month)" in said[0]
-    assert "-# Requests this month: tools 2 (US$0.0028)" in said[0]
-    assert result.startswith("today US$0.0028 over 2 message(s)")
+    assert lines[3] == "-# shortcut 1 · tools 1 (NZ$0.0028)"
+    assert "Most expensive task this month: **timers** · NZ$0.0028 (100% of the month)" in said[0]
+    assert "-# Requests this month: tools 2 (NZ$0.0028)" in said[0]
+    assert result.startswith("today NZ$0.0028 over 2 message(s)")
 
 
 def test_dev_cost_is_a_typed_word():
@@ -388,7 +389,7 @@ def bot_log(monkeypatch):
 
 
 def spend(amount_calls):
-    """Log one message to Claude that made `amount_calls` requests of US$0.11 each."""
+    """Log one message to Claude that made `amount_calls` requests of NZ$0.11 each."""
     async def scenario():
         row_id = await database.log_received("something long", "chat", 5, 100, user_id=1)
         await database.record_cost(row_id, ROUTER, ["pills"], [Call("extraction", HAIKU, 100_000, 2_000)] * amount_calls)
@@ -399,19 +400,19 @@ def spend(amount_calls):
 def test_the_default_limit_is_fifty_cents_and_is_a_setting():
     from core import config
 
-    assert config.DAILY_SPEND_LIMIT == 0.50
-    assert "DAILY_SPEND_LIMIT=0.50" in (config.BASE_DIR / ".env.example").read_text(encoding="utf-8")
+    assert config.DAILY_SPEND_LIMIT_NZD == 0.50, "the tests' own setting; the default is NZ$1.00"
+    assert "DAILY_SPEND_LIMIT_NZD=1.00" in (config.BASE_DIR / ".env.example").read_text(encoding="utf-8")
 
 
 def test_under_the_limit_nothing_is_said(db, bot_log):
-    spend(4)  # US$0.44
+    spend(4)  # NZ$0.44
     assert bot_log == []
 
 
 def test_over_the_limit_bot_log_is_told_once_however_much_more_is_spent(db, bot_log):
     spend(4)
-    spend(1)  # US$0.55: over
-    assert bot_log == [("💰 Claude spend is over today's limit", "US$0.5500 so far today · the limit is US$0.50 (DAILY_SPEND_LIMIT in .env). Nothing is stopped; `dev cost` shows where it went.")]
+    spend(1)  # NZ$0.55: over
+    assert bot_log == [("💰 Claude spend is over today's limit", "NZ$0.5500 (US$0.5500) so far today · the limit is NZ$0.50 (DAILY_SPEND_LIMIT_NZD in .env). Nothing is stopped; `dev cost` shows where it went.")]
     spend(3)
     spend(1)
     assert len(bot_log) == 1, "once a day, not once a message"
@@ -433,7 +434,9 @@ def test_it_is_not_said_again_after_a_restart_and_is_said_again_on_a_new_day(db,
 
 
 def test_a_limit_of_nothing_switches_the_note_off_and_a_message_with_no_request_is_never_checked(db, bot_log, monkeypatch):
-    monkeypatch.setattr(database, "DAILY_SPEND_LIMIT", 0.0)
+    from core import config
+
+    monkeypatch.setattr(config, "DAILY_SPEND_LIMIT_NZD", 0.0)
     spend(9)
     assert bot_log == []
     conn = database.connect()
@@ -456,9 +459,9 @@ def test_a_note_that_cannot_be_sent_never_fails_the_message(db, monkeypatch):
 def test_dev_cost_shows_today_against_the_limit():
     today = costs.add_up([Row(datetime.now(TIMEZONE), ROUTER, ("pills",), 1, 100, 10, 0, 0, 0.0317, 1.0)])
     lines = costs.report(today, today, [], "dev.db", limit=0.50).splitlines()
-    assert lines[1].startswith("**Today** · US$0.0317") and "-# US$0.0317 of today's US$0.50 limit (6%)" in lines
+    assert lines[1].startswith("**Today** · NZ$0.0317") and "-# NZ$0.0317 of today's NZ$0.50 limit (6%)" in lines
     over = costs.add_up([Row(datetime.now(TIMEZONE), ROUTER, ("pills",), 1, 100, 10, 0, 0, 0.61, 1.0)])
-    assert "-# ⚠️ over today's limit: US$0.6100 of US$0.50 (DAILY_SPEND_LIMIT)" in costs.report(over, over, [], "dev.db", limit=0.50)
+    assert "-# ⚠️ over today's limit: NZ$0.6100 of NZ$0.50 (DAILY_SPEND_LIMIT_NZD)" in costs.report(over, over, [], "dev.db", limit=0.50)
     assert "limit" not in costs.report(today, today, [], "dev.db"), "no limit set: no line"
     empty = costs.add_up([])
-    assert "-# US$0.0000 of today's US$0.50 limit (0%)" in costs.report(empty, empty, [], "dev.db", limit=0.50)
+    assert "-# NZ$0.0000 of today's NZ$0.50 limit (0%)" in costs.report(empty, empty, [], "dev.db", limit=0.50)

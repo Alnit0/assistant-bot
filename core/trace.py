@@ -140,7 +140,9 @@ def _clock(received_at: str) -> str:
 
 
 def _money(cost) -> str:
-    return f"US${cost:.4f}" if cost is not None else "unknown"
+    from core import money  # what I read is NZ$ (core/money.py); the trace keeps US$
+
+    return money.shown(cost, 4)
 
 
 # How Claude hands over "it", "that" or "this one" (`actions.REFERENCE`; that module imports this one)

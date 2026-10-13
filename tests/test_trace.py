@@ -60,7 +60,7 @@ def test_a_message_in_lines_has_everything_needed_to_see_why():
         "card before: butter 1 add",
         "card after:  butter · 2 → 3 / jam · × 1",
         "shown: card: shopping · change: butter · 2 → 3 / jam · × 1",
-        "cost: US$0.0036 · 1 request(s) · 1.4s in all · extraction/shopping US$0.0036 1.3s",
+        "cost: NZ$0.0036 · 1 request(s) · 1.4s in all · extraction/shopping NZ$0.0036 1.3s",
     ]
 
 
@@ -87,7 +87,7 @@ def test_a_message_from_before_traces_or_on_the_old_way_still_reads():
         "trace: none kept for this message (a shortcut or a button, or from before traces)",
         "python: no checks recorded",
         "shown: Started.",
-        "cost: US$0.0000 · 0 request(s)",
+        "cost: NZ$0.0000 · 0 request(s)",
     ]
 
 
@@ -157,7 +157,7 @@ def test_dev_why_shows_my_last_message_as_one_block(db):
     said, result = why()
     assert len(said) == 1 and said[0].startswith(f"```\n#{last} · ") and "said: and jam" in said[0]
     assert "python: merge: jam add (new to the card)" in said[0]
-    assert "cost: US$" in said[0] and "router US$" in said[0] and "extraction/shopping US$" in said[0]
+    assert "cost: NZ$" in said[0] and "router NZ$" in said[0] and "extraction/shopping NZ$" in said[0]
     assert result == f"showed the trace of message(s) #{last}"
 
 

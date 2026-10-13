@@ -4,7 +4,7 @@ import logging
 import discord
 from discord import app_commands
 
-from core import account, alerts, backup, cards, clock, conversation, database, day, devmode, dms, health, identity, instance_lock, interactions, lifecycle, live, messages, missed, nightly, restart, scheduler, tidy, timing
+from core import account, alerts, backup, money, cards, clock, conversation, database, day, devmode, dms, health, identity, instance_lock, interactions, lifecycle, live, messages, missed, nightly, restart, scheduler, tidy, timing
 from core.config import SEPARATE_BOT
 from core.config import mine as my_channel
 from core.config import (
@@ -59,6 +59,7 @@ INTERACTION_GRACE = 2.0
 scheduler.register_handler(backup.JOB_TASK, backup.JOB_KIND, backup.nightly_backup_job, backup.JOB_LABEL)
 scheduler.register_handler(day.JOB_TASK, day.JOB_KIND, day.rollover_job, day.JOB_LABEL)
 nightly.setup()  # live's own: the self-test the dev bot runs at night, behind NIGHTLY_SELFTEST
+money.setup()  # the US$ to NZ$ rate, fetched once a day
 alerts.setup()  # a ping for what needs me, and the 7:00 am check
 health.setup()  # the core's own attention items: what is wrong with the bot itself, and the next morning
 tidy.setup()
@@ -190,6 +191,7 @@ async def on_ready():
     # on_ready fires again after a reconnect; only set up once
     if slash_status == "not set up yet":
         slash_status = await setup_slash_commands()
+        await money.load()  # the last rate fetched, for everything shown in NZ$
         await registry.startup(client)
         # Every schedule's next run (the backup, the end of the day, a task's morning post)
         await scheduler.book()

@@ -4,7 +4,15 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date, datetime
 
+from core import config
 from core.config import MODEL_PRICING, TIMEZONE
+
+
+def _nz():
+    """core/money.py, which is how an amount is shown. Imported when used: it needs the database, which needs this."""
+    from core import money
+
+    return money
 
 # ---------------------------------------------------------------------------
 # What each message cost, and by which way it was handled.
@@ -360,13 +368,31 @@ def split(rows: list[Row], now: datetime) -> tuple[Period, Period]:
 # In words
 # ---------------------------------------------------------------------------
 def money(cost: float | None) -> str:
+    """A cost as I read it: in NZ$, at the rate in use (core/money.py). `cost` is US$, as recorded."""
+    return _nz().shown(cost, 4)
+
+
+def usd(cost: float | None) -> str:
+    """A cost as it is recorded and billed: US$. For the record (#bot-log, the log file), beside what I read."""
     return f"US${cost:.4f}" if cost is not None else "unknown"
 
 
 def limit_money(limit: float) -> str:
-    """A limit as it is written in .env: US$0.50. One under a cent is shown
-    to three places (US$0.001): to two it would read as no limit at all."""
-    return f"US${limit:.3f}" if 0 < limit < 0.01 else f"US${limit:.2f}"
+    """A limit (in US$, as it is compared) the way it is written in .env: NZ$1.00.
+    One under a cent is shown to three places: to two it would read as no limit at all."""
+    shown = _nz().nzd(limit)
+    return f"NZ${shown:.3f}" if 0 < shown < 0.01 else f"NZ${shown:.2f}"
+
+
+def daily_limit() -> float:
+    """The day's limit in US$, as spend is recorded: DAILY_SPEND_LIMIT_NZD at the rate in use. 0: no limit."""
+    return _nz().usd(config.DAILY_SPEND_LIMIT_NZD)
+
+
+def db_spent_day(conn: sqlite3.Connection, day: date) -> float:
+    """What the requests to Claude cost (US$) on one NZ day."""
+    start = datetime.combine(day, datetime.min.time(), tzinfo=TIMEZONE)
+    return add_up([row for row in db_rows(conn, start.isoformat()) if day_of(row.received_at) == day]).cost
 
 
 def limit_line(spent: float, limit: float) -> str:
@@ -374,7 +400,7 @@ def limit_line(spent: float, limit: float) -> str:
     if limit <= 0:
         return ""
     if spent > limit:
-        return f"-# ⚠️ over today's limit: {money(spent)} of {limit_money(limit)} (DAILY_SPEND_LIMIT)"
+        return f"-# ⚠️ over today's limit: {money(spent)} of {limit_money(limit)} (DAILY_SPEND_LIMIT_NZD)"
     return f"-# {money(spent)} of today's {limit_money(limit)} limit ({spent / limit:.0%})"
 
 
@@ -384,7 +410,7 @@ OVER_TITLE = "💰 Claude spend is over today's limit"
 def over_notice(spent: float, limit: float) -> tuple[str, str]:
     """What #bot-log is told, once, on a day the limit is passed."""
     return OVER_TITLE, (
-        f"{money(spent)} so far today · the limit is {limit_money(limit)} (DAILY_SPEND_LIMIT in .env). "
+        f"{money(spent)} ({usd(spent)}) so far today · the limit is {limit_money(limit)} (DAILY_SPEND_LIMIT_NZD in .env). "
         "Nothing is stopped; `dev cost` shows where it went."
     )
 
@@ -443,7 +469,8 @@ def report(
         # The self-test runs on the dev database: what it spends is not in the figures above
         spent, cap = selftest
         over = " · over the limit: recorded answers only until next month" if spent >= cap else ""
-        lines.append(f"Self-test this month: US${spent:.2f} of US${cap:.2f}{over}")
+        lines.append(f"Self-test this month: {_nz().shown(spent)} of {_nz().shown(cap)}{over}")
+    lines.append(f"-# Shown in NZ$, recorded in US$: {_nz().said()}")
     messages, sent, total = state
     if messages:
         held_back = f", {total - sent:,} held back by the cap" if total > sent else ", nothing held back"

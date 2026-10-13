@@ -860,7 +860,7 @@ async def _finish(ctx_or_request, row_id: int, turn: Turn, spent: timing.Turn, d
     embed.add_field(name="Shown", value=truncate(reply) or "(nothing)", inline=False)
     embed.add_field(name="Route", value=f"{turn.route} · {len(calls)} request(s)", inline=True)
     embed.add_field(name="Tasks", value=", ".join(dict.fromkeys(turn.tasks)) or "none", inline=True)
-    embed.add_field(name="Cost", value=costs.money(cost), inline=True)
+    embed.add_field(name="Cost", value=costs.usd(cost), inline=True)  # the record, as billed
     embed.add_field(name="Time", value=f"{duration:.1f}s", inline=True)
     if turn.extracted:
         embed.add_field(name="Extracted", value=truncate(json.dumps(turn.extracted, ensure_ascii=False)), inline=False)

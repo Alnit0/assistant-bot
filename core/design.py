@@ -105,6 +105,11 @@ def section() -> Separator:
     return Separator(SECTION_LINE, SECTION_LARGE)
 
 
+def hidden(text: str) -> str:
+    """Words shown only when tapped (a spoiler): for an amount of money in a message others may glance at."""
+    return f"||{text}||"
+
+
 def small(text: str) -> str:
     """A line of small text. One that is small already is left as it is."""
     return text if text.startswith(SMALL) else f"{SMALL}{text}"

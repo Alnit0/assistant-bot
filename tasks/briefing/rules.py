@@ -76,6 +76,13 @@ def _lines(section: Section) -> list[str]:
 
 
 MAX_NOTES = 3
+SPEND_ICON = "💸"
+
+
+def spend_line(you: str, testing: str, total: str) -> str:
+    """Yesterday's Claude spend in one line, the amounts behind a spoiler: "you" is
+    the bot's own use, "testing" the self-tests. The amounts come written (NZ$)."""
+    return f"{SPEND_ICON} Yesterday: " + design.hidden(f"{total} · you {you} · testing {testing}")
 
 
 def worth_knowing(notes: tuple[str, ...]) -> list[str]:
@@ -85,7 +92,7 @@ def worth_knowing(notes: tuple[str, ...]) -> list[str]:
     return [*([design.small(f"🗒️ …and {len(notes) - MAX_NOTES} more before")] if len(notes) > MAX_NOTES else []), *shown]
 
 
-def text(sections: list[Section], day: date, problems: tuple[str, ...] = (), held_back: tuple[str, ...] = (), hours: str = "", notes: tuple[str, ...] = ()) -> str:
+def text(sections: list[Section], day: date, problems: tuple[str, ...] = (), held_back: tuple[str, ...] = (), hours: str = "", notes: tuple[str, ...] = (), spend: str = "") -> str:
     """The briefing as a plain message (the old look, and what is logged)."""
     lines = [f"## {HEADING}", design.small(date_line(day))]
     if problems:
@@ -94,13 +101,15 @@ def text(sections: list[Section], day: date, problems: tuple[str, ...] = (), hel
         lines += ["", HELD, *held_back, *([design.small(held_note(hours))] if hours else [])]
     for section in sections:
         lines += ["", _name(section), *_lines(section)]
+    if spend:
+        lines += ["", spend]
     if notes:
         lines += ["", *worth_knowing(notes)]
     lines += ["", design.small(FOOT)]
     return "\n".join(lines)
 
 
-def layout(sections: list[Section], day: date, problems: tuple[str, ...] = (), held_back: tuple[str, ...] = (), hours: str = "", notes: tuple[str, ...] = ()) -> tuple:
+def layout(sections: list[Section], day: date, problems: tuple[str, ...] = (), held_back: tuple[str, ...] = (), hours: str = "", notes: tuple[str, ...] = (), spend: str = "") -> tuple:
     """The briefing in the one style of docs/DESIGN.md: a standing message, a
     box a task in the colour of its status, and no buttons. What needs a look
     is a box of its own on top, then what was held back overnight."""
@@ -114,4 +123,5 @@ def layout(sections: list[Section], day: date, problems: tuple[str, ...] = (), h
         for section in sections
     ]
     pieces = design.standing(HEADING, date_line(day), boxes)
-    return (*pieces, *([design.Text("\n".join(worth_knowing(notes)))] if notes else []), design.Text(design.small(FOOT)))
+    under = [*([spend] if spend else []), *worth_knowing(notes)]
+    return (*pieces, *([design.Text("\n".join(under))] if under else []), design.Text(design.small(FOOT)))

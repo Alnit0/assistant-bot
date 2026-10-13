@@ -479,6 +479,21 @@ def _create_needs_look(conn: sqlite3.Connection) -> None:
     )
 
 
+def _create_exchange_rates(conn: sqlite3.Connection) -> None:
+    # The US$ to NZ$ rate, one row a day it was fetched (core/money.py). What is spent is
+    # recorded in US$ as ever: this is only how it is shown
+    conn.execute(
+        """
+        CREATE TABLE exchange_rates (
+            day TEXT PRIMARY KEY,
+            usd_to_nzd REAL NOT NULL,
+            fetched_at TEXT NOT NULL,
+            source TEXT NOT NULL
+        )
+        """
+    )
+
+
 MIGRATIONS = [
     _create_message_log,
     _create_users,
@@ -504,6 +519,7 @@ MIGRATIONS = [
     _create_held_alerts,
     _add_ended_to_bot_alive,
     _create_needs_look,
+    _create_exchange_rates,
 ]
 
 

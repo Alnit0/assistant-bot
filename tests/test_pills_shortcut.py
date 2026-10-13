@@ -169,10 +169,10 @@ def test_a_button_pressed_for_a_dose_that_was_missed_meanwhile_asks_first_too(wo
 def test_a_limit_under_a_cent_is_shown_to_three_places():
     from core import costs
 
-    assert costs.limit_money(0.001) == "US$0.001" and costs.limit_money(0.005) == "US$0.005"
-    assert costs.limit_money(0.5) == "US$0.50" and costs.limit_money(0.01) == "US$0.01" and costs.limit_money(0) == "US$0.00"
-    assert "of today's US$0.001 limit" in costs.limit_line(0.0004, 0.001)
-    assert costs.limit_line(0.0727, 0.001) == "-# ⚠️ over today's limit: US$0.0727 of US$0.001 (DAILY_SPEND_LIMIT)"
+    assert costs.limit_money(0.001) == "NZ$0.001" and costs.limit_money(0.005) == "NZ$0.005"
+    assert costs.limit_money(0.5) == "NZ$0.50" and costs.limit_money(0.01) == "NZ$0.01" and costs.limit_money(0) == "NZ$0.00"
+    assert "of today's NZ$0.001 limit" in costs.limit_line(0.0004, 0.001)
+    assert costs.limit_line(0.0727, 0.001) == "-# ⚠️ over today's limit: NZ$0.0727 of NZ$0.001 (DAILY_SPEND_LIMIT_NZD)"
 
 
 # --- the dev bot's own settings ----------------------------------------------------------------------------------

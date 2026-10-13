@@ -44,6 +44,37 @@ design and the hub principle point. Each is yours to overturn.
 10. **The 7:00 am check is yours to move** (`my schedule`), like the
     morning routine. Moved into quiet hours it would be held.
 
+**Item 6, NZ$ and the morning spend line**
+
+11. **The settings were renamed, not kept beside the old ones**:
+    `DAILY_SPEND_LIMIT_NZD=1.00`, `SELFTEST_MONTHLY_LIMIT_NZD=3.50`,
+    `USD_TO_NZD=1.70`. Live's `.env` named neither old one, so the new
+    defaults apply with nothing to edit.
+12. **The rate comes from Frankfurter** (the European Central Bank's
+    reference rates; free, no key), at **5:30 am**, as a job of the
+    bot's own ("Exchange rate", listed with the bot's own in `my
+    schedule`). A fetch that fails is **not** something that needs
+    you: the last known rate stays in use and `dev cost` says how old
+    it is.
+13. **Yesterday's US$ are shown at today's rate** (one rate at a time;
+    the difference is a fraction of a cent).
+14. **Amounts keep their precision**: four places in `dev cost` and
+    `dev why` (a message costs a fraction of a cent), two in a ping,
+    the briefing and the status line.
+15. **#bot-log's spend notice says both**: "NZ$1.12 (US$0.6600) so
+    far today · the limit is NZ$1.00". Its log cards' Cost field stays
+    US$, as billed. Left in US$ for now: the self-test's own report
+    and summary (`docs/SELFTEST.md`, its history file), which are
+    the record of what was billed.
+16. **The spend line is live's only**: the dev bot's briefing has no
+    money in it (so a self-test's briefing reads the same every run).
+    "Testing" is the self-test's history for that day; live evals are
+    not counted.
+17. **The self-test now sets every switch itself** for each start.
+    The first run tonight failed six steps only because the dev bot
+    read `HUB_TIDY=true` from live's `.env`; I stopped it, fixed
+    that, and ran it again.
+
 ## Questions for Alex
 
 **The hub tidy is on (2026-10-14).** `HUB_TIDY=true` is in `.env` and
