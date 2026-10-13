@@ -345,10 +345,11 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   what I write there is saved as a note. Nothing in #bugs is sent to
   Claude
 - Claude Code never closes a bug: I press Fixed or Won't fix on the post.
-  The one exception is the self-test's own bugs (`selftest/bugs.py`): a
-  step that fails is a dev bug (D number) with what was expected and
-  seen, noted when it fails again, and marked Fixed by the self-test
-  when the step passes again
+  The one exception is the self-test's own bugs (`selftest/bugs.py`),
+  and only a bug the self-test opened itself: the first step to fail in
+  a stage is a dev bug (D number) with what was expected and seen and
+  the steps that failed after it, noted when it fails again, and marked
+  Fixed by the self-test when the step passes again
 
 ### Notifications and interactions
 

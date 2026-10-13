@@ -17,6 +17,32 @@ UNFINISHED = "did not finish: stopped before the end"
 MARK = "🧪 Self-test"  # how a summary in #selftest-log begins: the emptying before a run leaves these
 
 
+KEEP_RUNS = 10  # run folders kept whatever they hold
+KEEP_FAILED_DAYS = 30  # and one with a failure in it, for this long
+UNFINISHED_FILE = "unfinished.txt"  # left in the folder of a run that was stopped before its end
+
+
+def old_runs(runs: list[tuple[str, bool]], today: str) -> list[str]:
+    """The run folders that may go. `runs` is (the run's stamp, whether a step
+    failed in it or it never finished); `today` a stamp's first eight digits.
+    The latest ten stay whatever they hold, and one with a failure stays for
+    30 days from its run."""
+    from datetime import date
+
+    def day(stamp: str) -> date:
+        return date(int(stamp[:4]), int(stamp[4:6]), int(stamp[6:8]))
+
+    going = []
+    for stamp, failed in sorted(runs, reverse=True)[KEEP_RUNS:]:
+        try:
+            age = (day(today) - day(stamp)).days
+        except ValueError:
+            continue  # not a run's stamp: not ours to judge
+        if not failed or age > KEEP_FAILED_DAYS:
+            going.append(stamp)
+    return sorted(going)
+
+
 def failed_steps(results: list[dict]) -> list[str]:
     return [each["key"] for each in results if each["status"] in BAD]
 
@@ -74,7 +100,7 @@ def view(rows: list[dict], shown: int = SHOWN) -> list[str]:
         return lines + ["No run on record yet.", ""]
     lines += [
         f"The latest {min(shown, len(rows))} of {len(rows)} runs, newest first. All of them, a line a run, are in",
-        "`data/selftest/history.csv` (never rewritten). A step that failed is a bug in the forum until it passes again.",
+        "`data/selftest/history.csv` (never rewritten). The first step to fail in a stage is a bug in the forum until it passes again.",
         "",
         "| Run | Commit | What ran | Passed | Failed | Failed steps | Spend | Took |",
         "|---|---|---|---|---|---|---|---|",

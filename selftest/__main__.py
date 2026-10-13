@@ -168,6 +168,7 @@ def recover() -> list[dict]:
         stamp = saved.name[len("saved-"):]
         spent = report.spent(config.DATA_DIR / "dev.db")  # the stopped run's own database is still in the way
         put_back(saved, stamp)
+        (WORK / f"run-{stamp}" / record.UNFINISHED_FILE).write_text(record.UNFINISHED, encoding="utf-8")  # kept as long as a run with a failure
         line = record.row(stamp, "", "?", results_of(WORK / f"run-{stamp}"), spent, False, 0, note=record.UNFINISHED)
         record.append(HISTORY, line)
         added.append(line)
@@ -194,7 +195,7 @@ def file_bugs(line: dict, results: list[dict], stamp: str, channel_id: int) -> t
         return [], ""
     source = WORK / f"run-{stamp}" / "results.json"
     source.parent.mkdir(parents=True, exist_ok=True)
-    kept = [{name: each.get(name, "") for name in ("key", "title", "expect", "saw", "status")} for each in results]
+    kept = [{name: each.get(name, "") for name in ("phase", "key", "title", "expect", "saw", "status")} for each in results]
     source.write_text(json.dumps({"date": line["date"], "commit": line["commit"], "channel_id": channel_id, "results": kept}, ensure_ascii=False, indent=1), encoding="utf-8")
     try:
         done = subprocess.run(
@@ -209,9 +210,28 @@ def file_bugs(line: dict, results: list[dict], stamp: str, channel_id: int) -> t
             act = json.loads(each)
         except ValueError:
             continue
-        lines.append(bugs.line(act["what"], act["bug"] or "no bug", act["step"], act.get("url")))
+        lines.append(bugs.line(act["what"], act["bug"] or "no bug", act["step"], act.get("url"), act.get("after") or ()))
     problem = "" if done.returncode == 0 else f"the bugs were not brought up to date: {(done.stderr or '').strip().splitlines()[-1][:200] if (done.stderr or '').strip() else 'exit ' + str(done.returncode)}"
     return lines, problem
+
+
+def prune_runs(today: str) -> list[str]:
+    """Take out the run folders that are no longer kept (`record.old_runs`):
+    the last ten stay, and one with a failure, or that never finished, for 30
+    days. Only `run-<stamp>` folders of the self-test's own are ever removed."""
+    runs = []
+    for folder in WORK.glob("run-*"):
+        if folder.is_dir():
+            failed = bool(record.failed_steps(results_of(folder))) or (folder / record.UNFINISHED_FILE).exists()
+            runs.append((folder.name[len("run-"):], failed))
+    gone = []
+    for stamp in record.old_runs(runs, today):
+        try:
+            shutil.rmtree(WORK / f"run-{stamp}")
+            gone.append(stamp)
+        except OSError as error:
+            print(f"--- the old run folder run-{stamp} could not be removed: {error}", flush=True)
+    return gone
 
 
 def keep(line: dict, results: list[dict], stamp: str, channels: dict[str, int]) -> None:
@@ -235,6 +255,9 @@ def keep(line: dict, results: list[dict], stamp: str, channels: dict[str, int]) 
         asyncio.run(say(channels["bot-log"], record.summary(line, touched, problem)))
     except Exception as error:
         print(f"--- the summary could not be posted in #selftest-log: {error}", flush=True)
+    gone = prune_runs(stamp[:8])
+    if gone:
+        print(f"--- {len(gone)} old run folder{'' if len(gone) == 1 else 's'} removed (the last {record.KEEP_RUNS} are kept, and one with a failure for {record.KEEP_FAILED_DAYS} days)", flush=True)
 
 
 def run_phase(name: str, settings: dict, channels: dict[str, int], claude: bool, budget: float, memo: dict, stamp: str) -> dict:

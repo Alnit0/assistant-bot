@@ -7,27 +7,15 @@ session; the end-of-task checklist updates it at the end of every task.
 
 ## Questions for Alex
 
-**From the self-test's record (2026-10-13):**
-
-- **The self-test marks its own bugs Fixed**, as you asked, which was
-  against "Claude Code never closes a bug". `CLAUDE.md` now says it is
-  the one exception. Buttons on a D bug's post only work while the dev
-  bot is the one running (as for any dev bug).
-- **A Fixed bug whose step fails again is re-opened** (the same bug,
-  with a note), and one you closed as **Won't fix gets a note and stays
-  closed**. Say if either should open a new bug instead.
-- **One cause can be several bugs**: when a step fails, the steps
-  after it that needed what it made fail too, and each gets its bug.
-  They are all marked Fixed together when the run passes. Say if you
-  would rather have one bug a run.
-- **The summaries stay in #selftest-log** through the emptying before
-  each run, so the channel becomes the list of runs. `python -m
-  selftest --remove` still deletes the channel and them with it.
-- **The runs before this was built are not in the history.** Their
-  folders are still in `data/selftest/` (21 of them, 29 MB). I can
-  write a line for each from what they kept (no commit for them); say
-  if you want that. Nothing deletes old run folders: say if they
-  should go after a time.
+Answered on 2026-10-13, the self-test's record: a Fixed bug whose
+step fails again is re-opened, and a Won't fix gets a note and stays
+closed; only the first step to fail in a stage gets a bug, with the
+steps that failed after it listed inside as probably following from it
+(built); the summaries stay in #selftest-log; no backfill of the
+earlier runs; run folders are pruned to the last 10, plus any with a
+failure for 30 days (built: it happens after the next run); the
+self-test marks Fixed only bugs it opened itself (built, and checked
+against the bug's own record, not only the list of numbers).
 
 **From the scheduler build (2026-10-13):**
 

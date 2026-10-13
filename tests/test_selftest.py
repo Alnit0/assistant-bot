@@ -337,33 +337,56 @@ def test_the_one_message_a_run_leaves_in_the_log_says_what_ran_what_failed_and_w
         assert not any(word in said for word in ("Tidy", "Backup saved", "Caught up", "Bot started", "Claude spend"))
 
 
+def _in(phase, *pairs):
+    return [{**each, "phase": phase} for each in _steps(*pairs)]
+
+
+def test_only_the_first_step_to_fail_in_a_stage_gets_a_bug_and_the_rest_are_listed_in_it():
+    results = _in("p1", ("1.01", "pass"), ("1.02", "fail")) + _in("p3", ("3.01", "error")) + _in("p5", ("5.01", "fail"), ("5.03", "error")) + _in("p6", ("6.01", "fail"))
+    assert selftest_bugs.firsts(results) == {"1.02": ("3.01",), "5.01": ("5.03",), "6.01": ()}, "starts 1 to 4 are one stage; the briefing's start and the tidy's are each their own"
+    Act = selftest_bugs.Act
+    assert selftest_bugs.decide(results, {}, {}, "open", "fixed") == [
+        Act(selftest_bugs.NEW, "1.02", None, ("3.01",)), Act(selftest_bugs.NEW, "5.01", None, ("5.03",)), Act(selftest_bugs.NEW, "6.01"),
+    ], "three bugs for six failures"
+    assert selftest_bugs.stage_of({"key": "7.02", "status": "fail"}) == "7", "a step recorded without its start is grouped by its number"
+
+
 def test_what_is_done_about_a_step_depends_on_whether_it_has_a_bug_and_how_that_bug_stands():
-    known = {"1.01": 1, "1.02": 2, "1.03": 3, "1.04": 4, "1.05": 5, "1.06": 6, "1.07": 7}
+    known = {"1.01": 1, "2.02": 2, "3.03": 3, "4.04": 4, "5.05": 5, "6.06": 6, "6.07": 7}
     states = {1: "open", 2: "fixed", 3: "wontfix", 5: "open", 6: "fixed", 7: "open"}  # 4 is no longer in the database
     results = _steps(
-        ("1.00", "fail"), ("1.01", "fail"), ("1.02", "error"), ("1.03", "fail"), ("1.04", "fail"),
-        ("1.05", "pass"), ("1.06", "pass"), ("1.07", "skip"), ("1.08", "pass"),
-    )
+        ("0.00", "fail"), ("1.01", "fail"), ("2.02", "error"), ("3.03", "fail"), ("4.04", "fail"),
+        ("5.05", "pass"), ("6.06", "pass"), ("6.07", "skip"), ("8.08", "pass"),
+    )  # each in a stage of its own
     Act = selftest_bugs.Act
     assert selftest_bugs.decide(results, known, states, "open", "fixed") == [
-        Act(selftest_bugs.NEW, "1.00"),  # no bug yet
+        Act(selftest_bugs.NEW, "0.00"),  # no bug yet
         Act(selftest_bugs.AGAIN, "1.01", 1),  # the same bug, a note
-        Act(selftest_bugs.REOPENED, "1.02", 2),  # it had been marked Fixed
-        Act(selftest_bugs.AGAIN, "1.03", 3),  # Won't fix stays as it was left: a note only
-        Act(selftest_bugs.NEW, "1.04"),  # its bug went with the database
-        Act(selftest_bugs.FIXED, "1.05", 5),  # passes again
+        Act(selftest_bugs.REOPENED, "2.02", 2),  # it had been marked Fixed
+        Act(selftest_bugs.AGAIN, "3.03", 3),  # Won't fix stays as it was left: a note only
+        Act(selftest_bugs.NEW, "4.04"),  # its bug went with the database
+        Act(selftest_bugs.FIXED, "5.05", 5),  # passes again
     ], "one already Fixed that passes, one skipped and one with no bug that passes change nothing"
     assert selftest_bugs.decide(_steps(("9.01", "pass")), known, states, "open", "fixed") == [], "a step that was not part of the run is left alone"
+    # A step with a bug of its own that now fails after another: no new bug for either reason, and its own is told
+    later = selftest_bugs.decide(_steps(("6.01", "fail"), ("6.07", "fail"), ("6.08", "fail")), known, states, "open", "fixed")
+    assert later == [Act(selftest_bugs.NEW, "6.01", None, ("6.07", "6.08")), Act(selftest_bugs.AGAIN, "6.07", 7, (), "6.01")]
 
 
-def test_a_bug_s_words_say_the_step_what_was_expected_and_what_was_seen():
+def test_a_bug_s_words_say_the_step_what_was_expected_what_was_seen_and_what_failed_after_it():
     step = {"key": "6.04", "title": "A copy was saved first", "expect": "The file is there", "saw": "no file" + "!" * 2000, "status": "fail"}
     said = selftest_bugs.content(step)
     assert said.startswith("Self-test step 6.04: A copy was saved first\nExpected: The file is there\nSeen: no file") and said.endswith("…") and len(said) < 1100
+    after = _steps(("6.05", "fail"), ("6.07", "error"))
+    assert selftest_bugs.content({**step, "saw": "no file"}, after).endswith("Seen: no file\nFailed after it in the same stage, probably following from it:\n- 6.05 step 6.05\n- 6.07 step 6.07")
+    assert selftest_bugs.following(_steps(*[(f"6.{n:02d}", "fail") for n in range(20)])).endswith("- and 8 more")
     assert selftest_bugs.note(selftest_bugs.FIXED, step, "2026-10-13 15:21", "837b16c") == "Passed again in the self-test of 2026-10-13 15:21 · commit `837b16c`: marked Fixed by the self-test."
     assert selftest_bugs.note(selftest_bugs.AGAIN, step, "2026-10-13 15:21", "").startswith("Failed again in the self-test of 2026-10-13 15:21 · commit `?`.\nSeen: no file")
     assert selftest_bugs.note(selftest_bugs.REOPENED, step, "d", "c").startswith("Failed again, so re-opened, in the self-test of d")
+    told = selftest_bugs.note(selftest_bugs.AGAIN, {**step, "saw": "no file"}, "d", "c", after, "6.01")
+    assert "This time after step 6.01 had failed in the same stage, so probably following from it." in told and told.endswith("- 6.07 step 6.07")
     assert selftest_bugs.line("opened", "D3", "6.04", "https://x/1") == "[D3](<https://x/1>) opened · step 6.04" and selftest_bugs.line("fixed", "D3", "6.04") == "D3 fixed · step 6.04"
+    assert selftest_bugs.line("opened", "D3", "6.04", None, ["6.05", "6.07"]) == "D3 opened · step 6.04 (and 6.05, 6.07 after it)"
 
 
 def test_a_failing_step_gets_one_bug_which_is_noted_fixed_and_re_opened_as_the_step_goes(bugs_db, owner, monkeypatch, tmp_path):
@@ -373,7 +396,7 @@ def test_a_failing_step_gets_one_bug_which_is_noted_fixed_and_re_opened_as_the_s
     made, shown = [], []
 
     async def create_post(number, report, channel=None):
-        if "6.05" in report.target.content:
+        if "5.05" in report.target.content.splitlines()[0]:
             raise RuntimeError("Discord said no")
         made.append(number)
         return 7000 + number, f"https://discord.test/{number}"
@@ -389,19 +412,20 @@ def test_a_failing_step_gets_one_bug_which_is_noted_fixed_and_re_opened_as_the_s
     def after(*pairs):
         return {"date": "2026-10-13 15:21", "commit": "837b16c", "channel_id": 5, "results": _steps(*pairs)}
 
-    first = run(selftest_bugs.apply(after(("6.04", "fail"), ("6.05", "fail"), ("6.06", "pass")), where, owner.id))
+    first = run(selftest_bugs.apply(after(("6.04", "fail"), ("6.05", "fail"), ("6.06", "pass"), ("5.05", "fail")), where, owner.id))
     number = selftest_bugs.read_known(where)["6.04"]
     name = bug_rules.bug_id(number)
-    assert first[0] == {"step": "6.04", "bug": name, "what": "opened", "url": f"https://discord.test/{number}"}
-    assert first[1]["step"] == "6.05" and first[1]["what"].startswith("could not be recorded") and "6.05" not in selftest_bugs.read_known(where), "one that can't be recorded does not stop the others, and is tried again next time"
+    assert first[0] == {"step": "6.04", "bug": name, "what": "opened", "url": f"https://discord.test/{number}", "after": ["6.05"]}
+    assert first[1]["step"] == "5.05" and first[1]["what"].startswith("could not be recorded") and "5.05" not in selftest_bugs.read_known(where), "one that can't be recorded does not stop the others, and is tried again next time"
+    assert len(first) == 2 and "6.05" not in selftest_bugs.read_known(where), "the step that failed after 6.04 has no bug of its own"
     item = run(store.get(number))
     assert item.status == bug_rules.OPEN and item.report.source == bug_rules.SELFTEST and item.report.commit == "837b16c"
-    assert item.report.target.content == "Self-test step 6.04: step 6.04\nExpected: it works\nSeen: it did not"
+    assert item.report.target.content == "Self-test step 6.04: step 6.04\nExpected: it works\nSeen: it did not\nFailed after it in the same stage, probably following from it:\n- 6.05 step 6.05"
     card = bug_rules.opening_text(number, item.report)
-    assert "by the self-test" in card and "from the self-test" in card and "> Expected: it works" in card, "the post reads like any other bug's"
+    assert "by the self-test" in card and "from the self-test" in card and "> Expected: it works" in card and "> - 6.05 step 6.05" in card, "the post reads like any other bug's"
 
     again = run(selftest_bugs.apply(after(("6.04", "error")), where, owner.id))
-    assert again == [{"step": "6.04", "bug": name, "what": "failed again", "url": f"https://discord.test/{number}"}] and made == [number], "no second bug"
+    assert again == [{"step": "6.04", "bug": name, "what": "failed again", "url": f"https://discord.test/{number}", "after": []}] and made == [number], "no second bug"
     item = run(store.get(number))
     notes = run(store.notes(number))
     assert item.status == bug_rules.OPEN and len(notes) == 1 and notes[0].author == bug_rules.SELF_TEST and notes[0].content.startswith("Failed again in the self-test")
@@ -418,6 +442,60 @@ def test_a_failing_step_gets_one_bug_which_is_noted_fixed_and_re_opened_as_the_s
     back = run(selftest_bugs.apply(after(("6.04", "fail")), where, owner.id))
     assert back[0]["what"] == "re-opened" and back[0]["bug"] == name and run(store.get(number)).status == bug_rules.OPEN and made == [number]
     assert [event.event for event in run(store.events(number))] == [bug_rules.FIXED, bug_rules.REOPENED]
+
+
+def test_only_a_bug_the_self_test_opened_itself_about_that_step_is_ever_touched(bugs_db, owner, monkeypatch, tmp_path):
+    import json
+
+    from tasks.bugs import posts, store
+    from tasks.bugs import rules as bug_rules
+
+    made = []
+
+    async def create_post(number, report, channel=None):
+        made.append(number)
+        return 7000 + number, f"https://discord.test/{number}"
+
+    async def bring_up_to_date(item, said, channel=None):
+        raise AssertionError("a bug that is not the self-test's was touched")
+
+    monkeypatch.setattr(posts, "create_post", create_post)
+    monkeypatch.setattr(posts, "bring_up_to_date", bring_up_to_date)
+    when = "2026-10-13T02:21:00+00:00"
+    # The dev database was recreated: the number on record for step 6.04 is now a bug of mine, and 6.05's the self-test's bug about another step
+    mine = run(store.add(owner.id, bug_rules.Report(bug_rules.WORD, 5, "#inbox", bug_rules.Snapshot(11, "me", "the reply was slow", when), reported_at=when)))
+    other = run(store.add(owner.id, bug_rules.Report(bug_rules.SELFTEST, 5, "the self-test", bug_rules.Snapshot(0, "self-test", "Self-test step 1.01: x", when), reported_at=when)))
+    where = tmp_path / "selftest" / "bugs.json"
+    where.parent.mkdir(parents=True)
+    where.write_text(json.dumps({"6.04": mine, "6.05": other}), encoding="utf-8")
+    assert run(selftest_bugs.apply({"date": "d", "commit": "c", "results": _steps(("6.04", "pass"), ("6.05", "pass"))}, where, owner.id)) == []
+    assert run(store.get(mine)).status == bug_rules.OPEN and run(store.get(other)).status == bug_rules.OPEN and run(store.notes(mine)) == [], "passing closes neither"
+    done = run(selftest_bugs.apply({"date": "d", "commit": "c", "results": _steps(("6.04", "fail"))}, where, owner.id))
+    assert done[0]["what"] == "opened" and made and made[0] not in (mine, other) and run(store.notes(mine)) == [], "failing opens a bug of the self-test's own"
+
+
+def test_old_run_folders_go_but_the_last_ten_and_one_with_a_failure_for_thirty_days(tmp_path, monkeypatch):
+    import json
+
+    runs = [(f"202610{day:02d}-090000", False) for day in range(1, 16)]
+    assert record.old_runs(runs, "20261015") == [f"202610{day:02d}-090000" for day in range(1, 6)], "the latest ten stay"
+    assert record.old_runs(runs[:10], "20261231") == [], "ten or fewer: nothing goes, however old"
+    mixed = [("20260901-090000", True), ("20260920-090000", True), ("20261001-090000", False), ("20261002-090000", True)] + runs[2:]
+    assert record.old_runs(mixed, "20261015") == ["20260901-090000", "20261001-090000", "20261003-090000", "20261004-090000", "20261005-090000"], "a failure keeps a folder 30 days from its run, and no longer"
+    assert record.old_runs([("not-a-stamp", False)] + runs, "20261015")[:1] == ["20261001-090000"], "what is not a run's stamp is left alone"
+
+    data, work = _runner_in(tmp_path, monkeypatch)
+    for day in range(1, 15):
+        folder = work / f"run-202610{day:02d}-090000"
+        folder.mkdir()
+        (folder / "p1.json").write_text(json.dumps({"results": _steps(("1.01", "fail" if day == 2 else "pass"))}), encoding="utf-8")
+    (work / "run-20261003-090000" / record.UNFINISHED_FILE).write_text("x", encoding="utf-8")
+    (work / "saved-20261001-090000").mkdir()
+    (work / "history.csv").write_text("date\n", encoding="utf-8")
+    assert runner.prune_runs("20261014") == ["20261001-090000", "20261004-090000"]
+    left = sorted(each.name for each in work.iterdir())
+    assert "run-20261002-090000" in left and "run-20261003-090000" in left, "one with a failed step and one that never finished are kept"
+    assert "saved-20261001-090000" in left and "history.csv" in left and len([each for each in left if each.startswith("run-")]) == 12, "nothing but old run folders is removed"
 
 
 def test_a_post_changed_with_no_press_gets_its_card_a_line_its_tag_and_is_archived_when_closed(monkeypatch):

@@ -1594,15 +1594,21 @@ report is `docs/SELFTEST.md`, written again by every full run.
   - one message in #selftest-log ("🧪 Self-test · …"): what ran, what
     failed, the spend, and the bugs touched. The emptying before a run
     leaves these, so the channel is a list of runs
-  - **a bug for each failing step**, in the #bugs forum as a dev bug
-    (D number, the "dev" tag), with what was expected and what was
-    seen. Failing again adds a note to the same bug (and re-opens it
-    if it had been marked Fixed; a Won't fix stays as you left it);
-    passing again marks it Fixed with a note. Which step has which bug
-    is `data/selftest/bugs.json`. They live in `data/dev.db`, so `dev
-    reset-db` forgets them, and the next failure opens a new one
+  - **a bug for the first step that fails in a stage**, in the #bugs
+    forum as a dev bug (D number, the "dev" tag), with what was
+    expected and what was seen. The steps that failed after it in that
+    stage are listed inside it as probably following from it, and get
+    no bug of their own. Failing again adds a note to the same bug
+    (and re-opens it if it had been marked Fixed; a Won't fix stays as
+    you left it); passing again marks it Fixed with a note. Only a bug
+    the self-test opened itself, about that step, is ever touched.
+    Which step has which bug is `data/selftest/bugs.json`. They live
+    in `data/dev.db`, so `dev reset-db` forgets them, and the next
+    failure opens a new one
   - the run's own folder, `data/selftest/run-<time>/`: its database,
-    each start's steps (`p1.json` …), its backups and exports
+    each start's steps (`p1.json` …), its backups and exports. The
+    last 10 folders are kept, and one with a failure in it (or that
+    never finished) for 30 days; older ones are removed after a run
   - a run stopped before its end (the PC low on memory, a closed
     window) is put right by the next one: the dev database it had set
     aside goes back, and it gets its line, "did not finish"
