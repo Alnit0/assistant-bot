@@ -43,10 +43,10 @@ Last updated: 2026-10-13
 | P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
 | Q | Time, days, the schedule model, the occurrence log and cards | 26 | 24 | 2 | 2 | 24 | 0 | 0 |
 | R | Pills | 78 | 25 | 53 | 45 | 33 | 0 | 0 |
-| S | Routing and confirm cards | 75 | 22 | 53 | 18 | 56 | 0 | 1 |
+| S | Routing and confirm cards | 76 | 23 | 53 | 18 | 57 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 4 | 18 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **509** | **189** | **320** | **250** | **258** | **0** | **1** |
+| | **Total** | **510** | **190** | **320** | **250** | **259** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -637,6 +637,7 @@ the dev database (`python main.py --dev`), in #inbox.
 | S73 | 🤖 Auto | A summary in the task contract, and the briefing | A task with a summary is gathered and one with nothing to say left out; one that fails or is slow says so and never stops the others; a summary is kept to three lines; whoever shows summaries is told when one may have changed. Pills: the checklist's own count, the colour of what is still to do, the next dose with a time, how many have none, and yesterday in one line. The briefing, off: nothing of it exists; on: `brief me`, a step of the morning routine in front of the checklist, posted once silently (or as one neutral line written in after), the next taking its place, nothing posted with nothing to say, edited in place when a section changes, brought up to date in the hub and a copy elsewhere | ✅ Pass | 2026-10-13 | `tests/test_briefing.py`, `tests/test_timetable.py` |
 | S74 | 👤 Manual | Block 48: the briefing on the dev database, on and off | As the block says; the look against `briefing-v2` | ⬜ Untested | | Block 48 |
 | S75 | 🤖 Auto | The run log is pruned | A housekeeping run (a card's expiry, a line tidied, the hub's expiry) goes 30 days after it ended and any other after a year; one waiting or running is never touched, whatever its age; asked again nothing more goes; the end of the day asks once a day, and a failure there is said in #bot-log and does not stop the day | ✅ Pass | 2026-10-13 | `tests/test_timetable.py` |
+| S76 | 🤖 Auto | The nightly self-test | Off unless switched on and never on the dev database; its schedule (3:00 am, mine to move, skipped after three hours late) is made only while on; the stages touched on a weeknight and everything on a Sunday, with recorded answers; the job only starts the run and says so, never two at once; off it starts nothing; a run that could not start is said in #bot-log and failing steps are the run's own to report; the start has nothing of live's environment; the phone is pinged only for a failing step or an unfinished run, at priority 5, the topic never given away; a night with nothing to run leaves a line | ✅ Pass | 2026-10-13 | `tests/test_nightly.py` |
 
 ## T. Tasks in plain words
 

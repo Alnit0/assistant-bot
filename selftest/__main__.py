@@ -29,7 +29,7 @@ import discord
 
 from core import config, instance_lock
 from core.timeinput import format_time
-from selftest import bugs, record, report, stages
+from selftest import bugs, notify, record, report, stages
 
 # ---------------------------------------------------------------------------
 # The self-test's own run: channels, the database set aside, a start of the
@@ -329,7 +329,18 @@ def prune_runs(today: str) -> list[str]:
     return gone
 
 
-def keep(line: dict, results: list[dict], stamp: str, channels: dict[str, int]) -> None:
+def quiet_night() -> None:
+    """A nightly run with nothing to do still leaves its line in the log
+    channel, so a night is never silent there."""
+    try:
+        when = datetime.now()
+        text = f"{record.MARK} · {when:%Y-%m-%d %H:%M} · nightly\n💤 Nothing has changed since every stage last passed: nothing was run"
+        asyncio.run(say(settings_channels()["bot-log"], text))
+    except Exception as error:
+        print(f"--- the night's line could not be posted ({type(error).__name__})", flush=True)
+
+
+def keep(line: dict, results: list[dict], stamp: str, channels: dict[str, int], nightly: bool = False) -> None:
     """What lasts of a run: its line of history, the table in the report, a
     bug a failing step, and one message in #selftest-log. Each by itself: one
     that can't be done is said, and the others are still done."""
@@ -350,6 +361,9 @@ def keep(line: dict, results: list[dict], stamp: str, channels: dict[str, int]) 
         asyncio.run(say(channels["bot-log"], record.summary(line, touched, problem)))
     except Exception as error:
         print(f"--- the summary could not be posted in #selftest-log: {error}", flush=True)
+    if nightly and notify.wanted(line):
+        # The one time the phone is told: a step failed in the night
+        print(f"--- phone: {'pinged' if notify.send(notify.words(line)) else 'not pinged (no topic, or ntfy could not be reached)'}", flush=True)
     gone = prune_runs(stamp[:8])
     if gone:
         print(f"--- {len(gone)} old run folder{'' if len(gone) == 1 else 's'} removed (the last {record.KEEP_RUNS} are kept, and one with a failure for {record.KEEP_FAILED_DAYS} days)", flush=True)
@@ -387,6 +401,7 @@ def main() -> int:
     parser.add_argument("--full", action="store_true", help="the whole run, every stage")
     parser.add_argument("--stages", default="", help="the stages to run: day, briefing, tidy (tidy runs the briefing's start too)")
     parser.add_argument("--anyway", action="store_true", help="go ahead although free memory is low")
+    parser.add_argument("--nightly", action="store_true", help="as live starts it at night: a line in the log channel even with nothing to run, and a ping on the phone if a step fails")
     parser.add_argument("--only", default="", help="starts to run, e.g. p1,p2 (for working on the test itself)")
     parser.add_argument("--channels", action="store_true", help="only check that the channels .env.dev names by id are there")
     parser.add_argument("--clear", action="store_true", help="only empty the self-test's channels")
@@ -441,6 +456,8 @@ def main() -> int:
             print(f"--- {stage}: {'run, touched by ' + why[stage] if stage in why else 'not run, nothing that touches it has changed since it passed'}", flush=True)
         if not chosen:
             print("--- nothing to run. `--full` runs everything all the same.")
+            if asked.nightly:
+                quiet_night()
             return 0
     if not wanted:
         wanted = stages.phases_for(chosen)
@@ -491,7 +508,7 @@ def main() -> int:
     results = [each for _, _, found in phases for each in found["results"]]
     bad = [each for each in results if each["status"] in ("fail", "error")]
     ran = "full" if whole else ", ".join(chosen) or "starts " + ",".join(wanted)
-    keep(record.row(stamp, commit, ran, results, spent, asked.claude, int((datetime.now() - began).total_seconds())), results, stamp, channels)
+    keep(record.row(stamp, commit, ("nightly, " if asked.nightly else "") + ran, results, spent, asked.claude, int((datetime.now() - began).total_seconds())), results, stamp, channels, asked.nightly)
     # A stage that ran whole with nothing failed has passed on this commit: it is not run again until something touches it
     failed = {name for name, _, found in phases if found.get("exit") != 0 or any(each["status"] in ("fail", "error") for each in found["results"])}
     if commit:

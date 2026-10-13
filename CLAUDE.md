@@ -441,6 +441,13 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   before it starts and stops there when that is low; tell me, and
   never pass `--anyway` without my say. Nothing else is edited or run
   while it is going
+- The nightly self-test (`core/nightly.py`, behind `NIGHTLY_SELFTEST`)
+  is live starting `python -m selftest --nightly` at 3:00 am as a
+  process of its own: the dev bot runs it, with recorded answers. Live
+  never waits for it and never reports its steps; a run that could not
+  start is a real problem and is said in #bot-log. The phone is pinged
+  only for a failing step (`selftest/notify.py`; the topic is never
+  printed)
 - A test that runs for more than a minute stops the run with its name
   and where it was stuck (`tests/watchdog.py`, exit code 70). Look
   into it; never raise the limit to get past it

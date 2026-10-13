@@ -1748,6 +1748,35 @@ with the bot: it is for working on this repository.
 - **To test by hand**: `powershell -File scripts\notify.ps1 -Kind
   finished -Text "hello"`.
 
+## The nightly self-test
+
+Off unless `NIGHTLY_SELFTEST=true` is in `.env` (then restart live).
+It needs the dev bot (a token of its own in `.env.dev`).
+
+- **At 3:00 am** live starts a self-test as a process of its own. The
+  dev bot runs it; live carries on and is never stopped. `my schedule`
+  shows it as "Nightly self-test" and moves it like any schedule
+  ("move the nightly self-test to 4am", "pause the nightly self-test").
+- **What is run**: the stages touched by what changed since each last
+  passed, and everything on a Sunday. On a night nothing changed,
+  nothing is run.
+- **Recorded answers only**: a night costs nothing. Real requests are
+  for the runs you ask for.
+- **What it leaves**: the run's summary in the self-test's log channel
+  (a line there too on a night with nothing to run), a line in
+  `data/selftest/history.csv` ("nightly, …"), and a bug for the first
+  failing step of a stage, as after any run.
+- **Your phone** is pinged (ntfy, priority 5, the topic in
+  `.env.notify`) only if a step failed or the run did not finish. A
+  night that passed is silent there.
+- **A run that could not start** (no dev bot, under 1.5 GB of memory
+  free, a channel in `.env.dev` gone) is said in #bot-log, and the
+  schedule's last run reads as it ended. What the run printed is in
+  `logs/selftest-nightly.log`.
+- **If the bot was off at 3:00 am** the night is skipped once it is
+  three hours late. Restarting live while a nightly run is going stops
+  that run; the next one records it as not finished.
+
 ## Service commands (Terminal as Admin)
 
 ```powershell

@@ -6,6 +6,10 @@ backfilled from the git log.
 
 ## 2026-10-13
 
+- A nightly self-test, switched off until you turn it on
+  (`NIGHTLY_SELFTEST`): at 3:00 am the dev bot tests what changed, and
+  everything on Sundays. Your phone is pinged only if a step fails.
+
 - Each bot is called what you named it (`BOT_NAME` in its settings
   file). The dev bot shows "· testing" during a self-test; the "· DEV"
   marker is gone.

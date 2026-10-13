@@ -17,6 +17,20 @@ failure for 30 days (built: it happens after the next run); the
 self-test marks Fixed only bugs it opened itself (built, and checked
 against the bug's own record, not only the list of numbers).
 
+**From the unattended batch of 2026-10-13 (six stages):**
+
+- **Nightly self-test** (stage 1, built behind `NIGHTLY_SELFTEST`,
+  off). To turn it on: `NIGHTLY_SELFTEST=true` in `.env`, restart
+  live. Decided without you, say if wrong: it uses **recorded answers**
+  (a night costs nothing; real requests would be about US$0.15 a full
+  run); a run that **could not start** (low memory, no dev bot) is said
+  in #bot-log and does **not** ping your phone (you said only for a
+  failing step; a run that did not finish does ping); a night with
+  nothing changed leaves one line in the self-test's log channel; a
+  night the bot was off for is skipped after three hours. It runs at
+  the same time as the nightly backup (3:00 am): say if it should be
+  later.
+
 **From the two bots (2026-10-13):**
 
 - **The self-test's channels are found only by the ids in `.env.dev`**
