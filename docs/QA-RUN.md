@@ -990,6 +990,18 @@ Rows 5 to 7 need `QUIET_HOURS_ENABLED=true`, row 8 `BRIEFING_ENABLED`.
 | 7 | With quiet hours on, a dose due at noon | It notifies as in row 2: only the night is quiet | K41 |
 | 8 | With a job that did not work (its bug is open), look at the briefing and the status line | The briefing has "⚠️ Needs a look" on top with the same words as the status line ("⚠️ B14 · backup failed") | K42 |
 
+## 54. Direct messages to live (waiting for QA)
+
+Needs `DMS_ENABLED=true` in `.env`, then a restart of live.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | With the switch off, send live a direct message: "what pills are left?" | Nothing: a direct message is not read | R92 |
+| 2 | Turn it on, restart, send the same | The answer, as in #inbox. Your phone does not buzz for it | R92 |
+| 3 | Look at the list of conversations and the lock screen | The first line is "💊 Pills": never a pill's name | R92 |
+| 4 | "took <a pill>" there | The same card or confirmation as in #inbox, silent | R92 |
+| 5 | Have someone else send live a direct message (or use a second account) | Ignored | R92 |
+
 ## When you finish
 
 - Stop the test copy (`Ctrl + C`) and check nothing is left running:
