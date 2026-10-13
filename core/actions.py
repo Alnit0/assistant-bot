@@ -556,6 +556,74 @@ def unchosen(action: "Action", data: dict, said: str) -> tuple[dict, list[str]]:
     return within(action.fields, data), back
 
 
+_SAID_TIME = re.compile(r"(?<![\w:.])(\d{1,2})(?:[:.](\d{2}))?\s*([ap])\.?m\b", re.IGNORECASE)
+
+
+def _said_times(said: str) -> list[int]:
+    """The times of day a message states outright, with am or pm, as minutes of the day."""
+    found = []
+    for hour, minute, half in _SAID_TIME.findall(said):
+        if 1 <= int(hour) <= 12 and int(minute or 0) < 60:
+            found.append((int(hour) % 12 + (12 if half.lower() == "p" else 0)) * 60 + int(minute or 0))
+    return found
+
+
+def _given_minutes(value) -> int | None:
+    match = _GIVEN_TIME.fullmatch(value.strip()) if isinstance(value, str) else None
+    return (int(match[1]) % 12 + (12 if match[3].lower() == "p" else 0)) * 60 + int(match[2]) if match else None
+
+
+def restated(action: "Action", data: dict, said: str) -> tuple[dict, list[str]]:
+    """What extraction returned, with a time I stated put back where Claude
+    handed over another: (the data, what was put right, as "8:00 pm → 9:00 pm").
+
+    What I state wins. When the message gives exactly one time, with am or
+    pm, that is nowhere in what was handed over, and exactly one time handed
+    over is not in the message, that one was meant to be mine: mine takes its
+    place. (Found 2026-10-13: to "9pm", typed in answer to a card whose button
+    offered 8:00 pm, Claude handed over 8:00 pm.) With more than one of
+    either nothing is touched: which goes where is not the code's to guess.
+    Applies to every TIME and TIMES field, in a list of items too. Pure."""
+    stated = _said_times(said)
+    given: list[str] = []
+
+    def collect(fields_: tuple[Field, ...], held: dict) -> None:
+        for entry_field in fields_:
+            value = held.get(entry_field.name)
+            if entry_field.type in (TIME, TIMES) and value is not None:
+                given.extend(value if isinstance(value, list) else [value])
+            elif entry_field.type == ITEMS and isinstance(value, list):
+                for item in value:
+                    if isinstance(item, dict):
+                        collect(entry_field.item_fields, item)
+
+    collect(action.fields, data)
+    minutes = [_given_minutes(each) for each in given]
+    missing = [each for each in dict.fromkeys(stated) if each not in minutes]
+    odd = [value for value, at in zip(given, minutes) if at is not None and at not in stated]
+    if len(missing) != 1 or len(odd) != 1:
+        return data, []
+    hour, minute = divmod(missing[0], 60)
+    mine = f"{hour % 12 or 12}:{minute:02d} {'am' if hour < 12 else 'pm'}"
+
+    def put(value):
+        if isinstance(value, list):
+            return [put(each) for each in value]
+        return mine if value == odd[0] else value
+
+    def within(fields_: tuple[Field, ...], held: dict) -> dict:
+        changed = dict(held)
+        for entry_field in fields_:
+            value = held.get(entry_field.name)
+            if entry_field.type in (TIME, TIMES) and value is not None:
+                changed[entry_field.name] = put(value)
+            elif entry_field.type == ITEMS and isinstance(value, list):
+                changed[entry_field.name] = [within(entry_field.item_fields, item) if isinstance(item, dict) else item for item in value]
+        return changed
+
+    return within(action.fields, data), [f"{odd[0]} → {mine}"]
+
+
 def point_at(changes: list[dict], key: str, last: str | None) -> list[dict]:
     """The changes with each reference ("it") given the name it stands for:
     `last`, the last thing the user mentioned. Raises UserError if there is

@@ -762,3 +762,35 @@ def test_the_demo_lists_declare_theirs_too():
     assert (demo.SHOPPING.identity, demo.SHOPPING.on_repeat) == (("item",), "add_to_amount")
     assert (demo.PACKING.identity, demo.PACKING.on_repeat) == (("item",), "update")
     assert actions.problems(demo.ENTRIES) == []
+
+
+# --- a time I state wins (found by the self-test, 2026-10-13) ---------------------------------------------------------
+def test_a_time_i_state_takes_the_place_of_another_one_claude_handed_over():
+    from tasks.pills import plain
+
+    add = next(action for action in plain.ACTIONS if action.name == "pill_add")
+    log = next(action for action in plain.ACTIONS if action.name == "pill_log")
+    # "9pm", typed in answer to a card whose button offered 8:00 pm
+    data = {"pills": [{"name": "Testmag", "times": ["8:00 pm"], "per_day": 2}]}
+    changed, back = actions.restated(add, data, "9pm")
+    assert changed == {"pills": [{"name": "Testmag", "times": ["9:00 pm"], "per_day": 2}]} and back == ["8:00 pm → 9:00 pm"]
+    assert data["pills"][0]["times"] == ["8:00 pm"], "what was handed over is not changed in place"
+    assert actions.restated(log, {"doses": [{"pill": "zinc", "did": "taken", "at": "8:15 am"}]}, "took zinc at 9.15 AM")[0]["doses"][0]["at"] == "9:15 am"
+    assert actions.restated(add, {"pills": [{"name": "A", "latest": "3:00 pm"}]}, "not after 4 p.m.")[0]["pills"][0]["latest"] == "4:00 pm"
+    assert actions.restated(add, {"pills": [{"name": "A", "times": ["11:00 am"]}]}, "at 12pm")[0]["pills"][0]["times"] == ["12:00 pm"], "12 pm is noon"
+
+
+def test_what_was_handed_over_is_left_alone_whenever_it_could_be_right():
+    from tasks.pills import plain
+
+    add = next(action for action in plain.ACTIONS if action.name == "pill_add")
+    for data, said in (
+        ({"pills": [{"name": "A", "times": ["8:00 am", "9:00 pm"]}]}, "9pm"),  # the card's own time, and mine: nothing is missing
+        ({"pills": [{"name": "A", "times": ["9:00 pm"]}]}, "move it from 8pm to 9pm"),  # one I stated is left out on purpose
+        ({"pills": [{"name": "A", "times": ["8:00 am", "10:00 am", "12:00 pm"]}]}, "every 2 hours from 8am"),  # worked out from what I said
+        ({"pills": [{"name": "A", "times": ["8:00 am", "8:00 pm"]}]}, "9pm"),  # two it could replace: not the code's to guess
+        ({"pills": [{"name": "A", "times": ["7:00 am"]}, {"name": "B", "times": ["6:00 pm"]}]}, "A at 8am and B at 9pm"),  # two of mine missing
+        ({"pills": [{"name": "A", "times": ["8:00"]}]}, "at 8"),  # no am or pm said: `unchosen` and the card deal with it
+        ({"pills": [{"name": "A", "notes": "with food"}]}, "9pm"),  # no time handed over at all
+    ):
+        assert actions.restated(add, data, said) == (data, []), said

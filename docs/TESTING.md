@@ -42,11 +42,11 @@ Last updated: 2026-10-13
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
 | P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
 | Q | Time, days, the schedule model, the occurrence log and cards | 26 | 24 | 2 | 2 | 24 | 0 | 0 |
-| R | Pills | 78 | 25 | 53 | 45 | 33 | 0 | 0 |
+| R | Pills | 79 | 26 | 53 | 45 | 34 | 0 | 0 |
 | S | Routing and confirm cards | 77 | 24 | 53 | 18 | 58 | 0 | 1 |
 | T | Tasks in plain words | 26 | 7 | 19 | 4 | 22 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **515** | **195** | **320** | **250** | **264** | **0** | **1** |
+| | **Total** | **516** | **196** | **320** | **250** | **265** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -552,6 +552,7 @@ are added with it.
 | R88 | 👤 Manual | Block 50: messages sent while live was off | As the block says | ⬜ Untested | | Block 50 |
 | R89 | 🤖 Auto | The account is checked before anything else | Which bot a process is follows the token it will really log in with; a start is handed a clean environment and the dev bot's token explicitly; the account is asked first and the lock taken only after it passes; a wrong account, or no expected id, exits with code 4 before the lock, the database or the gateway, and logs why; Discord not answering is asked again and exits with code 1; connected as the wrong account it disconnects at once and the bot does nothing else; a real process with this machine's settings and another account's answer exits having done nothing | ✅ Pass | 2026-10-13 | `tests/test_two_bots.py` |
 | R90 | 🤖 Auto | No slash commands for the dev bot, and no display names | The dev bot registers no slash commands and live registers the tasks' own; no bot is called by a display name in code, docs or messages: they are “live” and “the dev bot” | ✅ Pass | 2026-10-13 | `tests/test_two_bots.py` |
+| R91 | 🤖 Auto | A time I state wins | When the message states exactly one time with am or pm that is not in what Claude handed over, and exactly one handed time is not in the message, mine takes its place (in a list of items, a single time, any time field; 12 pm is noon); whenever what was handed over could be right nothing is touched: nothing missing, two candidates, two missing, no am or pm said, no time handed over | ✅ Pass | 2026-10-13 | `tests/test_actions.py` |
 
 ## S. Routing and confirm cards
 

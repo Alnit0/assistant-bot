@@ -183,7 +183,7 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 | Rule of `docs/CONVERSATION.md` | In code |
 |---|---|
 | A confirmation only after the change is read back | `Action.verify`; a direct action re-reads inside `run`; `llm.remember` records what a button did |
-| What I state wins | `routing.named_destinations`, `actions.unstated` |
+| What I state wins | `routing.named_destinations`, `actions.unstated`, `actions.restated` (a time) |
 | A reply, "it", "that" | `actions.REFERENCE`, `as_references`, `point_at`; `Request.replied_to`; a card keeps `LAST` |
 | An open card, a list just shown, the task that just answered, a reply to a message a task posted | `confirm.sticks`, `livelists.sticks`, `llm.task_answered` (`after_answer`), `Task.owns_message` (`replied`), `actions.Answer` |
 | Several things in one message; set, add, remove | `actions.ITEMS`, `merge_items`; one card a task |

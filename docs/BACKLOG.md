@@ -285,6 +285,7 @@ a schema could take its place.
 | `actions.as_references` (`_POINTING`, `_SMALL_WORDS`) | "it", "that", "this", "them", and whether the message names the thing | Puts back a name Claude worked out for a pronoun | No: it checks the schema's own `@that` |
 | `actions.unstated` (`_is_stated`, `_NUMBER_WORDS`) | Whether a guessed value is in the message word for word | A value I stated is never marked ❓ | No: it checks `guessed` |
 | `actions.unchosen` (`_HALF_MARKED`, `_PART_OF_DAY`) | am, pm, "morning", "evening", a 24-hour time | Takes back an am or pm Claude chose by itself | No: it checks the fixed form of a time |
+| `actions.restated` (`_SAID_TIME`) | A time in the message with am or pm ("9pm", "9.15 AM") | Puts back the one time I stated when Claude handed over another in its place (found 2026-10-13: "9pm" answered with the card button's 8:00 pm) | No: it checks the fixed form of a time against the message |
 | `actions.whole_part` (`_DANGLING_END`, `_DANGLING_START`) | "of", "and", "the", "at"… left hanging at an end of a leftover | A "Not included" part is whole words, never cut off mid-phrase ("dose 1 of") | No: it checks `not_included`, whose description now asks for whole parts |
 | `actions.is_filler` (`_FILLER`) | "and", "also", "please", "too"… | Joining words are never reported as "Not included" | No: it checks `not_included` |
 | `actions._number` (`_AS_A_NUMBER`) | A number that arrived as text ("62.5", "62,5") | A decimal that came as text is still read; anything else is refused | No: the schema already says number |

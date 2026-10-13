@@ -332,6 +332,13 @@ async def extract(
         if back:
             trace.note(f"time check: Claude chose morning or evening for {', '.join(back)}, which the message doesn't say; left for the code")
             found = replace(found, data=data)
+    if found.fitted:
+        # A time I state wins: one Claude handed over in its place (the time on a card's button, say) is put right
+        data, back = actions.restated(found.action, found.data, message)
+        if back:
+            trace.note(f"stated time check: the message states a time Claude did not hand over; put right: {', '.join(back)}")
+            log.info("Extraction for %s: a stated time was put back (%s)", entry.name, ", ".join(back))
+            found = replace(found, data=data)
     if found.fitted and found.guessed:
         # Checked in code as well: what was said in so many words is never flagged
         kept = actions.unstated(found.data, found.guessed, message)
