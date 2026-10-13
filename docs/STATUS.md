@@ -20,6 +20,18 @@ against the bug's own record, not only the list of numbers).
 **From the attention model and the status line (2026-10-13; the spec
 is `docs/specs/attention.md`, the status line is built from it):**
 
+- **Its self-test did not finish, and has not been run again.** The
+  run after this item (as the dev bot, 1.6 GB of memory free at the
+  start) was stopped by the PC after five steps, all passing, for low
+  memory. The first new step (the dev bot's status line during a
+  run) had passed; the two that check what live's line would read
+  (1.11d, 1.15b) have not run in Discord. Say when to run it:
+  `python -m selftest --claude` with more memory free. Until a run
+  passes, **live's status line reads "⚠️ self-test did not finish"**:
+  that is the new level 1 item doing its job, and it clears with the
+  next passing run.
+- **The memory check let it start at 1.6 GB** (the line is 1.5 GB) and
+  it was stopped anyway. Should the line be higher, 2 GB say?
 - **A bug for a system problem.** "⚠️ B14 · backup failed" needs a
   bug to exist, and nothing files one for a failed job today, so it
   reads "⚠️ backup failed". Should a failed job file a bug by itself,
