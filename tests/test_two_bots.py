@@ -328,3 +328,57 @@ def test_the_bot_takes_only_my_words_in_a_channel_that_is_its_own(monkeypatch, o
         message.type = None
         run(main.on_message(message))
     assert taken == [1] and seen == [1], "and one that arrived is never asked about after a restart"
+
+
+# --- the token really used decides, and a start never inherits live's -------------------------------------------------
+def test_which_bot_a_process_is_follows_the_token_it_will_log_in_with_not_what_the_files_say():
+    own = {"DISCORD_TOKEN": "dev-token", "INBOX_CHANNEL_ID": "7"}
+    assert config.is_test_bot(True, own, "dev-token")
+    assert not config.is_test_bot(True, own, "live-token"), "live's token was already in the environment: this is live's account, and it takes live's lock"
+    assert not config.is_test_bot(False, own, "dev-token") and not config.is_test_bot(True, {}, "dev-token") and not config.is_test_bot(True, own, None)
+
+
+def test_a_process_started_from_here_is_given_nothing_the_settings_files_put_in_the_environment():
+    environ = {"PATH": "x", "DISCORD_TOKEN": "live-token", "INBOX_CHANNEL_ID": "1", "SELFTEST": "1"}
+    assert config.clean_environment(environ, {"PATH", "SELFTEST"}) == {"PATH": "x", "SELFTEST": "1"}
+    child = config.environment_for_child()
+    assert ("DISCORD_TOKEN" in child) == ("DISCORD_TOKEN" in config._SET_BEFORE), "live's token goes to a child only if it was set in the terminal"
+    assert "PATH" in child or "Path" in child
+
+
+def test_a_start_of_the_self_test_logs_in_as_the_dev_bot_when_there_is_one():
+    """Through the launcher's own environment, in a real process: what went wrong on 2026-10-13."""
+    import subprocess
+
+    if config.test_bot_token() is None:
+        pytest.skip("no dev bot on this machine (.env.dev has no token of its own)")
+    from dotenv import dotenv_values
+
+    # As the launcher's is when it is really run: the tests' own made-up settings are not in it
+    in_files = set(dotenv_values(config.BASE_DIR / ".env")) | set(dotenv_values(config.BASE_DIR / ".env.dev"))
+    env = {name: value for name, value in config.environment_for_child().items() if name not in in_files}
+    env.update({"SELFTEST": "1", "INBOX_CHANNEL_ID": "7", "HUB_CHANNEL_ID": "8", "BOT_LOG_CHANNEL_ID": "9", "COMMANDS_CHANNEL_ID": ""})
+    code = "from core import config, instance_lock; print(config.SEPARATE_BOT, config.TOKEN == config.test_bot_token(), instance_lock.LOCK_PATH.name, sorted(config.CHANNELS))"
+    done = subprocess.run([sys.executable, "-c", code, "--dev"], cwd=config.BASE_DIR, env=env, capture_output=True, text=True, timeout=60)
+    assert done.stdout.split()[:3] == ["True", "True", "bot-dev.lock"], done.stdout + done.stderr
+    assert "gym" not in done.stdout and "archive" not in done.stdout, "and it has none of live's channels"
+    # And with live's token forced on it, it is live's account: live's lock, so it can never run beside live
+    forced = subprocess.run([sys.executable, "-c", code, "--dev"], cwd=config.BASE_DIR, env={**env, "DISCORD_TOKEN": "not-the-dev-bot's"}, capture_output=True, text=True, timeout=60)
+    assert forced.stdout.split()[:3] == ["False", "False", "bot.lock"], forced.stdout + forced.stderr
+
+
+def test_the_launcher_hands_a_start_a_clean_environment_and_the_start_refuses_to_be_live(monkeypatch, tmp_path):
+    seen = {}
+
+    def started(command, env=None, **kwargs):
+        seen.update(env=env, command=command)
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(runner, "WORK", tmp_path)
+    monkeypatch.setattr(runner.subprocess, "run", started)
+    monkeypatch.setattr(runner.config, "test_bot_token", lambda: "dev-token")
+    monkeypatch.setenv("DISCORD_TOKEN", "live-token-from-env-file")
+    monkeypatch.setattr(config, "_SET_BEFORE", {"PATH"})
+    runner.run_phase("p1", {"CARDS_V2": "false"}, {"hub": 8, "inbox": 7}, False, 0.2, {}, "s")
+    assert "DISCORD_TOKEN" not in seen["env"], "the start reads .env.dev for itself"
+    assert seen["env"]["SELFTEST_SEPARATE"] == "1" and seen["env"]["INBOX_CHANNEL_ID"] == "7" and seen["command"][-4:-2] == ["selftest.phase", "--dev"]

@@ -24,6 +24,10 @@ def main() -> int:
     if os.getenv("SELFTEST") != "1":
         print("Start the self-test with `python -m selftest`.")
         return 2
+    if os.getenv("SELFTEST_SEPARATE") == "1" and not config.SEPARATE_BOT:
+        # The run was told it is the dev bot's, and this start would log in as someone else
+        print("Not started: this would not log in with the dev bot's token (.env.dev), and live is running.")
+        return 2
 
     import main as bot
     from core import instance_lock
@@ -47,6 +51,7 @@ def main() -> int:
 
     @bot.client.event
     async def on_ready():
+        print(f"--- logged in as {bot.client.user} (id {bot.client.user.id}): {'the dev bot' if config.SEPARATE_BOT else 'the account in .env'}", flush=True)
         await started()
         ready.set()
 

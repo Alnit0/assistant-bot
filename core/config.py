@@ -81,9 +81,30 @@ _TEST_BOT = test_bot_settings(BASE_DIR)
 for _env_file in ENV_FILES:
     load_dotenv(_env_file)
 DEV_ENV = BASE_DIR / ".env.dev" in ENV_FILES  # the dev bot has settings of its own
+def is_test_bot(dev: bool, own: dict[str, str], token: str | None) -> bool:
+    """Whether this process is the test bot. Judged by the token it will
+    really log in with, never by what the files say: a token already in the
+    environment beats `.env.dev`, and a process that then logged in as live
+    while holding the test bot's lock would run beside live as live (it
+    happened, 2026-10-13: the self-test's starts inherited live's token)."""
+    return dev and bool(own) and bool(token) and token == own.get("DISCORD_TOKEN")
+
+
+def clean_environment(environ: dict[str, str], set_before: set[str]) -> dict[str, str]:
+    """The environment as it was before any settings file was read: what a
+    process started from here must be given, so that it reads the files for
+    itself (`.env.dev` first, with `--dev`) instead of inheriting this
+    process's values, live's token among them."""
+    return {name: value for name, value in environ.items() if name in set_before}
+
+
+def environment_for_child() -> dict[str, str]:
+    return clean_environment(dict(os.environ), _SET_BEFORE)
+
+
 # This process is the test bot: another Discord account than live's, so the two can run
 # at the same time. It has a lock and a log file of its own, and only its own channels
-SEPARATE_BOT = DEV_DATABASE and bool(_TEST_BOT)
+SEPARATE_BOT = is_test_bot(DEV_DATABASE, _TEST_BOT, os.getenv("DISCORD_TOKEN"))
 if SEPARATE_BOT:
     for _name in not_inherited(set(os.environ), _TEST_BOT, _SET_BEFORE):
         os.environ.pop(_name)

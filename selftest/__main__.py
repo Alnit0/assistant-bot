@@ -229,7 +229,7 @@ def file_bugs(line: dict, results: list[dict], stamp: str, channel_id: int) -> t
     try:
         done = subprocess.run(
             [sys.executable, "-m", "selftest.bugs", "--dev", str(source)], cwd=config.BASE_DIR, capture_output=True, text=True, encoding="utf-8",
-            timeout=300, env={**os.environ, "PYTHONIOENCODING": "utf-8"},
+            timeout=300, env={**config.environment_for_child(), "PYTHONIOENCODING": "utf-8"},
         )
     except subprocess.TimeoutExpired:
         return [], "the bugs were not brought up to date: it took too long"
@@ -292,8 +292,13 @@ def keep(line: dict, results: list[dict], stamp: str, channels: dict[str, int]) 
 def run_phase(name: str, settings: dict, channels: dict[str, int], claude: bool, budget: float, memo: dict, stamp: str) -> dict:
     out = WORK / f"run-{stamp}" / f"{name}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
-    env = dict(os.environ)
+    # Never this process's own environment: it has read .env, so live's token is in it, and a
+    # start that inherited that would log in as live. The start reads the files for itself
+    env = config.environment_for_child()
     env.update(settings)
+    env["SELFTEST_SEPARATE"] = "1" if separate() else "0"
+    if os.environ.get("SELFTEST_BACK"):
+        env["SELFTEST_BACK"] = os.environ["SELFTEST_BACK"]
     env.update({ENV_NAMES[role]: str(channel_id) for role, channel_id in channels.items()})
     env.update({"SELFTEST": "1", "SELFTEST_CLAUDE": "1" if claude else "0", "SELFTEST_BUDGET": str(budget), "SELFTEST_MEMO": json.dumps(memo), "KEEP_CONFIRMATIONS": "true", "PYTHONIOENCODING": "utf-8", "COMMANDS_CHANNEL_ID": ""})  # and live's #commands is not rewritten by the test
     started = time.monotonic()
