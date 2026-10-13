@@ -1,9 +1,12 @@
+import asyncio
 import csv
 import json
 import logging
-from datetime import datetime
+import sys
+from collections.abc import Awaitable, Callable
+from datetime import datetime, timedelta
 
-from core import attention, config, database, hub, scheduler, timetable
+from core import attention, clock, config, database, devmode, hub, scheduler, timetable
 from core.attention import PROBLEM, USEFUL, Item
 
 log = logging.getLogger("assistant")
@@ -19,14 +22,71 @@ log = logging.getLogger("assistant")
 #     with the id of the bug of its first failing step: ⚠️ D3 · self-test failed
 # and, when nothing else is left, when the morning routine next runs:  🌅 6am
 #
+#   - live's own memory use over the limit, or growing for a day: ⚠️ B9 · memory 312 MB
+#   - dev mode left on (on live it shortens waits and keeps messages): 🛠️ dev mode
+#
+# A system problem files a bug by itself, one for each kind of problem: the
+# next time it happens the same bug gets a note, never a second bug. The bugs
+# task does the filing (`set_bugs`); here it is only asked for. So the item
+# can point at its bug: ⚠️ B14 · backup failed.
+#
 # All of it is read from what the bot already keeps (the run log, the
-# self-test's own files): nothing is written and nothing is asked of Claude.
-# A bug with a fix ready to retest is the bugs task's own item.
+# self-test's own files, its own process): nothing is asked of Claude. A bug
+# with a fix ready to retest is the bugs task's own item.
 # ---------------------------------------------------------------------------
 SELFTEST_DIR = "selftest"
 MORNING_ICON = "🌅"
 DEV_BUG = "D"  # a self-test's bugs are the dev database's (tasks/bugs/rules.py)
 _SHORTER = ("nightly ",)  # "nightly backup failed" is "backup failed" on a status line
+
+
+# --- a bug for a system problem: filed by the bugs task, asked for here --------------------------------------------------
+# `async (key, summary, details) -> the bug's id ("B14"), or ""`: file a bug for this kind of
+# problem, or add a note to the one that is open. `async (key) -> id or ""`: the open one, if any
+File = Callable[[str, str, str], Awaitable[str]]
+Find = Callable[[str], Awaitable[str]]
+_file: File | None = None
+_find: Find | None = None
+
+
+def set_bugs(file: File, find: Find) -> None:
+    global _file, _find
+    _file, _find = file, find
+
+
+async def file_bug(key: str, summary: str, details: str) -> str:
+    """A bug for this kind of problem: a new one, or a note on the open one. "" if
+    it could not be filed (no bugs task, no forum): the problem is still said."""
+    if _file is None:
+        return ""
+    try:
+        return await _file(key, summary, details)
+    except Exception:
+        log.exception("Could not file a bug for %s", key)
+        return ""
+
+
+async def bug_for(key: str) -> str:
+    if _find is None:
+        return ""
+    try:
+        return await _find(key)
+    except Exception:
+        log.exception("Could not look up the bug for %s", key)
+        return ""
+
+
+def job_key(task: str, kind: str) -> str:
+    """What a job's bug is known by, in words: one bug for each kind of job."""
+    return f"the {scheduler.label(task, kind)} job"
+
+
+async def job_trouble(job, outcome: str, detail: str) -> None:
+    """A run did not work (told by the scheduler): its kind of job gets a bug, or a note on the one it has."""
+    label = scheduler.label(job.task, job.kind)
+    summary = f"{label} {'failed' if outcome == scheduler.FAILED else 'was not done'}"
+    filed = await file_bug(job_key(job.task, job.kind), summary[0].upper() + summary[1:], detail or "No reason was given.")
+    log.info("A run that did not work (%s): %s", summary, f"bug {filed}" if filed else "no bug could be filed")
 
 
 def job_problem(label: str, ended: str) -> str:
@@ -41,8 +101,139 @@ async def jobs(user_id: int, now: datetime) -> list[Item]:
     found = []
     for task, kind, ended in await scheduler.troubled():
         said = job_problem(scheduler.label(task, kind), ended)
-        found.append(Item(said, PROBLEM, short=(said,)))
+        found.append(Item(said, PROBLEM, bug=await bug_for(job_key(task, kind)), short=(said,)))
     return found
+
+
+# --- dev mode left on -------------------------------------------------------------------------------------------------------
+DEV_MODE_ICON = "🛠️"
+
+
+async def dev_mode(user_id: int, now: datetime) -> list[Item]:
+    """On live, dev mode is something to put right: waits are short and nothing tidies itself."""
+    if config.DEV_DATABASE or not devmode.enabled:
+        return []
+    return [Item("dev mode is on", PROBLEM, can_act=True, short=("dev mode",), icon=DEV_MODE_ICON)]
+
+
+# --- the bot's own memory ----------------------------------------------------------------------------------------------
+MEMORY_KEY = "the bot's memory use"
+SAMPLE_EVERY = 3600  # seconds: looked at, and logged, every hour
+DAY_OF_SAMPLES = 24
+GROWTH_WORTH_SAYING = 15.0  # MB over a day: less than this is noise, not growth
+_samples: list[tuple[datetime, float]] = []  # (when, MB) since this start, the latest last; a day and a bit is kept
+_memory_watch: asyncio.Task | None = None
+_memory_said: datetime | None = None  # when a bug was last filed or noted for it
+
+
+def memory_mb() -> float | None:
+    """What this process holds of its own right now (private bytes), in MB. None where it can't be asked."""
+    try:
+        if sys.platform == "win32":
+            import ctypes
+            import ctypes.wintypes as wt
+
+            class Counters(ctypes.Structure):
+                _fields_ = [("cb", wt.DWORD), ("PageFaultCount", wt.DWORD)] + [(name, ctypes.c_size_t) for name in (
+                    "PeakWorkingSetSize", "WorkingSetSize", "QuotaPeakPagedPoolUsage", "QuotaPagedPoolUsage", "QuotaPeakNonPagedPoolUsage",
+                    "QuotaNonPagedPoolUsage", "PagefileUsage", "PeakPagefileUsage", "PrivateUsage",
+                )]
+
+            counters = Counters()
+            counters.cb = ctypes.sizeof(Counters)
+            ctypes.windll.kernel32.GetCurrentProcess.restype = wt.HANDLE
+            if not ctypes.windll.psapi.GetProcessMemoryInfo(wt.HANDLE(ctypes.windll.kernel32.GetCurrentProcess()), ctypes.byref(counters), counters.cb):
+                return None
+            return counters.PrivateUsage / (1024 * 1024)
+        import resource
+
+        return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
+    except Exception:
+        return None
+
+
+def growing(samples: list[float]) -> float:
+    """How much memory use grew over the last day, in MB, if it kept growing:
+    a day of hourly readings, each quarter of the day higher on average than
+    the one before, and the last at least 15 MB above the first. 0 otherwise
+    (also with less than a day of readings)."""
+    if len(samples) < DAY_OF_SAMPLES:
+        return 0.0
+    day = samples[-DAY_OF_SAMPLES:]
+    quarters = [sum(day[start:start + 6]) / 6 for start in range(0, DAY_OF_SAMPLES, 6)]
+    rose = all(later > earlier for earlier, later in zip(quarters, quarters[1:]))
+    return quarters[-1] - quarters[0] if rose and quarters[-1] - quarters[0] >= GROWTH_WORTH_SAYING else 0.0
+
+
+def memory_problem(now_mb: float | None, samples: list[float], limit: float) -> str:
+    """What is wrong with the memory use, in words, or "": over the limit, or growing for a day."""
+    if now_mb is None:
+        return ""
+    if now_mb > limit:
+        return f"it is {now_mb:.0f} MB, over the limit of {limit:.0f} MB"
+    grew = growing(samples)
+    return f"it has kept growing for a day: {grew:.0f} MB more, {now_mb:.0f} MB now" if grew else ""
+
+
+def memory_line() -> str:
+    """For `dev status`: what the bot holds now, its peak since it started, and how it moved over the last day."""
+    now_mb = memory_mb()
+    if now_mb is None:
+        return "Memory: can't be read here"
+    held = [value for _, value in _samples] or [now_mb]
+    parts = [f"Memory: {now_mb:.0f} MB", f"peak {max(max(held), now_mb):.0f} MB since it started"]
+    if len(held) >= 2:
+        back = held[-DAY_OF_SAMPLES] if len(held) >= DAY_OF_SAMPLES else held[0]
+        hours = min(len(held), DAY_OF_SAMPLES) - 1
+        parts.append(f"{now_mb - back:+.0f} MB over the last {hours or 1} hour{'' if hours == 1 else 's'}")
+    return " · ".join(parts) + f" (said as a problem over {config.MEMORY_LIMIT_MB:.0f} MB)"
+
+
+async def memory(user_id: int, now: datetime) -> list[Item]:
+    """A level 1 item while live's memory use is over the limit or has kept growing for a day."""
+    if config.DEV_DATABASE:
+        return []
+    now_mb = memory_mb()
+    if not memory_problem(now_mb, [value for _, value in _samples], config.MEMORY_LIMIT_MB):
+        return []
+    return [Item("the bot's memory use is high", PROBLEM, bug=await bug_for(MEMORY_KEY), short=(f"memory {now_mb:.0f} MB",))]
+
+
+async def sample_memory(now: datetime | None = None) -> str:
+    """Take the hour's reading: keep it, log it, and file or note a bug if
+    something is wrong (once a day at most). Returns what is wrong, or ""."""
+    global _memory_said
+    now = now or clock.real_now()
+    now_mb = memory_mb()
+    if now_mb is None:
+        return ""
+    _samples.append((now, now_mb))
+    del _samples[: max(0, len(_samples) - DAY_OF_SAMPLES - 2)]
+    held = [value for _, value in _samples]
+    wrong = memory_problem(now_mb, held, config.MEMORY_LIMIT_MB)
+    log.info("Memory: %.0f MB (peak %.0f MB since the start, %d readings)%s", now_mb, max(held), len(held), f": {wrong}" if wrong else "")
+    if wrong and not config.DEV_DATABASE and (_memory_said is None or now - _memory_said >= timedelta(days=1)):
+        _memory_said = now
+        await file_bug(MEMORY_KEY, "The bot's memory use is high", f"{wrong[0].upper()}{wrong[1:]}. The last readings, an hour apart, in MB: {', '.join(f'{value:.0f}' for value in held[-12:])}.")
+    if wrong:
+        attention.changed()
+    return wrong
+
+
+async def _watch_memory() -> None:
+    while True:
+        try:
+            await sample_memory()
+        except Exception:
+            log.exception("Could not take the hour's memory reading")
+        await asyncio.sleep(SAMPLE_EVERY)
+
+
+def start() -> None:
+    """Once the bot is connected: the first memory reading, then one an hour. Safe to call again."""
+    global _memory_watch
+    if _memory_watch is None or _memory_watch.done():
+        _memory_watch = asyncio.create_task(_watch_memory(), name="health: memory")
 
 
 def history(folder) -> list[dict]:
@@ -132,5 +323,8 @@ def setup() -> None:
     """Hand the core's own items in, and say they may have changed whenever a job has run."""
     attention.provide("system", attention.PROBLEM_ICON, jobs)
     attention.provide("selftest", attention.PROBLEM_ICON, selftest)
+    attention.provide("memory", attention.PROBLEM_ICON, memory)
+    attention.provide("dev mode", DEV_MODE_ICON, dev_mode)
     attention.provide("morning", MORNING_ICON, morning)
     scheduler.on_ran(attention.changed)
+    scheduler.on_trouble(job_trouble)

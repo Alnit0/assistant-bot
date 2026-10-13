@@ -287,6 +287,7 @@ async def status(ctx: Context) -> str:
     text = await asyncio.to_thread(instance_lock.status)
     up = (real_now() - about.STARTED).total_seconds()
     lines = status_lines(DEV_DATABASE, DB_PATH.name, up, about.COMMIT, clock.offset(), clock.now(), await scheduler.all_pending())
+    lines.append(health.memory_line())
     await ctx.reply("🩺 **Status**\n" + "\n".join(lines) + f"\n**Bot instances**\n{text}\n{TAG}")
     return text
 

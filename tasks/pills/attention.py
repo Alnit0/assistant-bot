@@ -1,9 +1,9 @@
 from datetime import datetime
 
-from core import attention
+from core import attention, config
 from core import day as days
 from core.attention import TIMED, USEFUL, Item
-from core.occurrences import DONE
+from core.occurrences import DONE, MISSED
 from tasks.pills import checklist, today
 
 # ---------------------------------------------------------------------------
@@ -15,20 +15,32 @@ from tasks.pills import checklist, today
 #   a dose with a time that has come and is not ticked off   timed   💊 due 12pm
 #   the next dose with a time, later today                    timed   💊 2/5 · 12pm
 #   only doses with no time are left                          useful  💊 2/5
-#   everything is dealt with                                  nothing
+#   a dose was missed, and none is due now                    timed   💊 missed 9am
+#   everything is taken (until the evening, a setting)        useful  💊 all 5 taken
+#   after that, or with nothing to take                       nothing
 #
 # Whether a timed one is "due" or "next" is the core's to say, from its time.
-# A missed dose is the day's record, not a problem to raise.
+# A missed dose is shown at its own time, so it stands with what is due: until
+# the next dose falls due (that one is then what to look at) or the day ends.
 # ---------------------------------------------------------------------------
-DUE_WORD = "due"
+DUE_WORD, MISSED_WORD = "due", "missed"
 
 
 async def items(user_id: int, now: datetime) -> list[Item]:
-    _, listed, _ = await checklist.read(user_id, days.day_of(now))
-    pending = [dose for dose in listed if dose.is_pending]
-    if not pending:
+    day = days.day_of(now)
+    _, listed, _ = await checklist.read(user_id, day)
+    if not listed:
         return []
-    progress = f"{sum(dose.occurrence.state == DONE for dose in listed)}/{len(listed)}"
+    pending = [dose for dose in listed if dose.is_pending]
+    taken = sum(dose.occurrence.state == DONE for dose in listed)
+    progress = f"{taken}/{len(listed)}"
+    missed = sorted(moment for dose in listed if dose.occurrence.state == MISSED and (moment := dose.due.at or dose.occurrence.due_at) is not None and moment <= now)
+    if not pending:
+        if missed:
+            return [Item("a dose was missed", TIMED, when=missed[-1], can_act=True, short=(f"{MISSED_WORD} {attention.short_time(missed[-1])}",))]
+        # The day is done: said until the evening, and then the line looks ahead
+        said = f"all {len(listed)} taken" if taken == len(listed) else f"{progress} taken"
+        return [Item("everything is dealt with", USEFUL, short=(said,), until=days.at(day, config.STATUS_DONE_UNTIL))]
     timed = sorted(((moment, dose) for dose in pending if (moment := today.shown_time(dose)) is not None), key=lambda each: each[0])
     found = []
     overdue = [moment for moment, _ in timed if moment <= now]
@@ -36,6 +48,9 @@ async def items(user_id: int, now: datetime) -> list[Item]:
     if overdue:
         # The earliest one whose time has come: what to do now
         found.append(Item("a dose is due", TIMED, when=overdue[0], can_act=True, short=(f"{DUE_WORD} {attention.short_time(overdue[0])}",)))
+    elif missed:
+        # Nothing is due now: the dose that was missed is what to know, until the next one falls due
+        found.append(Item("a dose was missed", TIMED, when=missed[-1], can_act=True, short=(f"{MISSED_WORD} {attention.short_time(missed[-1])}",)))
     if coming:
         found.append(Item("the next dose", TIMED, when=coming[0], can_act=True, short=(progress, attention.short_time(coming[0]))))
     if not timed:

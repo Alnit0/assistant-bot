@@ -134,7 +134,7 @@ def test_the_status_of_a_self_test_that_stopped_live_comes_first_and_says_when_l
     assert runner.back_about(datetime(2026, 10, 13, 15, 58), 15) == "4:15 pm", "the run's length and a little over"
     none = timedelta(0)
     trouble = [("core", "nightly_backup", "failed")]
-    assert identity.status_line(True, none, "⚠️ backup failed", True, "4:15 pm") == "🧪 Self-test running · back about 4:15 pm", "before a problem, dev mode and everything else"
+    assert identity.status_line(True, none, "⚠️ backup failed", "4:15 pm") == "🧪 Self-test running · back about 4:15 pm", "before a problem and everything else"
     assert identity.status_line(True, none) == "🧪 DEV database", "no self-test: as it was"
     assert config.SELFTEST_BACK == "", "and never on a bot that is not a self-test's"
 

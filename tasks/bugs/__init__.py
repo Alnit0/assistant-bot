@@ -1,6 +1,6 @@
 import asyncio
 
-from core import cards, livelists
+from core import cards, health, livelists
 from core.actions import EACH_DAY, SEE
 from core.config import BASE_DIR
 from core.context import Context
@@ -8,7 +8,7 @@ from core.errors import UserError
 from core.clock import real_now
 from core.users import User
 from tasks.base import ANY, ButtonNote, Keyword, Reaction, ReplyAction, Task
-from tasks.bugs import capture, filing, listing, posts, rules, store
+from tasks.bugs import capture, filing, listing, posts, rules, store, system
 from tasks.bugs.filing import file_report as _file
 from tasks.bugs.plain import ACTIONS, list_said, report_said  # noqa: F401  (the plain-words code is plain.py)
 
@@ -184,6 +184,8 @@ class BugsTask(Task):
         # Before connecting, so the buttons on old posts still work
         client.add_view(posts.CloseButtons())
         client.add_view(posts.ReopenButton())
+        # The bot's own problems are filed as bugs here: one for each kind (tasks/bugs/system.py)
+        health.set_bugs(system.file, system.find)
 
     async def startup(self, client) -> None:
         await capture.git_commit()

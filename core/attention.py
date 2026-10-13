@@ -57,11 +57,15 @@ class Item:
     short: tuple[str, ...] = ()
     icon: str = ""  # the task's own unless said; ⚠️ for a problem
     task: str = ""  # who handed it in: filled in when it is gathered
+    until: datetime | None = None  # the moment it stops being worth saying ("all 5 taken", until the evening)
 
 
 def level(item: Item, now: datetime) -> int | None:
     """Where an item stands in the pecking order now, or None for one that is
-    not ranked: a timed item with no time, or for another day."""
+    not ranked: a timed item with no time, or for another day, or one whose
+    time to be said is over."""
+    if item.until is not None and now >= item.until:
+        return None
     if item.urgency == PROBLEM:
         return LEVEL_PROBLEM
     if item.urgency == USEFUL:
@@ -98,6 +102,7 @@ def next_change(items: list[Item], now: datetime) -> datetime | None:
     """The next moment the ranking changes by the clock alone: a timed item
     still to come falls due. (The day ending is the caller's to add.)"""
     coming = [item.when for item in items if item.urgency == TIMED and item.when is not None and item.when > now]
+    coming += [item.until for item in items if item.until is not None and item.until > now]
     return min(coming) if coming else None
 
 
@@ -144,14 +149,15 @@ async def _ask(name: str, icon: str, provider: Provider, user_id: int, now: date
 
 
 async def gather(user_id: int, now: datetime) -> list[Item]:
-    """Every item there is now, the core's own first, then each task's in the
-    catalogue's order. Unranked: `ranked` does that."""
+    """Every item there is now: each task's in the catalogue's order, then the
+    core's own (so that among useful things a task's comes before "the day
+    starts again at 6am"). Unranked: `ranked` does that."""
     found: list[Item] = []
-    for name, (icon, provider) in list(_providers.items()):
-        found += await _ask(name, icon, provider, user_id, now)
     for entry in actions.catalogue():
         if entry.attention is not None:
             found += await _ask(entry.name, entry.icon, entry.attention, user_id, now)
+    for name, (icon, provider) in list(_providers.items()):
+        found += await _ask(name, icon, provider, user_id, now)
     return found
 
 

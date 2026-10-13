@@ -197,6 +197,7 @@ async def on_ready():
         await missed.look()
     scheduler.start()
     missed.start()
+    health.start()  # the bot's own memory use, looked at and logged every hour
     # Which bot this is, for anyone looking: the nickname and the status line
     await identity.start()
 

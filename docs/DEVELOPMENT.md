@@ -1195,6 +1195,25 @@ A delayed `lab notify` is answered straight away and sent in the
 background. It is held in memory only, so restarting the bot before it
 fires cancels it. What was sent is logged when it finishes.
 
+### Problems of the bot's own: a bug each, and its memory
+
+- **A job that did not work files a bug by itself**: the nightly
+  backup failing, the checklist with nowhere to post. One bug for each
+  kind of job ("by the bot itself", in the forum like any other); when
+  it happens again while that bug is open, the bug gets a note, never
+  a second bug. The status line points at it ("⚠️ B14 · backup
+  failed") until that job next works. The bug stays open until you
+  press Fixed or Won't fix: the bot never closes one.
+- **Memory**: `dev status` shows what the bot holds now, its peak
+  since it started and how it moved over the last day. Every hour the
+  figure is written in the log ("Memory: 95 MB (peak 101 MB since the
+  start, 12 readings)"). Over `MEMORY_LIMIT_MB` (300 unless set), or
+  after a day in which each quarter of the day was higher than the one
+  before by 15 MB or more in all, it is a level 1 item ("⚠️ B9 ·
+  memory 312 MB") and files its bug, with the last readings; while it
+  lasts the bug gets a note a day.
+- **Dev mode left on** on live shows as "🛠️ dev mode" at level 1.
+
 ### The status line
 
 Live's status line is the top attention item ("💊 2/5 · 12pm", "⚠️

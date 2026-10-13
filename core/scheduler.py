@@ -718,6 +718,15 @@ _notes: dict[int, str] = {}
 _after_run: list[Callable[[], None]] = []
 
 
+# `async (job, "failed" or "skipped", what went wrong)`: told of every run that did not work
+_on_trouble: list[Callable[[Job, str, str], Awaitable[None]]] = []
+
+
+def on_trouble(listener: Callable[[Job, str, str], Awaitable[None]]) -> None:
+    if listener not in _on_trouble:
+        _on_trouble.append(listener)
+
+
 def on_ran(listener: Callable[[], None]) -> None:
     if listener not in _after_run:
         _after_run.append(listener)
@@ -783,11 +792,19 @@ async def run_due(now: datetime | None = None, done: list | None = None, set_asi
             log.exception("Scheduled job %s (%s/%s) failed", job.id, job.task, job.kind)
             await database.run(_db_finish, job.id, FAILED, job.late_by, repr(error), _notes.pop(job.id, None))
             await log_error(f"Scheduled job failed: {label(job.task, job.kind)}", repr(error))
-            outcome = "failed"
+            outcome, detail = "failed", repr(error)
         else:
             # Done, unless the handler said this run failed or was skipped (`report`)
             outcome = _reported.pop(job.id, DONE)
-            await database.run(_db_finish, job.id, outcome, job.late_by, None, _notes.pop(job.id, None))
+            detail = _notes.pop(job.id, None)
+            await database.run(_db_finish, job.id, outcome, job.late_by, None, detail)
+        if outcome in (FAILED, SKIPPED):
+            # A run that did not work is someone's to know about beyond the log (a bug is filed: core/health.py)
+            for listener in list(_on_trouble):
+                try:
+                    await listener(job, outcome, detail or "")
+                except Exception:
+                    log.exception("Could not tell a listener that %s/%s did not work", job.task, job.kind)
         await devmode.debug(
             f"Job {job.id}: {job.task}/{job.kind}",
             [

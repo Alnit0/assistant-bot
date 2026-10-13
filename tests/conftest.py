@@ -40,6 +40,13 @@ def no_schedules_unless_asked_for(monkeypatch):
     monkeypatch.setattr(scheduler, "_standing", {})
     monkeypatch.setattr(scheduler, "_joins", {})
     monkeypatch.setattr(scheduler, "_routine_names", {})
+    # Nor is anyone told that attention items or jobs changed, unless the test listens itself:
+    # a surface registered by an earlier test (the status line) would act on a loop that is gone
+    from core import attention
+
+    monkeypatch.setattr(attention, "_listeners", [])
+    monkeypatch.setattr(scheduler, "_after_run", [])
+    monkeypatch.setattr(scheduler, "_on_trouble", [])
 
 
 _migrated: dict[tuple, bytes] = {}  # a migrated, empty database for each set of migrations asked for

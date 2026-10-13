@@ -367,6 +367,10 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   was slow" as the first note). Each bug gets a post in the #bugs forum;
   what I write there is saved as a note. Nothing in #bugs is sent to
   Claude
+- The bot files a bug for a problem of its own (a job that did not
+  work, its memory use: `core/health.py` asks, `tasks/bugs/system.py`
+  files): one for each kind of problem, a note on the open one when it
+  repeats, never a second. It never closes one
 - Claude Code never closes a bug: I press Fixed or Won't fix on the post.
   The one exception is the self-test's own bugs (`selftest/bugs.py`),
   and only a bug the self-test opened itself: the first step to fail in

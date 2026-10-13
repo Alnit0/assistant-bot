@@ -31,32 +31,35 @@ is `docs/specs/attention.md`, the status line is built from it):**
   was stopped by the PC). Today four of nine runs started between 1.7
   and 1.9 GB: with this line they would have waited. Say if you would
   rather have it at 1.75 GB with less margin.
-- **A bug for a system problem.** "⚠️ B14 · backup failed" needs a
-  bug to exist, and nothing files one for a failed job today, so it
-  reads "⚠️ backup failed". Should a failed job file a bug by itself,
-  as a failing self-test step does?
-- **Bugs at level 1**: only a bug with a fix ready to retest ("⚠️ B4 ·
-  retest") is handed in. Every open bug, or none, instead?
-- **The dev bot outside a self-test** keeps "🧪 DEV database · clock
-  +13h". Or the same attention line as live?
-- **A missed dose** is not a level 1 problem: it is in the briefing's
-  line about yesterday. Or should it show as "💊 missed" for the rest
-  of the day?
-- **"🌅 6am"** shows whenever nothing else is left, during the day
-  too. Only in the evening instead? And with the morning routine
-  paused the line is blank.
-- **Several things due at once** show only the soonest, with no "+2".
-- **"🛠️ Dev mode"** is still said in front of live's line.
-- **"backup failed"**: the job is called "nightly backup"; on the
-  status line "nightly " is dropped, to match your example.
-- **Quiet hours** (`QUIET_HOURS`, 10:00 pm to 6:00 am) are a setting
-  that nothing uses yet: pings are not on the model. Should the
-  6:00 am briefing list what was held back overnight?
+- **A failed job's bug is never closed by the bot**, also when the
+  job works again: the status line stops pointing at it, and the bug
+  waits for your Fixed. Say if a note "worked again" should be added.
+- **Memory is the bot's private bytes** (what it holds of its own:
+  about 90 MB today), not the working set Windows shows by default in
+  Task Manager, which goes up and down. "Keeps growing for a day"
+  means each quarter of the last 24 hourly readings higher than the
+  one before, by 15 MB or more in all.
+- **A day done by skipping** (nothing missed, not all taken) reads
+  "💊 4/5 taken" until 8:00 pm, not "all 5 taken".
 - **The dev bot as caretaker** is in the spec as a later option, with
   what it costs (a second process all day, about 100 to 150 MB; the
   self-test could not then start the dev bot itself; long-lived state
   on the dev side). A Windows scheduled task that pings your phone
   when the service is down would buy the same for almost nothing.
+
+Answered on 2026-10-13, the status line: the stop line is set; a
+failed job files a bug itself, one for each kind, noted when it repeats
+(built); only a bug ready to retest is level 1; the dev bot keeps its
+own line; a missed dose shows "💊 missed 9am" at level 2 until the next
+dose is due or the day ends (built); a day with everything taken shows
+"💊 all 5 taken" until 8:00 pm (`STATUS_DONE_UNTIL`), then "🌅 6am"
+(built); dev mode can be on for live, so it is a level 1 item, "🛠️
+dev mode", and no longer a mark in front (built); the briefing lists
+what quiet hours held back once pings are on the model (in the
+backlog). Live's memory use is in `dev status`, logged every hour, and
+a level 1 item with its own bug over 300 MB or after a day of growth
+(built). The design options of stage 6 were posted (the post "🎨
+Design options · 2026-10-13" in the dev bot's forum).
 
 **From the unattended batch of 2026-10-13 (six stages, all built;
 every self-test run as the dev bot with live left up; US$1.08 spent on

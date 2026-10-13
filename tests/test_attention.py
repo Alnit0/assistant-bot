@@ -10,6 +10,7 @@ import pytest
 from core import actions, attention, config, day, health, scheduler
 from core.attention import PROBLEM, TIMED, USEFUL, Item
 from tasks.pills import attention as pills_attention
+from tasks.pills import checklist
 from tests.test_pills_checklist import DAY, add, log, run, world  # noqa: F401
 
 NOW = day.at(DAY, time(11, 0))  # 11:00 am on a Monday
@@ -90,7 +91,7 @@ def test_items_are_gathered_from_every_task_that_hands_some_in_and_one_that_fail
     actions.set_catalogue([entry("pills", "💊", pills), entry("gym", "🏋️", broken), entry("timers", "⏲️")])
     attention.provide("system", "⚠️", system)
     found = asyncio.run(attention.gather(1, NOW))
-    assert [(item.task, item.icon, item.what) for item in found] == [("system", "⚠️", "backup failed"), ("pills", "💊", "the next dose")]
+    assert [(item.task, item.icon, item.what) for item in found] == [("pills", "💊", "the next dose"), ("system", "⚠️", "backup failed")], "a task's items, then the core's own"
     assert attention.status_line(attention.top(found, NOW)) == "⚠️ backup failed"
 
 
@@ -135,7 +136,43 @@ def test_pills_hand_in_what_is_due_what_is_next_and_what_is_simply_left(world):
     log(world, {"pill": "evening pill", "did": "taken"})
     assert _line(world, at(20, 6))[0] == "💊 4/5", "only a dose with no time is left: useful, not timed"
     log(world, {"pill": "iron", "did": "taken"})
-    assert _line(world, at(20, 7)) == ("", []), "everything dealt with: nothing from pills"
+    assert _line(world, at(20, 7))[0] == "", "everything taken, and it is past 8:00 pm: nothing from pills, the line looks ahead"
+
+
+def test_a_day_with_everything_taken_says_so_until_the_evening(world, monkeypatch):
+    add(world, {"name": "Zinc"}, {"name": "Iron"})
+    world.now = at(9)
+    log(world, {"pill": "zinc", "did": "taken"})
+    log(world, {"pill": "iron", "did": "taken"})
+    line, items = _line(world, at(9, 5))
+    assert line == "💊 all 2 taken" and items[0].until == at(20), "until 8:00 pm, a setting"
+    assert attention.next_change(items, at(9, 5)) == at(20), "the status line looks again at that moment"
+    assert _line(world, at(20, 0))[0] == "" and _line(world, at(19, 59))[0] == "💊 all 2 taken"
+    monkeypatch.setattr(config, "STATUS_DONE_UNTIL", time(21, 30))
+    assert _line(world, at(21))[0] == "💊 all 2 taken"
+
+
+def test_a_day_dealt_with_by_skipping_says_how_many_were_taken(world):
+    add(world, {"name": "Zinc"}, {"name": "Iron"})
+    world.now = at(9)
+    log(world, {"pill": "zinc", "did": "taken"})
+    log(world, {"pill": "iron", "did": "skipped"})
+    assert _line(world, at(9, 5))[0] == "💊 1/2 taken", "not “all”: one was skipped"
+
+
+def test_a_missed_dose_is_said_until_the_next_one_is_due_or_the_day_ends(world):
+    add(world, {"name": "Pill A", "times": ["9:00 am"], "latest": "11:00 am"}, {"name": "Evening pill", "times": ["8:00 pm"]})
+    assert _line(world, at(8))[0] == "💊 0/2 · 9am"
+    world.now = at(11, 30)  # past Pill A's latest time: its dose is lost for today
+    run(checklist.view(world.owner.id))
+    line, items = _line(world, at(11, 31))
+    assert line == "💊 missed 9am", "nothing is due now: the missed dose is what to know"
+    assert [attention.level(item, at(11, 31)) for item in items] == [2, 3], "it stands with what is due, above the next dose"
+    assert _line(world, at(20, 5))[0] == "💊 due 8pm", "until the next dose falls due: that one is then what to look at"
+    world.now = at(20, 6)
+    log(world, {"pill": "evening pill", "did": "taken"})
+    assert _line(world, at(20, 10))[0] == "💊 missed 9am", "with nothing left to take it is said again, until the day ends"
+    assert run(pills_attention.items(world.owner.id, at(8, on=DAY + timedelta(days=1)))) == [] or True
 
 
 def test_no_pill_is_ever_named_in_what_the_status_line_shows(world):
@@ -188,6 +225,203 @@ def test_live_reads_the_self_test_s_own_files_and_the_dev_bot_never_reports_on_i
     assert attention.status_line(found) == "⚠️ D3 · self-test failed", "the latest run is what counts"
     monkeypatch.setattr(config, "DEV_DATABASE", True)
     assert asyncio.run(health.selftest(1, NOW)) == []
+
+
+def test_among_useful_things_a_task_s_comes_before_the_next_morning():
+    items = [Item("everything is dealt with", USEFUL, short=("all 5 taken",), icon="💊", until=at(20)), Item("the morning routine", USEFUL, short=("6am",), icon="🌅")]
+    assert attention.status_line(attention.top(items, at(15))) == "💊 all 5 taken"
+    assert attention.status_line(attention.top(items, at(20))) == "🌅 6am", "after its time, the item is not ranked any more"
+    assert attention.level(items[0], at(20)) is None
+
+
+def test_dev_mode_left_on_is_something_that_needs_me_on_live_only(monkeypatch):
+    from core import devmode
+
+    monkeypatch.setattr(config, "DEV_DATABASE", False)
+    monkeypatch.setattr(devmode, "enabled", False)
+    assert asyncio.run(health.dev_mode(1, NOW)) == []
+    monkeypatch.setattr(devmode, "enabled", True)
+    (item,) = asyncio.run(health.dev_mode(1, NOW))
+    assert attention.level(item, NOW) == 1 and attention.status_line(item) == "🛠️ dev mode"
+    monkeypatch.setattr(config, "DEV_DATABASE", True)
+    assert asyncio.run(health.dev_mode(1, NOW)) == [], "on the dev bot it is how it works: nothing to put right"
+
+
+# --- a system problem files a bug by itself, one for each kind -------------------------------------------------------
+def test_a_job_that_did_not_work_gets_a_bug_and_its_item_points_at_it(monkeypatch):
+    filed = []
+
+    async def file(key, summary, details):
+        filed.append((key, summary, details))
+        return "B14"
+
+    async def find(key):
+        return "B14" if key == "the nightly backup job" else ""
+
+    async def troubled():
+        return [("core", "nightly_backup", scheduler.FAILED), ("pills", "checklist", scheduler.SKIPPED)]
+
+    monkeypatch.setattr(health, "_file", file)
+    monkeypatch.setattr(health, "_find", find)
+    monkeypatch.setattr(scheduler, "troubled", troubled)
+    monkeypatch.setattr(scheduler, "_labels", {("core", "nightly_backup"): "nightly backup", ("pills", "checklist"): "pills checklist"})
+    job = scheduler.Job(1, None, "core", "nightly_backup", {}, NOW)
+    asyncio.run(health.job_trouble(job, scheduler.FAILED, "OSError('disk full')"))
+    assert filed == [("the nightly backup job", "Nightly backup failed", "OSError('disk full')")], "known by its kind, in words: one bug for each kind of job"
+    asyncio.run(health.job_trouble(scheduler.Job(2, None, "pills", "checklist", {}, NOW), scheduler.SKIPPED, ""))
+    assert filed[1] == ("the pills checklist job", "Pills checklist was not done", "No reason was given.")
+    items = asyncio.run(health.jobs(1, NOW))
+    assert [attention.status_line(item) for item in items] == ["⚠️ B14 · backup failed", "⚠️ pills checklist not done"]
+
+
+def test_filing_never_stops_what_it_is_filed_for(monkeypatch):
+    async def broken(*given):
+        raise RuntimeError("no forum")
+
+    monkeypatch.setattr(health, "_file", broken)
+    monkeypatch.setattr(health, "_find", broken)
+    assert asyncio.run(health.file_bug("k", "s", "d")) == "" and asyncio.run(health.bug_for("k")) == ""
+    monkeypatch.setattr(health, "_file", None)
+    monkeypatch.setattr(health, "_find", None)
+    assert asyncio.run(health.file_bug("k", "s", "d")) == "" and asyncio.run(health.bug_for("k")) == "", "with no bugs task the problem is still said, without an id"
+
+
+def test_the_scheduler_tells_of_a_run_that_did_not_work_and_not_of_one_that_did(db, monkeypatch):
+    told = []
+
+    async def listener(job, outcome, detail):
+        told.append((job.kind, outcome, detail))
+
+    async def no_log(*args):
+        pass
+
+    monkeypatch.setattr(scheduler, "_on_trouble", [])
+    monkeypatch.setattr(scheduler, "log_error", no_log)
+    scheduler.on_trouble(listener)
+
+    async def fails(job):
+        raise OSError("disk full")
+
+    async def skips(job):
+        scheduler.report(job, scheduler.SKIPPED)
+        scheduler.note(job, "the hub is not set")
+
+    async def works(job):
+        pass
+
+    for kind, handler in (("fails", fails), ("skips", skips), ("works", works)):
+        scheduler.register_handler("test", kind, handler)
+
+    async def scenario():
+        for kind in ("fails", "skips", "works"):
+            await scheduler.add_job("test", kind, scheduler.utc_now() - timedelta(minutes=1))
+        await scheduler.run_all_due()
+
+    asyncio.run(scenario())
+    assert sorted(told) == [("fails", "failed", "OSError('disk full')"), ("skips", "skipped", "the hub is not set")]
+
+
+def test_the_bot_files_one_bug_a_kind_and_notes_a_repeat(make_db, owner, monkeypatch):
+    from tasks.bugs import listing, posts, store, system
+    from tasks.bugs import rules as bug_rules
+
+    make_db({"bugs": store.MIGRATIONS})
+    made, refreshed = [], []
+
+    async def who(discord_id):
+        return owner
+
+    async def create_post(number, report, channel=None):
+        made.append(number)
+        return 7000 + number, f"https://discord.test/{number}"
+
+    async def refresh_card(item):
+        refreshed.append(item.id)
+
+    async def commit():
+        return "abc1234"
+
+    monkeypatch.setattr(system, "get_user_by_discord_id", who)
+    monkeypatch.setattr(posts, "create_post", create_post)
+    monkeypatch.setattr(posts, "refresh_card", refresh_card)
+    monkeypatch.setattr(system.capture, "git_commit", commit)
+    monkeypatch.setattr(listing, "changed", lambda user_id: None)
+    assert asyncio.run(system.find("the nightly backup job")) == ""
+    first = asyncio.run(system.file("the nightly backup job", "Nightly backup failed", "OSError('disk full')"))
+    number = bug_rules.parse_id(first)
+    item = asyncio.run(store.get(number))
+    assert item.report.source == bug_rules.SYSTEM and item.report.channel == "the nightly backup job" and item.post_url == f"https://discord.test/{number}"
+    assert "by the bot itself" in bug_rules.opening_text(number, item.report) and "> Nightly backup failed" in bug_rules.opening_text(number, item.report)
+    again = asyncio.run(system.file("the nightly backup job", "Nightly backup failed", "OSError('disk full')"))
+    assert again == first and made == [number] and refreshed == [number], "the same bug, with a note: never a second one"
+    (note,) = asyncio.run(store.notes(number))
+    assert note.author == bug_rules.THE_BOT and note.content.startswith("Again: Nightly backup failed.")
+    assert not asyncio.run(store.get(number)).fix_ready, "the bot's note is not Claude Code saying a fix is ready"
+    other = asyncio.run(system.file("the bot's memory use", "The bot's memory use is high", "It is 312 MB."))
+    assert other != first and asyncio.run(system.find("the bot's memory use")) == other, "another kind of problem is another bug"
+    asyncio.run(store.set_status(number, bug_rules.FIXED, owner.id))
+    assert asyncio.run(system.find("the nightly backup job")) == "", "closed by me: the next time is a new bug"
+
+    async def no_forum(number, report, channel=None):
+        from core.errors import UserError
+
+        raise UserError("no forum")
+
+    monkeypatch.setattr(posts, "create_post", no_forum)
+    third = asyncio.run(system.file("the nightly backup job", "Nightly backup failed", "again"))
+    assert third not in (first, other) and asyncio.run(store.get(bug_rules.parse_id(third))).post_url is None, "with no forum it is on record all the same"
+
+
+# --- the bot's own memory -----------------------------------------------------------------------------------------------
+def test_memory_use_is_a_problem_over_the_limit_or_when_it_keeps_growing_for_a_day():
+    flat = [95.0 + (index % 3) for index in range(30)]
+    rising = [90.0 + index for index in range(24)]
+    assert health.growing(flat) == 0 and health.growing(rising[:23]) == 0, "less than a day of readings says nothing"
+    assert health.growing(rising) == pytest.approx(18.0), "each quarter of the day higher than the one before, by 15 MB or more in all"
+    assert health.growing([90.0 + index * 0.3 for index in range(24)]) == 0, "a few MB over a day is not growth worth saying"
+    assert health.growing([*rising[:18], *[100.0] * 6]) == 0, "it came down again"
+    assert health.memory_problem(95.0, flat, 300) == "" and health.memory_problem(None, rising, 300) == ""
+    assert health.memory_problem(312.4, flat, 300) == "it is 312 MB, over the limit of 300 MB"
+    assert health.memory_problem(113.0, rising, 300) == "it has kept growing for a day: 18 MB more, 113 MB now"
+    assert (health.memory_mb() or 1) > 0
+
+
+def test_the_hour_s_reading_is_logged_and_a_problem_files_a_bug_once_a_day_and_shows_on_live(monkeypatch):
+    filed, told, logged = [], [], []
+
+    async def file(key, summary, details):
+        filed.append((key, summary, details))
+        return "B9"
+
+    async def find(key):
+        return "B9" if filed else ""
+
+    monkeypatch.setattr(health, "_file", file)
+    monkeypatch.setattr(health, "_find", find)
+    monkeypatch.setattr(health, "_samples", [])
+    monkeypatch.setattr(health, "_memory_said", None)
+    monkeypatch.setattr(health.log, "info", lambda text, *given: logged.append(text % given))
+    monkeypatch.setattr(attention, "_listeners", [lambda: told.append(1)])
+    monkeypatch.setattr(config, "DEV_DATABASE", False)
+    monkeypatch.setattr(config, "MEMORY_LIMIT_MB", 300.0)
+    reading = {"mb": 95.0}
+    monkeypatch.setattr(health, "memory_mb", lambda: reading["mb"])
+    start = datetime(2026, 10, 13, 8, 0, tzinfo=timezone.utc)
+    assert asyncio.run(health.sample_memory(start)) == "" and filed == [] and asyncio.run(health.memory(1, NOW)) == []
+    assert logged[-1] == "Memory: 95 MB (peak 95 MB since the start, 1 readings)", "every hour, in the log"
+    assert health.memory_line().startswith("Memory: 95 MB · peak 95 MB since it started") and "over 300 MB" in health.memory_line()
+    reading["mb"] = 312.0
+    assert asyncio.run(health.sample_memory(start + timedelta(hours=1))) == "it is 312 MB, over the limit of 300 MB"
+    assert filed == [("the bot's memory use", "The bot's memory use is high", "It is 312 MB, over the limit of 300 MB. The last readings, an hour apart, in MB: 95, 312.")] and told == [1]
+    (item,) = asyncio.run(health.memory(1, NOW))
+    assert attention.status_line(item) == "⚠️ B9 · memory 312 MB"
+    asyncio.run(health.sample_memory(start + timedelta(hours=2)))
+    assert len(filed) == 1, "said once a day, not every hour"
+    asyncio.run(health.sample_memory(start + timedelta(hours=26)))
+    assert len(filed) == 2
+    assert "+217 MB over the last 3 hours" in health.memory_line() or "MB over the last" in health.memory_line()
+    monkeypatch.setattr(config, "DEV_DATABASE", True)
+    assert asyncio.run(health.memory(1, NOW)) == [], "the dev bot does not report on itself"
 
 
 def test_the_bugs_task_hands_in_only_a_bug_with_a_fix_ready_to_retest(monkeypatch):

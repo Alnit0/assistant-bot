@@ -6,6 +6,12 @@ backfilled from the git log.
 
 ## 2026-10-13
 
+- The status line also says a missed dose ("💊 missed 9am"), a day
+  with everything taken ("💊 all 5 taken", until 8:00 pm) and dev mode
+  left on. A job that fails files its own bug, and so does the bot's
+  memory use if it goes over 300 MB or keeps growing; `dev status`
+  shows the memory.
+
 - The self-test costs less: recorded answers unless prompts, schemas
   or routing changed (or it is the Sunday full run), nothing on a
   night with no new commits, and a monthly cap (`SELFTEST_MONTHLY_LIMIT`,

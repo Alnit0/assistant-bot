@@ -76,10 +76,10 @@ model** (`core/attention.py`), in its short form.
 
 | Level | When | Reads |
 |---|---|---|
-| 1 | Something is wrong and needs me (a job that failed, a self-test that failed, a bug to retest); the bug's id first, if one was filed | `⚠️ B14 · backup failed`, `⚠️ backup failed`, `⚠️ D3 · self-test failed`, `⚠️ B4 · retest` |
-| 2 | Something is due now or overdue | `💊 due 12pm` |
+| 1 | Something is wrong and needs me: a job that did not work, a self-test that failed, the self-test's month spent, the bot's memory use, a bug to retest, dev mode left on. The bug's id first: a problem of the bot's own files its bug itself | `⚠️ B14 · backup failed`, `⚠️ D3 · self-test failed`, `⚠️ self-test spend · US$2.05`, `⚠️ B9 · memory 312 MB`, `⚠️ B4 · retest`, `🛠️ dev mode` |
+| 2 | Something is due now or overdue; or a dose was missed and none is due now (until the next one falls due, or the day ends) | `💊 due 12pm`, `💊 missed 9am` |
 | 3 | The next timed thing today | `💊 2/5 · 12pm` |
-| 4 | Something useful that has no time: doses with no time still to take; otherwise when the morning routine next runs | `💊 2/5`, `🌅 6am` |
+| 4 | Something useful that has no time: doses with no time still to take; a day with everything taken, until 8:00 pm (`STATUS_DONE_UNTIL`); otherwise when the morning routine next runs | `💊 2/5`, `💊 all 5 taken`, `🌅 6am` |
 | 5 | Nothing | blank |
 
 - Within a level, the soonest. When nothing timed is left today it
@@ -89,7 +89,9 @@ model** (`core/attention.py`), in its short form.
 - **It changes when a state changes** (a dose ticked off, a job that
   ends, the moment a timed thing falls due, the day ending), never on
   a timer, and is sent to Discord only when it reads differently.
-- "🛠️ Dev mode" stays in front while dev mode is on.
+- Dev mode left on is a level 1 item of its own on live ("🛠️ dev
+  mode"), not a mark in front of the line.
+- Among useful things a task's own comes before "🌅 6am".
 
 Other bots, other lines:
 

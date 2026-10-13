@@ -37,16 +37,16 @@ Last updated: 2026-10-13
 | G | Timers | 32 | 12 | 20 | 17 | 15 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
 | J | Dev mode | 68 | 19 | 49 | 47 | 21 | 0 | 0 |
-| K | Startup and housekeeping | 38 | 23 | 15 | 13 | 25 | 0 | 0 |
+| K | Startup and housekeeping | 39 | 24 | 15 | 13 | 26 | 0 | 0 |
 | L | Keep | 14 | 6 | 8 | 8 | 6 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
 | P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
 | Q | Time, days, the schedule model, the occurrence log and cards | 28 | 26 | 2 | 2 | 26 | 0 | 0 |
 | R | Pills | 79 | 26 | 53 | 45 | 34 | 0 | 0 |
-| S | Routing and confirm cards | 77 | 24 | 53 | 18 | 58 | 0 | 1 |
+| S | Routing and confirm cards | 79 | 26 | 53 | 18 | 60 | 0 | 1 |
 | T | Tasks in plain words | 26 | 7 | 19 | 4 | 22 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **522** | **201** | **321** | **251** | **270** | **0** | **1** |
+| | **Total** | **525** | **204** | **321** | **251** | **273** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -345,6 +345,7 @@ Any channel. Check the bot's status in the member list.
 | K36 | 🤖 Auto | The attention model | An item's level follows its urgency, its time and the clock; one ranking, lower level first and soonest first within a level, a timed item for another day unranked; it changes by the clock when a timed item falls due; items are gathered from every task that hands some in and the core's own providers, one that fails is left out; whoever hands them in says when they may have changed | ✅ Pass | 2026-10-13 | `tests/test_attention.py` |
 | K37 | 🤖 Auto | The status line | Live's is the top attention item in its short form (icon, numbers and short 12-hour times joined by “ · ”), a problem pointing at its bug, blank with nothing; no “Live”, no uptime; sent only when it reads differently; it looks again at the moment the next timed item falls due and has no ticker; pills hand in what is due, what is next and what is simply left, never a pill's name, writing nothing; a failed job, a failed or unfinished self-test (with its bug) and a bug to retest are level 1; the dev bot in a self-test says how far the run is | ✅ Pass | 2026-10-13 | `tests/test_attention.py`, `tests/test_identity.py` |
 | K38 | 👤 Manual | Block 52: the status line on live | As the block says | ⬜ Untested | | Block 52 |
+| K39 | 🤖 Auto | The status line: a missed dose, a day done, dev mode, and a task's item before the morning | A missed dose is said at level 2 until the next one falls due or the day ends; a day with everything taken says so until 8:00 pm (a setting), one done by skipping says how many were taken, then the line looks ahead; the status line looks again at that moment; among useful things a task's comes before the next morning; dev mode left on is a level 1 item on live only and no longer a mark in front | ✅ Pass | 2026-10-13 | `tests/test_attention.py`, `tests/test_identity.py` |
 
 ## L. Keep
 
@@ -646,6 +647,8 @@ the dev database (`python main.py --dev`), in #inbox.
 | S75 | 🤖 Auto | The run log is pruned | A housekeeping run (a card's expiry, a line tidied, the hub's expiry) goes 30 days after it ended and any other after a year; one waiting or running is never touched, whatever its age; asked again nothing more goes; the end of the day asks once a day, and a failure there is said in #bot-log and does not stop the day | ✅ Pass | 2026-10-13 | `tests/test_timetable.py` |
 | S76 | 🤖 Auto | The nightly self-test | Off unless switched on and never on the dev database; its schedule (3:00 am, mine to move, skipped after three hours late) is made only while on; the stages touched on a weeknight and everything on a Sunday, with recorded answers; the job only starts the run and says so, never two at once; off it starts nothing; a run that could not start is said in #bot-log and failing steps are the run's own to report; the start has nothing of live's environment; the phone is pinged only for a failing step or an unfinished run, at priority 5, the topic never given away; a night with nothing to run leaves a line | ✅ Pass | 2026-10-13 | `tests/test_nightly.py` |
 | S77 | 🤖 Auto | A correction straight after Save (G3) | Golden 2b: the change card is for what was just saved, old → new, with no ❓; with two pills it is the saved card's pill, not the one changed last; the pill is the one mentioned last on the card or the only one it held, and with several and none mentioned nothing is made up; another task's card says nothing; once the task has done anything else, or after a few minutes, the saved card is forgotten | ✅ Pass | 2026-10-13 | `tests/test_golden.py`, `tests/test_pills_plain.py` |
+| S78 | 🤖 Auto | A system problem files its own bug | The scheduler tells of a run that did not work and not of one that did; its kind of job gets a bug known by its words, and the item points at it; the bugs task files one bug a kind, a repeat is a note (not Claude Code's “fix ready”), another kind is another bug, one I closed is followed by a new one, and with no forum it is on record all the same; filing never stops what it is filed for | ✅ Pass | 2026-10-13 | `tests/test_attention.py` |
+| S79 | 🤖 Auto | The bot's memory use | It is a problem over the limit or when each quarter of a day of hourly readings is higher than the one before by 15 MB or more; the hour's reading is logged; a problem files a bug once a day, shows on live as a level 1 item pointing at it, and never on the dev bot; `dev status` shows now, the peak and the day's change | ✅ Pass | 2026-10-13 | `tests/test_attention.py` |
 
 ## T. Tasks in plain words
 

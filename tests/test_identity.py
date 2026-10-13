@@ -66,12 +66,13 @@ def test_the_dev_bot_in_a_self_test_says_how_far_the_run_is():
     assert identity.selftest_line(41, 0, 6) == "🧪 41 · 6m", "the number of steps is not known the first time"
     assert identity.selftest_line(103, 103, -2) == "🧪 103/103 · 0m", "a run that takes longer than expected is never minus two minutes"
     assert identity.status_line(True, timedelta(hours=13), "", progress="🧪 41/103 · 6m") == "🧪 41/103 · 6m"
-    assert identity.status_line(True, NONE, "", True, "4:15 pm", "🧪 41/103 · 6m") == "🧪 Self-test running · back about 4:15 pm", "a run on live's own account says when live is back, before anything"
+    assert identity.status_line(True, NONE, "", "4:15 pm", "🧪 41/103 · 6m") == "🧪 Self-test running · back about 4:15 pm", "a run on live's own account says when live is back, before anything"
 
 
-def test_dev_mode_is_said_in_front_and_the_line_fits_discord():
-    assert identity.status_line(False, NONE, "💊 2/5 · 12pm", dev_mode=True) == "🛠️ Dev mode · 💊 2/5 · 12pm"
-    assert identity.status_line(False, NONE, "", dev_mode=True) == "🛠️ Dev mode"
+def test_dev_mode_is_no_longer_a_mark_in_front_and_the_line_fits_discord():
+    import inspect
+
+    assert "dev_mode" not in inspect.signature(identity.status_line).parameters, "dev mode on live is a level 1 item of its own (core/health.py)"
     assert len(identity.status_line(False, NONE, "x" * 300)) == identity.MAX_STATUS
 
 
@@ -205,15 +206,14 @@ def test_the_status_line_is_only_sent_when_it_reads_differently_and_blank_is_no_
         looking.items = [_item(("2/5", "9:30pm"), TIMED, 30)]
         first = await identity.refresh()
         again = await identity.refresh()
-        devmode.enable()
+        looking.items = [_item(("due 9:30pm",), TIMED, 0)]
         third = await identity.refresh()
-        devmode.disable()
         looking.items = []
         fourth = await identity.refresh()
         return first, again, third, fourth
 
     assert run(scenario()) == (True, False, True, True)
-    assert looking.server.presence == ["💊 2/5 · 9:30pm", "🛠️ Dev mode · 💊 2/5 · 9:30pm", None], "nothing to look at clears the status line"
+    assert looking.server.presence == ["💊 2/5 · 9:30pm", "💊 due 9:30pm", None], "nothing to look at clears the status line"
 
 
 def test_it_looks_again_at_the_moment_the_next_timed_item_falls_due_and_never_on_a_ticker(looking, monkeypatch):

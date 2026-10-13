@@ -33,11 +33,13 @@ CARD_LIMIT = 2000  # Discord's limit for one message
 # How a report was made
 REACTION, REPLY, WORD = "reaction", "reply", "word"
 SELFTEST = "selftest"  # a step of the self-test that failed (selftest/bugs.py): nobody reported it
-SOURCES = {REACTION: f"a {BUG_EMOJI} reaction", REPLY: "a reply", WORD: "the word", SELFTEST: "the self-test"}
+SYSTEM = "system"  # a problem of the bot's own (a job that did not work, its memory): it filed it itself
+SOURCES = {REACTION: f"a {BUG_EMOJI} reaction", REPLY: "a reply", WORD: "the word", SELFTEST: "the self-test", SYSTEM: "the bot itself"}
 
 # Who wrote a note: the owner in the post, or Claude Code after a fix
 OWNER, CLAUDE_CODE = "owner", "claude-code"
 SELF_TEST = "self-test"  # the self-test, saying a step failed again or passes again
+THE_BOT = "the bot"  # the bot itself, saying a problem of its own happened again
 FIX_READY = "fix ready, needs retest"
 
 PRECEDING = 5  # messages before the target that are captured with it

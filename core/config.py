@@ -249,6 +249,17 @@ def hours(text: str | None, default: tuple[time, time]) -> tuple[time, time]:
 # item pings, and the rest waits for the briefing (core/attention.py). Read and shown
 # now; used when pings move onto the attention model
 QUIET_HOURS = hours(os.getenv("QUIET_HOURS"), (time(22, 0), time(6, 0)))
+# Until this time of day a day with everything taken says so on the status line
+# ("💊 all 5 taken"); after it the line looks ahead to the morning ("🌅 6am")
+try:
+    STATUS_DONE_UNTIL = time.fromisoformat((os.getenv("STATUS_DONE_UNTIL") or "20:00").strip())
+except ValueError:
+    sys.exit("STATUS_DONE_UNTIL in .env must be a time of day on the 24-hour clock, e.g. 20:00")
+# Live's own memory use is a problem over this many MB (core/health.py)
+try:
+    MEMORY_LIMIT_MB = float(os.getenv("MEMORY_LIMIT_MB") or 300)
+except ValueError:
+    sys.exit("MEMORY_LIMIT_MB in .env must be a number of megabytes, e.g. 300")
 # What the self-test may spend on real requests in a calendar month, in US dollars. Over
 # it, runs use recorded answers only and live says so (core/health.py)
 try:

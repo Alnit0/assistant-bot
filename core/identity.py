@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 import discord
 
-from core import attention, clock, config, devmode, discord_utils, live, scheduler
+from core import attention, clock, config, discord_utils, live, scheduler
 from core import day as days
 from core.config import DEV_DATABASE, INBOX_CHANNEL_ID, SELFTEST_BACK
 from core.users import get_user_by_discord_id
@@ -36,7 +36,8 @@ log = logging.getLogger("assistant")
 #   the dev bot during a self-test           🧪 41/103 · 6m   (· ❌2 once steps fail)
 #   the dev bot otherwise                    🧪 DEV database · clock +13h
 #   a self-test on live's account (no dev bot)   🧪 Self-test running · back about 4:15 pm
-# with "🛠️ Dev mode" in front while dev mode is on.
+# Dev mode on live is one of the things that need me (a level 1 item of its
+# own, core/health.py): it is no longer a mark in front of the line.
 #
 # It is brought up to date when a state changes: whoever hands in attention
 # items says so (`attention.changed`), and the moment the next timed item
@@ -46,7 +47,6 @@ log = logging.getLogger("assistant")
 STATE_MARK = " · "
 MAX_NICKNAME = 32  # Discord's limit
 MAX_STATUS = 128
-DEV_MODE = "🛠️ Dev mode"
 SELFTEST_ICON = "🧪"
 FAILED_MARK = "❌"
 
@@ -98,7 +98,7 @@ def selftest_line(done: int, total: int, minutes_left: int, failed: int = 0) -> 
     return f"{SELFTEST_ICON} {' · '.join(pieces)}"
 
 
-def status_line(dev: bool, ahead: timedelta, top: str = "", dev_mode: bool = False, selftest_back: str = "", progress: str = "") -> str:
+def status_line(dev: bool, ahead: timedelta, top: str = "", selftest_back: str = "", progress: str = "") -> str:
     """The status line. `top` is the attention model's top item in its short
     form (live's line; "" is blank). `progress` is a self-test's own line on
     the dev bot. `selftest_back` is when live is expected back, in a
@@ -113,8 +113,6 @@ def status_line(dev: bool, ahead: timedelta, top: str = "", dev_mode: bool = Fal
         line = f"{SELFTEST_ICON} DEV database{moved}"
     else:
         line = top
-    if dev_mode:
-        line = f"{DEV_MODE} · {line}" if line else DEV_MODE
     return line[:MAX_STATUS]
 
 
@@ -172,7 +170,7 @@ async def current_line(items: list | None = None, now: datetime | None = None) -
     now = now or clock.now()
     items = await _items(now) if items is None else items
     top = attention.status_line(attention.top(items, now))
-    return status_line(DEV_DATABASE, clock.offset(), top, devmode.enabled, SELFTEST_BACK, _progress)
+    return status_line(DEV_DATABASE, clock.offset(), top, SELFTEST_BACK, _progress)
 
 
 def _wait_for(when: datetime | None, now: datetime) -> None:
