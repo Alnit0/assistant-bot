@@ -1891,7 +1891,8 @@ with the bot: it is for working on this repository.
 - **`scripts\notify.ps1`** posts to `https://ntfy.sh/<topic>`:
   `-Kind finished` is "✅ Claude Code finished" (with the first line
   of the summary), `-Kind waiting` is "⏸️ Claude Code needs you"; both
-  are priority 5. It says nothing and exits 0 whatever goes wrong.
+  are priority 5, and priority 2 (quiet) between 10:00 pm and 7:00 am.
+  The hours are `NTFY_QUIET_HOURS=22:00-07:00` in `.env.notify`. It says nothing and exits 0 whatever goes wrong.
 - **The hooks** are in `.claude\settings.local.json` (this machine
   only, ignored by git): `Stop` for finished; `Notification` for a
   permission prompt, and `PreToolUse` on a question, for waiting.

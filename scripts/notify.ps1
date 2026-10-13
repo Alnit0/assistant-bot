@@ -1,8 +1,12 @@
 # Phone notifications for Claude Code, through ntfy (https://ntfy.sh).
 #
 # Run by the hooks in .claude/settings.local.json:
-#   -Kind finished   Claude Code has finished a response   (priority 5)
-#   -Kind waiting    Claude Code is waiting for you        (priority 5)
+#   -Kind finished   Claude Code has finished a response
+#   -Kind waiting    Claude Code is waiting for you
+#
+# Both are priority 5, and priority 2 (quiet: no sound) between 10:00 pm and
+# 7:00 am. The hours are a setting in .env.notify, on the 24-hour clock:
+#   NTFY_QUIET_HOURS=22:00-07:00
 #
 # The topic is NTFY_TOPIC in .env.notify, beside this folder. It is a secret:
 # it is never printed, logged or put in the command line. Whatever goes wrong
@@ -35,6 +39,21 @@ try {
     }
     if (-not $topic) { exit 0 }
 
+    # Quiet hours: from-to on the 24-hour clock, by this PC's clock. Over midnight when "from" is the later
+    $quietFrom = [TimeSpan]::Parse('22:00')
+    $quietTo = [TimeSpan]::Parse('07:00')
+    foreach ($line in [System.IO.File]::ReadAllLines($file)) {
+        if ($line -match '^\s*NTFY_QUIET_HOURS\s*=\s*"?(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})"?\s*$') {
+            $quietFrom = [TimeSpan]::Parse($Matches[1])
+            $quietTo = [TimeSpan]::Parse($Matches[2])
+        }
+    }
+    $clock = (Get-Date).TimeOfDay
+    if ($quietFrom -le $quietTo) { $quiet = ($clock -ge $quietFrom) -and ($clock -lt $quietTo) }
+    else { $quiet = ($clock -ge $quietFrom) -or ($clock -lt $quietTo) }
+    $loud = '5'
+    if ($quiet) { $loud = '2' }
+
     # What the hook was told, as JSON on standard input (nothing, when run by hand)
     $told = $null
     try {
@@ -51,12 +70,12 @@ try {
 
     if ($Kind -eq 'waiting') {
         $title = [char]::ConvertFromUtf32(0x23F8) + [char]::ConvertFromUtf32(0xFE0F) + ' Claude Code needs you'
-        $priority = '5'
+        $priority = $loud
         $body = 'Waiting for you.'
         if ($told -and $told.message) { $body = [string]$told.message }
     } else {
         $title = [char]::ConvertFromUtf32(0x2705) + ' Claude Code finished'
-        $priority = '5'
+        $priority = $loud
         $body = 'Finished.'
         if ($told -and $told.last_assistant_message) {
             # The first line of the summary that says something, without its Markdown
