@@ -320,6 +320,9 @@ async def _run(user_id: int) -> tuple[datetime | None, int]:
             log.info("Pills reminders: dose %s missed after %s reminders", dose.occurrence.id, REMINDERS)
         elif what == DROP:
             await _take_down(prompt)
+            if dose.occurrence.state in (occurrences.DONE, occurrences.SKIPPED):
+                # Taken or skipped: if quiet hours had held its reminder back, the briefing lists it no longer
+                await notify.dealt_with(user_id, KIND, str(dose.occurrence.id))
             log.info("Pills reminders: prompt for dose %s taken down (dealt with, or past its time)", dose.occurrence.id)
         if again is not None and (nearest is None or again < nearest):
             nearest = again
@@ -435,6 +438,7 @@ async def _done(press: cards.Press, dose: Dose, did: str, at: datetime, source: 
     after = await checklist.mark(dose, did, at, source)
     await press.remove()
     await database.run(db_forget, dose.occurrence.id)
+    await notify.dealt_with(dose.pill.user_id, KIND, str(dose.occurrence.id))
     await checklist.refresh(press.user.id)
     await run()
     said = checklist.marked_text(after, did)

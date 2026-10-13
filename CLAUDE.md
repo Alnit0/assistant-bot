@@ -396,9 +396,13 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   opens the Discord message
 - Quiet hours (`QUIET_HOURS`, in force only with
   `QUIET_HOURS_ENABLED`) are the notify service's and nobody else's:
-  in them only level 1 of the ranking notifies; the rest is posted
-  without a sound, never pushed, and kept (`held_alerts`) for the
-  briefing to list. A task never reads the quiet hours itself
+  in them an alert of any level is posted without a sound, never
+  pushed, and kept (`held_alerts`) for the briefing to list until its
+  task says it is dealt with (`notify.dealt_with`). The one way
+  through is a kind marked `through` in the table: a pill reminder
+  always notifies, with its sound. A level 1 alert, when there is
+  one, is held like the rest. A task never reads the quiet hours
+  itself
 - Notifications stay in the server. A DM the bot sends by itself, and
   a push, is a short pointer with a link: no content, buttons or
   actions

@@ -43,14 +43,19 @@ low priority, nothing dropped without a reason.
 
 ### Soon
 
-- **Level 1 problems as alerts** (not asked for yet): a job that did
-  not work or the bot's memory use is on the status line, in the
-  briefing and in its bug, but nothing pings for it. With the notify
-  service (`core/notify.py`) it would be one more kind in its table.
+- **Level 1 problems as alerts** (later, said 2026-10-13): a job
+  that did not work or the bot's memory use is on the status line, in
+  the briefing and in its bug, but nothing pings for it. With the
+  notify service (`core/notify.py`) it would be one more kind in its
+  table. **When built, level 1 pings respect quiet hours** (the kind
+  is not marked `through`: built so already).
   Also there, as an option: the dev bot as an always-on caretaker
   that reads only live's health (`docs/specs/attention.md`, section 8).
-- **Where each kind of alert goes, as a setting** rather than the
-  table in `core/notify.py`, if changing it should not need the code.
+- **Changing where an alert goes by words, with a card** (said
+  2026-10-13): "send pill reminders to my phone only" shows a confirm
+  card (`where · both → ntfy`) and Save changes it. The table stays in
+  the code (`KINDS` in `core/notify.py`) as the default; what I change
+  would be a row over it.
 - **The offline card in the new look** ("I was offline when you sent
   this"): plain for now, to follow `CARDS_V2` (said 2026-10-13).
 - **A routine's steps by words** (asked 2026-10-13, later): change

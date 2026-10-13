@@ -274,8 +274,9 @@ WEEKLY_SUMMARY = flag(os.getenv("WEEKLY_SUMMARY"), False)
 # printed or logged). Off, or with no topic, nothing is pushed and Discord notifies as ever
 NOTIFY_NTFY = flag(os.getenv("NOTIFY_NTFY"), False)
 NTFY_BOT_TOPIC = (os.getenv("NTFY_BOT_TOPIC") or "").strip()
-# Quiet hours in force: in QUIET_HOURS only level 1 notifies, the rest is posted without a
-# sound and listed by the morning's briefing. Off unless switched on: off, nothing is held
+# Quiet hours in force: in QUIET_HOURS an alert is posted without a sound and listed by the
+# morning's briefing, unless its kind gets through (a pill reminder: core/notify.py). Off
+# unless switched on: off, nothing is held
 QUIET_HOURS_ENABLED = flag(os.getenv("QUIET_HOURS_ENABLED"), False)
 # Direct messages to live (core/dms.py): with it on, a direct message from the owner is
 # read like #inbox, answered silently, and never with a pill's name in a first line

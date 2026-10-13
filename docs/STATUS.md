@@ -11,9 +11,9 @@ session; the end-of-task checklist updates it at the end of every task.
 nothing merged). Self-tests as the dev bot with live left up: two
 runs, US$0.33 in all (after direct messages: 113 of 113, US$0.17,
 real requests; at the end, the full run: 113 of 113, US$0.17, real requests). The month's
-self-test spend is US$1.66 of US$2.00. Live was restarted once at
-the end with `NIGHTLY_SELFTEST=true` and `REMINDERS_ENABLED=true`;
-every other switch is off.**
+self-test spend is US$1.66 of US$2.00. On live:
+`REMINDERS_ENABLED`, `NIGHTLY_SELFTEST` and, since 2026-10-13,
+`QUIET_HOURS_ENABLED`; every other switch is off.**
 
 To read first: `docs/REVIEW.md` (the branch since `main`: what you
 would notice, what changed underneath, the risks) and
@@ -21,52 +21,32 @@ would notice, what changed underneath, the risks) and
 questions of its own about which calendar, sync and permissions:
 nothing can be built until 1, 3 and 4 there are answered).
 
-Decided without you, all of it things you would see, so say what to
-change:
+Answered on 2026-10-13: quiet hours are on
+(`QUIET_HOURS_ENABLED=true`), and a pill reminder always gets through
+them, with its sound (built: a kind says so in the table, and nothing
+else does); the alert table stays in the code, and changing where an
+alert goes by words, with a card, is in the backlog; "Reminder" is the
+title; a level 1 ping is for later, and when built it respects quiet
+hours (the service holds it already); a held-back line leaves the
+briefing once it is dealt with (built: a task says so, and a dose
+taken or skipped does); items 3 and 4 as one commit is fine. The
+calendar questions are still to answer (`docs/specs/calendar.md`,
+section 12). **Nothing is sent to ntfy by the bot**: `NOTIFY_NTFY` is
+off and `NTFY_BOT_TOPIC` unset, and stays so until you say.
 
-- **Quiet hours are built but off** (`QUIET_HOURS_ENABLED`). You said
-  only level 1 pings between 10:00 pm and 6:00 am and the rest waits
-  for the briefing. Built exactly so, a pill reminder then stays
-  silent: it is posted in the hub with its buttons, reminded three
-  times without a sound, and the dose is missed. Reminders went on
-  today, so I did not switch that on by myself. Which do you want:
-  (a) on as built; (b) on, but a pill reminder always gets through;
-  (c) on, with the hours starting after your last dose; (d) off?
-- **Items 3 and 4 are one commit**, not two: a ping's level and where
-  it goes are the same few lines.
-- **Where each kind of alert goes is a table in the code** (`KINDS`
-  in `core/notify.py`), with pill reminders set to both. That is "one
-  place", but changing it means editing a file. Rather a line in
-  `.env`?
-- **What the phone shows**: the title "Reminder" and under it "💊
-  Routine due · 12:00 pm" (the line the hub shows first; "· reminder 1
-  of 3" on the later ones). Loudness: ntfy priority 4 for something
-  due, 5 for something wrong, 3 for anything else. Say if the title
-  should be something else.
-- **To turn the phone alerts on**: add `NTFY_BOT_TOPIC=<topic>` and
-  `NOTIFY_NTFY=true` to `.env`, subscribe to the topic in the ntfy
-  app, restart live. I left both unset. The push itself has only been
-  tested offline: the dev bot never pushes, so a self-test can not
-  reach your phone. The first real one is yours to check (QA-RUN
-  block 53), and so is whether **tapping it opens the Discord app at
-  the reminder** (the link is the ordinary
-  `discord.com/channels/…` one).
-- **A push that fails is only logged**, not said in #bot-log. With a
-  kind set to both, Discord has notified anyway.
-- **Nothing pings for a level 1 problem yet** (a job that did not
-  work, memory): it is on the status line, in the briefing and in its
-  bug. You did not ask for it, so I did not add it; it would be one
-  more line in the table (in the backlog).
-- **The briefing** (behind `BRIEFING_ENABLED`, off on live): on top a
-  red box "⚠️ Needs a look" with the same words as the status line
-  ("⚠️ B14 · backup failed"); then a grey box "🌙 Held back
-  overnight" with each held alert in its neutral words ("💊 Routine
-  due · 10:30 pm · 2 times") and a small line saying the hours; then
-  the sections, the task with the most urgent thing first. Only pills
-  hands in attention items today, so the sections' order is what it
-  was. Decided: held lines stay all day, also once dealt with (the
-  core can not know what became of them: the pills section says
-  that); a problem alone is now enough for a briefing to be posted.
+Still yours to check, from that batch:
+
+- **The first real push** has never been sent: only offline tests
+  cover it (the dev bot never pushes). When you turn it on, QA-RUN
+  block 53 has what to look for, with whether tapping it opens the
+  Discord app at the reminder.
+- **The briefing's two new boxes** (behind `BRIEFING_ENABLED`, off on
+  live): "⚠️ Needs a look" on top in red, with the status line's
+  words; "🌙 Held back overnight" in grey under it. With pill
+  reminders getting through, nothing is held today, so the second box
+  will not show until another kind of alert exists. A problem alone
+  is enough for a briefing to be posted.
+- **A push that fails is only logged**, not said in #bot-log.
 - **Direct messages (item 2)**: I found no earlier spec for them in
   the repo, so they are built from the four points in the batch
   message. The neutral first line is the task's own ("💊 Pills").

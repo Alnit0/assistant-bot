@@ -138,11 +138,13 @@ A short log of key decisions and why. Newest at the bottom.
   link that opens the server message. Content, buttons and history
   stay in the server. Where a kind of alert goes is one table in
   `core/notify.py`, never a task's own choice.
-- **Quiet hours belong to the notify service (2026-10-13):** only
-  level 1 of the one ranking notifies in them; the rest is posted
-  silently and listed by the morning's briefing. Behind
-  `QUIET_HOURS_ENABLED`, off, because pill reminders are on and a dose
-  late in the evening would otherwise go by without a sound.
+- **Quiet hours belong to the notify service (2026-10-13):** in them an alert is posted silently and listed by the
+  morning's briefing until it is dealt with. What gets through is a
+  matter of its kind, not its level: a pill reminder always does, with
+  its sound, and nothing else, a level 1 problem included (when one
+  pings at all). First built as "only level 1 notifies": that would
+  have let a dose late in the evening go by without a sound. Behind
+  `QUIET_HOURS_ENABLED`, on on live.
 - **A direct message I start is a conversation, behind a switch
   (2026-10-13):** with `DMS_ENABLED` live reads my direct messages as
   it reads #inbox. This does not change the rule above for what the

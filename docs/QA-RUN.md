@@ -977,7 +977,9 @@ the member list.
 
 Needs `NTFY_BOT_TOPIC` in `.env` (a topic of the bot's own, subscribed
 to in the ntfy app) and `NOTIFY_NTFY=true`, then a restart of live.
-Rows 5 to 7 need `QUIET_HOURS_ENABLED=true`, row 8 `BRIEFING_ENABLED`.
+Quiet hours are on (`QUIET_HOURS_ENABLED=true`); row 8 needs
+`BRIEFING_ENABLED`. Rows 2 to 4 need the phone alerts on: until then
+check rows 1, 5 and 7 with Discord's own notification.
 
 | # | Do | Expect | Tests |
 |---|---|---|---|
@@ -985,9 +987,9 @@ Rows 5 to 7 need `QUIET_HOURS_ENABLED=true`, row 8 `BRIEFING_ENABLED`.
 | 2 | Turn `NOTIFY_NTFY` on, restart, wait for a dose to fall due | A push titled "Reminder" reading "💊 Routine due · 12:00 pm": no pill's name on the lock screen. Discord notifies too | R93, K40 |
 | 3 | Tap the push | Discord opens at the reminder, with its buttons | K40 |
 | 4 | Leave it: the first reminder after 15 minutes | A second push, "… · reminder 1 of 3" | R93 |
-| 5 | With quiet hours on, a dose due after 10:00 pm | The reminder is in the hub with its buttons, but nothing sounds and nothing is pushed | K41, R94 |
-| 6 | The next morning, look at the briefing | "🌙 Held back overnight" with "💊 Routine due · 10:30 pm" and how often it was asked for, above the sections | K41, R94 |
-| 7 | With quiet hours on, a dose due at noon | It notifies as in row 2: only the night is quiet | K41 |
+| 5 | A dose due after 10:00 pm | The reminder notifies with its sound, as by day: a pill reminder always gets through quiet hours | K41, R94 |
+| 6 | The next morning, look at the briefing | No "🌙 Held back overnight" box for it: nothing was held (nothing else pings yet, so the box has nothing to show today) | K41, R94 |
+| 7 | A dose due at noon | It notifies as ever | K41 |
 | 8 | With a job that did not work (its bug is open), look at the briefing and the status line | The briefing has "⚠️ Needs a look" on top with the same words as the status line ("⚠️ B14 · backup failed") | K42 |
 
 ## 54. Direct messages to live (waiting for QA)

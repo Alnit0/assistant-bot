@@ -14,11 +14,19 @@ from core.actions import Summary
 from tasks import briefing
 from tasks.briefing import rules
 from tasks.pills import reminders
-from tests.test_pills_reminders import EVENING, HUB, NOTICE, PILL_A, add, at, notices, run, world  # noqa: F401
+from tests.test_pills_reminders import EVENING, HUB, NOTICE, PILL_A, add, at, notices, press, run, world  # noqa: F401
 
 TOPIC = "a-made-up-topic-for-tests"
 LATE = {"name": "Late pill", "times": ["10:30 pm"]}
 NZ = config.TIMEZONE
+
+
+@pytest.fixture(autouse=True)
+def as_with_nothing_set(monkeypatch):
+    """The switches as they are with nothing in .env, whatever this PC's own .env says."""
+    monkeypatch.setattr(config, "QUIET_HOURS_ENABLED", False)
+    monkeypatch.setattr(config, "NOTIFY_NTFY", False)
+    monkeypatch.setattr(config, "NTFY_BOT_TOPIC", "")
 
 
 @pytest.fixture
@@ -149,34 +157,58 @@ def test_quiet_hours_run_over_midnight(monkeypatch):
     assert not notify.quiet(moment(6, 0)), "from and to the same: no quiet hours"
 
 
-def test_only_level_one_notifies_in_quiet_hours_and_only_with_the_switch_on(monkeypatch):
-    night = moment(23, 0)
+NOTE = "test.note"  # a kind that quiet hours hold, as every kind but a pill reminder is
+
+
+@pytest.fixture
+def night(monkeypatch):
+    """Quiet hours in force, 10:00 pm to 6:00 am, and a kind of alert they hold."""
     monkeypatch.setattr(config, "QUIET_HOURS", (time(22, 0), time(6, 0)))
-    monkeypatch.setattr(config, "QUIET_HOURS_ENABLED", False)
-    assert not notify.holds(attention.LEVEL_DUE, night), "off, nothing is held: everything notifies as it always did"
     monkeypatch.setattr(config, "QUIET_HOURS_ENABLED", True)
-    assert notify.holds(attention.LEVEL_DUE, night) and notify.holds(attention.LEVEL_NEXT, night) and notify.holds(attention.LEVEL_USEFUL, night)
-    assert not notify.holds(attention.LEVEL_PROBLEM, night), "something wrong that needs me still notifies"
-    assert not notify.holds(attention.LEVEL_DUE, moment(12, 0)), "by day nothing is held"
+    monkeypatch.setitem(notify.KINDS, NOTE, notify.Kind("Note", notify.BOTH))
+
+
+def test_in_quiet_hours_everything_is_held_but_a_kind_that_gets_through_and_only_with_the_switch_on(monkeypatch, night):
+    late = moment(23, 0)
+    assert notify.KINDS["pills.reminder"].through, "a pill reminder always gets through, with its sound"
+    assert notify.holds(NOTE, late) and not notify.holds("pills.reminder", late)
+    assert notify.holds("nobody.knows", late), "a kind that is not listed is held like any other"
+    assert not notify.holds(NOTE, moment(12, 0)), "by day nothing is held"
     monkeypatch.setattr(devmode, "quiet_hours_ignored", lambda: True)
-    assert not notify.holds(attention.LEVEL_DUE, night), "dev mode can say to ignore quiet hours"
+    assert not notify.holds(NOTE, late), "dev mode can say to ignore quiet hours"
+    monkeypatch.setattr(devmode, "quiet_hours_ignored", lambda: False)
+    monkeypatch.setattr(config, "QUIET_HOURS_ENABLED", False)
+    assert not notify.holds(NOTE, late), "off, nothing is held: everything notifies as it always did"
 
 
-def test_what_is_held_is_posted_without_a_sound_never_pushed_and_kept_for_the_morning(world, phone, monkeypatch):
-    monkeypatch.setattr(config, "QUIET_HOURS", (time(22, 0), time(6, 0)))
-    monkeypatch.setattr(config, "QUIET_HOURS_ENABLED", True)
+def test_what_is_held_is_posted_without_a_sound_never_pushed_and_kept_for_the_morning(world, phone, night):
     clock.advance_to(day.at(world.day, time(22, 30)))
-    post(line="💊 Routine due · 10:30 pm", key="dose-1")
+    post(NOTE, line="📅 Event · 10:30 pm", key="event-1")
     assert world.sent[-1].silent is True and phone == [], "nothing sounds and nothing is pushed"
     clock.advance_to(day.at(world.day, time(22, 45)))
-    post(line="💊 Routine due · 10:30 pm · reminder 1 of 3", key="dose-1")
-    post(line="⚠️ Something needs a look", item=Item("backup failed", PROBLEM), key="backup")
-    assert world.sent[-1].silent is False and len(phone) == 1, "level 1 is never held"
+    post(NOTE, line="📅 Event · 10:30 pm · again", key="event-1")
+    post(NOTE, line="⚠️ Something needs a look", item=Item("backup failed", PROBLEM), key="backup")
+    assert world.sent[-1].silent is True and phone == [], "something wrong is held too: level 1 respects quiet hours"
+    post(line="💊 Routine due · 10:45 pm", key="dose-1")
+    assert world.sent[-1].silent is False and len(phone) == 1, "a pill reminder gets through, with its sound and its push"
     morning = world.day + timedelta(days=1)
-    (held,) = run(notify.held_overnight(world.owner.id, morning))
-    assert (held.kind, held.line, held.times) == ("pills.reminder", "💊 Routine due · 10:30 pm", 2), "asked for again for the same thing, it is one line"
+    first, second = run(notify.held_overnight(world.owner.id, morning))
+    assert (first.kind, first.line, first.times) == (NOTE, "📅 Event · 10:30 pm", 2), "asked for again for the same thing, it is one line"
+    assert second.line == "⚠️ Something needs a look"
     assert run(notify.held_overnight(world.owner.id, world.day)) == [], "the night before held nothing"
     assert run(notify.held_overnight(2, morning)) == [], "only mine"
+
+
+def test_what_is_dealt_with_is_no_longer_listed(world, phone, night):
+    told = []
+    attention.on_change(lambda: told.append(1))
+    clock.advance_to(day.at(world.day, time(23, 0)))
+    post(NOTE, key="a")
+    post(NOTE, key="b")
+    morning = world.day + timedelta(days=1)
+    assert run(notify.dealt_with(world.owner.id, NOTE, "a")) is True and told == [1], "whoever lists them is told to look again"
+    assert [each.times for each in run(notify.held_overnight(world.owner.id, morning))] == [1]
+    assert run(notify.dealt_with(world.owner.id, NOTE, "a")) is False and told == [1], "nothing was held under that: nothing to say"
 
 
 def test_overnight_is_the_quiet_hours_that_ended_that_morning(monkeypatch):
@@ -187,12 +219,11 @@ def test_overnight_is_the_quiet_hours_that_ended_that_morning(monkeypatch):
     assert notify.window(date(2026, 10, 14)) == (moment(1, 0), moment(5, 0))
 
 
-def test_what_was_held_is_forgotten_after_a_week(world, phone, monkeypatch):
-    monkeypatch.setattr(config, "QUIET_HOURS_ENABLED", True)
+def test_what_was_held_is_forgotten_after_a_week(world, phone, night):
     clock.advance_to(day.at(world.day, time(23, 0)))
-    post(key="old")
+    post(NOTE, key="old")
     clock.advance_to(day.at(world.day + timedelta(days=8), time(23, 0)))
-    post(key="new")
+    post(NOTE, key="new")
 
     def keys(conn):
         return [row[0] for row in conn.execute("SELECT key FROM held_alerts")]
@@ -204,11 +235,7 @@ def test_what_was_held_is_forgotten_after_a_week(world, phone, monkeypatch):
 def test_a_pill_reminder_reaches_the_phone_as_the_neutral_line_and_never_names_the_pill(world, phone):
     add(world, PILL_A)
     at(world, 8, 0)
-
-    async def settled():
-        await notify.settle()
-
-    run(settled())
+    run(notify.settle())
     assert notices(world) == ["💊 Routine due · 8:00 am"]
     (request,) = phone
     title, body, click, priority = said(request)
@@ -216,21 +243,39 @@ def test_a_pill_reminder_reaches_the_phone_as_the_neutral_line_and_never_names_t
     assert click.endswith(f"/{HUB}/{world.sent[-1].id}"), "the tap opens the reminder itself"
 
 
-def test_a_pill_reminder_in_quiet_hours_is_held_and_the_briefing_lists_it_in_the_morning(world, phone, monkeypatch):
-    monkeypatch.setattr(config, "QUIET_HOURS", (time(22, 0), time(6, 0)))
-    monkeypatch.setattr(config, "QUIET_HOURS_ENABLED", True)
+def test_a_pill_reminder_in_quiet_hours_gets_through_with_its_sound(world, phone, night):
     add(world, LATE)
     at(world, 22, 30)
-    held = [each for each in world.sent if each.card.text.startswith(NOTICE)]
-    assert [each.silent for each in held] == [True] and phone == [], "posted, with its buttons, and nothing sounds"
-    at(world, 22, 45)
+    run(notify.settle())
+    assert [each.silent for each in world.sent if each.card.text.startswith(NOTICE)] == [False], "it sounds in Discord"
+    assert [said(each)[1] for each in phone] == ["💊 Routine due · 10:30 pm"], "and on the phone"
+    assert run(notify.held_overnight(world.owner.id, world.day + timedelta(days=1))) == [], "nothing of it is held"
+
+
+def test_the_briefing_lists_what_was_held_overnight_until_it_is_dealt_with(world, phone, night):
+    add(world, PILL_A)
+    clock.advance_to(day.at(world.day, time(22, 30)))
+    post(NOTE, line="📅 Event · 10:30 pm", key="event-1")
+    post(NOTE, line="📅 Event · 10:30 pm", key="event-1")
     clock.advance_to(day.at(world.day + timedelta(days=1), time(6, 0)))
     run(scheduler.run_all_due())  # the day turns over: the new day's doses are there
-    shown = run(briefing.card_for(world.owner.id))
-    lines = shown.text.splitlines()
-    assert rules.HELD in lines and "💊 Routine due · 10:30 pm · 2 times" in lines, "what was held back, in its neutral words"
+    lines = run(briefing.card_for(world.owner.id)).text.splitlines()
+    assert rules.HELD in lines and "📅 Event · 10:30 pm · 2 times" in lines, "what was held back, in its neutral words"
     assert "-# quiet hours (10:00 pm to 6:00 am): posted without a sound" in lines
     assert lines.index(rules.HELD) < next(at for at, line in enumerate(lines) if "**Pills**" in line), "before the sections"
+    run(notify.dealt_with(world.owner.id, NOTE, "event-1"))
+    assert rules.HELD not in run(briefing.card_for(world.owner.id)).text, "dealt with: it is dropped, and the box with it"
+
+
+def test_a_held_pill_reminder_is_dropped_when_its_dose_is_taken(world, phone, night, monkeypatch):
+    # If pill reminders were ever set to be held, taking the dose is what deals with the line
+    monkeypatch.setitem(notify.KINDS, "pills.reminder", notify.Kind("Reminder", notify.BOTH))
+    add(world, LATE)
+    at(world, 22, 30)
+    morning = world.day + timedelta(days=1)
+    assert [each.line for each in run(notify.held_overnight(world.owner.id, morning))] == ["💊 Routine due · 10:30 pm"]
+    press(world, reminders.P_TAKEN)
+    assert run(notify.held_overnight(world.owner.id, morning)) == []
 
 
 def test_with_quiet_hours_off_a_late_reminder_notifies_as_it_always_did(world, phone):

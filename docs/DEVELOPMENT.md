@@ -1925,16 +1925,20 @@ user. Two switches, both off unless set in `.env` (then restart live):
     notifies as it always did, whatever the table says.
   - The dev bot never pushes, so a self-test never reaches your phone
     this way.
-- **`QUIET_HOURS_ENABLED=true`**: between the times of `QUIET_HOURS`
-  (10:00 pm to 6:00 am unless set) only something wrong that needs you
-  notifies. Anything else, a pill reminder too, is still posted in the
-  hub with its buttons, but without a sound and with no push, and the
-  morning's briefing lists it under "🌙 Held back overnight" in the
-  same neutral words. Off, nothing is ever held.
+- **`QUIET_HOURS_ENABLED=true`** (on, on live, since 2026-10-13):
+  between the times of `QUIET_HOURS` (10:00 pm to 6:00 am unless set)
+  an alert is still posted, but without a sound and with no push, and
+  the morning's briefing lists it under "🌙 Held back overnight" in
+  the same neutral words, until it is dealt with. **A pill reminder
+  always gets through, with its sound**: its kind says so in the table
+  (`through=True`). Nothing else does, something wrong included. Off,
+  nothing is ever held.
 
 For a new kind of alert: add a line to `KINDS`, and call
 `notify.post(...)` with the attention item it is about in place of
-`cards.send(...)`. Never read the quiet hours or the ntfy settings in a
+`cards.send(...)`. When the thing it was about is dealt with, say so
+(`notify.dealt_with(user_id, kind, key)`): a line held back overnight
+then leaves the briefing. Never read the quiet hours or the ntfy settings in a
 task.
 
 The briefing takes its order from the same ranking as the status line:

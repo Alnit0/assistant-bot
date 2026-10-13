@@ -33,12 +33,16 @@ log = logging.getLogger("assistant")
 #             one line the task posts first, which names nothing of mine. A
 #             line that does name one of my things is not pushed: the title
 #             goes by itself, and the log says so.
-#   level     an alert stands where its item stands in the one ranking. In
-#             quiet hours (QUIET_HOURS, behind QUIET_HOURS_ENABLED) only
-#             level 1 notifies: anything else is still posted, without a
-#             sound and with no push, and is kept as held back, for the
-#             briefing to list in the morning. Asked for again for the same
-#             thing (a reminder of a reminder), it is one line there.
+#   level     an alert stands where its item stands in the one ranking:
+#             that is how loud its push is.
+#   quiet     in quiet hours (QUIET_HOURS, behind QUIET_HOURS_ENABLED) an
+#             alert is held, whatever its level, something wrong included:
+#             still posted, without a sound and with no push, and kept as
+#             held back, for the briefing to list in the morning until its
+#             task says it is dealt with (`dealt_with`). Asked for again
+#             for the same thing, it is one line there. The one way
+#             through is a kind that says so in the table (`through`):
+#             a pill reminder always notifies, with its sound.
 #
 # Only live pushes: the dev bot never does, so a self-test never reaches my
 # phone through here. A push that fails is logged and nothing else: with a
@@ -51,15 +55,16 @@ WHERE = (DISCORD, NTFY, BOTH)
 @dataclass(frozen=True)
 class Kind:
     """One kind of alert: what the phone shows as its title (fixed, neutral
-    words) and where it goes."""
+    words), where it goes, and whether it gets through quiet hours."""
 
     title: str
     where: str = DISCORD
+    through: bool = False  # notifies in quiet hours too, with its sound
 
 
-# The one place: every kind of alert, and where it goes
+# The one place: every kind of alert, where it goes, and whether quiet hours hold it
 KINDS: dict[str, Kind] = {
-    "pills.reminder": Kind("Reminder", BOTH),
+    "pills.reminder": Kind("Reminder", BOTH, through=True),
 }
 UNLISTED = Kind("Alert", DISCORD)
 
@@ -107,13 +112,13 @@ def quiet(now: datetime) -> bool:
     return start <= local < end if start < end else local >= start or local < end
 
 
-def holds(rank: int | None, now: datetime) -> bool:
-    """Whether an alert at this level is held back now: in quiet hours only
-    level 1 notifies. Never with the switch off, or while dev mode says to
-    ignore quiet hours."""
+def holds(name: str, now: datetime) -> bool:
+    """Whether an alert of this kind is held back now: in quiet hours every
+    kind is, at any level, but one the table lets through. Never with the
+    switch off, or while dev mode says to ignore quiet hours."""
     if not config.QUIET_HOURS_ENABLED or devmode.quiet_hours_ignored():
         return False
-    return rank != attention.LEVEL_PROBLEM and quiet(now)
+    return quiet(now) and not kind(name).through
 
 
 def window(day: date) -> tuple[datetime, datetime]:
@@ -153,10 +158,24 @@ def db_held(conn: sqlite3.Connection, user_id: int, since: datetime, until: date
 
 
 async def held_overnight(user_id: int, day: date) -> list[Held]:
-    """What quiet hours held back in the night that ended on this day, the
-    earliest first. Read only."""
+    """What quiet hours held back in the night that ended on this day and is
+    not dealt with yet, the earliest first. Read only."""
     since, until = window(day)
     return await database.run(db_held, user_id, since, until)
+
+
+def db_dealt_with(conn: sqlite3.Connection, user_id: int, name: str, key: str) -> int:
+    return conn.execute("DELETE FROM held_alerts WHERE user_id = ? AND kind = ? AND key = ?", (user_id, name, key)).rowcount
+
+
+async def dealt_with(user_id: int, name: str, key: str) -> bool:
+    """A task says the thing an alert was about is dealt with (a dose taken
+    or skipped): if it was held back, it is no longer listed. True if one
+    was. Whoever lists them is told to look again."""
+    gone = await database.run(db_dealt_with, user_id, name, key)
+    if gone:
+        attention.changed()
+    return bool(gone)
 
 
 # --- the push ---------------------------------------------------------------------------------------------------------
@@ -229,7 +248,7 @@ async def post(
     now = clock.now()
     # An alert is a thing whose time has come: one the ranking would not place (its day is over) stands as due
     rank = attention.level(item, now) or attention.LEVEL_DUE
-    held = holds(rank, now)
+    held = holds(name, now)
     by_push = pushes(name) and not held
     silent = held or (by_push and kind(name).where == NTFY)
     message_id = await cards.send(channel_id, card, silent=silent)

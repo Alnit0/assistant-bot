@@ -75,7 +75,12 @@ listed with whether live has it on today.
 | `WEEKLY_SUMMARY` | On Sunday at 7:00 pm, the week's pills in the hub |
 | `DMS_ENABLED` | You can talk to live in a direct message as in #inbox: only you, silent replies, never a pill's name in a first line |
 | `NOTIFY_NTFY` | Alerts pushed to your phone through ntfy as well as Discord, neutral words only; tapping opens the Discord message. Needs `NTFY_BOT_TOPIC` |
-| `QUIET_HOURS_ENABLED` | Between 10:00 pm and 6:00 am only something wrong pings; the rest is posted without a sound and listed in the morning's briefing |
+
+`QUIET_HOURS_ENABLED` is **on** since 2026-10-13: between 10:00 pm and
+6:00 am an alert is posted without a sound and listed in the morning's
+briefing until it is dealt with. A pill reminder always gets through,
+with its sound, and it is the only thing that pings today, so nothing
+you would notice has changed yet.
 
 `NIGHTLY_SELFTEST` is **on** in `.env` from tonight's restart: at
 3:00 am the dev bot runs the stages that changed (everything on
@@ -183,10 +188,10 @@ fails; nothing runs on a night with no new commits.
    guards: one prompt a dose, nothing after a pill's latest time, the
    state in the database, and a late start catches up without posting
    twice.
-6. **Quiet hours would silence late doses.** With
-   `QUIET_HOURS_ENABLED` on, a pill due at 10:30 pm is posted without a
-   sound and then missed after its reminders. That is why it is off
-   and a question (see `docs/STATUS.md`).
+6. **Quiet hours hold everything but a pill reminder.** That is one
+   word in the table (`through`) for each kind: a future kind that
+   must wake you (an early flight) has to be marked, or it waits for
+   the briefing.
 7. **ntfy is someone else's server.** A push carries only neutral
    words and a link, but the topic is the only secret: anyone who
    learns it can read and send. A failed push is logged and nothing
@@ -211,7 +216,7 @@ fails; nothing runs on a night with no new commits.
     not yet used.
 12. **Timers are frozen** as a proof of concept and may be scrapped;
     they still run and are still tested.
-13. **Switch combinations.** Seven switches off on live means the
+13. **Switch combinations.** Six switches off on live means the
     combination live runs is the best tested one; turning several on
     together (the briefing, the tidy and the new look) has been
     self-tested on the dev bot but not lived with.
