@@ -1,4 +1,5 @@
 import logging
+from dataclasses import replace
 from datetime import date, datetime, time, timedelta
 
 from core import cards, clock, config, database, discord_utils, hub, lifecycle, live, llm, messages, occurrences, restart, scheduler, summaries, timeinput, timetable
@@ -94,6 +95,41 @@ async def view(user_id: int, day: date | None = None) -> tuple[list[Pill], list[
     now = clock.now()
     day = day or days.today(now)
     pills, found = await database.run(db_sync, user_id, day, now)
+    return pills, today.doses(pills, found, day), day
+
+
+def as_it_stands(pills: list[Pill], found: list[Occurrence], day: date, now: datetime) -> list[Occurrence]:
+    """The day's rows with what `db_settle` would write worked out and not
+    written: a dose that can no longer be taken reads skipped or missed."""
+    by_pill: dict[int, dict[int, Occurrence]] = {}
+    for occurrence in found:
+        by_pill.setdefault(occurrence.item_id, {})[occurrence.seq] = occurrence
+    now_reads: dict[int, Occurrence] = {}
+    for pill in pills:
+        mine = by_pill.get(pill.id)
+        if not mine or not rules.is_taken_on(pill, day):
+            continue
+        for number, (state, reason) in limits.outcomes(pill.plan.schedule, day, mine, now).items():
+            dose = mine[number]
+            if state != dose.state:
+                now_reads[dose.id] = replace(dose, state=state, reason=reason if state == SKIPPED else dose.reason, automatic=state == SKIPPED or dose.automatic)
+    return [now_reads.get(each.id, each) for each in found]
+
+
+def db_read(conn, user_id: int, day: date, now: datetime) -> tuple[list[Pill], list[Occurrence]]:
+    """The pills and the day's doses, and nothing written: no row is made and
+    none is changed. The rows are made by the end of the day before
+    (`new_day`) and by whatever shows or changes the checklist."""
+    pills = store.db_pills(conn, user_id)
+    found = occurrences.db_for_day(conn, user_id, TASK, day)
+    return pills, as_it_stands(pills, found, day, now) if day == days.day_of(now) else found
+
+
+async def read(user_id: int, day: date | None = None) -> tuple[list[Pill], list[Dose], date]:
+    """As `view`, for something that may only read (a summary)."""
+    now = clock.now()
+    day = day or days.today(now)
+    pills, found = await database.run(db_read, user_id, day, now)
     return pills, today.doses(pills, found, day), day
 
 
@@ -484,5 +520,10 @@ async def close_past() -> None:
 
 
 async def new_day(ended: date, started: date) -> None:
-    """A day has ended (core/day.py): close it."""
+    """A day has ended (core/day.py): close it, and make the rows of the day
+    that has begun, so what only reads (the briefing's summary) finds them."""
     await close_past()
+    now = clock.now()
+    for user_id in await database.run(store.db_users):
+        _, found = await database.run(db_sync, user_id, started, now)
+        log.info("Pills, new day %s, user %s: %d dose%s to take", started.isoformat(), user_id, len(found), "" if len(found) == 1 else "s")

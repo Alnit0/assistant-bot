@@ -73,7 +73,7 @@ def discoveries(results: list[dict], trouble: list[tuple[int, str]], seconds: in
     return lines + [""]
 
 
-def text(phases, cost: float, claude: bool, stamp: str, partial: bool = False, began: datetime | None = None, ended: datetime | None = None) -> str:
+def text(phases, cost: float, claude: bool, stamp: str, partial: bool = False, began: datetime | None = None, ended: datetime | None = None, ran: str = "") -> str:
     results = [each for _, _, found in phases for each in found["results"]]
     counts = {status: sum(1 for each in results if each["status"] == status) for status in MARK}
     real = sum(1 for each in results if each.get("claude") == "real request")
@@ -90,7 +90,7 @@ def text(phases, cost: float, claude: bool, stamp: str, partial: bool = False, b
         "see: `docs/DEVELOPMENT.md`, \"The self-test\".",
         "",
         f"**Run:** {stamp[:4]}-{stamp[4:6]}-{stamp[6:8]} {stamp[9:11]}:{stamp[11:13]}, {seconds // 60} min {seconds % 60} s"
-        + (" · **part of the run only**" if partial else ""),
+        + ((f" · **part of the run only: {ran}**" if ran else " · **part of the run only**") if partial else ""),
         f"**Result:** {counts['pass']} passed, {counts['fail']} failed, {counts['error']} broke, {counts['skip']} skipped, of {len(results)} steps",
         f"**Requests to Claude:** {'real for ' + str(real) + ' steps' if claude else 'none real: every language step used a recorded answer'} · US${cost:.4f} spent",
         "",
@@ -126,8 +126,8 @@ def text(phases, cost: float, claude: bool, stamp: str, partial: bool = False, b
     return "\n".join(lines) + "\n"
 
 
-def write(phases, cost: float, claude: bool, stamp: str, partial: bool = False, began: datetime | None = None, ended: datetime | None = None) -> Path:
+def write(phases, cost: float, claude: bool, stamp: str, partial: bool = False, began: datetime | None = None, ended: datetime | None = None, ran: str = "") -> Path:
     path = PATH if not partial else config.DATA_DIR / "selftest" / f"run-{stamp}" / "SELFTEST-partial.md"
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(text(phases, cost, claude, stamp, partial, began, ended).replace("\n", "\r\n").encode("utf-8"))
+    path.write_bytes(text(phases, cost, claude, stamp, partial, began, ended, ran).replace("\n", "\r\n").encode("utf-8"))
     return path

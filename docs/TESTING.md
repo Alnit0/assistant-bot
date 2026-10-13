@@ -37,16 +37,16 @@ Last updated: 2026-10-13
 | G | Timers | 32 | 12 | 20 | 17 | 15 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
 | J | Dev mode | 68 | 19 | 49 | 47 | 21 | 0 | 0 |
-| K | Startup and housekeeping | 32 | 18 | 14 | 12 | 20 | 0 | 0 |
+| K | Startup and housekeeping | 33 | 19 | 14 | 12 | 21 | 0 | 0 |
 | L | Keep | 14 | 6 | 8 | 8 | 6 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
 | P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
-| Q | Time, days, the schedule model, the occurrence log and cards | 19 | 17 | 2 | 2 | 17 | 0 | 0 |
+| Q | Time, days, the schedule model, the occurrence log and cards | 20 | 18 | 2 | 2 | 18 | 0 | 0 |
 | R | Pills | 73 | 21 | 52 | 44 | 29 | 0 | 0 |
-| S | Routing and confirm cards | 74 | 21 | 53 | 18 | 55 | 0 | 1 |
+| S | Routing and confirm cards | 75 | 22 | 53 | 18 | 56 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 4 | 18 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **494** | **175** | **319** | **249** | **244** | **0** | **1** |
+| | **Total** | **497** | **178** | **319** | **249** | **247** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -339,6 +339,7 @@ Any channel. Check the bot's status in the member list.
 | K30 | 👤 Manual | Block 46: a day on the live bot after the scheduler's stage 1 | The 6:00 am checklist once, the 3:00 am backup once, `dev jobs` as described, the status line as before | ⬜ Untested | | Block 46 |
 | K31 | 🤖 Auto | Message lifetimes and the tidy | Off: nothing is recorded or removed, and it joins no routine. On: a message in the hub lasts the day and “kept” there is the day too; elsewhere only what is declared has a row; a newer message in a slot replaces the older at once, the copy written first; my message in the hub and the reply go 2 minutes after the reply, with a card they wait and go when it is saved (the confirmation 2 minutes later), cancelled or expired; one that failed stays until the morning tidy; pinned or 📌 is kept and not tried again; a message with no row is never touched; with the copy not written nothing is deleted and #bot-log is told; one that can't be deleted is tried three times, then left and said once; `dev cleanup off` stops it; a line that reports a change elsewhere goes at the end of its day; the tidy is the routine's first step and says what it did | ✅ Pass | 2026-10-13 | `tests/test_messages.py` |
 | K32 | 👤 Manual | Block 49: the hub with `HUB_TIDY` on | As the block says | ⬜ Untested | | Block 49 |
+| K33 | 🤖 Auto | The pills summary only reads | No row is made and no state is written to answer it: a day with no rows yet says nothing, and a dose that can no longer be taken reads as on the checklist with nothing written; the end of the day makes the new day's rows from the plan (asked twice, no second row), and posts nothing | ✅ Pass | 2026-10-13 | `tests/test_briefing.py`, `tests/test_pills_checklist.py` |
 
 ## L. Keep
 
@@ -452,6 +453,7 @@ manual test uses the dev clock on the dev database (`python main.py --dev`).
 | Q17 | 🤖 Auto | Streaks from the occurrence log (`core/streaks.py`) | Days in a row with something done and nothing missed. Only a missed one breaks it, and the day it was missed doesn't count; a skip never does, by hand or by the bot, whatever its cause; a skipped day, a day with nothing expected and what is still waiting today neither break nor add. The doses of the streak are counted, the longest run is remembered, each pill has its own, and the order of the rows doesn't matter | ✅ Pass | 2026-10-13 | `tests/test_streaks.py`. Not shown anywhere yet |
 | Q18 | 🤖 Auto | A schedule is wall-clock time | 6:00 am is 6:00 am by the wall clock on every day of both changeover weeks; a time that doesn't exist runs once at the moment the clocks jump to; a time that happens twice runs once, at the first, under one key; days of the week, paused until a day, removed, and once a day | ✅ Pass | 2026-10-13 | `tests/test_timetable.py` |
 | Q19 | 🤖 Auto | The engine books and runs schedules | A default becomes a row once and is booked once; a time I changed stays mine and a default I removed is not made again; a locked one follows the code; a run has a key and nothing is booked or run twice, also after a restart; a routine's steps run in order, each recorded, one failing never stops the rest, and after a crash those done are not done again; off for days, only the latest runs and is told how many were passed over; a skip-when-too-late rule sets a run aside and it is said; the dev clock moved ahead is not lateness and moved back frees the real runs; a one-off with a key is booked once; `fire` and `run_now` never block the scheduled run; a job waiting from before schedules is replaced | ✅ Pass | 2026-10-13 | `tests/test_timetable.py` |
+| Q20 | 🤖 Auto | The self-test runs only what a change touches | A changed file touches the stages it can break (docs and tests none, the briefing's and the tidy's own files theirs, another task the day, shared code all three); only stages touched since each last passed are run and one never passed always is; the tidy brings the briefing's start with it; a stage has passed only when every start of it ran with nothing failed; low free memory is said and nothing is started; a stage that does not exist is refused; a run that begins at the briefing makes its own pills with recorded answers | ✅ Pass | 2026-10-13 | `tests/test_selftest.py` |
 
 ## R. Pills
 
@@ -622,6 +624,7 @@ the dev database (`python main.py --dev`), in #inbox.
 | S72 | 👤 Manual | Block 47: `my schedule`, add, move, pause, a name that fits two, the bot's own, remove, and the list in the new look | As the block says | ⬜ Untested | | Block 47 |
 | S73 | 🤖 Auto | A summary in the task contract, and the briefing | A task with a summary is gathered and one with nothing to say left out; one that fails or is slow says so and never stops the others; a summary is kept to three lines; whoever shows summaries is told when one may have changed. Pills: the checklist's own count, the colour of what is still to do, the next dose with a time, how many have none, and yesterday in one line. The briefing, off: nothing of it exists; on: `brief me`, a step of the morning routine in front of the checklist, posted once silently (or as one neutral line written in after), the next taking its place, nothing posted with nothing to say, edited in place when a section changes, brought up to date in the hub and a copy elsewhere | ✅ Pass | 2026-10-13 | `tests/test_briefing.py`, `tests/test_timetable.py` |
 | S74 | 👤 Manual | Block 48: the briefing on the dev database, on and off | As the block says; the look against `briefing-v2` | ⬜ Untested | | Block 48 |
+| S75 | 🤖 Auto | The run log is pruned | A housekeeping run (a card's expiry, a line tidied, the hub's expiry) goes 30 days after it ended and any other after a year; one waiting or running is never touched, whatever its age; asked again nothing more goes; the end of the day asks once a day, and a failure there is said in #bot-log and does not stop the day | ✅ Pass | 2026-10-13 | `tests/test_timetable.py` |
 
 ## T. Tasks in plain words
 

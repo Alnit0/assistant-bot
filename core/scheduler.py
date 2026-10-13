@@ -289,14 +289,47 @@ def _db_troubled(conn: sqlite3.Connection) -> list[tuple[str, str, str]]:
 
 
 # ---------------------------------------------------------------------------
+# The run log does not grow for ever
+# ---------------------------------------------------------------------------
+KEEP_HOUSEKEEPING = timedelta(days=30)
+KEEP_RUNS = timedelta(days=365)
+_housekeeping: set[tuple[str, str]] = set()
+
+
+def _db_prune(conn: sqlite3.Connection, now: datetime, housekeeping: set[tuple[str, str]]) -> tuple[int, int]:
+    """Take out the runs that ended long ago: a housekeeping run after 30
+    days, any other after a year. One that is waiting or running is never
+    touched, whatever its age. Returns how many of each went."""
+    ended = "status NOT IN (?, ?) AND COALESCE(finished_at, due_at) < ?"
+    small = 0
+    for task, kind in sorted(housekeeping):
+        small += conn.execute(
+            f"DELETE FROM scheduled_jobs WHERE skill = ? AND kind = ? AND {ended}", (task, kind, PENDING, RUNNING, to_db(now - KEEP_HOUSEKEEPING))
+        ).rowcount
+    rest = conn.execute(f"DELETE FROM scheduled_jobs WHERE {ended}", (PENDING, RUNNING, to_db(now - KEEP_RUNS))).rowcount
+    return small, rest
+
+
+async def prune() -> tuple[int, int]:
+    """Asked once a day, by the end of the day (core/day.py). What it took out
+    is logged every time, also when that is nothing."""
+    small, rest = await database.run(_db_prune, utc_now(), set(_housekeeping))
+    log.info("Scheduler: the run log was pruned: %d housekeeping run%s older than 30 days and %d other%s older than a year taken out", small, "" if small == 1 else "s", rest, "" if rest == 1 else "s")
+    return small, rest
+
+
+# ---------------------------------------------------------------------------
 # For tasks and the core: handlers, and their names in words
 # ---------------------------------------------------------------------------
-def register_handler(task: str, kind: str, handler: JobHandler, label: str = "") -> None:
+def register_handler(task: str, kind: str, handler: JobHandler, label: str = "", housekeeping: bool = False) -> None:
     """Say which function runs jobs of this kind for this task, and what the
     job is called in words ("nightly backup"): `label` is what the user reads
     wherever a job is named. Without one the kind is made readable, which is
-    only good enough for a job nobody is shown."""
+    only good enough for a job nobody is shown. `housekeeping` is for a job
+    that only clears something away (an expiry, a line tidied): there are
+    many, and their runs are kept for a shorter time (`prune`)."""
     _handlers[(task, kind)] = handler
+    (_housekeeping.add if housekeeping else _housekeeping.discard)((task, kind))
     if label:
         _labels[(task, kind)] = label
     else:

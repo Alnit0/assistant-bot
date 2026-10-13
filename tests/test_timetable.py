@@ -413,3 +413,54 @@ def test_the_reminders_one_job_is_a_keyed_one_off():
 
     moment = datetime(2026, 10, 14, 1, 5, tzinfo=timezone.utc)
     assert reminders.job_key(moment) == "pills.remind@2026-10-14T01:05:00.000000+00:00"
+
+
+# --- the run log does not grow for ever ----------------------------------------------------------------------------
+def test_old_runs_are_taken_out_housekeeping_after_30_days_the_rest_after_a_year_and_nothing_waiting(engine, monkeypatch):
+    monkeypatch.setattr(scheduler, "_housekeeping", set())
+    scheduler.register_handler("test", "expiry", engine_noop, housekeeping=True)
+    now = scheduler.utc_now()
+
+    def put(kind, status, days_ago, finished=True):
+        when = scheduler.to_db(now - timedelta(days=days_ago))
+        conn = database.connect()
+        with conn:
+            conn.execute("INSERT INTO scheduled_jobs (skill, kind, payload, due_at, status, created_at, finished_at) VALUES ('test', ?, '{}', ?, ?, ?, ?)", (kind, when, status, when, when if finished else None))
+        conn.close()
+
+    conn_rows = [
+        ("expiry", "done", 31), ("expiry", "done", 29), ("expiry", "cancelled", 40), ("expiry", "pending", 90),
+        ("first", "done", 31), ("first", "done", 364), ("first", "done", 366), ("first", "failed", 400), ("first", "missed", 500), ("first", "pending", 500), ("first", "running", 500),
+    ]
+    before = len(rows("SELECT 1 FROM scheduled_jobs"))
+    for kind, status, days_ago in conn_rows:
+        put(kind, status, days_ago, finished=status not in ("pending", "running"))
+    assert run(scheduler.prune()) == (2, 3)
+    left = rows("SELECT kind, status FROM scheduled_jobs WHERE created_at < ? ORDER BY id", (scheduler.to_db(now - timedelta(days=1)),))
+    assert left == [("expiry", "done"), ("expiry", "pending"), ("first", "done"), ("first", "done"), ("first", "pending"), ("first", "running")], "one waiting or running is never touched, whatever its age"
+    assert len(rows("SELECT 1 FROM scheduled_jobs")) == before + 6
+    assert run(scheduler.prune()) == (0, 0), "asked again, nothing more goes"
+
+
+async def engine_noop(job):
+    pass
+
+
+def test_the_end_of_the_day_prunes_the_run_log_and_a_failure_there_does_not_stop_the_day(engine, monkeypatch):
+    asked, told = [], []
+
+    async def pruned():
+        asked.append(1)
+        raise RuntimeError("boom")
+
+    async def log_error(title, details):
+        told.append(title)
+
+    monkeypatch.setattr(scheduler, "prune", pruned)
+    monkeypatch.setattr(day, "_listeners", {})  # the tasks' own new-day work is not what is looked at here
+    monkeypatch.setattr(day, "log_error", log_error)
+    job = scheduler.Job(id=1, user_id=None, task="core", kind="day_rollover", payload={}, due_at=day.end_of(day.today()), late_by=0.0)
+    said = []
+    monkeypatch.setattr(scheduler, "note", lambda job, text: said.append(text))
+    run(day.rollover_job(job))
+    assert asked == [1] and told == ["Pruning the run log failed"] and len(said) == 1, "the day is still closed and says so"

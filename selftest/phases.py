@@ -926,7 +926,28 @@ async def briefing_in_hub(h: Harness):
     return await h.get(h.hub, placed.message_id) if placed is not None else None
 
 
+async def seed(h: Harness) -> None:
+    """The pills the story has by now, for a run that begins here (the day
+    stage was not run). Recorded answers only: nothing here is being tested
+    for the first time, so no request is paid for."""
+    h.recorded_only = True
+    try:
+        await save_new(
+            h, "0.01", "add Testa to my pills at 8am, 11am and 2pm, at least 3 hours apart, not after 4pm, with food",
+            add({"name": "Testa", "per_day": 3, "times": ["8:00 am", "11:00 am", "2:00 pm"], "min_gap_minutes": 180, "latest": "4:00 pm", "notes": "with food"}),
+            "Testa", "set up for a run without the day stage",
+        )
+        await save_new(h, "0.02", "add Testany to my pills once a day", add({"name": "Testany", "per_day": 1}), "Testany", "set up")
+        await save_new(h, "0.03", "add Testiron to my pills at 8pm", add({"name": "Testiron", "times": ["8:00 pm"]}), "Testiron", "set up")
+        await save_new(h, "0.04", "add Testlate to my pills once a day", add({"name": "Testlate", "per_day": 1}), "Testlate", "set up")
+    finally:
+        h.recorded_only = False
+
+
 async def p5(h: Harness) -> None:
+    if "sheet_d2" not in h.memo:  # the day stage leaves it; without it this is where the run begins
+        await seed(h)
+
     async with h.step("5.01", "A start with BRIEFING_ENABLED on", "The 6:00 am schedule is the same row, now called Morning routine, with two steps: the briefing, then the pills checklist; both are booked for the next 6:00 am", "scheduler stage 3"):
         h.check(config.BRIEFING_ENABLED, "BRIEFING_ENABLED is not on")
         routine = await schedule_named(h, "Morning routine")

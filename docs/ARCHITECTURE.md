@@ -15,7 +15,7 @@ for why things are the way they are, `docs/DECISIONS.md`.
 | `core/` | Shared building blocks. Never imports from `tasks/` |
 | `tasks/` | One folder per feature, loaded by `tasks/registry.py` |
 | `tests/` | Unit tests (pytest); never start the bot or touch real data. `tests/demo.py` holds two demo lists (shopping and packing) that the conversation tests, the golden conversations and the fixtures use: they are test fixtures, never offered by the bot |
-| `selftest/` | The self-test (`python -m selftest`, with live stopped): the dev bot run against real Discord in channels of its own, on an empty dev database with the dev clock. `__main__.py` makes the channels, sets the dev database aside and starts the bot once a phase; `phase.py` is one start with the steps run inside it; `phases.py` the steps; `harness.py` what a step can do (type, press, move the clock, read Discord and the database back, a recorded or a real answer from Claude); `discordside.py` the stand-ins for a typed message and a press; `report.py` and `onlyyou.py` write `docs/SELFTEST.md`. Nothing in the bot imports it |
+| `selftest/` | The self-test (`python -m selftest`, with live stopped): the dev bot run against real Discord in channels of its own, on an empty dev database with the dev clock. `__main__.py` makes the channels, sets the dev database aside and starts the bot once a phase; `phase.py` is one start with the steps run inside it; `phases.py` the steps; `harness.py` what a step can do (type, press, move the clock, read Discord and the database back, a recorded or a real answer from Claude); `discordside.py` the stand-ins for a typed message and a press; `report.py` and `onlyyou.py` write `docs/SELFTEST.md`. Nothing in the bot imports it | `stages.py`: the three stages a run is cut into (day, briefing, tidy), which of them a changed file touches, the commit each last passed on, and the free-memory check before a run.
 | `evals/` | Fixtures for the router and extraction, the demo lists' included (`fixtures/*.json`: a sentence and what it must come out as, with what the real API last returned), the code that judges them (`fixtures.py`), and the live eval that asks the real API and reports accuracy, time and cost (`python -m evals.live --live`) |
 | `docs/specs/` | Private task specs (gitignored, never committed or quoted in public docs); zipped by the nightly backup |
 | `docs/` | `STATUS` (where the work stands: read first), `CONVERSATION` (the standard for how the bot talks, with its golden conversations), `ARCHITECTURE` (this), `DEVELOPMENT` (how to use and extend), `DECISIONS` (why), `TESTING` (test tracker), `QA-RUN` (manual run sheet), `QA-TONIGHT` (one ordered run of the blocks that are waiting, written 2026-10-13), `SELFTEST` (the last self-test's report, written by `python -m selftest`), `BACKLOG` (found and not yet finished), `CHANGELOG` (what changed, by date), `CHEATSHEET` (commands), `COSTS` (what the requests to Claude cost, the caching and what is sent); `mockups/` holds card sketches for `dev mock` |
@@ -590,7 +590,10 @@ pills build order), streaks, and the take-by line on the checklist. Reminders ar
 and switched off (`REMINDERS_ENABLED`) until they pass QA.
 
 Of the scheduler's spec (`docs/specs/scheduler.md`), stage 1 is built
-(2026-10-13): the engine, schedules as rows, the run log and its keys,
+(2026-10-13): the engine, schedules as rows, the run log and its keys
+(pruned once a day by the end of the day, `scheduler.prune`: a
+housekeeping run after 30 days, any other after a year, never one that
+is waiting),
 and the backup, the end of the day and the 6:00 am checklist moved
 onto it with nothing that shows changed; stage 2, changing a schedule
 by words (`tasks/schedule`); and stage 3, the briefing with its summary

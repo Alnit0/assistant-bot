@@ -6,6 +6,13 @@ backfilled from the git log.
 
 ## 2026-10-13
 
+- The briefing's pills section only reads now: the day's doses are
+  made as the day before ends. The run log no longer grows for ever
+  (housekeeping runs are kept 30 days, the rest a year). Nothing you
+  would see changes.
+- The self-test runs only the stages a change touches (`--full` for
+  everything), and checks free memory before it starts.
+
 - A clean hub, switched off until you turn it on (`HUB_TIDY`): what
   you say there and the reply go 2 minutes after the reply, yesterday's
   checklist goes when today's is posted, pinned stays, and a copy of

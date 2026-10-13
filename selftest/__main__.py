@@ -1,7 +1,12 @@
-"""Run the self-test: `python -m selftest [--claude] [--only p1,p2] [--channels | --clear | --remove]`.
+"""Run the self-test: `python -m selftest [--full | --stages day,briefing,tidy] [--claude] [--channels | --clear | --remove]`.
 
-A full run takes about fourteen minutes: six starts of the dev bot, with 75
+With nothing said it runs only the stages touched by what has changed since
+each last passed (selftest/stages.py), and says which and why. `--full` is
+the whole story: about fifteen minutes, six starts of the dev bot, with 75
 seconds off between the first two.
+
+It says how much memory is free before it starts, and stops there when
+that is low (`--anyway` goes ahead).
 
 The live bot must be stopped first: it and the dev bot share one token. This
 refuses to start while any copy holds the lock.
@@ -20,7 +25,7 @@ from pathlib import Path
 import discord
 
 from core import config, instance_lock
-from selftest import report
+from selftest import report, stages
 
 # ---------------------------------------------------------------------------
 # The self-test's own run: channels, the database set aside, a start of the
@@ -37,6 +42,7 @@ WORK = config.DATA_DIR / "selftest"
 DEV_FILES = ("dev.db", "dev.db-wal", "dev.db-shm", "dev-clock.json")
 OFF_FOR = 75  # seconds the bot stays off between the phase that is cut off and the next: a job is late after 60
 PHASE_TIMEOUT = 20 * 60
+PASSED = WORK / "passed.json"  # {stage: the commit it last passed on}
 
 # (name, the settings it starts with, seconds to stay off before it)
 PHASES = (
@@ -159,7 +165,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(prog="python -m selftest")
     parser.add_argument("--claude", action="store_true", help="send the language steps to the real API (within --budget)")
     parser.add_argument("--budget", type=float, default=0.20, help="stop sending real requests once this much is spent (US$)")
-    parser.add_argument("--only", default="", help="phases to run, e.g. p1,p2 (for working on the test itself)")
+    parser.add_argument("--full", action="store_true", help="the whole run, every stage")
+    parser.add_argument("--stages", default="", help="the stages to run: day, briefing, tidy (tidy runs the briefing's start too)")
+    parser.add_argument("--anyway", action="store_true", help="go ahead although free memory is low")
+    parser.add_argument("--only", default="", help="starts to run, e.g. p1,p2 (for working on the test itself)")
     parser.add_argument("--channels", action="store_true", help="only find or make the channels, and say their ids")
     parser.add_argument("--clear", action="store_true", help="only empty the self-test's channels")
     parser.add_argument("--remove", action="store_true", help="only delete the self-test's channels and category")
@@ -180,12 +189,45 @@ def main() -> int:
         print(f"A bot is running (PID {held.pid}). Stop it first: the self-test uses the same token.")
         return 3
 
+    wanted = [name.strip() for name in asked.only.split(",") if name.strip()]
+    named = [name.strip() for name in asked.stages.split(",") if name.strip()]
+    unknown = [name for name in named if name not in stages.STAGES]
+    if unknown:
+        print(f"No such stage: {', '.join(unknown)}. The stages are {', '.join(stages.ORDER)}.")
+        return 2
+    passed = stages.read_passed(PASSED)
+    if asked.full:
+        chosen = list(stages.ORDER)
+        print("--- the full run, as asked", flush=True)
+    elif named:
+        chosen = [stage for stage in stages.ORDER if stage in named]
+        print(f"--- the stages asked for: {', '.join(chosen)}", flush=True)
+    elif wanted:
+        chosen = []
+    else:
+        why = stages.touched({stage: stages.changed_since(config.BASE_DIR, passed.get(stage)) for stage in stages.ORDER})
+        chosen = list(why)
+        for stage in stages.ORDER:
+            print(f"--- {stage}: {'run, touched by ' + why[stage] if stage in why else 'not run, nothing that touches it has changed since it passed'}", flush=True)
+        if not chosen:
+            print("--- nothing to run. `--full` runs everything all the same.")
+            return 0
+    if not wanted:
+        wanted = stages.phases_for(chosen)
+    whole = set(wanted) == {name for name, _, _ in PHASES}
+    minutes = sum(stages.ABOUT_MINUTES.get(name, 2) for name in wanted) + (OFF_FOR / 60 if {"p1", "p2"} <= set(wanted) else 0)
+    low, line = stages.memory_line(stages.free_memory())
+    print(f"--- {line}", flush=True)
+    if low and not asked.anyway:
+        print("--- not started. Close something and ask again, or `--anyway` to go ahead.")
+        return 4
+
     began = datetime.now()
     stamp = began.strftime("%Y%m%d-%H%M%S")
-    print("--- the self-test takes about fourteen minutes: six starts of the dev bot, 75 seconds off between the first two", flush=True)
+    commit = stages.head(config.BASE_DIR)
+    print(f"--- starts {', '.join(wanted)}: about {round(minutes)} minutes", flush=True)
     channels = asyncio.run(prepare_channels())
     saved = set_aside(stamp)
-    wanted = [name.strip() for name in asked.only.split(",") if name.strip()]
     phases, memo = [], {}
     try:
         for name, settings, off_for in PHASES:
@@ -201,9 +243,15 @@ def main() -> int:
     finally:
         spent = report.spent(config.DATA_DIR / "dev.db")
         put_back(saved, stamp)
-    path = report.write(phases, spent, asked.claude, stamp, partial=bool(wanted), began=began, ended=datetime.now())
+    path = report.write(phases, spent, asked.claude, stamp, partial=not whole, began=began, ended=datetime.now(), ran=", ".join(chosen) if chosen and not whole else "")
     results = [each for _, _, found in phases for each in found["results"]]
     bad = [each for each in results if each["status"] in ("fail", "error")]
+    # A stage that ran whole with nothing failed has passed on this commit: it is not run again until something touches it
+    failed = {name for name, _, found in phases if found.get("exit") != 0 or any(each["status"] in ("fail", "error") for each in found["results"])}
+    if commit:
+        for stage in stages.passed_stages([name for name, _, _ in phases], failed):
+            passed[stage] = commit
+        stages.write_passed(PASSED, passed)
     print(f"--- {len(results)} steps, {len(bad)} failed, US${spent:.4f} spent. Report: {path}")
     return 1 if bad else 0
 

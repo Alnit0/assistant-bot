@@ -120,4 +120,9 @@ async def rollover_job(job: scheduler.Job) -> None:
         except Exception as error:
             log.exception("New-day work failed for %s", name)
             await log_error(f"New-day work failed: {name}", repr(error))
+    try:
+        await scheduler.prune()  # the run log's old rows go here, once a day
+    except Exception as error:
+        log.exception("Pruning the run log failed")
+        await log_error("Pruning the run log failed", repr(error))
     scheduler.note(job, f"{ended.isoformat()} closed; today is {started.isoformat()}")

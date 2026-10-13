@@ -50,6 +50,7 @@ class Harness:
         self._real_calls = 0
         self._record: dict | None = None
         self.cut_here = False  # the next request to Claude is where the process dies
+        self.recorded_only = False  # while it is set, a recorded answer is used even when real requests are on
 
     # --- setting up -------------------------------------------------------------------------------------
     async def setup(self) -> None:
@@ -159,7 +160,7 @@ class Harness:
         reference = channel.get_partial_message(reply_to) if reply_to else None
         real = await channel.send(text, reference=reference)
         self.typed.add(real.id)
-        use_canned = canned is not None and not await self.can_ask_claude()
+        use_canned = canned is not None and (self.recorded_only or not await self.can_ask_claude())
         if canned is None and not await self.can_ask_claude():
             pass  # a typed word: it never reaches Claude; if it does, the request is refused and the step fails
         if use_canned:

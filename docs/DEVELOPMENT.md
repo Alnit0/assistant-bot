@@ -1468,8 +1468,10 @@ async def summary(self, user_id, day):
                            lines=("**Next:** …",), hint="…", before="Yesterday: …")
 ```
 
-Return `None` with nothing to say that day. It only reads, asks Claude
-nothing, and is in the task's own words; the icon and the name come
+Return `None` with nothing to say that day. It only reads: no row is
+made or changed to answer it (pills reads with `checklist.read`; the
+day's dose rows are made as the day before ends, in `new_day`). It
+asks Claude nothing, and is in the task's own words; the icon and the name come
 from the task. Call `summaries.changed(self.name, user_id)` whenever it
 may read differently. No briefing code changes.
 
@@ -1545,8 +1547,23 @@ report is `docs/SELFTEST.md`, written again by every full run.
   bot uses the same token. It refuses to start while anything holds the
   lock. Start live again afterwards and check it is back
   (`nssm start assistant-bot`, `python -m core.instance_lock`)
-- **It takes about nine minutes**: four starts of the dev bot, with 75
-  seconds off between the first two
+- **Only what a change touches.** The run is one story in six starts
+  of the dev bot, cut into three stages: `day` (starts 1 to 4: a pill
+  day, the cards in both looks, reminders, the restart in the middle,
+  the engine and `my schedule`; about 11 minutes), `briefing` (start
+  5; about 2) and `tidy` (starts 5 and 6; about 5). With nothing said,
+  `python -m selftest` runs the stages touched by what has changed
+  since each last passed (committed or not), and says which and why;
+  with nothing touched it runs nothing. `--stages day,tidy` names
+  them; `--full` is everything, about fifteen minutes. What a file
+  touches is `selftest/stages.py`: docs and tests nothing, the
+  briefing's and the tidy's own files their stage, another task the
+  day, and the bot's shared code all three. A stage that ran whole
+  with nothing failed is noted with its commit in
+  `data/selftest/passed.json`
+- **Memory**: the PC has 8 GB, and a run has been stopped by it
+  before. The run says how much is free before it starts, and with
+  under 1.5 GB free it does not start (`--anyway` goes ahead)
 - **Channels of its own**: the category `selftest` with
   #selftest-hub, #selftest-inbox and #selftest-log, made the first time
   and emptied at the start of every run. They are left in place.
@@ -1576,9 +1593,13 @@ Its code is `selftest/`: `phases.py` holds the steps, each saying
 which step of `docs/QA-TONIGHT.md` or block of `docs/QA-RUN.md` it
 stands for; `harness.py` what a step can do; `discordside.py` the
 stand-ins for a typed message and a press, and the reading back.
+`stages.py` says which stages a change touches and whether there is
+room on the PC. A run that begins at start 5 makes its own pills
+first (`phases.seed`, recorded answers only). `docs/SELFTEST.md` is
+written by a full run only: the report of part of one goes beside
+the run's database (`data/selftest/run-<time>/SELFTEST-partial.md`).
 `--only p1,p2` runs some of the starts while working on the test
-itself (the report then goes beside the run's database, not in
-`docs/`).
+itself.
 
 ## Service commands (Terminal as Admin)
 

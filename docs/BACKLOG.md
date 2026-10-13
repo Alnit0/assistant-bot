@@ -43,6 +43,10 @@ low priority, nothing dropped without a reason.
 
 ### Soon
 
+- **A routine's steps by words** (asked 2026-10-13, later): change
+  their order, and take a step out. Today the steps and their order
+  come from the code (tidy, briefing, checklist).
+
 7. **Pills stage 4**: a correction said long after ("I took it at 9,
    not 10"), and G3 (a correction straight after Save rests on a guess).
 8. **Show a streak**, with stage 4 (decided 2026-10-13): counted in

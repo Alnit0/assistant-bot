@@ -243,3 +243,37 @@ def test_the_checklist_says_its_summary_changed_whenever_it_is_brought_up_to_dat
     add(world, {"name": "Any"})
     run(checklist.refresh(world.owner.id))
     assert ("pills", world.owner.id) in told
+
+
+# --- the summary only reads; the end of the day makes the rows ---------------------------------------------------------
+def _counts():
+    conn = database.connect()
+    try:
+        return conn.execute("SELECT COUNT(*) FROM occurrences").fetchone()[0], conn.execute("SELECT COUNT(*) FROM occurrence_events").fetchone()[0], conn.execute("SELECT GROUP_CONCAT(state) FROM occurrences").fetchone()[0]
+    finally:
+        conn.close()
+
+
+def test_the_pills_summary_writes_nothing_not_a_row_and_not_a_state(world):
+    add(world, PILL_A, {"name": "Any"})
+    tomorrow = world.day + timedelta(days=1)
+    before = _counts()
+    assert run(pills_summary.summary(world.owner.id, tomorrow)) is None, "no rows for that day yet: nothing to say, and none is made"
+    assert _counts() == before
+    # Late in the day: doses that can no longer be taken read as they would on the checklist, and nothing is written
+    clock.advance_to(day.at(world.day, time(23, 30)))
+    said = run(pills_summary.summary(world.owner.id, world.day))
+    assert _counts() == before, "what has passed is worked out, not written"
+    assert said is not None and said.lines == () and said.status != design.DUE, f"no timed dose is still shown as to take: {said}"
+
+
+def test_the_end_of_the_day_makes_the_new_day_s_rows_so_the_summary_finds_them(world):
+    add(world, PILL_A, {"name": "Any"})
+    tomorrow = world.day + timedelta(days=1)
+    clock.advance_to(day.at(tomorrow, time(0, 0, 30)))
+    run(checklist.new_day(world.day, tomorrow))
+    said = run(pills_summary.summary(world.owner.id, tomorrow))
+    assert said is not None and said.glance.startswith("0 of ") and "**Next:** Pill A, dose 1" in said.lines[0]
+    before = _counts()
+    run(checklist.new_day(world.day, tomorrow))
+    assert _counts() == before, "asked twice, no second row"

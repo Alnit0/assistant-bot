@@ -7,53 +7,30 @@ session; the end-of-task checklist updates it at the end of every task.
 
 ## Questions for Alex
 
-**From the scheduler build (2026-10-13), all four stages done:**
+**From the scheduler build (2026-10-13):**
 
-- **The last self-test did not finish.** Stage 4's run with real
-  requests passed 102 of 103 steps; the one that failed (6.04, the
-  copy saved before a removal) was the test reading the wrong file,
-  not the bot: the right file held the words. The test is fixed (its
-  copies now go to the run's own folder, never `data/exports`), but
-  the run to prove it was stopped by the PC after three minutes (low
-  on memory), so that step has not been seen passing in Discord. Say
-  when you want the run again (about 15 minutes with live stopped,
-  about US$0.15).
-- **Changing the order of a routine's steps, and taking a step out**,
-  are not built: the steps and their order come from the code (tidy,
-  briefing, checklist). Wanted by words?
-- **The run log is never pruned.** The spec says how long rows are
-  kept; nothing deletes them yet. Build it now, or when the table has
-  grown?
-- **A line that reports a change outside the hub** goes at the end of
-  its day only when it is a Save confirmation, a task's answer line or
-  the reply to `took <pill>`. Other direct replies there are left
-  alone. Enough, or all of them?
-- **A schedule you add is named by its part of the day** ("Evening
-  pills checklist"). Right, or should the card ask for a name?
-- **"it" for a schedule** is only understood when there is one it can
-  be; otherwise the card asks which.
-- **The briefing's pills section makes today's dose rows** if they are
-  not there yet (the same rows the checklist would make at 6:00 am).
-  It changes nothing you would see, but it is a write from something
-  meant only to read. Leave it, or make the summary read-only?
-- **The sketches**: the v1 files of `briefing` and `schedule-list`
-  stay until you have checked the v2s (block 44), and go when you say.
+- **The run log is pruned by the end of the day, not by the tidy.**
+  The spec said the tidy; the tidy is behind `HUB_TIDY`, so with it off
+  nothing would ever be pruned. The end of the day always runs. Say if
+  you want it in the tidy all the same.
+- **With the summary read-only, the briefing's pills section depends
+  on the end-of-day job having made the day's rows.** If that job has
+  not run for today (it always runs first on a start, however late),
+  the section is left out until the checklist is posted or shown. That
+  is the trade you chose; it is the one place something waits on a job.
 - **What is still yours** is the list at the end of `docs/SELFTEST.md`:
   the lock screen, the colours as they look, the wording, the sketches,
   and blocks 46 to 49 of `docs/QA-RUN.md`.
 
-Answered on 2026-10-13, after the self-test: the code checks a name
-Claude hands over against what was typed and asks when it fits more
-than one pill, and Claude is told not to complete names; Claude hands
-over what it understood, so the card asks for a missing time; under a
-minute the too-soon card says "just now"; every job has a name in
-words wherever you see it, and the catch-up card is checked for
-internal labels; the reset card is built in the new look. All done
-(block 45). Then: part of a pill's name is a hint for the router, not a
-decision (a word of four letters or more that starts a word of a
-name; the router still decides); and the timers' jobs have names in
-words ("timer ending", "Pomodoro phase"), the one thing touched in
-timers. Both done, and live restarted on all of it.
+Answered on 2026-10-13, after the build: the self-test is run again
+after these fixes; a routine's step order and taking a step out are
+later (in the backlog); the run log is pruned (built); lines that
+report a change outside the hub are fine as they are; a schedule you
+add named by its part of the day is fine; the pills summary is
+read-only and the new-day job makes the dose rows (built); the v1
+sketches go once the v2s are checked in block 44. The PC has 8 GB:
+free memory is checked before a self-test, and the self-test runs only
+the stages a change touches, with `--full` for everything (built).
 
 **Built on these assumptions; say if any is wrong:**
 

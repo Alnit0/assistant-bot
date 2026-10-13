@@ -388,10 +388,16 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   core.instance_lock`, which asks the lock (the source of truth) and
   says how many bots are running. Don't count `python.exe` lines: one
   bot is two of them (the `.venv` launcher and its child)
-- `python -m selftest` starts the dev bot against real Discord (about
-  nine minutes; `docs/DEVELOPMENT.md`, "The self-test"). Only when I
-  ask: live must be stopped for it, started again after, and checked.
-  Real requests to Claude only with `--claude`, within the cost rule
+- `python -m selftest` starts the dev bot against real Discord
+  (`docs/DEVELOPMENT.md`, "The self-test"). Only when I ask: live must
+  be stopped for it, started again after, and checked. Real requests
+  to Claude only with `--claude`, within the cost rule. With nothing
+  said it runs only the stages (day, briefing, tidy) touched by what
+  changed since each last passed; `--full` is the whole run, about
+  fifteen minutes. The PC has 8 GB: it says how much memory is free
+  before it starts and stops there when that is low; tell me, and
+  never pass `--anyway` without my say. Nothing else is edited or run
+  while it is going
 - A test that runs for more than a minute stops the run with its name
   and where it was stuck (`tests/watchdog.py`, exit code 70). Look
   into it; never raise the limit to get past it

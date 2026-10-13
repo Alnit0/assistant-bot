@@ -389,6 +389,6 @@ def setup() -> None:
     if not enabled():
         return
     scheduler.register_handler(JOB_TASK, TIDY_KIND, tidy_job, "morning tidy")
-    scheduler.register_handler(JOB_TASK, EXPIRY_KIND, expiry_job, "tidying the hub")
+    scheduler.register_handler(JOB_TASK, EXPIRY_KIND, expiry_job, "tidying the hub", housekeeping=True)
     scheduler.join_routine(hub.MORNING, scheduler.handler_name(JOB_TASK, TIDY_KIND), order=hub.TIDY_ORDER, name=hub.MORNING_NAME)
 

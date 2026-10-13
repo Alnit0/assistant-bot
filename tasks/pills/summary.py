@@ -9,7 +9,8 @@ from tasks.pills.today import TASK, Dose
 # ---------------------------------------------------------------------------
 # Pills, in a few lines, for whatever shows summaries (the briefing). Written
 # from what the checklist itself works out, so the two can never disagree.
-# It only reads.
+# It only reads: no row is made or changed here (`checklist.read`). Today's
+# rows are made at the end of the day before, and yesterday is closed then.
 # ---------------------------------------------------------------------------
 
 
@@ -63,7 +64,7 @@ def yesterday(found: list) -> str:
 
 async def summary(user_id: int, day: date) -> Summary | None:
     """Today's pills in a few lines, or None with nothing to take today."""
-    _, listed, _ = await checklist.view(user_id, day)
+    _, listed, _ = await checklist.read(user_id, day)
     if not listed:
         return None
     before = yesterday(await occurrences.for_day(user_id, TASK, day - timedelta(days=1)))

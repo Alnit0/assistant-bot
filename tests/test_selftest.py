@@ -180,3 +180,86 @@ def test_a_test_that_hangs_stops_the_run_with_its_name_and_where_it_was():
     timer = watchdog.watch("tests/test_x.py::test_fine", 30)
     timer.cancel()
     assert timer.daemon, "a watcher never keeps the run alive"
+
+
+# --- only what a change touches, and room on the PC ---------------------------------------------------------------
+def test_a_changed_file_touches_the_stages_it_can_break():
+    from selftest import stages
+
+    assert stages.stages_of("docs/STATUS.md") == () and stages.stages_of("tests/test_x.py") == () and stages.stages_of("CLAUDE.md") == ()
+    assert stages.stages_of("tasks/briefing/rules.py") == ("briefing",) and stages.stages_of("tasks\\pills\\summary.py") == ("briefing",)
+    assert stages.stages_of("core/messages.py") == ("tidy",)
+    assert stages.stages_of("tasks/pills/checklist.py") == ("day",)
+    assert stages.stages_of("core/scheduler.py") == stages.ORDER and stages.stages_of("main.py") == stages.ORDER, "the bot's shared code: everything"
+    assert stages.stages_of("selftest/phases.py") == stages.ORDER
+
+
+def test_only_the_stages_touched_since_each_last_passed_are_run_and_one_never_passed_always_is():
+    from selftest import stages
+
+    assert stages.touched({"day": [], "briefing": [], "tidy": []}) == {}
+    assert stages.touched({"day": ["docs/QA-RUN.md"], "briefing": ["tests/test_briefing.py"], "tidy": []}) == {}
+    found = stages.touched({"day": ["tasks/briefing/rules.py"], "briefing": ["tasks/briefing/rules.py"], "tidy": ["tasks/briefing/rules.py"]})
+    assert found == {"briefing": "tasks/briefing/rules.py"}
+    assert list(stages.touched({"day": ["core/cards.py"], "briefing": ["core/cards.py"], "tidy": ["core/cards.py"]})) == ["day", "briefing", "tidy"]
+    assert stages.touched({"day": [], "briefing": None, "tidy": []}) == {"briefing": "it has not passed here yet"}
+    many = stages.touched({"day": [f"tasks/pills/{n}.py" for n in "abcde"], "briefing": [], "tidy": []})
+    assert many == {"day": "tasks/pills/a.py, tasks/pills/b.py, tasks/pills/c.py and 2 more"}
+
+
+def test_the_starts_for_a_stage_and_the_tidy_brings_the_briefing_s_start_with_it():
+    from selftest import stages
+
+    assert stages.phases_for(["day"]) == ["p1", "p2", "p3", "p4"] and stages.phases_for(["briefing"]) == ["p5"]
+    assert stages.phases_for(["tidy"]) == ["p5", "p6"] and stages.phases_for(["tidy", "briefing"]) == ["p5", "p6"]
+    assert stages.phases_for(stages.ORDER) == [name for name, _, _ in runner.PHASES], "every stage together is the whole story"
+    assert {phase for each in stages.STAGES.values() for phase in each} == set(phases.PHASES)
+
+
+def test_a_stage_has_passed_only_when_every_start_of_it_ran_with_nothing_failed(tmp_path):
+    from selftest import stages
+
+    assert stages.passed_stages(["p5", "p6"], set()) == ["briefing", "tidy"]
+    assert stages.passed_stages(["p5", "p6"], {"p6"}) == ["briefing"]
+    assert stages.passed_stages(["p1", "p2", "p3"], set()) == [], "the day stage was not run whole"
+    where = tmp_path / "selftest" / "passed.json"
+    assert stages.read_passed(where) == {}
+    stages.write_passed(where, {"day": "abc", "tidy": "def"})
+    assert stages.read_passed(where) == {"day": "abc", "tidy": "def"}
+    where.write_text("not json", encoding="utf-8")
+    assert stages.read_passed(where) == {}, "a file that can't be read means nothing has passed: everything is run"
+    assert stages.changed_since(config.BASE_DIR, None) is None and stages.changed_since(config.BASE_DIR, "0" * 40) is None
+
+
+def test_low_memory_is_said_before_a_run_and_stops_it(monkeypatch, capsys):
+    from selftest import stages
+
+    assert stages.memory_line(None) == (False, "free memory: could not be read")
+    low, said = stages.memory_line(1024**3)
+    assert low and "1.0 GB" in said and "LOW" in said
+    assert stages.memory_line(3 * 1024**3) == (False, "free memory: 3.0 GB")
+    free = stages.free_memory()
+    assert free is None or free > 0
+
+    started = []
+    monkeypatch.setattr(runner.instance_lock, "holder", lambda: None)
+    monkeypatch.setattr(runner.stages, "free_memory", lambda: 1024**3)
+    monkeypatch.setattr(runner, "prepare_channels", lambda *a, **k: started.append("channels"))
+    monkeypatch.setattr(sys, "argv", ["selftest", "--stages", "briefing"])
+    assert runner.main() == 4 and started == [], "nothing is started, and the dev database is not moved"
+    out = capsys.readouterr().out
+    assert "LOW" in out and "not started" in out and "--anyway" in out
+
+
+def test_a_stage_that_does_not_exist_is_refused_before_anything_starts(monkeypatch, capsys):
+    monkeypatch.setattr(runner.instance_lock, "holder", lambda: None)
+    monkeypatch.setattr(sys, "argv", ["selftest", "--stages", "pills"])
+    assert runner.main() == 2 and "No such stage: pills" in capsys.readouterr().out
+
+
+def test_a_run_that_begins_at_the_briefing_makes_its_own_pills_with_recorded_answers_only():
+    import inspect
+
+    source = inspect.getsource(phases.seed)
+    assert "recorded_only = True" in source and "finally" in source and all(name in source for name in ("Testa", "Testany", "Testiron", "Testlate"))
+    assert "await seed(h)" in inspect.getsource(phases.p5)

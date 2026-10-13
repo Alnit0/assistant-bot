@@ -605,7 +605,7 @@ def setup() -> None:
     cards.register(CARDS, "save", on_save)
     cards.register(CARDS, "cancel", on_cancel)
     cards.register(CARDS, "answer", on_answer)
-    scheduler.register_handler(JOB_TASK, JOB_KIND, expired, "a card's expiry")
+    scheduler.register_handler(JOB_TASK, JOB_KIND, expired, "a card's expiry", housekeeping=True)
 
 
 async def message_class(message_id: int) -> MessageClass | None:

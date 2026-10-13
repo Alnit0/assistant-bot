@@ -378,7 +378,9 @@ def test_at_midnight_what_was_untouched_is_missed_and_the_single_messages_go(wor
     last = [card.text for message_id, card in world.edited if message_id == record.message_id][-1]
     assert "❌ **Magnesium** · missed" in last and "❌ **Evening pill** · missed" in last and "✅ **Vitamin D**" in last
     assert run(database.run(store.db_messages, world.owner.id, DAY)) == [], "yesterday's checklist stays as it is, and is no longer ours"
-    assert run(occurrences.for_day(world.owner.id, "pills", DAY + timedelta(days=1))) == [], "the new day starts from the plan when it is asked for"
+    fresh = run(occurrences.for_day(world.owner.id, "pills", DAY + timedelta(days=1)))
+    assert len(fresh) == 3 and {each.state for each in fresh} == {PENDING}, "the new day's rows are made from the plan as the old day ends (asked for 2026-10-13: what only reads finds them)"
+    assert run(database.run(store.db_messages, world.owner.id, DAY + timedelta(days=1))) == [], "and nothing is posted for it: that is the 6:00 am checklist's"
 
 
 def test_a_dose_of_a_pill_removed_during_the_day_is_set_aside_not_missed(world):
