@@ -941,7 +941,7 @@ a minute before it is stopped.
 | 2 | Press **Handle it now** on the `took` card | The card goes, and the dose is logged as if you had just typed it (or its card asks first, if it is now late) | R86 |
 | 3 | Press **Ignore** on the question's card | The card goes. Nothing else happens | R86 |
 | 4 | Leave the hub's card. `nssm restart assistant-bot` | No second card for `pills`: the one that is there still works. Press **Handle it now**: the checklist is shown | R86 |
-| 5 | Type something in #selftest-inbox | Live does not answer: that channel is the test bot's | R87 |
+| 5 | Type something in #selftest-inbox | Live does not answer: that channel is the dev bot's | R87 |
 
 ## When you finish
 

@@ -136,7 +136,7 @@ def test_the_phases_run_the_old_look_twice_then_the_new_then_the_old_again_with_
 
 def test_its_channels_are_its_own_and_never_the_real_ones():
     assert set(runner.CHANNELS) == {"hub", "inbox", "bot-log"} and set(runner.ENV_NAMES) == {"hub", "inbox", "bot-log", "bugs"}
-    assert all(name.startswith("selftest-") for name in runner.CHANNELS.values()) and runner.FORUM.startswith("selftest-"), "the test bot's bugs have a forum of their own too"
+    assert all(name.startswith("selftest-") for name in runner.CHANNELS.values()) and runner.FORUM.startswith("selftest-"), "the dev bot's bugs have a forum of their own too"
 
 
 def test_the_dev_database_is_set_aside_and_put_back_as_it_was(tmp_path, monkeypatch):

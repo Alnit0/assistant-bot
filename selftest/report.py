@@ -10,7 +10,7 @@ from selftest import onlyyou
 # The self-test's report: docs/SELFTEST.md, written again by every full run.
 # ---------------------------------------------------------------------------
 PATH = config.BASE_DIR / "docs" / "SELFTEST.md"
-# The log of the bot that ran the steps: the test bot's own when there is one
+# The log of the bot that ran the steps: the dev bot's own when there is one
 LOG = config.BASE_DIR / "logs" / ("dev-bot.log" if config.test_bot_token() else "bot.log")
 MARK = {"pass": "✅ pass", "fail": "❌ fail", "error": "💥 broke", "skip": "⏭️ skipped"}
 SLOW = 12.0  # seconds: a step slower than this is listed (most of a step is waiting on Discord)

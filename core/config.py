@@ -50,7 +50,7 @@ def env_files(dev: bool, base: Path) -> list[Path]:
 
 def test_bot_settings(base: Path) -> dict[str, str]:
     """What `.env.dev` sets, when it gives the dev bot a token of its own: a
-    second Discord application, the test bot, which can run beside live. {}
+    second Discord application, the dev bot, which can run beside live. {}
     with no such file, no token in it, or live's own token again."""
     path = base / ".env.dev"
     if not path.exists():
@@ -61,14 +61,14 @@ def test_bot_settings(base: Path) -> dict[str, str]:
 
 
 def not_inherited(now_set: set[str], own: dict[str, str], set_before: set[str]) -> set[str]:
-    """The channel settings the test bot must not take from `.env`: a channel
+    """The channel settings the dev bot must not take from `.env`: a channel
     is its own only when `.env.dev` (or the terminal) names it. Anything else
     would be one of live's channels, and it would answer there too."""
     return {name for name in now_set if name.endswith("_CHANNEL_ID") and name not in set_before and not own.get(name)}
 
 
 def other_bot_channels(own: dict[str, str], mine: set[int]) -> frozenset[int]:
-    """The test bot's channels, as live sees them: not live's to answer in.
+    """The dev bot's channels, as live sees them: not live's to answer in.
     One that is live's own too (a forum both post in) stays live's."""
     theirs = {int(value) for name, value in own.items() if name.endswith("_CHANNEL_ID") and value.isdigit()}
     return frozenset(theirs - mine)
@@ -82,10 +82,10 @@ for _env_file in ENV_FILES:
     load_dotenv(_env_file)
 DEV_ENV = BASE_DIR / ".env.dev" in ENV_FILES  # the dev bot has settings of its own
 def is_test_bot(dev: bool, own: dict[str, str], token: str | None) -> bool:
-    """Whether this process is the test bot. Judged by the token it will
+    """Whether this process is the dev bot. Judged by the token it will
     really log in with, never by what the files say: a token already in the
     environment beats `.env.dev`, and a process that then logged in as live
-    while holding the test bot's lock would run beside live as live (it
+    while holding the dev bot's lock would run beside live as live (it
     happened, 2026-10-13: the self-test's starts inherited live's token)."""
     return dev and bool(own) and bool(token) and token == own.get("DISCORD_TOKEN")
 
@@ -102,7 +102,7 @@ def environment_for_child() -> dict[str, str]:
     return clean_environment(dict(os.environ), _SET_BEFORE)
 
 
-# This process is the test bot: another Discord account than live's, so the two can run
+# This process is the dev bot: another Discord account than live's, so the two can run
 # at the same time. It has a lock and a log file of its own, and only its own channels
 SEPARATE_BOT = is_test_bot(DEV_DATABASE, _TEST_BOT, os.getenv("DISCORD_TOKEN"))
 if SEPARATE_BOT:
@@ -112,12 +112,23 @@ LOG_FILE_NAME = "dev-bot.log" if SEPARATE_BOT else "bot.log"
 LOG_FILE = LOG_DIR / LOG_FILE_NAME
 
 
+def test_bot_id() -> int | None:
+    """The dev bot's account id (BOT_USER_ID in `.env.dev`), for a process that is not it."""
+    value = _TEST_BOT.get("BOT_USER_ID") or ""
+    return int(value) if value.isdigit() else None
+
+
 def test_bot_token() -> str | None:
-    """The test bot's token, for the self-test's own calls to Discord. None
-    when there is no test bot. Never logged or shown."""
+    """The dev bot's token, for the self-test's own calls to Discord. None
+    when there is no dev bot. Never logged or shown."""
     return _TEST_BOT.get("DISCORD_TOKEN") or None
 
 TOKEN = os.getenv("DISCORD_TOKEN")
+# The account this start is meant to log in as: Tanuki's id in .env, Testu's in .env.dev.
+# Checked against Discord before the lock is taken (core/account.py). For the dev bot it is
+# only ever .env.dev's: live's id from .env would be the wrong answer, and is not taken
+_BOT_USER_ID = ((_TEST_BOT.get("BOT_USER_ID") or "") if SEPARATE_BOT else (os.getenv("BOT_USER_ID") or "")).strip()
+EXPECTED_BOT_ID = int(_BOT_USER_ID) if _BOT_USER_ID.isdigit() else None
 OWNER_ID = os.getenv("OWNER_ID")
 INBOX_CHANNEL_ID = os.getenv("INBOX_CHANNEL_ID")
 BOT_LOG_CHANNEL_ID = os.getenv("BOT_LOG_CHANNEL_ID")
@@ -138,7 +149,7 @@ missing = [
     if not value
 ]
 if missing:
-    sys.exit(f"Missing settings in {'.env.dev (the test bot takes no channel from .env)' if SEPARATE_BOT else '.env'}: {', '.join(missing)}")
+    sys.exit(f"Missing settings in {'.env.dev (the dev bot takes no channel from .env)' if SEPARATE_BOT else '.env'}: {', '.join(missing)}")
 
 OWNER_ID = int(OWNER_ID)
 INBOX_CHANNEL_ID = int(INBOX_CHANNEL_ID)
@@ -171,8 +182,8 @@ CHANNELS: dict[str, int] = {
     if value
 }
 
-# Two bots in one server each see everything said in it. The test bot listens only in
-# its own channels (and their threads); live listens everywhere but in the test bot's
+# Two bots in one server each see everything said in it. The dev bot listens only in
+# its own channels (and their threads); live listens everywhere but in the dev bot's
 NOT_MINE: frozenset[int] = frozenset() if DEV_DATABASE else other_bot_channels(_TEST_BOT, set(CHANNELS.values()))
 
 
@@ -184,7 +195,7 @@ def mine(channel_id: int | None, parent_id: int | None = None) -> bool:
     return channel_id not in NOT_MINE and parent_id not in NOT_MINE
 
 
-# A self-test that had to stop live (there is no test bot) runs as live's own account:
+# A self-test that had to stop live (there is no dev bot) runs as live's own account:
 # its status says so, with when live is expected back (core/identity.py)
 SELFTEST_BACK = (os.getenv("SELFTEST_BACK") or "").strip() if os.getenv("SELFTEST") == "1" and not SEPARATE_BOT else ""
 

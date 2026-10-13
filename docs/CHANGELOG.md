@@ -6,8 +6,11 @@ backfilled from the git log.
 
 ## 2026-10-13
 
-- Live and the test bot run at the same time: the self-test no longer
-  stops live. The test bot keeps to its own channels (#selftest-…).
+- Every start of either bot checks which Discord account it is before
+  doing anything, and exits untouched if it is the wrong one.
+
+- Live and the dev bot run at the same time: the self-test no longer
+  stops live. The dev bot keeps to its own channels (#selftest-…).
 - What you say while live is off is asked about when it is back ("I
   was offline when you sent this": Handle it now, or Ignore), never
   acted on by itself.

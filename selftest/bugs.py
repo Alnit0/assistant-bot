@@ -214,6 +214,11 @@ async def connected(run: dict, where: Path) -> list[dict]:
     await client.login(config.TOKEN)
     discord_utils.client = client
     try:
+        from core import account
+
+        wrong = account.problem(config.EXPECTED_BOT_ID, client.user.id, str(client.user))
+        if wrong:
+            raise RuntimeError(f"the bugs were not touched: {wrong}")
         return await apply(run, where, owner.id, await posts.fetched_forum())
     finally:
         await client.close()

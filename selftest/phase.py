@@ -30,7 +30,7 @@ def main() -> int:
         return 2
 
     import main as bot
-    from core import instance_lock
+    from core import account, instance_lock
     from core.logging_setup import setup_logging
     from core.migrations import migrate
     from core.users import ensure_owner
@@ -41,6 +41,8 @@ def main() -> int:
     setup_logging()
     log = logging.getLogger("assistant")
     log.info("Self-test phase %s: the dev database %s", name, config.DB_PATH.name)
+    # As any start of the bot: the account first, then the lock (core/account.py)
+    account.check(config.TOKEN)
     instance_lock.acquire()
     registry.load()
     migrate(registry.task_migrations())

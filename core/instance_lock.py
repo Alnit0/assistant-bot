@@ -22,7 +22,7 @@ log = logging.getLogger("assistant")
 # behind (unlike a file that merely records a PID).
 #
 # The lock is one a bot, not one a folder: live's Discord account has
-# bot.lock, and the test bot (a token of its own in .env.dev) has
+# bot.lock, and the dev bot (a token of its own in .env.dev) has
 # bot-dev.lock, so the two run side by side from this folder. `--dev` without
 # a token of its own is live's account on another database: it takes live's
 # lock, and the two can never run together.
@@ -199,7 +199,7 @@ def list_processes() -> list[Process] | None:
 def status_text(lock: Holder | None, processes: list[Process] | None, test: Holder | None = None) -> str:
     """How many bots are running, in words. The lock decides; the processes
     are there to catch a copy that is running without it. `lock` is live's;
-    `test` the test bot's, which may run at the same time."""
+    `test` the dev bot's, which may run at the same time."""
     running = instances(processes or [])
     launchers = [process for process in (processes or []) if is_bot(process) and process not in running]
     held = {each.pid for each in (lock, test) if each is not None}
@@ -212,7 +212,7 @@ def status_text(lock: Holder | None, processes: list[Process] | None, test: Hold
         lines = [f"1 bot is running: {who} (it holds the lock)."]
     if test is not None:
         who = f"PID {test.pid}, started {test.started}" if test.pid else "details unknown"
-        lines.append(f"The test bot is running{' too' if lock is not None else ''}: {who} (its own lock, data/bot-dev.lock).")
+        lines.append(f"The dev bot is running{' too' if lock is not None else ''}: {who} (its own lock, data/bot-dev.lock).")
     for process in strays:
         lines.append(
             f"⚠️ PID {process.pid} is running main.py without the lock: starting up, or about to exit. "

@@ -42,11 +42,11 @@ Last updated: 2026-10-13
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
 | P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
 | Q | Time, days, the schedule model, the occurrence log and cards | 24 | 22 | 2 | 2 | 22 | 0 | 0 |
-| R | Pills | 76 | 23 | 53 | 45 | 31 | 0 | 0 |
+| R | Pills | 77 | 24 | 53 | 45 | 32 | 0 | 0 |
 | S | Routing and confirm cards | 75 | 22 | 53 | 18 | 56 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 4 | 18 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **504** | **184** | **320** | **250** | **253** | **0** | **1** |
+| | **Total** | **505** | **185** | **320** | **250** | **254** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -545,8 +545,9 @@ are added with it.
 | R84 | 🤖 Auto | A name Claude completed is asked about on the pills card | “pause testv” with Testvit and Testvit forte, handed over as “Testvit” or as an id: “Which one is “testv”?” with a button each; the answer's data names the pill by its id and is not asked again; with no message to check (Save, an answer pressed) the name stands | ✅ Pass | 2026-10-13 | `tests/test_names.py` |
 | R85 | 🤖 Auto | A missed dose logged as taken asks first | “Dose 1 was missed (due 8:00 pm). Log it as taken now?” on the amber card with Log it and Cancel, nothing logged by asking; with a line for the next dose's new time when it moves (`next: dose 2 · 11:30 am → 12:40 pm`) and none when it doesn't; said, typed as `took <pill>` (still no request to Claude) or pressed on a checklist not yet rewritten, through the one check. A dose simply waiting is not asked about | ✅ Pass | 2026-10-13 | `tests/test_pills_reminders.py`, `tests/test_pills_shortcut.py` |
 | R86 | 🤖 Auto | What I said while the bot was off | A first start reads nothing; each message of mine sent since the bot last noted it was running, in a named channel that holds messages (never #commands), gets one card in its channel, oldest first, quoting it, with Handle it now and Ignore; a bot's, an empty one, one logged or seen arriving are left; nothing is acted on; a second start asks nothing twice; after a long stop the latest 20 get a card and a line counts the rest; Handle it now takes it once as if just sent; Ignore removes the card only; a message that has gone is said; reading back never holds up a start | ✅ Pass | 2026-10-13 | `tests/test_two_bots.py` |
-| R87 | 🤖 Auto | Two bots from one folder | A token of its own in `.env.dev` makes the dev bot a second bot; it takes no channel from `.env`; each bot acts only in its own channels and their threads; the two locks are held at once; the status counts both and neither is a stray; the self-test looks only at the test bot's lock, and without a test bot refuses while live runs; a self-test that stopped live says so first in the status with when live is back; the bot takes only my words in a channel that is its own | ✅ Pass | 2026-10-13 | `tests/test_two_bots.py` |
+| R87 | 🤖 Auto | Two bots from one folder | A token of its own in `.env.dev` makes the dev bot a second bot; it takes no channel from `.env`; each bot acts only in its own channels and their threads; the two locks are held at once; the status counts both and neither is a stray; the self-test looks only at the dev bot's lock, and without a dev bot refuses while live runs; a self-test that stopped live says so first in the status with when live is back; the bot takes only my words in a channel that is its own | ✅ Pass | 2026-10-13 | `tests/test_two_bots.py` |
 | R88 | 👤 Manual | Block 50: messages sent while live was off | As the block says | ⬜ Untested | | Block 50 |
+| R89 | 🤖 Auto | The account is checked before anything else | Which bot a process is follows the token it will really log in with; a start is handed a clean environment and the dev bot's token explicitly; the account is asked first and the lock taken only after it passes; a wrong account, or no expected id, exits with code 4 before the lock, the database or the gateway, and logs why; Discord not answering is asked again and exits with code 1; connected as the wrong account it disconnects at once and the bot does nothing else; a real process with this machine's settings and another account's answer exits having done nothing | ✅ Pass | 2026-10-13 | `tests/test_two_bots.py` |
 
 ## S. Routing and confirm cards
 

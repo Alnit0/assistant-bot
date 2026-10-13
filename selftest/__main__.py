@@ -8,7 +8,7 @@ seconds off between the first two.
 It says how much memory is free before it starts, and stops there when
 that is low (`--anyway` goes ahead).
 
-With a test bot (`.env.dev` has a token of its own) the run is the test
+With a dev bot (`.env.dev` has a token of its own) the run is the test
 bot's: live is left running, and is never stopped for it. Without one the dev
 bot is live's own account, so live must be stopped first, and this refuses to
 start while it holds the lock; the status then says "🧪 Self-test running ·
@@ -41,20 +41,28 @@ from selftest import bugs, record, report, stages
 # ---------------------------------------------------------------------------
 CATEGORY = "selftest"
 CHANNELS = {"hub": "selftest-hub", "inbox": "selftest-inbox", "bot-log": "selftest-log"}
-FORUM = "selftest-bugs"  # the test bot's own forum for its bugs, so it never posts in the real one
+FORUM = "selftest-bugs"  # the dev bot's own forum for its bugs, so it never posts in the real one
 ENV_NAMES = {"hub": "HUB_CHANNEL_ID", "inbox": "INBOX_CHANNEL_ID", "bot-log": "BOT_LOG_CHANNEL_ID", "bugs": "BUGS_CHANNEL_ID"}
 
 
 def separate() -> bool:
-    """Whether there is a test bot: a second Discord account, which runs the
+    """Whether there is a dev bot: a second Discord account, which runs the
     self-test while live carries on."""
     return config.test_bot_token() is not None
 
 
 def token() -> str:
-    """The token the run's own calls to Discord are made with: the test bot's
+    """The token the run's own calls to Discord are made with: the dev bot's
     when there is one. Never printed."""
     return config.test_bot_token() or config.TOKEN
+
+
+def confirm_account(client) -> None:
+    """The launcher's own calls (finding, emptying and writing in the
+    self-test's channels) are the dev bot's when there is one: refuse to make
+    them as anyone else."""
+    if separate() and client.user.id != config.test_bot_id():
+        raise RuntimeError(f"the self-test's own calls would be made as {client.user} (id {client.user.id}), not the dev bot (BOT_USER_ID in .env.dev)")
 
 
 def back_about(now: datetime, minutes: float) -> str:
@@ -85,6 +93,7 @@ async def prepare_channels(purge: bool = True) -> dict[str, int]:
     client = discord.Client(intents=discord.Intents.none())
     await client.login(token())
     try:
+        confirm_account(client)
         inbox = await client.fetch_channel(int(config.INBOX_CHANNEL_ID))
         guild = await client.fetch_guild(inbox.guild.id)
         existing = await guild.fetch_channels()
@@ -115,7 +124,7 @@ async def prepare_channels(purge: bool = True) -> dict[str, int]:
                             pass
             found[role] = channel.id
         if separate():
-            # The test bot's bugs get a forum of their own, never emptied: the posts are the record
+            # The dev bot's bugs get a forum of their own, never emptied: the posts are the record
             forum = next((each for each in existing if isinstance(each, discord.ForumChannel) and each.name == FORUM), None)
             if forum is None:
                 forum = await guild.create_forum(FORUM, category=category, reason="The bot's self-test", topic="Bugs the bot's self-test found (python -m selftest). A step that fails gets a post; it is marked Fixed when the step passes again.")
@@ -209,6 +218,7 @@ async def say(channel_id: int, text: str) -> None:
     client = discord.Client(intents=discord.Intents.none())
     await client.login(token())
     try:
+        confirm_account(client)
         channel = await client.fetch_channel(channel_id)
         await channel.send(text, allowed_mentions=discord.AllowedMentions.none())
     finally:
@@ -229,7 +239,7 @@ def file_bugs(line: dict, results: list[dict], stamp: str, channel_id: int) -> t
     try:
         done = subprocess.run(
             [sys.executable, "-m", "selftest.bugs", "--dev", str(source)], cwd=config.BASE_DIR, capture_output=True, text=True, encoding="utf-8",
-            timeout=300, env={**config.environment_for_child(), "PYTHONIOENCODING": "utf-8"},
+            timeout=300, env={**config.environment_for_child(), "PYTHONIOENCODING": "utf-8", **({"DISCORD_TOKEN": token()} if separate() else {})},
         )
     except subprocess.TimeoutExpired:
         return [], "the bugs were not brought up to date: it took too long"
@@ -297,6 +307,8 @@ def run_phase(name: str, settings: dict, channels: dict[str, int], claude: bool,
     env = config.environment_for_child()
     env.update(settings)
     env["SELFTEST_SEPARATE"] = "1" if separate() else "0"
+    if separate():
+        env["DISCORD_TOKEN"] = token()  # the dev bot's, handed over explicitly: never left to what is inherited
     if os.environ.get("SELFTEST_BACK"):
         env["SELFTEST_BACK"] = os.environ["SELFTEST_BACK"]
     env.update({ENV_NAMES[role]: str(channel_id) for role, channel_id in channels.items()})
@@ -338,15 +350,15 @@ def main() -> int:
     if separate():
         held = instance_lock.holder(instance_lock.TEST_LOCK)
         if held is not None:
-            print(f"The test bot is already running (PID {held.pid}). Stop it first: the self-test starts it itself.")
+            print(f"The dev bot is already running (PID {held.pid}). Stop it first: the self-test starts it itself.")
             return 3
-        print("--- the test bot runs this (.env.dev has a token of its own): live is left running", flush=True)
+        print("--- the dev bot runs this (.env.dev has a token of its own): live is left running", flush=True)
     else:
         held = instance_lock.holder(instance_lock.LIVE_LOCK)
         if held is not None:
-            print(f"A bot is running (PID {held.pid}), and there is no test bot (.env.dev has no token of its own), so the self-test would use the same account. Stop it first.")
+            print(f"A bot is running (PID {held.pid}), and there is no dev bot (.env.dev has no token of its own), so the self-test would use the same account. Stop it first.")
             return 3
-        print("--- there is no test bot: this runs as live's own account, with live stopped", flush=True)
+        print("--- there is no dev bot: this runs as live's own account, with live stopped", flush=True)
 
     wanted = [name.strip() for name in asked.only.split(",") if name.strip()]
     named = [name.strip() for name in asked.stages.split(",") if name.strip()]

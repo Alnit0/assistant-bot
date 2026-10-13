@@ -4,7 +4,7 @@ import logging
 import discord
 from discord import app_commands
 
-from core import backup, cards, clock, conversation, database, day, devmode, identity, instance_lock, interactions, lifecycle, live, messages, missed, restart, scheduler, tidy, timing
+from core import account, backup, cards, clock, conversation, database, day, devmode, identity, instance_lock, interactions, lifecycle, live, messages, missed, restart, scheduler, tidy, timing
 from core.config import mine as my_channel
 from core.config import (
     CLAUDE_MODEL,
@@ -165,6 +165,10 @@ async def on_interaction(interaction: discord.Interaction):
 async def on_ready():
     global slash_status
     log.info("Logged in as %s (id %s)", client.user, client.user.id)
+    # Before the first thing it does: is this the account it is meant to be? If not it
+    # disconnects and exits here, having posted, renamed and touched nothing
+    if not await account.still_right(client):
+        return
 
     # on_ready fires again after a reconnect; only set up once
     if slash_status == "not set up yet":
@@ -243,7 +247,7 @@ async def _unmark_seen(message: discord.Message, failed: bool = False) -> None:
 
 
 def _mine(channel) -> bool:
-    """Whether a channel is this bot's to act in. With a test bot in the server
+    """Whether a channel is this bot's to act in. With a dev bot in the server
     there are two bots that see everything: each keeps to its own channels
     (core/config.py, `mine`)."""
     return my_channel(getattr(channel, "id", None), getattr(channel, "parent_id", None))
@@ -383,13 +387,20 @@ async def on_app_command_completion(interaction: discord.Interaction, command):
 # ---------------------------------------------------------------------------
 # Start
 # ---------------------------------------------------------------------------
-if __name__ == "__main__":
+def start() -> None:
     setup_logging()
     if DEV_DATABASE:
         log.info("Started with --dev: using the dev database %s", DB_PATH.name)
-    # Before anything touches the database or Discord: only one copy may run
+    # First of all: the token logs in as the account this start is meant to be (live or
+    # the dev bot). Asked over HTTP; a wrong account exits here with nothing touched
+    account.check(TOKEN)
+    # Then, before anything touches the database or the gateway: only one copy may run
     instance_lock.acquire()
     registry.load()
     migrate(registry.task_migrations())
     ensure_owner()
     client.run(TOKEN, log_handler=None)
+
+
+if __name__ == "__main__":
+    start()

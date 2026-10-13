@@ -390,16 +390,26 @@ The rules are in `docs/specs/pills.md` and the Pills section of
 
 - One copy of each bot may run at a time, and the lock is one a bot
   (`core/instance_lock.py`): live's account has `data/bot.lock`, the
-  test bot (a token of its own in `.env.dev`) has `data/bot-dev.lock`,
+  dev bot (a token of its own in `.env.dev`) has `data/bot-dev.lock`,
   so the two run side by side from this folder. Never start `main.py`
   while the user's own copy or the service is running; `python main.py
-  --dev` is the test bot while `.env.dev` has its own token, and live's
+  --dev` is the dev bot while `.env.dev` has its own token, and live's
   own account on another database (so never beside live) when it has
   not
+- The two bots are **Tanuki** (live) and **Testu** (the dev bot); say
+  "Testu" or "the dev bot", never "the test bot". Every start asks
+  Discord who its token is before anything else (`core/account.py`)
+  and exits, having touched nothing, unless it is the account in
+  `BOT_USER_ID` (`.env` for live, `.env.dev` for Testu); the lock is
+  taken only after that. Never weaken that check. A process that
+  starts a bot gives it `config.environment_for_child()`, never its
+  own environment, which holds live's token. When a self-test starts,
+  read its "logged in as" line in the first seconds: if it does not
+  name Testu, stop it at once
 - Two bots in one server both see everything: each acts only in its own
-  channels (`config.mine`). The test bot takes no channel from `.env`,
+  channels (`config.mine`). The dev bot takes no channel from `.env`,
   only what `.env.dev` names (the self-test's channels); live leaves
-  those alone. Never give the test bot one of my real channels
+  those alone. Never give the dev bot one of my real channels
 - Prefer checks that import the code without starting the bot. Never
   leave a bot process running; confirm with `python -m
   core.instance_lock`, which asks the lock (the source of truth) and
@@ -407,7 +417,7 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   bot is two of them (the `.venv` launcher and its child)
 - `python -m selftest` starts the dev bot against real Discord
   (`docs/DEVELOPMENT.md`, "The self-test"). Only when I ask. It runs
-  as the test bot, with live left running: never stop live for it.
+  as the dev bot, with live left running: never stop live for it.
   Only if `.env.dev` has no token of its own is it live's account:
   then live must be stopped for it, started again after, and checked
   (its status says "🧪 Self-test running · back about <time>"

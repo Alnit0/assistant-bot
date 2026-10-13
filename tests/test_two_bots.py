@@ -1,4 +1,4 @@
-"""Live and the test bot side by side from one folder (a lock, a log and channels each), the
+"""Live and the dev bot side by side from one folder (a lock, a log and channels each), the
 status of a self-test that had to stop live, and what I said while the bot was off."""
 import asyncio
 import sys
@@ -43,13 +43,13 @@ def test_the_test_bot_takes_no_channel_from_live_s_settings():
 def test_each_bot_keeps_to_its_own_channels(monkeypatch):
     own = {"DISCORD_TOKEN": "t", "INBOX_CHANNEL_ID": "7", "HUB_CHANNEL_ID": "8", "BUGS_CHANNEL_ID": "50", "DEV_CHANNEL_ID": ""}
     assert config.other_bot_channels(own, {1, 2, 50}) == {7, 8}, "a forum both post in stays live's too"
-    assert config.other_bot_channels({}, {1, 2}) == frozenset(), "no test bot: nothing is off limits"
-    # Live: everywhere in the server but the test bot's channels and their threads
+    assert config.other_bot_channels({}, {1, 2}) == frozenset(), "no dev bot: nothing is off limits"
+    # Live: everywhere in the server but the dev bot's channels and their threads
     monkeypatch.setattr(config, "SEPARATE_BOT", False)
     monkeypatch.setattr(config, "NOT_MINE", frozenset({7, 8}))
     assert config.mine(1) and config.mine(999) and config.mine(123, parent_id=1)
     assert not config.mine(7) and not config.mine(123, parent_id=8)
-    # The test bot: only its own channels and their threads
+    # The dev bot: only its own channels and their threads
     monkeypatch.setattr(config, "SEPARATE_BOT", True)
     monkeypatch.setattr(config, "CHANNELS", {"inbox": 7, "hub": 8})
     assert config.mine(7) and config.mine(123, parent_id=8)
@@ -68,7 +68,7 @@ def test_the_two_locks_are_held_at_once_and_each_says_only_who_holds_it(tmp_path
     instance_lock.acquire(live)
     first = instance_lock._lock_fd
     try:
-        assert instance_lock.holder(live) is not None and instance_lock.holder(test) is None, "live running does not make the test bot's lock taken"
+        assert instance_lock.holder(live) is not None and instance_lock.holder(test) is None, "live running does not make the dev bot's lock taken"
         instance_lock.acquire(test)  # would exit if the lock were the folder's
         second = instance_lock._lock_fd
         try:
@@ -91,14 +91,14 @@ def test_the_status_counts_both_bots_and_neither_is_a_stray():
     processes = [Process(5000, 900, venv), Process(5001, 5000, venv), Process(6000, 900, dev), Process(6001, 6000, dev)]
     lines = instance_lock.status_text(live, processes, test).splitlines()
     assert lines[0] == "1 bot is running: PID 5001, started 2026-10-13 15:37:55 (it holds the lock)."
-    assert lines[1] == "The test bot is running too: PID 6001, started 2026-10-13 16:00:00 (its own lock, data/bot-dev.lock)."
-    assert not any("without the lock" in line for line in lines), "the test bot holds a lock of its own"
+    assert lines[1] == "The dev bot is running too: PID 6001, started 2026-10-13 16:00:00 (its own lock, data/bot-dev.lock)."
+    assert not any("without the lock" in line for line in lines), "the dev bot holds a lock of its own"
     alone = instance_lock.status_text(None, processes[2:], test).splitlines()
-    assert alone[:2] == ["Live is not running: nothing holds its lock (data/bot.lock).", "The test bot is running: PID 6001, started 2026-10-13 16:00:00 (its own lock, data/bot-dev.lock)."]
+    assert alone[:2] == ["Live is not running: nothing holds its lock (data/bot.lock).", "The dev bot is running: PID 6001, started 2026-10-13 16:00:00 (its own lock, data/bot-dev.lock)."]
     assert "without the lock" in instance_lock.status_text(live, processes, None), "a second main.py with no lock of its own is still said"
 
 
-# --- the self-test: the test bot's, or live's account with live stopped ---------------------------------------------
+# --- the self-test: the dev bot's, or live's account with live stopped ---------------------------------------------
 def test_with_a_test_bot_the_self_test_looks_at_its_lock_and_never_at_live_s(monkeypatch, capsys):
     asked = []
 
@@ -111,7 +111,7 @@ def test_with_a_test_bot_the_self_test_looks_at_its_lock_and_never_at_live_s(mon
     monkeypatch.setattr(sys, "argv", ["selftest", "--stages", "briefing"])
     assert runner.separate() and runner.token() == "test-token"
     assert runner.main() == 3 and asked == ["bot-dev.lock"], "live's lock is not even asked about: live running is no reason to stop"
-    assert "The test bot is already running (PID 7)" in capsys.readouterr().out
+    assert "The dev bot is already running (PID 7)" in capsys.readouterr().out
 
 
 def test_without_a_test_bot_the_self_test_is_live_s_account_and_refuses_while_live_runs(monkeypatch, capsys):
@@ -127,7 +127,7 @@ def test_without_a_test_bot_the_self_test_is_live_s_account_and_refuses_while_li
     assert not runner.separate() and runner.token() == config.TOKEN
     assert runner.main() == 3 and asked == ["bot.lock"]
     out = capsys.readouterr().out
-    assert "A bot is running (PID 8016)" in out and "there is no test bot" in out and "Stop it first" in out
+    assert "A bot is running (PID 8016)" in out and "there is no dev bot" in out and "Stop it first" in out
 
 
 def test_the_status_of_a_self_test_that_stopped_live_comes_first_and_says_when_live_is_back():
@@ -358,9 +358,9 @@ def test_a_start_of_the_self_test_logs_in_as_the_dev_bot_when_there_is_one():
     in_files = set(dotenv_values(config.BASE_DIR / ".env")) | set(dotenv_values(config.BASE_DIR / ".env.dev"))
     env = {name: value for name, value in config.environment_for_child().items() if name not in in_files}
     env.update({"SELFTEST": "1", "INBOX_CHANNEL_ID": "7", "HUB_CHANNEL_ID": "8", "BOT_LOG_CHANNEL_ID": "9", "COMMANDS_CHANNEL_ID": ""})
-    code = "from core import config, instance_lock; print(config.SEPARATE_BOT, config.TOKEN == config.test_bot_token(), instance_lock.LOCK_PATH.name, sorted(config.CHANNELS))"
+    code = "from core import config, instance_lock; print(config.SEPARATE_BOT, config.TOKEN == config.test_bot_token(), instance_lock.LOCK_PATH.name, config.EXPECTED_BOT_ID == config.test_bot_id(), sorted(config.CHANNELS))"
     done = subprocess.run([sys.executable, "-c", code, "--dev"], cwd=config.BASE_DIR, env=env, capture_output=True, text=True, timeout=60)
-    assert done.stdout.split()[:3] == ["True", "True", "bot-dev.lock"], done.stdout + done.stderr
+    assert done.stdout.split()[:4] == ["True", "True", "bot-dev.lock", "True"], done.stdout + done.stderr
     assert "gym" not in done.stdout and "archive" not in done.stdout, "and it has none of live's channels"
     # And with live's token forced on it, it is live's account: live's lock, so it can never run beside live
     forced = subprocess.run([sys.executable, "-c", code, "--dev"], cwd=config.BASE_DIR, env={**env, "DISCORD_TOKEN": "not-the-dev-bot's"}, capture_output=True, text=True, timeout=60)
@@ -380,5 +380,156 @@ def test_the_launcher_hands_a_start_a_clean_environment_and_the_start_refuses_to
     monkeypatch.setenv("DISCORD_TOKEN", "live-token-from-env-file")
     monkeypatch.setattr(config, "_SET_BEFORE", {"PATH"})
     runner.run_phase("p1", {"CARDS_V2": "false"}, {"hub": 8, "inbox": 7}, False, 0.2, {}, "s")
-    assert "DISCORD_TOKEN" not in seen["env"], "the start reads .env.dev for itself"
+    assert seen["env"]["DISCORD_TOKEN"] == "dev-token", "the dev bot's token is handed over explicitly, never live's that was in this process's environment"
     assert seen["env"]["SELFTEST_SEPARATE"] == "1" and seen["env"]["INBOX_CHANNEL_ID"] == "7" and seen["command"][-4:-2] == ["selftest.phase", "--dev"]
+
+
+# --- the hard guard: the account is checked before the lock, and a wrong one touches nothing ---------------------------
+from core import account  # noqa: E402
+
+TANUKI, TESTU = 1556, 1559
+
+
+@pytest.fixture
+def said(monkeypatch):
+    """What the account check logs."""
+    lines = []
+
+    def note(text, *args):
+        lines.append(text % args if args else text)
+
+    monkeypatch.setattr(account, "log", SimpleNamespace(error=note, warning=note, info=note))
+    return lines
+
+
+def test_a_start_goes_on_only_as_the_account_it_is_meant_to_be(monkeypatch):
+    monkeypatch.setattr(config, "SEPARATE_BOT", False)
+    monkeypatch.setattr(config, "DEV_DATABASE", False)
+    monkeypatch.setattr(config, "DEV_ENV", False)
+    assert account.problem(TANUKI, TANUKI, "Tanuki#1") == ""
+    wrong = account.problem(TANUKI, TESTU, "Testu#2")
+    assert "meant to be live (Tanuki) (id 1556, BOT_USER_ID in .env)" in wrong and "logs in as Testu#2 (id 1559)" in wrong
+    assert "BOT_USER_ID is not set in .env" in account.problem(None, TANUKI), "with no expected id it can't tell, so it does not go on"
+    monkeypatch.setattr(config, "SEPARATE_BOT", True)
+    monkeypatch.setattr(config, "DEV_ENV", True)
+    assert "meant to be the dev bot (Testu) (id 1559, BOT_USER_ID in .env.dev)" in account.problem(TESTU, TANUKI, "Tanuki#1")
+
+
+@pytest.fixture
+def starting(monkeypatch):
+    """main.start() with everything after the check stood in for, in the order it happens."""
+    import main
+
+    did = []
+    monkeypatch.setattr(main, "setup_logging", lambda: None)
+    monkeypatch.setattr(main.instance_lock, "acquire", lambda *args: did.append("lock"))
+    monkeypatch.setattr(main.registry, "load", lambda: did.append("tasks"))
+    monkeypatch.setattr(main, "migrate", lambda *args: did.append("database"))
+    monkeypatch.setattr(main, "ensure_owner", lambda: did.append("owner"))
+    monkeypatch.setattr(main.client, "run", lambda *args, **kwargs: did.append("connect"))
+    monkeypatch.setattr(account, "WAIT_SECONDS", 0)
+    monkeypatch.setattr(config, "EXPECTED_BOT_ID", TANUKI)
+    return main, did
+
+
+def test_the_account_is_checked_first_and_the_lock_is_taken_only_after_it_passes(starting, monkeypatch):
+    main, did = starting
+    monkeypatch.setattr(account, "_ask", lambda token: did.append("who am I") or (TANUKI, "Tanuki#1"))
+    main.start()
+    assert did == ["who am I", "lock", "tasks", "database", "owner", "connect"]
+
+
+def test_a_start_on_the_wrong_account_exits_before_the_lock_the_database_or_the_gateway(starting, monkeypatch, said):
+    main, did = starting
+    monkeypatch.setattr(account, "_ask", lambda token: (TESTU, "Testu#2"))
+    with pytest.raises(SystemExit) as stopped:
+        main.start()
+    assert stopped.value.code == account.EXIT_WRONG_ACCOUNT == 4 and did == [], "nothing after the check happened: no lock, no database, no connection"
+    assert "Not started" in said[-1] and "logs in as Testu#2" in said[-1] and "the lock was not taken" in said[-1], "and it logs why"
+
+    monkeypatch.setattr(config, "EXPECTED_BOT_ID", None)
+    monkeypatch.setattr(account, "_ask", lambda token: did.append("asked") or (TANUKI, "Tanuki#1"))
+    with pytest.raises(SystemExit) as stopped:
+        main.start()
+    assert stopped.value.code == 4 and did == [], "no expected id set: it does not start, and does not even ask"
+
+
+def test_discord_not_answering_is_asked_again_and_is_not_taken_for_the_right_account(starting, monkeypatch):
+    main, did = starting
+    tries = []
+
+    def down(token):
+        tries.append(1)
+        raise OSError("no network yet")
+
+    monkeypatch.setattr(account, "_ask", down)
+    with pytest.raises(SystemExit) as stopped:
+        main.start()
+    assert stopped.value.code == 1 and len(tries) == account.TRIES and did == [], "not started, and with a code the service tries again on"
+
+
+def test_connected_as_the_wrong_account_it_disconnects_at_once_and_does_nothing_else(monkeypatch, said):
+    import main
+
+    did = []
+
+    class Client:
+        user = SimpleNamespace(id=TESTU, __str__=lambda self: "Testu#2")
+
+        async def close(self):
+            did.append("disconnected")
+
+    monkeypatch.setattr(config, "EXPECTED_BOT_ID", TANUKI)
+    monkeypatch.setattr(account, "_leave", lambda: did.append("exit"))
+    assert run(account.still_right(Client())) is False and did == ["disconnected", "exit"]
+    assert said[-1].startswith("Disconnecting: ") and "Nothing was posted, renamed or changed" in said[-1]
+    monkeypatch.setattr(config, "EXPECTED_BOT_ID", TESTU)
+    assert run(account.still_right(Client())) is True and did == ["disconnected", "exit"]
+
+    # And the bot's own on_ready stops there: no slash commands, no tasks started, no nickname, no message
+    async def not_right(client):
+        did.append("checked")
+        return False
+
+    async def must_not(*args, **kwargs):
+        raise AssertionError("the bot went on after a wrong account")
+
+    monkeypatch.setattr(main.account, "still_right", not_right)
+    for name in ("setup_slash_commands",):
+        monkeypatch.setattr(main, name, must_not)
+    monkeypatch.setattr(main.registry, "startup", must_not)
+    monkeypatch.setattr(main.identity, "start", must_not)
+    monkeypatch.setattr(main.scheduler, "start", must_not)
+    monkeypatch.setattr(main, "client", SimpleNamespace(user=SimpleNamespace(id=TESTU), get_channel=must_not))
+    run(main.on_ready())
+    assert did[-1] == "checked"
+
+
+def test_a_real_start_as_the_dev_bot_with_another_account_s_answer_exits_having_done_nothing():
+    """A whole process, with this machine's own settings files: the proof that a wrong-account start exits."""
+    import subprocess
+
+    from dotenv import dotenv_values
+
+    if config.test_bot_token() is None or config.test_bot_id() is None:
+        pytest.skip("no dev bot with its id on this machine (.env.dev)")
+    in_files = set(dotenv_values(config.BASE_DIR / ".env")) | set(dotenv_values(config.BASE_DIR / ".env.dev"))
+    env = {name: value for name, value in config.environment_for_child().items() if name not in in_files}
+    code = (
+        "import sys\n"
+        "from core import account, config, instance_lock\n"
+        "import main\n"
+        "did = []\n"
+        "main.setup_logging = lambda: None\n"
+        "account._ask = lambda token: (config.EXPECTED_BOT_ID + 1, 'Tanuki#1')\n"
+        "instance_lock.acquire = lambda *a: did.append('lock')\n"
+        "main.instance_lock.acquire = instance_lock.acquire\n"
+        "main.migrate = lambda *a: did.append('database')\n"
+        "main.client.run = lambda *a, **k: did.append('connect')\n"
+        "try:\n"
+        "    main.start()\n"
+        "except SystemExit as stopped:\n"
+        "    print('exit', stopped.code, did, config.SEPARATE_BOT)\n"
+    )
+    done = subprocess.run([sys.executable, "-c", code, "--dev"], cwd=config.BASE_DIR, env=env, capture_output=True, text=True, timeout=90)
+    assert done.stdout.strip().endswith("exit 4 [] True"), done.stdout + done.stderr[-600:]

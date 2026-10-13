@@ -96,7 +96,7 @@ def status_line(
     """The status line. `trouble` is (task, kind, "failed" or "skipped") for each
     kind of job whose latest run didn't work, the most recent first.
     `selftest_back` is when live is expected back, in a self-test that runs
-    as live's own account because there is no test bot: live is stopped for
+    as live's own account because there is no dev bot: live is stopped for
     it, and that comes before everything else."""
     if selftest_back:
         return f"🧪 Self-test running · back about {selftest_back}"[:MAX_STATUS]
