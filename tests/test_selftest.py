@@ -767,3 +767,20 @@ def test_the_options_are_only_ever_posted_as_the_dev_bot(monkeypatch):
     with pytest.raises(SystemExit) as stopped:
         run(options.post(datetime(2026, 10, 13)))
     assert "There is no dev bot" in str(stopped.value) and "nothing posted" in str(stopped.value)
+
+
+def test_round_two_of_the_design_options_is_read_in_its_own_order_and_every_sketch_fits_one_message():
+    from selftest import options
+
+    folder = options.round_folder(2)
+    assert folder.name == "round-2" and options.round_folder(1) == options.FOLDER
+    found = options.checked(folder)
+    names = [name for name, *_ in found]
+    assert len(found) == 13 and names[0] == "r2-briefing-hierarchy-v1", "in the order of its INDEX"
+    assert all(name.startswith("r2-") and name.endswith("-v1") for name in names), "versioned: a changed sketch gets a new number"
+    for wanted in ("squares", "bars", "icons", "custom", "blocks-plain", "blocks-heading", "blocks-code", "blocks-partial", "question-stacked", "briefing-total"):
+        assert any(wanted in name for name in names), wanted
+    opening = options.round_summary(2, [each[:3] for each in found])
+    assert opening.startswith("**Design options · round 2**") and "nothing in the real cards changes until you pick" in opening and len(opening) <= 2000
+    confirm = (folder / "r2-confirm-hierarchy-v1.txt").read_text(encoding="utf-8")
+    assert "~~8:00 pm~~ → **9:00 pm**" in confirm and "`" not in confirm, "old struck through, new bold, no code blocks"

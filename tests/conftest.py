@@ -27,6 +27,15 @@ def fails_fast_if_it_hangs(request):
 
 
 @pytest.fixture(autouse=True)
+def no_real_data_folder(monkeypatch, tmp_path):
+    """Whatever reads the data folder by its path (the self-test's history, for
+    one) finds an empty one of the test's own, never this PC's real runs."""
+    from core import config
+
+    monkeypatch.setattr(config, "DATA_DIR", tmp_path / "data")
+
+
+@pytest.fixture(autouse=True)
 def the_pc_has_not_restarted(monkeypatch):
     """When this PC really started has nothing to do with a test's own clock: a
     test that wants a restart of the PC says when (core/restart.py)."""

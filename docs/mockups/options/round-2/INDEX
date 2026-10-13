@@ -1,0 +1,14 @@
+# Round 2 (2026-10-14), from the feedback on round 1. One line a sketch: its file, its label, and what is different. Read by selftest/options.py --round 2
+r2-briefing-hierarchy-v1 | Briefing · R2-A | hierarchy: ## for the title, ### for each section, -# for details, a rule between sections, no boxes
+r2-checklist-hierarchy-v1 | Checklist · R2-A | hierarchy: ## for the title, ### for each pill, -# for details, a rule between pills, buttons under each
+r2-confirm-hierarchy-v1 | Confirm card · R2-A | hierarchy (## title, ### each pill, -# details) and a change as old struck through, new in bold, in place of code blocks
+r2-question-stacked-v1 | Question card · R2-A | the thin question card (round 1's B), two of them one above the other, as when two things are asked
+r2-progress-squares-v1 | Progress · R2-A | squares: 🟩 done, ⬜ still to do. Pills now; to-dos and gym only for the shape
+r2-progress-bars-v1 | Progress · R2-B | bars: ▰ done, ▱ still to do (what the hub's progress bar uses today)
+r2-progress-icons-v1 | Progress · R2-C | task icons: the task's own icon for done, ⚪ for still to do
+r2-progress-custom-v1 | Progress · R2-D | a custom-emoji bar: each cell an image of our own, with rounded ends, so it reads as one bar. Drawn here with the nearest characters; the images to make are listed under it
+r2-briefing-total-v1 | Briefing · R2-B | a total for the whole day in the title, from each task's done out of total, with a small line a task under it
+r2-blocks-plain-v1 | Block bar · R2-A | plain: ten cells and a percentage on a line of its own (22 characters at most)
+r2-blocks-heading-v1 | Block bar · R2-B | in a heading: the bar is part of the ## title and of each ### item (the longest line here is 24 characters at heading size)
+r2-blocks-code-v1 | Block bar · R2-C | inside inline code: every cell the same width whatever the phone's font, on a grey patch
+r2-blocks-partial-v1 | Block bar · R2-D | partial blocks (▏▎▍▌▋▊▉) so it fills smoothly: 73% is seven cells and a third. The part-filled cell has no light shade behind it

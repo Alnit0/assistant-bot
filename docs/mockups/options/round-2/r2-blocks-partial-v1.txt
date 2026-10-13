@@ -1,0 +1,10 @@
+## ☀️ Today
+███████▎░░ 73%
+-# 💊 pills 5/7 · 📝 to-dos 3/4
+---
+### Pill A
+██████▋░░░ 67% · 2 of 3
+**Next:** dose 3 · 3:00 pm
+---
+-# for comparison, 10% steps up to full: █░░░░░░░░░ ██████████
+-# 🧪 Block bar · R2-D · partial blocks (▏▎▍▌▋▊▉) so it fills smoothly: 73% is seven cells and a third. The part-filled cell has no light shade behind it

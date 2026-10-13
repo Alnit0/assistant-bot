@@ -1,0 +1,16 @@
+┃ accent: blurple
+┃ ## 💊 Pills · change
+┃ -# 2 pills
+┃ ---
+┃ ### Pill A
+┃ schedule · daily at ~~8:00 pm~~ → **9:00 pm**
+┃ notes · ~~with food~~ → **with no food within 30 minutes** ❓
+┃ ---
+┃ ### Pill B ❓
+┃ dose · ~~1 tablet~~ → **2 tablets**
+┃ ---
+┃ -# ⚠️ Not included: “and the other one”
+┃ [✅ Save: green] [↩️ Cancel: grey]
+
+-# ❓ marks a guess · reply to this card to change it
+-# 🧪 Confirm card · R2-A · hierarchy (## title, ### each pill, -# details) and a change as old struck through, new in bold, in place of code blocks

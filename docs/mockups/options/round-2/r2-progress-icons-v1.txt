@@ -1,0 +1,11 @@
+## 💊 Pills · 💊💊⚪⚪⚪⚪ 2/6
+---
+### Pill A · 💊⚪⚪
+**Next:** dose 2 · 12:00 pm
+---
+### Pill B · ⚪
+-# any time
+---
+## 📝 To-dos · ✅✅✅⚪ 3/4
+## 🏋️ Gym · 🏋️🏋️⚪⚪⚪ 2/5 sets
+-# 🧪 Progress · R2-C · task icons: the task's own icon for done, ⚪ for still to do

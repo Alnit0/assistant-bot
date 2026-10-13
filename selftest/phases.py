@@ -269,12 +269,12 @@ async def p1(h: Harness) -> None:
         left = list(await h.pills())
         h.check(not any(name.startswith("Testvit") for name in left), f"still there: {left}")
 
-    async with h.step("1.10b", "`my schedule`", "A list, with no request to Claude: “🗓️ My schedule”, Pills checklist every day at 6:00 am in #hub, silent, with its next run; the bot's own in one small line; a plain message with CARDS_V2 off", "scheduler stage 2 (schedule-list-v2)"):
+    async with h.step("1.10b", "`my schedule`", "A list, with no request to Claude: “🗓️ My schedule”, Pills checklist every day at 6:00 am in #hub, silent, with its next run and its last; the Needs-a-look check at 7:00 am; the bot's own a small line each with its last run; a plain message with CARDS_V2 off", "scheduler stage 2 (schedule-list-v2)"):
         before = h._real_calls
         await h.say("my schedule")
         shown = await h.find(h.inbox, "My schedule")
         h.check(shown is not None and "**Pills checklist** · every day at `6:00 am`" in shown.text, f"the list: {shown.text[:300] if shown else 'nothing'}")
-        h.check("#hub · silent · next: today 6:00 am" in shown.text and "The bot's own, not changed here: end of the day 12:00 am · nightly backup 3:00 am" in shown.text, f"its details: {shown.text[:500]}")
+        h.check("#hub · silent · next: today 6:00 am" in shown.text and "The bot's own, not changed here:" in shown.text and "Nightly backup · 3:00 am · last:" in shown.text and "Needs-a-look check" in shown.text, f"its details: {shown.text[:500]}")
         h.check(not shown.v2 and not shown.buttons and h._real_calls == before, "it is drawn, has buttons, or asked Claude")
         h.memo["schedule_list"] = shown.id
 

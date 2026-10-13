@@ -1,0 +1,12 @@
+┃ accent: blurple
+┃ ## Is that 8 in the morning or the evening?
+┃ -# 💊 Pills · new · **Iron** · daily at ❔ · with food
+┃ [8:00 am: blurple] [8:00 pm: blurple] [↩️ Cancel: grey]
+
+┃ accent: blurple
+┃ ## Which one: Vitamin D or Vitamin D3?
+┃ -# 💊 Pills · log · “took the vitamin”
+┃ [Vitamin D: blurple] [Vitamin D3: blurple] [↩️ Neither: grey]
+
+-# or type your answer
+-# 🧪 Question card · R2-A · the thin question card (round 1's B), two of them one above the other, as when two things are asked

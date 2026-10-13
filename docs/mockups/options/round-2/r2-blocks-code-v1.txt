@@ -1,0 +1,8 @@
+## ☀️ Today
+`███████░░░` 70%
+-# 💊 pills 5/7 · 📝 to-dos 2/3
+---
+### Pill A
+`██████░░░░` 67% · 2 of 3
+**Next:** dose 3 · 3:00 pm
+-# 🧪 Block bar · R2-C · inside inline code: every cell the same width whatever the phone's font, on a grey patch

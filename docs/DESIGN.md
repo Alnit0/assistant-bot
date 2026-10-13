@@ -285,6 +285,78 @@ line saying which it is and what differs, with a summary to answer
 with picks. They are sketches: nothing in a real card changes until a
 pick is made and built.
 
+## Drafts: round 2 (2026-10-14, nothing decided, nothing built)
+
+From the feedback on round 1. The sketches are
+`docs/mockups/options/round-2/` (each file ends `-v1`: a changed
+sketch gets a new number, the old one stays), posted in the same
+"🎨 Design options" post by `python -m selftest.options --round 2`.
+Everything in this section is a **draft**: the rules above stand until
+a pick is made (`docs/QUESTIONS.md`, under Design).
+
+**Kept from round 1**: the horizontal rule between items; the thin
+question card (the question as the heading, what was understood small
+under it, the answers in one row). `r2-question-stacked-v1` shows two,
+one above the other.
+
+**Hierarchy (draft).** Three levels, the same on every card:
+
+| Level | Written | Used for |
+|---|---|---|
+| The card's title | `## ` | "## ☀️ Today", "## 💊 Pills · change" |
+| Each item | `### ` | each pill, each section of the briefing |
+| Details | `-# ` | notes, hints, what happened, the foot |
+
+A rule (`---`) between items, no box an item. Sketches:
+`r2-briefing-hierarchy-v1`, `r2-checklist-hierarchy-v1`,
+`r2-confirm-hierarchy-v1`. Today a title is `# ` or `## ` and an item
+is a bold line in a box of its status's colour: with no box, the
+colour of a status is lost, and the mark beside the name has to carry
+it (●○○, ✕, ✅).
+
+**A change (draft).** The old value struck through and the new one
+bold, in place of code blocks: `schedule · daily at ~~8:00 pm~~ →
+**9:00 pm**`. A time elsewhere (not a change) would then be plain too.
+
+**Progress marks (draft).** For anything ticked off out of a number
+(doses now; to-dos and gym sets later), four styles to pick from:
+
+| Style | Looks like | For | Against |
+|---|---|---|---|
+| Squares | 🟩🟩⬜⬜⬜⬜ 2/6 | Clear at a glance, coloured | Wide: six is half a phone line at heading size; ⬜ is faint in light mode |
+| Bars | ▰▰▱▱▱▱ 2/6 | Compact; what the hub's bar uses today; the same on every phone | No colour |
+| Task icons | 💊💊⚪⚪⚪⚪ 2/6 | Says which task without a label | Busy; some icons (🏋️) are hard to tell from ⚪ when small |
+| Custom emoji | one joined bar with rounded ends | The best looking | Six images to draw (listed in `r2-progress-custom-v1`); a phone that fails to load them shows `:bar_mid_full:` |
+
+**A total for the day (draft).** The briefing's title carries the
+whole day: "## ☀️ Today ▰▰▰▰▰▱▱▱ 5/8", and under it one small line a
+task ("-# 💊 pills 2/5 · 📝 to-dos 2/2 · 🏋️ gym 1/1"). Built from each
+task's done out of total: the summary contract (`actions.Summary`)
+would gain two numbers, `done` and `total`, which a task with nothing
+countable (weather) leaves out, and the briefing would add them up
+without knowing any task. Sketch: `r2-briefing-total-v1`.
+
+**A block bar (draft).** Ten cells and a percentage, solid for done
+and light for not done: "███████░░░ 70%". Four ways, each shown as the
+day's total at the top of the briefing and as one pill's progress:
+
+| Way | Looks like | Note |
+|---|---|---|
+| Plain, a line of its own | ███████░░░ 70% | 14 characters: fits any phone |
+| In a heading | ## ☀️ Today ███████░░░ 70% | 24 characters at heading size: the one that could wrap on a narrow phone |
+| In inline code | `███████░░░` 70% | Every cell the same width whatever the font, on a grey patch |
+| Partial blocks | ███████▎░░ 73% | Fills smoothly (▏▎▍▌▋▊▉); the part-filled cell has no light shade behind it, so there is a small gap in the track |
+
+**Mobile widths.** Not looked at on a phone: I can post sketches but
+not see them. What can be said from counting: a phone shows roughly 40
+characters of ordinary text on a line, about 30 at `###` size and
+about 24 at `##` size, and an emoji takes about two. So the bar in a
+`##` title is at the limit, six squares in a `##` title are over it
+with a count, and everything else has room. The block characters are
+one width each in the fonts phones fall back to, but only inline code
+makes that certain. Please check the four block bars and the squares
+on your phone before picking.
+
 ## The sketches
 
 | Sketch | Shows |

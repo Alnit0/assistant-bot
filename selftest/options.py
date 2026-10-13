@@ -28,14 +28,33 @@ CARDS = ("checklist", "reminder", "briefing", "confirm", "question")  # the orde
 TITLE = "🎨 Design options"
 
 
+def round_folder(number: int) -> Path:
+    """Where a later round's sketches are: docs/mockups/options/round-2/. Round 1 is the folder itself."""
+    return FOLDER if number <= 1 else FOLDER / f"round-{number}"
+
+
 def listed(folder: Path = FOLDER) -> list[tuple[str, str, str]]:
-    """(file name, label, what is different) for each sketch, in the order posted: by card, then by letter."""
+    """(file name, label, what is different) for each sketch, in the order posted: round 1 by card, then by
+    letter; a later round in the order of its INDEX."""
     found = []
     for line in (folder / INDEX).read_text(encoding="utf-8").splitlines():
         if line.strip() and not line.startswith("#"):
             name, label, differs = (part.strip() for part in line.split("|", 2))
             found.append((name, label, differs))
+    if folder != FOLDER:
+        return found
     return sorted(found, key=lambda each: (CARDS.index(each[0].rsplit("-", 1)[0]), each[0]))
+
+
+def round_summary(number: int, options: list[tuple[str, str, str]]) -> str:
+    """What opens a later round, in the same post as the first."""
+    return "\n".join([
+        f"**Design options · round {number}** · sketches only, from your feedback on the round before: nothing in the real cards changes until you pick.",
+        f"{len(options)} sketches follow, each under a line saying which it is (R{number}-A, R{number}-B…). The buttons on a sketch do nothing.",
+        "",
+        "**To pick**, reply here, e.g. `briefing R2-B, progress R2-B, block bar R2-C`, and anything you would change.",
+        *(f"- **{label}** · {differs}" for _, label, differs in options),
+    ])[:1990]
 
 
 def summary(options: list[tuple[str, str, str]]) -> str:
@@ -83,6 +102,57 @@ def checked(folder: Path = FOLDER) -> list[tuple[str, str, str, list]]:
     return found
 
 
+async def _earlier_post(client, forum):
+    """The design-options post that is already there, the latest one, or None. Asked over HTTP: there is no cache."""
+    found = await client.http.get_active_threads(forum.guild_id)
+    mine = [each for each in found.get("threads", []) if str(each.get("parent_id")) == str(forum.id) and (each.get("name") or "").startswith(TITLE)]
+    if mine:
+        return await client.fetch_channel(int(max(mine, key=lambda each: int(each["id"]))["id"]))
+    async for thread in forum.archived_threads(limit=50):
+        if thread.name.startswith(TITLE):
+            return thread
+    return None
+
+
+async def post_round(number: int, when: datetime) -> str:
+    """Post a later round's sketches in the design-options post that is already
+    there (a new one only if that can't be found). Returns its link."""
+    import discord
+    from dotenv import dotenv_values
+
+    from tasks.dev import mock
+
+    token, expected = config.test_bot_token(), config.test_bot_id()
+    if token is None or expected is None:
+        raise SystemExit("There is no dev bot (.env.dev needs its own token and BOT_USER_ID): nothing posted.")
+    forum_id = (dotenv_values(config.BASE_DIR / ".env.dev").get("BUGS_CHANNEL_ID") or "").strip()
+    if not forum_id.isdigit():
+        raise SystemExit("BUGS_CHANNEL_ID is not set in .env.dev: the options go in the dev bot's forum. Nothing posted.")
+    options = checked(round_folder(number))
+    client = discord.Client(intents=discord.Intents.none())
+    await client.login(token)
+    try:
+        if client.user.id != expected:
+            raise SystemExit("Not the dev bot's account: nothing posted.")
+        forum = await client.fetch_channel(int(forum_id))
+        if not isinstance(forum, discord.ForumChannel):
+            raise SystemExit("BUGS_CHANNEL_ID in .env.dev is not a forum: nothing posted.")
+        quiet = discord.AllowedMentions.none()
+        opening = round_summary(number, [each[:3] for each in options])
+        thread = await _earlier_post(client, forum)
+        if thread is None:
+            made = await forum.create_thread(name=f"{TITLE} · round {number} · {when:%Y-%m-%d}", content=opening, allowed_mentions=quiet)
+            thread = made.thread
+        else:
+            await thread.send(opening, allowed_mentions=quiet)
+        for _, label, differs, pieces in options:
+            await thread.send(label_line(label, differs), allowed_mentions=quiet)
+            await thread.send(view=mock.layout(pieces))
+        return thread.jump_url
+    finally:
+        await client.close()
+
+
 async def post(when: datetime) -> str:
     """Post them all in a new post of the dev bot's forum. Returns its link."""
     import discord
@@ -118,10 +188,11 @@ async def post(when: datetime) -> str:
 
 def main() -> int:
     sys.stdout.reconfigure(encoding="utf-8")
+    number = int(sys.argv[sys.argv.index("--round") + 1]) if "--round" in sys.argv[1:] else 1
     if "--check" in sys.argv[1:]:
-        print(f"{len(checked())} sketches read, each within one message.")
+        print(f"{len(checked(round_folder(number)))} sketches read, each within one message.")
         return 0
-    print("Posted:", asyncio.run(post(datetime.now())))
+    print("Posted:", asyncio.run(post(datetime.now()) if number <= 1 else post_round(number, datetime.now())))
     return 0
 
 

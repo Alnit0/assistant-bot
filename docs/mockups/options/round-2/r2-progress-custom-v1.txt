@@ -1,0 +1,16 @@
+## 💊 Pills · ◖▰▰▱▱▱▱◗ 2/6
+---
+### Pill A · ◖▰▱▱◗
+**Next:** dose 2 · 12:00 pm
+---
+**The images this needs** (each 128 × 128 px, PNG, transparent background, the bar 40% of the height and touching both side edges so cells join):
+1. `bar_start_full` · left end, rounded, filled
+2. `bar_start_empty` · left end, rounded, empty
+3. `bar_mid_full` · middle cell, filled
+4. `bar_mid_empty` · middle cell, empty
+5. `bar_end_full` · right end, rounded, filled
+6. `bar_end_empty` · right end, rounded, empty
+-# optional, for a bar that fills smoothly: `bar_mid_half`, `bar_start_half`, `bar_end_half`
+-# two colours to choose: the fill (green, or the status colour) and the empty track (a grey that shows in dark and light mode)
+-# they would be uploaded as the bot's own emoji, so they use none of the server's slots
+-# 🧪 Progress · R2-D · a custom-emoji bar: each cell an image of our own, with rounded ends, so it reads as one bar. Drawn here with the nearest characters; the images to make are listed under it

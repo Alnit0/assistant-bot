@@ -1632,6 +1632,10 @@ may read differently. No briefing code changes.
 
 ## Design options on your phone
 
+A later round (`docs/mockups/options/round-2/`, with an INDEX of its
+own) is posted into the same post with `python -m selftest.options
+--round 2` (`--check` first reads them without posting).
+
 `python -m selftest.options` posts the sketches of
 `docs/mockups/options/` as the dev bot, over HTTP only (no bot is
 started, live is not touched): a new post "🎨 Design options · <date>"

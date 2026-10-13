@@ -37,7 +37,7 @@ Last updated: 2026-10-14
 | G | Timers | 32 | 12 | 20 | 17 | 15 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
 | J | Dev mode | 68 | 19 | 49 | 47 | 21 | 0 | 0 |
-| K | Startup and housekeeping | 56 | 37 | 19 | 17 | 39 | 0 | 0 |
+| K | Startup and housekeeping | 58 | 38 | 20 | 18 | 40 | 0 | 0 |
 | L | Keep | 14 | 6 | 8 | 8 | 6 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
 | P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
@@ -46,7 +46,7 @@ Last updated: 2026-10-14
 | S | Routing and confirm cards | 80 | 27 | 53 | 18 | 61 | 0 | 1 |
 | T | Tasks in plain words | 26 | 7 | 19 | 4 | 22 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **546** | **221** | **325** | **255** | **290** | **0** | **1** |
+| | **Total** | **548** | **222** | **326** | **256** | **291** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -363,6 +363,8 @@ Any channel. Check the bot's status in the member list.
 | K54 | 🤖 Auto | The daily exchange rate | A fetch is kept; a failed one leaves the last known rate in use and is not a failed job; the last one is taken up after a restart and by the self-test's launcher; the dev bot never fetches | ✅ Pass | 2026-10-14 | `tests/test_money.py` |
 | K55 | 🤖 Auto | Limits in NZ$ and the briefing's spend line | The limits are round NZ$ compared in US$ at the rate of the moment, renamed and not kept twice; yesterday's spend is one line with the amounts hidden, left out for a day with none and on the dev bot | ✅ Pass | 2026-10-14 | `tests/test_money.py` |
 | K56 | 👤 Manual | NZ$ on the phone | `dev cost` shows NZ$ and ends with the rate and when it was fetched; the morning's briefing has "💸 Yesterday: …" with the amounts hidden until tapped | ⬜ Untested | |  |
+| K57 | 🤖 Auto | Design options, round 2 | Read in the order of its INDEX, every sketch within one message and versioned; the opening says nothing changes until a pick | ✅ Pass | 2026-10-14 | `tests/test_selftest.py` |
+| K58 | 👤 Manual | Round 2 on the phone | Open the 🎨 Design options post: 13 new sketches (R2-…). Check the four block bars and the squares wrap nowhere, then answer questions 12 to 20 of docs/QUESTIONS.md | ⬜ Untested | |  |
 
 ## L. Keep
 
