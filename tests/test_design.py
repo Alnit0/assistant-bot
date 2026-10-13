@@ -13,7 +13,7 @@ from interfaces.discord import render
 from interfaces.discord import surface as discord_surface
 from tasks.dev import mock
 from tasks.pills import checklist, plain, reminders, sheet, store
-from tests.test_pills_reminders import EVENING, HUB, PILL_A, Press, add, at, log, prompts, run, states, world  # noqa: F401
+from tests.test_pills_reminders import EVENING, HUB, PILL_A, Press, add, at, log, miss, prompts, run, states, world  # noqa: F401
 
 ENTRY = Entry("pills", "💊", "Pills", "x", ("y",), ())
 SAVE = Button("Save", "confirm", "save", "1", emoji="✅", style=cards.SUCCESS)
@@ -277,8 +277,8 @@ def test_a_pill_is_red_only_when_a_dose_was_missed_and_nothing_is_left_to_take_t
     add(world, PILL_A)
     at(world, 8, 0)
     log(world, {"pill": "pill a", "did": "taken"})
-    for hour, minute in ((11, 30), (11, 45), (12, 0), (12, 15), (12, 30)):  # dose 2 has its reminders and is missed; dose 3 is still to come
-        at(world, hour, minute)
+    at(world, 12, 30)
+    miss(world, "Pill A", 2)  # dose 2 is missed; dose 3 is still to come
     assert states(world)[("Pill A", 2)] == occurrences.MISSED and states(world)[("Pill A", 3)] == occurrences.PENDING
     status, lines, buttons = boxes(sheet_of(world))[0]
     assert status == design.DUE and "❌ dose 2 · missed · was due 11:30 am" in lines and lines[0] == "**Pill A** · ●✕○" and buttons

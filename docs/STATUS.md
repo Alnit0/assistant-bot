@@ -5,6 +5,38 @@ session; the end-of-task checklist updates it at the end of every task.
 
 **Updated:** 2026-10-14
 
+## The morning of 2026-10-14: one dose that became two logs
+
+Reported by Alex with traces. One dose, taken at 9:20 am, ended up as
+dose 2 taken 9:20 am and dose 1 taken 9:27 am.
+
+- **The data was set right first** (9:30 am): dose 1 taken 9:20 am,
+  doses 2 and 3 to take, the 9:27 am log gone. Through the occurrence
+  log's own functions, so the change is in its history; a copy from
+  before is `data/backups/before-dose-fix-2026-10-14.db`.
+- **A dose is no longer missed when its reminders run out.** That is
+  what made the 9:20 am log count as dose 2: dose 1 had been closed at
+  9:00 am, an hour after it was due. Now the last reminder goes, no
+  more are sent, and the dose stays to take; it is missed only once it
+  can no longer be taken today, as worked out from the day's limit.
+  **This is my reading of "the deadline fix": the message that
+  described it never reached this session** (question 43 in
+  `docs/QUESTIONS.md`).
+- **"That was dose 1" is a correction of what was logged**, card or no
+  card: the log moves to the dose named, keeps its time, and is shown
+  on a change card ("dose 2 → dose 1 · taken 9:20 am", and what becomes
+  of dose 2). Claude says it is a correction through a new field of
+  `pill_log` (`correction`); the code moves the log and never makes a
+  second one.
+- **A card that would add a dose says so** when one was logged in the
+  last hour: "You already logged dose 2 at 9:20 am. … Add another
+  dose?", never only "Log it as taken now?".
+- Golden conversations 19, 19a and 20. The live eval for the golden
+  fixtures: 44 of 45 right (the miss is an old known one), US$0.15.
+- Self-test as the dev bot with live up, after the change: 114 of 115
+  passed, none failed, one skipped for needing real requests
+  (recorded answers, nothing spent). Offline: 2746 passed, 1 skipped.
+
 ## Decided overnight (2026-10-14)
 
 Choices the batch's prompt did not settle, made as the standard, the
@@ -184,7 +216,7 @@ for needing real requests). Claude spend for the batch: NZ$0.68
 
 ## Questions for Alex
 
-**The open questions are one list now: `docs/QUESTIONS.md`** (42 of
+**The open questions are one list now: `docs/QUESTIONS.md`** (45 of
 them, each with a suggested answer, so you can reply "yes to all
 suggestions except 4 and 7"). What follows here is the history: how
 each came up and what was answered. Nothing new is added below.

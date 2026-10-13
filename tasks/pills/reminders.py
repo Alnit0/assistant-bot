@@ -21,7 +21,10 @@ log = logging.getLogger("assistant")
 # Pills: reminders (the spec's prompts). Each dose with a time gets a message
 # of its own when it is due, so that it notifies: Taken, Taken at…, Snooze,
 # Skip. Left alone, it is posted again every 15 minutes, three more times,
-# then the dose is missed. Only ever one prompt a dose.
+# and then it goes and nothing more is sent for that dose. The dose itself is
+# still to take: reminders running out is no deadline, and a dose is missed
+# only once it can no longer be taken today (tasks/pills/doses.py). Only ever
+# one prompt a dose.
 #
 # REMINDERS_ENABLED (off unless set) gates all of it: off, no reminder is ever
 # sent, nothing is booked, and any prompt left from when it was on is removed.
@@ -49,10 +52,9 @@ EVERY = timedelta(minutes=15)  # between a prompt and the reminder after it
 REMINDERS = 3  # how many times it is posted again before the dose is missed
 SNOOZE = timedelta(minutes=15)
 TAKE_BY_WITHIN = timedelta(hours=2)  # the take-by line shows only when it is this close
-IGNORED = limits.IGNORED
 
 P_TAKEN, P_AT, P_SNOOZE, P_SKIP = "prompt_taken", "prompt_at", "prompt_snooze", "prompt_skip"
-POST, MISS, DROP, WAIT = "post", "miss", "drop", "wait"
+POST, STOP, DROP, WAIT = "post", "stop", "drop", "wait"
 KIND = "pills.reminder"  # what kind of alert a prompt is: where it goes is core/notify.py's to say
 AGAIN = "A pill reminder"  # what a channel reset would post again: no pill is named
 
@@ -78,8 +80,14 @@ class Prompt:
     message_id: int | None  # None once the message has gone (a channel reset): it is posted again
     asked_at: datetime  # when it was first posted
     last_at: datetime  # when the copy now up was posted
-    reminders: int = 0  # how many times it has been posted again
+    reminders: int = 0  # how many times it has been posted again; one more than REMINDERS once it is over
     snoozed_until: datetime | None = None
+
+    @property
+    def is_over(self) -> bool:
+        """Every reminder went unanswered: the message has gone and nothing more
+        is posted for this dose. It is kept so that it is not asked about again."""
+        return self.reminders > REMINDERS
 
 
 # ---------------------------------------------------------------------------
@@ -92,8 +100,9 @@ def wants_prompt(dose: Dose, now: datetime) -> bool:
 
 
 def decide(dose: Dose, prompt: Prompt | None, now: datetime) -> tuple[str, datetime | None, int]:
-    """What to do about one dose now: (POST, MISS, DROP or WAIT, when to look
-    again, which reminder a POST is: 0 for the first prompt).
+    """What to do about one dose now: (POST, STOP, DROP or WAIT, when to look
+    again, which reminder a POST is: 0 for the first prompt). STOP is the end
+    of its reminders: the prompt goes, and the dose stays to take.
 
     Worked out from what is kept, never from how many jobs ran: however long
     the bot was off, a dose that is due gets one prompt, the next in its
@@ -101,6 +110,10 @@ def decide(dose: Dose, prompt: Prompt | None, now: datetime) -> tuple[str, datet
     if not wants_prompt(dose, now):
         return (DROP if prompt is not None else WAIT), None, 0
     due, next_look = minute(dose.due.at), minute(now) + EVERY
+    if prompt is not None and prompt.is_over:
+        # Its reminders are over. Only if it has since come to be due later (the dose before it
+        # was taken late) does it start afresh, at that time
+        return (DROP, due, 0) if due > minute(prompt.last_at) else (WAIT, None, prompt.reminders)
     if prompt is None:
         return (POST, next_look, 0) if now >= due else (WAIT, due, 0)
     if prompt.snoozed_until is not None:
@@ -114,7 +127,7 @@ def decide(dose: Dose, prompt: Prompt | None, now: datetime) -> tuple[str, datet
     if now < again:
         return WAIT, again, prompt.reminders
     if prompt.reminders >= REMINDERS:
-        return MISS, None, prompt.reminders
+        return STOP, None, prompt.reminders
     return POST, next_look, prompt.reminders + 1
 
 
@@ -220,12 +233,6 @@ def db_forget(conn: sqlite3.Connection, occurrence_id: int) -> None:
     conn.execute("DELETE FROM pills_prompts WHERE occurrence_id = ?", (occurrence_id,))
 
 
-def db_ignored(conn: sqlite3.Connection, occurrence_id: int, now: datetime) -> None:
-    """Every reminder went unanswered: the dose is missed, and that is final
-    (its cause says so: tasks/pills/doses.py never opens it again by itself)."""
-    occurrences.db_miss(conn, occurrence_id, cause=IGNORED, now=now)
-
-
 async def is_prompt(message_id: int) -> bool:
     return await database.run(db_by_message, message_id) is not None
 
@@ -300,7 +307,7 @@ async def _run(user_id: int) -> tuple[datetime | None, int]:
     kept = {prompt.occurrence_id: prompt for prompt in await database.run(db_prompts, user_id)}
     by_id = {dose.occurrence.id: dose for dose in listed}
     nearest: datetime | None = None
-    posted, missed = 0, False
+    posted = 0
     for occurrence_id, prompt in kept.items():
         if occurrence_id not in by_id or not enabled():
             # A day that is over, a pill that went, or reminders switched off: nothing of it stays
@@ -318,11 +325,13 @@ async def _run(user_id: int) -> tuple[datetime | None, int]:
             else:
                 log.warning("Pills reminders: dose %s is due and there is no hub channel to post in", dose.occurrence.id)
                 again = None
-        elif what == MISS:
-            await database.run(db_ignored, dose.occurrence.id, now)
-            await _take_down(prompt)
-            missed = True
-            log.info("Pills reminders: dose %s missed after %s reminders", dose.occurrence.id, REMINDERS)
+        elif what == STOP:
+            # The last reminder went unanswered: the message goes and nothing more is sent. The dose is
+            # still to take, so what is kept stays, as over: it is never asked about a second time
+            if prompt.message_id is not None and lifecycle.deletes(MessageClass.ALERT):
+                await cards.delete(prompt.channel_id, prompt.message_id)
+            await database.run(db_keep, replace(prompt, message_id=None, reminders=REMINDERS + 1, snoozed_until=None))
+            log.info("Pills reminders: dose %s was not answered after %s reminders: no more are sent, and it is still to take", dose.occurrence.id, REMINDERS)
         elif what == DROP:
             await _take_down(prompt)
             if dose.occurrence.state in (occurrences.DONE, occurrences.SKIPPED):
@@ -331,8 +340,6 @@ async def _run(user_id: int) -> tuple[datetime | None, int]:
             log.info("Pills reminders: prompt for dose %s taken down (dealt with, or past its time)", dose.occurrence.id)
         if again is not None and (nearest is None or again < nearest):
             nearest = again
-    if missed:
-        await checklist.refresh(user_id)
     return nearest, posted
 
 
@@ -487,7 +494,8 @@ async def on_taken_at(press: cards.Press) -> str:
         # Too soon, or after the latest time: the same "Log it anyway?" card as when the time is said
         # in a message. Nothing is logged by asking, and the reminder stays until the dose is dealt with
         request = Request(press.user, press.channel_id, f"(Taken at… {timeinput.format_moment(at)} on the reminder for {rules.plain(dose.label)})")
-        await confirm.show(request, actions.entry(TASK), "pill_log", plain.log_anyway(dose, at, asks, listed), frozenset())
+        another = await plain.logged_lately(listed, dose, now)
+        await confirm.show(request, actions.entry(TASK), "pill_log", plain.log_anyway(dose, at, asks, listed, another), frozenset())
         return f"asked first: {' '.join(asks)}"
     return await _done(press, dose, checklist.TAKEN, at, occurrences.FORM)
 

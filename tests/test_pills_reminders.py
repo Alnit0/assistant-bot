@@ -133,6 +133,13 @@ def states(world):
     return {(names[o.item_id], o.seq): o.state for o in found}
 
 
+def miss(world, name, number):
+    """A dose marked missed with others still to come, as rows from before 2026-10-14 can be (missed after their reminders)."""
+    pill = next(pill for pill in run(store.pills(world.owner.id)) if pill.plan.name == name)
+    found = next(o for o in run(occurrences.for_day(world.owner.id, "pills", world.day)) if o.item_id == pill.id and o.seq == number)
+    run(database.run(occurrences.db_miss, found.id, None, "ignored"))
+
+
 def remind_job():
     """When the reminders' one job is booked for, to the minute (a dose's time follows the second the one before was taken)."""
     return [reminders.minute(job.due_at) for job in run(scheduler.pending_jobs("pills", reminders.JOB))]
@@ -341,7 +348,7 @@ def test_snooze_keeps_the_prompt_says_until_when_and_a_fresh_copy_comes_when_it_
 
 
 # --- left alone ----------------------------------------------------------------------------------------------
-def test_ignored_it_is_posted_again_every_15_minutes_three_times_then_missed(world):
+def test_ignored_it_is_posted_again_every_15_minutes_three_times_and_then_it_stops_with_the_dose_still_to_take(world):
     add(world, EVENING)
     seen = []
     for minute in (0, 15, 30, 45):
@@ -357,13 +364,45 @@ def test_ignored_it_is_posted_again_every_15_minutes_three_times_then_missed(wor
     assert lines[-1] == "-# ⏰ Reminder 3 of 3 · first asked 8:00 pm · the last reminder"
     assert states(world)[("Evening pill", 1)] == PENDING
     at(world, 21, 0)
-    assert prompts(world) == [] and seen[3] in world.deleted and states(world)[("Evening pill", 1)] == MISSED
-    missed = run(occurrences.for_day(world.owner.id, "pills", world.day))[0]
-    assert (missed.automatic, missed.cause) == (True, "ignored")
-    at(world, 21, 30)
-    run(checklist.view(world.owner.id))
-    assert states(world)[("Evening pill", 1)] == MISSED and len(notices(world)) == 4, "final: it is not opened again, and nothing more is sent"
-    assert remind_job() == []
+    assert prompts(world) == [] and seen[3] in world.deleted
+    assert states(world)[("Evening pill", 1)] == PENDING, "reminders running out is no deadline: it can still be taken today, so it is not missed"
+    (kept,) = run(database.run(reminders.db_prompts))
+    assert kept.is_over and kept.message_id is None, "kept as over, so it is never asked about again"
+    for hour, minute in ((21, 15), (21, 30), (23, 0)):
+        at(world, hour, minute)
+        run(checklist.view(world.owner.id))
+    assert states(world)[("Evening pill", 1)] == PENDING and len(notices(world)) == 4 and remind_job() == [], "nothing more is sent"
+    said = {"doses": [{"pill": "evening pill", "did": "taken"}]}
+    assert not run(plain.log_asks(world.request(), said)), "still to take: logged at once, with nothing to ask"
+    assert log(world, *said["doses"]).startswith("✅ **Evening pill** · taken 11:00 pm")
+    assert run(database.run(reminders.db_prompts)) == []
+
+
+def test_a_dose_whose_reminders_went_unanswered_does_not_push_the_next_log_onto_the_dose_after_it(world):
+    # 2026-10-14, on live: dose 1 was marked missed at 9:00 am, an hour after it was due, so "Took it at 9:20"
+    # was counted as dose 2 of 3
+    add(world, {"name": "Pill R", "per_day": 3, "times": ["8:00 am", "11:00 am", "2:00 pm"], "min_gap_minutes": 180})
+    for minute in (0, 15, 30, 45):
+        at(world, 8, minute)
+    at(world, 9, 0)
+    assert states(world) == {("Pill R", 1): PENDING, ("Pill R", 2): PENDING, ("Pill R", 3): PENDING} and prompts(world) == []
+    at(world, 9, 23)
+    assert log(world, {"pill": "pill r", "did": "taken", "at": "9:20"}) == (
+        "✅ **Pill R** (dose 1 of 3) · taken 9:20 am · still to take today: Pill R (dose 2 of 3) `12:20 pm`, Pill R (dose 3 of 3) `3:20 pm`"
+    )
+
+
+def test_a_dose_whose_reminders_are_over_is_asked_about_afresh_only_if_it_comes_to_be_due_later(world):
+    add(world, PILL_A)
+    for hour, minute in ((8, 0), (8, 15), (8, 30), (8, 45), (9, 0), (11, 30), (11, 45), (12, 0), (12, 15), (12, 30)):
+        at(world, hour, minute)
+    assert prompts(world) == [] and len(notices(world)) == 8, "doses 1 and 2 each had their four, and both are still to take"
+    at(world, 12, 40)
+    log(world, {"pill": "pill a", "did": "taken"})  # dose 1, late: dose 2 is now due three hours after it
+    at(world, 15, 39)
+    assert prompts(world) == [] and len(notices(world)) == 8
+    at(world, 15, 40)
+    assert notices(world)[-1] == "💊 Routine due · 3:40 pm" and prompts(world)[0][1][1] == "**Pill A** · dose 2 of 3"
 
 
 def test_the_reminder_line_counts_down(world):
@@ -375,26 +414,25 @@ def test_the_reminder_line_counts_down(world):
     assert prompts(world)[0][1][-1] == "-# ⏰ Reminder 2 of 3 · first asked 8:00 pm · one more at 8:45 pm"
 
 
-def test_a_dose_missed_after_its_reminders_can_still_be_ticked_off_and_is_asked_about_first(world):
-    add(world, EVENING)
-    for minute in (0, 15, 30, 45):
-        at(world, 20, minute)
-    at(world, 21, 0)
+def test_a_missed_dose_can_still_be_ticked_off_and_is_asked_about_first(world):
+    add(world, {**EVENING, "latest": "9:00 pm"})
+    at(world, 20, 0)
+    at(world, 21, 1)
+    assert states(world)[("Evening pill", 1)] == MISSED, "its latest time passed with nothing taken"
     said = {"doses": [{"pill": "evening pill", "did": "taken"}]}
     assert run(plain.log_asks(world.request(), said)), "a missed dose is never logged as taken unseen"
     asked = run(plain.log_card(world.request(), said, frozenset()))
-    assert asked.lines == ("**Evening pill** · taken 9:00 pm",) and asked.risky and asked.confirm_label == "Log it"
-    assert asked.warnings == ("Dose 1 was missed (due 8:00 pm). Log it as taken now?",)
+    assert asked.lines == ("**Evening pill** · taken 9:01 pm",) and asked.risky and asked.confirm_label == "Log it"
+    assert asked.warnings == ("Dose 1 was missed (due 8:00 pm). That's after the latest time, 9:00 pm. Log it as taken now?",)
     assert states(world)[("Evening pill", 1)] == MISSED, "nothing is logged by asking"
-    assert run(plain.log_save(world.request(), asked.data)).startswith("✅ **Evening pill** · taken 9:00 pm")
+    assert run(plain.log_save(world.request(), asked.data)).startswith("✅ **Evening pill** · taken 9:01 pm")
     assert states(world)[("Evening pill", 1)] == DONE
 
 
 def test_logging_a_missed_dose_shows_what_it_does_to_the_next_dose_s_time(world):
     add(world, PILL_A)  # 8:00 am, 11:30 am, 3:00 pm, at least 3 hours apart, not after 4:00 pm
-    for minute in (0, 15, 30, 45):
-        at(world, 8, minute)
     at(world, 9, 0)
+    miss(world, "Pill A", 1)
     assert states(world)[("Pill A", 1)] == MISSED
     at(world, 9, 40)
     # Named by its number: with a dose still waiting, "took pill a" alone means that next dose, as before
@@ -635,9 +673,90 @@ def test_what_to_do_about_a_dose_is_worked_out_from_what_is_kept_and_the_clock(w
     assert reminders.decide(dose, up, due + minutes(200)) == (reminders.POST, due + minutes(215), 1), "however late: the next in its turn"
     last = reminders.Prompt(dose.occurrence.id, 1, world.day, HUB, 7, due, due + minutes(45), 3)
     assert reminders.decide(dose, last, due + minutes(59)) == (reminders.WAIT, due + minutes(60), 3)
-    assert reminders.decide(dose, last, due + minutes(60)) == (reminders.MISS, None, 3)
+    assert reminders.decide(dose, last, due + minutes(60)) == (reminders.STOP, None, 3), "the end of its reminders: it goes, and the dose stays to take"
+    over = reminders.Prompt(dose.occurrence.id, 1, world.day, HUB, None, due, due + minutes(45), 4)
+    assert over.is_over and reminders.decide(dose, over, due + minutes(200)) == (reminders.WAIT, None, 4), "over: never asked about again"
     snoozed = reminders.Prompt(dose.occurrence.id, 1, world.day, HUB, 7, due, due, 1, due + minutes(20))
     assert reminders.decide(dose, snoozed, due + minutes(19)) == (reminders.WAIT, due + minutes(20), 1)
     assert reminders.decide(dose, snoozed, due + minutes(20)) == (reminders.POST, due + minutes(35), 1), "a fresh copy, the same reminder"
     gone = reminders.Prompt(dose.occurrence.id, 1, world.day, HUB, None, due, due, 2)
     assert reminders.decide(dose, gone, due + minutes(1)) == (reminders.POST, due + minutes(16), 2)
+
+
+# --- "that was dose 1": a log is moved, never made twice (live, 2026-10-14) ------------------------------------
+THAT_WAS_DOSE_1 = {"doses": [{"pill": "pill a", "did": "taken", "dose": 1, "correction": True}]}
+
+
+def _logged_as_dose_2(world):
+    add(world, PILL_A)
+    at(world, 9, 0)
+    miss(world, "Pill A", 1)
+    at(world, 9, 23)
+    assert log(world, {"pill": "pill a", "did": "taken", "at": "9:20"}).startswith("✅ **Pill A** (dose 2 of 3) · taken 9:20 am")
+    at(world, 9, 27)
+
+
+def test_a_log_is_moved_to_the_dose_it_really_was_on_a_card_as_one_change(world):
+    _logged_as_dose_2(world)
+    assert run(plain.log_asks(world.request(), THAT_WAS_DOSE_1)), "a log is never moved unseen"
+    card = run(plain.log_card(world.request(), THAT_WAS_DOSE_1, frozenset()))
+    assert card.lines == ("**Pill A** · dose 2 → dose 1 · taken 9:20 am", "-# dose 2 · still to take · `12:20 pm`")
+    assert (card.kind, card.confirm_label, card.risky, card.warnings) == ("change", "Save", False, ())
+    assert states(world) == {("Pill A", 1): MISSED, ("Pill A", 2): DONE, ("Pill A", 3): PENDING}, "nothing changes by asking"
+    assert run(plain.log_save(world.request(), card.data)) == (
+        "✏️ **Pill A** · dose 2 → dose 1 · taken 9:20 am · still to take today: Pill A (dose 2 of 3) `12:20 pm`, Pill A (dose 3 of 3) `3:20 pm`"
+    )
+    assert run(plain.log_check(world.request(), card.data)) == "", "read back: dose 1 at 9:20 am, dose 2 to take"
+    assert states(world) == {("Pill A", 1): DONE, ("Pill A", 2): PENDING, ("Pill A", 3): PENDING}
+    rows = run(occurrences.for_day(world.owner.id, "pills", world.day))
+    assert [row.actual_at is not None for row in rows] == [True, False, False], "one log, as before: none was added"
+    # One change, so it is taken back as one
+    events = run(occurrences.last_change(world.owner.id, "pills"))
+    assert len(events) == 2 and len({event.change_id for event in events}) == 1
+    run(occurrences.revert(events[0].change_id, occurrences.MESSAGE))
+    assert states(world)[("Pill A", 1)] == MISSED and states(world)[("Pill A", 2)] == DONE
+
+
+def test_a_move_keeps_the_time_unless_i_give_one_and_says_what_it_breaks(world):
+    _logged_as_dose_2(world)
+    with_time = {"doses": [{**THAT_WAS_DOSE_1["doses"][0], "at": "9:10 am"}]}
+    card = run(plain.log_card(world.request(), with_time, frozenset()))
+    assert card.lines[0] == "**Pill A** · dose 2 → dose 1 · taken 9:20 am → 9:10 am"
+    # Moved to dose 3 instead, with dose 1 taken since: the order and the gap are said, and it asks
+    run(plain.log_save(world.request(), run(plain.log_card(world.request(), THAT_WAS_DOSE_1, frozenset())).data))
+    at(world, 11, 5)
+    log(world, {"pill": "pill a", "did": "taken", "at": "11:00 am"})  # dose 2
+    at(world, 11, 7)
+    wrong = {"doses": [{"pill": "pill a", "did": "taken", "dose": 3, "correction": True}]}
+    card = run(plain.log_card(world.request(), wrong, frozenset()))
+    assert card.lines[0] == "**Pill A** · dose 2 → dose 3 · taken 11:00 am"
+    assert card.warnings == ("That's less than 3h after dose 1, taken 9:20 am. Move it anyway?",) and card.confirm_label == "Move it" and card.risky
+
+
+def test_with_nothing_to_move_a_correction_is_read_as_the_dose_it_names(world):
+    add(world, PILL_A)
+    at(world, 9, 0)
+    # Nothing is ticked off yet: there is no log to move, so it is dose 1, logged
+    assert log(world, *THAT_WAS_DOSE_1["doses"]).startswith("✅ **Pill A** (dose 1 of 3) · taken 9:00 am")
+    # And said again about the dose that is already that one: it is already so
+    at(world, 9, 2)
+    assert not run(plain.log_asks(world.request(), THAT_WAS_DOSE_1))
+    assert log(world, *THAT_WAS_DOSE_1["doses"]).startswith("✅ **Pill A** (dose 1 of 3) · taken 9:00 am already")
+
+
+def test_the_card_that_would_add_a_dose_names_the_one_logged_in_the_last_hour_and_only_then(world):
+    add(world, PILL_A)
+    at(world, 8, 12)
+    log(world, {"pill": "pill a", "did": "taken"})
+    again = {"doses": [{"pill": "pill a", "did": "taken"}]}
+    at(world, 9, 12)
+    assert run(plain.log_card(world.request(), again, frozenset())).warnings == ("You already logged dose 1 at 8:12 am. That's 1h later. The gap is at least 3h. Add another dose?",)
+    at(world, 9, 13)
+    assert run(plain.log_card(world.request(), again, frozenset())).warnings == ("That's 1h 1m after dose 1, taken 8:12 am. The gap is at least 3h. Log it anyway?",)
+    # It is when I logged it that counts, not when I say it was taken
+    at(world, 11, 20)
+    log(world, {"pill": "pill a", "did": "taken", "at": "11:15 am"})  # dose 2, past its gap
+    at(world, 11, 30)
+    assert run(plain.log_card(world.request(), again, frozenset())).warnings == ("You already logged dose 2 at 11:15 am. That's 15m later. The gap is at least 3h. Add another dose?",)
+    # A correction of a time is no second dose: nothing about it changes
+    assert log(world, {"pill": "pill a", "did": "taken", "at": "11:10 am"}).startswith("✏️ **Pill A** (dose 2 of 3) · taken 11:15 am → 11:10 am")

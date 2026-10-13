@@ -9,6 +9,23 @@ Gathered 2026-10-14 from `docs/STATUS.md`, the specs, the QA sheet and
 "Decided overnight". Questions already answered are gone. New ones are
 added here, nowhere else.
 
+## Answer first: when a dose is missed (2026-10-14)
+
+43. Your message about the deadline bug did not reach me, so this is
+    what I built from the bug itself: reminders running out no longer
+    makes a dose missed. After the third reminder the message goes,
+    nothing more is sent for that dose, and it stays 💊 to take (the
+    status line keeps saying it is due). It is ❌ missed only when it
+    can no longer be taken today: past the pill's latest time, or at
+    midnight. → Keep, unless your message said something else: send
+    it again and I will match it.
+44. A dose whose reminders ran out gets no further reminder all day,
+    unless it comes to be due later (the dose before it was taken
+    late). One more nudge later, say when the next dose falls due?
+    → No: one prompt a dose stays the rule.
+45. "That was dose 1" moves the last dose you logged of that pill,
+    however long ago that was, and always on a card. → Keep.
+
 ## Reminders and what reaches you
 
 1. Something that goes wrong between 10:00 pm and 7:00 am posts

@@ -303,6 +303,18 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   (`schedule.dues`), never stored, and never depends on what time it is
   now. Whether it can still be taken is a separate question
   (`doses.outcomes`)
+- Reminders running out is no deadline: after the last one nothing
+  more is sent for that dose and it stays to take
+  (`reminders.decide`, STOP). A dose is missed only when it can no
+  longer be taken today (`doses.outcomes`)
+- "That was dose 1" about a dose already logged is a correction of
+  that log, checked against what was logged and not only an open
+  card: Claude marks it (`correction` in `pill_log`), the code moves
+  the log to the dose named with its time (`checklist.move`, one
+  change) on a change card, and never makes a second log. A card that
+  would add a dose when one was logged in the last hour says so
+  ("You already logged dose 2 at 9:20 am. Add another dose?",
+  `plain.logged_lately`)
 - A late log, a dose taken before the gap has passed, a time that
   breaks the order or the gap, and a missed dose logged as taken
   ("Dose 1 was missed (due 11:12 am). Log it as taken now?", with what

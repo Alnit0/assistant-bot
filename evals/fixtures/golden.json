@@ -336,6 +336,75 @@
         "reports_doing": true,
         "chat_part": ""
       }
+    },
+    {
+      "message": "That was dose 1",
+      "tasks": [
+        "pills"
+      ],
+      "exchanges": [
+        [
+          "Took Pill A at 9:20",
+          "✅ Pill A (dose 2 of 3) · taken 9:20 am · still to take today: Pill A (dose 3 of 3) 3:00 pm"
+        ]
+      ],
+      "golden": "19",
+      "note": "live, 2026-10-14: straight after a dose was logged as dose 2, I say which dose it really was. A correction of that log: it moves to dose 1 with its time, on a change card. It was read as a new dose (taken, dose 1, no time) and Save added a second log",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "no, that was my first dose",
+      "tasks": [
+        "pills"
+      ],
+      "exchanges": [
+        [
+          "Took Pill A at 9:20",
+          "✅ Pill A (dose 2 of 3) · taken 9:20 am · still to take today: Pill A (dose 3 of 3) 3:00 pm"
+        ]
+      ],
+      "golden": "19a",
+      "note": "live, 2026-10-14: straight after a dose was logged as dose 2, I say which dose it really was. A correction of that log: it moves to dose 1 with its time, on a change card. It was read as a new dose (taken, dose 1, no time) and Save added a second log",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "took pill A",
+      "tasks": [
+        "pills"
+      ],
+      "exchanges": [
+        [
+          "Took Pill A at 9:20",
+          "✅ Pill A (dose 1 of 3) · taken 9:20 am · still to take today: Pill A (dose 2 of 3) 12:20 pm, Pill A (dose 3 of 3) 3:20 pm"
+        ]
+      ],
+      "golden": "20",
+      "note": "live, 2026-10-14: a second \"took\" minutes after the first is a new dose as far as Claude can tell (no correction). The card that asks first then says the first was already logged, and asks whether to add another",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "chat_part": ""
+      }
     }
   ],
   "extraction": [
@@ -363,7 +432,7 @@
         {
           "pills": [
             {
-              "name": "Vitamin D",
+              "name": "vitamin D",
               "dose": "1 tablet",
               "per_day": 1,
               "times": [
@@ -436,7 +505,7 @@
         {
           "pills": [
             {
-              "name": "Vitamin D",
+              "name": "vitamin D",
               "per_day": 1
             }
           ],
@@ -640,10 +709,12 @@
       "recorded": [
         "timer_change",
         {
-          "which": "t1",
+          "which": "@that",
           "action": "extend",
           "duration": "2m",
-          "guessed": [],
+          "guessed": [
+            "duration"
+          ],
           "not_included": []
         }
       ],
@@ -1031,6 +1102,103 @@
               "pill": "@that",
               "did": "taken",
               "at": "9:00 pm"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "That was dose 1",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:30 am, 3:00 pm · at least 3h apart · not after 4:00 pm [active]",
+      "after_answer": true,
+      "action": "pill_log",
+      "data": {
+        "doses": [
+          {
+            "pill": "@that",
+            "did": "taken",
+            "dose": 1,
+            "correction": true
+          }
+        ]
+      },
+      "golden": "19",
+      "note": "live, 2026-10-14: straight after a dose was logged as dose 2, I say which dose it really was. A correction of that log: it moves to dose 1 with its time, on a change card. It was read as a new dose (taken, dose 1, no time) and Save added a second log",
+      "recorded": [
+        "pill_log",
+        {
+          "doses": [
+            {
+              "pill": "@that",
+              "did": "taken",
+              "dose": 1,
+              "correction": true
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "no, that was my first dose",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:30 am, 3:00 pm · at least 3h apart · not after 4:00 pm [active]",
+      "after_answer": true,
+      "action": "pill_log",
+      "data": {
+        "doses": [
+          {
+            "pill": "@that",
+            "did": "taken",
+            "dose": 1,
+            "correction": true
+          }
+        ]
+      },
+      "golden": "19a",
+      "note": "live, 2026-10-14: straight after a dose was logged as dose 2, I say which dose it really was. A correction of that log: it moves to dose 1 with its time, on a change card. It was read as a new dose (taken, dose 1, no time) and Save added a second log",
+      "recorded": [
+        "pill_log",
+        {
+          "doses": [
+            {
+              "pill": "@that",
+              "did": "taken",
+              "dose": 1,
+              "correction": true
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "took pill A",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:30 am, 3:00 pm · at least 3h apart · not after 4:00 pm [active]",
+      "after_answer": true,
+      "action": "pill_log",
+      "data": {
+        "doses": [
+          {
+            "did": "taken"
+          }
+        ]
+      },
+      "golden": "20",
+      "note": "live, 2026-10-14: a second \"took\" minutes after the first is a new dose as far as Claude can tell (no correction). The card that asks first then says the first was already logged, and asks whether to add another",
+      "recorded": [
+        "pill_log",
+        {
+          "doses": [
+            {
+              "pill": "pl1",
+              "did": "taken"
             }
           ],
           "guessed": [],

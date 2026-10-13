@@ -6,6 +6,14 @@ backfilled from the git log.
 
 ## 2026-10-14
 
+- A dose is no longer marked missed when its reminders run out: after
+  the third reminder nothing more is sent and it stays to take. It is
+  missed only once it can no longer be taken today.
+- "That was dose 1", said after a dose was logged, moves that log to
+  dose 1 with its time, on a change card. It never adds a second log.
+- A card that would add a dose within an hour of the last one says
+  so: "You already logged dose 2 at 9:20 am. Add another dose?"
+
 - Weather in the briefing: today's low and high, a word for the sky,
   the chance of rain and roughly when, and the wind. Fetched at
   5:50 am and kept current through the day.

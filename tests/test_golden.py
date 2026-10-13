@@ -393,7 +393,7 @@ def test_every_golden_conversation_in_the_fixture_file_has_a_test_here():
     ids = {entry["golden"] for entry in [*FIXTURES["router"], *FIXTURES["extraction"]]}
     tested = {name.split("_")[1] for name in globals() if name.startswith("test_") and name.split("_")[1][0].isdigit()}
     assert ids <= tested, f"no test for: {sorted(ids - tested)}"
-    assert {"1", "1a", "1b", "1c", "1d", "2", "2a", "2b", "3", "4", "5", "6", "7", "8", "9", "10", "10a", "11", "12", "13", "14", "15", "16", "17", "18", "18a", "18b"} == tested
+    assert {"1", "1a", "1b", "1c", "1d", "2", "2a", "2b", "3", "4", "5", "6", "7", "8", "9", "10", "10a", "11", "12", "13", "14", "15", "16", "17", "18", "18a", "18b", "19", "19a", "20"} == tested
 
 
 # --- QA 2026-10-10: "already so" ends in the task's own line, whichever way it was found --------------------
@@ -877,3 +877,110 @@ def test_part_of_a_pills_name_is_handed_to_the_router_as_a_hint_and_the_router_d
     bot.claude(route("timers"), ("none", {"why": "unclear", "reason": "no timer is running"}))
     bot.say("pause everything")
     assert "hint" not in next(request for request in reversed(bot.requests) if request.purpose == "router").user
+
+
+# --- 19 and 20: live, 2026-10-14. One dose taken at 9:20 am ended up as two logs ------------------------------
+# Dose 1 had been marked missed at 9:00 am, so "Took it at 9:20" went in as dose 2. "That was dose 1" was then read
+# as a new dose: its card asked only "Log it as taken now?", and Save added a second log, at 9:27 am
+LOGGED_AT_9_20 = ("pill_log", {"doses": [{"pill": "pl1", "did": "taken", "at": "9:20"}], "guessed": [], "not_included": []})
+MOVED = "**Pill A** · dose 2 → dose 1 · taken 9:20 am"
+
+
+def _doses(bot):
+    return {dose.number: (dose.occurrence.state, timeinput.format_moment(dose.occurrence.actual_at) if dose.occurrence.actual_at else None) for dose in run(checklist.view(bot.owner.id))[1]}
+
+
+def _one_dose_at_9_20(bot, dev_clock, dose_1_missed):
+    from datetime import time
+
+    from core import occurrences
+
+    dev_clock.advance_to(day.at(day.today() + timedelta(days=1), time(9, 23)))
+    bot.claude(route("pills"), ("pill_add", {"pills": [MAIN], "guessed": [], "not_included": []}))
+    bot.say("add pill A to my pills, 3 times a day at 8am, 11:30 and 3pm, at least 3 hours apart, not after 4pm")
+    press(bot)
+    if dose_1_missed:
+        # As a row from before the fix can be: missed with the doses after it still to come
+        first = next(dose for dose in run(checklist.view(bot.owner.id))[1] if dose.number == 1)
+        run(database.run(occurrences.db_miss, first.occurrence.id, None, "ignored"))
+    bot.claude(route("pills"), LOGGED_AT_9_20)
+    bot.say("Took Pill A at 9:20")
+    dev_clock.advance(timedelta(minutes=4))
+    return len(bot.requests)
+
+
+def _that_was_dose_1(bot, dev_clock, golden):
+    before = _one_dose_at_9_20(bot, dev_clock, dose_1_missed=True)
+    assert bot.sent[-1][1].text.startswith("✅ **Pill A** (dose 2 of 3) · taken 9:20 am") and _doses(bot)[2] == ("done", "9:20 am")
+    bot.claude(EXTRACTED[golden])  # one request, for pills: it answered a moment ago
+    bot.say(SAID[golden], straight_after=True)
+    lines, buttons = card(bot)
+    assert lines[:3] == ["💊 Pills · change", MOVED, "-# dose 2 · still to take · `12:20 pm`"], "a change card, old → new, with the time it has"
+    assert buttons == ["Save", "Cancel"] and not any("Log it as taken now" in line for line in lines)
+    assert _doses(bot) == {1: ("missed", None), 2: ("done", "9:20 am"), 3: ("pending", None)}, "nothing changes by asking"
+    assert press(bot) == f"✏️ {MOVED} · still to take today: Pill A (dose 2 of 3) `12:20 pm`, Pill A (dose 3 of 3) `3:20 pm`"
+    assert _doses(bot) == {1: ("done", "9:20 am"), 2: ("pending", None), 3: ("pending", None)}, "one dose, moved: never a second log"
+    assert [(asked.task, "not_this" in asked.tools) for asked in bot.requests[before:]] == [("pills", True)]
+    _no_chat(bot)
+
+
+def test_19_that_was_dose_1_moves_the_log_just_made_and_never_adds_another(bot, dev_clock):
+    _that_was_dose_1(bot, dev_clock, "19")
+
+
+def test_19a_no_that_was_my_first_dose_does_the_same(bot, dev_clock):
+    _that_was_dose_1(bot, dev_clock, "19a")
+
+
+def test_19_the_correction_is_checked_against_what_was_logged_with_no_card_open(bot, dev_clock):
+    from tests.test_conversation import traces
+
+    _one_dose_at_9_20(bot, dev_clock, dose_1_missed=True)  # logged at once: no card is open
+    bot.claude(EXTRACTED["19"])
+    bot.say(SAID["19"], straight_after=True)
+    checks = traces()[-1]["checks"]
+    assert "open card: none, so the sticky and correction checks were skipped" in checks, "as that morning: no card was open"
+    assert any(note.startswith("correction check: against what was logged, not only an open card: the log of dose 2 is moved to dose 1") for note in checks)
+
+
+def test_19_more_than_five_minutes_later_it_is_still_a_move_and_the_pill_it_picked_is_shown(bot, dev_clock):
+    _one_dose_at_9_20(bot, dev_clock, dose_1_missed=True)
+    dev_clock.advance(timedelta(minutes=30))
+    bot.claude(ROUTED["19"], EXTRACTED["19"])
+    bot.say(SAID["19"], straight_after=True)
+    assert f"{MOVED} ❓" in card(bot)[0] and card(bot)[1] == ["Save", "Cancel"]
+    assert press(bot).startswith(f"✏️ {MOVED}")
+    assert _doses(bot)[1] == ("done", "9:20 am") and _doses(bot)[2] == ("pending", None)
+
+
+def test_19_read_as_a_new_dose_as_it_was_that_morning_the_card_says_one_was_already_logged(bot, dev_clock):
+    # Trace #562, as Claude answered then: taken, dose 1, no time, and nothing saying it corrects the log
+    _one_dose_at_9_20(bot, dev_clock, dose_1_missed=True)
+    bot.claude(("pill_log", {"doses": [{"pill": "@that", "did": "taken", "dose": 1}], "guessed": [], "not_included": []}))
+    bot.say("That was dose 1", straight_after=True)
+    lines, buttons = card(bot)
+    assert lines[1] == "**Pill A** (dose 1 of 3) · taken 9:27 am"
+    assert "⚠️ You already logged dose 2 at 9:20 am. Dose 1 was missed (due 8:00 am). That's after dose 2, taken 9:20 am. Add another dose?" in lines
+    assert buttons == ["Log it", "Cancel"] and not any(line.endswith("Log it as taken now?") for line in lines)
+    assert _doses(bot)[1] == ("missed", None), "nothing is logged by asking"
+
+
+def test_20_a_card_that_would_add_a_dose_says_one_was_logged_a_moment_ago(bot, dev_clock):
+    _one_dose_at_9_20(bot, dev_clock, dose_1_missed=False)
+    assert bot.sent[-1][1].text.startswith("✅ **Pill A** (dose 1 of 3) · taken 9:20 am"), "nothing was missed: the one dose is dose 1"
+    bot.claude(EXTRACTED["20"])
+    bot.say(SAID["20"], straight_after=True)
+    lines, buttons = card(bot)
+    assert lines[:2] == ["💊 Pills · change", "**Pill A** (dose 2 of 3) · taken 9:27 am"]
+    assert "⚠️ You already logged dose 1 at 9:20 am. That's 7m later. The gap is at least 3h. Add another dose?" in lines
+    assert buttons == ["Log it", "Cancel"]
+    assert _doses(bot) == {1: ("done", "9:20 am"), 2: ("pending", None), 3: ("pending", None)}, "nothing is added by asking"
+    assert press(bot).startswith("✅ **Pill A** (dose 2 of 3) · taken 9:27 am"), "and Log it does add it: it was asked in so many words"
+
+
+def test_20_more_than_an_hour_after_the_last_log_the_card_reads_as_it_did(bot, dev_clock):
+    _one_dose_at_9_20(bot, dev_clock, dose_1_missed=False)
+    dev_clock.advance(timedelta(minutes=70))
+    bot.claude(ROUTED["20"], EXTRACTED["20"])
+    bot.say(SAID["20"])
+    assert "⚠️ That's 1h 17m after dose 1, taken 9:20 am. The gap is at least 3h. Log it anyway?" in card(bot)[0]

@@ -209,8 +209,9 @@ Write them the way I'd really say them.
 | 18 | "Taken my pill A", then straight after "I took it at 9pm" | The dose just logged is corrected, old → new ("taken 11:49 pm → 9:00 pm"). It goes to pills, the task that just answered; never an answer from chat, and never "got it" |
 | 18a | …or "I had it at 9pm" | The same correction |
 | 18b | …or "it was 9pm actually" | The same correction |
-| 19 | | |
-| 20 | | |
+| 19 | A dose was logged as dose 2 of pill A at 9:20 am; straight after, "That was dose 1" | A change card: "Pill A · dose 2 → dose 1 · taken 9:20 am", and what becomes of dose 2. Save moves the log, with its time. Never a second log, and never "Log it as taken now?". Checked against what was logged, with no card open |
+| 19a | …or "no, that was my first dose" | The same correction |
+| 20 | "Took Pill A at 9:20", then minutes later "took pill A" | The card that asks first says so in so many words: "You already logged dose 1 at 9:20 am. … Add another dose?" Nothing is added by asking |
 
 ---
 

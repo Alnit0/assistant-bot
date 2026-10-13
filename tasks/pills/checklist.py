@@ -326,6 +326,31 @@ async def correct(dose: Dose, at: datetime, source: str) -> Dose:
     return Dose(dose.pill, after, dose.due)
 
 
+def db_move(conn, from_id: int, to_id: int, at: datetime, source: str) -> tuple[Occurrence, Occurrence]:
+    """One log, moved: the dose it belongs to is ticked off at `at` and the dose
+    it was logged as is to take again. One change, so it is taken back as one."""
+    change = occurrences.new_change_id()
+    occurrences.db_change(conn, to_id, occurrences.CORRECTED, source, change_id=change, state=DONE, actual_at=at, automatic=False, reason=None, cause=None)
+    occurrences.db_reopen(conn, from_id, source, change_id=change)
+    return occurrences.db_get(conn, to_id), occurrences.db_get(conn, from_id)
+
+
+async def move(logged_as: Dose, really: Dose, at: datetime, source: str) -> Dose:
+    """ "That was dose 1": the log of one of a pill's doses is moved to another,
+    and never a second log made. Returns the dose it now is, as the database
+    has it. Raises UserError if it didn't save."""
+    after, freed = await database.run(db_move, logged_as.occurrence.id, really.occurrence.id, at, source)
+    if after is None or after.state != DONE or after.actual_at != at or freed is None or freed.state != PENDING:
+        raise UserError(f"That didn't save: {rules.plain(logged_as.label)} is still as it was.")
+    return Dose(really.pill, after, really.due)
+
+
+def moved_text(logged_as: Dose, really: Dose, at: datetime, was: datetime | None = None) -> str:
+    """A log moved from one dose to another, in one line: dose old → new, and its time."""
+    taken = f"taken {timeinput.format_moment(at)}" if was is None or was == at else f"taken {timeinput.format_moment(was)} → {timeinput.format_moment(at)}"
+    return f"**{really.pill.plan.name}** · dose {logged_as.number} → dose {really.number} · {taken}"
+
+
 def corrected_text(dose: Dose, was: datetime) -> str:
     """A correction in one line: what it was, and what it is now."""
     return f"✏️ {dose.label} · taken {timeinput.format_moment(was)} → {timeinput.format_moment(dose.occurrence.actual_at)}"

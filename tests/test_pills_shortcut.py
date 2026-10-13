@@ -7,7 +7,7 @@ import pytest
 from core import clock, config, design, llm, occurrences
 from tasks import registry
 from tasks.pills import shortcut
-from tests.test_pills_reminders import EVENING, HUB, INBOX, PILL_A, add, at, log, run, states, world  # noqa: F401
+from tests.test_pills_reminders import EVENING, HUB, INBOX, PILL_A, add, at, log, miss, run, states, world  # noqa: F401
 
 
 class Ctx:
@@ -111,7 +111,9 @@ def test_too_soon_is_asked_first_on_the_card_and_nothing_is_logged(world):
     assert run(shortcut.took(ctx)) == "asked first on a card" and ctx.said == [] and ctx.noted == ["asked first on a card"]
     assert states(world)[("Pill A", 2)] == occurrences.PENDING
     asked = world.sent[sent].card
-    assert "Log it anyway?" in asked.text and [button.label for button in asked.rows[0]] == ["Log it", "Cancel"]
+    # Dose 1 was logged within the hour: the card says so in so many words, and what Log it would do
+    assert "⚠️ You already logged dose 1 at 8:00 am. That's 1h later. The gap is at least 3h. Add another dose?" in asked.text
+    assert [button.label for button in asked.rows[0]] == ["Log it", "Cancel"]
     assert asked.layout[0].status == design.RISKY
 
 
@@ -122,11 +124,11 @@ def test_under_a_minute_after_the_dose_before_it_says_just_now_and_never_0m(worl
     sent = len(world.sent)
     run(shortcut.took(Ctx(world, "took pill a")))  # seconds later, the same minute
     asked = world.sent[sent].card.text
-    assert "⚠️ That's just now: dose 1 was taken 8:00 am. The gap is at least 3h." in asked and "0m" not in asked
+    assert "⚠️ You already logged dose 1 at 8:00 am. That's just now. The gap is at least 3h. Add another dose?" in asked and "0m" not in asked
     at(world, 8, 20)
     sent = len(world.sent)
     run(shortcut.took(Ctx(world, "took pill a")))
-    assert "⚠️ That's 20m after dose 1, taken 8:00 am. The gap is at least 3h." in world.sent[sent].card.text
+    assert "⚠️ You already logged dose 1 at 8:00 am. That's 20m later. The gap is at least 3h. Add another dose?" in world.sent[sent].card.text
 
 
 def test_took_for_a_pill_whose_dose_was_missed_is_the_shortcut_and_asks_first(world, monkeypatch):
@@ -134,17 +136,16 @@ def test_took_for_a_pill_whose_dose_was_missed_is_the_shortcut_and_asks_first(wo
         raise AssertionError("no request to Claude is made for the shortcut")
 
     monkeypatch.setattr(llm, "call_tool", never)
-    add(world, EVENING)
-    for minute in (0, 15, 30, 45):
-        at(world, 20, minute)
-    at(world, 21, 0)
+    add(world, {**EVENING, "latest": "9:00 pm"})
+    at(world, 20, 0)
+    at(world, 21, 1)
     assert states(world)[("Evening pill", 1)] == occurrences.MISSED
     assert claims(world, "took evening pill"), "a missed dose can still be logged, so it is still the shortcut"
     sent = len(world.sent)
     ctx = Ctx(world, "took evening pill")
     assert run(shortcut.took(ctx)) == "asked first on a card" and ctx.said == []
     asked = world.sent[sent].card
-    assert "Dose 1 was missed (due 8:00 pm). Log it as taken now?" in asked.text and [button.label for button in asked.rows[0]] == ["Log it", "Cancel"]
+    assert "Dose 1 was missed (due 8:00 pm). That's after the latest time, 9:00 pm. Log it as taken now?" in asked.text and [button.label for button in asked.rows[0]] == ["Log it", "Cancel"]
     assert asked.layout[0].status == design.RISKY and states(world)[("Evening pill", 1)] == occurrences.MISSED
 
 
@@ -152,9 +153,8 @@ def test_a_button_pressed_for_a_dose_that_was_missed_meanwhile_asks_first_too(wo
     from tasks.pills import checklist, plain, sheet
 
     add(world, PILL_A)
-    for minute in (0, 15, 30, 45):
-        at(world, 8, minute)
     at(world, 9, 40)
+    miss(world, "Pill A", 1)
     _, listed, _ = run(checklist.view(world.owner.id))
     dose = next(each for each in listed if each.number == 1)
     assert sheet._loggable(dose) and not dose.is_pending, "Taken on a checklist not yet rewritten still does something"

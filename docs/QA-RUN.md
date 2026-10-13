@@ -731,8 +731,8 @@ Have your phone locked beside you for step 2. The clock is moved with
 | 3 | Press **Snooze 15m**. Type `dev clock 3:15pm` | The message gains "Snoozed until 3:15 pm". After the move a fresh message takes its place (the old one is gone) and the phone buzzes again with the same neutral line | R78 |
 | 4 | Press **Taken at…**, type `3:05pm`, submit | The message goes; the checklist shows Testrem dose 1 taken 3:05 pm, and dose 2 at `9:00 pm` | R78 |
 | 5 | Type `dev clock 9:00pm`, then `dev clock 9:15pm`, `dev clock 9:30pm`, `dev clock 9:45pm` | A prompt at 9:00 pm, then three more, each replacing the last: "reminder 1 of 3", "2 of 3", "3 of 3", with a line saying when the next comes. Only ever one message for the dose | R78 |
-| 6 | Type `dev clock 10:00pm` | The message goes and the checklist shows ❌ Testrem (dose 2 of 2) · missed | R78 |
-| 7 | Say `took testrem`; look, then press **Log it** | A card that asks first: "⚠️ Dose 2 was missed (due 9:00 pm). Log it as taken now?" with **Log it** and **Cancel**, and nothing ticked off yet. After Log it: "taken 10:00 pm" | R78, R85 |
+| 6 | Type `dev clock 10:00pm` | The message goes and nothing more is sent. The checklist still shows 💊 Testrem (dose 2 of 2) · `9:00 pm`: not missed (changed 2026-10-14) | R78 |
+| 7 | Say `took testrem` | At once, with no card: "✅ **Testrem** (dose 2 of 2) · taken 10:00 pm" | R78 |
 | 8 | Say `add Testgap to my pills at 3pm and 9pm, at least 4 hours apart`, **Save**. Type `dev clock 3:00pm` (the next day's), press **Taken**. Type `dev clock 9:00pm`. On the 9:00 pm reminder press **Taken at…**, type `5pm`, submit | A card in the hub: "💊 Pills · change", "**Testgap** (dose 2 of 2) · taken 5:00 pm", "⚠️ That's 2h after dose 1, taken 3:00 pm. The gap is at least 4h. Log it anyway?", with **Log it** and **Cancel**. Nothing is ticked off yet and the reminder is still there | R78 |
 | 9 | Press **Cancel** on that card. Then **Taken at…** again, `5pm`, and this time **Log it** | After Cancel: the card goes, the reminder stays. After Log it: the card says dose 2 was taken 5:00 pm, the reminder goes and the checklist shows it | R78 |
 | 10 | Say `remove testrem and testgap`, press **Remove**; type `dev clock reset`; stop the dev bot | Gone; the clock is the real time | |
@@ -1029,6 +1029,19 @@ On live, with the briefing on.
 | 2 | Look again in the afternoon | The same briefing, edited in place: "updated 2:50 pm", and the figures may have moved | T32 |
 | 3 | Say `my schedule` | "Weather fetch · every day at 5:50 am" and "Weather refresh · every day at 8:50 am", each with its last run | T33 |
 | 4 | With the PC offline at 5:50 am (or `WEATHER_LAT` taken out) | The section says "Weather unavailable"; "⚠️ Needs a look" has "weather fetch failed" with its bug; at 7:00 am one ping | T33 |
+
+## 57. One dose is one log (waiting for QA)
+
+On the dev bot (`--dev`), with reminders on. After the morning of
+2026-10-14.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Say `add Testr to my pills at 8am, 11am and 2pm, at least 3 hours apart`, **Save**. Type `dev clock 8:00am`, then `8:15am`, `8:30am`, `8:45am`, `9:00am` | A reminder and three more; at 9:00 am the message goes. The checklist still shows 💊 dose 1 · `8:00 am`, not ❌ missed | R95 |
+| 2 | Type `dev clock 9:23am`. Say `Took Testr at 9:20` | "✅ **Testr** (dose 1 of 3) · taken 9:20 am · still to take today: Testr (dose 2 of 3) `12:20 pm`, Testr (dose 3 of 3) `3:20 pm`" | R95 |
+| 3 | Say `took testr` | A card: "⚠️ You already logged dose 1 at 9:20 am. That's 3m later. The gap is at least 3h. Add another dose?" with **Log it** and **Cancel**. Press **Log it** | R97 |
+| 4 | Say `that was dose 3`; look, then **Save** | A change card: "**Testr** · dose 2 → dose 3 · taken 9:23 am", "dose 2 · still to take · `12:20 pm`", a ⚠️ line about the gap after dose 1 and "Move it anyway?". After the press: "✏️ **Testr** · dose 2 → dose 3 · …". The checklist shows doses 1 and 3 taken and dose 2 to take: two logs, as before | R96 |
+| 5 | Reply to your `that was dose 3` with `dev why` | The trace has "correction check: against what was logged, not only an open card: the log of dose 2 is moved to dose 3, and nothing is added" | R96 |
 
 ## When you finish
 

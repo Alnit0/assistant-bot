@@ -412,10 +412,11 @@ async def p1(h: Harness) -> None:
         sheet = await h.get(h.hub, h.memo["sheet_d1"])
         h.check(sheet is not None and "8:00 am" in sheet.text, f"the checklist reads: {sheet.text[:240] if sheet else 'gone'}")
 
-    async with h.step("1.17", "Too soon: `took testa` a minute after dose 1", "A card “⚠️ That's … after dose 1 … Log it anyway?” with Log it and Cancel; nothing is ticked off. Cancel removes it", "43.3, T46"):
+    async with h.step("1.17", "Too soon: `took testa` a minute after dose 1", "A card that says dose 1 was already logged and asks in so many words: “⚠️ You already logged dose 1 at … Add another dose?” with Log it and Cancel; nothing is ticked off. Cancel removes it", "43.3, T46; asked 2026-10-14"):
         await h.say("took testa")
         stored, shown = await card(h)
-        h.check(shown is not None and "Log it anyway?" in shown.text and "⚠️" in shown.text, f"the card: {shown.text[:200] if shown else 'none'}")
+        h.check(shown is not None and "⚠️ You already logged dose 1 at " in shown.text and "Add another dose?" in shown.text, f"the card: {shown.text[:200] if shown else 'none'}")
+        h.check("Log it anyway?" not in shown.text and "Log it as taken now?" not in shown.text, f"it still asks as if nothing had been logged: {shown.text[:200]}")
         h.check(any("Log it" in label for label in shown.labels) and any("Cancel" in label for label in shown.labels), f"its buttons are {shown.labels}")
         h.check((await h.doses()).get(("Testa", 2)) == PENDING, "dose 2 was ticked off without asking")
         await h.press(shown.id, "Cancel", h.inbox)
@@ -425,6 +426,20 @@ async def p1(h: Harness) -> None:
         h.check("0m" not in warned, f"it still counts in minutes under a minute: {warned.strip()[:100]}")
         if f"{config.now_nz():%H:%M}" == "08:00":  # dose 1 was taken at 8:00 and it is still 8:00
             h.check("just now" in warned, f"under a minute after dose 1 it does not say “just now”: {warned.strip()[:100]}")
+
+    async with h.step("1.17b", "“that was dose 2”, about the dose just logged", "A correction of that log, with no card open: a change card “Testa · dose 1 → dose 2 · taken …” with what becomes of dose 1 under it, Save and Cancel. Nothing is logged a second time, and nothing changes until Save. Cancel", "golden 19; asked 2026-10-14"):
+        before = await h.doses()
+        mine = await h.say("that was dose 2", canned=log({"pill": "@that", "did": "taken", "dose": 2, "correction": True}))
+        stored, shown = await card(h)
+        h.check(shown is not None, f"no card: {[each.text[:80] for each in await h.recent(h.inbox, 3)]}")
+        h.check("**Testa** · dose 1 → dose 2 · taken " in shown.text and "dose 1 · still to take" in shown.text, f"the card reads: {shown.text[:240]}")
+        h.check("Log it as taken now?" not in shown.text and "Add another dose?" not in shown.text, f"it reads as a new dose: {shown.text[:240]}")
+        h.check(any("Save" in label for label in shown.labels) and any("Cancel" in label for label in shown.labels), f"its buttons are {shown.labels}")
+        h.check(await h.doses() == before, f"something changed by asking: {await h.doses()}")
+        h.saw(next((line for line in shown.text.splitlines() if "→" in line), "")[:120])
+        await h.press(shown.id, "Cancel", h.inbox)
+        h.check(await h.doses() == before and (await card(h))[0] is None, "after Cancel a dose changed or the card is still open")
+        await no_marks(h, mine)
 
     async with h.step("1.18", "The next reminder, and Snooze 15m", "When dose 2 falls due a reminder is posted; Snooze rewrites the same message with “Snoozed until …”", "T42 (38.3)"):
         due = await remind_due(h)
@@ -566,14 +581,19 @@ async def p2(h: Harness) -> None:
             h.check(await h.get(h.hub, before) is None and await h.count(h.hub, NEUTRAL) == 1, "the old copy is still in the hub")
             h.memo["prompt"] = up[0].message_id
 
-    async with h.step("2.09", "After the third reminder the dose is missed", "The reminder goes, the dose is missed, and the checklist shows ❌", "T45 (38.6)"):
+    async with h.step("2.09", "After the third reminder the reminders stop, and the dose is still to take", "The reminder goes and no other is posted. The dose is not missed (it can still be taken today): the checklist still shows it to take, with no ❌", "T45 (38.6); asked 2026-10-14"):
         await h.clock_by(minutes=15, seconds=10)
-        h.check(not await prompts(h) and await h.get(h.hub, h.memo["prompt"]) is None, "the reminder is still up")
-        h.check((await h.doses()).get(("Testa", 3)) == MISSED, f"the doses are {await h.doses()}")
+        h.check(not [each for each in await prompts(h) if each.message_id] and await h.get(h.hub, h.memo["prompt"]) is None, "the reminder is still up")
+        h.check(await h.count(h.hub, NEUTRAL) == 0, f"{await h.count(h.hub, NEUTRAL)} reminders are in the hub")
+        h.check((await h.doses()).get(("Testa", 3)) == PENDING, f"the doses are {await h.doses()}")
         sheet = await h.get(h.hub, h.memo["sheet_d1"])
-        h.check(sheet is not None and "❌" in sheet.text and "missed" in sheet.text, f"the checklist reads: {sheet.text[:300] if sheet else 'gone'}")
+        h.check(sheet is not None and "❌" not in sheet.text and "missed" not in sheet.text, f"the checklist reads: {sheet.text[:300] if sheet else 'gone'}")
+        await h.clock_by(minutes=15, seconds=10)
+        h.check(await h.count(h.hub, NEUTRAL) == 0, "a quarter of an hour on, a reminder was posted again")
 
-    async with h.step("2.10", "A missed dose logged as taken: `took testa`", "The typed shortcut, with no request to Claude, and it asks first: a card “Dose 3 was missed (due …). Log it as taken now?” with Log it and Cancel; nothing is ticked off until Log it", "T45 (38.7); asked 2026-10-13"):
+    async with h.step("2.10", "Past Testa's latest time the dose is missed; logged as taken then: `took testa`", "At 4:00 pm dose 3 is missed. The typed shortcut, with no request to Claude, asks first: a card “Dose 3 was missed (due …). … Log it as taken now?” with Log it and Cancel; nothing is ticked off until Log it", "T45 (38.7); asked 2026-10-13"):
+        if (config.now_nz().hour, config.now_nz().minute) < (16, 1):
+            await h.clock_to(16, 1, 5)
         before = h._real_calls
         mine = await h.say("took testa")
         stored, shown = await card(h)
@@ -731,9 +751,9 @@ async def p3(h: Harness) -> None:
         h.check(len(await held(h, "checklist")) == 1, "a second checklist was posted")
         h.check(not await prompts(h) and await h.get(h.hub, h.memo["plain_prompt"]) is None, "the reminder for dose 1 is still up")
 
-    async with h.step("3.07", "Taken pressed again in Testa's box: too soon", "An amber box “⚠️ That's … after dose 1 … Log it anyway?” with Log it and Cancel; nothing ticked off. Cancel", "T54 (41.6)"):
+    async with h.step("3.07", "Taken pressed again in Testa's box: too soon", "An amber box “⚠️ You already logged dose 1 at … Add another dose?” with Log it and Cancel; nothing ticked off. Cancel", "T54 (41.6); asked 2026-10-14"):
         pressed = await h.press(h.memo["sheet_d2"], "Taken", arg=await dose_id(h, "Testa", 2))
-        asked = await h.find(h.hub, "Log it anyway?") or await h.find(h.inbox, "Log it anyway?")
+        asked = await h.find(h.hub, "Add another dose?") or await h.find(h.inbox, "Add another dose?")
         h.check(asked is not None, f"no card that asks; the press said {pressed.said}")
         h.check((await h.doses()).get(("Testa", 2)) == PENDING, "dose 2 was ticked off without asking")
         h.check(asked.v2 and asked.accents[:1] == [accent(design.RISKY)], f"it is {'drawn' if asked.v2 else 'plain'} with colours {[hex(each) if each else None for each in asked.accents]}")

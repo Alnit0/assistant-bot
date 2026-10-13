@@ -1232,3 +1232,23 @@ A short log of key decisions and why. Newest at the bottom.
   - **Too soon** is asked about on the same card as a late log.
   - The take-by line is on the prompt only; the checklist is left as it
     is until its redesign.
+
+- **Reminders running out is no deadline (2026-10-14).** Until now a
+  dose was missed 15 minutes after its third reminder, for good. On
+  live that closed dose 1 at 9:00 am, an hour after it was due, and
+  the dose then taken at 9:20 am was counted as dose 2. Now the last
+  reminder goes, the prompt's row is kept as over (nothing more is
+  sent, unless the dose comes to be due later), and the dose stays to
+  take. Missed has one meaning: it can no longer be taken today
+  (`doses.outcomes`). Rows from before keep their cause `ignored` and
+  stay final. Built from the bug report alone: the message describing
+  the wanted deadline did not arrive (docs/QUESTIONS.md, 43).
+- **A correction of which dose moves the log (2026-10-14).** "That was
+  dose 1" was read as a new dose and its card's Save added a second
+  log. Whether a message corrects a log is Claude's to say (a
+  `correction` field of `pill_log`: no phrase list in Python); what it
+  corrects is the code's: the pill's dose logged last, moved to the
+  dose named as one change (`checklist.move`), always on a change
+  card. And for when Claude does not say so: a card that would add a
+  dose within an hour of the last log names that log and asks "Add
+  another dose?".

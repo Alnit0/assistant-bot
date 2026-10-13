@@ -575,8 +575,19 @@ Everything works in #inbox and in the hub.
   missed (due 11:12 am). Log it as taken now?", and under the dose a
   small line when the next dose's time would move (`next: dose 2 ·
   11:30 am → 12:40 pm`). The same whether you say it, type `took
-  <pill>` or press Taken. With another dose of the pill still waiting,
-  "took pill A" means that one; name the missed one by its number.
+  <pill>` or press Taken.
+- **Putting the dose right.** "That was dose 1" (or "no, that was my
+  first dose") after a dose was logged moves that log to dose 1, with
+  the time it has: a change card "**Pill A** · dose 2 → dose 1 · taken
+  9:20 am" with a small line for what becomes of dose 2 ("dose 2 ·
+  still to take · `12:20 pm`"), **Save** and **Cancel**. It never adds
+  a second log. It is checked against what you logged, whether or not
+  a card is open.
+- **A second dose within the hour is said in so many words.** When a
+  card would add a dose and you logged one of that pill in the last
+  hour, it reads "You already logged dose 1 at 9:20 am. That's 7m
+  later. The gap is at least 3h. Add another dose?", never only "Log
+  it anyway?".
 - **Putting a time right.** A time said straight after logging ("I took
   it at 9am"), or one earlier than the dose last taken, corrects that
   dose: "✏️ **Pill A** (dose 1 of 3) · taken 10:57 pm → 9:00 am". "It"
@@ -636,8 +647,10 @@ Everything works in #inbox and in the hub.
   (then restart). On, a dose with a time gets a message in the hub at
   that time, with **Taken**, **Taken at…**, **Snooze 15m** and **Skip**.
   The phone shows only "💊 Routine due · 11:12 am". Left alone it comes
-  again every 15 minutes, three times, and then the dose is missed (it
-  can still be ticked off by saying so). A dose with no time has its
+  again every 15 minutes, three times, and then it goes and nothing
+  more is sent for that dose. The dose is still to take: it is missed
+  only once it can no longer be taken today (the pill's latest time,
+  or midnight). A dose with no time has its
   Taken / Skip message under the checklist and no reminder. Nothing is
   sent after a pill's latest time. Reminders go to the hub only: on
   with no hub that can be found, #bot-log says so once and nothing is

@@ -121,7 +121,8 @@ from the occurrence log, never the record; when a dose is due is
 worked out, never stored; a late log, a dose too soon, a time out of
 order and a missed dose logged as taken ask first; reminders never
 name a pill in what notifies, one prompt a dose, nothing after a
-pill's latest time.
+pill's latest time; reminders running out never makes a dose missed;
+"that was dose N" moves the log and never adds one.
 
 ## Messages, alerts and money [Messages and channels, Notifications]
 
