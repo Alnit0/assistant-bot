@@ -191,6 +191,7 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 | ❓ a genuine guess only; ❔ and no Save for what can't be read | `actions.is_guessed`; `Proposal.can_save` |
 | Card: kind of change, `field · old → new` | `actions.KINDS`, `repeats.change_line` |
 | "No, …" undoes the mistake; "no, shopping" re-routes | `confirm.is_correction`, `confirm_cards.previous`; `confirm.redirect` |
+| A correction straight after Save is about what was saved | `llm.just_saved`, `confirm.just_saved`, `Request.just_saved` (`actions.Saved`); the task reads it (`plain.just_saved_pill`) |
 | Declines; "that is already so" | `actions.DECLINES`, `conversation.DECLINED`, `Task.already_so`, `core/repeats.py` |
 | No reply to a remark; never silence for one of my things | the router's "nothing"; `Task.item_names`, `routing.names_item`; part of a name is a hint for the router and never a decision (`routing.name_hints`) |
 | A name on its own shows the list, Live | `routing.named_alone`, the task's `show` action, `core/livelists.py` |

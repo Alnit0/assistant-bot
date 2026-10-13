@@ -193,6 +193,38 @@ def test_2b_straight_after_save_a_correction_is_a_change_card_for_what_was_just_
     lines, buttons = card(bot)
     assert lines[:3] == ["💊 Pills · change", "**Iron**", "schedule · daily at `8:00 pm` → daily at `9:00 pm`"]
     assert buttons == ["Save", "Cancel"]
+    assert not any("❓" in line for line in lines), "what was just saved is known, not guessed (G3)"
+
+
+def test_2b_the_correction_is_about_the_card_just_saved_not_whichever_pill_changed_last(bot):
+    # Two pills; the first is saved last of all, then corrected. "It" is the saved card's pill
+    bot.claude(route("pills"), ("pill_add", {"pills": [{"name": "Iron", "times": "8pm"}], "guessed": [], "not_included": []}))
+    bot.say("add iron to my pills at 8pm")
+    press(bot)
+    bot.claude(route("pills"), ("pill_add", {"pills": [{"name": "Zinc", "times": "7am"}], "guessed": [], "not_included": []}))
+    bot.say("add zinc to my pills at 7am")
+    press(bot)
+    bot.claude(route("pills"), ("pill_edit", {"pills": [{"pill": "iron", "notes": "with food"}], "guessed": [], "not_included": []}))
+    bot.say("iron is with food")
+    assert press(bot).startswith("✅ Updated")
+    bot.claude(("pill_edit", {"pills": [{"pill": "@that", "times": ["9:00 pm"]}], "guessed": [], "not_included": []}))
+    bot.say("no, I meant 9pm", straight_after=True)
+    lines, buttons = card(bot)
+    assert lines[1] == "**Iron**" and "`8:00 pm` → daily at `9:00 pm`" in lines[2] and not any("❓" in line for line in lines)
+
+
+def test_2b_once_something_else_was_done_the_saved_card_is_forgotten_and_it_is_a_guess_again(bot):
+    from core import llm
+    from tests.test_pills_reminders import INBOX  # noqa: F401
+
+    bot.claude(route("pills"), ("pill_add", {"pills": [{"name": "Iron", "times": "8pm"}], "guessed": [], "not_included": []}))
+    ctx, _ = bot.say("add iron to my pills at 8pm")
+    press(bot)
+    assert llm.just_saved(ctx.channel_id) is not None, "straight after the Save, the card is known"
+    llm.task_answered(ctx.channel_id, "pills")  # anything else the task did since (a dose logged, a list shown)
+    assert llm.just_saved(ctx.channel_id) is None, "then the Save is no longer the last thing, and the card is not what “it” means"
+    llm.task_answered(ctx.channel_id, "pills", saved=7)
+    assert llm.just_saved(ctx.channel_id, llm.clock.now() + llm.ANSWER_STICKS + llm.timedelta(seconds=1)) is None, "nor after a few minutes"
 
 
 # --- 3, 4: timers ----------------------------------------------------------------------------------------

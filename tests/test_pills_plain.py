@@ -712,3 +712,18 @@ def test_on_a_card_with_other_changes_the_pill_that_would_not_change_is_named_th
     proposal = card(world, plain.edit_card, {"pill": "iron", "times": ["8:00 am"]}, {"pill": "zinc", "notes": "with food"})
     assert proposal.lines[:2] == ("**Zinc**", "notes · none → with food")
     assert proposal.warnings == ("**Iron** is already in your pills with these settings",)
+
+
+# --- G3: what was just saved is what "it" means, and it is no guess ---------------------------------------------------
+def test_the_pill_of_the_card_just_saved_is_known_only_when_it_can_be():
+    from core.actions import LAST, Request, Saved
+    from tasks.pills import plain as pills_plain
+
+    def asked(saved):
+        return pills_plain.just_saved_pill(Request(None, 1, "no, I meant 9pm", just_saved=saved))
+
+    assert asked(None) is None, "no card was just saved"
+    assert asked(Saved("pills", "pill_add", {"pills": [{"name": "Iron", "times": ["8:00 pm"]}]})) == "Iron", "the only pill on it"
+    assert asked(Saved("pills", "pill_edit", {"pills": [{"pill": "pl3"}, {"pill": "pl4"}], LAST: "pl4"})) == "pl4", "the one mentioned last on it"
+    assert asked(Saved("pills", "pill_add", {"pills": [{"name": "Iron"}, {"name": "Zinc"}]})) is None, "several and none mentioned last: nothing is made up"
+    assert asked(Saved("schedule", "schedule_add", {"pills": [{"name": "Iron"}]})) is None, "another task's card says nothing about a pill"

@@ -6,6 +6,9 @@ backfilled from the git log.
 
 ## 2026-10-13
 
+- "No, I meant 9pm" straight after Save changes what was just saved,
+  on a change card (old → new), and no longer counts as a guess.
+
 - A nightly self-test, switched off until you turn it on
   (`NIGHTLY_SELFTEST`): at 3:00 am the dev bot tests what changed, and
   everything on Sundays. Your phone is pinged only if a step fails.

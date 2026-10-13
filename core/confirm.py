@@ -318,6 +318,17 @@ def db_close(conn: sqlite3.Connection, card_id: int, status: str, now: datetime 
 # ---------------------------------------------------------------------------
 # Showing, replacing and expiring
 # ---------------------------------------------------------------------------
+async def just_saved(user_id: int, channel_id: int | None) -> Stored | None:
+    """The card this user saved a moment ago in this channel, if that Save is
+    still the last thing a task did there (llm.just_saved). What a correction
+    straight after a Save is about."""
+    card_id = llm.just_saved(channel_id)
+    if card_id is None:
+        return None
+    card = await database.run(db_get, card_id)
+    return card if card is not None and card.user_id == user_id and card.status == SAVED and card.kind == CARD else None
+
+
 async def latest_open(user_id: int, channel_id: int) -> Stored | None:
     return await database.run(db_latest_open, user_id, channel_id)
 
@@ -504,7 +515,8 @@ async def on_save(press: cards.Press) -> str | None:
     # What a press did is part of the conversation: without it, whatever is asked
     # next is answered as if the card were still waiting
     llm.remember(card.channel_id, "(pressed the card's button)", said)
-    llm.task_answered(card.channel_id, card.task)  # and what follows shortly is that task's first
+    # And what follows shortly is that task's first: about this card, if it points at nothing else
+    llm.task_answered(card.channel_id, card.task, saved=card.id)
     return f"saved {card.task}/{card.action}: {said}"
 
 

@@ -152,6 +152,19 @@ async def p1(h: Harness) -> None:
     )
     await save_new(h, "1.04", "add Testany to my pills once a day", add({"name": "Testany", "per_day": 1}), "Testany", "T15")
 
+    async with h.step("1.04b", "Straight after that Save: “no, I meant 9pm”", "A change card for Testany, the pill just saved: any time → 9:00 pm, with Save and Cancel and no ❓ (it is known, not guessed). Cancel leaves the pill as it was", "golden 2b (G3)"):
+        mine = await h.say("no, I meant 9pm", canned=about("pill_edit", {"pill": "@that", "times": ["9:00 pm"]}))
+        stored, shown = await card(h)
+        h.check(shown is not None and stored is not None and stored.action == "pill_edit", f"no change card: {[each.text[:80] for each in await h.recent(h.inbox, 3) if each.id not in h.typed]}")
+        h.check("Testany" in shown.text and "9:00 pm" in shown.text and "→" in shown.text, f"the card reads: {shown.text[:240]}")
+        h.check("Testa**" not in shown.text and "❓" not in shown.text, f"it is about another pill, or marked as a guess: {shown.text[:240]}")
+        h.check(any("Save" in label for label in shown.labels) and any("Cancel" in label for label in shown.labels), f"its buttons are {shown.labels}")
+        await no_marks(h, mine)
+        await h.press(shown.id, "Cancel", h.inbox)
+        plan = (await h.pills())["Testany"].plan
+        h.check(not plan.schedule.times, f"Cancel changed the pill: {plan.schedule.times}")
+        h.saw(next((line for line in shown.text.splitlines() if "→" in line), "")[:120])
+
     async with h.step("1.05", "A question on the card: “add Testiron to my pills at 8”", "A card with “daily at ❔”, the question morning or evening, a button for 8:00 am and 8:00 pm, Cancel, and no Save", "T25 (37.1)"):
         await h.say("add Testiron to my pills at 8", canned=add({"name": "Testiron", "times": ["8:00"]}, guessed=["times[0]"]))
         stored, shown = await card(h)

@@ -43,10 +43,10 @@ Last updated: 2026-10-13
 | P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
 | Q | Time, days, the schedule model, the occurrence log and cards | 26 | 24 | 2 | 2 | 24 | 0 | 0 |
 | R | Pills | 78 | 25 | 53 | 45 | 33 | 0 | 0 |
-| S | Routing and confirm cards | 76 | 23 | 53 | 18 | 57 | 0 | 1 |
+| S | Routing and confirm cards | 77 | 24 | 53 | 18 | 58 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 4 | 18 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **510** | **190** | **320** | **250** | **259** | **0** | **1** |
+| | **Total** | **511** | **191** | **320** | **250** | **260** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -638,6 +638,7 @@ the dev database (`python main.py --dev`), in #inbox.
 | S74 | 👤 Manual | Block 48: the briefing on the dev database, on and off | As the block says; the look against `briefing-v2` | ⬜ Untested | | Block 48 |
 | S75 | 🤖 Auto | The run log is pruned | A housekeeping run (a card's expiry, a line tidied, the hub's expiry) goes 30 days after it ended and any other after a year; one waiting or running is never touched, whatever its age; asked again nothing more goes; the end of the day asks once a day, and a failure there is said in #bot-log and does not stop the day | ✅ Pass | 2026-10-13 | `tests/test_timetable.py` |
 | S76 | 🤖 Auto | The nightly self-test | Off unless switched on and never on the dev database; its schedule (3:00 am, mine to move, skipped after three hours late) is made only while on; the stages touched on a weeknight and everything on a Sunday, with recorded answers; the job only starts the run and says so, never two at once; off it starts nothing; a run that could not start is said in #bot-log and failing steps are the run's own to report; the start has nothing of live's environment; the phone is pinged only for a failing step or an unfinished run, at priority 5, the topic never given away; a night with nothing to run leaves a line | ✅ Pass | 2026-10-13 | `tests/test_nightly.py` |
+| S77 | 🤖 Auto | A correction straight after Save (G3) | Golden 2b: the change card is for what was just saved, old → new, with no ❓; with two pills it is the saved card's pill, not the one changed last; the pill is the one mentioned last on the card or the only one it held, and with several and none mentioned nothing is made up; another task's card says nothing; once the task has done anything else, or after a few minutes, the saved card is forgotten | ✅ Pass | 2026-10-13 | `tests/test_golden.py`, `tests/test_pills_plain.py` |
 
 ## T. Tasks in plain words
 

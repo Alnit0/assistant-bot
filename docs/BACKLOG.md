@@ -215,12 +215,13 @@ What is left. The golden conversations are `tests/test_golden.py`; none
 is marked `gap` any more: G1 (questions on the card) was built on
 2026-10-12, and 1c, 1d and 2a pass. G14 (a notification never names a
 pill) is built and tested with reminders, which are switched off until
-they pass QA. G3 and G4 are deferred until then. G9 and G13 (the old path, the old `pills` list) were removed
+they pass QA. G3 (a correction straight after Save) was built on
+2026-10-13: core hands the task the card that was just saved
+(`Request.just_saved`), so it is known and no longer marked ❓. G4 is deferred until then. G9 and G13 (the old path, the old `pills` list) were removed
 at step 4.
 
 | # | Gap | Layer | Size |
 |---|---|---|---|
-| G3 | A correction straight after Save works only by the "pill changed last" guess, so it is marked ❓, and only for pills (golden 2b) | core and each task | medium |
 | G4 | Task ties are asked too readily: the router sees two exchanges and no record of what I have or did lately | router | medium |
 | G7 | Questions still sent as their own message: only timers now ("Which timer? Say its name.", C8). The pills ones are on the card (C7, 2026-10-12) | timers | small |
 

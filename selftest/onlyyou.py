@@ -25,7 +25,7 @@ NOT_TESTED = (
     "The nightly self-test (`NIGHTLY_SELFTEST`): the dev bot cannot start a self-test of itself; its parts are tested offline (`tests/test_nightly.py`)",
     "Messages sent while the bot was off (“I was offline when you sent this”): a bot cannot write as you while another is stopped; block 50 of `docs/QA-RUN.md`",
     "Pills: a course with a start and an end, pausing until a date and coming back by itself, a pill whose doses can't fit, more than a handful of pills on one checklist, a dose skipped by the bot for want of time",
-    "Pills: “no, …” undoing a change, a correction straight after Save becoming a change card, a reply to a line meaning that dose (the test replies to nothing)",
+    "Pills: “no, …” undoing a change, a reply to a line meaning that dose (the test replies to nothing)",
     "Reminders: nothing sent after a pill's latest time when the bot starts late; reminders on with no hub channel; a channel reset while a reminder is up",
     "Restarts: a Save cut off half way through the save itself, and a channel reset cut off (the test cuts off a typed message only)",
     "The standard: no reply to a remark, chat never acknowledging, task ties, several things in one message for two tasks. The golden conversations cover these offline (`tests/test_golden.py`), with recorded answers",

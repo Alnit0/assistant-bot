@@ -311,16 +311,33 @@ def _changed(user_id: int) -> None:
     checklist.changed(user_id)
 
 
+def just_saved_pill(request: Request) -> str | None:
+    """The pill the card saved a moment ago was about, as a name or an id:
+    the one mentioned last on it, or the only one it held. None when no card
+    was just saved, it was another task's, or it held several with none
+    mentioned last: then nothing is known, and nothing is made up."""
+    saved = request.just_saved
+    if saved is None or saved.task != TASK:
+        return None
+    held = [item.get("pill") or item.get("name") for item in saved.data.get("pills", []) if isinstance(item, dict)]
+    held = [str(each) for each in held if each]
+    return saved.data.get(LAST) or (held[0] if len(held) == 1 else None)
+
+
 async def _pointed(request: Request, items: list[dict], key: str) -> tuple[list[dict], str | None]:
     """The items with "it" given the pill it stands for, resolved here and never
     by Claude: the pill mentioned last on the open card; with no card, the
-    pill changed last, which is a guess and comes back as the second value.
-    A new pill can't be "it": there is nothing it could mean."""
+    pill on the card saved a moment ago ("no, I meant 9pm" straight after
+    Save), which is known; failing both, the pill changed last, which is a
+    guess and comes back as the second value. A new pill can't be "it":
+    there is nothing it could mean."""
     if not any(is_reference(item.get(key)) for item in items):
         return items, None
     previous = request.previous or {}
     held = previous.get("pills", [])
     last = previous.get(LAST) or (held[-1].get(key) if held else None)
+    if last is None and key == "pill":
+        last = just_saved_pill(request)
     taken_as = None
     if last is None and key == "pill":
         changed = await request.db.run(store.db_last_changed, request.user.id)

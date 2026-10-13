@@ -81,23 +81,33 @@ def clear_history(channel_id: int | None) -> None:
 # answer, the result of a card's button), and when. For a few minutes a short
 # message that follows is that task's first: "it was 9pm actually" names
 # nothing, and only makes sense as being about what was just done.
-_answered: dict[int | None, tuple[str, datetime]] = {}
+# With it, when that answer was the Save of a card: the card. "No, I meant 9pm" straight
+# after a Save is about what was just saved, and that is known, not guessed.
+_answered: dict[int | None, tuple[str, datetime, int | None]] = {}
 ANSWER_STICKS = timedelta(minutes=5)
 
 
-def task_answered(channel_id: int | None, task: str) -> None:
+def task_answered(channel_id: int | None, task: str, saved: int | None = None) -> None:
     """Note that a task has just answered in a channel. An empty name says the
-    last answer there was plain chat's: nothing sticks to that."""
+    last answer there was plain chat's: nothing sticks to that. `saved` is
+    the card whose Save this answer was; any later answer forgets it."""
     if task:
-        _answered[channel_id] = (task, clock.now())
+        _answered[channel_id] = (task, clock.now(), saved)
     else:
         _answered.pop(channel_id, None)
 
 
 def answering_task(channel_id: int | None, now: datetime | None = None) -> str:
     """The task that answered in this channel within the last few minutes, or ""."""
-    task, at = _answered.get(channel_id, ("", None))
+    task, at, _ = _answered.get(channel_id, ("", None, None))
     return task if task and (now or clock.now()) - at <= ANSWER_STICKS else ""
+
+
+def just_saved(channel_id: int | None, now: datetime | None = None) -> int | None:
+    """The card whose Save was the last thing a task did in this channel, a
+    few minutes ago at most. None once anything else has answered there."""
+    task, at, saved = _answered.get(channel_id, ("", None, None))
+    return saved if task and saved is not None and (now or clock.now()) - at <= ANSWER_STICKS else None
 
 
 def remember(channel_id: int | None, user_text: str, bot_text: str) -> None:

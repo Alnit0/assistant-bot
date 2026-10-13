@@ -1551,6 +1551,24 @@ asks Claude nothing, and is in the task's own words; the icon and the name come
 from the task. Call `summaries.changed(self.name, user_id)` whenever it
 may read differently. No briefing code changes.
 
+## A correction straight after Save
+
+"Add iron at 8pm", **Save**, then "no, I meant 9pm": the change is
+about what was just saved, and the bot knows that; it does not guess.
+Core remembers the card whose Save was the last thing a task did in
+the channel (for five minutes, and only until that task does anything
+else there) and hands it to the task with the next message
+(`Request.just_saved`). The task uses it for an "it" that names
+nothing: pills takes the pill mentioned last on that card, or the only
+one it held, and shows a change card, old → new, with no ❓. With
+several pills on the saved card and none mentioned last, or once
+something else has been done, it falls back to the pill changed last
+and marks it ❓ as before.
+
+For a task: read `request.just_saved` (an `actions.Saved`: task,
+action, data) when a reference has nothing else to point at; check it
+is your own task's card.
+
 ## My schedule
 
 What the bot does by itself, and when, is yours to see and change.

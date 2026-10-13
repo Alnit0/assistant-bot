@@ -228,6 +228,16 @@ class Attachment:
         return await self.fetch()
 
 
+@dataclass(frozen=True)
+class Saved:
+    """The card saved a moment ago, when that Save is the last thing a task
+    did in the channel: its task, its action, and the data that was saved."""
+
+    task: str
+    action: str
+    data: dict
+
+
 @dataclass
 class Request:
     """Who is asking and where, for an action's code. Not a discord object:
@@ -251,6 +261,9 @@ class Request:
     message_id: int | None = None
     # The files sent with the message (none for a press of a button)
     attachments: tuple[Attachment, ...] = ()
+    # The card saved straight before this message, if a Save was the last thing a task did
+    # here: "no, I meant 9pm" with nothing named is about that, and it is no guess
+    just_saved: Saved | None = None
 
     db = database
 

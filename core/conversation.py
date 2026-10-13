@@ -498,8 +498,11 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
     row_id = await log_received(ctx.text, "chat", ctx.message_id, ctx.channel_id, user_id=ctx.user.id)
     started = time.perf_counter()
     spent = timing.current() or timing.start()
+    # Straight after a Save: the card that was saved, for a correction that names nothing
+    saved = await confirm.just_saved(ctx.user.id, ctx.channel_id)
     request = Request(
-        ctx.user, ctx.channel_id, ctx.text, replied_to=ctx.reply_target_id, message_id=ctx.message_id, attachments=tuple(getattr(ctx, "attachments", ()))
+        ctx.user, ctx.channel_id, ctx.text, replied_to=ctx.reply_target_id, message_id=ctx.message_id, attachments=tuple(getattr(ctx, "attachments", ())),
+        just_saved=actions.Saved(saved.task, saved.action, saved.data) if saved is not None else None,
     )
     attached = tuple(each.name for each in request.attachments)
     turn = Turn()
