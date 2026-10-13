@@ -10,6 +10,21 @@ session; the end-of-task checklist updates it at the end of every task.
 Choices the batch's prompt did not settle, made as the standard, the
 design and the hub principle point. Each is yours to overturn.
 
+**Where it stands (2:35 am).** All seven items and the design round
+are built, committed and pushed on `feature/pills`; nothing is merged.
+Live was restarted at 2:27 am on the new code with
+`BRIEFING_ENABLED`, `WEATHER_ENABLED`, `HUB_TIDY`, `REMINDERS_ENABLED`,
+`QUIET_HOURS_ENABLED` and `NIGHTLY_SELFTEST` on, and `NOTIFY_NTFY`
+off. Booked for this morning: 5:30 exchange rate, 5:50 weather fetch,
+6:00 morning routine (tidy, briefing, checklist), 7:00 needs-a-look
+check, 8:50 weather refresh. **The morning itself has not been seen
+run on live**: each piece was self-tested on the dev bot and checked
+against live's own settings. Self-tests as the dev bot with live up:
+five runs, the last a full one (113 of 114, none failed, one skipped
+for needing real requests). Claude spend for the batch: NZ$0.68
+(US$0.40), all of it self-tests; the month's self-test budget
+(NZ$3.50) is now spent, so runs use recorded answers until November.
+
 **Item 5, a hub that holds what matters**
 
 1. **The ping's words are the status line's**: "⚠️ B14 · backup failed
