@@ -4,7 +4,8 @@ import logging
 import discord
 from discord import app_commands
 
-from core import backup, cards, clock, conversation, database, day, devmode, identity, instance_lock, interactions, lifecycle, live, messages, restart, scheduler, tidy, timing
+from core import backup, cards, clock, conversation, database, day, devmode, identity, instance_lock, interactions, lifecycle, live, messages, missed, restart, scheduler, tidy, timing
+from core.config import mine as my_channel
 from core.config import (
     CLAUDE_MODEL,
     DB_PATH,
@@ -174,7 +175,10 @@ async def on_ready():
         # After the tasks are ready: what was cut off by the stop is put right, the jobs
         # that came due while we were off run now, and all of it is said once in #bot-log
         await restart.catch_up()
+        # And what I said meanwhile: each message gets a card that asks, never an answer
+        await missed.look()
     scheduler.start()
+    missed.start()
     # Which bot this is, for anyone looking: the nickname and the status line
     await identity.start()
 
@@ -238,27 +242,46 @@ async def _unmark_seen(message: discord.Message, failed: bool = False) -> None:
             log.info("Could not mark a message as failed: %s", error)
 
 
+def _mine(channel) -> bool:
+    """Whether a channel is this bot's to act in. With a test bot in the server
+    there are two bots that see everything: each keeps to its own channels
+    (core/config.py, `mine`)."""
+    return my_channel(getattr(channel, "id", None), getattr(channel, "parent_id", None))
+
+
+async def _sender(message: discord.Message):
+    """Who sent a message, if it is one the bot acts on: not a bot's (its own
+    included), in a channel that is this bot's, from someone allowed, with
+    words in it. None otherwise."""
+    if message.author.bot or not _mine(message.channel):
+        return None
+    user = await get_user_by_discord_id(message.author.id)
+    if not is_allowed(user, "message") or not message.content.strip():
+        return None
+    return user
+
+
 @client.event
 async def on_message(message: discord.Message):
     # Discord's "X pinned a message" notices are clutter: remove every one
     if message.type is discord.MessageType.pins_add:
-        if lifecycle.deletes(MessageClass.TRANSIENT):
+        if _mine(message.channel) and lifecycle.deletes(MessageClass.TRANSIENT):
             try:
                 await message.delete()
             except discord.HTTPException as error:
                 log.info("Could not delete a pin notice: %s", error)
         return
-    # Ignore bots (including itself) and anyone who isn't allowed
-    if message.author.bot:
+    user = await _sender(message)
+    if user is None:
         return
-    user = await get_user_by_discord_id(message.author.id)
-    if not is_allowed(user, "message"):
-        return
+    missed.saw(message.id)  # it arrived: never asked about after a restart
+    await _take(message, user)
 
+
+async def _take(message: discord.Message, user) -> None:
+    """Take a message of mine: one that has just arrived, or one sent while
+    the bot was off that I have said to handle now (core/missed.py)."""
     text = message.content.strip()
-    if not text:
-        return
-
     # Said in the hub with the tidy on: it is recorded, and it and the reply go once it is
     # handled (core/messages.py). Anywhere else, and with the tidy off, this does nothing
     await messages.begin(message.id, message.channel.id, user.id)
@@ -317,10 +340,19 @@ async def _handle(message: discord.Message, user, text: str) -> bool:
     return failed
 
 
+def _mine_id(channel_id: int) -> bool:
+    """`_mine` for an event that only brings the channel's id (a thread is its parent's)."""
+    channel = client.get_channel(channel_id)
+    return _mine(channel) if channel is not None else my_channel(channel_id)
+
+
+missed.setup(_sender, _take)
+
+
 @client.event
 async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
-    # The bot's own reactions are never input
-    if payload.user_id == client.user.id:
+    # The bot's own reactions are never input, nor is one in the other bot's channels
+    if payload.user_id == client.user.id or not _mine_id(payload.channel_id):
         return
     await registry.emit("raw_reaction_add", payload)
     # Registered reactions are checked at once, then acted on after a quiet period,
@@ -330,7 +362,7 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
 
 @client.event
 async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent):
-    if payload.user_id == client.user.id:
+    if payload.user_id == client.user.id or not _mine_id(payload.channel_id):
         return
     await registry.emit("raw_reaction_remove", payload)
     await registry.reaction_changed(payload, added=False)
@@ -338,7 +370,8 @@ async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent):
 
 @client.event
 async def on_guild_channel_pins_update(channel, last_pin):
-    await registry.emit("guild_channel_pins_update", channel, last_pin)
+    if _mine(channel):
+        await registry.emit("guild_channel_pins_update", channel, last_pin)
 
 
 @client.event

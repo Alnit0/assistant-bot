@@ -8,7 +8,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from core.config import DATA_DIR, real_now_nz
+from core.config import DATA_DIR, SEPARATE_BOT, real_now_nz
 
 log = logging.getLogger("assistant")
 
@@ -20,8 +20,16 @@ log = logging.getLogger("assistant")
 # for as long as it lives. The system releases the lock itself when the
 # process ends, however it ends, so a crash can never leave a stale lock
 # behind (unlike a file that merely records a PID).
+#
+# The lock is one a bot, not one a folder: live's Discord account has
+# bot.lock, and the test bot (a token of its own in .env.dev) has
+# bot-dev.lock, so the two run side by side from this folder. `--dev` without
+# a token of its own is live's account on another database: it takes live's
+# lock, and the two can never run together.
 # ---------------------------------------------------------------------------
-LOCK_PATH = DATA_DIR / "bot.lock"
+LIVE_LOCK = DATA_DIR / "bot.lock"
+TEST_LOCK = DATA_DIR / "bot-dev.lock"
+LOCK_PATH = TEST_LOCK if SEPARATE_BOT else LIVE_LOCK  # this bot's own
 EXIT_ALREADY_RUNNING = 3  # lets the Windows service be told not to retry (see DEVELOPMENT.md)
 ACQUIRE_TRIES = 3
 ACQUIRE_WAIT = 0.2  # seconds between tries
@@ -188,18 +196,23 @@ def list_processes() -> list[Process] | None:
         return None
 
 
-def status_text(lock: Holder | None, processes: list[Process] | None) -> str:
+def status_text(lock: Holder | None, processes: list[Process] | None, test: Holder | None = None) -> str:
     """How many bots are running, in words. The lock decides; the processes
-    are there to catch a copy that is running without it."""
+    are there to catch a copy that is running without it. `lock` is live's;
+    `test` the test bot's, which may run at the same time."""
     running = instances(processes or [])
     launchers = [process for process in (processes or []) if is_bot(process) and process not in running]
-    strays = [process for process in running if lock is None or process.pid != lock.pid]
+    held = {each.pid for each in (lock, test) if each is not None}
+    strays = [process for process in running if process.pid not in held]
 
     if lock is None:
-        lines = ["No bot is running: nothing holds the lock (data/bot.lock)."]
+        lines = ["No bot is running: nothing holds the lock (data/bot.lock)." if test is None else "Live is not running: nothing holds its lock (data/bot.lock)."]
     else:
         who = f"PID {lock.pid}, started {lock.started}" if lock.pid else "details unknown"
         lines = [f"1 bot is running: {who} (it holds the lock)."]
+    if test is not None:
+        who = f"PID {test.pid}, started {test.started}" if test.pid else "details unknown"
+        lines.append(f"The test bot is running{' too' if lock is not None else ''}: {who} (its own lock, data/bot-dev.lock).")
     for process in strays:
         lines.append(
             f"⚠️ PID {process.pid} is running main.py without the lock: starting up, or about to exit. "
@@ -217,7 +230,7 @@ def status_text(lock: Holder | None, processes: list[Process] | None) -> str:
 
 def status() -> str:
     """The lock and the process list together. Blocking."""
-    return status_text(holder(), list_processes())
+    return status_text(holder(LIVE_LOCK), list_processes(), holder(TEST_LOCK))
 
 
 if __name__ == "__main__":

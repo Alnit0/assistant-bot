@@ -1243,28 +1243,77 @@ Polls, Manage Messages, Pin Messages, Manage Webhooks.
   meant to survive. You get "⌛ That button or form no longer works" and an
   "Interaction not answered" card in #bot-log.
 
-## A bot of its own for dev
+## Two bots: live and the test bot
 
-`python main.py --dev` is the live bot's own account on the dev
-database unless there is a `.env.dev` beside `.env`. With one, the dev
-bot reads `.env.dev` first and `.env` for everything it doesn't set, so
-it can be a different bot in different channels. The live bot never
-reads `.env.dev`, and it is never committed.
+There are two Discord applications. **Live** is the assistant: the
+service `assistant-bot`, `python main.py`, the database
+`data/assistant.db`, the settings in `.env`. **The test bot** is a
+second application in the same server: `python main.py --dev` and the
+self-test, the database `data/dev.db`, its token in `.env.dev`. They
+run at the same time, from this one folder.
 
-1. In the Discord Developer Portal make a second application with a
-   bot, switch on the Message Content intent as for the first, and
-   invite it to the server.
-2. Copy `.env.dev.example` to `.env.dev`. Put in the new bot's
-   `DISCORD_TOKEN`, a name for it (`ASSISTANT_NAME`), and channels of
-   its own: at least `INBOX_CHANNEL_ID`, `BOT_LOG_CHANNEL_ID` and
-   `HUB_CHANNEL_ID`. **Two bots in one channel both answer**, so don't
-   leave the live bot's channels in place by leaving them out.
-3. `python main.py --dev`. The start card says which database; the
-   bot's nickname says which bot.
+| | Live | The test bot |
+|---|---|---|
+| Started by | the service, or `python main.py` | `python -m selftest`, or `python main.py --dev` |
+| Settings | `.env` | `.env.dev` first, then `.env` for everything but channels |
+| Database | `data/assistant.db` | `data/dev.db` (may be wiped; its clock may be moved) |
+| Lock | `data/bot.lock` | `data/bot-dev.lock` |
+| Log | `logs/bot.log` | `logs/dev-bot.log` |
+| Channels | every channel in `.env`, and the rest of the server | only #selftest-inbox, #selftest-hub, #selftest-log and the forum #selftest-bugs |
+| Bugs | B numbers, in #bugs | D numbers, in #selftest-bugs |
 
-One folder still runs one copy at a time (the lock is the folder's
-`data/bot.lock`). Once live has a folder of its own (below), live and
-this dev bot can run side by side, as two different bots.
+- **The lock is one a bot, not one a folder.** One copy of each may
+  run; live and the test bot never stop each other. `python -m
+  core.instance_lock` says which are running.
+- **Each keeps to its own channels.** Two bots in a server both see
+  every message and reaction in it. The test bot acts only in the
+  channels `.env.dev` names, and their threads; it takes no channel
+  from `.env`, so a channel left empty in `.env.dev` is one it does not
+  have, and it can never post in a real one. Live acts everywhere
+  except in the test bot's channels. A button belongs to the bot that
+  posted its message, so a press never reaches the other.
+- **`.env.dev`** (never committed; copy `.env.dev.example`): the test
+  bot's `DISCORD_TOKEN`, and `INBOX_CHANNEL_ID`, `BOT_LOG_CHANNEL_ID`,
+  `HUB_CHANNEL_ID` and `BUGS_CHANNEL_ID` set to the self-test's
+  channels (`python -m selftest --channels` makes them if they are not
+  there and prints their ids). `ASSISTANT_NAME` there gives it a name
+  of its own in what it says.
+- **Setting the test bot up** (done once, 2026-10-13): in the Discord
+  Developer Portal, a second application with a bot, the Message
+  Content and Server Members intents switched on, invited to the
+  server; its token in `.env.dev`.
+- **It adds its own slash commands** to the server, beside live's:
+  Discord shows each with the bot it belongs to.
+- **Typing to the test bot by hand**: start `python main.py --dev` and
+  write in #selftest-inbox. Live does not answer there. The self-test
+  empties those channels at the start of every run.
+
+**Without a token in `.env.dev`** (or with no `.env.dev`) there is no
+test bot: `--dev` is live's own account on the dev database. It then
+shares live's lock, cannot run beside live, uses live's channels, and
+the self-test needs live stopped. That is the fallback, kept working.
+
+### When live does stop
+
+- **Its status says why**, when it is a self-test without a test bot:
+  "🧪 Self-test running · back about <time>", before anything else the
+  status would say.
+- **What you said meanwhile is asked about, never acted on.** When
+  live starts, it reads back every channel in `.env` that holds
+  messages (but #commands) to the last moment it knew it was running,
+  and each message of yours it never saw gets a card in that channel:
+  "📭 I was offline when you sent this", the time, a link, the message
+  quoted, and **Handle it now** and **Ignore**. Handle it now takes the
+  message exactly as if you had just sent it, and the card goes;
+  Ignore removes the card and nothing else. A message gets one card
+  ever, so another restart before you answer asks nothing twice. After
+  a long stop only the latest 20 get a card, and one line says how
+  many earlier ones did not.
+- The bot notes that it is running twice a minute (in real time), so
+  "while it was off" is known to the half minute; a message from that
+  last half minute is looked up, not assumed. The first start on this
+  code has no such note and reads nothing back.
+- Reactions made while it was off are not read back (in the backlog).
 
 ## A folder of its own for live
 
@@ -1543,10 +1592,17 @@ do for a kind of job (a handler) and, if it should happen by itself,
 what it does, in place of the parts of a QA run a bot can do. The
 report is `docs/SELFTEST.md`, written again by every full run.
 
-- **Live must be stopped first** (`nssm stop assistant-bot`): the dev
-  bot uses the same token. It refuses to start while anything holds the
-  lock. Start live again afterwards and check it is back
-  (`nssm start assistant-bot`, `python -m core.instance_lock`)
+- **Live keeps running.** The run is the test bot's (see "Two bots:
+  live and the test bot"): another Discord account, with its own lock,
+  log (`logs/dev-bot.log`) and channels. It refuses to start only while
+  the test bot itself is running
+- **Without a test bot** (`.env.dev` has no token of its own) the dev
+  bot is live's own account, so live must be stopped first (`nssm stop
+  assistant-bot`), and the run refuses to start while live holds the
+  lock. For as long as it lasts the bot's status reads "🧪 Self-test
+  running · back about 4:15 pm". Start live again afterwards and check
+  it is back (`nssm start assistant-bot`, `python -m
+  core.instance_lock`)
 - **Only what a change touches.** The run is one story in six starts
   of the dev bot, cut into three stages: `day` (starts 1 to 4: a pill
   day, the cards in both looks, reminders, the restart in the middle,

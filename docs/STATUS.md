@@ -17,6 +17,32 @@ failure for 30 days (built: it happens after the next run); the
 self-test marks Fixed only bugs it opened itself (built, and checked
 against the bug's own record, not only the list of numbers).
 
+**From the two bots (2026-10-13):**
+
+- **The test bot has a forum of its own, #selftest-bugs**, which I
+  made in the selftest category: you said it must never post in your
+  real channels, and the self-test's bugs (D numbers) need a forum.
+  They go there now, not in #bugs. Say if you would rather have them
+  in #bugs (then `BUGS_CHANNEL_ID` in `.env.dev` is that forum).
+- **Live no longer acts in the selftest channels** (they are the test
+  bot's), so that two bots never answer one message. Anything you type
+  there is for the test bot, when it is running.
+- **The test bot adds its own slash commands** to the server beside
+  live's (Discord shows which bot each belongs to). Say if they should
+  not be registered for it.
+- **The test bot has no name of its own**: `ASSISTANT_NAME` is empty in
+  `.env.dev`, so it calls itself what live does. Its Discord name and
+  the "· DEV" on its nickname tell them apart.
+- **The offline card has no new-look version**: it is a plain message
+  with two buttons, whatever `CARDS_V2` says. Say if you want it drawn
+  like the other cards.
+- **The status "🧪 Self-test running · back about <time>"** is shown
+  only in the fallback (no test bot), by the self-test's own bot on
+  live's account, since a stopped bot has no status. With the test bot
+  live is never stopped, so you will not normally see it.
+- **Reactions made while live was off are not read back**, only
+  messages. In the backlog already ("lost reactions").
+
 **From the scheduler build (2026-10-13):**
 
 - **The run log is pruned by the end of the day, not by the tidy.**

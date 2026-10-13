@@ -1,7 +1,7 @@
 import logging
 from logging.handlers import RotatingFileHandler
 
-from core.config import LOG_DIR
+from core.config import LOG_FILE
 
 
 def setup_logging() -> None:
@@ -12,7 +12,7 @@ def setup_logging() -> None:
     console_handler.setFormatter(log_format)
 
     file_handler = RotatingFileHandler(
-        LOG_DIR / "bot.log",
+        LOG_FILE,  # the test bot writes its own file: two processes can't share a rotating one
         maxBytes=1_000_000,  # roughly 1MB per file
         backupCount=5,  # keep the 5 most recent files
         encoding="utf-8",

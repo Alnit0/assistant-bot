@@ -8,8 +8,11 @@ seconds off between the first two.
 It says how much memory is free before it starts, and stops there when
 that is low (`--anyway` goes ahead).
 
-The live bot must be stopped first: it and the dev bot share one token. This
-refuses to start while any copy holds the lock.
+With a test bot (`.env.dev` has a token of its own) the run is the test
+bot's: live is left running, and is never stopped for it. Without one the dev
+bot is live's own account, so live must be stopped first, and this refuses to
+start while it holds the lock; the status then says "🧪 Self-test running ·
+back about <time>" for as long as the run lasts.
 """
 import argparse
 import asyncio
@@ -19,12 +22,13 @@ import shutil
 import subprocess
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import discord
 
 from core import config, instance_lock
+from core.timeinput import format_time
 from selftest import bugs, record, report, stages
 
 # ---------------------------------------------------------------------------
@@ -37,7 +41,25 @@ from selftest import bugs, record, report, stages
 # ---------------------------------------------------------------------------
 CATEGORY = "selftest"
 CHANNELS = {"hub": "selftest-hub", "inbox": "selftest-inbox", "bot-log": "selftest-log"}
-ENV_NAMES = {"hub": "HUB_CHANNEL_ID", "inbox": "INBOX_CHANNEL_ID", "bot-log": "BOT_LOG_CHANNEL_ID"}
+FORUM = "selftest-bugs"  # the test bot's own forum for its bugs, so it never posts in the real one
+ENV_NAMES = {"hub": "HUB_CHANNEL_ID", "inbox": "INBOX_CHANNEL_ID", "bot-log": "BOT_LOG_CHANNEL_ID", "bugs": "BUGS_CHANNEL_ID"}
+
+
+def separate() -> bool:
+    """Whether there is a test bot: a second Discord account, which runs the
+    self-test while live carries on."""
+    return config.test_bot_token() is not None
+
+
+def token() -> str:
+    """The token the run's own calls to Discord are made with: the test bot's
+    when there is one. Never printed."""
+    return config.test_bot_token() or config.TOKEN
+
+
+def back_about(now: datetime, minutes: float) -> str:
+    """When live is expected back, for the status of a run that stopped it: "4:15 pm"."""
+    return format_time((now + timedelta(minutes=minutes + 2)).time())
 WORK = config.DATA_DIR / "selftest"
 DEV_FILES = ("dev.db", "dev.db-wal", "dev.db-shm", "dev-clock.json")
 OFF_FOR = 75  # seconds the bot stays off between the phase that is cut off and the next: a job is late after 60
@@ -61,7 +83,7 @@ async def prepare_channels(purge: bool = True) -> dict[str, int]:
     """Find or make the self-test's category and channels, over HTTP only (no
     gateway connection, so this never disturbs a running bot), and empty them."""
     client = discord.Client(intents=discord.Intents.none())
-    await client.login(config.TOKEN)
+    await client.login(token())
     try:
         inbox = await client.fetch_channel(int(config.INBOX_CHANNEL_ID))
         guild = await client.fetch_guild(inbox.guild.id)
@@ -92,6 +114,12 @@ async def prepare_channels(purge: bool = True) -> dict[str, int]:
                         except discord.NotFound:
                             pass
             found[role] = channel.id
+        if separate():
+            # The test bot's bugs get a forum of their own, never emptied: the posts are the record
+            forum = next((each for each in existing if isinstance(each, discord.ForumChannel) and each.name == FORUM), None)
+            if forum is None:
+                forum = await guild.create_forum(FORUM, category=category, reason="The bot's self-test", topic="Bugs the bot's self-test found (python -m selftest). A step that fails gets a post; it is marked Fixed when the step passes again.")
+            found["bugs"] = forum.id
         return found
     finally:
         await client.close()
@@ -100,14 +128,15 @@ async def prepare_channels(purge: bool = True) -> dict[str, int]:
 async def remove_channels() -> list[str]:
     """Delete the self-test's channels and its category. Over HTTP only."""
     client = discord.Client(intents=discord.Intents.none())
-    await client.login(config.TOKEN)
+    await client.login(token())
     try:
         inbox = await client.fetch_channel(int(config.INBOX_CHANNEL_ID))
         guild = await client.fetch_guild(inbox.guild.id)
         existing = await guild.fetch_channels()
         gone = []
         for each in existing:
-            if isinstance(each, discord.TextChannel) and each.name in CHANNELS.values():
+            ours = isinstance(each, discord.TextChannel) and each.name in CHANNELS.values()
+            if ours or (isinstance(each, discord.ForumChannel) and each.name == FORUM):
                 await each.delete(reason="The bot's self-test, removed on request")
                 gone.append(f"#{each.name}")
         for each in existing:
@@ -178,7 +207,7 @@ def recover() -> list[dict]:
 async def say(channel_id: int, text: str) -> None:
     """One message in a channel, over HTTP only."""
     client = discord.Client(intents=discord.Intents.none())
-    await client.login(config.TOKEN)
+    await client.login(token())
     try:
         channel = await client.fetch_channel(channel_id)
         await channel.send(text, allowed_mentions=discord.AllowedMentions.none())
@@ -301,10 +330,18 @@ def main() -> int:
     if asked.channels:
         print(asyncio.run(prepare_channels(purge=False)))
         return 0
-    held = instance_lock.holder()
-    if held is not None:
-        print(f"A bot is running (PID {held.pid}). Stop it first: the self-test uses the same token.")
-        return 3
+    if separate():
+        held = instance_lock.holder(instance_lock.TEST_LOCK)
+        if held is not None:
+            print(f"The test bot is already running (PID {held.pid}). Stop it first: the self-test starts it itself.")
+            return 3
+        print("--- the test bot runs this (.env.dev has a token of its own): live is left running", flush=True)
+    else:
+        held = instance_lock.holder(instance_lock.LIVE_LOCK)
+        if held is not None:
+            print(f"A bot is running (PID {held.pid}), and there is no test bot (.env.dev has no token of its own), so the self-test would use the same account. Stop it first.")
+            return 3
+        print("--- there is no test bot: this runs as live's own account, with live stopped", flush=True)
 
     wanted = [name.strip() for name in asked.only.split(",") if name.strip()]
     named = [name.strip() for name in asked.stages.split(",") if name.strip()]
@@ -345,6 +382,9 @@ def main() -> int:
     stamp = began.strftime("%Y%m%d-%H%M%S")
     commit = stages.head(config.BASE_DIR)
     print(f"--- starts {', '.join(wanted)}: about {round(minutes)} minutes", flush=True)
+    if not separate():
+        # Live is off for this: the account's status says so, and when it is expected back
+        os.environ["SELFTEST_BACK"] = back_about(began, minutes)
     channels = asyncio.run(prepare_channels())
     saved = set_aside(stamp)
     phases, memo = [], {}

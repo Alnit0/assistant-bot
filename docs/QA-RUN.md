@@ -930,6 +930,19 @@ today's checklist in the hub (`pills`).
 | 8 | Look in `data\exports` on the PC | A file `tidy-<hub's name>-<date>.txt` with what was removed | K31 |
 | 9 | Stop the dev bot, remove both settings (`Remove-Item Env:BRIEFING_ENABLED, Env:HUB_TIDY`), start it | Nothing is tidied any more; `my schedule` shows "Pills checklist" alone | K31 |
 
+## 50. Messages sent while live was off (waiting for QA)
+
+On live. It needs live to have been running on this code for at least
+a minute before it is stopped.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | In a Terminal as Admin: `nssm stop assistant-bot`. In #inbox type `took <a pill>` and, a little later, `what is the capital of Peru`. In the hub type `pills`. Then `nssm start assistant-bot` | Nothing is answered while it is off. On start, under what you wrote in each channel, a card a message: "📭 **I was offline when you sent this** · `<time>` · the message", your words quoted, **▶️ Handle it now** and **↩️ Ignore**. No dose is logged and nothing is answered yet | R86 |
+| 2 | Press **Handle it now** on the `took` card | The card goes, and the dose is logged as if you had just typed it (or its card asks first, if it is now late) | R86 |
+| 3 | Press **Ignore** on the question's card | The card goes. Nothing else happens | R86 |
+| 4 | Leave the hub's card. `nssm restart assistant-bot` | No second card for `pills`: the one that is there still works. Press **Handle it now**: the checklist is shown | R86 |
+| 5 | Type something in #selftest-inbox | Live does not answer: that channel is the test bot's | R87 |
+
 ## When you finish
 
 - Stop the test copy (`Ctrl + C`) and check nothing is left running:

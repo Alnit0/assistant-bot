@@ -242,6 +242,10 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   the log every time. #bot-log is for real problems only: one that
   failed or skipped for a real problem says so there and with
   `scheduler.report`; a morning with nothing to do says nothing there
+- What I said while the bot was off is never acted on by itself
+  (`core/missed.py`): on start each such message in the bot's channels
+  gets a card, "I was offline when you sent this", with Handle it now
+  and Ignore. One card a message, ever
 - Expected things with a state on a day (doses, later reminders and
   routines) are rows in the occurrence log (`core/occurrences.py`),
   changed only through its `db_change` family
@@ -384,18 +388,30 @@ The rules are in `docs/specs/pills.md` and the Pills section of
 
 ## Running and testing
 
-- Only one copy of the bot may run at a time (`core/instance_lock.py`).
-  Never start `main.py` while the user's own copy or the service is
-  running. That includes `python main.py --dev`: it is the same bot on
-  another database
+- One copy of each bot may run at a time, and the lock is one a bot
+  (`core/instance_lock.py`): live's account has `data/bot.lock`, the
+  test bot (a token of its own in `.env.dev`) has `data/bot-dev.lock`,
+  so the two run side by side from this folder. Never start `main.py`
+  while the user's own copy or the service is running; `python main.py
+  --dev` is the test bot while `.env.dev` has its own token, and live's
+  own account on another database (so never beside live) when it has
+  not
+- Two bots in one server both see everything: each acts only in its own
+  channels (`config.mine`). The test bot takes no channel from `.env`,
+  only what `.env.dev` names (the self-test's channels); live leaves
+  those alone. Never give the test bot one of my real channels
 - Prefer checks that import the code without starting the bot. Never
   leave a bot process running; confirm with `python -m
   core.instance_lock`, which asks the lock (the source of truth) and
   says how many bots are running. Don't count `python.exe` lines: one
   bot is two of them (the `.venv` launcher and its child)
 - `python -m selftest` starts the dev bot against real Discord
-  (`docs/DEVELOPMENT.md`, "The self-test"). Only when I ask: live must
-  be stopped for it, started again after, and checked. Real requests
+  (`docs/DEVELOPMENT.md`, "The self-test"). Only when I ask. It runs
+  as the test bot, with live left running: never stop live for it.
+  Only if `.env.dev` has no token of its own is it live's account:
+  then live must be stopped for it, started again after, and checked
+  (its status says "🧪 Self-test running · back about <time>"
+  meanwhile). Real requests
   to Claude only with `--claude`, within the cost rule. With nothing
   said it runs only the stages (day, briefing, tidy) touched by what
   changed since each last passed; `--full` is the whole run, about

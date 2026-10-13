@@ -135,8 +135,8 @@ def test_the_phases_run_the_old_look_twice_then_the_new_then_the_old_again_with_
 
 
 def test_its_channels_are_its_own_and_never_the_real_ones():
-    assert set(runner.CHANNELS) == set(runner.ENV_NAMES) == {"hub", "inbox", "bot-log"}
-    assert all(name.startswith("selftest-") for name in runner.CHANNELS.values())
+    assert set(runner.CHANNELS) == {"hub", "inbox", "bot-log"} and set(runner.ENV_NAMES) == {"hub", "inbox", "bot-log", "bugs"}
+    assert all(name.startswith("selftest-") for name in runner.CHANNELS.values()) and runner.FORUM.startswith("selftest-"), "the test bot's bugs have a forum of their own too"
 
 
 def test_the_dev_database_is_set_aside_and_put_back_as_it_was(tmp_path, monkeypatch):
@@ -242,7 +242,7 @@ def test_low_memory_is_said_before_a_run_and_stops_it(monkeypatch, capsys):
     assert free is None or free > 0
 
     started = []
-    monkeypatch.setattr(runner.instance_lock, "holder", lambda: None)
+    monkeypatch.setattr(runner.instance_lock, "holder", lambda path: None)
     monkeypatch.setattr(runner.stages, "free_memory", lambda: 1024**3)
     monkeypatch.setattr(runner, "prepare_channels", lambda *a, **k: started.append("channels"))
     monkeypatch.setattr(sys, "argv", ["selftest", "--stages", "briefing"])
@@ -252,7 +252,7 @@ def test_low_memory_is_said_before_a_run_and_stops_it(monkeypatch, capsys):
 
 
 def test_a_stage_that_does_not_exist_is_refused_before_anything_starts(monkeypatch, capsys):
-    monkeypatch.setattr(runner.instance_lock, "holder", lambda: None)
+    monkeypatch.setattr(runner.instance_lock, "holder", lambda path: None)
     monkeypatch.setattr(sys, "argv", ["selftest", "--stages", "pills"])
     assert runner.main() == 2 and "No such stage: pills" in capsys.readouterr().out
 

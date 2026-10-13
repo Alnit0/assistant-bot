@@ -365,6 +365,26 @@ def _create_schedules(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX scheduled_jobs_schedule ON scheduled_jobs (schedule_id, status)")
 
 
+def _create_missed_messages(conn: sqlite3.Connection) -> None:
+    # What I said while the bot was off (core/missed.py): the last moment the bot noted it was
+    # running (one row), and each message of mine it asked about on start, with what I answered
+    conn.execute("CREATE TABLE bot_alive (id INTEGER PRIMARY KEY CHECK (id = 1), at TEXT NOT NULL)")
+    conn.execute(
+        """
+        CREATE TABLE missed_messages (
+            message_id INTEGER PRIMARY KEY,
+            channel_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            card_message_id INTEGER,
+            state TEXT NOT NULL,
+            sent_at TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            closed_at TEXT
+        )
+        """
+    )
+
+
 def _create_bot_messages(conn: sqlite3.Connection) -> None:
     # The messages that have a lifetime (core/messages.py): what the bot posted in the hub, and
     # what I said there, each with when it goes. A row is kept after its message has gone
@@ -434,6 +454,7 @@ MIGRATIONS = [
     _create_spend_notices,
     _create_schedules,
     _create_bot_messages,
+    _create_missed_messages,
 ]
 
 

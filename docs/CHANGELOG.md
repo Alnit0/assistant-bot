@@ -6,6 +6,12 @@ backfilled from the git log.
 
 ## 2026-10-13
 
+- Live and the test bot run at the same time: the self-test no longer
+  stops live. The test bot keeps to its own channels (#selftest-…).
+- What you say while live is off is asked about when it is back ("I
+  was offline when you sent this": Handle it now, or Ignore), never
+  acted on by itself.
+
 - A self-test run leaves a record that lasts: a line in
   `data/selftest/history.csv`, a table of the latest runs in
   `docs/SELFTEST.md`, one summary message in #selftest-log, and a dev

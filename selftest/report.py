@@ -10,7 +10,8 @@ from selftest import onlyyou
 # The self-test's report: docs/SELFTEST.md, written again by every full run.
 # ---------------------------------------------------------------------------
 PATH = config.BASE_DIR / "docs" / "SELFTEST.md"
-LOG = config.BASE_DIR / "logs" / "bot.log"
+# The log of the bot that ran the steps: the test bot's own when there is one
+LOG = config.BASE_DIR / "logs" / ("dev-bot.log" if config.test_bot_token() else "bot.log")
 MARK = {"pass": "✅ pass", "fail": "❌ fail", "error": "💥 broke", "skip": "⏭️ skipped"}
 SLOW = 12.0  # seconds: a step slower than this is listed (most of a step is waiting on Discord)
 PHASE_WORDS = {
@@ -62,7 +63,7 @@ def discoveries(results: list[dict], trouble: list[tuple[int, str]], seconds: in
     odd = [each for each in results if each.get("odd")]
     lines += ["**Odd, though the step passed**", ""]
     lines += [f"- {each['key']}: {each['odd']}" for each in odd] or ["- Nothing."]
-    lines += ["", "**Warnings and errors in `logs/bot.log` during the run**", ""]
+    lines += ["", f"**Warnings and errors in `logs/{LOG.name}` during the run**", ""]
     lines += [f"- {'×' + str(count) + ' ' if count > 1 else ''}`{_cell(said)[:300]}`" for count, said in trouble] or ["- None."]
     slow = sorted((each for each in results if each.get("seconds", 0) >= SLOW), key=lambda each: -each["seconds"])
     lines += ["", f"**Slow steps** ({SLOW:.0f} seconds or more; a step is mostly waiting for Discord, and each input is given about a second to settle)", ""]

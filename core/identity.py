@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import discord
 
 from core import about, clock, devmode, discord_utils, scheduler, tidy
-from core.config import DEV_DATABASE, INBOX_CHANNEL_ID, TIMEZONE
+from core.config import DEV_DATABASE, INBOX_CHANNEL_ID, SELFTEST_BACK, TIMEZONE
 from core.discord_utils import log_simple
 from core.durations import format_duration
 from core.timeinput import format_time
@@ -20,6 +20,7 @@ log = logging.getLogger("assistant")
 # database it is "<base> · DEV"; on live it is the base name again.
 #
 # Status, in order:
+#   a self-test that had to stop live           🧪 Self-test running · back about 4:15 pm
 #   a job's latest run failed or was skipped   ⚠️ nightly backup failed · see #bot-log
 #   the dev database                           🧪 DEV database · clock +13h
 #   live                                       🟢 Live · up 7h · next: nightly backup 3:00 am
@@ -90,10 +91,15 @@ def next_job(pending, now: datetime) -> str:
 
 
 def status_line(
-    dev: bool, up_seconds: float, next_up: str, ahead: timedelta, trouble=(), dev_mode: bool = False
+    dev: bool, up_seconds: float, next_up: str, ahead: timedelta, trouble=(), dev_mode: bool = False, selftest_back: str = ""
 ) -> str:
     """The status line. `trouble` is (task, kind, "failed" or "skipped") for each
-    kind of job whose latest run didn't work, the most recent first."""
+    kind of job whose latest run didn't work, the most recent first.
+    `selftest_back` is when live is expected back, in a self-test that runs
+    as live's own account because there is no test bot: live is stopped for
+    it, and that comes before everything else."""
+    if selftest_back:
+        return f"🧪 Self-test running · back about {selftest_back}"[:MAX_STATUS]
     if trouble:
         task, kind, ended = trouble[0]
         more = f" (+{len(trouble) - 1} more)" if len(trouble) > 1 else ""
@@ -149,7 +155,7 @@ async def current_line() -> str:
     up = (clock.real_now() - about.STARTED).total_seconds()
     pending = await scheduler.all_pending()
     return status_line(
-        DEV_DATABASE, up, next_job(pending, clock.now()), clock.offset(), await scheduler.troubled(), devmode.enabled
+        DEV_DATABASE, up, next_job(pending, clock.now()), clock.offset(), await scheduler.troubled(), devmode.enabled, SELFTEST_BACK
     )
 
 

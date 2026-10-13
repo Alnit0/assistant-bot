@@ -5,7 +5,8 @@ from datetime import datetime
 from pathlib import Path
 
 from core import database, trace
-from core.config import BASE_DIR, LOG_DIR
+from core import config
+from core.config import BASE_DIR
 from core.clock import real_now
 from core.scheduler import to_db
 from tasks.bugs import rules, store
@@ -17,7 +18,7 @@ log = logging.getLogger("assistant")
 # are in hand: the logged turn, the log's errors from around it, and the code
 # that was running. No Discord in here.
 # ---------------------------------------------------------------------------
-LOG_FILE = LOG_DIR / "bot.log"
+LOG_FILE = config.LOG_FILE  # this bot's own log
 LOG_TAIL_BYTES = 400_000  # the end of bot.log is enough: a report is about something recent
 
 _commit: str | None = None
