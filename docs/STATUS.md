@@ -105,8 +105,8 @@ design and the hub principle point. Each is yours to overturn.
 24. **Only the 5:50 am fetch failing needs a look.** A refresh that
     fails keeps the forecast it had; its line in the run log says so.
 25. **The section reads** "🌤️ **Weather** · 14° to 20° · drizzle" and
-    under it "61% rain after 1pm · wind 15 km/h N", with "as of
-    5:50 am" small. Rain is said with a time only from 30%; under 5%
+    under it "61% rain after 1pm · wind 15 km/h N", with "updated
+    5:50 am" small (not "as of": the briefing never says that of itself). Rain is said with a time only from 30%; under 5%
     it is "no rain"; from 7:00 am or earlier it is "from the morning".
     The icon is always 🌤️ (a section's icon is its task's): the sky is
     a word.

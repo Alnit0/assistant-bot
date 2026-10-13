@@ -1025,8 +1025,8 @@ On live, with the briefing on.
 
 | # | Do | Expect | Tests |
 |---|---|---|---|
-| 1 | Look at the morning's briefing | A section "🌤️ **Weather** · 14° to 19° · showers" with a line under it such as "60% rain after 2pm · wind 25 km/h SW", and "as of 5:50 am" small | T32 |
-| 2 | Look again in the afternoon | The same briefing, edited in place: "as of 2:50 pm", and the figures may have moved | T32 |
+| 1 | Look at the morning's briefing | A section "🌤️ **Weather** · 14° to 19° · showers" with a line under it such as "60% rain after 2pm · wind 25 km/h SW", and "updated 5:50 am" small | T32 |
+| 2 | Look again in the afternoon | The same briefing, edited in place: "updated 2:50 pm", and the figures may have moved | T32 |
 | 3 | Say `my schedule` | "Weather fetch · every day at 5:50 am" and "Weather refresh · every day at 8:50 am", each with its last run | T33 |
 | 4 | With the PC offline at 5:50 am (or `WEATHER_LAT` taken out) | The section says "Weather unavailable"; "⚠️ Needs a look" has "weather fetch failed" with its bug; at 7:00 am one ping | T33 |
 

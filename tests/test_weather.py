@@ -91,7 +91,7 @@ def test_the_morning_fetch_keeps_the_forecast_and_the_briefing_s_section_reads_i
     run(weather.fetch_job(job()))
     said = run(weather.task.summary(1, day.today()))
     assert (said.glance, said.lines, said.status) == ("14° to 20° · drizzle", ("61% rain after 1pm · wind 15 km/h N",), design.QUIET)
-    assert said.hint.startswith("as of ") and on.told == [("weather", 1)], "whoever shows summaries is told: the briefing is edited in place"
+    assert said.hint.startswith("updated ") and on.told == [("weather", 1)], "whoever shows summaries is told: the briefing is edited in place"
     assert on.notes[1] == "fetched: 14° to 20° · drizzle · 61% rain after 1pm · wind 15 km/h N" and on.reported == {}
 
 

@@ -118,7 +118,7 @@ async def summary_for(user_id: int, day: date) -> Summary | None:
         forecast = None
     if forecast is None:
         return Summary("", design.QUIET, (rules.UNAVAILABLE,))
-    hint = f"as of {timeinput.format_moment(kept.fetched_at)}" if kept.fetched_at is not None else ""
+    hint = f"updated {timeinput.format_moment(kept.fetched_at)}" if kept.fetched_at is not None else ""
     return Summary(rules.glance(forecast), design.QUIET, (rules.detail(forecast),), hint)
 
 
