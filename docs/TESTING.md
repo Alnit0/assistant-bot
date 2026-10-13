@@ -37,16 +37,16 @@ Last updated: 2026-10-13
 | G | Timers | 32 | 12 | 20 | 17 | 15 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
 | J | Dev mode | 68 | 19 | 49 | 47 | 21 | 0 | 0 |
-| K | Startup and housekeeping | 39 | 24 | 15 | 13 | 26 | 0 | 0 |
+| K | Startup and housekeeping | 43 | 27 | 16 | 14 | 29 | 0 | 0 |
 | L | Keep | 14 | 6 | 8 | 8 | 6 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
 | P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
 | Q | Time, days, the schedule model, the occurrence log and cards | 28 | 26 | 2 | 2 | 26 | 0 | 0 |
-| R | Pills | 80 | 27 | 53 | 45 | 35 | 0 | 0 |
+| R | Pills | 82 | 29 | 53 | 45 | 37 | 0 | 0 |
 | S | Routing and confirm cards | 80 | 27 | 53 | 18 | 61 | 0 | 1 |
 | T | Tasks in plain words | 26 | 7 | 19 | 4 | 22 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **527** | **206** | **321** | **251** | **275** | **0** | **1** |
+| | **Total** | **533** | **211** | **322** | **252** | **280** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -346,6 +346,10 @@ Any channel. Check the bot's status in the member list.
 | K37 | 🤖 Auto | The status line | Live's is the top attention item in its short form (icon, numbers and short 12-hour times joined by “ · ”), a problem pointing at its bug, blank with nothing; no “Live”, no uptime; sent only when it reads differently; it looks again at the moment the next timed item falls due and has no ticker; pills hand in what is due, what is next and what is simply left, never a pill's name, writing nothing; a failed job, a failed or unfinished self-test (with its bug) and a bug to retest are level 1; the dev bot in a self-test says how far the run is | ✅ Pass | 2026-10-13 | `tests/test_attention.py`, `tests/test_identity.py` |
 | K38 | 👤 Manual | Block 52: the status line on live | As the block says | ⬜ Untested | | Block 52 |
 | K39 | 🤖 Auto | The status line: a missed dose, a day done, dev mode, and a task's item before the morning | A missed dose is said at level 2 until the next one falls due or the day ends; a day with everything taken says so until 8:00 pm (a setting), one done by skipping says how many were taken, then the line looks ahead; the status line looks again at that moment; among useful things a task's comes before the next morning; dev mode left on is a level 1 item on live only and no longer a mark in front | ✅ Pass | 2026-10-13 | `tests/test_attention.py`, `tests/test_identity.py` |
+| K40 | 🤖 Auto | The notify service: where each kind goes | One table (Discord, ntfy, both); a kind not listed is Discord only; nothing is pushed unless switched on with a topic, and never by the dev bot; the push is the kind's title and the neutral line with a link that opens the Discord message; a line naming one of my things is not pushed; a failed push is logged without the topic | ✅ Pass | 2026-10-13 | `tests/test_notify.py` |
+| K41 | 🤖 Auto | Quiet hours, behind their switch | Off, nothing is held; on, only level 1 notifies between the hours (over midnight too); what is held is posted silently, never pushed, one row a thing, kept a week; overnight is the quiet hours that ended that morning | ✅ Pass | 2026-10-13 | `tests/test_notify.py` |
+| K42 | 🤖 Auto | The briefing on the one ranking | Sections in the ranking's order, the rest as they were; what needs a look on top with its bug, the same words as the status line; a problem alone is worth a briefing; rewritten when that changes and not when nothing did | ✅ Pass | 2026-10-13 | `tests/test_notify.py` |
+| K43 | 👤 Manual | A push on the phone | QA-RUN block 53: the title and the neutral line on the lock screen, and tapping opens Discord at the reminder | ⬜ Untested | | Needs `NTFY_BOT_TOPIC` |
 
 ## L. Keep
 
@@ -561,6 +565,8 @@ are added with it.
 | R90 | 🤖 Auto | No slash commands for the dev bot, and no display names | The dev bot registers no slash commands and live registers the tasks' own; no bot is called by a display name in code, docs or messages: they are “live” and “the dev bot” | ✅ Pass | 2026-10-13 | `tests/test_two_bots.py` |
 | R91 | 🤖 Auto | A time I state wins | When the message states exactly one time with am or pm that is not in what Claude handed over, and exactly one handed time is not in the message, mine takes its place (in a list of items, a single time, any time field; 12 pm is noon); whenever what was handed over could be right nothing is touched: nothing missing, two candidates, two missing, no am or pm said, no time handed over | ✅ Pass | 2026-10-13 | `tests/test_actions.py` |
 | R92 | 🤖 Auto | Direct messages to live | Off unless switched on and never the dev bot's; a first line never names one of my things (a neutral line of the task's goes first; a heading is left as it is; a name inside another word is not the name); only a direct message being answered is touched; it is read as #inbox for plain and typed words and answered silently, replies and cards alike; only my direct message opens one and only with the switch on; the names come from every task that holds some | ✅ Pass | 2026-10-13 | `tests/test_two_bots.py` |
+| R93 | 🤖 Auto | A pill reminder through the notify service | It reaches the phone as the neutral line, never the pill's name, and the tap opens the reminder; with everything off it notifies in Discord as before | ✅ Pass | 2026-10-13 | `tests/test_notify.py` |
+| R94 | 🤖 Auto | A pill reminder in quiet hours | Held: posted with its buttons and no sound, and the morning's briefing lists it in its neutral words; with quiet hours off a late one notifies | ✅ Pass | 2026-10-13 | `tests/test_notify.py` |
 
 ## S. Routing and confirm cards
 

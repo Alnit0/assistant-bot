@@ -4,7 +4,7 @@ import sqlite3
 from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta
 
-from core import actions, cards, clock, config, confirm, database, design, discord_utils, hub, lifecycle, llm, occurrences, restart, scheduler, timeinput
+from core import actions, attention, cards, clock, config, confirm, database, design, discord_utils, hub, lifecycle, llm, notify, occurrences, restart, scheduler, timeinput
 from core import day as days
 from core.actions import Request
 from core.cards import Button, Card, Field, Form
@@ -53,6 +53,7 @@ IGNORED = limits.IGNORED
 
 P_TAKEN, P_AT, P_SNOOZE, P_SKIP = "prompt_taken", "prompt_at", "prompt_snooze", "prompt_skip"
 POST, MISS, DROP, WAIT = "post", "miss", "drop", "wait"
+KIND = "pills.reminder"  # what kind of alert a prompt is: where it goes is core/notify.py's to say
 AGAIN = "A pill reminder"  # what a channel reset would post again: no pill is named
 
 
@@ -261,10 +262,21 @@ async def _take_down(prompt: Prompt) -> None:
 
 async def _post(dose: Dose, listed: list[Dose], old: Prompt | None, reminders: int, now: datetime) -> bool:
     """Put a fresh copy of a dose's prompt up, in place of the one before.
-    First the neutral line, which is what notifies; then the pill is written
-    into it. False if there is nowhere to post it."""
+    First the neutral line, which is what notifies (through the notify
+    service: Discord, my phone, or held by quiet hours); then the pill is
+    written into it. False if there is nowhere to post it."""
     channel_id = hub.channel_id()
-    message_id = await cards.send(channel_id, Card(notice(dose, reminders))) if channel_id is not None else None
+    message_id = None
+    if channel_id is not None:
+        message_id = await notify.post(
+            KIND,
+            channel_id,
+            Card(notice(dose, reminders)),
+            user_id=dose.pill.user_id,
+            item=attention.Item("a dose is due", attention.TIMED, when=dose.due.at, can_act=True),
+            key=str(dose.occurrence.id),
+            private=tuple(sorted({each.pill.plan.name for each in listed})),
+        )
     await _hub_missing(message_id is None)
     if message_id is None:
         return False

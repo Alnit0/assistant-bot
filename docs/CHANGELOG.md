@@ -6,6 +6,15 @@ backfilled from the git log.
 
 ## 2026-10-13
 
+- Alerts can also reach your phone through ntfy, switched off until
+  you turn it on (`NOTIFY_NTFY`, with `NTFY_BOT_TOPIC`): neutral words
+  only, and tapping opens the Discord message. Pill reminders are the
+  first to use it; where each kind of alert goes is one table.
+- The briefing is in the same order as the status line: what needs a
+  look on top, then what quiet hours held back overnight, then a
+  section a task. Quiet hours themselves are off until you turn them
+  on (`QUIET_HOURS_ENABLED`).
+
 - Direct messages to the bot, switched off until you turn them on
   (`DMS_ENABLED`): only yours, read like #inbox, answered silently,
   and never with a pill's name in the first line.

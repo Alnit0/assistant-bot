@@ -132,6 +132,17 @@ A short log of key decisions and why. Newest at the bottom.
   message, never the content itself, so actions and history stay in the
   server. This refines "Notifications" above; no task sends real
   notifications yet, so it applies from the reminders work onwards.
+- **A push to the phone is a pointer too (2026-10-13):** with
+  `NOTIFY_NTFY` an alert may also go to my phone through ntfy. It
+  carries what a DM pointer carries and no more: neutral words and a
+  link that opens the server message. Content, buttons and history
+  stay in the server. Where a kind of alert goes is one table in
+  `core/notify.py`, never a task's own choice.
+- **Quiet hours belong to the notify service (2026-10-13):** only
+  level 1 of the one ranking notifies in them; the rest is posted
+  silently and listed by the morning's briefing. Behind
+  `QUIET_HOURS_ENABLED`, off, because pill reminders are on and a dose
+  late in the evening would otherwise go by without a sound.
 - **A direct message I start is a conversation, behind a switch
   (2026-10-13):** with `DMS_ENABLED` live reads my direct messages as
   it reads #inbox. This does not change the rule above for what the

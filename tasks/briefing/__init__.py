@@ -1,6 +1,7 @@
+import asyncio
 import logging
 
-from core import cards, clock, config, database, hub, livelists, messages, repeats, scheduler, summaries, tidy, timeinput
+from core import attention, cards, clock, config, database, hub, livelists, messages, notify, repeats, scheduler, summaries, tidy, timeinput
 from core import day as days
 from core.actions import SEE, Action, LiveReply, Request, Shown
 from core.cards import Card
@@ -23,6 +24,11 @@ log = logging.getLogger("assistant")
 #
 # It keeps nothing and decides nothing: every number in it is a task's. It
 # knows no other task: a task with a summary appears with no change here.
+#
+# Its order is the one ranking's (core/attention.py), as the status line's
+# top item is: what is wrong and needs me on top, then what quiet hours held
+# back overnight (core/notify.py), then the sections, the task whose item
+# stands highest first. It ranks nothing itself.
 # ---------------------------------------------------------------------------
 JOB = "post"
 IN_THE_HUB = "briefing:hub"  # the Live copy in the hub; asked for elsewhere it is "briefing"
@@ -43,16 +49,26 @@ def enabled() -> bool:
 async def card_for(user_id: int) -> Card | None:
     """The briefing as it reads now, or None with nothing to say."""
     today = days.today()
-    sections = await summaries.gather(user_id, today)
-    if not sections:
+    now = clock.now()
+    order = attention.ranked(await attention.gather(user_id, now), now)
+    sections = rules.ordered(await summaries.gather(user_id, today), [item.task for _, item in order])
+    problems = tuple(rules.problem(item) for rank, item in order if rank == attention.LEVEL_PROBLEM)
+    held = tuple(rules.held(each.line, each.times) for each in await notify.held_overnight(user_id, today))
+    if not (sections or problems or held):
         return None
-    return Card(rules.text(sections, today), (), rules.layout(sections, today))
+    hours = " to ".join(timeinput.format_time(each) for each in config.QUIET_HOURS)
+    return Card(rules.text(sections, today, problems, held, hours), (), rules.layout(sections, today, problems, held, hours))
+
+
+_said: dict[int, str] = {}  # what the briefing last read as, a user: an edit that would change nothing is not made
 
 
 async def _shown(user_id: int) -> Card:
     """What a copy already up is rewritten as: the briefing, or the line that
     says there is nothing (a copy is never left saying what is no longer so)."""
-    return await card_for(user_id) or Card(rules.NOTHING)
+    shown = await card_for(user_id) or Card(rules.NOTHING)
+    _said[user_id] = shown.text
+    return shown
 
 
 def _hub_id(role: str = "hub") -> int | None:
@@ -66,6 +82,7 @@ async def post_in_hub(user_id: int, channel_id: int, notify: bool = False) -> in
     shown = await card_for(user_id)
     if shown is None:
         return None
+    _said[user_id] = shown.text
     old = await database.run(livelists.db_get, user_id, IN_THE_HUB)
     if notify:
         # What notifies names nothing: posted as the one neutral line, and written in after
@@ -103,6 +120,33 @@ def summary_changed(task: str, user_id: int) -> None:
     place. Several changes close together are one edit (core/live.py)."""
     for key in (IN_THE_HUB, ELSEWHERE):
         livelists.changed(user_id, key, lambda: _shown(user_id))
+
+
+async def look_again() -> bool:
+    """What deserves a look may have changed with no summary changing (a job
+    failed, a problem went): the copies that are up are rewritten, but only
+    if the briefing would read differently. True if they were told to."""
+    user_id = await database.run(scheduler._db_owner)
+    if user_id is None:
+        return False
+    shown = await card_for(user_id) or Card(rules.NOTHING)
+    if shown.text == _said.get(user_id):
+        return False
+    summary_changed(TASK, user_id)
+    return True
+
+
+_looking: set[asyncio.Task] = set()
+
+
+def attention_changed() -> None:
+    """Told by the attention model (core/attention.py). Called, not awaited."""
+    try:
+        looking = asyncio.get_running_loop().create_task(look_again())
+    except RuntimeError:
+        return
+    _looking.add(looking)
+    looking.add_done_callback(_looking.discard)
 
 
 async def show(request: Request, data: dict, guessed: frozenset):
@@ -190,6 +234,7 @@ class BriefingTask(Task):
         # The hub's morning routine: the briefing, then the checklist, so the checklist is the newest message
         scheduler.join_routine(hub.MORNING, scheduler.handler_name(TASK, JOB), order=hub.BRIEFING_ORDER, name=hub.MORNING_NAME)
         summaries.on_change(summary_changed)
+        attention.on_change(attention_changed)
 
     async def startup(self, client) -> None:
         if not enabled():

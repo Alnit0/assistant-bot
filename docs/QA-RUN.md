@@ -973,6 +973,23 @@ the member list.
 | 5 | Type `dev status` | It says how long the bot has been up | K37 |
 | 6 | Start a self-test (`python -m selftest --stages briefing`) and look at the dev bot | Its nickname ends "· testing" and its status line counts up: "🧪 3/14 · 2m"; after the run the nickname is plain again | K37 |
 
+## 53. Alerts on the phone, quiet hours and the briefing's order (waiting for QA)
+
+Needs `NTFY_BOT_TOPIC` in `.env` (a topic of the bot's own, subscribed
+to in the ntfy app) and `NOTIFY_NTFY=true`, then a restart of live.
+Rows 5 to 7 need `QUIET_HOURS_ENABLED=true`, row 8 `BRIEFING_ENABLED`.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | With both switches off, wait for a dose to fall due | The reminder in the hub as before, notifying in Discord. Nothing from ntfy | R93 |
+| 2 | Turn `NOTIFY_NTFY` on, restart, wait for a dose to fall due | A push titled "Reminder" reading "💊 Routine due · 12:00 pm": no pill's name on the lock screen. Discord notifies too | R93, K40 |
+| 3 | Tap the push | Discord opens at the reminder, with its buttons | K40 |
+| 4 | Leave it: the first reminder after 15 minutes | A second push, "… · reminder 1 of 3" | R93 |
+| 5 | With quiet hours on, a dose due after 10:00 pm | The reminder is in the hub with its buttons, but nothing sounds and nothing is pushed | K41, R94 |
+| 6 | The next morning, look at the briefing | "🌙 Held back overnight" with "💊 Routine due · 10:30 pm" and how often it was asked for, above the sections | K41, R94 |
+| 7 | With quiet hours on, a dose due at noon | It notifies as in row 2: only the night is quiet | K41 |
+| 8 | With a job that did not work (its bug is open), look at the briefing and the status line | The briefing has "⚠️ Needs a look" on top with the same words as the status line ("⚠️ B14 · backup failed") | K42 |
+
 ## When you finish
 
 - Stop the test copy (`Ctrl + C`) and check nothing is left running:

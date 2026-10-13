@@ -536,6 +536,13 @@ def _channel(channel_id: int | None):
     return client.get_channel(channel_id) if client is not None and channel_id else None
 
 
+def link(channel_id: int | None, message_id: int | None) -> str:
+    """Where a message is, as the link Discord opens (in the app, on a phone).
+    "" if the channel can't be found or is not in a server."""
+    guild = getattr(getattr(_channel(channel_id), "guild", None), "id", None)
+    return f"https://discord.com/channels/{guild}/{channel_id}/{message_id}" if guild and message_id else ""
+
+
 async def send(channel_id: int, card: Card, *, silent: bool = False) -> int | None:
     """Post a card in a channel, with no message of the user's to answer.
     `silent` posts without a notification. Returns the message's id, or None

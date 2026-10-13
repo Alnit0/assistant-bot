@@ -433,6 +433,29 @@ def _add_cause_to_occurrences(conn: sqlite3.Connection) -> None:
     conn.execute("ALTER TABLE occurrences ADD COLUMN cause TEXT")
 
 
+def _create_held_alerts(conn: sqlite3.Connection) -> None:
+    # What quiet hours held back (core/notify.py): posted without a sound, and listed by
+    # the morning's briefing. One row for one thing: asked for again, it is counted
+    conn.execute(
+        """
+        CREATE TABLE held_alerts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            kind TEXT NOT NULL,
+            key TEXT NOT NULL,
+            line TEXT NOT NULL,
+            level INTEGER NOT NULL,
+            channel_id INTEGER,
+            message_id INTEGER,
+            held_at TEXT NOT NULL,
+            times INTEGER NOT NULL DEFAULT 1,
+            UNIQUE (user_id, kind, key)
+        )
+        """
+    )
+    conn.execute("CREATE INDEX held_alerts_by_user ON held_alerts (user_id, held_at)")
+
+
 MIGRATIONS = [
     _create_message_log,
     _create_users,
@@ -455,6 +478,7 @@ MIGRATIONS = [
     _create_schedules,
     _create_bot_messages,
     _create_missed_messages,
+    _create_held_alerts,
 ]
 
 

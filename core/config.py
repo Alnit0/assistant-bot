@@ -269,6 +269,14 @@ except ValueError:
 # The weekly pills summary (tasks/pills/history.py): on Sunday evening the week is posted
 # in the hub. Off unless switched on
 WEEKLY_SUMMARY = flag(os.getenv("WEEKLY_SUMMARY"), False)
+# The notify service (core/notify.py). NOTIFY_NTFY: alerts whose kind says so are also
+# pushed to the phone through ntfy, to the bot's own topic (NTFY_BOT_TOPIC: a secret, never
+# printed or logged). Off, or with no topic, nothing is pushed and Discord notifies as ever
+NOTIFY_NTFY = flag(os.getenv("NOTIFY_NTFY"), False)
+NTFY_BOT_TOPIC = (os.getenv("NTFY_BOT_TOPIC") or "").strip()
+# Quiet hours in force: in QUIET_HOURS only level 1 notifies, the rest is posted without a
+# sound and listed by the morning's briefing. Off unless switched on: off, nothing is held
+QUIET_HOURS_ENABLED = flag(os.getenv("QUIET_HOURS_ENABLED"), False)
 # Direct messages to live (core/dms.py): with it on, a direct message from the owner is
 # read like #inbox, answered silently, and never with a pill's name in a first line
 DMS_ENABLED = flag(os.getenv("DMS_ENABLED"), False)

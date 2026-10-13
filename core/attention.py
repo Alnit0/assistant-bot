@@ -32,8 +32,9 @@ log = logging.getLogger("assistant")
 # nothing. Whoever knows an item may have changed says so (`changed`), and
 # the surfaces look again: nothing here runs on a timer.
 #
-# Built on it so far: the status line (core/identity.py). The briefing and
-# pings move onto it later (docs/BACKLOG.md).
+# Built on it: the status line (core/identity.py), the briefing's order and
+# what is on top of it (tasks/briefing), and a ping's level, which is what
+# quiet hours go by (core/notify.py).
 # ---------------------------------------------------------------------------
 PROBLEM, TIMED, USEFUL = "problem", "timed", "useful"
 URGENCIES = (PROBLEM, TIMED, USEFUL)

@@ -1902,6 +1902,46 @@ with the bot: it is for working on this repository.
 - **To test by hand**: `powershell -File scripts\notify.ps1 -Kind
   finished -Text "hello"`.
 
+## Alerts: Discord, your phone, and quiet hours
+
+Everything that has to tell you something now goes through one place,
+the notify service (`core/notify.py`). Pill reminders are its first
+user. Two switches, both off unless set in `.env` (then restart live):
+
+- **`NOTIFY_NTFY=true`**, with **`NTFY_BOT_TOPIC=<a topic>`**: alerts
+  are also pushed to your phone through ntfy. Use a topic of the bot's
+  own, not the one Claude Code's notifications use (`.env.notify`), and
+  subscribe to it in the ntfy app. The topic is a secret: anyone who
+  knows it can read what is pushed.
+  - What is pushed is neutral: a fixed title ("Reminder") and the one
+    line the hub shows first ("💊 Routine due · 12:00 pm"). Never a
+    pill's name.
+  - Tapping it opens the Discord message, where the buttons are.
+  - **Where each kind goes is one table**, `KINDS` in `core/notify.py`:
+    `DISCORD` (Discord notifies, nothing is pushed), `NTFY` (posted in
+    Discord without a sound, the push tells you) or `BOTH`. Pill
+    reminders are `BOTH`. Change the word there and restart.
+  - With the switch off, or no topic, nothing is pushed and Discord
+    notifies as it always did, whatever the table says.
+  - The dev bot never pushes, so a self-test never reaches your phone
+    this way.
+- **`QUIET_HOURS_ENABLED=true`**: between the times of `QUIET_HOURS`
+  (10:00 pm to 6:00 am unless set) only something wrong that needs you
+  notifies. Anything else, a pill reminder too, is still posted in the
+  hub with its buttons, but without a sound and with no push, and the
+  morning's briefing lists it under "🌙 Held back overnight" in the
+  same neutral words. Off, nothing is ever held.
+
+For a new kind of alert: add a line to `KINDS`, and call
+`notify.post(...)` with the attention item it is about in place of
+`cards.send(...)`. Never read the quiet hours or the ntfy settings in a
+task.
+
+The briefing takes its order from the same ranking as the status line:
+"⚠️ Needs a look" on top when something is wrong (a job that did not
+work, with its bug), then what was held back overnight, then a section
+a task, the task with the most urgent thing first.
+
 ## Direct messages to the bot
 
 Off unless `DMS_ENABLED=true` is in `.env` (then restart live). Off, a

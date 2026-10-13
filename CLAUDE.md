@@ -382,8 +382,26 @@ The rules are in `docs/specs/pills.md` and the Pills section of
 
 - Levels: silent, normal, urgent (@mention in channel), critical (DM).
   Quiet hours hold non-critical alerts; repeats are grouped
-- Notifications stay in the server. A DM the bot sends by itself is a
-  short pointer with a jump link: no content, buttons or actions
+- **An alert leaves the bot one way: `core/notify.py`**
+  (`notify.post(kind, channel, card, user_id=, item=, key=, private=)`).
+  A task says its kind ("pills.reminder") and the attention item it is
+  about, and never decides where it goes: each kind is set to Discord,
+  ntfy or both in the one table there (`KINDS`), and a new kind is
+  added there. Behind `NOTIFY_NTFY`, with the bot's own topic
+  (`NTFY_BOT_TOPIC` in `.env`: a secret, never printed, logged or put
+  in an error). Only live pushes; the dev bot never does
+- What a phone shows is neutral: the kind's fixed title and the one
+  line posted first, which names nothing of mine (`private` is the
+  names it must not show; a line that does is not pushed). Tapping
+  opens the Discord message
+- Quiet hours (`QUIET_HOURS`, in force only with
+  `QUIET_HOURS_ENABLED`) are the notify service's and nobody else's:
+  in them only level 1 of the ranking notifies; the rest is posted
+  without a sound, never pushed, and kept (`held_alerts`) for the
+  briefing to list. A task never reads the quiet hours itself
+- Notifications stay in the server. A DM the bot sends by itself, and
+  a push, is a short pointer with a link: no content, buttons or
+  actions
 - A direct message I send to live is read only with `DMS_ENABLED`
   (`core/dms.py`): mine alone, as #inbox, every reply silent, and never
   with one of my things' names (a pill's) in a first line: a neutral
@@ -448,7 +466,8 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   provider (`core/health.py`), and the core ranks them once
   (`attention.ranked`: a problem, due now, next today, useful,
   nothing). The status line shows the top item (`core/identity.py`);
-  the briefing and pings move onto the same ranking later. No surface
+  the briefing takes its order and what is on top from it
+  (`tasks/briefing`), and a ping its level (`core/notify.py`). No surface
   ranks anything itself, and a task never says a rank. The status line
   is icon, numbers and short times joined by " · ", never a pill's
   name, blank when there is nothing; it is brought up to date when a
