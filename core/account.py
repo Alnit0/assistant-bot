@@ -4,9 +4,7 @@ import os
 import sys
 import time
 
-import discord
-
-from core import config
+from core import config, surface
 
 log = logging.getLogger("assistant")
 
@@ -53,15 +51,9 @@ def problem(expected: int | None, actual: int | None, name: str = "") -> str:
 
 
 async def who(token: str) -> tuple[int, str]:
-    """The account a token belongs to: (id, name). HTTP only: nothing is
-    connected to the gateway, so the account does not come online and
-    nothing is received or posted."""
-    client = discord.Client(intents=discord.Intents.none())
-    try:
-        await client.login(token)
-        return client.user.id, str(client.user)
-    finally:
-        await client.close()
+    """The account a token belongs to: (id, name). Asked without connecting:
+    the account does not come online and nothing is received or posted."""
+    return await surface.who(token)
 
 
 def _ask(token: str) -> tuple[int, str]:
@@ -80,10 +72,10 @@ def check(token: str | None = None) -> None:
             try:
                 actual, name = _ask(token or config.TOKEN)
                 break
-            except discord.LoginFailure:
+            except surface.Refused:
                 log.error("Not started: Discord refused the token in %s. Nothing was posted or changed.", settings_file())
                 sys.exit(EXIT_WRONG_ACCOUNT)
-            except (discord.HTTPException, OSError, asyncio.TimeoutError) as error:
+            except (surface.Failed, OSError, asyncio.TimeoutError) as error:
                 log.warning("Could not ask Discord which account this is (%s), try %d of %d", error, attempt + 1, TRIES)
                 if attempt < TRIES - 1:
                     time.sleep(WAIT_SECONDS)
@@ -102,7 +94,7 @@ def _leave() -> None:
     os._exit(EXIT_WRONG_ACCOUNT)  # at once: no goodbye, nothing closed that could still write
 
 
-async def still_right(client: discord.Client) -> bool:
+async def still_right(client) -> bool:
     """Once connected, before the bot does its first thing: the account it is
     connected as is still the expected one. If not it disconnects at once,
     logs why and exits. True to go on."""

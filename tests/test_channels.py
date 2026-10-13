@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import discord
 import pytest
 
-from core import channels
+from core import channels, discord_utils
 from tasks import registry
 from tasks.dev import panel
 from tasks.lab import status
@@ -69,7 +69,7 @@ def test_the_named_channels_leave_out_the_forum_and_what_cannot_be_seen():
 
 
 def test_with_no_client_there_are_no_channels(monkeypatch):
-    monkeypatch.setattr(channels.discord_utils, "client", None)
+    monkeypatch.setattr(discord_utils, "client", None)
     assert channels.named() == []
 
 

@@ -32,6 +32,8 @@ from core.logging_setup import setup_logging
 from core.migrations import migrate
 from core.permissions import is_allowed
 from core.users import ensure_owner, get_user_by_discord_id
+from interfaces import discord as discord_interface
+from interfaces.discord import render
 from tasks import registry
 
 log = logging.getLogger("assistant")
@@ -132,7 +134,7 @@ async def on_app_command_error(
 @client.event
 async def setup_hook():
     # Runs once after login, before connecting: persistent buttons get registered here
-    cards.setup(client)
+    render.setup(client)
     conversation.setup()
     registry.setup(client)
 
@@ -410,6 +412,8 @@ async def on_app_command_completion(interaction: discord.Interaction, command):
 # ---------------------------------------------------------------------------
 def start() -> None:
     setup_logging()
+    # Discord is the interface: said before anything reaches for it (core/surface.py)
+    discord_interface.bind()
     if DEV_DATABASE:
         log.info("Started with --dev: using the dev database %s", DB_PATH.name)
     # First of all: the token logs in as the account this start is meant to be (live or

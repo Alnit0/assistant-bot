@@ -4,6 +4,12 @@ What changed, newest first. One entry per task, as one to three bullets on
 what changed for the user. Entries before 2026-10-07's last one were
 backfilled from the git log.
 
+## 2026-10-14
+
+- Nothing you would see: the bot's core now reaches Discord through
+  one door, and new code may no longer use discord.py directly
+  (`docs/INTERFACE.md`). Timers are frozen as they are.
+
 ## 2026-10-13
 
 - Quiet hours are on (10:00 pm to 6:00 am). A pill reminder always

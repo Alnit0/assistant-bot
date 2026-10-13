@@ -2,9 +2,7 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime
 
-import discord
-
-from core import channels, design, discord_utils, lifecycle, outgoing, protection, tidy
+from core import design, lifecycle, outgoing, protection, surface, tidy
 from core.errors import UserError
 
 log = logging.getLogger("assistant")
@@ -72,29 +70,21 @@ def _found(message) -> Found:
     )
 
 
-def _channel(channel_id: int):
-    client = discord_utils.client
-    return client.get_channel(channel_id) if client is not None and channel_id else None
-
-
 async def scan(channel_id: int) -> Scan:
     """Every message in a channel. If the bot may not read or delete them there
     the scan says which permission is missing, and reads nothing. Raises
     UserError for a place that has no messages to clear (a forum, a DM)."""
-    channel = _channel(channel_id)
-    if not channels.holds_messages(channel):
+    place = surface.place(channel_id)
+    if place is None or not place.messages:
         raise UserError("This isn't a channel whose messages I can clear.")
-    me = getattr(getattr(channel, "guild", None), "me", None)
-    if me is None:
+    if not place.server:
         raise UserError("I can only reset a channel of the server.")
-    allowed = channel.permissions_for(me)
-    missing = tuple(label for name, label in NEEDED if not getattr(allowed, name, False))
-    mention = getattr(channel, "mention", f"<#{channel_id}>")
-    name = getattr(channel, "name", None) or str(channel_id)
+    lacking = surface.lacking(channel_id, tuple(name for name, _ in NEEDED))
+    missing = tuple(label for name, label in NEEDED if name in lacking)
     if missing:
-        return Scan(channel_id, mention, missing=missing, name=name)
-    found = [_found(message) async for message in channel.history(limit=None)]
-    return Scan(channel_id, mention, tuple(found), name=name)
+        return Scan(channel_id, place.mention, missing=missing, name=place.name)
+    found = [_found(message) for message in await surface.history(channel_id, limit=None)]
+    return Scan(channel_id, place.mention, tuple(found), name=place.name)
 
 
 async def delete(channel_id: int, bulk: list[list[int]], single: list[int]) -> set[int]:
@@ -103,25 +93,24 @@ async def delete(channel_id: int, bulk: list[list[int]], single: list[int]) -> s
     from the channel now. A batch Discord won't take whole is done singly; a
     message that had already gone counts as gone; one that can't be deleted is
     left and logged."""
-    channel = _channel(channel_id)
-    if channel is None:
+    if surface.place(channel_id) is None:
         raise UserError("I can't reach this channel just now.")
     gone: set[int] = set()
     single = list(single)
     for batch in bulk:
         try:
-            await channel.delete_messages([discord.Object(id=message_id) for message_id in batch], reason=REASON)
+            await surface.delete_many(channel_id, batch, REASON)
             gone.update(batch)
-        except discord.HTTPException as error:
+        except surface.Failed as error:
             log.warning("Could not delete %s messages at once in channel %s (%s): one by one instead", len(batch), channel_id, error)
             single += batch
     for message_id in single:
         try:
-            await channel.get_partial_message(message_id).delete()
+            await surface.delete(channel_id, message_id)
             gone.add(message_id)
-        except discord.NotFound:
+        except surface.Gone:
             gone.add(message_id)
-        except discord.HTTPException as error:
+        except surface.Failed as error:
             log.warning("Could not delete message %s in channel %s: %s", message_id, channel_id, error)
     return gone
 
@@ -131,7 +120,6 @@ async def note(channel_id: int, text: str, seconds: float) -> None:
     leaves no trace: it goes even while confirmations are kept
     (lifecycle.tidy_after) and even if the bot restarts meanwhile
     (core/tidy.py); #bot-log is the record."""
-    channel = _channel(channel_id)
-    if channel is not None:
-        message = await channel.send(outgoing.clean(text) or text)
-        await tidy.later(channel_id, getattr(message, "id", None), lifecycle.tidy_after(seconds))
+    message_id = await surface.send(channel_id, outgoing.clean(text) or text)
+    if message_id is not None:
+        await tidy.later(channel_id, message_id, lifecycle.tidy_after(seconds))

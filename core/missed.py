@@ -4,9 +4,7 @@ import sqlite3
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta, timezone
 
-import discord
-
-from core import cards, channels, clock, database, design, discord_utils
+from core import cards, channels, clock, database, design, surface
 from core.cards import Button, Card
 from core.config import CHANNELS, TIMEZONE
 from core.timeinput import format_time
@@ -46,8 +44,9 @@ QUOTE = 300
 HEADING = "📭 **I was offline when you sent this**"
 
 # main.py's: who sent a message, if it is one of mine the bot acts on; and taking it as if it had just arrived
-Sender = Callable[[discord.Message], Awaitable[object | None]]
-Take = Callable[[discord.Message, object], Awaitable[None]]
+# A message here is the interface's own, read by attribute and handed back untouched (core/surface.py)
+Sender = Callable[[object], Awaitable[object | None]]
+Take = Callable[[object, object], Awaitable[None]]
 _sender: Sender | None = None
 _take: Take | None = None
 _seen: set[int] = set()  # what arrived the usual way since this start
@@ -171,17 +170,16 @@ async def _look() -> int:
         return 0
     since = last - SLACK
     found = []
-    by_id = {channel.id: channel for channel in channels.named()}
+    readable = set(channels.ids())
     for channel_id in to_read(CHANNELS):
-        channel = by_id.get(channel_id)
-        if channel is None:
+        if channel_id not in readable:
             continue
         try:
-            async for message in channel.history(limit=PER_CHANNEL, after=since, oldest_first=True):
+            for message in await surface.history(channel_id, limit=PER_CHANNEL, after=since, oldest_first=True):
                 if await _sender(message) is not None:
                     found.append(message)
-        except discord.HTTPException as error:
-            log.warning("Missed messages: #%s could not be read back: %s", getattr(channel, "name", channel_id), error)
+        except surface.Failed as error:
+            log.warning("Missed messages: #%s could not be read back: %s", surface.place(channel_id).name, error)
     known = await database.run(db_known, [message.id for message in found])
     missed, left_out = latest(unanswered(found, since, known, _seen))
     posted = 0
@@ -193,10 +191,7 @@ async def _look() -> int:
         await database.run(db_set_card, message.id, sent)
         posted += 1
     if left_out:
-        client = discord_utils.client
-        inbox = client.get_channel(CHANNELS.get("inbox")) if client is not None else None
-        if inbox is not None:
-            await inbox.send(more_line(left_out))
+        await surface.send(CHANNELS.get("inbox"), more_line(left_out))
     off_for = max(0, int((now - last).total_seconds()))
     log.info(
         "Missed messages: off for about %d min since %s; %d of mine found, %d already dealt with, %d card%s posted%s",
@@ -228,11 +223,9 @@ async def on_handle(press: cards.Press) -> str | None:
     if await database.run(db_owner, message_id) != press.user.id or not await database.run(db_close, message_id, HANDLED, clock.real_now()):
         await press.remove()  # answered already (a second press, or the other button first)
         return f"the card for message {press.arg} was already answered"
-    client = discord_utils.client
-    channel = client.get_channel(press.channel_id) if client is not None else None
     try:
-        message = await channel.fetch_message(message_id) if channel is not None else None
-    except discord.HTTPException:
+        message = await surface.fetch(press.channel_id, message_id) if surface.place(press.channel_id) is not None else None
+    except surface.Failed:
         message = None
     user = await _sender(message) if message is not None and _sender is not None else None
     if message is None or user is None or _take is None:

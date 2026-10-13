@@ -11,6 +11,7 @@ from core.attention import PROBLEM, TIMED, USEFUL, Item
 from core.cards import Card
 from core.summaries import Section
 from core.actions import Summary
+from interfaces.discord import surface as discord_surface
 from tasks import briefing
 from tasks.briefing import rules
 from tasks.pills import reminders
@@ -138,7 +139,7 @@ def test_a_push_that_fails_is_logged_without_the_topic_and_raises_nothing(world,
 def test_the_link_is_the_one_discord_opens(monkeypatch):
     from types import SimpleNamespace
 
-    monkeypatch.setattr(cards, "_channel", lambda channel_id: SimpleNamespace(guild=SimpleNamespace(id=7)) if channel_id == 400 else None)
+    monkeypatch.setattr(discord_surface, "_channel", lambda channel_id: SimpleNamespace(guild=SimpleNamespace(id=7)) if channel_id == 400 else None)
     assert cards.link(400, 9001) == "https://discord.com/channels/7/400/9001"
     assert cards.link(123, 9001) == "" and cards.link(400, None) == "", "a channel that can't be found has no link"
 

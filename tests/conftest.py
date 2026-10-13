@@ -8,7 +8,11 @@ import tests  # noqa: F401  isort: skip
 import pytest
 
 from core import backup, clock, database, devmode, live, migrations, scheduler, users
+from interfaces import discord as discord_interface
 from tests import watchdog
+
+# Discord is the interface the tests reach through the door (core/surface.py), as when the bot starts
+discord_interface.bind()
 
 
 @pytest.fixture(autouse=True)

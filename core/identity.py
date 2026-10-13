@@ -2,9 +2,7 @@ import asyncio
 import logging
 from datetime import datetime, timedelta
 
-import discord
-
-from core import attention, clock, config, discord_utils, live, scheduler
+from core import attention, clock, config, live, scheduler, surface
 from core import day as days
 from core.config import DEV_DATABASE, INBOX_CHANNEL_ID, SELFTEST_BACK
 from core.users import get_user_by_discord_id
@@ -117,30 +115,23 @@ def status_line(dev: bool, ahead: timedelta, top: str = "", selftest_back: str =
 
 
 # ---------------------------------------------------------------------------
-# Discord's side
+# The interface's side, through the door (core/surface.py)
 # ---------------------------------------------------------------------------
-def _member():
-    """The bot as a member of our server (the one #inbox is in)."""
-    client = discord_utils.client
-    channel = client.get_channel(INBOX_CHANNEL_ID) if client is not None else None
-    guild = getattr(channel, "guild", None)
-    return getattr(guild, "me", None)
-
-
 async def set_nickname() -> str:
     """Make the nickname say which bot this is. Returns what was done, for the log.
     Without Change Nickname it is left as it is and #bot-log says so, once a start."""
-    member = _member()
-    if member is None:
+    # The bot's name in our server: the one #inbox is in
+    name = surface.name(INBOX_CHANNEL_ID)
+    if name is None:
         return "the server was not found"
-    current = member.nick or member.name
+    current = name.current
     wanted = nickname(config.BOT_NAME, config.NAME_STATE)
     if not wanted:
         log.info("Nickname: BOT_NAME is not set, so it is left as it is")
         return "left as it is (BOT_NAME is not set)"
     if wanted == current:
         return f"already {current}"
-    if not member.guild_permissions.change_nickname:
+    if not name.can_change:
         log.warning("Could not change the nickname to %s: Change Nickname is missing", wanted)
         await log_simple(
             "🏷️ Nickname not changed",
@@ -148,8 +139,8 @@ async def set_nickname() -> str:
         )
         return "Change Nickname is missing"
     try:
-        await member.edit(nick=wanted, reason="The name it was given (BOT_NAME), with its state if it has one")
-    except discord.HTTPException as error:
+        await surface.rename(INBOX_CHANNEL_ID, wanted, "The name it was given (BOT_NAME), with its state if it has one")
+    except surface.Failed as error:
         log.warning("Could not change the nickname to %s: %s", wanted, error)
         await log_simple("🏷️ Nickname not changed", f"Discord refused **{wanted}**: {error}")
         return "refused by Discord"
@@ -194,8 +185,7 @@ async def refresh() -> bool:
     differently from what is shown; nothing to show is a blank status line.
     Never raises. True if it was sent."""
     global _shown
-    client = discord_utils.client
-    if client is None:
+    if not surface.connected():
         return False
     try:
         now = clock.now()
@@ -204,7 +194,7 @@ async def refresh() -> bool:
         line = await current_line(items, now)
         if line == _shown:
             return False
-        await client.change_presence(activity=discord.CustomActivity(name=line) if line else None)
+        await surface.status(line)
         _shown = line
         return True
     except Exception as error:

@@ -93,12 +93,28 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   (`help`, #commands, the list chat is given of what can be typed, and
   the router's catalogue all read it). Never hard-code a list of
   commands or of tasks
-- Tasks don't call Discord directly; they use `Context` and core helpers.
-  Buttons and dropdowns come from `core/cards.py` (a `Card` of plain
-  records, actions registered by name, the record's id in the
-  component's id so it works after a restart). Only `lab`, `archive`,
-  `timers`, `dev` and `bugs` (in `bugs/posts.py` only) may use
-  discord.py, until the gateway layer exists
+- **New tasks and new core code never import discord.py.** They
+  produce plain data (a `Card`, text, a `Request` in) and go through
+  the interface layer: `core/cards.py` for a card (plain records,
+  actions registered by name, the record's id in the component's id so
+  it works after a restart), `Context` for a reply, and **the door,
+  `core/surface.py`**, for everything else the core does to the place
+  it is used through (send, edit, delete, fetch, history, pin, react,
+  the status line, the name). The core never holds the client, never
+  calls a method on one of the interface's objects and never catches
+  one of its errors: what goes wrong comes back as `surface.Gone` or
+  `surface.Failed`. Everything that is Discord's lives in
+  `interfaces/discord/` (bound at start, never imported by core or by a
+  task). `docs/INTERFACE.md` has the plan and what is still to move
+- The files that still import discord.py are a list that only gets
+  shorter (`tests/test_interface.py`): in core, `context.py`,
+  `discord_utils.py`, `interactions.py`, `confirmations.py` and one
+  line of `conversation.py`; in tasks, `base.py` and `registry.py`
+  (the typed-word and reaction contract), `archive`, `dev`,
+  `bugs/posts.py`, `builtin/views.py`, and for good `lab` (it exists to
+  try Discord) and `timers` (frozen: they keep working, are never
+  ported, and are scrapped if the bot ever leaves Discord). Never add
+  to it; `task-check` looks
 - Keep decisions apart from Discord calls so they can be unit tested:
   logic in a module with no Discord calls, called by the Discord-facing
   code. New logic needs tests in the same change

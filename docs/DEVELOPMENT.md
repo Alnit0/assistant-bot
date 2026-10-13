@@ -1902,6 +1902,30 @@ with the bot: it is for working on this repository.
 - **To test by hand**: `powershell -File scripts\notify.ps1 -Kind
   finished -Text "hello"`.
 
+## The interface layer: no discord.py in new code
+
+New tasks and new core code never import discord.py
+(`docs/INTERFACE.md`; `tests/test_interface.py` fails if one does).
+
+- **A card**: `core/cards.py`, as before (`cards.send`, `edit`,
+  `delete`, `register`, a `Press`).
+- **A reply to a typed word**: `ctx.reply`, `ctx.confirm`.
+- **Anything else done to a channel or a message**: the door,
+  `core/surface.py`, by ids:
+  `await surface.send(channel_id, text)`,
+  `await surface.delete(channel_id, message_id)`, `fetch`, `history`,
+  `pin`, `react`, `edit`. First ask whether the place is there
+  (`surface.place(channel_id)` is None when it is not). What goes
+  wrong is `surface.Gone` (already gone) or `surface.Failed`
+  (`.status`, `.code`): never catch `discord.HTTPException`.
+- **In a test**: fake the client as before
+  (`monkeypatch.setattr(discord_utils, "client", …)`) or the function
+  of the door you call. `tests/conftest.py` binds Discord as the
+  interface, as `main.py` does at start.
+- **A new verb**: add it to `core/surface.py` (the signature, in plain
+  values) and to `interfaces/discord/surface.py` (Discord's side); a
+  test checks that Discord answers every verb the door has.
+
 ## Alerts: Discord, your phone, and quiet hours
 
 Everything that has to tell you something now goes through one place,

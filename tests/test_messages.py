@@ -43,6 +43,15 @@ class Channel:
             raise discord.NotFound(SimpleNamespace(status=404, reason="Not Found"), "Unknown Message")
         return self.messages[message_id]
 
+    def get_partial_message(self, message_id):
+        channel = self
+
+        class Partial:
+            async def delete(self):
+                await (await channel.fetch_message(message_id)).delete()
+
+        return Partial()
+
 
 @pytest.fixture
 def world(db, dev_clock, dev_off, monkeypatch, tmp_path):

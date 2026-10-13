@@ -91,6 +91,18 @@ low priority, nothing dropped without a reason.
 
 ### Later
 
+- **A read-only web page** (said 2026-10-14), reachable only over
+  Tailscale: today's checklist, the week, the run log, costs, open
+  bugs. It reads the database and the `design` records and needs no
+  second interface (`docs/INTERFACE.md`, section 5.2, question 6:
+  about 2 to 3 sittings). Nothing on the open internet, no signing in
+  beyond the tailnet.
+- **The rest of the door** (`docs/INTERFACE.md`, section 4): stage 3
+  (`Context` and `main.py`'s events), 4 (the typed-word and reaction
+  contract), 5 (`<#…>` and `<t:…>` through helpers), 6 (the old confirm
+  buttons), 7 (archive), 8 (the bugs forum, the start card, the dev
+  panel). Stages 1 and 2 are done.
+
 Wanted some day, or small and harmless as they are. In Details under
 the same words.
 
@@ -127,7 +139,7 @@ the same words.
   the way something is understood.
 - Manual retests still owed from 2026-10-07 (the table in Details).
 
-### Timers (low priority: a proof of concept that may be scrapped)
+### Timers (frozen 2026-10-14: they keep working, are never ported behind the door, and are scrapped if the bot ever leaves Discord)
 
 Only touched when a core change breaks their tests.
 

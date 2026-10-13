@@ -3,9 +3,28 @@
 Where the work stands, in under a page. Read it at the start of every
 session; the end-of-task checklist updates it at the end of every task.
 
-**Updated:** 2026-10-13
+**Updated:** 2026-10-14
 
 ## Questions for Alex
+
+**From the interface work (2026-10-14; `docs/INTERFACE.md`, section
+0). Decided by you: timers frozen; a read-only web page later, over
+Tailscale (backlog). Built: the rule (no discord.py in new code,
+enforced by a test and by `task-check`) and stages 1 and 2 (the card
+layer split, one door for the core).**
+
+- **Nothing you would see changed**: the same calls reach Discord in
+  the same order. Core went from 16 files importing discord.py to 5.
+- **Left for stages 3 and 4, on purpose**: `fetch` and `history` still
+  hand the core Discord's own message objects, read by attribute only
+  and never called. Turning them into plain records belongs with
+  `Context` and the typed-word contract, which read them most.
+- **Two golden conversations failed once just after midnight** (a
+  full run at about 12:08 am: "took the usual one" and "a reply to
+  the line that said zinc was taken") and passed in the next run a
+  few minutes later with nothing of theirs changed. They look
+  sensitive to the real time of day near midnight. Not looked into:
+  say if you want it chased.
 
 **From the overnight batch of 2026-10-13 (items 0 to 6, all done;
 nothing merged). Self-tests as the dev bot with live left up: two

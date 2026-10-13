@@ -4,12 +4,9 @@ import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 
-import discord
-
-from core import config, database, design, discord_utils, dms, messages, outgoing
+from core import config, database, design, dms, messages, outgoing, surface
 from core.context import Context
 from core.database import log_received, log_result
-from core.discord_utils import report_interaction_error, safe_reply
 from core.errors import UserError
 from core.permissions import is_allowed
 from core.users import User, get_user_by_discord_id
@@ -17,8 +14,10 @@ from core.users import User, get_user_by_discord_id
 log = logging.getLogger("assistant")
 
 # ---------------------------------------------------------------------------
-# Cards: a message of the bot's with buttons, a dropdown or a form, for tasks
-# that may not use discord.py themselves.
+# Cards: a message of the bot's with buttons, a dropdown or a form, as plain
+# data. Nothing here is Discord's: how a card is drawn, and how a press is
+# answered, is the interface's business behind the door (core/surface.py;
+# for Discord, interfaces/discord/render.py).
 #
 # A task describes a card with the plain records below (Card, Button, Select,
 # Form) and says what each of its actions does:
@@ -35,20 +34,14 @@ log = logging.getLogger("assistant")
 # so nothing is held in memory and a card posted before a restart still works.
 # Keep the arg to an id of the task's own record; the state lives in its tables.
 #
-# This file does what every interaction must: answers within 3 seconds
-# (deferring first), checks permission with is_allowed, logs the press in
-# message_log, shows a UserError to the presser alone, and reports anything
-# else in #bot-log.
+# This file does what every press must: answers within 3 seconds (deferring
+# first), checks permission with is_allowed, logs the press in message_log,
+# shows a UserError to the presser alone, and reports anything else in
+# #bot-log.
 # ---------------------------------------------------------------------------
 PRIMARY, SECONDARY, SUCCESS, DANGER = "primary", "secondary", "success", "danger"
-_STYLES = {
-    PRIMARY: discord.ButtonStyle.primary,
-    SECONDARY: discord.ButtonStyle.secondary,
-    SUCCESS: discord.ButtonStyle.success,
-    DANGER: discord.ButtonStyle.danger,
-}
 
-# Discord's limits
+# The limits a card is checked against (Discord's: the strictest interface there is)
 MAX_ROWS = 5
 MAX_BUTTONS_IN_ROW = 5
 MAX_OPTIONS = 25
@@ -272,47 +265,43 @@ class Press:
     message_id: int | None
     values: tuple[str, ...] = ()  # what was picked in a dropdown
     fields: dict[str, str] | None = None  # what was typed in a form; None unless it is one
-    _interaction: discord.Interaction | None = field(default=None, repr=False)
+    # The interface's own event for this press. Never looked into here: it is answered through the door
+    _interaction: object | None = field(default=None, repr=False)
     shown: list[str] = field(default_factory=list)  # what the presser was shown, for the log
     row_id: int | None = None  # this press's row in message_log, for a handler with a cost to record on it
 
     # Database access, as on Context
     db = database
 
-    def _answered(self) -> bool:
-        return self._interaction.response.is_done()
+    @property
+    def _answer(self):
+        return surface.answer(self._interaction)
 
     async def update(self, card: Card) -> None:
         """Rewrite the message the component is on, in place."""
         check(card)
         card = dms.guarded(self.channel_id, card)
         self.shown.append(card.text)
-        flags = getattr(getattr(self._interaction, "message", None), "flags", None)
-        drawn = _drawn(card, was_designed=bool(getattr(flags, "components_v2", False)))
-        if self._answered():
-            await self._interaction.edit_original_response(**drawn)
-        else:
-            await self._interaction.response.edit_message(**drawn)
+        await self._answer.update(card)
 
     async def say(self, text: str) -> None:
         """Tell the presser something only they see."""
         self.shown.append(text)
-        await safe_reply(self._interaction, text)
+        await self._answer.say(text)
 
     async def open_form(self, form: Form) -> None:
         """Pop a form up. Only possible as the first answer (register with opens_form)."""
         check_form(form)
-        if self._answered():
+        answer = self._answer
+        if answer.done():
             raise RuntimeError(f"{self.task}/{self.action} must be registered with opens_form=True to open a form")
         self.shown.append(f"form: {form.title}")
-        await self._interaction.response.send_modal(_Modal(form))
+        await answer.open_form(form)
 
     async def remove(self) -> None:
         """Delete the message the component is on."""
         self.shown.append("message removed")
-        if not self._answered():
-            await self._interaction.response.defer()
-        await self._interaction.delete_original_response()
+        await self._answer.remove()
 
 
 Handler = Callable[[Press], Awaitable[str | None]]
@@ -340,32 +329,31 @@ def register(task: str, action: str, handler: Handler, *, permission: str = "", 
 
 
 async def handle(
-    interaction: discord.Interaction,
+    source,
     task: str,
     action: str,
     arg: str,
     values: tuple[str, ...] = (),
     fields: dict[str, str] | None = None,
 ) -> None:
-    """Run the action behind a press. Never raises."""
+    """Run the action behind a press. `source` is the interface's own event
+    for it, answered through the door. Never raises."""
+    answer = surface.answer(source)
     try:
         registered = _actions.get((task, action))
         if registered is None:
             # Its task isn't loaded any more
-            await safe_reply(interaction, GONE)
+            await answer.say(GONE)
             return
-        user = await get_user_by_discord_id(interaction.user.id)
+        user = await get_user_by_discord_id(answer.user_id)
         if not is_allowed(user, registered.permission):
-            await safe_reply(interaction, "That isn't yours to press.")
+            await answer.say("That isn't yours to press.")
             return
         # Answer straight away, unless the answer may be a form (which has to come first)
         if fields is not None or not registered.opens_form:
-            await interaction.response.defer()
+            await answer.defer()
 
-        message = getattr(interaction, "message", None)
-        press = Press(
-            user, task, action, arg, interaction.channel_id, getattr(message, "id", None), values, fields, interaction
-        )
+        press = Press(user, task, action, arg, answer.channel_id, answer.message_id, values, fields, source)
         detail = "".join(
             [f" {arg}" if arg else "", f" picked {list(values)}" if values else "", f" typed {fields}" if fields else ""]
         )
@@ -380,144 +368,15 @@ async def handle(
             # The presser can fix this one: tell them, and nobody else
             log.info("Card %s/%s not done: %s", task, action, error)
             await log_result(row_id, status="error", error=str(error))
-            await safe_reply(interaction, f"⚠️ {error}")
+            await answer.say(f"⚠️ {error}")
             return
-        if not interaction.response.is_done():
-            await interaction.response.defer()
+        if not answer.done():
+            await answer.defer()
         await log_result(
             row_id, reply=reply or "\n".join(press.shown) or "done", status="ok", duration_s=time.perf_counter() - started
         )
     except Exception as error:
-        await report_interaction_error(interaction, error, f"Card action failed: {task}/{action}")
-
-
-# ---------------------------------------------------------------------------
-# Discord's side: components that find their action from their id
-# ---------------------------------------------------------------------------
-class _CardButton(discord.ui.DynamicItem[discord.ui.Button], template=rf"card\.b:(?P<task>{_NAME}):(?P<action>{_NAME}):(?P<arg>.*)"):
-    def __init__(self, button: Button):
-        super().__init__(
-            discord.ui.Button(
-                label=button.label,
-                emoji=button.emoji,
-                style=_STYLES[button.style],
-                disabled=button.disabled,
-                custom_id=make_id(_BUTTON, button.task, button.action, button.arg),
-            )
-        )
-        self.spec = button
-
-    @classmethod
-    async def from_custom_id(cls, interaction: discord.Interaction, item, match: re.Match[str], /):
-        return cls(Button(item.label or "", match["task"], match["action"], match["arg"]))
-
-    async def callback(self, interaction: discord.Interaction) -> None:
-        await handle(interaction, self.spec.task, self.spec.action, self.spec.arg)
-
-
-class _CardSelect(discord.ui.DynamicItem[discord.ui.Select], template=rf"card\.s:(?P<task>{_NAME}):(?P<action>{_NAME}):(?P<arg>.*)"):
-    def __init__(self, select: Select):
-        super().__init__(
-            discord.ui.Select(
-                placeholder=select.placeholder or None,
-                max_values=select.max_values,
-                options=[
-                    discord.SelectOption(
-                        label=option.label, value=option.value, description=option.description or None, emoji=option.emoji
-                    )
-                    for option in select.options
-                ],
-                custom_id=make_id(_SELECT, select.task, select.action, select.arg),
-            )
-        )
-        self.spec = select
-
-    @classmethod
-    async def from_custom_id(cls, interaction: discord.Interaction, item, match: re.Match[str], /):
-        # Only the id matters here: the options are the message's own
-        return cls(Select(match["task"], match["action"], (Option("-", "-"),), arg=match["arg"]))
-
-    async def callback(self, interaction: discord.Interaction) -> None:
-        picked = tuple((interaction.data or {}).get("values", ()))
-        await handle(interaction, self.spec.task, self.spec.action, self.spec.arg, values=picked)
-
-
-class _Modal(discord.ui.Modal):
-    def __init__(self, form: Form):
-        super().__init__(title=form.title, custom_id=make_id(_FORM, form.task, form.action, form.arg))
-        self.form = form
-        self.inputs: dict[str, discord.ui.TextInput] = {}
-        for entry in form.fields:
-            text_input = discord.ui.TextInput(
-                label=entry.label,
-                default=entry.value or None,
-                placeholder=entry.placeholder or None,
-                required=entry.required,
-            )
-            self.inputs[entry.name] = text_input
-            self.add_item(text_input)
-
-    async def on_submit(self, interaction: discord.Interaction) -> None:
-        typed = {name: (text_input.value or "").strip() for name, text_input in self.inputs.items()}
-        await handle(interaction, self.form.task, self.form.action, self.form.arg, fields=typed)
-
-    async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
-        await report_interaction_error(interaction, error, f"Card form failed: {self.form.task}/{self.form.action}")
-
-
-def view(card: Card) -> discord.ui.View | None:
-    """The card's components as discord.py wants them; None if it has none
-    (which also takes the old ones off a message being edited)."""
-    check(card)
-    if not card.rows:
-        return None
-    built = discord.ui.View(timeout=None)
-    for number, row in enumerate(card.rows):
-        items = [_CardSelect(row)] if isinstance(row, Select) else [_CardButton(button) for button in row]
-        for item in items:
-            item.item.row = number
-            built.add_item(item)
-    return built
-
-
-def layout_view(pieces: tuple) -> discord.ui.LayoutView:
-    """A layout (core/design.py records) as a Components V2 message. Every
-    colour and spacing comes from core/design.py."""
-    check_layout(pieces)
-
-    def built(piece):
-        if isinstance(piece, design.Text):
-            return discord.ui.TextDisplay(outgoing.clean(piece.content) or piece.content)
-        if isinstance(piece, design.Separator):
-            spacing = discord.SeparatorSpacing.large if piece.large else discord.SeparatorSpacing.small
-            return discord.ui.Separator(visible=piece.line, spacing=spacing)
-        if isinstance(piece, design.Row):
-            return discord.ui.ActionRow(*(_CardButton(button) for button in piece.buttons))
-        if isinstance(piece, Select):
-            return discord.ui.ActionRow(_CardSelect(piece))
-        return discord.ui.Container(*(built(child) for child in piece.children), accent_colour=discord.Colour(design.colour(piece.status)))
-
-    drawn = discord.ui.LayoutView(timeout=None)
-    for piece in pieces:
-        drawn.add_item(built(piece))
-    return drawn
-
-
-def _drawn(card: Card, was_designed: bool = False) -> dict:
-    """What a message is rewritten with: the card's layout when CARDS_V2 is on
-    and it has one; else its text and rows. A message that is Components V2
-    already can never go back to plain text, so a plain card rewrites it as a
-    layout of that same text and those same rows."""
-    if designed(card):
-        return {"content": None, "view": layout_view(card.layout)}
-    if was_designed:
-        return {"content": None, "view": layout_view(design.plain(card.text, card.rows))}
-    return {"content": card.text, "view": view(card)}
-
-
-def setup(client: discord.Client) -> None:
-    """Before connecting, so components on cards from before a restart still answer."""
-    client.add_dynamic_items(_CardButton, _CardSelect)
+        await answer.fail(error, f"Card action failed: {task}/{action}")
 
 
 # ---------------------------------------------------------------------------
@@ -526,21 +385,14 @@ def setup(client: discord.Client) -> None:
 async def post(ctx: Context, card: Card) -> int | None:
     """Send a card as the reply to what the user sent. Returns the message's id."""
     check(card)
-    built = layout_view(card.layout) if designed(card) else view(card)
-    message = await ctx.reply(card.text, view=built)  # checked there (core/outgoing.py)
+    message = await ctx.reply(card.text, view=surface.drawn(card))  # checked there (core/outgoing.py)
     return getattr(message, "id", None)
 
 
-def _channel(channel_id: int | None):
-    client = discord_utils.client
-    return client.get_channel(channel_id) if client is not None and channel_id else None
-
-
 def link(channel_id: int | None, message_id: int | None) -> str:
-    """Where a message is, as the link Discord opens (in the app, on a phone).
-    "" if the channel can't be found or is not in a server."""
-    guild = getattr(getattr(_channel(channel_id), "guild", None), "id", None)
-    return f"https://discord.com/channels/{guild}/{channel_id}/{message_id}" if guild and message_id else ""
+    """Where a message is, as the link the interface opens (in the app, on a
+    phone). "" if the place can't be found or is not in a server."""
+    return surface.link(channel_id, message_id)
 
 
 async def send(channel_id: int, card: Card, *, silent: bool = False) -> int | None:
@@ -548,55 +400,34 @@ async def send(channel_id: int, card: Card, *, silent: bool = False) -> int | No
     `silent` posts without a notification. Returns the message's id, or None
     if the channel can't be found. With the tidy on, one posted in the hub
     lasts the day unless its task says otherwise (`messages.record`)."""
-    channel = _channel(channel_id)
-    if channel is None:
+    if surface.place(channel_id) is None:
         log.warning("Could not post a card: channel %s not found", channel_id)
         return None
     # In a direct message: silently, and never with one of my things named in its first line
     silent = silent or dms.is_dm(channel_id)
     card = dms.guarded(channel_id, card)
-    built = view(card)
+    check(card)
     text = outgoing.clean(card.text)
     if not text:
         log.error("A card with nothing left to say was not sent")
         return None
-    if designed(card):
-        message = await channel.send(view=layout_view(card.layout), silent=silent)
-    elif built is None:
-        message = await channel.send(text, silent=silent)
-    else:
-        message = await channel.send(text, view=built, silent=silent)
-    await messages.record(message.id, channel_id)
-    return message.id
+    message_id = await surface.send_card(channel_id, card, text, silent=silent)
+    await messages.record(message_id, channel_id)
+    return message_id
 
 
 async def edit(channel_id: int, message_id: int, card: Card) -> bool:
     """Rewrite a card in place. False if it has gone or can't be reached."""
-    channel = _channel(channel_id)
-    if channel is None:
+    if surface.place(channel_id) is None:
         return False
     check(card)
     card = dms.guarded(channel_id, card)
-    message = channel.get_partial_message(message_id)
     plain = Card(outgoing.clean(card.text) or card.text, card.rows)
     try:
-        if designed(card):
-            await message.edit(**_drawn(card))
-            return True
-        try:
-            await message.edit(**_drawn(plain))
-        except discord.NotFound:
-            raise
-        except discord.HTTPException as error:
-            if error.status != 400:
-                raise
-            # The message is Components V2 (it was drawn while CARDS_V2 was on), and one can
-            # never go back to plain text: the same words and buttons, as a layout
-            log.info("Card %s could not be rewritten as plain text (%s): rewriting it as a layout", message_id, error)
-            await message.edit(**_drawn(plain, was_designed=True))
-    except discord.NotFound:
+        await surface.edit_card(channel_id, message_id, card, plain)
+    except surface.Gone:
         return False
-    except discord.HTTPException as error:
+    except surface.Failed as error:
         log.warning("Could not edit card %s: %s", message_id, error)
         return False
     return True
@@ -605,11 +436,10 @@ async def edit(channel_id: int, message_id: int, card: Card) -> bool:
 async def delete(channel_id: int, message_id: int) -> bool:
     """Delete a card. Best effort: False if it had already gone or can't be reached.
     The caller asks core/lifecycle.py first if this is the bot tidying up by itself."""
-    channel = _channel(channel_id)
-    if channel is None:
+    if surface.place(channel_id) is None:
         return False
     try:
-        await channel.get_partial_message(message_id).delete()
-    except discord.HTTPException:
+        await surface.delete(channel_id, message_id)
+    except surface.Failed:
         return False
     return True

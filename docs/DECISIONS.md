@@ -132,6 +132,17 @@ A short log of key decisions and why. Newest at the bottom.
   message, never the content itself, so actions and history stay in the
   server. This refines "Notifications" above; no task sends real
   notifications yet, so it applies from the reminders work onwards.
+- **One door to Discord (2026-10-14):** new tasks and new core code
+  never import discord.py. The core reaches the interface through
+  plain verbs (`core/surface.py`), and what is Discord's lives in
+  `interfaces/discord/`. Done in stages (`docs/INTERFACE.md`); the
+  files that still import discord.py are a list in a test that only
+  gets shorter. No abstract interface classes: plain functions with
+  Discord as the only thing behind them, until a second interface
+  shows which verbs were wrongly shaped.
+- **Timers are frozen (2026-10-14):** they keep working, are never
+  ported behind the door, and are scrapped if the bot ever leaves
+  Discord.
 - **A push to the phone is a pointer too (2026-10-13):** with
   `NOTIFY_NTFY` an alert may also go to my phone through ntfy. It
   carries what a DM pointer carries and no more: neutral words and a

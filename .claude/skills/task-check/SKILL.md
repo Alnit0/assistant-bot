@@ -85,8 +85,17 @@ Audit **one task**. Fix nothing: the user chooses what to fix.
 - Anything in the task that is how the bot behaves or talks, or
   plumbing, or a general tool a second task would need: name it with
   file and line and say where it belongs.
-- discord.py in a task that may not use it; a Context in `plain.py`;
-  the clock, the day or a time format taken from anywhere but core.
+- **discord.py** (enforced: a finding here blocks). Run
+  `python -m pytest -q tests/test_interface.py`. A task, or core code,
+  that imports discord.py and is not on that test's shrinking list is
+  a finding, and so is anything that gets round the rule without the
+  import: `discord_utils.client`, a method called on a channel or
+  message object (`.send(`, `.edit(`, `.delete(`, `.fetch_message(`,
+  `.history(`), an import of `interfaces`, or `<#…>` / `<t:…>` written
+  by hand in a string. The fix is the door (`core/surface.py`),
+  `core/cards.py` or `Context`. Never add a file to the list.
+- A Context in `plain.py`; the clock, the day or a time format taken
+  from anywhere but core.
 
 **D. Word lists and phrase patterns in Python**
 

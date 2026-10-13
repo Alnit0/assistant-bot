@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from core import cards, channels, clock, config, database, identity, instance_lock, missed
+from core import cards, channels, clock, config, database, discord_utils, identity, instance_lock, missed
 from core.instance_lock import Holder, Process
 from selftest import __main__ as runner
 
@@ -193,8 +193,9 @@ def off(db, owner, monkeypatch):
     monkeypatch.setattr(clock, "real_now", lambda: NOW)
     monkeypatch.setattr(cards, "send", send)
     monkeypatch.setattr(missed, "CHANNELS", {"inbox": INBOX, "hub": HUB, "commands": COMMANDS, "dev": INBOX})
-    monkeypatch.setattr(channels, "named", lambda client=None: [on.inbox, on.hub, _Channel(COMMANDS, [_message(1, 5)])])
-    monkeypatch.setattr(missed.discord_utils, "client", SimpleNamespace(get_channel=lambda channel_id: {INBOX: on.inbox, HUB: on.hub}.get(channel_id)))
+    commands = _Channel(COMMANDS, [_message(1, 5)])
+    monkeypatch.setattr(channels, "ids", lambda: [INBOX, HUB, COMMANDS])
+    monkeypatch.setattr(discord_utils, "client", SimpleNamespace(get_channel=lambda channel_id: {INBOX: on.inbox, HUB: on.hub, COMMANDS: commands}.get(channel_id)))
     monkeypatch.setattr(missed, "_seen", set())
     missed.setup(sender, take)
     run(database.run(missed.db_note_alive, NOW - timedelta(minutes=40)))
@@ -699,7 +700,7 @@ def test_a_direct_message_is_read_as_the_inbox_and_answered_silently(direct, mon
     assert ctx.channel_name == "inbox"
     run(ctx.reply("✅ **Zinc** · taken 9:00 am"))
     assert sent == [("💊 Pills\n✅ **Zinc** · taken 9:00 am", True)], "silently, and with a neutral first line"
-    monkeypatch.setattr(cards.discord_utils, "client", SimpleNamespace(get_channel=lambda channel_id: Channel()))
+    monkeypatch.setattr(discord_utils, "client", SimpleNamespace(get_channel=lambda channel_id: Channel()))
 
     async def no_record(*args, **kwargs):
         pass

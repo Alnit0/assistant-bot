@@ -5,9 +5,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import datetime
 
-import discord
-
-from core import database, discord_utils, identity, outgoing, scheduler
+from core import database, discord_utils, identity, outgoing, scheduler, surface
 from core.config import real_now_nz
 
 log = logging.getLogger(__name__)
@@ -102,18 +100,15 @@ def db_cut_off(conn: sqlite3.Connection, before: datetime) -> list[CutOff]:
 
 async def mark(channel_id: int | None, message_id: int | None) -> bool:
     """⚠️ in place of 👀 on a message of mine that was never answered."""
-    client = discord_utils.client
-    channel = client.get_channel(channel_id) if client is not None and channel_id else None
-    if channel is None or message_id is None:
+    if surface.place(channel_id) is None or message_id is None:
         return False
-    message = channel.get_partial_message(message_id)
     try:
-        await message.remove_reaction(SEEN, client.user)
-    except discord.HTTPException:
+        await surface.unreact(channel_id, message_id, SEEN)
+    except surface.Failed:
         pass  # it had none, or has gone
     try:
-        await message.add_reaction(FAILED)
-    except discord.HTTPException as error:
+        await surface.react(channel_id, message_id, FAILED)
+    except surface.Failed as error:
         log.info("Could not mark message %s as cut off: %s", message_id, error)
         return False
     return True

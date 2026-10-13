@@ -1,8 +1,6 @@
 import logging
 
-import discord
-
-from core import discord_utils
+from core import surface
 
 log = logging.getLogger("assistant")
 
@@ -22,7 +20,7 @@ LOOK_BACK = 200
 
 
 class Refused(Exception):
-    """Discord would not let the channel be read or written (a missing permission, say)."""
+    """The channel could not be read or written (a missing permission, say)."""
 
 
 def plan(have: list[str], want: list[str]) -> tuple[str, list[int]]:
@@ -37,27 +35,26 @@ def plan(have: list[str], want: list[str]) -> tuple[str, list[int]]:
 async def sync(channel_id: int | None, texts: list[str]) -> str:
     """Make the bot's messages in a channel read `texts`, in order. Returns what
     was done, in words ("unchanged", "2 edited", "rebuilt: 6 messages", or
-    MISSING). Raises Refused if Discord won't allow it."""
-    client = discord_utils.client
-    channel = client.get_channel(channel_id) if client is not None and channel_id else None
-    if channel is None:
+    MISSING). Raises Refused if that isn't allowed."""
+    if surface.place(channel_id) is None:
         return MISSING
     try:
-        mine = [message async for message in channel.history(limit=LOOK_BACK, oldest_first=True) if message.author.id == client.user.id]
+        me = surface.me()
+        mine = [message for message in await surface.history(channel_id, limit=LOOK_BACK, oldest_first=True) if message.author.id == me]
         what, positions = plan([message.content for message in mine], texts)
         if what == SAME:
             return SAME
         if what == EDIT:
             for position in positions:
-                await mine[position].edit(content=texts[position], suppress=True)
+                await surface.edit(channel_id, mine[position].id, texts[position], suppress_embeds=True)
             return f"{len(positions)} {EDIT}"
         for message in mine:
             try:
-                await message.delete()
-            except discord.NotFound:
+                await surface.delete(channel_id, message.id)
+            except surface.Gone:
                 pass
         for text in texts:
-            await channel.send(text, silent=True, suppress_embeds=True)
-    except discord.HTTPException as error:
+            await surface.send(channel_id, text, silent=True, suppress_embeds=True)
+    except surface.Failed as error:
         raise Refused(str(error)) from error
     return f"{REBUILD}: {len(texts)} message{'' if len(texts) == 1 else 's'}"

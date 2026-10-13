@@ -7,6 +7,7 @@ import pytest
 from core import cards, database
 from core.cards import Button, Card, Field, Form, Option, Select
 from core.errors import UserError
+from interfaces.discord import render
 
 
 # ---------------------------------------------------------------------------
@@ -98,7 +99,7 @@ def test_a_card_becomes_components_with_our_ids_that_never_time_out():
                 Select("pills", "pick", (Option("Iron", "3", "paused"),), placeholder="Choose…"),
             ),
         )
-        built = cards.view(card)
+        built = render.view(card)
         return built.timeout, [(item.item.custom_id, item.item.row, type(item.item).__name__) for item in built.children]
 
     timeout, items = asyncio.run(build())
@@ -111,15 +112,15 @@ def test_a_card_becomes_components_with_our_ids_that_never_time_out():
 
 
 def test_a_card_with_no_components_has_no_view():
-    assert cards.view(Card("✅ Saved")) is None, "which also takes the buttons off a message being edited"
+    assert render.view(Card("✅ Saved")) is None, "which also takes the buttons off a message being edited"
 
 
 def test_buttons_and_dropdowns_are_told_apart_by_their_ids():
     # discord.py matches a pressed component against every registered pattern, whatever its type
     import re
 
-    button_pattern = cards._CardButton.__discord_ui_compiled_template__
-    select_pattern = cards._CardSelect.__discord_ui_compiled_template__
+    button_pattern = render._CardButton.__discord_ui_compiled_template__
+    select_pattern = render._CardSelect.__discord_ui_compiled_template__
     assert button_pattern.fullmatch("card.b:pills:save:5") and not select_pattern.fullmatch("card.b:pills:save:5")
     assert select_pattern.fullmatch("card.s:pills:pick:") and not button_pattern.fullmatch("card.s:pills:pick:")
     assert isinstance(button_pattern, re.Pattern)
@@ -182,7 +183,7 @@ def actions(db, monkeypatch):
     async def report(interaction, error, title, reply=""):
         errors.append((title, repr(error)))
 
-    monkeypatch.setattr(cards, "report_interaction_error", report)
+    monkeypatch.setattr(render, "report_interaction_error", report)
     return errors
 
 

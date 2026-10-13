@@ -5,9 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 
-import discord
-
-from core import clearing, clock, config, database, discord_utils, hub, lifecycle, protection, scheduler
+from core import clearing, clock, config, database, discord_utils, hub, lifecycle, protection, scheduler, surface
 from core import day as days
 from core.lifecycle import MessageClass
 
@@ -303,14 +301,13 @@ async def remove(rows: list[Row], why: str) -> Tidied:
         return done
     if not lifecycle.deletes(MessageClass.LIVE):
         return Tidied(problems=("clean-up is switched off (`dev cleanup off`): nothing was removed",))
-    client = discord_utils.client
     problems: list[str] = []
     by_channel: dict[int, list[Row]] = {}
     for each in rows:
         by_channel.setdefault(each.channel_id, []).append(each)
     now = clock.now()
     for channel_id, mine in by_channel.items():
-        channel = client.get_channel(channel_id) if client is not None else None
+        channel = surface.place(channel_id)
         if channel is None:
             problems.append(f"channel {channel_id} can't be found: {len(mine)} left")
             done.left += len(mine)
@@ -318,11 +315,11 @@ async def remove(rows: list[Row], why: str) -> Tidied:
         going = []
         for each in mine:
             try:
-                message = await channel.fetch_message(each.message_id)
-            except discord.NotFound:
+                message = await surface.fetch(channel_id, each.message_id)
+            except surface.Gone:
                 await database.run(db_gone, each.message_id, "already gone", now)
                 continue
-            except discord.HTTPException as error:
+            except surface.Failed as error:
                 problems.append(f"#{channel.name}: a message could not be read ({error.status})")
                 done.left += 1
                 continue
@@ -341,10 +338,10 @@ async def remove(rows: list[Row], why: str) -> Tidied:
             continue
         for each, message in going:
             try:
-                await message.delete()
-            except discord.NotFound:
+                await surface.delete(channel_id, each.message_id)
+            except surface.Gone:
                 pass
-            except discord.HTTPException as error:
+            except surface.Failed as error:
                 done.left += 1
                 if await database.run(db_tried, each.message_id) >= MAX_TRIES:
                     await database.run(db_keep, each.message_id, f"could not be deleted: {error}")

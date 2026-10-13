@@ -36,12 +36,14 @@ def main() -> int:
     from core.users import ensure_owner
     from selftest import phases
     from selftest.harness import Harness
+    from interfaces import discord as discord_interface
     from tasks import registry
 
     setup_logging()
     log = logging.getLogger("assistant")
     log.info("Self-test phase %s: the dev database %s", name, config.DB_PATH.name)
-    # As any start of the bot: the account first, then the lock (core/account.py)
+    # As any start of the bot: the interface is said, then the account, then the lock (core/account.py)
+    discord_interface.bind()
     account.check(config.TOKEN)
     instance_lock.acquire()
     registry.load()

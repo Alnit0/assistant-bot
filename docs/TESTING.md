@@ -24,7 +24,7 @@ right, not that Discord shows it: the 👤 rows cover that.
 
 ## Summary
 
-Last updated: 2026-10-13
+Last updated: 2026-10-14
 
 | Group | Feature | Tests | 🤖 | 👤 | ⬜ | ✅ | ❌ | ⏭️ |
 |---|---|---|---|---|---|---|---|---|
@@ -37,7 +37,7 @@ Last updated: 2026-10-13
 | G | Timers | 32 | 12 | 20 | 17 | 15 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
 | J | Dev mode | 68 | 19 | 49 | 47 | 21 | 0 | 0 |
-| K | Startup and housekeeping | 43 | 27 | 16 | 14 | 29 | 0 | 0 |
+| K | Startup and housekeeping | 45 | 29 | 16 | 14 | 31 | 0 | 0 |
 | L | Keep | 14 | 6 | 8 | 8 | 6 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
 | P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
@@ -46,7 +46,7 @@ Last updated: 2026-10-13
 | S | Routing and confirm cards | 80 | 27 | 53 | 18 | 61 | 0 | 1 |
 | T | Tasks in plain words | 26 | 7 | 19 | 4 | 22 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **533** | **211** | **322** | **252** | **280** | **0** | **1** |
+| | **Total** | **535** | **213** | **322** | **252** | **282** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -350,6 +350,8 @@ Any channel. Check the bot's status in the member list.
 | K41 | 🤖 Auto | Quiet hours, behind their switch | Off, nothing is held; on, every kind is held between the hours (over midnight too), something wrong included, but a kind marked to get through; what is held is posted silently, never pushed, one row a thing, kept a week, and gone once dealt with; overnight is the quiet hours that ended that morning | ✅ Pass | 2026-10-13 | `tests/test_notify.py` |
 | K42 | 🤖 Auto | The briefing on the one ranking | Sections in the ranking's order, the rest as they were; what needs a look on top with its bug, the same words as the status line; a problem alone is worth a briefing; rewritten when that changes and not when nothing did | ✅ Pass | 2026-10-13 | `tests/test_notify.py` |
 | K43 | 👤 Manual | A push on the phone | QA-RUN block 53: the title and the neutral line on the lock screen, and tapping opens Discord at the reminder | ⬜ Untested | | Needs `NTFY_BOT_TOPIC` |
+| K44 | 🤖 Auto | No discord.py in new code | Core and tasks import discord.py only in the files on a list that only gets shorter; the core never imports the interface or holds the client; the plain half of a card holds nothing of Discord | ✅ Pass | 2026-10-14 | `tests/test_interface.py` |
+| K45 | 🤖 Auto | The door to the interface | A place is a plain record; text, pins, reactions and edits go by ids; Discord's errors come back as Gone or Failed with status and code; with nothing bound nothing is found; Discord answers every verb the door has; a card reaches Discord through it | ✅ Pass | 2026-10-14 | `tests/test_interface.py` |
 
 ## L. Keep
 

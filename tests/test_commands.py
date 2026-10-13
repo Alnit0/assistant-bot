@@ -167,6 +167,9 @@ class Channel:
         for message in list(self.messages):
             yield message
 
+    def get_partial_message(self, message_id):
+        return next(message for message in self.messages if message.id == message_id)
+
     async def send(self, text, silent=False, suppress_embeds=False):
         self.sent.append((text, silent))
         self.messages.append(Message(self, 100 + len(self.sent), text))

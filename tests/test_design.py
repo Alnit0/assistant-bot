@@ -9,6 +9,8 @@ import pytest
 from core import actions, cards, clock, config, confirm, database, day, design, occurrences
 from core.actions import Choice, Entry, Proposal, Question
 from core.cards import Button, Card
+from interfaces.discord import render
+from interfaces.discord import surface as discord_surface
 from tasks.dev import mock
 from tasks.pills import checklist, plain, reminders, sheet, store
 from tests.test_pills_reminders import EVENING, HUB, PILL_A, Press, add, at, log, prompts, run, states, world  # noqa: F401
@@ -24,7 +26,7 @@ def v2(monkeypatch):
 
 def kinds(pieces):
     """A layout as Discord would get it: the type of each component, a box with what is in it."""
-    return [(each["type"], [inner["type"] for inner in each.get("components", [])]) if each["type"] == 17 else each["type"] for each in cards.layout_view(pieces).to_components()]
+    return [(each["type"], [inner["type"] for inner in each.get("components", [])]) if each["type"] == 17 else each["type"] for each in render.layout_view(pieces).to_components()]
 
 
 # --- one place for every value ------------------------------------------------------------------------------
@@ -38,7 +40,7 @@ def test_every_status_has_a_colour_and_the_colours_are_the_ones_the_design_names
 def test_a_colour_changed_in_the_one_file_changes_every_card_and_every_sketch(monkeypatch):
     monkeypatch.setitem(design.COLOURS, "amber", 0x123456)
     box = design.item(design.DUE, "**Pill A**")
-    assert cards.layout_view((box,)).to_components()[0]["accent_color"] == 0x123456
+    assert render.layout_view((box,)).to_components()[0]["accent_color"] == 0x123456
     assert mock.ACCENTS["blue"] == design.COLOURS["blue"] and mock.ACCENTS["gray"] == design.COLOURS["grey"]
     assert not hasattr(cards, "COLOURS") and "0x" not in open(sheet.__file__, encoding="utf-8").read(), "no colour of a task's own"
 
@@ -46,9 +48,9 @@ def test_a_colour_changed_in_the_one_file_changes_every_card_and_every_sketch(mo
 def test_the_separators_take_their_spacing_from_the_same_place(monkeypatch):
     monkeypatch.setattr(design, "SECTION_LARGE", True)
     pieces = design.standing("💊 Today", "Monday 12 October", [design.item(design.DONE, "**A**")], [design.item(design.QUIET, "⏸️ **Paused**")])
-    sent = cards.layout_view(pieces).to_components()
+    sent = render.layout_view(pieces).to_components()
     assert [each["type"] for each in sent] == [10, 17, 14, 17] and sent[2]["spacing"] == 2 and sent[2]["divider"] is True
-    assert cards.layout_view((design.Separator(line=False, large=False), design.Text("x"))).to_components()[0] == {"type": 14, "divider": False, "spacing": 1}
+    assert render.layout_view((design.Separator(line=False, large=False), design.Text("x"))).to_components()[0] == {"type": 14, "divider": False, "spacing": 1}
 
 
 # --- the shapes ------------------------------------------------------------------------------------------------
@@ -114,7 +116,7 @@ CARD = Card("💊 Pills · change\n**Pill A**", ((SAVE,),), design.decision("�
 
 def test_off_a_card_with_a_layout_is_sent_and_rewritten_exactly_as_before(monkeypatch):
     channel = Channel()
-    monkeypatch.setattr(cards, "_channel", lambda channel_id: channel)
+    monkeypatch.setattr(discord_surface, "_channel", lambda channel_id: channel)
     assert config.CARDS_V2 is False and not cards.designed(CARD)
     asyncio.run(cards.send(5, CARD))
     (args, kwargs), = channel.sent
@@ -125,7 +127,7 @@ def test_off_a_card_with_a_layout_is_sent_and_rewritten_exactly_as_before(monkey
 
 def test_on_it_is_sent_as_components_v2_with_no_text_beside_it_and_a_card_with_no_layout_is_still_plain(monkeypatch, v2):
     channel = Channel()
-    monkeypatch.setattr(cards, "_channel", lambda channel_id: channel)
+    monkeypatch.setattr(discord_surface, "_channel", lambda channel_id: channel)
     asyncio.run(cards.send(5, CARD, silent=True))
     (args, kwargs), = channel.sent
     assert args == () and kwargs["silent"] is True and isinstance(kwargs["view"], discord.ui.LayoutView)
@@ -140,7 +142,7 @@ def test_a_message_that_is_components_v2_already_is_rewritten_as_a_layout_of_the
     # CARDS_V2 was on, the message was drawn, and it is off again (or the card has no layout): a
     # Components V2 message can never go back to text, so the same words and buttons go in as a layout
     channel = Channel(refuse_text=True)
-    monkeypatch.setattr(cards, "_channel", lambda channel_id: channel)
+    monkeypatch.setattr(discord_surface, "_channel", lambda channel_id: channel)
     assert asyncio.run(cards.edit(5, 1, Card("✅ Saved.", ((SAVE,),))))
     (kwargs,) = channel.edits
     assert kwargs["content"] is None and [each["type"] for each in kwargs["view"].to_components()] == [10, 1]
