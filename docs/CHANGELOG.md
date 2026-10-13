@@ -6,6 +6,11 @@ backfilled from the git log.
 
 ## 2026-10-14
 
+- The hub tidy is on: what you say in the hub and the reply go once
+  handled, nothing of a past day stays, and each morning starts with
+  the tidy, then the checklist. The hub was cleared once to begin
+  with (a copy is in `data/exports/`).
+
 - A start says nothing any more: no "👋 Online and ready" in #inbox and
   no "🟢 Bot started" card. A restart you asked for leaves no trace; if
   the PC restarted or the bot crashed, #bot-log says so in one line,

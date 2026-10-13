@@ -216,7 +216,8 @@ fails; nothing runs on a night with no new commits.
     not yet used.
 12. **Timers are frozen** as a proof of concept and may be scrapped;
     they still run and are still tested.
-13. **Switch combinations.** Six switches off on live means the
+13. **Switch combinations.** Five switches off on live (the hub tidy
+    went on on 2026-10-14) means the
     combination live runs is the best tested one; turning several on
     together (the briefing, the tidy and the new look) has been
     self-tested on the dev bot but not lived with.

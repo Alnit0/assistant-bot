@@ -38,5 +38,15 @@ for name, value in {
     "DAILY_SPEND_LIMIT": "",  # the default, US$0.50
     "CARDS_V2": "",  # off, as it is unless set: the design tests switch it on
     "REMINDERS_ENABLED": "",  # off, as it is unless set: the reminder tests switch it on
+    # Every other switch too: off, whatever this PC's own .env has turned on (tests/test_settings.py)
+    "BRIEFING_ENABLED": "",
+    "WEEKLY_SUMMARY": "",
+    "DMS_ENABLED": "",
+    "NIGHTLY_SELFTEST": "",
+    "HUB_TIDY": "",
+    "QUIET_HOURS_ENABLED": "",
+    "QUIET_HOURS": "",
+    "NOTIFY_NTFY": "",
+    "NTFY_BOT_TOPIC": "",
 }.items():
     os.environ[name] = value

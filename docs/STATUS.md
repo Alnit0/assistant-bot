@@ -7,6 +7,17 @@ session; the end-of-task checklist updates it at the end of every task.
 
 ## Questions for Alex
 
+**The hub tidy is on (2026-10-14).** `HUB_TIDY=true` is in `.env` and
+live was restarted with it. Before that the hub was cleared once, as
+`reset channel` with Delete all unpinned does: 24 messages removed,
+none pinned, the copy saved first as
+`data/exports/hub-2026-10-14-003113.txt`. Nothing was posted again:
+it was before 6:00 am, so today's checklist was not up yet. The
+morning routine is now the tidy, then the checklist, both booked for
+6:00 am. The 23 past "👋 Online and ready" messages (all in #inbox)
+were deleted in the same run. On live now: `REMINDERS_ENABLED`,
+`NIGHTLY_SELFTEST`, `QUIET_HOURS_ENABLED`, `HUB_TIDY`.
+
 **From removing the start message (2026-10-14).** Decided without
 you, say if wrong:
 
