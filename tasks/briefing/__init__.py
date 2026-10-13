@@ -54,10 +54,11 @@ async def card_for(user_id: int) -> Card | None:
     sections = rules.ordered(await summaries.gather(user_id, today), [item.task for _, item in order])
     problems = tuple(rules.problem(item) for rank, item in order if rank == attention.LEVEL_PROBLEM)
     held = tuple(rules.held(each.line, each.times) for each in await notify.held_overnight(user_id, today))
-    if not (sections or problems or held):
+    notes = tuple(f"{timeinput.format_moment(each.at)} · {each.line}" for each in await notify.notes_for(user_id, today))
+    if not (sections or problems or held or notes):
         return None
     hours = " to ".join(timeinput.format_time(each) for each in config.QUIET_HOURS)
-    return Card(rules.text(sections, today, problems, held, hours), (), rules.layout(sections, today, problems, held, hours))
+    return Card(rules.text(sections, today, problems, held, hours, notes), (), rules.layout(sections, today, problems, held, hours, notes))
 
 
 _said: dict[int, str] = {}  # what the briefing last read as, a user: an edit that would change nothing is not made

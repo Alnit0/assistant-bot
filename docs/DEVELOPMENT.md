@@ -1950,13 +1950,36 @@ user. Two switches, both off unless set in `.env` (then restart live):
   - The dev bot never pushes, so a self-test never reaches your phone
     this way.
 - **`QUIET_HOURS_ENABLED=true`** (on, on live, since 2026-10-13):
-  between the times of `QUIET_HOURS` (10:00 pm to 6:00 am unless set)
+  between the times of `QUIET_HOURS` (10:00 pm to 7:00 am unless set)
   an alert is still posted, but without a sound and with no push, and
   the morning's briefing lists it under "🌙 Held back overnight" in
   the same neutral words, until it is dealt with. **A pill reminder
   always gets through, with its sound**: its kind says so in the table
   (`through=True`). Nothing else does, something wrong included. Off,
   nothing is ever held.
+
+**What needs you** (a job that did not work, reminders that can't be
+sent, spend over the day's limit, memory over its limit, a bug the bot
+filed itself) reaches you three ways, all from the one ranking:
+
+- the briefing's "⚠️ Needs a look" box, with the bug's id, until it is
+  dealt with;
+- the status line;
+- a ping: by day, one line in the hub that mentions you ("⚠️ B14 ·
+  backup failed at 3:00 am"), gone once dealt with. In quiet hours
+  nothing is posted; at 7:00 am the "Needs-a-look check" (in `my
+  schedule`, yours to move) pings once if the box is not empty.
+
+What is worth knowing but not urgent (an unexpected restart, a
+catch-up, a self-test that did not run) is a small "🗒️" line at the
+foot of the briefing, and never a ping.
+
+To add something that needs you: hand in an attention item with
+`PROBLEM` (a task through its contract, the core with
+`attention.provide`); the box, the status line and the ping follow
+with no other code. `ping=False` for something to show but not ping.
+For something only worth knowing: `await notify.worth_knowing("…")`.
+Never rely on #bot-log to tell you.
 
 For a new kind of alert: add a line to `KINDS`, and call
 `notify.post(...)` with the attention item it is about in place of

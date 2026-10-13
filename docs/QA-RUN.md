@@ -1004,6 +1004,21 @@ Needs `DMS_ENABLED=true` in `.env`, then a restart of live.
 | 4 | "took <a pill>" there | The same card or confirmation as in #inbox, silent | R92 |
 | 5 | Have someone else send live a direct message (or use a second account) | Ignored | R92 |
 
+## 55. What needs you: the box, the ping and the 7:00 am check (waiting for QA)
+
+On live, with the briefing on. Rows 1 to 3 need something to be wrong:
+the simplest is `dev run` of a job that fails, on the dev bot, or wait
+for a real one.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | By day, with a job that has just failed | One line in the hub that mentions you: "⚠️ B14 · backup failed at 3:00 am". Your phone buzzes once. The briefing has "⚠️ Needs a look" on top with the same words; the status line too | K48, K49 |
+| 2 | Put it right (the job works again) | The line leaves the hub within a couple of minutes; the box and the status line clear | K48 |
+| 3 | Something fails between 10:00 pm and 7:00 am | Nothing in the hub and no buzz at the time. In the morning the briefing's box has it, and at 7:00 am one line: "⚠️ 1 thing needs a look" | K49 |
+| 4 | A morning with nothing wrong | Nothing at 7:00 am | K49 |
+| 5 | After a restart you did not ask for (restart the PC) | The next briefing has a small line at its foot: "🗒️ 3:02 am · The PC restarted: the bot was off for about 12m". No ping | K50 |
+| 6 | Say `my schedule` | "Needs-a-look check · every day at 7:00 am"; every line ends "last: … ✅" (or "⚠️ failed", or "not run yet"), the bot's own a small line each | K51 |
+
 ## When you finish
 
 - Stop the test copy (`Ctrl + C`) and check nothing is left running:

@@ -43,12 +43,6 @@ low priority, nothing dropped without a reason.
 
 ### Soon
 
-- **Level 1 problems as alerts** (later, said 2026-10-13): a job
-  that did not work or the bot's memory use is on the status line, in
-  the briefing and in its bug, but nothing pings for it. With the
-  notify service (`core/notify.py`) it would be one more kind in its
-  table. **When built, level 1 pings respect quiet hours** (the kind
-  is not marked `through`: built so already).
   Also there, as an option: the dev bot as an always-on caretaker
   that reads only live's health (`docs/specs/attention.md`, section 8).
 - **Changing where an alert goes by words, with a card** (said

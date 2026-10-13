@@ -75,7 +75,17 @@ def _lines(section: Section) -> list[str]:
     return [*said.lines, *(design.small(line) for line in (said.hint, said.before) if line)]
 
 
-def text(sections: list[Section], day: date, problems: tuple[str, ...] = (), held_back: tuple[str, ...] = (), hours: str = "") -> str:
+MAX_NOTES = 3
+
+
+def worth_knowing(notes: tuple[str, ...]) -> list[str]:
+    """What is worth knowing and needs nothing done, each in one small line: the
+    latest three, and the rest counted."""
+    shown = [design.small(f"🗒️ {note}") for note in notes[-MAX_NOTES:]]
+    return [*([design.small(f"🗒️ …and {len(notes) - MAX_NOTES} more before")] if len(notes) > MAX_NOTES else []), *shown]
+
+
+def text(sections: list[Section], day: date, problems: tuple[str, ...] = (), held_back: tuple[str, ...] = (), hours: str = "", notes: tuple[str, ...] = ()) -> str:
     """The briefing as a plain message (the old look, and what is logged)."""
     lines = [f"## {HEADING}", design.small(date_line(day))]
     if problems:
@@ -84,11 +94,13 @@ def text(sections: list[Section], day: date, problems: tuple[str, ...] = (), hel
         lines += ["", HELD, *held_back, *([design.small(held_note(hours))] if hours else [])]
     for section in sections:
         lines += ["", _name(section), *_lines(section)]
+    if notes:
+        lines += ["", *worth_knowing(notes)]
     lines += ["", design.small(FOOT)]
     return "\n".join(lines)
 
 
-def layout(sections: list[Section], day: date, problems: tuple[str, ...] = (), held_back: tuple[str, ...] = (), hours: str = "") -> tuple:
+def layout(sections: list[Section], day: date, problems: tuple[str, ...] = (), held_back: tuple[str, ...] = (), hours: str = "", notes: tuple[str, ...] = ()) -> tuple:
     """The briefing in the one style of docs/DESIGN.md: a standing message, a
     box a task in the colour of its status, and no buttons. What needs a look
     is a box of its own on top, then what was held back overnight."""
@@ -101,4 +113,5 @@ def layout(sections: list[Section], day: date, problems: tuple[str, ...] = (), h
         design.item(section.summary.status if section.summary is not None and section.summary.status else design.QUIET, _name(section), *_lines(section))
         for section in sections
     ]
-    return design.standing(HEADING, date_line(day), boxes, hint=FOOT)
+    pieces = design.standing(HEADING, date_line(day), boxes)
+    return (*pieces, *([design.Text("\n".join(worth_knowing(notes)))] if notes else []), design.Text(design.small(FOOT)))

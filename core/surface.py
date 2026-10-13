@@ -121,6 +121,11 @@ def lacking(channel_id: int, permissions: tuple[str, ...]) -> tuple[str, ...]:
     return _backend.lacking(channel_id, permissions) if _backend is not None else tuple(permissions)
 
 
+def mention(account_id: int | None) -> str:
+    """A person as the interface writes them so that they are told (a ping). "" if it can't."""
+    return _backend.mention(account_id) if _backend is not None and account_id else ""
+
+
 def link(channel_id: int | None, message_id: int | None) -> str:
     """Where a message is, as a link the interface opens. "" if it can't be said."""
     return _backend.link(channel_id, message_id) if _backend is not None and channel_id and message_id else ""

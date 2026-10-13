@@ -59,6 +59,23 @@ The briefing is behind `BRIEFING_ENABLED` and the clean-up behind
 `HUB_TIDY`, both off until turned on; with the clean-up off,
 yesterday's checklist stays where it was.
 
+## What I need to know (the rule)
+
+Anything I need to know reaches me through **the briefing or a ping**,
+never only through #bot-log. #bot-log is a record kept just in case; I
+do not read it.
+
+| What | Where it shows | Does it ping? |
+|---|---|---|
+| Needs me: a job that did not work, reminders that can't be sent, spend over the day's limit, memory over its limit, a bug the bot filed | The briefing's red "⚠️ Needs a look" box, with its bug's id; the status line; gone once dealt with | By day, at once: one line in the hub that mentions me ("⚠️ B14 · backup failed at 3:00 am"). In quiet hours nothing, then one ping at 7:00 am if the box is not empty ("⚠️ 2 things need a look") |
+| A pill reminder | The hub | Always, at any hour |
+| Worth knowing, not urgent: an unexpected restart, a catch-up, a self-test that did not run | One small line at the foot of the briefing ("🗒️ 3:02 am · …"), three at most | Never |
+| Everything else the bot does by itself | #bot-log only | Never |
+
+A ping is one short line, the same words as the status line, and never
+holds a pill's name. It is an Alert: it goes once the thing is dealt
+with.
+
 ## The status line
 
 Three words, used the same way everywhere: the **status line** is the

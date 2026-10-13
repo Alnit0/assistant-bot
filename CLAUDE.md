@@ -417,7 +417,18 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   line posted first, which names nothing of mine (`private` is the
   names it must not show; a line that does is not pushed). Tapping
   opens the Discord message
-- Quiet hours (`QUIET_HOURS`, in force only with
+- **Anything I need to know reaches me through the briefing or a
+  ping, never only through #bot-log** (I do not read it; it stays the
+  record it is, and nothing about what it records changes). What needs
+  me is level 1 of the ranking: the briefing's "⚠️ Needs a look" box,
+  the status line, and a ping (`core/alerts.py`: by day one line in
+  the hub that mentions me, removed once dealt with; in quiet hours
+  nothing, and one check at 7:00 am if the box is not empty). A new
+  kind of problem is an attention item with `PROBLEM`, never a card in
+  #bot-log alone; `ping=False` for one that needs nothing done. What is
+  worth knowing but not urgent is `notify.worth_knowing(line)`: a small
+  line in the briefing, no ping
+- Quiet hours (`QUIET_HOURS`, 10:00 pm to 7:00 am, in force only with
   `QUIET_HOURS_ENABLED`) are the notify service's and nobody else's:
   in them an alert of any level is posted without a sound, never
   pushed, and kept (`held_alerts`) for the briefing to list until its

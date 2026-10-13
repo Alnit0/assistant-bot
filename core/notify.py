@@ -65,6 +65,8 @@ class Kind:
 # The one place: every kind of alert, where it goes, and whether quiet hours hold it
 KINDS: dict[str, Kind] = {
     "pills.reminder": Kind("Reminder", BOTH, through=True),
+    # Something wrong that needs me (core/alerts.py): a ping in the hub by day, held by quiet hours
+    "system.problem": Kind("Needs a look", DISCORD),
 }
 UNLISTED = Kind("Alert", DISCORD)
 
@@ -75,6 +77,7 @@ PRIORITIES = {attention.LEVEL_PROBLEM: 5, attention.LEVEL_DUE: 4}
 PRIORITY = 3
 NOT_SAID = "Open Discord to see it."  # the body of a push whose own line could not be shown
 KEEP_HELD = timedelta(days=7)  # what was held back is kept this long
+NOTE = "note"  # not an alert: something worth knowing, kept for the briefing to say in a small line
 
 
 def kind(name: str) -> Kind:
@@ -151,10 +154,47 @@ def db_hold(conn: sqlite3.Connection, user_id: int, name: str, key: str, line: s
 
 def db_held(conn: sqlite3.Connection, user_id: int, since: datetime, until: datetime) -> list[Held]:
     rows = conn.execute(
-        "SELECT kind, line, held_at, times FROM held_alerts WHERE user_id = ? AND held_at >= ? AND held_at < ? ORDER BY held_at, id",
-        (user_id, since.isoformat(), until.isoformat()),
+        "SELECT kind, line, held_at, times FROM held_alerts WHERE user_id = ? AND kind != ? AND held_at >= ? AND held_at < ? ORDER BY held_at, id",
+        (user_id, NOTE, since.isoformat(), until.isoformat()),
     ).fetchall()
     return [Held(name, line, datetime.fromisoformat(at), times) for name, line, at, times in rows]
+
+
+def db_notes(conn: sqlite3.Connection, user_id: int, since: datetime, until: datetime) -> list[Held]:
+    rows = conn.execute(
+        "SELECT kind, line, held_at, times FROM held_alerts WHERE user_id = ? AND kind = ? AND held_at >= ? AND held_at < ? ORDER BY held_at, id",
+        (user_id, NOTE, since.isoformat(), until.isoformat()),
+    ).fetchall()
+    return [Held(name, line, datetime.fromisoformat(at), times) for name, line, at, times in rows]
+
+
+def db_owner(conn: sqlite3.Connection) -> int | None:
+    row = conn.execute("SELECT id FROM users WHERE role = 'owner' ORDER BY id LIMIT 1").fetchone()
+    return row[0] if row else None
+
+
+async def worth_knowing(line: str, key: str = "") -> None:
+    """Something worth knowing that needs nothing done (an unexpected restart,
+    a catch-up, a self-test that did not run): no ping, no message. It is
+    kept, and the briefing says it in one small line. Never raises."""
+    try:
+        now = clock.now()  # the bot's own clock: the briefing that lists it goes by the same one
+
+        def keep(conn: sqlite3.Connection) -> None:
+            user_id = db_owner(conn)
+            if user_id is not None:
+                db_hold(conn, user_id, NOTE, key or now.isoformat(), line.strip(), attention.LEVEL_USEFUL, None, None, now)
+
+        await database.run(keep)
+    except Exception:
+        log.exception("Could not keep a line for the briefing: %s", line)
+
+
+async def notes_for(user_id: int, day: date) -> list[Held]:
+    """What is worth knowing for a day's briefing: from the evening before
+    (when the quiet hours began) to the end of that day. Read only."""
+    since, _ = window(day)
+    return await database.run(db_notes, user_id, since, days.at(day + timedelta(days=1), config.QUIET_HOURS[1]))
 
 
 async def held_overnight(user_id: int, day: date) -> list[Held]:
@@ -237,20 +277,21 @@ async def settle() -> None:
 
 # --- the one way out --------------------------------------------------------------------------------------------------
 async def post(
-    name: str, channel_id: int, card: Card, *, user_id: int, item: attention.Item, key: str = "", private: tuple[str, ...] = ()
+    name: str, channel_id: int, card: Card, *, user_id: int, item: attention.Item, key: str = "", private: tuple[str, ...] = (), quiet: bool = False
 ) -> int | None:
     """Post an alert of this kind in a channel and tell me about it as its
     kind and its level say. `card` is what is posted first, and its first
     line is what a phone shows: the task writes the rest in after. `key` is
     what it is about (a dose's id), so that asked for again it is the same
-    alert; `private` the names its line must not show. Returns the message's
-    id, or None if there is nowhere to post it."""
+    alert; `private` the names its line must not show; `quiet` posts it with
+    no sound and no push whatever its kind says (the dev bot's own). Returns
+    the message's id, or None if there is nowhere to post it."""
     now = clock.now()
     # An alert is a thing whose time has come: one the ranking would not place (its day is over) stands as due
     rank = attention.level(item, now) or attention.LEVEL_DUE
     held = holds(name, now)
-    by_push = pushes(name) and not held
-    silent = held or (by_push and kind(name).where == NTFY)
+    by_push = pushes(name) and not held and not quiet
+    silent = held or quiet or (by_push and kind(name).where == NTFY)
     message_id = await cards.send(channel_id, card, silent=silent)
     if message_id is None:
         return None

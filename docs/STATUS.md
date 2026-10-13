@@ -5,6 +5,45 @@ session; the end-of-task checklist updates it at the end of every task.
 
 **Updated:** 2026-10-14
 
+## Decided overnight (2026-10-14)
+
+Choices the batch's prompt did not settle, made as the standard, the
+design and the hub principle point. Each is yours to overturn.
+
+**Item 5, a hub that holds what matters**
+
+1. **The ping's words are the status line's**: "⚠️ B14 · backup failed
+   at 3:00 am" (the time only when it is known). One line, you
+   mentioned in front, in the hub; in #inbox if the hub can't be found.
+2. **Two things are shown and never ping**: dev mode left on (you
+   turned it on) and the self-test's month being spent (nothing to
+   do). Both stay in the box and on the status line.
+3. **Something that goes wrong in quiet hours posts nothing at all**
+   until morning: it is in the briefing's box, and the 7:00 am check
+   pings once ("⚠️ 2 things need a look"). The check pings again each
+   morning for as long as the box is not empty.
+4. **A ping's line goes when the thing is dealt with** (through the
+   tidy), and in any case with the next morning's tidy; the 7:00 am
+   check is then what reminds you.
+5. **Quiet hours now end at 7:00 am** (`QUIET_HOURS` default
+   22:00-07:00, as you wrote; it was 6:00). The briefing is posted at
+   6:00 am, inside them: it is posted silently anyway.
+6. **"Worth knowing"** is at most three small lines at the foot of
+   the briefing ("🗒️ 3:02 am · The PC restarted: …"), from 10:00 pm
+   the evening before; older ones are counted ("…and 2 more before").
+   A nightly self-test that **did not run** (low memory, still
+   running) is one of these; one whose **step failed** needs a look.
+7. **"Reminders that can't be sent"** means a reminder was due and
+   there was no hub to post it in. It needs a look, and names no pill.
+8. **"My schedule"**: the bot's own schedules (backup, end of day,
+   nightly self-test) are now a small line each with their last run,
+   and "see #bot-log" is gone from the list: a run that failed reads
+   "⚠️ failed", one never run "last: not run yet".
+9. **The dev bot mentions nobody and makes no sound** for any of
+   this, so a self-test can not reach your phone.
+10. **The 7:00 am check is yours to move** (`my schedule`), like the
+    morning routine. Moved into quiet hours it would be held.
+
 ## Questions for Alex
 
 **The hub tidy is on (2026-10-14).** `HUB_TIDY=true` is in `.env` and

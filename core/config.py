@@ -248,7 +248,7 @@ def hours(text: str | None, default: tuple[time, time]) -> tuple[time, time]:
 # Quiet hours apply to pings only (the status line is silent): in them only a level 1
 # item pings, and the rest waits for the briefing (core/attention.py). Read and shown
 # now; used when pings move onto the attention model
-QUIET_HOURS = hours(os.getenv("QUIET_HOURS"), (time(22, 0), time(6, 0)))
+QUIET_HOURS = hours(os.getenv("QUIET_HOURS"), (time(22, 0), time(7, 0)))
 # Until this time of day a day with everything taken says so on the status line
 # ("💊 all 5 taken"); after it the line looks ahead to the morning ("🌅 6am")
 try:

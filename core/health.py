@@ -6,7 +6,7 @@ import sys
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
 
-from core import attention, clock, config, database, devmode, hub, scheduler, timetable
+from core import attention, clock, config, costs, database, devmode, hub, scheduler, timetable
 from core.attention import PROBLEM, USEFUL, Item
 
 log = logging.getLogger("assistant")
@@ -139,9 +139,10 @@ def job_problem(label: str, ended: str) -> str:
 async def jobs(user_id: int, now: datetime) -> list[Item]:
     """A level 1 item for each kind of job whose latest run did not work, the most recent first."""
     found = []
+    when = await scheduler.troubled_at()
     for task, kind, ended in await scheduler.troubled():
         said = job_problem(scheduler.label(task, kind), ended)
-        found.append(Item(said, PROBLEM, bug=await bug_for(job_key(task, kind)), short=(said,)))
+        found.append(Item(said, PROBLEM, when=when.get((task, kind)), bug=await bug_for(job_key(task, kind)), short=(said,)))
     return found
 
 
@@ -153,7 +154,23 @@ async def dev_mode(user_id: int, now: datetime) -> list[Item]:
     """On live, dev mode is something to put right: waits are short and nothing tidies itself."""
     if config.DEV_DATABASE or not devmode.enabled:
         return []
-    return [Item("dev mode is on", PROBLEM, can_act=True, short=("dev mode",), icon=DEV_MODE_ICON)]
+    return [Item("dev mode is on", PROBLEM, can_act=True, short=("dev mode",), icon=DEV_MODE_ICON, ping=False)]
+
+
+# --- Claude spend over the day's limit --------------------------------------------------------------------------------------
+SPEND_ICON = "💰"
+
+
+async def spend(user_id: int, now: datetime) -> list[Item]:
+    """A level 1 item on a day whose Claude spend has passed the daily limit: it goes with the day."""
+    limit = config.DAILY_SPEND_LIMIT
+    if limit <= 0:
+        return []
+    spent = await database.run(costs.db_spent_on, now)
+    if spent <= limit:
+        return []
+    said = f"Claude spend today is over the limit: {costs.money(spent)} of {costs.limit_money(limit)}"
+    return [Item(said, PROBLEM, short=("spend", costs.limit_money(spent)), icon=SPEND_ICON)]
 
 
 # --- the bot's own memory ----------------------------------------------------------------------------------------------
@@ -316,7 +333,7 @@ def spend_problem(spent: float, limit: float) -> Item | None:
     """The item for a month in which the self-test has spent its limit: from then on its runs use recorded answers only."""
     if spent < limit:
         return None
-    return Item("the self-test has spent this month's limit: recorded answers only until next month", PROBLEM, short=("self-test spend", f"US${spent:.2f}"))
+    return Item("the self-test has spent this month's limit: recorded answers only until next month", PROBLEM, short=("self-test spend", f"US${spent:.2f}"), ping=False)
 
 
 def selftest_problem(row: dict | None, bugs: dict) -> Item | None:
@@ -366,6 +383,7 @@ def setup() -> None:
     attention.provide("selftest", attention.PROBLEM_ICON, selftest)
     attention.provide("memory", attention.PROBLEM_ICON, memory)
     attention.provide("dev mode", DEV_MODE_ICON, dev_mode)
+    attention.provide("spend", SPEND_ICON, spend)
     attention.provide("morning", MORNING_ICON, morning)
     scheduler.on_ran(attention.changed)
     scheduler.on_trouble(job_trouble)

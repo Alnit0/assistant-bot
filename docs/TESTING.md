@@ -37,7 +37,7 @@ Last updated: 2026-10-14
 | G | Timers | 32 | 12 | 20 | 17 | 15 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
 | J | Dev mode | 68 | 19 | 49 | 47 | 21 | 0 | 0 |
-| K | Startup and housekeeping | 47 | 30 | 17 | 15 | 32 | 0 | 0 |
+| K | Startup and housekeeping | 52 | 34 | 18 | 16 | 36 | 0 | 0 |
 | L | Keep | 14 | 6 | 8 | 8 | 6 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
 | P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
@@ -46,7 +46,7 @@ Last updated: 2026-10-14
 | S | Routing and confirm cards | 80 | 27 | 53 | 18 | 61 | 0 | 1 |
 | T | Tasks in plain words | 26 | 7 | 19 | 4 | 22 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **537** | **214** | **323** | **253** | **283** | **0** | **1** |
+| | **Total** | **542** | **218** | **324** | **254** | **287** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -354,6 +354,11 @@ Any channel. Check the bot's status in the member list.
 | K45 | 🤖 Auto | The door to the interface | A place is a plain record; text, pins, reactions and edits go by ids; Discord's errors come back as Gone or Failed with status and code; with nothing bound nothing is found; Discord answers every verb the door has; a card reaches Discord through it | ✅ Pass | 2026-10-14 | `tests/test_interface.py` |
 | K46 | 🤖 Auto | A start says nothing; an unexpected restart is one line | No hello and no start card; a restart asked for and a first start have no line; the PC restarting and a crash are each the first line of the one catch-up message, with how long the bot was off; a crash is noted on the way out and said once | ✅ Pass | 2026-10-14 | `tests/test_restart.py` |
 | K47 | 👤 Manual | After the PC restarts | Restart the PC. #bot-log gets one message, "⚠️ Back after an unexpected stop", starting "The PC restarted: the bot was off for about …"; #inbox gets nothing. Then `nssm restart assistant-bot`: nothing is posted anywhere | ⬜ Untested | |  |
+| K48 | 🤖 Auto | A ping for what needs me, by day | One short line with the bug and the time, me mentioned in front, said once; its line goes when the thing is dealt with; something I caused is shown and does not ping; the dev bot mentions nobody and makes no sound | ✅ Pass | 2026-10-14 | `tests/test_alerts.py` |
+| K49 | 🤖 Auto | Quiet hours and the 7:00 am check | In quiet hours nothing is posted; the check pings once with the count if the box is not empty, says nothing with an empty box, and is a schedule of mine | ✅ Pass | 2026-10-14 | `tests/test_alerts.py` |
+| K50 | 🤖 Auto | Worth knowing, not urgent | One small line in the briefing and never a ping; the latest three, the rest counted; a restart and a catch-up leave one, and #bot-log is told exactly as before | ✅ Pass | 2026-10-14 | `tests/test_alerts.py` |
+| K51 | 🤖 Auto | What needs me, and my schedule's last runs | Spend over the day's limit and reminders that can't be sent are level 1 (no pill named); every line of my schedule says when it last ran and whether it worked | ✅ Pass | 2026-10-14 | `tests/test_alerts.py`, `tests/test_schedule_task.py` |
+| K52 | 👤 Manual | A real ping in the hub | QA-RUN block 55 | ⬜ Untested | |  |
 
 ## L. Keep
 

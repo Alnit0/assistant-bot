@@ -3,7 +3,7 @@ import logging
 import sys
 from datetime import datetime, time
 
-from core import attention, config, scheduler, timetable
+from core import attention, config, notify, scheduler, timetable
 from core.discord_utils import log_error
 
 log = logging.getLogger("assistant")
@@ -78,6 +78,7 @@ async def _watch(process, full: bool) -> None:
     if wrong:
         log.error("Nightly self-test did not run: %s (exit code %s; logs/%s)", wrong, code, LOG_NAME)
         await log_error("Nightly self-test did not run", f"{wrong.capitalize()}. Its own words are in `logs/{LOG_NAME}`.")
+        await notify.worth_knowing(f"The nightly self-test did not run: {wrong}")
     else:
         log.info("Nightly self-test (%s) ended: %s", "full" if full else "touched stages", "every step passed, or nothing to run" if code == 0 else "a step failed: see its summary and its bug")
 
@@ -106,6 +107,7 @@ async def nightly_job(job: scheduler.Job) -> None:
         scheduler.report(job, scheduler.SKIPPED)
         scheduler.note(job, "the last one is still running")
         await log_error("Nightly self-test not started", "The last one is still running.")
+        await notify.worth_knowing("The nightly self-test was skipped: the last one was still running")
         return
     full = is_full(job.local_at, scheduler.utc_now())
     try:

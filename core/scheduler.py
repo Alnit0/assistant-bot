@@ -755,6 +755,16 @@ def note(job: Job, said: str) -> None:
     _notes[job.id] = said[:300]
 
 
+def _db_troubled_at(conn: sqlite3.Connection) -> dict[tuple[str, str], datetime]:
+    rows = conn.execute("SELECT skill, kind, MAX(finished_at) FROM scheduled_jobs WHERE status IN (?, ?) GROUP BY skill, kind", (FAILED, SKIPPED)).fetchall()
+    return {(row[0], row[1]): from_db(row[2]) for row in rows if row[2]}
+
+
+async def troubled_at() -> dict[tuple[str, str], datetime]:
+    """When each kind of job last failed or was skipped: {(task, kind): moment}."""
+    return await database.run(_db_troubled_at)
+
+
 async def troubled() -> list[tuple[str, str, str]]:
     """(task, kind, "failed" or "skipped") for each kind of job whose latest run
     did not work, the most recent first. Read from the jobs table, so a restart

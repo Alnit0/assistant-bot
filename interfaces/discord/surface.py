@@ -90,6 +90,10 @@ def lacking(channel_id: int, permissions: tuple[str, ...]) -> tuple[str, ...]:
     return tuple(name for name in permissions if not getattr(allowed, name, False))
 
 
+def mention(account_id: int | None) -> str:
+    return f"<@{account_id}>" if account_id else ""
+
+
 def link(channel_id: int | None, message_id: int | None) -> str:
     guild = getattr(getattr(_channel(channel_id), "guild", None), "id", None)
     return f"https://discord.com/channels/{guild}/{channel_id}/{message_id}" if guild and message_id else ""

@@ -462,6 +462,23 @@ def _add_ended_to_bot_alive(conn: sqlite3.Connection) -> None:
     conn.execute("ALTER TABLE bot_alive ADD COLUMN ended TEXT")
 
 
+def _create_needs_look(conn: sqlite3.Connection) -> None:
+    # What needs me that the bot knows it has told me about, or is waiting to (core/alerts.py):
+    # one row a thing, with the ping's message if one is up. Gone when the thing is dealt with
+    conn.execute(
+        """
+        CREATE TABLE needs_look (
+            key TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            line TEXT NOT NULL,
+            first_at TEXT NOT NULL,
+            channel_id INTEGER,
+            message_id INTEGER
+        )
+        """
+    )
+
+
 MIGRATIONS = [
     _create_message_log,
     _create_users,
@@ -486,6 +503,7 @@ MIGRATIONS = [
     _create_missed_messages,
     _create_held_alerts,
     _add_ended_to_bot_alive,
+    _create_needs_look,
 ]
 
 

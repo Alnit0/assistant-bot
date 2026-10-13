@@ -59,6 +59,9 @@ class Item:
     icon: str = ""  # the task's own unless said; ⚠️ for a problem
     task: str = ""  # who handed it in: filled in when it is gathered
     until: datetime | None = None  # the moment it stops being worth saying ("all 5 taken", until the evening)
+    # A problem pings me when it appears (core/alerts.py). False for one I caused or that needs nothing done
+    # (dev mode left on, the self-test's month being spent): it is shown, in the box and the status line, and that is all
+    ping: bool = True
 
 
 def level(item: Item, now: datetime) -> int | None:

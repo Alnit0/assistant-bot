@@ -6,7 +6,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from core import clock, database, discord_utils, identity, outgoing, scheduler, surface
+from core import clock, database, discord_utils, identity, notify, outgoing, scheduler, surface
 from core.config import real_now_nz
 
 log = logging.getLogger(__name__)
@@ -217,6 +217,15 @@ def stopped_line(alive: datetime | None, ended: str, booted: datetime | None, no
     return ""
 
 
+def briefing_line(unexpected: str, count: int) -> str:
+    """A restart in one small line, for the briefing: why, if nobody asked for it, and how much was caught up."""
+    rest = count - 1 if unexpected else count
+    caught = f"{rest} thing{'' if rest == 1 else 's'} caught up" if rest else ""
+    if unexpected:
+        return unexpected + (f" · {caught}" if caught else "")
+    return f"Restarted · {caught}"
+
+
 def checked(lines: list[str]) -> list[str]:
     """The lines as they may be shown: the same check as everything the bot
     says (core/outgoing.py: no internal label), and no job by the code's own
@@ -262,4 +271,6 @@ async def catch_up() -> list[str]:
         log.info("Caught up: %s", line)
     if lines:
         await discord_utils.log_simple(UNEXPECTED if unexpected else TITLE, "\n".join(f"• {line}" for line in lines))
+        # Worth knowing, not urgent: one small line in the briefing, no ping (core/notify.py)
+        await notify.worth_knowing(briefing_line(unexpected, len(lines)))
     return lines

@@ -2,9 +2,9 @@ from datetime import datetime
 
 from core import attention, config
 from core import day as days
-from core.attention import TIMED, USEFUL, Item
+from core.attention import PROBLEM, TIMED, USEFUL, Item
 from core.occurrences import DONE, MISSED
-from tasks.pills import checklist, today
+from tasks.pills import checklist, reminders, today
 
 # ---------------------------------------------------------------------------
 # Pills' attention items (core/attention.py): what about today's doses may
@@ -27,7 +27,15 @@ from tasks.pills import checklist, today
 DUE_WORD, MISSED_WORD = "due", "missed"
 
 
+CANNOT_REMIND = Item("reminders can't be sent: the hub channel can't be found", PROBLEM, short=("reminders can't be sent",), icon="⚠️")
+
+
 async def items(user_id: int, now: datetime) -> list[Item]:
+    # Something wrong that needs me, whatever today holds: a reminder that was due had nowhere to go
+    return [*([CANNOT_REMIND] if reminders.cannot_send() else []), *await _doses(user_id, now)]
+
+
+async def _doses(user_id: int, now: datetime) -> list[Item]:
     day = days.day_of(now)
     _, listed, _ = await checklist.read(user_id, day)
     if not listed:

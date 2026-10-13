@@ -59,7 +59,16 @@ def paused_text(schedule: Schedule, today: date) -> str:
     return f"until {day_text(schedule.paused_until, today)}" if schedule.paused_until else "until you turn it back on"
 
 
-_ENDED = {"done": "✅", "failed": "⚠️ failed, see #bot-log", "skipped": "⚠️ not done, see #bot-log", "missed": "⏭️ set aside"}
+_ENDED = {"done": "✅", "failed": "⚠️ failed", "skipped": "⚠️ not done", "missed": "⏭️ set aside"}
+NOT_RUN = "last: not run yet"
+
+
+def last_text(listed: Listed, today: date) -> str:
+    """When a schedule last ran and whether it worked: every line of the list says so."""
+    if listed.last is None:
+        return NOT_RUN
+    ended, stamp = listed.last
+    return f"last: {moment_text(datetime.fromisoformat(stamp), today)} {_ENDED.get(ended, ended)}"
 
 
 def _detail(listed: Listed, today: date) -> str:
@@ -67,9 +76,7 @@ def _detail(listed: Listed, today: date) -> str:
     parts = [f"#{schedule.channel}", notify_text(schedule.notify)]
     if listed.coming is not None:
         parts.append(f"next: {moment_text(listed.coming.local, today)}")
-    if listed.last is not None:
-        ended, stamp = listed.last
-        parts.append(f"last: {moment_text(datetime.fromisoformat(stamp), today)} {_ENDED.get(ended, ended)}")
+    parts.append(last_text(listed, today))
     return " · ".join(parts)
 
 
@@ -89,9 +96,13 @@ def _counts(on: list, paused: list) -> str:
     return f"{len(on)} on" + (f" · {len(paused)} paused" if paused else "") + " · times are New Zealand time"
 
 
-def _own_line(own: list[Listed]) -> str:
-    said = " · ".join(f"{each.schedule.name.lower()} {timeinput.format_time(each.schedule.at)}" for each in own)
-    return f"The bot's own, not changed here: {said}" if own else ""
+OWN = "The bot's own, not changed here:"
+
+
+def _own_lines(own: list[Listed], today: date) -> list[str]:
+    """The bot's own schedules, a line each, with when each last ran and whether it worked."""
+    said = [f"{each.schedule.name} · {timeinput.format_time(each.schedule.at)} · {last_text(each, today)}" for each in own]
+    return [OWN, *said] if own else []
 
 
 def list_text(found: list[Listed], today: date) -> str:
@@ -105,7 +116,7 @@ def list_text(found: list[Listed], today: date) -> str:
         lines += [design.small(f"{each.schedule.name} · {when(each.schedule)} · {paused_text(each.schedule, today)}") for each in paused]
     if not on and not paused:
         lines += ["", "Nothing is scheduled."]
-    lines += ["", *(design.small(line) for line in (_own_line(own), PILL_TIMES, HINT) if line)]
+    lines += ["", *(design.small(line) for line in (*_own_lines(own, today), PILL_TIMES, HINT) if line)]
     return "\n".join(lines)
 
 
@@ -126,7 +137,7 @@ def list_layout(found: list[Listed], today: date) -> tuple:
     if paused:
         lines = [design.small(f"{each.schedule.name} · {when(each.schedule)} · {paused_text(each.schedule, today)}") for each in paused]
         later.append(design.item(design.QUIET, "⏸️ **Paused**", *lines))
-    hint = "\n".join(design.small(line) for line in (_own_line(own), PILL_TIMES, HINT) if line)
+    hint = "\n".join(design.small(line) for line in (*_own_lines(own, today), PILL_TIMES, HINT) if line)
     pieces = design.standing(HEADING, _counts(on, paused), boxes, later)
     return (*pieces, design.Text(hint))
 

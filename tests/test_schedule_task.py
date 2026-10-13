@@ -59,9 +59,10 @@ def test_the_list_shows_each_schedule_when_it_runs_where_and_its_next_run(world)
     tomorrow = world.today + timedelta(days=1)
     assert shown.text.splitlines()[:5] == [
         "## 🗓️ My schedule", "-# 1 on · times are New Zealand time", "", "**Pills checklist** · every day at `6:00 am`",
-        "-# #hub · silent · next: tomorrow 6:00 am",
+        "-# #hub · silent · next: tomorrow 6:00 am · last: not run yet",
     ]
-    assert "-# The bot's own, not changed here: nightly backup 3:00 am" in shown.text and "-# Pill times belong to each pill: say “pills”" in shown.text
+    assert "-# The bot's own, not changed here:" in shown.text and "-# Nightly backup · 3:00 am · last: not run yet" in shown.text, "every line says when it last ran and whether it worked"
+    assert "-# Pill times belong to each pill: say “pills”" in shown.text
     assert design.problem(shown.layout) == "" and design.buttons(shown.layout) == [], "drawn within the limits, and no buttons: every change is by words"
     assert shown.layout[1].status == design.DUE, "the next to run is amber"
     assert design.texts(shown.layout)[1].startswith("**Pills checklist** · every day at `6:00 am`") and tomorrow > world.today

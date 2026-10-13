@@ -244,6 +244,11 @@ NO_HUB = ("💊 Pill reminders can't be sent", "Reminders are on, but the hub ch
 _said_no_hub = False
 
 
+def cannot_send() -> bool:
+    """Whether a reminder that was due could not be posted: there is no hub to post in."""
+    return enabled() and _said_no_hub
+
+
 async def _hub_missing(missing: bool) -> None:
     """Reminders are on and there is nowhere to post them: said once in
     #bot-log, and not again until the hub has been found in between."""

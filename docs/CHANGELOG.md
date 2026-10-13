@@ -6,6 +6,14 @@ backfilled from the git log.
 
 ## 2026-10-14
 
+- What needs you now reaches you: it is in the briefing's "⚠️ Needs a
+  look" box with its bug, and by day the bot pings you in the hub
+  with one line. Between 10:00 pm and 7:00 am it waits, and at 7:00 am
+  you get one ping if anything is waiting. Restarts and the like are
+  a small line at the foot of the briefing.
+- "My schedule" says for every line when it last ran and whether it
+  worked.
+
 - The hub tidy is on: what you say in the hub and the reply go once
   handled, nothing of a past day stays, and each morning starts with
   the tidy, then the checklist. The hub was cleared once to begin
