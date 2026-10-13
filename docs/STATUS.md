@@ -75,6 +75,49 @@ design and the hub principle point. Each is yours to overturn.
     read `HUB_TIDY=true` from live's `.env`; I stopped it, fixed
     that, and ran it again.
 
+**Design round 2 (asked during the night)**
+
+18. **I took "the thin question card" to be round 1's option B** (the
+    question as the heading, what was understood small under it).
+19. **The 13 sketches were posted to the design-options post by its
+    name**; if that post had been archived beyond reach a new one
+    called "🎨 Design options · round 2" was made in the same forum.
+20. **Not checked on a phone**: I can post sketches and not look at
+    them. `docs/DESIGN.md` says what counting characters suggests (a
+    block bar in a `##` title is at the limit); the check is yours.
+21. **The custom-emoji bar is drawn with ordinary characters**, with
+    the six images it would need listed in its sketch.
+
+**Item 3, one list of questions**
+
+22. **`docs/QUESTIONS.md` has 42**, and the long "Questions for Alex"
+    below stays as history, unedited, under a pointer. Gym's other 16
+    questions and the calendar's other 9 stay in their specs: the list
+    has only the ones a first build needs.
+
+**Item 7, weather**
+
+23. **The refresh is one schedule** ("Weather refresh", 8:50 am) that
+    books the day's later runs itself (11:50 am, 2:50 pm, 5:50 pm) as
+    one-off runs with a key each: a schedule holds one time of day,
+    and four schedules would crowd the list. Move it in `my schedule`
+    and the later runs follow, three hours apart, none from 8:00 pm.
+24. **Only the 5:50 am fetch failing needs a look.** A refresh that
+    fails keeps the forecast it had; its line in the run log says so.
+25. **The section reads** "🌤️ **Weather** · 14° to 20° · drizzle" and
+    under it "61% rain after 1pm · wind 15 km/h N", with "as of
+    5:50 am" small. Rain is said with a time only from 30%; under 5%
+    it is "no rain"; from 7:00 am or earlier it is "from the morning".
+    The icon is always 🌤️ (a section's icon is its task's): the sky is
+    a word.
+26. **Weather has nothing to say in plain words** ("what's the
+    weather?" is answered by chat as before, without the forecast).
+    That kept it out of the router, so no prompt changed and no
+    recorded answer went stale.
+27. **The dev bot and the tests read a recorded forecast** (a file),
+    never the network. The place in `.env` is Auckland city centre;
+    it is in nothing committed and is never logged.
+
 ## Questions for Alex
 
 **The open questions are one list now: `docs/QUESTIONS.md`** (42 of

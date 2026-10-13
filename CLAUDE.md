@@ -89,6 +89,9 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
 ### Structure
 
 - `core/` never imports from `tasks/`
+- A task may have a summary and nothing to route to (weather): the
+  registry hands it to `summaries.provide`, and it is in the briefing
+  without being in the router's catalogue
 - `tasks/registry.py` is the single source of what the bot can do
   (`help`, #commands, the list chat is given of what can be typed, and
   the router's catalogue all read it). Never hard-code a list of

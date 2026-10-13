@@ -55,11 +55,37 @@ def trimmed(summary: Summary) -> Summary:
     return replace(summary, glance=_cut(summary.glance), lines=tuple(lines), hint=_cut(summary.hint), before=_cut(summary.before))
 
 
+@dataclass(frozen=True)
+class Source:
+    """A task that has a summary and nothing to route to (weather): what the
+    gathering needs of an entry, and no more."""
+
+    name: str
+    icon: str
+    title: str
+    summary: Callable
+
+
+_sources: list[Source] = []
+
+
+def provide(name: str, icon: str, summary: Callable, title: str = "") -> None:
+    """A task with nothing to route to hands its summary in (the registry does
+    this for it). A task with actions does it through its entry instead."""
+    _sources[:] = [each for each in _sources if each.name != name]
+    _sources.append(Source(name, icon, title or name.capitalize(), summary))
+
+
+def forget_sources() -> None:
+    _sources.clear()
+
+
 async def gather(user_id: int, day: date) -> list[Section]:
-    """Every task's summary for this user and day, in the catalogue's order.
-    A task with nothing to say is left out."""
+    """Every task's summary for this user and day: the catalogue's, in its
+    order, then those of tasks with nothing to route to. A task with nothing
+    to say is left out."""
     found: list[Section] = []
-    for entry in actions.catalogue():
+    for entry in (*actions.catalogue(), *_sources):
         if entry.summary is None:
             continue
         try:

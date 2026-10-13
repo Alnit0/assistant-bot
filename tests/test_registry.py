@@ -35,7 +35,7 @@ def names(entries, attribute="keywords"):
 def test_every_task_loads_without_problems():
     assert registry.problems() == []
     assert [task.name for task in registry.loaded_tasks()] == [
-        "builtin", "archive", "briefing", "bugs", "channel", "dev", "keep", "lab", "pills", "schedule", "timers"
+        "builtin", "archive", "briefing", "bugs", "channel", "dev", "keep", "lab", "pills", "schedule", "timers", "weather"
     ]
 
 

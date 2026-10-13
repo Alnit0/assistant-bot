@@ -11,7 +11,7 @@ import tasks
 from core import day, dms, scheduler
 from core.config import CHANNELS, ENABLED_TASKS
 from core.context import Context
-from core import actions, confirm, database, devmode, discord_utils, lifecycle, livelists, outgoing, reactions, tidy
+from core import actions, confirm, database, devmode, discord_utils, lifecycle, livelists, outgoing, reactions, summaries, tidy
 from core.database import log_received, log_result
 from core.debounce import Debouncer
 from core.discord_utils import log_error, log_simple
@@ -110,6 +110,7 @@ def load() -> None:
     _events.clear()
     _app_commands.clear()
     _problems.clear()
+    summaries.forget_sources()
     _undocumented.clear()
     _keyword_router = Router()
     _reply_router = Router()
@@ -147,6 +148,9 @@ def load() -> None:
 
         _tasks.append(task)
         routed += entries
+        if not entries and type(task).summary is not Task.summary:
+            # A task with a summary and nothing to route to (weather): the briefing has it all the same
+            summaries.provide(task.name, task.icon, task.summary)
         for keyword in keywords:
             _check_registration(task, "keyword", keyword)
             _register_words(_keyword_router, task, "keyword", keyword)

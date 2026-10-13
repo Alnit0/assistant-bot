@@ -6,6 +6,10 @@ backfilled from the git log.
 
 ## 2026-10-14
 
+- Weather in the briefing: today's low and high, a word for the sky,
+  the chance of rain and roughly when, and the wind. Fetched at
+  5:50 am and kept current through the day.
+
 - Costs are in NZ$ wherever you see them (`dev cost`, pings, the
   briefing, the status line), at a rate fetched each morning. The
   daily alert is at NZ$1.00 and the self-test's month at NZ$3.50.

@@ -260,6 +260,16 @@ try:
     MEMORY_LIMIT_MB = float(os.getenv("MEMORY_LIMIT_MB") or 300)
 except ValueError:
     sys.exit("MEMORY_LIMIT_MB in .env must be a number of megabytes, e.g. 300")
+# Weather in the briefing (tasks/weather): on unless switched off. Where it is for is
+# WEATHER_LAT and WEATHER_LON (never in anything committed, never logged). WEATHER_SOURCE,
+# if set, is a file with a recorded forecast read in place of the network (the self-test's)
+WEATHER_ENABLED = flag(os.getenv("WEATHER_ENABLED"), True)
+try:
+    WEATHER_LAT = float(os.getenv("WEATHER_LAT")) if (os.getenv("WEATHER_LAT") or "").strip() else None
+    WEATHER_LON = float(os.getenv("WEATHER_LON")) if (os.getenv("WEATHER_LON") or "").strip() else None
+except ValueError:
+    sys.exit("WEATHER_LAT and WEATHER_LON in .env must be numbers, e.g. -41.29 and 174.78")
+WEATHER_SOURCE = (os.getenv("WEATHER_SOURCE") or "").strip()
 # Money is shown in NZ$ and recorded in US$ (core/money.py). The rate is fetched once a day;
 # until one has been, this is it
 try:

@@ -44,9 +44,9 @@ Last updated: 2026-10-14
 | Q | Time, days, the schedule model, the occurrence log and cards | 28 | 26 | 2 | 2 | 26 | 0 | 0 |
 | R | Pills | 82 | 29 | 53 | 45 | 37 | 0 | 0 |
 | S | Routing and confirm cards | 80 | 27 | 53 | 18 | 61 | 0 | 1 |
-| T | Tasks in plain words | 26 | 7 | 19 | 4 | 22 | 0 | 0 |
+| T | Tasks in plain words | 29 | 9 | 20 | 5 | 24 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **548** | **222** | **326** | **256** | **291** | **0** | **1** |
+| | **Total** | **551** | **224** | **327** | **257** | **293** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -706,6 +706,9 @@ The real tasks on the router's way: timers, bugs and pills setup. On the dev dat
 | T29 | 🤖 Auto | A dose of the day before, after midnight | “Last night at 11” is yesterday's dose at 11:00 pm, done at once, the line says yesterday and today's dose is untouched; said again nothing is logged twice; a time that has not come yet before 4:00 am is asked about as yesterday's and nothing changes until Log it; later in the day it is refused unless yesterday is said; a time that reads two ways, or no time, asks first with what is used; what cannot be yesterday's is said | ✅ Pass | 2026-10-13 | `tests/test_pills_checklist.py` |
 | T30 | 🤖 Auto | Looking back: yesterday, the week, the streak | Yesterday is shown as it was recorded, a line a dose, whatever has become of the pill since; with nothing to take it says so; the week is Monday to Sunday, a line a day up to today with a mark a dose, the count and the streak; the streak is days in a row, one for all pills, broken only by a missed dose and standing while today is still open; the briefing's pills section says it from two days up and writes nothing | ✅ Pass | 2026-10-13 | `tests/test_pills_history.py` |
 | T31 | 🤖 Auto | The weekly pills summary | Off unless switched on; its schedule is Sunday 7:00 pm in the hub, silent, mine to move; a run booked before it went off posts nothing; on, the week is posted in the hub with the count and the streak, one at a time (a slot), notifying only if its schedule says so; a week with nothing to take posts nothing; no hub is reported | ✅ Pass | 2026-10-13 | `tests/test_pills_history.py` |
+| T32 | 🤖 Auto | Weather: the words | A recorded forecast reads as one or two lines from a template; rain is said with roughly when only when likely; the wind and the sky are words; one that can't be read is refused | ✅ Pass | 2026-10-14 | `tests/test_weather.py` |
+| T33 | 🤖 Auto | Weather: fetched, kept and scheduled | The morning fetch keeps the forecast and the briefing's section reads it; a failed morning fetch is a failed job and the section says Weather unavailable; a failed refresh keeps what it had; the day's later refreshes are booked once each; no discord.py, nothing routed, two schedules; a task with only a summary is in the briefing | ✅ Pass | 2026-10-14 | `tests/test_weather.py` |
+| T34 | 👤 Manual | Weather on the phone | QA-RUN block 56 | ⬜ Untested | |  |
 
 ## U. Channel reset
 

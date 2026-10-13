@@ -1076,6 +1076,17 @@ async def p5(h: Harness) -> None:
         h.memo["briefing_hub"] = fresh.id
         h.saw(" / ".join(line for line in fresh.text.splitlines() if "Pills" in line or "Yesterday" in line)[:200])
 
+    async with h.step("5.01c", "Weather in the briefing, from a recorded forecast", "With WEATHER_ENABLED on: two schedules of its own, Weather fetch at 5:50 am and Weather refresh at 8:50 am; the briefing has a Weather section with the low and high, the sky, the rain and the wind, read from what was fetched (the network is never asked: WEATHER_SOURCE is a recorded forecast)", "item 7"):
+        h.check(config.WEATHER_ENABLED and bool(config.WEATHER_SOURCE), "WEATHER_ENABLED is not on, or there is no recorded forecast to read")
+        fetch, refresh = await schedule_named(h, "Weather fetch"), await schedule_named(h, "Weather refresh")
+        h.check(fetch is not None and refresh is not None and f"{fetch.at:%H:%M}" == "05:50" and f"{refresh.at:%H:%M}" == "08:50", f"the schedules are {[each.name for each in await h.schedules()]}")
+        fresh = await briefing_in_hub(h)
+        said = fresh.all_text if fresh is not None else ""
+        h.saw(next((line for line in said.splitlines() if "Weather" in line), "no Weather line")[:120])
+        h.check("**Weather** · 14° to 20° · drizzle" in said and "61% rain after 1pm · wind 15 km/h N" in said, f"the briefing: {said[:400]}")
+        ran = [each for each in await h.runs("weather", "fetch") if each[0] == "done"]
+        h.check(len(ran) >= 1, f"the 5:50 am fetch did not run: {await h.runs('weather', 'fetch')}")
+
     async with h.step("5.02", "`brief me` in #selftest-inbox", "With no request to Claude, a copy there: “☀️ Today”, the date, a Pills box with its count and the next dose; drawn, in the colour of its status, with no buttons", "scheduler stage 3 (briefing-v2)"):
         before = h._real_calls
         await h.say("brief me")

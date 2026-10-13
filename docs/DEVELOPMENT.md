@@ -1913,6 +1913,23 @@ with the bot: it is for working on this repository.
 - **To test by hand**: `powershell -File scripts\notify.ps1 -Kind
   finished -Text "hello"`.
 
+## Weather
+
+On unless `WEATHER_ENABLED=false`. Set where it is for in `.env`:
+`WEATHER_LAT` and `WEATHER_LON` (decimal numbers; never committed).
+
+- The briefing gets a section: "🌤️ **Weather** · 14° to 20° ·
+  drizzle", and under it "61% rain after 1pm · wind 15 km/h N".
+- It is fetched from Open-Meteo (free, no key) at **5:50 am**, before
+  the morning routine, and refreshed at **8:50 am** and then every 3
+  hours until 8:00 pm; the briefing is edited in place. Both are in
+  `my schedule` and can be moved.
+- If the 5:50 am fetch fails the section says "Weather unavailable",
+  and it counts as a failed job: it is in "⚠️ Needs a look". A later
+  refresh that fails keeps the forecast it had.
+- No request to Claude: the words are a template
+  (`tasks/weather/rules.py`). It answers nothing in plain words.
+
 ## The interface layer: no discord.py in new code
 
 New tasks and new core code never import discord.py
