@@ -226,9 +226,12 @@ def test_removing_one_keeps_its_row_stops_its_runs_and_adding_it_back_is_the_sam
 def test_the_state_claude_is_given_and_the_names_for_the_router(world):
     said = run(plain.state(world.request()))
     assert said == (
-        "The user's schedules now (use the name): Nightly backup (the bot’s own, cannot be changed); "
+        "The user's schedules now (use the name): Nightly backup (every day at 3:00 am, the bot's own); "
         "Pills checklist (every day at 6:00 am, silent, #hub). Can be scheduled: pills checklist."
     )
+    assert "cannot" not in said and "can't" not in said, "nothing in it invites Claude to decline: the code says what is the bot's own"
+    (entry,) = schedule_task.entries()
+    assert "Never decline because of whose it is" in entry.action("schedule_change").description
     assert run(plain.item_names(world.request())) == ["Pills checklist"]
     assert isinstance(names.unclear(list(schedules().values()), "move the checklist", lambda each: each.name), type(None))
 

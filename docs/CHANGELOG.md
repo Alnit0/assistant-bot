@@ -6,6 +6,11 @@ backfilled from the git log.
 
 ## 2026-10-13
 
+- A briefing, switched off until you turn it on (`BRIEFING_ENABLED`):
+  one card in the hub each morning, above the checklist, saying what
+  today holds and how yesterday went, kept up to date in place; and
+  `brief me`.
+
 - `my schedule` shows what the bot does by itself and when, and you
   can change it by saying so: move it, pause it, pick the days, make
   it silent or not, add another time, remove one. Each is a card first.

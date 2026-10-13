@@ -1,7 +1,7 @@
 import logging
 from datetime import date, datetime, time, timedelta
 
-from core import cards, clock, config, database, discord_utils, hub, lifecycle, live, llm, occurrences, restart, scheduler, timeinput, timetable
+from core import cards, clock, config, database, discord_utils, hub, lifecycle, live, llm, occurrences, restart, scheduler, summaries, timeinput, timetable
 from core import day as days
 from core import schedule as core_schedule
 from core.cards import Button, Card
@@ -162,6 +162,8 @@ async def post(user_id: int, channel_id: int | None = None) -> int | None:
 async def refresh(user_id: int) -> None:
     """Bring today's checklist and the messages under it up to date in place.
     Nothing to do if it hasn't been posted today; posted afresh if it has gone."""
+    # Whatever shows a summary of the pills (the briefing) is told: something about today changed
+    summaries.changed(TASK, user_id)
     pills, listed, day = await view(user_id)
     held = await database.run(store.db_messages, user_id, day)
     sheet = next((message for message in held if message.kind == CHECKLIST), None)

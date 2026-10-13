@@ -283,6 +283,12 @@ async def p1(h: Harness) -> None:
         h.memo["sheet_d1"] = shown.id
         h.saw(shown.text.splitlines()[0][:80])
 
+    async with h.step("1.11a", "With BRIEFING_ENABLED off, the morning is as it always was", "No briefing in the hub, and the 6:00 am schedule is the checklist alone, under its own name", "scheduler stage 3: off"):
+        h.check(not config.BRIEFING_ENABLED, "BRIEFING_ENABLED is on in this start")
+        h.check(await h.count(h.hub, "☀️ Today") == 0, "a briefing was posted")
+        sheet = await schedule_named(h, "Pills checklist")
+        h.check(sheet is not None and sheet.steps == ("pills.checklist",), f"the 6:00 am schedule is {sheet}")
+
     async with h.step("1.11b", "The run log for the 6:00 am checklist", "One run for today's 6:00 am, done, with its key and a line saying what it decided; tomorrow's 6:00 am booked once", "scheduler stage 1"):
         day_stamp = f"{config.now_nz():%Y-%m-%d}"
         found = await h.runs("pills", "checklist")
@@ -905,4 +911,106 @@ async def p4(h: Harness) -> None:
         h.saw(f"checklist booked for {sheet.local_at}")
 
 
-PHASES = {"p1": p1, "p2": p2, "p3": p3, "p4": p4}
+# ---------------------------------------------------------------------------
+# Start 5: the briefing switched on (the clock is the real time again)
+# ---------------------------------------------------------------------------
+BRIEFING = "☀️ Today"
+
+
+async def briefing_in_hub(h: Harness):
+    """The briefing the bot keeps for the hub, as Discord has it."""
+    from core import livelists
+
+    placed = await database.run(livelists.db_get, h.user.id, "briefing:hub")
+    return await h.get(h.hub, placed.message_id) if placed is not None else None
+
+
+async def p5(h: Harness) -> None:
+    async with h.step("5.01", "A start with BRIEFING_ENABLED on", "The 6:00 am schedule is the same row, now called Morning routine, with two steps: the briefing, then the pills checklist; both are booked for the next 6:00 am", "scheduler stage 3"):
+        h.check(config.BRIEFING_ENABLED, "BRIEFING_ENABLED is not on")
+        routine = await schedule_named(h, "Morning routine")
+        h.check(routine is not None and routine.steps == ("briefing.post", "pills.checklist") and f"{routine.at:%H:%M}" == "06:00", f"the schedules are {[(each.name, each.steps) for each in await h.schedules()]}")
+        h.check(await schedule_named(h, "Pills checklist") is None, "there is still a schedule called Pills checklist beside it")
+        for task, kind, step in (("briefing", "post", 1), ("pills", "checklist", 2)):
+            waiting = [each for each in await h.runs(task, kind) if each[0] == "pending" and each[2].startswith(f"s{routine.id}@")]
+            h.check(len(waiting) == 1 and waiting[0][2].endswith(f"#{step}"), f"{task}/{kind} booked: {waiting}")
+        h.memo["routine"] = routine.id
+
+    async with h.step("5.01b", "A fresh day, 9:00 am: the morning routine ran at 6:00 on the way", "One briefing in the hub and the checklist under it, both without a notification; the routine's two steps each ran once for 6:00 am, the briefing first; it has the line about yesterday", "scheduler stage 3"):
+        await h.clock_to(9, 0, day_offset=3)
+        fresh = await briefing_in_hub(h)
+        h.check(fresh is not None and BRIEFING in fresh.text and await h.count(h.hub, BRIEFING) == 1, f"{await h.count(h.hub, BRIEFING)} briefings in the hub")
+        sheet = await sheet_id(h)
+        h.check(sheet is not None and sheet > fresh.id, f"the checklist ({sheet}) is not under the briefing ({fresh.id})")
+        h.check(fresh.silent, "the briefing was posted with a notification")
+        day_stamp = f"{config.now_nz():%Y-%m-%d}"
+        done = [(each[0], each[2][-2:]) for each in await h.runs("briefing", "post") if each[1] == f"{day_stamp}T06:00"] + [(each[0], each[2][-2:]) for each in await h.runs("pills", "checklist") if each[1] == f"{day_stamp}T06:00"]
+        h.check(done == [("done", "#1"), ("done", "#2")], f"the routine's runs for 6:00 am: {done}")
+        h.check("Yesterday: " in fresh.text, f"no line about yesterday: {fresh.text[:400]}")
+        h.memo["briefing_hub"] = fresh.id
+        h.saw(" / ".join(line for line in fresh.text.splitlines() if "Pills" in line or "Yesterday" in line)[:200])
+
+    async with h.step("5.02", "`brief me` in #selftest-inbox", "With no request to Claude, a copy there: “☀️ Today”, the date, a Pills box with its count and the next dose; drawn, in the colour of its status, with no buttons", "scheduler stage 3 (briefing-v2)"):
+        before = h._real_calls
+        await h.say("brief me")
+        shown = await h.find(h.inbox, BRIEFING)
+        h.check(shown is not None and "💊 **Pills** · " in shown.text and "taken" in shown.text, f"the briefing: {shown.text[:300] if shown else 'nothing'}")
+        h.check(f"{config.now_nz():%A} {config.now_nz().day} {config.now_nz():%B}" in shown.text and "as of" not in shown.text, f"its date line: {shown.text.splitlines()[:2]}")
+        h.check(shown.v2 and not shown.buttons and set(shown.accents) <= {accent(status) for status in design.ACCENTS}, f"drawn: {shown.v2}, buttons {shown.labels}, colours {[hex(each) if each else None for each in shown.accents]}")
+        h.check(h._real_calls == before, "a request went to Claude")
+        h.memo["briefing_inbox"] = shown.id
+        h.saw(" / ".join(shown.text.splitlines()[2:4])[:160])
+
+    async with h.step("5.03", "`brief me` in the hub", "Nothing new is posted: the briefing that is there is brought up to date in place, and a line says so", "scheduler stage 3"):
+        await h.say("brief me", channel=h.hub)
+        again = await briefing_in_hub(h)
+        h.check(again is not None and again.id == h.memo["briefing_hub"] and await h.count(h.hub, BRIEFING) == 1, f"{await h.count(h.hub, BRIEFING)} briefings in the hub")
+        h.check(await h.find(h.hub, "The briefing above is up to date") is not None, "no line saying it is up to date")
+
+    async with h.step("5.04", "A dose is ticked off: `took testany`", "The briefing in the hub is edited in place: its count goes up by one; no new briefing is posted, there or in #selftest-inbox", "scheduler stage 3"):
+        before = await briefing_in_hub(h)
+        count = int(before.text.split("💊 **Pills** · ")[1].split(" of ")[0])
+        await h.say("took testany")
+        await h.settle(3)
+        after = await briefing_in_hub(h)
+        h.check(after is not None and after.id == before.id, "the briefing in the hub was replaced, not edited")
+        now = int(after.text.split("💊 **Pills** · ")[1].split(" of ")[0])
+        h.check(now == count + 1, f"its count went from {count} to {now}")
+        h.check(await h.count(h.hub, BRIEFING) == 1 and await h.count(h.inbox, BRIEFING) == 1, "a second briefing was posted")
+        copy = await h.get(h.inbox, h.memo["briefing_inbox"])
+        h.check(copy is not None and f"· {now} of " in copy.text, "the copy in #selftest-inbox was not brought up to date too")
+        h.saw(f"{count} → {now} taken, in place")
+
+    async with h.step("5.05", "“what's on today?” in plain words", "The router sends it to the briefing, which answers with its card; my message is left with no ⚠️", "scheduler stage 3"):
+        mine = await h.say("what's on today?", canned=("briefing_show", {"guessed": [], "not_included": []}), task="briefing")
+        await no_marks(h, mine)
+        shown = await h.find(h.inbox, BRIEFING)
+        h.check(shown is not None and shown.id != h.memo["briefing_inbox"], "no briefing was posted in answer")
+
+    async with h.step("5.06", "`my schedule` with a routine in it", "Morning routine, every day at 6:00 am, with its steps numbered: 1. briefing, 2. pills checklist", "scheduler stage 3"):
+        await h.say("my schedule")
+        shown = await h.find(h.inbox, "My schedule")
+        h.check(shown is not None and "**Morning routine** · every day at `6:00 am`" in shown.text, f"the list: {shown.text[:300] if shown else 'nothing'}")
+        h.check("1. briefing" in shown.text and "2. pills checklist" in shown.text, f"its steps: {shown.text[:400]}")
+
+    async with h.step("5.07", "The next morning at 6:00: the routine again", "A new briefing, then the checklist under it; yesterday's briefing is gone; one briefing in the hub; the line about yesterday counts the dose ticked off at 5.04", "scheduler stage 3"):
+        old = h.memo["briefing_hub"]
+        await h.clock_to(6, 0, 5, day_offset=1)
+        fresh = await briefing_in_hub(h)
+        h.check(fresh is not None and fresh.id != old, "no new briefing was posted")
+        h.check(await h.get(h.hub, old) is None and await h.count(h.hub, BRIEFING) == 1, f"yesterday's briefing is still there, or there are {await h.count(h.hub, BRIEFING)}")
+        sheet = await sheet_id(h)
+        h.check(sheet is not None and sheet > fresh.id, f"the checklist ({sheet}) is not under the briefing ({fresh.id})")
+        h.check(fresh.silent, "the briefing was posted with a notification")
+        h.check("Yesterday: " in fresh.text and "taken" in fresh.text.split("Yesterday: ")[1], f"no line about yesterday: {fresh.text[:400]}")
+        day_stamp = f"{config.now_nz():%Y-%m-%d}"
+        done = [(each[0], each[2][-2:]) for each in await h.runs("briefing", "post") if each[1] == f"{day_stamp}T06:00"] + [(each[0], each[2][-2:]) for each in await h.runs("pills", "checklist") if each[1] == f"{day_stamp}T06:00"]
+        h.check(done == [("done", "#1"), ("done", "#2")], f"the routine's runs for 6:00 am: {done}")
+        h.saw(next((line for line in fresh.text.splitlines() if "Yesterday" in line), "")[:120])
+
+    async with h.step("5.08", "`dev clock reset`", "The clock is the real time again", "housekeeping"):
+        await h.say("dev clock reset")
+        h.check(not clock.is_shifted(), "the clock is still moved")
+
+
+PHASES = {"p1": p1, "p2": p2, "p3": p3, "p4": p4, "p5": p5}

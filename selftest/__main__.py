@@ -1,6 +1,6 @@
 """Run the self-test: `python -m selftest [--claude] [--only p1,p2] [--channels | --clear | --remove]`.
 
-A full run takes about nine minutes: four starts of the dev bot, with 75
+A full run takes about twelve minutes: five starts of the dev bot, with 75
 seconds off between the first two.
 
 The live bot must be stopped first: it and the dev bot share one token. This
@@ -44,6 +44,7 @@ PHASES = (
     ("p2", {"CARDS_V2": "false", "REMINDERS_ENABLED": "true"}, OFF_FOR),
     ("p3", {"CARDS_V2": "true", "REMINDERS_ENABLED": "true"}, 0),
     ("p4", {"CARDS_V2": "false", "REMINDERS_ENABLED": "true", "DAILY_SPEND_LIMIT": "0.001"}, 0),
+    ("p5", {"CARDS_V2": "true", "REMINDERS_ENABLED": "true", "BRIEFING_ENABLED": "true"}, 0),
 )
 
 
@@ -180,7 +181,7 @@ def main() -> int:
 
     began = datetime.now()
     stamp = began.strftime("%Y%m%d-%H%M%S")
-    print("--- the self-test takes about nine minutes: four starts of the dev bot, 75 seconds off between the first two", flush=True)
+    print("--- the self-test takes about twelve minutes: five starts of the dev bot, 75 seconds off between the first two", flush=True)
     channels = asyncio.run(prepare_channels())
     saved = set_aside(stamp)
     wanted = [name.strip() for name in asked.only.split(",") if name.strip()]

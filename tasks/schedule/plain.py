@@ -63,9 +63,11 @@ async def show(request: Request, data: dict, guessed: frozenset) -> LiveReply:
 
 async def state(request: Request) -> str:
     """What extraction is told: the schedules there are, and what can be added."""
+    # One of the bot's own is listed like any other: whether it may be changed is the code's
+    # to say, with its own line, never a reason for Claude to decline
     lines = [
-        f"{each.name} ({'the bot’s own, cannot be changed' if each.locked else rules.when(each).replace('`', '')}"
-        + ("" if each.locked else f", {rules.notify_text(each.notify)}, #{each.channel}" + (", paused" if each.state == PAUSED else "")) + ")"
+        f"{each.name} ({rules.when(each).replace('`', '')}"
+        + (", the bot's own" if each.locked else f", {rules.notify_text(each.notify)}, #{each.channel}" + (", paused" if each.state == PAUSED else "")) + ")"
         for each in await every()
     ]
     can = ", ".join(sorted(label for label, _ in addable()))

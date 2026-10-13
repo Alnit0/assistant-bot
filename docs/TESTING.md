@@ -43,10 +43,10 @@ Last updated: 2026-10-13
 | P | Bugs | 37 | 17 | 20 | 17 | 20 | 0 | 0 |
 | Q | Time, days, the schedule model, the occurrence log and cards | 19 | 17 | 2 | 2 | 17 | 0 | 0 |
 | R | Pills | 73 | 21 | 52 | 44 | 29 | 0 | 0 |
-| S | Routing and confirm cards | 72 | 20 | 52 | 17 | 54 | 0 | 1 |
+| S | Routing and confirm cards | 74 | 21 | 53 | 18 | 55 | 0 | 1 |
 | T | Tasks in plain words | 22 | 3 | 19 | 4 | 18 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **490** | **173** | **317** | **247** | **242** | **0** | **1** |
+| | **Total** | **492** | **174** | **318** | **248** | **243** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -618,6 +618,8 @@ the dev database (`python main.py --dev`), in #inbox.
 | S70 | 🤖 Auto | `my schedule`: the list | Each schedule with its days and time, where it posts, silent or notify, its next run and how the last ended; paused ones together; a routine lists its steps; the bot's own in one small line; drawn as a box a schedule with the next to run amber and no buttons; a typed word, exact, of the schedule task | ✅ Pass | 2026-10-13 | `tests/test_schedule_task.py` |
 | S71 | 🤖 Auto | Changing, adding and removing a schedule by a card | Move, days (set, add, remove, never none), pause with or without an end, resume, silent or notify and channel are `field · old → new` with when it next runs, and only Save writes; what can't be read is said and the rest kept; the bot's own are refused in a line; a name that fits two is asked on the card, also when Claude completed it, and “it” with two it could be; a correction keeps what the card held; moved after it ran today it starts tomorrow; add names it after what it runs and the part of the day, asks for a time on the card, refuses what can't be scheduled and one already there; remove keeps the row, stops its runs, and adding it back is the same row | ✅ Pass | 2026-10-13 | `tests/test_schedule_task.py`, `tests/test_names.py` |
 | S72 | 👤 Manual | Block 47: `my schedule`, add, move, pause, a name that fits two, the bot's own, remove, and the list in the new look | As the block says | ⬜ Untested | | Block 47 |
+| S73 | 🤖 Auto | A summary in the task contract, and the briefing | A task with a summary is gathered and one with nothing to say left out; one that fails or is slow says so and never stops the others; a summary is kept to three lines; whoever shows summaries is told when one may have changed. Pills: the checklist's own count, the colour of what is still to do, the next dose with a time, how many have none, and yesterday in one line. The briefing, off: nothing of it exists; on: `brief me`, a step of the morning routine in front of the checklist, posted once silently (or as one neutral line written in after), the next taking its place, nothing posted with nothing to say, edited in place when a section changes, brought up to date in the hub and a copy elsewhere | ✅ Pass | 2026-10-13 | `tests/test_briefing.py`, `tests/test_timetable.py` |
+| S74 | 👤 Manual | Block 48: the briefing on the dev database, on and off | As the block says; the look against `briefing-v2` | ⬜ Untested | | Block 48 |
 
 ## T. Tasks in plain words
 

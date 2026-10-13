@@ -138,7 +138,12 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   allow_another, show_existing, ask). `core/repeats.py` does the matching and writes
   the words; whether a thing exists is for Python to find out, never a
   reason for Claude to decline. An action that saves has a `verify`
-  that reads the change back before anything is confirmed
+  that reads the change back before anything is confirmed. A task may
+  also give a `summary` (an `actions.Summary` for a user and a day: a
+  glance, a status, up to three lines): it then appears in the briefing
+  with no change there (`core/summaries.py`). A summary only reads,
+  asks Claude nothing, and its task says when it may have changed
+  (`summaries.changed`)
 - Ways in, in order of preference: a typed word, a reply action, a
   reaction. Slash commands and context menus are a fallback only. Every
   keyword, reply action and reaction needs a description, examples,

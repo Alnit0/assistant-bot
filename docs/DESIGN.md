@@ -14,8 +14,9 @@ screen waits for the same check. Six cards are built this way, behind
 `CARDS_V2` (off unless set in `.env`; off, every card looks as it
 always has): today's pills checklist, the reminder, the confirm card,
 the card that asks a question, the card that asks first because
-something is risky, and the channel reset card. Everything else is
-still a plain message.
+something is risky, and the channel reset card. The list of my
+schedule and the briefing (behind `BRIEFING_ENABLED`) are drawn this
+way too. Everything else is still a plain message.
 
 **Every colour and spacing value is in one file, `core/design.py`**
 (its first block): after the phone check, a change is an edit there and

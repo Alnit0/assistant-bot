@@ -125,9 +125,10 @@ def test_only_the_warnings_and_errors_logged_during_the_run_are_listed(tmp_path)
 # --- what it will and won't do ---------------------------------------------------------------------------------
 def test_the_phases_run_the_old_look_twice_then_the_new_then_the_old_again_with_reminders_on():
     names = [name for name, _, _ in runner.PHASES]
-    assert names == ["p1", "p2", "p3", "p4"] == list(phases.PHASES)
+    assert names == ["p1", "p2", "p3", "p4", "p5"] == list(phases.PHASES)
     looks = [settings["CARDS_V2"] for _, settings, _ in runner.PHASES]
-    assert looks == ["false", "false", "true", "false"], "off, a restart, on, and back off"
+    assert looks[:4] == ["false", "false", "true", "false"], "off, a restart, on, and back off"
+    assert [settings.get("BRIEFING_ENABLED", "false") for _, settings, _ in runner.PHASES] == ["false", "false", "false", "false", "true"], "the briefing off, then on"
     assert all(settings["REMINDERS_ENABLED"] == "true" for _, settings, _ in runner.PHASES)
     assert [off for _, _, off in runner.PHASES][1] > 60, "long enough off for a job to count as late"
 

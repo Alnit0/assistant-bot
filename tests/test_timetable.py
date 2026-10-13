@@ -209,19 +209,22 @@ def test_the_same_occurrence_is_never_booked_or_run_twice_even_after_a_restart(e
 
 
 def test_a_routine_runs_its_steps_in_order_each_recorded_and_one_failing_does_not_stop_the_rest(engine):
+    # Two handlers join the schedule made for the first, in front of it: a routine
+    scheduler.join_routine("test.first", "test.third", order=20, name="Morning routine")
+    scheduler.join_routine("test.first", "test.second", order=10, name="Morning routine")
     run(scheduler.book())
     (made,) = schedules()
-    change(made.id, steps=("test.first", "test.second", "test.third"))
-    engine.fail.add("second")
+    assert made.steps == ("test.second", "test.third", "test.first") and made.name == "Morning routine", "in their order, its own handler last"
+    engine.fail.add("third")
     tomorrow = engine.day + timedelta(days=1)
     to(tomorrow, 6, 0, 1)
-    assert [name for name, _, _ in engine.ran] == ["first", "second", "third"]
+    assert [name for name, _, _ in engine.ran] == ["second", "third", "first"]
     done = rows("SELECT kind, step, status, run_key FROM scheduled_jobs WHERE local_at = ? ORDER BY step", (stamp(tomorrow),))
     assert done == [
-        ("first", 1, "done", f"s{made.id}@{stamp(tomorrow)}#1"), ("second", 2, "failed", f"s{made.id}@{stamp(tomorrow)}#2"),
-        ("third", 3, "done", f"s{made.id}@{stamp(tomorrow)}#3"),
+        ("second", 1, "done", f"s{made.id}@{stamp(tomorrow)}#1"), ("third", 2, "failed", f"s{made.id}@{stamp(tomorrow)}#2"),
+        ("first", 3, "done", f"s{made.id}@{stamp(tomorrow)}#3"),
     ]
-    assert run(scheduler.troubled()) == [("test", "second", "failed")]
+    assert run(scheduler.troubled()) == [("test", "third", "failed")]
     # Cut off half way: the steps already done are not done again
     after = tomorrow + timedelta(days=1)
     clock.advance_to(day.at(after, time(6, 0, 1)))
@@ -232,7 +235,34 @@ def test_a_routine_runs_its_steps_in_order_each_recorded_and_one_failing_does_no
     conn.close()
     engine.ran.clear()
     run(scheduler.catch_up())
-    assert [name for name, _, _ in engine.ran] == ["second", "third"]
+    assert [name for name, _, _ in engine.ran] == ["third", "first"]
+
+
+def test_what_joins_a_routine_follows_what_is_switched_on_and_the_rest_stays_mine(engine, monkeypatch):
+    run(scheduler.book())
+    (made,) = schedules()
+    change(made.id, at=time(7, 15), notify=timetable.NOTIFY)
+    assert made.steps == ("test.first",) and made.name == "First thing"
+    # Switched on: the schedule gains the step in front, and is called a routine
+    scheduler.join_routine("test.first", "test.second", order=20, name="Morning routine")
+    run(scheduler.book())
+    (on,) = schedules()
+    assert (on.steps, on.name, on.at, on.notify, on.id) == (("test.second", "test.first"), "Morning routine", time(7, 15), "notify", made.id), "the time and the rest are still mine"
+    tomorrow = engine.day + timedelta(days=1)
+    assert sorted(kind for kind, local_at, status in rows() if status == "pending") == ["first", "second"], "the run already booked gains the step"
+    # Switched off again: its own handler alone, under its own name, and the step's booked run is taken out
+    monkeypatch.setattr(scheduler, "_joins", {})  # the name stays known: it is said whether or not anything has joined
+    run(scheduler.book())
+    (off,) = schedules()
+    assert (off.steps, off.name, off.at) == (("test.first",), "First thing", time(7, 15))
+    assert [kind for kind, local_at, status in rows() if status == "pending"] == ["first"]
+    to(tomorrow, 7, 15, 1)
+    assert [name for name, _, _ in engine.ran] == ["first"]
+    # A name I gave it is never changed back
+    change(made.id, name="My mornings")
+    scheduler.join_routine("test.first", "test.second", order=20, name="Morning routine")
+    run(scheduler.book())
+    assert schedules()[0].name == "My mornings" and schedules()[0].steps == ("test.second", "test.first")
 
 
 def test_off_for_three_days_only_the_latest_runs_and_is_told_how_many_were_passed_over(engine, monkeypatch):

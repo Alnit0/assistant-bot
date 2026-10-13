@@ -129,6 +129,9 @@ KEEP_CONFIRMATIONS = flag(os.getenv("KEEP_CONFIRMATIONS"), True)
 # set: off, every card looks as it always has
 CARDS_V2 = flag(os.getenv("CARDS_V2"), False)
 REMINDERS_ENABLED = flag(os.getenv("REMINDERS_ENABLED"), False)
+# The briefing (tasks/briefing): one card a day in the hub that says what today holds, kept up
+# to date in place, and "brief me". Off unless set: off, nothing of it exists
+BRIEFING_ENABLED = flag(os.getenv("BRIEFING_ENABLED"), False)
 
 # What a day's requests to Claude may cost, in US dollars, before #bot-log is told (once a
 # day). Nothing is stopped: it only says so. 0 switches the note off

@@ -191,6 +191,21 @@ class Proposal:
 
 
 @dataclass(frozen=True)
+class Summary:
+    """A task in a few lines, for whatever shows summaries (the briefing): what
+    its `summary` returns for a user and a day, or None with nothing to say.
+    The icon and the name come from the task's entry, never from here. A
+    summary only reads, makes no request to Claude, and is written in the
+    task's own words by the task's own code (core/summaries.py)."""
+
+    glance: str = ""  # its state in a few words, beside its name: "2 of 6 taken"
+    status: str = ""  # one of the design's statuses (core/design.py), never a colour
+    lines: tuple[str, ...] = ()  # up to three lines
+    hint: str = ""  # small text
+    before: str = ""  # one line about the day before, or none
+
+
+@dataclass(frozen=True)
 class Attachment:
     """A file sent with a message, for a task's plain-words code: its name, its
     size in bytes, its kind as the sender's app gave it ("text/csv", or ""),
@@ -355,6 +370,10 @@ class Entry:
     # Taken / Skip message, a timer's card, a checklist). A Discord reply to one goes to
     # this task's extraction first, without the router
     owns: Callable[[int], Awaitable[bool]] | None = None
+    # `async (user_id, day) -> Summary | None`: this task in a few lines for that user
+    # and day, or None with nothing to say. A task that has one appears wherever
+    # summaries are shown (the briefing), with no change there
+    summary: Callable[[int, date], Awaitable["Summary | None"]] | None = None
 
     @property
     def title(self) -> str:

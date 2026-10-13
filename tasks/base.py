@@ -261,9 +261,17 @@ class Task:
             Entry(
                 self.name, self.icon, self.only_for, tuple(self.examples), found, live_state=self.action_state, show=self.show,
                 already=self.already_so, names=self.item_names, identity=tuple(self.identity), on_repeat=self.on_repeat,
-                owns=self.owns_message,
+                owns=self.owns_message, summary=self.summary if type(self).summary is not Task.summary else None,
             )
         ]
+
+    async def summary(self, user_id: int, day: date):
+        """This task in a few lines for that user and day (an `actions.Summary`),
+        or None with nothing to say: for the briefing and whatever else shows
+        summaries (core/summaries.py). It only reads, asks Claude nothing, and
+        is in the task's own words. Say when it may have changed with
+        `summaries.changed(self.name, user_id)`. Only used if overridden."""
+        return None
 
     async def item_names(self, request: Request) -> list[str]:
         """The names of the user's things this task holds now (their pills, their

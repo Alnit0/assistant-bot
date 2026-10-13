@@ -1401,6 +1401,42 @@ so they are safe to run while the bot is running.
 - **`docs/TESTING.md`** lists every test: 🤖 Auto rows for what pytest
   covers, 👤 Manual rows for what only shows in Discord.
 
+## The briefing
+
+Off unless `BRIEFING_ENABLED=true` is in `.env` (then restart). Off,
+nothing of it exists.
+
+- **One card that says what today holds**: a section from each task
+  that has something to say. Today that is pills: how many are taken,
+  the next dose with a time, how many can be taken any time, and one
+  line about yesterday.
+- **In the hub, once a day**, as the first step of the morning routine:
+  the briefing, then the checklist under it, at 6:00 am, without a
+  notification. With it on, the 6:00 am schedule is called "Morning
+  routine" and `my schedule` shows its two steps; its time and days are
+  still yours to change.
+- **It always shows now.** When something changes (a dose ticked off,
+  a pill added), the same message is rewritten in place. Nothing new is
+  posted for a change.
+- **`brief me`** (or `briefing`, or "what's on today?"): in the hub it
+  brings the one there up to date and says so in a line that goes;
+  anywhere else you get a copy there, kept up to date too.
+- The next morning's briefing takes the place of the one before.
+- Things are ticked off on the checklist, not here: it has no buttons.
+
+**For a task to appear in it**, give the task a `summary`:
+
+```python
+async def summary(self, user_id, day):
+    return actions.Summary(glance="2 of 6 taken", status=design.DUE,
+                           lines=("**Next:** …",), hint="…", before="Yesterday: …")
+```
+
+Return `None` with nothing to say that day. It only reads, asks Claude
+nothing, and is in the task's own words; the icon and the name come
+from the task. Call `summaries.changed(self.name, user_id)` whenever it
+may read differently. No briefing code changes.
+
 ## My schedule
 
 What the bot does by itself, and when, is yours to see and change.

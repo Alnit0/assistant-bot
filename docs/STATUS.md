@@ -207,7 +207,14 @@ stage at a time, each with offline tests, a commit and a self-test run.
    because there is nothing yet to use it on: changing the order of a
    routine's steps, and taking a step out of a routine (they come with
    the briefing, when the first routine exists).
-3. The briefing, behind `BRIEFING_ENABLED`.
+3. **Done: the briefing, behind `BRIEFING_ENABLED` (off).** An
+   optional summary in the task contract (`core/summaries.py`), which
+   pills provides; one briefing a day in the hub as the first step of
+   the morning routine, edited in place when a section changes; `brief
+   me` brings it up to date. To turn it on: `BRIEFING_ENABLED=true` in
+   `.env`, then restart. The 6:00 am schedule is then called "Morning
+   routine" (briefing, pills checklist); off again, it is the checklist
+   alone under its own name.
 4. Clean-up, behind `HUB_TIDY`.
 
 The first start on this code adds two tables and five columns

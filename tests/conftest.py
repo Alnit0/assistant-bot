@@ -38,6 +38,8 @@ def no_schedules_unless_asked_for(monkeypatch):
     rows and books runs for them whenever it looks. A test gets none of that
     unless it asks: it sets `scheduler._standing` to the ones it is about."""
     monkeypatch.setattr(scheduler, "_standing", {})
+    monkeypatch.setattr(scheduler, "_joins", {})
+    monkeypatch.setattr(scheduler, "_routine_names", {})
 
 
 _migrated: dict[tuple, bytes] = {}  # a migrated, empty database for each set of migrations asked for

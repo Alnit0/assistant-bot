@@ -95,6 +95,10 @@ _handlers: dict[tuple[str, str], JobHandler] = {}
 _labels: dict[tuple[str, str], str] = {}
 # The schedule each handler gets the first time, by (task, kind)
 _standing: dict[tuple[str, str], timetable.Default] = {}
+# What else runs with a handler's default schedule, in front of it: {the handler the schedule
+# was made for: [(order, a handler that joins it)]}, and what the schedule is then called
+_joins: dict[str, list[tuple[int, str]]] = {}
+_routine_names: dict[str, str] = {}
 _ticker: asyncio.Task | None = None
 _wake: asyncio.Event | None = None
 _warned_unhandled: set[tuple[str, str]] = set()
@@ -312,6 +316,29 @@ def defaults() -> dict[tuple[str, str], timetable.Default]:
     return dict(_standing)
 
 
+def join_routine(of: str, step: str, order: int, name: str) -> None:
+    """Have `step` (a handler's name) run with the schedule made for the handler
+    `of`, in front of it: together they are a routine, called `name`. Steps
+    run in the order of `order`, the schedule's own handler last. Said when a
+    task that is switched on sets itself up; one that is switched off says
+    nothing, and the schedule is its own handler alone again."""
+    joined = [each for each in _joins.get(of, []) if each[1] != step]
+    _joins[of] = sorted([*joined, (order, step)])
+    _routine_names[of] = name
+
+
+def name_routine(of: str, name: str) -> None:
+    """What the schedule made for a handler is called once something has joined
+    it. Said whether or not anything has: the name must be known to be the
+    code's own when what joined is switched off again and it is taken back."""
+    _routine_names[of] = name
+
+
+def routine_steps(of: str) -> tuple[str, ...]:
+    """The steps of the schedule made for a handler, as the code now says."""
+    return (*(step for _, step in _joins.get(of, [])), of)
+
+
 def label(task: str, kind: str) -> str:
     """A job in words: "nightly backup", "pill reminder"."""
     given = _labels.get((task, kind))
@@ -448,6 +475,18 @@ def _db_defaults(conn: sqlite3.Connection, now: datetime, standing: dict) -> lis
         elif default.locked and (there.at, there.days) != (default.at.replace(tzinfo=None, second=0, microsecond=0), tuple(default.days)):
             timetable.db_update(conn, there.id, now, at=default.at, days=default.days)
             said.append(f"schedule for {name} follows the code again: {default.at:%H:%M}")
+        # What runs with it (the briefing, the tidy) follows what is switched on. Its time,
+        # days and the rest stay the user's; so does a name they gave it
+        there = timetable.db_for_default(conn, name)
+        steps = routine_steps(name)
+        if there is not None and there.steps != steps:
+            timetable.db_set_steps(conn, there.id, steps)
+            said.append(f"{there.name}: its steps are now {', '.join(steps)}")
+            ours = {default.name, *_routine_names.values()}
+            wanted = _routine_names.get(name, default.name) if len(steps) > 1 else default.name
+            if there.name in ours and there.name != wanted:
+                timetable.db_update(conn, there.id, now, name=wanted)
+                said.append(f"{there.name} is now called {wanted}")
     return said
 
 

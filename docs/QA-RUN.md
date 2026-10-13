@@ -890,6 +890,25 @@ On the dev database. About six messages to Claude (three cents).
 | 7 | Say `remove the evening checklist`, **Remove** | Gone from the list; the 6:00 am one is as it was | S71 |
 | 8 | With `CARDS_V2=true`: type `my schedule` | The same list drawn: a box a schedule, the next to run amber, no buttons. Compare with `dev mock schedule-list-v2` | S72 |
 
+## 48. The briefing (waiting for QA)
+
+**First:** type `dev clock reset` (the bot's clock is the real time again; harmless when it already is).
+
+On the dev database, started with the briefing on:
+`$env:BRIEFING_ENABLED = "true"; python main.py --dev`. You need a pill
+or two (`add Testbrief once a day`, **Save**). One message to Claude.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Type `my schedule` | "Morning routine", every day at 6:00 am, with "1. briefing" and "2. pills checklist" | S73 |
+| 2 | Type `brief me` in #inbox | "☀️ Today", the date, a Pills section: the count, the next dose if one has a time, "to take any time", and yesterday's line if there was anything yesterday. No buttons | S73 |
+| 3 | Type `brief me` in the hub, twice | The first posts it there. The second posts nothing: a line "The briefing above is up to date." that goes after about ten seconds | S73 |
+| 4 | Type `took testbrief` | The briefing in the hub changes by itself: one more taken. No new message | S73 |
+| 5 | `dev clock 5:59am`, then `dev clock 6:00am` | A new briefing, then the checklist under it, with no notification; the old briefing is gone; "Yesterday: 1 of 1 taken" | S73 |
+| 6 | Say `what's on today?` in #inbox | The briefing again, there | S73 |
+| 7 | With `CARDS_V2=true` as well: `brief me` in #inbox. Compare with `dev mock briefing-v2` | A box a task in the colour of its status; nothing says "as of" | S74 |
+| 8 | Stop the dev bot, `Remove-Item Env:BRIEFING_ENABLED`, start it, type `my schedule` | "Pills checklist" again, alone; no briefing is posted the next morning | S73 |
+
 ## When you finish
 
 - Stop the test copy (`Ctrl + C`) and check nothing is left running:

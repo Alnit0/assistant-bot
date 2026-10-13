@@ -99,7 +99,9 @@ class ScheduleTask(Task):
                 "Examples: \"move the pills checklist to 7\" -> schedule pills checklist, time 7:00 am (your best reading, "
                 "listed as guessed if it could be evening). \"checklist on weekdays only\" -> days mon tue wed thu fri, "
                 "days_change set. \"not on Sundays\" -> days sun, days_change remove. \"pause the checklist until Monday\" -> "
-                "paused pause, until Monday. \"turn it back on\" -> paused resume. \"make it silent\" -> notify silent.",
+                "paused pause, until Monday. \"turn it back on\" -> paused resume. \"make it silent\" -> notify silent. "
+                "For one of the bot's own (the nightly backup, the end of the day) fill the change in all the same: the "
+                "bot's code answers that it is not changed here. Never decline because of whose it is.",
                 (Field("schedules", "Each schedule the message changes, one item each.", ITEMS, required=True, item_fields=_CHANGE_FIELDS),),
                 prepare=plain.change_card,
                 apply=plain.change_save,
