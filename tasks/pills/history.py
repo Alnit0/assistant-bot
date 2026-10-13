@@ -1,9 +1,9 @@
 import logging
 from datetime import date, time, timedelta
 
-from core import cards, clock, config, database, hub, messages, occurrences, scheduler, streaks, timetable
+from core import cards, clock, config, database, design, hub, messages, occurrences, scheduler, streaks, timetable
 from core import day as days
-from core.actions import Request
+from core.actions import LiveReply, Request
 from core.cards import Card
 from core.occurrences import DONE, MISSED, PENDING, SKIPPED, Occurrence
 from core.schedule import ANY_TIME, Due
@@ -124,6 +124,55 @@ def week_text(found: list[Occurrence], now_day: date, run: int = 0, title: str =
     return "\n".join([*lines, *([said] if said else [])])
 
 
+# --- the same, drawn (docs/DESIGN.md; only with CARDS_V2 on) -----------------------------------------------------------
+STATUS = {DONE: design.DONE, MISSED: design.MISSED, SKIPPED: design.QUIET, PENDING: design.ANY_TIME}
+FOLD_AFTER = 12
+
+
+def status_of(rows: list[Occurrence]) -> str:
+    """A day's colour: red when something was missed, blue while something is
+    still to take, green when something was taken, otherwise quiet."""
+    states = {each.state for each in rows}
+    for state in (MISSED, PENDING, DONE):
+        if state in states:
+            return STATUS[state]
+    return design.QUIET
+
+
+def day_layout(pills: dict[int, Pill], found: list[Occurrence], day: date, now_day: date) -> tuple:
+    """One day: the count in the heading, a box a dose in the colour of what became of it."""
+    text = day_text(pills, found, day, now_day).splitlines()
+    named = {now_day - timedelta(days=1): "Yesterday", now_day: "Today"}.get(day, day_name(day))
+    listed = _doses(pills, found)
+    if not listed:
+        return design.standing(f"💊 {named}", day_name(day), [design.item(design.QUIET, text[0].removeprefix("💊 "))])
+    listed.sort(key=lambda dose: (dose.occurrence.actual_at is None, dose.occurrence.actual_at or days.start_of(day), dose.pill.plan.name.lower(), dose.number))
+    if len(listed) > FOLD_AFTER:
+        boxes = [design.item(status_of([dose.occurrence for dose in listed]), *text[1:])]
+    else:
+        boxes = [design.item(STATUS.get(dose.occurrence.state, design.QUIET), today.line(dose)) for dose in listed]
+    return design.standing(f"💊 {named} · {counted(found)}", day_name(day), boxes)
+
+
+def week_layout(found: list[Occurrence], now_day: date, run: int = 0, title: str = "This week") -> tuple:
+    """The week: the count in the heading, a box a day in the colour of how it went, the streak under them."""
+    lines = week_text(found, now_day, run, title).splitlines()
+    head, span, *count = [part.strip() for part in lines[0].removeprefix("💊 ").replace("**", "").split(" · ")]
+    monday, _ = week_of(now_day)
+    by_day: dict[date, list[Occurrence]] = {}
+    for each in mine(found):
+        by_day.setdefault(each.day, []).append(each)
+    day_lines = [line for line in lines[1:] if line.startswith("`")]
+    if not day_lines:
+        return design.standing(f"💊 {head}", span, [design.item(design.QUIET, lines[1])])
+    boxes = []
+    for offset, line in enumerate(day_lines):
+        day = monday + timedelta(days=offset)
+        name, _, rest = line.removeprefix("`").partition("` ")
+        boxes.append(design.item(status_of(by_day.get(day, [])), f"**{' '.join(name.split())}** · {rest}"))
+    return design.standing(f"💊 {head}" + (f" · {' · '.join(count)}" if count else ""), span, boxes, hint=streak_line(run))
+
+
 # --- reading ---------------------------------------------------------------------------------------------------------
 def db_names(conn, user_id: int) -> dict[int, Pill]:
     """Every pill there has been, removed ones too: a day is shown as it was."""
@@ -136,24 +185,35 @@ async def streak_days(user_id: int, now_day: date) -> int:
     return streaks.streak(mine(found), now_day).days
 
 
-async def yesterday(user_id: int) -> str:
+async def yesterday_card(user_id: int) -> Card:
     now_day = days.today()
     day = now_day - timedelta(days=1)
-    return day_text(await database.run(db_names, user_id), await occurrences.for_day(user_id, TASK, day), day, now_day)
+    pills, found = await database.run(db_names, user_id), await occurrences.for_day(user_id, TASK, day)
+    return Card(day_text(pills, found, day, now_day), (), day_layout(pills, found, day, now_day))
 
 
-async def week(user_id: int, title: str = "This week") -> str:
+async def yesterday(user_id: int) -> str:
+    return (await yesterday_card(user_id)).text
+
+
+async def week_card(user_id: int, title: str = "This week") -> Card:
     now_day = days.today()
     monday, _ = week_of(now_day)
     found = await database.run(occurrences.db_between, user_id, TASK, monday, now_day)
-    return week_text(found, now_day, await streak_days(user_id, now_day), title)
+    run = await streak_days(user_id, now_day)
+    return Card(week_text(found, now_day, run, title), (), week_layout(found, now_day, run, title))
 
 
-async def show(request: Request, data: dict, guessed: frozenset) -> str:
-    """ "what did I take yesterday?", "show my week": answered from the record, in a line a dose or a day."""
-    if data.get("period") == WEEK:
-        return await week(request.user.id)
-    return await yesterday(request.user.id)
+async def week(user_id: int, title: str = "This week") -> str:
+    return (await week_card(user_id, title)).text
+
+
+async def show(request: Request, data: dict, guessed: frozenset) -> LiveReply:
+    """ "what did I take yesterday?", "show my week": answered from the record,
+    a line a dose or a day. A card: its words, and the same drawn with CARDS_V2 on."""
+    period = WEEK if data.get("period") == WEEK else YESTERDAY
+    shown = await (week_card(request.user.id) if period == WEEK else yesterday_card(request.user.id))
+    return LiveReply(f"pills.{period}", shown.text, shown)
 
 
 # --- the weekly summary ----------------------------------------------------------------------------------------------
@@ -181,8 +241,9 @@ async def week_job(job: scheduler.Job) -> None:
         if not found:
             log.info("Weekly pills summary, job %s, user %s: nothing was to take this week, nothing posted", job.id, user_id)
             continue
-        text = week_text(found, now_day, await streak_days(user_id, now_day), "Your week")
-        message_id = await cards.send(where, Card(text), silent=job.notify != timetable.NOTIFY)
+        run = await streak_days(user_id, now_day)
+        text = week_text(found, now_day, run, "Your week")
+        message_id = await cards.send(where, Card(text, (), week_layout(found, now_day, run, "Your week")), silent=job.notify != timetable.NOTIFY)
         await messages.record(message_id, where, lifetime=messages.REPLACED, slot=SLOT, task=TASK, user_id=user_id)
         posted += 1
         log.info("Weekly pills summary, job %s, user %s: posted (%s)", job.id, user_id, text.splitlines()[0])

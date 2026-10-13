@@ -1596,6 +1596,21 @@ asks Claude nothing, and is in the task's own words; the icon and the name come
 from the task. Call `summaries.changed(self.name, user_id)` whenever it
 may read differently. No briefing code changes.
 
+## The new look for a card of your task
+
+With `CARDS_V2=true` a `Card` that carries a `layout` is drawn as
+Components V2; without one, or with the switch off, it is its text and
+rows as before. To give a card a layout, build it from the shapes of
+`core/design.py` and pass it as the card's third part:
+`design.standing(title, context, boxes)` for a list or a standing
+message (a box an item: `design.item(status, name, *lines)`),
+`design.decision(heading, things, question=…, row=…)` for a card that
+asks. Say a status, never a colour. A list shown on request returns
+`LiveReply(key, card.text, card)`, and its `livelists.changed` render
+returns the same card. Keep the text exactly what it was: it is what
+is logged, what is shown with the switch off, and what the tests read.
+`cards.check(card)` refuses a layout Discord would refuse.
+
 ## A correction straight after Save
 
 "Add iron at 8pm", **Save**, then "no, I meant 9pm": the change is

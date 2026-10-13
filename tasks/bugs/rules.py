@@ -461,6 +461,30 @@ def list_text(items: list) -> str:
     return "\n".join(lines)
 
 
+LIST_FOLD = 12  # more open bugs than this share one box of lines
+
+
+def list_layout(items: list) -> tuple:
+    """The open bugs in the one style of docs/DESIGN.md (drawn with CARDS_V2
+    on): a box a bug, amber when a fix is ready and it is mine to retest,
+    quiet otherwise. No buttons: a bug is closed on its own post."""
+    if not items:
+        return design.standing(f"{BUG_EMOJI} Open bugs", "", [design.item(design.DONE, "No open bugs.")])
+    boxes = []
+    for item in items:
+        name = f"[{bug_id(item.id)}]({item.post_url})" if item.post_url else bug_id(item.id)
+        detail = [item.report.channel, f"{_local(item.created_at):%d %b}"]
+        if item.note_count:
+            detail.append(f"{item.note_count} note{'' if item.note_count == 1 else 's'}")
+        if item.fix_ready:
+            detail.append(f"🔧 {FIX_READY}")
+        boxes.append((design.DUE if item.fix_ready else design.QUIET, f"**{name}** · {item.summary}", design.small(" · ".join(detail))))
+    if len(boxes) > LIST_FOLD:
+        folded = [design.item(design.DUE if any(status == design.DUE for status, _, _ in boxes) else design.QUIET, *(f"{name} · {detail.removeprefix(design.SMALL)}" for _, name, detail in boxes))]
+        return design.standing(f"{BUG_EMOJI} Open bugs · {len(items)}", "", folded)
+    return design.standing(f"{BUG_EMOJI} Open bugs · {len(items)}", "", [design.item(status, name, detail) for status, name, detail in boxes])
+
+
 def history_lines(created_at: str, events=()) -> list[str]:
     """A bug's history, oldest first: reported, then each closing and re-opening."""
     moments = [(created_at, "Reported")] + [(event.created_at, EVENTS[event.event]) for event in events]

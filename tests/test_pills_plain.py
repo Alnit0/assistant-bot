@@ -527,7 +527,8 @@ def test_a_pill_can_be_taken_off_a_remove_card_by_a_reply(world):
 def test_the_list_is_read_only_and_live(world):
     add(world, {"name": "Iron", "times": "8am"})
     shown = run(plain.show_list(world.request(), {}, frozenset()))
-    assert shown == LiveReply("pills", "## 💊 Pills\n💊 **Iron** · daily at `8:00 am`")
+    assert isinstance(shown, LiveReply) and (shown.key, shown.text) == ("pills", "## 💊 Pills\n💊 **Iron** · daily at `8:00 am`")
+    assert shown.card.text == shown.text and shown.card.rows == (), "the same words as a card, with no buttons"
 
 
 def test_the_state_has_a_line_a_pill_with_its_id_and_what_it_is_today(world):

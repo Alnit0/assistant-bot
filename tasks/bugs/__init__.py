@@ -1,6 +1,6 @@
 import asyncio
 
-from core import livelists
+from core import cards, livelists
 from core.actions import EACH_DAY, SEE
 from core.config import BASE_DIR
 from core.context import Context
@@ -51,9 +51,11 @@ async def report_reaction(payload, user: User) -> str:
 
 async def list_bugs(ctx: Context) -> None:
     """`bugs`: the open bugs. The list is Live, as "show my open bugs" gives it."""
-    message = await ctx.reply(await listing.text(ctx.user.id))
-    if getattr(message, "id", None) is not None:
-        await livelists.placed(ctx.user.id, listing.KEY, ctx.channel_id, message.id, listing.TASK)
+    shown = await listing.card(ctx.user.id)
+    # Drawn with CARDS_V2 on; otherwise the plain line it has always been
+    message_id = await cards.post(ctx, shown) if cards.designed(shown) else getattr(await ctx.reply(shown.text), "id", None)
+    if message_id is not None:
+        await livelists.placed(ctx.user.id, listing.KEY, ctx.channel_id, message_id, listing.TASK)
 
 
 async def export(ctx: Context) -> str:

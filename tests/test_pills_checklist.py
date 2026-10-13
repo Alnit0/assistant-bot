@@ -1125,3 +1125,29 @@ def test_what_cannot_be_yesterday_s_is_said(world):
     assert log(world, {"pill": "new today", "did": "taken", "day": "yesterday"}) == "💊 **New today** had nothing to take yesterday."
     assert log(world, {"pill": "zinc", "did": "skipped", "day": "yesterday"}) == "⚠️ For yesterday I can only log a dose as taken."
     assert log(world, {"pill": "zinc", "did": "taken", "dose": 2, "at": "9:00 pm", "day": "yesterday"}) == "💊 **Zinc** had 1 dose yesterday, not a dose 2."
+
+
+# --- "my pills" drawn (stage 5) ------------------------------------------------------------------------------------------
+def test_the_list_of_my_pills_is_a_card_with_the_same_words_and_a_box_a_pill(world):
+    from core import design
+    from tasks.pills import listing
+
+    add(world, {"name": "Zinc"}, {"name": "Gym vitamin", "times": ["8:00 am"], "weekdays": ["mon", "wed", "fri"]}, {"name": "Iron", "notes": "with food"})
+    proposal = run(plain.pause_card(world.request(), {"pills": [{"pill": "iron"}]}, frozenset()))
+    run(plain.pause_save(world.request(), proposal.data))
+    pills = run(store.pills(world.owner.id))
+    shown = listing.card(pills, DAY)
+    cards.check(shown)
+    assert shown.text == rules.list_text(pills, DAY), "off, it reads as it always has"
+    assert shown.layout[0].content == "# 💊 Pills\n-# 2 in use · 1 paused"
+    boxes = [(piece.status, piece.children[0].content) for piece in shown.layout if isinstance(piece, design.Box)]
+    assert boxes == [
+        (design.QUIET, "💊 **Gym vitamin** · Mon, Wed, Fri at `8:00 am`"), (design.QUIET, "💊 **Zinc** · daily, any time"),
+        (design.QUIET, "⏸️ **Paused**\n-# **Iron** · daily, any time · *with food* · paused"),
+    ]
+    assert not design.buttons(shown.layout), "no buttons: every change is by words"
+    reply = run(plain.show_list(world.request(), {}, frozenset()))
+    assert reply.text == shown.text and reply.card == shown
+    assert [piece.children[0].content for piece in listing.layout([], DAY) if isinstance(piece, design.Box)] == [rules.EMPTY_LIST]
+    many = [*pills] * 9
+    assert design.problem(listing.layout(many, DAY)) == "", "more pills than fit a box each share one"

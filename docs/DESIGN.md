@@ -10,13 +10,23 @@ touch, the standard wins.
 **Status (2026-10-13): waiting for the check on the phone (block 39 of
 `docs/QA-RUN.md`).** The colours below are the ones chosen so far and
 are not final until Alex has looked at them on the phone; the lock
-screen waits for the same check. Six cards are built this way, behind
+screen waits for the same check. These are built this way, behind
 `CARDS_V2` (off unless set in `.env`; off, every card looks as it
 always has): today's pills checklist, the reminder, the confirm card,
 the card that asks a question, the card that asks first because
-something is risky, and the channel reset card. The list of my
-schedule and the briefing (behind `BRIEFING_ENABLED`) are drawn this
-way too. Everything else is still a plain message.
+something is risky, the channel reset card, the list of my schedule,
+the briefing (behind `BRIEFING_ENABLED`), and since 2026-10-13 the
+rest of the cards a task builds with `core/cards.py`: the list of my
+pills, a day and the week looked back on, the weekly summary, the
+list of open bugs, the card for a message sent while the bot was off,
+and the "which task?" question.
+
+**Still plain, and why** (each needs a pass of its own): a bug's post
+in the forum, the archived copy with Restore, and the dev panel are
+built with discord.py directly and rewritten in place by their own
+buttons; #commands and `help` are pages of text; a line that reports
+a change ("✅ Zinc · taken …") is a line, not a card; what goes to
+#bot-log is an embed; timers are left as they are.
 
 **Every colour and spacing value is in one file, `core/design.py`**
 (its first block): after the phone check, a change is an edit there and
@@ -63,6 +73,22 @@ then always as **Name · state**:
 Nothing else renames a bot: no marker for the dev database (the old
 "· DEV" is gone), no state for live. With no `BOT_NAME` the nickname
 is left as it is.
+
+## Lists and looking back
+
+A list shown on request is a standing message: `# icon Title · count`,
+one small line of context, a box an item, and no buttons (a list is
+changed by words).
+
+| Message | A box is | Its colour |
+|---|---|---|
+| My pills | a pill in use; Paused and Ended are a box of small lines each, under a separator | grey: nothing in a list is waiting to be done (what is due is the checklist's to show) |
+| A day looked back on | a dose, as the checklist words it | what became of it: green taken, red missed, grey skipped |
+| The week, and the weekly summary | a day: **Tue 13** · ✅✅❌ 2 of 3 | red when a dose was missed that day, blue while one is still to take, green otherwise; the streak is the small line under the days |
+| Open bugs | a bug: its id, linked, and what it is about | amber when a fix is ready and it is mine to retest, grey otherwise; green for "No open bugs." |
+
+More items than fit a box each (twelve) share one box of lines: a
+message never loses an item to fit.
 
 ## The pieces
 

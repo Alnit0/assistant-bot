@@ -788,6 +788,20 @@ async def p3(h: Harness) -> None:
         h.check(sorted(set(shown.accents)) == sorted({accent(design.DUE), accent(design.QUIET)}), f"its colours are {[hex(each) if each else None for each in shown.accents]}")
         h.memo["schedule_list"] = shown.id
 
+    async with h.step("3.13b2", "The lists that were plain, in the new look: `my pills`, “show my week”, `bugs`", "Each is one drawn message (Components V2) with the same words: a heading, a box an item (a pill; a day of the week; “No open bugs.”), and no buttons", "stage 5 (2026-10-13)"):
+        await h.say("my pills", canned=("pill_list", {"guessed": [], "not_included": []}))
+        listed = await h.find(h.inbox, "💊 Pills", "in use")
+        h.check(listed is not None and listed.v2 and not listed.buttons and "Testa" in listed.text and "Testany" in listed.text, f"my pills: {(listed.v2, listed.text[:200]) if listed else [each.text[:60] for each in await h.recent(h.inbox, 3)]}")
+        h.check(set(listed.accents) <= {accent(design.QUIET)}, f"its boxes' colours: {[hex(each) if each else None for each in listed.accents]}")
+        await h.say("show my week", canned=("pill_history", {"period": "week", "guessed": [], "not_included": []}))
+        week = await h.find(h.inbox, "This week")
+        h.check(week is not None and week.v2 and not week.buttons and " taken" in week.text.splitlines()[0], f"the week: {(week.v2, week.text[:200]) if week else 'nothing'}")
+        h.check(set(week.accents) <= {accent(status) for status in (design.DONE, design.MISSED, design.ANY_TIME, design.QUIET)}, f"its boxes' colours: {[hex(each) if each else None for each in week.accents]}")
+        await h.say("bugs")
+        bugs = await h.find(h.inbox, "Open bugs")
+        h.check(bugs is not None and bugs.v2 and not bugs.buttons, f"bugs: {(bugs.v2, bugs.text[:120]) if bugs else [each.text[:60] for each in await h.recent(h.inbox, 3)]}")
+        h.saw(f"{listed.text.splitlines()[0]} / {week.text.splitlines()[0]} / {bugs.text.splitlines()[0]}"[:200])
+
     async with h.step("3.13c", "Days and notify: “make the evening checklist notify, and only on weekdays”, then Save", "A blurple change card with `days · every day → Mon to Fri` and `notify · silent → notifies`; after Save the schedule is so", "scheduler stage 2 (schedule-change-v1)"):
         await h.say("make the evening checklist notify, and only on weekdays", canned=scheduled("schedule_change", {"schedule": "evening checklist", "notify": "notify", "days": ["mon", "tue", "wed", "thu", "fri"], "days_change": "set"}), task="schedule")
         stored, shown = await card(h)

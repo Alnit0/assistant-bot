@@ -604,3 +604,24 @@ def test_when_a_self_test_ends_the_dev_bot_is_called_its_plain_name_again(monkey
     monkeypatch.setattr(runner.config, "test_bot_name", lambda: "Hive")
     monkeypatch.setattr(runner.config, "test_bot_token", lambda: None)
     assert run(runner.plain_name(7)) == "nothing to put back" and did == ["Hive"], "without a dev bot the run is live's account, and live is never renamed"
+
+
+# --- the remaining cards in the new look (stage 5) ---------------------------------------------------------------------
+def test_the_offline_card_and_the_which_task_card_are_drawn_as_decisions_with_the_same_buttons():
+    from core import confirm, design
+    from core.actions import Entry
+
+    shown = missed.card(77, "took zinc", NOW - timedelta(minutes=10), "https://discord.test/77")
+    cards.check(shown)
+    (box,) = [piece for piece in shown.layout if isinstance(piece, design.Box)]
+    assert box.status == design.DECISION and box.children[0].content.startswith("## 📭 I was offline when you sent this\n-# ")
+    assert "> took zinc" in " ".join(design.texts(shown.layout)) and "**Handle it now?**" in " ".join(design.texts(shown.layout))
+    assert [button.label for button in design.buttons(shown.layout)] == ["Handle it now", "Ignore"] == [button.label for button in shown.rows[0]]
+
+    entries = [Entry(name, icon, f"Only for {name}.", ("a", "b"), (), on_repeat="allow_another") for name, icon in (("pills", "💊"), ("shopping", "🛒"))]
+    tie = confirm.render_tie(entries, 5, "add iron")
+    cards.check(tie)
+    assert tie.text == "Which is “add iron” for?", "off, it reads as it always has"
+    (box,) = [piece for piece in tie.layout if isinstance(piece, design.Box)]
+    assert box.status == design.DECISION and "“add iron”" in " ".join(design.texts(tie.layout)) and "**Which is it for?**" in " ".join(design.texts(tie.layout))
+    assert [button.label for button in design.buttons(tie.layout)] == [button.label for button in tie.rows[0]] and tie.rows[0][-1].label == "Neither"

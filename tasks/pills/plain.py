@@ -7,7 +7,7 @@ from core.actions import BOOLEAN, INTEGER, ITEMS, LAST, LIST, MINUTES, TIME, TIM
 from core.actions import EACH_DAY, SEE, SET_UP, flag, is_guessed
 from core.actions import is_reference, point_at
 from core.errors import UserError
-from tasks.pills import checklist, history, rules, store, today
+from tasks.pills import checklist, history, listing, rules, store, today
 from tasks.pills import doses as limits
 from tasks.pills.store import DOSE
 from tasks.pills.today import Dose
@@ -303,8 +303,8 @@ def _settled(item: dict, settled: rules.Request) -> dict:
 def _changed(user_id: int) -> None:
     """The pills changed: the list last shown on request is brought up to date in place."""
 
-    async def render() -> str:
-        return rules.list_text(await store.pills(user_id), day.today())
+    async def render():
+        return listing.card(await store.pills(user_id), day.today())
 
     livelists.changed(user_id, LIST_KEY, render)
     # Today's checklist follows the plan straight away: a pill added, changed, paused or removed
@@ -853,7 +853,8 @@ async def delete_save(request: Request, data: dict) -> str:
 # ---------------------------------------------------------------------------
 async def show_list(request: Request, data: dict, guessed: frozenset) -> LiveReply:
     # Read-only, no buttons. Live: this copy is rewritten in place when a pill changes
-    return LiveReply(LIST_KEY, rules.list_text(await store.pills(request.user.id), day.today()))
+    shown = listing.card(await store.pills(request.user.id), day.today())
+    return LiveReply(LIST_KEY, shown.text, shown)
 
 
 async def state(request: Request) -> State:

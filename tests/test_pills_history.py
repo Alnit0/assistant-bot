@@ -42,7 +42,8 @@ def test_yesterday_is_shown_as_it_was_recorded_a_line_a_dose(world):
     run(plain.remove_save(world.request(), proposal.data))
     assert "✅ **Zinc** · taken 9:00 am" in run(history.yesterday(world.owner.id)), "a pill removed today was still taken yesterday"
     request = Request(world.owner, HUB, "what did I take yesterday?")
-    assert run(history.show(request, {"period": "yesterday"}, frozenset())).startswith("💊 **Yesterday** · Tue 13 Oct")
+    shown = run(history.show(request, {"period": "yesterday"}, frozenset()))
+    assert (shown.key, shown.text.splitlines()[0]) == ("pills.yesterday", "💊 **Yesterday** · Tue 13 Oct · 1 of 3 taken · 1 missed · 1 skipped") and shown.card.text == shown.text
 
 
 def test_the_week_is_a_line_a_day_up_to_today_with_the_count_and_the_streak(world):
@@ -57,7 +58,7 @@ def test_the_week_is_a_line_a_day_up_to_today_with_the_count_and_the_streak(worl
     assert len(said) == 5, "days still to come are left out, and a streak of one day is not said"
     assert history.week_of(THURSDAY) == (DAY, DAY + timedelta(days=6)) and history.week_of(DAY + timedelta(days=6))[0] == DAY
     request = Request(world.owner, HUB, "show my week")
-    assert run(history.show(request, {"period": "week"}, frozenset())).startswith("💊 **This week**")
+    assert run(history.show(request, {"period": "week"}, frozenset())).text.startswith("💊 **This week**")
 
 
 def test_the_streak_is_days_in_a_row_one_for_all_pills_and_only_a_missed_dose_breaks_it(world):
@@ -163,3 +164,55 @@ def test_the_pills_task_gives_the_handler_and_its_name_in_words():
     from tasks.pills import task
 
     assert task.job_handlers()[history.WEEK_JOB] is history.week_job and task.job_labels()[history.WEEK_JOB] == "weekly pills summary"
+
+
+# --- the same, drawn (stage 5: every remaining card in the new look) -----------------------------------------------
+from core import cards, design  # noqa: E402
+
+
+def _boxes(pieces):
+    return [(piece.status, piece.children[0].content) for piece in pieces if isinstance(piece, design.Box)]
+
+
+def test_a_day_is_drawn_as_a_box_a_dose_in_the_colour_of_what_became_of_it(world):
+    add(world, *THREE)
+    lived(world, TUESDAY, "zinc")
+    log(world, {"pill": "iron", "did": "skipped"})
+    lived(world, WEDNESDAY)
+    shown = run(history.yesterday_card(world.owner.id))
+    cards.check(shown)
+    assert design.problem(shown.layout) == "" and shown.layout[0].content == "# 💊 Yesterday · 1 of 3 taken · 1 missed · 1 skipped\n-# Tue 13 Oct"
+    assert _boxes(shown.layout) == [
+        (design.DONE, "✅ **Zinc** · taken 9:00 am"), (design.MISSED, "❌ **Evening pill** · missed"), (design.QUIET, "⏭️ **Iron** · skipped"),
+    ]
+    assert shown.text.splitlines()[1:] == [text for _, text in _boxes(shown.layout)], "the same words, drawn or not"
+
+
+def test_the_week_is_drawn_as_a_box_a_day_with_the_streak_under_it(world):
+    add(world, {"name": "Zinc"}, {"name": "Iron"})
+    lived(world, DAY, "zinc", "iron")
+    lived(world, TUESDAY, "zinc", "iron")
+    lived(world, WEDNESDAY, "zinc")
+    lived(world, THURSDAY, "zinc")
+    shown = run(history.week_card(world.owner.id))
+    cards.check(shown)
+    assert shown.layout[0].content == "# 💊 This week · 6 of 8 taken · 1 missed\n-# Mon 12 – Sun 18 Oct"
+    assert _boxes(shown.layout) == [
+        (design.DONE, "**Mon 12** · ✅✅ 2 of 2"), (design.DONE, "**Tue 13** · ✅✅ 2 of 2"),
+        (design.MISSED, "**Wed 14** · ✅❌ 1 of 2"), (design.ANY_TIME, "**Thu 15** · ✅▫️ 1 of 2 so far"),
+    ]
+    lived(world, THURSDAY, "iron")
+    lived(world, THURSDAY + timedelta(days=1), "zinc", "iron")
+    again = run(history.week_card(world.owner.id))
+    assert again.layout[-1].content == "-# 🔥 Streak · 2 days", "the streak is the small line under the days"
+    empty = history.week_layout([], DAY)
+    assert _boxes(empty) == [(design.QUIET, "Nothing was to take this week.")] and design.problem(empty) == ""
+
+
+def test_a_long_day_still_fits_one_message(world):
+    add(world, *({"name": f"Pill {n:02d}"} for n in range(20)))
+    lived(world, DAY)
+    lived(world, TUESDAY)
+    shown = run(history.yesterday_card(world.owner.id))
+    cards.check(shown)
+    assert len(_boxes(shown.layout)) == 1 and _boxes(shown.layout)[0][0] == design.MISSED, "past twelve doses they share a box, in the colour of the worst of them"

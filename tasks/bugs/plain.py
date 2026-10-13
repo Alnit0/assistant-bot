@@ -30,7 +30,8 @@ async def report_said(request: Request, data: dict, guessed: frozenset) -> str:
 
 async def list_said(request: Request, data: dict, guessed: frozenset) -> LiveReply:
     """The open bugs, as the word `bugs` shows them: Live, kept up to date in place."""
-    return LiveReply(listing.KEY, await listing.text(request.user.id))
+    shown = await listing.card(request.user.id)
+    return LiveReply(listing.KEY, shown.text, shown)
 
 
 ACTIONS = (

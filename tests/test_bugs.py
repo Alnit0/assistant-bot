@@ -1056,7 +1056,8 @@ def test_a_message_inside_a_bugs_post_is_refused_in_plain_words_too(said, monkey
 def test_show_my_open_bugs_is_the_same_list_as_the_word(said):
     from core.actions import LiveReply
 
-    assert asyncio.run(bugs.list_said(said.request("show my open bugs"), {}, frozenset())) == LiveReply("bugs", "🐞 No open bugs.")
+    none = asyncio.run(bugs.list_said(said.request("show my open bugs"), {}, frozenset()))
+    assert isinstance(none, LiveReply) and (none.key, none.text) == ("bugs", "🐞 No open bugs.") and none.card.text == none.text
     said.report()
     shown = asyncio.run(bugs.list_said(said.request("show my open bugs"), {}, frozenset()))
     listed = shown.text
@@ -1238,7 +1239,7 @@ def test_the_list_of_open_bugs_is_live_and_follows_a_new_bug(filing, owner, monk
     assert ctx.replied == ["🐞 No open bugs."] and placed == [(owner.id, "bugs", ctx.channel_id, 6001, "bugs")]
     asyncio.run(bugs._file(owner, INBOX, snap(), [], rules.REACTION))
     assert [(user_id, key) for user_id, key, _ in renders] == [(owner.id, "bugs")], "a new bug: the list on screen follows"
-    assert asyncio.run(renders[0][2]()).startswith("**Open bugs (1)**") and listing.KEY == "bugs"
+    assert asyncio.run(renders[0][2]()).text.startswith("**Open bugs (1)**") and listing.KEY == "bugs"
 
 
 def test_the_plain_words_code_is_plain_py_and_only_posts_py_uses_discord():
@@ -1250,3 +1251,27 @@ def test_the_plain_words_code_is_plain_py_and_only_posts_py_uses_discord():
     assert bugs.ACTIONS is plain.ACTIONS and bugs.report_said is plain.report_said and bugs.list_said is plain.list_said
     for module in (bugs, plain, filed, listing):
         assert "import discord" not in inspect.getsource(module), module.__name__
+
+
+# --- the list of open bugs, drawn (stage 5) -------------------------------------------------------------------------------
+def test_the_open_bugs_are_a_card_with_the_same_words_and_a_box_a_bug():
+    from core import cards as core_cards
+    from core import design
+    from core.cards import Card
+
+    def bug(number, summary, fix_ready=False, notes=0, url="https://discord.test/1"):
+        report = rules.Report(rules.WORD, 5, "#inbox", rules.Snapshot(1, "me", summary, "2026-10-13T02:21:00+00:00"), reported_at="2026-10-13T02:21:00+00:00")
+        return SimpleNamespace(id=number, summary=summary, report=report, post_url=url, created_at="2026-10-13T02:21:00+00:00", note_count=notes, fix_ready=fix_ready)
+
+    items = [bug(4, "the reply was slow"), bug(7, "wrong time on the card", fix_ready=True, notes=2, url=None)]
+    drawn = rules.list_layout(items)
+    core_cards.check(Card(rules.list_text(items), (), drawn))
+    assert drawn[0].content == "# 🐞 Open bugs · 2"
+    name = rules.bug_id(4)
+    boxes = [(piece.status, piece.children[0].content) for piece in drawn if isinstance(piece, design.Box)]
+    assert boxes[0] == (design.QUIET, f"**[{name}](https://discord.test/1)** · the reply was slow\n-# #inbox · 13 Oct")
+    assert boxes[1][0] == design.DUE and "2 notes · 🔧 fix ready, needs retest" in boxes[1][1], "amber when it is mine to retest"
+    none = rules.list_layout([])
+    assert [(piece.status, piece.children[0].content) for piece in none if isinstance(piece, design.Box)] == [(design.DONE, "No open bugs.")]
+    many = rules.list_layout([bug(n, f"bug {n}") for n in range(1, 30)])
+    assert design.problem(many) == "" and len([piece for piece in many if isinstance(piece, design.Box)]) == 1

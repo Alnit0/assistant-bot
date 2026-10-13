@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 import discord
 
-from core import cards, channels, clock, database, discord_utils
+from core import cards, channels, clock, database, design, discord_utils
 from core.cards import Button, Card
 from core.config import CHANNELS, TIMEZONE
 from core.timeinput import format_time
@@ -115,10 +115,12 @@ def card(message_id: int, text: str, sent_at: datetime, url: str = "", files: in
     day = f"{sent_at.astimezone(TIMEZONE):%a %d %b}, " if sent_at.astimezone(TIMEZONE).date() != clock.real_now().astimezone(TIMEZONE).date() else ""
     link = f" · [the message]({url})" if url else ""
     which = str(message_id)
-    return Card(
-        f"{HEADING} · {day}`{when}`{link}\n{quote(text, files)}",
-        ((Button("Handle it now", TASK, HANDLE, which, emoji="▶️"), cards.cancel(TASK, IGNORE, which, label="Ignore")),),
+    row = (Button("Handle it now", TASK, HANDLE, which, emoji="▶️"), cards.cancel(TASK, IGNORE, which, label="Ignore"))
+    # The same card drawn (docs/DESIGN.md, with CARDS_V2 on): a decision, in one box
+    drawn = design.decision(
+        "📭 I was offline when you sent this", [quote(text, files)], context=f"{day}{when}{link}", question="Handle it now?", row=row,
     )
+    return Card(f"{HEADING} · {day}`{when}`{link}\n{quote(text, files)}", (row,), drawn)
 
 
 def to_read(names: dict[str, int]) -> list[int]:

@@ -8,18 +8,19 @@ the bot posts, edits and deletes is real, and is read back from Discord and
 from the database before a step passes. How it works and what it can't
 see: `docs/DEVELOPMENT.md`, "The self-test".
 
-**Run:** 2026-10-13 19:05, 14 min 16 s
-**Result:** 108 passed, 1 failed, 0 broke, 0 skipped, of 109 steps
-**Requests to Claude:** real for 32 steps · US$0.1634 spent
+**Run:** 2026-10-13 19:22, 14 min 9 s
+**Result:** 109 passed, 0 failed, 0 broke, 0 skipped, of 109 steps
+**Requests to Claude:** real for 32 steps · US$0.1546 spent
 
 <!-- run history: written by python -m selftest -->
 ## Run history
 
-The latest 6 of 6 runs, newest first. All of them, a line a run, are in
+The latest 7 of 7 runs, newest first. All of them, a line a run, are in
 `data/selftest/history.csv` (never rewritten). The first step to fail in a stage is a bug in the forum until it passes again.
 
 | Run | Commit | What ran | Passed | Failed | Failed steps | Spend | Took |
 |---|---|---|---|---|---|---|---|
+| 2026-10-13 19:22 | `a5656b9` | full | 109 of 109 | 0 | · | US$0.1546 | 14 min 09 s |
 | 2026-10-13 19:05 | `3fa4451` | full | 108 of 109 | **1** | 1.07 | US$0.1634 | 14 min 16 s |
 | 2026-10-13 18:49 | `96c4449` | full | 106 of 106 | 0 | · | US$0.1586 | 14 min 14 s |
 | 2026-10-13 18:28 | `b73c8f6` | full | 104 of 104 | 0 | · | US$0.1388 | 13 min 44 s |
@@ -31,9 +32,7 @@ The latest 6 of 6 runs, newest first. All of them, a line a run, are in
 
 ## What failed
 
-| Step | What | Expected | What happened | From |
-|---|---|---|---|---|
-| 1.07 | A typed answer: “add Testmag to my pills, twice a day at 8am”, then “9pm” | A card asking for the other dose's time with no Save; after “9pm” a card with 8:00 am and 9:00 pm and Save. Then Cancel removes it | the second card: 💊 Pills · new **Testmag** · daily at `8:00 am`, `8:00 pm` -# or tell me what to change with ['✅ Save', '↩️ Cancel'] | T27 (37.4) |
+Nothing.
 
 ## Discoveries
 
@@ -47,22 +46,23 @@ What is worth a look whether or not its step passed.
 **Warnings and errors in `logs/dev-bot.log` during the run**
 
 - ×6 `WARNING discord.state: Guilds intent seems to be disabled. This may cause state related issues.`
-- `WARNING assistant: Claude spend today is US$0.1355, over the daily limit of US$0.001`
+- `WARNING assistant: Claude spend today is US$0.1267, over the daily limit of US$0.001`
 
 **Slow steps** (12 seconds or more; a step is mostly waiting for Discord, and each input is given about a second to settle)
 
-- 3.14 Every sketch in docs/mockups (19) posted with `dev mock`: 64s
+- 3.14 Every sketch in docs/mockups (19) posted with `dev mock`: 59s
+- 3.13d Pause and resume: “pause the evening checklist”, Save; then “turn the evening checklist back on”, Save: 20s
 - 1.08 Names: “add Testvit and Testvit forte”, “I took testvit”, “skip forte”: 19s
 - 6.06 The same, then Save: 18s
-- 3.13d Pause and resume: “pause the evening checklist”, Save; then “turn the evening checklist back on”, Save: 18s
-- 6.05 Something I say in the hub that leads to a card, then Cancel: 17s
+- 6.05 Something I say in the hub that leads to a card, then Cancel: 16s
 - 6.01 A start with HUB_TIDY on: 15s
-- 4.07 The spend line: two messages to Claude with the limit at US$0.001: 14s
+- 1.07 A typed answer: “add Testmag to my pills, twice a day at 8am”, then “9pm”: 14s
+- 1.10c Add: “also post the pills checklist at 6 pm”, then Save: 14s
 - 6.09 The next morning at 6:00: 14s
-- 1.07 A typed answer: “add Testmag to my pills, twice a day at 8am”, then “9pm”: 13s
-- 1.10c Add: “also post the pills checklist at 6 pm”, then Save: 13s
+- 4.07 The spend line: two messages to Claude with the limit at US$0.001: 13s
+- 6.03 I say something in the hub and get a reply: `took testany`: 12s
 
-The whole run took 14 min 16 s, 75 seconds of it with the bot off on purpose.
+The whole run took 14 min 9 s, 75 seconds of it with the bot off on purpose.
 
 **In the specs and not tested here**
 
@@ -82,7 +82,7 @@ The whole run took 14 min 16 s, 75 seconds of it with the bot off on purpose.
 
 ## Start 1: the old look, reminders on. A day of pills up to the afternoon, then the bot is cut off mid-message
 
-Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 233s; the process ended with 0.
+Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 228s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -96,7 +96,7 @@ Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 233s; the process end
 | 1.04c | Days of the week: “add Testdays to my pills on weekdays only” | ✅ pass | A card “💊 Pills · new” naming Testdays, Mon to Fri, with Save. Cancel: nothing is saved | **Testdays** · Mon to Fri, any time | real request | asked 2026-10-13 (stage 3) |
 | 1.05 | A question on the card: “add Testiron to my pills at 8” | ✅ pass | A card with “daily at ❔”, the question morning or evening, a button for 8:00 am and 8:00 pm, Cancel, and no Save | 8:00 am / 8:00 pm / ↩️ Cancel | real request | T25 (37.1) |
 | 1.06 | The answer is pressed: 8:00 pm, then Save | ✅ pass | The same message is rewritten with 8:00 pm and Save; Save adds Testiron at 8:00 pm |  |  | T26 (37.2) |
-| 1.07 | A typed answer: “add Testmag to my pills, twice a day at 8am”, then “9pm” | ❌ fail | A card asking for the other dose's time with no Save; after “9pm” a card with 8:00 am and 9:00 pm and Save. Then Cancel removes it | the second card: 💊 Pills · new **Testmag** · daily at `8:00 am`, `8:00 pm` -# or tell me what to change with ['✅ Save', '↩️ Cancel'] | real request | T27 (37.4) |
+| 1.07 | A typed answer: “add Testmag to my pills, twice a day at 8am”, then “9pm” | ✅ pass | A card asking for the other dose's time with no Save; after “9pm” a card with 8:00 am and 9:00 pm and Save. Then Cancel removes it |  | real request | T27 (37.4) |
 | 1.07b | The same request with an empty place where the second time would go | ✅ pass | What Claude understood is still used: a card for Testmag asking for the other dose's time, never “I didn't understand that”. Cancel removes it |  | recorded answer | self-test of 2026-10-13, fix 2 |
 | 1.08 | Names: “add Testvit and Testvit forte”, “I took testvit”, “skip forte” | ✅ pass | The whole name wins: Testvit is taken, not Testvit forte. Part of a name finds the only fit: Testvit forte is skipped | {'Testvit': 'done', 'Testvit forte': 'skipped'} | real request | T22 (40.1, 40.2) |
 | 1.09 | A name that fits two: “pause testv” | ✅ pass | A card asking which one, a button for each of the two, no Save. Cancel removes it | Testvit / Testvit forte / ↩️ Cancel | real request | T23 (40.3) |
@@ -126,7 +126,7 @@ Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 233s; the process end
 
 ## Start 2: the same settings, after 75 seconds off. The catch-up, then the rest of the day and the next morning
 
-Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 86s; the process ended with 0.
+Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 87s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -152,7 +152,7 @@ Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 86s; the process ende
 
 ## Start 3: `CARDS_V2` on. Every card posted and edited in the new look, and the old look's messages edited under it
 
-Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`. Took 194s; the process ended with 0.
+Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`. Took 191s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -190,7 +190,7 @@ Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`, `DAILY_SPEND_LIMIT=0.001`.
 | 4.04 | `pills` with the new look off | ✅ pass | A fresh checklist in the old look (a plain message), in place of the drawn one | ## 💊 Pills · ▰▰▱▱▱ 3 of 6 |  | T58 (41.8) |
 | 4.05 | A new card with the new look off: “add Testlast once a day”, then Cancel | ✅ pass | A plain card with Save and Cancel; Cancel removes it |  | real request | T58 (41.8) |
 | 4.05b | The reset card with the new look off: `reset channel`, then Cancel | ✅ pass | A plain message with the same words and buttons; Cancel removes it |  |  | T58; self-test of 2026-10-13, fix 5 |
-| 4.06 | `dev cost` | ✅ pass | Under Today a small line with what was spent against DAILY_SPEND_LIMIT, the limit of a tenth of a cent written as US$0.001 | -# ⚠️ over today's limit: US$0.1355 of US$0.001 (DAILY_SPEND_LIMIT) |  | T35, T56 (42.1, 42.3) |
+| 4.06 | `dev cost` | ✅ pass | Under Today a small line with what was spent against DAILY_SPEND_LIMIT, the limit of a tenth of a cent written as US$0.001 | -# ⚠️ over today's limit: US$0.1267 of US$0.001 (DAILY_SPEND_LIMIT) |  | T35, T56 (42.1, 42.3) |
 | 4.07 | The spend line: two messages to Claude with the limit at US$0.001 | ✅ pass | One “💰 Claude spend is over today's limit” in #selftest-log after the first, and no second one after the second |  | real request | T49, T50 (42.2, 42.3) |
 | 4.07a | The bot's own is not changed by words: “move the backup to 4am” | ✅ pass | One line saying the nightly backup is the bot's own and isn't changed here; no card, and it still runs at 3:00 am |  | real request | scheduler stage 2 |
 | 4.07b | `dev run backup` | ✅ pass | A handler run by hand, outside its schedule: “▶️ Ran: core.nightly_backup”, a second “Backup saved”, a run of its own in the log, and the night's backup still booked |  |  | scheduler stage 1 |
@@ -198,7 +198,7 @@ Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`, `DAILY_SPEND_LIMIT=0.001`.
 
 ## Start 5: `BRIEFING_ENABLED` on (the starts before it had it off). The morning routine, “brief me”, and the briefing kept up to date in place
 
-Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `BRIEFING_ENABLED=true`, `WEEKLY_SUMMARY=true`. Took 62s; the process ended with 0.
+Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `BRIEFING_ENABLED=true`, `WEEKLY_SUMMARY=true`. Took 60s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -216,7 +216,7 @@ Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `BRIEFING_ENABLED=true`, `W
 
 ## Start 6: `HUB_TIDY` on as well (off until now). What is said in the hub goes once handled, pinned stays, yesterday goes in the morning, and a copy is saved first
 
-Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `BRIEFING_ENABLED=true`, `HUB_TIDY=true`. Took 109s; the process ended with 0.
+Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `BRIEFING_ENABLED=true`, `HUB_TIDY=true`. Took 108s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -255,5 +255,5 @@ Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `BRIEFING_ENABLED=true`, `H
 - The category `selftest` and its three channels are left in place, holding the last run. Every run empties them first.
 - To empty them now: `python -m selftest --clear`. To delete them and the category: `python -m selftest --remove` (the next run makes them again). Both work over HTTP, with live running.
 - `data/dev.db` and the dev clock are as they were before the run: they are moved aside for it and put back after.
-- The run's own database and each start's results are kept in `data/selftest/run-20261013-190539/` (never in git). Delete the folder when you like.
+- The run's own database and each start's results are kept in `data/selftest/run-20261013-192206/` (never in git). Delete the folder when you like.
 

@@ -6,6 +6,10 @@ backfilled from the git log.
 
 ## 2026-10-13
 
+- With `CARDS_V2` on, more is drawn in the new look: the list of your
+  pills, yesterday and the week, the weekly summary, the open bugs,
+  the "I was offline" card and the "which task?" question.
+
 - Pills, looking back: "what did I take yesterday?", "show my week",
   and a streak in days in the briefing's pills section. A weekly
   summary on Sunday evening, switched off until you turn it on

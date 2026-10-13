@@ -68,6 +68,21 @@ against the bug's own record, not only the list of numbers).
     take on Monday" is not built. No history for one pill alone, and no
     streak a pill ("one a pill later in history" was the earlier plan).
 
+- **The remaining cards in the new look** (stage 5, behind `CARDS_V2`
+  as before). Drawn now: my pills, a day and the week looked back on,
+  the weekly summary, open bugs, the "I was offline" card, the "which
+  task?" question. **Not done, each needing a pass of its own**: a
+  bug's post in the forum, the archived copy with Restore and the dev
+  panel (built with discord.py directly, rewritten by their own
+  buttons), #commands and `help` (pages of text), and timers (left as
+  they are). Say which of those you want. Colours I chose, not final
+  like the rest: every box in "my pills" is grey (nothing in a list is
+  waiting to be done); a day of the week is red if a dose was missed,
+  blue while one is still to take, green otherwise; a bug is amber
+  when a fix is ready to retest. The offline card's heading is "📭 I
+  was offline when you sent this" and its question "Handle it now?";
+  the tie card's heading is "❔ One question".
+
 **From the two bots (2026-10-13):**
 
 - **The self-test's channels are found only by the ids in `.env.dev`**

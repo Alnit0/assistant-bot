@@ -154,7 +154,11 @@ def render_tie(entries: list[Entry], card_id: int, said: str) -> Card:
         Button(entry.title, CARDS, "pick", f"{card_id}:{entry.name}", emoji=entry.icon, style=cards.PRIMARY)
         for entry in entries
     )
-    return Card(f"Which is “{cards.truncate_label(said, 100)}” for?", (row + (cards.cancel(CARDS, "cancel", str(card_id), "Neither"),),))
+    row = row + (cards.cancel(CARDS, "cancel", str(card_id), "Neither"),)
+    quoted = cards.truncate_label(said, 100)
+    # The same question drawn (docs/DESIGN.md, with CARDS_V2 on): a decision, an answer a button
+    drawn = design.decision("❔ One question", [f"“{quoted}”"], question="Which is it for?", row=row)
+    return Card(f"Which is “{quoted}” for?", (row,), drawn)
 
 
 def sticks(
