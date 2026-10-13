@@ -365,6 +365,33 @@ def _create_schedules(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX scheduled_jobs_schedule ON scheduled_jobs (schedule_id, status)")
 
 
+def _create_bot_messages(conn: sqlite3.Connection) -> None:
+    # The messages that have a lifetime (core/messages.py): what the bot posted in the hub, and
+    # what I said there, each with when it goes. A row is kept after its message has gone
+    conn.execute(
+        """
+        CREATE TABLE bot_messages (
+            message_id INTEGER PRIMARY KEY,
+            channel_id INTEGER NOT NULL,
+            user_id INTEGER,
+            task TEXT NOT NULL DEFAULT '',
+            lifetime TEXT NOT NULL,
+            slot TEXT NOT NULL DEFAULT '',
+            day TEXT NOT NULL,
+            posted_at TEXT NOT NULL,
+            expires_at TEXT,
+            exchange INTEGER,
+            mine INTEGER NOT NULL DEFAULT 0,
+            waits INTEGER NOT NULL DEFAULT 0,
+            tries INTEGER NOT NULL DEFAULT 0,
+            gone_at TEXT,
+            why TEXT
+        )
+        """
+    )
+    conn.execute("CREATE INDEX bot_messages_open ON bot_messages (gone_at, lifetime)")
+
+
 def _create_spend_notices(conn: sqlite3.Connection) -> None:
     # The days #bot-log was told that Claude spend went over the daily limit: one row a day,
     # so it is said once, and not again after a restart
@@ -406,6 +433,7 @@ MIGRATIONS = [
     _add_question_to_confirm_cards,
     _create_spend_notices,
     _create_schedules,
+    _create_bot_messages,
 ]
 
 

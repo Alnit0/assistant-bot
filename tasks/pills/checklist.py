@@ -1,7 +1,7 @@
 import logging
 from datetime import date, datetime, time, timedelta
 
-from core import cards, clock, config, database, discord_utils, hub, lifecycle, live, llm, occurrences, restart, scheduler, summaries, timeinput, timetable
+from core import cards, clock, config, database, discord_utils, hub, lifecycle, live, llm, messages, occurrences, restart, scheduler, summaries, timeinput, timetable
 from core import day as days
 from core import schedule as core_schedule
 from core.cards import Button, Card
@@ -42,6 +42,7 @@ log = logging.getLogger("assistant")
 # ---------------------------------------------------------------------------
 POST_AT = time(6, 0)  # the time a fresh database's schedule gets; after that the schedule's row says
 DEFAULT = timetable.Default("Pills checklist", POST_AT)
+SLOT = "pills.checklist"  # the checklist's place in the channel: one at a time
 JOB = "checklist"
 LIMIT_JOB = "limit"  # looks again when a pill's latest time passes
 TAKEN, SKIP, NOT_TAKEN = "taken", "skipped", "not_taken"
@@ -150,9 +151,12 @@ async def post(user_id: int, channel_id: int | None = None) -> int | None:
     pills, listed, day = await view(user_id)
     for old in await database.run(store.db_messages, user_id, day):
         await _remove(old)
+    # One checklist at a time (core/messages.py, with the tidy on): a newer one takes the
+    # place of the older, yesterday's included
     message_id = await cards.send(channel_id, sheet_card(listed, pills, day), silent=True)
     if message_id is None:
         return None
+    await messages.record(message_id, channel_id, lifetime=messages.REPLACED, slot=SLOT, task=TASK)
     await database.run(store.db_add_message, user_id, day, CHECKLIST, None, channel_id, message_id)
     await _dose_messages(user_id, day, listed, [], channel_id)
     await book_limit(pills, day)

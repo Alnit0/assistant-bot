@@ -1,6 +1,6 @@
 """Run the self-test: `python -m selftest [--claude] [--only p1,p2] [--channels | --clear | --remove]`.
 
-A full run takes about twelve minutes: five starts of the dev bot, with 75
+A full run takes about fourteen minutes: six starts of the dev bot, with 75
 seconds off between the first two.
 
 The live bot must be stopped first: it and the dev bot share one token. This
@@ -45,6 +45,7 @@ PHASES = (
     ("p3", {"CARDS_V2": "true", "REMINDERS_ENABLED": "true"}, 0),
     ("p4", {"CARDS_V2": "false", "REMINDERS_ENABLED": "true", "DAILY_SPEND_LIMIT": "0.001"}, 0),
     ("p5", {"CARDS_V2": "true", "REMINDERS_ENABLED": "true", "BRIEFING_ENABLED": "true"}, 0),
+    ("p6", {"CARDS_V2": "true", "REMINDERS_ENABLED": "true", "BRIEFING_ENABLED": "true", "HUB_TIDY": "true"}, 0),
 )
 
 
@@ -142,7 +143,7 @@ def run_phase(name: str, settings: dict, channels: dict[str, int], claude: bool,
     env = dict(os.environ)
     env.update(settings)
     env.update({ENV_NAMES[role]: str(channel_id) for role, channel_id in channels.items()})
-    env.update({"SELFTEST": "1", "SELFTEST_CLAUDE": "1" if claude else "0", "SELFTEST_BUDGET": str(budget), "SELFTEST_MEMO": json.dumps(memo), "KEEP_CONFIRMATIONS": "true", "PYTHONIOENCODING": "utf-8"})
+    env.update({"SELFTEST": "1", "SELFTEST_CLAUDE": "1" if claude else "0", "SELFTEST_BUDGET": str(budget), "SELFTEST_MEMO": json.dumps(memo), "KEEP_CONFIRMATIONS": "true", "PYTHONIOENCODING": "utf-8", "COMMANDS_CHANNEL_ID": ""})  # and live's #commands is not rewritten by the test
     started = time.monotonic()
     try:
         done = subprocess.run([sys.executable, "-m", "selftest.phase", "--dev", name, str(out)], env=env, cwd=config.BASE_DIR, timeout=PHASE_TIMEOUT)
@@ -181,7 +182,7 @@ def main() -> int:
 
     began = datetime.now()
     stamp = began.strftime("%Y%m%d-%H%M%S")
-    print("--- the self-test takes about twelve minutes: five starts of the dev bot, 75 seconds off between the first two", flush=True)
+    print("--- the self-test takes about fourteen minutes: six starts of the dev bot, 75 seconds off between the first two", flush=True)
     channels = asyncio.run(prepare_channels())
     saved = set_aside(stamp)
     wanted = [name.strip() for name in asked.only.split(",") if name.strip()]

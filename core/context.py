@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 
 import discord
 
-from core import database, lifecycle, outgoing, tidy
+from core import database, lifecycle, messages, outgoing, tidy
 from core.actions import Attachment
 from core.config import CHANNELS, real_now_nz
 from core.discord_utils import COLOUR_INFO, log_error, log_simple, split_message
@@ -98,13 +98,17 @@ class Context:
         self.posted += 1
         if isinstance(view, discord.ui.LayoutView):
             # A Components V2 card: all it says is in its components, and it takes no text beside them
-            return await self._channel.send(view=view)
+            sent = await self._channel.send(view=view)
+            await messages.record(getattr(sent, "id", None), self.channel_id)
+            return sent
         chunks = split_message(text) or [text]
-        for chunk in chunks[:-1]:
-            await self._channel.send(chunk)
-        if view is None:
-            return await self._channel.send(chunks[-1])
-        return await self._channel.send(chunks[-1], view=view)
+        sent = None
+        for at, chunk in enumerate(chunks):
+            last = at == len(chunks) - 1
+            sent = await self._channel.send(chunk, view=view) if last and view is not None else await self._channel.send(chunk)
+            # With the tidy on, a message in the hub has a lifetime (core/messages.py)
+            await messages.record(getattr(sent, "id", None), self.channel_id)
+        return sent
 
     async def reply_card(self, title: str, fields: list[tuple[str, str]]):
         """Send a card with a title and short name/value fields. Returns the sent message."""
@@ -141,6 +145,7 @@ class Context:
             lifetime = lifecycle.delete_after() if seconds is None else lifecycle.delete_after(seconds)
             message = await self._channel.send(text, delete_after=lifetime)
         lifecycle.note_transient(getattr(message, "id", None))
+        await messages.record(getattr(message, "id", None), self.channel_id)
         return message
 
     def shown(self, text: str) -> None:

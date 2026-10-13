@@ -294,6 +294,15 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   layout with `design.item`, `standing`, `decision` or `notifying`. A
   `Card` always has its plain text and rows as well: that is what is
   drawn with `CARDS_V2` off, and what is logged
+- With `HUB_TIDY` on, a message in the hub has a lifetime
+  (`core/messages.py`: replaced, day, expiry, kept). A task says so
+  with `messages.record(message_id, channel_id, lifetime=, slot=)`
+  after it sends: a `slot` for a thing there is one of at a time (the
+  checklist, the briefing), `messages.DAY` for a line that reports a
+  change outside the hub. With nothing said, one in the hub lasts the
+  day and one elsewhere is never touched. Only `core/messages.py`
+  deletes by lifetime: a copy to `data/exports/` first, pinned or 📌
+  kept, nothing said in the channel, #bot-log only for a failure
 - Edit in place rather than posting again. What must notify me (timer
   done, a phase change, reminders) posts a new message, deleted once
   acknowledged. A list shown on request is Live (`core/livelists.py`:

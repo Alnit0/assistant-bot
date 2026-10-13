@@ -6,7 +6,7 @@ from dataclasses import dataclass, field, replace
 
 import discord
 
-from core import actions, cards, confirm, costs, database, extraction, livelists, llm, outgoing, routing, timing, trace
+from core import actions, cards, confirm, costs, database, extraction, livelists, llm, messages, outgoing, routing, timing, trace
 from core.actions import LIST, ITEMS, Answer, Entry, LiveReply, Request, Shown
 from core.cards import Card
 from core.config import CHANNELS, INBOX_CHANNEL_ID
@@ -321,9 +321,14 @@ async def act(
                 # reply to that message is known to be about them
                 text = f"{result.text}\n{left_out}" if left_out else result.text
                 turn.said.append(text)
+                # A line that reports a change lasts the day (core/messages.py, with the tidy
+                # on); in the hub it is the reply to what I said, and goes with it
+                lasts = None if messages.in_hub(request.channel_id) else messages.DAY
                 message_id = await cards.send(request.channel_id, Card(text))
                 if message_id is not None:
                     await result.placed(message_id)
+                    if lasts is not None:
+                        await messages.record(message_id, request.channel_id, lifetime=lasts, task=entry.name)
             else:
                 await say(f"{result}\n{left_out}" if left_out else result)
             # For a few minutes a short message that follows is this task's first

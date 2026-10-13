@@ -1,6 +1,6 @@
 import logging
 
-from core import cards, clock, config, database, hub, livelists, repeats, scheduler, summaries, tidy, timeinput
+from core import cards, clock, config, database, hub, livelists, messages, repeats, scheduler, summaries, tidy, timeinput
 from core import day as days
 from core.actions import SEE, Action, LiveReply, Request, Shown
 from core.cards import Card
@@ -27,6 +27,7 @@ log = logging.getLogger("assistant")
 JOB = "post"
 IN_THE_HUB = "briefing:hub"  # the Live copy in the hub; asked for elsewhere it is "briefing"
 ELSEWHERE = "briefing"
+SLOT = "briefing"  # its place in the hub: one at a time (core/messages.py, with the tidy on)
 ONLY_FOR = (
     "The summary of the user's day across everything the bot keeps (\"brief me\", \"what's on today?\"). Not one "
     "task's own list (what pills are left is the pills task), and not when the briefing is posted (that is the "
@@ -75,6 +76,8 @@ async def post_in_hub(user_id: int, channel_id: int, notify: bool = False) -> in
         message_id = await cards.send(channel_id, shown, silent=True)
     if message_id is None:
         return None
+    # One briefing in the hub at a time (core/messages.py, with the tidy on)
+    await messages.record(message_id, channel_id, lifetime=messages.REPLACED, slot=SLOT, task=TASK)
     await livelists.placed(user_id, IN_THE_HUB, channel_id, message_id, TASK)
     if old is not None and old.message_id != message_id:
         # The new one is up first, then the old goes: never a moment with none

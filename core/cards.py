@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 import discord
 
-from core import config, database, design, discord_utils, outgoing
+from core import config, database, design, discord_utils, messages, outgoing
 from core.context import Context
 from core.database import log_received, log_result
 from core.discord_utils import report_interaction_error, safe_reply
@@ -538,7 +538,8 @@ def _channel(channel_id: int | None):
 async def send(channel_id: int, card: Card, *, silent: bool = False) -> int | None:
     """Post a card in a channel, with no message of the user's to answer.
     `silent` posts without a notification. Returns the message's id, or None
-    if the channel can't be found."""
+    if the channel can't be found. With the tidy on, one posted in the hub
+    lasts the day unless its task says otherwise (`messages.record`)."""
     channel = _channel(channel_id)
     if channel is None:
         log.warning("Could not post a card: channel %s not found", channel_id)
@@ -554,6 +555,7 @@ async def send(channel_id: int, card: Card, *, silent: bool = False) -> int | No
         message = await channel.send(text, silent=silent)
     else:
         message = await channel.send(text, view=built, silent=silent)
+    await messages.record(message.id, channel_id)
     return message.id
 
 

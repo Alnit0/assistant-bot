@@ -132,6 +132,10 @@ REMINDERS_ENABLED = flag(os.getenv("REMINDERS_ENABLED"), False)
 # The briefing (tasks/briefing): one card a day in the hub that says what today holds, kept up
 # to date in place, and "brief me". Off unless set: off, nothing of it exists
 BRIEFING_ENABLED = flag(os.getenv("BRIEFING_ENABLED"), False)
+# Message lifetimes and the tidy that keeps the hub clean (core/messages.py): what is said in
+# the hub goes once handled, nothing of a past day stays there, and yesterday's checklist goes
+# when today's is posted. Off unless set: off, nothing is recorded and nothing is deleted by it
+HUB_TIDY = flag(os.getenv("HUB_TIDY"), False)
 
 # What a day's requests to Claude may cost, in US dollars, before #bot-log is told (once a
 # day). Nothing is stopped: it only says so. 0 switches the note off

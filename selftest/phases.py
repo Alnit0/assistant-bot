@@ -1014,9 +1014,147 @@ async def p5(h: Harness) -> None:
         h.check(done == ["#1", "#2"], f"the routine's runs done for 6:00 am: {done}")
         h.saw(next((line for line in fresh.text.splitlines() if "Yesterday" in line), "")[:120])
 
+    async with h.step("5.07b", "With HUB_TIDY off, nothing has a lifetime and nothing was tidied", "No message has been recorded, and yesterday's checklist is still in the hub beside today's (as the code has always left it)", "scheduler stage 4: off"):
+        from core import messages
+
+        h.check(not config.HUB_TIDY, "HUB_TIDY is on in this start")
+        recorded = await database.run(lambda conn: conn.execute("SELECT COUNT(*) FROM bot_messages").fetchone()[0])
+        h.check(recorded == 0, f"{recorded} messages have a lifetime recorded")
+        sheets = [each for each in await h.recent(h.hub, 50) if each.id not in h.typed and "💊 Today · " in each.text]
+        h.check(len(sheets) >= 2, f"{len(sheets)} checklists are in the hub: yesterday's was removed with the tidy off")
+        h.memo["old_sheet"] = sheets[-1].id
+        h.memo["hub_before_tidy"] = [each.id for each in await h.recent(h.hub, 50)]
+        h.check(messages.enabled() is False, "the tidy says it is on")
+
     async with h.step("5.08", "`dev clock reset`", "The clock is the real time again", "housekeeping"):
         await h.say("dev clock reset")
         h.check(not clock.is_shifted(), "the clock is still moved")
 
 
-PHASES = {"p1": p1, "p2": p2, "p3": p3, "p4": p4, "p5": p5}
+# ---------------------------------------------------------------------------
+# Start 6: the tidy switched on as well
+# ---------------------------------------------------------------------------
+async def lifetimes(h: Harness) -> dict[int, tuple]:
+    """What is recorded about each message: {id: (lifetime, slot, gone or not, why)}."""
+    def read(conn):
+        return {row[0]: row[1:] for row in conn.execute("SELECT message_id, lifetime, slot, gone_at IS NOT NULL, why FROM bot_messages")}
+
+    return await database.run(read)
+
+
+async def expire(h: Harness) -> None:
+    """Two minutes go by, and the tidy's own job runs."""
+    await h.clock_by(minutes=2, seconds=5)
+    await h.settle(2)
+
+
+async def p6(h: Harness) -> None:
+    from core import messages
+
+    async with h.step("6.01", "A start with HUB_TIDY on", "The morning routine has three steps: the tidy, the briefing, the pills checklist. Nothing that was in the hub before has a lifetime, and none of it is touched", "scheduler stage 4"):
+        h.check(config.HUB_TIDY and messages.enabled(), "HUB_TIDY is not on")
+        routine = await schedule_named(h, "Morning routine")
+        h.check(routine is not None and routine.steps == ("core.hub_tidy", "briefing.post", "pills.checklist"), f"its steps are {routine.steps if routine else None}")
+        await h.clock_to(9, 0, day_offset=6)
+        day_stamp = f"{config.now_nz():%Y-%m-%d}"
+        ran = [(each[0], each[2].split("~")[0][-2:], each[3]) for each in await h.runs("core", "hub_tidy") if each[1] == f"{day_stamp}T06:00" and each[0] == "done"]
+        h.check(len(ran) == 1 and ran[0][1] == "#1", f"the tidy's run for 6:00 am: {ran}")
+        still = [each for each in h.memo.get("hub_before_tidy", []) if await h.get(h.hub, each) is not None]
+        h.check(len(still) >= max(1, len(h.memo.get("hub_before_tidy", [])) - 3), f"only {len(still)} of {len(h.memo.get('hub_before_tidy', []))} messages from before the tidy are still in the hub")
+        h.check(await h.get(h.hub, h.memo.get("old_sheet")) is not None, "an old checklist with no lifetime recorded was removed")
+        h.saw(f"the tidy's line: {ran[0][2]} · {len(still)} old messages left alone")
+
+    async with h.step("6.02", "This morning's briefing and checklist have a slot each", "Both are recorded as “replaced” (briefing, pills.checklist): one of each at a time", "scheduler stage 4"):
+        recorded = await lifetimes(h)
+        slots = sorted(slot for lifetime, slot, gone, why in recorded.values() if lifetime == "replaced" and not gone)
+        h.check(slots == ["briefing", "pills.checklist"], f"the slots recorded are {slots}")
+        h.memo["sheet_tidy"] = await sheet_id(h)
+
+    async with h.step("6.03", "I say something in the hub and get a reply: `took testany`", "The line is there; 2 minutes later my message and the reply are both gone, with nothing said about it; the checklist and the briefing stay", "scheduler stage 4"):
+        mine = await h.say("took testany", channel=h.hub)
+        reply = await h.find(h.hub, "Testany", "taken")
+        h.check(reply is not None, f"no reply in the hub: {[each.text[:60] for each in await h.recent(h.hub, 3)]}")
+        recorded = await lifetimes(h)
+        h.check(recorded.get(mine, ("",))[0] == "expiry" and recorded.get(reply.id, ("",))[0] == "expiry", f"recorded: mine {recorded.get(mine)}, the reply {recorded.get(reply.id)}")
+        log_before = len(await h.recent(h.botlog, 50))
+        await expire(h)
+        h.check(await h.get(h.hub, mine) is None and await h.get(h.hub, reply.id) is None, "my message or the reply is still in the hub after 2 minutes")
+        h.check(await h.get(h.hub, h.memo["sheet_tidy"]) is not None and await briefing_in_hub(h) is not None, "the checklist or the briefing went with them")
+        tidy_cards = [each for each in await h.recent(h.botlog, 50) if "Tidy" in each.all_text]
+        h.check(not tidy_cards and len(await h.recent(h.botlog, 50)) <= log_before + 1, f"#selftest-log was told: {[each.all_text[:80] for each in tidy_cards]}")
+
+    async with h.step("6.04", "A copy was saved first", "data/exports has a tidy file for the hub with my words and the reply in it", "scheduler stage 4"):
+        found = sorted(config.EXPORTS_DIR.glob("tidy-selftest-hub-*.txt"))
+        h.check(bool(found), f"no tidy file in {config.EXPORTS_DIR}")
+        said = found[-1].read_text(encoding="utf-8")
+        h.check("took testany" in said and "Testany" in said and "taken" in said, f"the copy holds: {said[-300:]}")
+        h.saw(found[-1].name)
+
+    async with h.step("6.05", "Something I say in the hub that leads to a card, then Cancel", "The card waits; on Cancel the card and my message both go at once", "scheduler stage 4"):
+        mine = await h.say("add Testhub to my pills once a day", channel=h.hub, canned=add({"name": "Testhub", "per_day": 1}))
+        stored, shown = await card(h, h.hub)
+        h.check(shown is not None, "no card in the hub")
+        await h.clock_by(minutes=3)
+        h.check(await h.get(h.hub, mine) is not None and await h.get(h.hub, shown.id) is not None, "they went while the card was still open")
+        await h.press(shown.id, "Cancel", h.hub)
+        await h.clock_by(seconds=5)
+        await h.settle(2)
+        h.check(await h.get(h.hub, shown.id) is None and await h.get(h.hub, mine) is None, "the card or my message is still there after Cancel")
+
+    async with h.step("6.06", "The same, then Save", "On Save my message goes at once and the card becomes its confirmation, which goes 2 minutes later; the pill is saved all the same", "scheduler stage 4"):
+        mine = await h.say("add Testhub to my pills once a day", channel=h.hub, canned=add({"name": "Testhub", "per_day": 1}))
+        stored, shown = await card(h, h.hub)
+        h.check(shown is not None, "no card in the hub")
+        await h.press(shown.id, "Save", h.hub)
+        await h.clock_by(seconds=5)
+        await h.settle(2)
+        h.check(await h.get(h.hub, mine) is None, "my message is still there after Save")
+        confirmation = await h.get(h.hub, shown.id)
+        h.check(confirmation is not None and "Testhub" in confirmation.text, "the confirmation went at once")
+        await expire(h)
+        h.check(await h.get(h.hub, shown.id) is None and "Testhub" in await h.pills(), "the confirmation is still there, or the pill was not saved")
+
+    async with h.step("6.07", "Pinned stays", "A reply I pin inside its 2 minutes is still there afterwards; what I typed goes", "scheduler stage 4"):
+        mine = await h.say("took testhub", channel=h.hub)
+        reply = await h.find(h.hub, "Testhub", "taken")
+        h.check(reply is not None, "no reply in the hub")
+        await (await h.hub.fetch_message(reply.id)).pin()
+        await expire(h)
+        h.check(await h.get(h.hub, reply.id) is not None, "the pinned reply was removed")
+        h.check(await h.get(h.hub, mine) is None, "what I typed is still there")
+        h.check((await lifetimes(h)).get(reply.id, ("",))[0] == "kept", f"it is recorded as {(await lifetimes(h)).get(reply.id)}")
+        await (await h.hub.fetch_message(reply.id)).unpin()
+        h.memo["pinned"] = reply.id
+
+    async with h.step("6.08", "The same exchange in #selftest-inbox", "Nothing goes after 2 minutes: the hub's rule is the hub's. The line that reports the change is recorded to last the day", "scheduler stage 4"):
+        mine = await h.say("took testlate")
+        reply = await h.find(h.inbox, "Testlate", "taken")
+        h.check(reply is not None, f"no reply: {[each.text[:60] for each in await h.recent(h.inbox, 3)]}")
+        await expire(h)
+        h.check(await h.get(h.inbox, mine) is not None and await h.get(h.inbox, reply.id) is not None, "they were removed from #selftest-inbox")
+        recorded = await lifetimes(h)
+        h.check(mine not in recorded and recorded.get(reply.id, ("",))[0] == "day", f"recorded: mine {recorded.get(mine)}, the reply {recorded.get(reply.id)}")
+        h.memo["inbox_line"] = reply.id
+
+    async with h.step("6.09", "The next morning at 6:00", "The tidy runs first: yesterday's checklist and briefing are gone and today's are there, one of each; yesterday's line in #selftest-inbox is gone; the reply I had pinned (and unpinned since) is left, being kept; nothing in #selftest-log", "scheduler stage 4"):
+        old_sheet, old_briefing = h.memo["sheet_tidy"], (await briefing_in_hub(h)).id
+        log_before = [each.id for each in await h.recent(h.botlog, 50)]
+        await h.clock_to(6, 0, 10, day_offset=1)
+        await h.settle(3)
+        h.check(await h.get(h.hub, old_sheet) is None and await h.get(h.hub, old_briefing) is None, "yesterday's checklist or briefing is still in the hub")
+        fresh, sheet = await briefing_in_hub(h), await sheet_id(h)
+        h.check(fresh is not None and sheet is not None and sheet > fresh.id and await h.count(h.hub, BRIEFING) == 1, "today's briefing and checklist are not there, one of each, the checklist last")
+        h.check(await h.get(h.inbox, h.memo["inbox_line"]) is None, "yesterday's line that reported a change is still in #selftest-inbox")
+        h.check(await h.get(h.hub, h.memo["pinned"]) is not None, "the reply that was kept for being pinned was removed after all")
+        new = [each for each in await h.recent(h.botlog, 50) if each.id not in log_before and "Tidy" in each.all_text]
+        h.check(not new, f"#selftest-log was told of the tidy: {[each.all_text[:100] for each in new]}")
+        day_stamp = f"{config.now_nz():%Y-%m-%d}"
+        ran = [each[3] for each in await h.runs("core", "hub_tidy") if each[1] == f"{day_stamp}T06:00" and each[0] == "done"]
+        h.saw(f"the tidy's line: {ran[0] if ran else 'none'}")
+
+    async with h.step("6.10", "`dev clock reset`", "The clock is the real time again", "housekeeping"):
+        await h.say("dev clock reset")
+        h.check(not clock.is_shifted(), "the clock is still moved")
+
+
+PHASES = {"p1": p1, "p2": p2, "p3": p3, "p4": p4, "p5": p5, "p6": p6}

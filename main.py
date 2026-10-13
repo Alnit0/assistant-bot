@@ -4,7 +4,7 @@ import logging
 import discord
 from discord import app_commands
 
-from core import backup, cards, clock, conversation, database, day, devmode, identity, instance_lock, interactions, lifecycle, live, restart, scheduler, tidy, timing
+from core import backup, cards, clock, conversation, database, day, devmode, identity, instance_lock, interactions, lifecycle, live, messages, restart, scheduler, tidy, timing
 from core.config import (
     CLAUDE_MODEL,
     DB_PATH,
@@ -55,6 +55,7 @@ INTERACTION_GRACE = 2.0
 scheduler.register_handler(backup.JOB_TASK, backup.JOB_KIND, backup.nightly_backup_job, backup.JOB_LABEL)
 scheduler.register_handler(day.JOB_TASK, day.JOB_KIND, day.rollover_job, day.JOB_LABEL)
 tidy.setup()
+messages.setup()
 
 
 # ---------------------------------------------------------------------------
@@ -258,23 +259,35 @@ async def on_message(message: discord.Message):
     if not text:
         return
 
+    # Said in the hub with the tidy on: it is recorded, and it and the reply go once it is
+    # handled (core/messages.py). Anywhere else, and with the tidy off, this does nothing
+    await messages.begin(message.id, message.channel.id, user.id)
+    failed = False
+    try:
+        failed = await _handle(message, user, text)
+    finally:
+        await messages.handled(message.id, failed)
+
+
+async def _handle(message: discord.Message, user, text: str) -> bool:
+    """Handle one message of the owner's. Returns whether it failed."""
     # A reply with an action word acts on the message replied to; a registered
     # word or phrase runs its task. Each decides for itself where it works.
     ctx = Context.from_message(message, user)
     if await registry.dispatch_reply_action(ctx):
-        return
+        return False
     if await registry.dispatch_keyword(ctx):
-        return
+        return False
     # A task may be waiting for this user's next message in this channel
     if await registry.dispatch_expected(ctx):
-        return
+        return False
     # Or take it because of where it was sent (a note in a bug's post)
     if await registry.dispatch_claimed(ctx):
-        return
+        return False
 
     # Plain words are read in the inbox and the hub
     if not conversation.listens_in(message.channel.id):
-        return
+        return False
     in_inbox = message.channel.id == INBOX_CHANNEL_ID
     log.info("Received: %s", text)
 
@@ -301,6 +314,7 @@ async def on_message(message: discord.Message):
         "action_finished",
         registry.ActionResult("chat", "chat", "error" if failed else "ok", user.id, message.channel.id),
     )
+    return failed
 
 
 @client.event

@@ -1,4 +1,4 @@
-from core import actions, confirm, llm, names
+from core import actions, confirm, llm, messages, names
 from core.actions import Answer, Request
 from core.context import Context
 from tasks.pills import checklist, rules, today
@@ -53,6 +53,9 @@ async def took(ctx: Context) -> str:
     if isinstance(result, Answer) and message is not None:
         # The line is that pill's and that dose's: a reply to it means them
         await result.placed(message.id)
+    if message is not None and not messages.in_hub(ctx.channel_id):
+        # A line that reports a change lasts the day (with the tidy on); in the hub it goes with what I typed
+        await messages.record(message.id, ctx.channel_id, lifetime=messages.DAY, task=TASK)
     # So that the next message isn't answered as if this were still waiting
     llm.remember(ctx.channel_id, ctx.text, said)
     llm.task_answered(ctx.channel_id, TASK)

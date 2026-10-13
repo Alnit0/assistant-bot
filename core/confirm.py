@@ -5,7 +5,7 @@ import sqlite3
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 
-from core import actions, cards, database, design, lifecycle, llm, restart, scheduler, users
+from core import actions, cards, database, design, lifecycle, llm, messages, restart, scheduler, users
 from core.actions import Entry, Proposal, Request
 from core.cards import Button, Card
 from core.discord_utils import log_error
@@ -325,6 +325,8 @@ async def latest_open(user_id: int, channel_id: int) -> Stored | None:
 async def _place(card: Stored, shown: Card) -> Stored:
     """Post a stored card and book its expiry."""
     message_id = await cards.send(card.channel_id, shown)
+    # What it answers (a message of mine in the hub) waits for it to be saved, cancelled or to expire
+    await messages.card_opened(message_id)
     job_id = await scheduler.add_job(
         JOB_TASK, JOB_KIND, utc_now() + timedelta(minutes=EXPIRY_MINUTES), {"card": card.id}, card.user_id
     )
@@ -345,6 +347,7 @@ async def _take_away(card: Stored, status: str) -> None:
         await scheduler.cancel_job(card.job_id)
         if card.message_id is not None:
             await cards.delete(card.channel_id, card.message_id)
+            await messages.card_closed(card.message_id, saved=False)
 
 
 def db_forget(conn: sqlite3.Connection, gone: set[int]) -> list[int | None]:
@@ -435,6 +438,7 @@ async def expired(job: scheduler.Job) -> None:
         return
     if card.message_id is None:
         return
+    await messages.card_closed(card.message_id, saved=False)
     if lifecycle.deletes(MessageClass.TRANSIENT):
         await cards.delete(card.channel_id, card.message_id)
     else:
@@ -490,6 +494,11 @@ async def on_save(press: cards.Press) -> str | None:
         raise UserError("That card was closed a moment ago.")
     await press.update(Card(said))
     said_in = getattr(press, "message_id", None) or card.message_id
+    # The card is now its confirmation: in the hub it goes like any reply; anywhere else a
+    # line that reports a change lasts the day
+    await messages.card_closed(said_in, saved=True)
+    if not messages.in_hub(card.channel_id):
+        await messages.record(said_in, card.channel_id, lifetime=messages.DAY, task=card.task)
     if placed is not None and said_in is not None:
         await placed(said_in)
     # What a press did is part of the conversation: without it, whatever is asked
@@ -555,6 +564,7 @@ async def on_cancel(press: cards.Press) -> str | None:
     if card is not None and card.user_id == press.user.id and await database.run(db_close, card.id, CANCELLED):
         await scheduler.cancel_job(card.job_id)
         llm.remember(card.channel_id, "(pressed Cancel on the card)", "Cancelled: nothing was changed.")
+        await messages.card_closed(card.message_id, saved=False)
     await press.remove()
     return f"cancelled card {press.arg}"
 
