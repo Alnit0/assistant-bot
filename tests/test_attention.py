@@ -443,7 +443,7 @@ def test_the_bugs_task_hands_in_only_a_bug_with_a_fix_ready_to_retest(monkeypatc
 
 # --- quiet hours: a setting, for pings only ---------------------------------------------------------------------------
 def test_quiet_hours_are_a_setting_and_ten_to_six_unless_said():
-    assert config.QUIET_HOURS == (time(22, 0), time(6, 0))
+    assert config.hours(None, (time(22, 0), time(6, 0))) == (time(22, 0), time(6, 0)), "10:00 pm to 6:00 am unless .env says otherwise"
     assert config.hours("21:30-07:00", (time(22), time(6))) == (time(21, 30), time(7, 0))
     assert config.hours("nonsense", (time(22), time(6))) == (time(22), time(6)) and config.hours(None, (time(22), time(6))) == (time(22), time(6))
 

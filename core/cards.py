@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 import discord
 
-from core import config, database, design, discord_utils, messages, outgoing
+from core import config, database, design, discord_utils, dms, messages, outgoing
 from core.context import Context
 from core.database import log_received, log_result
 from core.discord_utils import report_interaction_error, safe_reply
@@ -285,6 +285,7 @@ class Press:
     async def update(self, card: Card) -> None:
         """Rewrite the message the component is on, in place."""
         check(card)
+        card = dms.guarded(self.channel_id, card)
         self.shown.append(card.text)
         flags = getattr(getattr(self._interaction, "message", None), "flags", None)
         drawn = _drawn(card, was_designed=bool(getattr(flags, "components_v2", False)))
@@ -544,6 +545,9 @@ async def send(channel_id: int, card: Card, *, silent: bool = False) -> int | No
     if channel is None:
         log.warning("Could not post a card: channel %s not found", channel_id)
         return None
+    # In a direct message: silently, and never with one of my things named in its first line
+    silent = silent or dms.is_dm(channel_id)
+    card = dms.guarded(channel_id, card)
     built = view(card)
     text = outgoing.clean(card.text)
     if not text:
@@ -565,6 +569,7 @@ async def edit(channel_id: int, message_id: int, card: Card) -> bool:
     if channel is None:
         return False
     check(card)
+    card = dms.guarded(channel_id, card)
     message = channel.get_partial_message(message_id)
     plain = Card(outgoing.clean(card.text) or card.text, card.rows)
     try:

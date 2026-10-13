@@ -118,6 +118,7 @@ def sunday(world, monkeypatch):
 
 
 def test_it_is_off_unless_switched_on_and_its_schedule_is_sunday_evening(world, monkeypatch):
+    monkeypatch.setattr(config, "WEEKLY_SUMMARY", config.flag(None, False))  # as with nothing in .env
     assert config.WEEKLY_SUMMARY is False and not history.enabled()
     monkeypatch.setattr(scheduler, "_standing", {})
     history.register()

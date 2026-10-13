@@ -8,7 +8,7 @@ from dataclasses import dataclass
 import discord
 
 import tasks
-from core import day, scheduler
+from core import day, dms, scheduler
 from core.config import CHANNELS, ENABLED_TASKS
 from core.context import Context
 from core import actions, confirm, database, devmode, discord_utils, lifecycle, livelists, outgoing, reactions, tidy
@@ -319,7 +319,8 @@ class ActionResult:
 # ---------------------------------------------------------------------------
 def works_in(item, channel_id: int) -> bool:
     names = _channel_names(item)
-    return ANY in names or any(CHANNELS.get(name) == channel_id for name in names)
+    # A direct message of mine counts as #inbox: what works there works here (core/dms.py)
+    return ANY in names or any(CHANNELS.get(name) == channel_id for name in names) or ("inbox" in names and dms.is_dm(channel_id))
 
 
 def where(item) -> str:

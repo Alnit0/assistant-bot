@@ -382,8 +382,12 @@ The rules are in `docs/specs/pills.md` and the Pills section of
 
 - Levels: silent, normal, urgent (@mention in channel), critical (DM).
   Quiet hours hold non-critical alerts; repeats are grouped
-- Notifications stay in the server. A DM is a short pointer with a jump
-  link: no content, buttons or actions
+- Notifications stay in the server. A DM the bot sends by itself is a
+  short pointer with a jump link: no content, buttons or actions
+- A direct message I send to live is read only with `DMS_ENABLED`
+  (`core/dms.py`): mine alone, as #inbox, every reply silent, and never
+  with one of my things' names (a pill's) in a first line: a neutral
+  line goes first. The dev bot never reads one
 - Acknowledge every interaction within 3 seconds (defer first if slow).
   Persistent buttons use stable custom_ids and survive restarts. Error
   handlers check whether the interaction was already answered

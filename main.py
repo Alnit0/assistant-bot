@@ -4,7 +4,7 @@ import logging
 import discord
 from discord import app_commands
 
-from core import account, backup, cards, clock, conversation, database, day, devmode, health, identity, instance_lock, interactions, lifecycle, live, messages, missed, nightly, restart, scheduler, tidy, timing
+from core import account, backup, cards, clock, conversation, database, day, devmode, dms, health, identity, instance_lock, interactions, lifecycle, live, messages, missed, nightly, restart, scheduler, tidy, timing
 from core.config import SEPARATE_BOT
 from core.config import mine as my_channel
 from core.config import (
@@ -277,6 +277,12 @@ async def _sender(message: discord.Message):
     user = await get_user_by_discord_id(message.author.id)
     if not is_allowed(user, "message") or not message.content.strip():
         return None
+    if getattr(message, "guild", True) is None and dms.enabled():
+        # A direct message, with DMS_ENABLED on: mine alone, read as #inbox, and from here on
+        # answered silently with no name of mine in a first line (core/dms.py)
+        if not is_allowed(user, "dm"):
+            return None
+        dms.opened(message.channel.id, await conversation.private_names(user, message.channel.id, message.content))
     return user
 
 

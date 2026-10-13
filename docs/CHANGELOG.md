@@ -6,6 +6,10 @@ backfilled from the git log.
 
 ## 2026-10-13
 
+- Direct messages to the bot, switched off until you turn them on
+  (`DMS_ENABLED`): only yours, read like #inbox, answered silently,
+  and never with a pill's name in the first line.
+
 - The status line also says a missed dose ("💊 missed 9am"), a day
   with everything taken ("💊 all 5 taken", until 8:00 pm) and dev mode
   left on. A job that fails files its own bug, and so does the bot's

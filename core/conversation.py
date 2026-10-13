@@ -6,7 +6,7 @@ from dataclasses import dataclass, field, replace
 
 import discord
 
-from core import actions, cards, confirm, costs, database, extraction, livelists, llm, messages, outgoing, routing, timing, trace
+from core import actions, cards, confirm, costs, database, dms, extraction, livelists, llm, messages, outgoing, routing, timing, trace
 from core.actions import LIST, ITEMS, Answer, Entry, LiveReply, Request, Shown
 from core.cards import Card
 from core.config import CHANNELS, INBOX_CHANNEL_ID
@@ -57,8 +57,25 @@ def what_i_can_do(error: BaseException) -> str:
 
 
 def listens_in(channel_id: int) -> bool:
-    """Where plain words are read: #inbox and the hub."""
-    return channel_id == INBOX_CHANNEL_ID or channel_id == CHANNELS.get("hub")
+    """Where plain words are read: #inbox and the hub, and a direct message of
+    mine while DMS_ENABLED is on (core/dms.py)."""
+    return channel_id == INBOX_CHANNEL_ID or channel_id == CHANNELS.get("hub") or dms.is_dm(channel_id)
+
+
+async def private_names(user, channel_id: int | None, text: str = "") -> dict[str, str]:
+    """The names of my things each task holds now, each with its task's
+    neutral line ("💊 Pills"): what a first line in a direct message must not
+    show. A task that can't say is left out."""
+    found: dict[str, str] = {}
+    for entry in entries_for(user):
+        if entry.names is None:
+            continue
+        try:
+            for name in await entry.names(Request(user, channel_id, text)):
+                found.setdefault(str(name), f"{entry.icon} {entry.title}")
+        except Exception:
+            log.exception("The names of %s could not be read for a direct message", entry.name)
+    return found
 
 
 def entries_for(user) -> list[Entry]:

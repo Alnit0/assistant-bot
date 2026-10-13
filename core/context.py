@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 
 import discord
 
-from core import database, lifecycle, messages, outgoing, tidy
+from core import database, dms, lifecycle, messages, outgoing, tidy
 from core.actions import Attachment
 from core.config import CHANNELS, real_now_nz
 from core.discord_utils import COLOUR_INFO, log_error, log_simple, split_message
@@ -54,7 +54,8 @@ class Context:
         for name, channel_id in CHANNELS.items():
             if channel_id == self.channel_id:
                 return name
-        return None
+        # A direct message of mine is read as #inbox (core/dms.py)
+        return "inbox" if dms.is_dm(self.channel_id) else None
 
     @property
     def parent_channel_id(self) -> int | None:
@@ -94,18 +95,21 @@ class Context:
         if not text:
             log.error("A reply with nothing left to say was not sent")
             return None
+        # In a direct message: sent silently, and never with one of my things named in its first line
+        quiet = {"silent": True} if dms.is_dm(self.channel_id) else {}
+        text = dms.guard(self.channel_id, text)
         self.replies.append(text)
         self.posted += 1
         if isinstance(view, discord.ui.LayoutView):
             # A Components V2 card: all it says is in its components, and it takes no text beside them
-            sent = await self._channel.send(view=view)
+            sent = await self._channel.send(view=view, **quiet)
             await messages.record(getattr(sent, "id", None), self.channel_id)
             return sent
         chunks = split_message(text) or [text]
         sent = None
         for at, chunk in enumerate(chunks):
             last = at == len(chunks) - 1
-            sent = await self._channel.send(chunk, view=view) if last and view is not None else await self._channel.send(chunk)
+            sent = await self._channel.send(chunk, view=view, **quiet) if last and view is not None else await self._channel.send(chunk, **quiet)
             # With the tidy on, a message in the hub has a lifetime (core/messages.py)
             await messages.record(getattr(sent, "id", None), self.channel_id)
         return sent
@@ -136,14 +140,16 @@ class Context:
         if not text:
             return None
         """Send a note that deletes itself (unless clean-up is switched off)."""
+        quiet = {"silent": True} if dms.is_dm(self.channel_id) else {}
+        text = dms.guard(self.channel_id, text)
         if self.housekeeping:
             # No trace in the channel: #bot-log is the record. Deleted by a stored job
             # (core/tidy.py), so it goes even if the bot is restarted meanwhile
-            message = await self._channel.send(text)
+            message = await self._channel.send(text, **quiet)
             await tidy.later(self.channel_id, getattr(message, "id", None), lifecycle.tidy_after() if seconds is None else lifecycle.tidy_after(seconds))
         else:
             lifetime = lifecycle.delete_after() if seconds is None else lifecycle.delete_after(seconds)
-            message = await self._channel.send(text, delete_after=lifetime)
+            message = await self._channel.send(text, delete_after=lifetime, **quiet)
         lifecycle.note_transient(getattr(message, "id", None))
         await messages.record(getattr(message, "id", None), self.channel_id)
         return message

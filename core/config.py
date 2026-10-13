@@ -269,6 +269,9 @@ except ValueError:
 # The weekly pills summary (tasks/pills/history.py): on Sunday evening the week is posted
 # in the hub. Off unless switched on
 WEEKLY_SUMMARY = flag(os.getenv("WEEKLY_SUMMARY"), False)
+# Direct messages to live (core/dms.py): with it on, a direct message from the owner is
+# read like #inbox, answered silently, and never with a pill's name in a first line
+DMS_ENABLED = flag(os.getenv("DMS_ENABLED"), False)
 # The nightly self-test (core/nightly.py): at 3:00 am live starts a self-test as the dev
 # bot. Off unless switched on
 NIGHTLY_SELFTEST = flag(os.getenv("NIGHTLY_SELFTEST"), False)

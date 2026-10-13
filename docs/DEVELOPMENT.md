@@ -1902,6 +1902,28 @@ with the bot: it is for working on this repository.
 - **To test by hand**: `powershell -File scripts\notify.ps1 -Kind
   finished -Text "hello"`.
 
+## Direct messages to the bot
+
+Off unless `DMS_ENABLED=true` is in `.env` (then restart live). Off, a
+direct message is not read for plain words, as always.
+
+- **Only you**, and only live: a direct message from anyone else is
+  ignored, and the dev bot never reads one.
+- **It is read as #inbox**: the same plain words ("took zinc", "add
+  iron at 8"), the same typed words that work in #inbox, the same
+  cards with their buttons. The checklist and the briefing stay in the
+  hub: a direct message gets the line that points there.
+- **Replies are silent**: nothing buzzes for an answer you asked for.
+- **No name of yours in a first line**: where a reply's first line
+  would name a pill (or a timer), the task's own line goes first ("💊
+  Pills") and the reply follows under it, so the list of conversations
+  and a lock screen never show a pill's name. A card's heading ("💊
+  Pills · new") names nothing and is left as it is.
+- Not there: messages sent while the bot was off are not read back
+  from a direct message, and after a restart a card left open in one
+  may not be rewritten in place (the bot has to see the channel again:
+  write to it once).
+
 ## The nightly self-test
 
 Off unless `NIGHTLY_SELFTEST=true` is in `.env` (then restart live).

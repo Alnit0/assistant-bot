@@ -51,7 +51,7 @@ def _job(local_at="2026-10-14T03:00"):
 
 
 def test_it_is_off_unless_switched_on_and_never_the_dev_bot_s(monkeypatch):
-    assert config.NIGHTLY_SELFTEST is False, "off by default"
+    assert config.flag(None, False) is False and config.flag("", False) is False, "off unless .env says otherwise (whatever this PC's own .env says)"
     monkeypatch.setattr(config, "NIGHTLY_SELFTEST", True)
     monkeypatch.setattr(config, "DEV_DATABASE", False)
     assert nightly.enabled()

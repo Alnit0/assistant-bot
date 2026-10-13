@@ -625,3 +625,129 @@ def test_the_offline_card_and_the_which_task_card_are_drawn_as_decisions_with_th
     (box,) = [piece for piece in tie.layout if isinstance(piece, design.Box)]
     assert box.status == design.DECISION and "“add iron”" in " ".join(design.texts(tie.layout)) and "**Which is it for?**" in " ".join(design.texts(tie.layout))
     assert [button.label for button in design.buttons(tie.layout)] == [button.label for button in tie.rows[0]] and tie.rows[0][-1].label == "Neither"
+
+
+# --- direct messages to live (behind DMS_ENABLED) -----------------------------------------------------------------------
+from core import dms  # noqa: E402
+
+DM = 9001
+
+
+@pytest.fixture
+def direct(monkeypatch):
+    monkeypatch.setattr(dms, "_open", {})
+    monkeypatch.setattr(config, "DMS_ENABLED", True)
+    monkeypatch.setattr(config, "DEV_DATABASE", False)
+    return {"Zinc": "💊 Pills", "Vitamin D": "💊 Pills", "tea": "⏲️ Timers"}
+
+
+def test_direct_messages_are_off_unless_switched_on_and_never_the_dev_bot_s(monkeypatch):
+    monkeypatch.setattr(config, "DMS_ENABLED", config.flag(None, False))  # as with nothing in .env
+    assert config.DMS_ENABLED is False and not dms.enabled()
+    monkeypatch.setattr(config, "DMS_ENABLED", True)
+    monkeypatch.setattr(config, "DEV_DATABASE", False)
+    assert dms.enabled()
+    monkeypatch.setattr(config, "DEV_DATABASE", True)
+    assert not dms.enabled(), "only live reads a direct message"
+
+
+def test_a_first_line_in_a_direct_message_never_names_one_of_my_things(direct):
+    assert dms.safe("✅ **Zinc** · taken 9:00 am · still to take today: Vitamin D", direct) == "💊 Pills\n✅ **Zinc** · taken 9:00 am · still to take today: Vitamin D"
+    assert dms.safe("💊 Pills · new\n**Zinc** · daily, any time", direct) == "💊 Pills · new\n**Zinc** · daily, any time", "a card's heading names nothing: left as it is"
+    assert dms.safe("⏲️ tea · 05:00 left", direct) == "⏲️ Timers\n⏲️ tea · 05:00 left", "another task's thing, that task's own line"
+    assert dms.safe("That is zinc, not zincate", direct).startswith("💊 Pills\n"), "whatever its case"
+    assert dms.safe("The capital of France is Paris.", direct) == "The capital of France is Paris."
+    assert dms.safe("Steady on", {"tea": "⏲️ Timers"}) == "Steady on", "a name inside another word is not the name"
+    assert dms.safe("💊 Pills", direct) == "💊 Pills" and dms.safe("", direct) == ""
+
+
+def test_only_a_direct_message_being_answered_is_touched(direct):
+    from core.cards import Card
+
+    said = "✅ **Zinc** · taken 9:00 am"
+    assert not dms.is_dm(DM) and dms.guard(DM, said) == said and dms.guard(INBOX, said) == said
+    dms.opened(DM, direct)
+    assert dms.is_dm(DM) and not dms.is_dm(INBOX) and not dms.is_dm(None)
+    assert dms.guard(DM, said) == f"💊 Pills\n{said}" and dms.guard(INBOX, said) == said, "the server's channels are as they were"
+    card = Card(said, ())
+    assert dms.guarded(DM, card).text == f"💊 Pills\n{said}" and dms.guarded(INBOX, card) is card
+    heading = Card("💊 Pills · change\n**Zinc**", ())
+    assert dms.guarded(DM, heading) is heading
+
+
+def test_a_direct_message_is_read_as_the_inbox_and_answered_silently(direct, monkeypatch):
+    from core import conversation
+    from core.cards import Card
+    from core.context import Context
+    from tasks import registry
+
+    sent = []
+
+    class Channel:
+        id = DM
+
+        async def send(self, text=None, **kwargs):
+            sent.append((text, kwargs.get("silent", False)))
+            return SimpleNamespace(id=1)
+
+    assert not conversation.listens_in(DM)
+    dms.opened(DM, direct)
+    assert conversation.listens_in(DM), "plain words are read there"
+    item = SimpleNamespace(channels=["inbox"])
+    assert registry.works_in(item, DM) and not registry.works_in(SimpleNamespace(channels=["gym"]), DM), "what works in #inbox works there"
+    ctx = Context(user=SimpleNamespace(id=1), channel_id=DM, message_id=5, text="took zinc", _channel=Channel())
+    assert ctx.channel_name == "inbox"
+    run(ctx.reply("✅ **Zinc** · taken 9:00 am"))
+    assert sent == [("💊 Pills\n✅ **Zinc** · taken 9:00 am", True)], "silently, and with a neutral first line"
+    monkeypatch.setattr(cards.discord_utils, "client", SimpleNamespace(get_channel=lambda channel_id: Channel()))
+
+    async def no_record(*args, **kwargs):
+        pass
+
+    monkeypatch.setattr(cards.messages, "record", no_record)
+    run(cards.send(DM, Card("✅ Saved · 💊 **Zinc** · daily, any time")))
+    assert sent[-1] == ("💊 Pills\n✅ Saved · 💊 **Zinc** · daily, any time", True), "a card sent there too"
+    other = Context(user=SimpleNamespace(id=1), channel_id=INBOX, message_id=6, text="took zinc", _channel=Channel())
+    run(other.reply("✅ **Zinc** · taken 9:00 am"))
+    assert sent[-1] == ("✅ **Zinc** · taken 9:00 am", False), "in the server nothing changes"
+
+
+def test_only_my_direct_message_opens_one_and_only_with_the_switch_on(direct, monkeypatch, owner):
+    import main
+
+    async def who(discord_id):
+        return owner if discord_id == 1 else SimpleNamespace(id=2, role="guest")
+
+    async def names(user, channel_id, text=""):
+        return dict(direct)
+
+    monkeypatch.setattr(main, "get_user_by_discord_id", who)
+    monkeypatch.setattr(main.conversation, "private_names", names)
+    monkeypatch.setattr(main, "my_channel", lambda channel_id, parent_id=None: True)
+
+    def message(author_id, guild=None, channel_id=DM):
+        return SimpleNamespace(id=1, content="took zinc", author=SimpleNamespace(bot=False, id=author_id), channel=SimpleNamespace(id=channel_id), guild=guild)
+
+    assert run(main._sender(message(2))) is None and not dms.is_dm(DM), "a direct message from anyone else is not read"
+    assert run(main._sender(message(1, guild=SimpleNamespace(id=5), channel_id=INBOX))) is owner and not dms.is_dm(INBOX), "a message in the server is no direct message"
+    monkeypatch.setattr(config, "DMS_ENABLED", False)
+    assert run(main._sender(message(1))) is owner and not dms.is_dm(DM), "off: as it always was, and not read for plain words"
+    monkeypatch.setattr(config, "DMS_ENABLED", True)
+    assert run(main._sender(message(1))) is owner and dms.is_dm(DM) and dms.guard(DM, "✅ **Zinc** taken").startswith("💊 Pills\n")
+
+
+def test_the_names_a_first_line_must_not_show_come_from_every_task_that_holds_some(monkeypatch, owner):
+    from core import actions, conversation
+
+    async def pills(request):
+        return ["Zinc", "Vitamin D"]
+
+    async def broken(request):
+        raise RuntimeError("boom")
+
+    def entry(name, icon, names=None):
+        return actions.Entry(name, icon, f"Only for {name}.", ("a", "b"), (), names=names, on_repeat="allow_another")
+
+    monkeypatch.setattr(actions, "_entries", {})
+    actions.set_catalogue([entry("pills", "💊", pills), entry("timers", "⏲️", broken), entry("bugs", "🐞")])
+    assert run(conversation.private_names(owner, DM)) == {"Zinc": "💊 Pills", "Vitamin D": "💊 Pills"}, "one that can't say is left out"

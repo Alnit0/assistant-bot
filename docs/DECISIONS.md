@@ -132,6 +132,13 @@ A short log of key decisions and why. Newest at the bottom.
   message, never the content itself, so actions and history stay in the
   server. This refines "Notifications" above; no task sends real
   notifications yet, so it applies from the reminders work onwards.
+- **A direct message I start is a conversation, behind a switch
+  (2026-10-13):** with `DMS_ENABLED` live reads my direct messages as
+  it reads #inbox. This does not change the rule above for what the
+  bot sends by itself (a DM stays a short pointer): it is for when I
+  write first. Because a direct message's latest line shows in the
+  list of conversations and on a lock screen, replies there are silent
+  and their first line never names one of my things.
 - **Claude's conversation history is per channel:** it was one shared list,
   which only worked because Claude chats in a single channel. Keyed by
   channel now, so a future channel with its own chat can't leak into
