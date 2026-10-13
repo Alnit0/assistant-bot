@@ -351,11 +351,16 @@ async def spent_on(day) -> tuple[float, float]:
     return await database.run(costs.db_spent_day, day), day_spend(history(config.DATA_DIR / SELFTEST_DIR), day)
 
 
+SELFTEST_ICON = "🧪"
+
+
 def spend_problem(spent: float, limit: float) -> Item | None:
     """The item for a month in which the self-test has spent its limit: from then on its runs use recorded answers only."""
     if spent < limit:
         return None
-    return Item("the self-test has spent this month's limit: recorded answers only until next month", PROBLEM, short=("self-test spend", money.shown(spent)), ping=False)
+    # Useful to know, not something wrong: nothing is to be done about it, and it lasts until the month ends.
+    # So it is shown only when nothing else is (level 4), never in the box and never as a ping
+    return Item("the self-test has spent this month's limit: recorded answers only until next month", USEFUL, short=("self-test spend", money.shown(spent)), icon=SELFTEST_ICON, ping=False)
 
 
 def selftest_problem(row: dict | None, bugs: dict) -> Item | None:

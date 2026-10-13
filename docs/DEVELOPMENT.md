@@ -2067,7 +2067,7 @@ It needs the dev bot (a token of its own in `.env.dev`).
   `__init__.py`). The run's first lines say which, and why.
 - **A month's cap**: `SELFTEST_MONTHLY_LIMIT_NZD` (NZ$3.50 unless set). Once
   the month's runs have spent it, every run uses recorded answers
-  only, live's status line says "⚠️ self-test spend · US$2.05", and
+  only, live's status line says "🧪 self-test spend · NZ$3.51" when it has nothing else to show (not a problem: nothing is to be done), and
   `dev cost` shows the month's figure. It starts again with the month.
 - **What it leaves**: the run's summary in the self-test's log channel
   (a line there too on a night with nothing to run), a line in

@@ -277,7 +277,7 @@ def test_the_self_test_s_month_is_added_up_from_its_history_and_over_the_limit_i
     assert health.month_spend(rows, "2026-10") == pytest.approx(2.05) and health.month_spend(rows, "2026-11") == 0
     assert health.spend_problem(1.99, 2.0) is None
     item = health.spend_problem(2.05, 2.0)
-    assert item.urgency == attention.PROBLEM and attention.status_line(item) == "⚠️ self-test spend · NZ$2.05"
+    assert item.urgency == attention.USEFUL and attention.status_line(item) == "🧪 self-test spend · NZ$2.05", "worth knowing, not something wrong"
     folder = tmp_path / "selftest"
     folder.mkdir()
     (folder / "history.csv").write_text("date,commit,ran,steps,passed,failed,failed_steps,spend_usd,claude,seconds,note\n2026-10-01 03:00,a,full,3,3,0,,1.2000,real,5,\n2026-10-13 03:00,a,full,3,3,0,,0.9000,real,5,\n", encoding="utf-8")
@@ -288,7 +288,7 @@ def test_the_self_test_s_month_is_added_up_from_its_history_and_over_the_limit_i
     assert health.selftest_spend(now) == (pytest.approx(2.1), 2.0)
     monkeypatch.setattr(health, "selftest_spend", lambda now=None: (2.1, 2.0))
     found = asyncio.run(health.selftest(1, now))
-    assert [attention.status_line(item) for item in found] == ["⚠️ self-test spend · NZ$2.10"], "live shows it at level 1 (the run itself passed)"
+    assert [attention.status_line(item) for item in found] == ["🧪 self-test spend · NZ$2.10"], "live shows it when there is nothing else to show (the run itself passed)"
     assert config.SELFTEST_MONTHLY_LIMIT_NZD == 2.0
 
 

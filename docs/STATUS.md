@@ -142,6 +142,17 @@ design and the hub principle point. Each is yours to overturn.
     Since then two new pieces were built on the plain-data side only:
     `core/alerts.py` and `tasks/weather/`.
 
+**After the last self-test**
+
+31. **The self-test's month being spent is no longer shown as
+    something wrong.** You had asked for it at level 1 when the cap
+    was far off. Tonight's runs reached it (NZ$3.51 of NZ$3.50), and
+    at level 1 the status line would have read "⚠️ self-test spend"
+    in place of your pills until November, with a line in "Needs a
+    look" every morning. It is now "🧪 self-test spend · NZ$3.51",
+    shown only when there is nothing else to show; `dev cost` says it
+    too. Say if you want it back at level 1.
+
 ## Questions for Alex
 
 **The open questions are one list now: `docs/QUESTIONS.md`** (42 of
