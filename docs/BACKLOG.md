@@ -53,12 +53,6 @@ the full self-test run.
   days (`tally`) for to-dos and personal routines, so "how did the week
   go?" counts them; the pills card's page title made like theirs, or
   theirs like it (question 64).
-- **A reply to last night's pill line just after midnight** (found
-  chasing question 39, 2026-10-15): "actually I didn't", replied to the
-  line that said a pill was taken at 11:55 pm, does not untick it once
-  the day has changed, as the reply now points at yesterday's log. The
-  golden tests that met it only did by running across midnight, and now
-  run at noon. Worth a look: a reply should undo the log it points at.
 - **A "flavour" status line when there is nothing to show** (asked
   2026-10-14, for later): when the attention model has nothing at
   levels 1 to 4, the status line is not blank but one light line: my

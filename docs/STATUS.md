@@ -57,6 +57,14 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
    test's own checks (button labels carry their emoji; with everything
    done the card stays as one green line, as designed: only a day with
    nothing has no card); it opened D7 and closed it on the second run.
+6. **A reply to a pill line corrects the day that line is about.**
+   "Actually I didn't", replied to last night's line just after
+   midnight, makes that night's dose missed (its day is over, so there
+   is nothing left to take: not "to take" again), and today's is not
+   touched. A reply with a time ("I took it at 10:30") puts that
+   night's time right, the half of the day nearest when it was logged.
+   Anything else replied to an earlier day's line says so, and changes
+   nothing. Two tests in the golden file.
 
 ## Decided (2026-10-15, Alex's answers to QUESTIONS.md)
 

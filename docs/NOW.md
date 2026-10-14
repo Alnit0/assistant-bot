@@ -17,7 +17,7 @@ the small jobs they asked for, then one evening restart of live.
   stranger's DM is ignored and costs nothing; 64 confirmed in the log
 
 **In progress**
-- 4. The midnight edge: a reply corrects the day of the line it replies to
+- 5. Live's own folder: script, plan, dry run on a scratch folder only
 
 **Next**
 - 7. 6 pm to 9 pm, clear of pill reminders: one restart from a clean,

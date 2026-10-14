@@ -1401,3 +1401,39 @@ def test_29_what_pills_are_left_is_answered_where_it_is_asked_never_with_only_a_
     assert said.splitlines()[0] == "💊 **2 left today** · ○○ 0/2", "the answer, its first line naming no pill"
     assert "**Iron** · any time" in said and "**Zinc** · any time" in said
     assert len(bot.sent) == posted + 1 and "Today's checklist is in" not in said, "one reply, the answer itself: nothing posted in the hub, no pointer instead"
+
+
+# --- the midnight edge (found chasing question 39): a reply corrects the day of the line it replies to ---------
+def test_a_reply_to_last_night_s_line_just_after_midnight_corrects_that_night_s_dose(bot, dev_clock):
+    from core import clock
+
+    dev_clock.advance_to(day.at(day.today(), time(23, 55)))
+    iron_message, before = _two_pills_and_zinc_logged(bot)
+    zinc_line = next(message_id for message_id, shown in bot.sent if shown.text.startswith("✅ **Zinc** · taken"))
+    last_night = day.today()
+    dev_clock.advance(timedelta(minutes=10))  # 12:05 am: a new day
+    assert day.today() == last_night + timedelta(days=1)
+    bot.claude(("pill_log", {"doses": [{"pill": "@that", "did": "not_taken"}], "guessed": [], "not_included": []}))
+    bot.say("actually I didn't", reply_to=zinc_line)
+    said = bot.sent[-1][1].text
+    assert said.startswith("↩️ **Zinc** · not taken after all · yesterday"), said
+    _, then, _ = run(checklist.read(bot.owner.id, last_night))
+    _, now_, _ = run(checklist.read(bot.owner.id, day.today()))
+    zinc_then = next(dose for dose in then if dose.pill.plan.name == "Zinc")
+    zinc_now = next(dose for dose in now_ if dose.pill.plan.name == "Zinc")
+    assert zinc_then.occurrence.state == "missed", "last night's dose: not taken after all, and that day is over"
+    assert zinc_now.occurrence.state == "pending", "today's is untouched"
+    assert clock.now() > day.at(last_night, time(23, 59))
+
+
+def test_a_reply_with_a_time_to_last_night_s_line_puts_that_night_s_time_right(bot, dev_clock):
+    dev_clock.advance_to(day.at(day.today(), time(23, 55)))
+    _two_pills_and_zinc_logged(bot)
+    zinc_line = next(message_id for message_id, shown in bot.sent if shown.text.startswith("✅ **Zinc** · taken"))
+    last_night = day.today()
+    dev_clock.advance(timedelta(minutes=10))
+    bot.claude(("pill_log", {"doses": [{"pill": "@that", "did": "taken", "at": "10:30"}], "guessed": [], "not_included": []}))
+    bot.say("I took it at 10:30 actually", reply_to=zinc_line)
+    _, then, _ = run(checklist.read(bot.owner.id, last_night))
+    zinc_then = next(dose for dose in then if dose.pill.plan.name == "Zinc")
+    assert zinc_then.occurrence.state == "done" and day.local_time(zinc_then.occurrence.actual_at) == time(22, 30), "10:30 that night: the half of the day nearest when it was logged"

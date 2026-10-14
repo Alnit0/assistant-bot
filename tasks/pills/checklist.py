@@ -356,6 +356,16 @@ def corrected_text(dose: Dose, was: datetime) -> str:
     return f"✏️ {dose.label} · taken {timeinput.format_moment(was)} → {timeinput.format_moment(dose.occurrence.actual_at)}"
 
 
+async def unmark_past(dose: Dose) -> Dose:
+    """A dose of a day that is over, ticked off by mistake ("actually I didn't",
+    replied to its line after midnight): it was missed, as a day that is over
+    has nothing left to take. Read back; raises UserError if it didn't save."""
+    after = await database.run(occurrences.db_miss, dose.occurrence.id, "not taken, said afterwards")
+    if after is None or after.state != MISSED:
+        raise UserError(f"That didn't save: {rules.plain(dose.label)} is still {dose.occurrence.state}.")
+    return Dose(dose.pill, after, dose.due)
+
+
 def marked_text(dose: Dose, did: str) -> str:
     """What marking a dose did, in one line."""
     if did == NOT_TAKEN:

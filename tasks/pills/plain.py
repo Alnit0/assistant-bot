@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime, time, timedelta
 
-from core import clock, day, dms, hub, livelists, occurrences, repeats, tidy, timeinput, trace
+from core import clock, database, day, dms, hub, livelists, occurrences, repeats, tidy, timeinput, trace
 from core import schedule as core_schedule
 from core.actions import BOOLEAN, INTEGER, ITEMS, LAST, LIST, MINUTES, TIME, TIMES, Action, Answer, Choice, Field, LiveReply, Proposal, Question, Request, Shown, State
 from core.actions import EACH_DAY, SEE, SET_UP, flag, is_guessed
@@ -1068,6 +1068,15 @@ async def _just_logged(dose: Dose, now: datetime) -> bool:
     return bool(mine) and now - mine[-1].at <= CORRECTION_WINDOW
 
 
+async def _of_its_day(user_id: int, occurrence_id: int, today_: date) -> Dose | None:
+    """A dose of an earlier day, found by its own id, among that day's doses."""
+    found = await database.run(occurrences.db_get, occurrence_id)
+    if found is None or found.day >= today_:
+        return None
+    _, listed, _ = await checklist.read(user_id, found.day)
+    return next((each for each in listed if each.occurrence.id == occurrence_id), None)
+
+
 async def _replied_to(request: Request, listed: list[Dose], today_: date) -> tuple[Pill | None, Dose | None]:
     """What a Discord reply points at, among today's messages: (the pill, the
     dose). A dose's own Taken / Skip message is that pill and that dose. The
@@ -1082,6 +1091,10 @@ async def _replied_to(request: Request, listed: list[Dose], today_: date) -> tup
         if len(ids) != 1:
             return None, None
         dose = next((each for each in listed if each.occurrence.id in doses), None) if len(doses) == 1 else None
+        if dose is None and len(doses) == 1:
+            # A line about a dose of a day that is over ("actually I didn't", replied to last
+            # night's line after midnight): that dose, on its own day
+            dose = await _of_its_day(request.user.id, next(iter(doses)), today_)
         pill = await store.pill(next(iter(ids)))
         return (pill, dose) if pill is not None and pill.user_id == request.user.id else (None, None)
     held = await request.db.run(store.db_messages, request.user.id, today_)
@@ -1128,6 +1141,29 @@ async def _step(request: Request, item: dict) -> Step:
     return step
 
 
+def _on_its_day(item: dict, dose: Dose, today_: date, now: datetime) -> Step:
+    """What a reply to a line about a dose of an earlier day means for that dose.
+    "Actually I didn't" makes it missed (its day is over); a time puts its time
+    right. Nothing else is done to a day that is over."""
+    on = dose.occurrence.day
+    when = day_said(on, today_)
+    if item["did"] == checklist.NOT_TAKEN:
+        if dose.occurrence.state != occurrences.DONE:
+            return Step(f"↩️ {dose.label} was not ticked off {when}: nothing to change.", pill=dose.pill)
+        return Step(dose=dose, did=checklist.NOT_TAKEN, at=now, day=on, pill=dose.pill)
+    if item["did"] == checklist.TAKEN and str(item.get("at", "")).strip() and dose.occurrence.state == occurrences.DONE:
+        try:
+            at = day.at(on, timeinput.parse_time(str(item["at"])))
+        except timeinput.AmbiguousTime as unsure:
+            # The half of the day that is closest to when it was logged
+            logged = dose.occurrence.actual_at or day.at(on, time(12, 0))
+            at = min((day.at(on, option) for option in unsure.options), key=lambda moment: abs((moment - logged).total_seconds()))
+        except Exception:
+            return Step(f"⚠️ {rules.plain(dose.label)}: “{item['at']}” is not a time I can read.", pill=dose.pill)
+        return Step(dose=dose, did=checklist.TAKEN, at=at, was=dose.occurrence.actual_at, day=on, pill=dose.pill)
+    return Step(f"💊 That line is about {when}: say what to put right for it, or say it of today.", pill=dose.pill)
+
+
 def _could_be(listed: list[Dose], did: str) -> list[Pill]:
     """The pills an unnamed "I took it" could be about today: those with a dose
     still to log, or for "I didn't take it" those with a dose ticked off."""
@@ -1141,6 +1177,9 @@ def _could_be(listed: list[Dose], did: str) -> list[Pill]:
 
 async def _for_pill(request: Request, item: dict, pill: Pill, listed: list[Dose], today_: date, now: datetime, pointed_dose: Dose | None) -> Step:
     """What an item means for the pill it is about."""
+    if pointed_dose is not None and pointed_dose.pill.id == pill.id and pointed_dose.occurrence.day < today_:
+        # A reply to a line about a dose of a day that is over: the correction is for that day
+        return _on_its_day(item, pointed_dose, today_, now)
     if pointed_dose is not None and pointed_dose.pill.id == pill.id and item.get("dose") is None:
         # The message replied to is about one dose: that dose, as if named by its number.
         # A pill or a dose number I state still wins over where I point
@@ -1539,6 +1578,10 @@ async def _do(step: Step) -> str:
         return "✏️ " + _move_line(step)
     if step.was is not None:
         return checklist.corrected_text(await checklist.correct(step.dose, step.at, occurrences.MESSAGE), step.was)
+    if step.day is not None and step.did == checklist.NOT_TAKEN:
+        # A dose of a day that is over, not taken after all: missed, as nothing is left to take that day
+        missed = await checklist.unmark_past(step.dose)
+        return f"↩️ {missed.label} · not taken after all · {day_said(step.day, day.day_of(clock.now()))}"
     said = checklist.marked_text(await checklist.mark(step.dose, step.did, step.at, occurrences.MESSAGE), step.did)
     return f"{said} · yesterday" if step.day is not None else said
 
