@@ -120,27 +120,28 @@ Messages go through fast paths (buttons, exact shortcuts), then sticky follow-up
 - **Three hub tasks built to his defaults and switched off** (15 Oct, pending his review, questions 51 to 66): to-dos (`TODOS_ENABLED`: a day if given, Done by button or words, overdue carried over at level 2, today's at level 4), reminders he sets (`NUDGES_ENABLED`: once or repeating, posted in the hub with Done and Snooze for 10 minutes, 1 hour or tomorrow, through quiet hours, never twice, retried like pill reminders, late after a restart; never ntfy) and personal routines (`HABITS_ENABLED`: his checklists on chosen days, starting afresh each day). In docs they are "Reminders" and "Personal routines"; the code folders are `nudges` and `habits`.
 - **A task whose switch is off is not loaded**: out of help, #commands and the router.
 - **What's new** (`core/whatsnew.py`): a batch leaves a few lines for one morning's briefing (`python -m core.whatsnew add "…" --on <day>`), shown once in a box under Needs a look and gone after the tidy. Reuse it at the end of any batch Alex should hear about.
+- **His answers of 15 Oct** (one line each in docs/STATUS.md, Decided): round 3 settled the design picks; the suggestions kept for alerts, quiet hours, mornings, pills and the new tasks; the nightly self-test at 3:30 am (no self-test between 3:15 and 4:30 am); `WEEKLY_SUMMARY` on; direct messages on once QA block 54 passes; gym in kilograms; the calendar Google, read only, by its private link, names matched by code and never sent to Claude (not built); a reminder's lock-screen line neutral; task cards with no `##` page title.
+- **The golden conversations run at noon** (15 Oct): they had gone by the real time of day and broke when a run crossed midnight.
 - **The test suite runs in about 40 seconds** (it had grown to nearly two minutes). `TESTS_AS_ON_LIVE=1` runs the same tests with real threads and connections, about 80 seconds.
 
 ## 9. Open threads (update every batch)
 
 **Waiting on Alex**
-- **Round 3 on his phone:** it is live, and the "Round 3 built" preview is in the design-options post. His feedback goes into docs/DESIGN-LOG.md as round 4. Ask him for phone screenshots. Question 45 (dots in the title or a line) still stands.
-- **The new hub tasks:** the "New hub tasks preview" in the same post, questions 51 to 66, and which to switch on first (suggested: to-dos, then personal routines, then reminders).
-- **docs/QUESTIONS.md:** 61 open questions with suggested answers; he can reply "yes to all except…".
-- **A latest time for his timed pill,** so the day's schedule and last-chance nudge fit his real day (questions 43 and 44 are about the nudge without one).
-- **Gym:** a first build waits on six answers (questions 23 to 28): kilograms for everything; the plan as a `.csv`; next workout in turn or fixed weekdays; today's workout posted in the hub; posted only when asked or by itself; logging a whole exercise at once or set by set. Sixteen more are in its spec. He has the plan in a spreadsheet he'll attach.
-- **Calendar:** stage 1 waits on four answers (29 to 32): which calendar; read only to begin with; access by the private read-only link or by signing in; whether event titles may be given to Claude.
-- **His short QA list** at the top of docs/QA-RUN.md: eleven checks only he can do (looks, colours, lock screen, how things read), most useful first.
-- **Bugs:** 2 open on live, both from before 12 Oct. The self-test's D6 and D3 (opened by the 3 am run on the cut-off batch's code) were marked fixed by its own 8:44 am run on 15 Oct. Only he closes a live bug (he presses Fixed).
+- **Round 3 on his phone:** it is live; his feedback (in the design-options post) goes into docs/DESIGN-LOG.md as round 4. His first piece, from question 64, is done: task cards have no `##` page title.
+- **docs/QUESTIONS.md:** three left after his answers of 15 Oct: 11 (his lock-screen screenshot of a pill reminder is on its way), 63 (personal routines reworked with groups of steps, one button a group: to discuss), 24 to 28 under "Gym onboarding" (he designs how a plan is set up first).
+- **QA block 54 by hand** (top of docs/QA-RUN.md): direct messages go on only once it has passed; the self-test cannot send a DM.
+- **The private Google Calendar link,** for live's `.env` only. Never in a doc, a commit or a message.
+- **A latest time for his timed pill,** so the day's schedule and the last-chance nudge fit his real day.
+- **`docs/REVIEW.md` and QA blocks 53 to 55,** before the merge into `main` and live's own folder (the next infrastructure job).
+- **Bugs:** 2 open on live, both from before 12 Oct. Only he closes a live bug (he presses Fixed).
 
 **Ready when he wants**
-- Switching on to-dos, reminders and personal routines (one restart each, or together).
-- The What's new box: live is restarted once this evening (6 pm to 9 pm) to load it for the 16 Oct briefing; four lines are queued. See docs/STATUS.md for how it went.
+- To-dos go on at this evening's restart (with `WEEKLY_SUMMARY`); reminders and personal routines stay off (routines wait on question 63).
+- Live in its own folder on a committed version: top of the backlog, not done yet.
+- A watch on live (a Windows scheduled task that pings his phone if the service is down): later.
 - A `/fix-bugs` skill for Claude Code; later, an overnight scheduled fix run on a separate branch.
 - Claude Code starting by itself when the EliteDesk boots.
 - A read-only web page over Tailscale (history, charts).
-- Merging `feature/pills` into `main` after reading `docs/REVIEW.md`; then live in its own folder on `main`.
 - A RAM upgrade (8 to 16 GB) if memory keeps biting.
 
 ## 10. Private specs, in short

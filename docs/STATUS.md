@@ -66,7 +66,7 @@ Accepted as suggested:
 Answered:
 
 - 4 `WEEKLY_SUMMARY` on in live (Sunday 7 pm): at this evening's restart.
-- 5 `DMS_ENABLED` on in live once QA block 54 has passed: checked first today, as a self-test if it can be (the outcome is written here)
+- 5 `DMS_ENABLED` on in live once QA block 54 has passed. The self-test cannot send a direct message, so the block is Alex's by hand: DMs stay off for now, and the block is at the top of his short list in `docs/QA-RUN.md` (0).
 - 23 Gym uses kilograms for everything.
 - 29 The calendar is Google Calendar.
 - 30 Read only, to begin with.
