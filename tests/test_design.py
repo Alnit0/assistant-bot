@@ -419,13 +419,13 @@ def boxes(pieces):
     return [(status, lines, buttons) for lines, buttons in items if not lines[0].startswith("-# ")]
 
 
-def test_the_checklist_is_a_page_title_and_one_box_in_time_order_with_what_is_done_in_one_small_line(world, v2):
+def test_the_checklist_is_one_box_with_no_page_title_in_time_order_with_what_is_done_in_one_small_line(world, v2):
     add(world, PILL_A, EVENING, {"name": "Any", "notes": "with water"}, {"name": "Done"}, {"name": "Off"})
     run(plain.pause_save(world.request(), run(plain.pause_card(world.request(), {"pills": [{"pill": "off"}]}, frozenset())).data))
     at(world, 8, 0)
     log(world, {"pill": "pill a", "did": "taken"}, {"pill": "done", "did": "taken"})
     pieces = sheet_of(world)
-    assert pieces[0].content == f"## 💊 Today · {world.day:%a} {world.day.day} {world.day:%b}"
+    assert isinstance(pieces[0], design.Box) and len(pieces) == 1, "a task card: no page title, its card title says it (question 64)"
     status, title, items = topic(pieces)
     assert status == design.DUE and title == "### 💊 Pills ●●○○○○ 2/6", "the edge is the most urgent state in it; the dots and the count in the card title"
     names = [lines[0].split("**")[1] for lines, _ in items[:-1]]
@@ -488,8 +488,7 @@ def test_a_skip_by_the_bot_says_why_in_small_text_and_a_pill_all_skipped_is_in_t
 
 def test_with_nothing_to_take_it_says_so(world, v2):
     pieces = sheet_of(world)
-    assert pieces[0].content == f"## 💊 Today · {world.day:%a} {world.day.day} {world.day:%b}"
-    assert topic(pieces)[1:] == ("### 💊 Pills", []) and design.texts(pieces)[1] == f"### 💊 Pills\n{sheet.NOTHING}"
+    assert topic(pieces)[1:] == ("### 💊 Pills", []) and design.texts(pieces)[0] == f"### 💊 Pills\n{sheet.NOTHING}"
 
 
 def test_too_many_pills_for_one_message_drop_buttons_first_and_never_lose_one(world, v2):

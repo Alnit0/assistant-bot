@@ -95,7 +95,12 @@ The type scale, from Alex's screenshots of rounds 2 and 3 and his brief
 
 **Alex's feedback** (copied word for word, newest last)
 
-(none yet)
+- 2026-10-15, answering question 64: "task cards use a ### card title
+  and no ## page title; ## appears once per message, in the briefing.
+  Make the pills card match." Done the same day: the pills card is one
+  box with no page title (round 3, not a new round: he asked for it).
+  Read as about the hub's task cards; a card that asks and a list shown
+  on request keep their `##` title (docs/STATUS.md, Decided).
 
 **Changes for round 4**
 

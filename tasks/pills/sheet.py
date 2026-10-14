@@ -171,11 +171,6 @@ def title(listed: list[Dose]) -> str:
     return f"💊 Today · {taken} of {len(listed)} taken" if listed else "💊 Today"
 
 
-def page_title(day: date) -> str:
-    """The checklist's page title: the topic and the day."""
-    return f"💊 Today · {day:%a} {day.day} {day:%b}"
-
-
 def layout(listed: list[Dose], pills: list[Pill], day: date, now: datetime) -> tuple:
     """Today's checklist as a page with one box (docs/DESIGN.md, round 3): the
     card title with the day's dots, then a pill an item in the order of what
@@ -201,7 +196,8 @@ def layout(listed: list[Dose], pills: list[Pill], day: date, now: datetime) -> t
         entries = [entry(doses, now, doses[0].pill.id in buttons_on) for doses in open_]
         fallback = design.DONE if finished and any(status(doses) == design.DONE for doses in finished) else design.QUIET
         box = design.topic(heading, entries, lines=under, tail=bottom, status="" if entries else fallback)
-        return design.page([design.page_title(page_title(day))], [box])
+        # A task card has no page title: its card title says it, and `##` is the briefing's (question 64)
+        return design.bolded((box,))
 
     everyone = {doses[0].pill.id for doses in open_}
     first = {open_[0][0].pill.id} if open_ and any(dose.is_pending for dose in open_[0]) else set()

@@ -794,12 +794,12 @@ async def p3(h: Harness) -> None:
         h.memo["sheet_d2"] = shown.id
         h.saw(f"{'the same message, edited' if same else 'a new message in its place'}; it is {'Components V2' if shown.v2 else 'plain'}")
 
-    async with h.step("3.05", "`pills` with the new look on", "One message: “💊 Today · Thu 15 Oct”, then one box: “### 💊 Pills” with dots and a count, a pill an item, Testany (taken) in the small line at the bottom, and no separate message for a dose with no time", "T51 (41.3)"):
+    async with h.step("3.05", "`pills` with the new look on", "One message, one box: “### 💊 Pills” with dots and a count (no page title), a pill an item, Testany (taken) in the small line at the bottom, and no separate message for a dose with no time", "T51 (41.3)"):
         await h.say("pills")
         sheets = await held(h, "checklist")
         shown = await h.get(h.hub, sheets[-1].message_id) if sheets else None
         h.check(shown is not None and shown.v2, f"the fresh checklist is {'plain' if shown else 'missing'}")
-        h.check("💊 Today · " in shown.text and "### 💊 Pills " in shown.text and "/" in shown.text, f"its heading: {shown.text.splitlines()[:2]}")
+        h.check(shown.text.startswith("### 💊 Pills ") and "/" in shown.text and "💊 Today · " not in shown.text, f"its heading: {shown.text.splitlines()[:2]}")
         allowed = {accent(status) for status in design.ACCENTS}
         h.check(shown.accents and set(shown.accents) <= allowed, f"its box colours are {[hex(each) if each else None for each in shown.accents]}")
         h.check(len(shown.accents) == 1 and "✅ Testany" in shown.text, f"one box, Testany in its small line: {shown.accents} {shown.text[-200:]}")
@@ -1325,7 +1325,7 @@ async def p5(h: Harness) -> None:
         h.check(not config.HUB_TIDY, "HUB_TIDY is on in this start")
         recorded = await database.run(lambda conn: conn.execute("SELECT COUNT(*) FROM bot_messages").fetchone()[0])
         h.check(recorded == 0, f"{recorded} messages have a lifetime recorded")
-        sheets = [each for each in await h.recent(h.hub, 50) if each.id not in h.typed and "💊 Today · " in each.text]
+        sheets = [each for each in await h.recent(h.hub, 50) if each.id not in h.typed and ("### 💊 Pills" in each.text or "💊 Today · " in each.text)]
         h.check(len(sheets) >= 2, f"{len(sheets)} checklists are in the hub: yesterday's was removed with the tidy off")
         h.memo["old_sheet"] = sheets[-1].id
         h.memo["hub_before_tidy"] = [each.id for each in await h.recent(h.hub, 50)]

@@ -47,7 +47,7 @@ below. A message is read like a page.
 
 | Level | Written | Helper (`core/design.py`) | Example |
 |---|---|---|---|
-| Page title, once a message | `## ` | `page_title` | `## 💊 Today · Thu 15 Oct` |
+| Page title, once a message, in the briefing (and a card that asks or a list): never on a task card | `## ` | `page_title` | `## ☀️ Today ●●○○○○ 2/6` |
 | Card title, once a box, with the topic's progress | `### ` | `card_title` | `### 💊 Pills ●●○○○○ 2/6` |
 | Item | bold | `name` | `**Pill A** ●○○` |
 | Value | normal text | | `dose 2 · any time` |
@@ -71,7 +71,8 @@ below. A message is read like a page.
   title or rules, so two in a row read as a stack
 - **Buttons**: unchanged (green, red, blurple, grey only for ↩️ Cancel),
   and only on what can be done now
-- **The pills card**: page title `💊 Today · Thu 15 Oct`, then one box:
+- **The pills card**: one box and no page title (question 64, 15 Oct: a task
+  card's `###` card title says it; `##` is the briefing's):
   due or overdue first, then coming up, then any time, then a pill with
   only a miss left; what is done, paused or not taken today is one small
   line at the bottom (`tasks/pills/sheet.py`)
