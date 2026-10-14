@@ -737,6 +737,47 @@ def test_only_my_direct_message_opens_one_and_only_with_the_switch_on(direct, mo
     assert run(main._sender(message(1))) is owner and dms.is_dm(DM) and dms.guard(DM, "✅ **Zinc** taken").startswith("💊 Pills\n")
 
 
+def test_with_dms_on_a_direct_message_from_anyone_but_me_is_ignored_and_costs_nothing(db, owner, monkeypatch):
+    # Before DMS_ENABLED went on in live (2026-10-15): another account's direct message, or a bot's,
+    # is dropped before anything is read, logged or asked of Claude; mine goes on to be handled
+    import discord
+
+    import main
+    from core import database, llm
+
+    monkeypatch.setattr(config, "DMS_ENABLED", True)
+    monkeypatch.setattr(config, "DEV_DATABASE", False)
+    monkeypatch.setattr(main, "my_channel", lambda channel_id, parent_id=None: True)
+    taken, asked, named = [], [], []
+
+    async def take(message, user):
+        taken.append(user.id)
+
+    async def names(user, channel_id, text=""):
+        named.append(channel_id)
+        return {}
+
+    async def no_claude(*args, **kwargs):
+        asked.append(kwargs.get("model", "a request"))
+        raise AssertionError("Claude was asked")
+
+    monkeypatch.setattr(main, "_take", take)
+    monkeypatch.setattr(main.conversation, "private_names", names)
+    # Every request to Claude goes through this one client: none may be made
+    monkeypatch.setattr(llm.claude.messages, "create", no_claude)
+
+    def dm(author_id, bot=False, channel_id=DM + 1):
+        return SimpleNamespace(id=5, type=discord.MessageType.default, content="what pills are left?", author=SimpleNamespace(bot=bot, id=author_id), channel=SimpleNamespace(id=channel_id), guild=None)
+
+    before = run(database.run(lambda conn: conn.execute("SELECT COUNT(*) FROM message_log").fetchone()[0]))
+    for stranger in (dm(777), dm(778, bot=True)):
+        run(main.on_message(stranger))
+    assert taken == [] and named == [] and asked == [] and not dms.is_dm(DM + 1), "not read, not opened, nothing asked of Claude"
+    assert run(database.run(lambda conn: conn.execute("SELECT COUNT(*) FROM message_log").fetchone()[0])) == before, "and nothing logged"
+    run(main.on_message(dm(owner.discord_id)))
+    assert taken == [owner.id] and dms.is_dm(DM + 1), "mine is handled"
+
+
 def test_the_names_a_first_line_must_not_show_come_from_every_task_that_holds_some(monkeypatch, owner):
     from core import actions, conversation
 

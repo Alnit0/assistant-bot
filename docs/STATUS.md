@@ -59,14 +59,14 @@ Accepted as suggested:
 - 60 Snooze offers 10 minutes, 1 hour and tomorrow: kept.
 - 61 Personal routines' switch `HABITS_ENABLED`, folder `tasks/habits`, `my routines`: kept.
 - 62 Twelve steps at most, ticks starting again at midnight: kept.
-- 64 Task cards have a ### card title and no ## page title; ## is once a message, in the briefing: the pills card made to match.
+- 64 One `##` a message, as its page title; only the hub's task cards, under the briefing, have none (a ### card title only): the pills card made to match. Cards that ask and lists shown on request keep theirs (confirmed the same day).
 - 65 A card with nothing in the morning is posted when it first has something: kept.
 - 66 Switch on to-dos first, then personal routines, then reminders: to-dos at this evening's restart.
 
 Answered:
 
 - 4 `WEEKLY_SUMMARY` on in live (Sunday 7 pm): at this evening's restart.
-- 5 `DMS_ENABLED` on in live once QA block 54 has passed. The self-test cannot send a direct message, so the block is Alex's by hand: DMs stay off for now, and the block is at the top of his short list in `docs/QA-RUN.md` (0).
+- 5 `DMS_ENABLED` on in live at this evening's restart, so Alex can run QA block 54 (item 0 of his short list), which the self-test cannot; a direct message from any account but his is ignored before anything is read, logged or asked of Claude (a test says so).
 - 23 Gym uses kilograms for everything.
 - 29 The calendar is Google Calendar.
 - 30 Read only, to begin with.

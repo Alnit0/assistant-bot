@@ -28,7 +28,7 @@ otherwise. Say what to change in any of them, in your own words.
 
 | # | Look at | How | What to say |
 |---|---|---|---|
-| 0 | **Direct messages, before they go on** (block 54; question 5: on once this passes) | The self-test cannot send a direct message, so this is yours. Ask for `DMS_ENABLED=true` and a restart, then send live a direct message: "what pills are left?" (the answer, as in #inbox, and no buzz), look at the conversation list and the lock screen (the first line is "💊 Pills", never a pill's name), "took <a pill>" there (the same card or line, silent), and one from another account (ignored). Rows in block 54 | "54 passed", or what was wrong. Until then DMs stay off |
+| 0 | **Direct messages** (block 54; question 5) | The self-test cannot send a direct message, so this is yours. Step 1 (switching on and the restart) is done by the evening restart of 15 Oct. Send live a direct message: "what pills are left?" (the answer, as in #inbox, and no buzz), look at the conversation list and the lock screen (the first line is "💊 Pills", never a pill's name), "took <a pill>" there (the same card or line, silent), and one from another account (ignored). Rows in block 54 | "54 passed", or what was wrong (DMs go off again if anything is) |
 | 1 | **This morning's hub** (blocks 48, 56, 58) | Open the hub: the briefing posted at 6:00 am, with the day's dots and count in its title and the small line a task under the date, the weather section and "updated …" small under it, and today's checklist under that. Look again in the afternoon: the same briefing, edited in place | Does it read right at a glance? The order, the words, what is small and what is bold, anything missing or too much |
 | 1a | **Round 3 built** (`docs/DESIGN-LOG.md`) | In the dev bot's forum, in the design-options post, the newest message "Round 3 built": the briefing (with and without Needs a look), the pills card nothing done, part done, overdue and all done, a change, two question cards. Real code, made-up pills. Then the hub itself | Reply in the post with anything to change: spacing, colours, what wraps, what reads oddly. It goes into the design log word for word as round 4 |
 | 2 | **Design rounds 2 and 3** (questions 12 to 15 and 45 to 48 of `docs/QUESTIONS.md`) | In the dev bot's forum, in the design-options post: round 2's sketches (skip the four block bars: they are dropped), then round 3: the day's total as dots in the title (R3-A) and in normal text (R3-B), and the five type-scale sketches (briefing, checklist, reminder, confirm card, stacked question cards) | A letter for each of round 2's. For round 3: which of the two totals, whether the title with ten dots wraps on your phone, and what to change in the type scale before it is built (questions 47 and 48). This is what the new look waits for |
@@ -1153,9 +1153,11 @@ check rows 1, 5 and 7 with Discord's own notification.
 
 ## 54. Direct messages to live (by hand, parked)
 
-**State, 2026-10-15:** Direct messages are off. Alex answered question 5:
-on once this block has passed. The self-test cannot send one, so it is
-Alex's, at the top of the short list (0).
+**State, 2026-10-15:** Direct messages go on at the evening restart of
+15 Oct (question 5), so that this block can be run: the self-test cannot
+send one, so it is Alex's, at the top of the short list (0). One from
+anyone else is ignored before anything is read or asked of Claude (a
+test says so).
 
 Needs `DMS_ENABLED=true` in `.env`, then a restart of live.
 

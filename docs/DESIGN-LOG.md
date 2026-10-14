@@ -101,6 +101,11 @@ The type scale, from Alex's screenshots of rounds 2 and 3 and his brief
   box with no page title (round 3, not a new round: he asked for it).
   Read as about the hub's task cards; a card that asks and a list shown
   on request keep their `##` title (docs/STATUS.md, Decided).
+- 2026-10-15, confirming that reading: "yes, cards and lists shown on
+  request keep their ## page title. One ## per message as its page
+  title; only the hub's task cards, which sit under the briefing, drop
+  it." So: one `##` a message, as its page title; the hub's task cards
+  (pills, reminders, personal routines, to-dos) have none.
 
 **Changes for round 4**
 
