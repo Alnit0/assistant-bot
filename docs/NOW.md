@@ -17,8 +17,8 @@ pushed to `feature/pills`, all of it in tonight's restart.
 **Round 4, shipping tonight** (Alex's answers, 11:45 am)
 - Done: Taken at once only (variant 1 gone); to-dos by the list rule
   (first three, "+N more", one Done dropdown); merged into this branch
-- In progress: full test run, commit, dev-bot self-test (start 8), push;
-  all by 5:30 pm or round 4 waits for the next restart
+- Ready at 11:50 am: full test run passed, self-test start 8 as the
+  dev bot 9 of 9 (NZ$0.00), committed and pushed
 
 **Next**
 - Tonight, 6 pm to 9 pm, clear of pill reminders: one restart from this
