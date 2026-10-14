@@ -59,6 +59,69 @@ The briefing is behind `BRIEFING_ENABLED` and the clean-up behind
 `HUB_TIDY`, both off until turned on; with the clean-up off,
 yesterday's checklist stays where it was.
 
+## Progress
+
+Decided 2026-10-14: **progress is dots**, everywhere, and never a
+percentage. "●" is done and "○" is not done.
+
+- **An item**: one dot a dose or a step, after its name: `Pill A ●●○`.
+  (The drawn checklist has always said it so: a pill's box is
+  `**Pill A** · ●○○`.)
+- **A total**: one dot a thing to do, then the exact count:
+  `●●●●●○○ 5/7`.
+- **More than ten things**: ten dots, scaled to the total, with the
+  exact count after: `●●●●○○○○○○ 6/14`. Scaled to the nearest, with two
+  exceptions so the dots never lie: only everything done is ten solid
+  dots, and only nothing done is ten hollow ones.
+- **No block bar** ("███████░░░ 70%"): dropped the same day, from the
+  briefing and from the sketches.
+
+### The day's total in the briefing
+
+Built 2026-10-14, behind `DAY_PROGRESS` (off unless set). The whole day
+is in the briefing's title, and under the date is one small line a
+task:
+
+```
+## ☀️ Today ●●●●●○○ 5/7
+-# Wednesday 14 October
+-# 💊 2/3 · 📝 2/3 · 🏋️ 1/1
+```
+
+- **The numbers are each task's own**: a task's summary says `done`
+  and `total` (`actions.Summary`), and the briefing adds them up
+  without knowing any task. A task with nothing to count (weather)
+  says neither and is left out; with nothing to count at all the title
+  is plain "☀️ Today". Pills counts a dose taken or skipped as done, as
+  its own checklist does, so a day can finish with every dot solid; a
+  missed dose is not done
+- **The small line** is each task that counts, its icon and
+  done/total, joined by " · ", in the order the tasks come (it never
+  shuffles as the sections below are reordered)
+- It is part of the briefing, so it is edited in place as things are
+  done, and is the same in both looks
+
+**Two ways, one still to pick** (`docs/QUESTIONS.md`, 45). Both are
+posted in the "🎨 Design options" post as round 3
+(`docs/mockups/options/round-3/`, `python -m selftest.options --round
+3`):
+
+| Way | Looks like | Note |
+|---|---|---|
+| R3-A, in the card title (built) | `## ☀️ Today ●●●●●○○ 5/7` | One line fewer. With ten dots and "10/10" the title is about 22 characters at `##` size, near what a narrow phone shows on a line: the one to check for wrapping |
+| R3-B, in normal text | `●●●●●○○ 5/7` on a line of its own under the date | The title stays short and never wraps; one line more |
+
+**To restyle it**, edit the values block of `core/design.py`:
+`DAY_TOTAL_IN_TITLE` (True for R3-A, False for R3-B: nothing else
+changes), `DOT_DONE` and `DOT_LEFT` (the two characters) and `MAX_DOTS`
+(when scaling starts). The shape is `design.dots` and
+`design.progress`; what the briefing puts where is `progress` and
+`_top` in `tasks/briefing/rules.py`. Nothing else knows how it looks.
+
+**Not changed**: the old-look checklist's own title still reads
+"## 💊 Pills · ▰▰▱▱▱ 2 of 5" (`core/hub.py`). It goes with the old look
+when `CARDS_V2` is on for good; say if it should be dots before then.
+
 ## What I need to know (the rule)
 
 Anything I need to know reaches me through **the briefing or a ping**,
@@ -294,6 +357,9 @@ sketch gets a new number, the old one stays), posted in the same
 Everything in this section is a **draft**: the rules above stand until
 a pick is made (`docs/QUESTIONS.md`, under Design).
 
+Round 3 (2026-10-14) is two sketches of the day's total as dots, in
+`docs/mockups/options/round-3/`: see "Progress" above.
+
 **Kept from round 1**: the horizontal rule between items; the thin
 question card (the question as the heading, what was understood small
 under it, the answers in one row). `r2-question-stacked-v1` shows two,
@@ -318,44 +384,96 @@ it (●○○, ✕, ✅).
 bold, in place of code blocks: `schedule · daily at ~~8:00 pm~~ →
 **9:00 pm**`. A time elsewhere (not a change) would then be plain too.
 
-**Progress marks (draft).** For anything ticked off out of a number
-(doses now; to-dos and gym sets later), four styles to pick from:
+**Progress marks (decided 2026-10-14: dots, see "Progress" above).**
+Round 2 sketched four other styles (squares 🟩⬜, bars ▰▱, task icons,
+a custom-emoji bar: `r2-progress-*-v1`). None was picked; the sketches
+stay as the record of what was looked at.
 
-| Style | Looks like | For | Against |
-|---|---|---|---|
-| Squares | 🟩🟩⬜⬜⬜⬜ 2/6 | Clear at a glance, coloured | Wide: six is half a phone line at heading size; ⬜ is faint in light mode |
-| Bars | ▰▰▱▱▱▱ 2/6 | Compact; what the hub's bar uses today; the same on every phone | No colour |
-| Task icons | 💊💊⚪⚪⚪⚪ 2/6 | Says which task without a label | Busy; some icons (🏋️) are hard to tell from ⚪ when small |
-| Custom emoji | one joined bar with rounded ends | The best looking | Six images to draw (listed in `r2-progress-custom-v1`); a phone that fails to load them shows `:bar_mid_full:` |
+**A total for the day (built 2026-10-14 as dots, see "Progress"
+above).** Round 2's sketch `r2-briefing-total-v1` has it in the title
+with ▰▱ bars and the small line a task; what is built keeps that shape
+with dots in place of the bars.
 
-**A total for the day (draft).** The briefing's title carries the
-whole day: "## ☀️ Today ▰▰▰▰▰▱▱▱ 5/8", and under it one small line a
-task ("-# 💊 pills 2/5 · 📝 to-dos 2/2 · 🏋️ gym 1/1"). Built from each
-task's done out of total: the summary contract (`actions.Summary`)
-would gain two numbers, `done` and `total`, which a task with nothing
-countable (weather) leaves out, and the briefing would add them up
-without knowing any task. Sketch: `r2-briefing-total-v1`.
-
-**A block bar (draft).** Ten cells and a percentage, solid for done
-and light for not done: "███████░░░ 70%". Four ways, each shown as the
-day's total at the top of the briefing and as one pill's progress:
-
-| Way | Looks like | Note |
-|---|---|---|
-| Plain, a line of its own | ███████░░░ 70% | 14 characters: fits any phone |
-| In a heading | ## ☀️ Today ███████░░░ 70% | 24 characters at heading size: the one that could wrap on a narrow phone |
-| In inline code | `███████░░░` 70% | Every cell the same width whatever the font, on a grey patch |
-| Partial blocks | ███████▎░░ 73% | Fills smoothly (▏▎▍▌▋▊▉); the part-filled cell has no light shade behind it, so there is a small gap in the track |
+**The block bar (dropped 2026-10-14).** Ten cells and a percentage
+("███████░░░ 70%") was sketched four ways in round 2 and built for a
+few hours as the day's total. It is gone from the code and its four
+sketches are removed; the messages posted for them in the forum are
+still there, above round 3.
 
 **Mobile widths.** Not looked at on a phone: I can post sketches but
 not see them. What can be said from counting: a phone shows roughly 40
 characters of ordinary text on a line, about 30 at `###` size and
-about 24 at `##` size, and an emoji takes about two. So the bar in a
-`##` title is at the limit, six squares in a `##` title are over it
-with a count, and everything else has room. The block characters are
-one width each in the fonts phones fall back to, but only inline code
-makes that certain. Please check the four block bars and the squares
-on your phone before picking.
+about 24 at `##` size, and an emoji takes about two. So the day's
+total in a `##` title is near the limit with ten dots, and has room as
+a line of normal text. Please check round 3 on your phone before
+picking.
+
+## Drafts: round 3, the type scale (2026-10-14, nothing built)
+
+Asked by Alex on 2026-10-14, from screenshots of the sketches: treat
+each message like a web page with a proper hierarchy. A **draft**:
+the rules above stand, and the real cards are unchanged, until it is
+picked. Five sketches show it, `docs/mockups/options/round-3/`
+(`r3-briefing-v1`, `r3-checklist-v1`, `r3-reminder-v1`,
+`r3-confirm-v1`, `r3-question-stacked-v1`), posted in the "🎨 Design
+options" post.
+
+**Structure**
+
+- **One box (container) a topic**: pills, weather, gym, to-dos. A
+  message can hold several boxes. Never one box a section inside a
+  topic (today the drawn checklist has a box a pill: that would go)
+- **Inside a box, a horizontal rule between items**
+- **The box's edge colour is the topic's most urgent state** (the
+  accent colours above, unchanged: amber while something is due, red
+  only when something was missed and nothing is left)
+- **Done items collapse to one `-#` line at the bottom of their
+  box**, and paused items join it
+- **Buttons only on what can be acted on now**
+- **No placeholder tasks**: a topic with nothing built has no box
+
+**The type scale**, the same everywhere:
+
+| Level | Written | Used for | Example |
+|---|---|---|---|
+| Page title | `## ` | Once a message | `## ☀️ Today · Wed 14 Oct` |
+| Card title | `### ` | Once a box, with the topic's progress dots and count | `### 💊 Pills ●●○○○○ 2/6` |
+| Item | `**bold**` | Each item: a pill, a to-do | `**Pill A** ●○○` |
+| Value | normal text | Times, doses, what a thing is set to | `dose 2 · any time` |
+| Detail | `-# ` | Details and notes; the collapsed line of what is done | `-# with food` |
+| Emphasis | `*italic*` | Sparingly | `*with food*` |
+| A change | `~~old~~ → **new**` | What a card would change | `time · ~~8:00 pm~~ → **9:00 pm**` |
+| A quote | `> ` | What I said, on the card that answers it | `> add iron at 8 with food` |
+| Hidden | a spoiler | The spend line | `💸 Yesterday: \|\|NZ$0.42\|\|` |
+
+- **Times are bold, never inline code.** Where a relative time helps,
+  a Discord timestamp follows it: `**12:00 pm** · <t:…:R>`, which
+  Discord shows as "in 2 hours" and keeps current by itself
+
+**What the sketches had to decide, and may have wrong** (say which):
+
+- **The day's total with a date in the page title.** With "☀️ Today ·
+  Wed 14 Oct" as the title there is no room for ten dots in it, so
+  the briefing sketch has the total as a line of normal text under
+  the title (R3-B's way) and no separate date line. What is built
+  today has the total in the title and the date small under it
+- **A message that is one card** (a confirm card, the checklist):
+  the `##` page title is outside the box and the box still has its
+  `###` card title, so the two can say nearly the same thing
+- **What notifies has no page title**: a reminder's first line is
+  the plain neutral line a lock screen shows, and stays so
+- **The briefing's pills box lists each pill**, as the checklist
+  does, where today it is a summary of a few lines: with the
+  checklist right under it in the hub that may be twice the same
+- **A relative time in a sketch is a real timestamp** (5:00 pm on
+  the day it was posted): looked at later it reads "x hours ago"
+
+**What building it would touch**: `core/design.py` (the shapes
+`item` and `standing` become a box a topic with rules inside),
+`tasks/pills/sheet.py` (a box a pill today), `tasks/briefing/rules.py`,
+`core/cards.py` (the confirm and question cards), every place a time
+is written in code marks, and the summary contract (a task would hand
+over its items, not only lines). Not started.
 
 ## The sketches
 

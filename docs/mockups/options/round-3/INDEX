@@ -1,0 +1,9 @@
+# Round 3 (2026-10-14): the day's total as dots, two ways. The block bar is gone. One line a sketch: its file, its label, and what is different. Read by selftest/options.py --round 3
+r3-dots-title-v1 | Day total · R3-A | dots in the card title (##): one dot a thing to do, then the count, and the small line a task under the date
+r3-dots-text-v1 | Day total · R3-B | dots in normal text: the title stays short, the dots and the count are a line of their own under the date
+# The type scale (asked 2026-10-14, from the screenshots of the sketches above): a message as a page, one box a topic
+r3-briefing-v1 | Briefing · R3 | the type scale: one box a topic (weather, pills, a to-dos example), ## page title with the date, ### card title with dots and count, bold items, rules between items, done collapsed to one small line
+r3-checklist-v1 | Checklist · R3 | one box for the topic, a rule between pills, times bold with a relative time, buttons only on what can be acted on now, done and paused in one small line at the bottom
+r3-reminder-v1 | Reminder · R3 | the neutral line the phone shows, then one box: ### card title with the pill's dots, the dose bold, the time bold with a relative time
+r3-confirm-v1 | Confirm card · R3 | what I said quoted, each pill bold, a change as old struck through → new bold, a rule between pills
+r3-question-stacked-v1 | Question cards · R3 | two questions, a box each: the question as the ### card title, what I said quoted, the answers in one row

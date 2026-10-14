@@ -72,4 +72,6 @@ async def summary(user_id: int, day: date) -> Summary | None:
     # The streak, in days, one for all pills: said from two days up (tasks/pills/history.py)
     streak = history.streak_line(await history.streak_days(user_id, day))
     lines = tuple(line for line in (next_line(listed), streak) if line)
-    return Summary(glance=glance, status=status(listed), lines=lines, hint=any_time(listed), before=before)
+    # The checklist's own count of what is dealt with (taken or skipped), so the two never disagree
+    done, total = today.progress(listed)
+    return Summary(glance=glance, status=status(listed), lines=lines, hint=any_time(listed), before=before, done=done, total=total)

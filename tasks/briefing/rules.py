@@ -75,6 +75,31 @@ def _lines(section: Section) -> list[str]:
     return [*said.lines, *(design.small(line) for line in (said.hint, said.before) if line)]
 
 
+def progress(sections: list[Section]) -> tuple[str, ...]:
+    """The day so far, from what each task says is done out of what it has: the
+    whole day as dots and a count ("●●●●●○○ 5/7", core/design.py), and one
+    small line a task ("💊 2/3 · 🏋️ 0/1"), in the order the tasks were given.
+    Nothing when no task has anything to count. It knows no task: the numbers
+    are theirs."""
+    counted = [(each.icon, each.summary.done or 0, each.summary.total) for each in sections if each.summary is not None and each.summary.total]
+    if not counted:
+        return ()
+    done, total = sum(each[1] for each in counted), sum(each[2] for each in counted)
+    return (design.progress(done, total), design.small(" · ".join(f"{icon} {some}/{of}" for icon, some, of in counted)))
+
+
+def _top(day: date, so_far: tuple[str, ...]) -> tuple[str, list[str]]:
+    """The title and the lines under it, with the day's progress where the design
+    puts it: the total in the title or on a line of its own under the date
+    (`design.DAY_TOTAL_IN_TITLE`), then the small line a task."""
+    if not so_far:
+        return HEADING, [design.small(date_line(day))]
+    total, tasks = so_far
+    if design.DAY_TOTAL_IN_TITLE:
+        return f"{HEADING} {total}", [design.small(date_line(day)), tasks]
+    return HEADING, [design.small(date_line(day)), total, tasks]
+
+
 MAX_NOTES = 3
 SPEND_ICON = "💸"
 
@@ -92,9 +117,11 @@ def worth_knowing(notes: tuple[str, ...]) -> list[str]:
     return [*([design.small(f"🗒️ …and {len(notes) - MAX_NOTES} more before")] if len(notes) > MAX_NOTES else []), *shown]
 
 
-def text(sections: list[Section], day: date, problems: tuple[str, ...] = (), held_back: tuple[str, ...] = (), hours: str = "", notes: tuple[str, ...] = (), spend: str = "") -> str:
-    """The briefing as a plain message (the old look, and what is logged)."""
-    lines = [f"## {HEADING}", design.small(date_line(day))]
+def text(sections: list[Section], day: date, problems: tuple[str, ...] = (), held_back: tuple[str, ...] = (), hours: str = "", notes: tuple[str, ...] = (), spend: str = "", so_far: tuple[str, ...] = ()) -> str:
+    """The briefing as a plain message (the old look, and what is logged).
+    `so_far` is the day's progress (`progress`), at the top."""
+    title, under = _top(day, so_far)
+    lines = [f"## {title}", *under]
     if problems:
         lines += ["", NEEDS, *problems]
     if held_back:
@@ -109,7 +136,7 @@ def text(sections: list[Section], day: date, problems: tuple[str, ...] = (), hel
     return "\n".join(lines)
 
 
-def layout(sections: list[Section], day: date, problems: tuple[str, ...] = (), held_back: tuple[str, ...] = (), hours: str = "", notes: tuple[str, ...] = (), spend: str = "") -> tuple:
+def layout(sections: list[Section], day: date, problems: tuple[str, ...] = (), held_back: tuple[str, ...] = (), hours: str = "", notes: tuple[str, ...] = (), spend: str = "", so_far: tuple[str, ...] = ()) -> tuple:
     """The briefing in the one style of docs/DESIGN.md: a standing message, a
     box a task in the colour of its status, and no buttons. What needs a look
     is a box of its own on top, then what was held back overnight."""
@@ -122,6 +149,7 @@ def layout(sections: list[Section], day: date, problems: tuple[str, ...] = (), h
         design.item(section.summary.status if section.summary is not None and section.summary.status else design.QUIET, _name(section), *_lines(section))
         for section in sections
     ]
-    pieces = design.standing(HEADING, date_line(day), boxes)
+    title, under = _top(day, so_far)
+    pieces = design.standing(title, "", boxes, under=tuple(under))
     under = [*([spend] if spend else []), *worth_knowing(notes)]
     return (*pieces, *([design.Text("\n".join(under))] if under else []), design.Text(design.small(FOOT)))

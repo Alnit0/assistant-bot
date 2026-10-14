@@ -6,6 +6,17 @@ backfilled from the git log.
 
 ## 2026-10-14
 
+- The briefing shows the day's progress at the top: a dot a thing to
+  do and the count, in its title ("☀️ Today ●●●●●○○ 5/7"), and one
+  small line a task ("💊 2/3"), kept up to date in place as things
+  are done. Behind `DAY_PROGRESS`.
+- Progress is dots everywhere and never a percentage. The block bar
+  is gone, with its sketches; two sketches of the dots (in the title,
+  in normal text) are in the design-options post as round 3.
+- Round 3 also has five sketches of a type scale (a message as a
+  page: one box a topic, a card title with dots, times in bold): a
+  draft in `docs/DESIGN.md`, nothing in the real cards changed.
+
 - Docs only: `docs/STATUS.md` is one page again (where things stand,
   what is switched on, what waits on you, what is next), with its
   history in `docs/archive/`. `docs/QA-RUN.md` opens with the ten

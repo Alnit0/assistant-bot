@@ -50,6 +50,15 @@ CARD_HEADING = "## "  # the first line of a card that asks for a decision
 SMALL = "-# "  # detail that is read second
 WARNING = "⚠️"
 
+# Progress: one dot a thing to do, solid for done and hollow for not done, then the count.
+# "●●●●●○○ 5/7". Over MAX_DOTS things the dots are scaled to that many; the count stays exact
+DOT_DONE = "●"
+DOT_LEFT = "○"
+MAX_DOTS = 10
+# Where the day's total goes in the briefing: True, in its title ("## ☀️ Today ●●●○○ 3/5");
+# False, a line of ordinary text under the date
+DAY_TOTAL_IN_TITLE = True
+
 # Separators: whether one draws a line, and whether it leaves a large gap
 SEPARATOR_LINE = True
 SEPARATOR_LARGE = False
@@ -108,6 +117,30 @@ def section() -> Separator:
 def hidden(text: str) -> str:
     """Words shown only when tapped (a spoiler): for an amount of money in a message others may glance at."""
     return f"||{text}||"
+
+
+def share(done: int, total: int, out_of: int) -> int:
+    """`done` of `total` as a part of `out_of`, to the nearest whole. Only a day with
+    everything done reaches the top, and only one with nothing done is at 0."""
+    if total <= 0 or done <= 0:
+        return 0
+    if done >= total:
+        return out_of
+    return min(out_of - 1, max(1, (2 * done * out_of + total) // (2 * total)))
+
+
+def dots(done: int, total: int) -> str:
+    """One dot a thing, solid for done: "●●○". More than MAX_DOTS things are shown as
+    that many dots, scaled. The characters are the values at the top of this file."""
+    done = max(0, min(done, total))
+    cells = min(total, MAX_DOTS)
+    filled = done if total <= MAX_DOTS else share(done, total, MAX_DOTS)
+    return DOT_DONE * filled + DOT_LEFT * (cells - filled)
+
+
+def progress(done: int, total: int) -> str:
+    """How far along, as dots and the exact count: "●●●●●○○ 5/7". Never a percentage."""
+    return f"{dots(done, total)} {done}/{total}"
 
 
 def small(text: str) -> str:
@@ -208,11 +241,12 @@ def item(status: str, name: str, *lines: str, row: tuple = ()) -> Box:
     return Box(status, (Text(body), Row(tuple(row))) if row else (Text(body),))
 
 
-def standing(title: str, context: str, boxes: list, later: list | tuple = (), hint: str = "") -> tuple:
+def standing(title: str, context: str, boxes: list, later: list | tuple = (), hint: str = "", under: tuple = ()) -> tuple:
     """A standing message (shown every day, edited in place): `# icon Title ·
     progress` and one small line of context, a box an item, then a separator
-    and the boxes of the section after it (Paused), and a hint under it all."""
-    pieces: list = [Text(f"{HEADING}{title}" + (f"\n{small(context)}" if context else ""))]
+    and the boxes of the section after it (Paused), and a hint under it all.
+    `under` is lines that belong to the heading (the day's progress)."""
+    pieces: list = [Text("\n".join([f"{HEADING}{title}", *([small(context)] if context else []), *under]))]
     pieces += list(boxes)
     if later:
         pieces += [section(), *later]

@@ -776,11 +776,50 @@ def test_round_two_of_the_design_options_is_read_in_its_own_order_and_every_sket
     assert folder.name == "round-2" and options.round_folder(1) == options.FOLDER
     found = options.checked(folder)
     names = [name for name, *_ in found]
-    assert len(found) == 13 and names[0] == "r2-briefing-hierarchy-v1", "in the order of its INDEX"
+    assert len(found) == 9 and names[0] == "r2-briefing-hierarchy-v1", "in the order of its INDEX"
     assert all(name.startswith("r2-") and name.endswith("-v1") for name in names), "versioned: a changed sketch gets a new number"
-    for wanted in ("squares", "bars", "icons", "custom", "blocks-plain", "blocks-heading", "blocks-code", "blocks-partial", "question-stacked", "briefing-total"):
+    for wanted in ("squares", "bars", "icons", "custom", "question-stacked", "briefing-total"):
         assert any(wanted in name for name in names), wanted
+    assert not any("blocks" in name for name in names), "the block bar was dropped on 2026-10-14: dots in its place (round 3)"
     opening = options.round_summary(2, [each[:3] for each in found])
     assert opening.startswith("**Design options · round 2**") and "nothing in the real cards changes until you pick" in opening and len(opening) <= 2000
+    assert "`briefing R2-A, checklist R2-A, confirm card R2-A`" in opening, "the example to answer with is made of the round's own labels"
     confirm = (folder / "r2-confirm-hierarchy-v1.txt").read_text(encoding="utf-8")
     assert "~~8:00 pm~~ → **9:00 pm**" in confirm and "`" not in confirm, "old struck through, new bold, no code blocks"
+
+
+def test_round_three_is_the_day_s_total_as_dots_in_the_title_and_in_normal_text_and_no_block_bar_is_left():
+    from selftest import options
+
+    found = options.checked(options.round_folder(3))
+    assert [(name, label) for name, label, *_ in found][:2] == [("r3-dots-title-v1", "Day total · R3-A"), ("r3-dots-text-v1", "Day total · R3-B")]
+    title, text = ((options.round_folder(3) / f"{name}.txt").read_text(encoding="utf-8").splitlines() for name, *_ in found[:2])
+    assert title[0] == "## ☀️ Today ●●●●●○○ 5/7" and title[2] == "-# 💊 2/3 · 📝 2/3 · 🏋️ 1/1"
+    assert text[0] == "## ☀️ Today" and text[2] == "●●●●●○○ 5/7" and text[3] == title[2]
+    assert "●●●●○○○○○○ 6/14" in "\n".join(title) and "●●●●○○○○○○ 6/14" in "\n".join(text), "more than ten things: ten dots, scaled, and the exact count"
+    everything = "".join(path.read_text(encoding="utf-8") for path in options.FOLDER.rglob("*.txt"))
+    assert "█" not in everything and "░" not in everything and "%" not in "\n".join([*title, *text]).replace("61% rain", "")
+    assert "`day total R3-A, " in options.round_summary(3, [each[:3] for each in found])
+
+
+def test_round_three_s_type_scale_sketches_are_a_page_with_one_box_a_topic_and_times_in_bold():
+    from selftest import options
+    from tasks.dev import mock
+
+    found = {name: pieces for name, _, _, pieces in options.checked(options.round_folder(3))}
+    wanted = ("r3-briefing-v1", "r3-checklist-v1", "r3-reminder-v1", "r3-confirm-v1", "r3-question-stacked-v1")
+    assert all(name in found for name in wanted)
+    for name in wanted:
+        said = (options.round_folder(3) / f"{name}.txt").read_text(encoding="utf-8").splitlines()
+        titles = [line for line in said if line.startswith("## ")]
+        assert len(titles) == (0 if name == "r3-reminder-v1" else 1), f"{name}: one ## page title a message (none on what notifies)"
+        boxes, card_titles = sum(line.startswith("┃ accent:") for line in said), sum(line.startswith("┃ ### ") for line in said)
+        assert boxes >= 1 and card_titles == boxes, f"{name}: one ### card title a box ({card_titles} for {boxes})"
+        assert not any("`" in line for line in said), f"{name}: a time is bold, never inline code"
+        assert mock.count(found[name]) <= mock.MAX_COMPONENTS
+    briefing = (options.round_folder(3) / "r3-briefing-v1.txt").read_text(encoding="utf-8")
+    assert [line for line in briefing.splitlines() if line.startswith("┃ ### ")] == ["┃ ### 🌤️ Weather", "┃ ### 💊 Pills ●●○○○○ 2/6", "┃ ### 📝 To-dos ●●●○ 3/4"]
+    assert "<t:" in briefing and ":R>" in briefing and "||NZ$" in briefing, "a relative time where it helps; the spend behind a spoiler"
+    assert options.picked([("a",), ("b",), ("c",)], ("c", "a")) == [("a",), ("c",)]
+    with pytest.raises(SystemExit):
+        options.picked([("a",)], ("nope",))

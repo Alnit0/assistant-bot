@@ -407,7 +407,7 @@ async def layout(interaction: discord.Interaction):
 # ---------------------------------------------------------------------------
 def render_countdown(left: int, total: int) -> str:
     filled = round(10 * (total - left) / total)
-    return f"⏳ **{left}s** left  `{'█' * filled}{'░' * (10 - filled)}`"
+    return f"⏳ **{left}s** left  {'●' * filled}{'○' * (10 - filled)}"
 
 
 def countdown_summary(total: int, edits: int, hits: int, slow: int, slowest: float) -> str:

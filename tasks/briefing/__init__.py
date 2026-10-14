@@ -53,7 +53,10 @@ async def card_for(user_id: int) -> Card | None:
     today = days.today()
     now = clock.now()
     order = attention.ranked(await attention.gather(user_id, now), now)
-    sections = rules.ordered(await summaries.gather(user_id, today), [item.task for _, item in order])
+    gathered = await summaries.gather(user_id, today)
+    # The day's progress is counted in the order the tasks come, so its line never shuffles
+    so_far = rules.progress(gathered) if config.DAY_PROGRESS else ()
+    sections = rules.ordered(gathered, [item.task for _, item in order])
     problems = tuple(rules.problem(item) for rank, item in order if rank == attention.LEVEL_PROBLEM)
     held = tuple(rules.held(each.line, each.times) for each in await notify.held_overnight(user_id, today))
     notes = tuple(f"{timeinput.format_moment(each.at)} · {each.line}" for each in await notify.notes_for(user_id, today))
@@ -61,7 +64,7 @@ async def card_for(user_id: int) -> Card | None:
         return None
     hours = " to ".join(timeinput.format_time(each) for each in config.QUIET_HOURS)
     spend = await spend_line(today)
-    return Card(rules.text(sections, today, problems, held, hours, notes, spend), (), rules.layout(sections, today, problems, held, hours, notes, spend))
+    return Card(rules.text(sections, today, problems, held, hours, notes, spend, so_far), (), rules.layout(sections, today, problems, held, hours, notes, spend, so_far))
 
 
 async def spend_line(today) -> str:

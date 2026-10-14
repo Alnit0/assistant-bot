@@ -236,6 +236,10 @@ REMINDERS_ENABLED = flag(os.getenv("REMINDERS_ENABLED"), False)
 # The briefing (tasks/briefing): one card a day in the hub that says what today holds, kept up
 # to date in place, and "brief me". Off unless set: off, nothing of it exists
 BRIEFING_ENABLED = flag(os.getenv("BRIEFING_ENABLED"), False)
+# The day's progress at the top of the briefing: a dot a thing to do and the count
+# ("●●●●●○○ 5/7"), and a small line a task ("💊 2/3"). Off unless set: off, the briefing
+# reads as it did
+DAY_PROGRESS = flag(os.getenv("DAY_PROGRESS"), False)
 def hours(text: str | None, default: tuple[time, time]) -> tuple[time, time]:
     """A stretch of the day as written in .env ("22:00-06:00"): (from, to)."""
     try:

@@ -21,11 +21,46 @@ important first, when work is chosen, ordered or cut short:
 
 Notifications and ntfy are low priority.
 
-## Decided overnight
+## Decided (the batch of 2026-10-14, afternoon)
 
-Nothing since the night of 2026-10-14. That night's 32 choices are in
-the archive, each yours to overturn; the ones that ask something of you
-are in `docs/QUESTIONS.md`.
+Choices the batch's prompt did not settle. Each is yours to overturn.
+(The night before's 32 are in the archive.)
+
+**Item 1, the day's progress, and the design messages that came in
+while it was being built**
+
+1. **Behind a switch, `DAY_PROGRESS`**, off unless set, as every new
+   feature is. It goes on for live with the restart at the end of
+   the batch.
+2. **A dose taken or skipped counts as done**, as the checklist's own
+   count has it, so a day can end with every dot solid. A missed
+   dose is not done.
+3. **The total is built in the briefing's title** ("☀️ Today ●●●●●○○
+   5/7", your example), with the date and then the small line a task
+   under it. As a line of normal text it is one value in
+   `core/design.py` (`DAY_TOTAL_IN_TITLE`). Question 45.
+4. **More than ten things**: ten dots to the nearest, but all solid
+   only when everything is done and all hollow only when nothing is.
+5. **"Everywhere" was taken at its word**: the block bar is also gone
+   from the lab's countdown. **Not changed**: the old-look
+   checklist's "▰▰▱▱▱ 2 of 5", which is a different bar and goes with
+   the old look (question 46); and per-item dots ("Pill A ●●○") are
+   what the drawn checklist already has, so nothing was added there.
+6. **The four block-bar sketches are deleted from the repo; the
+   messages already posted for them in the forum are left**, above
+   round 3. Say if you want them deleted there too.
+7. **Round 3 is one folder**: the two dot sketches (R3-A in the title,
+   R3-B in normal text) and the five of the type scale. Posted in
+   the design-options post, in that order.
+8. **Questions 16 to 20 are gone as answered** (progress marks, the
+   total, the block bar, the custom-emoji bar): dots. 45 to 48 are
+   new.
+9. **The type scale is a draft and nothing of it is built.** Five
+   things the sketches had to decide are listed in `docs/DESIGN.md`
+   (the day's total moves under a title that holds the date; a
+   one-card message has both a page and a card title; what notifies
+   has no page title; the briefing's pills box lists each pill; a
+   relative time in a sketch is a real timestamp).
 
 ## Where things stand
 
@@ -64,9 +99,10 @@ are in `docs/QUESTIONS.md`.
 1. **The short list at the top of `docs/QA-RUN.md`**: ten looks only
    you can take, most useful first (this morning's hub, the design
    sketches, the colours, the status line, the lock screen).
-2. **The design picks**, questions 12 to 22 of `docs/QUESTIONS.md`:
+2. **The design picks**, questions 12 to 15, 21, 22 and 45 to 48 of
+   `docs/QUESTIONS.md`, with rounds 2 and 3 in the design-options post:
    they are what the new look in the hub waits for.
-3. **The other questions**: `docs/QUESTIONS.md` has 44, each with a
+3. **The other questions**: `docs/QUESTIONS.md` has 43, each with a
    suggested answer ("yes to all suggestions except 4 and 7").
 4. **Gym and the calendar** wait on their answers there (23 to 28, 29
    to 32).

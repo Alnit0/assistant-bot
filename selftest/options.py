@@ -46,13 +46,22 @@ def listed(folder: Path = FOLDER) -> list[tuple[str, str, str]]:
     return sorted(found, key=lambda each: (CARDS.index(each[0].rsplit("-", 1)[0]), each[0]))
 
 
+def _example(options: list[tuple[str, str, str]]) -> str:
+    """An answer as one might type it, from the round's own labels: the first sketch of each card."""
+    first: dict[str, str] = {}
+    for _, label, _ in options:
+        card, _, which = label.partition(" · ")
+        first.setdefault(card.lower(), which)
+    return ", ".join(f"{card} {which}" for card, which in list(first.items())[:3])
+
+
 def round_summary(number: int, options: list[tuple[str, str, str]]) -> str:
     """What opens a later round, in the same post as the first."""
     return "\n".join([
         f"**Design options · round {number}** · sketches only, from your feedback on the round before: nothing in the real cards changes until you pick.",
         f"{len(options)} sketches follow, each under a line saying which it is (R{number}-A, R{number}-B…). The buttons on a sketch do nothing.",
         "",
-        "**To pick**, reply here, e.g. `briefing R2-B, progress R2-B, block bar R2-C`, and anything you would change.",
+        f"**To pick**, reply here, e.g. `{_example(options)}`, and anything you would change.",
         *(f"- **{label}** · {differs}" for _, label, differs in options),
     ])[:1990]
 
@@ -102,6 +111,17 @@ def checked(folder: Path = FOLDER) -> list[tuple[str, str, str, list]]:
     return found
 
 
+def picked(options: list, only: tuple[str, ...] = ()) -> list:
+    """The sketches to post: all of them, or just those named (`--only a,b`), in the round's order. A name
+    that is not in the round stops it: nothing is posted for a slip of the hand."""
+    if not only:
+        return options
+    unknown = sorted(set(only) - {each[0] for each in options})
+    if unknown:
+        raise SystemExit(f"Not in this round: {', '.join(unknown)}. Nothing posted.")
+    return [each for each in options if each[0] in only]
+
+
 async def _earlier_post(client, forum):
     """The design-options post that is already there, the latest one, or None. Asked over HTTP: there is no cache."""
     found = await client.http.get_active_threads(forum.guild.id)
@@ -114,9 +134,10 @@ async def _earlier_post(client, forum):
     return None
 
 
-async def post_round(number: int, when: datetime) -> str:
+async def post_round(number: int, when: datetime, only: tuple[str, ...] = ()) -> str:
     """Post a later round's sketches in the design-options post that is already
-    there (a new one only if that can't be found). Returns its link."""
+    there (a new one only if that can't be found). Returns its link. With
+    `only`, just the sketches named: for adding to a round already posted."""
     import discord
     from dotenv import dotenv_values
 
@@ -128,7 +149,7 @@ async def post_round(number: int, when: datetime) -> str:
     forum_id = (dotenv_values(config.BASE_DIR / ".env.dev").get("BUGS_CHANNEL_ID") or "").strip()
     if not forum_id.isdigit():
         raise SystemExit("BUGS_CHANNEL_ID is not set in .env.dev: the options go in the dev bot's forum. Nothing posted.")
-    options = checked(round_folder(number))
+    options = picked(checked(round_folder(number)), only)
     client = discord.Client(intents=discord.Intents.none())
     await client.login(token)
     try:
@@ -192,7 +213,8 @@ def main() -> int:
     if "--check" in sys.argv[1:]:
         print(f"{len(checked(round_folder(number)))} sketches read, each within one message.")
         return 0
-    print("Posted:", asyncio.run(post(datetime.now()) if number <= 1 else post_round(number, datetime.now())))
+    only = tuple(part.strip() for part in sys.argv[sys.argv.index("--only") + 1].split(",") if part.strip()) if "--only" in sys.argv[1:] else ()
+    print("Posted:", asyncio.run(post(datetime.now()) if number <= 1 else post_round(number, datetime.now(), only)))
     return 0
 
 

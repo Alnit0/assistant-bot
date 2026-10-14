@@ -1,0 +1,17 @@
+## 💊 Pills · change
+
+┃ accent: blurple
+┃ ### 2 pills
+┃ > move pill A to 9 and pill B is two tablets now
+┃ ---
+┃ **Pill A**
+┃ time · ~~8:00 pm~~ → **9:00 pm** ❓
+┃ -# ❓ a guess: you did not say morning or evening
+┃ ---
+┃ **Pill B**
+┃ dose · ~~1 tablet~~ → **2 tablets**
+┃ ---
+┃ -# applies from the next dose · or tell me what to change
+┃ [Save: green] [↩️ Cancel: grey]
+
+-# 🧪 Confirm card · R3 · what I said quoted, each pill bold, a change as old struck through → new bold, a rule between pills

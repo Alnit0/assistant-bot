@@ -1,0 +1,11 @@
+💊 Routine due · 5:00 pm
+
+┃ accent: amber
+┃ ### 💊 Pill A ●○○ 1/3
+┃ **Dose 2** · **5:00 pm** · <t:1791950400:R>
+┃ -# 3h after dose 1 at 2:00 pm · with food
+┃ -# ⚠️ take by **6:00 pm** so dose 3 still fits
+┃ [✅ Taken: green] [🕐 Taken at…: blurple] [⏰ Snooze 15m: blurple] [⏭️ Skip: blurple]
+
+-# 🧪 Reminder · R3 · the neutral line the phone shows, then one box: ### card title with the pill's dots, the dose bold, the time bold with a relative time
+-# 🧪 no ## page title here: the first line is the one a lock screen shows, and stays plain

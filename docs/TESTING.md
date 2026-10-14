@@ -44,9 +44,9 @@ Last updated: 2026-10-14
 | Q | Time, days, the schedule model, the occurrence log and cards | 29 | 27 | 2 | 2 | 27 | 0 | 0 |
 | R | Pills | 89 | 35 | 54 | 46 | 43 | 0 | 0 |
 | S | Routing and confirm cards | 80 | 27 | 53 | 18 | 61 | 0 | 1 |
-| T | Tasks in plain words | 29 | 9 | 20 | 5 | 24 | 0 | 0 |
+| T | Tasks in plain words | 31 | 10 | 21 | 6 | 25 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **560** | **232** | **328** | **258** | **301** | **0** | **1** |
+| | **Total** | **562** | **233** | **329** | **259** | **302** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -363,8 +363,8 @@ Any channel. Check the bot's status in the member list.
 | K54 | 🤖 Auto | The daily exchange rate | A fetch is kept; a failed one leaves the last known rate in use and is not a failed job; the last one is taken up after a restart and by the self-test's launcher; the dev bot never fetches | ✅ Pass | 2026-10-14 | `tests/test_money.py` |
 | K55 | 🤖 Auto | Limits in NZ$ and the briefing's spend line | The limits are round NZ$ compared in US$ at the rate of the moment, renamed and not kept twice; yesterday's spend is one line with the amounts hidden, left out for a day with none and on the dev bot | ✅ Pass | 2026-10-14 | `tests/test_money.py` |
 | K56 | 👤 Manual | NZ$ on the phone | `dev cost` shows NZ$ and ends with the rate and when it was fetched; the morning's briefing has "💸 Yesterday: …" with the amounts hidden until tapped | ⬜ Untested | |  |
-| K57 | 🤖 Auto | Design options, round 2 | Read in the order of its INDEX, every sketch within one message and versioned; the opening says nothing changes until a pick | ✅ Pass | 2026-10-14 | `tests/test_selftest.py` |
-| K58 | 👤 Manual | Round 2 on the phone | Open the 🎨 Design options post: 13 new sketches (R2-…). Check the four block bars and the squares wrap nowhere, then answer questions 12 to 20 of docs/QUESTIONS.md | ⬜ Untested | |  |
+| K57 | 🤖 Auto | Design options, rounds 2 and 3 | Read in the order of its INDEX, every sketch within one message and versioned; the opening says nothing changes until a pick and its example answer is made of the round's own labels; round 3 is the day's total as dots, in the title and in normal text, each with a ten-dot example, and five sketches of the type scale (one page title a message, one card title a box, times never in code); only the sketches named are posted when asked; no sketch has a block bar | ✅ Pass | 2026-10-14 | `tests/test_selftest.py` |
+| K58 | 👤 Manual | Rounds 2 and 3 on the phone | Open the 🎨 Design options post: round 2's sketches (R2-…; the four block bars are dropped: skip them) and round 3's two (R3-A, R3-B: the day's total as dots). Check that the title with ten dots wraps nowhere, then answer questions 12 to 15 and 45 of docs/QUESTIONS.md | ⬜ Untested | |  |
 
 ## L. Keep
 
@@ -718,6 +718,8 @@ The real tasks on the router's way: timers, bugs and pills setup. On the dev dat
 | T32 | 🤖 Auto | Weather: the words | A recorded forecast reads as one or two lines from a template; rain is said with roughly when only when likely; the wind and the sky are words; one that can't be read is refused | ✅ Pass | 2026-10-14 | `tests/test_weather.py` |
 | T33 | 🤖 Auto | Weather: fetched, kept and scheduled | The morning fetch keeps the forecast and the briefing's section reads it; a failed morning fetch is a failed job and the section says Weather unavailable; a failed refresh keeps what it had; the day's later refreshes are booked once each; no discord.py, nothing routed, two schedules; a task with only a summary is in the briefing | ✅ Pass | 2026-10-14 | `tests/test_weather.py` |
 | T34 | 👤 Manual | Weather on the phone | QA-RUN block 56 | ⬜ Untested | |  |
+| T35 | 🤖 Auto | The day's progress in the briefing | A task's summary may say what is done out of what there is; the briefing adds them up without knowing any task: the whole day as a dot a thing and the exact count in its title ("☀️ Today ●●●●●○○ 5/7"), never a percentage, and one small line a task ("💊 2/3") under the date, in both looks; more than ten things are ten dots scaled, full only when all is done and empty only when nothing is; as a line of normal text it is one value away; a task with nothing to count is left out and with none the title is plain; pills counts taken and skipped, as its checklist does; off unless `DAY_PROGRESS` is on; the one in the hub is edited in place as a dose is ticked off | ✅ Pass | 2026-10-14 | `tests/test_briefing.py` |
+| T36 | 👤 Manual | The day's progress on the phone | QA-RUN block 58 | ⬜ Untested | |  |
 
 ## U. Channel reset
 

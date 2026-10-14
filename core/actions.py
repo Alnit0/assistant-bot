@@ -203,6 +203,11 @@ class Summary:
     lines: tuple[str, ...] = ()  # up to three lines
     hint: str = ""  # small text
     before: str = ""  # one line about the day before, or none
+    # What of the day is done, out of what there is to do (doses, sets, to-dos): whoever shows
+    # summaries adds these up into the day's progress without knowing the task. A task with
+    # nothing countable (weather) leaves both out
+    done: int | None = None
+    total: int | None = None
 
 
 @dataclass(frozen=True)

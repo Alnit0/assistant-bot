@@ -1,8 +1,0 @@
-## ☀️ Today
-███████░░░ 70%
--# 💊 pills 5/7 · 📝 to-dos 2/3
----
-### Pill A
-██████░░░░ 67% · 2 of 3
-**Next:** dose 3 · 3:00 pm
--# 🧪 Block bar · R2-A · plain: ten cells and a percentage on a line of its own (22 characters at most)

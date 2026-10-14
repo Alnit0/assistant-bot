@@ -1,0 +1,34 @@
+## ☀️ Today · Wed 14 Oct
+●●●●●○○○○○ 5/10
+-# 💊 2/6 · 📝 3/4
+
+┃ accent: grey
+┃ ### 🌤️ Weather
+┃ 14° to 20° · drizzle
+┃ 61% rain after **1:00 pm** · wind 15 km/h N
+┃ -# updated 2:50 pm
+
+┃ accent: amber
+┃ ### 💊 Pills ●●○○○○ 2/6
+┃ **Pill A** ●○○
+┃ dose 2 · **5:00 pm** · <t:1791950400:R>
+┃ ---
+┃ **Pill B** ○
+┃ any time
+┃ ---
+┃ **Pill E** ✕
+┃ missed · was due **8:00 am**
+┃ ---
+┃ -# ✅ Pill C · ⏸️ Pill D paused · yesterday 5 of 6 taken · 🔥 4 days
+
+┃ accent: blue
+┃ ### 📝 To-dos ●●●○ 3/4
+┃ **Call the dentist**
+┃ -# before they close at **5:30 pm**
+┃ ---
+┃ -# ✅ Pay the power bill · Book the WOF · Reply to Sam
+
+💸 Yesterday: ||NZ$0.42 · you NZ$0.12 · testing NZ$0.30||
+-# always up to date · tick things off on their own message
+-# 🧪 Briefing · R3 · the type scale: one box a topic (weather, pills, a to-dos example), ## page title with the date, ### card title with dots and count, bold items, rules between items, done collapsed to one small line
+-# 🧪 to-dos is an example only, to show a second topic: nothing of it is built

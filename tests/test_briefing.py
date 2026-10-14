@@ -277,3 +277,72 @@ def test_the_end_of_the_day_makes_the_new_day_s_rows_so_the_summary_finds_them(w
     before = _counts()
     run(checklist.new_day(world.day, tomorrow))
     assert _counts() == before, "asked twice, no second row"
+
+
+# --- the day's progress (DAY_PROGRESS) -------------------------------------------------------------------------
+def test_progress_is_a_dot_a_thing_and_the_exact_count_and_never_a_percentage():
+    assert design.progress(5, 7) == "●●●●●○○ 5/7" and design.progress(0, 3) == "○○○ 0/3" and design.progress(3, 3) == "●●● 3/3"
+    assert design.dots(2, 3) == "●●○" and design.progress(10, 10) == "●●●●●●●●●● 10/10" and design.dots(0, 0) == ""
+    assert "%" not in design.progress(1, 2) and "█" not in design.progress(1, 2)
+
+
+def test_more_than_ten_things_are_ten_dots_scaled_with_the_exact_count_after():
+    assert design.progress(6, 12) == "●●●●●○○○○○ 6/12" and design.progress(7, 21) == "●●●○○○○○○○ 7/21"
+    assert design.progress(19, 20) == "●●●●●●●●●○ 19/20", "nearly there is never shown as done"
+    assert design.progress(1, 40) == "●○○○○○○○○○ 1/40", "something done is never shown as nothing"
+    assert design.progress(40, 40) == "●●●●●●●●●● 40/40" and design.progress(0, 40) == "○○○○○○○○○○ 0/40"
+    assert all(len(design.dots(done, 25)) == design.MAX_DOTS for done in range(26))
+
+
+def test_the_day_s_progress_adds_up_what_each_task_says_and_knows_no_task():
+    pills = summaries.Section("pills", "💊", "Pills", Summary("2 of 3 taken", design.DUE, done=2, total=3))
+    gym = summaries.Section("gym", "🏋️", "Gym", Summary("to do", design.DUE, done=0, total=1))
+    weather = summaries.Section("weather", "🌤️", "Weather", Summary("14° to 20°", design.QUIET))
+    unread = summaries.Section("todo", "📝", "Todo", problem="couldn't be read")
+    assert rules.progress([pills]) == ("●●○ 2/3", "-# 💊 2/3")
+    assert rules.progress([pills, weather, gym, unread]) == ("●●○○ 2/4", "-# 💊 2/3 · 🏋️ 0/1"), "one small line, a task that counts each, in the order given"
+    assert rules.progress([weather, unread]) == () and rules.progress([]) == (), "nothing countable: nothing shown"
+
+
+def test_the_day_s_total_is_in_the_title_with_the_small_line_a_task_under_the_date_in_both_looks():
+    on = date(2026, 10, 14)
+    so_far = ("●●●●●○○ 5/7", "-# 💊 5/7")
+    assert design.DAY_TOTAL_IN_TITLE, "as built; the other way is one value in core/design.py"
+    assert rules.text(SECTIONS, on, so_far=so_far).splitlines()[:4] == ["## ☀️ Today ●●●●●○○ 5/7", "-# Wednesday 14 October", "-# 💊 5/7", ""]
+    drawn = rules.layout(SECTIONS, on, so_far=so_far)
+    assert design.texts(drawn)[0] == "# ☀️ Today ●●●●●○○ 5/7\n-# Wednesday 14 October\n-# 💊 5/7" and design.problem(drawn) == ""
+    assert rules.text(SECTIONS, on) == rules.text(SECTIONS, on, so_far=()), "with none it reads as it did"
+    assert design.texts(rules.layout(SECTIONS, on))[0] == "# ☀️ Today\n-# Wednesday 14 October"
+
+
+def test_the_day_s_total_as_a_line_of_ordinary_text_is_one_value_away(monkeypatch):
+    monkeypatch.setattr(design, "DAY_TOTAL_IN_TITLE", False)
+    on = date(2026, 10, 14)
+    so_far = ("●●●●●○○ 5/7", "-# 💊 5/7")
+    assert rules.text(SECTIONS, on, so_far=so_far).splitlines()[:5] == ["## ☀️ Today", "-# Wednesday 14 October", "●●●●●○○ 5/7", "-# 💊 5/7", ""]
+    assert design.texts(rules.layout(SECTIONS, on, so_far=so_far))[0] == "# ☀️ Today\n-# Wednesday 14 October\n●●●●●○○ 5/7\n-# 💊 5/7"
+
+
+def test_pills_says_what_is_dealt_with_out_of_all_as_its_checklist_counts_it(world):
+    add(world, PILL_A, {"name": "Any"}, {"name": "Other"})
+    said = run(pills_summary.summary(world.owner.id, world.day))
+    assert (said.done, said.total) == (0, 5)
+    log(world, {"pill": "any", "did": "taken"})
+    log(world, {"pill": "other", "did": "skipped"})
+    said = run(pills_summary.summary(world.owner.id, world.day))
+    assert (said.done, said.total) == (2, 5), "taken and skipped are dealt with, as on the checklist's own bar"
+
+
+def test_switched_on_the_briefing_in_the_hub_has_the_dots_and_they_move_in_place_as_doses_are_ticked_off(on, monkeypatch):
+    add(on, {"name": "Any"}, {"name": "Other"})
+    assert "○" not in run(briefing.card_for(on.owner.id)).text, "off unless switched on: the briefing reads as it did"
+    monkeypatch.setattr(config, "DAY_PROGRESS", True)
+    briefing.task.setup(None)
+    message_id = run(briefing.post_in_hub(on.owner.id, HUB))
+    assert on.sent[-1].card.text.splitlines()[:3] == ["## ☀️ Today ○○ 0/2", f"-# {rules.date_line(on.day)}", "-# 💊 0/2"]
+    log(on, {"pill": "any", "did": "taken"})
+    shown = run(briefing.card_for(on.owner.id))
+    assert shown.text.splitlines()[0] == "## ☀️ Today ●○ 1/2" and shown.text.splitlines()[2] == "-# 💊 1/2"
+    assert design.texts(shown.layout)[0].startswith("# ☀️ Today ●○ 1/2\n")
+    edits = [card.text for edited, card in on.edited if edited == message_id]
+    assert edits and "☀️ Today ●○ 1/2" in edits[-1], "the one in the hub is edited in place: nothing new is posted"

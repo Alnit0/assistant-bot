@@ -1,7 +1,0 @@
-## ☀️ Today ███████░░░ 70%
--# 💊 pills 5/7 · 📝 to-dos 2/3
----
-### Pill A ██████░░░░ 67%
-**Next:** dose 3 · 3:00 pm
--# 2 of 3
--# 🧪 Block bar · R2-B · in a heading: the bar is part of the ## title and of each ### item (the longest line here is 24 characters at heading size)

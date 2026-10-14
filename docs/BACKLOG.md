@@ -42,6 +42,15 @@ the full self-test run.
 
   Also there, as an option: the dev bot as an always-on caretaker
   that reads only live's health (`docs/specs/attention.md`, section 8).
+- **A "flavour" status line when there is nothing to show** (asked
+  2026-10-14, for later): when the attention model has nothing at
+  levels 1 to 4, the status line is not blank but one light line: my
+  streak ("🔥 5 days in a row"), the weather as a mood, a Tanuki line
+  late at night, or a countdown I set. Anything real always outranks
+  it, and it changes at most a few times a day. It would be a level
+  below "nothing" in `core/attention.py` (`docs/DESIGN.md`, "The
+  status line", level 5), never a pill's name, and sent to Discord
+  only when it reads differently, as the line is today.
 - **Changing where an alert goes by words, with a card** (said
   2026-10-13): "send pill reminders to my phone only" shows a confirm
   card (`where · both → ntfy`) and Save changes it. The table stays in

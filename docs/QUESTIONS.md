@@ -19,6 +19,26 @@ added here, nowhere else.
     doses three hours apart with no latest time, dose 1's last chance
     is at 5:30 pm ("take by 6:00 pm"), not at 11:30 pm. → Keep.
 
+## The day's total as dots, and round 3 (2026-10-14)
+
+45. The dots of the day's total: in the briefing's title ("## ☀️
+    Today ●●●●●○○ 5/7", R3-A, as built) or as a line of normal text
+    under the date (R3-B)? Both are in the design-options post. →
+    The title, if it does not wrap on your phone with ten dots.
+46. The old-look checklist's title still has its ▰▱ bar ("💊 Pills ·
+    ▰▰▱▱▱ 2 of 5"). Dots there too, now? → No: it goes with the old
+    look when `CARDS_V2` is on.
+
+47. Round 3's type scale (one box a topic, `##` page title, `###` card
+    title with dots, bold items, times in bold with a relative time,
+    done collapsed to one small line): five sketches are in the
+    design-options post. Build it as sketched? → Say what to change
+    first; `docs/DESIGN.md` lists five things the sketches had to
+    decide.
+48. In that scale, with the date in the page title, the day's total
+    is a line of its own under it (not in the title). → Yes: it
+    settles 45 as R3-B if you pick the scale.
+
 ## Reminders and what reaches you
 
 1. Something that goes wrong between 10:00 pm and 7:00 am posts
@@ -55,19 +75,6 @@ added here, nowhere else.
     each). → Yes.
 14. A change written ~~old~~ → **new**, not in code blocks. → Yes.
 15. The thin question card, also when two are stacked. → Yes.
-16. Progress marks: squares 🟩⬜, bars ▰▱, task icons 💊⚪, or a
-    custom-emoji bar? → Bars ▰▱ (what the hub uses; same on every
-    phone; nothing to draw).
-17. A total for the day in the briefing's title ("## Today ▰▰▰▰▰▱▱▱
-    5/8", a small line a task under it)? → Yes.
-18. The block bar "███████░░░ 70%": plain, in a heading, in code, or
-    with partial blocks? → Plain, on a line of its own (the safest on
-    a narrow phone). I could not look at a phone: please check it
-    wraps nowhere.
-19. Blocks or ▰▱ for that total, if you like both? → ▰▱ with a count
-    for doses; blocks with a percentage only where there is no count.
-20. A custom-emoji bar needs six small images from you (listed in its
-    sketch). → Skip for now.
 21. Turn the new look on (`CARDS_V2`) once 13 to 18 are built? → Yes.
 22. Cards not yet in the new look: a bug's forum post, the archived
     copy, the dev panel, #commands and `help`. → Leave all four.

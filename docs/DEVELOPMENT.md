@@ -1637,6 +1637,12 @@ nothing of it exists.
 - **`brief me`** (or `briefing`, or "what's on today?"): in the hub it
   brings the one there up to date and says so in a line that goes;
   anywhere else you get a copy there, kept up to date too.
+- **The day's progress** (off unless `DAY_PROGRESS=true` is in `.env`,
+  then restart): the whole day in the title as a dot a thing to do
+  and the count ("☀️ Today ●●●●●○○ 5/7"), and under the date one
+  small line a task ("💊 2/3"), kept up to date with the rest. How it
+  looks, and the one value that moves the dots out of the title, is
+  `docs/DESIGN.md`, "Progress".
 - The next morning's briefing takes the place of the one before.
 - Things are ticked off on the checklist, not here: it has no buttons.
 
@@ -1645,8 +1651,13 @@ nothing of it exists.
 ```python
 async def summary(self, user_id, day):
     return actions.Summary(glance="2 of 6 taken", status=design.DUE,
-                           lines=("**Next:** …",), hint="…", before="Yesterday: …")
+                           lines=("**Next:** …",), hint="…", before="Yesterday: …",
+                           done=2, total=6)
 ```
+
+`done` and `total` are what of the day is done out of what there is
+to do: the day's progress adds them up across tasks. Leave both out
+for a task with nothing to count.
 
 Return `None` with nothing to say that day. It only reads: no row is
 made or changed to answer it (pills reads with `checklist.read`; the
@@ -1657,6 +1668,9 @@ may read differently. No briefing code changes.
 
 ## Design options on your phone
 
+Round 3 (`round-3/`, `--round 3`) is the day's total as dots, two ways,
+and five sketches of the type scale. `--only name,name` posts just the
+sketches named, for adding to a round that is already posted.
 A later round (`docs/mockups/options/round-2/`, with an INDEX of its
 own) is posted into the same post with `python -m selftest.options
 --round 2` (`--check` first reads them without posting).

@@ -1193,6 +1193,22 @@ async def p5(h: Harness) -> None:
         h.check(latest is not None and f"· {now} of " in latest.text, "the copy in #selftest-inbox was not brought up to date too")
         h.saw(f"{count} → {now} taken, in place")
 
+    async with h.step("5.04b", "The day's progress at the top of the briefing", "With DAY_PROGRESS on: the day's total in the title as a dot a thing to do and the count (“☀️ Today ●○○○○○ 1/6”), no percentage, and under the date one small line a task (“💊 1/6”), with the numbers the checklist itself counts; it moved in place with the dose just ticked off", "asked 2026-10-14 (day progress)"):
+        from tasks.pills import checklist
+        from tasks.pills import today as pills_today
+
+        h.check(config.DAY_PROGRESS, "DAY_PROGRESS is not on in this start")
+        shown = await briefing_in_hub(h)
+        lines = shown.all_text.splitlines() if shown is not None else []
+        _, listed, _ = await checklist.view(h.user.id)
+        done, total = pills_today.progress(listed)
+        h.check(done >= 1 and total > done, f"the checklist counts {done} of {total}: the step needs a day part done")
+        wanted = design.progress(done, total)
+        h.check(bool(lines) and lines[0].endswith(f"☀️ Today {wanted}"), f"the title does not end {wanted!r}: {lines[:4]}")
+        h.check(any(line.endswith(f"💊 {done}/{total}") and line.startswith(design.SMALL) for line in lines[1:4]), f"no small line for pills, {done}/{total}, under the title: {lines[:6]}")
+        h.check("%" not in "\n".join(lines[:4]), f"a percentage at the top: {lines[:4]}")
+        h.saw(" / ".join(lines[:3]))
+
     async with h.step("5.06", "`my schedule` with a routine in it", "Morning routine, every day at 6:00 am, with its steps numbered: 1. briefing, 2. pills checklist", "scheduler stage 3"):
         await h.say("my schedule")
         shown = await h.find(h.inbox, "My schedule")

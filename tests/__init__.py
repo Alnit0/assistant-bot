@@ -46,6 +46,7 @@ for name, value in {
     "REMINDERS_ENABLED": "",  # off, as it is unless set: the reminder tests switch it on
     # Every other switch too: off, whatever this PC's own .env has turned on (tests/test_settings.py)
     "BRIEFING_ENABLED": "",
+    "DAY_PROGRESS": "",
     "WEEKLY_SUMMARY": "",
     "DMS_ENABLED": "",
     "NIGHTLY_SELFTEST": "",

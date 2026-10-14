@@ -28,8 +28,8 @@ otherwise. Say what to change in any of them, in your own words.
 
 | # | Look at | How | What to say |
 |---|---|---|---|
-| 1 | **This morning's hub** (blocks 48, 56) | Open the hub: the briefing posted at 6:00 am, with the weather section and "updated …" small under it, and today's checklist under that. Look again in the afternoon: the same briefing, edited in place | Does it read right at a glance? The order, the words, what is small and what is bold, anything missing or too much |
-| 2 | **Design round 2** (questions 12 to 20 of `docs/QUESTIONS.md`) | The 13 sketches in the dev bot's forum, in the design-options post | A letter for each. Whether the block bar "███████░░░ 70%" wraps anywhere on your phone. This is what the new look waits for |
+| 1 | **This morning's hub** (blocks 48, 56, 58) | Open the hub: the briefing posted at 6:00 am, with the day's dots and count in its title and the small line a task under the date, the weather section and "updated …" small under it, and today's checklist under that. Look again in the afternoon: the same briefing, edited in place | Does it read right at a glance? The order, the words, what is small and what is bold, anything missing or too much |
+| 2 | **Design rounds 2 and 3** (questions 12 to 15 and 45 to 48 of `docs/QUESTIONS.md`) | In the dev bot's forum, in the design-options post: round 2's sketches (skip the four block bars: they are dropped), then round 3: the day's total as dots in the title (R3-A) and in normal text (R3-B), and the five type-scale sketches (briefing, checklist, reminder, confirm card, stacked question cards) | A letter for each of round 2's. For round 3: which of the two totals, whether the title with ten dots wraps on your phone, and what to change in the type scale before it is built (questions 47 and 48). This is what the new look waits for |
 | 3 | **The colours, in each theme you use** (block 39, steps 1 and 6) | `dev mock checklist-v2` | Whether amber, blue, green, red, grey and blurple can be told apart, and which to change |
 | 4 | **How the new cards read** (block 39, steps 3 to 5; block 41) | `dev mock confirm-card-v2`, `dev mock question-card-v1`, `dev mock too-soon-v2`, `dev mock reset-card-v2` | The boxes, the hint under a card, the buttons inside a pill's box: spacing, wording, order. After 2 to 4, `CARDS_V2` can go on for live (question 21) |
 | 5 | **The status line** (block 52) | Under live's name, a few times through a day | "💊 2/5 · 12pm", "💊 due 12pm", "🌅 6am": whether each reads right and fits, and never names a pill |
@@ -100,6 +100,7 @@ well. Say what jars when you meet it.
 | 55 | What needs you: the box, the ping and the 7:00 am check | Partly covered | Row 4 was seen on live on 2026-10-14: the 7:00 am check ran, nothing needed a look, nothing was said. Row 6 is the self-test's 1.10b. Rows 1 to 3 and 5 need something to go wrong: how they read is the short list's 8. |
 | 56 | Weather in the briefing | Yours: on the short list | The self-test draws the section from a recorded forecast (5.01c), and live's run log for 2026-10-14 has the 5:50 am fetch and the 8:50 and 11:50 am refreshes. Rows 1 and 2 are the short list's 1. Row 4 (a fetch that fails) is by hand. |
 | 57 | One dose is one log | Covered by the self-test | The self-test's 1.17, 1.17b, 2.09 and 2.09b; steps 2, 5 and 7 are golden conversations 19, 19a and 20, offline. The lock screen for the last chance is the short list's 7. |
+| 58 | The day's progress in the briefing | Yours: on the short list | The self-test's 5.04b checks the dots and count in the title and the small line against the checklist's own count, and that they moved in place. How it reads on the phone, and whether the title wraps, is the short list's 1. |
 
 ## Before you start
 
@@ -1214,6 +1215,25 @@ On the dev bot (`--dev`), with reminders on. After the morning of
 | 5 | Reply to your `that was dose 3` with `dev why` | The trace has "correction check: against what was logged, not only an open card: the log of dose 2 is moved to dose 3, and nothing is added" | R96 |
 | 6 | Say `add Testlast to my pills at 8pm`, **Save**. Type `dev clock 8:00pm`, `8:15pm`, `8:30pm`, `8:45pm`, `9:00pm`, then `dev clock 11:30pm`. Look at the lock screen and the hub | At 9:00 pm the reminder goes. At 11:30 pm the phone buzzes with "💊 Last chance today · take by midnight" and nothing about Testlast; in the hub that line, the pill, "After midnight it can no longer be taken today", and **Taken**, **Taken at…**, **Skip** (no Snooze). `dev clock 11:45pm`: nothing new | R99 |
 | 7 | Press **Taken**. Type `dev clock 7:00am` (the next day). Say `that was dose 1` about Testr | The card asks "Testr has no dose ticked off today. Which day was it?" with **Yesterday**. Press it: a change card ending "· yesterday", with **Save** and **Cancel**. Nothing is logged today | R100 |
+
+## 58. The day's progress in the briefing (yours: on the short list)
+
+**State, 2026-10-14:** The self-test's 5.04b checks the dots and the
+count in the title and the small line against the checklist's own
+count, and that they moved in place. How it reads on the phone is the
+short list's 1.
+
+On live, with `DAY_PROGRESS` on, on your phone.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Look at the top of the briefing in the hub | The title is "☀️ Today ●○○ 1/3": a dot a dose, solid for done, then the count, on one line with no wrap and no percentage. Under the date, small: "💊 1/3" | T36 |
+| 2 | Tick a dose off (a button, or `took <pill>`), and look again | The same message: one more dot is solid and both counts have gone up. Nothing new was posted | T36 |
+| 3 | When everything is taken or skipped | Every dot solid: "●●● 3/3" | T36 |
+| 4 | In the design-options post, look at round 3 (R3-A and R3-B) | The same total in the title and as a line of normal text, each with a ten-dot example. Say which, and whether either wraps | T36 |
+
+Say if the dots are too small, too heavy or uneven: the two characters,
+and whether the total sits in the title, are values in `core/design.py`.
 
 ## When you finish
 
