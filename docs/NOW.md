@@ -3,34 +3,27 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Batch** (2026-10-15 daytime, from 10:46 am): **done**, committed and
-pushed to `feature/pills`, all of it in tonight's restart.
+**Queue** (2026-10-15, from 11:52 am, unattended): in this order
+1. Daytime batch: done before round 4 (all five steps), in tonight's
+   restart; the to-dos self-test now in round 4 with the dropdown, 9 of 9
+2. Round 4: shipped to this branch, tested, self-tested (start 8, 9 of 9)
+3. Design previews: one forum post a round, tags Live, Preview, Retired
+4. Routines on `feature/routines`: shared repeats, the rework, a Today
+   card, Layout A and B preview; not merged, previews only
 
-**Done**
-- 1. "what pills are left?" answered in place; a DM while off gets a line
-- 2. Understanding review: 34 router messages, 8 wrong; the new one is
-  golden 29 and self-test 3.05b
-- 3. To-dos self-test stage (start 7): 9 of 9 as the dev bot
-- 4. A reply to last night's pill line corrects that night
-- 5. Live's own folder: scripts and `docs/LIVE-FOLDER.md`, dry-run only
+**In progress**
+- 3. Design forum and tags
 
-**Round 4, shipping tonight** (Alex's answers, 11:45 am)
-- Done: Taken at once only (variant 1 gone); to-dos by the list rule
-  (first three, "+N more", one Done dropdown); merged into this branch
-- Ready at 11:50 am: full test run passed, self-test start 8 as the
-  dev bot 9 of 9 (NZ$0.00), committed and pushed
-
-**Next**
-- Tonight, 6 pm to 9 pm, clear of pill reminders: one restart from this
-  folder (clean, pushed) with DESIGN_ROUND=4, TODOS_ENABLED,
-  WEEKLY_SUMMARY and DMS_ENABLED on; the nightly self-test row to
-  3:30 am first; checks (round 4, the to-dos dropdown), and What's new
-  lines for round 4, to-dos and DMs
-- Then: routines rework, shared repeats, Today card (`feature/routines`)
+**Tonight** (6 pm to 9 pm, clear of pill reminders)
+- One restart from this folder (clean, pushed): DESIGN_ROUND=4,
+  TODOS_ENABLED, WEEKLY_SUMMARY and DMS_ENABLED on; the nightly
+  self-test row to 3:30 am first
+- Checks: round 4 in the hub, the to-dos dropdown; What's new lines for
+  round 4, to-dos and DMs. Wrong: DESIGN_ROUND=3, restart, note in STATUS
 
 **Drafts and worktrees**
-- Worktree `../assistant-bot-hub-tasks` (`feature/hub-tasks`), merged
-- Worktree `../assistant-bot-round4` (`feature/round-4`): merged
+- Worktrees `../assistant-bot-hub-tasks` and `../assistant-bot-round4`:
+  both merged
 - No drafts outside `docs/`
 
 **Waiting on Alex**

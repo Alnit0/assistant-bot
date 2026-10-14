@@ -133,9 +133,9 @@ def test_the_phases_run_the_old_look_twice_then_the_new_then_the_old_again_with_
     assert [settings.get("BRIEFING_ENABLED", "false") for _, settings, _ in runner.PHASES] == ["false", "false", "false", "false", "true", "true", "true", "false"], "the briefing off, then on"
     assert [settings.get("HUB_TIDY", "false") for _, settings, _ in runner.PHASES] == ["false"] * 5 + ["true", "true", "false"], "the tidy off, then on"
     assert [settings.get("TODOS_ENABLED", "false") for _, settings, _ in runner.PHASES] == ["false"] * 6 + ["true", "true"], "to-dos in their own start and in round 4's"
-    assert runner.SWITCHES["DESIGN_ROUND"] == "3" and [settings.get("DESIGN_ROUND", "3") for _, settings, _ in runner.PHASES] == ["3"] * 7 + ["4"], "round 4 in its own start, whatever live's .env says"
+    assert runner.SWITCHES["DESIGN_ROUND"] == "3" and [settings.get("DESIGN_ROUND", "3") for _, settings, _ in runner.PHASES] == ["3"] * 6 + ["4", "4"], "round 4 in the to-dos start and its own, whatever live's .env says"
     assert all(runner.SWITCHES[name] == "false" for name in ("TODOS_ENABLED", "NUDGES_ENABLED", "HABITS_ENABLED"))
-    assert [settings.get("DESIGN_ROUND", "") for _, settings, _ in runner.PHASES] == [""] * 7 + ["4"], "round 4 only in its own start"
+    assert [settings.get("DESIGN_ROUND", "") for _, settings, _ in runner.PHASES] == [""] * 6 + ["4", "4"], "round 4 in the to-dos start and its own"
     assert all(settings["REMINDERS_ENABLED"] == "true" for _, settings, _ in runner.PHASES)
     assert [off for _, _, off in runner.PHASES][1] > 60, "long enough off for a job to count as late"
 

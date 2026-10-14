@@ -26,6 +26,13 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
    routines are off unless a start turns them on. Start 8 checks round 4.
 5. **What's new for tomorrow:** one Taken button now, reply with a time if
    you took it earlier; skip by words.
+6. **Commit messages** go in a file for `git commit -F` (or in single
+   quotes), so the shell expands nothing: `2bfc403` had US$0 turned into
+   a path. Left as it is, not rewritten. One line in CLAUDE.md.
+7. **The to-dos self-test (start 7) runs in round 4**, as live will:
+   Done is picked in the dropdown (7.07, 7.09) and the card counts what
+   is done (“✅ 1 done”). 9 of 9 as the dev bot, recorded answers, NZ$0.00.
+   Start 8 keeps its own to-dos check (four to-dos, “+1 more”).
 
 ## Round 4 of the design (2026-10-15, built)
 

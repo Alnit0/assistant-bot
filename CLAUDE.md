@@ -39,10 +39,9 @@ Notifications and ntfy are low priority.
 ## Read first
 
 - `docs/NOW.md` first (the SessionStart hook prints it): the batch,
-  steps done, in progress and next, drafts, worktrees, what waits on
-  me. At most 40 lines, updated after every step, reset to "Idle, last
-  batch was…" at a batch's end. History is `docs/STATUS.md`; open
-  questions are `docs/QUESTIONS.md` only
+  its steps, drafts, worktrees, what waits on me; at most 40 lines,
+  updated after every step, "Idle, last batch was…" at a batch's end.
+  History is `docs/STATUS.md`; open questions `docs/QUESTIONS.md` only
 - `docs/CONVERSATION.md` is the standard for how the bot talks. It
   outranks this file and every spec: say so when one conflicts
 - `docs/ARCHITECTURE.md` is the map: read it before exploring, update
@@ -63,7 +62,8 @@ Notifications and ntfy are low priority.
   step before the commit, with no edit of any kind between the two**
   (code, tests, docs, fixtures). If anything changes, run it again.
   Save the output to a file and check the exit code; never pipe it.
-  No Co-Authored-By line; no double quote in a commit message
+  No Co-Authored-By line, no double quote; the message in a file for
+  `git commit -F` (or single quotes), so the shell expands nothing
 - Commit `.env`, `.env.dev`, `.env.notify`, `data/`, `logs/`, `.venv/`
   or `docs/specs/`; print or log a token, a topic, or the weather's place
 - Start `main.py` while the service runs. Stop live for a self-test.
@@ -92,8 +92,7 @@ Notifications and ntfy are low priority.
 - **The task contract** (`core/actions.py`): icon, "only for" line,
   examples, actions with fields, `identity` and `on_repeat`, a
   `verify` that reads a change back before it is confirmed, and
-  optionally a `summary` (the briefing) and `attention` items (a
-  summary alone is fine: weather)
+  optionally a `summary` (the briefing; alone is fine) and `attention` items
 - Claude hands over structured values (`actions.MINUTES`, `NUMBER`,
   `TIME`, `ITEMS`, `REFERENCE`, `DECLINES`); Python does every sum and
   resolves every "it". Names are matched by `core/names.py`, never guessed
@@ -161,8 +160,8 @@ pill's latest time; reminders running out never makes a dose missed;
 
 ## Conventions
 
-- Windows paths and PowerShell; the working copy is CRLF (patch it
-  through a script that keeps line endings)
+- Windows paths and PowerShell; the working copy is CRLF (patch
+  by a script that keeps it)
 - UK spelling. Short, mobile-friendly replies. Moments in UTC,
   schedules as local time + `Pacific/Auckland`
 - Secrets in `.env`; a new setting gets a placeholder in `.env.example`

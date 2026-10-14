@@ -1485,6 +1485,11 @@ async def todos_card(h: Harness):
     return await h.get(h.hub, placed.message_id) if placed is not None else None
 
 
+def in_menu(seen) -> list[str]:
+    """The labels in a message's first dropdown: the to-dos its Done offers."""
+    return [label for label, _ in seen.menus[0][2]] if seen is not None and seen.menus else []
+
+
 def todo(action: str, **data) -> tuple:
     return (action, {**data, "guessed": [], "not_included": []})
 
@@ -1497,14 +1502,15 @@ async def p7(h: Harness) -> None:
         h.check(said is not None, f"the empty list: {[each.text[:60] for each in await h.recent(h.inbox, 3) if each.id not in h.typed]}")
         h.check(await todos_card(h) is None, "a to-dos card is in the hub with nothing on the list")
 
-    async with h.step("7.02", "Add a to-do: “add buy stamps”, then Save", "A 📝 To-dos · new card with **Buy stamps** · any day; after Save the card in the hub appears with it and a green Done", "to-dos (15 Oct)"):
+    async with h.step("7.02", "Add a to-do: “add buy stamps”, then Save", "A 📝 To-dos · new card with **Buy stamps** · any day; after Save the card in the hub appears with it and one Done dropdown holding it (round 4: no button under each)", "to-dos (15 Oct); the list rule (round 4)"):
         await h.say("add buy stamps", canned=todo("todo_add", todos=[{"text": "buy stamps"}]), task="todos")
         stored, shown = await card(h)
         h.check(shown is not None and "**Buy stamps** · any day" in shown.text, f"the card: {shown.text[:200] if shown else 'none'}")
         await h.press(shown.id, "Save", h.inbox)
         await h.settle(3)
         hub_card = await todos_card(h)
-        h.check(hub_card is not None and "Buy stamps" in hub_card.text and any("Done" in label for label in hub_card.labels), f"the hub card: {hub_card.text[:200] if hub_card else 'none'}")
+        h.check(hub_card is not None and "Buy stamps" in hub_card.text and not hub_card.labels, f"the hub card: {hub_card.text[:200] if hub_card else 'none'} with {hub_card.labels if hub_card else []}")
+        h.check(in_menu(hub_card) == ["Buy stamps"], f"its dropdown: {hub_card.menus}")
         h.saw(hub_card.text.splitlines()[0] if hub_card else "no card")
 
     async with h.step("7.03", "Add one with a day: “add call Ryan tomorrow”, then Save", "The card says **Call Ryan** · tomorrow; after Save it is on the list for tomorrow, and not on today's card", "to-dos (15 Oct)"):
@@ -1522,28 +1528,28 @@ async def p7(h: Harness) -> None:
         said = await h.find(h.inbox, "To-dos", "Buy stamps")
         h.check(said is not None and "Call Ryan" in said.text and "tomorrow" in said.text, f"the answer: {said.text[:300] if said else 'none'}")
 
-    async with h.step("7.05", "Done by words: “I bought the stamps”", "Ticked off at once, no card: one line “✅ **Buy stamps** · done”, and the hub card shows it done in its small line", "to-dos (15 Oct)"):
+    async with h.step("7.05", "Done by words: “I bought the stamps”", "Ticked off at once, no card: one line “✅ **Buy stamps** · done”, and the hub card counts it in its small line (“✅ 1 done”)", "to-dos (15 Oct)"):
         await h.say("I bought the stamps", canned=todo("todo_done", todos=[{"todo": "stamps"}]), task="todos")
         said = await h.find(h.inbox, "Buy stamps", "done")
         h.check(said is not None and said.text.startswith("✅ **Buy stamps** · done"), f"the line: {said.text[:200] if said else 'none'}")
         await h.settle(3)
         hub_card = await todos_card(h)
-        h.check(hub_card is not None and "✅ Buy stamps" in hub_card.text, f"the hub card: {hub_card.text[:300] if hub_card else 'gone'}")
+        h.check(hub_card is not None and "✅ 1 done" in hub_card.text and "Buy stamps" not in in_menu(hub_card), f"the hub card: {hub_card.text[:300] if hub_card else 'gone'}")
 
-    async with h.step("7.06", "Undo: “undo that”", "Buy stamps is back on the list, not done, and the card has its Done button again", "to-dos (15 Oct)"):
+    async with h.step("7.06", "Undo: “undo that”", "Buy stamps is back on the list, not done, and in the card's Done dropdown again", "to-dos (15 Oct)"):
         await h.say("undo that", canned=todo("todo_undone", todos=[{"todo": "@that"}]), task="todos")
         said = await h.find(h.inbox, "Buy stamps", "not done")
         h.check(said is not None, f"the line: {[each.text[:80] for each in await h.recent(h.inbox, 3) if each.id not in h.typed]}")
         await h.settle(3)
         hub_card = await todos_card(h)
-        h.check(hub_card is not None and any("Done" in label for label in hub_card.labels), f"the hub card: {hub_card.labels if hub_card else 'gone'}")
+        h.check(hub_card is not None and "Buy stamps" in in_menu(hub_card), f"the hub card's dropdown: {hub_card.menus if hub_card else 'gone'}")
 
-    async with h.step("7.07", "Done by the button on the hub card", "The card is edited in place: Buy stamps in its small line, its button gone", "to-dos (15 Oct)"):
+    async with h.step("7.07", "Done by the dropdown on the hub card: pick Buy stamps", "The card is edited in place: “✅ 1 done” in its small line, and Buy stamps gone from the dropdown (Call Ryan, for tomorrow, still in it)", "to-dos (15 Oct); the list rule (round 4)"):
         hub_card = await todos_card(h)
-        await h.press(hub_card.id, "Done", h.hub)
+        await h.pick(hub_card.id, "Buy stamps", h.hub)
         await h.settle(3)
         after = await todos_card(h)
-        h.check(after is not None and after.id == hub_card.id and "✅ Buy stamps" in after.text and not any("Done" in label for label in after.labels), f"the card: {after.text[:300] if after else 'gone'}")
+        h.check(after is not None and after.id == hub_card.id and "✅ 1 done" in after.text and in_menu(after) == ["Call Ryan"], f"the card: {after.text[:300] if after else 'gone'} with {after.menus if after else []}")
 
     async with h.step("7.08", "Carry over: two days on, Call Ryan (for the day before) was never done", "9:00 am two days on: the morning routine has posted the to-dos card, and Call Ryan is on it overdue, amber, “from yesterday”; Buy stamps, done two days ago, is not", "to-dos (15 Oct)"):
         await h.clock_to(9, 0, day_offset=2)
@@ -1553,12 +1559,12 @@ async def p7(h: Harness) -> None:
         h.check(accent(design.DUE) in hub_card.accents, f"not amber: {[hex(each) if each else None for each in hub_card.accents]}")
         h.saw(hub_card.text.splitlines()[0])
 
-    async with h.step("7.09", "All done: Done on Call Ryan", "The card stays, edited in place: green, every dot solid, Call Ryan in its one small line and no buttons left (a card is only away on a day with nothing for it: 7.01)", "to-dos (15 Oct)"):
+    async with h.step("7.09", "All done: pick Call Ryan in the dropdown", "The card stays, edited in place: green, every dot solid, “✅ 1 done” in its one small line and no dropdown or button left (a card is only away on a day with nothing for it: 7.01)", "to-dos (15 Oct); the list rule (round 4)"):
         hub_card = await todos_card(h)
-        await h.press(hub_card.id, "Done", h.hub)
+        await h.pick(hub_card.id, "Call Ryan", h.hub)
         await h.settle(3)
         after = await todos_card(h)
-        h.check(after is not None and after.id == hub_card.id and "● 1/1" in after.text and "✅ Call Ryan" in after.text and not after.buttons, f"the card: {after.text[:300] if after else 'gone'}")
+        h.check(after is not None and after.id == hub_card.id and "● 1/1" in after.text and "✅ 1 done" in after.text and not after.buttons and not after.menus, f"the card: {after.text[:300] if after else 'gone'}")
         h.check(accent(design.DONE) in after.accents, f"not green: {[hex(each) if each else None for each in after.accents]}")
 
 

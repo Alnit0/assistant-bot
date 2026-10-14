@@ -127,8 +127,8 @@ PHASES = (
     ("p5", {"CARDS_V2": "true", "REMINDERS_ENABLED": "true", "BRIEFING_ENABLED": "true", "DAY_PROGRESS": "true", "DAY_QUESTIONS": "true", "WEEKLY_SUMMARY": "true", "WEATHER_ENABLED": "true", "WEATHER_SOURCE": str(config.BASE_DIR / "tests" / "fixtures" / "weather_drizzle.json")}, 0),
     ("p6", {"CARDS_V2": "true", "REMINDERS_ENABLED": "true", "BRIEFING_ENABLED": "true", "HUB_TIDY": "true"}, 0),
     # To-dos, on for the dev bot only (live switches its own): the hub card, the briefing and the tidy with them
-    ("p7", {"CARDS_V2": "true", "REMINDERS_ENABLED": "true", "BRIEFING_ENABLED": "true", "HUB_TIDY": "true", "TODOS_ENABLED": "true"}, 0),
-    # Round 4 of the design (shipped on 15 Oct): the other starts stay on round 3, whatever live's .env says
+    ("p7", {"CARDS_V2": "true", "REMINDERS_ENABLED": "true", "BRIEFING_ENABLED": "true", "HUB_TIDY": "true", "TODOS_ENABLED": "true", "DESIGN_ROUND": "4"}, 0),
+    # Round 4 of the design (shipped on 15 Oct), as start 7's to-dos are: the others stay on round 3, whatever live's .env says
     ("p8", {"CARDS_V2": "true", "REMINDERS_ENABLED": "true", "DESIGN_ROUND": "4", "TODOS_ENABLED": "true"}, 0),
 )
 
