@@ -189,12 +189,19 @@ def not_today(pills: list[Pill], day: date) -> list[Pill]:
 def left_text(listed: list[Dose]) -> str:
     """What is still to take today, for a reply that reports a change:
     "still to take today: Magnesium, Evening pill `8:00 pm`"."""
-    pending = [dose for dose in listed if dose.is_pending]
-    if not pending:
+    named = left_lines(listed)
+    if not named:
         return "nothing left to take today"
+    return "still to take today: " + ", ".join(named)
+
+
+def left_lines(listed: list[Dose]) -> tuple[str, ...]:
+    """Each dose still to take today, with its time if it has one: "Pill A (dose 2 of 3) `11:30 am`"."""
     named = []
-    for dose in pending:
+    for dose in listed:
+        if not dose.is_pending:
+            continue
         name = rules.plain(dose.label)
         named.append(f"{name} `{timeinput.format_moment(dose.due.at)}`" if shown_time(dose) is not None else name)
-    return "still to take today: " + ", ".join(named)
+    return tuple(named)
 

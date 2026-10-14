@@ -44,9 +44,9 @@ Last updated: 2026-10-14
 | Q | Time, days, the schedule model, the occurrence log and cards | 29 | 27 | 2 | 2 | 27 | 0 | 0 |
 | R | Pills | 89 | 35 | 54 | 46 | 43 | 0 | 0 |
 | S | Routing and confirm cards | 80 | 27 | 53 | 18 | 61 | 0 | 1 |
-| T | Tasks in plain words | 31 | 10 | 21 | 6 | 25 | 0 | 0 |
+| T | Tasks in plain words | 35 | 13 | 22 | 7 | 28 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **562** | **233** | **329** | **259** | **302** | **0** | **1** |
+| | **Total** | **566** | **236** | **330** | **260** | **305** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -720,6 +720,10 @@ The real tasks on the router's way: timers, bugs and pills setup. On the dev dat
 | T34 | 👤 Manual | Weather on the phone | QA-RUN block 56 | ⬜ Untested | |  |
 | T35 | 🤖 Auto | The day's progress in the briefing | A task's summary may say what is done out of what there is; the briefing adds them up without knowing any task: the whole day as a dot a thing and the exact count in its title ("☀️ Today ●●●●●○○ 5/7"), never a percentage, and one small line a task ("💊 2/3") under the date, in both looks; more than ten things are ten dots scaled, full only when all is done and empty only when nothing is; as a line of normal text it is one value away; a task with nothing to count is left out and with none the title is plain; pills counts taken and skipped, as its checklist does; off unless `DAY_PROGRESS` is on; the one in the hub is edited in place as a dose is ticked off | ✅ Pass | 2026-10-14 | `tests/test_briefing.py` |
 | T36 | 👤 Manual | The day's progress on the phone | QA-RUN block 58 | ⬜ Untested | |  |
+| T37 | 🤖 Auto | Questions about my day, from the summary contract | "What's left today?" is the day's dots and count and each thing still to do in its task's words, the rest counted past eight; "how did I go yesterday?" is the record's count of that day and each task's line about it; the week is Monday to today, a line a day; nothing to count says so; a day's tally is read from the record, whatever became of the pill since, and a task that fails is left out; off unless `DAY_QUESTIONS` and the briefing are on; never a percentage | ✅ Pass | 2026-10-14 | `tests/test_briefing.py` |
+| T38 | 🤖 Auto | Weather questions, from the kept forecast | "Will it rain?" is the highest chance in the hours still to come, or in the part of the day named, and roughly when; unlikely and none are said as such; with no hours in the forecast only the day's figure is said, as the day's; a part of the day says how warm only if the forecast has it by the hour; a part that is over says so; tomorrow says only today is kept; nothing kept or unreadable gives no number; nothing is fetched to answer; one action, no card, behind `DAY_QUESTIONS` | ✅ Pass | 2026-10-14 | `tests/test_weather.py` |
+| T39 | 🤖 Auto | Golden 21 to 25: the questions end to end | Each is routed to its task and answered by a template from the data, with plain chat never asked: what is left, the briefing itself, yesterday from the record, "and this week?" to the task that just answered without the router, rain from the kept forecast with the network never asked, the afternoon and a part that is over; as recorded from the real API | ✅ Pass | 2026-10-14 | `tests/test_golden.py`, `evals/fixtures/` (`golden`, `briefing`, `weather`) |
+| T40 | 👤 Manual | The questions on live | QA-RUN block 59 | ⬜ Untested | |  |
 
 ## U. Channel reset
 

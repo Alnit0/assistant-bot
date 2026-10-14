@@ -45,8 +45,8 @@ the full self-test run.
 - **A "flavour" status line when there is nothing to show** (asked
   2026-10-14, for later): when the attention model has nothing at
   levels 1 to 4, the status line is not blank but one light line: my
-  streak ("🔥 5 days in a row"), the weather as a mood, a Tanuki line
-  late at night, or a countdown I set. Anything real always outranks
+  streak ("🔥 5 days in a row"), the weather as a mood, a line in the
+  bot's own voice late at night, or a countdown I set. Anything real always outranks
   it, and it changes at most a few times a day. It would be a level
   below "nothing" in `core/attention.py` (`docs/DESIGN.md`, "The
   status line", level 5), never a pill's name, and sent to Discord

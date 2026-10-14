@@ -1285,3 +1285,21 @@ A short log of key decisions and why. Newest at the bottom.
   what the hub shows and how it reads, then how well the bot
   understands, then the rest; notifications and ntfy are low
   priority. No fallback to ntfy for a reminder Discord can't take.
+- **The day through the summary contract (2026-10-14).** The day's
+  progress and the questions about the day ("what's left today?",
+  "how did I go yesterday?", "this week?") are answered by the
+  briefing task from what each task hands in, and it still knows no
+  task. The contract gained three things a task may leave out:
+  `done` and `total` (what of the day is done), `left` (what is
+  still to do, in the task's words) and, apart from the summary, a
+  `tally` for a day that is over. The tally exists because a
+  summary is built from how things are set up now (pills lists a
+  day's doses through today's plans), which is right for today and
+  can be wrong for a day that has passed; the tally reads the
+  record alone. So yesterday and the week never show a number the
+  record does not hold, and a task whose tally fails is left out.
+- **Weather takes plain words (2026-10-14).** It was kept out of the
+  router on purpose the night before, so that no prompt changed.
+  Asked for now: one action, no card, answered by a template from
+  the kept forecast, and nothing is fetched to answer. It is a
+  line in the router's catalogue only while `DAY_QUESTIONS` is on.

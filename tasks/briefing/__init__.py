@@ -5,7 +5,7 @@ from datetime import timedelta
 
 from core import attention, cards, clock, config, database, health, hub, livelists, messages, money, notify, repeats, scheduler, summaries, tidy, timeinput
 from core import day as days
-from core.actions import SEE, Action, LiveReply, Request, Shown
+from core.actions import SEE, Action, Field, LiveReply, Request, Shown
 from core.cards import Card
 from core.context import Context
 from tasks.base import ANY, Keyword, Task
@@ -42,10 +42,24 @@ ONLY_FOR = (
     "schedule task)."
 )
 EXAMPLES = ("brief me", "what's on today?")
+# With DAY_QUESTIONS on, what the router reads instead: the day as a whole, also what is left and how it went
+ONLY_FOR_THE_DAY = (
+    "The user's day as a whole, across everything the bot keeps: what is on today (\"brief me\", \"what's on "
+    "today?\"), what is still left to do today (\"what's left today?\"), and how yesterday or this week went "
+    "overall (\"how did I go yesterday?\", \"how's this week going?\"). Not one named task's own list or history "
+    "(which pills are left, or which were taken yesterday, is the pills task), not the weather (the weather "
+    "task), and not when the briefing is posted (the schedule task)."
+)
+EXAMPLES_OF_THE_DAY = ("brief me", "what's on today?", "what's left today?", "how did I go yesterday?")
 
 
 def enabled() -> bool:
     return bool(config.BRIEFING_ENABLED)
+
+
+def answers_questions() -> bool:
+    """Whether the day's questions are answered here (DAY_QUESTIONS, and the briefing itself on)."""
+    return enabled() and bool(config.DAY_QUESTIONS)
 
 
 async def card_for(user_id: int) -> Card | None:
@@ -187,6 +201,22 @@ async def show(request: Request, data: dict, guessed: frozenset):
     return LiveReply(ELSEWHERE, shown.text, shown)
 
 
+async def left_today(request: Request, data: dict, guessed: frozenset) -> str:
+    """ "what's left today?": from every task's summary of today, in words from a template."""
+    return rules.left(await summaries.gather(request.user.id, days.today()))
+
+
+async def looking_back(request: Request, data: dict, guessed: frozenset) -> str:
+    """ "how did I go yesterday?", "how's this week going?": from each task's record of the days."""
+    user_id, today = request.user.id, days.today()
+    if data.get("period") == rules.WEEK:
+        monday = today - timedelta(days=today.weekday())
+        found = [(monday + timedelta(days=ahead), await summaries.tallies(user_id, monday + timedelta(days=ahead))) for ahead in range(today.weekday() + 1)]
+        return rules.week(found, today)
+    before = today - timedelta(days=1)
+    return rules.yesterday(before, await summaries.tallies(user_id, before), await summaries.gather(user_id, today))
+
+
 async def show_word(ctx: Context) -> str:
     """`briefing`, `brief me`: the same, typed."""
     result = await show(Request(ctx.user, ctx.channel_id, ctx.text, message_id=ctx.message_id), {}, frozenset())
@@ -205,8 +235,15 @@ class BriefingTask(Task):
     name = TASK
     description = "Briefing: one card that says what today holds, kept up to date"
     icon = ICON
-    only_for = ONLY_FOR
-    examples = EXAMPLES
+
+    @property
+    def only_for(self) -> str:
+        return ONLY_FOR_THE_DAY if answers_questions() else ONLY_FOR
+
+    @property
+    def examples(self) -> tuple:
+        return EXAMPLES_OF_THE_DAY if answers_questions() else EXAMPLES
+
     show = "briefing_show"
     identity = ()  # it keeps nothing: there is nothing to be the same as
     on_repeat = repeats.ALLOW_ANOTHER
@@ -223,8 +260,33 @@ class BriefingTask(Task):
                 run=show,
                 purpose=SEE,
                 say=("brief me",),
-            )
+            ),
+            *(self._questions() if answers_questions() else ()),
         ]
+
+    def _questions(self) -> tuple:
+        return (
+            Action(
+                "day_left",
+                "The user asks what is still to do today, across everything (\"what's left today?\", \"what do I still "
+                "have to do today?\", \"am I done for today?\"). Not what is on today as a whole: that is briefing_show.",
+                needs_card=False,
+                run=left_today,
+                purpose=SEE,
+                say=("what's left today?",),
+            ),
+            Action(
+                "day_past",
+                "The user asks how a day that is over, or the week so far, went as a whole (\"how did I go yesterday?\", "
+                "\"how was yesterday?\" -> period yesterday; \"how's this week going?\", \"this week?\", \"how did the "
+                "week go?\" -> period week). Not for today: that is briefing_show or day_left.",
+                (Field("period", "Which stretch of time: yesterday, or the week so far.", choices=(rules.YESTERDAY, rules.WEEK), required=True),),
+                needs_card=False,
+                run=looking_back,
+                purpose=SEE,
+                say=("how did I go yesterday?", "how is this week going?"),
+            ),
+        )
 
     def keywords(self) -> list[Keyword]:
         if not enabled():

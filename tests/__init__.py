@@ -47,6 +47,7 @@ for name, value in {
     # Every other switch too: off, whatever this PC's own .env has turned on (tests/test_settings.py)
     "BRIEFING_ENABLED": "",
     "DAY_PROGRESS": "",
+    "DAY_QUESTIONS": "",
     "WEEKLY_SUMMARY": "",
     "DMS_ENABLED": "",
     "NIGHTLY_SELFTEST": "",

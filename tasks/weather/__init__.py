@@ -1,9 +1,9 @@
 import logging
 from datetime import date, datetime, time
 
-from core import clock, config, database, design, scheduler, summaries, timeinput, timetable
+from core import clock, config, database, design, repeats, scheduler, summaries, timeinput, timetable
 from core import day as days
-from core.actions import Summary
+from core.actions import BOOLEAN, SEE, Action, Field, Request, Summary
 from tasks.base import Task
 from tasks.weather import rules, source, store
 
@@ -13,11 +13,15 @@ log = logging.getLogger("assistant")
 # Weather: today's forecast as a section of the briefing. Behind
 # WEATHER_ENABLED (on unless switched off): off, this task offers nothing.
 #
-# It has nothing to route to (no plain words, no card) and nothing of
-# Discord's: it fetches, keeps what it fetched, and says it through the
-# summary contract (core/summaries.py), so the briefing shows it with no
-# change there. The briefing only reads what was kept: it never waits on
-# the network.
+# It has no card and nothing of Discord's: it fetches, keeps what it
+# fetched, and says it through the summary contract (core/summaries.py),
+# so the briefing shows it with no change there. The briefing only reads
+# what was kept: it never waits on the network.
+#
+# With DAY_QUESTIONS on it also answers in plain words ("will it rain?",
+# "what's the weather this afternoon?"), from what was kept and in words
+# from a template (rules.py): one action, no card. Off, it has nothing to
+# route to, as before.
 #
 # When is the engine's business. Two schedules, both in "my schedule":
 #   Weather fetch     5:50 am, before the morning routine. A fetch that
@@ -122,12 +126,75 @@ async def summary_for(user_id: int, day: date) -> Summary | None:
     return Summary(rules.glance(forecast), design.QUIET, (rules.detail(forecast),), hint)
 
 
+ONLY_FOR = (
+    "Today's weather where the user lives, from the forecast the bot keeps: what it is like, whether and when it "
+    "will rain, how warm it gets, the wind (\"will it rain?\", \"what's the weather this afternoon?\", \"do I need an "
+    "umbrella?\"). Only today's forecast is kept. Not the summary of the whole day (that is the briefing task)."
+)
+EXAMPLES = ("will it rain?", "what's the weather this afternoon?", "how warm does it get today?")
+
+
+def answers_questions() -> bool:
+    """Whether weather questions are answered here (DAY_QUESTIONS, and the weather itself on)."""
+    return enabled() and bool(config.DAY_QUESTIONS)
+
+
+async def ask(request: Request, data: dict, guessed: frozenset) -> str:
+    """ "will it rain?", "what's the weather this afternoon?": from the forecast
+    that was kept, in words from a template. Nothing is fetched to answer, and
+    no number is said that the forecast does not hold."""
+    part = data.get("when") or ""
+    kept = await database.run(store.db_get, request.user.id, days.today())
+    if part == rules.TOMORROW:
+        return f"{ICON} {rules.ONLY_TODAY}"
+    if kept is None:
+        return f"{ICON} {rules.NONE_YET}"
+    try:
+        lines = rules.answer(kept.data, part, bool(data.get("rain")), config.now_nz().hour) if kept.data is not None else None
+    except ValueError:
+        lines = None
+    if lines is None:
+        return f"{ICON} {rules.UNAVAILABLE}"
+    updated = design.small(f"updated {timeinput.format_moment(kept.fetched_at)}") if kept.fetched_at is not None else ""
+    last = lines[-1]
+    if len(lines) > 1 and last.startswith("wind up to"):
+        # The small line under an answer about part of the day: the day's wind, and when it was fetched
+        lines = [*lines[:-1], design.small(" · ".join([last, *([updated.removeprefix(design.SMALL)] if updated else [])]))]
+    elif updated:
+        lines = [*lines, updated]
+    return "\n".join([f"{ICON} {lines[0]}", *lines[1:]])
+
+
 class WeatherTask(Task):
     """Weather: today's forecast, a section of the briefing."""
 
     name = TASK
     description = "Weather: today's forecast in the briefing, kept current through the day"
     icon = ICON
+    only_for = ONLY_FOR
+    examples = EXAMPLES
+    identity = ()  # it keeps nothing of mine to be the same as
+    on_repeat = repeats.ALLOW_ANOTHER
+
+    def actions(self) -> list:
+        if not answers_questions():
+            return []
+        return [
+            Action(
+                "weather_ask",
+                "The user asks about today's weather. Examples: \"what's the weather?\" -> no fields. \"will it rain?\", "
+                "\"do I need an umbrella?\" -> rain true. \"what's the weather this afternoon?\" -> when afternoon. "
+                "\"will it rain tonight?\" -> rain true, when tonight. \"will it rain tomorrow?\" -> rain true, when tomorrow.",
+                (
+                    Field("when", "The part of the day asked about, only if the user names one. Leave out for today as a whole.", choices=rules.PARTS),
+                    Field("rain", "true only when the question is about rain or staying dry (rain, wet, showers, an umbrella).", BOOLEAN),
+                ),
+                needs_card=False,
+                run=ask,
+                purpose=SEE,
+                say=("will it rain?", "what's the weather this afternoon?"),
+            )
+        ]
 
     def job_handlers(self) -> dict:
         return {FETCH: fetch_job, REFRESH: refresh_job, LATER: later_job} if enabled() else {}

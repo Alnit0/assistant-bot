@@ -100,6 +100,35 @@ async def gather(user_id: int, day: date) -> list[Section]:
     return found
 
 
+@dataclass(frozen=True)
+class Tally:
+    """What one task had done of what there was to do on a day, from its record."""
+
+    task: str
+    icon: str
+    done: int
+    total: int
+
+
+async def tallies(user_id: int, day: date) -> list[Tally]:
+    """Every task's tally for a day (the contract's `tally`), in the catalogue's
+    order: for looking back over days. A task with nothing that day is left
+    out, and so is one that fails or takes too long (it is logged): a number
+    that could not be read is never made up."""
+    found: list[Tally] = []
+    for entry in actions.catalogue():
+        if entry.tally is None:
+            continue
+        try:
+            said = await asyncio.wait_for(entry.tally(user_id, day), TIME_LIMIT)
+        except Exception:
+            log.exception("The tally of %s for %s could not be read", entry.name, day)
+            continue
+        if said is not None and said[1] > 0:
+            found.append(Tally(entry.name, entry.icon, int(said[0]), int(said[1])))
+    return found
+
+
 # `(task, user_id) -> None`: called, not awaited; it schedules its own work
 Listener = Callable[[str, int], None]
 _listeners: list[Listener] = []

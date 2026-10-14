@@ -22,10 +22,22 @@ def told_to(*given, **how):
 
 def _every_entry():
     """The demo tasks and the real ones: every fixture file is replayed."""
+    from core import config
     from tasks import registry
 
-    registry.load()
-    return [*demo.ENTRIES, *[entry for entry in actions.catalogue() if entry.name not in NAMES]]
+    # The briefing and the weather take plain words only when switched on (BRIEFING_ENABLED,
+    # WEATHER_ENABLED, DAY_QUESTIONS): on while the catalogue is read, so their fixtures are
+    # replayed too, then as the tests have them and the tasks loaded again as they were
+    switches = {name: getattr(config, name) for name in ("BRIEFING_ENABLED", "WEATHER_ENABLED", "DAY_QUESTIONS")}
+    try:
+        for name in switches:
+            setattr(config, name, True)
+        registry.load()
+        return [*demo.ENTRIES, *[entry for entry in actions.catalogue() if entry.name not in NAMES]]
+    finally:
+        for name, value in switches.items():
+            setattr(config, name, value)
+        registry.load()
 
 
 ALL = _every_entry()
@@ -428,7 +440,7 @@ def test_a_fixture_can_expect_that_nothing_is_said():
 
 
 def test_every_task_with_fixtures_is_replayed_not_only_the_demo_ones():
-    assert {"shopping", "packing", "timers", "bugs", "pills"} <= set(ALL_NAMES)
+    assert {"shopping", "packing", "timers", "bugs", "pills", "briefing", "weather"} <= set(ALL_NAMES)
     assert {fixture.task for fixture in EXTRACTIONS} <= set(ALL_NAMES), "no fixture file is left out of the replay"
 
 
@@ -479,7 +491,7 @@ def test_a_message_names_one_of_my_things_only_as_a_whole_name(said, names, name
 
 def test_every_task_that_has_a_list_says_which_action_shows_it():
     shows = {entry.name: entry.show for entry in ALL}
-    assert shows == {"shopping": "demo_shop_list", "packing": "demo_pack_list", "bugs": "bug_list", "pills": "pill_list", "timers": "timer_list", "channel": "", "schedule": "schedule_show"}
+    assert shows == {"shopping": "demo_shop_list", "packing": "demo_pack_list", "bugs": "bug_list", "pills": "pill_list", "timers": "timer_list", "channel": "", "schedule": "schedule_show", "briefing": "briefing_show", "weather": ""}
     assert actions.problems(ALL) == []
     broken = actions.Entry("things", "📦", "Only for things.", ("a", "b"), demo.SHOPPING.actions, show="demo_shop_change", on_repeat="allow_another")
     assert actions.problems([broken]) == [

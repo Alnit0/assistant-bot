@@ -1176,6 +1176,54 @@ async def p5(h: Harness) -> None:
         shown = await h.find(h.inbox, BRIEFING)
         h.check(shown is not None and shown.id != h.memo["briefing_inbox"], f"no briefing was posted in answer: {[each.text[:80] for each in await h.recent(h.inbox, 3) if each.id not in h.typed]}")
 
+    async with h.step("5.03c", "“what's left today?” in plain words", "With DAY_QUESTIONS on, the briefing task answers in one message from the day's own data: “☀️ **Left today**”, the day's dots and count as the checklist counts them, then a line a dose still to take. No card, and my message is left with no ⚠️", "asked 2026-10-14 (questions about my day); golden 21"):
+        from tasks.pills import checklist
+        from tasks.pills import today as pills_today
+
+        h.check(config.DAY_QUESTIONS, "DAY_QUESTIONS is not on in this start")
+        mine = await h.say("what's left today?", canned=("day_left", {"guessed": [], "not_included": []}), task="briefing")
+        await no_marks(h, mine)
+        _, listed, _ = await checklist.view(h.user.id)
+        done, total = pills_today.progress(listed)
+        said = await h.find(h.inbox, "Left today")
+        h.check(said is not None and f"☀️ **Left today** · {design.progress(done, total)}" in said.text, f"the answer: {said.text[:200] if said else 'nothing'}")
+        left = pills_today.left_lines(listed)
+        h.check(said is not None and all(f"💊 {line}" in said.text for line in left[:3]) and not said.buttons, f"not a line a dose still to take ({left[:3]}): {said.text[:300] if said else 'nothing'}")
+        h.saw(said.text.splitlines()[0] if said else "nothing")
+
+    async with h.step("5.03d", "“how did I go yesterday?” in plain words", "The briefing task answers from the record of that day: “☀️ **Yesterday**”, its date, its dots and count, and the pills task's own line about the day before. With nothing recorded for yesterday (a run of this stage alone) it says so, and gives no number", "asked 2026-10-14 (questions about my day); golden 23"):
+        from datetime import timedelta
+
+        from core import day as days
+        from core import occurrences
+
+        mine = await h.say("how did I go yesterday?", canned=("day_past", {"period": "yesterday", "guessed": [], "not_included": []}), task="briefing")
+        await no_marks(h, mine)
+        recorded = await occurrences.for_day(h.user.id, "pills", days.today() - timedelta(days=1))
+        said = await h.find(h.inbox, "esterday", "☀️")
+        if recorded:
+            h.check(said is not None and said.text.startswith("☀️ **Yesterday** · ") and "💊 Yesterday: " in said.text and " taken" in said.text, f"the answer: {said.text[:200] if said else 'nothing'}")
+            h.check(said is not None and ("●" in said.text.splitlines()[0] or "○" in said.text.splitlines()[0]) and "%" not in said.text, f"its first line has no dots, or there is a percentage: {said.text[:120] if said else 'nothing'}")
+        else:
+            h.check(said is not None and said.text == "☀️ Nothing was on yesterday.", f"nothing is recorded for yesterday, and the answer is: {said.text[:200] if said else 'nothing'}")
+        h.saw(" / ".join(said.text.splitlines()[:2]) if said else "nothing")
+
+    async with h.step("5.03e", "“will it rain?” in plain words", "The weather task answers from the forecast it keeps (the recorded one), with no request to the network: the highest chance in the hours still to come and roughly when, and when it was updated", "asked 2026-10-14 (questions about my day); golden 24"):
+        mine = await h.say("will it rain?", canned=("weather_ask", {"rain": True, "guessed": [], "not_included": []}), task="weather")
+        await no_marks(h, mine)
+        said = await h.find(h.inbox, "chance of rain")
+        h.check(said is not None and said.text.startswith("🌤️ 61% chance of rain for the rest of today, most likely between 1pm and 5pm."), f"the answer: {said.text[:200] if said else [each.text[:80] for each in await h.recent(h.inbox, 3) if each.id not in h.typed]}")
+        h.check(said is not None and "updated " in said.text, "it does not say when the forecast was updated")
+        h.saw(said.text.splitlines()[0][:120] if said else "nothing")
+
+    async with h.step("5.03f", "“what's the weather this afternoon?” in plain words", "The weather task answers for that part of the day: “**This afternoon**”, the chance of rain in those hours, and the day's wind small under it. No temperature is said: the recorded forecast has none by the hour", "asked 2026-10-14 (questions about my day); golden 25"):
+        mine = await h.say("what's the weather this afternoon?", canned=("weather_ask", {"when": "afternoon", "guessed": [], "not_included": []}), task="weather")
+        await no_marks(h, mine)
+        said = await h.find(h.inbox, "**This afternoon**")
+        h.check(said is not None and said.text.splitlines()[0] == "🌤️ **This afternoon**" and "61% chance of rain this afternoon" in said.text, f"the answer: {said.text[:200] if said else 'nothing'}")
+        h.check(said is not None and "wind up to 15 km/h N today" in said.text and "°" not in said.text, f"the small line, or a temperature that is not in the forecast: {said.text[:300] if said else 'nothing'}")
+        h.saw(" / ".join(said.text.splitlines()[:2]) if said else "nothing")
+
     async with h.step("5.04", "A dose is ticked off: `took testany`", "The briefing in the hub is edited in place: its count goes up by one; no new briefing is posted, there or in #selftest-inbox", "scheduler stage 3"):
         before = await briefing_in_hub(h)
         count = int(before.text.split("💊 **Pills** · ")[1].split(" of ")[0])

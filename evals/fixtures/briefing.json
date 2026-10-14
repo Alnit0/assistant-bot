@@ -1,0 +1,178 @@
+{
+  "router": [
+    {
+      "message": "what do I still have to do today?",
+      "tasks": [
+        "briefing"
+      ],
+      "note": "the day as a whole: what is left, across every task",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "briefing"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "am I done for today?",
+      "tasks": [
+        "briefing"
+      ],
+      "note": "the day as a whole",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "briefing"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "how was yesterday?",
+      "tasks": [
+        "briefing"
+      ],
+      "note": "a day that is over, as a whole",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "briefing"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "how's this week going?",
+      "tasks": [
+        "briefing"
+      ],
+      "note": "the week so far, as a whole",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "briefing"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "what does today look like?",
+      "tasks": [
+        "briefing"
+      ],
+      "note": "what is on today: the briefing itself",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "briefing"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "what pills do I have left today?",
+      "tasks": [
+        "pills"
+      ],
+      "note": "a trap: one named task's own list is that task's, not the day's",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "which pills did I take yesterday?",
+      "tasks": [
+        "pills"
+      ],
+      "note": "a trap: one named task's own history is that task's",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    }
+  ],
+  "extraction": [
+    {
+      "task": "briefing",
+      "message": "what do I still have to do today?",
+      "action": "day_left",
+      "guessed": [],
+      "recorded": [
+        "day_left",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "briefing",
+      "message": "how was yesterday?",
+      "action": "day_past",
+      "data": {
+        "period": "yesterday"
+      },
+      "guessed": [],
+      "recorded": [
+        "day_past",
+        {
+          "period": "yesterday",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "briefing",
+      "message": "how's this week going?",
+      "action": "day_past",
+      "data": {
+        "period": "week"
+      },
+      "guessed": [],
+      "recorded": [
+        "day_past",
+        {
+          "period": "week",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "briefing",
+      "message": "what does today look like?",
+      "action": "briefing_show",
+      "guessed": [],
+      "recorded": [
+        "briefing_show",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    }
+  ]
+}

@@ -100,6 +100,68 @@ def _top(day: date, so_far: tuple[str, ...]) -> tuple[str, list[str]]:
     return HEADING, [design.small(date_line(day)), total, tasks]
 
 
+# --- questions about the day, answered in words from a template (DAY_QUESTIONS) ---------------
+YESTERDAY, WEEK = "yesterday", "week"
+MAX_LEFT = 8  # lines of what is left; the rest are counted
+NOTHING_YESTERDAY = f"{ICON} Nothing was on yesterday."
+NOTHING_THIS_WEEK = f"{ICON} Nothing was on this week."
+
+
+def short_date(day: date) -> str:
+    return f"{day:%a} {day.day} {day:%b}"
+
+
+def left(sections: list[Section]) -> str:
+    """ "what's left today?": the day's dots and count, then each thing still to
+    do in its task's own words, under the task's icon. Every number is a
+    task's; with nothing to count it says there is nothing on."""
+    counted = [(each.summary.done or 0, each.summary.total) for each in sections if each.summary is not None and each.summary.total]
+    if not counted:
+        return NOTHING
+    so_far = design.progress(sum(done for done, _ in counted), sum(total for _, total in counted))
+    lines = [f"{each.icon} {line}" for each in sections if each.summary is not None for line in each.summary.left]
+    if not lines:
+        return f"{ICON} **Nothing left today** · {so_far}"
+    shown = lines[:MAX_LEFT] + ([f"…and {len(lines) - MAX_LEFT} more"] if len(lines) > MAX_LEFT else [])
+    return "\n".join([f"{ICON} **Left today** · {so_far}", *shown])
+
+
+def yesterday(day: date, tallies: list, sections: list[Section]) -> str:
+    """ "how did I go yesterday?": yesterday's dots and count from each task's
+    record of that day (`tallies`), and the line each task says about the day
+    before in today's summary (`sections`)."""
+    lines = [f"{each.icon} {each.summary.before}" for each in sections if each.summary is not None and each.summary.before]
+    if not tallies and not lines:
+        return NOTHING_YESTERDAY
+    head = f"{ICON} **Yesterday** · {short_date(day)}"
+    if tallies:
+        head += f" · {design.progress(sum(each.done for each in tallies), sum(each.total for each in tallies))}"
+    return "\n".join([head, *(lines or [f"{each.icon} {each.done}/{each.total}" for each in tallies])])
+
+
+def week(days: list[tuple[date, list]], today: date) -> str:
+    """ "how is this week going?": Monday to today, from each task's record of
+    each day: the week's dots and count, one small line a task, and a line a
+    day that had anything in it."""
+    by_task: dict[str, list[int]] = {}
+    lines = []
+    for day, tallies in days:
+        if not tallies:
+            continue
+        for each in tallies:
+            sums = by_task.setdefault(each.icon, [0, 0])
+            sums[0], sums[1] = sums[0] + each.done, sums[1] + each.total
+        so_far = design.progress(sum(each.done for each in tallies), sum(each.total for each in tallies))
+        lines.append(f"`{day:%a} {day.day}` {so_far}" + (" · today" if day == today else ""))
+    if not lines:
+        return NOTHING_THIS_WEEK
+    first = days[0][0]
+    span = short_date(today) if first == today else f"{first:%a} {first.day} – {short_date(today)}"
+    whole = design.progress(sum(done for done, _ in by_task.values()), sum(total for _, total in by_task.values()))
+    tasks = design.small(" · ".join(f"{icon} {done}/{total}" for icon, (done, total) in by_task.items()))
+    return "\n".join([f"{ICON} **This week** · {span} · {whole}", tasks, *lines])
+
+
 MAX_NOTES = 3
 SPEND_ICON = "💸"
 

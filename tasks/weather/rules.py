@@ -93,3 +93,89 @@ def later(start_hour: int, start_minute: int, every: int = 3, until: int = 20) -
         found.append((hour, start_minute))
         hour += every
     return found
+
+
+# ---------------------------------------------------------------------------
+# Questions (DAY_QUESTIONS): "will it rain?", "what's the weather this
+# afternoon?". Answered from the forecast that was kept, in words from a
+# template. A number is said only if the forecast has it: with no hours in
+# it the day's own figures are said, as the day's.
+# ---------------------------------------------------------------------------
+MORNING_PART, AFTERNOON, EVENING, TONIGHT, TOMORROW = "morning", "afternoon", "evening", "tonight", "tomorrow"
+PARTS = (MORNING_PART, AFTERNOON, EVENING, TONIGHT, TOMORROW)
+# The hours of each part of the day: from, up to (not including)
+HOURS = {MORNING_PART: (6, 12), AFTERNOON: (12, 18), EVENING: (18, 24), TONIGHT: (18, 24)}
+SAID = {"": "for the rest of today", MORNING_PART: "this morning", AFTERNOON: "this afternoon", EVENING: "this evening", TONIGHT: "tonight"}
+ONLY_TODAY = "I only have today's forecast."
+NONE_YET = "I have no forecast for today yet."
+
+
+def hours(data: dict, name: str) -> list:
+    """One of the forecast's lists by the hour, if it has all 24 of them; else none."""
+    found = (data.get("hourly") or {}).get(name) or []
+    return list(found) if len(found) == 24 else []
+
+
+def stretch(part: str, now_hour: int) -> tuple[int, int] | None:
+    """The hours a question is about: what is still to come of today, or of
+    the part of it that was named. None when that part is over."""
+    first, last = HOURS.get(part, (0, 24))
+    first = max(first, now_hour)
+    return (first, last) if first < last else None
+
+
+def rain_said(data: dict, forecast: Forecast, part: str, now_hour: int) -> str:
+    """Whether it will rain, as a sentence: the highest chance in the hours
+    asked about and roughly when. With no hours in the forecast, the day's
+    own chance, said as today's."""
+    by_hour = hours(data, "precipitation_probability")
+    span = stretch(part, now_hour)
+    if not by_hour or span is None:
+        return f"{rain_text(forecast).capitalize()} today."
+    chances = [chance or 0 for chance in by_hour[span[0] : span[1]]]
+    top = round(max(chances))
+    at = span[0] + chances.index(max(chances))
+    when = SAID[part if part in SAID else ""]
+    if top < DRY_UNDER:
+        return f"No rain expected {when}."
+    if top < WHEN_FROM:
+        return f"Rain is unlikely {when}: {top}% at most, around {hour_text(at)}."
+    likely = [span[0] + offset for offset, chance in enumerate(chances) if chance >= max(WHEN_FROM, top - 10)]
+    around = f"between {hour_text(likely[0])} and {hour_text(likely[-1] + 1)}" if len(likely) > 1 else f"around {hour_text(at)}"
+    return f"{top}% chance of rain {when}, most likely {around}."
+
+
+def warmth(data: dict, span: tuple[int, int]) -> str:
+    """How warm those hours are, if the forecast has the temperature by the hour: "16° to 19°"."""
+    degrees = [each for each in hours(data, "temperature_2m")[span[0] : span[1]] if each is not None]
+    if not degrees:
+        return ""
+    low, high = round(min(degrees)), round(max(degrees))
+    return f"{low}°" if low == high else f"{low}° to {high}°"
+
+
+def answer(data: dict, part: str, rain_only: bool, now_hour: int) -> list[str]:
+    """The lines of an answer about today's weather: `part` is "" for the day
+    or one of PARTS, `rain_only` when the question was about rain. Raises
+    ValueError for a forecast that can't be read."""
+    if part == TOMORROW:
+        return [ONLY_TODAY]
+    forecast = read(data)
+    whole_day = [f"**Today** · {glance(forecast)}", detail(forecast)]
+    span = stretch(part, now_hour)
+    if span is None:
+        return [f"{SAID[part].capitalize()} is over.", *whole_day]
+    if rain_only:
+        return [rain_said(data, forecast, part, now_hour)]
+    if part not in HOURS:
+        return whole_day
+    warm = warmth(data, span)
+    return [
+        f"**{SAID[part].capitalize()}**" + (f" · {warm}" if warm else ""),
+        rain_said(data, forecast, part, now_hour),
+        small_wind(forecast),
+    ]
+
+
+def small_wind(forecast: Forecast) -> str:
+    return f"wind up to {forecast.wind} km/h {forecast.direction} today"

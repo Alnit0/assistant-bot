@@ -1,0 +1,177 @@
+{
+  "router": [
+    {
+      "message": "what's the weather?",
+      "tasks": [
+        "weather"
+      ],
+      "note": "about the forecast the bot keeps: never chat, which cannot see it",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "weather"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "do I need an umbrella?",
+      "tasks": [
+        "weather"
+      ],
+      "note": "rain, without the word",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "weather"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "is it going to be wet tonight?",
+      "tasks": [
+        "weather"
+      ],
+      "note": "rain, a part of the day",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "weather"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "how warm does it get today?",
+      "tasks": [
+        "weather"
+      ],
+      "note": "the temperature",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "weather"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "I love this weather",
+      "nothing": true,
+      "note": "a trap: a remark that asks nothing gets no reply",
+      "recorded": {
+        "kind": "nothing",
+        "tasks": [],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "why is the sky blue?",
+      "chat": true,
+      "note": "a trap: a general question that mentions the sky is chat",
+      "recorded": {
+        "kind": "chat",
+        "tasks": [],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    }
+  ],
+  "extraction": [
+    {
+      "task": "weather",
+      "message": "what's the weather?",
+      "action": "weather_ask",
+      "guessed": [],
+      "recorded": [
+        "weather_ask",
+        {
+          "rain": false,
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "weather",
+      "message": "do I need an umbrella?",
+      "action": "weather_ask",
+      "data": {
+        "rain": true
+      },
+      "guessed": [],
+      "recorded": [
+        "weather_ask",
+        {
+          "rain": true,
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "weather",
+      "message": "is it going to be wet tonight?",
+      "action": "weather_ask",
+      "data": {
+        "rain": true,
+        "when": "tonight"
+      },
+      "guessed": [],
+      "recorded": [
+        "weather_ask",
+        {
+          "rain": true,
+          "when": "tonight",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "weather",
+      "message": "will it rain tomorrow?",
+      "action": "weather_ask",
+      "data": {
+        "rain": true,
+        "when": "tomorrow"
+      },
+      "guessed": [],
+      "recorded": [
+        "weather_ask",
+        {
+          "rain": true,
+          "when": "tomorrow",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "weather",
+      "message": "how warm does it get today?",
+      "action": "weather_ask",
+      "guessed": [],
+      "recorded": [
+        "weather_ask",
+        {
+          "rain": false,
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    }
+  ]
+}

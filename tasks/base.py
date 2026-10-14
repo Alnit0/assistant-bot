@@ -263,6 +263,7 @@ class Task:
                 already=self.already_so, names=self.item_names, identity=tuple(self.identity), on_repeat=self.on_repeat,
                 owns=self.owns_message, summary=self.summary if type(self).summary is not Task.summary else None,
                 attention=self.attention if type(self).attention is not Task.attention else None,
+                tally=self.tally if type(self).tally is not Task.tally else None,
             )
         ]
 
@@ -272,6 +273,14 @@ class Task:
         summaries (core/summaries.py). It only reads, asks Claude nothing, and
         is in the task's own words. Say when it may have changed with
         `summaries.changed(self.name, user_id)`. Only used if overridden."""
+        return None
+
+    async def tally(self, user_id: int, day: date):
+        """`(done, total)` for a day: what was done of what there was to do,
+        from this task's own record of that day (never from how things are
+        set up now), or None with nothing that day. For looking back over
+        days (core/summaries.py `tallies`). It only reads. Only used if
+        overridden."""
         return None
 
     async def attention(self, user_id: int, now) -> list:

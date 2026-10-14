@@ -240,6 +240,10 @@ BRIEFING_ENABLED = flag(os.getenv("BRIEFING_ENABLED"), False)
 # ("●●●●●○○ 5/7"), and a small line a task ("💊 2/3"). Off unless set: off, the briefing
 # reads as it did
 DAY_PROGRESS = flag(os.getenv("DAY_PROGRESS"), False)
+# Questions about my day answered from what the tasks keep, in words from a template: what is
+# left today, how yesterday or the week went (the briefing task), and the weather (the weather
+# task). Off unless set: off, neither task offers them
+DAY_QUESTIONS = flag(os.getenv("DAY_QUESTIONS"), False)
 def hours(text: str | None, default: tuple[time, time]) -> tuple[time, time]:
     """A stretch of the day as written in .env ("22:00-06:00"): (from, to)."""
     try:

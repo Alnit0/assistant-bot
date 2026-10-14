@@ -405,6 +405,86 @@
         "reports_doing": true,
         "chat_part": ""
       }
+    },
+    {
+      "golden": "21",
+      "message": "what's left today?",
+      "tasks": [
+        "briefing"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "briefing"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "22",
+      "message": "what's on today?",
+      "tasks": [
+        "briefing"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "briefing"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "23",
+      "message": "how did I go yesterday?",
+      "tasks": [
+        "briefing"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "briefing"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "24",
+      "message": "will it rain?",
+      "tasks": [
+        "weather"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "weather"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "25",
+      "message": "what's the weather this afternoon?",
+      "tasks": [
+        "weather"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "weather"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
     }
   ],
   "extraction": [
@@ -1201,6 +1281,108 @@
               "did": "taken"
             }
           ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "21",
+      "task": "briefing",
+      "message": "what's left today?",
+      "action": "day_left",
+      "guessed": [],
+      "recorded": [
+        "day_left",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "22",
+      "task": "briefing",
+      "message": "what's on today?",
+      "action": "briefing_show",
+      "guessed": [],
+      "recorded": [
+        "briefing_show",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "23",
+      "task": "briefing",
+      "message": "how did I go yesterday?",
+      "action": "day_past",
+      "data": {
+        "period": "yesterday"
+      },
+      "guessed": [],
+      "recorded": [
+        "day_past",
+        {
+          "period": "yesterday",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "23a",
+      "task": "briefing",
+      "message": "and this week?",
+      "action": "day_past",
+      "data": {
+        "period": "week"
+      },
+      "after_answer": true,
+      "note": "straight after the briefing task answered about yesterday: the same question, for the week",
+      "recorded": [
+        "day_past",
+        {
+          "period": "week",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "24",
+      "task": "weather",
+      "message": "will it rain?",
+      "action": "weather_ask",
+      "data": {
+        "rain": true
+      },
+      "guessed": [],
+      "recorded": [
+        "weather_ask",
+        {
+          "rain": true,
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "25",
+      "task": "weather",
+      "message": "what's the weather this afternoon?",
+      "action": "weather_ask",
+      "data": {
+        "when": "afternoon"
+      },
+      "guessed": [],
+      "recorded": [
+        "weather_ask",
+        {
+          "when": "afternoon",
+          "rain": false,
           "guessed": [],
           "not_included": []
         }

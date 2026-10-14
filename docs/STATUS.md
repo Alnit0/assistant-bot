@@ -62,6 +62,39 @@ while it was being built**
    has no page title; the briefing's pills box lists each pill; a
    relative time in a sketch is a real timestamp).
 
+**Item 2, questions about my day**
+
+10. **Behind one switch, `DAY_QUESTIONS`**, off unless set; on for live
+    with the restart at the end of the batch.
+11. **The day's questions belong to the briefing task**, which answers
+    them from what each task hands in and still knows no task. "What's
+    on today?" is the briefing itself, as it was.
+12. **Yesterday and the week are read from each task's record of the
+    day** (a new `tally` in the contract), not from today's summary:
+    a summary is built from how the pills are set up now, which could
+    give a wrong number for a day that has passed.
+13. **"This week?" is Monday to today**, a line a day with dots and a
+    count. The pills' own week ("show my week", a mark a dose) is
+    unchanged and still the pills task's.
+14. **Straight after you log a pill, "what's left today?" still shows
+    the checklist**: for five minutes a short message goes to the task
+    that just answered. Left as the standard has it.
+15. **Weather answers only from the forecast it keeps**, and nothing is
+    fetched to answer. "Tomorrow" says only today's forecast is kept.
+    "This afternoon" is 12 to 6, "this evening" and "tonight" 6 to
+    midnight, "this morning" 6 to 12; "will it rain?" with no part
+    named is the hours still to come today.
+16. **How warm a part of the day is needs the temperature by the hour,
+    which the fetch now asks for.** Until the first fetch after the
+    restart, an answer about the afternoon has no temperature rather
+    than a made-up one.
+17. **Weather is now a line in the router's catalogue** (last night it
+    was kept out so no prompt changed): about US$0.0002 more on each
+    routed message. A question costs about half a US cent.
+18. **The golden conversations are 21 to 25** (with 23a, "and this
+    week?"), recorded from the real API: 33 requests, 33 right,
+    NZ$0.18.
+
 ## Where things stand
 
 - **Branch `feature/pills`**: everything is committed and pushed;

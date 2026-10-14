@@ -5,7 +5,7 @@ through on 2026-10-14 against the self-test's report
 (`docs/SELFTEST.md`, the full run of 11:42 am: 116 of 117 steps) and
 against what is built and switched on.
 
-- **Start with the short list below**: the ten things only you can
+- **Start with the short list below**: the eleven things only you can
   check, because they are about how something looks or reads. It is
   all that is asked of you.
 - **Covered** means the self-test does that step against real Discord
@@ -37,7 +37,8 @@ otherwise. Say what to change in any of them, in your own words.
 | 7 | **The last-chance nudge** (block 57, step 6) | Only when one comes | That the lock screen says "💊 Last chance today · take by …" and names no pill |
 | 8 | **"Needs a look" and "worth knowing"** (block 55, rows 1 and 5) | Only when something has gone wrong, or after a restart you did not ask for | Whether the box on top of the briefing, the ping and the status line say the same thing, and whether the small line at the foot reads well |
 | 9 | **The gym sketches** (block 35) | `dev mock gym-import-v2`, `gym-change-v2`, `gym-workout-v1`, `gym-logged-set-v2` | What to change, with your answers to questions 23 to 28 |
-| 10 | **Button colours** (block 22, step 8) | As you use it | Save green, Cancel grey, Remove red, Taken green, Skip blurple: say if one is wrong |
+| 10 | **How the answers about your day read** (block 59) | Ask live: "what's left today?", "how did I go yesterday?", "and this week?", "will it rain?", "what's the weather this afternoon?" | Whether each answer reads right at a glance, and what to change in the words or their order |
+| 11 | **Button colours** (block 22, step 8) | As you use it | Save green, Cancel grey, Remove red, Taken green, Skip blurple: say if one is wrong |
 
 Beyond these, wording everywhere: the self-test checks a line for the
 words that matter (a name, a time, a mark), not for whether it reads
@@ -101,6 +102,7 @@ well. Say what jars when you meet it.
 | 56 | Weather in the briefing | Yours: on the short list | The self-test draws the section from a recorded forecast (5.01c), and live's run log for 2026-10-14 has the 5:50 am fetch and the 8:50 and 11:50 am refreshes. Rows 1 and 2 are the short list's 1. Row 4 (a fetch that fails) is by hand. |
 | 57 | One dose is one log | Covered by the self-test | The self-test's 1.17, 1.17b, 2.09 and 2.09b; steps 2, 5 and 7 are golden conversations 19, 19a and 20, offline. The lock screen for the last chance is the short list's 7. |
 | 58 | The day's progress in the briefing | Yours: on the short list | The self-test's 5.04b checks the dots and count in the title and the small line against the checklist's own count, and that they moved in place. How it reads on the phone, and whether the title wraps, is the short list's 1. |
+| 59 | Questions about my day, and the weather | Covered by the self-test | The self-test's 5.03c to 5.03f (what is left, yesterday, will it rain, this afternoon), with recorded answers; golden conversations 21 to 25 offline, recorded from the real API. How the answers read is the short list's 10. |
 
 ## Before you start
 
@@ -1234,6 +1236,24 @@ On live, with `DAY_PROGRESS` on, on your phone.
 
 Say if the dots are too small, too heavy or uneven: the two characters,
 and whether the total sits in the title, are values in `core/design.py`.
+
+## 59. Questions about my day, and the weather (covered by the self-test)
+
+**State, 2026-10-14:** The self-test's 5.03c to 5.03f, with recorded
+answers; golden conversations 21 to 25 offline, recorded from the real
+API. How the answers read is the short list's 10.
+
+On live, with `DAY_QUESTIONS` on. About five messages to Claude (three
+cents).
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Say `what's left today?` (not straight after logging a pill) | One message: "☀️ **Left today** · ●○○ 1/3", then a line a dose still to take. No card | T39 |
+| 2 | Say `how did I go yesterday?` | "☀️ **Yesterday** · Tue 13 Oct · ●●○ 2/3" and under it "💊 Yesterday: 2 of 3 taken · 1 missed" | T39 |
+| 3 | Straight after, say `and this week?` | "☀️ **This week** · Mon 12 – Wed 14 Oct" with its dots and count, a small line a task, and a line a day | T39 |
+| 4 | Say `will it rain?` | One line from the forecast: the highest chance of rain in the hours still to come and roughly when ("61% chance of rain for the rest of today, most likely between 1pm and 5pm."), and "updated …" small | T39 |
+| 5 | Say `what's the weather this afternoon?` | "🌤️ **This afternoon** · 16° to 19°" (the temperature only once a forecast has been fetched since the restart), the chance of rain then, and the day's wind small | T39 |
+| 6 | Straight after logging a pill, say `what's left today?` | Today's checklist is shown, as before: for five minutes a short message goes to the pills task first | T39 |
 
 ## When you finish
 

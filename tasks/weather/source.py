@@ -16,6 +16,8 @@ from core import config
 # ---------------------------------------------------------------------------
 URL = "https://api.open-meteo.com/v1/forecast"
 DAILY = "temperature_2m_min,temperature_2m_max,precipitation_probability_max,weather_code,wind_speed_10m_max,wind_direction_10m_dominant"
+# By the hour: the chance of rain, and the temperature (for a question about a part of the day)
+HOURLY = "precipitation_probability,temperature_2m"
 TIMEOUT = 8
 
 
@@ -27,7 +29,7 @@ def address() -> str:
     if config.WEATHER_LAT is None or config.WEATHER_LON is None:
         raise NoPlace("WEATHER_LAT and WEATHER_LON are not set in .env")
     asked = {
-        "latitude": config.WEATHER_LAT, "longitude": config.WEATHER_LON, "daily": DAILY, "hourly": "precipitation_probability",
+        "latitude": config.WEATHER_LAT, "longitude": config.WEATHER_LON, "daily": DAILY, "hourly": HOURLY,
         "timezone": getattr(config.TIMEZONE, "key", "Pacific/Auckland"), "forecast_days": 1, "wind_speed_unit": "kmh",
     }
     return f"{URL}?{urllib.parse.urlencode(asked)}"

@@ -183,3 +183,90 @@ def test_where_it_is_for_is_in_nothing_committed():
     example = (config.BASE_DIR / ".env.example").read_text(encoding="utf-8")
     assert "WEATHER_LAT=\n" in example.replace("\r\n", "\n") and "WEATHER_ENABLED=true" in example, "on by default, and no place given"
     assert datetime.now() is not None
+
+
+# --- questions, answered from what was kept (DAY_QUESTIONS) ------------------------------------------------------------
+def test_will_it_rain_is_the_highest_chance_in_the_hours_still_to_come_and_roughly_when():
+    data = forecast()
+    found = rules.read(data)
+    assert rules.rain_said(data, found, "", 9) == "61% chance of rain for the rest of today, most likely between 1pm and 5pm."
+    assert rules.rain_said(data, found, rules.AFTERNOON, 9) == "61% chance of rain this afternoon, most likely between 1pm and 5pm."
+    assert rules.rain_said(data, found, rules.TONIGHT, 9) == "35% chance of rain tonight, most likely around 6pm."
+    assert rules.rain_said(data, found, rules.MORNING_PART, 9) == "Rain is unlikely this morning: 18% at most, around 11am."
+    assert rules.rain_said(data, found, rules.EVENING, 22) == "No rain expected this evening."
+    assert rules.rain_said(data, found, "", 20) == "Rain is unlikely for the rest of today: 13% at most, around 8pm.", "only what is still to come"
+
+
+def test_with_no_hours_in_the_forecast_only_the_day_s_own_figure_is_said_and_as_the_day_s():
+    data = forecast(hourly=[10, 20])
+    found = rules.read(data)
+    assert rules.rain_said(data, found, rules.AFTERNOON, 9) == "61% rain today.", "no hour is made up"
+    assert rules.answer(data, rules.AFTERNOON, False, 9) == ["**This afternoon**", "61% rain today.", "wind up to 15 km/h N today"]
+    dry = forecast(precipitation_probability_max=2, hourly=[])
+    assert rules.rain_said(dry, rules.read(dry), "", 9) == "No rain today."
+
+
+def test_a_part_of_the_day_says_how_warm_only_if_the_forecast_has_it_by_the_hour():
+    data = forecast()
+    assert rules.answer(data, rules.AFTERNOON, False, 9) == ["**This afternoon**", "61% chance of rain this afternoon, most likely between 1pm and 5pm.", "wind up to 15 km/h N today"]
+    data["hourly"]["temperature_2m"] = [14.2] * 12 + [16.6, 17.9, 19.4, 19.6, 18.8, 17.5] + [15.0] * 6
+    assert rules.answer(data, rules.AFTERNOON, False, 9)[0] == "**This afternoon** · 17° to 20°"
+    assert rules.answer(data, rules.TONIGHT, False, 9)[0] == "**Tonight** · 15°"
+    assert rules.warmth(forecast(), (12, 18)) == ""
+
+
+def test_the_day_as_a_whole_reads_as_the_briefing_s_section_and_a_part_that_is_over_says_so():
+    data = forecast()
+    assert rules.answer(data, "", False, 9) == ["**Today** · 14° to 20° · drizzle", "61% rain after 1pm · wind 15 km/h N"]
+    assert rules.answer(data, rules.MORNING_PART, True, 13) == ["This morning is over.", "**Today** · 14° to 20° · drizzle", "61% rain after 1pm · wind 15 km/h N"]
+    assert rules.answer(data, rules.TOMORROW, True, 9) == ["I only have today's forecast."]
+    with pytest.raises(ValueError):
+        rules.answer({"daily": {}}, "", False, 9)
+
+
+def _asked(**data):
+    from core.actions import Request
+
+    return run(weather.ask(Request(SimpleNamespace(id=1), 500, "asked"), data, frozenset()))
+
+
+def test_a_question_is_answered_from_the_forecast_that_was_kept_and_nothing_is_fetched(on, monkeypatch):
+    monkeypatch.setattr(config, "DAY_QUESTIONS", True)
+    assert _asked(rain=True) == "🌤️ I have no forecast for today yet."
+    clock.advance_to(day.at(day.today() + timedelta(days=1), time(9, 0)))
+    run(weather.fetch_job(job()))
+
+    async def never():
+        raise AssertionError("a question never asks the network")
+
+    monkeypatch.setattr(source, "fetch", never)
+    assert _asked(rain=True).splitlines() == ["🌤️ 61% chance of rain for the rest of today, most likely between 1pm and 5pm.", "-# updated 9:00 am"]
+    assert _asked(when="afternoon").splitlines() == [
+        "🌤️ **This afternoon**", "61% chance of rain this afternoon, most likely between 1pm and 5pm.", "-# wind up to 15 km/h N today · updated 9:00 am",
+    ]
+    assert _asked().splitlines() == ["🌤️ **Today** · 14° to 20° · drizzle", "61% rain after 1pm · wind 15 km/h N", "-# updated 9:00 am"]
+    assert _asked(rain=True, when="tomorrow") == "🌤️ I only have today's forecast."
+    clock.advance_to(day.at(day.today(), time(19, 0)))
+    assert _asked(rain=True, when="afternoon").splitlines()[0] == "🌤️ This afternoon is over."
+
+
+def test_when_the_fetch_failed_and_nothing_is_kept_it_says_unavailable_and_no_number(on, monkeypatch):
+    monkeypatch.setattr(config, "DAY_QUESTIONS", True)
+    monkeypatch.setattr(config, "WEATHER_SOURCE", str(RECORDED.with_name("nothing-here.json")))
+    run(weather.fetch_job(job()))
+    assert _asked(rain=True) == "🌤️ Weather unavailable" and not any(character.isdigit() for character in _asked())
+
+
+def test_the_questions_are_one_action_with_no_card_behind_the_switch(on, monkeypatch):
+    from core import actions
+
+    assert weather.task.actions() == [] and weather.task.entries() == [], "off unless DAY_QUESTIONS is on: nothing is routed to weather"
+    monkeypatch.setattr(config, "DAY_QUESTIONS", True)
+    (entry,) = weather.task.entries()
+    (asked,) = entry.actions
+    assert (asked.name, asked.needs_card, [field.name for field in asked.fields]) == ("weather_ask", False, ["when", "rain"])
+    assert actions.problems([entry]) == [] and entry.summary is not None, "it is still in the briefing, now through its entry"
+    assert "rain" in entry.only_for and entry.examples[0] == "will it rain?"
+    monkeypatch.setattr(config, "WEATHER_ENABLED", False)
+    assert weather.task.entries() == []
+    assert "temperature_2m" in source.HOURLY and "precipitation_probability" in source.HOURLY

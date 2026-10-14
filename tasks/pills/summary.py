@@ -74,4 +74,4 @@ async def summary(user_id: int, day: date) -> Summary | None:
     lines = tuple(line for line in (next_line(listed), streak) if line)
     # The checklist's own count of what is dealt with (taken or skipped), so the two never disagree
     done, total = today.progress(listed)
-    return Summary(glance=glance, status=status(listed), lines=lines, hint=any_time(listed), before=before, done=done, total=total)
+    return Summary(glance=glance, status=status(listed), lines=lines, hint=any_time(listed), before=before, done=done, total=total, left=today.left_lines(listed))

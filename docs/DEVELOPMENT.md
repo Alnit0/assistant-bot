@@ -1643,6 +1643,21 @@ nothing of it exists.
   small line a task ("💊 2/3"), kept up to date with the rest. How it
   looks, and the one value that moves the dots out of the title, is
   `docs/DESIGN.md`, "Progress".
+- **Questions about your day** (off unless `DAY_QUESTIONS=true` is in
+  `.env`, then restart), each answered in one message from what the
+  tasks keep, in words from a template and never by chat:
+  - "what's left today?": the day's dots and count, then each thing
+    still to do, a line each ("💊 Pill A (dose 2 of 3) `12:00 pm`").
+  - "how did I go yesterday?": yesterday's dots and count from the
+    record of that day, and each task's line about it ("💊 Yesterday:
+    2 of 3 taken · 1 missed").
+  - "how's this week going?", or "and this week?" straight after:
+    Monday to today, a line a day with its dots and count.
+  Straight after you log a pill, a short question goes to the pills
+  task first, as any short message does for five minutes: "what's
+  left today?" then shows today's checklist, as it always has. The
+  pills' own lists are unchanged ("what did I take yesterday?", "show
+  my week").
 - The next morning's briefing takes the place of the one before.
 - Things are ticked off on the checklist, not here: it has no buttons.
 
@@ -1657,7 +1672,21 @@ async def summary(self, user_id, day):
 
 `done` and `total` are what of the day is done out of what there is
 to do: the day's progress adds them up across tasks. Leave both out
-for a task with nothing to count.
+for a task with nothing to count. `left` is what is still to do, a
+line each in the task's own words: "what's left today?" lists them.
+
+For looking back over days, a task may also give a `tally`:
+
+```python
+async def tally(self, user_id, day):
+    return (2, 3)  # done, total: from the record of that day; None with nothing
+```
+
+It must come from the task's own record of that day, never from how
+things are set up now (pills counts the occurrence log, so a pill
+removed since still counts for the day it was taken). "How did I go
+yesterday?" and "how's this week going?" are answered from it
+(`summaries.tallies`); a task that fails is left out, never guessed.
 
 Return `None` with nothing to say that day. It only reads: no row is
 made or changed to answer it (pills reads with `checklist.read`; the
@@ -1966,8 +1995,18 @@ On unless `WEATHER_ENABLED=false`. Set where it is for in `.env`:
 - If the 5:50 am fetch fails the section says "Weather unavailable",
   and it counts as a failed job: it is in "⚠️ Needs a look". A later
   refresh that fails keeps the forecast it had.
-- No request to Claude: the words are a template
-  (`tasks/weather/rules.py`). It answers nothing in plain words.
+- No request to Claude for its words: they are a template
+  (`tasks/weather/rules.py`).
+- **Questions** (off unless `DAY_QUESTIONS=true` is in `.env`, then
+  restart): "will it rain?", "do I need an umbrella?", "what's the
+  weather this afternoon?", "how warm does it get today?". The answer
+  is read from the forecast that was kept (nothing is fetched to
+  answer): the highest chance of rain in the hours still to come, or
+  in the part of the day you named, and roughly when; for a part of
+  the day, how warm it is then if the forecast has the temperature by
+  the hour (it does from the first fetch after this was built). A
+  part of the day that is over says so; "tomorrow" says only today's
+  forecast is kept; with no forecast it says so and gives no number.
 
 ## The interface layer: no discord.py in new code
 

@@ -212,6 +212,12 @@ Write them the way I'd really say them.
 | 19 | A dose was logged as dose 2 of pill A at 9:20 am; straight after, "That was dose 1" | A change card: "Pill A · dose 2 → dose 1 · taken 9:20 am", and what becomes of dose 2. Save moves the log, with its time. Never a second log, and never "Log it as taken now?". Checked against what was logged, with no card open |
 | 19a | …or "no, that was my first dose" | The same correction |
 | 20 | "Took Pill A at 9:20", then minutes later "took pill A" | The card that asks first says so in so many words: "You already logged dose 1 at 9:20 am. … Add another dose?" Nothing is added by asking |
+| 21 | "what's left today?" | One reply from the day's own data, in words from a template: the day's dots and count, then each thing still to do ("☀️ **Left today** · ●○○ 1/3", a line a dose). Never from chat, and never a number that is not in the data |
+| 22 | "what's on today?" | The briefing itself, there. No words about it |
+| 23 | "how did I go yesterday?" | Yesterday from the record: its dots and count, and each task's own line ("💊 Yesterday: 2 of 3 taken · 1 missed"). With nothing recorded it says so |
+| 23a | …then "and this week?" | The week so far, Monday to today, a line a day. It goes to the task that just answered, without the router |
+| 24 | "will it rain?" | The weather task answers from the forecast it keeps: the highest chance in the hours still to come and roughly when. Nothing is fetched to answer, and chat is never asked |
+| 25 | "what's the weather this afternoon?" | That part of the day from the kept forecast; how warm only if the forecast has it by the hour. A part that is over says so |
 
 ---
 

@@ -6,6 +6,15 @@ backfilled from the git log.
 
 ## 2026-10-14
 
+- Ask about your day and get an answer from the data, never a guess:
+  "what's left today?", "how did I go yesterday?", "and this week?".
+  One message each, with the day's dots and count. Behind
+  `DAY_QUESTIONS`.
+- Ask about the weather: "will it rain?", "what's the weather this
+  afternoon?". The weather task answers from the forecast it keeps:
+  the chance of rain in the hours still to come and roughly when.
+- Golden conversations 21 to 25 are these questions.
+
 - The briefing shows the day's progress at the top: a dot a thing to
   do and the count, in its title ("☀️ Today ●●●●●○○ 5/7"), and one
   small line a task ("💊 2/3"), kept up to date in place as things

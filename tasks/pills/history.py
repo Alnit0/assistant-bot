@@ -52,6 +52,20 @@ def mine(found: list[Occurrence]) -> list[Occurrence]:
     return [each for each in found if not (each.state == SKIPPED and each.automatic and each.cause == NOT_IN_PLAN)]
 
 
+def tallied(found: list[Occurrence]) -> tuple[int, int] | None:
+    """(dealt with, all) of the doses that were mine to take, as the checklist counts a day:
+    taken and skipped are dealt with. None with nothing to take."""
+    found = mine(found)
+    if not found:
+        return None
+    return sum(each.state in (DONE, SKIPPED) for each in found), len(found)
+
+
+async def tally(user_id: int, day: date) -> tuple[int, int] | None:
+    """A day as it was recorded, whatever has become of the pills since."""
+    return tallied(await occurrences.for_day(user_id, TASK, day))
+
+
 def counted(found: list[Occurrence]) -> str:
     """ "4 of 5 taken · 1 missed · 1 skipped", or "" with nothing to take."""
     found = mine(found)

@@ -208,6 +208,9 @@ class Summary:
     # nothing countable (weather) leaves both out
     done: int | None = None
     total: int | None = None
+    # What is still to do that day, a line each, in the task's own words ("Pill A (dose 2 of 3) `12:00 pm`"):
+    # for "what's left today?". Not trimmed to three: whoever shows them counts what it leaves out
+    left: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -392,6 +395,10 @@ class Entry:
     # and day, or None with nothing to say. A task that has one appears wherever
     # summaries are shown (the briefing), with no change there
     summary: Callable[[int, date], Awaitable["Summary | None"]] | None = None
+    # `async (user_id, day) -> (done, total) | None`: what was done of what there was to do on
+    # that day, from the task's own record of it and not from how things are set up now; None
+    # with nothing that day. For looking back over days ("how did the week go?")
+    tally: Callable[[int, date], Awaitable["tuple[int, int] | None"]] | None = None
     # `async (user_id, now) -> list of attention.Item`: what of this task's may deserve a
     # look now (core/attention.py). The core ranks them with everyone else's, once; the
     # status line, the briefing and pings each show a slice of that one ranking

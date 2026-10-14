@@ -228,6 +228,17 @@ The `schedule` task (2026-10-13) is one more line in the router's
 catalogue, about 90 tokens on every routed message (the router is not
 cached), and its own extraction rules when a message is its.
 
+**2026-10-14, questions about the day (`DAY_QUESTIONS`).** With it on,
+the router's catalogue gains a line for `weather` (about 100 tokens)
+and the briefing's line is about 60 tokens longer: roughly US$0.0002
+more on every routed message, since the router is not cached. The
+answers themselves cost nothing: each is a template over what the
+tasks keep. Both tasks' extraction prompts are short (under the
+caching minimum), about US$0.002 a question, so a question costs
+about US$0.005 in all, and a follow-up ("and this week?") about
+US$0.002. Measured when the fixtures were recorded: 33 requests,
+US$0.099, 33 of 33 right.
+
 ## 7. Questions (also in `docs/STATUS.md`)
 
 1. Answered 2026-10-13: the router is not skipped; of the shortcuts,

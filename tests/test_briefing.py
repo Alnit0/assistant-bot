@@ -346,3 +346,100 @@ def test_switched_on_the_briefing_in_the_hub_has_the_dots_and_they_move_in_place
     assert design.texts(shown.layout)[0].startswith("# ☀️ Today ●○ 1/2\n")
     edits = [card.text for edited, card in on.edited if edited == message_id]
     assert edits and "☀️ Today ●○ 1/2" in edits[-1], "the one in the hub is edited in place: nothing new is posted"
+
+
+# --- questions about the day (DAY_QUESTIONS) ---------------------------------------------------------------------
+def test_what_is_left_is_the_day_s_dots_and_each_thing_still_to_do_in_its_task_s_words():
+    pills = summaries.Section("pills", "💊", "Pills", Summary("1 of 3 taken", design.DUE, done=1, total=3, left=("Pill A (dose 2 of 3) `12:00 pm`", "Zinc")))
+    gym = summaries.Section("gym", "🏋️", "Gym", Summary("to do", design.DUE, done=0, total=1, left=("Push day",)))
+    weather = summaries.Section("weather", "🌤️", "Weather", Summary("14° to 20°", design.QUIET))
+    assert rules.left([pills, weather, gym]).splitlines() == ["☀️ **Left today** · ●○○○ 1/4", "💊 Pill A (dose 2 of 3) `12:00 pm`", "💊 Zinc", "🏋️ Push day"]
+    done = summaries.Section("pills", "💊", "Pills", Summary("3 of 3 taken", design.DONE, done=3, total=3))
+    assert rules.left([done, weather]) == "☀️ **Nothing left today** · ●●● 3/3"
+    assert rules.left([weather]) == rules.NOTHING and rules.left([]) == rules.NOTHING, "nothing to count: nothing is on"
+    many = summaries.Section("pills", "💊", "Pills", Summary("", design.DUE, done=0, total=12, left=tuple(f"Pill {n}" for n in range(12))))
+    assert rules.left([many]).splitlines()[-1] == "…and 4 more" and len(rules.left([many]).splitlines()) == 1 + rules.MAX_LEFT + 1
+
+
+def test_yesterday_is_the_record_s_count_and_each_task_s_own_line_about_the_day_before():
+    tallies = [summaries.Tally("pills", "💊", 2, 3)]
+    pills = summaries.Section("pills", "💊", "Pills", Summary("0 of 3 taken", design.DUE, before="Yesterday: 2 of 3 taken · 1 missed"))
+    assert rules.yesterday(date(2026, 10, 13), tallies, [pills]).splitlines() == ["☀️ **Yesterday** · Tue 13 Oct · ●●○ 2/3", "💊 Yesterday: 2 of 3 taken · 1 missed"]
+    assert rules.yesterday(date(2026, 10, 13), tallies, []).splitlines() == ["☀️ **Yesterday** · Tue 13 Oct · ●●○ 2/3", "💊 2/3"], "no line of its own: its count"
+    assert rules.yesterday(date(2026, 10, 13), [], []) == "☀️ Nothing was on yesterday."
+
+
+def test_the_week_is_monday_to_today_a_line_a_day_from_each_task_s_record():
+    monday, today = date(2026, 10, 12), date(2026, 10, 14)
+    found = [
+        (monday, [summaries.Tally("pills", "💊", 3, 3)]),
+        (date(2026, 10, 13), [summaries.Tally("pills", "💊", 2, 3), summaries.Tally("gym", "🏋️", 1, 1)]),
+        (today, [summaries.Tally("pills", "💊", 1, 3)]),
+    ]
+    assert rules.week(found, today).splitlines() == [
+        "☀️ **This week** · Mon 12 – Wed 14 Oct · ●●●●●●●○○○ 7/10", "-# 💊 6/9 · 🏋️ 1/1", "`Mon 12` ●●● 3/3", "`Tue 13` ●●●○ 3/4", "`Wed 14` ●○○ 1/3 · today",
+    ]
+    assert rules.week([(monday, []), (today, [summaries.Tally("pills", "💊", 0, 2)])], today).splitlines()[2:] == ["`Wed 14` ○○ 0/2 · today"], "a day with nothing in it has no line"
+    assert rules.week([(monday, [])], monday) == "☀️ Nothing was on this week."
+    assert "%" not in rules.week(found, today)
+
+
+def test_a_day_s_tally_is_read_from_the_record_and_a_task_that_fails_is_left_out_never_made_up(monkeypatch):
+    async def pills(user_id, on):
+        return (2, 3)
+
+    async def nothing(user_id, on):
+        return None
+
+    async def broken(user_id, on):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(actions, "_entries", {})
+    entries = [Entry("pills", "💊", "x", ("a", "b"), (), tally=pills, on_repeat="allow_another"), Entry("gym", "🏋️", "x", ("a", "b"), (), tally=nothing, on_repeat="allow_another"),
+               Entry("todo", "📝", "x", ("a", "b"), (), tally=broken, on_repeat="allow_another"), _entry("timers")]
+    actions.set_catalogue(entries)
+    assert asyncio.run(summaries.tallies(1, date(2026, 10, 13))) == [summaries.Tally("pills", "💊", 2, 3)]
+
+
+def test_switched_off_the_briefing_has_only_brief_me_and_on_it_answers_the_day_s_questions(on, monkeypatch):
+    (entry,) = briefing.task.entries()
+    assert [action.name for action in entry.actions] == ["briefing_show"] and entry.only_for == briefing.ONLY_FOR
+    monkeypatch.setattr(config, "DAY_QUESTIONS", True)
+    (entry,) = briefing.task.entries()
+    assert [action.name for action in entry.actions] == ["briefing_show", "day_left", "day_past"] and actions.problems([entry]) == []
+    assert entry.only_for == briefing.ONLY_FOR_THE_DAY and "what's left today?" in entry.examples and not any(action.needs_card for action in entry.actions[1:])
+    monkeypatch.setattr(config, "BRIEFING_ENABLED", False)
+    assert briefing.task.entries() == []
+
+
+def test_what_s_left_and_how_yesterday_and_the_week_went_are_answered_from_pills_own_data(on, monkeypatch):
+    monkeypatch.setattr(config, "DAY_QUESTIONS", True)
+    add(on, PILL_A, {"name": "Any"})
+    request = Request(on.owner, INBOX, "asked")
+    assert run(briefing.left_today(request, {}, frozenset())).splitlines() == [
+        "☀️ **Left today** · ○○○○ 0/4", "💊 Any", "💊 Pill A (dose 1 of 3) `8:00 am`", "💊 Pill A (dose 2 of 3) `11:30 am`", "💊 Pill A (dose 3 of 3) `3:00 pm`",
+    ]
+    log(on, {"pill": "any", "did": "taken"})
+    assert run(briefing.left_today(request, {}, frozenset())).splitlines()[0] == "☀️ **Left today** · ●○○○ 1/4"
+    assert run(briefing.looking_back(request, {"period": "yesterday"}, frozenset())) == "☀️ Nothing was on yesterday."
+    first = on.day
+    tomorrow = first + timedelta(days=1)
+    clock.advance_to(day.at(tomorrow, time(6, 0, 30)))
+    run(scheduler.run_all_due())
+    said = run(briefing.looking_back(request, {"period": "yesterday"}, frozenset())).splitlines()
+    assert said == [f"☀️ **Yesterday** · {rules.short_date(first)} · ●○○○ 1/4", "💊 Yesterday: 1 of 4 taken · 3 missed"], "from the record of that day"
+    week = run(briefing.looking_back(request, {"period": "week"}, frozenset())).splitlines()
+    assert week[0].startswith("☀️ **This week** · ") and week[1].startswith("-# 💊 ") and week[-1] == f"`{tomorrow:%a} {tomorrow.day}` ○○○○ 0/4 · today"
+    if tomorrow.weekday() != 0:
+        assert f"`{first:%a} {first.day}` ●○○○ 1/4" in week and week[0].endswith("●○○○○○○○ 1/8") and week[1] == "-# 💊 1/8"
+
+
+def test_pills_tally_is_the_day_as_it_was_recorded_whatever_became_of_the_pill_since(world):
+    from tasks.pills import history, plain
+
+    add(world, {"name": "Any"}, {"name": "Other"})
+    log(world, {"pill": "any", "did": "taken"})
+    assert run(history.tally(world.owner.id, world.day)) == (1, 2)
+    run(plain.remove_save(world.request(), run(plain.remove_card(world.request(), {"pills": [{"pill": "other"}]}, frozenset())).data))
+    assert run(history.tally(world.owner.id, world.day - timedelta(days=30))) is None
+    assert run(pills_summary.summary(world.owner.id, world.day)).left == ()

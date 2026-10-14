@@ -393,7 +393,7 @@ def test_every_golden_conversation_in_the_fixture_file_has_a_test_here():
     ids = {entry["golden"] for entry in [*FIXTURES["router"], *FIXTURES["extraction"]]}
     tested = {name.split("_")[1] for name in globals() if name.startswith("test_") and name.split("_")[1][0].isdigit()}
     assert ids <= tested, f"no test for: {sorted(ids - tested)}"
-    assert {"1", "1a", "1b", "1c", "1d", "2", "2a", "2b", "3", "4", "5", "6", "7", "8", "9", "10", "10a", "11", "12", "13", "14", "15", "16", "17", "18", "18a", "18b", "19", "19a", "20"} == tested
+    assert {"1", "1a", "1b", "1c", "1d", "2", "2a", "2b", "3", "4", "5", "6", "7", "8", "9", "10", "10a", "11", "12", "13", "14", "15", "16", "17", "18", "18a", "18b", "19", "19a", "20", "21", "22", "23", "23a", "24", "25"} == tested
 
 
 # --- QA 2026-10-10: "already so" ends in the task's own line, whichever way it was found --------------------
@@ -1002,3 +1002,162 @@ def test_19_the_morning_after_only_today_s_logs_are_moved_unasked_and_the_card_a
     assert "-# dose 2 · not taken yesterday" in lines and buttons == ["Save", "Cancel"]
     assert press(bot).startswith(f"✏️ {MOVED} · yesterday")
     assert all(state == "pending" for state, _ in _doses(bot).values()), "today is as it was"
+
+
+# --- 21 to 25: questions about my day, answered from data and never guessed (asked 2026-10-14) ---------------
+@pytest.fixture
+def my_day(bot, monkeypatch, make_db, dev_clock):
+    """The bot with the briefing and the weather answering questions (DAY_QUESTIONS), a forecast kept at 9:00 am
+    from the recorded one, and the clock on a day of its own."""
+    from datetime import time
+
+    from core import config
+    from tasks import briefing, weather
+    from tasks.weather import store as weather_store
+
+    make_db({"weather": weather_store.MIGRATIONS})
+    for name, value in (("BRIEFING_ENABLED", True), ("WEATHER_ENABLED", True), ("DAY_QUESTIONS", True), ("DAY_PROGRESS", True)):
+        monkeypatch.setattr(config, name, value)
+    monkeypatch.setattr(config, "WEATHER_SOURCE", str(Path(__file__).parent / "fixtures" / "weather_drizzle.json"))
+    actions.set_catalogue([*demo.ENTRIES, *pills_task.entries(), *timers_task.entries(), *briefing.task.entries(), *weather.task.entries()])
+    dev_clock.advance_to(day.at(day.today() + timedelta(days=1), time(9, 0)))
+    assert run(weather.update(bot.owner.id)) == ""
+    return bot
+
+
+def _said(bot):
+    """What the bot said last: a task's answer is posted as a message of its own."""
+    return bot.sent[-1][1].text
+
+
+def _answered_by(bot, task):
+    """The message took one router request and one extraction for that task, and plain chat was never asked."""
+    assert [(asked.purpose, asked.task) for asked in bot.requests[-2:]] == [("router", ""), ("extraction", task)], [(asked.purpose, asked.task) for asked in bot.requests]
+    assert bot.chats == [], "plain chat cannot see my data: it was never asked"
+
+
+def test_21_what_s_left_today_is_answered_from_the_day_s_own_data(my_day):
+    bot = my_day
+    _with_zinc(bot)
+    run(checklist.post(bot.owner.id, 100))
+    cards_before = len(open_cards())
+    bot.claude(ROUTED["21"], EXTRACTED["21"])
+    ctx, _ = bot.say(SAID["21"])
+    assert _said(bot) == "☀️ **Left today** · ○ 0/1\n💊 Zinc", _said(bot)
+    _answered_by(bot, "briefing")
+    assert len(open_cards()) == cards_before, "a question is answered, not asked about on a card"
+
+
+def test_21_with_everything_done_it_says_nothing_is_left_and_no_number_is_made_up(my_day):
+    bot = my_day
+    bot.claude(ROUTED["21"], EXTRACTED["21"])
+    ctx, _ = bot.say(SAID["21"])
+    assert _said(bot) == "☀️ Nothing on today.", "no pills, nothing to count"
+    from tasks.pills import plain
+
+    _with_zinc(bot)
+    run(checklist.post(bot.owner.id, 100))
+    run(plain.log_doses(Request(bot.owner, 100, ""), {"doses": [{"pill": "zinc", "did": "taken"}]}, frozenset()))
+    bot.claude(ROUTED["21"], EXTRACTED["21"])
+    ctx, _ = bot.say(SAID["21"])
+    assert _said(bot) == "☀️ **Nothing left today** · ● 1/1"
+
+
+def test_22_what_s_on_today_is_the_briefing_itself(my_day):
+    bot = my_day
+    _with_zinc(bot)
+    run(checklist.post(bot.owner.id, 100))
+    bot.claude(ROUTED["22"], EXTRACTED["22"])
+    ctx, _ = bot.say(SAID["22"])
+    shown = bot.sent[-1][1].text.splitlines()
+    assert shown[0] == "## ☀️ Today ○ 0/1" and "-# 💊 0/1" in shown and "💊 **Pills** · 0 of 1 taken" in shown, shown
+    assert "🌤️ **Weather** · 14° to 20° · drizzle" in shown and ctx.replies == [], "the card, and not a word about it"
+    _answered_by(bot, "briefing")
+
+
+def _a_day_with_zinc_taken_then_the_next_morning(bot, dev_clock):
+    from datetime import time
+
+    from tasks.pills import plain
+
+    _with_zinc(bot)
+    run(checklist.post(bot.owner.id, 100))
+    run(plain.log_doses(Request(bot.owner, 100, ""), {"doses": [{"pill": "zinc", "did": "taken"}]}, frozenset()))
+    first = day.today()
+    dev_clock.advance_to(day.at(first + timedelta(days=1), time(9, 0)))
+    run(checklist.new_day(first, first + timedelta(days=1)))
+    return first
+
+
+def test_23_how_did_i_go_yesterday_is_the_record_of_that_day(my_day, dev_clock):
+    bot = my_day
+    first = _a_day_with_zinc_taken_then_the_next_morning(bot, dev_clock)
+    bot.claude(ROUTED["23"], EXTRACTED["23"])
+    ctx, _ = bot.say(SAID["23"])
+    assert _said(bot) == f"☀️ **Yesterday** · {first:%a} {first.day} {first:%b} · ● 1/1\n💊 Yesterday: 1 of 1 taken", _said(bot)
+    _answered_by(bot, "briefing")
+
+
+def test_23_with_nothing_recorded_yesterday_it_says_so(my_day):
+    bot = my_day
+    bot.claude(ROUTED["23"], EXTRACTED["23"])
+    ctx, _ = bot.say(SAID["23"])
+    assert _said(bot) == "☀️ Nothing was on yesterday."
+
+
+def test_23a_and_this_week_goes_to_the_task_that_just_answered_and_is_the_week_so_far(my_day, dev_clock):
+    bot = my_day
+    first = _a_day_with_zinc_taken_then_the_next_morning(bot, dev_clock)
+    today = day.today()
+    bot.claude(ROUTED["23"], EXTRACTED["23"])
+    bot.say(SAID["23"])
+    before = len(bot.requests)
+    bot.claude(EXTRACTED["23a"])  # one request, for the briefing: the router is not asked
+    ctx, _ = bot.say(SAID["23a"], straight_after=True)
+    assert [(asked.purpose, asked.task) for asked in bot.requests[before:]] == [("extraction", "briefing")]
+    said = _said(bot).splitlines()
+    assert said[0].startswith("☀️ **This week** · ") and said[-1] == f"`{today:%a} {today.day}` ○ 0/1 · today", said
+    if today.weekday() != 0:
+        assert said[0].endswith("●○ 1/2") and said[1] == "-# 💊 1/2" and f"`{first:%a} {first.day}` ● 1/1" in said
+    assert bot.chats == []
+
+
+def test_24_will_it_rain_is_answered_by_the_weather_task_from_the_forecast_it_keeps(my_day, monkeypatch):
+    from tasks.weather import source
+
+    async def never():
+        raise AssertionError("a question never asks the network")
+
+    bot = my_day
+    monkeypatch.setattr(source, "fetch", never)
+    bot.claude(ROUTED["24"], EXTRACTED["24"])
+    ctx, _ = bot.say(SAID["24"])
+    assert _said(bot) == "🌤️ 61% chance of rain for the rest of today, most likely between 1pm and 5pm.\n-# updated 9:00 am", _said(bot)
+    _answered_by(bot, "weather")
+
+
+def test_25_the_weather_this_afternoon_is_that_part_of_the_kept_forecast(my_day, dev_clock):
+    from datetime import time
+
+    bot = my_day
+    bot.claude(ROUTED["25"], EXTRACTED["25"])
+    ctx, _ = bot.say(SAID["25"])
+    assert _said(bot) == "🌤️ **This afternoon**\n61% chance of rain this afternoon, most likely between 1pm and 5pm.\n-# wind up to 15 km/h N today · updated 9:00 am", _said(bot)
+    _answered_by(bot, "weather")
+    dev_clock.advance_to(day.at(day.today(), time(19, 0)))
+    bot.claude(ROUTED["25"], EXTRACTED["25"])
+    ctx, _ = bot.say(SAID["25"])
+    assert _said(bot).splitlines()[0] == "🌤️ This afternoon is over.", "a part that is over says so"
+
+
+def test_25_with_no_forecast_kept_it_says_so_and_gives_no_number(my_day):
+    bot = my_day
+    conn = database.connect()
+    try:
+        conn.execute("DELETE FROM weather_forecasts")
+        conn.commit()
+    finally:
+        conn.close()
+    bot.claude(ROUTED["25"], EXTRACTED["25"])
+    ctx, _ = bot.say(SAID["25"])
+    assert _said(bot) == "🌤️ I have no forecast for today yet." and not any(character.isdigit() for character in _said(bot))
