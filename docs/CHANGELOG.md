@@ -6,6 +6,16 @@ backfilled from the git log.
 
 ## 2026-10-14
 
+- A change to a pill that is still only on the card, not saved yet
+  ("make 11:30, 11am instead"), changes the card. It used to answer
+  "There are no pills yet" when it was read as a change to a saved
+  pill.
+- The week's own messages to live were read back and every misread
+  one is now a golden conversation (2c, 18c and 26 are new; 18, 19
+  and 20 were there). The golden set, asked of the real API: 56 of 59
+  before, 57 of 59 after, the two left being old known misses that
+  the code puts right.
+
 - Ask about your day and get an answer from the data, never a guess:
   "what's left today?", "how did I go yesterday?", "and this week?".
   One message each, with the day's dots and count. Behind

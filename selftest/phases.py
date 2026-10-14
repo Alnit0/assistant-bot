@@ -227,6 +227,25 @@ async def p1(h: Harness) -> None:
         await h.press(shown.id, "Cancel", h.inbox)
         h.check("Testmag" not in await h.pills(), "Testmag was saved")
 
+    async with h.step("1.07c", "A change to a pill that is only on the open card, read as a change to a saved pill", "“add Testnew at 8am, 11:30am and 2pm, at least 3 hours apart”, not saved; then “make 11:30, 11am instead”, handed over as a change to a saved pill (as it was on live): the card is replaced with 8:00 am, 11:00 am and 2:00 pm, still a new pill with Save. Never a line saying there is no such pill. Cancel removes it", "the week's messages, 2026-10-11; golden 2c"):
+        # Always the recorded answers: the misreading itself is what is being tested
+        h._canned = None
+        was, h.claude = h.claude, False
+        try:
+            await h.say("add Testnew to my pills at 8am, 11:30am and 2pm, at least 3 hours apart", canned=add({"name": "Testnew", "per_day": 3, "times": ["8:00 am", "11:30 am", "2:00 pm"], "min_gap_minutes": 180}))
+            stored, first = await card(h)
+            h.check(first is not None and "Testnew" in first.text and "`11:30 am`" in first.text, f"the first card: {first.text[:200] if first else 'none'}")
+            await h.say("make 11:30, 11am instead", canned=("pill_edit", {"pills": [{"pill": "Testnew", "times": ["8:00 am", "11:00 am", "2:00 pm"]}], "guessed": [], "not_included": []}))
+        finally:
+            h.claude = was
+        stored, shown = await card(h)
+        h.check(shown is not None and "Pills · new" in shown.text and "`8:00 am`, `11:00 am`, `2:00 pm`" in shown.text and any("Save" in label for label in shown.labels), f"the card: {shown.text[:240] if shown else 'none'}; the newest lines: {[each.text[:80] for each in await h.recent(h.inbox, 2)]}")
+        h.check(shown is not None and first is not None and shown.id != first.id and await h.get(h.inbox, first.id) is None, "the first card is still there: the new one did not replace it")
+        h.check("Testnew" not in await h.pills(), "Testnew was saved before Save")
+        await h.press(shown.id, "Cancel", h.inbox)
+        h.check("Testnew" not in await h.pills(), "Testnew was saved")
+        h.saw(shown.text.splitlines()[1][:120] if shown else "no card")
+
     async with h.step("1.08", "Names: “add Testvit and Testvit forte”, “I took testvit”, “skip forte”", "The whole name wins: Testvit is taken, not Testvit forte. Part of a name finds the only fit: Testvit forte is skipped", "T22 (40.1, 40.2)"):
         await h.say("add Testvit and Testvit forte to my pills, once a day", canned=add({"name": "Testvit", "per_day": 1}, {"name": "Testvit forte", "per_day": 1}))
         stored, shown = await card(h)

@@ -367,6 +367,37 @@ number read from text; C19's name matching is in the core.
 | `dev mock` has its own records beside `core/design.py`'s | `tasks/dev/mock.py` | It shares the colours and spacing; sharing the records is a small job |
 | Timers: C8, C14, C17, C18 as before | table above | Timers are low priority and left alone |
 
+### Understanding check-up, 2026-10-14
+
+Every message of mine to live from 7 to 14 October, read back from
+the message log with its trace. About 30 were plain words since the
+router went in (10 October). By cause:
+
+| Cause | What was said (the pill as "Pill A") | What the bot did | Now |
+|---|---|---|---|
+| A change to something that is only on the open card was read as a change to a saved thing | "Make 11:30, 11am instead", with the new pill's card open | "⚠️ There are no pills yet." It took saving the card and two more messages | **Fixed 2026-10-14** in code (`Action.unsaved`) and in the prompt. Golden 2c |
+| "It" straight after a log was not taken as the pill just logged | "I took it at 9am", a minute after "Taken my pill A" | "⚠️ Which pill? Say its name." | Fixed 2026-10-12. Golden 18, 18a, 18b |
+| A time said straight after a log was read as another dose | "I took Pill A at 9am", after a log at 10:57 pm | "9:00 am is before the previous one"; it took "I didn't take Pill A" and saying it again | Fixed 2026-10-12. Golden 18c |
+| When a dose is due was added up past midnight | (the reply to the late log) | "still to take today: dose 2 `1:57 am`" | Fixed 2026-10-11: a due time never passes the day's limit |
+| A dose was closed as missed when its reminders ran out | "Took Pill A at 9:20", the first dose of the day | Logged as dose 2 | Fixed 2026-10-14. Golden 26 |
+| A correction of which dose was read as a new dose | "That was dose 1" | A second log, of dose 1 | Fixed 2026-10-14. Golden 19, 19a, 20 |
+| What I said contradicted itself and the bot chose | Three times with "3 hours apart", two of them 2½ hours apart | The third dose moved by half an hour, with a ⚠️ line | As the card rule has it. `docs/QUESTIONS.md`, 49 |
+| Two timers with one name | "give tea more time" | Both changed, with a guessed amount | Known, timers frozen. Question 50 |
+| An amount I said was marked as a guess | "Give it 2 more" | 2 minutes added, "❓ I guessed how much time to add" | Known, timers frozen. Question 50 |
+| The task that had just answered was tried first | "end all timers", "clear channel", each minutes after the other task answered | Right in the end, at the cost of one more request | As built: for five minutes a message goes to the task that just answered |
+
+Nothing got "I didn't understand that" in the week. Before the
+router (7 to 10 October) about a hundred messages went through the
+old way of asking Claude: it asked for a reply to a message where
+words would do, could not see a timer's time left, said "Done" with
+nothing done, and asked which of two things was meant. That path was
+removed on the 10th; those sentences are timers', and timers are
+frozen.
+
+The golden set asked of the real API: 56 of 59 right before the fix,
+57 of 59 after; the two that remain are old known misses (a name
+handed over where "it" was said), which the code puts right.
+
 ### Left for later
 
 - **Tests in parallel** (tried 2026-10-13): with pytest-xdist one full

@@ -1298,6 +1298,18 @@ A short log of key decisions and why. Newest at the bottom.
   can be wrong for a day that has passed; the tally reads the
   record alone. So yesterday and the week never show a number the
   record does not hold, and a task whose tally fails is left out.
+- **A change to what is only on an open card (2026-10-14).** Found in
+  the week's messages: with a card for a new pill open and not
+  saved, "make 11:30, 11am instead" came back from Claude as a
+  change to a saved pill, and the task rightly had none. The reading
+  is not wrong enough to forbid, so the code takes it: an action
+  that changes a thing may name the action that sets one up and say
+  how its data reads as that action's (`Action.unsaved`). When
+  everything the message names is on the open card and not saved,
+  the core hands it on as a correction of the card. The task
+  decides (by name, exactly, or "it" with one thing on the card);
+  the core guesses nothing. The pills prompt also says so now, and
+  the real API gave the right action after that.
 - **Weather takes plain words (2026-10-14).** It was kept out of the
   router on purpose the night before, so that no prompt changed.
   Asked for now: one action, no card, answered by a template from

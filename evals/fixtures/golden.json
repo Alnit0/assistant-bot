@@ -356,7 +356,7 @@
           "pills"
         ],
         "confidence": "high",
-        "reports_doing": false,
+        "reports_doing": true,
         "chat_part": ""
       }
     },
@@ -485,6 +485,23 @@
         "reports_doing": false,
         "chat_part": ""
       }
+    },
+    {
+      "golden": "26",
+      "message": "Took Pill A at 9:20",
+      "tasks": [
+        "pills"
+      ],
+      "note": "live, 2026-10-14: the first dose of the day, said after its reminders had run out",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "chat_part": ""
+      }
     }
   ],
   "extraction": [
@@ -512,7 +529,7 @@
         {
           "pills": [
             {
-              "name": "vitamin D",
+              "name": "Vitamin D",
               "dose": "1 tablet",
               "per_day": 1,
               "times": [
@@ -585,7 +602,7 @@
         {
           "pills": [
             {
-              "name": "vitamin D",
+              "name": "Vitamin D",
               "per_day": 1
             }
           ],
@@ -789,7 +806,7 @@
       "recorded": [
         "timer_change",
         {
-          "which": "@that",
+          "which": "t1",
           "action": "extend",
           "duration": "2m",
           "guessed": [
@@ -1384,6 +1401,100 @@
           "when": "afternoon",
           "rain": false,
           "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "2c",
+      "task": "pills",
+      "message": "Make 11:30, 11am instead",
+      "state": "The user's pills now (use the id, or the name): none yet",
+      "action": "pill_add",
+      "data": {
+        "pills": [
+          {
+            "times": [
+              "8:00 am",
+              "11:00 am",
+              "2:30 pm"
+            ]
+          }
+        ]
+      },
+      "card": {
+        "action": "pill_add",
+        "data": {
+          "pills": [
+            {
+              "name": "Pill A",
+              "notes": "with no food within 30 minutes",
+              "times": [
+                "8:00 am",
+                "11:30 am",
+                "2:30 pm"
+              ],
+              "per_day": 3,
+              "min_gap_minutes": 180
+            }
+          ],
+          "_last": "Pill A"
+        },
+        "guessed": [],
+        "said": "add pill A, 3 times a day, 8am, 11:30am, 2pm, 3 hours apart and with no food within 30 minutes"
+      },
+      "note": "live, 2026-10-11 (the pill's name replaced): a change to a pill that is only on the open card, not saved yet. It came back as pill_edit and the bot said there were no pills. pill_edit is as right now: the code takes it as a change to the card (Action.unsaved)",
+      "recorded": [
+        "pill_add",
+        {
+          "pills": [
+            {
+              "name": "Pill A",
+              "times": [
+                "8:00 am",
+                "11:00 am",
+                "2:30 pm"
+              ],
+              "per_day": 3,
+              "min_gap_minutes": 180,
+              "notes": "with no food within 30 minutes"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ],
+      "also_ok": {
+        "action": "pill_edit"
+      }
+    },
+    {
+      "golden": "26",
+      "task": "pills",
+      "message": "Took Pill A at 9:20",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:00 am, 2:00 pm · at least 3h apart · *with no food within 30 minutes* [active]",
+      "action": "pill_log",
+      "data": {
+        "doses": [
+          {
+            "did": "taken"
+          }
+        ]
+      },
+      "note": "live, 2026-10-14 (the pill's name replaced): no dose number is said, so none is given: the code knows which dose is next",
+      "recorded": [
+        "pill_log",
+        {
+          "doses": [
+            {
+              "pill": "pl1",
+              "did": "taken",
+              "at": "9:20"
+            }
+          ],
+          "guessed": [
+            "at"
+          ],
           "not_included": []
         }
       ]

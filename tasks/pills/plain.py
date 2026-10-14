@@ -257,6 +257,31 @@ def _known(existing: list[Pill], name: str) -> Pill | None:
     return repeats.find(IDENTITY, {"name": name}, rules.listed(existing), lambda pill: {"name": pill.plan.name})
 
 
+async def edit_on_card(request: Request, data: dict, on_card: dict) -> dict | None:
+    """A change read as one to a saved pill, when the pill it names is only on
+    the open "new" card: the same change as that card's own action takes it
+    (the pill by its name on the card). None when any pill it names is saved,
+    is not on the card, or the change is one only a saved pill can take (a
+    new name, a setting taken away)."""
+    on = [str(item.get("name", "")) for item in (on_card or {}).get("pills", []) if isinstance(item, dict) and item.get("name")]
+    saved = await store.pills(request.user.id)
+    changed = []
+    for item in data.get("pills", []):
+        which = str(item.get("pill", "")).strip()
+        if item.get("name") or item.get("clear"):
+            return None
+        if is_reference(which):
+            fits = on if len(on) == 1 else []
+        else:
+            if _known(saved, which) is not None or any(which.lower() == f"pl{pill.id}" for pill in rules.listed(saved)):
+                return None
+            fits = [name for name in on if name.strip().lower() == which.lower()]
+        if len(fits) != 1:
+            return None
+        changed.append({**{part: value for part, value in item.items() if part != "pill"}, "name": fits[0]})
+    return {**data, "pills": changed} if changed else None
+
+
 def _change(item: dict) -> rules.Request:
     """What an item says about a pill that is already there: everything but its name."""
     return as_request({part: value for part, value in item.items() if part not in ("name", "pill")})
@@ -1801,7 +1826,9 @@ ACTIONS = (
         "time or its dates. Give only what changes. To take a setting away, name it in `clear` and give no "
         "value for it. Examples: \"move the evening pill to 9pm\" -> pill Evening pill, times [9:00 pm]. "
         "\"vitamin D is 2 tablets now\" -> dose 2 tablets. \"iron no longer needs a time\" -> pill iron, "
-        "clear [times].",
+        "clear [times]. Only for a pill that is in the state. A pill that is only on the open card and not saved "
+        "yet is changed with pill_add, as a follow-up (\"make 11:30 11am instead\" -> pill_add, the pill by the "
+        "name on the card, with every time it then has).",
         _one_or_more("to change", _WHICH, Field("name", "A new name for it, if it is being renamed."), *_PLAN_FIELDS, _CLEAR, _OFF_THE_CARD),
         prepare=edit_card,
         purpose=SET_UP,
@@ -1811,6 +1838,8 @@ ACTIONS = (
         # No card when nothing would change: the same line as adding what is already there
         card_if=edit_asks,
         run=edit_already,
+        # A pill that is only on the open "new" card is changed there
+        unsaved=("pill_add", edit_on_card),
     ),
     Action(
         "pill_pause",

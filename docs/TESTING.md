@@ -43,10 +43,10 @@ Last updated: 2026-10-14
 | P | Bugs | 38 | 18 | 20 | 17 | 21 | 0 | 0 |
 | Q | Time, days, the schedule model, the occurrence log and cards | 29 | 27 | 2 | 2 | 27 | 0 | 0 |
 | R | Pills | 89 | 35 | 54 | 46 | 43 | 0 | 0 |
-| S | Routing and confirm cards | 80 | 27 | 53 | 18 | 61 | 0 | 1 |
+| S | Routing and confirm cards | 83 | 29 | 54 | 19 | 63 | 0 | 1 |
 | T | Tasks in plain words | 35 | 13 | 22 | 7 | 28 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **566** | **236** | **330** | **260** | **305** | **0** | **1** |
+| | **Total** | **569** | **238** | **331** | **261** | **307** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -681,6 +681,9 @@ the dev database (`python main.py --dev`), in #inbox.
 | S78 | 🤖 Auto | A system problem files its own bug | The scheduler tells of a run that did not work and not of one that did; its kind of job gets a bug known by its words, and the item points at it; the bugs task files one bug a kind, a repeat is a note (not Claude Code's “fix ready”), another kind is another bug, one I closed is followed by a new one, and with no forum it is on record all the same; filing never stops what it is filed for | ✅ Pass | 2026-10-13 | `tests/test_attention.py` |
 | S79 | 🤖 Auto | The bot's memory use | It is a problem over the limit or when each quarter of a day of hourly readings is higher than the one before by 15 MB or more; the hour's reading is logged; a problem files a bug once a day, shows on live as a level 1 item pointing at it, and never on the dev bot; `dev status` shows now, the peak and the day's change | ✅ Pass | 2026-10-13 | `tests/test_attention.py` |
 | S80 | 🤖 Auto | A job that works again says so on its bug | The scheduler tells of a run that worked; a kind of job that had not been working gets one “Worked again” note on its open bug when it next works, also after a restart, and one that was working all along costs nothing; failing again and working again are each said; the bug is never closed by the bot; a day finished with a skip reads “4/5 · 1 skipped” until the evening | ✅ Pass | 2026-10-13 | `tests/test_attention.py` |
+| S81 | 🤖 Auto | A change to a thing that is only on the open card | Golden 2c: with a new pill on a card not saved yet, a change to it replaces the card, whether Claude reads it as the card's own action (as it does now) or as a change to a saved pill (as it did on live), and "it" is the pill on the card when there is only one; nothing is guessed: a pill that is saved, one that is not on the card, a new name or a setting taken away stay a change to a saved pill; never "there are no pills yet" | ✅ Pass | 2026-10-14 | `tests/test_golden.py` |
+| S82 | 👤 Manual | A change to a pill that is only on the card, in Discord | QA-RUN block 60 | ⬜ Untested | |  |
+| S83 | 🤖 Auto | Golden 18c and 26: the week's other misreads | A time said with the pill named straight after a late log corrects that dose and adds none; the first dose reported after its reminders ran out is dose 1, with what is left said | ✅ Pass | 2026-10-14 | `tests/test_golden.py` |
 
 ## T. Tasks in plain words
 

@@ -239,6 +239,14 @@ about US$0.005 in all, and a follow-up ("and this week?") about
 US$0.002. Measured when the fixtures were recorded: 33 requests,
 US$0.099, 33 of 33 right.
 
+**2026-10-14, the understanding check-up.** The golden set is 59
+requests now (US$0.19 a run). `python -m evals.live --part 1/2` runs
+half of a file's fixtures (then `2/2`), so one run stays small: each
+half cost US$0.08 to US$0.10. Before and after, with the pills
+fixtures once (62 requests, US$0.13), came to US$0.50. One sentence
+was added to `pill_edit`'s description (about 45 tokens in the
+cached part of pills extraction).
+
 ## 7. Questions (also in `docs/STATUS.md`)
 
 1. Answered 2026-10-13: the router is not skipped; of the shortcuts,

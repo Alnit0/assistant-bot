@@ -572,9 +572,23 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
                 return None
             return open_card
 
+        async def on_the_unsaved(found: Extracted) -> Extracted:
+            """A change to a saved thing (pill_edit) that names only what is on the open
+            card and not saved yet is a change to that card: the task says so, and
+            gives the data as the card's own action takes it (`Action.unsaved`)."""
+            if not found.fitted or found.action.unsaved is None or found.action.name == open_card.action or found.action.unsaved[0] != open_card.action:
+                return found
+            setting_up = found.entry.action(open_card.action)
+            data = await found.action.unsaved[1](request, found.data, on_card.data) if setting_up is not None else None
+            if data is None:
+                return found
+            trace.note(f"unsaved check: {found.action.name} names only what is on the open card, not saved yet: taken as {setting_up.name}, a change to the card")
+            return replace(found, action=setting_up, data=data)
+
         async def act_on_card(found: Extracted) -> None:
             """Act on what a message about the open card came to: a correction is
             built on the card as it stood (before the mistake, if one is being undone)."""
+            found = await on_the_unsaved(found)
             card = corrects(found)
             if card is None:
                 await act(request, found, turn)

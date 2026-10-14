@@ -39,6 +39,19 @@ added here, nowhere else.
     is a line of its own under it (not in the title). → Yes: it
     settles 45 as R3-B if you pick the scale.
 
+## From the week's messages (2026-10-14)
+
+49. When what you say contradicts itself (three times given, "3 hours
+    apart", and two of them 2½ hours apart), the card moves the later
+    time and says so with ⚠️. The standard also says to ask when
+    what you said contradicts itself. Keep the fix with a warning,
+    or ask on the card which you meant? → Keep: it is one tap to
+    accept and one line to correct.
+50. Timers: "give tea more time" with two timers called tea changed
+    both, and "give it 2 more" is marked as a guess though you said
+    2. Both are known, and timers are frozen. → Leave until timers
+    are kept or scrapped.
+
 ## Reminders and what reaches you
 
 1. Something that goes wrong between 10:00 pm and 7:00 am posts

@@ -347,6 +347,13 @@ class Action:
     # at once, cancelling several asks first): `async (request, data) -> bool`.
     # Such an action has all three of `prepare`, `apply` and `run`
     card_if: CardIf | None = None
+    # For an action that changes a thing already there (pill_edit): the name of the action that
+    # sets such a thing up (pill_add), and `async (request, data, on_card) -> dict | None`, which
+    # gives this message's data as data for THAT action when everything it names is still only
+    # on an open card of it and not saved yet (None when it is about saved things after all).
+    # "Make the second one 11am", said about a card not saved yet and read as a change to a
+    # saved thing, then changes the card, where it would fail for want of anything saved
+    unsaved: "tuple[str, Callable[[Request, dict, dict], Awaitable[dict | None]]] | None" = None
     # For people, never sent to Claude: which group of #commands this goes in (one of
     # PURPOSES) and what one might type for it. Names in `say` are placeholders
     # ("Pill A"), never a real one of the user's. An action with no `say` is not listed

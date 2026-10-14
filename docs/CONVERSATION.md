@@ -190,6 +190,7 @@ Write them the way I'd really say them.
 | 2 | …then "actually make it 8am" | The card is replaced with 8:00 am |
 | 2a | Card asks 8am or 8pm; I tap 8:00 pm, then say "no, I meant 9pm" | Old card deleted; new card with 9:00 pm |
 | 2b | Pill saved at 8:00 pm; straight after, "no, I meant 9pm" | Change card: 8:00 pm → 9:00 pm, with Save |
+| 2c | A card for a new pill at 8am, 11:30am and 2pm is open, not saved; "Make 11:30, 11am instead" | The card is replaced with 8:00 am, 11:00 am, 2:00 pm. A pill that is only on the card is changed there: never "there are no pills yet" |
 | 3 | "set a tea timer for 5" | Timer starts; no card |
 | 4 | …then "give it 2 more" | Tea timer gets 2 more minutes |
 | 5 | "what's the capital of France?" | Plain answer, no card |
@@ -209,9 +210,11 @@ Write them the way I'd really say them.
 | 18 | "Taken my pill A", then straight after "I took it at 9pm" | The dose just logged is corrected, old → new ("taken 11:49 pm → 9:00 pm"). It goes to pills, the task that just answered; never an answer from chat, and never "got it" |
 | 18a | …or "I had it at 9pm" | The same correction |
 | 18b | …or "it was 9pm actually" | The same correction |
+| 18c | "Taken my pill A" late at night (asked first, Log it), then "I took Pill A at 9am" | The dose just logged is corrected, old → new. Naming the pill makes it no less a correction: never a second dose, and never "9:00 am is before the previous one" |
 | 19 | A dose was logged as dose 2 of pill A at 9:20 am; straight after, "That was dose 1" | A change card: "Pill A · dose 2 → dose 1 · taken 9:20 am", and what becomes of dose 2. Save moves the log, with its time. Never a second log, and never "Log it as taken now?". Checked against what was logged, with no card open |
 | 19a | …or "no, that was my first dose" | The same correction |
 | 20 | "Took Pill A at 9:20", then minutes later "took pill A" | The card that asks first says so in so many words: "You already logged dose 1 at 9:20 am. … Add another dose?" Nothing is added by asking |
+| 26 | Pill A is due at 8am, 11am and 2pm; its 8am reminders have run out; at 9:23, "Took Pill A at 9:20" | Dose 1 is taken at 9:20 am, and the line says what is left. Reminders running out never makes a dose missed, so the first dose I report is dose 1 |
 | 21 | "what's left today?" | One reply from the day's own data, in words from a template: the day's dots and count, then each thing still to do ("☀️ **Left today** · ●○○ 1/3", a line a dose). Never from chat, and never a number that is not in the data |
 | 22 | "what's on today?" | The briefing itself, there. No words about it |
 | 23 | "how did I go yesterday?" | Yesterday from the record: its dots and count, and each task's own line ("💊 Yesterday: 2 of 3 taken · 1 missed"). With nothing recorded it says so |

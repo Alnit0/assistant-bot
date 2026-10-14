@@ -102,6 +102,7 @@ well. Say what jars when you meet it.
 | 56 | Weather in the briefing | Yours: on the short list | The self-test draws the section from a recorded forecast (5.01c), and live's run log for 2026-10-14 has the 5:50 am fetch and the 8:50 and 11:50 am refreshes. Rows 1 and 2 are the short list's 1. Row 4 (a fetch that fails) is by hand. |
 | 57 | One dose is one log | Covered by the self-test | The self-test's 1.17, 1.17b, 2.09 and 2.09b; steps 2, 5 and 7 are golden conversations 19, 19a and 20, offline. The lock screen for the last chance is the short list's 7. |
 | 58 | The day's progress in the briefing | Yours: on the short list | The self-test's 5.04b checks the dots and count in the title and the small line against the checklist's own count, and that they moved in place. How it reads on the phone, and whether the title wraps, is the short list's 1. |
+| 60 | A change to a pill that is only on the card | Covered by the self-test | The self-test's 1.07c, with the misreading as it came back on live; golden 2c offline, as the real API reads it now. |
 | 59 | Questions about my day, and the weather | Covered by the self-test | The self-test's 5.03c to 5.03f (what is left, yesterday, will it rain, this afternoon), with recorded answers; golden conversations 21 to 25 offline, recorded from the real API. How the answers read is the short list's 10. |
 
 ## Before you start
@@ -1254,6 +1255,18 @@ cents).
 | 4 | Say `will it rain?` | One line from the forecast: the highest chance of rain in the hours still to come and roughly when ("61% chance of rain for the rest of today, most likely between 1pm and 5pm."), and "updated …" small | T39 |
 | 5 | Say `what's the weather this afternoon?` | "🌤️ **This afternoon** · 16° to 19°" (the temperature only once a forecast has been fetched since the restart), the chance of rain then, and the day's wind small | T39 |
 | 6 | Straight after logging a pill, say `what's left today?` | Today's checklist is shown, as before: for five minutes a short message goes to the pills task first | T39 |
+
+## 60. A change to a pill that is only on the card (covered by the self-test)
+
+**State, 2026-10-14:** The self-test's 1.07c, with the misreading as it
+came back on live; golden 2c offline, as the real API reads it now.
+
+On the dev bot, or on live with a pill you will not save.
+
+| # | Do | Expect | Tests |
+|---|---|---|---|
+| 1 | Say `add Testnew to my pills at 8am, 11:30am and 2pm, at least 3 hours apart`. Press nothing | A card "💊 Pills · new" with 8:00 am, 11:30 am and 2:30 pm, and a ⚠️ line saying the third dose was moved | S82 |
+| 2 | Say `make 11:30, 11am instead`. Then press **Cancel** | The card is replaced: 8:00 am, 11:00 am, and the third dose where the card had it. Never "There are no pills yet" or "I can't find" | S82 |
 
 ## When you finish
 

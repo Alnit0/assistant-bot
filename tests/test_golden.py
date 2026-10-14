@@ -393,7 +393,7 @@ def test_every_golden_conversation_in_the_fixture_file_has_a_test_here():
     ids = {entry["golden"] for entry in [*FIXTURES["router"], *FIXTURES["extraction"]]}
     tested = {name.split("_")[1] for name in globals() if name.startswith("test_") and name.split("_")[1][0].isdigit()}
     assert ids <= tested, f"no test for: {sorted(ids - tested)}"
-    assert {"1", "1a", "1b", "1c", "1d", "2", "2a", "2b", "3", "4", "5", "6", "7", "8", "9", "10", "10a", "11", "12", "13", "14", "15", "16", "17", "18", "18a", "18b", "19", "19a", "20", "21", "22", "23", "23a", "24", "25"} == tested
+    assert {"1", "1a", "1b", "1c", "1d", "2", "2a", "2b", "3", "4", "5", "6", "7", "8", "9", "10", "10a", "11", "12", "13", "14", "15", "16", "17", "18", "18a", "18b", "19", "19a", "20", "21", "22", "23", "23a", "24", "25", "2c", "18c", "26"} == tested
 
 
 # --- QA 2026-10-10: "already so" ends in the task's own line, whichever way it was found --------------------
@@ -1161,3 +1161,98 @@ def test_25_with_no_forecast_kept_it_says_so_and_gives_no_number(my_day):
     bot.claude(ROUTED["25"], EXTRACTED["25"])
     ctx, _ = bot.say(SAID["25"])
     assert _said(bot) == "🌤️ I have no forecast for today yet." and not any(character.isdigit() for character in _said(bot))
+
+
+# --- the week of 2026-10-07 to 14, read back from live's own log: the misreads that had no golden conversation --
+# As Claude really answered on 2026-10-11 (the pill's name replaced): the new pill, then the change to it read
+# as a change to a saved pill, to which the bot said "There are no pills yet."
+ADDED_THAT_NIGHT = ("pill_add", {"pills": [{"name": "Pill A", "notes": "with no food within 30 minutes", "times": ["8:00 am", "11:30 am", "2:00 pm"], "per_day": 3, "min_gap_minutes": 180}], "guessed": [], "not_included": []})
+READ_AS_AN_EDIT = ("pill_edit", {"pills": [{"pill": "Pill A", "times": ["8:00 am", "11:00 am", "2:00 pm"]}], "guessed": [], "not_included": []})
+SAID_THAT_NIGHT = "add pill A, 3 times a day, 8am, 11:30am, 2pm, 3 hours apart and with no food within 30 minutes"
+
+
+def _a_new_pill_on_an_open_card(bot):
+    saved = len(pills(bot))
+    bot.claude(route("pills"), ADDED_THAT_NIGHT)
+    bot.say(SAID_THAT_NIGHT)
+    lines, buttons = card(bot)
+    assert lines[1] == "**Pill A** · 3× daily · `8:00 am`, `11:30 am`, `2:30 pm`" and buttons == ["Save", "Cancel"] and len(pills(bot)) == saved, "nothing is saved before Save"
+    assert "⚠️ 11:30 am to 2:00 pm is under 3h: the third dose moves to 2:30 pm" in lines
+
+
+def _the_card_now_has_11_am(bot, third="2:30 pm"):
+    lines, buttons = card(bot)
+    assert lines[0] == "💊 Pills · new" and lines[1] == f"**Pill A** · 3× daily · `8:00 am`, `11:00 am`, `{third}`", lines
+    assert "At least 3h apart · *with no food within 30 minutes*" in lines and not any("⚠️" in line for line in lines), "everything else on the card is kept, and the times now fit"
+    assert buttons == ["Save", "Cancel"] and [each.status for each in open_cards()] == ["replaced", "open"], "one card is open: the old one was replaced"
+    assert not any("no pills yet" in shown.text for _, shown in bot.sent)
+    assert press(bot).startswith(f"✅ Saved · 💊 **Pill A** · 3× daily · `8:00 am`, `11:00 am`, `{third}`")
+    assert [pill.plan.name for pill in pills(bot)] == ["Pill A"]
+
+
+def test_2c_a_change_to_a_pill_that_is_only_on_the_open_card_changes_the_card(bot):
+    _a_new_pill_on_an_open_card(bot)
+    bot.claude(EXTRACTED["2c"])  # a follow-up to the card: one request, and no router
+    bot.say(SAID["2c"])
+    _the_card_now_has_11_am(bot)  # only the time I named moves: the third dose stays where the card had it
+
+
+def test_2c_read_as_a_change_to_a_saved_pill_as_it_was_that_night_it_still_changes_the_card(bot):
+    _a_new_pill_on_an_open_card(bot)
+    bot.claude(READ_AS_AN_EDIT)
+    bot.say(SAID["2c"])
+    _the_card_now_has_11_am(bot, third="2:00 pm")  # that night it gave all three times as first said
+
+
+def test_2c_it_as_the_pill_on_the_card_is_that_pill_when_there_is_only_one(bot):
+    _a_new_pill_on_an_open_card(bot)
+    bot.claude(("pill_edit", {"pills": [{"pill": "@that", "times": ["8:00 am", "11:00 am", "2:00 pm"]}], "guessed": [], "not_included": []}))
+    bot.say("make its second dose 11am")
+    _the_card_now_has_11_am(bot, third="2:00 pm")
+
+
+def test_a_change_to_a_pill_that_is_saved_stays_a_change_to_it_though_a_new_card_is_open(bot):
+    from tasks.pills import plain
+
+    bot.claude(route("pills"), ("pill_add", {"pills": [{"name": "Zinc"}], "guessed": [], "not_included": []}))
+    bot.say("add zinc to my pills")
+    press(bot)
+    _a_new_pill_on_an_open_card(bot)
+    request = Request(bot.owner, 100, "")
+    on_card = ADDED_THAT_NIGHT[1]
+    assert run(plain.edit_on_card(request, {"pills": [{"pill": "zinc", "times": ["9:00 pm"]}]}, on_card)) is None, "a saved pill: an edit as ever"
+    assert run(plain.edit_on_card(request, {"pills": [{"pill": "pl1", "times": ["9:00 pm"]}]}, on_card)) is None, "by its id too"
+    assert run(plain.edit_on_card(request, {"pills": [{"pill": "Iron", "times": ["9:00 pm"]}]}, on_card)) is None, "not on the card: nothing is guessed"
+    assert run(plain.edit_on_card(request, {"pills": [{"pill": "Pill A", "name": "Pill B"}]}, on_card)) is None, "a new name is a change only a saved pill takes"
+    assert run(plain.edit_on_card(request, {"pills": [{"pill": "pill a", "dose": "2 tablets"}]}, on_card)) == {"pills": [{"dose": "2 tablets", "name": "Pill A"}]}
+    bot.claude(("pill_edit", {"pills": [{"pill": "zinc", "times": ["9:00 pm"]}], "guessed": [], "not_included": []}))
+    bot.say("move zinc to 9pm")
+    lines, _ = card(bot)
+    assert lines[0] == "💊 Pills · change" and "**Zinc**" in lines[1], lines
+
+
+def test_18c_a_time_with_the_pill_named_straight_after_a_late_log_corrects_it_and_adds_no_dose(bot, dev_clock):
+    # Live, 2026-10-11: "I took <the pill> at 9am" a minute after a late log came back as
+    # "9:00 am is before the previous one, at 10:57 pm": read as a second dose, not as a correction
+    test_a_late_log_is_asked_about_then_a_time_said_straight_after_corrects_it.__wrapped__(bot, dev_clock, "I took Pill A at 9am") if hasattr(
+        test_a_late_log_is_asked_about_then_a_time_said_straight_after_corrects_it, "__wrapped__"
+    ) else test_a_late_log_is_asked_about_then_a_time_said_straight_after_corrects_it(bot, dev_clock, "I took Pill A at 9am")
+    (dose, *_rest) = [each for each in run(checklist.view(bot.owner.id))[1] if each.occurrence.state == "done"]
+    assert not _rest and dose.number == 1, "one dose taken, dose 1: nothing was added"
+
+
+def test_26_the_first_dose_reported_after_its_reminders_ran_out_is_dose_1(bot, dev_clock):
+    # Live, 2026-10-14: dose 1 (due 8:00 am) had been closed as missed when its reminders ran out at 9:00 am,
+    # so "Took <the pill> at 9:20" was logged as dose 2
+    from datetime import time
+
+    dev_clock.advance_to(day.at(day.today() + timedelta(days=1), time(7, 0)))
+    bot.claude(route("pills"), ("pill_add", {"pills": [{"name": "Pill A", "times": ["8:00 am", "11:00 am", "2:00 pm"], "per_day": 3, "min_gap_minutes": 180}], "guessed": [], "not_included": []}))
+    bot.say("add pill A to my pills at 8am, 11am and 2pm, at least 3 hours apart")
+    press(bot)
+    dev_clock.advance_to(day.at(day.today(), time(9, 23)))
+    bot.claude(ROUTED["26"], EXTRACTED["26"])
+    bot.say(SAID["26"])
+    assert bot.sent[-1][1].text == "✅ **Pill A** (dose 1 of 3) · taken 9:20 am · still to take today: Pill A (dose 2 of 3) `12:20 pm`, Pill A (dose 3 of 3) `3:20 pm`", bot.sent[-1][1].text
+    states = sorted((each.number, each.occurrence.state) for each in run(checklist.view(bot.owner.id))[1])
+    assert states == [(1, "done"), (2, "pending"), (3, "pending")], "one log, of dose 1"

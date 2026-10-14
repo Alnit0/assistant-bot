@@ -95,6 +95,34 @@ while it was being built**
     week?"), recorded from the real API: 33 requests, 33 right,
     NZ$0.18.
 
+**Item 3, the understanding check-up** (what was found is in
+`docs/BACKLOG.md`, "Understanding check-up, 2026-10-14")
+
+19. **"My messages to live from the past week" was read as the message
+    log of live's database, 7 to 14 October**: 484 rows, of which
+    about 30 are plain words since the router went in on the 10th.
+    The hundred before that went through the old way of asking
+    Claude, which is gone: they were read, and are summed up, not
+    replayed.
+20. **One misread was still open, and is fixed in code and in the
+    prompt**: a change to a pill that is only on the card. The others
+    had been fixed since they happened; each now has a golden
+    conversation (2c, 18c and 26 are new).
+21. **No golden conversation for the two timer misreads**: timers are
+    frozen and may be scrapped, and a golden conversation that must
+    fail would stand in the list for nothing. Question 50.
+22. **A contradiction in what you said is still put right with a ⚠️
+    line, not asked about.** The standard can be read either way:
+    question 49.
+23. **In the fixtures and tests the pill is "Pill A"**: what the real
+    API returned is kept as it was but for the name.
+24. **`python -m evals.live --part 1/2`** is new: half of a fixture
+    file a run, so no run came near NZ$0.40 (the dearest was
+    NZ$0.23).
+25. **One pills fixture now accepts either of two actions** ("add
+    iron…" when iron is there): its own note already said both end
+    in the same card. With that the pills fixtures are 62 of 62.
+
 ## Where things stand
 
 - **Branch `feature/pills`**: everything is committed and pushed;
@@ -135,7 +163,7 @@ while it was being built**
 2. **The design picks**, questions 12 to 15, 21, 22 and 45 to 48 of
    `docs/QUESTIONS.md`, with rounds 2 and 3 in the design-options post:
    they are what the new look in the hub waits for.
-3. **The other questions**: `docs/QUESTIONS.md` has 43, each with a
+3. **The other questions**: `docs/QUESTIONS.md` has 45, each with a
    suggested answer ("yes to all suggestions except 4 and 7").
 4. **Gym and the calendar** wait on their answers there (23 to 28, 29
    to 32).

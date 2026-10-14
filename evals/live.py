@@ -5,6 +5,7 @@ how long it takes and what it costs.
     python -m evals.live --live --record     ...and keep what came back, for the ordinary tests
     python -m evals.live --live --strict     ...sending the schemas as strict, to compare the time
     python -m evals.live --live --only pills  one fixture file
+    python -m evals.live --live --only golden --part 1/2   half of it (then 2/2), to keep a run small
     python -m evals.live                     say what it would run, and roughly what it would cost
 
 It spends real money (a few cents), so nothing is sent without --live. It
@@ -24,6 +25,7 @@ ARGS.add_argument("--record", action="store_true", help="save what Claude return
 ARGS.add_argument("--strict", action="store_true", help="send action schemas as strict")
 ARGS.add_argument("--only", default="", help="run one fixture file, by its name without .json")
 ARGS.add_argument("--dev", action="store_true", help="include the demo lists of tests/demo.py")
+ARGS.add_argument("--part", default="", help="one part of what would run, e.g. 1/2 then 2/2: to keep one run under a spend limit")
 
 # Roughly what one request costs with the current model: for the estimate before running
 ROUGH_COST_PER_REQUEST = 0.0015
@@ -53,6 +55,13 @@ def main() -> int:
     skipped += [fixture.name for fixture in extractions if fixture.task not in known]
     routers = [fixture for fixture in routers if not set(fixture.tasks) - known]
     extractions = [fixture for fixture in extractions if fixture.task in known]
+
+    if options.part:
+        # Every other fixture (or every third…), in the files' own order: the parts together are the whole
+        which, of = (int(number) for number in options.part.split("/"))
+        if not 1 <= which <= of:
+            raise SystemExit(f"--part {options.part}: the part must be from 1 to {of}")
+        routers, extractions = routers[which - 1 :: of], extractions[which - 1 :: of]
 
     requests = len(routers) + len(extractions)
     print(f"Tasks in the catalogue: {', '.join(sorted(known)) or 'none'}")

@@ -393,7 +393,7 @@
           }
         ]
       },
-      "note": "QA 2026-10-10: the pill is already there with other settings. A change to it, never `none`: pill_edit (what came back) and pill_add both end in the same change card, old → new, made by the code",
+      "note": "QA 2026-10-10: the pill is already there with other settings. A change to it, never `none`: pill_edit (what came back) and pill_add both end in the same change card, old → new, made by the code. Live, 2026-10-14: it came back as pill_add, which is as right",
       "recorded": [
         "pill_edit",
         {
@@ -409,7 +409,10 @@
           "guessed": [],
           "not_included": []
         }
-      ]
+      ],
+      "also_ok": {
+        "action": "pill_add"
+      }
     },
     {
       "task": "pills",

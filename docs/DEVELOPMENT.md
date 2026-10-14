@@ -1675,6 +1675,13 @@ to do: the day's progress adds them up across tasks. Leave both out
 for a task with nothing to count. `left` is what is still to do, a
 line each in the task's own words: "what's left today?" lists them.
 
+An action that changes a thing already there can say what it means
+while that thing is only on an open card and not saved:
+`unsaved=("pill_add", edit_on_card)`, the action that sets one up and
+`async (request, data, on_card) -> dict | None`, which gives the data
+as that action takes it, or None when it is about saved things after
+all. The core then treats the message as a correction of the card.
+
 For looking back over days, a task may also give a `tally`:
 
 ```python
