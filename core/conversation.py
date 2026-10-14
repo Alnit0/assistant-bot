@@ -552,6 +552,7 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
         # (it had just answered, or its list was on screen): kept, so that if the router sends the
         # question to that same task it is not read a second time
         questions: dict[str, Extracted] = {}
+        read_against_card = ""  # the task that read the message against its open card, if one did
 
         # "No, 2 bread rolls" straight after a change: that change was the mistake.
         # It is undone first (the card goes back to what it was before it), and
@@ -667,12 +668,20 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
             if sticky:
                 entry = actions.entry(open_card.task)
                 found = await extraction.extract(entry, ctx.text, await _state(entry, request, turn), on_card)
+                read_against_card = entry.name
                 if found.not_this:
                     # Not about the card after all: the router decides. The card stays as
                     # it is, and what it came from goes along in case this redirects it
                     turn.extracted.append(found.as_log())
                     trace.note("extraction said the message is not about the card: on to the router")
                     earlier, on_card = open_card.said.split("\n")[0], None
+                elif _asks_to_see(found):
+                    # Only what could answer or change the card is read against it. A question (what's
+                    # left today, will it rain) is handled as any message is, by the router; the card
+                    # stays open and answerable, and the router is shown it
+                    questions[entry.name] = found
+                    trace.note(f"a question passes the card by: {entry.name} read it as {found.action.name}, which leaves the card as it is; on to the router")
+                    on_card = None
                 else:
                     turn.route = costs.FOLLOW_UP
                     turn.why.append(f"card {open_card.id} ({open_card.task}) is open and the message sticks to it: {how}")
@@ -708,7 +717,8 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
         # the router took it for chat, which "acknowledged" it and changed nothing
         if not settled and not ctx.is_reply and not named:
             entry = actions.entry(llm.answering_task(ctx.channel_id)) if llm.answering_task(ctx.channel_id) else None
-            if entry in entries and 0 < len(ctx.text.split()) <= livelists.SHORT_WORDS:
+            # (Not if that task has just read it against its open card, which was its answer: once is enough)
+            if entry in entries and entry.name != read_against_card and 0 < len(ctx.text.split()) <= livelists.SHORT_WORDS:
                 found = await extraction.extract(entry, ctx.text, await _state(entry, request, turn), after_answer=True)
                 # A question never sticks to the task that just answered: "what's left today?" straight
                 # after a pill was logged is about the day, and the router decides whose it is

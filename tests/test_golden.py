@@ -393,7 +393,7 @@ def test_every_golden_conversation_in_the_fixture_file_has_a_test_here():
     ids = {entry["golden"] for entry in [*FIXTURES["router"], *FIXTURES["extraction"]]}
     tested = {name.split("_")[1] for name in globals() if name.startswith("test_") and name.split("_")[1][0].isdigit()}
     assert ids <= tested, f"no test for: {sorted(ids - tested)}"
-    assert {"1", "1a", "1b", "1c", "1d", "2", "2a", "2b", "3", "4", "5", "6", "7", "8", "9", "10", "10a", "11", "12", "13", "14", "15", "16", "17", "18", "18a", "18b", "19", "19a", "20", "21", "22", "23", "23a", "24", "25", "2c", "18c", "26", "27", "27a"} == tested
+    assert {"1", "1a", "1b", "1c", "1d", "2", "2a", "2b", "3", "4", "5", "6", "7", "8", "9", "10", "10a", "11", "12", "13", "14", "15", "16", "17", "18", "18a", "18b", "19", "19a", "20", "21", "22", "23", "23a", "24", "25", "2c", "18c", "26", "27", "27a", "28", "28a"} == tested
 
 
 # --- QA 2026-10-10: "already so" ends in the task's own line, whichever way it was found --------------------
@@ -1314,3 +1314,65 @@ def test_27_a_report_or_a_correction_straight_after_still_sticks(my_day, dev_clo
     bot.say("actually I didn't", straight_after=True)
     assert any(shown.text.startswith("↩️ **Zinc** · no longer ticked off") for _, shown in bot.sent), [shown.text[:60] for _, shown in bot.sent[-3:]]
     assert [(asked.purpose, asked.task) for asked in bot.requests[before:]] == [("extraction", "pills")], "no router: it is about what was just logged"
+
+
+# --- 28: an open card takes only what could answer or change it (asked 2026-10-14) ----------------------------
+def _iron_asked_about_on_a_card(bot):
+    """Zinc saved and on today's checklist, then a card for iron that asks whether 8 is morning or evening."""
+    _with_zinc(bot)
+    run(checklist.post(bot.owner.id, 100))
+    bot.claude(ROUTED["1c"], EXTRACTED["1c"])
+    bot.say(SAID["1c"])
+    assert card(bot)[1] == ["8:00 am", "8:00 pm", "Cancel"]
+    return len(bot.requests), open_cards()[-1].id
+
+
+def _the_card_is_still_open_and_answerable(bot, held):
+    assert [each.id for each in open_cards() if each.status == "open"] == [held], "the card stays open, as it was"
+    lines, buttons = answer(bot, "8:00 pm")
+    assert lines[1] == "**iron** · daily at `8:00 pm`" and buttons == ["Save", "Cancel"]
+    assert press(bot).startswith("✅ Saved · 💊 **iron**") and sorted(pill.plan.name.lower() for pill in pills(bot)) == ["iron", "zinc"]
+
+
+def test_28_a_question_about_my_day_while_a_card_is_open_gets_the_day_s_answer_and_the_card_stays(my_day):
+    bot = my_day
+    before, held = _iron_asked_about_on_a_card(bot)
+    # Pills reads it against its card first, and reads it as a question of its own: that neither answers nor
+    # changes the card, so the router is asked, as for any message, and it is the day's
+    bot.claude(EXTRACTED["28"], ROUTED["28"], EXTRACTED["21"])
+    bot.say(SAID["28"])
+    assert _said(bot) == "☀️ **Left today** · ○ 0/1\n💊 Zinc", _said(bot)
+    assert [(asked.purpose, asked.task) for asked in bot.requests[before:]] == [("extraction", "pills"), ("router", ""), ("extraction", "briefing")]
+    assert not any(shown.text.startswith("## 💊 Pills") for _, shown in bot.sent[-1:]) and bot.chats == []
+    _the_card_is_still_open_and_answerable(bot, held)
+
+
+def test_28a_the_weather_while_a_card_is_open_is_the_weather_s_and_the_card_stays(my_day):
+    bot = my_day
+    before, held = _iron_asked_about_on_a_card(bot)
+    bot.claude(EXTRACTED["28a"], ROUTED["28a"], EXTRACTED["24"])
+    bot.say(SAID["28a"])
+    assert _said(bot).startswith("🌤️ 61% chance of rain for the rest of today"), _said(bot)
+    # Pills read it once, against its card: not a second time as a follow-up to the card it had just posted
+    assert [(asked.purpose, asked.task) for asked in bot.requests[before:]] == [("extraction", "pills"), ("router", ""), ("extraction", "weather")]
+    _the_card_is_still_open_and_answerable(bot, held)
+
+
+def test_28_a_question_the_router_gives_back_to_the_card_s_task_is_read_once_and_leaves_the_card(my_day):
+    bot = my_day
+    before, held = _iron_asked_about_on_a_card(bot)
+    bot.claude(("pill_list", {"guessed": [], "not_included": []}), route("pills"))
+    bot.say("what do I take?")
+    assert bot.sent[-1][1].text.startswith("## 💊 Pills") and "**Zinc**" in bot.sent[-1][1].text
+    assert [(asked.purpose, asked.task) for asked in bot.requests[before:]] == [("extraction", "pills"), ("router", "")], "not read a second time"
+    _the_card_is_still_open_and_answerable(bot, held)
+
+
+def test_28_what_answers_or_changes_the_card_is_still_read_against_it(my_day):
+    # Golden 2 is unchanged: a correction typed while the card is open replaces it, with no router
+    bot = my_day
+    before, held = _iron_asked_about_on_a_card(bot)
+    bot.claude(EXTRACTED["2"])
+    bot.say(SAID["2"])
+    assert card(bot)[0][1].lower() == "**iron** · daily at `8:00 am`"
+    assert [(asked.purpose, asked.task) for asked in bot.requests[before:]] == [("extraction", "pills")]

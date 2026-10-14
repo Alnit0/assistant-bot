@@ -150,9 +150,16 @@ while it was being built**
     action that only shows or says something. No list of question
     words. "And this week?" after the answer about yesterday now
     goes by the router too (golden 23a says so).
-32. **An open card still holds the conversation**: a question typed
-    while a card is open is read against that card first, as before.
-    Say if a question should pass a card by as well.
+32. **An open card takes only what could answer or change it** (your
+    answer, the same afternoon): a question typed while a card is
+    open goes to the router, and the card stays open and answerable
+    (golden 28, 28a, recorded from the real API, 4 of 4, NZ$0.03).
+    A new request for the card's own task ("took my zinc" with a
+    pills card open) is still done by that task without the router,
+    as before: it already leaves the card as it is. After the
+    answer, a typed answer to the card goes by the router, which is
+    shown the card; a reply to the card or its buttons go straight
+    to it.
 33. **No self-test step for it**: a step's one recorded answer is
     given to every task that reads the message, so the step could not
     tell the old behaviour from the new. Golden 27 and 27a are
@@ -167,21 +174,22 @@ while it was being built**
 - **Live** was last restarted at 3:07 pm on 2026-10-14 and runs the
   day in dots at the top of the briefing, the questions about the
   day and the weather, and the fix for a change to a pill that is only
-  on the card. Not yet live, until the next restart: a question never
-  sticking to the last task, and the weather questions in #commands.
+  on the card. Restarted on the commit of the question passing a
+  card by: a question never sticking to the last task or to a card,
+  and the weather questions in #commands.
   No error since the start; nothing needs a look.
 - **The morning routine ran as booked on its first morning** (live's
   run log, 2026-10-14): the exchange rate, the weather fetch, the tidy,
   the briefing, the checklist, and a needs-a-look check with nothing
   to say.
-- **Tests**: offline 2862 passed, 1 skipped, in about 40 seconds (it
+- **Tests**: offline 2870 passed, 1 skipped, in about 40 seconds (it
   was 1 min 56 s); the same tests pass the slow way, with real threads
   and connections (`TESTS_AS_ON_LIVE=1`). The last full self-test
   (3:42 pm, the dev bot with live up, recorded answers): 122 of 123,
   none failed, one skipped for needing real requests. The golden
   conversations asked of the real API: 57 of 59, the two misses old
-  known ones that the code puts right; 27 and 27a recorded since, 5 of
-  5.
+  known ones that the code puts right; 27, 27a, 28 and 28a recorded
+  since, 9 of 9.
 - **Spend on the day's batch**: NZ$1.10 (US$0.62), all of it live
   evals; the dearest run NZ$0.23. The self-test's month (NZ$3.50) is
   spent: recorded answers until November.

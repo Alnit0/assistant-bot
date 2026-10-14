@@ -1255,6 +1255,7 @@ cents).
 | 4 | Say `will it rain?` | One line from the forecast: the highest chance of rain in the hours still to come and roughly when ("61% chance of rain for the rest of today, most likely between 1pm and 5pm."), and "updated …" small | T39 |
 | 5 | Say `what's the weather this afternoon?` | "🌤️ **This afternoon** · 16° to 19°" (the temperature only once a forecast has been fetched since the restart), the chance of rain then, and the day's wind small | T39 |
 | 6 | Straight after logging a pill, say `what's left today?`, then `will it rain?` | The day's answer ("☀️ **Left today** · …"), not the checklist, then the weather's: a question never sticks to the task that just answered | T39 |
+| 7 | Say `add iron to my pills at 8` (a card asks morning or evening), then `what's left today?`, then press `8:00 pm` on the card | The day's answer, not the checklist; the card is still there and its button answers it | T42 |
 
 ## 60. A change to a pill that is only on the card (covered by the self-test)
 

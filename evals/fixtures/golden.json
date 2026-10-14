@@ -571,6 +571,42 @@
         "reports_doing": false,
         "chat_part": ""
       }
+    },
+    {
+      "golden": "28",
+      "message": "What's left today?",
+      "tasks": [
+        "briefing"
+      ],
+      "on_screen": "a Pills card (pill_add) from the user saying: add iron to my pills at 8",
+      "note": "a card is open and asks whether 8 is morning or evening: a question about the day is the day's, and the card stays open",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "briefing"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "28a",
+      "message": "Will it rain?",
+      "tasks": [
+        "weather"
+      ],
+      "on_screen": "a Pills card (pill_add) from the user saying: add iron to my pills at 8",
+      "note": "a card is open: the weather is the weather task's, and the card stays open",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "weather"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
     }
   ],
   "extraction": [
@@ -1602,6 +1638,74 @@
         "not_this",
         {
           "reason": "Question about weather, not about pills or this task"
+        }
+      ]
+    },
+    {
+      "golden": "28",
+      "task": "pills",
+      "message": "What's left today?",
+      "state": "The user's pills now (use the id, or the name): none yet",
+      "card": {
+        "action": "pill_add",
+        "data": {
+          "pills": [
+            {
+              "name": "iron",
+              "times": [
+                "8:00"
+              ]
+            }
+          ],
+          "_last": "iron"
+        },
+        "guessed": [
+          "pills[0].times"
+        ],
+        "said": "add iron to my pills at 8"
+      },
+      "action": "not_this",
+      "also_ok": {
+        "action": "pill_today"
+      },
+      "note": "with a card open the card's task reads it first: it neither answers nor changes the card. Either way the code sends it on to the router",
+      "recorded": [
+        "pill_today",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "28a",
+      "task": "pills",
+      "message": "Will it rain?",
+      "state": "The user's pills now (use the id, or the name): none yet",
+      "card": {
+        "action": "pill_add",
+        "data": {
+          "pills": [
+            {
+              "name": "iron",
+              "times": [
+                "8:00"
+              ]
+            }
+          ],
+          "_last": "iron"
+        },
+        "guessed": [
+          "pills[0].times"
+        ],
+        "said": "add iron to my pills at 8"
+      },
+      "action": "not_this",
+      "note": "with a card open: not about the card, nor about pills",
+      "recorded": [
+        "not_this",
+        {
+          "reason": "Message is not about pills or the open card"
         }
       ]
     }

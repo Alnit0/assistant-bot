@@ -1323,6 +1323,16 @@ A short log of key decisions and why. Newest at the bottom.
   is asked twice. A report or a correction still sticks (golden
   18). An open card is not changed by this. Cost: one router
   request more for a question asked straight after an answer.
+- **An open card takes only what could answer or change it (Alex,
+  2026-10-14).** A message that sticks to an open card is still read by
+  the card's task against the card first. If that reading is an action
+  that only shows something (`SEE`), it neither answers nor changes the
+  card: it is put aside and the router is asked, shown the card as
+  before, and the card stays open. As with a question after an answer,
+  the reading is used if the router sends it back to the same task.
+  The card's task does not read it a second time as a follow-up to the
+  card it just posted. A new request for that task, or a correction,
+  is handled as before.
 - **The test suite (2026-10-14).** It had grown from about a minute
   to 1 min 56 s. Three causes, measured: pytest's `tmp_path` for
   every test since that morning (a sixth of the run); a journal file

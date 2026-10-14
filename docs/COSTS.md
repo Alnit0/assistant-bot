@@ -252,7 +252,10 @@ minutes of a task's answer is read by that task first and then goes
 to the router all the same: one router request (US$0.0028) more than
 before for a question the same task would have answered, and nothing
 more when the router sends it back to that task (its reading is
-used). Five fixtures recorded for it: US$0.022.
+used). Five fixtures recorded for it: US$0.022. The same for a
+question asked while a card is open (golden 28, 28a: US$0.020), and
+one extraction fewer when the card's task said it was not about the
+card (it is no longer read again as a follow-up to the card).
 
 ## 7. Questions (also in `docs/STATUS.md`)
 

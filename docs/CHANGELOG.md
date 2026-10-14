@@ -6,6 +6,9 @@ backfilled from the git log.
 
 ## 2026-10-14
 
+- A question asked while a card is open ("what's left today?",
+  "will it rain?") gets its own answer, and the card stays open with
+  its buttons working. Before, the card's task answered it.
 - A question always gets its own answer: "what's left today?" or
   "will it rain?" straight after you log a pill is answered by the
   day or the weather, not taken as a follow-up to the pill. A

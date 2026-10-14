@@ -104,6 +104,12 @@ When two principles clash, the higher one wins.
   is on screen: "what's left today?" straight after logging a pill is
   about my day, and "will it rain?" is the weather's. (Added
   2026-10-14.)
+- **An open card takes only what could answer or change it.** A message
+  typed while a card is open is read against the card only if it
+  answers its question or changes what is on it. Anything else (a
+  question about my day, the weather, a new request) is handled as
+  any message is, and the card stays open and answerable. (Added
+  2026-10-14.)
 - **Meaning beats keywords.** "how much milk should I drink?" is a
   question, not a shopping item
 - **Everything I say counts.** Several items or requests in one message
@@ -226,6 +232,8 @@ Write them the way I'd really say them.
 | 23a | …then "and this week?" | The week so far, Monday to today, a line a day. A question never sticks, so the router is asked: it is shown the answer about yesterday, and knows whose this is |
 | 27 | "Took my zinc", then straight after "What's left today?" | The day's own answer ("☀️ **Left today** · …"), not the pills checklist: a question never sticks to the task that just answered |
 | 27a | …or "Will it rain?" | The weather's answer, from the forecast it keeps |
+| 28 | A card open, asking whether 8 is morning or evening; then "What's left today?" | The day's own answer; the card stays open, and its buttons still answer it |
+| 28a | …or "Will it rain?" | The weather's answer; the card stays open |
 | 24 | "will it rain?" | The weather task answers from the forecast it keeps: the highest chance in the hours still to come and roughly when. Nothing is fetched to answer, and chat is never asked |
 | 25 | "what's the weather this afternoon?" | That part of the day from the kept forecast; how warm only if the forecast has it by the hour. A part that is over says so |
 
