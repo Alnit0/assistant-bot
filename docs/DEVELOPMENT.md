@@ -1775,6 +1775,28 @@ is logged, what is shown with the switch off, and what the tests read.
 sent is first made to fit (`cards.fitted`, `design.fit`), so a card
 too big is cut down, never left unposted.
 
+**A new task behind a switch** (as every new feature is): add the
+setting to `core/config.py`, `.env.example` and `tests/__init__.py`, and
+return it from the task's `switched_on()`. Off, the task is not loaded at
+all (`tasks/registry.py`): not in help, #commands or the router, no jobs,
+no card. Give it a `title` when its name would not do for a person
+("Personal routines" for `habits`).
+
+**A task's card in the hub** (`core/hubcard.py`): a `render` that returns
+the day's `Card`, or None with nothing for today (no card at all). Join
+the morning routine with `scheduler.join_routine(hub.MORNING, …,
+order=hub.CARDS_ORDER + n)` (+10 reminders, +20 personal routines, +30
+gym, +40 to-dos: under the pills checklist, in that order), whose step
+calls `hubcard.post`; after any change call `hubcard.changed`, which
+edits it in place, posts it when there was none, and takes it away when
+there is nothing left today.
+
+**What's new** (`core/whatsnew.py`): a line for one morning's briefing,
+shown once in a box of its own and gone after the next tidy.
+`await whatsnew.add(line, day)` from code, or at the end of a batch
+`python -m core.whatsnew add "Round 3 of the design is live" --on
+2026-10-16` (it writes to the database of the `.env` it runs with: live's).
+
 ## A correction straight after Save
 
 "Add iron at 8pm", **Save**, then "no, I meant 9pm": the change is

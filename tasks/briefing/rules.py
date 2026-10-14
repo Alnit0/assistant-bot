@@ -21,6 +21,7 @@ HEADING = f"{ICON} Today"
 NOTHING = f"{ICON} Nothing on today."
 UP_TO_DATE = f"{ICON} The briefing above is up to date."
 NEEDS = "⚠️ **Needs a look**"
+NEWS = "🆕 **What's new**"
 HELD = "🌙 **Held back overnight**"
 FOOT = "always up to date · tick things off on their own message · say “my schedule” to change when this is posted"
 
@@ -179,13 +180,15 @@ def worth_knowing(notes: tuple[str, ...]) -> list[str]:
     return [*([design.small(f"🗒️ …and {len(notes) - MAX_NOTES} more before")] if len(notes) > MAX_NOTES else []), *shown]
 
 
-def text(sections: list[Section], day: date, problems: tuple[str, ...] = (), held_back: tuple[str, ...] = (), hours: str = "", notes: tuple[str, ...] = (), spend: str = "", so_far: tuple[str, ...] = ()) -> str:
+def text(sections: list[Section], day: date, problems: tuple[str, ...] = (), held_back: tuple[str, ...] = (), hours: str = "", notes: tuple[str, ...] = (), spend: str = "", so_far: tuple[str, ...] = (), news: tuple[str, ...] = ()) -> str:
     """The briefing as a plain message (the old look, and what is logged).
     `so_far` is the day's progress (`progress`), at the top."""
     title, under = _top(day, so_far)
     lines = [f"## {title}", *under]
     if problems:
         lines += ["", NEEDS, *problems]
+    if news:
+        lines += ["", NEWS, *news]
     if held_back:
         lines += ["", HELD, *held_back, *([design.small(held_note(hours))] if hours else [])]
     for section in sections:
@@ -198,13 +201,15 @@ def text(sections: list[Section], day: date, problems: tuple[str, ...] = (), hel
     return "\n".join(lines)
 
 
-def _layout_r1(sections: list[Section], day: date, problems: tuple[str, ...] = (), held_back: tuple[str, ...] = (), hours: str = "", notes: tuple[str, ...] = (), spend: str = "", so_far: tuple[str, ...] = ()) -> tuple:
+def _layout_r1(sections: list[Section], day: date, problems: tuple[str, ...] = (), held_back: tuple[str, ...] = (), hours: str = "", notes: tuple[str, ...] = (), spend: str = "", so_far: tuple[str, ...] = (), news: tuple[str, ...] = ()) -> tuple:
     """Round 1 (kept as it was built): a standing message, a box a task in the
     colour of its status, and no buttons. What needs a look is a box of its own
     on top, then what was held back overnight."""
     boxes = []
     if problems:
         boxes.append(design.item(design.MISSED, NEEDS, *problems))
+    if news:
+        boxes.append(design.item(design.QUIET, NEWS, *news))
     if held_back:
         boxes.append(design.item(design.QUIET, HELD, *held_back, *([design.small(held_note(hours))] if hours else [])))
     boxes += [
@@ -239,7 +244,7 @@ def _box(section: Section) -> design.Box:
     return design.topic(heading, lines=lines, status=said.status or design.QUIET)
 
 
-def layout(sections: list[Section], day: date, problems: tuple[str, ...] = (), held_back: tuple[str, ...] = (), hours: str = "", notes: tuple[str, ...] = (), spend: str = "", so_far: tuple[str, ...] = ()) -> tuple:
+def layout(sections: list[Section], day: date, problems: tuple[str, ...] = (), held_back: tuple[str, ...] = (), hours: str = "", notes: tuple[str, ...] = (), spend: str = "", so_far: tuple[str, ...] = (), news: tuple[str, ...] = ()) -> tuple:
     """The briefing as a page (docs/DESIGN.md, round 3): the page title with the
     day's progress, then a box a topic: what needs a look (only when something
     is wrong, red, a rule between problems), what was held back overnight,
@@ -249,10 +254,13 @@ def layout(sections: list[Section], day: date, problems: tuple[str, ...] = (), h
 
     In round 1 of the design (DESIGN_ROUND=1) it is `_layout_r1`."""
     if design.current() < 3:
-        return _layout_r1(sections, day, problems, held_back, hours, notes, spend, so_far)
+        return _layout_r1(sections, day, problems, held_back, hours, notes, spend, so_far, news)
     boxes = []
     if problems:
         boxes.append(design.topic(design.card_title(NEEDS.replace("**", "")), [design.Entry(each, design.MISSED) for each in problems], status=design.MISSED))
+    if news:
+        # What changed overnight, for this morning only (core/whatsnew.py): a rule between items
+        boxes.append(design.topic(design.card_title(NEWS.replace("**", "")), [design.Entry(each, design.QUIET) for each in news], status=design.QUIET))
     if held_back:
         boxes.append(design.topic(design.card_title(HELD.replace("**", "")), lines=[*held_back, *([design.small(held_note(hours))] if hours else [])], status=design.QUIET))
     boxes += [_box(section) for section in in_page_order(sections)]

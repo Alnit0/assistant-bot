@@ -21,6 +21,82 @@ passed, none failed, one skipped as usual (NZ$0.00), which marked D6 and D3 fixe
 phone** and reply there. To go back: `DESIGN_ROUND=1` (the look before it)
 or `CARDS_V2=false` (the plain look), and a restart.
 
+## Built on 2026-10-15, switched off in live
+
+**Three new hub tasks**, each behind its own switch, off by default and
+off in live (`.env` was not touched for them):
+
+| Task | Switch | Words to see it |
+|---|---|---|
+| To-dos | `TODOS_ENABLED` | `my to-dos` |
+| Reminders you set yourself | `NUDGES_ENABLED` | `my reminders` |
+| Personal routines | `HABITS_ENABLED` | `my routines` |
+
+`REMINDERS_ENABLED` is still the pills' reminders, untouched. Each task
+has its card in the hub under the pills card (reminders, personal
+routines, then to-dos), a section in the briefing and its items in the
+one ranking (the status line and Needs a look work with no special
+case). The real router and extraction were asked 36 natural phrasings,
+35 right and the one miss a safe reading ("move that to 6" read as 6 pm,
+marked as a guess); the answers are recorded for the tests to replay.
+Spend: US$0.14 (NZ$0.25). **To look at**: the "New hub tasks preview" in
+the design-options post, and questions 51 to 66 in `docs/QUESTIONS.md`.
+
+**Also**: a task whose switch is off is not loaded (out of help,
+#commands and the router); a **What's new** box for one morning's
+briefing (`core/whatsnew.py`), not loaded in live until its next restart,
+so it is not in tomorrow's 6 am briefing unless live is restarted
+before then; `/catchup` for Claude Code; the design loop
+(`docs/DESIGN-LOG.md`, `python -m selftest.preview --round N` and
+`--replies`).
+
+**Not done**: the prompt about `docs/NOW.md` and a SessionStart hook,
+which `/catchup` follows, never reached this session: `/catchup` reads
+`docs/NOW.md` when there is one and `docs/STATUS.md` until then. No
+self-test steps for the three tasks yet (the month's self-test spend is
+gone; `docs/BACKLOG.md`).
+
+## Decided (2026-10-15, the new hub tasks)
+
+17. **Built tonight against the rule "spec first, nothing built until it
+    is approved"**: you asked for the build with your defaults, so the
+    specs (`docs/specs/todos.md`, `reminders.md`, `routines.md`) were
+    written first and the build follows them, everything open to change
+    (questions 51 to 66).
+18. **The folders are `todos`, `nudges` and `habits`**: `nudges` because
+    `REMINDERS_ENABLED` and `tasks/pills/reminders.py` are the pills';
+    `habits` because "routine" in code is the scheduler's. What you read
+    is "To-dos", "Reminders", "Personal routines" (a new `title` a task
+    can give).
+19. **A task's card comes after the pills checklist**: steps of the
+    morning routine can now run after its own handler (`scheduler.AFTER`),
+    each task joining at its place in the order. Gym's place (+30) is
+    kept for it.
+20. **A card that has nothing for today is not posted, and one that gets
+    something mid-day is posted then**, at the bottom of the hub, until
+    the next morning puts it in order (question 65).
+21. **Ticking a to-do or a step off is a log, done at once**, as a pill
+    taken is; adding, changing and removing are cards that only Save
+    writes.
+22. **A name that fits two to-dos, reminders or steps is said back in a
+    line ("“call” could be Call Ryan or Call Mum: say which"), not
+    guessed**. A card's question would be better and is in the backlog.
+23. **Reminders are booked one occurrence at a time** as engine jobs with
+    a run key; each claimed in `nudges_fired` before it is posted, which
+    is what makes "never twice" hold across a retry and a restart.
+24. **"Late" means the bot was off**: time the dev clock jumps over is
+    not counted, as for every job.
+25. **The reminders card has no buttons**: nothing on it can be done
+    before its time; what goes off carries Done and Snooze.
+26. **Personal routines tick by a button for each routine's next step**
+    (question 63), and a routine is at most twelve steps.
+27. **What's new lines are kept under 7:30 am of their day**, outside the
+    night the briefing lists as held back, so live's code from before
+    them never shows them as alerts.
+28. **Help leaving out a task whose switch is off is done by not loading
+    it at all**, which also keeps it out of #commands, the router, its
+    jobs and its cards.
+
 ## Overnight, 2026-10-15: the reboot
 
 **Windows Update restarted the EliteDesk twice** (00:23 and 00:26). The
@@ -284,14 +360,12 @@ while it was being built**
 
 ## Waiting on you
 
-1. **The short list at the top of `docs/QA-RUN.md`**: eleven looks only
-   you can take, most useful first. The first two are today's: the hub
-   with the day in dots, and design rounds 2 and 3 in the
-   design-options post.
-2. **The design picks**, questions 12 to 15, 21, 22 and 45 to 48 of
-   `docs/QUESTIONS.md`: they are what the new look in the hub waits
-   for. Round 3's type scale is a draft until you say what to change.
-3. **The other questions**: `docs/QUESTIONS.md` has 45, each with a
+1. **The round 3 look, on your phone**: the hub itself, and "Round 3
+   built" in the design-options post. Reply there with what to change;
+   it goes into `docs/DESIGN-LOG.md` word for word as round 4.
+2. **The new hub tasks**: the "New hub tasks preview" in the same post,
+   questions 51 to 66, and which to switch on first.
+3. **The other questions**: `docs/QUESTIONS.md` has 61, each with a
    suggested answer ("yes to all suggestions except 4 and 7").
 4. **Gym and the calendar** wait on their answers there (23 to 28, 29
    to 32).
@@ -301,16 +375,16 @@ while it was being built**
 
 In the order of the priorities; the full list is `docs/BACKLOG.md`.
 
-1. **The hub's look**: build the type scale of round 3 once you have
-   said what to change (one box a topic, the card title with dots,
-   times in bold), then the phone check, then `CARDS_V2` on for live
-   and #commands' words for it.
-2. **What the briefing shows**: whatever your look at the hub turns
+1. **The hub's look**: round 4 from your feedback on round 3 (the design
+   loop, `docs/DESIGN-LOG.md`), and #commands' words for the buttons.
+2. **The new hub tasks**: switched on in the order you choose, with
+   self-test steps for each, after your answers to 51 to 66.
+3. **What the briefing shows**: whatever your look at the hub turns
    up; the answers about your day, once you have read a few.
-3. **Understanding**: the two golden conversations that failed once
+4. **Understanding**: the two golden conversations that failed once
    near midnight (question 39); a correction straight after Save for
    schedules (question 8); task ties asked too often (G4).
-4. **Then**: the merge and live's own folder; gym once its answers are
+5. **Then**: the merge and live's own folder (so a reboot never loads unreviewed work); gym once its answers are
    in; the calendar after its four; a flavour status line (backlog).
 
 ## Standing

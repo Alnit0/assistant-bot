@@ -1,0 +1,245 @@
+{
+  "router": [
+    {
+      "message": "make a morning routine: stretch, water, journal, on weekdays",
+      "tasks": [
+        "habits"
+      ],
+      "note": "a personal routine of steps",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "habits"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "add meditate to my morning routine",
+      "tasks": [
+        "habits"
+      ],
+      "note": "a step added: not the bot's own morning routine",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "habits"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "did stretch from my morning routine",
+      "tasks": [
+        "habits"
+      ],
+      "note": "a step ticked off",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "habits"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "what are my routines?",
+      "tasks": [
+        "habits"
+      ],
+      "note": "seeing them",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "habits"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "move the morning routine to 7am",
+      "tasks": [
+        "schedule"
+      ],
+      "note": "a trap: the bot's own morning routine's time is the schedule's",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "schedule"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "add call Ryan to my to-do list",
+      "tasks": [
+        "todos"
+      ],
+      "note": "a trap: a to-do, not a routine step",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "todos"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    }
+  ],
+  "extraction": [
+    {
+      "task": "habits",
+      "message": "make a morning routine: stretch, water, journal, on weekdays",
+      "action": "habit_add",
+      "data": {
+        "steps": [
+          "stretch",
+          "water",
+          "journal"
+        ],
+        "days": [
+          "mon",
+          "tue",
+          "wed",
+          "thu",
+          "fri"
+        ]
+      },
+      "note": "",
+      "recorded": [
+        "habit_add",
+        {
+          "routine": "morning routine",
+          "steps": [
+            "stretch",
+            "water",
+            "journal"
+          ],
+          "days": [
+            "mon",
+            "tue",
+            "wed",
+            "thu",
+            "fri"
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "habits",
+      "message": "add meditate to my morning routine",
+      "action": "habit_change",
+      "data": {
+        "steps": [
+          "meditate"
+        ]
+      },
+      "note": "",
+      "state": "The user's personal routines now:\n- Morning (weekdays; steps: Stretch, Water, Journal)",
+      "recorded": [
+        "habit_change",
+        {
+          "routine": "morning",
+          "steps": [
+            "meditate"
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "habits",
+      "message": "did stretch",
+      "action": "habit_tick",
+      "data": {
+        "steps": [
+          "stretch"
+        ]
+      },
+      "note": "",
+      "state": "The user's personal routines now:\n- Morning (every day; steps: Stretch, Water, Journal)",
+      "recorded": [
+        "habit_tick",
+        {
+          "routine": "Morning",
+          "steps": [
+            "Stretch"
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "habits",
+      "message": "done water and journal",
+      "action": "habit_tick",
+      "note": "two steps",
+      "state": "The user's personal routines now:\n- Morning (every day; steps: Stretch (done today), Water, Journal)",
+      "recorded": [
+        "habit_tick",
+        {
+          "routine": "Morning",
+          "steps": [
+            "Water",
+            "Journal"
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "habits",
+      "message": "undo stretch",
+      "action": "habit_untick",
+      "data": {
+        "steps": [
+          "stretch"
+        ]
+      },
+      "note": "",
+      "state": "The user's personal routines now:\n- Morning (every day; steps: Stretch (done today), Water, Journal)",
+      "recorded": [
+        "habit_untick",
+        {
+          "routine": "Morning",
+          "steps": [
+            "Stretch"
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "habits",
+      "message": "remove my evening routine",
+      "action": "habit_remove",
+      "note": "",
+      "state": "The user's personal routines now:\n- Evening (every day; steps: Read)",
+      "recorded": [
+        "habit_remove",
+        {
+          "routine": "Evening",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    }
+  ]
+}

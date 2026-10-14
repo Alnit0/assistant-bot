@@ -208,6 +208,17 @@ def test_the_same_occurrence_is_never_booked_or_run_twice_even_after_a_restart(e
         rows("INSERT INTO scheduled_jobs (skill, kind, payload, due_at, status, created_at, run_key) SELECT skill, kind, payload, due_at, 'pending', created_at, run_key FROM scheduled_jobs LIMIT 1")
 
 
+def test_a_step_joined_from_after_on_runs_after_the_schedule_s_own_handler(engine):
+    # The hub's task cards come under the pills checklist: their steps join from scheduler.AFTER
+    scheduler.join_routine("test.first", "test.third", order=scheduler.AFTER + 10, name="Morning routine")
+    scheduler.join_routine("test.first", "test.second", order=10, name="Morning routine")
+    run(scheduler.book())
+    (made,) = schedules()
+    assert made.steps == ("test.second", "test.first", "test.third")
+    to(engine.day + timedelta(days=1), 6, 0, 1)
+    assert [name for name, _, _ in engine.ran] == ["second", "first", "third"]
+
+
 def test_a_routine_runs_its_steps_in_order_each_recorded_and_one_failing_does_not_stop_the_rest(engine):
     # Two handlers join the schedule made for the first, in front of it: a routine
     scheduler.join_routine("test.first", "test.third", order=20, name="Morning routine")

@@ -53,7 +53,8 @@ Notifications and ntfy are low priority.
 - `docs/specs/` is private: read it, never commit it, never quote it
   in a commit or a public doc
 - Procedures are skills: `new-task`, `task-check`, `qa`, `end-of-task`,
-  `bug`
+  `bug`, and `catchup` (`/catchup`: read-only report at a session's start
+  or after a reboot, then wait)
 
 ## Never
 

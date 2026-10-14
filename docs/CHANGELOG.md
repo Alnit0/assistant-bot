@@ -20,6 +20,18 @@ backfilled from the git log.
   `docs/DESIGN-LOG.md` keeps every round, what is locked and Alex's
   feedback word for word; `python -m selftest.preview` posts the real
   cards from made-up data for a look on the phone.
+- Round 3 is live in the hub (8:59 am).
+- Three new tasks, built and switched off: to-dos (a day if you give
+  one, Done by button or words, overdue ones carried over), reminders
+  you set yourself (once or repeating, going off in the hub with Done
+  and Snooze, through quiet hours, never twice) and personal routines
+  (your own checklists on chosen days, starting afresh each day). Each
+  has its card under the pills card, a line in the briefing and a place
+  in the status line; a card with nothing for today is not there.
+- A task whose switch is off is out of help, #commands and the router.
+- A What's new box in the briefing, for one morning, filled by a batch.
+- `/catchup` for Claude Code: a read-only report at a session's start or
+  after a reboot.
 
 ## 2026-10-14
 

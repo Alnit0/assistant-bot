@@ -131,71 +131,210 @@ def messages() -> list[tuple[str, tuple]]:
     ]
 
 
-def opening() -> str:
+def opening(title: str = TITLE) -> str:
     return "\n".join([
-        f"## {TITLE}",
+        f"## {title}",
         "The round 3 type scale, **built**: each message below is drawn by the real code from made-up data (Pill A to Pill E), so it is what the hub shows once `CARDS_V2` is on. The buttons here do nothing.",
         "-# One box a topic, a rule between items, dots and the count in the card title, times in bold, a change struck through → bold, buttons only on what can be done now.",
         "**Please look on your phone** and reply here with anything to change (spacing, colours, what wraps).",
     ])
 
 
-def checked() -> list[tuple[str, tuple]]:
-    """Every message of the preview, each within one message, or a ValueError naming the one that is not."""
-    found = messages()
+def checked(found: list[tuple[str, tuple]] | None = None) -> list[tuple[str, tuple]]:
+    """Every message of a preview, each within one message, or a ValueError naming the one that is not."""
+    found = messages() if found is None else found
     for label, pieces in found:
         wrong = design.problem(pieces)
         if wrong:
-            raise ValueError(f"{label or 'the second question'}: {wrong}")
+            raise ValueError(f"{label or 'the message after the one before'}: {wrong}")
     return found
 
 
-async def post() -> str:
-    """Post the preview in the design-options post of the dev bot's forum. Returns its link."""
+async def _the_post(client):
+    """The design-options post of the dev bot's forum, or None; and the forum. Over HTTP only."""
     import discord
     from dotenv import dotenv_values
+
+    from selftest import options
+
+    if client.user.id != config.test_bot_id():
+        raise SystemExit("Not the dev bot's account: nothing done.")
+    forum_id = (dotenv_values(config.BASE_DIR / ".env.dev").get("BUGS_CHANNEL_ID") or "").strip()
+    if not forum_id.isdigit():
+        raise SystemExit("BUGS_CHANNEL_ID is not set in .env.dev: the preview goes in the dev bot's forum. Nothing done.")
+    forum = await client.fetch_channel(int(forum_id))
+    if not isinstance(forum, discord.ForumChannel):
+        raise SystemExit("BUGS_CHANNEL_ID in .env.dev is not a forum: nothing done.")
+    return await options._earlier_post(client, forum), forum
+
+
+async def _as_dev_bot(work):
+    """Log in as the dev bot over HTTP (no bot is started), do `work(client)`, log out."""
+    import discord
+
+    token = config.test_bot_token()
+    if token is None or config.test_bot_id() is None:
+        raise SystemExit("There is no dev bot (.env.dev needs its own token and BOT_USER_ID): nothing done.")
+    client = discord.Client(intents=discord.Intents.none())
+    await client.login(token)
+    try:
+        return await work(client)
+    finally:
+        await client.close()
+
+
+async def post(title: str = TITLE, intro: str = "", found: list[tuple[str, tuple]] | None = None) -> str:
+    """Post a preview in the design-options post: its opening message (`## title`), then
+    each message under the line saying what it is. Returns the post's link."""
+    import discord
 
     from interfaces.discord import render
     from selftest import options
 
-    token, expected = config.test_bot_token(), config.test_bot_id()
-    if token is None or expected is None:
-        raise SystemExit("There is no dev bot (.env.dev needs its own token and BOT_USER_ID): nothing posted.")
-    forum_id = (dotenv_values(config.BASE_DIR / ".env.dev").get("BUGS_CHANNEL_ID") or "").strip()
-    if not forum_id.isdigit():
-        raise SystemExit("BUGS_CHANNEL_ID is not set in .env.dev: the preview goes in the dev bot's forum. Nothing posted.")
-    found = checked()
-    client = discord.Client(intents=discord.Intents.none())
-    await client.login(token)
-    try:
-        if client.user.id != expected:
-            raise SystemExit("Not the dev bot's account: nothing posted.")
-        forum = await client.fetch_channel(int(forum_id))
-        if not isinstance(forum, discord.ForumChannel):
-            raise SystemExit("BUGS_CHANNEL_ID in .env.dev is not a forum: nothing posted.")
+    found = checked(found)
+    intro = intro or opening(title)
+
+    async def work(client):
         quiet = discord.AllowedMentions.none()
-        thread = await options._earlier_post(client, forum)
+        thread, forum = await _the_post(client)
         if thread is None:
-            made = await forum.create_thread(name=f"{options.TITLE} · {TITLE}", content=opening(), allowed_mentions=quiet)
+            made = await forum.create_thread(name=f"{options.TITLE} · {title}", content=intro, allowed_mentions=quiet)
             thread = made.thread
         else:
-            await thread.send(opening(), allowed_mentions=quiet)
+            await thread.send(intro, allowed_mentions=quiet)
         for label, pieces in found:
             if label:
                 await thread.send(f"### {label}", allowed_mentions=quiet)
             await thread.send(view=render.layout_view(pieces), allowed_mentions=quiet)
             await asyncio.sleep(1)  # paced: well under Discord's rate limit
         return thread.jump_url
-    finally:
-        await client.close()
+
+    return await _as_dev_bot(work)
+
+
+ROUND_MARK = "## Round "  # how a round's opening message begins (`opening`)
+
+
+def since_last_round(history: list) -> list:
+    """What people (not bots) said in the post after the latest round's opening message,
+    oldest first. `history` is the post's messages, oldest first, shaped like Discord's."""
+    start = max((at for at, each in enumerate(history) if getattr(each.author, "bot", False) and (each.content or "").startswith(ROUND_MARK)), default=-1)
+    return [each for each in history[start + 1:] if not getattr(each.author, "bot", False) and (each.content or "").strip()]
+
+
+async def replies() -> list[tuple[str, str]]:
+    """Alex's replies in the design-options post since the latest round was posted, as
+    (when, what he wrote), word for word: for docs/DESIGN-LOG.md. Read only."""
+    from core import config as settings
+
+    async def work(client):
+        thread, _ = await _the_post(client)
+        if thread is None:
+            return []
+        history = [each async for each in thread.history(limit=500, oldest_first=True)]
+        return [(f"{each.created_at.astimezone(settings.TIMEZONE):%Y-%m-%d %H:%M}", each.content) for each in since_last_round(history)]
+
+    return await _as_dev_bot(work)
+
+
+# ---------------------------------------------------------------------------
+# The three new hub tasks (to-dos, reminders, personal routines), each card in
+# its main states, from made-up data: `python -m selftest.preview --hub-tasks`
+# ---------------------------------------------------------------------------
+HUB_TASKS_TITLE = "New hub tasks preview"
+
+
+def _todo(number: int, text: str, day=None, done_at=None, added=None):
+    from tasks.todos.rules import Todo
+
+    today = _day()
+    return Todo(number, 1, text, day, added or today - timedelta(days=3), done_at, days.day_of(done_at) if done_at else None)
+
+
+def todos_cards() -> list[tuple[str, tuple]]:
+    from tasks.todos import rules as todo
+
+    today = _day()
+    few = [_todo(1, "Call the dentist", today), _todo(2, "Buy stamps"), _todo(3, "Book the WOF", today + timedelta(days=2))]
+    overdue = [_todo(4, "Pay the power bill", today - timedelta(days=2)), _todo(5, "Reply to Sam", today - timedelta(days=1)), *few, _todo(6, "Water the plants", today, _at(8, 10))]
+    done = [_todo(7, "Call the dentist", today, _at(9, 5)), _todo(8, "Buy stamps", None, _at(12, 40))]
+    return [
+        ("To-dos · a few for today (one more for later)", todo.layout(todo.on(few, today), today)),
+        ("To-dos · two overdue first, amber, with the day they were for", todo.layout(todo.on(overdue, today), today)),
+        ("To-dos · all done: green, in one small line", todo.layout(todo.on(done, today), today)),
+    ]
+
+
+def reminders_cards() -> list[tuple[str, tuple]]:
+    from tasks.nudges import rules as nudge
+    from tasks.nudges.rules import Nudge
+
+    today = _day()
+    now = _at(MORNING.hour, MORNING.minute)
+    set_up = [
+        Nudge(1, 1, "Call Mum", time(17, 0), nudge.ONCE, today),
+        Nudge(2, 1, "Stretch", time(11, 0), nudge.WEEKDAYS),
+        Nudge(3, 1, "Put the bins out", time(19, 30), nudge.DAYS, weekdays=(today.weekday(),)),
+    ]
+    went_off = set_up[0]
+    return [
+        ("Reminders · what is still to come today (no buttons: nothing to do yet)", nudge.card_layout(nudge.coming(set_up, now), now)),
+        ("A reminder going off, at the bottom of the hub: the neutral line, then Done and Snooze", nudge.fired_layout(went_off, _at(17, 0), False, nudge.fired_row(1))),
+        ("…after Snooze: 10 minutes, 1 hour, tomorrow at the same time", nudge.fired_layout(went_off, _at(17, 0), False, nudge.snooze_row(1))),
+        ("…one that went off while the bot was off: marked late", nudge.fired_layout(went_off, _at(17, 0), True, nudge.fired_row(1))),
+    ]
+
+
+def routines_cards() -> list[tuple[str, tuple]]:
+    from tasks.habits import rules as habit
+    from tasks.habits.rules import Habit, Step
+
+    today = _day()
+    morning = Habit(1, 1, "Morning", (), (Step(1, "Stretch"), Step(2, "Water"), Step(3, "Journal")))
+    evening = Habit(2, 1, "Evening", (), (Step(4, "Tidy the desk"), Step(5, "Read")))
+    both = [morning, evening]
+    return [
+        ("Personal routines · nothing done yet", habit.layout(habit.due(both, set(), today))),
+        ("Personal routines · part done: each routine's own dots, its next step as a button", habit.layout(habit.due(both, {1, 4, 5}, today))),
+        ("Personal routines · all done", habit.layout(habit.due(both, {1, 2, 3, 4, 5}, today))),
+    ]
+
+
+def hub_tasks() -> list[tuple[str, tuple]]:
+    """Every message of the hub tasks preview, in the hub's order of cards."""
+    return [*reminders_cards(), *routines_cards(), *todos_cards()]
+
+
+def hub_tasks_opening() -> str:
+    return "\n".join([
+        f"## {HUB_TASKS_TITLE}",
+        "Three new tasks, **built and switched off in live**: reminders you set yourself, personal routines, and to-dos. Each card below is drawn by the real code from made-up data, in the round 3 design. The buttons here do nothing.",
+        "-# In the hub they come under the pills card, in this order: reminders, personal routines, (gym), to-dos. A card with nothing for today is not shown at all, so there is no empty card to see.",
+        "**Please look on your phone**, read the questions in docs/QUESTIONS.md, and say which to switch on.",
+    ])
 
 
 def main() -> int:
     sys.stdout.reconfigure(encoding="utf-8")
-    if "--check" in sys.argv[1:]:
+    args = sys.argv[1:]
+    if "--check" in args and "--hub-tasks" not in args:
         print(f"{len(checked())} messages built, each within one message.")
         return 0
-    print("Posted:", asyncio.run(post()))
+    if "--hub-tasks" in args:
+        found = checked(hub_tasks())
+        if "--check" in args:
+            print(f"{len(found)} messages built, each within one message.")
+            return 0
+        print("Posted:", asyncio.run(post(HUB_TASKS_TITLE, hub_tasks_opening(), found)))
+        return 0
+    if "--replies" in args:
+        found = asyncio.run(replies())
+        for when, said in found:
+            print(f"--- {when}\n{said}")
+        print(f"{len(found)} replies since the latest round.")
+        return 0
+    title = f"Round {args[args.index('--round') + 1]}" if "--round" in args else TITLE
+    print("Posted:", asyncio.run(post(title)))
     return 0
 
 

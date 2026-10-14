@@ -236,6 +236,12 @@ CARDS_V2 = flag(os.getenv("CARDS_V2"), False)
 # type scale; 1, the look built before it (a box an item). Live changes round only when Alex says so
 DESIGN_ROUND = int(os.getenv("DESIGN_ROUND") or 3)
 REMINDERS_ENABLED = flag(os.getenv("REMINDERS_ENABLED"), False)
+# Three hub tasks, each off unless set (2026-10-15): to-dos (tasks/todos), reminders Alex sets
+# himself (tasks/nudges: REMINDERS_ENABLED above is the pills' own) and personal routines
+# (tasks/habits: "routine" in code is the scheduler's). Off, the task is not loaded at all
+TODOS_ENABLED = flag(os.getenv("TODOS_ENABLED"), False)
+NUDGES_ENABLED = flag(os.getenv("NUDGES_ENABLED"), False)
+HABITS_ENABLED = flag(os.getenv("HABITS_ENABLED"), False)
 # The briefing (tasks/briefing): one card a day in the hub that says what today holds, kept up
 # to date in place, and "brief me". Off unless set: off, nothing of it exists
 BRIEFING_ENABLED = flag(os.getenv("BRIEFING_ENABLED"), False)

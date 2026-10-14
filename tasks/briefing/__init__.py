@@ -3,7 +3,7 @@ import logging
 
 from datetime import timedelta
 
-from core import attention, cards, clock, config, database, health, hub, livelists, messages, money, notify, repeats, scheduler, summaries, tidy, timeinput
+from core import attention, cards, clock, config, database, health, hub, livelists, messages, money, notify, repeats, scheduler, summaries, tidy, timeinput, whatsnew
 from core import day as days
 from core.actions import SEE, Action, Field, LiveReply, Request, Shown
 from core.cards import Card
@@ -73,12 +73,15 @@ async def card_for(user_id: int) -> Card | None:
     sections = rules.ordered(gathered, [item.task for _, item in order])
     problems = tuple(rules.problem(item) for rank, item in order if rank == attention.LEVEL_PROBLEM)
     held = tuple(rules.held(each.line, each.times) for each in await notify.held_overnight(user_id, today))
-    notes = tuple(f"{timeinput.format_moment(each.at)} · {each.line}" for each in await notify.notes_for(user_id, today))
-    if not (sections or problems or held or notes):
+    # What is worth knowing and what is new, in one read: no more waiting on the database than before
+    kept, found = await whatsnew.notes_and_news(user_id, today)
+    notes = tuple(f"{timeinput.format_moment(each.at)} · {each.line}" for each in kept)
+    news = tuple(whatsnew.lines(found))
+    if not (sections or problems or held or notes or news):
         return None
     hours = " to ".join(timeinput.format_time(each) for each in config.QUIET_HOURS)
     spend = await spend_line(today)
-    return Card(rules.text(sections, today, problems, held, hours, notes, spend, so_far), (), rules.layout(sections, today, problems, held, hours, notes, spend, so_far))
+    return Card(rules.text(sections, today, problems, held, hours, notes, spend, so_far, news), (), rules.layout(sections, today, problems, held, hours, notes, spend, so_far, news))
 
 
 async def spend_line(today) -> str:

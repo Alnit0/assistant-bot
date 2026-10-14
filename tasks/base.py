@@ -220,7 +220,15 @@ class Task:
     # that takes plain words and does not say
     identity: tuple[str, ...] = ()
     on_repeat: str = ""
+    # What the user reads for this task where its name would not do ("Personal routines" for
+    # habits): cards, the briefing, #commands. Empty: the name, capitalised
+    title: str = ""
 
+    def switched_on(self) -> bool:
+        """Whether this task's switch is on (its setting in .env). One that is off is
+        not loaded (tasks/registry.py): it is left out of help, #commands and the
+        router, and none of its jobs run. A task with no switch is always on."""
+        return True
 
     def keywords(self) -> list[Keyword]:
         """Words and phrases the user can type."""
@@ -263,7 +271,7 @@ class Task:
                 already=self.already_so, names=self.item_names, identity=tuple(self.identity), on_repeat=self.on_repeat,
                 owns=self.owns_message, summary=self.summary if type(self).summary is not Task.summary else None,
                 attention=self.attention if type(self).attention is not Task.attention else None,
-                tally=self.tally if type(self).tally is not Task.tally else None,
+                tally=self.tally if type(self).tally is not Task.tally else None, label=self.title,
             )
         ]
 

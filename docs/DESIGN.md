@@ -89,6 +89,13 @@ below. A message is read like a page.
   go first, the last first, so the next thing due keeps its own; then
   the rules inside each box; then the longest texts are cut with "…"
 
+- **The new task cards** (to-dos, reminders, personal routines, built
+  2026-10-15 and off in live): one box each under the pills card, no
+  page title (the box's card title says it: question 64), the day's
+  dots where the task counts anything, and no card at all on a day with
+  nothing for it. A reminder that goes off is drawn as a pill's is: the
+  neutral line, then its box with Done and Snooze
+
 **To see it**: `python -m selftest.preview` posts every card in its main
 states, drawn by this code from made-up data, in the "🎨 Design
 options" post (`--check` builds them and posts nothing).

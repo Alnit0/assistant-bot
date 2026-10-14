@@ -65,6 +65,8 @@ class Kind:
 # The one place: every kind of alert, where it goes, and whether quiet hours hold it
 KINDS: dict[str, Kind] = {
     "pills.reminder": Kind("Reminder", BOTH, through=True),
+    # A reminder I set myself (tasks/nudges): I chose its time, so it gets through quiet hours; never ntfy
+    "nudges.reminder": Kind("Reminder", DISCORD, through=True),
     # Something wrong that needs me (core/alerts.py): a ping in the hub by day, held by quiet hours
     "system.problem": Kind("Needs a look", DISCORD),
 }
@@ -78,6 +80,7 @@ PRIORITY = 3
 NOT_SAID = "Open Discord to see it."  # the body of a push whose own line could not be shown
 KEEP_HELD = timedelta(days=7)  # what was held back is kept this long
 NOTE = "note"  # not an alert: something worth knowing, kept for the briefing to say in a small line
+NEWS = "news"  # not an alert: a line for one morning's What's new box (core/whatsnew.py)
 
 
 def kind(name: str) -> Kind:
@@ -154,8 +157,8 @@ def db_hold(conn: sqlite3.Connection, user_id: int, name: str, key: str, line: s
 
 def db_held(conn: sqlite3.Connection, user_id: int, since: datetime, until: datetime) -> list[Held]:
     rows = conn.execute(
-        "SELECT kind, line, held_at, times FROM held_alerts WHERE user_id = ? AND kind != ? AND held_at >= ? AND held_at < ? ORDER BY held_at, id",
-        (user_id, NOTE, since.isoformat(), until.isoformat()),
+        "SELECT kind, line, held_at, times FROM held_alerts WHERE user_id = ? AND kind NOT IN (?, ?) AND held_at >= ? AND held_at < ? ORDER BY held_at, id",
+        (user_id, NOTE, NEWS, since.isoformat(), until.isoformat()),
     ).fetchall()
     return [Held(name, line, datetime.fromisoformat(at), times) for name, line, at, times in rows]
 

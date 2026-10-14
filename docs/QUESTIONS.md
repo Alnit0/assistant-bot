@@ -9,6 +9,65 @@ Gathered 2026-10-14 from `docs/STATUS.md`, the specs, the QA sheet and
 "Decided overnight". Questions already answered are gone. New ones are
 added here, nowhere else.
 
+## The new hub tasks (2026-10-15)
+
+Built and switched off in live: to-dos (`TODOS_ENABLED`), reminders you
+set yourself (`NUDGES_ENABLED`) and personal routines (`HABITS_ENABLED`).
+They were built to your defaults; these are what the build had to decide.
+The cards are in the "New hub tasks preview" in the design-options post.
+
+**To-dos**
+
+51. A to-do with no day said is for any day: on the card every day until
+    done, not "today" with ❓. → Keep.
+52. An overdue to-do keeps its day ("from Tue 13 Oct") and stays at the
+    top, amber, until done or moved; it is never moved on by itself. →
+    Keep.
+53. The same words twice: the second is not added, and the card says
+    the one there is. → Keep.
+54. Ticking off by words is done at once, as a pill taken is, with
+    "undo that"; no card. → Keep.
+55. The card lists twelve and counts the rest; to-dos for a later day
+    are one small line ("1 more later, next Sat 17 Oct"). → Keep.
+
+**Reminders**
+
+56. The switch is `NUDGES_ENABLED` and the code's folder `tasks/nudges`,
+    as `REMINDERS_ENABLED` is the pills' own. You only ever read
+    "Reminders". → Keep.
+57. A time with no day: today if it is still to come, otherwise
+    tomorrow, marked ❓. → Keep.
+58. What the lock screen shows is "⏰ Reminder · 5:00 pm", the words in
+    the box under it, as for a pill. These are not private like a pill:
+    show the words on the lock screen? → Keep neutral.
+59. Done and Snooze take it out of the hub at once; one left alone goes
+    at the next morning's tidy. → Keep.
+60. Snooze offers 10 minutes, 1 hour and tomorrow at the same time. →
+    Keep.
+
+**Personal routines**
+
+61. The switch is `HABITS_ENABLED` and the folder `tasks/habits`, so
+    "routine" in the code stays the scheduler's; the word to see them is
+    `my routines`. → Keep.
+62. At most twelve steps a routine; what is ticked starts again at
+    midnight. → Keep.
+63. The card has one button a routine, for its next step; a step out of
+    order is ticked by words ("did journal"). A button for every step
+    instead? → Keep one: fewer buttons.
+
+**All three**
+
+64. The new cards have no page title (`##`): the box's card title says
+    it ("### 📝 To-dos ●○ 1/2"), where the pills card has "💊 Today · Thu
+    15 Oct" above its box. The same as pills, or as built? → As built,
+    and the pills card the same once you have looked.
+65. A card that has nothing in the morning and something later (the
+    first to-do added at 2 pm) is posted then, at the bottom of the hub,
+    until the next morning puts it in order. → Keep.
+66. Which to switch on first? → To-dos, then personal routines, then
+    reminders (the most moving parts).
+
 ## The last-chance nudge (2026-10-14)
 
 43. The last-chance nudge for a pill with no latest time comes at

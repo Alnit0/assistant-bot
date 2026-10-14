@@ -133,6 +133,11 @@ def load() -> None:
                 raise TypeError(f"tasks/{name}/__init__.py must define `task`, a Task instance")
             if task.name != name:
                 raise ValueError(f"task.name is {task.name!r} but the folder is {name!r}")
+            if not task.switched_on():
+                # Behind a switch that is off: not loaded at all, so nothing of it is in help,
+                # #commands or the router, and none of its jobs run
+                log.info("Task %s is switched off: not loaded", name)
+                continue
             keywords = task.keywords()
             reply_actions = task.reply_actions()
             reactions = task.reactions()

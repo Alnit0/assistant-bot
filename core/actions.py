@@ -410,10 +410,12 @@ class Entry:
     # look now (core/attention.py). The core ranks them with everyone else's, once; the
     # status line, the briefing and pings each show a slice of that one ranking
     attention: Callable[[int, datetime], Awaitable[list]] | None = None
+    # What the user reads for it ("Personal routines"), where its name would not do; the name capitalised without one
+    label: str = ""
 
     @property
     def title(self) -> str:
-        return self.name.capitalize()
+        return self.label or self.name.capitalize()
 
     def action(self, name: str) -> Action | None:
         return next((action for action in self.actions if action.name == name), None)

@@ -45,6 +45,9 @@ for name, value in {
     "CARDS_V2": "",  # off, as it is unless set: the design tests switch it on
     "DESIGN_ROUND": "",  # the latest round, as it is unless set: the round tests pick one
     "REMINDERS_ENABLED": "",  # off, as it is unless set: the reminder tests switch it on
+    "TODOS_ENABLED": "",  # off, as it is unless set: the to-dos tests switch it on
+    "NUDGES_ENABLED": "",  # off, as it is unless set: the reminders tests switch it on
+    "HABITS_ENABLED": "",  # off, as it is unless set: the personal routines tests switch it on
     # Every other switch too: off, whatever this PC's own .env has turned on (tests/test_settings.py)
     "BRIEFING_ENABLED": "",
     "DAY_PROGRESS": "",

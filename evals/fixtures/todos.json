@@ -1,0 +1,227 @@
+{
+  "router": [
+    {
+      "message": "add call Ryan to my to-do list for Friday",
+      "tasks": [
+        "todos"
+      ],
+      "note": "a to-do with a day",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "todos"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "put buy stamps on my list",
+      "tasks": [
+        "todos"
+      ],
+      "note": "a to-do with no day",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "todos"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "tick call Ryan off my to-do list",
+      "tasks": [
+        "todos"
+      ],
+      "note": "done, by words",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "todos"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "what's on my to-do list?",
+      "tasks": [
+        "todos"
+      ],
+      "note": "seeing the list",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "todos"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "move the dentist to-do to Monday",
+      "tasks": [
+        "todos"
+      ],
+      "note": "a change of day",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "todos"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "remind me at 5pm to call Ryan",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "a trap: a time of day is a reminder, not a to-do",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    }
+  ],
+  "extraction": [
+    {
+      "task": "todos",
+      "message": "add call Ryan Friday",
+      "action": "todo_add",
+      "data": {
+        "todos": [
+          {
+            "text": "call Ryan",
+            "day": "Friday"
+          }
+        ]
+      },
+      "note": "the day as said, never a date",
+      "recorded": [
+        "todo_add",
+        {
+          "todos": [
+            {
+              "text": "call Ryan",
+              "day": "Friday"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "todos",
+      "message": "put buy stamps and milk on my list",
+      "action": "todo_add",
+      "note": "two to-dos, no day",
+      "recorded": [
+        "todo_add",
+        {
+          "todos": [
+            {
+              "text": "buy stamps"
+            },
+            {
+              "text": "milk"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "todos",
+      "message": "I called Ryan",
+      "action": "todo_done",
+      "note": "a report of doing it: done",
+      "state": "The user's to-dos now:\n- Call Ryan (for today)\n- Buy stamps (any day)",
+      "recorded": [
+        "todo_done",
+        {
+          "todos": [
+            {
+              "todo": "Call Ryan"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "todos",
+      "message": "undo that",
+      "action": "todo_undone",
+      "note": "nothing named: @that",
+      "state": "The user's to-dos now:\n- Call Ryan (done today)\n- Buy stamps (any day)",
+      "recorded": [
+        "todo_undone",
+        {
+          "todos": [
+            {
+              "todo": "Call Ryan"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "todos",
+      "message": "move call Ryan to Monday",
+      "action": "todo_change",
+      "note": "the day as said",
+      "state": "The user's to-dos now:\n- Call Ryan (for Fri 16 Oct)",
+      "recorded": [
+        "todo_change",
+        {
+          "todos": [
+            {
+              "todo": "Call Ryan",
+              "day": "Monday"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "todos",
+      "message": "remove buy stamps",
+      "action": "todo_remove",
+      "note": "",
+      "state": "The user's to-dos now:\n- Buy stamps (any day)",
+      "recorded": [
+        "todo_remove",
+        {
+          "todos": [
+            {
+              "todo": "Buy stamps"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    }
+  ]
+}

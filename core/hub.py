@@ -6,11 +6,15 @@ from core.config import HUB_CHANNEL_ID
 # are written so that every task's card reads the same. Pure.
 # ---------------------------------------------------------------------------
 # The hub's morning routine: the schedule made for the pills checklist, with whatever else
-# joins it in front (core/scheduler.py, `join_routine`). The order is the order they are
-# posted in, so the checklist, last, is the newest message
+# joins it (core/scheduler.py, `join_routine`). The order is the order they are posted in:
+# the tidy and the briefing in front of the checklist, the other task cards after it
 MORNING = "pills.checklist"
 MORNING_NAME = "Morning routine"
 TIDY_ORDER, BRIEFING_ORDER = 10, 20
+# The task cards under the pills checklist, in the hub's fixed order (pills, then reminders,
+# personal routines, gym, to-dos): each task joins the routine with its own order from
+# CARDS_ORDER on (+10, +20, +30, +40 in that order), so it runs after the checklist
+CARDS_ORDER = scheduler.AFTER
 scheduler.name_routine(MORNING, MORNING_NAME)
 
 SEGMENTS = 5

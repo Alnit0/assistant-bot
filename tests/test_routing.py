@@ -28,7 +28,7 @@ def _every_entry():
     # The briefing and the weather take plain words only when switched on (BRIEFING_ENABLED,
     # WEATHER_ENABLED, DAY_QUESTIONS): on while the catalogue is read, so their fixtures are
     # replayed too, then as the tests have them and the tasks loaded again as they were
-    switches = {name: getattr(config, name) for name in ("BRIEFING_ENABLED", "WEATHER_ENABLED", "DAY_QUESTIONS")}
+    switches = {name: getattr(config, name) for name in ("BRIEFING_ENABLED", "WEATHER_ENABLED", "DAY_QUESTIONS", "TODOS_ENABLED", "NUDGES_ENABLED", "HABITS_ENABLED")}
     try:
         for name in switches:
             setattr(config, name, True)
@@ -491,7 +491,7 @@ def test_a_message_names_one_of_my_things_only_as_a_whole_name(said, names, name
 
 def test_every_task_that_has_a_list_says_which_action_shows_it():
     shows = {entry.name: entry.show for entry in ALL}
-    assert shows == {"shopping": "demo_shop_list", "packing": "demo_pack_list", "bugs": "bug_list", "pills": "pill_list", "timers": "timer_list", "channel": "", "schedule": "schedule_show", "briefing": "briefing_show", "weather": ""}
+    assert shows == {"shopping": "demo_shop_list", "packing": "demo_pack_list", "bugs": "bug_list", "pills": "pill_list", "timers": "timer_list", "channel": "", "schedule": "schedule_show", "briefing": "briefing_show", "weather": "", "todos": "todo_show", "nudges": "nudge_show", "habits": "habit_show"}
     assert actions.problems(ALL) == []
     broken = actions.Entry("things", "📦", "Only for things.", ("a", "b"), demo.SHOPPING.actions, show="demo_shop_change", on_repeat="allow_another")
     assert actions.problems([broken]) == [

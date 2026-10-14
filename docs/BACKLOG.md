@@ -45,6 +45,18 @@ the full self-test run.
 
 ### Soon
 
+- **The new hub tasks, left for later** (built 2026-10-15, off in live):
+  self-test steps for to-dos, reminders and personal routines (none
+  yet: the month's self-test spend was gone, and they are off); a
+  card's question, with a button each, when a name fits two to-dos,
+  reminders or steps (today it is said back in a line); a look back over
+  days (`tally`) for to-dos and personal routines, so "how did the week
+  go?" counts them; the pills card's page title made like theirs, or
+  theirs like it (question 64).
+- **`docs/NOW.md` and a SessionStart hook** (asked 2026-10-15): the
+  prompt for them never reached the session that built `/catchup`, which
+  reads `docs/NOW.md` when there is one and `docs/STATUS.md` until then.
+
   Also there, as an option: the dev bot as an always-on caretaker
   that reads only live's health (`docs/specs/attention.md`, section 8).
 - **A "flavour" status line when there is nothing to show** (asked

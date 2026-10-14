@@ -1,0 +1,218 @@
+{
+  "router": [
+    {
+      "message": "remind me at 5pm to call Mum",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "a one-off at a time",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "remind me in 20 minutes to check the oven",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "in N minutes",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "every Monday at 9am remind me to put the bins out",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "a repeating one",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "what reminders have I got?",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "seeing them",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "remind me to take my zinc at 8pm",
+      "tasks": [
+        "pills"
+      ],
+      "note": "a trap: a pill's time is the pills task's",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "move the pills checklist to 7",
+      "tasks": [
+        "schedule"
+      ],
+      "note": "a trap: when the bot posts is the schedule task's",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "schedule"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    }
+  ],
+  "extraction": [
+    {
+      "task": "nudges",
+      "message": "remind me at 5pm to call Mum",
+      "action": "nudge_add",
+      "data": {
+        "text": "call Mum",
+        "time": "5:00 pm"
+      },
+      "note": "a time in the one form",
+      "recorded": [
+        "nudge_add",
+        {
+          "text": "call Mum",
+          "time": "5:00 pm",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "nudges",
+      "message": "remind me in 20 minutes to check the oven",
+      "action": "nudge_add",
+      "data": {
+        "in_minutes": 20
+      },
+      "note": "minutes from now: the code works out the time",
+      "recorded": [
+        "nudge_add",
+        {
+          "text": "check the oven",
+          "in_minutes": 20,
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "nudges",
+      "message": "every Monday at 9am remind me to put the bins out",
+      "action": "nudge_add",
+      "data": {
+        "repeat": "days",
+        "weekdays": [
+          "mon"
+        ],
+        "time": "9:00 am"
+      },
+      "note": "",
+      "recorded": [
+        "nudge_add",
+        {
+          "text": "put the bins out",
+          "time": "9:00 am",
+          "repeat": "days",
+          "weekdays": [
+            "mon"
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "nudges",
+      "message": "every weekday at 8am remind me to stretch",
+      "action": "nudge_add",
+      "data": {
+        "repeat": "weekdays",
+        "time": "8:00 am"
+      },
+      "note": "",
+      "recorded": [
+        "nudge_add",
+        {
+          "text": "stretch",
+          "time": "8:00 am",
+          "repeat": "weekdays",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "nudges",
+      "message": "move that to 6",
+      "action": "nudge_change",
+      "note": "6:00 with no am or pm (the card asks), or 6:00 pm marked as a guess: from a 5 pm reminder the evening is the natural reading, and the card shows it with ❓",
+      "state": "The user's reminders now:\n- Call Mum (today at 5:00 pm)\n- (the last one that went off: Call Mum, at 5:00 pm)",
+      "recorded": [
+        "nudge_change",
+        {
+          "reminder": "Call Mum",
+          "time": "6:00 pm",
+          "guessed": [
+            "time"
+          ],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "nudges",
+      "message": "cancel the bins reminder",
+      "action": "nudge_remove",
+      "note": "",
+      "state": "The user's reminders now:\n- Put the bins out (every Mon at 9:00 am)",
+      "recorded": [
+        "nudge_remove",
+        {
+          "reminder": "Put the bins out",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    }
+  ]
+}

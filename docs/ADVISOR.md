@@ -57,7 +57,10 @@ He is **not relying on the bot for reminders yet**. The hub is a daily overview 
   - It pings Alex's phone through ntfy hooks when it finishes or needs him: priority 5 by day, quiet 10 pm to 7 am.
 - **Memory:** live uses about 100 MB; a full self-test's own processes peak at about 180 MB (the dev bot about 120), taking at most about 240 MB off what's free. Chrome and VS Code left open on the EliteDesk were what ran it short. The self-test won't start under 1.9 GB free.
 - **Remote access:** Tailscale plus Remote Desktop, only when something is truly stuck.
-- **Costs:** recorded in US$ (what Anthropic bills), shown in NZ$ at a daily rate. Daily alert NZ$1.00; self-test cap NZ$3.50 a month (spent for October). A heavy build day cost about NZ$2.30; a normal day should be well under NZ$0.50.
+- **Reboots:** Windows Update restarted the EliteDesk twice on the night of 15 Oct (00:23 and 00:26), cutting a batch off. Live came back by itself, but from the project folder, so on the batch's uncommitted work; the 3 am self-test ran on it too. Live in its own folder on a commit is the fix (backlog, Next 5).
+- **`/catchup`:** a Claude Code skill Alex runs at a session's start or after a reboot (works through remote control): reads `docs/NOW.md` (or `docs/STATUS.md`), git, the last boot, live (service, account check, switches, the 6 am briefing) and new bugs, reports in four short parts, then waits. Read only.
+- **Live's look:** `CARDS_V2=true` and `DESIGN_ROUND=3` in live's `.env` since 15 Oct, 8:59 am: the hub is in round 3.
+- **Costs:** recorded in US$ (what Anthropic bills), shown in NZ$ at a daily rate. Daily alert NZ$1.00; self-test cap NZ$3.50 a month (spent for October, so self-tests use recorded answers until November). 15 Oct: the batch spent NZ$0.25 on understanding checks for the new tasks. A heavy build day cost about NZ$2.30; a normal day should be well under NZ$0.50.
 
 ## 5. Principles behind the product
 
@@ -73,11 +76,11 @@ He is **not relying on the bot for reminders yet**. The hub is a daily overview 
 
 Messages go through fast paths (buttons, exact shortcuts), then sticky follow-ups and replies, then the router (Claude picks a task), then extraction (Claude fills a strict schema), then Python checks, applies and replies from templates. A question never sticks to the task that just answered, and an open card takes only what could answer or change it: anything else goes to the router and the card stays open. **The scheduler** runs everything timed: tasks register handlers, schedules are database rows Alex can change by words ("my schedule"), one engine runs them, and a run log prevents doubles and catches up after restarts. **The attention model** ranks what matters (1 problem, 2 due now, 3 next timed, 4 untimed, 5 nothing) and feeds the status line, the briefing and pings. **The notify service** routes alerts; the bot's ntfy is off. **The self-test** drives the dev bot against real Discord, files its own bugs, and runs nightly at 3 am with recorded answers.
 
-## 7. Design direction (agreed, not all built)
+## 7. Design direction (round 3 built and live since 15 Oct)
 
 **The hub, top to bottom**
 1. **Briefing (read):** posted at 6 am, edited in place all day. Page title, then a box per topic: Needs a look (only if something's wrong), weather, today's overview in time order. A spoiler line for yesterday's spend.
-2. **Task cards (do):** one message per task, fixed order (pills, then gym, then to-dos), each with its buttons.
+2. **Task cards (do):** one message per task, fixed order (pills, then reminders, personal routines, gym, to-dos), each with its buttons; a card with nothing for today is not there.
 3. **The moment:** reminders, pings and conversation appear at the bottom and are tidied once dealt with.
 
 **Inside a card:** ordered by time: due or overdue first, then coming up, then any time, then done collapsed into one small line.
@@ -94,6 +97,11 @@ Messages go through fast paths (buttons, exact shortcuts), then sticky follow-up
 - **Buttons:** green for the positive action, red for destructive, blurple for other choices, grey only for Cancel (with ↩️). Buttons only on what can be acted on now.
 - No placeholder tasks.
 
+**The design loop** (`docs/DESIGN-LOG.md` is the record: every round, what is locked, Alex's feedback word for word, and the changes it led to)
+- Each round is posted as a preview in the design-options post, titled "Round N", drawn by the real code from made-up data (`python -m selftest.preview --round N`). No real pill names.
+- Live changes only when Alex says "ship round N" (`DESIGN_ROUND=N`, one restart). Every round that was built stays selectable, so "go back to round N" is the same setting. Today: round 1 (the look before) and round 3.
+- At the start of any batch that touches the design, Claude Code reads his replies in that post since the last round (`--replies`, as the dev bot), copies them word for word into the log, and turns them into a numbered list of changes. Locked parts (rules inside boxes, a box a topic, dots with a count, thin question cards, changes struck through then bold) change only if he names them.
+
 **Ideas for later:** a webhook persona per task (an animal each, matching the server's theme); avatar changes for day and night; the channel topic as a second status spot; private replies that only he sees, for button confirmations.
 
 ## 8. Decisions worth remembering
@@ -107,21 +115,27 @@ Messages go through fast paths (buttons, exact shortcuts), then sticky follow-up
 - **History is not rewritten** for the old "part of the city" wording (low risk).
 - **Questions about his day** ("what's left today?", "how did I go this week?", "will it rain?") are answered from data by the briefing and weather tasks, never by chat and never with a made-up number. Behind `DAY_QUESTIONS` and `DAY_PROGRESS`, both on for live.
 - **A question never sticks** (14 Oct): not to the task that just answered, and not to an open card, which takes only what answers or changes it and stays open. A correction still sticks.
+- **Round 3 is the hub's design** (15 Oct, live): a message reads like a page, a box a topic, dots with a count, times bold with "in 2 hours", changes struck through then bold, thin question cards, a card too big for one message made to fit. Its picks are in docs/STATUS.md under "Decided (round 3)" and wait on his phone review.
+- **Three hub tasks built to his defaults and switched off** (15 Oct, pending his review, questions 51 to 66): to-dos (`TODOS_ENABLED`: a day if given, Done by button or words, overdue carried over at level 2, today's at level 4), reminders he sets (`NUDGES_ENABLED`: once or repeating, posted in the hub with Done and Snooze for 10 minutes, 1 hour or tomorrow, through quiet hours, never twice, retried like pill reminders, late after a restart; never ntfy) and personal routines (`HABITS_ENABLED`: his checklists on chosen days, starting afresh each day). In docs they are "Reminders" and "Personal routines"; the code folders are `nudges` and `habits`.
+- **A task whose switch is off is not loaded**: out of help, #commands and the router.
+- **What's new** (`core/whatsnew.py`): a batch leaves a few lines for one morning's briefing (`python -m core.whatsnew add "…" --on <day>`), shown once in a box under Needs a look and gone after the tidy. Reuse it at the end of any batch Alex should hear about.
 - **The test suite runs in about 40 seconds** (it had grown to nearly two minutes). `TESTS_AS_ON_LIVE=1` runs the same tests with real threads and connections, about 80 seconds.
 
 ## 9. Open threads (update every batch)
 
 **Waiting on Alex**
-- **Design round 3:** in the design-options forum post, with the day's dots in the title (R3-A) or as a line of text (R3-B). The picks are questions 12 to 15, 21, 22 and 45 to 48; the type scale is a draft in docs/DESIGN.md until he says what to change. Ask him for phone screenshots and fine-tune from those.
-- **docs/QUESTIONS.md:** 45 open questions with suggested answers; he can reply "yes to all except…".
+- **Round 3 on his phone:** it is live, and the "Round 3 built" preview is in the design-options post. His feedback goes into docs/DESIGN-LOG.md as round 4. Ask him for phone screenshots. Question 45 (dots in the title or a line) still stands.
+- **The new hub tasks:** the "New hub tasks preview" in the same post, questions 51 to 66, and which to switch on first (suggested: to-dos, then personal routines, then reminders).
+- **docs/QUESTIONS.md:** 61 open questions with suggested answers; he can reply "yes to all except…".
 - **A latest time for his timed pill,** so the day's schedule and last-chance nudge fit his real day (questions 43 and 44 are about the nudge without one).
 - **Gym:** a first build waits on six answers (questions 23 to 28): kilograms for everything; the plan as a `.csv`; next workout in turn or fixed weekdays; today's workout posted in the hub; posted only when asked or by itself; logging a whole exercise at once or set by set. Sixteen more are in its spec. He has the plan in a spreadsheet he'll attach.
 - **Calendar:** stage 1 waits on four answers (29 to 32): which calendar; read only to begin with; access by the private read-only link or by signing in; whether event titles may be given to Claude.
 - **His short QA list** at the top of docs/QA-RUN.md: eleven checks only he can do (looks, colours, lock screen, how things read), most useful first.
-- **Bugs:** 2 open on live. Only he closes a bug (he presses Fixed).
+- **Bugs:** 2 open on live, both from before 12 Oct. The self-test's D6 and D3 (opened by the 3 am run on the cut-off batch's code) were marked fixed by its own 8:44 am run on 15 Oct. Only he closes a live bug (he presses Fixed).
 
 **Ready when he wants**
-- Switch `CARDS_V2` on once the design is settled.
+- Switching on to-dos, reminders and personal routines (one restart each, or together).
+- The What's new box loads in live at its next restart; nothing restarts it for that.
 - A `/fix-bugs` skill for Claude Code; later, an overnight scheduled fix run on a separate branch.
 - Claude Code starting by itself when the EliteDesk boots.
 - A read-only web page over Tailscale (history, charts).

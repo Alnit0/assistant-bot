@@ -370,8 +370,9 @@ def defaults() -> dict[tuple[str, str], timetable.Default]:
 
 def join_routine(of: str, step: str, order: int, name: str) -> None:
     """Have `step` (a handler's name) run with the schedule made for the handler
-    `of`, in front of it: together they are a routine, called `name`. Steps
-    run in the order of `order`, the schedule's own handler last. Said when a
+    `of`: together they are a routine, called `name`. Steps run in the order of
+    `order`: under AFTER in front of the schedule's own handler, from AFTER on
+    after it (the hub's task cards come under the pills checklist). Said when a
     task that is switched on sets itself up; one that is switched off says
     nothing, and the schedule is its own handler alone again."""
     joined = [each for each in _joins.get(of, []) if each[1] != step]
@@ -386,9 +387,13 @@ def name_routine(of: str, name: str) -> None:
     _routine_names[of] = name
 
 
+AFTER = 100  # a step joined with an order from here on runs after the schedule's own handler
+
+
 def routine_steps(of: str) -> tuple[str, ...]:
     """The steps of the schedule made for a handler, as the code now says."""
-    return (*(step for _, step in _joins.get(of, [])), of)
+    joined = _joins.get(of, [])
+    return (*(step for order, step in joined if order < AFTER), of, *(step for order, step in joined if order >= AFTER))
 
 
 def label(task: str, kind: str) -> str:
