@@ -8,6 +8,27 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-15
 
+## Decided (2026-10-15, the daytime batch)
+
+1. **"What pills are left" was in #inbox** (live's message 570, 10:42
+   am): the router chose pills, extraction chose `pill_today`, which
+   posted the checklist in the hub and replied with only a pointer. Now
+   `pill_today` answers where it was asked: a first line with no pill
+   name (the day's dots and how many are left), then each dose still to
+   take in time order with its time in bold and "in 2 hours", and a
+   small pointer to the hub's checklist after it (not in the hub, not
+   in a DM). Asking posts nothing in the hub; `pills` (the word) is
+   still the checklist.
+2. **The other replies that point somewhere were checked**: `pills` and
+   "brief me" are asked-for views, not questions; "what's on today?" in
+   the hub brings the briefing right above up to date (it is the
+   answer), and anywhere else posts a copy where it was asked. Left as
+   they are.
+3. **A direct message while `DMS_ENABLED` is off** gets one silent line
+   ("Direct messages aren't on yet: write to me in #inbox for now.")
+   and nothing else, only if it is Alex's; anyone else's, and any on the
+   dev bot, gets nothing.
+
 ## Decided (2026-10-15, Alex's answers to QUESTIONS.md)
 
 One line a question. Settled by round 3 shipping (his feedback in the

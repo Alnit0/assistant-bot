@@ -22,6 +22,8 @@ from core import config
 # What the bot sends by itself in a direct message (a pointer for a critical
 # alert) is not this: that stays a short pointer with a link (DECISIONS.md).
 # ---------------------------------------------------------------------------
+# What a direct message of mine is told while DMS_ENABLED is off: one line, and nothing else
+OFF_LINE = "Direct messages aren't on yet: write to me in #inbox for now."
 _open: dict[int, dict[str, str]] = {}  # the direct messages being answered: {channel id: {a thing's name: its task's neutral line}}
 
 

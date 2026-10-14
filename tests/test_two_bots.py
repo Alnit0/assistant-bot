@@ -726,13 +726,18 @@ def test_only_my_direct_message_opens_one_and_only_with_the_switch_on(direct, mo
     monkeypatch.setattr(main.conversation, "private_names", names)
     monkeypatch.setattr(main, "my_channel", lambda channel_id, parent_id=None: True)
 
+    told = []
+
+    async def send(text, **options):
+        told.append(text)
+
     def message(author_id, guild=None, channel_id=DM):
-        return SimpleNamespace(id=1, content="took zinc", author=SimpleNamespace(bot=False, id=author_id), channel=SimpleNamespace(id=channel_id), guild=guild)
+        return SimpleNamespace(id=1, content="took zinc", author=SimpleNamespace(bot=False, id=author_id), channel=SimpleNamespace(id=channel_id, send=send), guild=guild)
 
     assert run(main._sender(message(2))) is None and not dms.is_dm(DM), "a direct message from anyone else is not read"
     assert run(main._sender(message(1, guild=SimpleNamespace(id=5), channel_id=INBOX))) is owner and not dms.is_dm(INBOX), "a message in the server is no direct message"
     monkeypatch.setattr(config, "DMS_ENABLED", False)
-    assert run(main._sender(message(1))) is owner and not dms.is_dm(DM), "off: as it always was, and not read for plain words"
+    assert run(main._sender(message(1))) is None and not dms.is_dm(DM) and told == [dms.OFF_LINE], "off: one line saying so, and not read"
     monkeypatch.setattr(config, "DMS_ENABLED", True)
     assert run(main._sender(message(1))) is owner and dms.is_dm(DM) and dms.guard(DM, "✅ **Zinc** taken").startswith("💊 Pills\n")
 
@@ -776,6 +781,43 @@ def test_with_dms_on_a_direct_message_from_anyone_but_me_is_ignored_and_costs_no
     assert run(database.run(lambda conn: conn.execute("SELECT COUNT(*) FROM message_log").fetchone()[0])) == before, "and nothing logged"
     run(main.on_message(dm(owner.discord_id)))
     assert taken == [owner.id] and dms.is_dm(DM + 1), "mine is handled"
+
+
+def test_with_dms_off_my_direct_message_gets_one_line_and_anyone_else_s_nothing(db, owner, monkeypatch):
+    import discord
+
+    import main
+    from core import llm
+
+    monkeypatch.setattr(config, "DMS_ENABLED", False)
+    monkeypatch.setattr(config, "DEV_DATABASE", False)
+    said, taken = [], []
+
+    async def take(message, user):
+        taken.append(user.id)
+
+    async def no_claude(*args, **kwargs):
+        raise AssertionError("Claude was asked")
+
+    monkeypatch.setattr(main, "_take", take)
+    monkeypatch.setattr(llm.claude.messages, "create", no_claude)
+
+    class Channel:
+        id = DM + 2
+
+        async def send(self, text, **options):
+            said.append((text, options.get("silent")))
+
+    def dm(author_id):
+        return SimpleNamespace(id=6, type=discord.MessageType.default, content="what pills are left?", author=SimpleNamespace(bot=False, id=author_id), channel=Channel(), guild=None)
+
+    run(main.on_message(dm(777)))
+    assert said == [] and taken == [], "anyone else: nothing at all"
+    run(main.on_message(dm(owner.discord_id)))
+    assert said == [(dms.OFF_LINE, True)] and taken == [], "mine: the one line, silent, and nothing read"
+    monkeypatch.setattr(config, "DEV_DATABASE", True)
+    run(main.on_message(dm(owner.discord_id)))
+    assert len(said) == 1, "the dev bot never answers a direct message"
 
 
 def test_the_names_a_first_line_must_not_show_come_from_every_task_that_holds_some(monkeypatch, owner):

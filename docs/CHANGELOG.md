@@ -6,6 +6,9 @@ backfilled from the git log.
 
 ## 2026-10-15
 
+- "What pills are left?" is answered where it is asked (the doses still
+  to take today, in time order), never with only a pointer to the hub; a
+  direct message while they are off gets one line saying so.
 - The hub's round 3 design is built, behind `CARDS_V2`: a message reads
   like a page (a page title, a card title with the topic's dots and
   count, bold names, small details), one box a topic with a rule

@@ -4,7 +4,7 @@ import logging
 import discord
 from discord import app_commands
 
-from core import account, alerts, backup, money, cards, clock, conversation, database, day, devmode, dms, health, identity, instance_lock, interactions, lifecycle, live, messages, missed, nightly, restart, scheduler, tidy, timing
+from core import account, alerts, backup, money, cards, clock, config, conversation, database, day, devmode, dms, health, identity, instance_lock, interactions, lifecycle, live, messages, missed, nightly, restart, scheduler, tidy, timing
 from core.config import SEPARATE_BOT
 from core.config import mine as my_channel
 from core.config import (
@@ -275,7 +275,19 @@ async def _sender(message: discord.Message):
     """Who sent a message, if it is one the bot acts on: not a bot's (its own
     included), in a channel that is this bot's, from someone allowed, with
     words in it. None otherwise."""
-    if message.author.bot or not _mine(message.channel):
+    if message.author.bot:
+        return None
+    if getattr(message, "guild", True) is None and not dms.enabled() and not config.DEV_DATABASE:
+        # A direct message to live while DMS_ENABLED is off: mine gets one short line saying so,
+        # and nothing else is read or asked; anyone else's is ignored, at no cost
+        user = await get_user_by_discord_id(message.author.id)
+        if is_allowed(user, "dm") and message.content.strip():
+            try:
+                await message.channel.send(dms.OFF_LINE, silent=True)
+            except discord.HTTPException as error:
+                log.info("Could not say that direct messages are off: %s", error)
+        return None
+    if not _mine(message.channel):
         return None
     user = await get_user_by_discord_id(message.author.id)
     if not is_allowed(user, "message") or not message.content.strip():

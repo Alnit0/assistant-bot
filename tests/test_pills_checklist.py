@@ -133,7 +133,7 @@ def test_with_no_hub_set_it_is_posted_where_it_was_asked_for(world, monkeypatch)
     assert world.sent[0].channel == INBOX
 
 
-def test_the_word_and_the_question_post_today_and_point_to_it_in_a_line_that_goes(world, monkeypatch):
+def test_the_word_posts_today_and_points_to_it_in_a_line_that_goes(world, monkeypatch):
     add(world, {"name": "Zinc"})
     pointed, shown = [], []
 
@@ -146,10 +146,35 @@ def test_the_word_and_the_question_post_today_and_point_to_it_in_a_line_that_goe
     assert run(keyword.handler(ctx)) == "posted today's checklist"
     assert world.sent[0].channel == HUB and pointed == [(INBOX, "💊 Today's checklist is in <#400>.")]
     assert shown == ["pointed to the hub"], "so no Done line is added on top of the pointer"
-    assert run(plain.show_today(world.request(HUB), {}, frozenset())) == Shown("posted today's checklist", "")
-    assert len(pointed) == 1, "asked in the hub: nothing more to say"
-    assert run(plain.show_today(world.request(INBOX), {}, frozenset())) == Shown("posted today's checklist", "")
-    assert pointed[1:] == [(INBOX, "💊 Today's checklist is in <#400>.")], "never a lasting reply: the pointer only"
+
+
+def test_a_question_about_what_is_left_is_answered_where_it_was_asked_never_with_only_a_pointer(world, monkeypatch):
+    # Alex, 15 Oct, in #inbox: "What pills are left" was answered with "today's checklist is in the hub"
+    add(world, {"name": "Pill A", "times": ["8:00 am", "12:00 pm", "4:00 pm"]}, {"name": "Pill B"})
+    pointed = []
+
+    async def pointer(channel_id, text):
+        pointed.append(text)
+
+    monkeypatch.setattr(tidy, "pointer", pointer)
+    world.now = day.at(DAY, time(10, 0))
+    log(world, {"pill": "pill a", "did": "taken"})
+    sent = len(world.sent)
+    said = run(plain.show_today(world.request(INBOX), {}, frozenset()))
+    lines = said.splitlines()
+    assert lines[0] == "💊 **3 left today** · ●○○○ 1/4", "the first line names no pill: it is what a lock screen shows"
+    assert lines[1].startswith("**Pill A** · dose 2 of 3 · **12:00 pm** · <t:") and lines[2].startswith("**Pill A** · dose 3 of 3 · **4:00 pm** · <t:")
+    assert lines[3] == "**Pill B** · any time" and lines[-1] == "-# the checklist is in <#400>", "a pointer may follow the answer, small"
+    assert "`" not in said and pointed == [] and len(world.sent) == sent, "times in bold; nothing posted in the hub, no pointer instead"
+    in_hub = run(plain.show_today(world.request(HUB), {}, frozenset()))
+    assert in_hub.splitlines()[0] == lines[0] and "checklist is in" not in in_hub, "asked in the hub: the answer, no pointer"
+
+
+def test_the_answer_when_nothing_is_left_or_nothing_was_to_take(world):
+    assert run(plain.show_today(world.request(INBOX), {}, frozenset())) == "💊 Nothing to take today."
+    add(world, {"name": "Pill A"})
+    log(world, {"pill": "pill a", "did": "taken"})
+    assert run(plain.show_today(world.request(INBOX), {}, frozenset())).splitlines()[0] == "💊 **Nothing left to take today** · ● 1/1"
 
 
 def test_what_a_reset_would_post_again_is_the_checklist_and_names_no_pill(world):

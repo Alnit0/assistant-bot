@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime, time, timedelta
 
-from core import clock, day, hub, livelists, occurrences, repeats, tidy, timeinput, trace
+from core import clock, day, dms, hub, livelists, occurrences, repeats, tidy, timeinput, trace
 from core import schedule as core_schedule
 from core.actions import BOOLEAN, INTEGER, ITEMS, LAST, LIST, MINUTES, TIME, TIMES, Action, Answer, Choice, Field, LiveReply, Proposal, Question, Request, Shown, State
 from core.actions import EACH_DAY, SEE, SET_UP, flag, is_guessed
@@ -1705,15 +1705,17 @@ async def log_check(request: Request, data: dict) -> str:
     return "; ".join(wrong)
 
 
-async def show_today(request: Request, data: dict, guessed: frozenset) -> Shown:
-    """ "what pills do I have left today?": a fresh copy of today's checklist,
-    in the hub (where it was asked, if no hub is set)."""
-    await checklist.post(request.user.id, request.channel_id)
+async def show_today(request: Request, data: dict, guessed: frozenset) -> str:
+    """ "what pills are left?": the answer itself, where it was asked (a
+    question is never answered with only where to look). Its first line
+    names no pill; a pointer to the checklist in the hub may follow it, small.
+    Asking posts nothing in the hub: `pills` (the word) is the checklist."""
+    _, listed, _ = await checklist.view(request.user.id)
+    said = today.left_answer(listed, clock.now())
     where = hub.channel_id()
-    if where is not None and where != request.channel_id:
-        # Only says where to look: gone after about ten seconds
-        await tidy.pointer(request.channel_id, elsewhere_text(where))
-    return Shown("posted today's checklist")
+    if listed and where is not None and where != request.channel_id and not dms.is_dm(request.channel_id):
+        said += f"\n-# the checklist is in <#{where}>"
+    return said
 
 
 def elsewhere_text(where: int) -> str:
@@ -1937,8 +1939,8 @@ ACTIONS = (
     ),
     Action(
         "pill_today",
-        "The user asks what is left to take today, or to see today's checklist (\"what pills do I have left "
-        "today?\", \"what's left to take?\", \"have I taken everything?\").",
+        "The user asks what is left to take today, or about today's doses (\"what pills are left?\", \"what pills "
+        "do I have left today?\", \"what's left to take?\", \"have I taken everything?\"). Answered in words where asked.",
         needs_card=False,
         run=show_today,
         purpose=SEE,

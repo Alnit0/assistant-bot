@@ -205,3 +205,42 @@ def left_lines(listed: list[Dose]) -> tuple[str, ...]:
         named.append(f"{name} `{timeinput.format_moment(dose.due.at)}`" if shown_time(dose) is not None else name)
     return tuple(named)
 
+
+
+ANSWER_ICON = "💊"
+NOTHING_TODAY = f"{ANSWER_ICON} Nothing to take today."
+
+
+def left_answer(listed: list[Dose], now: datetime) -> str:
+    """ "what pills are left?": the answer itself, said where it was asked. The
+    first line names nothing of mine (it is what a lock screen and a direct
+    message's preview show): the day's dots and count. Then each dose still to
+    take, in time order: due or overdue first, then later today with how far
+    off it is, then any time; and what was missed, small. Times in bold."""
+    from core import design  # the dots and the bold time, as every card writes them
+
+    if not listed:
+        return NOTHING_TODAY
+    done, total = progress(listed)
+    pending = [dose for dose in listed if dose.is_pending]
+    missed = [dose for dose in listed if dose.occurrence.state == MISSED]
+    if not pending:
+        head = f"{ANSWER_ICON} **Nothing left to take today** · {design.progress(done, total)}"
+        return "\n".join([head, *([design.small(f"{len(missed)} missed today")] if missed else [])])
+
+    def order(dose: Dose) -> tuple:
+        at = shown_time(dose)
+        return (at is None, at.timestamp() if at else 0, rules.plain(dose.pill.plan.name).lower(), dose.number)
+
+    lines = [f"{ANSWER_ICON} **{len(pending)} left today** · {design.progress(done, total)}"]
+    for dose in sorted(pending, key=order):
+        at = shown_time(dose)
+        which = f" · dose {dose.number} of {dose.of}" if dose.of > 1 else ""
+        if at is None:
+            when = "after the one before" if dose.due.why == WAITING else "any time"
+        else:
+            when = ("due " if at <= now else "") + design.when(timeinput.format_moment(at), at, now)
+        lines.append(f"**{dose.pill.plan.name}**{which} · {when}")
+    if missed:
+        lines.append(design.small(f"{len(missed)} missed today"))
+    return "\n".join(lines)

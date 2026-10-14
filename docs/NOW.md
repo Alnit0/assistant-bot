@@ -17,7 +17,8 @@ the small jobs they asked for, then one evening restart of live.
   stranger's DM is ignored and costs nothing; 64 confirmed in the log
 
 **In progress**
-- Waiting for 6 pm (the evening restart)
+- 2. Understanding review of 14 days of Alex's messages: golden tests
+  with his words (Pill A for names), fixes, recorded answers
 
 **Next**
 - 7. 6 pm to 9 pm, clear of pill reminders: one restart from a clean,
