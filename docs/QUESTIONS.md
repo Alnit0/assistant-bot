@@ -99,8 +99,8 @@ added here, nowhere else.
     `docs/REVIEW.md` and run QA blocks 53 to 55? → Yes.
 34. Then give live its own folder on `main` (the script is written)?
     → Yes.
-35. Weather is for Auckland city centre, fetched at 5:50 am and
-    refreshed every 3 hours to 8:00 pm. → Keep.
+35. Weather is for Auckland, fetched at 5:50 am and refreshed every
+    3 hours to 8:00 pm. → Keep.
 36. A failed exchange-rate fetch is not an alert (the last rate is
     used). → Keep.
 37. The nightly self-test and the nightly backup both start at
