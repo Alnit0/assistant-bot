@@ -115,7 +115,7 @@ def steps_expected(known: dict[str, int], wanted: list[str]) -> int:
 SWITCHES = {
     "CARDS_V2": "false", "REMINDERS_ENABLED": "false", "BRIEFING_ENABLED": "false", "DAY_PROGRESS": "false", "DAY_QUESTIONS": "false", "WEEKLY_SUMMARY": "false", "DMS_ENABLED": "false",
     "NIGHTLY_SELFTEST": "false", "HUB_TIDY": "false", "QUIET_HOURS_ENABLED": "false", "QUIET_HOURS": "22:00-07:00", "NOTIFY_NTFY": "false",
-    "NTFY_BOT_TOPIC": "", "WEATHER_ENABLED": "false", "DAILY_SPEND_LIMIT_NZD": "1.00", "SELFTEST_MONTHLY_LIMIT_NZD": "3.50", "USD_TO_NZD": "1.70",
+    "NTFY_BOT_TOPIC": "", "WEATHER_ENABLED": "false", "TODOS_ENABLED": "false", "NUDGES_ENABLED": "false", "HABITS_ENABLED": "false", "DESIGN_ROUND": "3", "DAILY_SPEND_LIMIT_NZD": "1.00", "SELFTEST_MONTHLY_LIMIT_NZD": "3.50", "USD_TO_NZD": "1.70",
 }
 
 # (name, the settings it starts with, seconds to stay off before it)
@@ -128,6 +128,8 @@ PHASES = (
     ("p6", {"CARDS_V2": "true", "REMINDERS_ENABLED": "true", "BRIEFING_ENABLED": "true", "HUB_TIDY": "true"}, 0),
     # To-dos, on for the dev bot only (live switches its own): the hub card, the briefing and the tidy with them
     ("p7", {"CARDS_V2": "true", "REMINDERS_ENABLED": "true", "BRIEFING_ENABLED": "true", "HUB_TIDY": "true", "TODOS_ENABLED": "true"}, 0),
+    # Round 4 of the design (shipped on 15 Oct): the other starts stay on round 3, whatever live's .env says
+    ("p8", {"CARDS_V2": "true", "REMINDERS_ENABLED": "true", "DESIGN_ROUND": "4", "TODOS_ENABLED": "true"}, 0),
 )
 
 

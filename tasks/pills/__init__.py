@@ -86,6 +86,14 @@ class PillsTask(Task):
         ]
 
     def buttons(self) -> list[ButtonNote]:
+        from core import design
+
+        if config.CARDS_V2 and design.current() >= 4:
+            # Round 4: one Taken a dose that can be taken now; Skip and a time are said in words
+            return [
+                ButtonNote("✅ Taken", "under a dose that can be taken now, on today's checklist and on a reminder: ticks it off at once; reply to the line it leaves with a time to put it right. To skip one, say so (“skip Pill A”), and “undo that” puts it back"),
+                ButtonNote("⏰ Snooze 15m", "on a reminder: ask again in 15 minutes"),
+            ]
         if config.CARDS_V2:
             # The new look: each pill on the checklist has its next dose's buttons under it
             return [

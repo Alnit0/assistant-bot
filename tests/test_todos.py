@@ -104,6 +104,18 @@ def test_the_done_button_ticks_it_off_and_a_second_press_does_nothing(world):
     assert run(plain.on_done(press)) == "already dealt with"
 
 
+def test_the_done_dropdown_ticks_off_what_was_picked_and_undo_puts_it_back(world):
+    add(world, {"text": "call Ryan"}, {"text": "buy stamps"})
+    stamps = next(each for each in run(store.every(world.owner.id)) if each.text == "Buy stamps")
+    press = SimpleNamespace(user=world.owner, arg="", values=(str(stamps.id),), db=cards.Press.db)
+    assert run(plain.on_picked(press)) == "✅ Buy stamps · done"
+    assert [each.text for each in today(world).done] == ["Buy stamps"]
+    assert run(plain.on_picked(press)) == "already dealt with", "a second pick of the same one does nothing"
+    run(plain.undone(world.request("undo that"), {"todos": [{"todo": "stamps"}]}, frozenset()))
+    assert today(world).done == ()
+    assert run(plain.on_picked(SimpleNamespace(user=world.owner, arg="", values=(), db=cards.Press.db))) == "already dealt with", "nothing picked: nothing done"
+
+
 # --- carry over ------------------------------------------------------------------------------------------------------
 def test_an_undone_to_do_carries_over_as_overdue_and_keeps_its_day(world):
     add(world, {"text": "call Ryan", "day": "today"}, {"text": "pay the bill", "day": "today"})

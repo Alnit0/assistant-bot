@@ -1,11 +1,11 @@
 import logging
 from datetime import date, datetime
 
-from core import actions, cards, clock, confirm, design, llm, occurrences, timeinput
+from core import actions, cards, clock, config, confirm, database, design, llm, occurrences, timeinput
 from core.actions import Request
 from core.cards import Button, Field, Form
 from core.occurrences import DONE, MISSED, PENDING, SKIPPED
-from tasks.pills import checklist, rules, today
+from tasks.pills import checklist, rules, store, today
 from tasks.pills.rules import PAUSED, Pill
 from tasks.pills.today import TASK, Dose
 
@@ -28,6 +28,7 @@ log = logging.getLogger("assistant")
 # No discord.py: the records are core/design.py's, and core/cards.py draws them.
 # ---------------------------------------------------------------------------
 S_TAKEN, S_AT, S_SKIP = "sheet_taken", "sheet_at", "sheet_skip"
+CORRECT_HINT = "reply to this with a time to put it right"
 MARKS = {DONE: "●", PENDING: "○", MISSED: "✕", SKIPPED: "⏭"}
 NOTHING = "Nothing to take today."
 FORM_TITLE = "When did you take it?"
@@ -179,7 +180,10 @@ def layout(listed: list[Dose], pills: list[Pill], day: date, now: datetime) -> t
     When it would not fit one message, the buttons go first: only the next
     dose due keeps them, then none (design.fit does the rest).
 
-    In round 1 of the design (DESIGN_ROUND=1) it is tasks/pills/sheet_r1.py."""
+    In round 1 of the design (DESIGN_ROUND=1) it is tasks/pills/sheet_r1.py, in
+    round 4 `layout_r4`."""
+    if design.current() >= 4:
+        return layout_r4(listed, pills, day, now)
     if design.current() < 3:
         from tasks.pills import sheet_r1  # it uses this module
 
@@ -207,6 +211,52 @@ def layout(listed: list[Dose], pills: list[Pill], day: date, now: datetime) -> t
         if not design.problem(pieces):
             return pieces
     return design.fit(pieces)
+
+
+# ---------------------------------------------------------------------------
+# Round 4 (docs/DESIGN-LOG.md): the relevance rule (core/design.py) and one
+# Taken button a dose that can be taken now. What is due or overdue is a full
+# line with its button; the next dose a full line with none; the rest of the
+# day one small line of times; what is done, and what was missed, a small
+# line each with a count. Paused pills are not on it ("show paused").
+# ---------------------------------------------------------------------------
+def taken_button(dose: Dose) -> Button:
+    """The one button: Taken, at once (question 67); a reply to the line it leaves with a time puts it right."""
+    return Button("Taken", TASK, S_TAKEN, str(dose.occurrence.id), emoji="✅", style=cards.SUCCESS)
+
+
+def thing(dose: Dose, now: datetime) -> design.Thing:
+    """One dose as the relevance rule takes it."""
+    from tasks.pills import reminders  # it imports the checklist, which this module is used by
+
+    name = design.name(dose.pill.plan.name) + (f" · dose {dose.number} of {dose.of}" if dose.of > 1 else "")
+    state = dose.occurrence.state
+    if state in (DONE, SKIPPED):
+        return design.Thing(name, design.FINISHED)
+    if state == MISSED:
+        due = today.shown_time(dose)
+        return design.Thing(name, design.GONE_BY, due, timeinput.format_moment(due) if due else "")
+    at = today.shown_time(dose)
+    if dose.is_untimed or (at is not None and at <= now):
+        # It can be taken now: a full line, its note and a take-by warning small, and its one button
+        when = "any time" if at is None else f"due {design.time(timeinput.format_moment(at))}"
+        lines = [f"{name} · {when}", design.small(dose.pill.plan.notes) if dose.pill.plan.notes else "", reminders._take_by(dose, now) or ""]
+        return design.Thing("\n".join(line for line in lines if line), design.NOW, at, status=design.ANY_TIME if at is None else design.DUE, row=(taken_button(dose),))
+    if at is None:
+        return design.Thing(f"{name} · after dose {dose.number - 1}", design.COMING)
+    return design.Thing(f"{name} · {design.when(timeinput.format_moment(at), at, now)}", design.COMING, at, timeinput.format_moment(at))
+
+
+def layout_r4(listed: list[Dose], pills: list[Pill], day: date, now: datetime) -> tuple:
+    """Today's checklist in round 4: one box, what matters now in full, the rest small."""
+    done, total = today.progress(listed)
+    heading = design.card_title("💊 Pills", done, total)
+    if not listed:
+        return design.fit(design.bolded((design.topic(heading, lines=[NOTHING], status=design.QUIET),)))
+    shown = design.relevant([thing(dose, now) for dose in listed])
+    status = "" if shown.entries else (design.DONE if not shown.missed else design.MISSED)
+    box = design.topic(heading, list(shown.entries), tail="\n".join(shown.small), status=status)
+    return design.fit(design.bolded((box,)))
 
 
 # ---------------------------------------------------------------------------
@@ -261,7 +311,24 @@ async def on_taken(press: cards.Press) -> str:
     if not _loggable(dose):
         return await _stale(press)
     now = clock.now()
-    return await _asked_first(press, dose, listed, now, "Taken") or await _done(press, dose, checklist.TAKEN, now, occurrences.BUTTON)
+    asked = await _asked_first(press, dose, listed, now, "Taken")
+    if asked:
+        return asked
+    said = await _done(press, dose, checklist.TAKEN, now, occurrences.BUTTON)
+    if design.current() >= 4:
+        # Round 4, taken at once: one line says when, and a reply to it with a time puts it right
+        await correctable_line(press, dose, said)
+    return said
+
+
+async def correctable_line(press: cards.Press, dose: Dose, said: str) -> None:
+    """The line after Taken at once, recorded as about that dose, so a reply with a
+    time goes the way a correction in words does."""
+    if press.channel_id is None:
+        return
+    message_id = await cards.send(press.channel_id, cards.Card(f"{said} · {CORRECT_HINT}"), silent=True)
+    if message_id is not None:
+        await database.run(store.db_add_lines, press.user.id, message_id, [(dose.pill.id, dose.occurrence.id)])
 
 
 async def on_skip(press: cards.Press) -> str:

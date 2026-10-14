@@ -14,25 +14,26 @@ pushed to `feature/pills`, all of it in tonight's restart.
 - 4. A reply to last night's pill line corrects that night
 - 5. Live's own folder: scripts and `docs/LIVE-FOLDER.md`, dry-run only
 
-**Done on `feature/round-4`** (worktree `../assistant-bot-round4`)
-- Round 4 of the design, pushed, not merged, not in tonight's restart:
-  the relevance rule, one Taken button (two variants, question 67), the
-  Round 4 preview posted, tests and self-test start 8 (7 of 7)
+**Round 4, shipping tonight** (Alex's answers, 11:45 am)
+- Done: Taken at once only (variant 1 gone); to-dos by the list rule
+  (first three, "+N more", one Done dropdown); merged into this branch
+- In progress: full test run, commit, dev-bot self-test (start 8), push;
+  all by 5:30 pm or round 4 waits for the next restart
 
 **Next**
 - Tonight, 6 pm to 9 pm, clear of pill reminders: one restart from this
-  folder (clean, pushed) with TODOS_ENABLED, WEEKLY_SUMMARY and
-  DMS_ENABLED on; the nightly self-test row to 3:30 am first; checks,
-  and What's new lines for to-dos and DMs
+  folder (clean, pushed) with DESIGN_ROUND=4, TODOS_ENABLED,
+  WEEKLY_SUMMARY and DMS_ENABLED on; the nightly self-test row to
+  3:30 am first; checks (round 4, the to-dos dropdown), and What's new
+  lines for round 4, to-dos and DMs
 - Then: routines rework, shared repeats, Today card (`feature/routines`)
 
 **Drafts and worktrees**
 - Worktree `../assistant-bot-hub-tasks` (`feature/hub-tasks`), merged
-- Worktree `../assistant-bot-round4` (`feature/round-4`): round 4
+- Worktree `../assistant-bot-round4` (`feature/round-4`): merged
 - No drafts outside `docs/`
 
 **Waiting on Alex**
-- Round 4: variant 1 or 2 (question 67), and "ship round 4"
 - The rest of his routines message (point 4, the preview)
 - The private Google Calendar link, for live's `.env` only
 - A lock-screen screenshot of a pill reminder (question 11)

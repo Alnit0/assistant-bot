@@ -167,6 +167,12 @@ def coming(nudges: list[Nudge], now: datetime) -> list[tuple[datetime, Nudge]]:
 
 
 def card_layout(waiting: list[tuple[datetime, Nudge]], now: datetime) -> tuple:
+    if design.current() >= 4:
+        # Round 4 (the relevance rule): the next one in full, the rest of the day one small line of times
+        things = [design.Thing(f"{design.name(each.text)}\n{design.when(timeinput.format_moment(moment), moment, now)}", design.COMING, moment, timeinput.format_moment(moment)) for moment, each in waiting]
+        shown = design.relevant(things)
+        box = design.topic(design.card_title(f"{ICON} {TITLE}"), list(shown.entries), tail="\n".join(shown.small), status=design.QUIET)
+        return design.fit((box,))
     entries = [
         design.Entry(f"{design.name(each.text)}\n{design.when(timeinput.format_moment(moment), moment, now)}", design.DUE)
         for moment, each in waiting

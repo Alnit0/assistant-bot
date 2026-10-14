@@ -6,6 +6,12 @@ backfilled from the git log.
 
 ## 2026-10-15
 
+- Round 4 of the hub's design is live: each card shows what can be done
+  now in full, the next thing in full and the rest small; one Taken
+  button a dose that logs at once (reply to the line it leaves with a
+  time to correct it); Skip and its undo in words.
+- The to-dos card shows the first three open to-dos and "+N more", with
+  one Done dropdown for every open one in place of a button each.
 - "What pills are left?" is answered where it is asked (the doses still
   to take today, in time order), never with only a pointer to the hub; a
   direct message while they are off gets one line saying so.

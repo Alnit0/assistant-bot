@@ -93,6 +93,10 @@ class TodosTask(Task):
         ]
 
     def buttons(self) -> list[ButtonNote]:
+        from core import design
+
+        if config.CARDS_V2 and design.current() >= 4:
+            return [ButtonNote(rules.DONE_MENU, "the one dropdown on the to-dos card in the hub: pick a to-do to tick it off. “I did …” in words works too, and “undo that” puts it back")]
         return [ButtonNote("✅ Done", "on the to-dos card in the hub: tick that to-do off")]
 
     def migrations(self):
@@ -106,6 +110,7 @@ class TodosTask(Task):
 
     def setup(self, client) -> None:
         cards.register(TASK, rules.DONE_ACTION, plain.on_done)
+        cards.register(TASK, rules.PICKED_ACTION, plain.on_picked)
         scheduler.join_routine(hub.MORNING, scheduler.handler_name(TASK, JOB), order=ORDER, name=hub.MORNING_NAME)
 
     async def summary(self, user_id, day):

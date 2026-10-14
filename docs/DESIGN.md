@@ -101,6 +101,22 @@ below. A message is read like a page.
 states, drawn by this code from made-up data, in the "🎨 Design
 options" post (`--check` builds them and posts nothing).
 
+## Round 4 (shipped 2026-10-15)
+
+`DESIGN_ROUND=4` (round 3 stays one setting away). The relevance rule
+(locked, `docs/DESIGN-LOG.md`) is `design.relevant`: a task hands over
+each thing as a `design.Thing` (its full line, what it is now: `NOW`,
+`COMING`, `FINISHED`, `GONE_BY` or `PAUSED`, its time and its buttons) and
+gets back the full lines and the small lines. One Taken a dose, at once;
+the line it leaves is corrected by a reply with a time.
+
+**A list card** (to-dos, and any list of things with no time to come) is
+`design.listed`: the first three open things in full (`LIST_FIRST`), the
+rest one small line (`design.more_line`: "+4 more"), and one dropdown
+(`cards.Select`, placed last in the box) for what can be done to any
+open one, never a button under each. It holds at most 25 (`MAX_MENU`),
+the most pressing first; beyond that a small line says to use words.
+
 ## The hub
 
 The hub is a clean place to check in on what is relevant now

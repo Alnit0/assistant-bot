@@ -320,7 +320,16 @@ async def remove_check(request: Request, data: dict) -> str:
 # The Done button on the card
 # ---------------------------------------------------------------------------
 async def on_done(press: cards.Press) -> str:
-    todo = await press.db.run(store.db_get, int(press.arg)) if press.arg.isdigit() else None
+    return await _done(press, press.arg)
+
+
+async def on_picked(press: cards.Press) -> str:
+    """The Done dropdown (round 4): the to-do picked is done, as its button would make it."""
+    return await _done(press, press.values[0] if press.values else "")
+
+
+async def _done(press: cards.Press, which: str) -> str:
+    todo = await press.db.run(store.db_get, int(which)) if which.isdigit() else None
     if todo is None or todo.is_done:
         changed(press.user.id)  # the card is brought up to date, which takes the button away
         return "already dealt with"

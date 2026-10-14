@@ -14,13 +14,6 @@ added here, nowhere else.
 11. One check only you can do: what does your lock screen show for a
     pill reminder? → Tell me the exact words once (a screenshot is on
     its way).
-67. Round 4's one Taken button: variant 1 (a pop-up with the time filled
-    in, to send as it is or change) or variant 2 (taken at once; the line
-    it leaves says the time, and a reply with a time puts it right)? Both
-    are in the "Round 4 preview". â†’ Variant 2: most doses are taken when
-    you tap, so the pop-up would be a second tap nearly every time
-    (fewest steps); a late dose is one reply ("8:15") on the line it
-    leaves, the same correction you already use.
 
 ## Personal routines, to discuss (`HABITS_ENABLED` stays off)
 

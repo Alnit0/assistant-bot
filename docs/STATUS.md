@@ -8,13 +8,31 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-15
 
-## Round 4 of the design (2026-10-15, built, not shipped)
+## Decided (2026-10-15, Alex's answers on round 4)
 
-On `feature/round-4` (worktree `../assistant-bot-round4`), not merged and
-not in tonight's restart: live stays on round 3 until Alex says "ship
-round 4". From his feedback and a friend's (word for word in
-`docs/DESIGN-LOG.md`): less that is no longer relevant, paused and missed
-out of the way, one Taken button, fewer buttons.
+1. **Question 67: variant 2.** Taken logs at once; a reply with a time to
+   the line it leaves corrects it. Variant 1 (the pop-up) and its setting
+   `TAKEN_BUTTON` are removed. A reminder's Taken leaves the same line.
+2. **To-dos in round 4** by the list rule (`design.listed`, the same for
+   any list card to come): the first three open to-dos in full (overdue,
+   then today's, then any day's), a small "+N more" for the rest, and
+   one Done dropdown for every open to-do (a later day's too) in place of
+   a button each. It holds 25 at most, the most pressing first, and then
+   a small line says to use words. Done by words and undo as before.
+3. **Ship round 4:** `feature/round-4` merged into `feature/pills`, live
+   on `DESIGN_ROUND=4` from tonight's restart. Back is `DESIGN_ROUND=3`.
+4. **The self-test pins the round:** every start but 8 runs on round 3,
+   whatever live's `.env` says, and to-dos, reminders and personal
+   routines are off unless a start turns them on. Start 8 checks round 4.
+5. **What's new for tomorrow:** one Taken button now, reply with a time if
+   you took it earlier; skip by words.
+
+## Round 4 of the design (2026-10-15, built)
+
+Built on `feature/round-4` (worktree `../assistant-bot-round4`). From his
+feedback and a friend's (word for word in `docs/DESIGN-LOG.md`): less
+that is no longer relevant, paused and missed out of the way, one Taken
+button, fewer buttons.
 
 1. **The relevance rule** is locked and lives in `core/design.py`
    (`relevant`, `Thing`): what can be done now in full with its button;
@@ -22,17 +40,14 @@ out of the way, one Taken button, fewer buttons.
    line of times; done and missed a small line each with a count; paused
    not shown. The pills card, the reminders card and the to-dos card use
    it in round 4.
-2. **One Taken button a dose**, in two variants by `TAKEN_BUTTON`: `ask`
-   (a pop-up with the time filled in) or `now` (taken at once, the line
-   it leaves corrected by a reply with a time). Question 67 asks which;
-   the suggestion is variant 2. A reminder has Taken and Snooze.
+2. **One Taken button a dose**, built in two variants for question 67
+   (a pop-up with the time filled in, or taken at once); variant 2 was
+   chosen. A reminder has Taken and Snooze.
 3. **Skip is said in words**, and "undo that" puts a skipped dose back
    ("not skipped after all").
 4. **The Round 4 preview** is posted in the design-options post: the
    pills card in the morning is 5 lines and 2 buttons where round 3 has
-   13 and 15; midday 7 and 1 where round 3 has 9 and 6. The to-dos card
-   is the same length in both: a to-do has no time, so every open one
-   can be done now.
+   13 and 15; midday 7 and 1 where round 3 has 9 and 6.
 5. **Tests:** `tests/test_round4.py`; self-test start 8 (stage `round4`),
    7 of 7 as the dev bot with recorded answers, NZ$0.00.
 

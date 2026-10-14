@@ -107,6 +107,85 @@ The type scale, from Alex's screenshots of rounds 2 and 3 and his brief
   it." So: one `##` a message, as its page title; the hub's task cards
   (pills, reminders, personal routines, to-dos) have none.
 
-**Changes for round 4**
+- 2026-10-15, Alex and a friend of his, round 4: "we show a lot of
+  information that is no longer relevant; paused and missed pills take up
+  too much space; remove duplication with only one Taken button, perhaps
+  a pop-up with the current time filled in that I can edit; less buttons
+  the better."
+
+**Changes for round 4** (from that feedback, and his brief of the same day)
+
+1. The relevance rule, for every card (below)
+2. One Taken button a dose that can be taken now, in place of Taken,
+   Taken at… and Skip; Skip by words only, with undo
+3. Two ways for Taken to work, a setting to compare them: a pop-up with
+   the time filled in (variant 1), or at once with a line that a reply
+   with a time corrects (variant 2)
+
+## The relevance rule (locked: Alex's direction, 2026-10-15)
+
+On every card (pills, to-dos, reminders, and the Today card and
+personal routines later), each thing is shown by how much it matters now:
+
+| What it is | How it shows |
+|---|---|
+| Due or overdue (can be done now) | A full line, with its button |
+| The next thing coming up | A full line, no button |
+| Everything later today | One small line, times only |
+| Done | One small line, with a count |
+| Missed | One small line, with a count and the time; the detail goes to the next morning's briefing |
+| Paused | Not on the card; shown when asked ("show paused") |
+
+The full card, everything listed, is there on request ("show all my
+pills", "show all my to-dos"). This is locked: it changes only if Alex's
+feedback names it.
+
+## Round 4 (built and shipped 2026-10-15)
+
+Built on `feature/round-4`, behind `DESIGN_ROUND=4`. Preview posted on 15
+Oct as "Round 4 preview" in the design-options post, with question 67
+(variant 1 or 2). Alex answered the same day and said ship it: merged into
+`feature/pills` and live at that evening's restart (`DESIGN_ROUND=4`).
+Going back is `DESIGN_ROUND=3` and a restart.
+
+- **The relevance rule** (`design.relevant`, `design.Thing`) on the pills
+  card, the reminders card and the to-dos card. On the pills card for a
+  morning with nothing taken: 5 lines and 2 buttons, where round 3 has 13
+  and 15; midday (2 taken, 1 missed, 1 paused, 1 due, 2 later): 7 and 1,
+  where round 3 has 9 and 6.
+- **One Taken** a dose that can be taken now, on the checklist and on a
+  reminder (with Snooze): taken at once, and a line "reply to this with a
+  time to put it right", recorded so that a reply corrects it (variant 2,
+  Alex's answer to question 67; the pop-up of variant 1 and its setting
+  `TAKEN_BUTTON` are gone).
+- **The list rule** (Alex's answer, 15 Oct), for the to-dos card and any
+  list card to come (`design.listed`): the first three open things in
+  full (overdue first, then today's, then any day's), the rest one small
+  line ("+4 more"), and one Done dropdown for every open one, a later
+  day's too, in place of a button each. The dropdown holds Discord's most
+  (25), the most pressing first; beyond that a small line says to use
+  words. Done by words and "undo that" work as before.
+- **Skip is said in words**, and "undo that" puts a skipped dose back.
+- Paused pills are not on the card; "my pills" shows them, and every pill
+  in full. Missed: a count and its time; the briefing's line about the day
+  before has the rest.
+- Tests: `tests/test_round4.py`; self-test start 8 (stage `round4`): the
+  card, Taken at once and corrected by a reply, Skip and undo in words,
+  the to-dos card and a pick in its dropdown; recorded answers.
+
+**Alex's feedback** (copied word for word, newest last)
+
+On the preview, 15 Oct (his decisions, as relayed):
+- "67: version 2 (Taken logs at once; reply with a time to correct).
+  Remove version 1 and its setting."
+- "To-dos in round 4, not round 5: the card shows the first 3 open
+  to-dos (overdue first, then today, then any day) and a small line for
+  the rest (+4 more). Replace the per-to-do Done buttons with one Done
+  select menu listing every open to-do (up to Discord's limit; beyond
+  that, the 25 most relevant and a note to say done by words). Done by
+  words and undo still work. Same rule for any future list card."
+- "Ship round 4."
+
+**Changes for round 5**
 
 (none yet)

@@ -188,15 +188,7 @@ def check(card: Card) -> None:
     seen: set[str] = set()
     for row in card.rows:
         if isinstance(row, Select):
-            if not 1 <= len(row.options) <= MAX_OPTIONS:
-                raise ValueError(f"A dropdown has 1 to {MAX_OPTIONS} options, not {len(row.options)}")
-            if not 1 <= row.max_values <= len(row.options):
-                raise ValueError("A dropdown can't allow more picks than it has options")
-            values = [option.value for option in row.options]
-            if len(set(values)) != len(values):
-                raise ValueError("A dropdown's options need different values")
-            if any(len(text) > MAX_OPTION_TEXT for option in row.options for text in (option.label, option.value)):
-                raise ValueError(f"A dropdown option's label and value are at most {MAX_OPTION_TEXT} characters")
+            check_select(row)
             ids = [make_id(_SELECT, row.task, row.action, row.arg)]
         else:
             if not 1 <= len(row) <= MAX_BUTTONS_IN_ROW:
@@ -226,6 +218,23 @@ def fitted(card: Card) -> Card:
     return Card(card.text, card.rows, design.fit(card.layout))
 
 
+def check_select(row: Select) -> None:
+    """Refuse a dropdown Discord would refuse."""
+    if not 1 <= len(row.options) <= MAX_OPTIONS:
+        raise ValueError(f"A dropdown has 1 to {MAX_OPTIONS} options, not {len(row.options)}")
+    if not 1 <= row.max_values <= len(row.options):
+        raise ValueError("A dropdown can't allow more picks than it has options")
+    values = [option.value for option in row.options]
+    if len(set(values)) != len(values):
+        raise ValueError("A dropdown's options need different values")
+    if any(len(text) > MAX_OPTION_TEXT for option in row.options for text in (option.label, option.value)):
+        raise ValueError(f"A dropdown option's label and value are at most {MAX_OPTION_TEXT} characters")
+    if any(len(option.description) > MAX_OPTION_TEXT for option in row.options):
+        raise ValueError(f"A dropdown option's description is at most {MAX_OPTION_TEXT} characters")
+    if len(row.placeholder) > MAX_OPTION_TEXT:
+        raise ValueError(f"A dropdown's placeholder is at most {MAX_OPTION_TEXT} characters")
+
+
 def check_layout(pieces: tuple) -> None:
     """Refuse a layout Discord would refuse, or one that breaks the rule for
     button colours. Raises ValueError, as `check` does."""
@@ -240,6 +249,12 @@ def check_layout(pieces: tuple) -> None:
         if len(button.label) > MAX_LABEL:
             raise ValueError(f"A button's label is at most {MAX_LABEL} characters")
         custom_id = make_id(_BUTTON, button.task, button.action, button.arg)
+        if custom_id in seen:
+            raise ValueError(f"Two components on one card share the id {custom_id!r}")
+        seen.add(custom_id)
+    for menu in design.menus(pieces):
+        check_select(menu)
+        custom_id = make_id(_SELECT, menu.task, menu.action, menu.arg)
         if custom_id in seen:
             raise ValueError(f"Two components on one card share the id {custom_id!r}")
         seen.add(custom_id)
