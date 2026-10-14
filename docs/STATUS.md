@@ -8,6 +8,46 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-15
 
+## Decided (2026-10-15, routines, shared repeats and the Today card)
+
+Built on `feature/routines` (worktree `../assistant-bot-routines`), not
+merged; `HABITS_ENABLED` and `TODAY_CARD` stay off. Preview: "Routines
+layout preview" in the Design forum, tagged Preview.
+
+1. **One repeat engine** (`core/recurrence.py`): once, every day,
+   weekdays, weekends, chosen days, every N days, monthly on a date (a
+   date a month lacks is its last day) and monthly on the Nth weekday (the
+   last too). Local time, so daylight saving never moves one. Reminders
+   ask it now; their tests pass unchanged. To-dos later.
+2. **Routines follow round 4, not the earlier brief's buttons**: the
+   brief said every step shown with its buttons under it, and the queue
+   said the relevance rule and `design.listed` for any list. So a
+   routine's card is the first three open items in full, "+N more", and
+   one Done dropdown; a routine still to come has no dropdown (it can be
+   ticked in words), and a finished one folds to a line.
+3. **A step inside a group, said in words, ticks its group** ("did serum"
+   ticks Skincare): a group's steps are a guide, not ticked one by one.
+4. **A time that has come is due, not overdue**; only a window that closes
+   undone is overdue.
+5. **Attention**: any time is level 4; at a time is the next timed thing
+   (level 3), then due (level 2); a window is quiet while open and, closed
+   undone, level 2 only with a nudge. The brief also says Needs a look;
+   that box holds level 1 (problems) only, so an overdue routine shows in
+   the status line and on the Today card instead. Question 68 asks.
+6. **Not built yet, waiting on the layout pick**: the nudge messages
+   themselves (the setting is kept), and Layout B's own cards appearing
+   at a routine's start and tidied when done. Layout A (one card) is what
+   the code posts until then.
+7. **The Today card** (`core/today.py`, `tasks/today`, `TODAY_CARD`):
+   timed things by the relevance rule, any time after them by the list
+   rule, reminders as notes (a note whose time has gone is not shown), no
+   buttons, and one small line when all is done.
+8. **A time with no am or pm** is asked about, never guessed; a window
+   past midnight is not offered yet.
+9. **The extraction fixtures are new and not recorded**: one short real
+   run (`python -m evals.live --live --dev --record`, habits only) before
+   any merge, under the spend limits.
+
 ## Decided (2026-10-15, Alex's answers on round 4)
 
 1. **Question 67: variant 2.** Taken logs at once; a reply with a time to
