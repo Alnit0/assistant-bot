@@ -807,6 +807,17 @@ async def p3(h: Harness) -> None:
         h.memo["sheet_d2"] = shown.id
         h.saw(shown.text.splitlines()[0] + " · boxes " + ", ".join(hex(each) for each in shown.accents if each))
 
+    async with h.step("3.05b", "“What pills are left” in #selftest-inbox (golden 29)", "The answer itself, there: a first line naming no pill (“💊 **n left today** · dots and count”), then a dose a line with its time in bold; no new checklist in the hub, and no pointer in its place", "Alex, 15 Oct"):
+        posted = len(await held(h, "checklist"))
+        mine = await h.say("What pills are left", canned=("pill_today", {"guessed": [], "not_included": []}), task="pills")
+        await no_marks(h, mine)
+        said = await h.find(h.inbox, "left today")
+        first = said.text.splitlines()[0] if said is not None else ""
+        h.check(said is not None and first.startswith("💊 **") and "Test" not in first, f"the answer: {said.text[:200] if said else [each.text[:80] for each in await h.recent(h.inbox, 3) if each.id not in h.typed]}")
+        h.check("Testa" in said.text and "`" not in said.text, f"no dose, or a time in code: {said.text[:300]}")
+        h.check(len(await held(h, "checklist")) == posted, "a checklist was posted in answer")
+        h.saw(first)
+
     async with h.step("3.06", "Taken is pressed in Testa's box on the checklist", "The checklist stays and is rewritten in place: dose 1 has ✅; the reminder for it goes", "T53 (41.5)"):
         pressed = await h.press(h.memo["sheet_d2"], "Taken", arg=await dose_id(h, "Testa", 1))
         shown = await h.get(h.hub, h.memo["sheet_d2"])

@@ -17,8 +17,7 @@ the small jobs they asked for, then one evening restart of live.
   stranger's DM is ignored and costs nothing; 64 confirmed in the log
 
 **In progress**
-- 2. Understanding review of 14 days of Alex's messages: golden tests
-  with his words (Pill A for names), fixes, recorded answers
+- 3. Self-test steps for to-dos, run once as the dev bot
 
 **Next**
 - 7. 6 pm to 9 pm, clear of pill reminders: one restart from a clean,

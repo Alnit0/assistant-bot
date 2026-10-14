@@ -607,6 +607,23 @@
         "reports_doing": false,
         "chat_part": ""
       }
+    },
+    {
+      "message": "What pills are left",
+      "tasks": [
+        "pills"
+      ],
+      "golden": "29",
+      "note": "Alex, 15 Oct, in #inbox: a question about today's doses, answered by pills where it is asked",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
     }
   ],
   "extraction": [
@@ -1706,6 +1723,20 @@
         "not_this",
         {
           "reason": "Message is not about pills or the open card"
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "What pills are left",
+      "action": "pill_today",
+      "golden": "29",
+      "note": "the answer itself, never only a pointer to the hub",
+      "recorded": [
+        "pill_today",
+        {
+          "guessed": [],
+          "not_included": []
         }
       ]
     }

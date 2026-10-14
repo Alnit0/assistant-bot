@@ -28,6 +28,25 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
    ("Direct messages aren't on yet: write to me in #inbox for now.")
    and nothing else, only if it is Alex's; anyone else's, and any on the
    dev bot, gets nothing.
+4. **The understanding review, 14 days of Alex's messages to live**
+   (5 to 15 October, read from live's own database, no requests to
+   Claude, pill names masked). 207 were plain words. The 173 before 10
+   October went through the old way of asking Claude, which is gone:
+   the check-up of 14 October summed them up and they are not replayed.
+   **34 went through the router as it is now; 8 of them went wrong:**
+   - four were already fixed, each with a golden conversation in his
+     words: a change to a pill only on an open card ("Make 11:30, 11am
+     instead", 2c), "I took it at 9am" asking which pill (18), "I took
+     Pill A at 9am" read as a second dose (18c), "That was dose 1" (19)
+   - two are the timers' (both teas extended, "2 more" marked a guess):
+     left, as timers are frozen (question 50)
+   - one was a guess marked inside ("at 11:12" read as the morning) but
+     never shown: the dose was logged at the right time
+   - **one is new: "What pills are left"** (step 1 above), now golden
+     29 with his words, recorded from the real API (2 of 2, US$0.014)
+     and a self-test step (3.05b) that replays it at no cost
+   No router rule was added: the fix was the action's own description
+   and code.
 
 ## Decided (2026-10-15, Alex's answers to QUESTIONS.md)
 

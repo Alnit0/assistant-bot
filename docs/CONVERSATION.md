@@ -234,6 +234,7 @@ Write them the way I'd really say them.
 | 27a | …or "Will it rain?" | The weather's answer, from the forecast it keeps |
 | 28 | A card open, asking whether 8 is morning or evening; then "What's left today?" | The day's own answer; the card stays open, and its buttons still answer it |
 | 28a | …or "Will it rain?" | The weather's answer; the card stays open |
+| 29 | "What pills are left" | The answer itself, where I asked: how many are left and the dots, then each dose still to take with its time. Never only "the checklist is in the hub" |
 | 24 | "will it rain?" | The weather task answers from the forecast it keeps: the highest chance in the hours still to come and roughly when. Nothing is fetched to answer, and chat is never asked |
 | 25 | "what's the weather this afternoon?" | That part of the day from the kept forecast; how warm only if the forecast has it by the hour. A part that is over says so |
 
