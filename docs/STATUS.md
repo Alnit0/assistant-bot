@@ -171,13 +171,13 @@ while it was being built**
 
 - **Branch `feature/pills`**: everything is committed and pushed;
   nothing is merged into `main`.
-- **Live** was last restarted at 3:07 pm on 2026-10-14 and runs the
-  day in dots at the top of the briefing, the questions about the
-  day and the weather, and the fix for a change to a pill that is only
-  on the card. Restarted on the commit of the question passing a
-  card by: a question never sticking to the last task or to a card,
-  and the weather questions in #commands.
-  No error since the start; nothing needs a look.
+- **Live** was last restarted at 5:08 pm on 2026-10-14, on the commit of
+  the question passing a card by, and runs the day in dots at the top
+  of the briefing, the questions about the day and the weather (a
+  question never sticks to the last task or to an open card), and the
+  fix for a change to a pill that is only on the card. #commands: 4
+  pages edited and the weather's added, with no error. Nothing needs
+  a look.
 - **The morning routine ran as booked on its first morning** (live's
   run log, 2026-10-14): the exchange rate, the weather fetch, the tidy,
   the briefing, the checklist, and a needs-a-look check with nothing
