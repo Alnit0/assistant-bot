@@ -13,22 +13,24 @@ pushed to `feature/pills`, all of it in tonight's restart.
 - 3. To-dos self-test stage (start 7): 9 of 9 as the dev bot
 - 4. A reply to last night's pill line corrects that night
 - 5. Live's own folder: scripts and `docs/LIVE-FOLDER.md`, dry-run only
-- Spend: US$0.039 (about NZ$0.07)
 
 **In progress**
-- Waiting for 6 pm: the evening restart
+- Round 4 of the design (Alex and a friend's feedback), in the worktree
+  `../assistant-bot-round4` on `feature/round-4`, not in tonight's
+  restart: 1. the relevance rule in core/design.py; 2. one Taken button,
+  two variants (a pop-up with the time, or at once); 3. the Round 4
+  preview; 4. tests and self-test steps
 
 **Next**
-- Tonight, 6 pm to 9 pm, clear of pill reminders: one restart from a
-  clean, pushed, tested commit with TODOS_ENABLED, WEEKLY_SUMMARY and
-  DMS_ENABLED on; live's nightly self-test row to 3:30 am first; check
-  the account, the round 3 look, the to-dos card hidden while empty,
-  help listing to-dos; What's new lines for to-dos and DMs
-- Then: routines rework, shared repeats, Today card, on `feature/routines`
-  (off in live; Alex's message was cut off at its point 4)
+- Tonight, 6 pm to 9 pm, clear of pill reminders: one restart from this
+  folder (clean, pushed) with TODOS_ENABLED, WEEKLY_SUMMARY and
+  DMS_ENABLED on; the nightly self-test row to 3:30 am first; checks,
+  and What's new lines for to-dos and DMs
+- Then: routines rework, shared repeats, Today card (`feature/routines`)
 
 **Drafts and worktrees**
 - Worktree `../assistant-bot-hub-tasks` (`feature/hub-tasks`), merged
+- Worktree `../assistant-bot-round4` (`feature/round-4`): round 4
 - No drafts outside `docs/`
 
 **Waiting on Alex**
