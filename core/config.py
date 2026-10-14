@@ -242,6 +242,8 @@ REMINDERS_ENABLED = flag(os.getenv("REMINDERS_ENABLED"), False)
 TODOS_ENABLED = flag(os.getenv("TODOS_ENABLED"), False)
 NUDGES_ENABLED = flag(os.getenv("NUDGES_ENABLED"), False)
 HABITS_ENABLED = flag(os.getenv("HABITS_ENABLED"), False)
+# The Today card (tasks/today, core/today.py): the day in time order under the pills card. Off unless set
+TODAY_CARD = flag(os.getenv("TODAY_CARD"), False)
 # The briefing (tasks/briefing): one card a day in the hub that says what today holds, kept up
 # to date in place, and "brief me". Off unless set: off, nothing of it exists
 BRIEFING_ENABLED = flag(os.getenv("BRIEFING_ENABLED"), False)

@@ -70,6 +70,15 @@ async def items(user_id: int, now: datetime) -> list[Item]:
     return [item for item in (attention_of(each, now) for each in found) if item is not None]
 
 
+async def today_lines(user_id: int, now: datetime) -> list:
+    """For the Today card: each routine on today, a line each with its time or window."""
+    from core.today import Line
+
+    day = days.day_of(now)
+    found = rules.due(await store.every(user_id), await store.ticked(user_id, day), day)
+    return [Line(ICON, f"**{each.habit.name}** · {rules.when_text(each.habit)} · {each.done}/{each.total}", each.starts(), each.ends(), each.finished) for each in found]
+
+
 class HabitsTask(Task):
     """Personal routines: my own checklists on chosen days."""
 
@@ -120,6 +129,9 @@ class HabitsTask(Task):
 
     async def attention(self, user_id, now):
         return await items(user_id, now)
+
+    async def today(self, user_id, now):
+        return await today_lines(user_id, now)
 
 
 task = HabitsTask()

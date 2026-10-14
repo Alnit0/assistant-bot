@@ -272,6 +272,7 @@ class Task:
                 owns=self.owns_message, summary=self.summary if type(self).summary is not Task.summary else None,
                 attention=self.attention if type(self).attention is not Task.attention else None,
                 tally=self.tally if type(self).tally is not Task.tally else None, label=self.title,
+                today=self.today if type(self).today is not Task.today else None,
             )
         ]
 
@@ -298,6 +299,14 @@ class Task:
         shows (numbers and short times: never a name). The core ranks them;
         a task never does. It only reads and asks Claude nothing; say when it
         may have changed with `attention.changed()`. Only used if overridden."""
+        return []
+
+    async def today(self, user_id: int, now) -> list:
+        """This task's things for today, for the Today card (core/today.py), as
+        `today.Line`s: its name in bold first, its time if it has one, whether it
+        is done, and whether it is only a note (a reminder). It only reads and asks
+        Claude nothing; the card is brought up to date when its summary changes
+        (`summaries.changed`). Only used if overridden."""
         return []
 
     async def item_names(self, request: Request) -> list[str]:
