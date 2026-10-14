@@ -1169,7 +1169,7 @@ def _could_be(listed: list[Dose], did: str) -> list[Pill]:
     still to log, or for "I didn't take it" those with a dose ticked off."""
     found: dict[int, Pill] = {}
     for dose in listed:
-        fits = today.last_taken(listed, dose.pill.id) if did == checklist.NOT_TAKEN else today.next_to_log(listed, dose.pill.id)
+        fits = today.last_dealt_with(listed, dose.pill.id) if did == checklist.NOT_TAKEN else today.next_to_log(listed, dose.pill.id)
         if fits is not None:
             found.setdefault(dose.pill.id, dose.pill)
     return list(found.values())
@@ -1199,9 +1199,11 @@ async def _for_pill(request: Request, item: dict, pill: Pill, listed: list[Dose]
         return _numbered(pill, listed, today_, item, now)
     taken = today.last_taken(listed, pill.id)
     if did == checklist.NOT_TAKEN:
-        if taken is None:
+        # Taken or skipped by me (Skip is said in words in round 4, and "undo that" puts it back)
+        dealt = today.last_dealt_with(listed, pill.id)
+        if dealt is None:
             return Step(f"💊 **{name}** isn't ticked off today: there is nothing to change.")
-        return Step(dose=taken, did=did, at=now)
+        return Step(dose=dealt, did=did, at=now)
     if did == checklist.SKIP:
         pending = today.next_pending(listed, pill.id)
         if pending is None:
@@ -1550,7 +1552,7 @@ def _numbered(pill: Pill, listed: list[Dose], today_: date, item: dict, now: dat
         return Step(f"⚠️ **{name}** is {'one dose' if of == 1 else f'{of} doses'} a day: there is no dose {number}.")
     did, state = item["did"], dose.occurrence.state
     if did == checklist.NOT_TAKEN:
-        if state != occurrences.DONE:
+        if state != occurrences.DONE and not (state == occurrences.SKIPPED and not dose.occurrence.automatic):
             return Step(f"💊 {dose.label} isn't ticked off today: there is nothing to change.")
         return Step(dose=dose, did=did, at=now)
     if did == checklist.SKIP:
@@ -1582,7 +1584,10 @@ async def _do(step: Step) -> str:
         # A dose of a day that is over, not taken after all: missed, as nothing is left to take that day
         missed = await checklist.unmark_past(step.dose)
         return f"↩️ {missed.label} · not taken after all · {day_said(step.day, day.day_of(clock.now()))}"
+    was_skipped = step.did == checklist.NOT_TAKEN and step.dose.occurrence.state == occurrences.SKIPPED
     said = checklist.marked_text(await checklist.mark(step.dose, step.did, step.at, occurrences.MESSAGE), step.did)
+    if was_skipped:
+        said = said.replace("no longer ticked off", "not skipped after all")
     return f"{said} · yesterday" if step.day is not None else said
 
 

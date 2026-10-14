@@ -107,6 +107,48 @@ The type scale, from Alex's screenshots of rounds 2 and 3 and his brief
   it." So: one `##` a message, as its page title; the hub's task cards
   (pills, reminders, personal routines, to-dos) have none.
 
-**Changes for round 4**
+- 2026-10-15, Alex and a friend of his, round 4: "we show a lot of
+  information that is no longer relevant; paused and missed pills take up
+  too much space; remove duplication with only one Taken button, perhaps
+  a pop-up with the current time filled in that I can edit; less buttons
+  the better."
+
+**Changes for round 4** (from that feedback, and his brief of the same day)
+
+1. The relevance rule, for every card (below)
+2. One Taken button a dose that can be taken now, in place of Taken,
+   Taken at… and Skip; Skip by words only, with undo
+3. Two ways for Taken to work, a setting to compare them: a pop-up with
+   the time filled in (variant 1), or at once with a line that a reply
+   with a time corrects (variant 2)
+
+## The relevance rule (locked: Alex's direction, 2026-10-15)
+
+On every card (pills, to-dos, reminders, and the Today card and
+personal routines later), each thing is shown by how much it matters now:
+
+| What it is | How it shows |
+|---|---|
+| Due or overdue (can be done now) | A full line, with its button |
+| The next thing coming up | A full line, no button |
+| Everything later today | One small line, times only |
+| Done | One small line, with a count |
+| Missed | One small line, with a count and the time; the detail goes to the next morning's briefing |
+| Paused | Not on the card; shown when asked ("show paused") |
+
+The full card, everything listed, is there on request ("show all my
+pills", "show all my to-dos"). This is locked: it changes only if Alex's
+feedback names it.
+
+## Round 4 (built 2026-10-15, not shipped)
+
+Built on `feature/round-4`, behind `DESIGN_ROUND=4`; live stays on round 3
+until Alex says "ship round 4". STATUS_R4
+
+**Alex's feedback** (copied word for word, newest last)
+
+(none yet)
+
+**Changes for round 5**
 
 (none yet)

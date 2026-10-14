@@ -104,11 +104,30 @@ def tail(found: Day, today: date) -> str:
     return " · ".join(said)
 
 
+def layout_r4(found: Day, today: date) -> tuple:
+    """Round 4 (the relevance rule, core/design.py): a to-do has no time, so every
+    open one for today can be done now: a full line with its Done; overdue first,
+    with the day it was for. Done is one small line with a count, and what is for
+    later days one more."""
+    things = [design.Thing("\n".join([design.name(each.text), design.small(f"from {day_text(each.day, today)}")]), design.NOW, status=design.DUE, row=(done_button(each),)) for each in found.overdue]
+    things += [design.Thing(design.name(each.text), design.NOW, status=design.ANY_TIME, row=(done_button(each),)) for each in found.today]
+    things += [design.Thing(each.text, design.FINISHED) for each in found.done]
+    shown = design.relevant(things)
+    small = list(shown.small)
+    if found.later:
+        small.append(f"{len(found.later)} more later" + (f", next {day_text(found.later[0].day, today)}" if found.later[0].day else ""))
+    title = design.card_title(f"{ICON} {TITLE}", len(found.done), found.total)
+    box = design.topic(title, list(shown.entries)[:MAX_SHOWN], tail="\n".join(small), status="" if shown.entries else design.DONE)
+    return design.fit(design.bolded((box,)))
+
+
 def layout(found: Day, today: date) -> tuple:
     """The card in round 3 (docs/DESIGN.md): one box, its card title with the
     day's dots, overdue first (amber, with the day it was for), then today's,
     a Done button under each, and what is done in one small line. When it
     would not fit, the buttons go from the last up (design.fit)."""
+    if design.current() >= 4:
+        return layout_r4(found, today)
     waiting = [(each, True) for each in found.overdue] + [(each, False) for each in found.today]
     shown = waiting[:MAX_SHOWN]
     entries = [entry(todo, today, overdue) for todo, overdue in shown]

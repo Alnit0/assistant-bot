@@ -539,8 +539,72 @@ def topic(title: str, entries: list[Entry] | tuple = (), *, lines: list[str] | t
         if entry.row:
             children.append(Row(tuple(entry.row)))
     if tail:
-        children += [Separator(), Text(small(tail))]
+        # One small line, or several (the relevance rule's: later, done, missed), each small
+        children += [Separator(), Text("\n".join(small(line) for line in tail.split("\n") if line))]
     return Box(status or urgent(entry.status for entry in entries), tuple(children))
+
+
+# ---------------------------------------------------------------------------
+# The relevance rule (round 4: Alex's direction, docs/DESIGN-LOG.md). Every
+# card shows each thing by how much it matters now: what can be done now is a
+# full line with its button; the next thing coming up a full line with none;
+# everything later today one small line of times; what is done one small
+# line with a count; what was missed one small line with a count and its
+# times; what is paused not at all. A task says what each thing is and how
+# its line reads; this file decides how much of it shows.
+# ---------------------------------------------------------------------------
+NOW, COMING, FINISHED, GONE_BY, PAUSED = "now", "coming", "finished", "gone_by", "paused"
+THING_STATES = (NOW, COMING, FINISHED, GONE_BY, PAUSED)
+
+
+@dataclass(frozen=True)
+class Thing:
+    """One thing on a card, for the relevance rule."""
+
+    text: str  # its full line, name first ("**Pill A** · dose 2 · **11:00 am**")
+    state: str  # one of THING_STATES
+    at: object = None  # when it is due, for the order of what is coming (None: after those with a time)
+    when: str = ""  # its time as a small line says it ("2:00 pm"); empty with none
+    status: str = DUE  # the colour of its full line, while it is one
+    row: tuple = ()  # its buttons: shown only while it can be done now
+
+
+@dataclass(frozen=True)
+class Relevant:
+    """What a card shows: the full lines, the small lines under them, and the counts."""
+
+    entries: tuple
+    small: tuple[str, ...]
+    done: int
+    missed: int
+    later: int
+    hidden: int
+
+
+def relevant(things) -> Relevant:
+    """Sort a card's things by the relevance rule (above)."""
+    now = [thing for thing in things if thing.state == NOW]
+    coming = sorted((thing for thing in things if thing.state == COMING), key=lambda thing: (thing.at is None, thing.at.timestamp() if thing.at is not None else 0))
+    done = [thing for thing in things if thing.state == FINISHED]
+    missed = [thing for thing in things if thing.state == GONE_BY]
+    hidden = sum(thing.state == PAUSED for thing in things)
+    entries = [Entry(thing.text, thing.status, tuple(thing.row)) for thing in now]
+    if coming:
+        # The next thing coming up: a full line, and no button until it can be done
+        entries.append(Entry(coming[0].text, QUIET, ()))
+    lines = []
+    later = coming[1:]
+    if later:
+        timed = [thing.when for thing in later if thing.when]
+        untimed = len(later) - len(timed)
+        said = ", ".join(timed) + (f" and {untimed} more" if untimed and timed else f"{untimed} more" if untimed else "")
+        lines.append(f"later today · {said}")
+    if done:
+        lines.append(f"✅ {len(done)} done")
+    if missed:
+        times = [thing.when for thing in missed if thing.when]
+        lines.append(f"✕ {len(missed)} missed" + (f" · {', '.join(times)}" if times else ""))
+    return Relevant(tuple(entries), tuple(lines), len(done), len(missed), len(later), hidden)
 
 
 def page(top: list[str] | tuple, boxes: list | tuple, foot: list[str] | tuple = ()) -> tuple:
@@ -640,7 +704,7 @@ def asking(
 # the look built before round 3: a box an item, `# ` for a standing message,
 # the heading inside a decision's box. Kept as it was; never restyled.
 # ---------------------------------------------------------------------------
-ROUNDS = (1, 3)  # the rounds that were built, oldest first
+ROUNDS = (1, 3, 4)  # the rounds that were built, oldest first (config's default stays the one that is shipped)
 LATEST = ROUNDS[-1]
 
 

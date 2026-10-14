@@ -117,6 +117,16 @@ def shown_time(dose: Dose) -> datetime | None:
     return dose.due.at
 
 
+def last_dealt_with(listed: list[Dose], pill_id: int) -> Dose | None:
+    """The pill's latest dose that was taken or skipped today by the user: what
+    "undo that" or "I didn't take it" puts back. A skip by the bot is left."""
+    mine = sorted(
+        (dose for dose in listed if dose.pill.id == pill_id and (dose.occurrence.state == DONE or (dose.occurrence.state == SKIPPED and not dose.occurrence.automatic))),
+        key=lambda dose: dose.number,
+    )
+    return mine[-1] if mine else None
+
+
 def last_taken(listed: list[Dose], pill_id: int) -> Dose | None:
     """The pill's latest dose that was taken today."""
     mine = sorted((dose for dose in listed if dose.pill.id == pill_id and dose.occurrence.state == DONE), key=lambda dose: dose.number)
