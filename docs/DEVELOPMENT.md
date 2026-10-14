@@ -1757,13 +1757,23 @@ Components V2; without one, or with the switch off, it is its text and
 rows as before. To give a card a layout, build it from the shapes of
 `core/design.py` and pass it as the card's third part:
 `design.standing(title, context, boxes)` for a list or a standing
-message (a box an item: `design.item(status, name, *lines)`),
+message (give a box an item, `design.item(status, name, *lines)`: in
+round 3 they are drawn as one box with a rule between them),
 `design.decision(heading, things, question=…, row=…)` for a card that
-asks. Say a status, never a colour. A list shown on request returns
+asks, and for a page of its own `design.page(top, boxes, foot)` with a
+box a topic made by `design.topic(design.card_title(…, done, total),
+entries, tail=…)` (an item an `design.Entry(text, status, row)`). Write
+times with `design.time` or `design.when`, never in code marks, and a
+change as `field · old → new` (drawn struck through and bold). Say a
+status, never a colour. A shape that changes in a later round keeps the
+old one under an `_rN` name and asks `design.current()` which to draw
+(`docs/DESIGN-LOG.md`). A list shown on request returns
 `LiveReply(key, card.text, card)`, and its `livelists.changed` render
 returns the same card. Keep the text exactly what it was: it is what
 is logged, what is shown with the switch off, and what the tests read.
-`cards.check(card)` refuses a layout Discord would refuse.
+`cards.check(card)` refuses a layout Discord would refuse; whatever is
+sent is first made to fit (`cards.fitted`, `design.fit`), so a card
+too big is cut down, never left unposted.
 
 ## A correction straight after Save
 

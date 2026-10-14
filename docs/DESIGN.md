@@ -7,7 +7,15 @@ buttons in one message). `docs/CONVERSATION.md` says what a card must
 say and when; this file says how that is drawn, and where the two
 touch, the standard wins.
 
-**Status (2026-10-13): waiting for the check on the phone (block 39 of
+**Status (2026-10-15): round 3, the type scale, is built** and is what
+`CARDS_V2` draws (`DESIGN_ROUND=3`, the default). It is described in
+"Round 3, as built" below, and its history, what Alex locked and his
+feedback are in `docs/DESIGN-LOG.md`. The look built before it is
+**round 1**, kept as it was and one setting away (`DESIGN_ROUND=1`):
+the sections from "The pieces" to "Spacing and separators" describe
+round 1, where round 3 does not say otherwise.
+
+**Before (2026-10-13): waiting for the check on the phone (block 39 of
 `docs/QA-RUN.md`).** The colours below are the ones chosen so far and
 are not final until Alex has looked at them on the phone; the lock
 screen waits for the same check. These are built this way, behind
@@ -31,6 +39,59 @@ a change ("✅ Zinc · taken …") is a line, not a card; what goes to
 **Every colour and spacing value is in one file, `core/design.py`**
 (its first block): after the phone check, a change is an edit there and
 nowhere else. `dev mock` draws its sketches with the same values.
+
+## Round 3, as built (2026-10-15)
+
+From the brief in `docs/ADVISOR.md` (section 7) and the round 3 drafts
+below. A message is read like a page.
+
+| Level | Written | Helper (`core/design.py`) | Example |
+|---|---|---|---|
+| Page title, once a message | `## ` | `page_title` | `## 💊 Today · Thu 15 Oct` |
+| Card title, once a box, with the topic's progress | `### ` | `card_title` | `### 💊 Pills ●●○○○○ 2/6` |
+| Item | bold | `name` | `**Pill A** ●○○` |
+| Value | normal text | | `dose 2 · any time` |
+| Detail | `-# ` | `small` | `-# with food` |
+| A time | bold, never code | `time`, `when` | `**5:00 pm** · in 2 hours` (a Discord timestamp, after a time still to come) |
+| A change | struck through, then bold | `change`, `changed` | `time · ~~8:00 pm~~ → **9:00 pm**` |
+| What I said | a quote | `quote` | `> move it to 9` |
+
+- **Boxes separate topics, never items** (`topic`, and `standing`
+  merges a list's items into one box). A horizontal rule between items
+- **A box's edge is the most urgent state in it** (`urgent`): destructive,
+  risky, due, any time, missed, decision, done, quiet, in that order. A
+  miss turns a box red only when nothing in it is left to do
+- **Progress is dots and the exact count**: over ten things, ten dots
+  scaled (`progress`). No bars, no percentages
+- **Times written in code by older words are drawn bold** (`bold_times`):
+  a summary's lines are shared with the old look, so they are restyled
+  only when drawn
+- **A question card is thin** (`asking`): the question as its card title,
+  what it is about small under it, the answers in one row, and no page
+  title or rules, so two in a row read as a stack
+- **Buttons**: unchanged (green, red, blurple, grey only for ↩️ Cancel),
+  and only on what can be done now
+- **The pills card**: page title `💊 Today · Thu 15 Oct`, then one box:
+  due or overdue first, then coming up, then any time, then a pill with
+  only a miss left; what is done, paused or not taken today is one small
+  line at the bottom (`tasks/pills/sheet.py`)
+- **The briefing**: the page title with the day's dots; then Needs a
+  look (only when something is wrong, red, a rule between problems);
+  what was held back overnight; the weather (it counts nothing and sets
+  the scene); then each task's box in the ranking's order, its card
+  title with its dots. Under the boxes, the spend line behind a spoiler,
+  what is worth knowing and the foot
+- **The reminder**: the neutral line a lock screen shows stays first,
+  with no page title; under it one box, the pill as its card title with
+  its dots, the dose and the time in bold
+- **Too big for one message, it is made to fit, never refused**
+  (`design.fit`, by `cards.fitted` before anything is sent): the buttons
+  go first, the last first, so the next thing due keeps its own; then
+  the rules inside each box; then the longest texts are cut with "…"
+
+**To see it**: `python -m selftest.preview` posts every card in its main
+states, drawn by this code from made-up data, in the "🎨 Design
+options" post (`--check` builds them and posts nothing).
 
 ## The hub
 
@@ -408,7 +469,7 @@ total in a `##` title is near the limit with ten dots, and has room as
 a line of normal text. Please check round 3 on your phone before
 picking.
 
-## Drafts: round 3, the type scale (2026-10-14, nothing built)
+## Drafts: round 3, the type scale (2026-10-14; built 2026-10-15, see "Round 3, as built")
 
 Asked by Alex on 2026-10-14, from screenshots of the sketches: treat
 each message like a web page with a proper hierarchy. A **draft**:

@@ -114,7 +114,7 @@ def test_too_soon_is_asked_first_on_the_card_and_nothing_is_logged(world):
     # Dose 1 was logged within the hour: the card says so in so many words, and what Log it would do
     assert "⚠️ You already logged dose 1 at 8:00 am. That's 1h later. The gap is at least 3h. Add another dose?" in asked.text
     assert [button.label for button in asked.rows[0]] == ["Log it", "Cancel"]
-    assert asked.layout[0].status == design.RISKY
+    assert asked.layout[1].status == design.RISKY
 
 
 def test_under_a_minute_after_the_dose_before_it_says_just_now_and_never_0m(world):
@@ -146,7 +146,7 @@ def test_took_for_a_pill_whose_dose_was_missed_is_the_shortcut_and_asks_first(wo
     assert run(shortcut.took(ctx)) == "asked first on a card" and ctx.said == []
     asked = world.sent[sent].card
     assert "Dose 1 was missed (due 8:00 pm). That's after the latest time, 9:00 pm. Log it as taken now?" in asked.text and [button.label for button in asked.rows[0]] == ["Log it", "Cancel"]
-    assert asked.layout[0].status == design.RISKY and states(world)[("Evening pill", 1)] == occurrences.MISSED
+    assert asked.layout[1].status == design.RISKY and states(world)[("Evening pill", 1)] == occurrences.MISSED
 
 
 def test_a_button_pressed_for_a_dose_that_was_missed_meanwhile_asks_first_too(world):

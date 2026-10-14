@@ -794,15 +794,15 @@ async def p3(h: Harness) -> None:
         h.memo["sheet_d2"] = shown.id
         h.saw(f"{'the same message, edited' if same else 'a new message in its place'}; it is {'Components V2' if shown.v2 else 'plain'}")
 
-    async with h.step("3.05", "`pills` with the new look on", "One message: “💊 Today · n of m taken”, the date, a box a pill with its status colour (green for Testany, taken; grey or amber for the rest), and no separate message for a dose with no time", "T51 (41.3)"):
+    async with h.step("3.05", "`pills` with the new look on", "One message: “💊 Today · Thu 15 Oct”, then one box: “### 💊 Pills” with dots and a count, a pill an item, Testany (taken) in the small line at the bottom, and no separate message for a dose with no time", "T51 (41.3)"):
         await h.say("pills")
         sheets = await held(h, "checklist")
         shown = await h.get(h.hub, sheets[-1].message_id) if sheets else None
         h.check(shown is not None and shown.v2, f"the fresh checklist is {'plain' if shown else 'missing'}")
-        h.check("💊 Today · " in shown.text and "taken" in shown.text, f"its heading: {shown.text.splitlines()[0]}")
+        h.check("💊 Today · " in shown.text and "### 💊 Pills " in shown.text and "/" in shown.text, f"its heading: {shown.text.splitlines()[:2]}")
         allowed = {accent(status) for status in design.ACCENTS}
         h.check(shown.accents and set(shown.accents) <= allowed, f"its box colours are {[hex(each) if each else None for each in shown.accents]}")
-        h.check(accent(design.DONE) in shown.accents, "no green box for Testany, which is taken")
+        h.check(len(shown.accents) == 1 and "✅ Testany" in shown.text, f"one box, Testany in its small line: {shown.accents} {shown.text[-200:]}")
         h.check(not await held(h, "dose"), f"{len(await held(h, 'dose'))} separate dose messages are kept with the new look on")
         h.memo["sheet_d2"] = shown.id
         h.saw(shown.text.splitlines()[0] + " · boxes " + ", ".join(hex(each) for each in shown.accents if each))
@@ -855,7 +855,7 @@ async def p3(h: Harness) -> None:
         await h.press(shown.id, "Remove", h.inbox)
         h.check("Otherpill" not in await h.pills(), "Otherpill is still there")
 
-    async with h.step("3.10b", "A pill with no time is added with the new look on: “add Testlate once a day”", "After Save the drawn checklist gains a blue box for Testlate, any time, with its buttons, in place; no separate message for it", "T51 (41.3)"):
+    async with h.step("3.10b", "A pill with no time is added with the new look on: “add Testlate once a day”", "After Save the drawn checklist gains Testlate, any time, with its buttons, in place; no separate message for it", "T51 (41.3)"):
         await h.say("add Testlate to my pills once a day", canned=add({"name": "Testlate", "per_day": 1}))
         stored, shown = await card(h)
         h.check(shown is not None and shown.v2, "no drawn card")
@@ -863,7 +863,7 @@ async def p3(h: Harness) -> None:
         await h.settle(2)
         sheet = await h.get(h.hub, h.memo["sheet_d2"])
         h.check(sheet is not None and "Testlate" in sheet.text and "any time" in sheet.text, f"the checklist: {sheet.text[-300:] if sheet else 'gone'}")
-        h.check(accent(design.ANY_TIME) in sheet.accents, f"no blue box: {[hex(each) if each else None for each in sheet.accents]}")
+        h.check(len(sheet.accents) == 1 and sheet.accents[0] in (accent(design.DUE), accent(design.ANY_TIME)), f"one box, amber or blue: {[hex(each) if each else None for each in sheet.accents]}")
         h.check(not await held(h, "dose"), "a separate dose message was posted")
 
     async with h.step("3.11", "A reminder in the new look", "When dose 2 falls due: posted as the one neutral line and drawn after (an edit), an amber box naming Testa, four buttons. Left up for the next start", "T52 (41.4)"):
@@ -896,15 +896,15 @@ async def p3(h: Harness) -> None:
         h.check(await h.get(h.inbox, shown.id) is None, "the card is still there after Cancel")
         h.check(len(await h.recent(h.inbox, 50)) >= count - 1, "messages were deleted")
 
-    async with h.step("3.13b", "`my schedule` in the new look", "One drawn message: the heading, a box a schedule with the next to run amber and the other grey, and no buttons", "scheduler stage 2 (schedule-list-v2)"):
+    async with h.step("3.13b", "`my schedule` in the new look", "One drawn message: the page title, one amber box (the next to run is in it) with a rule between schedules, and no buttons", "scheduler stage 2 (schedule-list-v2)"):
         await h.say("my schedule")
         shown = await h.find(h.inbox, "My schedule")
         h.check(shown is not None and shown.v2 and not shown.buttons, f"the list is {'plain' if shown and not shown.v2 else 'missing' if shown is None else 'drawn with buttons'}")
         h.check("**Pills checklist**" in shown.text and "**Evening pills checklist**" in shown.text, f"it lists: {shown.text[:400]}")
-        h.check(sorted(set(shown.accents)) == sorted({accent(design.DUE), accent(design.QUIET)}), f"its colours are {[hex(each) if each else None for each in shown.accents]}")
+        h.check(shown.accents == [accent(design.DUE)], f"its colours are {[hex(each) if each else None for each in shown.accents]}")
         h.memo["schedule_list"] = shown.id
 
-    async with h.step("3.13b2", "The lists that were plain, in the new look: `my pills`, “show my week”, `bugs`", "Each is one drawn message (Components V2) with the same words: a heading, a box an item (a pill; a day of the week; “No open bugs.”), and no buttons", "stage 5 (2026-10-13)"):
+    async with h.step("3.13b2", "The lists that were plain, in the new look: `my pills`, “show my week”, `bugs`", "Each is one drawn message (Components V2) with the same words: a page title, one box with a rule between items (a pill; a day of the week; “No open bugs.”), and no buttons", "stage 5 (2026-10-13)"):
         await h.say("my pills", canned=("pill_list", {"guessed": [], "not_included": []}))
         listed = await h.find(h.inbox, "💊 Pills", "in use")
         h.check(listed is not None and listed.v2 and not listed.buttons and "Testa" in listed.text and "Testany" in listed.text, f"my pills: {(listed.v2, listed.text[:200]) if listed else [each.text[:60] for each in await h.recent(h.inbox, 3)]}")
@@ -922,7 +922,7 @@ async def p3(h: Harness) -> None:
         await h.say("make the evening checklist notify, and only on weekdays", canned=scheduled("schedule_change", {"schedule": "evening checklist", "notify": "notify", "days": ["mon", "tue", "wed", "thu", "fri"], "days_change": "set"}), task="schedule")
         stored, shown = await card(h)
         h.check(shown is not None and shown.v2 and shown.accents[:1] == [accent(design.DECISION)], f"the card is {'plain' if shown and not shown.v2 else 'missing' if shown is None else 'drawn'}")
-        h.check("days · every day → Mon to Fri" in shown.text and "notify · silent → notifies" in shown.text, f"the card: {shown.text[:300]}")
+        h.check("days · ~~every day~~ → **Mon to Fri**" in shown.text and "notify · ~~silent~~ → **notifies**" in shown.text, f"the card: {shown.text[:300]}")
         await h.press(shown.id, "Save", h.inbox)
         made = await schedule_named(h, "Evening pills checklist")
         h.check(made is not None and made.days == (0, 1, 2, 3, 4) and made.notify == "notify", f"the schedule is {made}")
@@ -930,7 +930,7 @@ async def p3(h: Harness) -> None:
     async with h.step("3.13d", "Pause and resume: “pause the evening checklist”, Save; then “turn the evening checklist back on”, Save", "`paused · no → until you turn it back on`, and nothing is booked for it while paused; then `paused · … → on` and its next run is booked again", "scheduler stage 2"):
         await h.say("pause the evening checklist", canned=scheduled("schedule_change", {"schedule": "evening checklist", "paused": "pause"}), task="schedule")
         stored, shown = await card(h)
-        h.check(shown is not None and "paused · no → until you turn it back on" in shown.text and "not while it is paused" in shown.text, f"the card: {shown.text[:300] if shown else 'none'}")
+        h.check(shown is not None and "paused · ~~no~~ → **until you turn it back on**" in shown.text and "not while it is paused" in shown.text, f"the card: {shown.text[:300] if shown else 'none'}")
         await h.press(shown.id, "Save", h.inbox)
         made = await schedule_named(h, "Evening pills checklist")
         waiting = [each for each in await h.runs("pills", "checklist") if each[0] == "pending" and each[2].startswith(f"s{made.id}@")]
@@ -940,7 +940,7 @@ async def p3(h: Harness) -> None:
         h.check(listed is not None and "Paused" in listed.text, "the list does not show it paused")
         await h.say("turn the evening checklist back on", canned=scheduled("schedule_change", {"schedule": "evening checklist", "paused": "resume"}), task="schedule")
         stored, shown = await card(h)
-        h.check(shown is not None and "→ on" in shown.text, f"the card: {shown.text[:300] if shown else 'none'}")
+        h.check(shown is not None and "→ **on**" in shown.text, f"the card: {shown.text[:300] if shown else 'none'}")
         await h.press(shown.id, "Save", h.inbox)
         made = await schedule_named(h, "Evening pills checklist")
         waiting = [each for each in await h.runs("pills", "checklist") if each[0] == "pending" and each[2].startswith(f"s{made.id}@")]
@@ -949,7 +949,7 @@ async def p3(h: Harness) -> None:
     async with h.step("3.13e", "Remove: “remove the evening checklist”, then Remove", "A card `… → removed` with a red Remove; after it the schedule is gone from the list, nothing is booked for it, and the 6:00 am one is untouched", "scheduler stage 2"):
         await h.say("remove the evening checklist", canned=scheduled("schedule_remove", {"schedule": "evening checklist"}), task="schedule")
         stored, shown = await card(h)
-        h.check(shown is not None and "→ removed" in shown.text and any("Remove" in label for label in shown.labels), f"the card: {shown.text[:300] if shown else 'none'} with {shown.labels if shown else []}")
+        h.check(shown is not None and "→ **removed**" in shown.text and any("Remove" in label for label in shown.labels), f"the card: {shown.text[:300] if shown else 'none'} with {shown.labels if shown else []}")
         await h.press(shown.id, "Remove", h.inbox)
         h.check(await schedule_named(h, "Evening pills checklist") is None, "it is still there")
         left = await schedule_named(h, "Pills checklist")
@@ -1100,6 +1100,14 @@ async def p4(h: Harness) -> None:
 BRIEFING = "tick things off on their own message"
 
 
+def pills_count(text: str) -> tuple[int, int] | None:
+    """The pills box's count in the briefing, as its card title says it: "### 💊 Pills ●○○ 1/3" is (1, 3)."""
+    import re
+
+    found = re.search(r"### 💊 Pills [●○]+ (\d+)/(\d+)", text or "")
+    return (int(found[1]), int(found[2])) if found else None
+
+
 async def briefing_in_hub(h: Harness):
     """The briefing the bot keeps for the hub, as Discord has it."""
     from core import livelists
@@ -1168,15 +1176,15 @@ async def p5(h: Harness) -> None:
         fresh = await briefing_in_hub(h)
         said = fresh.all_text if fresh is not None else ""
         h.saw(next((line for line in said.splitlines() if "Weather" in line), "no Weather line")[:120])
-        h.check("**Weather** · 14° to 20° · drizzle" in said and "61% rain after 1pm · wind 15 km/h N" in said, f"the briefing: {said[:400]}")
+        h.check("### 🌤️ Weather\n14° to 20° · drizzle" in said and "61% rain after 1pm · wind 15 km/h N" in said, f"the briefing: {said[:400]}")
         ran = [each for each in await h.runs("weather", "fetch") if each[0] == "done"]
         h.check(len(ran) >= 1, f"the 5:50 am fetch did not run: {await h.runs('weather', 'fetch')}")
 
-    async with h.step("5.02", "`brief me` in #selftest-inbox", "With no request to Claude, a copy there: “☀️ Today”, the date, a Pills box with its count and the next dose; drawn, in the colour of its status, with no buttons", "scheduler stage 3 (briefing-v2)"):
+    async with h.step("5.02", "`brief me` in #selftest-inbox", "With no request to Claude, a copy there: “☀️ Today”, the date, a Pills box (### 💊 Pills, its dots and count) with the next dose; drawn, in the colour of its status, with no buttons", "scheduler stage 3 (briefing-v2)"):
         before = h._real_calls
         await h.say("brief me")
         shown = await h.find(h.inbox, BRIEFING)
-        h.check(shown is not None and "☀️ Today" in shown.text and "💊 **Pills** · " in shown.text and "taken" in shown.text, f"the briefing: {shown.text[:300] if shown else 'nothing'}")
+        h.check(shown is not None and "☀️ Today" in shown.text and pills_count(shown.text) is not None, f"the briefing: {shown.text[:300] if shown else 'nothing'}")
         h.check(f"{config.now_nz():%A} {config.now_nz().day} {config.now_nz():%B}" in shown.text and "as of" not in shown.text, f"its date line: {shown.text.splitlines()[:2]}")
         h.check(shown.v2 and not shown.buttons and set(shown.accents) <= {accent(status) for status in design.ACCENTS}, f"drawn: {shown.v2}, buttons {shown.labels}, colours {[hex(each) if each else None for each in shown.accents]}")
         h.check(h._real_calls == before, "a request went to Claude")
@@ -1243,22 +1251,23 @@ async def p5(h: Harness) -> None:
         h.check(said is not None and "wind up to 15 km/h N today" in said.text and "°" not in said.text, f"the small line, or a temperature that is not in the forecast: {said.text[:300] if said else 'nothing'}")
         h.saw(" / ".join(said.text.splitlines()[:2]) if said else "nothing")
 
-    async with h.step("5.04", "A dose is ticked off: `took testany`", "The briefing in the hub is edited in place: its count goes up by one; no new briefing is posted, there or in #selftest-inbox", "scheduler stage 3"):
+    async with h.step("5.04", "A dose is ticked off: `took testany`", "The briefing in the hub is edited in place: the Pills box's count goes up by one; no new briefing is posted, there or in #selftest-inbox", "scheduler stage 3"):
         before = await briefing_in_hub(h)
-        count = int(before.text.split("💊 **Pills** · ")[1].split(" of ")[0])
+        count = pills_count(before.text)[0] if before is not None and pills_count(before.text) else None
+        h.check(count is not None, f"no Pills count in the briefing: {before.text[:300] if before else 'gone'}")
         await h.say("took testany")
         await h.settle(3)
         after = await briefing_in_hub(h)
         h.check(after is not None and after.id == before.id, "the briefing in the hub was replaced, not edited")
-        now = int(after.text.split("💊 **Pills** · ")[1].split(" of ")[0])
+        now = pills_count(after.text)[0] if after is not None and pills_count(after.text) else None
         h.check(now == count + 1, f"its count went from {count} to {now}")
         h.check(await h.count(h.hub, BRIEFING) == 1, f"{await h.count(h.hub, BRIEFING)} briefings in the hub")
         from core import livelists
 
         copy = await database.run(livelists.db_get, h.user.id, "briefing")
         latest = await h.get(h.inbox, copy.message_id) if copy is not None else None
-        h.check(latest is not None and f"· {now} of " in latest.text, "the copy in #selftest-inbox was not brought up to date too")
-        h.saw(f"{count} → {now} taken, in place")
+        h.check(latest is not None and pills_count(latest.text) is not None and pills_count(latest.text)[0] == now, "the copy in #selftest-inbox was not brought up to date too")
+        h.saw(f"{count} → {now} dealt with, in place")
 
     async with h.step("5.04b", "The day's progress at the top of the briefing", "With DAY_PROGRESS on: the day's total in the title as a dot a thing to do and the count (“☀️ Today ●○○○○○ 1/6”), no percentage, and under the date one small line a task (“💊 1/6”), with the numbers the checklist itself counts; it moved in place with the dose just ticked off", "asked 2026-10-14 (day progress)"):
         from tasks.pills import checklist
@@ -1279,7 +1288,7 @@ async def p5(h: Harness) -> None:
     async with h.step("5.06", "`my schedule` with a routine in it", "Morning routine, every day at 6:00 am, with its steps numbered: 1. briefing, 2. pills checklist", "scheduler stage 3"):
         await h.say("my schedule")
         shown = await h.find(h.inbox, "My schedule")
-        h.check(shown is not None and "**Morning routine** · every day at `6:00 am`" in shown.text, f"the list: {shown.text[:300] if shown else 'nothing'}")
+        h.check(shown is not None and "**Morning routine** · every day at " in shown.text and "6:00 am" in shown.text, f"the list: {shown.text[:300] if shown else 'nothing'}")
         h.check("1. briefing" in shown.text and "2. pills checklist" in shown.text, f"its steps: {shown.text[:400]}")
 
     async with h.step("5.06b", "With WEEKLY_SUMMARY on: its schedule, and the summary when it runs", "A schedule “Weekly pills summary”, Sunday at 7:00 pm in the hub, silent. Run now, it posts the week in the hub: “Your week”, the count, a line a day", "asked 2026-10-13 (stage 4)"):

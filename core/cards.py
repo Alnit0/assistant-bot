@@ -216,6 +216,16 @@ def check(card: Card) -> None:
         check_layout(card.layout)
 
 
+def fitted(card: Card) -> Card:
+    """The card with a layout Discord will take: one too big for a message is
+    made to fit (`design.fit`) rather than refused, and the log says so. A
+    card is never left unposted for its size."""
+    if not card.layout or not design.problem(card.layout):
+        return card
+    log.warning("A card's layout was made to fit: %s", design.problem(card.layout))
+    return Card(card.text, card.rows, design.fit(card.layout))
+
+
 def check_layout(pieces: tuple) -> None:
     """Refuse a layout Discord would refuse, or one that breaks the rule for
     button colours. Raises ValueError, as `check` does."""
@@ -279,6 +289,7 @@ class Press:
 
     async def update(self, card: Card) -> None:
         """Rewrite the message the component is on, in place."""
+        card = fitted(card)
         check(card)
         card = dms.guarded(self.channel_id, card)
         self.shown.append(card.text)
@@ -384,6 +395,7 @@ async def handle(
 # ---------------------------------------------------------------------------
 async def post(ctx: Context, card: Card) -> int | None:
     """Send a card as the reply to what the user sent. Returns the message's id."""
+    card = fitted(card)
     check(card)
     message = await ctx.reply(card.text, view=surface.drawn(card))  # checked there (core/outgoing.py)
     return getattr(message, "id", None)
@@ -405,7 +417,7 @@ async def send(channel_id: int, card: Card, *, silent: bool = False) -> int | No
         return None
     # In a direct message: silently, and never with one of my things named in its first line
     silent = silent or dms.is_dm(channel_id)
-    card = dms.guarded(channel_id, card)
+    card = dms.guarded(channel_id, fitted(card))
     check(card)
     text = outgoing.clean(card.text)
     if not text:
@@ -420,6 +432,7 @@ async def edit(channel_id: int, message_id: int, card: Card) -> bool:
     """Rewrite a card in place. False if it has gone or can't be reached."""
     if surface.place(channel_id) is None:
         return False
+    card = fitted(card)
     check(card)
     card = dms.guarded(channel_id, card)
     plain = Card(outgoing.clean(card.text) or card.text, card.rows)

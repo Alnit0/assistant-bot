@@ -6,7 +6,70 @@ No history is kept here: what changed is `docs/CHANGELOG.md`, and this
 file as it stood until midday on 2026-10-14 (every batch, every answer,
 all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
-**Updated:** 2026-10-14
+**Updated:** 2026-10-15
+
+## Overnight, 2026-10-15: the reboot
+
+**Windows Update restarted the EliteDesk twice** (00:23 and 00:26). The
+night's batch stopped part-way, with the round 3 design built but not
+committed. Live came back by itself at 00:26, as its own account, on
+the working copy (those uncommitted changes, with `CARDS_V2` still off,
+so the old look). The 6 am routine ran in full and the briefing posted.
+The 3 am self-test ran on the same working copy, whose phase 5 still
+looked for the old briefing's words: five steps failed and it opened
+D6 and re-opened D3. Not a fault of the bot. Fixed in the self-test's
+checks the same morning. That live can load unreviewed work on a
+reboot is now in `docs/BACKLOG.md` (Next, 5).
+
+## Decided (2026-10-15, round 3 of the design)
+
+Choices the prompts did not settle. Each is yours to overturn.
+
+1. **A box is a Components V2 container, not an embed**, as the cards
+   already were. So Discord's limits are those of Components V2 (40
+   components and 4,000 characters a message), not 10 embeds and 6,000.
+2. **The most urgent state, for a box's edge**: destructive, risky,
+   due, any time, missed, decision, done, quiet. A miss makes a box red
+   only when nothing in it is left to do, as the rule for a pill was.
+3. **The day's total stays in the briefing's title** (R3-A, as built),
+   with the date small under it: question 45 is still yours.
+4. **The briefing's pills box is a summary** (the next dose, the
+   streak, the line about yesterday), not each pill: the pills card
+   right under it lists each one.
+5. **The weather is the first task box in the briefing**: a box that
+   counts nothing sets the scene, then the counted tasks in the
+   ranking's order. No task is named in code for it.
+6. **A time still to come has "in 2 hours" after it; one gone by has
+   not.** An overdue dose reads "dose 2 · due **11:04 am**".
+7. **A pill with only a miss left stays an item** ("missed · was due
+   **9:00 am**", no buttons), after any time; it is not folded into
+   the small line, which holds what is done, paused or not today.
+8. **Every dose still to take keeps its buttons**, coming up included:
+   taking one early is allowed, and asks first when too soon. When a
+   card would not fit, the buttons go first and the next dose due
+   keeps its own.
+9. **Lists** (my pills, the week, a day looked back on, open bugs, my
+   schedule) **are one box with a rule between items**, the edge the
+   most urgent state in it. Statuses per item are no longer colours;
+   each item keeps its mark (✅ ❌ ⏭️).
+10. **A change is drawn only for the one format, `field · old → new`.**
+    "**Iron** → removed" has no field and is left as it is.
+11. **Times a task writes in code** (in summary lines shared with the
+    old look) **are drawn bold**, so the old look is untouched.
+12. **The hub's order was already briefing, then the pills card**, as
+    the 6 am routine posts them, with what comes later under them. With
+    no gym or to-dos card yet, nothing was changed for the order.
+13. **The status line is unchanged.**
+14. **The look before round 3 is "round 1"** (rounds 2 and 3 were
+    sketches until now) and stays one setting away: `DESIGN_ROUND=1`.
+    Proved by running the old tests against it: all passed but two that
+    looked at a function that moved.
+15. **The preview's made-up morning is 7:30 am**, when you are likely to
+    look: its "in 2 hours" are real Discord timestamps, so they read
+    right then and drift after.
+16. **The self-test's phase 3 and 5 checks** now read the round 3
+    wording (one box a topic, `### 💊 Pills ●○○ 1/6`, `~~old~~ →
+    **new**`).
 
 ## Priorities (Alex, 2026-10-14)
 

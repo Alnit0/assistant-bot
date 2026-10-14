@@ -1019,7 +1019,7 @@ def test_it_is_on_the_checklist_on_its_days_and_listed_with_its_days_on_the_othe
     assert log(world, {"pill": "gym vitamin", "did": "taken"}) == "🗓️ **Gym vitamin** is taken Mon, Wed, Fri: there is nothing to tick off today."
     drawn = sheet_module.layout(listed, pills, TUESDAY, world.now)
     said = " ".join(str(piece) for piece in drawn)
-    assert "Not today" in said and "Gym vitamin · Mon, Wed, Fri" in said, "the drawn checklist shows it too"
+    assert "Gym vitamin not today · Mon, Wed, Fri" in said, "the drawn checklist shows it too"
 
 
 def test_the_days_are_changed_and_taken_away_on_a_change_card(world):
@@ -1139,11 +1139,11 @@ def test_the_list_of_my_pills_is_a_card_with_the_same_words_and_a_box_a_pill(wor
     shown = listing.card(pills, DAY)
     cards.check(shown)
     assert shown.text == rules.list_text(pills, DAY), "off, it reads as it always has"
-    assert shown.layout[0].content == "# 💊 Pills\n-# 2 in use · 1 paused"
-    boxes = [(piece.status, piece.children[0].content) for piece in shown.layout if isinstance(piece, design.Box)]
-    assert boxes == [
-        (design.QUIET, "💊 **Gym vitamin** · Mon, Wed, Fri at `8:00 am`"), (design.QUIET, "💊 **Zinc** · daily, any time"),
-        (design.QUIET, "⏸️ **Paused**\n-# **Iron** · daily, any time · *with food* · paused"),
+    assert shown.layout[0].content == "## 💊 Pills\n-# 2 in use · 1 paused"
+    (box,) = [piece for piece in shown.layout if isinstance(piece, design.Box)]
+    assert box.status == design.QUIET and [child.content for child in box.children if isinstance(child, design.Text)] == [
+        "💊 **Gym vitamin** · Mon, Wed, Fri at **8:00 am**", "💊 **Zinc** · daily, any time",
+        "⏸️ **Paused**\n-# **Iron** · daily, any time · *with food* · paused",
     ]
     assert not design.buttons(shown.layout), "no buttons: every change is by words"
     reply = run(plain.show_list(world.request(), {}, frozenset()))

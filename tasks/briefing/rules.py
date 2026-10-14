@@ -198,10 +198,10 @@ def text(sections: list[Section], day: date, problems: tuple[str, ...] = (), hel
     return "\n".join(lines)
 
 
-def layout(sections: list[Section], day: date, problems: tuple[str, ...] = (), held_back: tuple[str, ...] = (), hours: str = "", notes: tuple[str, ...] = (), spend: str = "", so_far: tuple[str, ...] = ()) -> tuple:
-    """The briefing in the one style of docs/DESIGN.md: a standing message, a
-    box a task in the colour of its status, and no buttons. What needs a look
-    is a box of its own on top, then what was held back overnight."""
+def _layout_r1(sections: list[Section], day: date, problems: tuple[str, ...] = (), held_back: tuple[str, ...] = (), hours: str = "", notes: tuple[str, ...] = (), spend: str = "", so_far: tuple[str, ...] = ()) -> tuple:
+    """Round 1 (kept as it was built): a standing message, a box a task in the
+    colour of its status, and no buttons. What needs a look is a box of its own
+    on top, then what was held back overnight."""
     boxes = []
     if problems:
         boxes.append(design.item(design.MISSED, NEEDS, *problems))
@@ -215,3 +215,47 @@ def layout(sections: list[Section], day: date, problems: tuple[str, ...] = (), h
     pieces = design.standing(title, "", boxes, under=tuple(under))
     under = [*([spend] if spend else []), *worth_knowing(notes)]
     return (*pieces, *([design.Text("\n".join(under))] if under else []), design.Text(design.small(FOOT)))
+
+
+def _counts(section: Section) -> bool:
+    return section.summary is not None and bool(section.summary.total)
+
+
+def in_page_order(sections: list[Section]) -> list[Section]:
+    """The order of the boxes on the page: first what sets the scene and counts
+    nothing (the weather), then the day's things in the ranking's order, which
+    puts the next timed thing first. Each keeps the order it was given in."""
+    return [*(each for each in sections if not _counts(each)), *(each for each in sections if _counts(each))]
+
+
+def _box(section: Section) -> design.Box:
+    """One task's box: its card title (with its dots when it counts anything),
+    then what it says, its hint and the line about the day before, small."""
+    said = section.summary
+    if said is None:
+        return design.topic(design.card_title(f"{section.icon} {section.title}"), lines=[design.small(f"⚠️ {section.problem or 'couldn’t be read'}")], status=design.QUIET)
+    heading = design.card_title(f"{section.icon} {section.title}", said.done, said.total)
+    lines = [*([said.glance] if said.glance and not said.total else []), *said.lines, *(design.small(line) for line in (said.hint, said.before) if line)]
+    return design.topic(heading, lines=lines, status=said.status or design.QUIET)
+
+
+def layout(sections: list[Section], day: date, problems: tuple[str, ...] = (), held_back: tuple[str, ...] = (), hours: str = "", notes: tuple[str, ...] = (), spend: str = "", so_far: tuple[str, ...] = ()) -> tuple:
+    """The briefing as a page (docs/DESIGN.md, round 3): the page title with the
+    day's progress, then a box a topic: what needs a look (only when something
+    is wrong, red, a rule between problems), what was held back overnight,
+    then each task's box in page order (`in_page_order`). Under the boxes the
+    spend line behind a spoiler, what is worth knowing, and the foot. No
+    buttons: things are ticked off on their own message.
+
+    In round 1 of the design (DESIGN_ROUND=1) it is `_layout_r1`."""
+    if design.current() < 3:
+        return _layout_r1(sections, day, problems, held_back, hours, notes, spend, so_far)
+    boxes = []
+    if problems:
+        boxes.append(design.topic(design.card_title(NEEDS.replace("**", "")), [design.Entry(each, design.MISSED) for each in problems], status=design.MISSED))
+    if held_back:
+        boxes.append(design.topic(design.card_title(HELD.replace("**", "")), lines=[*held_back, *([design.small(held_note(hours))] if hours else [])], status=design.QUIET))
+    boxes += [_box(section) for section in in_page_order(sections)]
+    title, under = _top(day, so_far)
+    foot = [*([spend] if spend else []), *worth_knowing(notes), design.small(FOOT)]
+    return design.page([design.page_title(title), *under], boxes, foot)

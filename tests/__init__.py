@@ -43,6 +43,7 @@ for name, value in {
     "WEATHER_SOURCE": "",
     "USD_TO_NZD": "1",  # one for one, so the amounts in the tests read the same: tests/test_money.py has the real sums
     "CARDS_V2": "",  # off, as it is unless set: the design tests switch it on
+    "DESIGN_ROUND": "",  # the latest round, as it is unless set: the round tests pick one
     "REMINDERS_ENABLED": "",  # off, as it is unless set: the reminder tests switch it on
     # Every other switch too: off, whatever this PC's own .env has turned on (tests/test_settings.py)
     "BRIEFING_ENABLED": "",

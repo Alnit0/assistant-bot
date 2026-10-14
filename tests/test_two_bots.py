@@ -615,8 +615,8 @@ def test_the_offline_card_and_the_which_task_card_are_drawn_as_decisions_with_th
     shown = missed.card(77, "took zinc", NOW - timedelta(minutes=10), "https://discord.test/77")
     cards.check(shown)
     (box,) = [piece for piece in shown.layout if isinstance(piece, design.Box)]
-    assert box.status == design.DECISION and box.children[0].content.startswith("## 📭 I was offline when you sent this\n-# ")
-    assert "> took zinc" in " ".join(design.texts(shown.layout)) and "**Handle it now?**" in " ".join(design.texts(shown.layout))
+    assert box.status == design.DECISION and box.children[0].content.startswith("### Handle it now?\n-# 📭 I was offline when you sent this · ")
+    assert "> took zinc" in " ".join(design.texts(shown.layout))
     assert [button.label for button in design.buttons(shown.layout)] == ["Handle it now", "Ignore"] == [button.label for button in shown.rows[0]]
 
     entries = [Entry(name, icon, f"Only for {name}.", ("a", "b"), (), on_repeat="allow_another") for name, icon in (("pills", "💊"), ("shopping", "🛒"))]
@@ -624,7 +624,7 @@ def test_the_offline_card_and_the_which_task_card_are_drawn_as_decisions_with_th
     cards.check(tie)
     assert tie.text == "Which is “add iron” for?", "off, it reads as it always has"
     (box,) = [piece for piece in tie.layout if isinstance(piece, design.Box)]
-    assert box.status == design.DECISION and "“add iron”" in " ".join(design.texts(tie.layout)) and "**Which is it for?**" in " ".join(design.texts(tie.layout))
+    assert box.status == design.DECISION and "> add iron" in " ".join(design.texts(tie.layout)) and "### Which is it for?" in " ".join(design.texts(tie.layout))
     assert [button.label for button in design.buttons(tie.layout)] == [button.label for button in tie.rows[0]] and tie.rows[0][-1].label == "Neither"
 
 

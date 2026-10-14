@@ -65,7 +65,7 @@ def test_the_list_shows_each_schedule_when_it_runs_where_and_its_next_run(world)
     assert "-# Pill times belong to each pill: say “pills”" in shown.text
     assert design.problem(shown.layout) == "" and design.buttons(shown.layout) == [], "drawn within the limits, and no buttons: every change is by words"
     assert shown.layout[1].status == design.DUE, "the next to run is amber"
-    assert design.texts(shown.layout)[1].startswith("**Pills checklist** · every day at `6:00 am`") and tomorrow > world.today
+    assert design.texts(shown.layout)[1].startswith("**Pills checklist** · every day at **6:00 am**") and tomorrow > world.today
 
 
 def test_paused_ones_are_together_and_a_routine_lists_its_steps(world):

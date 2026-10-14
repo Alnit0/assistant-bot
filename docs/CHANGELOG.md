@@ -4,6 +4,23 @@ What changed, newest first. One entry per task, as one to three bullets on
 what changed for the user. Entries before 2026-10-07's last one were
 backfilled from the git log.
 
+## 2026-10-15
+
+- The hub's round 3 design is built, behind `CARDS_V2`: a message reads
+  like a page (a page title, a card title with the topic's dots and
+  count, bold names, small details), one box a topic with a rule
+  between items, times in bold with "in 2 hours", a change struck
+  through then bold, thin question cards that stack, and a card too big
+  for one message made to fit rather than refused.
+- The pills card puts what is due or overdue first, then what is coming,
+  then any time, with what is done, paused or not today in one small
+  line; the briefing has a box a topic, Needs a look on top only when
+  something is wrong.
+- The look before it stays one setting away (`DESIGN_ROUND=1`), and
+  `docs/DESIGN-LOG.md` keeps every round, what is locked and Alex's
+  feedback word for word; `python -m selftest.preview` posts the real
+  cards from made-up data for a look on the phone.
+
 ## 2026-10-14
 
 - `docs/ADVISOR.md`, the advisor's handover, checked against the repo and

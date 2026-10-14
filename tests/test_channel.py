@@ -68,7 +68,7 @@ def test_the_card_is_also_drawn_as_a_red_box_with_its_buttons_inside():
 
     row = (Button("Delete all", "channel", "all", "100:", emoji="🗑️", style=cards.DANGER), cards.cancel("channel", "cancel", "100:"))
     drawn = rules.card_layout("<#100>", 42, 3, 5, ("Today's pills checklist",), row)
-    assert design.problem(drawn) == "" and len(drawn) == 1 and drawn[0].status == design.DESTRUCTIVE, "one box, red: it can't be undone"
+    assert design.problem(drawn) == "" and len(drawn) == 2 and drawn[1].status == design.DESTRUCTIVE, "a page title and one box, red: it can't be undone"
     cards.check_layout(drawn)
     assert design.texts(drawn) == [
         "## 🧹 Channel · reset\n-# <#100>",
@@ -82,7 +82,7 @@ def test_the_card_is_also_drawn_as_a_red_box_with_its_buttons_inside():
     # The card a channel gets carries both: the words for the old look and the log, the box for the new
     found = Scan(100, "<#100>", (Found(1, NOW, False), Found(2, NOW, True, "pinned")), (), "inbox")
     asking = channel_task.asking_card(found)
-    assert asking.text.startswith("🧹 Channel · reset") and asking.layout and asking.layout[0].status == design.DESTRUCTIVE
+    assert asking.text.startswith("🧹 Channel · reset") and asking.layout and asking.layout[1].status == design.DESTRUCTIVE
     assert [button.label for button in design.buttons(asking.layout)] == [button.label for button in asking.rows[0]] == ["Delete all", "Delete all unpinned", "Cancel"]
 
 

@@ -172,7 +172,8 @@ from core import cards, design  # noqa: E402
 
 
 def _boxes(pieces):
-    return [(piece.status, piece.children[0].content) for piece in pieces if isinstance(piece, design.Box)]
+    """The one box's status and each of its items' words (boxes separate topics, a rule separates items)."""
+    return [(piece.status, child.content) for piece in pieces if isinstance(piece, design.Box) for child in piece.children if isinstance(child, design.Text)]
 
 
 def test_a_day_is_drawn_as_a_box_a_dose_in_the_colour_of_what_became_of_it(world):
@@ -182,9 +183,9 @@ def test_a_day_is_drawn_as_a_box_a_dose_in_the_colour_of_what_became_of_it(world
     lived(world, WEDNESDAY)
     shown = run(history.yesterday_card(world.owner.id))
     cards.check(shown)
-    assert design.problem(shown.layout) == "" and shown.layout[0].content == "# 💊 Yesterday · 1 of 3 taken · 1 missed · 1 skipped\n-# Tue 13 Oct"
+    assert design.problem(shown.layout) == "" and shown.layout[0].content == "## 💊 Yesterday · 1 of 3 taken · 1 missed · 1 skipped\n-# Tue 13 Oct"
     assert _boxes(shown.layout) == [
-        (design.DONE, "✅ **Zinc** · taken 9:00 am"), (design.MISSED, "❌ **Evening pill** · missed"), (design.QUIET, "⏭️ **Iron** · skipped"),
+        (design.MISSED, "✅ **Zinc** · taken 9:00 am"), (design.MISSED, "❌ **Evening pill** · missed"), (design.MISSED, "⏭️ **Iron** · skipped"),
     ]
     assert shown.text.splitlines()[1:] == [text for _, text in _boxes(shown.layout)], "the same words, drawn or not"
 
@@ -197,10 +198,10 @@ def test_the_week_is_drawn_as_a_box_a_day_with_the_streak_under_it(world):
     lived(world, THURSDAY, "zinc")
     shown = run(history.week_card(world.owner.id))
     cards.check(shown)
-    assert shown.layout[0].content == "# 💊 This week · 6 of 8 taken · 1 missed\n-# Mon 12 – Sun 18 Oct"
+    assert shown.layout[0].content == "## 💊 This week · 6 of 8 taken · 1 missed\n-# Mon 12 – Sun 18 Oct"
     assert _boxes(shown.layout) == [
-        (design.DONE, "**Mon 12** · ✅✅ 2 of 2"), (design.DONE, "**Tue 13** · ✅✅ 2 of 2"),
-        (design.MISSED, "**Wed 14** · ✅❌ 1 of 2"), (design.ANY_TIME, "**Thu 15** · ✅▫️ 1 of 2 so far"),
+        (design.ANY_TIME, "**Mon 12** · ✅✅ 2 of 2"), (design.ANY_TIME, "**Tue 13** · ✅✅ 2 of 2"),
+        (design.ANY_TIME, "**Wed 14** · ✅❌ 1 of 2"), (design.ANY_TIME, "**Thu 15** · ✅▫️ 1 of 2 so far"),
     ]
     lived(world, THURSDAY, "iron")
     lived(world, THURSDAY + timedelta(days=1), "zinc", "iron")

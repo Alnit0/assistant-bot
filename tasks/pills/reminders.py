@@ -274,11 +274,31 @@ def card(dose: Dose, listed: list[Dose], prompt: Prompt, now: datetime) -> Card:
     if prompt.is_last_chance:
         row = tuple(button for button in row if button.action != P_SNOOZE)  # there is nothing left to snooze into
     said = text(dose, listed, prompt, now)
-    # As Components V2 (CARDS_V2): the neutral line stays on top, outside the box, and the
-    # pill is in a box under it: amber while it is due, grey while it is snoozed
-    first, name, *rest = said.split("\n")
+    return Card(said, (row,), drawn(dose, listed, prompt, now, said, row))
+
+
+def drawn(dose: Dose, listed: list[Dose], prompt: Prompt, now: datetime, said: str, row: tuple) -> tuple:
+    """The reminder as Components V2 (CARDS_V2), in the round 3 type scale: the
+    neutral line stays on top, outside the box and with no page title (it is
+    what a lock screen shows); under it one box, amber while it is due and grey
+    while it is snoozed, its card title the pill with its day's dots, then the
+    dose and its time in bold with how far off it is, then the small lines.
+    In round 1 (DESIGN_ROUND=1): the pill's name and the lines as they read, in the box."""
     status = design.QUIET if prompt.snoozed_until is not None else design.DUE
-    return Card(said, (row,), design.notifying(first, design.item(status, name, *rest, row=row)))
+    if design.current() < 3:
+        first, name, *rest = said.split("\n")
+        return design.notifying(first, design.item(status, name, *rest, row=row))
+    first, _, due, *rest = said.split("\n")
+    mine = [each for each in listed if each.pill.id == dose.pill.id]
+    done = sum(each.occurrence.state in (occurrences.DONE, occurrences.SKIPPED) for each in mine)
+    heading = design.card_title(f"💊 {dose.pill.plan.name}", done, len(mine) if len(mine) > 1 else None)
+    at = dose.due.at
+    when = design.when(timeinput.format_moment(at), at, now) if at is not None else ""
+    after = due.partition(" · ")[2] if " · " in due else ""
+    which = design.name(f"Dose {dose.number}") + " · " if dose.of > 1 else ""
+    lines = [heading, f"{which}{'due ' if at is not None and at <= now else ''}{when}", design.small(after) if after else "", *rest]
+    box = design.Box(status, (design.Text("\n".join(line for line in lines if line)), design.Row(tuple(row))))
+    return design.bolded(design.notifying(first, box))
 
 
 # ---------------------------------------------------------------------------

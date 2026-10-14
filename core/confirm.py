@@ -157,7 +157,8 @@ def render_tie(entries: list[Entry], card_id: int, said: str) -> Card:
     row = row + (cards.cancel(CARDS, "cancel", str(card_id), "Neither"),)
     quoted = cards.truncate_label(said, 100)
     # The same question drawn (docs/DESIGN.md, with CARDS_V2 on): a decision, an answer a button
-    drawn = design.decision("❔ One question", [f"“{quoted}”"], question="Which is it for?", row=row)
+    said = design.quote(quoted) if design.current() >= 3 else f"“{quoted}”"
+    drawn = design.decision("❔ One question", [said], question="Which is it for?", row=row)
     return Card(f"Which is “{quoted}” for?", (row,), drawn)
 
 

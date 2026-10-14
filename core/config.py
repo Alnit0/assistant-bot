@@ -232,6 +232,9 @@ KEEP_CONFIRMATIONS = flag(os.getenv("KEEP_CONFIRMATIONS"), True)
 # Cards drawn as Components V2 (docs/DESIGN.md; core/design.py). Off unless
 # set: off, every card looks as it always has
 CARDS_V2 = flag(os.getenv("CARDS_V2"), False)
+# Which round of the design the cards are drawn in, with CARDS_V2 on (docs/DESIGN-LOG.md): 3, the
+# type scale; 1, the look built before it (a box an item). Live changes round only when Alex says so
+DESIGN_ROUND = int(os.getenv("DESIGN_ROUND") or 3)
 REMINDERS_ENABLED = flag(os.getenv("REMINDERS_ENABLED"), False)
 # The briefing (tasks/briefing): one card a day in the hub that says what today holds, kept up
 # to date in place, and "brief me". Off unless set: off, nothing of it exists

@@ -20,11 +20,10 @@ run (the self-test covers most of them: `docs/QA-RUN.md` says which),
 reminders on live, the scheduler, the clean-up and the briefing, and
 the full self-test run.
 
-1. **The hub's look.** Alex's picks from design round 2 (questions 12
-   to 22 of `docs/QUESTIONS.md`), built: titles and rules, the
-   progress marks, a total for the day. Then the check on the phone
-   (the short list at the top of `docs/QA-RUN.md`), then `CARDS_V2` on
-   for live, and #commands' words for the buttons in a pill's box.
+1. **The hub's look.** Round 3, the type scale, is built (2026-10-15,
+   `docs/DESIGN-LOG.md`). Next: Alex's look at the "Round 3 built"
+   preview on his phone, his feedback into the design log as round 4,
+   and #commands' words for the buttons in a pill's box.
 2. **What the briefing shows**: whatever Alex's look at the real hub
    turns up.
 3. **How well it understands**: the two golden conversations that
@@ -33,7 +32,13 @@ the full self-test run.
    (G4).
 4. **The other questions** in `docs/QUESTIONS.md`.
 5. **`feature/pills` into `main`, then live's own folder**
-   (`scripts\setup-live-folder.ps1`).
+   (`scripts\setup-live-folder.ps1`), **running a committed version.**
+   Live runs from the project folder today, so a restart loads whatever
+   is in the working copy. On 2026-10-15 Windows Update restarted the
+   PC twice overnight (00:23 and 00:26) and live came back on a batch's
+   uncommitted, unreviewed changes; the 3 am self-test then ran on them
+   too and failed five steps (D6). From its own folder on a commit, a
+   reboot never loads work in progress.
 6. **Gym**: waits for the answers on how Alex trains (questions 23 to
    28); the three core pieces are built (Details: "Gym"). Then the
    calendar, after its four (29 to 32).

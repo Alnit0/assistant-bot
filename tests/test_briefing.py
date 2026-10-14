@@ -139,7 +139,22 @@ def test_the_briefing_is_a_heading_the_date_and_a_box_a_task_with_no_buttons():
     drawn = rules.layout(SECTIONS, on)
     assert design.problem(drawn) == "" and design.buttons(drawn) == [], "things are ticked off on the task's own message"
     assert [piece.status for piece in drawn[1:3]] == [design.DUE, design.QUIET], "a box in the colour of its status; one that couldn't be read is grey"
-    assert design.texts(drawn)[0] == "# ☀️ Today\n-# Wednesday 14 October" and "as of" not in rules.text(SECTIONS, on), "it always shows now: nothing says when it was written"
+    assert design.texts(drawn)[0] == "## ☀️ Today\n-# Wednesday 14 October" and "as of" not in rules.text(SECTIONS, on), "it always shows now: nothing says when it was written"
+    assert design.texts(drawn)[1:3] == ["### 💊 Pills\n2 of 6 taken\n**Next:** Pill A, dose 2 · **12:00 pm**\n-# 1 to take any time\n-# Yesterday: 5 of 6 taken · 1 missed", "### 🏋️ Gym\n-# ⚠️ couldn't be read"], "a card title a box, and times in bold"
+
+
+def test_the_briefing_in_round_3_is_a_page_with_a_box_a_topic_the_scene_first_and_needs_a_look_on_top():
+    counted = summaries.Section("pills", "💊", "Pills", Summary("2 of 6 taken", design.DUE, ("**Next:** Pill A, dose 2 · `12:00 pm`",), done=2, total=6))
+    weather = summaries.Section("weather", "🌤️", "Weather", Summary("14° to 20° · drizzle", design.QUIET, ("61% rain after 1:00 pm",), "updated 5:50 am"))
+    drawn = rules.layout([counted, weather], date(2026, 10, 14), problems=("⚠️ B14 · backup failed", "⚠️ B15 · memory 312 MB"), spend="💸 Yesterday: ||NZ$0.42||")
+    page, needs, scene, pills, foot = drawn
+    assert page.content.startswith("## ☀️ Today")
+    assert needs.status == design.MISSED and needs.children[0].content == "### ⚠️ Needs a look"
+    assert [type(child).__name__ for child in needs.children] == ["Text", "Separator", "Text", "Separator", "Text"], "a rule between the problems"
+    assert scene.children[0].content.startswith("### 🌤️ Weather\n14° to 20° · drizzle"), "the weather first: it counts nothing and sets the scene"
+    assert pills.children[0].content.startswith("### 💊 Pills ●●○○○○ 2/6\n**Next:** Pill A, dose 2 · **12:00 pm**"), "the dots in the card title, the time in bold"
+    assert foot.content.startswith("💸 Yesterday: ||NZ$0.42||") and design.buttons(drawn) == []
+    assert len(rules.layout([counted, weather], date(2026, 10, 14))) == 4, "nothing wrong: no Needs a look box"
     assert rules.notice("6:00 am") == "☀️ Morning briefing · 6:00 am"
 
 
@@ -310,9 +325,9 @@ def test_the_day_s_total_is_in_the_title_with_the_small_line_a_task_under_the_da
     assert design.DAY_TOTAL_IN_TITLE, "as built; the other way is one value in core/design.py"
     assert rules.text(SECTIONS, on, so_far=so_far).splitlines()[:4] == ["## ☀️ Today ●●●●●○○ 5/7", "-# Wednesday 14 October", "-# 💊 5/7", ""]
     drawn = rules.layout(SECTIONS, on, so_far=so_far)
-    assert design.texts(drawn)[0] == "# ☀️ Today ●●●●●○○ 5/7\n-# Wednesday 14 October\n-# 💊 5/7" and design.problem(drawn) == ""
+    assert design.texts(drawn)[0] == "## ☀️ Today ●●●●●○○ 5/7\n-# Wednesday 14 October\n-# 💊 5/7" and design.problem(drawn) == ""
     assert rules.text(SECTIONS, on) == rules.text(SECTIONS, on, so_far=()), "with none it reads as it did"
-    assert design.texts(rules.layout(SECTIONS, on))[0] == "# ☀️ Today\n-# Wednesday 14 October"
+    assert design.texts(rules.layout(SECTIONS, on))[0] == "## ☀️ Today\n-# Wednesday 14 October"
 
 
 def test_the_day_s_total_as_a_line_of_ordinary_text_is_one_value_away(monkeypatch):
@@ -320,7 +335,7 @@ def test_the_day_s_total_as_a_line_of_ordinary_text_is_one_value_away(monkeypatc
     on = date(2026, 10, 14)
     so_far = ("●●●●●○○ 5/7", "-# 💊 5/7")
     assert rules.text(SECTIONS, on, so_far=so_far).splitlines()[:5] == ["## ☀️ Today", "-# Wednesday 14 October", "●●●●●○○ 5/7", "-# 💊 5/7", ""]
-    assert design.texts(rules.layout(SECTIONS, on, so_far=so_far))[0] == "# ☀️ Today\n-# Wednesday 14 October\n●●●●●○○ 5/7\n-# 💊 5/7"
+    assert design.texts(rules.layout(SECTIONS, on, so_far=so_far))[0] == "## ☀️ Today\n-# Wednesday 14 October\n●●●●●○○ 5/7\n-# 💊 5/7"
 
 
 def test_pills_says_what_is_dealt_with_out_of_all_as_its_checklist_counts_it(world):
@@ -343,7 +358,7 @@ def test_switched_on_the_briefing_in_the_hub_has_the_dots_and_they_move_in_place
     log(on, {"pill": "any", "did": "taken"})
     shown = run(briefing.card_for(on.owner.id))
     assert shown.text.splitlines()[0] == "## ☀️ Today ●○ 1/2" and shown.text.splitlines()[2] == "-# 💊 1/2"
-    assert design.texts(shown.layout)[0].startswith("# ☀️ Today ●○ 1/2\n")
+    assert design.texts(shown.layout)[0].startswith("## ☀️ Today ●○ 1/2\n")
     edits = [card.text for edited, card in on.edited if edited == message_id]
     assert edits and "☀️ Today ●○ 1/2" in edits[-1], "the one in the hub is edited in place: nothing new is posted"
 

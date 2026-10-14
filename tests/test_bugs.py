@@ -1277,11 +1277,12 @@ def test_the_open_bugs_are_a_card_with_the_same_words_and_a_box_a_bug():
     items = [bug(4, "the reply was slow"), bug(7, "wrong time on the card", fix_ready=True, notes=2, url=None)]
     drawn = rules.list_layout(items)
     core_cards.check(Card(rules.list_text(items), (), drawn))
-    assert drawn[0].content == "# 🐞 Open bugs · 2"
+    assert drawn[0].content == "## 🐞 Open bugs · 2"
     name = rules.bug_id(4)
-    boxes = [(piece.status, piece.children[0].content) for piece in drawn if isinstance(piece, design.Box)]
-    assert boxes[0] == (design.QUIET, f"**[{name}](https://discord.test/1)** · the reply was slow\n-# #inbox · 13 Oct")
-    assert boxes[1][0] == design.DUE and "2 notes · 🔧 fix ready, needs retest" in boxes[1][1], "amber when it is mine to retest"
+    (box,) = [piece for piece in drawn if isinstance(piece, design.Box)]
+    said = [child.content for child in box.children if isinstance(child, design.Text)]
+    assert said[0] == f"**[{name}](https://discord.test/1)** · the reply was slow\n-# #inbox · 13 Oct" and isinstance(box.children[1], design.Separator), "one box, a rule between bugs"
+    assert box.status == design.DUE and "2 notes · 🔧 fix ready, needs retest" in said[1], "amber when one is mine to retest"
     none = rules.list_layout([])
     assert [(piece.status, piece.children[0].content) for piece in none if isinstance(piece, design.Box)] == [(design.DONE, "No open bugs.")]
     many = rules.list_layout([bug(n, f"bug {n}") for n in range(1, 30)])
