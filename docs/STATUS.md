@@ -8,6 +8,34 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-15
 
+## Round 4 of the design (2026-10-15, built, not shipped)
+
+On `feature/round-4` (worktree `../assistant-bot-round4`), not merged and
+not in tonight's restart: live stays on round 3 until Alex says "ship
+round 4". From his feedback and a friend's (word for word in
+`docs/DESIGN-LOG.md`): less that is no longer relevant, paused and missed
+out of the way, one Taken button, fewer buttons.
+
+1. **The relevance rule** is locked and lives in `core/design.py`
+   (`relevant`, `Thing`): what can be done now in full with its button;
+   the next thing in full with no button; the rest of the day one small
+   line of times; done and missed a small line each with a count; paused
+   not shown. The pills card, the reminders card and the to-dos card use
+   it in round 4.
+2. **One Taken button a dose**, in two variants by `TAKEN_BUTTON`: `ask`
+   (a pop-up with the time filled in) or `now` (taken at once, the line
+   it leaves corrected by a reply with a time). Question 67 asks which;
+   the suggestion is variant 2. A reminder has Taken and Snooze.
+3. **Skip is said in words**, and "undo that" puts a skipped dose back
+   ("not skipped after all").
+4. **The Round 4 preview** is posted in the design-options post: the
+   pills card in the morning is 5 lines and 2 buttons where round 3 has
+   13 and 15; midday 7 and 1 where round 3 has 9 and 6. The to-dos card
+   is the same length in both: a to-do has no time, so every open one
+   can be done now.
+5. **Tests:** `tests/test_round4.py`; self-test start 8 (stage `round4`),
+   7 of 7 as the dev bot with recorded answers, NZ$0.00.
+
 ## Decided (2026-10-15, the daytime batch)
 
 1. **"What pills are left" was in #inbox** (live's message 570, 10:42

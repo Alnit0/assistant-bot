@@ -130,6 +130,7 @@ Messages go through fast paths (buttons, exact shortcuts), then sticky follow-up
 ## 9. Open threads (update every batch)
 
 **Waiting on Alex**
+- **Round 4** (question 67, variant 1 or 2, and "ship round 4"): built on `feature/round-4`, not merged; the preview is in the design-options post. The full note is on that branch.
 - **Round 3 on his phone:** it is live; his feedback (in the design-options post) goes into docs/DESIGN-LOG.md as round 4. His first piece, from question 64, is done: task cards have no `##` page title.
 - **docs/QUESTIONS.md:** three left after his answers of 15 Oct: 11 (his lock-screen screenshot of a pill reminder is on its way), 63 (personal routines reworked with groups of steps, one button a group: to discuss), 24 to 28 under "Gym onboarding" (he designs how a plan is set up first).
 - **QA block 54 by hand** (top of docs/QA-RUN.md): direct messages go on only once it has passed; the self-test cannot send a DM.
