@@ -102,6 +102,13 @@ the full self-test run.
   contract), 5 (`<#…>` and `<t:…>` through helpers), 6 (the old confirm
   buttons), 7 (archive), 8 (the bugs forum, the start card, the dev
   panel). Stages 1 and 2 are done.
+- **Claude Code starting by itself when the PC boots** (said
+  2026-10-14), in the project folder with remote control, so a
+  restart of the PC never needs a Remote Desktop visit to bring it
+  back.
+- **A RAM upgrade, 8 to 16 GB** (said 2026-10-14), if memory keeps
+  running short: live uses about 100 MB, a self-test takes up to about
+  240 MB, and it stops under 1.9 GB free.
 
 Wanted some day, or small and harmless as they are. In Details under
 the same words.
