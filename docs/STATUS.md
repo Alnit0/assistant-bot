@@ -174,7 +174,7 @@ while it was being built**
   run log, 2026-10-14): the exchange rate, the weather fetch, the tidy,
   the briefing, the checklist, and a needs-a-look check with nothing
   to say.
-- **Tests**: offline 2861 passed, 1 skipped, in about 40 seconds (it
+- **Tests**: offline 2862 passed, 1 skipped, in about 40 seconds (it
   was 1 min 56 s); the same tests pass the slow way, with real threads
   and connections (`TESTS_AS_ON_LIVE=1`). The last full self-test
   (3:42 pm, the dev bot with live up, recorded answers): 122 of 123,
