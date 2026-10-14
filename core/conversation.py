@@ -234,6 +234,14 @@ async def _state(entry: Entry, request: Request, turn: Turn | None = None) -> st
     return text
 
 
+def _asks_to_see(found: Extracted) -> bool:
+    """Whether what was read is a question: an action that only shows or says something
+    (`purpose` SEE in the task's contract) and changes nothing. A question is never taken
+    for a follow-up to whatever answered last: it always goes to the router, so that it
+    gets its own answer from the task that owns it (the day's questions, the weather)."""
+    return found.fitted and found.action.purpose == actions.SEE
+
+
 def _card_lines(data: dict | None) -> list[str]:
     """A card's data in short lines, for the trace."""
     lines = []
@@ -540,6 +548,10 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
             trace.note("open card: none, so the sticky and correction checks were skipped")
         earlier = ""
         settled = False
+        # A task's reading of the message as a question of its own, made before the router was asked
+        # (it had just answered, or its list was on screen): kept, so that if the router sends the
+        # question to that same task it is not read a second time
+        questions: dict[str, Extracted] = {}
 
         # "No, 2 bread rolls" straight after a change: that change was the mistake.
         # It is undone first (the card goes back to what it was before it), and
@@ -680,6 +692,9 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
                 if found.not_this:
                     turn.extracted.append(found.as_log())
                     trace.note("extraction said the message is not for the list on screen: on to the router")
+                elif _asks_to_see(found):
+                    questions[entry.name] = found
+                    trace.note(f"a question never sticks: {entry.name} read it as its own ({found.action.name}), and it goes to the router all the same")
                 else:
                     turn.route = costs.FOLLOW_UP
                     turn.why.append(f"the {shown_list.task} list is the bot's latest message, under 5 minutes old, and the message is short")
@@ -695,8 +710,13 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
             entry = actions.entry(llm.answering_task(ctx.channel_id)) if llm.answering_task(ctx.channel_id) else None
             if entry in entries and 0 < len(ctx.text.split()) <= livelists.SHORT_WORDS:
                 found = await extraction.extract(entry, ctx.text, await _state(entry, request, turn), after_answer=True)
+                # A question never sticks to the task that just answered: "what's left today?" straight
+                # after a pill was logged is about the day, and the router decides whose it is
+                if _asks_to_see(found):
+                    questions[entry.name] = found
+                    trace.note(f"a question never sticks: {entry.name} read it as its own ({found.action.name}), and it goes to the router all the same")
                 # Anything but an action or a plain "that is already so" is not about what was just done
-                if found.fitted or found.declined in (actions.ALREADY_SO, actions.CANNOT):
+                elif found.fitted or found.declined in (actions.ALREADY_SO, actions.CANNOT):
                     turn.route = costs.FOLLOW_UP
                     turn.why.append(f"{entry.name} answered here less than 5 minutes ago and the message is short: it goes to {entry.name} first")
                     await act(request, found, turn)
@@ -796,6 +816,8 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
                 if not result.about_data:
                     await _say(ctx, turn, outgoing.without_offer(result.reply), reply=True)
 
+            # A reading that was put aside and not used is still in the record of the message
+            turn.extracted += [found.as_log() for name, found in questions.items() if routed.tie or name not in routed.tasks or len(routed.tasks) != 1]
             if routed.chat or routed.nothing:
                 pass
             elif routed.tie:
@@ -815,6 +837,11 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
                     # task, extraction needs the card too: "make it 2" means nothing
                     # without it. (Not if extraction has already said it isn't about it.)
                     card = on_card if open_card is not None and name == open_card.task else None
+                    if card is None and name in questions and len(routed.tasks) == 1:
+                        # The router chose the task that had already read it as a question of its own
+                        trace.note(f"{name} had read it already ({questions[name].action.name}): not asked again")
+                        readings.append((questions[name], False))
+                        continue
                     found = await extraction.extract(entry, ctx.text, state, card, earlier=earlier, elsewhere=elsewhere)
                     if found.not_this:
                         # A request of its own for the same task: read it afresh, and leave the card

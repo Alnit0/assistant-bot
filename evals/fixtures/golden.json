@@ -502,6 +502,75 @@
         "reports_doing": true,
         "chat_part": ""
       }
+    },
+    {
+      "golden": "27",
+      "message": "What's left today?",
+      "tasks": [
+        "briefing"
+      ],
+      "exchanges": [
+        [
+          "Took Pill A",
+          "✅ **Pill A** (dose 1 of 3) · taken 9:20 am · still to take today: Pill A (dose 2 of 3) `12:20 pm`, Pill A (dose 3 of 3) `3:20 pm`"
+        ]
+      ],
+      "note": "straight after a pill was logged: a question about the day is the day's, whatever answered last",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "briefing"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "27a",
+      "message": "Will it rain?",
+      "tasks": [
+        "weather"
+      ],
+      "exchanges": [
+        [
+          "Took Pill A",
+          "✅ **Pill A** (dose 1 of 3) · taken 9:20 am · still to take today: Pill A (dose 2 of 3) `12:20 pm`, Pill A (dose 3 of 3) `3:20 pm`"
+        ]
+      ],
+      "note": "straight after a pill was logged: the weather is the weather task's",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "weather"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "23a",
+      "message": "and this week?",
+      "tasks": [
+        "briefing"
+      ],
+      "exchanges": [
+        [
+          "how did I go yesterday?",
+          "☀️ **Yesterday** · Tue 13 Oct · ●●○ 2/3\n💊 Yesterday: 2 of 3 taken · 1 missed"
+        ]
+      ],
+      "note": "the same question for the week, straight after the answer about yesterday: the router is asked, and it is shown that answer",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "briefing"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
     }
   ],
   "extraction": [
@@ -1358,7 +1427,7 @@
         "period": "week"
       },
       "after_answer": true,
-      "note": "straight after the briefing task answered about yesterday: the same question, for the week",
+      "note": "straight after the briefing task answered about yesterday, it reads the question first; the router is asked all the same (a question never sticks), and sends it back here",
       "recorded": [
         "day_past",
         {
@@ -1496,6 +1565,43 @@
             "at"
           ],
           "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "27",
+      "task": "pills",
+      "message": "What's left today?",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:00 am, 2:00 pm · at least 3h apart [active]",
+      "after_answer": true,
+      "action": "pill_today",
+      "also_ok": {
+        "action": "not_this"
+      },
+      "note": "straight after pills logged a dose it reads the question as its own. Either way the code sends a question on to the router",
+      "recorded": [
+        "pill_today",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "27a",
+      "task": "pills",
+      "message": "Will it rain?",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:00 am, 2:00 pm · at least 3h apart [active]",
+      "after_answer": true,
+      "action": "not_this",
+      "also_ok": {
+        "action": "none"
+      },
+      "note": "straight after pills logged a dose: not about pills at all",
+      "recorded": [
+        "not_this",
+        {
+          "reason": "Question about weather, not about pills or this task"
         }
       ]
     }

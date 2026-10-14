@@ -593,9 +593,28 @@ The rules are in `docs/specs/pills.md` and the Pills section of
 - A test that runs for more than a minute stops the run with its name
   and where it was stuck (`tests/watchdog.py`, exit code 70). Look
   into it; never raise the limit to get past it
-- Routine test run: `python -m pytest -q` (about a minute). Tests use a
+- Routine test run: `python -m pytest -q` (about 40 seconds). Tests use a
   temporary database and made-up settings, never the real ones. Don't
   run them in parallel (`-n`): a run hung that way
+- **The full test run is the very last step before every commit, with
+  no edit between it and the commit**: not to code, not to a test, not
+  to a doc or a fixture. If anything changes after it, run it again.
+  The tests read more than code: `docs/` (a bot's display name in any
+  doc fails one), `docs/mockups/` and `evals/fixtures/`. On 2026-10-14
+  a line added to the backlog after the run, and before the commit,
+  put a failing test into a commit. So the docs are written first,
+  the run comes after them, and the commit straight after the run
+- **The tests open their database the fast way** (`tests/fastdb.py`,
+  `tests/conftest.py`): blocking work is done in the test's own thread
+  and one connection is kept open for a test's database, with a
+  rollback where the code closes it. Nothing the bot's code does is
+  different. `TESTS_AS_ON_LIVE=1 python -m pytest -q` runs every test
+  with worker threads and a connection opened and closed for each
+  piece of work, as live does (about 80 seconds): run it after a
+  change to `core/database.py` or to how work is handed to threads.
+  A test about the threads or the file itself is marked
+  `real_threads` / `real_connections`. If the suite passes a minute
+  again, find what grew before adding to it
 - Speed: while working, run only the tests related to what is being
   changed (`python -m pytest -q tests/test_x.py`); run the full suite
   once, at the end. Live evals only when I ask, or at a pause where

@@ -57,9 +57,11 @@ Notifications and ntfy are low priority.
 
 ## Never
 
-- Commit or push unless the test run just before it passed (save the
-  output to a file and check the exit code; never pipe it). No
-  Co-Authored-By line; no double quote in a commit message
+- Commit or push unless the full test run passed as **the very last
+  step before the commit, with no edit of any kind between the two**
+  (code, tests, docs, fixtures). If anything changes, run it again.
+  Save the output to a file and check the exit code; never pipe it.
+  No Co-Authored-By line; no double quote in a commit message
 - Commit `.env`, `.env.dev`, `.env.notify`, `data/`, `logs/`, `.venv/`
   or `docs/specs/`; print or log a token, a topic, or the weather's place
 - Start `main.py` while the service runs. Stop live for a self-test.
@@ -173,8 +175,10 @@ pill's latest time; reminders running out never makes a dose missed;
 
 ## Running and testing [Running and testing]
 
-- `python -m pytest -q` (under two minutes; never `-n`). While working
-  run only the related tests; the full suite once before a commit.
+- `python -m pytest -q` (about 40 seconds; never `-n`). While working
+  run only the related tests; the full suite last of all before a
+  commit (see Never). `TESTS_AS_ON_LIVE=1` runs it with real threads
+  and connections, after a change to the database layer.
   Tests use made-up settings and no real data. A test over a minute
   stops the run: look into it, never raise the limit
 - The golden conversations (`tests/test_golden.py`) must pass before
@@ -189,6 +193,7 @@ pill's latest time; reminders running out never makes a dose missed;
   nothing while it runs. It sets every switch itself
 - **Spend: NZ$0.40 is the most one run may cost before asking me**,
   each run by itself. Say what each run cost, in NZ$
-- At the end of every piece of work follow `end-of-task`: tests, docs
+- At the end of every piece of work follow `end-of-task`: docs
   (STATUS, ARCHITECTURE, DEVELOPMENT, TESTING, QA-RUN, CHANGELOG),
-  then the commit. Do not commit unless asked (a batch says so)
+  then the full test run, then the commit with nothing in between.
+  Do not commit unless asked (a batch says so)

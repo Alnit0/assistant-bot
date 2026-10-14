@@ -5,11 +5,15 @@ from core/ is loaded, so no test ever sees the real .env or the real database.
 """
 import tests  # noqa: F401  isort: skip
 
+import asyncio
+import itertools
+import os
+
 import pytest
 
 from core import backup, clock, database, devmode, live, migrations, scheduler, users
 from interfaces import discord as discord_interface
-from tests import watchdog
+from tests import fastdb, watchdog
 
 # Discord is the interface the tests reach through the door (core/surface.py), as when the bot starts
 discord_interface.bind()
@@ -26,8 +30,29 @@ def fails_fast_if_it_hangs(request):
     timer.cancel()
 
 
+@pytest.fixture(scope="session")
+def _every_scratch(tmp_path_factory):
+    return tmp_path_factory.mktemp("scratch")
+
+
+_scratch_numbers = itertools.count(1)
+
+
+@pytest.fixture
+def scratch(_every_scratch):
+    """A folder of the test's own, made with one mkdir. pytest's `tmp_path` does far more for
+    each test (a numbered folder under a lock, a link to the newest, its clean-up): about
+    6 ms a test on this PC, and since every test gets a folder (`no_real_data_folder`) that
+    was a sixth of the whole run (measured 2026-10-14). A test that wants `tmp_path` itself
+    still asks for it."""
+    mine = _every_scratch / f"t{next(_scratch_numbers)}"
+    mine.mkdir()
+    return mine
+
+
 @pytest.fixture(autouse=True)
-def no_real_data_folder(monkeypatch, tmp_path):
+def no_real_data_folder(monkeypatch, scratch):
+    tmp_path = scratch
     """Whatever reads the data folder by its path (the self-test's history, for
     one) finds an empty one of the test's own, never this PC's real runs."""
     from core import config
@@ -76,30 +101,50 @@ def no_schedules_unless_asked_for(monkeypatch):
 
 
 _migrated: dict[tuple, bytes] = {}  # a migrated, empty database for each set of migrations asked for
-_connect = database.connect
+# `TESTS_AS_ON_LIVE=1 python -m pytest -q`: every test with worker threads and with a connection
+# opened and closed for each piece of work, as the bot runs. About twice as long; for when the
+# database layer or the way work is handed to threads has changed
+AS_ON_LIVE = bool(os.environ.get("TESTS_AS_ON_LIVE"))
 
 
-def _fast_connect():
-    """A connection that doesn't wait for the disk after every write: a test's
-    database is thrown away, so nothing is lost if the machine stops."""
-    conn = _connect()
-    conn.execute("PRAGMA synchronous = OFF")
-    return conn
+async def _in_this_thread(func, /, *args, **kwargs):
+    """`asyncio.to_thread`, without the thread: the loop is given its turn, as it is when the
+    work goes to a thread, and the work is then done here."""
+    await asyncio.sleep(0)
+    return func(*args, **kwargs)
 
 
 @pytest.fixture(autouse=True)
-def no_waiting_for_the_disk(monkeypatch):
+def no_thread_for_each_piece_of_work(request, monkeypatch):
+    """The bot hands its blocking work (every database call) to a worker thread, so the event
+    loop is never held up. In a test each `asyncio.run` then starts a thread pool and waits for
+    its threads to end as the loop closes: about 2 ms a time, some 9,000 times a run (measured
+    2026-10-14). Nothing is being kept responsive here, so the work is done in the test's own
+    thread. A test that is about the threads themselves is marked `real_threads`."""
+    if request.node.get_closest_marker("real_threads") is None and not AS_ON_LIVE:
+        monkeypatch.setattr(asyncio, "to_thread", _in_this_thread)
+
+
+@pytest.fixture(autouse=True)
+def no_waiting_for_the_disk(request, monkeypatch):
+    # A test that is about the file itself (it is copied, replaced or deleted while in use) is
+    # marked `real_connections`: every connection is then opened and closed for real
+    fast = fastdb.opened if AS_ON_LIVE or request.node.get_closest_marker("real_connections") is not None else fastdb.connect
     for module in (database, migrations, users, backup):
-        monkeypatch.setattr(module, "connect", _fast_connect)
+        monkeypatch.setattr(module, "connect", fast)
+    yield
+    fastdb.close_kept()
 
 
 @pytest.fixture
-def make_db(tmp_path, monkeypatch):
+def make_db(scratch, monkeypatch):
     """Make an empty, fully migrated database in a temporary folder.
 
     Call it with the task migrations the test needs, e.g.
     `make_db({"archive": store.MIGRATIONS})`. The owner (Discord id 1) exists.
     """
+
+    tmp_path = scratch
 
     def make(task_migrations: dict[str, list] | None = None) -> None:
         monkeypatch.setattr(database, "DB_PATH", tmp_path / "test.db")

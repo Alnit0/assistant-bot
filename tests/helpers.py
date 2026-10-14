@@ -18,6 +18,10 @@ class DatabaseTestCase(unittest.IsolatedAsyncioTestCase):
         users.ensure_owner()
 
     def tearDown(self):
+        from tests import fastdb
+
+        # The connection kept open for this database is let go of first: Windows will not delete a file in use
+        fastdb.close_kept()
         database.DB_PATH, backup.BACKUP_DIR = self._real
         self._folder.cleanup()
 

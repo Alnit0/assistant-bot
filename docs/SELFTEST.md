@@ -8,18 +8,19 @@ the bot posts, edits and deletes is real, and is read back from Discord and
 from the database before a step passes. How it works and what it can't
 see: `docs/DEVELOPMENT.md`, "The self-test".
 
-**Run:** 2026-10-14 14:45, 14 min 30 s
+**Run:** 2026-10-14 15:42, 14 min 32 s
 **Result:** 122 passed, 0 failed, 0 broke, 1 skipped, of 123 steps
 **Requests to Claude:** none real: every language step used a recorded answer · US$0.0000 spent
 
 <!-- run history: written by python -m selftest -->
 ## Run history
 
-The latest 15 of 29 runs, newest first. All of them, a line a run, are in
+The latest 15 of 30 runs, newest first. All of them, a line a run, are in
 `data/selftest/history.csv` (never rewritten). The first step to fail in a stage is a bug in the forum until it passes again.
 
 | Run | Commit | What ran | Passed | Failed | Failed steps | Spend | Took |
 |---|---|---|---|---|---|---|---|
+| 2026-10-14 15:42 | `bc81391` | full | 122 of 123 | 0 | · | US$0.0000 (recorded) | 14 min 32 s |
 | 2026-10-14 14:45 | `abfceea` | full | 122 of 123 | 0 | · | US$0.0000 (recorded) | 14 min 30 s |
 | 2026-10-14 14:25 | `74f1a8f` | briefing | 21 of 21 | 0 | · | US$0.0000 (recorded) | 2 min 07 s |
 | 2026-10-14 14:22 | `74f1a8f` | briefing | 20 of 21 | **1** | 5.03d | US$0.0000 (recorded) | 2 min 08 s |
@@ -34,7 +35,6 @@ The latest 15 of 29 runs, newest first. All of them, a line a run, are in
 | 2026-10-14 02:05 | `8dc984e` | briefing | 16 of 16 | 0 | · | US$0.0000 (recorded) | 1 min 56 s |
 | 2026-10-14 01:47 | `4712075` | full | 112 of 114 | **2** | 5.02 5.03b | US$0.1558 | 15 min 01 s |
 | 2026-10-14 01:19 | `6f019f1` | full | 111 of 113 | **2** | 1.10b 1.10c | US$0.1656 | 15 min 07 s |
-| 2026-10-14 01:07 | `?` | ? (did not finish: stopped before the end) | 34 of 40 | **6** | 1.01b 1.10b 1.10c 1.10d 1.11a 1.11b | US$0.0787 (recorded) | 0 min 00 s |
 
 <!-- end of run history -->
 
@@ -60,18 +60,17 @@ What is worth a look whether or not its step passed.
 
 **Slow steps** (12 seconds or more; a step is mostly waiting for Discord, and each input is given about a second to settle)
 
-- 3.14 Every sketch in docs/mockups (19) posted with `dev mock`: 64s
+- 3.14 Every sketch in docs/mockups (19) posted with `dev mock`: 63s
+- 3.13d Pause and resume: “pause the evening checklist”, Save; then “turn the evening checklist back on”, Save: 18s
+- 6.09 The next morning at 6:00: 16s
 - 6.01 A start with HUB_TIDY on: 16s
 - 6.06 The same, then Save: 15s
-- 3.13d Pause and resume: “pause the evening checklist”, Save; then “turn the evening checklist back on”, Save: 15s
-- 6.09 The next morning at 6:00: 15s
-- 3.13b2 The lists that were plain, in the new look: `my pills`, “show my week”, `bugs`: 14s
-- 6.05 Something I say in the hub that leads to a card, then Cancel: 14s
 - 1.08 Names: “add Testvit and Testvit forte”, “I took testvit”, “skip forte”: 13s
-- 6.03 I say something in the hub and get a reply: `took testany`: 12s
-- 1.07 A typed answer: “add Testmag to my pills, twice a day at 8am”, then “9pm”: 12s
+- 6.05 Something I say in the hub that leads to a card, then Cancel: 13s
+- 6.07 Pinned stays: 13s
+- 3.13b2 The lists that were plain, in the new look: `my pills`, “show my week”, `bugs`: 12s
 
-The whole run took 14 min 30 s, 75 seconds of it with the bot off on purpose.
+The whole run took 14 min 32 s, 75 seconds of it with the bot off on purpose.
 
 **In the specs and not tested here**
 
@@ -92,12 +91,12 @@ The whole run took 14 min 30 s, 75 seconds of it with the bot off on purpose.
 
 ## Start 1: the old look, reminders on. A day of pills up to the afternoon, then the bot is cut off mid-message
 
-Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 224s; the process ended with 0.
+Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 213s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
 | 1.01 | The dev bot starts in the test channels and says nothing about it | ✅ pass | On the dev database, with no “Online and ready” in #selftest-inbox and no start card in #selftest-log: a start leaves no trace |  |  | asked |
-| 1.01a | The dev bot's status line and nickname during a self-test | ✅ pass | The status line says how far the run is: 🧪, steps done (of all, once that is known), the minutes left, and ❌ with a count once a step has failed. The nickname ends “· testing” | 🧪 1/126 · 15m |  | attention spec, part 2 |
+| 1.01a | The dev bot's status line and nickname during a self-test | ✅ pass | The status line says how far the run is: 🧪, steps done (of all, once that is known), the minutes left, and ❌ with a count once a step has failed. The nickname ends “· testing” | 🧪 1/123 · 15m |  | attention spec, part 2 |
 | 1.01b | The schedules the engine made at start | ✅ pass | Five rows, each once: Nightly backup, End of the day and Exchange rate (the bot's own, locked), Pills checklist at 6:00 am every day in the hub, silent, and the Needs-a-look check at 7:00 am; each with exactly one run booked, with a key | End of the day 00:00, Exchange rate 05:30, Needs-a-look check 07:00, Nightly backup 03:00, Pills checklist 06:00 |  | scheduler stage 1 |
 | 1.02 | The dev clock is moved to tomorrow, 5:50 am | ✅ pass | The clock reads 5:50 am tomorrow; the day rolled over with nothing posted in the hub | Thu 15 Oct 05:50 |  | asked |
 | 1.02b | Midnight and 3:00 am went by on the way | ✅ pass | The end of the day and the nightly backup each ran once from their schedules, for those local times, and each is booked again for the next day; “💾 Backup saved” is in #selftest-log (the copy is in the run's own folder) | backup assistant-2026-10-15_055000.db |  | scheduler stage 1 |
@@ -141,7 +140,7 @@ Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 224s; the process end
 
 ## Start 2: the same settings, after 75 seconds off. The catch-up, then the rest of the day and the next morning
 
-Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 103s; the process ended with 0.
+Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 104s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -169,7 +168,7 @@ Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 103s; the process end
 
 ## Start 3: `CARDS_V2` on. Every card posted and edited in the new look, and the old look's messages edited under it
 
-Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`. Took 197s; the process ended with 0.
+Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`. Took 201s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -197,7 +196,7 @@ Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`. Took 197s; the process ende
 
 ## Start 4: `CARDS_V2` off again, and a tiny spend limit. The new look's messages edited under the old, and the spend line
 
-Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`, `DAILY_SPEND_LIMIT_NZD=0.001`, `USD_TO_NZD=1.70`. Took 60s; the process ended with 0.
+Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`, `DAILY_SPEND_LIMIT_NZD=0.001`, `USD_TO_NZD=1.70`. Took 59s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -216,7 +215,7 @@ Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`, `DAILY_SPEND_LIMIT_NZD=0.0
 
 ## Start 5: `BRIEFING_ENABLED` on (the starts before it had it off). The morning routine, “brief me”, and the briefing kept up to date in place
 
-Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `BRIEFING_ENABLED=true`, `DAY_PROGRESS=true`, `DAY_QUESTIONS=true`, `WEEKLY_SUMMARY=true`, `WEATHER_ENABLED=true`, `WEATHER_SOURCE=C:\Users\temp\projects\assistant-bot\tests\fixtures\weather_drizzle.json`. Took 84s; the process ended with 0.
+Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `BRIEFING_ENABLED=true`, `DAY_PROGRESS=true`, `DAY_QUESTIONS=true`, `WEEKLY_SUMMARY=true`, `WEATHER_ENABLED=true`, `WEATHER_SOURCE=C:\Users\temp\projects\assistant-bot\tests\fixtures\weather_drizzle.json`. Took 85s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -225,7 +224,7 @@ Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `BRIEFING_ENABLED=true`, `D
 | 5.01c | Weather in the briefing, from a recorded forecast | ✅ pass | With WEATHER_ENABLED on: two schedules of its own, Weather fetch at 5:50 am and Weather refresh at 8:50 am; the briefing has a Weather section with the low and high, the sky, the rain and the wind, read from what was fetched (the network is never asked: WEATHER_SOURCE is a recorded forecast) | 🌤️ **Weather** · 14° to 20° · drizzle |  | item 7 |
 | 5.02 | `brief me` in #selftest-inbox | ✅ pass | With no request to Claude, a copy there: “☀️ Today”, the date, a Pills box with its count and the next dose; drawn, in the colour of its status, with no buttons | -# 💊 0/6 / 💊 **Pills** · 0 of 6 taken |  | scheduler stage 3 (briefing-v2) |
 | 5.03 | `brief me` in the hub | ✅ pass | Nothing new is posted: the briefing that is there is brought up to date in place, and a line says so |  |  | scheduler stage 3 |
-| 5.03b | “what's on today?” in plain words | ✅ pass | The router sends it to the briefing, which answers with its card there; my message is left with no ⚠️. (Asked before any pill is logged: straight after one, the same words are taken as about the pills) |  | recorded answer | scheduler stage 3 |
+| 5.03b | “what's on today?” in plain words | ✅ pass | The router sends it to the briefing, which answers with its card there; my message is left with no ⚠️ |  | recorded answer | scheduler stage 3 |
 | 5.03c | “what's left today?” in plain words | ✅ pass | With DAY_QUESTIONS on, the briefing task answers in one message from the day's own data: “☀️ **Left today**”, the day's dots and count as the checklist counts them, then a line a dose still to take. No card, and my message is left with no ⚠️ | ☀️ **Left today** · ○○○○○○ 0/6 | recorded answer | asked 2026-10-14 (questions about my day); golden 21 |
 | 5.03d | “how did I go yesterday?” in plain words | ✅ pass | The briefing task answers from the record of that day: “☀️ **Yesterday**”, its date, its dots and count, and the pills task's own line about the day before. With nothing recorded for yesterday (a run of this stage alone) it says so, and gives no number | ☀️ **Yesterday** · Fri 16 Oct · ●●●●●○○ 5/7 / 💊 Yesterday: 3 of 6 taken · 2 missed · 1 skipped | recorded answer | asked 2026-10-14 (questions about my day); golden 23 |
 | 5.03e | “will it rain?” in plain words | ✅ pass | The weather task answers from the forecast it keeps (the recorded one), with no request to the network: the highest chance in the hours still to come and roughly when, and when it was updated | 🌤️ 61% chance of rain for the rest of today, most likely between 1pm and 5pm. | recorded answer | asked 2026-10-14 (questions about my day); golden 24 |
@@ -240,7 +239,7 @@ Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `BRIEFING_ENABLED=true`, `D
 
 ## Start 6: `HUB_TIDY` on as well (off until now). What is said in the hub goes once handled, pinned stays, yesterday goes in the morning, and a copy is saved first
 
-Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `BRIEFING_ENABLED=true`, `HUB_TIDY=true`. Took 111s; the process ended with 0.
+Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `BRIEFING_ENABLED=true`, `HUB_TIDY=true`. Took 112s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -279,5 +278,5 @@ Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `BRIEFING_ENABLED=true`, `H
 - The category `selftest` and its three channels are left in place, holding the last run. Every run empties them first.
 - To empty them now: `python -m selftest --clear`. To delete them and the category: `python -m selftest --remove` (the next run makes them again). Both work over HTTP, with live running.
 - `data/dev.db` and the dev clock are as they were before the run: they are moved aside for it and put back after.
-- The run's own database and each start's results are kept in `data/selftest/run-20261014-144548/` (never in git). Delete the folder when you like.
+- The run's own database and each start's results are kept in `data/selftest/run-20261014-154203/` (never in git). Delete the folder when you like.
 

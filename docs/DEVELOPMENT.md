@@ -1537,7 +1537,8 @@ one whose PID is in `data/bot.lock`.
 
 ```powershell
 pip install -r requirements-dev.txt   # once: adds pytest
-python -m pytest -q                   # everything (the routine run, about a minute)
+python -m pytest -q                   # everything (the routine run, about 40 seconds)
+$env:TESTS_AS_ON_LIVE = "1"; python -m pytest -q; Remove-Item Env:TESTS_AS_ON_LIVE   # as live runs: threads, a connection each time (about 80 seconds)
 python -m pytest tests/test_router.py # one file
 python -m pytest -k archive           # tests with "archive" in the name
 ```
@@ -1653,11 +1654,10 @@ nothing of it exists.
     2 of 3 taken · 1 missed").
   - "how's this week going?", or "and this week?" straight after:
     Monday to today, a line a day with its dots and count.
-  Straight after you log a pill, a short question goes to the pills
-  task first, as any short message does for five minutes: "what's
-  left today?" then shows today's checklist, as it always has. The
-  pills' own lists are unchanged ("what did I take yesterday?", "show
-  my week").
+  A question never sticks to the task that just answered: straight
+  after you log a pill, "what's left today?" still gets the day's
+  answer and "will it rain?" the weather's. The pills' own lists are
+  unchanged ("what did I take yesterday?", "show my week").
 - The next morning's briefing takes the place of the one before.
 - Things are ticked off on the checklist, not here: it has no buttons.
 

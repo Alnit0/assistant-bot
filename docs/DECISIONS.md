@@ -1310,6 +1310,32 @@ A short log of key decisions and why. Newest at the bottom.
   decides (by name, exactly, or "it" with one thing on the card);
   the core guesses nothing. The pills prompt also says so now, and
   the real API gave the right action after that.
+- **A question never sticks (Alex, 2026-10-14).** For five minutes a
+  short message goes first to the task that just answered, and for
+  as long to the task whose list is on screen. That made "what's
+  left today?" straight after a log the pills' (the checklist), not
+  the day's. Now, when that first reading comes back as an action
+  whose purpose in the contract is to see something (`SEE`: it
+  shows or says, and changes nothing), it is put aside and the
+  router is asked, as for any message. No word list decides what a
+  question is: the task's own reading does. If the router sends it
+  to that same task, the reading already made is used, so nothing
+  is asked twice. A report or a correction still sticks (golden
+  18). An open card is not changed by this. Cost: one router
+  request more for a question asked straight after an answer.
+- **The test suite (2026-10-14).** It had grown from about a minute
+  to 1 min 56 s. Three causes, measured: pytest's `tmp_path` for
+  every test since that morning (a sixth of the run); a journal file
+  made and deleted for every write; and Windows taking about 1.6 ms
+  to close a database file that was written to, some 25,000 times a
+  run, with a thread pool started and joined around most of them.
+  The tests now keep one connection open for a test's database and
+  do the blocking work in their own thread. What a close does to the
+  data (a rollback of what was not committed) and to the connection
+  (it is as newly opened) is still done; a second connection while
+  one is in use, or from another thread, is a real one. 36 seconds.
+  The same tests pass the slow way (`TESTS_AS_ON_LIVE=1`), which is
+  the check that nothing was lost.
 - **Weather takes plain words (2026-10-14).** It was kept out of the
   router on purpose the night before, so that no prompt changed.
   Asked for now: one action, no card, answered by a template from

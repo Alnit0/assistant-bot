@@ -37,16 +37,16 @@ Last updated: 2026-10-14
 | G | Timers | 32 | 12 | 20 | 17 | 15 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
 | J | Dev mode | 68 | 19 | 49 | 47 | 21 | 0 | 0 |
-| K | Startup and housekeeping | 59 | 39 | 20 | 18 | 41 | 0 | 0 |
+| K | Startup and housekeeping | 60 | 40 | 20 | 18 | 42 | 0 | 0 |
 | L | Keep | 14 | 6 | 8 | 8 | 6 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
 | P | Bugs | 38 | 18 | 20 | 17 | 21 | 0 | 0 |
 | Q | Time, days, the schedule model, the occurrence log and cards | 29 | 27 | 2 | 2 | 27 | 0 | 0 |
 | R | Pills | 89 | 35 | 54 | 46 | 43 | 0 | 0 |
 | S | Routing and confirm cards | 83 | 29 | 54 | 19 | 63 | 0 | 1 |
-| T | Tasks in plain words | 35 | 13 | 22 | 7 | 28 | 0 | 0 |
+| T | Tasks in plain words | 36 | 14 | 22 | 7 | 29 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **570** | **239** | **331** | **261** | **308** | **0** | **1** |
+| | **Total** | **572** | **241** | **331** | **261** | **310** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -366,6 +366,7 @@ Any channel. Check the bot's status in the member list.
 | K57 | 🤖 Auto | Design options, rounds 2 and 3 | Read in the order of its INDEX, every sketch within one message and versioned; the opening says nothing changes until a pick and its example answer is made of the round's own labels; round 3 is the day's total as dots, in the title and in normal text, each with a ten-dot example, and five sketches of the type scale (one page title a message, one card title a box, times never in code); only the sketches named are posted when asked; no sketch has a block bar | ✅ Pass | 2026-10-14 | `tests/test_selftest.py` |
 | K58 | 👤 Manual | Rounds 2 and 3 on the phone | Open the 🎨 Design options post: round 2's sketches (R2-…; the four block bars are dropped: skip them) and round 3's two (R3-A, R3-B: the day's total as dots). Check that the title with ten dots wraps nowhere, then answer questions 12 to 15 and 45 of docs/QUESTIONS.md | ⬜ Untested | |  |
 | K59 | 🤖 Auto | An edit that hides link previews, and #commands for a task that is only talked to | Hiding link previews is asked of the whole message, fetched first, since a partial one can't take it; an ordinary edit needs no fetch; the fakes take only what discord.py's own methods take, so a wrong option fails the test as it failed on live; a task with no typed word, reply word or reaction has a page in #commands for what one can say to it, once | ✅ Pass | 2026-10-14 | `tests/test_interface.py`, `tests/test_commands.py` |
+| K60 | 🤖 Auto | The tests' own database, opened fast | Work that was not committed is gone when the code closes its connection, as with a real one; what a caller set on it (a row factory, transactions turned off) does not follow to the next; the kept connection is lent to one user at a time, and a second connection or another thread gets a real one that sees only what is committed; the file is let go of when the test is over; blocking work still gives the loop its turn; and, marked to run as on live, database work runs in a worker thread on a connection opened and closed for it, and work that raises commits nothing | ✅ Pass | 2026-10-14 | `tests/test_fastdb.py`; the whole suite also passes with `TESTS_AS_ON_LIVE=1` |
 
 ## L. Keep
 
@@ -728,6 +729,7 @@ The real tasks on the router's way: timers, bugs and pills setup. On the dev dat
 | T38 | 🤖 Auto | Weather questions, from the kept forecast | "Will it rain?" is the highest chance in the hours still to come, or in the part of the day named, and roughly when; unlikely and none are said as such; with no hours in the forecast only the day's figure is said, as the day's; a part of the day says how warm only if the forecast has it by the hour; a part that is over says so; tomorrow says only today is kept; nothing kept or unreadable gives no number; nothing is fetched to answer; one action, no card, behind `DAY_QUESTIONS` | ✅ Pass | 2026-10-14 | `tests/test_weather.py` |
 | T39 | 🤖 Auto | Golden 21 to 25: the questions end to end | Each is routed to its task and answered by a template from the data, with plain chat never asked: what is left, the briefing itself, yesterday from the record, "and this week?" to the task that just answered without the router, rain from the kept forecast with the network never asked, the afternoon and a part that is over; as recorded from the real API | ✅ Pass | 2026-10-14 | `tests/test_golden.py`, `evals/fixtures/` (`golden`, `briefing`, `weather`) |
 | T40 | 👤 Manual | The questions on live | QA-RUN block 59 | ⬜ Untested | |  |
+| T41 | 🤖 Auto | Golden 27 and 27a: a question never sticks | Straight after a pill is logged, "What's left today?" gets the day's own answer and the checklist is not posted again; "Will it rain?" gets the weather's; the task that just answered reads it first, and a reading that only shows something goes to the router all the same; when the router sends it back to that task it is read once; a report or a correction straight after still sticks; "and this week?" after the answer about yesterday goes by the router (23a); as recorded from the real API | ✅ Pass | 2026-10-14 | `tests/test_golden.py` |
 
 ## U. Channel reset
 

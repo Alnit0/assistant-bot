@@ -161,7 +161,11 @@ core helpers; `pills` gets its buttons and dropdowns from `core/cards.py`.
 ## `tests/`
 
 `conftest.py` has the fixtures (`make_db`, `db`, `dev_off`, `owner`,
-`stranger`) and gives every test a time limit (`watchdog.py`: one that
+`stranger`, and `scratch`, a folder of the test's own made with one
+mkdir), makes the tests fast (`fastdb.py`: one connection kept open for
+a test's database, with a rollback where the code closes it; blocking
+work done in the test's own thread; `TESTS_AS_ON_LIVE=1` turns both
+off) and gives every test a time limit (`watchdog.py`: one that
 runs over a minute stops the run with its name and where each thread
 was); `helpers.py` has `DatabaseTestCase`; `__init__.py` sets made-up
 settings before `core` loads. One `test_*.py` per area: `router`,

@@ -99,6 +99,11 @@ When two principles clash, the higher one wins.
   after a task logs, changes or answers something, a short message that
   follows is that task's first: "it was 9pm actually" straight after
   logging a pill corrects that dose. "It" is what that answer was about
+- **A question never sticks.** A question always gets its own answer,
+  from the task that owns it, whatever answered last and whatever list
+  is on screen: "what's left today?" straight after logging a pill is
+  about my day, and "will it rain?" is the weather's. (Added
+  2026-10-14.)
 - **Meaning beats keywords.** "how much milk should I drink?" is a
   question, not a shopping item
 - **Everything I say counts.** Several items or requests in one message
@@ -218,7 +223,9 @@ Write them the way I'd really say them.
 | 21 | "what's left today?" | One reply from the day's own data, in words from a template: the day's dots and count, then each thing still to do ("☀️ **Left today** · ●○○ 1/3", a line a dose). Never from chat, and never a number that is not in the data |
 | 22 | "what's on today?" | The briefing itself, there. No words about it |
 | 23 | "how did I go yesterday?" | Yesterday from the record: its dots and count, and each task's own line ("💊 Yesterday: 2 of 3 taken · 1 missed"). With nothing recorded it says so |
-| 23a | …then "and this week?" | The week so far, Monday to today, a line a day. It goes to the task that just answered, without the router |
+| 23a | …then "and this week?" | The week so far, Monday to today, a line a day. A question never sticks, so the router is asked: it is shown the answer about yesterday, and knows whose this is |
+| 27 | "Took my zinc", then straight after "What's left today?" | The day's own answer ("☀️ **Left today** · …"), not the pills checklist: a question never sticks to the task that just answered |
+| 27a | …or "Will it rain?" | The weather's answer, from the forecast it keeps |
 | 24 | "will it rain?" | The weather task answers from the forecast it keeps: the highest chance in the hours still to come and roughly when. Nothing is fetched to answer, and chat is never asked |
 | 25 | "what's the weather this afternoon?" | That part of the day from the kept forecast; how warm only if the forecast has it by the hour. A part that is over says so |
 

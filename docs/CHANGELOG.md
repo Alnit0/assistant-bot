@@ -6,6 +6,13 @@ backfilled from the git log.
 
 ## 2026-10-14
 
+- A question always gets its own answer: "what's left today?" or
+  "will it rain?" straight after you log a pill is answered by the
+  day or the weather, not taken as a follow-up to the pill. A
+  correction straight after ("it was 9pm actually") still is.
+- The tests run in about 40 seconds (they had grown to nearly two
+  minutes), with the same tests and the same checks.
+
 - #commands is edited in place without an error when its text has
   really changed (the first such edit, at a restart, failed and left
   it as it was), and it now lists a task that is only talked to: the

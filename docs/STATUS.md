@@ -76,9 +76,9 @@ while it was being built**
 13. **"This week?" is Monday to today**, a line a day with dots and a
     count. The pills' own week ("show my week", a mark a dose) is
     unchanged and still the pills task's.
-14. **Straight after you log a pill, "what's left today?" still shows
-    the checklist**: for five minutes a short message goes to the task
-    that just answered. Left as the standard has it.
+14. **Straight after you log a pill, "what's left today?" showed the
+    checklist.** Overturned the same afternoon: a question never
+    sticks to the task that just answered (golden 27, 27a).
 15. **Weather answers only from the forecast it keeps**, and nothing is
     fetched to answer. "Tomorrow" says only today's forecast is kept.
     "This afternoon" is 12 to 6, "this evening" and "tonight" 6 to
@@ -140,28 +140,49 @@ while it was being built**
 29. **How warm an afternoon is will be said from the 5:50 pm refresh
     on**: the forecast kept before the restart has no temperature by
     the hour.
-30. **The test suite takes 1 min 57 s**, just inside the two minutes
-    the rules allow. The next batch of tests will need one made
-    quicker.
+30. **The test suite took 1 min 57 s.** Brought to 36 seconds the same
+    afternoon, with the same tests (`docs/DECISIONS.md`, "The test
+    suite").
+
+**The small fixes after the batch**
+
+31. **What counts as a question is the task's own reading of it**: an
+    action that only shows or says something. No list of question
+    words. "And this week?" after the answer about yesterday now
+    goes by the router too (golden 23a says so).
+32. **An open card still holds the conversation**: a question typed
+    while a card is open is read against that card first, as before.
+    Say if a question should pass a card by as well.
+33. **No self-test step for it**: a step's one recorded answer is
+    given to every task that reads the message, so the step could not
+    tell the old behaviour from the new. Golden 27 and 27a are
+    recorded from the real API.
+34. **The `end-of-task` skill was reordered** to match the new rule:
+    docs, then the full test run, then the commit.
 
 ## Where things stand
 
 - **Branch `feature/pills`**: everything is committed and pushed;
   nothing is merged into `main`.
-- **Live** was last restarted at 3:07 pm on 2026-10-14 and runs all of
-  it: the day in dots at the top of the briefing, the questions about
-  the day and the weather, and the fix for a change to a pill that is
-  only on the card. No error since the start; nothing needs a look.
+- **Live** was last restarted at 3:07 pm on 2026-10-14 and runs the
+  day in dots at the top of the briefing, the questions about the
+  day and the weather, and the fix for a change to a pill that is only
+  on the card. Not yet live, until the next restart: a question never
+  sticking to the last task, and the weather questions in #commands.
+  No error since the start; nothing needs a look.
 - **The morning routine ran as booked on its first morning** (live's
   run log, 2026-10-14): the exchange rate, the weather fetch, the tidy,
   the briefing, the checklist, and a needs-a-look check with nothing
   to say.
-- **Tests**: offline 2845 passed, 1 skipped. The last full self-test
-  (2:45 pm, the dev bot with live up, recorded answers): 122 of 123,
+- **Tests**: offline 2861 passed, 1 skipped, in about 40 seconds (it
+  was 1 min 56 s); the same tests pass the slow way, with real threads
+  and connections (`TESTS_AS_ON_LIVE=1`). The last full self-test
+  (3:42 pm, the dev bot with live up, recorded answers): 122 of 123,
   none failed, one skipped for needing real requests. The golden
   conversations asked of the real API: 57 of 59, the two misses old
-  known ones that the code puts right.
-- **Spend on the afternoon's batch**: NZ$1.06 (US$0.60), all of it live
+  known ones that the code puts right; 27 and 27a recorded since, 5 of
+  5.
+- **Spend on the day's batch**: NZ$1.10 (US$0.62), all of it live
   evals; the dearest run NZ$0.23. The self-test's month (NZ$3.50) is
   spent: recorded answers until November.
 - **Bugs**: 2 open on live (`bugs`).

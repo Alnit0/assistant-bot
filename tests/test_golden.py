@@ -393,7 +393,7 @@ def test_every_golden_conversation_in_the_fixture_file_has_a_test_here():
     ids = {entry["golden"] for entry in [*FIXTURES["router"], *FIXTURES["extraction"]]}
     tested = {name.split("_")[1] for name in globals() if name.startswith("test_") and name.split("_")[1][0].isdigit()}
     assert ids <= tested, f"no test for: {sorted(ids - tested)}"
-    assert {"1", "1a", "1b", "1c", "1d", "2", "2a", "2b", "3", "4", "5", "6", "7", "8", "9", "10", "10a", "11", "12", "13", "14", "15", "16", "17", "18", "18a", "18b", "19", "19a", "20", "21", "22", "23", "23a", "24", "25", "2c", "18c", "26"} == tested
+    assert {"1", "1a", "1b", "1c", "1d", "2", "2a", "2b", "3", "4", "5", "6", "7", "8", "9", "10", "10a", "11", "12", "13", "14", "15", "16", "17", "18", "18a", "18b", "19", "19a", "20", "21", "22", "23", "23a", "24", "25", "2c", "18c", "26", "27", "27a"} == tested
 
 
 # --- QA 2026-10-10: "already so" ends in the task's own line, whichever way it was found --------------------
@@ -1105,16 +1105,18 @@ def test_23_with_nothing_recorded_yesterday_it_says_so(my_day):
     assert _said(bot) == "☀️ Nothing was on yesterday."
 
 
-def test_23a_and_this_week_goes_to_the_task_that_just_answered_and_is_the_week_so_far(my_day, dev_clock):
+def test_23a_and_this_week_is_asked_of_the_router_and_is_the_week_so_far(my_day, dev_clock):
     bot = my_day
     first = _a_day_with_zinc_taken_then_the_next_morning(bot, dev_clock)
     today = day.today()
     bot.claude(ROUTED["23"], EXTRACTED["23"])
     bot.say(SAID["23"])
     before = len(bot.requests)
-    bot.claude(EXTRACTED["23a"])  # one request, for the briefing: the router is not asked
+    # The briefing, having just answered, reads it first; a question never sticks, so the router is asked
+    # all the same, and when it sends it back to the briefing that reading is used: not asked twice
+    bot.claude(EXTRACTED["23a"], ROUTED["23a"])
     ctx, _ = bot.say(SAID["23a"], straight_after=True)
-    assert [(asked.purpose, asked.task) for asked in bot.requests[before:]] == [("extraction", "briefing")]
+    assert [(asked.purpose, asked.task) for asked in bot.requests[before:]] == [("extraction", "briefing"), ("router", "")]
     said = _said(bot).splitlines()
     assert said[0].startswith("☀️ **This week** · ") and said[-1] == f"`{today:%a} {today.day}` ○ 0/1 · today", said
     if today.weekday() != 0:
@@ -1256,3 +1258,59 @@ def test_26_the_first_dose_reported_after_its_reminders_ran_out_is_dose_1(bot, d
     assert bot.sent[-1][1].text == "✅ **Pill A** (dose 1 of 3) · taken 9:20 am · still to take today: Pill A (dose 2 of 3) `12:20 pm`, Pill A (dose 3 of 3) `3:20 pm`", bot.sent[-1][1].text
     states = sorted((each.number, each.occurrence.state) for each in run(checklist.view(bot.owner.id))[1])
     assert states == [(1, "done"), (2, "pending"), (3, "pending")], "one log, of dose 1"
+
+
+# --- 27: a question never sticks to the task that just answered (asked 2026-10-14) ----------------------------
+def _zinc_just_logged_in_words(bot):
+    """Zinc and iron on today's checklist, and "took my zinc" said a moment ago: pills is the task that just answered."""
+    _with_zinc(bot)
+    bot.claude(route("pills"), ("pill_add", {"pills": [{"name": "Iron"}], "guessed": [], "not_included": []}))
+    bot.say("add iron to my pills")
+    press(bot)
+    run(checklist.post(bot.owner.id, 100))
+    bot.claude(route("pills"), ("pill_log", {"doses": [{"pill": "zinc", "did": "taken"}], "guessed": [], "not_included": []}))
+    bot.say("took my zinc")
+    assert bot.sent[-1][1].text.startswith("✅ **Zinc** · taken "), bot.sent[-1][1].text
+    return len(bot.requests), sum(1 for _, shown in bot.sent if shown.text.startswith("## 💊 Pills"))
+
+
+def test_27_a_question_about_my_day_straight_after_a_log_gets_the_day_s_own_answer(my_day):
+    bot = my_day
+    before, checklists = _zinc_just_logged_in_words(bot)
+    # Pills had just answered, so it reads the message first, and reads it as a question of its own (what is
+    # left to take). A question never sticks: the router is asked, and it is the day's
+    bot.claude(EXTRACTED["27"], ROUTED["27"], EXTRACTED["21"])
+    bot.say(SAID["27"], straight_after=True)
+    assert _said(bot) == "☀️ **Left today** · ●○ 1/2\n💊 Iron", _said(bot)
+    assert [(asked.purpose, asked.task) for asked in bot.requests[before:]] == [("extraction", "pills"), ("router", ""), ("extraction", "briefing")]
+    assert sum(1 for _, shown in bot.sent if shown.text.startswith("## 💊 Pills")) == checklists, "the checklist is not posted again in answer"
+    assert bot.chats == []
+
+
+def test_27a_the_weather_straight_after_a_log_is_the_weather_s(my_day):
+    bot = my_day
+    before, _ = _zinc_just_logged_in_words(bot)
+    bot.claude(EXTRACTED["27a"], ROUTED["27a"], EXTRACTED["24"])
+    bot.say(SAID["27a"], straight_after=True)
+    assert _said(bot).startswith("🌤️ 61% chance of rain for the rest of today"), _said(bot)
+    assert [(asked.purpose, asked.task) for asked in bot.requests[before:]] == [("extraction", "pills"), ("router", ""), ("extraction", "weather")]
+
+
+def test_27_a_question_for_the_very_task_that_just_answered_goes_by_the_router_and_is_read_once(my_day):
+    bot = my_day
+    before, _ = _zinc_just_logged_in_words(bot)
+    listing = ("pill_list", {"guessed": [], "not_included": []})
+    bot.claude(listing, route("pills"))  # pills reads it, the router agrees it is pills': that reading is used
+    bot.say("what do I take?", straight_after=True)
+    assert bot.sent[-1][1].text.startswith("## 💊 Pills") and "**Iron**" in bot.sent[-1][1].text
+    assert [(asked.purpose, asked.task) for asked in bot.requests[before:]] == [("extraction", "pills"), ("router", "")], "not read a second time"
+
+
+def test_27_a_report_or_a_correction_straight_after_still_sticks(my_day, dev_clock):
+    # What sticks is what follows up on the thing just done: golden 18 is unchanged
+    bot = my_day
+    before, _ = _zinc_just_logged_in_words(bot)
+    bot.claude(("pill_log", {"doses": [{"pill": "@that", "did": "not_taken"}], "guessed": [], "not_included": []}))
+    bot.say("actually I didn't", straight_after=True)
+    assert any(shown.text.startswith("↩️ **Zinc** · no longer ticked off") for _, shown in bot.sent), [shown.text[:60] for _, shown in bot.sent[-3:]]
+    assert [(asked.purpose, asked.task) for asked in bot.requests[before:]] == [("extraction", "pills")], "no router: it is about what was just logged"

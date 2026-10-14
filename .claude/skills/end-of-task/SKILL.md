@@ -5,13 +5,16 @@ description: The closing checklist for every task that changed code or docs in t
 
 # End of task
 
-Do these in order, then write the summary.
+Do these in order, then write the summary. The docs come first and the
+full test run last: nothing is edited between that run and the commit
+(`CLAUDE.md`, Never). If anything changes after the run, run it again.
 
-## 1. Tests
+## 1. Tests, while working
 
-Run `python -m pytest -q` (from the project root, with the `.venv`
-Python). Report passed, failed and skipped counts, and any failure. Never
-suggest a commit over a failing run without saying so.
+Run the related tests as you go. The full run, `python -m pytest -q` (from
+the project root, with the `.venv` Python), is step 3. Report passed, failed
+and skipped counts, and any failure. Never suggest a commit over a failing
+run without saying so.
 
 If you started a bot process while testing, stop it and confirm nothing is
 left: `python -m core.instance_lock` (it asks the lock, and doesn't count
@@ -38,7 +41,13 @@ start is the user's own: leave it running and say so.
   or the changelog instead of letting it grow.
 - UK spelling in all of them.
 
-## 3. Summary and commit command
+## 3. The full test run, last of all
+
+With every doc written: `python -m pytest -q`, its output saved to a file
+and its exit code checked. Then the commit, with no edit in between. An
+edit after it, however small, means running it again.
+
+## 4. Summary and commit command
 
 Summarise what changed, the pytest result, and anything the user must do
 (a new `.env` setting, manual tests to run).

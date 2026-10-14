@@ -1189,7 +1189,7 @@ async def p5(h: Harness) -> None:
         h.check(again is not None and again.id == h.memo["briefing_hub"] and await h.count(h.hub, BRIEFING) == 1, f"{await h.count(h.hub, BRIEFING)} briefings in the hub")
         h.check(await h.find(h.hub, "The briefing above is up to date") is not None, "no line saying it is up to date")
 
-    async with h.step("5.03b", "“what's on today?” in plain words", "The router sends it to the briefing, which answers with its card there; my message is left with no ⚠️. (Asked before any pill is logged: straight after one, the same words are taken as about the pills)", "scheduler stage 3"):
+    async with h.step("5.03b", "“what's on today?” in plain words", "The router sends it to the briefing, which answers with its card there; my message is left with no ⚠️", "scheduler stage 3"):
         mine = await h.say("what's on today?", canned=("briefing_show", {"guessed": [], "not_included": []}), task="briefing")
         await no_marks(h, mine)
         shown = await h.find(h.inbox, BRIEFING)

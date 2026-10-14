@@ -247,6 +247,13 @@ fixtures once (62 requests, US$0.13), came to US$0.50. One sentence
 was added to `pill_edit`'s description (about 45 tokens in the
 cached part of pills extraction).
 
+**2026-10-14, a question never sticks.** A question asked within five
+minutes of a task's answer is read by that task first and then goes
+to the router all the same: one router request (US$0.0028) more than
+before for a question the same task would have answered, and nothing
+more when the router sends it back to that task (its reading is
+used). Five fixtures recorded for it: US$0.022.
+
 ## 7. Questions (also in `docs/STATUS.md`)
 
 1. Answered 2026-10-13: the router is not skipped; of the shortcuts,
