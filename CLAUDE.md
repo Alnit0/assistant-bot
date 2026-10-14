@@ -197,3 +197,5 @@ pill's latest time; reminders running out never makes a dose missed;
   (STATUS, ARCHITECTURE, DEVELOPMENT, TESTING, QA-RUN, CHANGELOG),
   then the full test run, then the commit with nothing in between.
   Do not commit unless asked (a batch says so)
+- At the end of every batch, update `docs/ADVISOR.md` (the advisor's
+  handover) as its last section says, before that full test run

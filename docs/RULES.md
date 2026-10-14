@@ -634,8 +634,15 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   last known one, failing that `USD_TO_NZD`. Limits are round NZ$
   (`…_NZD`), compared in US$ at the rate of the moment
 - At the end of every piece of work, follow the `end-of-task` skill:
-  tests, docs, then the suggested commit command. Do not commit unless
-  asked
+  docs, then the full test run, then the commit with nothing in
+  between. Do not commit unless asked
+- At the end of every batch, update `docs/ADVISOR.md` as its last
+  section says ("Maintaining this file"): it is the handover the
+  advisor (Claude in claude.ai) reads first in a new chat, so what is
+  out of date there is out of date in every conversation that plans
+  the next batch. It is a doc like the others, written before the full
+  test run, and holds no pill name, bot display name, place more
+  precise than Auckland, or secret
 - Never commit or push unless the test run before it passed. In
   PowerShell, stop the chain on failure: check `$LASTEXITCODE`, or use
   `&&` in PowerShell 7. Never pipe a test run whose exit code gates a

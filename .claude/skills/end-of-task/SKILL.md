@@ -39,6 +39,8 @@ start is the user's own: leave it running and say so.
   (keep the list to the last five or so), what is next, and any decision
   now open or settled. Keep it under a page: move detail to the backlog
   or the changelog instead of letting it grow.
+- **`docs/ADVISOR.md`**, at the end of every batch: update it as its last
+  section ("Maintaining this file") says.
 - UK spelling in all of them.
 
 ## 3. The full test run, last of all

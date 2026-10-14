@@ -6,6 +6,8 @@ backfilled from the git log.
 
 ## 2026-10-14
 
+- `docs/ADVISOR.md`, the advisor's handover, checked against the repo and
+  kept up to date at the end of every batch.
 - A question asked while a card is open ("what's left today?",
   "will it rain?") gets its own answer, and the card stays open with
   its buttons working. Before, the card's task answered it.
