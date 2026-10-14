@@ -284,3 +284,13 @@ def test_start_up_writes_the_channel_once_and_leaves_it_alone_the_next_time(chan
     assert [message.content for message in there.messages] == wanted
     assert logged == [("📖 #commands updated", f"<#{COMMANDS}>: {len(wanted)} added.")]
     assert run(commands.update()) == "unchanged" and len(logged) == 1 and there.edits == [], "nothing changed: nothing touched, nothing said"
+
+
+def test_in_the_new_look_the_pill_buttons_are_said_to_be_under_each_pill(monkeypatch):
+    from core import config
+    from tasks.pills import task as pills_task
+
+    monkeypatch.setattr(config, "CARDS_V2", True)
+    said = {note.label: note.description for note in pills_task.buttons()}
+    assert said["✅ Taken"].startswith("under each pill on today's checklist") and "🕐 Taken at…" in said
+    assert all("for a dose with no set time" not in where for where in said.values()), "that was the old look's own message"

@@ -1,5 +1,5 @@
 from core.config import CHANNELS
-from core import day, hub, livelists, tidy
+from core import config, day, hub, livelists, tidy
 from core.lifecycle import MessageClass
 from core.actions import EACH_DAY
 from tasks.base import INBOX, ButtonNote, Keyword, Task
@@ -86,6 +86,14 @@ class PillsTask(Task):
         ]
 
     def buttons(self) -> list[ButtonNote]:
+        if config.CARDS_V2:
+            # The new look: each pill on the checklist has its next dose's buttons under it
+            return [
+                ButtonNote("✅ Taken", "under each pill on today's checklist, and on a reminder: tick its next dose off as taken now"),
+                ButtonNote("🕐 Taken at…", "under each pill on the checklist, and on a reminder: tick the dose off at a time you type"),
+                ButtonNote("⏭️ Skip", "under each pill on the checklist, and on a reminder: leave that dose out today"),
+                ButtonNote("⏰ Snooze 15m", "on a reminder: ask again in 15 minutes"),
+            ]
         return [
             ButtonNote("✅ Taken", "under today's checklist, for a dose with no set time: tick it off as taken now"),
             ButtonNote("⏭️ Skip", "under today's checklist: leave that dose out today"),

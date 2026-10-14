@@ -392,7 +392,6 @@ number read from text; C19's name matching is in the core.
 
 | What | Where | Why it is not fixed here |
 |---|---|---|
-| #commands still describes Taken and Skip as "under today's checklist" | `tasks/pills/__init__.py:72` | True while `CARDS_V2` is off; the wording for the new look is yours |
 | The spend note is sent from `core/database.py` | `core/database.py`, `_say_if_over_the_daily_limit` | It works and is tested; a module for what is said about spend would be tidier |
 | Three near copies of "tick a dose off from a button" | `checklist._pressed`, `reminders._done`, `sheet._done` | One would do; left until the old checklist goes |
 | `dev mock` has its own records beside `core/design.py`'s | `tasks/dev/mock.py` | It shares the colours and spacing; sharing the records is a small job |

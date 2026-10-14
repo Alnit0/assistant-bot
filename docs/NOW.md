@@ -13,12 +13,12 @@ the small jobs they asked for, then one evening restart of live.
   3:15 to 4:30 am); live's own row moves just before the evening restart
 - 3. Q39: the golden tests ran by the real time and broke across midnight;
   pinned to noon; the reply-after-midnight edge is in the backlog
+- 4. Q41: #commands says the pill buttons are under each pill (new look)
 
 **In progress**
-- 4. Q41: #commands' words for Taken and Skip in the pill's box
+- 5. Q64: the pills card with no `##` page title
 
 **Next**
-- 5. Q64: the pills card with no `##` page title
 - 6. Q5: QA block 54 as a self-test (recorded answers) if it can be
 - 7. 6 pm to 9 pm, clear of pill reminders: one restart from a clean,
   pushed, tested commit with TODOS_ENABLED, WEEKLY_SUMMARY and (if 6
