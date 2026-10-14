@@ -272,10 +272,9 @@ def card(dose: Dose, listed: list[Dose], prompt: Prompt, now: datetime) -> Card:
         Button("Skip", TASK, P_SKIP, which, emoji="⏭️", style=cards.PRIMARY),
     )
     if design.current() >= 4:
-        # Round 4: one Taken (a pop-up with the time filled in, or at once: TAKEN_BUTTON) and Snooze;
+        # Round 4: one Taken, at once (a reply to the line it leaves puts the time right) and Snooze;
         # Skip and a time are said in words
-        taken = P_TAKEN if config.TAKEN_BUTTON == "now" else P_AT
-        row = (Button("Taken", TASK, taken, which, emoji="✅", style=cards.SUCCESS), Button("Snooze 15m", TASK, P_SNOOZE, which, emoji="⏰", style=cards.PRIMARY))
+        row = (Button("Taken", TASK, P_TAKEN, which, emoji="✅", style=cards.SUCCESS), Button("Snooze 15m", TASK, P_SNOOZE, which, emoji="⏰", style=cards.PRIMARY))
     if prompt.is_last_chance:
         row = tuple(button for button in row if button.action != P_SNOOZE)  # there is nothing left to snooze into
     said = text(dose, listed, prompt, now)
@@ -650,7 +649,13 @@ async def on_taken(press: cards.Press) -> str:
     dose, _, _ = await _dose(press)
     if dose is None or not dose.is_pending:
         return await _gone(press)
-    return await _done(press, dose, checklist.TAKEN, clock.now(), occurrences.BUTTON)
+    said = await _done(press, dose, checklist.TAKEN, clock.now(), occurrences.BUTTON)
+    if design.current() >= 4:
+        # Round 4: the line it leaves says when, and a reply to it with a time puts it right
+        from tasks.pills import sheet  # the checklist's buttons; it imports this module
+
+        await sheet.correctable_line(press, dose, said)
+    return said
 
 
 async def on_skip(press: cards.Press) -> str:
@@ -666,9 +671,7 @@ FORM_TITLE = "When did you take it?"
 async def on_taken_at(press: cards.Press) -> str:
     """Taken at…: a one-box form for the time, read and checked as a time said in a message is."""
     if press.fields is None:
-        # Round 4's Taken (variant 1): the time is filled in with now, to send as it is or change
-        filled = timeinput.format_moment(clock.now()) if design.current() >= 4 else ""
-        await press.open_form(Form(FORM_TITLE, TASK, P_AT, (Field("at", "Taken at" if filled else "Time taken", value=filled, placeholder="8:15 am"),), press.arg))
+        await press.open_form(Form(FORM_TITLE, TASK, P_AT, (Field("at", "Time taken", placeholder="8:15 am"),), press.arg))
         return "asked for the time"
     dose, listed, _ = await _dose(press)
     if dose is None or not dose.is_pending:

@@ -100,6 +100,7 @@ class Seen:
     from_bot: bool = True
     silent: bool = False
     reference: int | None = None
+    menus: list[tuple[str, str, list[tuple[str, str]]]] = field(default_factory=list)  # (placeholder, custom id, [(label, value)])
 
     @property
     def labels(self) -> list[str]:
@@ -114,7 +115,7 @@ class Seen:
         return "\n".join([self.text, *(f"{title}\n{body}" for title, body in self.embeds)])
 
 
-def _walk(components, texts: list[str], buttons: list, accents: list) -> None:
+def _walk(components, texts: list[str], buttons: list, accents: list, menus: list | None = None) -> None:
     for each in components or []:
         kind = type(each).__name__
         if kind == "Container":
@@ -126,15 +127,17 @@ def _walk(components, texts: list[str], buttons: list, accents: list) -> None:
             emoji = getattr(each, "emoji", None)
             label = " ".join(part for part in (str(emoji) if emoji else "", each.label or "") if part)
             buttons.append((label, each.custom_id))
+        elif getattr(each, "custom_id", None) and getattr(each, "options", None) and menus is not None:
+            menus.append((each.placeholder or "", each.custom_id, [(option.label, option.value) for option in each.options]))
         for name in ("children", "components", "accessory"):
             inner = getattr(each, name, None)
             if inner is not None:
-                _walk(inner if isinstance(inner, (list, tuple)) else [inner], texts, buttons, accents)
+                _walk(inner if isinstance(inner, (list, tuple)) else [inner], texts, buttons, accents, menus)
 
 
 def seen(message: discord.Message, bot_id: int) -> Seen:
-    texts, buttons, accents = [], [], []
-    _walk(message.components, texts, buttons, accents)
+    texts, buttons, accents, menus = [], [], [], []
+    _walk(message.components, texts, buttons, accents, menus)
     embeds = []
     for embed in message.embeds:
         body = "\n".join([embed.description or "", *(f"{each.name}: {each.value}" for each in embed.fields)])
@@ -152,4 +155,5 @@ def seen(message: discord.Message, bot_id: int) -> Seen:
         from_bot=message.author.id == bot_id,
         silent=bool(getattr(message.flags, "suppress_notifications", False) or getattr(message.flags, "silent", False)),
         reference=reference,
+        menus=menus,
     )

@@ -28,8 +28,6 @@ log = logging.getLogger("assistant")
 # No discord.py: the records are core/design.py's, and core/cards.py draws them.
 # ---------------------------------------------------------------------------
 S_TAKEN, S_AT, S_SKIP = "sheet_taken", "sheet_at", "sheet_skip"
-S_ASK = "sheet_ask"  # round 4, variant 1: Taken opens a pop-up with the time filled in
-ASK, AT_ONCE = "ask", "now"  # TAKEN_BUTTON
 CORRECT_HINT = "reply to this with a time to put it right"
 MARKS = {DONE: "●", PENDING: "○", MISSED: "✕", SKIPPED: "⏭"}
 NOTHING = "Nothing to take today."
@@ -223,9 +221,8 @@ def layout(listed: list[Dose], pills: list[Pill], day: date, now: datetime) -> t
 # line each with a count. Paused pills are not on it ("show paused").
 # ---------------------------------------------------------------------------
 def taken_button(dose: Dose) -> Button:
-    """The one button: Taken. Which way it works is TAKEN_BUTTON (a pop-up with the time, or at once)."""
-    action = S_TAKEN if config.TAKEN_BUTTON == AT_ONCE else S_ASK
-    return Button("Taken", TASK, action, str(dose.occurrence.id), emoji="✅", style=cards.SUCCESS)
+    """The one button: Taken, at once (question 67); a reply to the line it leaves with a time puts it right."""
+    return Button("Taken", TASK, S_TAKEN, str(dose.occurrence.id), emoji="✅", style=cards.SUCCESS)
 
 
 def thing(dose: Dose, now: datetime) -> design.Thing:
@@ -320,11 +317,11 @@ async def on_taken(press: cards.Press) -> str:
     said = await _done(press, dose, checklist.TAKEN, now, occurrences.BUTTON)
     if design.current() >= 4:
         # Round 4, taken at once: one line says when, and a reply to it with a time puts it right
-        await _correctable_line(press, dose, said)
+        await correctable_line(press, dose, said)
     return said
 
 
-async def _correctable_line(press: cards.Press, dose: Dose, said: str) -> None:
+async def correctable_line(press: cards.Press, dose: Dose, said: str) -> None:
     """The line after Taken at once, recorded as about that dose, so a reply with a
     time goes the way a correction in words does."""
     if press.channel_id is None:
@@ -332,25 +329,6 @@ async def _correctable_line(press: cards.Press, dose: Dose, said: str) -> None:
     message_id = await cards.send(press.channel_id, cards.Card(f"{said} · {CORRECT_HINT}"), silent=True)
     if message_id is not None:
         await database.run(store.db_add_lines, press.user.id, message_id, [(dose.pill.id, dose.occurrence.id)])
-
-
-def asked_time(now: datetime) -> str:
-    """What the pop-up's time field holds when it opens: now, as times are written."""
-    return timeinput.format_moment(now)
-
-
-async def on_ask(press: cards.Press) -> str:
-    """Round 4, variant 1: Taken opens a pop-up with the time filled in. Sent as it is,
-    it is taken now; changed, it is read as a time said in a message is (9, 9:15, 9am),
-    with the same checks (not in the future, too soon, out of order)."""
-    if press.fields is None:
-        dose, _ = await _dose(press)
-        if not _loggable(dose):
-            return await _stale(press)
-        field = Field("at", "Taken at", value=asked_time(clock.now()), placeholder="9:15 am")
-        await press.open_form(Form(FORM_TITLE, TASK, S_ASK, (field,), press.arg))
-        return "asked for the time, with now filled in"
-    return await on_taken_at(press)
 
 
 async def on_skip(press: cards.Press) -> str:
@@ -381,4 +359,3 @@ def register() -> None:
     cards.register(TASK, S_TAKEN, on_taken)
     cards.register(TASK, S_SKIP, on_skip)
     cards.register(TASK, S_AT, on_taken_at, opens_form=True)
-    cards.register(TASK, S_ASK, on_ask, opens_form=True)

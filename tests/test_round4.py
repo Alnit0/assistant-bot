@@ -89,47 +89,13 @@ def test_round_4_has_fewer_lines_and_buttons_than_round_3_for_the_same_day(world
     assert len(four[1]) < len(three[1]) and len(four[0]) <= len(three[0])
 
 
-# --- one Taken button: the two ways it works --------------------------------------------------------------------
-def test_variant_1_taken_opens_a_pop_up_with_now_filled_in(world, r4, monkeypatch):
-    monkeypatch.setattr(config, "TAKEN_BUTTON", "ask")
+# --- one Taken button, at once (question 67: variant 2) ------------------------------------------------------
+def test_taken_logs_at_once_and_the_line_it_leaves_corrects_by_a_reply(world, r4):
     sheet.register()
     add(world, EVENING)
     at(world, 20, 4)
     (button,) = design.buttons(sheet_of(world))
-    assert button.action == sheet.S_ASK and button.style == cards.SUCCESS
-    pressed, said = press_sheet(world, sheet.S_ASK, "Evening pill")
-    assert said == "asked for the time, with now filled in" and pressed.form.fields[0].value == "8:04 pm"
-    pressed, said = press_sheet(world, sheet.S_ASK, "Evening pill", fields={"at": "8:04 pm"})
-    assert said == "✅ **Evening pill** · taken 8:04 pm", "sent as it is: taken now"
-
-
-@pytest.mark.parametrize("typed,wanted", [("8", "8:00 pm"), ("8:01", "8:01 pm"), ("8pm", "8:00 pm"), ("7:45 pm", "7:45 pm")])
-def test_variant_1_an_edited_time_is_read_as_a_time_said_in_words(world, r4, monkeypatch, typed, wanted):
-    monkeypatch.setattr(config, "TAKEN_BUTTON", "ask")
-    sheet.register()
-    add(world, EVENING)
-    at(world, 20, 4)
-    _, said = press_sheet(world, sheet.S_ASK, "Evening pill", fields={"at": typed})
-    assert said == f"✅ **Evening pill** · taken {wanted}"
-
-
-def test_variant_1_a_time_in_the_future_is_refused_and_nothing_is_logged(world, r4, monkeypatch):
-    monkeypatch.setattr(config, "TAKEN_BUTTON", "ask")
-    sheet.register()
-    add(world, EVENING)
-    at(world, 20, 4)
-    with pytest.raises(UserError):
-        press_sheet(world, sheet.S_ASK, "Evening pill", fields={"at": "9:30 pm"})
-    assert states(world)[("Evening pill", 1)] == occurrences.PENDING
-
-
-def test_variant_2_taken_logs_at_once_and_the_line_it_leaves_corrects_by_a_reply(world, r4, monkeypatch):
-    monkeypatch.setattr(config, "TAKEN_BUTTON", "now")
-    sheet.register()
-    add(world, EVENING)
-    at(world, 20, 4)
-    (button,) = design.buttons(sheet_of(world))
-    assert button.action == sheet.S_TAKEN
+    assert button.action == sheet.S_TAKEN and button.style == cards.SUCCESS
     sent = len(world.sent)
     _, said = press_sheet(world, sheet.S_TAKEN, "Evening pill")
     line = world.sent[sent]
@@ -137,6 +103,10 @@ def test_variant_2_taken_logs_at_once_and_the_line_it_leaves_corrects_by_a_reply
     assert run(database.run(store.db_line, line.id)), "recorded as about that dose: a reply means it"
     corrected = log(world, {"pill": "@that", "did": "taken", "at": "8:00 pm"}, replied_to=line.id)
     assert "8:04 pm → 8:00 pm" in corrected, corrected
+
+
+def test_the_pop_up_variant_is_gone():
+    assert not hasattr(sheet, "S_ASK") and not hasattr(sheet, "on_ask") and not hasattr(config, "TAKEN_BUTTON")
 
 
 # --- Skip by words, with undo ---------------------------------------------------------------------------------
@@ -150,31 +120,87 @@ def test_skip_is_said_in_words_and_undo_that_puts_it_back(world, r4):
 
 
 # --- the reminder: one Taken and Snooze -------------------------------------------------------------------------
-@pytest.mark.parametrize("way,action", [("ask", reminders.P_AT), ("now", reminders.P_TAKEN)])
-def test_round_4_a_reminder_has_one_taken_and_snooze(world, r4, monkeypatch, way, action):
-    monkeypatch.setattr(config, "TAKEN_BUTTON", way)
+def test_round_4_a_reminder_has_one_taken_and_snooze(world, r4):
     add(world, PILL_A)
     at(world, 8, 0)
     drawn = world.edited[-1][1]
-    assert [(button.label, button.action) for button in design.buttons(drawn.layout)] == [("Taken", action), ("Snooze 15m", reminders.P_SNOOZE)]
+    assert [(button.label, button.action) for button in design.buttons(drawn.layout)] == [("Taken", reminders.P_TAKEN), ("Snooze 15m", reminders.P_SNOOZE)]
+
+
+def test_round_4_taken_on_a_reminder_leaves_a_line_a_reply_corrects(world, r4):
+    from tests.test_pills_reminders import press
+
+    add(world, PILL_A)
+    at(world, 8, 10)
+    sent = len(world.sent)
+    pressed, said = press(world, reminders.P_TAKEN)
+    line = world.sent[sent]
+    assert pressed.removed and line.card.text == f"{said} · reply to this with a time to put it right"
+    corrected = log(world, {"pill": "@that", "did": "taken", "at": "8:00 am"}, replied_to=line.id)
+    assert "8:10 am → 8:00 am" in corrected, corrected
 
 
 # --- the to-dos and reminders cards in round 4 ------------------------------------------------------------------
-def test_round_4_to_dos_two_done_one_overdue_and_six_for_today(monkeypatch):
+TODAY = date(2026, 10, 21)
+
+
+def todo_made(number, text, day=None, done=None):
+    from tasks.todos import rules as todo
+
+    return todo.Todo(number, 1, text, day, TODAY - timedelta(days=3), done, TODAY if done else None)
+
+
+def test_round_4_to_dos_the_first_three_in_full_the_rest_one_line_and_one_done_dropdown(monkeypatch):
     from tasks.todos import rules as todo
 
     monkeypatch.setattr(config, "DESIGN_ROUND", 4)
-    today = date(2026, 10, 21)
-    made = lambda number, text, day=None, done=None: todo.Todo(number, 1, text, day, today - timedelta(days=3), done, today if done else None)  # noqa: E731
     found = todo.on([
-        made(1, "Pay the bill", today - timedelta(days=1)),
-        *(made(2 + n, f"Thing {n}", today) for n in range(6)),
-        made(9, "Done one", today, days.at(today, time(9, 0))), made(10, "Done two", None, days.at(today, time(10, 0))),
-    ], today)
-    lines, buttons = lines_of(todo.layout(found, today))
-    assert lines[0] == "### 📝 To-dos ●●○○○○○○○ 2/9" and buttons == ["Done"] * 7, "every open one for today can be done now"
-    assert lines[1:3] == ["**Pay the bill**", "-# from yesterday"] and "-# ✅ 2 done" in lines
+        todo_made(1, "Pay the bill", TODAY - timedelta(days=1)),
+        todo_made(2, "Any day one"),
+        *(todo_made(3 + n, f"Thing {n}", TODAY) for n in range(5)),
+        todo_made(8, "Next week one", TODAY + timedelta(days=7)),
+        todo_made(9, "Done one", TODAY, days.at(TODAY, time(9, 0))), todo_made(10, "Done two", None, days.at(TODAY, time(10, 0))),
+    ], TODAY)
+    pieces = todo.layout(found, TODAY)
+    lines, buttons = lines_of(pieces)
+    assert lines[0] == "### 📝 To-dos ●●○○○○○○○ 2/9" and buttons == [], "no Done button under each"
+    shown = [line for line in lines if line.startswith("**")]
+    assert shown == ["**Pay the bill**", "**Thing 0**", "**Thing 1**"], "overdue first, then today's, then any day's: three"
+    assert "-# from yesterday" in lines and "-# +4 more" in lines and "-# ✅ 2 done" in lines
     assert not any("Done one" in line for line in lines), "done: a count, no names"
+    (menu,) = design.menus(pieces)
+    assert menu.action == todo.PICKED_ACTION and menu.placeholder == "✅ Done: pick one"
+    assert [option.label for option in menu.options] == ["Pay the bill", *(f"Thing {n}" for n in range(5)), "Any day one", "Next week one"], "every open one, the most pressing first, a later day's too"
+    assert menu.options[0].description == "from yesterday" and menu.options[-1].description == "Wed 28 Oct"
+    cards.check_layout(pieces)
+
+
+def test_round_4_to_dos_more_than_a_dropdown_holds_the_most_pressing_and_a_note_to_use_words(monkeypatch):
+    from tasks.todos import rules as todo
+
+    monkeypatch.setattr(config, "DESIGN_ROUND", 4)
+    found = todo.on([todo_made(1 + n, f"Thing {n}", TODAY) for n in range(30)], TODAY)
+    pieces = todo.layout(found, TODAY)
+    (menu,) = design.menus(pieces)
+    assert len(menu.options) == 25 and menu.options[0].label == "Thing 0" and menu.options[-1].label == "Thing 24"
+    lines, _ = lines_of(pieces)
+    assert "-# +27 more" in lines and "-# the list holds 25: say “done” and its words for the others" in lines
+    cards.check_layout(pieces)
+
+
+def test_round_4_to_dos_all_done_has_no_dropdown(monkeypatch):
+    from tasks.todos import rules as todo
+
+    monkeypatch.setattr(config, "DESIGN_ROUND", 4)
+    found = todo.on([todo_made(1, "Done one", TODAY, days.at(TODAY, time(9, 0)))], TODAY)
+    assert design.menus(todo.layout(found, TODAY)) == []
+
+
+def test_the_list_rule_is_one_for_every_list_card():
+    shown = design.listed(range(10), in_menu=range(40))
+    assert shown.shown == (0, 1, 2) and shown.more == 7 and len(shown.menu) == 25 and shown.left_out == 15
+    assert design.more_line(0) == "" and design.more_line(4) == "+4 more"
+    assert design.listed([1]).more == 0 and design.listed([1]).menu == (1,)
 
 
 def test_round_4_reminders_card_the_next_in_full_and_the_rest_small(monkeypatch):
@@ -195,6 +221,5 @@ def test_round_4_commands_says_one_taken_and_skip_in_words(monkeypatch):
     monkeypatch.setattr(config, "CARDS_V2", True)
     monkeypatch.setattr(config, "DESIGN_ROUND", 4)
     said = {note.label: note.description for note in pills_task.buttons()}
-    assert set(said) == {"✅ Taken", "⏰ Snooze 15m"} and "pop-up with the time filled in" in said["✅ Taken"] and "skip Pill A" in said["✅ Taken"]
-    monkeypatch.setattr(config, "TAKEN_BUTTON", "now")
-    assert "reply to the line it leaves with a time" in {note.label: note.description for note in pills_task.buttons()}["✅ Taken"]
+    assert set(said) == {"✅ Taken", "⏰ Snooze 15m"} and "skip Pill A" in said["✅ Taken"]
+    assert "reply to the line it leaves with a time" in said["✅ Taken"]

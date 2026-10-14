@@ -220,6 +220,24 @@ class Harness:
         await self.settle()
         return pressed
 
+    async def pick(self, message_id: int, option: str, channel=None) -> Pressed:
+        """Pick the option whose label has `option` in it, in the message's dropdown."""
+        channel = channel or self.hub
+        self.check(message_id is not None, f"there is no message to pick “{option}” on")
+        message = await channel.fetch_message(message_id)
+        there = seen(message, self.client.user.id)
+        self.check(bool(there.menus), f"the message has no dropdown; its buttons are {there.labels}")
+        _, custom_id, options = there.menus[0]
+        value = next((value for label, value in options if option.lower() in label.lower()), None)
+        self.check(value is not None, f"no “{option}” in the dropdown; it holds {[label for label, _ in options]}")
+        parsed = cards.parse_id(custom_id)
+        self.check(parsed is not None, f"the dropdown is not one of core/cards.py's ({custom_id})")
+        _, task, action, arg = parsed
+        pressed = Pressed(self.owner, message, custom_id)
+        await cards.handle(pressed, task, action, arg, values=(value,))
+        await self.settle()
+        return pressed
+
     async def submit(self, pressed: Pressed, **typed: str) -> Pressed:
         """Fill in and send the form a press opened."""
         self.check(pressed.form is not None, f"the press opened no form; it said {pressed.said}")

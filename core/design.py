@@ -389,7 +389,7 @@ def _flattened(pieces) -> tuple:
     for piece in pieces:
         if isinstance(piece, Box):
             words = "\n".join(texts(piece.children))
-            rows = [child for child in piece.children if isinstance(child, Row)]
+            rows = [child for child in piece.children if not isinstance(child, (Text, Separator))]  # its buttons and any dropdown
             out.append(Box(piece.status, (*([Text(words)] if words else []), *rows)))
         elif not isinstance(piece, Separator):
             out.append(piece)
@@ -605,6 +605,53 @@ def relevant(things) -> Relevant:
         times = [thing.when for thing in missed if thing.when]
         lines.append(f"✕ {len(missed)} missed" + (f" · {', '.join(times)}" if times else ""))
     return Relevant(tuple(entries), tuple(lines), len(done), len(missed), len(later), hidden)
+
+
+# ---------------------------------------------------------------------------
+# A list card (round 4, Alex 15 Oct): a list of things with no time each,
+# such as to-dos. The first few open ones in full, the rest one small line
+# ("+4 more"), and one dropdown for what can be done to any open one, in
+# place of a button under each. The dropdown holds Discord's most (25), the
+# most relevant first; beyond that the card says to use words. The same rule
+# for any list card to come.
+# ---------------------------------------------------------------------------
+LIST_FIRST = 3  # open things shown in full
+MAX_MENU = 25  # options in one dropdown, Discord's most
+
+
+@dataclass(frozen=True)
+class Listed:
+    """What a list card shows of its open things."""
+
+    shown: tuple  # the first few, in full
+    more: int  # how many after those, said in one small line
+    menu: tuple  # those the dropdown holds, the most relevant first
+    left_out: int  # how many the dropdown has no room for
+
+
+def listed(open_things, in_menu=None, first: int = LIST_FIRST) -> Listed:
+    """A list card's open things, the most relevant first, by the list rule
+    (above). `in_menu`, if given, is what the dropdown offers (it may hold
+    more than the card lists: to-dos for a later day)."""
+    things = tuple(open_things)
+    offered = things if in_menu is None else tuple(in_menu)
+    return Listed(things[:first], max(0, len(things) - first), offered[:MAX_MENU], max(0, len(offered) - MAX_MENU))
+
+
+def more_line(more: int) -> str:
+    """The small line for the open things a list card does not show: "+4 more"."""
+    return f"+{more} more" if more > 0 else ""
+
+
+def menus(pieces) -> list:
+    """Every dropdown of a layout (core/cards.py `Select`s), in order."""
+    found: list = []
+    for piece in pieces:
+        if isinstance(piece, Box):
+            found += menus(piece.children)
+        elif hasattr(piece, "options"):
+            found.append(piece)
+    return found
 
 
 def page(top: list[str] | tuple, boxes: list | tuple, foot: list[str] | tuple = ()) -> tuple:

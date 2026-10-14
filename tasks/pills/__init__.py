@@ -90,9 +90,8 @@ class PillsTask(Task):
 
         if config.CARDS_V2 and design.current() >= 4:
             # Round 4: one Taken a dose that can be taken now; Skip and a time are said in words
-            taken = "tick it off at once; reply to the line it leaves with a time to put it right" if config.TAKEN_BUTTON == "now" else "a pop-up with the time filled in: send it as it is, or change it (9, 9:15, 9am)"
             return [
-                ButtonNote("✅ Taken", f"under a dose that can be taken now, on today's checklist and on a reminder: {taken}. To skip one, say so (“skip Pill A”), and “undo that” puts it back"),
+                ButtonNote("✅ Taken", "under a dose that can be taken now, on today's checklist and on a reminder: ticks it off at once; reply to the line it leaves with a time to put it right. To skip one, say so (“skip Pill A”), and “undo that” puts it back"),
                 ButtonNote("⏰ Snooze 15m", "on a reminder: ask again in 15 minutes"),
             ]
         if config.CARDS_V2:

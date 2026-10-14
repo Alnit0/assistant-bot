@@ -368,9 +368,9 @@ def _in_round(number: int, build):
 
 
 def _count(pieces) -> tuple[int, int]:
-    """How long a card is to read: (its lines of text, its buttons)."""
+    """How long a card is to read: (its lines of text, its buttons and dropdowns)."""
     lines = [line for text in design.texts(pieces) for line in text.splitlines() if line.strip()]
-    return len(lines), len(design.buttons(pieces))
+    return len(lines), len(design.buttons(pieces)) + len(design.menus(pieces))
 
 
 def _side_by_side(label: str, build) -> list[tuple[str, tuple]]:
@@ -379,7 +379,7 @@ def _side_by_side(label: str, build) -> list[tuple[str, tuple]]:
     return [
         (f"{label} · round 3, as live has it", three),
         (f"{label} · round 4", four),
-        ("", (design.Text(design.small(f"round 4: {l4} lines and {b4} button{'' if b4 == 1 else 's'}, where round 3 has {l3} lines and {b3} buttons")),)),
+        ("", (design.Text(design.small(f"round 4: {l4} lines and {b4} control{'' if b4 == 1 else 's'}, where round 3 has {l3} lines and {b3} (a control is a button or a dropdown)")),)),
     ]
 
 
@@ -391,19 +391,8 @@ def round_4() -> list[tuple[str, tuple]]:
     for state, label in (("morning", "Pills · morning, nothing taken yet"), ("midday", "Pills · midday: 2 taken, 1 missed, 1 paused, 1 due and 2 later"), ("done", "Pills · all done")):
         listed, pills, now = _round_4_day(state)
         found += _side_by_side(label, lambda listed=listed, pills=pills, now=now: sheet.layout(listed, pills, _day(), now))
-    # The two ways one Taken button can work: the card is the same, what a tap does differs
-    listed, pills, now = _round_4_day("midday")
-    card = _in_round(4, lambda: sheet.layout(listed, pills, _day(), now))
-    found.append(("Variant 1 · Taken opens a pop-up", card))
-    found.append(("", (design.Text("\n".join([
-        "**What the pop-up shows** (a Discord form, as on a phone):",
-        "> **When did you take it?**",
-        "> Taken at: `12:30 pm` (filled in with now: send it as it is, or change it)",
-        "> [Cancel]  [Submit]",
-        design.small("A changed time is read as one said in words: 9, 9:15, 9am. One in the future, too soon after the one before, or out of order is asked about first, as now."),
-    ])),)))
-    found.append(("Variant 2 · Taken logs at once", card))
-    found.append(("", (design.Text("✅ **Pill E** · taken 12:30 pm · reply to this with a time to put it right"), design.Text(design.small("the line a tap leaves, under the card; a reply such as “11:45” corrects it, as “I took it at 11:45” would")))))
+    # One Taken, at once (question 67): the line a tap leaves, which a reply with a time corrects
+    found.append(("", (design.Text("✅ **Pill E** · taken 12:30 pm · reply to this with a time to put it right"), design.Text(design.small("the line a tap on Taken leaves under the card; a reply such as “11:45” corrects it, as “I took it at 11:45” would")))))
     # The to-dos card
     from tasks.todos import rules as todo
 
@@ -423,7 +412,7 @@ def round_4_opening() -> str:
         f"## {ROUND_4_TITLE}",
         "From your feedback and your friend's: less that is no longer relevant, paused and missed out of the way, one Taken button. Each card is drawn by the real code from made-up data (Pill A to Pill F), round 3 (as live has it) next to round 4. The buttons here do nothing.",
         "-# The rule on every card: what can be done now in full with its button; the next thing in full, no button; the rest of the day one small line of times; done and missed a small line each with a count; paused not shown (say “show paused”).",
-        "**Question 67: Variant 1 or Variant 2?** Reply here. Live stays on round 3 until you say “ship round 4”.",
+        "Your answers of 15 Oct are in: one Taken that logs at once (reply with a time to correct it), and to-dos as the first three with one Done dropdown.",
     ])
 
 

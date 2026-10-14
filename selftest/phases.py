@@ -2,7 +2,7 @@ import asyncio
 import os
 from datetime import timedelta
 
-from core import clock, config, confirm, database, design, occurrences, scheduler, surface
+from core import clock, config, confirm, database, design, occurrences, scheduler, surface, timeinput
 from core import day as days
 from selftest.harness import Harness
 
@@ -1563,7 +1563,7 @@ async def p7(h: Harness) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Start 8: round 4 of the design (DESIGN_ROUND=4, the pop-up Taken), for the dev bot only
+# Start 8: round 4 of the design (DESIGN_ROUND=4): one Taken at once, Skip in words, the to-dos list rule
 # ---------------------------------------------------------------------------
 async def p8(h: Harness) -> None:
     if not await h.pills():
@@ -1579,17 +1579,20 @@ async def p8(h: Harness) -> None:
         h.memo["sheet_r4"] = shown.id
         h.saw(" / ".join(shown.text.splitlines()[:4])[:200])
 
-    async with h.step("8.02", "Taken opens a pop-up with the time filled in, and sending it as it is logs the dose", "A form “When did you take it?” whose time is now (h:mm am/pm); sent unchanged, that dose is taken at that time and the card is rewritten in place", "round 4, variant 1"):
+    async with h.step("8.02", "Taken logs the dose at once, and a reply with a time puts it right", "No pop-up: the dose is taken now and a line says so, “reply to this with a time to put it right”; a reply to that line with a time two minutes earlier moves it (old time → new time)", "round 4, question 67: variant 2"):
         before = await h.doses()
         pressed = await h.press(h.memo["sheet_r4"], "Taken")
-        h.check(pressed.form is not None, f"no pop-up opened; it said {pressed.said}")
-        filled = pressed.form.form.fields[0].value
-        h.check(filled.endswith(("am", "pm")) and ":" in filled, f"the time filled in: {filled!r}")
-        await h.submit(pressed, at=filled)
+        h.check(pressed.form is None, "Taken opened a pop-up")
         after = await h.doses()
         newly = [key for key, state in after.items() if state == DONE and before.get(key) != DONE]
         h.check(len(newly) == 1, f"doses taken by it: {newly}")
-        h.saw(f"filled in {filled}; taken: {newly}")
+        line = await h.find(h.hub, "reply to this with a time to put it right")
+        h.check(line is not None, f"no line to reply to; the hub's newest: {[each.text[:80] for each in await h.recent(h.hub, 3)]}")
+        earlier = timeinput.format_moment(clock.now() - timedelta(minutes=2))
+        await h.say(earlier, channel=h.hub, reply_to=line.id, canned=log({"pill": "@that", "did": "taken", "at": earlier}))
+        moved = await h.find(h.hub, "→")
+        h.check(moved is not None and earlier in moved.text, f"the correction: {moved.text[:160] if moved else 'none'}")
+        h.saw(f"taken: {newly}; {moved.text[:120] if moved else ''}")
 
     async with h.step("8.03", "Skip is said in words, and “undo that” puts it back", "“skip testlate”: Testlate's dose is skipped, one line says so; “undo that”: it is back, not skipped", "round 4: Skip in words only"):
         await h.say("skip testlate", canned=log({"pill": "Testlate", "did": "skipped"}))
@@ -1597,6 +1600,26 @@ async def p8(h: Harness) -> None:
         await h.say("undo that", canned=log({"pill": "@that", "did": "not_taken"}))
         said = await h.find(h.inbox, "not skipped after all")
         h.check((await h.doses()).get(("Testlate", 1)) == PENDING and said is not None, f"the doses are {await h.doses()}; the line: {said.text[:120] if said else 'none'}")
+
+    async with h.step("8.04", "To-dos in round 4: the first three, “+1 more”, and one Done dropdown", "Four to-dos added: the card shows three in full, a small “+1 more”, no Done button under each, and one dropdown “✅ Done: pick one” holding all four", "round 4: the list rule (15 Oct)"):
+        h.check(config.TODOS_ENABLED, "TODOS_ENABLED is not on in this start")
+        await h.say("add buy stamps, call the dentist, book the WOF and water the plants", canned=todo("todo_add", todos=[{"text": "buy stamps"}, {"text": "call the dentist"}, {"text": "book the WOF"}, {"text": "water the plants"}]), task="todos")
+        _, shown = await card(h)
+        h.check(shown is not None, "no card for the four to-dos")
+        await h.press(shown.id, "Save", h.inbox)
+        await h.settle(3)
+        hub_card = await todos_card(h)
+        h.check(hub_card is not None and "+1 more" in hub_card.text and not any("Done" in label for label in hub_card.labels), f"the hub card: {hub_card.text[:300] if hub_card else 'none'} with {hub_card.labels if hub_card else []}")
+        h.check(len(hub_card.menus) == 1 and "Done" in hub_card.menus[0][0] and len(hub_card.menus[0][2]) == 4, f"its dropdowns: {hub_card.menus}")
+        h.memo["todos_r4"] = hub_card.id
+        h.saw(" / ".join(hub_card.text.splitlines()[:5])[:200])
+
+    async with h.step("8.05", "Pick one in the Done dropdown", "Picking “Water the plants”: it is done, and the card is rewritten in place with three open and “✅ 1 done”", "round 4: the list rule (15 Oct)"):
+        await h.pick(h.memo["todos_r4"], "Water the plants")
+        await h.settle(3)
+        hub_card = await todos_card(h)
+        h.check(hub_card is not None and "✅ 1 done" in hub_card.text and "+1 more" not in hub_card.text, f"the hub card: {hub_card.text[:300] if hub_card else 'none'}")
+        h.check(len(hub_card.menus) == 1 and len(hub_card.menus[0][2]) == 3, f"its dropdowns: {hub_card.menus}")
 
 
 PHASES = {"p1": p1, "p2": p2, "p3": p3, "p4": p4, "p5": p5, "p6": p6, "p7": p7, "p8": p8}

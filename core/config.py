@@ -232,9 +232,6 @@ KEEP_CONFIRMATIONS = flag(os.getenv("KEEP_CONFIRMATIONS"), True)
 # Cards drawn as Components V2 (docs/DESIGN.md; core/design.py). Off unless
 # set: off, every card looks as it always has
 CARDS_V2 = flag(os.getenv("CARDS_V2"), False)
-# Round 4's one Taken button (tasks/pills/sheet.py): ask, a pop-up with the time filled in to
-# check or change (variant 1); now, taken at once, and a reply with a time puts it right (variant 2)
-TAKEN_BUTTON = (os.getenv("TAKEN_BUTTON") or "ask").strip().lower()
 # Which round of the design the cards are drawn in, with CARDS_V2 on (docs/DESIGN-LOG.md): 3, the
 # type scale; 1, the look built before it (a box an item). Live changes round only when Alex says so
 DESIGN_ROUND = int(os.getenv("DESIGN_ROUND") or 3)

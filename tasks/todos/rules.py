@@ -18,6 +18,9 @@ TASK = "todos"
 ICON = "📝"
 TITLE = "To-dos"
 DONE_ACTION = "done"
+PICKED_ACTION = "done_picked"  # round 4: the one Done dropdown
+DONE_MENU = "✅ Done: pick one"
+TOO_MANY = "the list holds {shown}: say “done” and its words for the others"
 MAX_SHOWN = 12  # to-dos a card lists; the rest are counted
 NOTHING = f"{ICON} Nothing on your to-do list."
 
@@ -104,20 +107,40 @@ def tail(found: Day, today: date) -> str:
     return " · ".join(said)
 
 
+def done_menu(todos, today: date) -> cards.Select:
+    """The one Done dropdown: every open to-do it has room for, the most pressing first."""
+    options = tuple(
+        cards.Option(cards.truncate_label(each.text, cards.MAX_OPTION_TEXT), str(each.id), description=f"from {day_text(each.day, today)}" if each.day is not None and each.day < today else (day_text(each.day, today) if each.day is not None and each.day > today else ""))
+        for each in todos
+    )
+    return cards.Select(TASK, PICKED_ACTION, options, placeholder=DONE_MENU)
+
+
 def layout_r4(found: Day, today: date) -> tuple:
-    """Round 4 (the relevance rule, core/design.py): a to-do has no time, so every
-    open one for today can be done now: a full line with its Done; overdue first,
-    with the day it was for. Done is one small line with a count, and what is for
-    later days one more."""
-    things = [design.Thing("\n".join([design.name(each.text), design.small(f"from {day_text(each.day, today)}")]), design.NOW, status=design.DUE, row=(done_button(each),)) for each in found.overdue]
-    things += [design.Thing(design.name(each.text), design.NOW, status=design.ANY_TIME, row=(done_button(each),)) for each in found.today]
-    things += [design.Thing(each.text, design.FINISHED) for each in found.done]
-    shown = design.relevant(things)
-    small = list(shown.small)
+    """Round 4, the list rule (core/design.py): the first three open to-dos in full
+    (overdue first, with the day it was for, then today's, then any day's), the
+    rest one small line ("+4 more"), and one Done dropdown for every open one,
+    for a later day too, in place of a button each. Done is one small line with
+    a count, and what is for later days one more."""
+    open_ = [*found.overdue, *found.today]
+    listing = design.listed(open_, in_menu=[*open_, *found.later])
+    overdue = set(found.overdue)
+    entries = [
+        design.Entry("\n".join([design.name(each.text), design.small(f"from {day_text(each.day, today)}")]), design.DUE)
+        if each in overdue else design.Entry(design.name(each.text), design.ANY_TIME)
+        for each in listing.shown
+    ]
+    small = [design.more_line(listing.more)]
+    if found.done:
+        small.append(f"✅ {len(found.done)} done")
     if found.later:
         small.append(f"{len(found.later)} more later" + (f", next {day_text(found.later[0].day, today)}" if found.later[0].day else ""))
+    if listing.left_out:
+        small.append(TOO_MANY.format(shown=len(listing.menu)))
     title = design.card_title(f"{ICON} {TITLE}", len(found.done), found.total)
-    box = design.topic(title, list(shown.entries)[:MAX_SHOWN], tail="\n".join(small), status="" if shown.entries else design.DONE)
+    box = design.topic(title, entries, tail="\n".join(line for line in small if line), status="" if entries else design.DONE)
+    if listing.menu:
+        box = design.Box(box.status, (*box.children, done_menu(listing.menu, today)))
     return design.fit(design.bolded((box,)))
 
 

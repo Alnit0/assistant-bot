@@ -39,7 +39,9 @@ def test_the_round_4_preview_fits_shows_round_3_beside_it_and_names_only_made_up
     found = preview.checked(preview.round_4())
     labels = [label for label, _ in found if label]
     assert any("round 3" in label for label in labels) and any("round 4" in label for label in labels)
-    assert any(label.startswith("Variant 1") for label in labels) and any(label.startswith("Variant 2") for label in labels)
+    assert not any(label.startswith("Variant") for label in labels), "question 67 is answered: one Taken, at once"
     words = "\n".join(text for _, pieces in found for text in design.texts(pieces))
     assert set(re.findall(r"Pill [A-Z]\b", words)) <= {f"Pill {letter}" for letter in "ABCDEF"}
-    assert "Question 67: Variant 1 or Variant 2?" in preview.round_4_opening()
+    assert "one Taken that logs at once" in preview.round_4_opening()
+    todos = next(pieces for label, pieces in found if label.startswith("To-dos") and label.endswith("round 4"))
+    assert len(design.menus(todos)) == 1 and design.buttons(todos) == [], "to-dos: one Done dropdown"
