@@ -33,3 +33,13 @@ def test_only_what_people_said_after_the_latest_round_is_read_back():
     assert [each.content for each in preview.since_last_round(history)] == ["better, but the title wraps"]
     assert [each.content for each in preview.since_last_round(history[:2])] == ["the dots are too small"]
     assert [each.content for each in preview.since_last_round([SimpleNamespace(author=alex, content="hi")])] == ["hi"], "no round yet: everything"
+
+
+def test_the_round_4_preview_fits_shows_round_3_beside_it_and_names_only_made_up_pills():
+    found = preview.checked(preview.round_4())
+    labels = [label for label, _ in found if label]
+    assert any("round 3" in label for label in labels) and any("round 4" in label for label in labels)
+    assert any(label.startswith("Variant 1") for label in labels) and any(label.startswith("Variant 2") for label in labels)
+    words = "\n".join(text for _, pieces in found for text in design.texts(pieces))
+    assert set(re.findall(r"Pill [A-Z]\b", words)) <= {f"Pill {letter}" for letter in "ABCDEF"}
+    assert "Question 67: Variant 1 or Variant 2?" in preview.round_4_opening()

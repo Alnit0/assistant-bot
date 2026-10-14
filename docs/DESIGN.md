@@ -101,6 +101,15 @@ below. A message is read like a page.
 states, drawn by this code from made-up data, in the "🎨 Design
 options" post (`--check` builds them and posts nothing).
 
+## Round 4 (built 2026-10-15, not shipped)
+
+Behind `DESIGN_ROUND=4`, on `feature/round-4`; live stays on round 3. The
+relevance rule (locked, `docs/DESIGN-LOG.md`) is `design.relevant`: a task
+hands over each thing as a `design.Thing` (its full line, what it is now:
+`NOW`, `COMING`, `FINISHED`, `GONE_BY` or `PAUSED`, its time and its
+buttons) and gets back the full lines and the small lines. One Taken a
+dose (`TAKEN_BUTTON`: `ask` or `now`).
+
 ## The hub
 
 The hub is a clean place to check in on what is relevant now

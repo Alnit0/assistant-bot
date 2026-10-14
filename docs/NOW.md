@@ -14,12 +14,10 @@ pushed to `feature/pills`, all of it in tonight's restart.
 - 4. A reply to last night's pill line corrects that night
 - 5. Live's own folder: scripts and `docs/LIVE-FOLDER.md`, dry-run only
 
-**In progress**
-- Round 4 of the design (Alex and a friend's feedback), in the worktree
-  `../assistant-bot-round4` on `feature/round-4`, not in tonight's
-  restart: 1. the relevance rule in core/design.py; 2. one Taken button,
-  two variants (a pop-up with the time, or at once); 3. the Round 4
-  preview; 4. tests and self-test steps
+**Done on `feature/round-4`** (worktree `../assistant-bot-round4`)
+- Round 4 of the design, pushed, not merged, not in tonight's restart:
+  the relevance rule, one Taken button (two variants, question 67), the
+  Round 4 preview posted, tests and self-test start 8 (7 of 7)
 
 **Next**
 - Tonight, 6 pm to 9 pm, clear of pill reminders: one restart from this
@@ -34,6 +32,7 @@ pushed to `feature/pills`, all of it in tonight's restart.
 - No drafts outside `docs/`
 
 **Waiting on Alex**
+- Round 4: variant 1 or 2 (question 67), and "ship round 4"
 - The rest of his routines message (point 4, the preview)
 - The private Google Calendar link, for live's `.env` only
 - A lock-screen screenshot of a pill reminder (question 11)

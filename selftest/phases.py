@@ -1562,4 +1562,41 @@ async def p7(h: Harness) -> None:
         h.check(accent(design.DONE) in after.accents, f"not green: {[hex(each) if each else None for each in after.accents]}")
 
 
-PHASES = {"p1": p1, "p2": p2, "p3": p3, "p4": p4, "p5": p5, "p6": p6, "p7": p7}
+# ---------------------------------------------------------------------------
+# Start 8: round 4 of the design (DESIGN_ROUND=4, the pop-up Taken), for the dev bot only
+# ---------------------------------------------------------------------------
+async def p8(h: Harness) -> None:
+    if not await h.pills():
+        await seed(h)
+
+    async with h.step("8.01", "`pills` in round 4", "One box: a dose that can be taken now has one button, Taken (no Taken at…, no Skip); the rest of the day, what is done and what was missed are small lines", "round 4 (15 Oct)"):
+        h.check(design.current() == 4, f"DESIGN_ROUND is {config.DESIGN_ROUND} in this start")
+        await h.say("pills")
+        sheets = await held(h, "checklist")
+        shown = await h.get(h.hub, sheets[-1].message_id) if sheets else None
+        h.check(shown is not None and shown.v2 and shown.text.startswith("### 💊 Pills "), f"the checklist: {shown.text[:200] if shown else 'none'}")
+        h.check(shown.labels and all(label.endswith("Taken") for label in shown.labels), f"its buttons are {shown.labels}: one Taken a dose that can be taken now")
+        h.memo["sheet_r4"] = shown.id
+        h.saw(" / ".join(shown.text.splitlines()[:4])[:200])
+
+    async with h.step("8.02", "Taken opens a pop-up with the time filled in, and sending it as it is logs the dose", "A form “When did you take it?” whose time is now (h:mm am/pm); sent unchanged, that dose is taken at that time and the card is rewritten in place", "round 4, variant 1"):
+        before = await h.doses()
+        pressed = await h.press(h.memo["sheet_r4"], "Taken")
+        h.check(pressed.form is not None, f"no pop-up opened; it said {pressed.said}")
+        filled = pressed.form.form.fields[0].value
+        h.check(filled.endswith(("am", "pm")) and ":" in filled, f"the time filled in: {filled!r}")
+        await h.submit(pressed, at=filled)
+        after = await h.doses()
+        newly = [key for key, state in after.items() if state == DONE and before.get(key) != DONE]
+        h.check(len(newly) == 1, f"doses taken by it: {newly}")
+        h.saw(f"filled in {filled}; taken: {newly}")
+
+    async with h.step("8.03", "Skip is said in words, and “undo that” puts it back", "“skip testlate”: Testlate's dose is skipped, one line says so; “undo that”: it is back, not skipped", "round 4: Skip in words only"):
+        await h.say("skip testlate", canned=log({"pill": "Testlate", "did": "skipped"}))
+        h.check((await h.doses()).get(("Testlate", 1)) == SKIPPED, f"the doses are {await h.doses()}")
+        await h.say("undo that", canned=log({"pill": "@that", "did": "not_taken"}))
+        said = await h.find(h.inbox, "not skipped after all")
+        h.check((await h.doses()).get(("Testlate", 1)) == PENDING and said is not None, f"the doses are {await h.doses()}; the line: {said.text[:120] if said else 'none'}")
+
+
+PHASES = {"p1": p1, "p2": p2, "p3": p3, "p4": p4, "p5": p5, "p6": p6, "p7": p7, "p8": p8}

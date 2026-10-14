@@ -143,7 +143,28 @@ feedback names it.
 ## Round 4 (built 2026-10-15, not shipped)
 
 Built on `feature/round-4`, behind `DESIGN_ROUND=4`; live stays on round 3
-until Alex says "ship round 4". STATUS_R4
+until Alex says "ship round 4". Preview posted on 15 Oct as "Round 4
+preview" in the design-options post, with question 67 (variant 1 or 2).
+
+- **The relevance rule** (`design.relevant`, `design.Thing`) on the pills
+  card, the reminders card and the to-dos card. On the pills card for a
+  morning with nothing taken: 5 lines and 2 buttons, where round 3 has 13
+  and 15; midday (2 taken, 1 missed, 1 paused, 1 due, 2 later): 7 and 1,
+  where round 3 has 9 and 6. The to-dos card is the same length in both
+  rounds: a to-do has no time, so every open one for today can be done
+  now and keeps its Done (a thought for round 5: a Done only on the first
+  few, the rest a small line).
+- **One Taken** a dose that can be taken now, on the checklist and on a
+  reminder (with Snooze). `TAKEN_BUTTON=ask` (variant 1): a pop-up with
+  the time filled in, read as a time said in words, with the same checks.
+  `TAKEN_BUTTON=now` (variant 2): taken at once, and a line "reply to this
+  with a time to put it right", recorded so that a reply corrects it.
+- **Skip is said in words**, and "undo that" puts a skipped dose back.
+- Paused pills are not on the card; "my pills" shows them, and every pill
+  in full. Missed: a count and its time; the briefing's line about the day
+  before has the rest.
+- Tests: `tests/test_round4.py`; self-test start 8 (stage `round4`), 3
+  steps, recorded answers, passed as the dev bot.
 
 **Alex's feedback** (copied word for word, newest last)
 

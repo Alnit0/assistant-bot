@@ -103,6 +103,8 @@ Messages go through fast paths (buttons, exact shortcuts), then sticky follow-up
 - Live changes only when Alex says "ship round N" (`DESIGN_ROUND=N`, one restart). Every round that was built stays selectable, so "go back to round N" is the same setting. Today: round 1 (the look before) and round 3.
 - At the start of any batch that touches the design, Claude Code reads his replies in that post since the last round (`--replies`, as the dev bot), copies them word for word into the log, and turns them into a numbered list of changes. Locked parts (rules inside boxes, a box a topic, dots with a count, thin question cards, changes struck through then bold) change only if he names them.
 
+**Round 4 (built 15 Oct on `feature/round-4`, not shipped):** the relevance rule, locked: what can be done now in full with its button; the next thing in full, no button; the rest of the day one small line of times; done and missed a small line each with a count; paused not shown. It is `design.relevant` over `design.Thing`s, so every card uses the same rule. One Taken button a dose (`TAKEN_BUTTON`: a pop-up with the time, or at once and corrected by a reply). Skip is said in words.
+
 **Ideas for later:** a webhook persona per task (an animal each, matching the server's theme); avatar changes for day and night; the channel topic as a second status spot; private replies that only he sees, for button confirmations.
 
 ## 8. Decisions worth remembering
@@ -125,11 +127,13 @@ Messages go through fast paths (buttons, exact shortcuts), then sticky follow-up
 - **A question gets the answer itself, where it is asked** (15 Oct): "what pills are left?" had been answered with only a pointer to the hub. Now the doses still to take, in time order, the first line naming no pill; a pointer may follow an answer, never replace it (golden 29). A DM while DMs are off gets one line saying so.
 - **A reply to a pill line corrects the day that line is about** (15 Oct): "actually I didn't" to last night's line after midnight makes that dose missed and leaves today alone.
 - **To-dos have their own self-test stage** (start 7, recorded answers, 9 of 9).
+- **Round 4 waits on his word** (15 Oct): built and previewed on its own branch; live changes only on "ship round 4", which is a merge, `DESIGN_ROUND=4` and his `TAKEN_BUTTON` pick at one restart.
 - **The test suite runs in about 40 seconds** (it had grown to nearly two minutes). `TESTS_AS_ON_LIVE=1` runs the same tests with real threads and connections, about 80 seconds.
 
 ## 9. Open threads (update every batch)
 
 **Waiting on Alex**
+- **Round 4: variant 1 or 2** (question 67) and "ship round 4". The preview is in the design-options post.
 - **Round 3 on his phone:** it is live; his feedback (in the design-options post) goes into docs/DESIGN-LOG.md as round 4. His first piece, from question 64, is done: task cards have no `##` page title.
 - **docs/QUESTIONS.md:** three left after his answers of 15 Oct: 11 (his lock-screen screenshot of a pill reminder is on its way), 63 (personal routines reworked with groups of steps, one button a group: to discuss), 24 to 28 under "Gym onboarding" (he designs how a plan is set up first).
 - **QA block 54 by hand** (top of docs/QA-RUN.md): direct messages go on only once it has passed; the self-test cannot send a DM.

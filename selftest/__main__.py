@@ -128,6 +128,8 @@ PHASES = (
     ("p6", {"CARDS_V2": "true", "REMINDERS_ENABLED": "true", "BRIEFING_ENABLED": "true", "HUB_TIDY": "true"}, 0),
     # To-dos, on for the dev bot only (live switches its own): the hub card, the briefing and the tidy with them
     ("p7", {"CARDS_V2": "true", "REMINDERS_ENABLED": "true", "BRIEFING_ENABLED": "true", "HUB_TIDY": "true", "TODOS_ENABLED": "true"}, 0),
+    # Round 4 of the design, for the dev bot only (live stays on round 3 until Alex ships it)
+    ("p8", {"CARDS_V2": "true", "REMINDERS_ENABLED": "true", "DESIGN_ROUND": "4", "TAKEN_BUTTON": "ask"}, 0),
 )
 
 

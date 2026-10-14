@@ -314,11 +314,131 @@ def hub_tasks_opening() -> str:
     ])
 
 
+# ---------------------------------------------------------------------------
+# Round 4: the relevance rule and one Taken button, next to round 3, from
+# made-up data (Pill A to Pill F): `python -m selftest.preview --round-4`
+# ---------------------------------------------------------------------------
+ROUND_4_TITLE = "Round 4 preview"
+
+
+def _six():
+    from tasks.pills.rules import PAUSED as PILL_PAUSED
+    from tasks.pills.rules import Pill, Plan
+
+    def pill(number: int, name: str, per_day: int = 1, notes: str = "", status: str = "active") -> Pill:
+        return Pill(number, 1, Plan(name, notes=notes, schedule=Schedule(per_day=per_day)), status=status)
+
+    return (
+        pill(1, "Pill A"), pill(2, "Pill B"), pill(3, "Pill C"), pill(4, "Pill D", status=PILL_PAUSED),
+        pill(5, "Pill E", notes="with food"), pill(6, "Pill F", per_day=2),
+    )
+
+
+def _round_4_day(state: str) -> tuple[list, list, datetime]:
+    """(today's doses, the pills, now) for one of the three states."""
+    a, b, c, d, e, f = _six()
+    pills = [a, b, c, d, e, f]
+    if state == "morning":
+        listed = [
+            _dose(a, 1, PENDING, _at(8)), _dose(b, 1, PENDING, _at(8)), _dose(c, 1, PENDING, _at(9)),
+            _dose(e, 1, PENDING, _at(11, 30)), _dose(f, 1, PENDING, _at(15)), _dose(f, 2, PENDING, _at(20)),
+        ]
+        return listed, pills, _at(8, 5)
+    if state == "midday":
+        listed = [
+            _dose(a, 1, DONE, _at(8), taken=_at(8, 4)), _dose(b, 1, DONE, _at(8), taken=_at(8, 6)), _dose(c, 1, MISSED, _at(9)),
+            _dose(e, 1, PENDING, _at(11, 30)), _dose(f, 1, PENDING, _at(15)), _dose(f, 2, PENDING, _at(20)),
+        ]
+        return listed, pills, _at(12, 30)
+    listed = [
+        _dose(a, 1, DONE, _at(8), taken=_at(8, 4)), _dose(b, 1, DONE, _at(8), taken=_at(8, 6)), _dose(c, 1, DONE, _at(9), taken=_at(9, 2)),
+        _dose(e, 1, DONE, _at(11, 30), taken=_at(11, 40)), _dose(f, 1, DONE, _at(15), taken=_at(15, 1)), _dose(f, 2, DONE, _at(20), taken=_at(20, 3)),
+    ]
+    return listed, pills, _at(20, 5)
+
+
+def _in_round(number: int, build):
+    """`build()` drawn in one round of the design, the setting put back after."""
+    before = config.DESIGN_ROUND
+    config.DESIGN_ROUND = number
+    try:
+        return build()
+    finally:
+        config.DESIGN_ROUND = before
+
+
+def _count(pieces) -> tuple[int, int]:
+    """How long a card is to read: (its lines of text, its buttons)."""
+    lines = [line for text in design.texts(pieces) for line in text.splitlines() if line.strip()]
+    return len(lines), len(design.buttons(pieces))
+
+
+def _side_by_side(label: str, build) -> list[tuple[str, tuple]]:
+    three, four = _in_round(3, build), _in_round(4, build)
+    (l3, b3), (l4, b4) = _count(three), _count(four)
+    return [
+        (f"{label} · round 3, as live has it", three),
+        (f"{label} · round 4", four),
+        ("", (design.Text(design.small(f"round 4: {l4} lines and {b4} button{'' if b4 == 1 else 's'}, where round 3 has {l3} lines and {b3} buttons")),)),
+    ]
+
+
+def round_4() -> list[tuple[str, tuple]]:
+    """Every message of the round 4 preview, in the order posted."""
+    from tasks.pills import sheet
+
+    found = []
+    for state, label in (("morning", "Pills · morning, nothing taken yet"), ("midday", "Pills · midday: 2 taken, 1 missed, 1 paused, 1 due and 2 later"), ("done", "Pills · all done")):
+        listed, pills, now = _round_4_day(state)
+        found += _side_by_side(label, lambda listed=listed, pills=pills, now=now: sheet.layout(listed, pills, _day(), now))
+    # The two ways one Taken button can work: the card is the same, what a tap does differs
+    listed, pills, now = _round_4_day("midday")
+    card = _in_round(4, lambda: sheet.layout(listed, pills, _day(), now))
+    found.append(("Variant 1 · Taken opens a pop-up", card))
+    found.append(("", (design.Text("\n".join([
+        "**What the pop-up shows** (a Discord form, as on a phone):",
+        "> **When did you take it?**",
+        "> Taken at: `12:30 pm` (filled in with now: send it as it is, or change it)",
+        "> [Cancel]  [Submit]",
+        design.small("A changed time is read as one said in words: 9, 9:15, 9am. One in the future, too soon after the one before, or out of order is asked about first, as now."),
+    ])),)))
+    found.append(("Variant 2 · Taken logs at once", card))
+    found.append(("", (design.Text("✅ **Pill E** · taken 12:30 pm · reply to this with a time to put it right"), design.Text(design.small("the line a tap leaves, under the card; a reply such as “11:45” corrects it, as “I took it at 11:45” would")))))
+    # The to-dos card
+    from tasks.todos import rules as todo
+
+    today = _day()
+    made = lambda number, text, day=None, done=None: todo.Todo(number, 1, text, day, today - timedelta(days=3), done, today if done else None)  # noqa: E731
+    todos = todo.on([
+        made(1, "Pay the power bill", today - timedelta(days=1)),
+        *(made(2 + n, text, today) for n, text in enumerate(("Call the dentist", "Buy stamps", "Book the WOF", "Reply to Sam", "Water the plants", "Return the library books"))),
+        made(9, "Take the bins out", today, _at(7, 30)), made(10, "Order more coffee", None, _at(9, 10)),
+    ], today)
+    found += _side_by_side("To-dos · 2 done, 1 overdue, 6 for today", lambda: todo.layout(todos, today))
+    return found
+
+
+def round_4_opening() -> str:
+    return "\n".join([
+        f"## {ROUND_4_TITLE}",
+        "From your feedback and your friend's: less that is no longer relevant, paused and missed out of the way, one Taken button. Each card is drawn by the real code from made-up data (Pill A to Pill F), round 3 (as live has it) next to round 4. The buttons here do nothing.",
+        "-# The rule on every card: what can be done now in full with its button; the next thing in full, no button; the rest of the day one small line of times; done and missed a small line each with a count; paused not shown (say “show paused”).",
+        "**Question 67: Variant 1 or Variant 2?** Reply here. Live stays on round 3 until you say “ship round 4”.",
+    ])
+
+
 def main() -> int:
     sys.stdout.reconfigure(encoding="utf-8")
     args = sys.argv[1:]
-    if "--check" in args and "--hub-tasks" not in args:
+    if "--check" in args and "--hub-tasks" not in args and "--round-4" not in args:
         print(f"{len(checked())} messages built, each within one message.")
+        return 0
+    if "--round-4" in args:
+        found = checked(round_4())
+        if "--check" in args:
+            print(f"{len(found)} messages built, each within one message.")
+            return 0
+        print("Posted:", asyncio.run(post(ROUND_4_TITLE, round_4_opening(), found)))
         return 0
     if "--hub-tasks" in args:
         found = checked(hub_tasks())
