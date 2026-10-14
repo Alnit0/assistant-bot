@@ -21,8 +21,10 @@ reminders on live, the scheduler, the clean-up and the briefing, and
 the full self-test run.
 
 1. **Live in its own folder, running a committed version** (question
-   34, put on top by Alex on 2026-10-15: the next infrastructure job,
-   not that day). Live runs from the project folder today, so a restart
+   34, put on top by Alex on 2026-10-15: the next infrastructure job).
+   **Prepared and dry-run on 2026-10-15** (`docs/LIVE-FOLDER.md`,
+   `scripts\setup-live-folder.ps1 -Ref`, `scripts\update-live.ps1`):
+   the switch-over waits for his go-ahead at a later restart. Live runs from the project folder today, so a restart
    loads whatever is in the working copy. On 2026-10-15 Windows Update
    restarted the PC twice overnight (00:23 and 00:26) and live came back
    on a batch's uncommitted, unreviewed changes; the 3 am self-test then

@@ -65,6 +65,23 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
    night's time right, the half of the day nearest when it was logged.
    Anything else replied to an earlier day's line says so, and changes
    nothing. Two tests in the golden file.
+7. **Live in its own folder is prepared, not switched over**
+   (`docs/LIVE-FOLDER.md`). `scripts\update-live.ps1` moves live's folder
+   to a commit, detached, or back to the one before (`-Back`); the setup
+   script gained `-Ref` (one commit, not a branch), copies `.env.dev`
+   too (live starts the nightly self-test from its own folder) and
+   `-DevOnly` (a dry run: no service steps, the dev database only). The
+   dry run, into a scratch folder: set up on one commit, moved forward
+   and back, and the to-dos self-test from it, 9 of 9; the scratch folder
+   is removed, and live's service and folder were never touched. It found
+   two faults, fixed: the setup script's migration check could never
+   have run (Windows PowerShell drops double quotes from an argument to a
+   program), and a helper of the new script called itself.
+8. **Spend for the batch: US$0.039 (about NZ$0.07)**: golden 29 from the
+   real API (US$0.014), and the dry run's self-test (US$0.025), which
+   asked the real API because a scratch folder has no record of the
+   month's self-test spend. The other self-tests used recorded answers
+   (NZ$0.00).
 
 ## Decided (2026-10-15, Alex's answers to QUESTIONS.md)
 

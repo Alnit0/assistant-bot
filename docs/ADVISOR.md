@@ -122,6 +122,9 @@ Messages go through fast paths (buttons, exact shortcuts), then sticky follow-up
 - **What's new** (`core/whatsnew.py`): a batch leaves a few lines for one morning's briefing (`python -m core.whatsnew add "…" --on <day>`), shown once in a box under Needs a look and gone after the tidy. Reuse it at the end of any batch Alex should hear about.
 - **His answers of 15 Oct** (one line each in docs/STATUS.md, Decided): round 3 settled the design picks; the suggestions kept for alerts, quiet hours, mornings, pills and the new tasks; the nightly self-test at 3:30 am (no self-test between 3:15 and 4:30 am); `WEEKLY_SUMMARY` on; direct messages on once QA block 54 passes; gym in kilograms; the calendar Google, read only, by its private link, names matched by code and never sent to Claude (not built); a reminder's lock-screen line neutral; task cards with no `##` page title.
 - **The golden conversations run at noon** (15 Oct): they had gone by the real time of day and broke when a run crossed midnight.
+- **A question gets the answer itself, where it is asked** (15 Oct): "what pills are left?" had been answered with only a pointer to the hub. Now the doses still to take, in time order, the first line naming no pill; a pointer may follow an answer, never replace it (golden 29). A DM while DMs are off gets one line saying so.
+- **A reply to a pill line corrects the day that line is about** (15 Oct): "actually I didn't" to last night's line after midnight makes that dose missed and leaves today alone.
+- **To-dos have their own self-test stage** (start 7, recorded answers, 9 of 9).
 - **The test suite runs in about 40 seconds** (it had grown to nearly two minutes). `TESTS_AS_ON_LIVE=1` runs the same tests with real threads and connections, about 80 seconds.
 
 ## 9. Open threads (update every batch)
@@ -137,7 +140,8 @@ Messages go through fast paths (buttons, exact shortcuts), then sticky follow-up
 
 **Ready when he wants**
 - To-dos go on at this evening's restart (with `WEEKLY_SUMMARY`); reminders and personal routines stay off (routines wait on question 63).
-- Live in its own folder on a committed version: top of the backlog, not done yet.
+- Live in its own folder on a committed version: prepared and dry-run (docs/LIVE-FOLDER.md, `scripts\update-live.ps1`, with `-Back` to roll back); the switch-over is his go-ahead at a later restart.
+- Personal routines reworked (groups, windows, nudges), a shared repeat system and a Today card: asked on 15 Oct, to be built on `feature/routines`, off in live. His message was cut off at its fourth point (the preview, "Also show the Today card with a…"): ask him for the rest.
 - A watch on live (a Windows scheduled task that pings his phone if the service is down): later.
 - A `/fix-bugs` skill for Claude Code; later, an overnight scheduled fix run on a separate branch.
 - Claude Code starting by itself when the EliteDesk boots.
