@@ -126,6 +126,8 @@ PHASES = (
     ("p4", {"CARDS_V2": "false", "REMINDERS_ENABLED": "true", "DAILY_SPEND_LIMIT_NZD": "0.001", "USD_TO_NZD": "1.70"}, 0),
     ("p5", {"CARDS_V2": "true", "REMINDERS_ENABLED": "true", "BRIEFING_ENABLED": "true", "DAY_PROGRESS": "true", "DAY_QUESTIONS": "true", "WEEKLY_SUMMARY": "true", "WEATHER_ENABLED": "true", "WEATHER_SOURCE": str(config.BASE_DIR / "tests" / "fixtures" / "weather_drizzle.json")}, 0),
     ("p6", {"CARDS_V2": "true", "REMINDERS_ENABLED": "true", "BRIEFING_ENABLED": "true", "HUB_TIDY": "true"}, 0),
+    # To-dos, on for the dev bot only (live switches its own): the hub card, the briefing and the tidy with them
+    ("p7", {"CARDS_V2": "true", "REMINDERS_ENABLED": "true", "BRIEFING_ENABLED": "true", "HUB_TIDY": "true", "TODOS_ENABLED": "true"}, 0),
 )
 
 

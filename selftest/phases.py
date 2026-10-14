@@ -1474,4 +1474,92 @@ async def p6(h: Harness) -> None:
         h.check(not clock.is_shifted(), "the clock is still moved")
 
 
-PHASES = {"p1": p1, "p2": p2, "p3": p3, "p4": p4, "p5": p5, "p6": p6}
+# ---------------------------------------------------------------------------
+# Start 7: to-dos (TODOS_ENABLED on for the dev bot only), from a list with nothing on it
+# ---------------------------------------------------------------------------
+async def todos_card(h: Harness):
+    """The to-dos card in the hub, as Discord has it, or None when there is none."""
+    from core import hubcard, livelists
+
+    placed = await database.run(livelists.db_get, h.user.id, hubcard.key("todos"))
+    return await h.get(h.hub, placed.message_id) if placed is not None else None
+
+
+def todo(action: str, **data) -> tuple:
+    return (action, {**data, "guessed": [], "not_included": []})
+
+
+async def p7(h: Harness) -> None:
+    async with h.step("7.01", "To-dos are on, and the list is empty", "`my to-dos` says there is nothing on it, and there is no to-dos card in the hub (a card with nothing for today is not there)", "to-dos (15 Oct)"):
+        h.check(config.TODOS_ENABLED, "TODOS_ENABLED is not on in this start")
+        await h.say("my to-dos")
+        said = await h.find(h.inbox, "Nothing on your to-do list")
+        h.check(said is not None, f"the empty list: {[each.text[:60] for each in await h.recent(h.inbox, 3) if each.id not in h.typed]}")
+        h.check(await todos_card(h) is None, "a to-dos card is in the hub with nothing on the list")
+
+    async with h.step("7.02", "Add a to-do: “add buy stamps”, then Save", "A 📝 To-dos · new card with **Buy stamps** · any day; after Save the card in the hub appears with it and a green Done", "to-dos (15 Oct)"):
+        await h.say("add buy stamps", canned=todo("todo_add", todos=[{"text": "buy stamps"}]), task="todos")
+        stored, shown = await card(h)
+        h.check(shown is not None and "**Buy stamps** · any day" in shown.text, f"the card: {shown.text[:200] if shown else 'none'}")
+        await h.press(shown.id, "Save", h.inbox)
+        await h.settle(3)
+        hub_card = await todos_card(h)
+        h.check(hub_card is not None and "Buy stamps" in hub_card.text and any("Done" in label for label in hub_card.labels), f"the hub card: {hub_card.text[:200] if hub_card else 'none'}")
+        h.saw(hub_card.text.splitlines()[0] if hub_card else "no card")
+
+    async with h.step("7.03", "Add one with a day: “add call Ryan tomorrow”, then Save", "The card says **Call Ryan** · tomorrow; after Save it is on the list for tomorrow, and not on today's card", "to-dos (15 Oct)"):
+        await h.say("add call Ryan tomorrow", canned=todo("todo_add", todos=[{"text": "call Ryan", "day": "tomorrow"}]), task="todos")
+        stored, shown = await card(h)
+        h.check(shown is not None and "**Call Ryan** · tomorrow" in shown.text, f"the card: {shown.text[:200] if shown else 'none'}")
+        await h.press(shown.id, "Save", h.inbox)
+        await h.settle(3)
+        hub_card = await todos_card(h)
+        h.check(hub_card is not None and "Call Ryan" not in hub_card.text.split("-#")[0], f"tomorrow's is on today's card: {hub_card.text[:300] if hub_card else 'none'}")
+
+    async with h.step("7.04", "A question: “what's on my to-do list?”", "The answer there, in #selftest-inbox: both to-dos, Call Ryan for tomorrow; nothing posted in the hub in its place", "to-dos (15 Oct); a question is answered where it is asked"):
+        mine = await h.say("what's on my to-do list?", canned=todo("todo_show"), task="todos")
+        await no_marks(h, mine)
+        said = await h.find(h.inbox, "To-dos", "Buy stamps")
+        h.check(said is not None and "Call Ryan" in said.text and "tomorrow" in said.text, f"the answer: {said.text[:300] if said else 'none'}")
+
+    async with h.step("7.05", "Done by words: “I bought the stamps”", "Ticked off at once, no card: one line “✅ **Buy stamps** · done”, and the hub card shows it done in its small line", "to-dos (15 Oct)"):
+        await h.say("I bought the stamps", canned=todo("todo_done", todos=[{"todo": "stamps"}]), task="todos")
+        said = await h.find(h.inbox, "Buy stamps", "done")
+        h.check(said is not None and said.text.startswith("✅ **Buy stamps** · done"), f"the line: {said.text[:200] if said else 'none'}")
+        await h.settle(3)
+        hub_card = await todos_card(h)
+        h.check(hub_card is not None and "✅ Buy stamps" in hub_card.text, f"the hub card: {hub_card.text[:300] if hub_card else 'gone'}")
+
+    async with h.step("7.06", "Undo: “undo that”", "Buy stamps is back on the list, not done, and the card has its Done button again", "to-dos (15 Oct)"):
+        await h.say("undo that", canned=todo("todo_undone", todos=[{"todo": "@that"}]), task="todos")
+        said = await h.find(h.inbox, "Buy stamps", "not done")
+        h.check(said is not None, f"the line: {[each.text[:80] for each in await h.recent(h.inbox, 3) if each.id not in h.typed]}")
+        await h.settle(3)
+        hub_card = await todos_card(h)
+        h.check(hub_card is not None and any("Done" in label for label in hub_card.labels), f"the hub card: {hub_card.labels if hub_card else 'gone'}")
+
+    async with h.step("7.07", "Done by the button on the hub card", "The card is edited in place: Buy stamps in its small line, its button gone", "to-dos (15 Oct)"):
+        hub_card = await todos_card(h)
+        await h.press(hub_card.id, "Done", h.hub)
+        await h.settle(3)
+        after = await todos_card(h)
+        h.check(after is not None and after.id == hub_card.id and "✅ Buy stamps" in after.text and not any("Done" in label for label in after.labels), f"the card: {after.text[:300] if after else 'gone'}")
+
+    async with h.step("7.08", "Carry over: two days on, Call Ryan (for the day before) was never done", "9:00 am two days on: the morning routine has posted the to-dos card, and Call Ryan is on it overdue, amber, “from yesterday”; Buy stamps, done two days ago, is not", "to-dos (15 Oct)"):
+        await h.clock_to(9, 0, day_offset=2)
+        await h.settle(3)
+        hub_card = await todos_card(h)
+        h.check(hub_card is not None and "Call Ryan" in hub_card.text and "from yesterday" in hub_card.text and "Buy stamps" not in hub_card.text, f"the card: {hub_card.text[:300] if hub_card else 'none'}")
+        h.check(accent(design.DUE) in hub_card.accents, f"not amber: {[hex(each) if each else None for each in hub_card.accents]}")
+        h.saw(hub_card.text.splitlines()[0])
+
+    async with h.step("7.09", "All done: Done on Call Ryan", "The card stays, edited in place: green, every dot solid, Call Ryan in its one small line and no buttons left (a card is only away on a day with nothing for it: 7.01)", "to-dos (15 Oct)"):
+        hub_card = await todos_card(h)
+        await h.press(hub_card.id, "Done", h.hub)
+        await h.settle(3)
+        after = await todos_card(h)
+        h.check(after is not None and after.id == hub_card.id and "● 1/1" in after.text and "✅ Call Ryan" in after.text and not after.buttons, f"the card: {after.text[:300] if after else 'gone'}")
+        h.check(accent(design.DONE) in after.accents, f"not green: {[hex(each) if each else None for each in after.accents]}")
+
+
+PHASES = {"p1": p1, "p2": p2, "p3": p3, "p4": p4, "p5": p5, "p6": p6, "p7": p7}

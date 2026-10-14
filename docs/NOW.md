@@ -17,7 +17,7 @@ the small jobs they asked for, then one evening restart of live.
   stranger's DM is ignored and costs nothing; 64 confirmed in the log
 
 **In progress**
-- 3. Self-test steps for to-dos, run once as the dev bot
+- 4. The midnight edge: a reply corrects the day of the line it replies to
 
 **Next**
 - 7. 6 pm to 9 pm, clear of pill reminders: one restart from a clean,

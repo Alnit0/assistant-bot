@@ -24,9 +24,9 @@ from core import money
 # A stage that begins at start 5 makes its own pills first (`phases.seed`),
 # with recorded answers only.
 # ---------------------------------------------------------------------------
-STAGES = {"day": ("p1", "p2", "p3", "p4"), "briefing": ("p5",), "tidy": ("p5", "p6")}
-ORDER = ("day", "briefing", "tidy")
-ABOUT_MINUTES = {"p1": 4, "p2": 2.5, "p3": 2, "p4": 1.5, "p5": 2, "p6": 2.5}
+STAGES = {"day": ("p1", "p2", "p3", "p4"), "briefing": ("p5",), "tidy": ("p5", "p6"), "todos": ("p7",)}
+ORDER = ("day", "briefing", "tidy", "todos")
+ABOUT_MINUTES = {"p1": 4, "p2": 2.5, "p3": 2, "p4": 1.5, "p5": 2, "p6": 2.5, "p7": 2}
 
 # What a changed file touches, first match wins. Anything not listed is the
 # bot's own code, shared by everything: all three stages.
@@ -34,6 +34,7 @@ NOTHING = ("docs/", "tests/", "evals/", ".claude/", "data/", "logs/")
 RULES = (
     (("tasks/briefing/", "core/summaries.py", "tasks/pills/summary.py"), ("briefing",)),
     (("core/messages.py",), ("tidy",)),
+    (("tasks/todos/", "core/hubcard.py"), ("todos",)),
     (("tasks/",), ("day",)),
 )
 

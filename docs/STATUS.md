@@ -47,6 +47,16 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
      and a self-test step (3.05b) that replays it at no cost
    No router rule was added: the fix was the action's own description
    and code.
+5. **To-dos have a self-test stage of their own** (`todos`, start 7,
+   `TODOS_ENABLED` on for the dev bot only): empty and no card; add;
+   add with a day; "what's on my to-do list?" answered in place; done
+   by words; undo; done by the button; carried over as overdue two days
+   on; all done. Every answer is recorded, so the nightly run replays
+   it at no cost, and runs it when to-do code changes. Run once as the
+   dev bot: 9 of 9 (NZ$0.00). The first try failed three steps on the
+   test's own checks (button labels carry their emoji; with everything
+   done the card stays as one green line, as designed: only a day with
+   nothing has no card); it opened D7 and closed it on the second run.
 
 ## Decided (2026-10-15, Alex's answers to QUESTIONS.md)
 
