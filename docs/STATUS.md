@@ -8,6 +8,20 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-15
 
+## Later on 2026-10-15
+
+- **`docs/NOW.md`** is what is happening now, at most 40 lines, updated
+  after every step of a batch and reset to Idle at its end. A
+  SessionStart hook (`.claude/settings.json`, committed; `scripts/now.ps1`)
+  prints it at every start, resume, `/clear` and compact; `/catchup`
+  reads it first. Batches now commit a checkpoint after each finished
+  step, and drafts live in `docs/drafts/` or `docs/specs/`, never only
+  in a scratchpad (CLAUDE.md, kept under 10 KB).
+- **Live is to be restarted once this evening** (between 6 pm and
+  9 pm, clear of the pill reminders) so it loads the What's new box for
+  tomorrow's 6 am briefing; the three new tasks stay off. The result is
+  written here when it is done.
+
 ## Round 3 is live (2026-10-15, 8:59 am)
 
 **The hub is in the round 3 design.** `CARDS_V2=true` and `DESIGN_ROUND=3`

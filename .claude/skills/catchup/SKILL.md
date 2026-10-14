@@ -10,8 +10,9 @@ test runs or requests to Claude. Alex reads the answer on his phone, so
 keep it short. Never print a token or an ntfy topic, a bot's display name
 or a real pill name. Use the `.venv` Python. In this order:
 
-1. **Where we were**: `docs/NOW.md`, or `docs/STATUS.md` if there is none
-   (its top section and "Where things stand" only).
+1. **Where we were**: `docs/NOW.md` first (the batch, its steps done,
+   in progress and next, drafts and worktrees). Open `docs/STATUS.md` only
+   if NOW.md points there.
 2. **Git**: `git status -sb` (branch, uncommitted, ahead of the remote),
    `git worktree list` (each worktree's branch, and `git -C <path>
    status -s` for uncommitted work there).

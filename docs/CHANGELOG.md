@@ -32,6 +32,9 @@ backfilled from the git log.
 - A What's new box in the briefing, for one morning, filled by a batch.
 - `/catchup` for Claude Code: a read-only report at a session's start or
   after a reboot.
+- `docs/NOW.md`, what is happening now, printed into every Claude Code
+  session at its start by a hook; checkpoint commits after each step of
+  a batch; drafts kept in `docs/drafts/` or `docs/specs/`.
 
 ## 2026-10-14
 

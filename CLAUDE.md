@@ -1,9 +1,8 @@
 # CLAUDE.md
 
-The short form, read on every turn. **The rules in full, with their
-reasons and examples, are `docs/RULES.md`**: read the section named in
-brackets before working in that area. Where the two differ, RULES.md
-is right.
+The short form. **The rules in full, with reasons and examples, are
+`docs/RULES.md`**: read the bracketed section before working in an
+area; where the two differ, RULES.md is right.
 
 ## Project
 
@@ -13,9 +12,9 @@ Anthropic API, SQLite. One user, built to be multi-user ready.
 
 ## Priorities
 
-The hub is a daily overview I check, plus a place to talk to the bot
-and do more. I am not relying on the bot for reminders yet. Most
-important first, when work is chosen, ordered or cut short:
+Most important first, when work is chosen, ordered or cut short (the
+hub is my daily overview and a place to talk to the bot; I don't rely
+on it for reminders yet):
 
 1. What the hub shows and how it reads: the briefing, the design,
    progress
@@ -39,9 +38,11 @@ Notifications and ntfy are low priority.
 
 ## Read first
 
-- `docs/STATUS.md` at the start of every session: where the work
-  stands, with "Decided overnight" on top. Open questions are
-  `docs/QUESTIONS.md` and nowhere else
+- `docs/NOW.md` first (the SessionStart hook prints it): the batch,
+  steps done, in progress and next, drafts, worktrees, what waits on
+  me. At most 40 lines, updated after every step, reset to "Idle, last
+  batch was…" at a batch's end. History is `docs/STATUS.md`; open
+  questions are `docs/QUESTIONS.md` only
 - `docs/CONVERSATION.md` is the standard for how the bot talks. It
   outranks this file and every spec: say so when one conflicts
 - `docs/ARCHITECTURE.md` is the map: read it before exploring, update
@@ -69,8 +70,8 @@ Notifications and ntfy are low priority.
   Pass `--anyway`. Give the dev bot one of my channels, or create one
 - Weaken the account check (`core/account.py`), the dev clock's guard
   or `dev reset-db`'s
-- Put a pill's name where a notification, a status line or a first
-  line in a direct message shows
+- Put a pill's name in a notification, a status line or a direct
+  message's first line
 - Import discord.py in a new task or new core code [Structure]
 - Let anything I need to know reach me only through #bot-log
 - Add a word list or phrase pattern in Python as the way something is
@@ -91,20 +92,18 @@ Notifications and ntfy are low priority.
 - **The task contract** (`core/actions.py`): icon, "only for" line,
   examples, actions with fields, `identity` and `on_repeat`, a
   `verify` that reads a change back before it is confirmed, and
-  optionally a `summary` (the briefing) and `attention` items. A task
-  with a summary and nothing to route to is fine (weather)
+  optionally a `summary` (the briefing) and `attention` items (a
+  summary alone is fine: weather)
 - Claude hands over structured values (`actions.MINUTES`, `NUMBER`,
   `TIME`, `ITEMS`, `REFERENCE`, `DECLINES`); Python does every sum and
   resolves every "it". Names are matched by `core/names.py`, never guessed
 - A task never asks in a message of its own: a `Question` on its card.
   Every change to one of my things is a confirm card; only Save writes
-- **New code produces plain data and goes through the interface
-  layer**: `core/cards.py` for a card, `Context` for a reply,
-  `core/surface.py` (the door) for anything else done to a channel or
-  a message. Errors are `surface.Gone` / `surface.Failed`. What is
-  Discord's lives in `interfaces/discord/`. The files that still
-  import discord.py are a list in `tests/test_interface.py` that only
-  gets shorter
+- **New code gives plain data to the interface layer**: `core/cards.py`
+  (a card), `Context` (a reply), `core/surface.py` (anything else;
+  errors `surface.Gone` / `Failed`). Discord's own is
+  `interfaces/discord/`; files still importing discord.py are a
+  shrinking list in `tests/test_interface.py`
 - Everything sent passes `core/outgoing.py`. How a card looks is
   `core/design.py`: a task gives a status, never a colour
 - Permissions through `is_allowed(user, action)`. Every record has a
@@ -118,12 +117,11 @@ Notifications and ntfy are low priority.
   `datetime.now()`. The day is `core/day.py`, never `.date()`. Times
   are read and shown by `core/timeinput.py` ("8:04 am")
 - **Only the engine knows when** (`core/scheduler.py`): a task gives a
-  default schedule and a handler, and never books its own next run or
-  reads the clock to decide whether to run. A run has a key, so
-  nothing runs twice. Whatever changes a schedule calls `scheduler.book()`
-- A restart loses nothing and repeats nothing (`core/restart.py`). A
-  start says nothing in a channel; a restart nobody asked for is one
-  line with the catch-up
+  default schedule and a handler, never books its own next run or
+  reads the clock to decide. A run has a key: nothing runs twice. A
+  schedule change calls `scheduler.book()`
+- A restart loses and repeats nothing (`core/restart.py`); a start
+  says nothing in a channel, an unasked restart one catch-up line
 - A job never does nothing in silence (`scheduler.note`), has a name
   in words (`scheduler.label`), and a real problem is
   `scheduler.report`. One that raises is run once more a minute
@@ -144,28 +142,26 @@ pill's latest time; reminders running out never makes a dose missed;
 ## Messages, alerts and money [Messages and channels, Notifications]
 
 - Every message has a lifecycle class (`core/lifecycle.py`) and, in
-  the hub, a lifetime (`core/messages.py`). Edit in place rather than
-  post again. Only delete what lives somewhere else; pinned or 📌 is
-  never swept
+  the hub, a lifetime (`core/messages.py`). Edit in place; delete only
+  what lives somewhere else; pinned or 📌 is never swept
 - Archive, pin and delete are reactions or reply words, never plain
   words (`reset channel` asks first). Reactions are debounced and
   reversible; 🐞 is the one instant one [Reactions]
 - **What needs me** is level 1 of the one ranking
-  (`core/attention.py`): the briefing's "Needs a look" box, the status
-  line and a ping (`core/alerts.py`). A new kind of problem is an
-  attention item with `PROBLEM`. Worth knowing but not urgent is
-  `notify.worth_knowing(line)`. #bot-log stays the record it is
+  (`core/attention.py`): "Needs a look", the status line, a ping
+  (`core/alerts.py`); a new problem is an item with `PROBLEM`. Not
+  urgent: `notify.worth_knowing(line)`. #bot-log stays a record
 - **An alert leaves the bot one way**, `core/notify.py`: its kind's
   line in `KINDS` says Discord, ntfy or both, and whether it gets
-  through quiet hours (only pill reminders do). A task never reads the
+  through quiet hours (only reminders do). A task never reads the
   quiet hours or the ntfy settings. What a phone shows is neutral
 - **Money is shown in NZ$ and recorded in US$** (`core/money.py`):
   `costs.money` for what I read, `costs.usd` for the record
-- Acknowledge an interaction within 3 seconds; buttons survive a restart
+- Answer a press within 3 seconds; buttons survive a restart
 
 ## Conventions
 
-- Windows paths and PowerShell; the working copy is CRLF (patch files
+- Windows paths and PowerShell; the working copy is CRLF (patch it
   through a script that keeps line endings)
 - UK spelling. Short, mobile-friendly replies. Moments in UTC,
   schedules as local time + `Pacific/Auckland`
@@ -176,27 +172,23 @@ pill's latest time; reminders running out never makes a dose missed;
 
 ## Running and testing [Running and testing]
 
-- `python -m pytest -q` (about 40 seconds; never `-n`). While working
-  run only the related tests; the full suite last of all before a
-  commit (see Never). `TESTS_AS_ON_LIVE=1` runs it with real threads
-  and connections, after a change to the database layer.
-  Tests use made-up settings and no real data. A test over a minute
-  stops the run: look into it, never raise the limit
-- The golden conversations (`tests/test_golden.py`) must pass before
-  a commit
-- Check which bots run with `python -m core.instance_lock`, never by
-  counting processes
-- **The self-test** (`python -m selftest`) runs as the dev bot with
-  live left up. Check free memory first (it stops under 1.9 GB). Read
-  its "logged in as" line: if it is not the dev bot, stop it. Recorded
-  answers unless prompts, schemas or routing changed. Read its summary
-  and `data/selftest/history.csv`; open logs only for a failure. Edit
-  nothing while it runs. It sets every switch itself
-- **Spend: NZ$0.40 is the most one run may cost before asking me**,
-  each run by itself. Say what each run cost, in NZ$
-- At the end of every piece of work follow `end-of-task`: docs
-  (STATUS, ARCHITECTURE, DEVELOPMENT, TESTING, QA-RUN, CHANGELOG),
-  then the full test run, then the commit with nothing in between.
-  Do not commit unless asked (a batch says so)
-- At the end of every batch, update `docs/ADVISOR.md` (the advisor's
-  handover) as its last section says, before that full test run
+- `python -m pytest -q` (about 40 seconds; never `-n`): related tests
+  while working, the full suite last before a commit (see Never);
+  `TESTS_AS_ON_LIVE=1` after a database-layer change. Made-up settings,
+  no real data. A test over a minute stops the run: look into it
+- The golden conversations (`tests/test_golden.py`) pass before a commit
+- Which bots run: `python -m core.instance_lock`, never a process count
+- **The self-test** (`python -m selftest`): the dev bot, live left up,
+  1.9 GB free at least; if "logged in as" is not the dev bot, stop it.
+  Recorded answers unless prompts, schemas or routing changed. Read its
+  summary and `data/selftest/history.csv` (logs only for a failure);
+  edit nothing while it runs; it sets every switch itself
+- **Spend: at most NZ$0.40 a run before asking me**; say what each
+  run cost, in NZ$
+- At the end of work, `end-of-task`: docs (STATUS, ARCHITECTURE,
+  DEVELOPMENT, TESTING, QA-RUN, CHANGELOG; ADVISOR at a batch's end),
+  the full test run, the commit. Commit only when asked (a batch says)
+- **In a batch, a checkpoint commit after each finished step** whose
+  full test run passed (push at the end): a crash loses one step at
+  most. Drafts live in `docs/drafts/` (committed) or `docs/specs/`
+  (private), never only in a scratchpad

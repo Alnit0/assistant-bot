@@ -58,7 +58,8 @@ He is **not relying on the bot for reminders yet**. The hub is a daily overview 
 - **Memory:** live uses about 100 MB; a full self-test's own processes peak at about 180 MB (the dev bot about 120), taking at most about 240 MB off what's free. Chrome and VS Code left open on the EliteDesk were what ran it short. The self-test won't start under 1.9 GB free.
 - **Remote access:** Tailscale plus Remote Desktop, only when something is truly stuck.
 - **Reboots:** Windows Update restarted the EliteDesk twice on the night of 15 Oct (00:23 and 00:26), cutting a batch off. Live came back by itself, but from the project folder, so on the batch's uncommitted work; the 3 am self-test ran on it too. Live in its own folder on a commit is the fix (backlog, Next 5).
-- **`/catchup`:** a Claude Code skill Alex runs at a session's start or after a reboot (works through remote control): reads `docs/NOW.md` (or `docs/STATUS.md`), git, the last boot, live (service, account check, switches, the 6 am briefing) and new bugs, reports in four short parts, then waits. Read only.
+- **`docs/NOW.md`:** what is happening now (40 lines at most): the batch, steps done, in progress and next, drafts and worktrees, what waits on Alex. Claude Code updates it after every step and resets it to Idle at a batch's end; a SessionStart hook in the committed `.claude/settings.json` (`scripts/now.ps1`) prints it at every start, resume, `/clear` and compact. Batches commit a checkpoint after each finished step (push at the end), so a crash loses one step at most; drafts live in `docs/drafts/` (committed) or `docs/specs/` (private), never only in a scratchpad.
+- **`/catchup`:** a Claude Code skill Alex runs at a session's start or after a reboot (works through remote control): reads `docs/NOW.md` first, git, the last boot, live (service, account check, switches, the 6 am briefing) and new bugs, reports in four short parts, then waits. Read only.
 - **Live's look:** `CARDS_V2=true` and `DESIGN_ROUND=3` in live's `.env` since 15 Oct, 8:59 am: the hub is in round 3.
 - **Costs:** recorded in US$ (what Anthropic bills), shown in NZ$ at a daily rate. Daily alert NZ$1.00; self-test cap NZ$3.50 a month (spent for October, so self-tests use recorded answers until November). 15 Oct: the batch spent NZ$0.25 on understanding checks for the new tasks. A heavy build day cost about NZ$2.30; a normal day should be well under NZ$0.50.
 
@@ -135,7 +136,7 @@ Messages go through fast paths (buttons, exact shortcuts), then sticky follow-up
 
 **Ready when he wants**
 - Switching on to-dos, reminders and personal routines (one restart each, or together).
-- The What's new box loads in live at its next restart; nothing restarts it for that.
+- The What's new box: live is restarted once this evening (6 pm to 9 pm) to load it for the 16 Oct briefing; four lines are queued. See docs/STATUS.md for how it went.
 - A `/fix-bugs` skill for Claude Code; later, an overnight scheduled fix run on a separate branch.
 - Claude Code starting by itself when the EliteDesk boots.
 - A read-only web page over Tailscale (history, charts).
