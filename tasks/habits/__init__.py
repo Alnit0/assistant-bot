@@ -3,7 +3,7 @@ from datetime import date, datetime
 from core import cards, config, hub, repeats, scheduler
 from core import day as days
 from core.actions import SEE, Summary
-from core.attention import USEFUL, Item
+from core.attention import TIMED, USEFUL, Item
 from core.context import Context
 from core.design import ANY_TIME, DONE
 from tasks.base import ANY, ButtonNote, Keyword, Task
@@ -16,13 +16,17 @@ from tasks.habits.rules import ICON, TASK, TITLE
 # "routine" in code is the scheduler's own (the 6 am routine); everywhere I
 # read it, it is "Personal routines".
 #
-#   "make a morning routine: stretch, water, journal"   a card, Save makes it
-#   "did stretch", or the button on the card              ticked off at once
-#   "add meditate to my morning routine"                  a change card
-#   my routines                                           the list
+#   "make an evening routine 6pm to 11pm: brush teeth, floss"   a card, Save makes it
+#   "did floss", or the Done dropdown on the card                ticked off at once
+#   "add skincare to my evening routine: cleanser, toner"        a change card
+#   my routines                                                  the list
 #
-# Its card in the hub comes after the reminders card, each routine due today
-# with its own dots; a day with none has no card. Each day starts afresh.
+# Its card in the hub comes after the reminders card, each routine on today
+# by the list rule; a day with none has no card. Each day starts afresh.
+# How much one matters comes from its when (attention): any time is never
+# urgent (level 4); at a time is due from that time (level 2, and the next
+# timed thing before it); a window is quiet while open, and once it closes
+# undone, overdue (level 2) only if a nudge was asked for. No streaks.
 # ---------------------------------------------------------------------------
 JOB = "card"
 ORDER = hub.CARDS_ORDER + 20  # the hub's order: pills, reminders, personal routines, gym, to-dos
@@ -39,19 +43,31 @@ async def summary(user_id: int, day: date) -> Summary | None:
         return None
     from core import design
 
-    lines = tuple(f"**{each.habit.name}** {design.progress(each.done, each.total)}" for each in found)
+    lines = tuple(f"**{each.habit.name}** {design.progress(each.done, each.total)} · {rules.when_text(each.habit)}" for each in found)
     done, total = sum(each.done for each in found), sum(each.total for each in found)
-    left = tuple(f"{each.habit.name}: {each.next_step.text}" for each in found if each.next_step is not None)
-    return Summary(f"{done} of {total} steps", DONE if done == total else ANY_TIME, lines, done=done, total=total, left=left)
+    left = tuple(f"{each.habit.name}: {each.next_item.text}" for each in found if each.next_item is not None)
+    return Summary(f"{done} of {total} items", DONE if done == total else ANY_TIME, lines, done=done, total=total, left=left)
+
+
+def attention_of(today: rules.Today, now: datetime) -> Item | None:
+    """What one routine is worth now, by its when (see the top of this file)."""
+    state = rules.state(today, now)
+    if state == rules.FINISHED:
+        return None
+    short = (f"{today.done}/{today.total}",)
+    if today.habit.when == rules.AT:
+        return Item(f"{today.habit.name} routine", TIMED, today.starts(), can_act=state != rules.NOT_YET, short=short)
+    if today.habit.when == rules.WINDOW:
+        if state == rules.OVERDUE and today.habit.nudge == rules.NUDGE_END:
+            return Item(f"{today.habit.name} routine not done", TIMED, today.ends(), can_act=True, short=short)
+        return None  # quiet while it is open, and nothing nags without a nudge
+    return Item(f"{today.habit.name} routine", USEFUL, can_act=True, short=short)
 
 
 async def items(user_id: int, now: datetime) -> list[Item]:
     day = days.day_of(now)
     found = rules.due(await store.every(user_id), await store.ticked(user_id, day), day)
-    done, total = sum(each.done for each in found), sum(each.total for each in found)
-    if not found or done == total:
-        return []
-    return [Item("personal routines to do today", USEFUL, can_act=True, short=(f"{done}/{total}",))]
+    return [item for item in (attention_of(each, now) for each in found) if item is not None]
 
 
 class HabitsTask(Task):
@@ -59,7 +75,7 @@ class HabitsTask(Task):
 
     name = TASK
     title = TITLE
-    description = "Personal routines: your own named checklists of steps on chosen days"
+    description = "Personal routines: your own named routines of steps and groups, each on its days at a time, in a window or any time"
     icon = ICON
     only_for = plain.ONLY_FOR
     examples = plain.EXAMPLES
@@ -80,10 +96,10 @@ class HabitsTask(Task):
         return await plain.item_names(request)
 
     def keywords(self) -> list[Keyword]:
-        return [Keyword(["my routines", "routines"], "your personal routines: each one's steps and days", show_word, examples=["my routines"], channels=ANY, exact=True, purpose=SEE)]
+        return [Keyword(["my routines", "routines"], "your personal routines: each one's items, days and time", show_word, examples=["my routines"], channels=ANY, exact=True, purpose=SEE)]
 
     def buttons(self) -> list[ButtonNote]:
-        return [ButtonNote("✅ a step", "on the personal routines card in the hub: that routine's next step is done")]
+        return [ButtonNote(rules.DONE_MENU, "the dropdown under a routine on its card in the hub: pick an item to tick it off (a group: the whole group)")]
 
     def migrations(self):
         return store.MIGRATIONS
@@ -96,6 +112,7 @@ class HabitsTask(Task):
 
     def setup(self, client) -> None:
         cards.register(TASK, rules.TICK, plain.on_tick)
+        cards.register(TASK, rules.PICKED, plain.on_picked)
         scheduler.join_routine(hub.MORNING, scheduler.handler_name(TASK, JOB), order=ORDER, name=hub.MORNING_NAME)
 
     async def summary(self, user_id, day):

@@ -100,146 +100,154 @@
   "extraction": [
     {
       "task": "habits",
-      "message": "make a morning routine: stretch, water, journal, on weekdays",
+      "message": "make an evening routine 6pm to 11pm: brush teeth, floss, skincare: cleanser, toner, serum, moisturiser",
       "action": "habit_add",
       "data": {
-        "steps": [
-          "stretch",
-          "water",
-          "journal"
+        "items": [
+          {
+            "text": "brush teeth"
+          },
+          {
+            "text": "floss"
+          },
+          {
+            "text": "skincare",
+            "steps": [
+              "cleanser",
+              "toner",
+              "serum",
+              "moisturiser"
+            ]
+          }
         ],
-        "days": [
-          "mon",
-          "tue",
-          "wed",
-          "thu",
-          "fri"
-        ]
+        "from": "6:00 pm",
+        "until": "11:00 pm"
       },
-      "note": "",
-      "recorded": [
-        "habit_add",
-        {
-          "routine": "morning routine",
-          "steps": [
-            "stretch",
-            "water",
-            "journal"
-          ],
-          "days": [
-            "mon",
-            "tue",
-            "wed",
-            "thu",
-            "fri"
-          ],
-          "guessed": [],
-          "not_included": []
-        }
-      ]
+      "note": "a window, and a group with its steps",
+      "recorded": null
     },
     {
       "task": "habits",
-      "message": "add meditate to my morning routine",
+      "message": "make a morning routine at 7am on weekdays: stretch, water, journal",
+      "action": "habit_add",
+      "data": {
+        "items": [
+          {
+            "text": "stretch"
+          },
+          {
+            "text": "water"
+          },
+          {
+            "text": "journal"
+          }
+        ],
+        "time": "7:00 am",
+        "repeat": "weekdays"
+      },
+      "note": "at a time, on weekdays",
+      "recorded": null
+    },
+    {
+      "task": "habits",
+      "message": "add skincare to my evening routine: cleanser, toner, serum, moisturiser",
+      "action": "habit_items",
+      "data": {
+        "items": [
+          {
+            "text": "skincare",
+            "steps": [
+              "cleanser",
+              "toner",
+              "serum",
+              "moisturiser"
+            ]
+          }
+        ]
+      },
+      "note": "a group added",
+      "state": "The user's personal routines now:\n- Evening (every day; 6:00 pm to 11:00 pm; no nudge; items: Brush teeth, Floss)",
+      "recorded": null
+    },
+    {
+      "task": "habits",
+      "message": "put serum before toner",
+      "action": "habit_move",
+      "data": {
+        "item": "serum",
+        "where": "before",
+        "other": "toner"
+      },
+      "note": "a step moved within its group",
+      "state": "The user's personal routines now:\n- Evening (every day; 6:00 pm to 11:00 pm; no nudge; items: Brush teeth, Floss, Skincare (Cleanser, Toner, Serum, Moisturiser))",
+      "recorded": null
+    },
+    {
+      "task": "habits",
+      "message": "exfoliate only on Mondays and Thursdays",
+      "action": "habit_item_repeat",
+      "data": {
+        "item": "exfoliate",
+        "repeat": "days",
+        "weekdays": [
+          "mon",
+          "thu"
+        ]
+      },
+      "note": "a step's own days",
+      "state": "The user's personal routines now:\n- Evening (every day; 6:00 pm to 11:00 pm; no nudge; items: Brush teeth, Floss, Skincare (Cleanser, Toner, Serum, Moisturiser))",
+      "recorded": null
+    },
+    {
+      "task": "habits",
+      "message": "make my evening routine 6pm to 11pm",
       "action": "habit_change",
       "data": {
-        "steps": [
-          "meditate"
-        ]
+        "from": "6:00 pm",
+        "until": "11:00 pm"
       },
-      "note": "",
-      "state": "The user's personal routines now:\n- Morning (weekdays; steps: Stretch, Water, Journal)",
-      "recorded": [
-        "habit_change",
-        {
-          "routine": "morning",
-          "steps": [
-            "meditate"
-          ],
-          "guessed": [],
-          "not_included": []
-        }
-      ]
+      "note": "a window",
+      "state": "The user's personal routines now:\n- Evening (every day; 6:00 pm to 11:00 pm; no nudge; items: Brush teeth, Floss, Skincare (Cleanser, Toner, Serum, Moisturiser))",
+      "recorded": null
     },
     {
       "task": "habits",
-      "message": "did stretch",
+      "message": "did floss",
       "action": "habit_tick",
       "data": {
-        "steps": [
-          "stretch"
+        "items": [
+          "floss"
         ]
       },
       "note": "",
-      "state": "The user's personal routines now:\n- Morning (every day; steps: Stretch, Water, Journal)",
-      "recorded": [
-        "habit_tick",
-        {
-          "routine": "Morning",
-          "steps": [
-            "Stretch"
-          ],
-          "guessed": [],
-          "not_included": []
-        }
-      ]
+      "state": "The user's personal routines now:\n- Evening (every day; 6:00 pm to 11:00 pm; no nudge; items: Brush teeth, Floss, Skincare (Cleanser, Toner, Serum, Moisturiser))",
+      "recorded": null
     },
     {
       "task": "habits",
-      "message": "done water and journal",
+      "message": "done skincare",
       "action": "habit_tick",
-      "note": "two steps",
-      "state": "The user's personal routines now:\n- Morning (every day; steps: Stretch (done today), Water, Journal)",
-      "recorded": [
-        "habit_tick",
-        {
-          "routine": "Morning",
-          "steps": [
-            "Water",
-            "Journal"
-          ],
-          "guessed": [],
-          "not_included": []
-        }
-      ]
+      "data": {
+        "items": [
+          "skincare"
+        ]
+      },
+      "note": "a group ticked as one",
+      "state": "The user's personal routines now:\n- Evening (every day; 6:00 pm to 11:00 pm; no nudge; items: Brush teeth, Floss, Skincare (Cleanser, Toner, Serum, Moisturiser))",
+      "recorded": null
     },
     {
       "task": "habits",
-      "message": "undo stretch",
+      "message": "undo floss",
       "action": "habit_untick",
       "data": {
-        "steps": [
-          "stretch"
+        "items": [
+          "floss"
         ]
       },
       "note": "",
-      "state": "The user's personal routines now:\n- Morning (every day; steps: Stretch (done today), Water, Journal)",
-      "recorded": [
-        "habit_untick",
-        {
-          "routine": "Morning",
-          "steps": [
-            "Stretch"
-          ],
-          "guessed": [],
-          "not_included": []
-        }
-      ]
-    },
-    {
-      "task": "habits",
-      "message": "remove my evening routine",
-      "action": "habit_remove",
-      "note": "",
-      "state": "The user's personal routines now:\n- Evening (every day; steps: Read)",
-      "recorded": [
-        "habit_remove",
-        {
-          "routine": "Evening",
-          "guessed": [],
-          "not_included": []
-        }
-      ]
+      "state": "The user's personal routines now:\n- Evening (every day; 6:00 pm to 11:00 pm; no nudge; items: Brush teeth, Floss, Skincare (Cleanser, Toner, Serum, Moisturiser))",
+      "recorded": null
     }
   ]
 }
