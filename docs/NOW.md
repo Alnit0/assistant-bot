@@ -12,10 +12,9 @@ history is `docs/STATUS.md`. Read first, with `/catchup`.
 4. Routines on `feature/routines`: shared repeats, the rework, a Today
    card, Layout A and B preview; not merged, previews only
 
-**In progress**
-- 4. Routines on `feature/routines` (worktree `../assistant-bot-routines`):
-  a. the repeat engine `core/recurrence.py`, reminders on it: done;
-  b. the routines rework; c. the Today card; d. Layout A and B preview
+**Done on `feature/routines`** (worktree `../assistant-bot-routines`)
+- 4. Repeat engine, routines rework, Today card, Layout A and B preview
+  posted (Design forum); pushed, not merged, all off. Questions 68, 69
 
 **Tonight** (6 pm to 9 pm, clear of pill reminders)
 - One restart from this folder (clean, pushed): DESIGN_ROUND=4,
@@ -26,11 +25,11 @@ history is `docs/STATUS.md`. Read first, with `/catchup`.
 
 **Drafts and worktrees**
 - Worktrees `../assistant-bot-hub-tasks` and `../assistant-bot-round4`:
-  both merged
+  both merged; `../assistant-bot-routines`: not merged
 - No drafts outside `docs/`
 
 **Waiting on Alex**
-- The rest of his routines message (point 4, the preview)
+- Routines: Layout A or B, and the rest of point 4 (questions 68, 69)
 - The private Google Calendar link, for live's `.env` only
 - A lock-screen screenshot of a pill reminder (question 11)
 - QA item 0 (direct messages) once DMs are on tonight

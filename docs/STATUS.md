@@ -8,6 +8,15 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-15
 
+## Built on `feature/routines` (2026-10-15, not merged, all off)
+
+The shared repeat engine (`core/recurrence.py`, reminders on it with
+their tests unchanged), personal routines reworked (a repeat, a when, a
+nudge; steps and groups; an item's own days; cards by the list rule) and
+the Today card (`TODAY_CARD`). What was decided is on that branch, under
+Decided in its STATUS. Preview: "Routines layout preview" in the Design
+forum (questions 68 and 69).
+
 ## Decided (2026-10-15, Alex's answers on round 4)
 
 1. **Question 67: variant 2.** Taken logs at once; a reply with a time to

@@ -15,6 +15,20 @@ added here, nowhere else.
     pill reminder? → Tell me the exact words once (a screenshot is on
     its way).
 
+68. An overdue routine (its window closed undone, with a nudge): the
+    brief says level 2 and Needs a look, but the Needs a look box holds
+    level 1 (problems) only. → Keep it level 2: it shows in the status
+    line and on the Today card, and the box stays for things that are
+    wrong. Or make it a problem that pings nothing, so it is in the box.
+    (Built on `feature/routines`; see the Routines layout preview.)
+69. Routines: Layout A (one Personal routines card) or Layout B (the
+    Today card as the overview, and a card a routine from its time until
+    it is done)? Both are in the "Routines layout preview" post of the
+    Design forum. → B: the Today card already gives the overview, and a
+    routine's own card is there only while it matters. Also: your
+    message was cut off at "Also show the Today card with a…": what was
+    the rest?
+
 ## Personal routines, to discuss (`HABITS_ENABLED` stays off)
 
 63. You want personal routines reworked. The idea: steps can be grouped
