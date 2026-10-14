@@ -2165,7 +2165,7 @@ direct message is not read for plain words, as always.
 Off unless `NIGHTLY_SELFTEST=true` is in `.env` (then restart live).
 It needs the dev bot (a token of its own in `.env.dev`).
 
-- **At 3:00 am** live starts a self-test as a process of its own. The
+- **At 3:30 am** (half an hour after the 3:00 am backup) live starts a self-test as a process of its own. The
   dev bot runs it; live carries on and is never stopped. `my schedule`
   shows it as "Nightly self-test" and moves it like any schedule
   ("move the nightly self-test to 4am", "pause the nightly self-test").
@@ -2197,7 +2197,7 @@ It needs the dev bot (a token of its own in `.env.dev`).
   free, a channel in `.env.dev` gone) is said in #bot-log, and the
   schedule's last run reads as it ended. What the run printed is in
   `logs/selftest-nightly.log`.
-- **If the bot was off at 3:00 am** the night is skipped once it is
+- **If the bot was off at 3:30 am** the night is skipped once it is
   three hours late. Restarting live while a nightly run is going stops
   that run; the next one records it as not finished.
 

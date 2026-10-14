@@ -79,7 +79,7 @@ version of this review is marked **(new)**.
 | `HUB_TIDY` | **on (new)** | The hub is cleared each morning and after each exchange |
 | `BRIEFING_ENABLED` | **on (new)** | The briefing |
 | `WEATHER_ENABLED` | **on (new)** | The weather section |
-| `NIGHTLY_SELFTEST` | **on** | At 3:00 am the dev bot tests what changed; your phone is pinged only if a step fails |
+| `NIGHTLY_SELFTEST` | **on** | At 3:30 am the dev bot tests what changed; your phone is pinged only if a step fails |
 | `CARDS_V2` | off | The new look. Waiting for your picks (design round 2) |
 | `WEEKLY_SUMMARY` | off | Sunday 7:00 pm, the week's pills |
 | `DMS_ENABLED` | off | Talking to the bot in a direct message |

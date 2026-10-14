@@ -11,9 +11,10 @@ log = logging.getLogger("assistant")
 # ---------------------------------------------------------------------------
 # The nightly self-test (behind NIGHTLY_SELFTEST, off unless switched on).
 #
-# At 3:00 am live starts `python -m selftest --nightly` as a process of its
-# own: the dev bot runs it, and live carries on. What is run is the stages
-# touched since each last passed, and everything on a Sunday. The run says
+# At 3:30 am (after the 3:00 am backup) live starts `python -m selftest
+# --nightly` as a process of its own: the dev bot runs it, and live carries
+# on. What is run is the stages touched since each last passed, and
+# everything on a Sunday. The run says
 # what happened itself: its summary in the self-test's log channel, a bug a
 # failing step, a line of history, and a ping on my phone only if a step
 # failed (selftest/notify.py).
@@ -29,7 +30,7 @@ log = logging.getLogger("assistant")
 # ---------------------------------------------------------------------------
 JOB_TASK, JOB_KIND = "core", "nightly_selftest"
 JOB_LABEL = "nightly self-test"
-AT = time(3, 0)
+AT = time(3, 30)  # half an hour after the backup (BACKUP_TIME): the two never overlap
 DEFAULT = timetable.Default("Nightly self-test", AT, channel="bot-log", missed=timetable.skip_after(180))
 LOG_NAME = "selftest-nightly.log"
 SUNDAY = 6

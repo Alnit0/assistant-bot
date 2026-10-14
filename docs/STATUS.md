@@ -437,8 +437,8 @@ while it was being built**
   `QUIET_HOURS_ENABLED` (10:00 pm to 7:00 am), `NIGHTLY_SELFTEST`.
 - **Off**: `WEEKLY_SUMMARY`,
   `DMS_ENABLED`, `NOTIFY_NTFY` (nothing goes to ntfy).
-- **Each day**: midnight the end of the day; 3:00 am the backup and the
-  nightly self-test; 5:30 am the exchange rate; 5:50 am the weather
+- **Each day**: midnight the end of the day; 3:00 am the backup; 3:30 am
+  the nightly self-test (from the evening restart of 15 Oct); 5:30 am the exchange rate; 5:50 am the weather
   fetch; 6:00 am the morning routine (tidy, briefing, checklist);
   7:00 am the needs-a-look check; 8:50 am the weather refresh, then
   every three hours to 8:00 pm.

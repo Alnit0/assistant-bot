@@ -582,7 +582,7 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   never pass `--anyway` without my say. Nothing else is edited or run
   while it is going
 - The nightly self-test (`core/nightly.py`, behind `NIGHTLY_SELFTEST`)
-  is live starting `python -m selftest --nightly` at 3:00 am as a
+  is live starting `python -m selftest --nightly` at 3:30 am as a
   process of its own: the dev bot runs it; nothing on a weeknight with
   no new commits since every stage passed, real requests only on the
   Sunday full run or when prompts, schemas or routing changed. Live

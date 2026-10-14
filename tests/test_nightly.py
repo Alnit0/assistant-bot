@@ -71,7 +71,7 @@ def test_its_schedule_is_made_only_while_it_is_on_and_only_on_live(monkeypatch):
     monkeypatch.setattr(config, "NIGHTLY_SELFTEST", True)
     nightly.setup()
     default = scheduler._standing[("core", "nightly_selftest")]
-    assert (default.name, default.at, default.locked, default.channel) == ("Nightly self-test", time(3, 0), False, "bot-log"), "3:00 am, and mine to move with `my schedule`"
+    assert (default.name, default.at, default.locked, default.channel) == ("Nightly self-test", time(3, 30), False, "bot-log"), "3:30 am, after the 3:00 am backup, and mine to move with `my schedule`"
     assert default.missed == "skip:180", "a night the bot was off for is not run in the middle of the morning"
     monkeypatch.setattr(scheduler, "_handlers", {})
     monkeypatch.setattr(scheduler, "_standing", {})

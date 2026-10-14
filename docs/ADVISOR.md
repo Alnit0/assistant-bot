@@ -30,7 +30,7 @@ Never write here: a real pill name, a bot's display name, a location more precis
 - **Always say up front** whether a prompt will commit, push, run a self-test, or restart live.
 - Batches run unattended: tell Claude Code to decide and note under "Decided" in docs/STATUS.md rather than stop, unless live or data is at risk.
 - Spend limits go in NZ$: per run under NZ$0.40, a batch cap stated in the prompt.
-- Self-tests run as the dev bot (live stays up), never between 2:45 and 4:00 am (the nightly run).
+- Self-tests run as the dev bot (live stays up), never between 3:15 and 4:30 am (the nightly run at 3:30 am, moved from 3:00 on 15 Oct so it no longer starts with the backup).
 - The full test run is the very last step before every commit.
 
 **Things he has pushed back on**
@@ -75,7 +75,7 @@ He is **not relying on the bot for reminders yet**. The hub is a daily overview 
 
 ## 6. How it's built (one-paragraph tour)
 
-Messages go through fast paths (buttons, exact shortcuts), then sticky follow-ups and replies, then the router (Claude picks a task), then extraction (Claude fills a strict schema), then Python checks, applies and replies from templates. A question never sticks to the task that just answered, and an open card takes only what could answer or change it: anything else goes to the router and the card stays open. **The scheduler** runs everything timed: tasks register handlers, schedules are database rows Alex can change by words ("my schedule"), one engine runs them, and a run log prevents doubles and catches up after restarts. **The attention model** ranks what matters (1 problem, 2 due now, 3 next timed, 4 untimed, 5 nothing) and feeds the status line, the briefing and pings. **The notify service** routes alerts; the bot's ntfy is off. **The self-test** drives the dev bot against real Discord, files its own bugs, and runs nightly at 3 am with recorded answers.
+Messages go through fast paths (buttons, exact shortcuts), then sticky follow-ups and replies, then the router (Claude picks a task), then extraction (Claude fills a strict schema), then Python checks, applies and replies from templates. A question never sticks to the task that just answered, and an open card takes only what could answer or change it: anything else goes to the router and the card stays open. **The scheduler** runs everything timed: tasks register handlers, schedules are database rows Alex can change by words ("my schedule"), one engine runs them, and a run log prevents doubles and catches up after restarts. **The attention model** ranks what matters (1 problem, 2 due now, 3 next timed, 4 untimed, 5 nothing) and feeds the status line, the briefing and pings. **The notify service** routes alerts; the bot's ntfy is off. **The self-test** drives the dev bot against real Discord, files its own bugs, and runs nightly at 3:30 am with recorded answers.
 
 ## 7. Design direction (round 3 built and live since 15 Oct)
 
