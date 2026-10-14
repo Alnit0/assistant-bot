@@ -13,7 +13,9 @@ history is `docs/STATUS.md`. Read first, with `/catchup`.
    card, Layout A and B preview; not merged, previews only
 
 **In progress**
-- 4. Routines on `feature/routines`
+- 4. Routines on `feature/routines` (worktree `../assistant-bot-routines`):
+  a. the repeat engine `core/recurrence.py`, reminders on it: done;
+  b. the routines rework; c. the Today card; d. Layout A and B preview
 
 **Tonight** (6 pm to 9 pm, clear of pill reminders)
 - One restart from this folder (clean, pushed): DESIGN_ROUND=4,
