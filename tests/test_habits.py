@@ -197,6 +197,10 @@ def test_its_state_by_its_when(world):
     assert rules.state(shown, days.at(world.day, time(17, 0))) == rules.NOT_YET
     assert rules.state(shown, days.at(world.day, time(19, 0))) == rules.OPEN
     assert rules.state(shown, days.at(world.day, time(23, 30))) == rules.OVERDUE
+    make(world, routine="morning", items=["stretch"], time="7:30am")
+    morning = next(each for each in today(world) if each.habit.name == "Morning")
+    assert rules.state(morning, days.at(world.day, time(9, 0))) == rules.OPEN, "a time that has come is due, not overdue"
+    assert rules.status_of(morning, days.at(world.day, time(9, 0))) == design.DUE
 
 
 def test_attention_any_time_is_level_4_a_time_is_due_from_then_a_window_only_with_a_nudge(world):
@@ -217,6 +221,15 @@ def test_attention_any_time_is_level_4_a_time_is_due_from_then_a_window_only_wit
 
 
 # --- the cards (the list rule) ---------------------------------------------------------------------------------
+def test_a_routine_still_to_come_has_its_when_and_count_and_no_dropdown(world):
+    evening(world)
+    (shown,) = today(world)
+    pieces = rules.routine_card(shown, days.at(world.day, time(17, 0)))
+    assert [line for text in design.texts(pieces) for line in text.splitlines()] == ["### 🔁 Evening ○○○ 0/3", "-# 6:00 pm to 11:00 pm", "-# 3 items"]
+    assert design.menus(pieces) == [], "round 4: a control only on what can be done now"
+
+
+
 def test_a_routines_card_shows_three_in_full_more_and_one_dropdown(world):
     make(world, routine="long", items=[f"step {each}" for each in range(1, 11)])
     (shown,) = today(world)
@@ -231,6 +244,7 @@ def test_a_routines_card_shows_three_in_full_more_and_one_dropdown(world):
 
 def test_a_group_shows_its_steps_for_the_day_as_a_small_guide(world):
     evening(world)
+    clock.advance_to(days.at(world.day, time(19, 0)))
     (shown,) = today(world)
     lines = [line for text in design.texts(rules.routine_card(shown, clock.now())) for line in text.splitlines()]
     assert "**Skincare**" in lines and "-# Cleanser → Toner → Serum → Moisturiser" in lines
@@ -240,6 +254,7 @@ def test_layout_a_holds_every_routine_with_the_dropdowns_at_the_bottom(world):
     evening(world)
     make(world, routine="reading", items=["read"])
     tick(world, "read")
+    clock.advance_to(days.at(world.day, time(19, 0)))
     shown = run(plain.hub_card(world.owner.id))
     (box,) = shown.layout
     assert box.children[0].content == "### 🔁 Personal routines ●○○○ 1/4"

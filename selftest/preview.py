@@ -622,6 +622,108 @@ async def round_replies(number: int) -> list[tuple[str, str]]:
     return await _as_dev_bot(work)
 
 
+# ---------------------------------------------------------------------------
+# Personal routines: Layout A and Layout B, and the Today card, from made-up
+# routines (`python -m selftest.preview --routines`), as a post of its own in
+# the Design forum, tagged Preview. A short routine (3 items: Brush teeth,
+# Floss, a Skincare group of 4 steps) and a long one (12 items, 2 of them
+# groups), each card by the list rule (the first three open items in full,
+# "+N more", one Done dropdown).
+# ---------------------------------------------------------------------------
+ROUTINES_TITLE = "Routines layout preview"
+
+
+def _routines():
+    from core import recurrence
+    from tasks.habits.rules import AT, GROUP, WINDOW, GuideStep, Habit, Item
+
+    def group(number, name, *steps):
+        return Item(number, name, GROUP, tuple(GuideStep(step) for step in steps))
+
+    short = Habit(1, 1, "Morning", recurrence.EVERY_DAY, (
+        Item(11, "Brush teeth"), Item(12, "Floss"), group(13, "Skincare", "Cleanser", "Toner", "Serum", "Moisturiser"),
+    ), AT, at=time(7, 0))
+    long = Habit(2, 1, "Evening", recurrence.EVERY_DAY, (
+        Item(21, "Tidy the kitchen"), Item(22, "Lay out clothes"), Item(23, "Pack my bag"), Item(24, "Shower"),
+        group(25, "Skincare", "Cleanser", "Toner", "Serum", "Moisturiser"), Item(26, "Brush teeth"), Item(27, "Floss"),
+        group(28, "Stretch", "Hamstrings", "Hips", "Shoulders"), Item(29, "Journal"), Item(30, "Read"), Item(31, "Phone on charge"), Item(32, "Lights out"),
+    ), WINDOW, start=time(20, 0), end=time(23, 0))
+    return short, long
+
+
+def _routine_days(ticked: set[int]):
+    from tasks.habits import rules
+
+    return rules.due(list(_routines()), ticked, _day())
+
+
+def _today_lines(found, notes_and_todos=True, all_done=False):
+    from core.today import Line
+    from tasks.habits import rules
+
+    lines = [Line(rules.ICON, f"**{each.habit.name}** · {rules.when_text(each.habit)} · {each.done}/{each.total}", each.starts(), each.ends(), each.finished) for each in found]
+    if notes_and_todos:
+        lines += [
+            Line("⏰", "**Call the bank**", _at(11), note=True), Line("⏰", "**Bins out**", _at(19, 30), note=True),
+            Line("📝", "**Pay the power bill** · from yesterday", done=all_done), Line("📝", "**Call the dentist**", done=all_done),
+            Line("📝", "**Buy stamps**", done=all_done), Line("📝", "**Book the WOF**", done=all_done),
+        ]
+    return sorted(lines, key=lambda each: (each.at is None, each.at.timestamp() if each.at else 0))
+
+
+def routines_layout() -> list[tuple[str, tuple]]:
+    """Every message of the routines preview, in the order posted."""
+    from core import today
+    from tasks.habits import rules
+
+    morning_early = _routine_days({11})  # 7:10 am: Brush teeth done
+    evening = _routine_days({11, 12, 13, 21, 22, 23, 24})  # 8:30 pm: Morning done, Evening 4 of 12
+    all_done = _routine_days({11, 12, 13, *range(21, 33)})
+    found = [
+        ("Layout A · one Personal routines card · 7:10 am, Brush teeth done", rules.all_layout(morning_early, _at(7, 10))),
+        ("Layout A · 8:30 pm, Morning done, Evening 4 of 12", rules.all_layout(evening, _at(20, 30))),
+        ("Layout B · the Today card as the overview · 7:10 am", today.layout(_today_lines(morning_early), _at(7, 10))),
+        ("Layout B · Morning's own card, from 7:00 am until it is done", rules.routine_card(morning_early[0], _at(7, 10))),
+        ("Layout B · the Today card · 8:30 pm", today.layout(_today_lines(evening), _at(20, 30))),
+        ("Layout B · Evening's own card, from 8:00 pm (Morning's is tidied away, done)", rules.routine_card(evening[1], _at(20, 30))),
+        ("The Today card · 11:30 pm, Evening not done by the end of its window", today.layout(_today_lines(evening), _at(23, 30))),
+        ("The Today card · everything done: one small line", today.layout(_today_lines(all_done, all_done=True), _at(23, 30))),
+    ]
+    return checked(found)
+
+
+def routines_opening() -> str:
+    return "\n".join([
+        f"## {ROUTINES_TITLE}",
+        "Personal routines reworked, two ways to show them. Made-up routines: **Morning** at 7:00 am (Brush teeth, Floss, a Skincare group of 4 steps) and **Evening** 8:00 pm to 11:00 pm (12 items, 2 of them groups).",
+        "**Layout A**: one Personal routines card holding every routine, a rule between them, the Done dropdowns at the bottom.",
+        "**Layout B**: the Today card as the overview, and one card a routine with its Done dropdown right under it, from its time or window until it is done.",
+        "-# Each routine follows round 4: the first three open items in full, “+N more”, one Done dropdown (a group's tick is the whole group). The buttons here do nothing. Nothing here is switched on.",
+        "**A or B?** And your message was cut off at “Also show the Today card with a…”: what was the rest?",
+    ])
+
+
+async def post_preview(title: str, intro: str, found: list[tuple[str, tuple]], tag: str = PREVIEW) -> str:
+    """A post of its own in the Design forum, tagged (Preview unless said)."""
+    import discord
+
+    from interfaces.discord import render
+
+    async def work(client):
+        quiet = discord.AllowedMentions.none()
+        forum = await _with_tags(await _design_forum(client))
+        applied = [each for each in forum.available_tags if each.name == tag_named(tag)]
+        made = await forum.create_thread(name=title, content=intro, applied_tags=applied, allowed_mentions=quiet)
+        for label, pieces in found:
+            if label:
+                await made.thread.send(f"### {label}", allowed_mentions=quiet)
+            await made.thread.send(view=render.layout_view(pieces), allowed_mentions=quiet)
+            await asyncio.sleep(1)  # paced: well under Discord's rate limit
+        return made.thread.jump_url
+
+    return await _as_dev_bot(work)
+
+
 def _number_after(args: list[str], flag: str) -> int:
     value = args[args.index(flag) + 1] if args.index(flag) + 1 < len(args) else ""
     if not value.isdigit() or int(value) not in design.ROUNDS:
@@ -632,6 +734,13 @@ def _number_after(args: list[str], flag: str) -> int:
 def main() -> int:
     sys.stdout.reconfigure(encoding="utf-8")
     args = sys.argv[1:]
+    if "--routines" in args:
+        found = routines_layout()
+        if "--check" in args:
+            print(f"{len(found)} messages built, each within one message.")
+            return 0
+        print("Posted:", asyncio.run(post_preview(ROUTINES_TITLE, routines_opening(), found)))
+        return 0
     if "--forum" in args:
         print(asyncio.run(make_forum()))
         return 0

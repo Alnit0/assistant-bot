@@ -144,15 +144,14 @@ def due(habits: list[Habit], ticked: set[int], day: date) -> list[Today]:
 
 
 def state(today: Today, now: datetime) -> str:
-    """What a routine is now: not yet (its time or window is still to come), open,
-    overdue (a time gone by, or a window closed, with it not done), or finished."""
+    """What a routine is now: not yet (its time or window is still to come), open
+    (any time; a time that has come, which is due from then; a window while it is
+    open), overdue (a window closed with it not done), or finished."""
     if today.finished:
         return FINISHED
     start, end = today.starts(), today.ends()
     if start is not None and now < start:
         return NOT_YET
-    if today.habit.when == AT:
-        return OVERDUE
     if end is not None and now >= end:
         return OVERDUE
     return OPEN
@@ -235,7 +234,12 @@ def done_menu(today: Today) -> cards.Select:
 
 
 def status_of(today: Today, now: datetime) -> str:
-    return {FINISHED: design.DONE, OVERDUE: design.DUE, NOT_YET: design.QUIET}.get(state(today, now), design.ANY_TIME)
+    """Its colour: due (amber) once its time has come or its window has closed undone;
+    any time (blue) while a window is open or it has no time; quiet before; done."""
+    now_state = state(today, now)
+    if now_state == OPEN and today.habit.when == AT:
+        return design.DUE
+    return {FINISHED: design.DONE, OVERDUE: design.DUE, NOT_YET: design.QUIET}.get(now_state, design.ANY_TIME)
 
 
 def when_line(today: Today, now: datetime) -> str:
@@ -246,7 +250,14 @@ def when_line(today: Today, now: datetime) -> str:
 
 
 def _parts(today: Today, now: datetime, heading: str) -> tuple[list, list]:
-    """A routine's pieces by the list rule: (its texts and rules, its dropdown if any)."""
+    """A routine's pieces by the list rule: (its texts and rules, its dropdown if any).
+    One still to come is its heading, when and how many items, and no dropdown:
+    round 4 puts a control only on what can be done now (it can still be ticked in words)."""
+    if today.finished:
+        return [design.Text("\n".join([heading, design.small(f"{when_text(today.habit)} · ✅ done")]))], []
+    if state(today, now) == NOT_YET:
+        count = f"{today.total} item{'' if today.total == 1 else 's'}"
+        return [design.Text("\n".join([heading, when_line(today, now), design.small(count)]))], []
     listing = design.listed(today.open_items)
     children: list = [design.Text("\n".join([heading, when_line(today, now)]))]
     for each in listing.shown:
