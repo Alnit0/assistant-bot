@@ -8,6 +8,19 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-15
 
+## Round 3 is live (2026-10-15, 8:59 am)
+
+**The hub is in the round 3 design.** `CARDS_V2=true` and `DESIGN_ROUND=3`
+were added to live's `.env` and live was restarted once at 8:59 am (the
+next pill reminder was 11:07). It came up as its own account; the
+briefing and the pills checklist were redrawn in place, read back from
+Discord as Components V2. Before it: the full tests (2889 passed), the
+commit, and a self-test as the dev bot with recorded answers, 122 of 123 steps
+passed, none failed, one skipped as usual (NZ$0.00), which marked D6 and D3 fixed by itself. The preview is the
+"Round 3 built" message in the design options post: **please look on your
+phone** and reply there. To go back: `DESIGN_ROUND=1` (the look before it)
+or `CARDS_V2=false` (the plain look), and a restart.
+
 ## Overnight, 2026-10-15: the reboot
 
 **Windows Update restarted the EliteDesk twice** (00:23 and 00:26). The
@@ -234,36 +247,34 @@ while it was being built**
 
 - **Branch `feature/pills`**: everything is committed and pushed;
   nothing is merged into `main`.
-- **Live** was last restarted at 5:08 pm on 2026-10-14, on the commit of
-  the question passing a card by, and runs the day in dots at the top
-  of the briefing, the questions about the day and the weather (a
-  question never sticks to the last task or to an open card), and the
-  fix for a change to a pill that is only on the card. #commands: 4
-  pages edited and the weather's added, with no error. Nothing needs
-  a look.
+- **Live** was last restarted at 8:59 am on 2026-10-15, on the round 3
+  commit, with `CARDS_V2` on: the hub is in the round 3 look. Before
+  that, Windows Update had restarted the PC twice (00:23 and 00:26) and
+  live came back by itself on the working copy. Nothing needs a look.
 - **The morning routine ran as booked on its first morning** (live's
   run log, 2026-10-14): the exchange rate, the weather fetch, the tidy,
   the briefing, the checklist, and a needs-a-look check with nothing
   to say.
-- **Tests**: offline 2870 passed, 1 skipped, in about 40 seconds (it
-  was 1 min 56 s); the same tests pass the slow way, with real threads
-  and connections (`TESTS_AS_ON_LIVE=1`). The last full self-test
-  (3:42 pm, the dev bot with live up, recorded answers): 122 of 123,
-  none failed, one skipped for needing real requests. The golden
+- **Tests**: offline 2889 passed, 1 skipped, in about 40 seconds. The
+  last full self-test (2026-10-15, 8:44 am, the dev bot with live up,
+  recorded answers): 122 of 123, none failed, one skipped for needing
+  real requests; it marked D6 and D3 fixed. The golden
   conversations asked of the real API: 57 of 59, the two misses old
   known ones that the code puts right; 27, 27a, 28 and 28a recorded
   since, 9 of 9.
 - **Spend on the day's batch**: NZ$1.10 (US$0.62), all of it live
   evals; the dearest run NZ$0.23. The self-test's month (NZ$3.50) is
   spent: recorded answers until November.
-- **Bugs**: 2 open on live (`bugs`).
+- **Bugs**: 2 open on live (`bugs`), both from before 12 Oct. The
+  self-test's D6 and D3 (3 am, its own checks behind the new look) are
+  marked fixed by its 8:44 am run.
 
 ## Switched on (live's `.env`)
 
-- **On**: `BRIEFING_ENABLED`, `DAY_PROGRESS`, `DAY_QUESTIONS`,
+- **On**: `CARDS_V2` with `DESIGN_ROUND=3` (since 2026-10-15, 8:59 am), `BRIEFING_ENABLED`, `DAY_PROGRESS`, `DAY_QUESTIONS`,
   `WEATHER_ENABLED`, `HUB_TIDY`, `REMINDERS_ENABLED`,
   `QUIET_HOURS_ENABLED` (10:00 pm to 7:00 am), `NIGHTLY_SELFTEST`.
-- **Off**: `CARDS_V2` (the hub is in the old look), `WEEKLY_SUMMARY`,
+- **Off**: `WEEKLY_SUMMARY`,
   `DMS_ENABLED`, `NOTIFY_NTFY` (nothing goes to ntfy).
 - **Each day**: midnight the end of the day; 3:00 am the backup and the
   nightly self-test; 5:30 am the exchange rate; 5:50 am the weather

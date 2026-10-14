@@ -8,18 +8,19 @@ the bot posts, edits and deletes is real, and is read back from Discord and
 from the database before a step passes. How it works and what it can't
 see: `docs/DEVELOPMENT.md`, "The self-test".
 
-**Run:** 2026-10-15 03:00, 14 min 14 s
-**Result:** 117 passed, 3 failed, 2 broke, 1 skipped, of 123 steps
+**Run:** 2026-10-15 08:43, 14 min 34 s
+**Result:** 122 passed, 0 failed, 0 broke, 1 skipped, of 123 steps
 **Requests to Claude:** none real: every language step used a recorded answer · US$0.0000 spent
 
 <!-- run history: written by python -m selftest -->
 ## Run history
 
-The latest 15 of 32 runs, newest first. All of them, a line a run, are in
+The latest 15 of 33 runs, newest first. All of them, a line a run, are in
 `data/selftest/history.csv` (never rewritten). The first step to fail in a stage is a bug in the forum until it passes again.
 
 | Run | Commit | What ran | Passed | Failed | Failed steps | Spend | Took |
 |---|---|---|---|---|---|---|---|
+| 2026-10-15 08:43 | `e51ff3d` | full | 122 of 123 | 0 | · | US$0.0000 (recorded) | 14 min 34 s |
 | 2026-10-15 03:00 | `?` | nightly, full | 117 of 123 | **5** | 5.01c 5.02 5.03b 5.04 5.04b | US$0.0000 (recorded) | 14 min 14 s |
 | 2026-10-15 00:13 | `?` | ? (did not finish: stopped before the end) | 82 of 82 | 0 | · | US$0.0000 (recorded) | 0 min 00 s |
 | 2026-10-14 15:42 | `bc81391` | full | 122 of 123 | 0 | · | US$0.0000 (recorded) | 14 min 32 s |
@@ -34,19 +35,12 @@ The latest 15 of 32 runs, newest first. All of them, a line a run, are in
 | 2026-10-14 09:52 | `081f25e` | full | 114 of 115 | 0 | · | US$0.0000 (recorded) | 13 min 53 s |
 | 2026-10-14 03:00 | `?` | nightly, full | 113 of 114 | 0 | · | US$0.0000 (recorded) | 13 min 48 s |
 | 2026-10-14 02:11 | `bc41781` | full | 113 of 114 | 0 | · | US$0.0000 (recorded) | 13 min 15 s |
-| 2026-10-14 02:05 | `8dc984e` | briefing | 16 of 16 | 0 | · | US$0.0000 (recorded) | 1 min 56 s |
 
 <!-- end of run history -->
 
 ## What failed
 
-| Step | What | Expected | What happened | From |
-|---|---|---|---|---|
-| 5.01c | Weather in the briefing, from a recorded forecast | With WEATHER_ENABLED on: two schedules of its own, Weather fetch at 5:50 am and Weather refresh at 8:50 am; the briefing has a Weather section with the low and high, the sky, the rain and the wind, read from what was fetched (the network is never asked: WEATHER_SOURCE is a recorded forecast) | the briefing: ## ☀️ Today ○○○○○○ 0/6 -# Sunday 18 October -# 💊 0/6 ### 🌤️ Weather 14° to 20° · drizzle 61% rain after 1pm · wind 15 km/h N -# updated 9:00 am ### 💊 Pills ○○○○○○ 0/6 **Next:** Testa, dose 1 · **8:00 am** -# 2 to take any time -# Yesterday: 3 of 6 taken · 2 missed · 1 skipped -# always up to date · tick things off on their own message · say “my schedule” to change when this is posted | item 7 |
-| 5.02 | `brief me` in #selftest-inbox | With no request to Claude, a copy there: “☀️ Today”, the date, a Pills box with its count and the next dose; drawn, in the colour of its status, with no buttons | the briefing: ## ☀️ Today ○○○○○○ 0/6 -# Sunday 18 October -# 💊 0/6 ### 🌤️ Weather 14° to 20° · drizzle 61% rain after 1pm · wind 15 km/h N -# updated 9:00 am ### 💊 Pills ○○○○○○ 0/6 **Next:** Testa, dose 1 · **8:00 am** -# 2 to take any time -# Yesterday: 3 of 6 taken · 2 missed · 1 skipped -# always up to date · | scheduler stage 3 (briefing-v2) |
-| 5.03b | “what's on today?” in plain words | The router sends it to the briefing, which answers with its card there; my message is left with no ⚠️ | KeyError('briefing_inbox') at phases.py:1196 | scheduler stage 3 |
-| 5.04 | A dose is ticked off: `took testany` | The briefing in the hub is edited in place: its count goes up by one; no new briefing is posted, there or in #selftest-inbox | IndexError('list index out of range') at phases.py:1248 | scheduler stage 3 |
-| 5.04b | The day's progress at the top of the briefing | With DAY_PROGRESS on: the day's total in the title as a dot a thing to do and the count (“☀️ Today ●○○○○○ 1/6”), no percentage, and under the date one small line a task (“💊 1/6”), with the numbers the checklist itself counts; it moved in place with the dose just ticked off | the checklist counts 0 of 6: the step needs a day part done | asked 2026-10-14 (day progress) |
+Nothing.
 
 ## Discoveries
 
@@ -61,26 +55,21 @@ What is worth a look whether or not its step passed.
 
 - ×6 `WARNING discord.state: Guilds intent seems to be disabled. This may cause state related issues.`
 - `WARNING assistant: Pills reminders: dose 19 could not be posted (try 1): 503 Service Unavailable (the self-test's own: the post went through). Tried again at 8:01 pm`
-- `ERROR assistant: Self-test step 5.03b broke`
-- `ERROR assistant: Self-test step 5.04 broke`
 - `WARNING assistant: No handler for weather/fetch jobs; they will wait`
 - `WARNING assistant: No handler for weather/refresh jobs; they will wait`
 
 **Slow steps** (12 seconds or more; a step is mostly waiting for Discord, and each input is given about a second to settle)
 
-- 3.14 Every sketch in docs/mockups (19) posted with `dev mock`: 60s
-- 3.13d Pause and resume: “pause the evening checklist”, Save; then “turn the evening checklist back on”, Save: 18s
-- 6.01 A start with HUB_TIDY on: 16s
+- 3.14 Every sketch in docs/mockups (19) posted with `dev mock`: 64s
+- 6.01 A start with HUB_TIDY on: 18s
+- 3.13d Pause and resume: “pause the evening checklist”, Save; then “turn the evening checklist back on”, Save: 16s
 - 6.06 The same, then Save: 15s
-- 1.08 Names: “add Testvit and Testvit forte”, “I took testvit”, “skip forte”: 14s
 - 6.09 The next morning at 6:00: 14s
+- 1.08 Names: “add Testvit and Testvit forte”, “I took testvit”, “skip forte”: 14s
 - 6.05 Something I say in the hub that leads to a card, then Cancel: 13s
-- 6.03 I say something in the hub and get a reply: `took testany`: 13s
-- 2.10 Past Testa's latest time the dose is missed; logged as taken then: `took testa`: 12s
-- 1.07c A change to a pill that is only on the open card, read as a change to a saved pill: 12s
-- 6.07 Pinned stays: 12s
+- 6.07 Pinned stays: 13s
 
-The whole run took 14 min 14 s, 75 seconds of it with the bot off on purpose.
+The whole run took 14 min 34 s, 75 seconds of it with the bot off on purpose.
 
 **In the specs and not tested here**
 
@@ -101,7 +90,7 @@ The whole run took 14 min 14 s, 75 seconds of it with the bot off on purpose.
 
 ## Start 1: the old look, reminders on. A day of pills up to the afternoon, then the bot is cut off mid-message
 
-Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 227s; the process ended with 0.
+Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 220s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -150,7 +139,7 @@ Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 227s; the process end
 
 ## Start 2: the same settings, after 75 seconds off. The catch-up, then the rest of the day and the next morning
 
-Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 105s; the process ended with 0.
+Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 101s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -178,7 +167,7 @@ Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 105s; the process end
 
 ## Start 3: `CARDS_V2` on. Every card posted and edited in the new look, and the old look's messages edited under it
 
-Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`. Took 194s; the process ended with 0.
+Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`. Took 196s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -206,7 +195,7 @@ Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`. Took 194s; the process ende
 
 ## Start 4: `CARDS_V2` off again, and a tiny spend limit. The new look's messages edited under the old, and the spend line
 
-Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`, `DAILY_SPEND_LIMIT_NZD=0.001`, `USD_TO_NZD=1.70`. Took 57s; the process ended with 0.
+Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`, `DAILY_SPEND_LIMIT_NZD=0.001`, `USD_TO_NZD=1.70`. Took 58s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -221,39 +210,39 @@ Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`, `DAILY_SPEND_LIMIT_NZD=0.0
 | 4.07 | The spend line in #bot-log when the limit is passed | ⏭️ skipped |  | needs real requests to Claude with money left: run with --claude |  | T49, T50 (42.2, 42.3) |
 | 4.07a | The bot's own is not changed by words: “move the backup to 4am” | ✅ pass | One line saying the nightly backup is the bot's own and isn't changed here; no card, and it still runs at 3:00 am |  | recorded answer | scheduler stage 2 |
 | 4.07b | `dev run backup` | ✅ pass | A handler run by hand, outside its schedule: “▶️ Ran: core.nightly_backup”, a second “Backup saved”, a run of its own in the log, and the night's backup still booked |  |  | scheduler stage 1 |
-| 4.08 | `dev clock reset` | ✅ pass | The clock is the real time again, and the standing jobs are booked for the real day | checklist booked for 2026-10-15T06:00 |  | T57 |
+| 4.08 | `dev clock reset` | ✅ pass | The clock is the real time again, and the standing jobs are booked for the real day | checklist booked for 2026-10-16T06:00 |  | T57 |
 
 ## Start 5: `BRIEFING_ENABLED` on (the starts before it had it off). The morning routine, “brief me”, and the briefing kept up to date in place
 
-Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `BRIEFING_ENABLED=true`, `DAY_PROGRESS=true`, `DAY_QUESTIONS=true`, `WEEKLY_SUMMARY=true`, `WEATHER_ENABLED=true`, `WEATHER_SOURCE=C:\Users\temp\projects\assistant-bot\tests\fixtures\weather_drizzle.json`. Took 74s; the process ended with 0.
+Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `BRIEFING_ENABLED=true`, `DAY_PROGRESS=true`, `DAY_QUESTIONS=true`, `WEEKLY_SUMMARY=true`, `WEATHER_ENABLED=true`, `WEATHER_SOURCE=C:\Users\temp\projects\assistant-bot\tests\fixtures\weather_drizzle.json`. Took 87s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
 | 5.01 | A start with BRIEFING_ENABLED on | ✅ pass | The 6:00 am schedule is the same row, now called Morning routine, with two steps: the briefing, then the pills checklist; both are booked for the next 6:00 am |  |  | scheduler stage 3 |
 | 5.01b | A fresh day, 9:00 am: the morning routine ran at 6:00 on the way | ✅ pass | One briefing in the hub and the checklist under it, both without a notification; the routine's two steps each ran once for 6:00 am, the briefing first; it has the line about yesterday | ### 💊 Pills ○○○○○○ 0/6 / -# Yesterday: 3 of 6 taken · 2 missed · 1 skipped |  | scheduler stage 3 |
-| 5.01c | Weather in the briefing, from a recorded forecast | ❌ fail | With WEATHER_ENABLED on: two schedules of its own, Weather fetch at 5:50 am and Weather refresh at 8:50 am; the briefing has a Weather section with the low and high, the sky, the rain and the wind, read from what was fetched (the network is never asked: WEATHER_SOURCE is a recorded forecast) | the briefing: ## ☀️ Today ○○○○○○ 0/6 -# Sunday 18 October -# 💊 0/6 ### 🌤️ Weather 14° to 20° · drizzle 61% rain after 1pm · wind 15 km/h N -# updated 9:00 am ### 💊 Pills ○○○○○○ 0/6 **Next:** Testa, dose 1 · **8:00 am** -# 2 to take any time -# Yesterday: 3 of 6 taken · 2 missed · 1 skipped -# always up to date · tick things off on their own message · say “my schedule” to change when this is posted |  | item 7 |
-| 5.02 | `brief me` in #selftest-inbox | ❌ fail | With no request to Claude, a copy there: “☀️ Today”, the date, a Pills box with its count and the next dose; drawn, in the colour of its status, with no buttons | the briefing: ## ☀️ Today ○○○○○○ 0/6 -# Sunday 18 October -# 💊 0/6 ### 🌤️ Weather 14° to 20° · drizzle 61% rain after 1pm · wind 15 km/h N -# updated 9:00 am ### 💊 Pills ○○○○○○ 0/6 **Next:** Testa, dose 1 · **8:00 am** -# 2 to take any time -# Yesterday: 3 of 6 taken · 2 missed · 1 skipped -# always up to date · |  | scheduler stage 3 (briefing-v2) |
+| 5.01c | Weather in the briefing, from a recorded forecast | ✅ pass | With WEATHER_ENABLED on: two schedules of its own, Weather fetch at 5:50 am and Weather refresh at 8:50 am; the briefing has a Weather section with the low and high, the sky, the rain and the wind, read from what was fetched (the network is never asked: WEATHER_SOURCE is a recorded forecast) | ### 🌤️ Weather |  | item 7 |
+| 5.02 | `brief me` in #selftest-inbox | ✅ pass | With no request to Claude, a copy there: “☀️ Today”, the date, a Pills box (### 💊 Pills, its dots and count) with the next dose; drawn, in the colour of its status, with no buttons | -# 💊 0/6 / ### 🌤️ Weather |  | scheduler stage 3 (briefing-v2) |
 | 5.03 | `brief me` in the hub | ✅ pass | Nothing new is posted: the briefing that is there is brought up to date in place, and a line says so |  |  | scheduler stage 3 |
-| 5.03b | “what's on today?” in plain words | 💥 broke | The router sends it to the briefing, which answers with its card there; my message is left with no ⚠️ | KeyError('briefing_inbox') at phases.py:1196 | recorded answer | scheduler stage 3 |
+| 5.03b | “what's on today?” in plain words | ✅ pass | The router sends it to the briefing, which answers with its card there; my message is left with no ⚠️ |  | recorded answer | scheduler stage 3 |
 | 5.03c | “what's left today?” in plain words | ✅ pass | With DAY_QUESTIONS on, the briefing task answers in one message from the day's own data: “☀️ **Left today**”, the day's dots and count as the checklist counts them, then a line a dose still to take. No card, and my message is left with no ⚠️ | ☀️ **Left today** · ○○○○○○ 0/6 | recorded answer | asked 2026-10-14 (questions about my day); golden 21 |
 | 5.03d | “how did I go yesterday?” in plain words | ✅ pass | The briefing task answers from the record of that day: “☀️ **Yesterday**”, its date, its dots and count, and the pills task's own line about the day before. With nothing recorded for yesterday (a run of this stage alone) it says so, and gives no number | ☀️ **Yesterday** · Sat 17 Oct · ●●●●●○○ 5/7 / 💊 Yesterday: 3 of 6 taken · 2 missed · 1 skipped | recorded answer | asked 2026-10-14 (questions about my day); golden 23 |
 | 5.03e | “will it rain?” in plain words | ✅ pass | The weather task answers from the forecast it keeps (the recorded one), with no request to the network: the highest chance in the hours still to come and roughly when, and when it was updated | 🌤️ 61% chance of rain for the rest of today, most likely between 1pm and 5pm. | recorded answer | asked 2026-10-14 (questions about my day); golden 24 |
 | 5.03f | “what's the weather this afternoon?” in plain words | ✅ pass | The weather task answers for that part of the day: “**This afternoon**”, the chance of rain in those hours, and the day's wind small under it. No temperature is said: the recorded forecast has none by the hour | 🌤️ **This afternoon** / 61% chance of rain this afternoon, most likely between 1pm and 5pm. | recorded answer | asked 2026-10-14 (questions about my day); golden 25 |
-| 5.04 | A dose is ticked off: `took testany` | 💥 broke | The briefing in the hub is edited in place: its count goes up by one; no new briefing is posted, there or in #selftest-inbox | IndexError('list index out of range') at phases.py:1248 |  | scheduler stage 3 |
-| 5.04b | The day's progress at the top of the briefing | ❌ fail | With DAY_PROGRESS on: the day's total in the title as a dot a thing to do and the count (“☀️ Today ●○○○○○ 1/6”), no percentage, and under the date one small line a task (“💊 1/6”), with the numbers the checklist itself counts; it moved in place with the dose just ticked off | the checklist counts 0 of 6: the step needs a day part done |  | asked 2026-10-14 (day progress) |
+| 5.04 | A dose is ticked off: `took testany` | ✅ pass | The briefing in the hub is edited in place: the Pills box's count goes up by one; no new briefing is posted, there or in #selftest-inbox | 0 → 1 dealt with, in place |  | scheduler stage 3 |
+| 5.04b | The day's progress at the top of the briefing | ✅ pass | With DAY_PROGRESS on: the day's total in the title as a dot a thing to do and the count (“☀️ Today ●○○○○○ 1/6”), no percentage, and under the date one small line a task (“💊 1/6”), with the numbers the checklist itself counts; it moved in place with the dose just ticked off | ## ☀️ Today ●○○○○○ 1/6 / -# Sunday 18 October / -# 💊 1/6 |  | asked 2026-10-14 (day progress) |
 | 5.06 | `my schedule` with a routine in it | ✅ pass | Morning routine, every day at 6:00 am, with its steps numbered: 1. briefing, 2. pills checklist |  |  | scheduler stage 3 |
-| 5.06b | With WEEKLY_SUMMARY on: its schedule, and the summary when it runs | ✅ pass | A schedule “Weekly pills summary”, Sunday at 7:00 pm in the hub, silent. Run now, it posts the week in the hub: “Your week”, the count, a line a day | ## 💊 Your week · 9 of 27 taken · 8 missed · 4 skipped |  | asked 2026-10-13 (stage 4) |
-| 5.07 | The next morning at 6:00: the routine again | ✅ pass | A new briefing, then the checklist under it; yesterday's briefing is gone; one briefing in the hub; the line about yesterday counts the dose ticked off at 5.04 | -# Yesterday: 0 of 6 taken · 6 missed |  | scheduler stage 3 |
+| 5.06b | With WEEKLY_SUMMARY on: its schedule, and the summary when it runs | ✅ pass | A schedule “Weekly pills summary”, Sunday at 7:00 pm in the hub, silent. Run now, it posts the week in the hub: “Your week”, the count, a line a day | ## 💊 Your week · 10 of 27 taken · 8 missed · 4 skipped |  | asked 2026-10-13 (stage 4) |
+| 5.07 | The next morning at 6:00: the routine again | ✅ pass | A new briefing, then the checklist under it; yesterday's briefing is gone; one briefing in the hub; the line about yesterday counts the dose ticked off at 5.04 | -# Yesterday: 1 of 6 taken · 5 missed |  | scheduler stage 3 |
 | 5.07b | With HUB_TIDY off, nothing has a lifetime and nothing was tidied | ✅ pass | No message has been recorded, and yesterday's checklist is still in the hub beside today's (as the code has always left it) |  |  | scheduler stage 4: off |
 | 5.08 | `dev clock reset` | ✅ pass | The clock is the real time again |  |  | housekeeping |
 
 ## Start 6: `HUB_TIDY` on as well (off until now). What is said in the hub goes once handled, pinned stays, yesterday goes in the morning, and a copy is saved first
 
-Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `BRIEFING_ENABLED=true`, `HUB_TIDY=true`. Took 105s; the process ended with 0.
+Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `BRIEFING_ENABLED=true`, `HUB_TIDY=true`. Took 111s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
-| 6.01 | A start with HUB_TIDY on | ✅ pass | The morning routine has three steps: the tidy, the briefing, the pills checklist. Nothing that was in the hub before has a lifetime, and none of it is touched | the tidy's line: 0 removed · 8 old messages left alone |  | scheduler stage 4 |
+| 6.01 | A start with HUB_TIDY on | ✅ pass | The morning routine has three steps: the tidy, the briefing, the pills checklist. Nothing that was in the hub before has a lifetime, and none of it is touched | the tidy's line: 1 removed · 9 old messages left alone |  | scheduler stage 4 |
 | 6.02 | This morning's briefing and checklist have a slot each | ✅ pass | Both are recorded as “replaced” (briefing, pills.checklist): one of each at a time |  |  | scheduler stage 4 |
 | 6.03 | I say something in the hub and get a reply: `took testany` | ✅ pass | The line is there; 2 minutes later my message and the reply are both gone, with nothing said about it; the checklist and the briefing stay |  |  | scheduler stage 4 |
 | 6.04 | A copy was saved first | ✅ pass | The exports folder (the run's own, never data/exports) has a tidy file for the hub, for that day, with my words and the reply in it | tidy-selftest-hub-2026-10-21.txt |  | scheduler stage 4 |
@@ -288,5 +277,5 @@ Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `BRIEFING_ENABLED=true`, `H
 - The category `selftest` and its three channels are left in place, holding the last run. Every run empties them first.
 - To empty them now: `python -m selftest --clear`. To delete them and the category: `python -m selftest --remove` (the next run makes them again). Both work over HTTP, with live running.
 - `data/dev.db` and the dev clock are as they were before the run: they are moved aside for it and put back after.
-- The run's own database and each start's results are kept in `data/selftest/run-20261015-030003/` (never in git). Delete the folder when you like.
+- The run's own database and each start's results are kept in `data/selftest/run-20261015-084301/` (never in git). Delete the folder when you like.
 

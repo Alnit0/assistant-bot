@@ -91,7 +91,7 @@ The type scale, from Alex's screenshots of rounds 2 and 3 and his brief
 - The weather comes first among the task boxes, as it counts nothing and
   sets the scene; the counted tasks follow in the ranking's order
 
-**Status**: built 2026-10-15, behind `CARDS_V2` with `DESIGN_ROUND=3`. Preview posted the same day in the design options post, under "Round 3 built". Live: not yet switched on when this was written (docs/STATUS.md says where it stands). Waiting on Alex's look on his phone.
+**Status**: built 2026-10-15, behind `CARDS_V2` with `DESIGN_ROUND=3`. Preview posted the same day in the design options post, under "Round 3 built". Live: **on since 2026-10-15, 8:59 am** (`CARDS_V2=true`, `DESIGN_ROUND=3` in live's `.env`, one restart); the briefing and the pills checklist were redrawn in place. Waiting on Alex's look on his phone.
 
 **Alex's feedback** (copied word for word, newest last)
 
