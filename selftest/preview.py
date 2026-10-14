@@ -416,9 +416,242 @@ def round_4_opening() -> str:
     ])
 
 
+# ---------------------------------------------------------------------------
+# The Design forum (Alex, 15 Oct): one post a round, so rounds can be put
+# side by side and the feedback on each stays in its own post. A post is
+# named "Round N" and carries one tag: Live (what the hub shows), Preview
+# (built, not shipped) or Retired. The forum's id is DESIGN_FORUM_ID in
+# .env.dev (the dev bot's, never one of live's channels); `--forum` makes
+# it if it is not there, with its tags.
+#   python -m selftest.preview --forum                  the forum and its tags
+#   python -m selftest.preview --post-round 4 --tag preview
+#   python -m selftest.preview --ship 4                 4 Live, the Live before it Retired
+#   python -m selftest.preview --replies-round 4        what was said in Round 4's post
+# ---------------------------------------------------------------------------
+DESIGN_FORUM = "Design"
+DESIGN_FORUM_TOPIC = "One post a round of the hub's design: Live is what the hub shows, Preview is built and not shipped, Retired is gone by. Feedback on a round goes in its own post."
+LIVE, PREVIEW, RETIRED = "Live", "Preview", "Retired"
+TAGS = ((LIVE, "🟢"), (PREVIEW, "🟡"), (RETIRED, "⚪"))
+ABOUT = {
+    1: "The look before round 3: a box an item, its state at a glance.",
+    3: "The type scale: a page title, a box a topic with a rule between items, dots with a count, names and times in bold, small details.",
+    4: "The relevance rule: what can be done now in full with its button, the next thing in full, the rest of the day one small line; one Taken that logs at once (reply with a time to correct it); Skip in words; to-dos the first three and one Done dropdown.",
+}
+
+
+def round_title(number: int) -> str:
+    return f"Round {number}"
+
+
+def tag_named(word: str) -> str:
+    """A tag's name from how it is typed (live, preview, retired)."""
+    found = next((name for name, _ in TAGS if name.lower() == word.strip().lower()), None)
+    if found is None:
+        raise SystemExit(f"No tag {word!r}: one of {', '.join(name for name, _ in TAGS)}. Nothing done.")
+    return found
+
+
+def missing_tags(have: list[str]) -> list[tuple[str, str]]:
+    """The tags of TAGS the forum does not have yet, by name (any case)."""
+    there = {name.lower() for name in have}
+    return [(name, emoji) for name, emoji in TAGS if name.lower() not in there]
+
+
+def shipped(tags: dict[int, str], number: int) -> dict[int, str]:
+    """Each round's tag once `number` ships: it is Live, the round that was Live is
+    Retired, and the rest keep theirs."""
+    return {each: LIVE if each == number else RETIRED if tag == LIVE else tag for each, tag in {**tags, number: tags.get(number, PREVIEW)}.items()}
+
+
+def round_cards(number: int) -> list[tuple[str, tuple]]:
+    """Every message of a round's post: the main cards drawn in that round, then the to-dos card."""
+    from tasks.todos import rules as todo
+
+    def build():
+        found = list(messages())
+        today = _day()
+        made = lambda each, text, day=None, done=None: todo.Todo(each, 1, text, day, today - timedelta(days=3), done, today if done else None)  # noqa: E731
+        todos = todo.on([
+            made(1, "Pay the power bill", today - timedelta(days=1)),
+            *(made(2 + each, text, today) for each, text in enumerate(("Call the dentist", "Buy stamps", "Book the WOF", "Reply to Sam"))),
+            made(9, "Take the bins out", today, _at(7, 30)),
+        ], today)
+        found.append(("To-dos · 1 done, 1 overdue, 4 for today", todo.layout(todos, today)))
+        if number >= 4:
+            found.append(("Taken, at once · the line it leaves", (design.Text("✅ **Pill E** · taken 12:30 pm · reply to this with a time to put it right"), design.Text(design.small("a reply such as “11:45” corrects it, as “I took it at 11:45” would")))))
+        return found
+
+    return checked(_in_round(number, build))
+
+
+def round_opening(number: int, tag: str) -> str:
+    return "\n".join([
+        f"## {round_title(number)} · {tag}",
+        ABOUT.get(number, ""),
+        "-# Every card is drawn by the real code from made-up data (Pill A to Pill F). The buttons here do nothing.",
+        f"Feedback on round {number} goes in this post; each round has its own.",
+    ])
+
+
+def _forum_id() -> int | None:
+    from dotenv import dotenv_values
+
+    value = (dotenv_values(config.BASE_DIR / ".env.dev").get("DESIGN_FORUM_ID") or "").strip()
+    return int(value) if value.isdigit() else None
+
+
+async def _design_forum(client):
+    """The Design forum named by DESIGN_FORUM_ID in .env.dev. Over HTTP only."""
+    import discord
+
+    if client.user.id != config.test_bot_id():
+        raise SystemExit("Not the dev bot's account: nothing done.")
+    forum_id = _forum_id()
+    if forum_id is None:
+        raise SystemExit("DESIGN_FORUM_ID is not set in .env.dev: run `python -m selftest.preview --forum` first. Nothing done.")
+    forum = await client.fetch_channel(forum_id)
+    if not isinstance(forum, discord.ForumChannel):
+        raise SystemExit("DESIGN_FORUM_ID in .env.dev is not a forum: nothing done.")
+    return forum
+
+
+async def _with_tags(forum):
+    """The forum, with every tag of TAGS on it (the ones it has are kept)."""
+    import discord
+
+    wanted = missing_tags([tag.name for tag in forum.available_tags])
+    if wanted:
+        forum = await forum.edit(available_tags=[*forum.available_tags, *(discord.ForumTag(name=name, emoji=emoji) for name, emoji in wanted)])
+    return forum
+
+
+async def _round_posts(client, forum) -> dict[int, object]:
+    """Each round's post in the forum, by its number (open or archived)."""
+    found = await client.http.get_active_threads(forum.guild.id)
+    threads = [await client.fetch_channel(int(each["id"])) for each in found.get("threads", []) if str(each.get("parent_id")) == str(forum.id)]
+    threads += [thread async for thread in forum.archived_threads(limit=100)]
+    posts = {}
+    for thread in threads:
+        name = thread.name.split(" · ")[0]
+        if name.startswith("Round ") and name[6:].isdigit():
+            posts.setdefault(int(name[6:]), thread)
+    return posts
+
+
+async def make_forum() -> str:
+    """The Design forum: found by DESIGN_FORUM_ID, or made (as the dev bot, which may) and its id
+    to be put in .env.dev; its tags added if they are missing. Returns what was done."""
+    import discord
+
+    from dotenv import dotenv_values
+
+    async def work(client):
+        if client.user.id != config.test_bot_id():
+            raise SystemExit("Not the dev bot's account: nothing done.")
+        forum_id = _forum_id()
+        if forum_id is not None:
+            forum = await _with_tags(await _design_forum(client))
+            return f"The forum is there; tags: {', '.join(tag.name for tag in forum.available_tags)}"
+        near = await client.fetch_channel(int((dotenv_values(config.BASE_DIR / ".env.dev").get("BUGS_CHANNEL_ID") or "0").strip()))
+        guild = await client.fetch_guild(near.guild.id)
+        tags = [discord.ForumTag(name=name, emoji=emoji) for name, emoji in TAGS]
+        forum = await guild.create_forum(DESIGN_FORUM, topic=DESIGN_FORUM_TOPIC, available_tags=tags, reason="Design previews, one post a round")
+        return f"Made the forum {forum.name}: put DESIGN_FORUM_ID={forum.id} in .env.dev"
+
+    return await _as_dev_bot(work)
+
+
+async def post_round(number: int, tag: str) -> str:
+    """A new post for one round, tagged; refused when the round has one already."""
+    import discord
+
+    from interfaces.discord import render
+
+    found = round_cards(number)
+    tag = tag_named(tag)
+
+    async def work(client):
+        quiet = discord.AllowedMentions.none()
+        forum = await _with_tags(await _design_forum(client))
+        if number in await _round_posts(client, forum):
+            raise SystemExit(f"Round {number} has a post already: nothing posted.")
+        applied = [each for each in forum.available_tags if each.name == tag]
+        made = await forum.create_thread(name=round_title(number), content=round_opening(number, tag), applied_tags=applied, allowed_mentions=quiet)
+        for label, pieces in found:
+            if label:
+                await made.thread.send(f"### {label}", allowed_mentions=quiet)
+            await made.thread.send(view=render.layout_view(pieces), allowed_mentions=quiet)
+            await asyncio.sleep(1)  # paced: well under Discord's rate limit
+        return made.thread.jump_url
+
+    return await _as_dev_bot(work)
+
+
+async def ship(number: int) -> str:
+    """Round `number` is Live and the one that was is Retired: the tags of the posts, nothing else."""
+
+    async def work(client):
+        forum = await _with_tags(await _design_forum(client))
+        by_name = {each.name: each for each in forum.available_tags}
+        posts = await _round_posts(client, forum)
+        if number not in posts:
+            raise SystemExit(f"Round {number} has no post: nothing changed.")
+        now = {each: next((tag.name for tag in thread.applied_tags if tag.name in by_name and tag.name in dict(TAGS)), PREVIEW) for each, thread in posts.items()}
+        after = shipped(now, number)
+        changed = []
+        for each, tag in after.items():
+            if now.get(each) != tag:
+                await posts[each].edit(applied_tags=[by_name[tag]])
+                changed.append(f"Round {each}: {now.get(each)} → {tag}")
+        return "; ".join(changed) or "nothing to change"
+
+    return await _as_dev_bot(work)
+
+
+async def round_replies(number: int) -> list[tuple[str, str]]:
+    """What people (not bots) said in a round's post, oldest first, word for word. Read only."""
+
+    async def work(client):
+        forum = await _design_forum(client)
+        thread = (await _round_posts(client, forum)).get(number)
+        if thread is None:
+            return []
+        history = [each async for each in thread.history(limit=500, oldest_first=True)]
+        return [(f"{each.created_at.astimezone(config.TIMEZONE):%Y-%m-%d %H:%M}", each.content) for each in history if not each.author.bot and (each.content or "").strip()]
+
+    return await _as_dev_bot(work)
+
+
+def _number_after(args: list[str], flag: str) -> int:
+    value = args[args.index(flag) + 1] if args.index(flag) + 1 < len(args) else ""
+    if not value.isdigit() or int(value) not in design.ROUNDS:
+        raise SystemExit(f"{flag} takes a round that was built: one of {', '.join(map(str, design.ROUNDS))}. Nothing done.")
+    return int(value)
+
+
 def main() -> int:
     sys.stdout.reconfigure(encoding="utf-8")
     args = sys.argv[1:]
+    if "--forum" in args:
+        print(asyncio.run(make_forum()))
+        return 0
+    if "--post-round" in args:
+        number = _number_after(args, "--post-round")
+        tag = args[args.index("--tag") + 1] if "--tag" in args and args.index("--tag") + 1 < len(args) else PREVIEW
+        if "--check" in args:
+            print(f"{len(round_cards(number))} messages built for round {number}, each within one message.")
+            return 0
+        print("Posted:", asyncio.run(post_round(number, tag)))
+        return 0
+    if "--ship" in args:
+        print(asyncio.run(ship(_number_after(args, "--ship"))))
+        return 0
+    if "--replies-round" in args:
+        found = asyncio.run(round_replies(_number_after(args, "--replies-round")))
+        for when, said in found:
+            print(f"--- {when}\n{said}")
+        print(f"{len(found)} replies in that round's post.")
+        return 0
     if "--check" in args and "--hub-tasks" not in args and "--round-4" not in args:
         print(f"{len(checked())} messages built, each within one message.")
         return 0

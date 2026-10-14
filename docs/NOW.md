@@ -7,19 +7,20 @@ history is `docs/STATUS.md`. Read first, with `/catchup`.
 1. Daytime batch: done before round 4 (all five steps), in tonight's
    restart; the to-dos self-test now in round 4 with the dropdown, 9 of 9
 2. Round 4: shipped to this branch, tested, self-tested (start 8, 9 of 9)
-3. Design previews: one forum post a round, tags Live, Preview, Retired
+3. Design previews: done. A Design forum, tags Live, Preview, Retired;
+   posts Round 1 (Retired), 3 (Live), 4 (Preview, Live tonight)
 4. Routines on `feature/routines`: shared repeats, the rework, a Today
    card, Layout A and B preview; not merged, previews only
 
 **In progress**
-- 3. Design forum and tags
+- 4. Routines on `feature/routines`
 
 **Tonight** (6 pm to 9 pm, clear of pill reminders)
 - One restart from this folder (clean, pushed): DESIGN_ROUND=4,
   TODOS_ENABLED, WEEKLY_SUMMARY and DMS_ENABLED on; the nightly
   self-test row to 3:30 am first
 - Checks: round 4 in the hub, the to-dos dropdown; What's new lines for
-  round 4, to-dos and DMs. Wrong: DESIGN_ROUND=3, restart, note in STATUS
+  round 4, to-dos and DMs; `preview --ship 4`. Wrong: DESIGN_ROUND=3
 
 **Drafts and worktrees**
 - Worktrees `../assistant-bot-hub-tasks` and `../assistant-bot-round4`:

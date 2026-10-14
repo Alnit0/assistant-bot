@@ -97,9 +97,10 @@ below. A message is read like a page.
   nothing for it. A reminder that goes off is drawn as a pill's is: the
   neutral line, then its box with Done and Snooze
 
-**To see it**: `python -m selftest.preview` posts every card in its main
-states, drawn by this code from made-up data, in the "🎨 Design
-options" post (`--check` builds them and posts nothing).
+**To see it**: `python -m selftest.preview --post-round N` posts every
+card in its main states, drawn by this code in round N from made-up
+data, as the post "Round N" of the Design forum (`--check` builds them
+and posts nothing).
 
 ## Round 4 (shipped 2026-10-15)
 

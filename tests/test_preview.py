@@ -35,6 +35,31 @@ def test_only_what_people_said_after_the_latest_round_is_read_back():
     assert [each.content for each in preview.since_last_round([SimpleNamespace(author=alex, content="hi")])] == ["hi"], "no round yet: everything"
 
 
+def test_the_design_forum_has_one_post_a_round_each_drawn_in_its_round():
+    for number in design.ROUNDS:
+        found = preview.round_cards(number)
+        assert found and preview.round_title(number) == f"Round {number}"
+        assert preview.round_opening(number, "Preview").startswith(f"## Round {number} · Preview")
+    four = preview.round_cards(4)
+    todos = next(pieces for label, pieces in four if label.startswith("To-dos"))
+    assert len(design.menus(todos)) == 1, "round 4's to-dos card: one Done dropdown"
+    three = preview.round_cards(3)
+    assert design.menus(next(pieces for label, pieces in three if label.startswith("To-dos"))) == [], "round 3's: a Done button each"
+
+
+def test_the_tags_live_preview_and_retired_are_added_only_where_missing():
+    assert [name for name, _ in preview.TAGS] == ["Live", "Preview", "Retired"]
+    assert [emoji for _, emoji in preview.TAGS] == ["🟢", "🟡", "⚪"]
+    assert preview.missing_tags(["Open", "live"]) == [("Preview", "🟡"), ("Retired", "⚪")]
+    assert preview.tag_named("preview") == "Preview"
+
+
+def test_shipping_a_round_makes_it_live_and_retires_the_one_that_was():
+    assert preview.shipped({1: "Retired", 3: "Live", 4: "Preview"}, 4) == {1: "Retired", 3: "Retired", 4: "Live"}
+    assert preview.shipped({3: "Live", 4: "Live"}, 4) == {3: "Retired", 4: "Live"}
+    assert preview.shipped({3: "Live"}, 3) == {3: "Live"}, "shipping what is live changes nothing"
+
+
 def test_the_round_4_preview_fits_shows_round_3_beside_it_and_names_only_made_up_pills():
     found = preview.checked(preview.round_4())
     labels = [label for label, _ in found if label]

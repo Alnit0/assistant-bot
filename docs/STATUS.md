@@ -33,6 +33,13 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
    Done is picked in the dropdown (7.07, 7.09) and the card counts what
    is done (“✅ 1 done”). 9 of 9 as the dev bot, recorded answers, NZ$0.00.
    Start 8 keeps its own to-dos check (four to-dos, “+1 more”).
+8. **Design previews: one forum post a round** (Alex, 15 Oct). The dev
+   bot may make channels, and the old previews sat in its bugs forum, so
+   a forum of its own was made: Design (`DESIGN_FORUM_ID` in `.env.dev`),
+   with tags 🟢 Live, 🟡 Preview and ⚪ Retired. Posted: Round 1
+   (Retired), Round 3 (Live) and Round 4 (Preview); tonight's restart
+   runs `--ship 4`. The old design-options post is left as it is, with
+   his feedback in it.
 
 ## Round 4 of the design (2026-10-15, built)
 

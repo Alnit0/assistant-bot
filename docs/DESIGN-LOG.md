@@ -7,16 +7,22 @@ the history and the loop.
 
 ## The loop
 
-1. **Each round is posted as a preview** in the "🎨 Design options" post of
-   the dev bot's forum, under a message titled "Round N", drawn by the real
-   code from made-up data (`python -m selftest.preview`). No real pill
-   names: the pills are Pill A to Pill E.
+1. **Each round has its own post** in the Design forum (from 15 Oct),
+   named "Round N", drawn by the real code from made-up data (`python -m
+   selftest.preview --post-round N --tag preview`). It carries one tag:
+   🟢 Live (what the hub shows), 🟡 Preview (built, not shipped) or ⚪
+   Retired. No real pill names: the pills are Pill A to Pill F. Rounds 1
+   to 4 were posted before that in one "🎨 Design options" post of the
+   dev bot's bugs forum, which stays as it is with the feedback in it.
 2. **Live only changes when Alex says "ship round N".** Shipping is
-   `DESIGN_ROUND=N` (with `CARDS_V2=true`) in live's `.env` and one restart.
+   `DESIGN_ROUND=N` (with `CARDS_V2=true`) in live's `.env`, one restart,
+   and `python -m selftest.preview --ship N` (Round N Live, the round
+   that was Live Retired).
 3. **At the start of any batch that touches the design**, Claude Code reads
-   Alex's replies in that post since the last round (as the dev bot, over
-   HTTP), copies them here word for word under the round they answer, and
-   turns them into a numbered list of changes for the next round.
+   Alex's replies in each round's post (`--replies-round N`, as the dev
+   bot, over HTTP), copies them here word for word under the round they
+   answer, and turns them into a numbered list of changes for the next
+   round.
 4. **Locked parts change only when his feedback names them.** Each round
    lists what is locked.
 5. **Every round that was built stays selectable**: `DESIGN_ROUND` in
