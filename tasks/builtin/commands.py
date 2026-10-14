@@ -132,8 +132,17 @@ def _split(page: str) -> list[str]:
 
 
 def pages() -> list[str]:
-    """#commands as the loaded tasks make it."""
-    return build(registry.catalogue())
+    """#commands as the loaded tasks make it. A task that is only ever talked to
+    (weather: no typed word, no reply word, no reaction) is listed too, for
+    what one can say to it."""
+    listed = registry.catalogue()
+    have = {entry.task.name for entry in listed}
+    spoken = [
+        registry.TaskCapabilities(task, [], [], [])
+        for task in registry.loaded_tasks()
+        if task.name not in have and any(action.say for action in task.actions())
+    ]
+    return build([*listed, *spoken])
 
 
 async def update() -> str:

@@ -123,30 +123,54 @@ while it was being built**
     iron…" when iron is there): its own note already said both end
     in the same card. With that the pills fixtures are 62 of 62.
 
+**The end of the batch**
+
+26. **`DAY_PROGRESS` and `DAY_QUESTIONS` are on for live** (two lines
+    added to `.env`). To turn either off: set it to false, restart.
+27. **Live was restarted twice, not once** (3:03 pm and 3:07 pm). The
+    first start showed a fault from this morning's #commands change:
+    the first time its text really changed, the edit in place raised
+    (a partial message can't be told to hide link previews) and
+    #commands was left as it was. Fixed, with test fakes that now take
+    only what discord.py takes, and live restarted on the fix:
+    "#commands: 1 edited", no error.
+28. **#commands does not list the weather questions until the next
+    restart.** A task that is only talked to had no page there; the fix
+    is committed, and I did not restart live a third time for it.
+29. **How warm an afternoon is will be said from the 5:50 pm refresh
+    on**: the forecast kept before the restart has no temperature by
+    the hour.
+30. **The test suite takes 1 min 57 s**, just inside the two minutes
+    the rules allow. The next batch of tests will need one made
+    quicker.
+
 ## Where things stand
 
 - **Branch `feature/pills`**: everything is committed and pushed;
   nothing is merged into `main`.
-- **Live** was last restarted at 11:58 am on 2026-10-14 and runs all of
-  it, the morning's work included (one dose is one log, the last-chance
-  nudge, retries, #commands edited in place).
-- **The first morning of the routine ran as booked** (live's run log,
-  2026-10-14): 5:30 am the exchange rate; 5:50 am the weather fetch;
-  6:00 am the tidy (nothing to remove), the briefing (posted) and the
-  checklist (posted, 3 doses); 7:00 am the needs-a-look check (nothing
-  needed a look, nothing said); 8:50 and 11:50 am the weather refresh.
-  The 3:00 am backup and the nightly self-test ran too.
-- **Tests**: offline 2770 passed, 1 skipped. The last full self-test
-  (11:42 am, the dev bot with live up): 116 of 117, one skipped for
-  needing real requests. The self-test's month (NZ$3.50) is spent:
-  recorded answers until November.
-- **Bugs**: 2 open on live (`bugs`). Nothing needs a look.
+- **Live** was last restarted at 3:07 pm on 2026-10-14 and runs all of
+  it: the day in dots at the top of the briefing, the questions about
+  the day and the weather, and the fix for a change to a pill that is
+  only on the card. No error since the start; nothing needs a look.
+- **The morning routine ran as booked on its first morning** (live's
+  run log, 2026-10-14): the exchange rate, the weather fetch, the tidy,
+  the briefing, the checklist, and a needs-a-look check with nothing
+  to say.
+- **Tests**: offline 2845 passed, 1 skipped. The last full self-test
+  (2:45 pm, the dev bot with live up, recorded answers): 122 of 123,
+  none failed, one skipped for needing real requests. The golden
+  conversations asked of the real API: 57 of 59, the two misses old
+  known ones that the code puts right.
+- **Spend on the afternoon's batch**: NZ$1.06 (US$0.60), all of it live
+  evals; the dearest run NZ$0.23. The self-test's month (NZ$3.50) is
+  spent: recorded answers until November.
+- **Bugs**: 2 open on live (`bugs`).
 
 ## Switched on (live's `.env`)
 
-- **On**: `BRIEFING_ENABLED`, `WEATHER_ENABLED`, `HUB_TIDY`,
-  `REMINDERS_ENABLED`, `QUIET_HOURS_ENABLED` (10:00 pm to 7:00 am),
-  `NIGHTLY_SELFTEST`.
+- **On**: `BRIEFING_ENABLED`, `DAY_PROGRESS`, `DAY_QUESTIONS`,
+  `WEATHER_ENABLED`, `HUB_TIDY`, `REMINDERS_ENABLED`,
+  `QUIET_HOURS_ENABLED` (10:00 pm to 7:00 am), `NIGHTLY_SELFTEST`.
 - **Off**: `CARDS_V2` (the hub is in the old look), `WEEKLY_SUMMARY`,
   `DMS_ENABLED`, `NOTIFY_NTFY` (nothing goes to ntfy).
 - **Each day**: midnight the end of the day; 3:00 am the backup and the
@@ -157,12 +181,13 @@ while it was being built**
 
 ## Waiting on you
 
-1. **The short list at the top of `docs/QA-RUN.md`**: ten looks only
-   you can take, most useful first (this morning's hub, the design
-   sketches, the colours, the status line, the lock screen).
+1. **The short list at the top of `docs/QA-RUN.md`**: eleven looks only
+   you can take, most useful first. The first two are today's: the hub
+   with the day in dots, and design rounds 2 and 3 in the
+   design-options post.
 2. **The design picks**, questions 12 to 15, 21, 22 and 45 to 48 of
-   `docs/QUESTIONS.md`, with rounds 2 and 3 in the design-options post:
-   they are what the new look in the hub waits for.
+   `docs/QUESTIONS.md`: they are what the new look in the hub waits
+   for. Round 3's type scale is a draft until you say what to change.
 3. **The other questions**: `docs/QUESTIONS.md` has 45, each with a
    suggested answer ("yes to all suggestions except 4 and 7").
 4. **Gym and the calendar** wait on their answers there (23 to 28, 29
@@ -173,16 +198,17 @@ while it was being built**
 
 In the order of the priorities; the full list is `docs/BACKLOG.md`.
 
-1. **The hub's look**: build what you pick in design round 2 (titles
-   and rules, the progress marks, a total for the day), then the phone
-   check, then `CARDS_V2` on for live and #commands' words for it.
-2. **What the briefing shows**: whatever the look at this morning's
-   hub turns up.
+1. **The hub's look**: build the type scale of round 3 once you have
+   said what to change (one box a topic, the card title with dots,
+   times in bold), then the phone check, then `CARDS_V2` on for live
+   and #commands' words for it.
+2. **What the briefing shows**: whatever your look at the hub turns
+   up; the answers about your day, once you have read a few.
 3. **Understanding**: the two golden conversations that failed once
    near midnight (question 39); a correction straight after Save for
    schedules (question 8); task ties asked too often (G4).
 4. **Then**: the merge and live's own folder; gym once its answers are
-   in; the calendar after its four.
+   in; the calendar after its four; a flavour status line (backlog).
 
 ## Standing
 

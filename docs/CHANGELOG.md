@@ -6,6 +6,11 @@ backfilled from the git log.
 
 ## 2026-10-14
 
+- #commands is edited in place without an error when its text has
+  really changed (the first such edit, at a restart, failed and left
+  it as it was), and it now lists a task that is only talked to: the
+  weather questions appear there from the next restart.
+
 - A change to a pill that is still only on the card, not saved yet
   ("make 11:30, 11am instead"), changes the card. It used to answer
   "There are no pills yet" when it was read as a change to a saved

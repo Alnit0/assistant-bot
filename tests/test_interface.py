@@ -1,6 +1,7 @@
 """The line between the bot and its interface (docs/INTERFACE.md): who may import discord.py, and the door
 (core/surface.py) the core reaches Discord through."""
 import asyncio
+import inspect
 import re
 from pathlib import Path
 from types import SimpleNamespace
@@ -84,6 +85,11 @@ class Partial:
         self.channel.deleted.append(self.id)
 
     async def edit(self, **kwargs):
+        # As the real one: a partial message has no `suppress` (found on live, 2026-10-14: the first
+        # real edit of #commands raised a TypeError that a fake taking anything had let through)
+        unknown = set(kwargs) - set(inspect.signature(discord.PartialMessage.edit).parameters)
+        if unknown:
+            raise TypeError(f"PartialMessage.edit() got an unexpected keyword argument {sorted(unknown)[0]!r}")
         self.channel.edits.append((self.id, kwargs))
 
     async def pin(self, reason=None):
@@ -98,6 +104,7 @@ class Channel:
         self.id, self.name, self.type, self.mention = channel_id, "hub", kind, f"<#{channel_id}>"
         self.guild = SimpleNamespace(id=7, me=SimpleNamespace(nick="Bot", name="bot", guild_permissions=SimpleNamespace(change_nickname=True))) if server else None
         self.sent, self.deleted, self.edits, self.pinned, self.reactions, self.gone, self.stuck = [], [], [], [], [], set(), set()
+        self.fetched = []
 
     async def send(self, text=None, **kwargs):
         self.sent.append((text, kwargs))
@@ -105,6 +112,21 @@ class Channel:
 
     def get_partial_message(self, message_id):
         return Partial(self, message_id)
+
+    async def fetch_message(self, message_id):
+        channel = self
+
+        class Whole:
+            id = message_id
+
+            async def edit(self, **kwargs):
+                unknown = set(kwargs) - set(inspect.signature(discord.Message.edit).parameters)
+                if unknown:
+                    raise TypeError(f"Message.edit() got an unexpected keyword argument {sorted(unknown)[0]!r}")
+                channel.fetched.append(message_id)
+                channel.edits.append((message_id, kwargs))
+
+        return Whole()
 
     def permissions_for(self, member):
         return SimpleNamespace(read_message_history=True, manage_messages=False)
@@ -157,6 +179,9 @@ def test_pins_reactions_and_edits_go_by_ids(hub):
     run(surface.react(400, 5, "⚠️"))
     run(surface.edit(400, 5, "new words", suppress_embeds=True))
     assert hub.pinned == [5] and hub.reactions == [(5, "⚠️")] and hub.edits == [(5, {"content": "new words", "suppress": True})]
+    assert hub.fetched == [5], "hiding link previews is asked of the whole message, fetched first: a partial one can't take it"
+    run(surface.edit(400, 6, "plain"))
+    assert hub.edits[-1] == (6, {"content": "plain"}) and hub.fetched == [5], "an ordinary edit needs no fetch"
 
 
 def test_with_no_interface_bound_nothing_is_found_and_nothing_raises_until_it_must(monkeypatch):

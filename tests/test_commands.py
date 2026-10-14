@@ -100,6 +100,19 @@ def test_a_page_too_long_for_one_message_is_split_and_the_rest_says_whose_it_is(
     assert "• `dev mock [<name>]` · post a card sketched in docs/mockups/<name>.txt" in "\n".join(dev)
 
 
+def test_a_task_that_is_only_talked_to_has_a_page_for_what_one_can_say_to_it(monkeypatch):
+    # Found on live, 2026-10-14: weather answers "will it rain?" and has no typed word, no reply word and no
+    # reaction, so #commands (built from the tasks that have one of those) left it out
+    from core import config
+
+    assert not any(text.splitlines()[0].endswith(" Weather") for text in commands.pages()), "off: it offers nothing, so it has no page"
+    for name in ("WEATHER_ENABLED", "DAY_QUESTIONS"):
+        monkeypatch.setattr(config, name, True)
+    weather = page("Weather")
+    assert weather.splitlines()[0] == "## 🌤️ Weather" and "“will it rain?”" in weather and "“what's the weather this afternoon?”" in weather
+    assert [text.splitlines()[0] for text in commands.pages()].count("## 🌤️ Weather") == 1
+
+
 def test_the_pages_are_built_from_what_is_registered_and_nothing_else():
     async def handler(ctx):
         return None
@@ -171,6 +184,18 @@ class Channel:
             yield message
 
     def get_partial_message(self, message_id):
+        whole = next(message for message in self.messages if message.id == message_id)
+
+        class Partial:
+            async def edit(self, content=None):  # as discord.py's: no `suppress` on a partial message
+                await whole.edit(content=content)
+
+            async def delete(self):
+                await whole.delete()
+
+        return Partial()
+
+    async def fetch_message(self, message_id):
         return next(message for message in self.messages if message.id == message_id)
 
     async def send(self, text, silent=False, suppress_embeds=False):

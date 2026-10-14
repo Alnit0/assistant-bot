@@ -110,9 +110,15 @@ async def send(channel_id: int, text: str, *, silent: bool = False, suppress_emb
 
 
 async def edit(channel_id: int, message_id: int, text: str, *, suppress_embeds: bool = False) -> None:
-    more = {"suppress": True} if suppress_embeds else {}
     try:
-        await _must(channel_id).get_partial_message(message_id).edit(content=text, **more)
+        if suppress_embeds:
+            # Only a whole message can be told to hide its link previews: a partial one has no
+            # `suppress` (discord.py), so the message is fetched first. One more request, for the
+            # few messages that are rewritten this way (#commands)
+            message = await _must(channel_id).fetch_message(message_id)
+            await message.edit(content=text, suppress=True)
+        else:
+            await _must(channel_id).get_partial_message(message_id).edit(content=text)
     except discord.HTTPException as error:
         raise _failed(error) from error
 

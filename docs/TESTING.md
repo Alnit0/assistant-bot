@@ -37,7 +37,7 @@ Last updated: 2026-10-14
 | G | Timers | 32 | 12 | 20 | 17 | 15 | 0 | 0 |
 | H | Pomodoro | 21 | 6 | 15 | 15 | 6 | 0 | 0 |
 | J | Dev mode | 68 | 19 | 49 | 47 | 21 | 0 | 0 |
-| K | Startup and housekeeping | 58 | 38 | 20 | 18 | 40 | 0 | 0 |
+| K | Startup and housekeeping | 59 | 39 | 20 | 18 | 41 | 0 | 0 |
 | L | Keep | 14 | 6 | 8 | 8 | 6 | 0 | 0 |
 | M | Message lifecycle | 10 | 6 | 4 | 3 | 7 | 0 | 0 |
 | P | Bugs | 38 | 18 | 20 | 17 | 21 | 0 | 0 |
@@ -46,7 +46,7 @@ Last updated: 2026-10-14
 | S | Routing and confirm cards | 83 | 29 | 54 | 19 | 63 | 0 | 1 |
 | T | Tasks in plain words | 35 | 13 | 22 | 7 | 28 | 0 | 0 |
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
-| | **Total** | **569** | **238** | **331** | **261** | **307** | **0** | **1** |
+| | **Total** | **570** | **239** | **331** | **261** | **308** | **0** | **1** |
 
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
@@ -365,6 +365,7 @@ Any channel. Check the bot's status in the member list.
 | K56 | 👤 Manual | NZ$ on the phone | `dev cost` shows NZ$ and ends with the rate and when it was fetched; the morning's briefing has "💸 Yesterday: …" with the amounts hidden until tapped | ⬜ Untested | |  |
 | K57 | 🤖 Auto | Design options, rounds 2 and 3 | Read in the order of its INDEX, every sketch within one message and versioned; the opening says nothing changes until a pick and its example answer is made of the round's own labels; round 3 is the day's total as dots, in the title and in normal text, each with a ten-dot example, and five sketches of the type scale (one page title a message, one card title a box, times never in code); only the sketches named are posted when asked; no sketch has a block bar | ✅ Pass | 2026-10-14 | `tests/test_selftest.py` |
 | K58 | 👤 Manual | Rounds 2 and 3 on the phone | Open the 🎨 Design options post: round 2's sketches (R2-…; the four block bars are dropped: skip them) and round 3's two (R3-A, R3-B: the day's total as dots). Check that the title with ten dots wraps nowhere, then answer questions 12 to 15 and 45 of docs/QUESTIONS.md | ⬜ Untested | |  |
+| K59 | 🤖 Auto | An edit that hides link previews, and #commands for a task that is only talked to | Hiding link previews is asked of the whole message, fetched first, since a partial one can't take it; an ordinary edit needs no fetch; the fakes take only what discord.py's own methods take, so a wrong option fails the test as it failed on live; a task with no typed word, reply word or reaction has a page in #commands for what one can say to it, once | ✅ Pass | 2026-10-14 | `tests/test_interface.py`, `tests/test_commands.py` |
 
 ## L. Keep
 
