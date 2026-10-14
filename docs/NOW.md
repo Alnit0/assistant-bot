@@ -3,29 +3,33 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Batch** (2026-10-15, from 9:25 am): NOW.md and the start-up hook,
-then one evening restart of live for the What's new box.
+**Batch** (2026-10-15, from 10:20 am): Alex's answers to QUESTIONS.md,
+the small jobs they asked for, then one evening restart of live.
 
 **Done**
-- 1. `docs/NOW.md` made
-- 2. The SessionStart hook (`.claude/settings.json`, `scripts/now.ps1`), tested
-- 3. `/catchup` reads NOW.md; the rules in CLAUDE.md (10,234 bytes) and
-  ADVISOR section 4; STATUS, ADVISOR section 9, ARCHITECTURE; the 4th
-  What's new line queued for 16 Oct
+- 1. Answers recorded: QUESTIONS.md (3 left open), Decided in STATUS,
+  the backlog (34 on top), the private calendar spec
 
 **In progress**
-- The full test run, then the checkpoint commit and push
+- 2. Nightly self-test to 3:30 am, and every rule and doc with it
 
 **Next**
-- 4. Between 6 pm and 9 pm, not within 10 minutes of a pill reminder:
-  restart live once from a clean, pushed, tested commit; check its
-  account, the round 3 look and the What's new queue (4 lines)
+- 3. Q39: the golden conversations that failed just after midnight
+- 4. Q41: #commands' words for Taken and Skip in the pill's box
+- 5. Q64: the pills card with no `##` page title
+- 6. Q5: QA block 54 as a self-test (recorded answers) if it can be
+- 7. 6 pm to 9 pm, clear of pill reminders: one restart from a clean,
+  pushed, tested commit with TODOS_ENABLED, WEEKLY_SUMMARY and (if 6
+  passed) DMS_ENABLED on; check live's account, the round 3 look, the
+  to-dos card hidden while empty, help listing to-dos, What's new
 
 **Drafts and worktrees**
 - Worktree `../assistant-bot-hub-tasks` on `feature/hub-tasks`, merged
-  into `feature/pills` and pushed (99238fb); nothing uncommitted there
+  and pushed; nothing uncommitted there
 - No drafts outside `docs/`
 
 **Waiting on Alex**
-- The round 3 look on his phone; the New hub tasks preview; questions
-  51 to 66
+- The private Google Calendar link, for live's `.env` only (never a
+  doc or a commit)
+- A lock-screen screenshot of a pill reminder (question 11)
+- His feedback on round 3 in the design-options post

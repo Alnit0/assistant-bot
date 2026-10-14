@@ -20,28 +20,28 @@ run (the self-test covers most of them: `docs/QA-RUN.md` says which),
 reminders on live, the scheduler, the clean-up and the briefing, and
 the full self-test run.
 
-1. **The hub's look.** Round 3, the type scale, is built (2026-10-15,
-   `docs/DESIGN-LOG.md`). Next: Alex's look at the "Round 3 built"
-   preview on his phone, his feedback into the design log as round 4,
-   and #commands' words for the buttons in a pill's box.
-2. **What the briefing shows**: whatever Alex's look at the real hub
+1. **Live in its own folder, running a committed version** (question
+   34, put on top by Alex on 2026-10-15: the next infrastructure job,
+   not that day). Live runs from the project folder today, so a restart
+   loads whatever is in the working copy. On 2026-10-15 Windows Update
+   restarted the PC twice overnight (00:23 and 00:26) and live came back
+   on a batch's uncommitted, unreviewed changes; the 3 am self-test then
+   ran on them too and failed five steps (D6). From its own folder on a
+   commit (`scripts\setup-live-folder.ps1`), a reboot never loads work in
+   progress. The merge of `feature/pills` into `main` comes with it once
+   Alex has read `docs/REVIEW.md` and run QA blocks 53 to 55 (33).
+2. **The hub's look.** Round 3 is live (2026-10-15). Next: Alex's
+   feedback on his phone into `docs/DESIGN-LOG.md` as round 4.
+3. **What the briefing shows**: whatever Alex's look at the real hub
    turns up.
-3. **How well it understands**: the two golden conversations that
-   failed once near midnight (question 39); a correction straight
-   after Save for schedules (question 8); task ties asked too often
-   (G4).
-4. **The other questions** in `docs/QUESTIONS.md`.
-5. **`feature/pills` into `main`, then live's own folder**
-   (`scripts\setup-live-folder.ps1`), **running a committed version.**
-   Live runs from the project folder today, so a restart loads whatever
-   is in the working copy. On 2026-10-15 Windows Update restarted the
-   PC twice overnight (00:23 and 00:26) and live came back on a batch's
-   uncommitted, unreviewed changes; the 3 am self-test then ran on them
-   too and failed five steps (D6). From its own folder on a commit, a
-   reboot never loads work in progress.
-6. **Gym**: waits for the answers on how Alex trains (questions 23 to
-   28); the three core pieces are built (Details: "Gym"). Then the
-   calendar, after its four (29 to 32).
+4. **How well it understands**: a correction straight after Save for
+   schedules, as pills have ("no, 7pm": question 8, yes, later); task
+   ties asked too often (G4).
+5. **Personal routines reworked** with groups of steps, one button a
+   group (question 63, to discuss first; `HABITS_ENABLED` stays off),
+   and **gym onboarding** designed before gym is built (24 to 28). The
+   calendar after: Google, read only, by its private link, names matched
+   by code (29 to 32 answered; not built).
 
 ### Soon
 
@@ -108,6 +108,11 @@ the full self-test run.
 
 ### Later
 
+- **A watch on live** (question 38, yes, later): a Windows scheduled
+  task that pings Alex's phone if the `assistant-bot` service is down,
+  rather than the dev bot always on.
+- **A live eval to shorten the router's rules** (question 40: not now),
+  about NZ$0.70, the cost audit's last open item.
 - **A read-only web page** (said 2026-10-14), reachable only over
   Tailscale: today's checklist, the week, the run log, costs, open
   bugs. It reads the database and the `design` records and needs no

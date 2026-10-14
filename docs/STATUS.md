@@ -8,6 +8,77 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-15
 
+## Decided (2026-10-15, Alex's answers to QUESTIONS.md)
+
+One line a question. Settled by round 3 shipping (his feedback in the
+design-options post replaces them):
+
+- 12 Round 1 letters for the checklist and reminder: settled by round 3.
+- 13 Titles, items, small details, rules between items: settled by round 3.
+- 14 A change as ~~old~~ → **new**: settled by round 3.
+- 15 The thin question card, stacked too: settled by round 3.
+- 21 Turn the new look on: settled (on since 8:59 am).
+- 45 The day's total in the title or a line: settled by round 3 (in the title, as built).
+- 46 Dots in the old look's checklist title: settled (it goes with the old look).
+- 47 Build the type scale as sketched: settled by round 3.
+- 48 The total under a dated title: settled by round 3.
+
+Accepted as suggested:
+
+- 1 A problem between 10 pm and 7 am posts nothing until one ping at 7 am: kept.
+- 2 That ping repeats each morning while Needs a look is not empty: kept.
+- 3 Dev mode left on and the self-test's month spent are shown, never pinged: kept.
+- 6 ntfy stays off until `NTFY_BOT_TOPIC` is added; then pill reminders go to both: kept.
+- 7 A dose of last night with no time said is proposed at its planned time (11:59 pm with none): kept.
+- 8 "No, 7pm" straight after Save for schedules too: yes, later (backlog).
+- 9 A restart is unexpected only if the PC restarted or the bot crashed: accepted.
+- 10 No start card ("Online and ready"; a card only if a task could not start): kept.
+- 22 A bug's forum post, the archived copy, the dev panel, #commands and help stay in the old look: kept.
+- 33 Merge `feature/pills` into `main` after REVIEW.md and QA blocks 53 to 55: yes, when he has.
+- 34 Live in its own folder on a committed version: yes, top of the backlog, the next infrastructure job; not today.
+- 35 Weather for Auckland at 5:50 am, refreshed every 3 hours to 8 pm: kept.
+- 36 A failed exchange-rate fetch is not an alert: kept.
+- 37 The nightly self-test moves to 3:30 am, and every rule with it.
+- 38 A watch on live as a Windows scheduled task that pings his phone: yes, later (backlog).
+- 39 The golden conversations that failed just after midnight: chased now.
+- 40 A live eval to shorten the router's rules (about NZ$0.70): not now.
+- 41 #commands' words for Taken and Skip in the new look: done now.
+- 42 Mornings as built (same time at weekends, no empty briefing, yesterday as counts, no buttons): kept.
+- 43 The last-chance nudge at 11:30 pm with sound for a pill with no latest time: kept.
+- 44 "Stops fitting the day" is the first dose still to come that would no longer fit: kept.
+- 49 A contradiction is fixed on the card with a ⚠️ line, not asked: kept.
+- 50 The two timer misreads wait until timers are kept or scrapped: kept.
+- 51 A to-do with no day is for any day: kept.
+- 52 An overdue to-do keeps its day and stays on top until done or moved: kept.
+- 53 The same words twice are not added twice: kept.
+- 54 Ticking a to-do off by words is done at once, with undo: kept.
+- 55 Twelve to-dos listed, the rest counted, later ones in one small line: kept.
+- 56 Reminders' switch `NUDGES_ENABLED`, folder `tasks/nudges`: kept.
+- 57 A reminder time with no day: today if still to come, else tomorrow with ❓: kept.
+- 59 Done and Snooze take a reminder out of the hub at once: kept.
+- 60 Snooze offers 10 minutes, 1 hour and tomorrow: kept.
+- 61 Personal routines' switch `HABITS_ENABLED`, folder `tasks/habits`, `my routines`: kept.
+- 62 Twelve steps at most, ticks starting again at midnight: kept.
+- 64 Task cards have a ### card title and no ## page title; ## is once a message, in the briefing: the pills card made to match.
+- 65 A card with nothing in the morning is posted when it first has something: kept.
+- 66 Switch on to-dos first, then personal routines, then reminders: to-dos at this evening's restart.
+
+Answered:
+
+- 4 `WEEKLY_SUMMARY` on in live (Sunday 7 pm): at this evening's restart.
+- 5 `DMS_ENABLED` on in live once QA block 54 has passed: checked first today, as a self-test if it can be (the outcome is written here)
+- 23 Gym uses kilograms for everything.
+- 29 The calendar is Google Calendar.
+- 30 Read only, to begin with.
+- 31 Connected by its private read-only link, no sign-in (the link goes in live's `.env` only).
+- 32 Event names are matched by code and never sent to Claude.
+- 58 A reminder's lock-screen line stays neutral.
+
+Still open: 11 (his lock-screen screenshot is on its way), 63 (personal
+routines reworked with groups: to discuss; `HABITS_ENABLED` stays off),
+24 to 28 (under "Gym onboarding": he designs onboarding first; nothing
+of gym is built). The calendar is not built yet either.
+
 ## Later on 2026-10-15
 
 - **`docs/NOW.md`** is what is happening now, at most 40 lines, updated
@@ -374,16 +445,15 @@ while it was being built**
 
 ## Waiting on you
 
-1. **The round 3 look, on your phone**: the hub itself, and "Round 3
-   built" in the design-options post. Reply there with what to change;
-   it goes into `docs/DESIGN-LOG.md` word for word as round 4.
-2. **The new hub tasks**: the "New hub tasks preview" in the same post,
-   questions 51 to 66, and which to switch on first.
-3. **The other questions**: `docs/QUESTIONS.md` has 61, each with a
-   suggested answer ("yes to all suggestions except 4 and 7").
-4. **Gym and the calendar** wait on their answers there (23 to 28, 29
-   to 32).
-5. **The merge** into `main`, then live's own folder (33, 34).
+1. **The round 3 look, on your phone**: reply in the design-options post
+   with what to change; it goes into `docs/DESIGN-LOG.md` word for word
+   as round 4.
+2. **A lock-screen screenshot of a pill reminder** (question 11).
+3. **The private Google Calendar link**, for live's `.env` only.
+4. **Two things to talk through**: personal routines with groups of
+   steps (63), and gym onboarding (24 to 28).
+5. **`docs/REVIEW.md` and QA blocks 53 to 55**, before the merge into
+   `main` and live's own folder (33, 34).
 
 ## Next
 
