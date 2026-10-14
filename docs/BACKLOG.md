@@ -53,12 +53,12 @@ the full self-test run.
   days (`tally`) for to-dos and personal routines, so "how did the week
   go?" counts them; the pills card's page title made like theirs, or
   theirs like it (question 64).
-- **`docs/NOW.md` and a SessionStart hook** (asked 2026-10-15): the
-  prompt for them never reached the session that built `/catchup`, which
-  reads `docs/NOW.md` when there is one and `docs/STATUS.md` until then.
-
-  Also there, as an option: the dev bot as an always-on caretaker
-  that reads only live's health (`docs/specs/attention.md`, section 8).
+- **A reply to last night's pill line just after midnight** (found
+  chasing question 39, 2026-10-15): "actually I didn't", replied to the
+  line that said a pill was taken at 11:55 pm, does not untick it once
+  the day has changed, as the reply now points at yesterday's log. The
+  golden tests that met it only did by running across midnight, and now
+  run at noon. Worth a look: a reply should undo the log it points at.
 - **A "flavour" status line when there is nothing to show** (asked
   2026-10-14, for later): when the attention model has nothing at
   levels 1 to 4, the status line is not blank but one light line: my
@@ -110,7 +110,9 @@ the full self-test run.
 
 - **A watch on live** (question 38, yes, later): a Windows scheduled
   task that pings Alex's phone if the `assistant-bot` service is down,
-  rather than the dev bot always on.
+  rather than the dev bot always on. Also there, as an option: the dev
+  bot as an always-on caretaker that reads only live's health
+  (`docs/specs/attention.md`, section 8).
 - **A live eval to shorten the router's rules** (question 40: not now),
   about NZ$0.70, the cost audit's last open item.
 - **A read-only web page** (said 2026-10-14), reachable only over

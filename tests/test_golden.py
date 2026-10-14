@@ -8,7 +8,7 @@ until that is built (strict), so the list of gaps here is always the true one. E
 must keep the others passing.
 """
 import json
-from datetime import timedelta
+from datetime import time, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -37,8 +37,11 @@ def gap(reason: str):
 
 
 @pytest.fixture
-def bot(world, monkeypatch):  # noqa: F811
-    """The world of the conversation tests with the real pills and timers beside the demo lists."""
+def bot(world, monkeypatch, dev_clock):  # noqa: F811
+    """The world of the conversation tests with the real pills and timers beside the demo lists,
+    at noon tomorrow: never by the real time of day, which near midnight turns a minute or two
+    into a new day (question 39: two of these failed once in a run at about 12:08 am)."""
+    dev_clock.advance_to(day.at(day.today() + timedelta(days=1), time(12, 0)))
     actions.set_catalogue([*demo.ENTRIES, *pills_task.entries(), *timers_task.entries()])
     channel = SimpleNamespace(sent=[])
 
@@ -1376,3 +1379,10 @@ def test_28_what_answers_or_changes_the_card_is_still_read_against_it(my_day):
     bot.say(SAID["2"])
     assert card(bot)[0][1].lower() == "**iron** · daily at `8:00 am`"
     assert [(asked.purpose, asked.task) for asked in bot.requests[before:]] == [("extraction", "pills")]
+
+
+def test_the_golden_conversations_never_go_by_the_real_time_of_day(bot):
+    from core import clock
+
+    # Near midnight a minute or two would be a new day: they run at noon, whenever the suite runs (question 39)
+    assert day.local_time(clock.now()) == time(12, 0)
