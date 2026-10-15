@@ -65,7 +65,8 @@ bug's post, or says close B4.
 bug the user reported, with a golden test in `tests/test_golden.py`
 that replays their own messages from the report word for word: run, in
 live's folder, `.\.venv\Scripts\python.exe -m tasks.bugs.cli shipped B4
-tests/test_golden.py::<test> [more]`. It checks the words and runs the
+tests/test_golden.py::<test> [more] --with ..ssistant-bot\.venv\Scripts\python.exe`
+(live's own Python has no pytest; the tests still run on live's code). It checks the words and runs the
 tests on live's code, then marks the bug: it closes by itself three
 days later unless the user says reopen B4 or reports the same words
 again. A bug with none of their words in its report (only the bot's)

@@ -1504,8 +1504,8 @@ def live_folder(bugs_db, owner, tmp_path, monkeypatch):
     monkeypatch.setattr(config, "DEV_DATABASE", False)
     world = SimpleNamespace(ran=[], passes=True)
 
-    def passes(nodes):
-        world.ran.append(nodes)
+    def passes(nodes, python=""):
+        world.ran.append(nodes + ([python] if python else []))
         return world.passes
 
     monkeypatch.setattr(cli, "_passes", passes)
@@ -1537,3 +1537,24 @@ def test_shipped_refuses_outside_live_s_folder_a_test_that_does_not_replay_my_wo
     with pytest.raises(UserError, match="live's folder"):
         cli.run(["shipped", "B1", GOLDEN_TEST])
     assert not asyncio.run(store.get(1)).shipped
+
+
+def test_shipped_can_run_the_tests_with_another_python_that_has_pytest(live_folder):
+    cli.run(["shipped", "B1", GOLDEN_TEST, "--with", "C:/work/.venv/Scripts/python.exe"])
+    assert live_folder.ran == [[GOLDEN_TEST, "C:/work/.venv/Scripts/python.exe"]] and asyncio.run(store.get(1)).shipped
+    with pytest.raises(UserError, match="--with needs a Python"):
+        cli.run(["shipped", "B1", GOLDEN_TEST, "--with"])
+
+
+def test_a_python_with_no_pytest_is_said_not_counted_as_a_failing_test(bugs_db, monkeypatch):
+    calls = []
+
+    def run(command, **kwargs):
+        calls.append(command)
+        return SimpleNamespace(returncode=1, stdout="", stderr="")
+
+    monkeypatch.setattr(cli.subprocess, "run", run)
+    with pytest.raises(UserError, match="has no pytest"):
+        cli._passes([GOLDEN_TEST], "python-without-pytest")
+    assert calls == [["python-without-pytest", "-c", "import pytest"]], "the tests are not run with it"
+

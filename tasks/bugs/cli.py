@@ -4,12 +4,15 @@ the database directly: the bot isn't started and may be running.
     python -m tasks.bugs.cli list
     python -m tasks.bugs.cli show B4
     python -m tasks.bugs.cli note B4 "fix ready, needs retest: what changed"
-    python -m tasks.bugs.cli shipped B4 tests/test_golden.py::test_name [more tests]
+    python -m tasks.bugs.cli shipped B4 tests/test_golden.py::test_name [more tests] [--with <python>]
 
 `shipped` is run in live's folder once a fix is live: for a bug I reported, it
 checks that the golden tests named replay my own messages from the report word
 for word and pass on the code live runs, then marks the bug: it closes by
-itself in three days unless I say reopen or report it again.
+itself in three days unless I say reopen or report it again. Live's own
+Python has no pytest (it is for development machines only): `--with` names
+one that has it, the work folder's, and the tests still run on this folder's
+code.
 
 A bug of the dev database has a D in front (D4) and needs `--dev`, which picks
 that database:
@@ -47,10 +50,24 @@ def _test_code(node: str) -> str:
     raise UserError(f"There is no {bare} in {GOLDEN}.")
 
 
-def _passes(nodes: list[str]) -> bool:
-    """The tests run on the code of this folder (live's): True only if every one passes."""
-    done = subprocess.run([sys.executable, "-m", "pytest", "-q", *nodes], cwd=config.BASE_DIR, capture_output=True, text=True)
+def _passes(nodes: list[str], python: str = "") -> bool:
+    """The tests run on the code of this folder (live's), by `python -m pytest` from here, so this
+    folder's code is what is imported: True only if every one passes."""
+    python = python or sys.executable
+    if subprocess.run([python, "-c", "import pytest"], cwd=config.BASE_DIR, capture_output=True).returncode != 0:
+        raise UserError("That Python has no pytest: name one that has it with --with <python> (the work folder's .venv).")
+    done = subprocess.run([python, "-m", "pytest", "-q", *nodes], cwd=config.BASE_DIR, capture_output=True, text=True)
     return done.returncode == 0
+
+
+def _with(args: list[str]) -> tuple[list[str], str]:
+    """The arguments without `--with <python>`, and that Python ("" for this one)."""
+    if "--with" not in args:
+        return args, ""
+    at = args.index("--with")
+    if at + 1 >= len(args):
+        raise UserError("--with needs a Python: the path of one that has pytest.")
+    return args[:at] + args[at + 2:], args[at + 1]
 
 
 def _commit() -> str:
@@ -61,6 +78,7 @@ def _commit() -> str:
 def shipped(conn, args: list[str]) -> str:
     if not (config.DATA_DIR / LIVE_MARK).exists() or config.DEV_DATABASE:
         raise UserError("Run this in live's folder, on live's database: the fix must be what live runs.")
+    args, python = _with(args)
     item = store._db_get(conn, rules.parse_id(args[0]))
     nodes = args[1:]
     if item is None:
@@ -76,7 +94,7 @@ def shipped(conn, args: list[str]) -> str:
     missing = rules.uncovered(rules.owner_words(item.report), code)
     if missing:
         raise UserError(f"{len(missing)} of your messages in {name} {'is' if len(missing) == 1 else 'are'} not replayed word for word by the tests named.")
-    if not _passes(nodes):
+    if not _passes(nodes, python):
         raise UserError(f"The tests named don't pass on this folder's code: {name} is not marked.")
     on = rules.closes_on(days.today())
     store._db_mark_shipped(conn, item.id, on.isoformat(), " ".join(nodes))
