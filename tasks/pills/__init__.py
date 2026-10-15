@@ -168,6 +168,9 @@ class PillsTask(Task):
     async def tally(self, user_id, day):
         return await history.tally(user_id, day)
 
+    async def week(self, user_id, monday, upto):
+        return await history.week_of_pills(user_id, monday, upto)
+
     async def startup(self, client) -> None:
         await checklist.startup()
         await reminders.startup()

@@ -71,6 +71,23 @@ def on(todos: list[Todo], today: date) -> Day:
     return Day(tuple(overdue), tuple(current), tuple(done), tuple(later))
 
 
+def week_line(todos: list[Todo], monday: date, upto: date):
+    """To-dos' line in the week of everything: "5 done this week · 3 still open", the
+    oldest still open small ("oldest: Renew the passport, from Mon 5 Oct"). None with neither."""
+    from core import design
+    from core.weekly import Week
+
+    done = [each for each in todos if each.is_done and each.done_on is not None and monday <= each.done_on <= upto]
+    open_ = sorted((each for each in todos if not each.is_done and each.added_on <= upto), key=lambda each: (each.day or each.added_on, each.id))
+    if not done and not open_:
+        return None
+    parts = [f"{len(done)} done this week"] + ([f"{len(open_)} still open"] if open_ else [])
+    oldest = open_[0] if open_ else None
+    small = f"oldest: {oldest.text}, from {day_text(oldest.day or oldest.added_on, upto)}" if oldest else ""
+    status = design.DONE if not open_ else design.DUE if any(each.day is not None and each.day < upto for each in open_) else design.ANY_TIME
+    return Week(" · ".join(parts), len(done), len(done) + len(open_), small, status)
+
+
 def day_text(day: date, today: date) -> str:
     """A day as a to-do says it: "today", "tomorrow", "Fri 16 Oct"."""
     if day == today:

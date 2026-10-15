@@ -177,6 +177,12 @@ class CalendarTask(Task):
     async def summary(self, user_id, day):
         return await summary(user_id, day)
 
+    async def week(self, user_id, monday, upto):
+        events = await store.events(user_id)
+        next_monday = monday + timedelta(days=7)
+        days_ = [next_monday + timedelta(days=ahead) for ahead in range(7)]
+        return rules.week_line([(day, [None if each.all_day else each.start for each in rules.on_day(events, day)]) for day in days_])
+
     async def attention(self, user_id, now):
         return await items(user_id, now)
 

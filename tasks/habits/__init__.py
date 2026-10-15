@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from core import cards, config, hub, repeats, scheduler
 from core import day as days
@@ -127,6 +127,16 @@ class HabitsTask(Task):
 
     async def summary(self, user_id, day):
         return await summary(user_id, day)
+
+    async def week(self, user_id, monday, upto):
+        habits = await store.every(user_id)
+        found: dict[int, tuple[str, list[bool]]] = {each.id: (each.name, []) for each in habits}
+        day = monday
+        while day <= upto:
+            for each in rules.due(habits, await store.ticked(user_id, day), day):
+                found[each.habit.id][1].append(each.finished)
+            day += timedelta(days=1)
+        return rules.week_line(list(found.values()))
 
     async def attention(self, user_id, now):
         return await items(user_id, now)

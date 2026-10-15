@@ -85,3 +85,18 @@ kilograms for everything).
     when asked, to begin with.
 28. You log a whole exercise at once ("bench 60 for 10, 9, 8"), not
     set by set? → Whole exercise.
+
+From the sketches of 15 Oct ("Design · Gym onboarding sketches";
+`docs/drafts/gym-onboarding.md`):
+
+76. Which way in: A (attach the sheet, or paste its rows), B (a short
+    guided setup) or C (describe the plan in one message)? → A, with C's
+    way of changing one thing in words added later.
+77. Once the plan is in, which holds it: the sheet (a change is always
+    a new sheet) or the bot (changes in words, the sheet only the way
+    in)? → The sheet, to begin with: one place, nothing to disagree.
+78. Can you get a `.csv` out of your sheet on the phone, or is pasting
+    the rows easier? → Pasting the rows: the bot reads pasted cells as it
+    reads a `.csv`.
+79. When an exercise goes as planned, is one tap (Done as planned)
+    right, with words or the Different… box for anything else? → Yes.

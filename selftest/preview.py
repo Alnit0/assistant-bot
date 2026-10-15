@@ -811,6 +811,166 @@ async def reply_preview(title: str, intro: str, found: list[tuple[str, tuple]]) 
     return await _as_dev_bot(work)
 
 
+# ---------------------------------------------------------------------------
+# The week of everything (WEEKLY_ALL, off): the Sunday summary as one card, a
+# busy week and a quiet one, each task's line drawn by its own code from
+# made-up data (`python -m selftest.preview --weekly`), a post of its own.
+# ---------------------------------------------------------------------------
+WEEKLY_TITLE = "Design · Weekly summary"
+
+
+def _week_sections(busy: bool) -> list:
+    from core import weekly
+    from tasks.calendar import rules as calendar
+    from tasks.habits import rules as habits
+    from tasks.pills import history
+    from tasks.todos.rules import Todo
+    from tasks.todos import rules as todos
+
+    sunday = _day()
+    monday = sunday - timedelta(days=sunday.weekday())
+    sunday = monday + timedelta(days=6)
+    found = []
+
+    def add(name, icon, title, week):
+        if week is not None:
+            found.append(weekly.Section(name, icon, title, week))
+
+    def done(text, on):
+        return Todo(0, 1, text, None, monday - timedelta(days=3), days.at(on, time(12)), on)
+
+    if busy:
+        add("pills", "💊", "Pills", history.week_line(36, 42, 3, 2, 4, 3))
+        add("todos", "📝", "To-dos", todos.week_line(
+            [done("Buy stamps", monday), done("Call the plumber", monday + timedelta(days=2)), done("Pay the power bill", monday + timedelta(days=3)),
+             done("Water the plants", monday + timedelta(days=5)), done("Book a haircut", sunday),
+             Todo(6, 1, "Renew the passport", monday - timedelta(days=4), monday - timedelta(days=9)), Todo(7, 1, "Sort the garage", None, monday + timedelta(days=1)),
+             Todo(8, 1, "Return the library books", sunday - timedelta(days=1), monday)], monday, sunday))
+        add("habits", "🔁", "Personal routines", habits.week_line([("Morning", [True, True, True, False, True, True, True]), ("Evening", [True, False, True, True, False, True, True])]))
+        nxt = monday + timedelta(days=7)
+        add("calendar", "📅", "Calendar", calendar.week_line([
+            (nxt, [days.at(nxt, time(9)), days.at(nxt, time(18))]), (nxt + timedelta(days=1), [None]), (nxt + timedelta(days=2), [days.at(nxt + timedelta(days=2), time(12, 30))]),
+            (nxt + timedelta(days=4), [days.at(nxt + timedelta(days=4), time(9)), days.at(nxt + timedelta(days=4), time(15)), days.at(nxt + timedelta(days=4), time(19))]),
+        ]))
+    else:
+        add("pills", "💊", "Pills", history.week_line(7, 7, 0, 0, 0, 7))
+        add("todos", "📝", "To-dos", todos.week_line([done("Buy stamps", monday + timedelta(days=2))], monday, sunday))
+        add("habits", "🔁", "Personal routines", habits.week_line([("Morning", [True] * 7)]))
+        add("calendar", "📅", "Calendar", calendar.week_line([(monday + timedelta(days=7 + ahead), []) for ahead in range(7)]))
+    return found, monday, sunday
+
+
+def weekly_cards() -> list[tuple[str, tuple]]:
+    from core import weekly
+
+    found = []
+    for label, busy in (("A busy week", True), ("A quiet week (the calendar has nothing next week, so it is left out)", False)):
+        sections, monday, sunday = _week_sections(busy)
+        found.append((label, weekly.layout(sections, monday, sunday)))
+        found.append(("", (design.Text(design.small(f"what a phone shows: {weekly.text(sections, monday, sunday).splitlines()[0]}")),)))
+    return checked(found)
+
+
+def weekly_opening() -> str:
+    return "\n".join([
+        f"## {WEEKLY_TITLE}",
+        "The Sunday 7:00 pm summary for everything, not only pills: one card, a box a task with one line for the week and the detail small. A task with nothing to say that week is left out.",
+        "**Pills**: taken of all, late (half an hour or more after its time), missed, skipped; the streak small. **To-dos**: done this week, still open, the oldest small. **Personal routines**: the days each was done, as dots. **Calendar**: next week's events counted by day, the first one's time small, never a name.",
+        "-# Made-up data, a busy week and a quiet one. Behind WEEKLY_ALL (off): nothing changes on live until you say so. The buttons here do nothing.",
+    ])
+
+
+# ---------------------------------------------------------------------------
+# Gym onboarding, sketches only (`python -m selftest.preview --gym`): three ways
+# a plan could come in, each with how a session is logged and how the plan is
+# changed later, drawn by the real card code from a made-up plan (Push, Pull,
+# Legs). Nothing of gym is built: the buttons go nowhere. The options in words
+# are docs/drafts/gym-onboarding.md.
+# ---------------------------------------------------------------------------
+GYM_TITLE = "Design · Gym onboarding sketches"
+GYM = Entry("gym", "🏋️", "Gym", "x", ("y",), ())
+_GYM_IDS: list[int] = []
+
+
+def _gym_card(lines, kind="new", question=None, warnings=()):
+    from core import confirm
+
+    _GYM_IDS.append(len(_GYM_IDS) + 1)  # a card id each: several cards share one reply
+    return confirm.render(GYM, Proposal(lines=tuple(lines), data={}, kind=kind, question=question, warnings=tuple(warnings)), _GYM_IDS[-1]).layout
+
+
+def _plan_lines(note="", rest=True):
+    rest_said = " · rest 2 min" if rest else ""
+    return [
+        "**Push** · 4 exercises",
+        f"Bench press · 3 × 8–12 · 60 kg{rest_said}",
+        f"Overhead press · 3 × 8–10 · 40 kg{rest_said}",
+        "Dips · 3 × 10 · bodyweight",
+        "Triceps pushdown · 3 × 12 · 20 kg",
+        "**Pull** · 4 exercises · **Legs** · 4 exercises",
+        *([note] if note else []),
+    ]
+
+
+def _workout(now_line: str, which: str) -> tuple:
+    """Today's workout, asked for with `gym`, by the relevance rule: the exercise you're on in full with its
+    buttons, the next one in full, the rest one small line, what is done one small line."""
+    from core.cards import Button, PRIMARY, SUCCESS
+
+    row = (Button("Done as planned", "gym", "done", which, emoji="✅", style=SUCCESS), Button("Different…", "gym", "other", which, emoji="✏️", style=PRIMARY))
+    entries = [
+        design.Entry(f"**Bench press** · 3 × 8–12 · **60 kg**\n{design.small('last time 60 kg × 10, 9, 8 · Mon 12 Oct')}", design.DUE, row),
+        design.Entry(f"**Overhead press** · 3 × 8–10 · **40 kg**\n{design.small('next · last time 40 kg × 10, 9, 9')}", design.QUIET),
+    ]
+    box = design.topic(design.card_title("🏋️ Push", 0, 4), entries, lines=[design.small(now_line)], tail="later · Dips, Triceps pushdown")
+    return design.fit((box,))
+
+
+def _logged() -> tuple:
+    return (design.Text("✅ **Bench press** · 60 kg × 10, 10, 9 · last time 10, 9, 8 ▲ · 3 to go: Overhead press next"),)
+
+
+def _one_message(*cards) -> tuple:
+    """Several sketches in one reply, a small label above each."""
+    out: list = []
+    for label, pieces in cards:
+        out.append(design.Text(design.small(label)))
+        out += list(pieces)
+    return tuple(out)
+
+
+def gym_cards() -> list[tuple[str, tuple]]:
+    from core.actions import Choice
+
+    a = _one_message(
+        ("1 · you attach the sheet (a .csv), or paste its rows: the card shows what was read", _gym_card(_plan_lines("-# Columns not used: Tempo · Load ❓ → weight"))),
+        ("2 · `gym` on a training day: today's workout in the hub", _workout("Push is next in turn · Pull was Wed 14 Oct", "a")),
+        ("3 · “bench 60 for 10, 10, 9”, or Done as planned", _logged()),
+        ("4 · later: attach the new sheet, and only what changed is shown", _gym_card(["**Push**", "Bench press · weight · 60 kg → 62.5 kg", "➕ Face pulls · 3 × 15 · 10 kg"], kind="change")),
+    )
+    b = _one_message(
+        ("1 · “set up my gym plan”: a short guided setup, one question at a time", _gym_card(["**Your plan** · workouts in turn"], question=Question("How many workouts do you rotate through?", (Choice("2", {}), Choice("3", {}), Choice("4", {}), Choice("5", {}))))),
+        ("2 · you type the names (“push, pull, legs”), then a workout's exercises, a line each", _gym_card(["**Push** · step 2 of 4", "Bench press · 3 × 8–12 · 60 kg", "Overhead press · 3 × 8–10 · 40 kg", "Dips · 3 × 10 · bodyweight", "Triceps pushdown · 3 × 12 · 20 kg"], question=Question("Anything else in Push? Say it, or press Next.", (Choice("Next", {}),)))),
+        ("3 · logging is the same as A", _workout("Push is next in turn", "b")),
+        ("4 · later, in words: “add face pulls to pull, 3 x 15 at 10”", _gym_card(["**Pull**", "➕ Face pulls · 3 × 15 · 10 kg"], kind="change")),
+    )
+    c = _one_message(
+        ("1 · one message: “my gym plan: push: bench 3x8-12 60, ohp 3x8-10 40, dips 3x10, pushdowns 3x12 20. pull: … legs: …”", _gym_card(_plan_lines("-# ❓ dips: no weight said, so bodyweight", rest=False))),
+        ("2 · logging is the same as A", _workout("Push is next in turn", "c")),
+        ("3 · later, in words: “bench is 62.5 now”", _gym_card(["**Push**", "Bench press · weight · 60 kg → 62.5 kg"], kind="change")),
+    )
+    return checked([("A · Attach your spreadsheet", a), ("B · A short guided setup", b), ("C · Say it in words", c)])
+
+
+def gym_opening() -> str:
+    return "\n".join([
+        f"## {GYM_TITLE}",
+        "Three ways your gym plan could get into the bot, and how you'd use it day to day. Each reply below is one option: setting up, today's workout, logging a whole exercise at once (question 28), and changing the plan later.",
+        "**A** · attach your spreadsheet (or paste its rows): the bot reads it and shows a card to confirm. **B** · a short guided setup, one question at a time. **C** · describe the plan in one message.",
+        "-# Sketches drawn by the bot's own card code from a made-up plan (Push, Pull, Legs). Nothing of gym is built; the buttons do nothing. The options in full, with what could go wrong, are in docs/drafts/gym-onboarding.md; questions 76 to 79.",
+    ])
+
+
 def _number_after(args: list[str], flag: str) -> int:
     value = args[args.index(flag) + 1] if args.index(flag) + 1 < len(args) else ""
     if not value.isdigit() or int(value) not in design.ROUNDS:
@@ -821,6 +981,20 @@ def _number_after(args: list[str], flag: str) -> int:
 def main() -> int:
     sys.stdout.reconfigure(encoding="utf-8")
     args = sys.argv[1:]
+    if "--gym" in args:
+        found = gym_cards()
+        if "--check" in args:
+            print(f"{len(found)} messages built, each within one message.")
+            return 0
+        print("Posted:", asyncio.run(post_preview(GYM_TITLE, gym_opening(), found)))
+        return 0
+    if "--weekly" in args:
+        found = weekly_cards()
+        if "--check" in args:
+            print(f"{len(found)} messages built, each within one message.")
+            return 0
+        print("Posted:", asyncio.run(post_preview(WEEKLY_TITLE, weekly_opening(), found)))
+        return 0
     if "--routines-compare" in args:
         found = routines_compare()
         if "--check" in args:

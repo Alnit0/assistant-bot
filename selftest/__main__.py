@@ -113,7 +113,7 @@ def steps_expected(known: dict[str, int], wanted: list[str]) -> int:
 # Every switch is said for every start, so that what live's own .env has turned on never decides
 # a step: off, and the limits at their defaults, unless the start says otherwise
 SWITCHES = {
-    "CARDS_V2": "false", "REMINDERS_ENABLED": "false", "BRIEFING_ENABLED": "false", "DAY_PROGRESS": "false", "DAY_QUESTIONS": "false", "WEEKLY_SUMMARY": "false", "DMS_ENABLED": "false",
+    "CARDS_V2": "false", "REMINDERS_ENABLED": "false", "BRIEFING_ENABLED": "false", "DAY_PROGRESS": "false", "DAY_QUESTIONS": "false", "WEEKLY_SUMMARY": "false", "WEEKLY_ALL": "false", "DMS_ENABLED": "false",
     "NIGHTLY_SELFTEST": "false", "HUB_TIDY": "false", "QUIET_HOURS_ENABLED": "false", "QUIET_HOURS": "22:00-07:00", "NOTIFY_NTFY": "false",
     "NTFY_BOT_TOPIC": "", "WEATHER_ENABLED": "false", "TODOS_ENABLED": "false", "NUDGES_ENABLED": "false", "HABITS_ENABLED": "false", "TODAY_CARD": "false", "ROUTINES_LAYOUT": "b", "CALENDAR_ENABLED": "false", "CALENDAR_ICS_URL": "", "DESIGN_ROUND": "3", "DAILY_SPEND_LIMIT_NZD": "1.00", "SELFTEST_MONTHLY_LIMIT_NZD": "3.50", "USD_TO_NZD": "1.70",
 }

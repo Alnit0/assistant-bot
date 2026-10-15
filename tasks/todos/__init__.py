@@ -128,6 +128,9 @@ class TodosTask(Task):
     async def summary(self, user_id, day):
         return await summary(user_id, day)
 
+    async def week(self, user_id, monday, upto):
+        return rules.week_line(await store.every(user_id), monday, upto)
+
     async def attention(self, user_id, now):
         return await items(user_id, now)
 

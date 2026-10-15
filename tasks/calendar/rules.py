@@ -87,6 +87,23 @@ def parse(text: str, first: date, last: date) -> list[Event]:
     return ordered(found)
 
 
+def week_line(by_day: list[tuple[date, list]]):
+    """The calendar's line in the week of everything: next week's events counted by day
+    ("Mon 2 · Wed 1 · Fri 3"), and the first one's time small. Never an event's name: this
+    can reach a lock screen. `by_day` is (day, [each event's start, or None all day])."""
+    from core import design, timeinput
+    from core.weekly import Week
+
+    shown = [(day, starts) for day, starts in by_day if starts]
+    if not shown:
+        return None
+    line = "next week · " + " · ".join(f"{day:%a} {len(starts)}" for day, starts in shown)
+    first_day, starts = shown[0]
+    timed = sorted(each for each in starts if each is not None)
+    small = f"first: {first_day:%a} {timeinput.format_moment(timed[0])}" if timed else f"first: {first_day:%a}, all day"
+    return Week(line, None, None, small, design.QUIET)
+
+
 def ordered(events) -> list[Event]:
     """All-day first, then by start, then by title."""
     return sorted(events, key=lambda each: (not each.all_day, each.start.timestamp() if each.start else 0, each.first_day or date.min, each.title.lower()))

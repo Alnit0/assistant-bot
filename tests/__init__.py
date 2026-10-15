@@ -57,6 +57,7 @@ for name, value in {
     "DAY_PROGRESS": "",
     "DAY_QUESTIONS": "",
     "WEEKLY_SUMMARY": "",
+    "WEEKLY_ALL": "",
     "DMS_ENABLED": "",
     "NIGHTLY_SELFTEST": "",
     "HUB_TIDY": "",

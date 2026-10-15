@@ -313,6 +313,9 @@ except ValueError:
 # The weekly pills summary (tasks/pills/history.py): on Sunday evening the week is posted
 # in the hub. Off unless switched on
 WEEKLY_SUMMARY = flag(os.getenv("WEEKLY_SUMMARY"), False)
+# With WEEKLY_SUMMARY on: the Sunday summary is the week of everything (core/weekly.py), one card,
+# in place of the pills-only one. Off until Alex has seen the preview
+WEEKLY_ALL = flag(os.getenv("WEEKLY_ALL"), False)
 # The notify service (core/notify.py). NOTIFY_NTFY: alerts whose kind says so are also
 # pushed to the phone through ntfy, to the bot's own topic (NTFY_BOT_TOPIC: a secret, never
 # printed or logged). Off, or with no topic, nothing is pushed and Discord notifies as ever

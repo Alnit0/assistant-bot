@@ -8,6 +8,23 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-15 (evening)
 
+## Previews: the week of everything, gym onboarding (15 Oct, late)
+
+1. **The Sunday summary for everything**, behind `WEEKLY_ALL` (off; it
+   needs `WEEKLY_SUMMARY` on as well, which live has): one card, a box a
+   task, each with one line for the week and the detail small. Pills:
+   taken, late (half an hour after its time), missed, skipped, the
+   streak. To-dos: done this week, still open, the oldest. Routines: days
+   done each, as dots. Calendar: next week counted by day, the first
+   time, never a name. Posted as "Design · Weekly summary" (a busy and
+   a quiet week). Not on live: it ships with the next update.
+2. **Gym onboarding sketches**, no code: A (attach the sheet or paste
+   its rows), B (a short guided setup), C (the plan in one message),
+   each with logging and changing later, in
+   `docs/drafts/gym-onboarding.md` and posted as "Design · Gym
+   onboarding sketches". Questions 76 to 79.
+3. No requests to Claude: NZ$0.00 of the NZ$0.30 cap.
+
 ## A day in the hub, cross-task understanding, a cost check (15 Oct, evening)
 
 1. **A day in the hub** (`python -m selftest.day`): the dev bot on an
@@ -75,6 +92,13 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
   router now costs US$0.0040 a request (3,300 tokens, 11 tasks).
 - The nightly self-test reads the recorded answers back offline, not with
   pytest: live's folder has no test tools.
+- The week of everything goes through the task contract (`Entry.week`),
+  as the briefing does with `summary`, and the pills task's Sunday job
+  posts it when `WEEKLY_ALL` is on, so its schedule stays the one there
+  is. Late is half an hour after a dose's time.
+- In the gym sketches, a whole exercise as planned is one tap (Done as
+  planned), and pasted rows are read as a `.csv` would be: both are
+  suggestions (questions 78, 79), not built.
 - Two self-test steps were wrong, not the bot: 3.07 looked for "Today" in
   the checklist, whose page title went with question 64 (it failed the
   same way on the commit before this batch, checked in a worktree); 8.03

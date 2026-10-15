@@ -6,6 +6,9 @@ backfilled from the git log.
 
 ## 2026-10-15
 
+- Previews, nothing switched on: the Sunday summary for everything (pills, to-dos, personal routines,
+  next week's calendar) in one card, behind `WEEKLY_ALL`; and three sketches of how a gym plan could
+  get into the bot (`docs/drafts/gym-onboarding.md`). Both posted in the Design forum.
 - A pill reminder on the lock screen reads "💊 Dose due · 2:14 pm", and when it is posted again
   "· 2nd reminder", "· 3rd reminder", "· last reminder" (it said "Routine due" and "reminder 1 of 3").
 - The status line no longer stays on overdue to-dos all day: a dose or a reminder due now comes first. The

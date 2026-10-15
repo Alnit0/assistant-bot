@@ -143,6 +143,23 @@ def due(habits: list[Habit], ticked: set[int], day: date) -> list[Today]:
     return sorted(found, key=lambda each: (each.starts() is None, each.starts().timestamp() if each.starts() else 0, each.habit.id))
 
 
+def week_line(done_days: list[tuple[str, list[bool]]]):
+    """Personal routines' line in the week of everything: each routine's days done of the
+    days it was on, as dots ("**Morning** ●●●●○ 4/5"), in one line; None with none on.
+    `done_days` is (name, [done?] a day it was on, Monday first)."""
+    from core import design
+    from core.weekly import Week
+
+    shown = [(name, days_) for name, days_ in done_days if days_]
+    if not shown:
+        return None
+    done, total = sum(sum(days_) for _, days_ in shown), sum(len(days_) for _, days_ in shown)
+    line = " · ".join(f"**{name}** {design.progress(sum(days_), len(days_))}" for name, days_ in shown)
+    best = [name for name, days_ in shown if all(days_)]
+    small = f"every day: {', '.join(best)}" if best and len(best) < len(shown) else ("every one, every day" if best else "")
+    return Week(line, done, total, small, design.DONE if done == total else design.ANY_TIME)
+
+
 def state(today: Today, now: datetime) -> str:
     """What a routine is now: not yet (its time or window is still to come), open
     (any time; a time that has come, which is due from then; a window while it is

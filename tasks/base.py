@@ -278,6 +278,7 @@ class Task:
                 attention=self.attention if type(self).attention is not Task.attention else None,
                 tally=self.tally if type(self).tally is not Task.tally else None, label=self.title,
                 today=self.today if type(self).today is not Task.today else None,
+                week=self.week if type(self).week is not Task.week else None,
             )
         ]
 
@@ -313,6 +314,13 @@ class Task:
         Claude nothing; the card is brought up to date when its summary changes
         (`summaries.changed`). Only used if overridden."""
         return []
+
+    async def week(self, user_id: int, monday: date, upto: date):
+        """This task's week, Monday up to `upto` (a `weekly.Week`: a line, its dots,
+        a small line), or None with nothing to say, for the Sunday summary of
+        everything (core/weekly.py). It only reads and asks Claude nothing.
+        Only used if overridden."""
+        return None
 
     async def item_names(self, request: Request) -> list[str]:
         """The names of the user's things this task holds now (their pills, their

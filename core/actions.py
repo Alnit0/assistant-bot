@@ -417,6 +417,9 @@ class Entry:
     # `async (user_id, now) -> list of today.Line`: this task's things for today, for the
     # Today card (core/today.py): a to-do, a routine with its time, a reminder as a note
     today: Callable[[int, datetime], Awaitable[list]] | None = None
+    # `async (user_id, monday, upto) -> weekly.Week | None`: this task's week, Monday up to that
+    # day, in a line of its own words, for the Sunday summary of everything (core/weekly.py)
+    week: Callable[[int, date, date], Awaitable[object]] | None = None
     # What the user reads for it ("Personal routines"), where its name would not do; the name capitalised without one
     label: str = ""
 

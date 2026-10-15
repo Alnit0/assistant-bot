@@ -230,6 +230,46 @@ async def show(request: Request, data: dict, guessed: frozenset) -> LiveReply:
     return LiveReply(f"pills.{period}", shown.text, shown)
 
 
+# --- the week of everything (core/weekly.py) -----------------------------------------------------------------------
+LATE_AFTER = timedelta(minutes=30)  # a dose taken this long after its time is late
+
+
+def late(found: list[Occurrence]) -> int:
+    """How many doses were taken late: half an hour or more after they were due."""
+    return sum(1 for each in found if each.state == DONE and each.due_at is not None and each.actual_at is not None and each.actual_at - each.due_at >= LATE_AFTER)
+
+
+def week_line(taken: int, total: int, late_: int, missed: int, skipped: int, run: int):
+    """Pills' line in the week of everything: "18 of 21 taken · 2 late · 1 missed", the streak small."""
+    from core.weekly import Week
+
+    parts = [f"{taken} of {total} taken"] + [f"{count} {word}" for count, word in ((late_, "late"), (missed, "missed"), (skipped, "skipped")) if count]
+    status = design.MISSED if missed else design.DONE if taken + skipped == total else design.QUIET
+    return Week(" · ".join(parts), taken + skipped, total, streak_line(run), status)
+
+
+async def week_of_pills(user_id: int, monday: date, upto: date):
+    found = mine(await database.run(occurrences.db_between, user_id, TASK, monday, upto))
+    if not found:
+        return None
+    return week_line(
+        sum(each.state == DONE for each in found), len(found), late(found), sum(each.state == MISSED for each in found),
+        sum(each.state == SKIPPED for each in found), await streak_days(user_id, upto),
+    )
+
+
+async def everything_card(user_id: int, now_day: date) -> Card | None:
+    """The week of everything for the summary, or None when no task has anything to say."""
+    from core import weekly
+
+    monday, _ = week_of(now_day)
+    sections = await weekly.gather(user_id, monday, now_day)
+    if not sections:
+        return None
+    sunday = weekly.sunday_of(monday)
+    return Card(weekly.text(sections, monday, sunday), (), weekly.layout(sections, monday, sunday))
+
+
 # --- the weekly summary ----------------------------------------------------------------------------------------------
 def enabled() -> bool:
     return config.WEEKLY_SUMMARY
@@ -250,6 +290,16 @@ async def week_job(job: scheduler.Job) -> None:
     posted = 0
     for user_id in await database.run(store.db_users):
         now_day = days.today()
+        if config.WEEKLY_ALL:
+            card = await everything_card(user_id, now_day)
+            if card is None:
+                log.info("Weekly summary, job %s, user %s: no task had anything this week, nothing posted", job.id, user_id)
+                continue
+            message_id = await cards.send(where, card, silent=job.notify != timetable.NOTIFY)
+            await messages.record(message_id, where, lifetime=messages.REPLACED, slot=SLOT, task=TASK, user_id=user_id)
+            posted += 1
+            log.info("Weekly summary of everything, job %s, user %s: posted", job.id, user_id)
+            continue
         monday, _ = week_of(now_day)
         found = mine(await database.run(occurrences.db_between, user_id, TASK, monday, now_day))
         if not found:
