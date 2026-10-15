@@ -8,18 +8,21 @@ the bot posts, edits and deletes is real, and is read back from Discord and
 from the database before a step passes. How it works and what it can't
 see: `docs/DEVELOPMENT.md`, "The self-test".
 
-**Run:** 2026-10-15 08:43, 14 min 34 s
-**Result:** 122 passed, 0 failed, 0 broke, 1 skipped, of 123 steps
+**Run:** 2026-10-15 17:39, 18 min 49 s
+**Result:** 149 passed, 0 failed, 0 broke, 1 skipped, of 150 steps
 **Requests to Claude:** none real: every language step used a recorded answer · US$0.0000 spent
 
 <!-- run history: written by python -m selftest -->
 ## Run history
 
-The latest 15 of 42 runs, newest first. All of them, a line a run, are in
+The latest 15 of 45 runs, newest first. All of them, a line a run, are in
 `data/selftest/history.csv` (never rewritten). The first step to fail in a stage is a bug in the forum until it passes again.
 
 | Run | Commit | What ran | Passed | Failed | Failed steps | Spend | Took |
 |---|---|---|---|---|---|---|---|
+| 2026-10-15 17:39 | `db4d19c` | full | 149 of 150 | 0 | · | US$0.0000 (recorded) | 18 min 49 s |
+| 2026-10-15 17:25 | `db4d19c` | day, round4 | 99 of 104 | **4** | 2.06 2.07 2.08 3.07 | US$0.0000 (recorded) | 12 min 10 s |
+| 2026-10-15 16:53 | `db4d19c` | full | 146 of 149 | **2** | 3.07 8.03 | US$0.0000 (recorded) | 18 min 26 s |
 | 2026-10-15 14:59 | `3052fd0` | hub | 5 of 5 | 0 | · | US$0.0000 (recorded) | 1 min 12 s |
 | 2026-10-15 14:58 | `3052fd0` | calendar | 5 of 5 | 0 | · | US$0.0000 (recorded) | 0 min 41 s |
 | 2026-10-15 13:28 | `2e5b3b5` | hub | 5 of 5 | 0 | · | US$0.0000 (recorded) | 1 min 16 s |
@@ -32,9 +35,6 @@ The latest 15 of 42 runs, newest first. All of them, a line a run, are in
 | 2026-10-15 08:43 | `e51ff3d` | full | 122 of 123 | 0 | · | US$0.0000 (recorded) | 14 min 34 s |
 | 2026-10-15 03:00 | `?` | nightly, full | 117 of 123 | **5** | 5.01c 5.02 5.03b 5.04 5.04b | US$0.0000 (recorded) | 14 min 14 s |
 | 2026-10-15 00:13 | `?` | ? (did not finish: stopped before the end) | 82 of 82 | 0 | · | US$0.0000 (recorded) | 0 min 00 s |
-| 2026-10-14 15:42 | `bc81391` | full | 122 of 123 | 0 | · | US$0.0000 (recorded) | 14 min 32 s |
-| 2026-10-14 14:45 | `abfceea` | full | 122 of 123 | 0 | · | US$0.0000 (recorded) | 14 min 30 s |
-| 2026-10-14 14:25 | `74f1a8f` | briefing | 21 of 21 | 0 | · | US$0.0000 (recorded) | 2 min 07 s |
 
 <!-- end of run history -->
 
@@ -53,23 +53,27 @@ What is worth a look whether or not its step passed.
 
 **Warnings and errors in `logs/dev-bot.log` during the run**
 
-- ×6 `WARNING discord.state: Guilds intent seems to be disabled. This may cause state related issues.`
+- ×10 `WARNING discord.state: Guilds intent seems to be disabled. This may cause state related issues.`
 - `WARNING assistant: Pills reminders: dose 19 could not be posted (try 1): 503 Service Unavailable (the self-test's own: the post went through). Tried again at 8:01 pm`
-- `WARNING assistant: No handler for weather/fetch jobs; they will wait`
-- `WARNING assistant: No handler for weather/refresh jobs; they will wait`
+- ×5 `WARNING assistant: No handler for weather/fetch jobs; they will wait`
+- ×5 `WARNING assistant: No handler for weather/refresh jobs; they will wait`
 
 **Slow steps** (12 seconds or more; a step is mostly waiting for Discord, and each input is given about a second to settle)
 
-- 3.14 Every sketch in docs/mockups (19) posted with `dev mock`: 64s
+- 3.14 Every sketch in docs/mockups (19) posted with `dev mock`: 65s
+- 3.13d Pause and resume: “pause the evening checklist”, Save; then “turn the evening checklist back on”, Save: 18s
 - 6.01 A start with HUB_TIDY on: 18s
-- 3.13d Pause and resume: “pause the evening checklist”, Save; then “turn the evening checklist back on”, Save: 16s
-- 6.06 The same, then Save: 15s
-- 6.09 The next morning at 6:00: 14s
+- 6.06 The same, then Save: 18s
+- 9.05 Done: pick Skincare in the dropdown, then “did brush teeth and floss”: 15s
 - 1.08 Names: “add Testvit and Testvit forte”, “I took testvit”, “skip forte”: 14s
+- 6.09 The next morning at 6:00: 14s
+- 7.08 Carry over: two days on, Call Ryan (for the day before) was never done: 14s
 - 6.05 Something I say in the hub that leads to a card, then Cancel: 13s
-- 6.07 Pinned stays: 13s
+- 9.03 Make a routine with a window: “make a testevening routine <in 30 minutes> to <in 3 hours>: brush teeth, floss, skincare: cleanser, toner, serum”, then Save: 12s
+- 3.13b2 The lists that were plain, in the new look: `my pills`, “show my week”, `bugs`: 12s
+- 6.03 I say something in the hub and get a reply: `took testany`: 12s
 
-The whole run took 14 min 34 s, 75 seconds of it with the bot off on purpose.
+The whole run took 18 min 49 s, 75 seconds of it with the bot off on purpose.
 
 **In the specs and not tested here**
 
@@ -90,12 +94,12 @@ The whole run took 14 min 34 s, 75 seconds of it with the bot off on purpose.
 
 ## Start 1: the old look, reminders on. A day of pills up to the afternoon, then the bot is cut off mid-message
 
-Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 220s; the process ended with 0.
+Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 219s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
 | 1.01 | The dev bot starts in the test channels and says nothing about it | ✅ pass | On the dev database, with no “Online and ready” in #selftest-inbox and no start card in #selftest-log: a start leaves no trace |  |  | asked |
-| 1.01a | The dev bot's status line and nickname during a self-test | ✅ pass | The status line says how far the run is: 🧪, steps done (of all, once that is known), the minutes left, and ❌ with a count once a step has failed. The nickname ends “· testing” | 🧪 1/123 · 15m |  | attention spec, part 2 |
+| 1.01a | The dev bot's status line and nickname during a self-test | ✅ pass | The status line says how far the run is: 🧪, steps done (of all, once that is known), the minutes left, and ❌ with a count once a step has failed. The nickname ends “· testing” | 🧪 1/149 · 22m |  | attention spec, part 2 |
 | 1.01b | The schedules the engine made at start | ✅ pass | Five rows, each once: Nightly backup, End of the day and Exchange rate (the bot's own, locked), Pills checklist at 6:00 am every day in the hub, silent, and the Needs-a-look check at 7:00 am; each with exactly one run booked, with a key | End of the day 00:00, Exchange rate 05:30, Needs-a-look check 07:00, Nightly backup 03:00, Pills checklist 06:00 |  | scheduler stage 1 |
 | 1.02 | The dev clock is moved to tomorrow, 5:50 am | ✅ pass | The clock reads 5:50 am tomorrow; the day rolled over with nothing posted in the hub | Fri 16 Oct 05:50 |  | asked |
 | 1.02b | Midnight and 3:00 am went by on the way | ✅ pass | The end of the day and the nightly backup each ran once from their schedules, for those local times, and each is booked again for the next day; “💾 Backup saved” is in #selftest-log (the copy is in the run's own folder) | backup assistant-2026-10-16_055000.db |  | scheduler stage 1 |
@@ -124,7 +128,7 @@ Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 220s; the process end
 | 1.12 | `pills` typed in #selftest-inbox | ✅ pass | A fresh copy at the bottom of the hub; the old checklist and its messages are gone |  |  | T15, R48 |
 | 1.13 | `took testany`: the typed shortcut | ✅ pass | At once “✅ **Testany** · taken …”, the checklist shows it, Testany's own message goes, and no request to Claude is made | ✅ **Testany** · taken 6:00 am · still to take today: Testa (dose 1 of 3) `8:00 a |  | 43.1 |
 | 1.14 | `took testany` again | ✅ pass | Not the shortcut any more (nothing is left today): it is read as plain words, and the answer says it is already taken. Nothing changes | ✅ **Testany** · taken 6:00 am already | recorded answer | 43.2 |
-| 1.15 | 8:00 am: the reminder for Testa | ✅ pass | One new message in the hub that notifies. Its first line is “💊 Routine due · 8:00 am” and names no pill; it was posted as that line and written in after (an edit); under it Testa, dose 1 of 3, with Taken, Taken at…, Snooze 15m, Skip | 💊 Routine due · 8:00 am |  | T41 (38.2), asked |
+| 1.15 | 8:00 am: the reminder for Testa | ✅ pass | One new message in the hub that notifies. Its first line is “💊 Dose due · 8:00 am” and names no pill; it was posted as that line and written in after (an edit); under it Testa, dose 1 of 3, with Taken, Taken at…, Snooze 15m, Skip | 💊 Dose due · 8:00 am |  | T41 (38.2), asked |
 | 1.15b | With the 8:00 am dose due and not taken, live's status line would say so | ✅ pass | The top attention item is the dose that is due: “💊 due 8am” | 💊 due 8am |  | attention spec, part 2 |
 | 1.16 | Taken is pressed on the reminder | ✅ pass | The reminder goes; dose 1 is taken; the checklist shows it |  |  | 38.4 |
 | 1.17 | Too soon: `took testa` a minute after dose 1 | ✅ pass | A card that says dose 1 was already logged and asks in so many words: “⚠️ You already logged dose 1 at … Add another dose?” with Log it and Cancel; nothing is ticked off. Cancel removes it | ⚠️ You already logged dose 1 at 8:00 am. That's just now. The gap is at least 3h. Add another dose? |  | 43.3, T46; asked 2026-10-14 |
@@ -139,7 +143,7 @@ Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 220s; the process end
 
 ## Start 2: the same settings, after 75 seconds off. The catch-up, then the rest of the day and the next morning
 
-Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 101s; the process ended with 0.
+Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 107s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -149,9 +153,9 @@ Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 101s; the process end
 | 2.04 | The checklist after the restart | ✅ pass | The same message as before the stop, brought up to date in place: no second copy |  |  | T37 (36.3) |
 | 2.04b | The schedules after the restart | ✅ pass | The same three rows as before the stop (none made again), no run booked twice, and the 6:00 am checklist was not posted a second time |  |  | scheduler stage 1 |
 | 2.05 | A card from before the restart: Save is pressed | ✅ pass | Otherpill is saved: the button still works and applies exactly what the card showed |  |  | T37 (36.2) |
-| 2.06 | Left alone, the reminder is posted again (1 of 3) | ✅ pass | A new message in place of the old, saying “reminder 1 of 3”; only ever one |  |  | T44 (38.5) |
-| 2.07 | Left alone, the reminder is posted again (2 of 3) | ✅ pass | A new message in place of the old, saying “reminder 2 of 3”; only ever one |  |  | T44 (38.5) |
-| 2.08 | Left alone, the reminder is posted again (3 of 3) | ✅ pass | A new message in place of the old, saying “reminder 3 of 3”; only ever one |  |  | T44 (38.5) |
+| 2.06 | Left alone, the reminder is posted again (1 of 3) | ✅ pass | A new message in place of the old, its first line ending “2nd reminder”; only ever one |  |  | T44 (38.5) |
+| 2.07 | Left alone, the reminder is posted again (2 of 3) | ✅ pass | A new message in place of the old, its first line ending “3rd reminder”; only ever one |  |  | T44 (38.5) |
+| 2.08 | Left alone, the reminder is posted again (3 of 3) | ✅ pass | A new message in place of the old, its first line ending “last reminder”; only ever one |  |  | T44 (38.5) |
 | 2.09 | After the third reminder the reminders stop, and the dose is still to take | ✅ pass | The reminder goes and no other is posted. The dose is not missed (it can still be taken today): the checklist still shows it to take, with no ❌ |  |  | T45 (38.6); asked 2026-10-14 |
 | 2.09b | Half an hour before Testa's latest time: one last chance | ✅ pass | At 3:30 pm one more message, which notifies: “💊 Last chance today · take by 4:00 pm”, with no pill in that line; under it the pill, the dose and why. Taken, Taken at… and Skip, no Snooze. Only the one | 💊 Last chance today · take by 4:00 pm |  | asked 2026-10-14 |
 | 2.10 | Past Testa's latest time the dose is missed; logged as taken then: `took testa` | ✅ pass | At 4:00 pm dose 3 is missed. The typed shortcut, with no request to Claude, asks first: a card “Dose 3 was missed (due …). … Log it as taken now?” with Log it and Cancel; nothing is ticked off until Log it | ⚠️ Dose 3 was missed (due 2:06 pm). That's after the latest time, 4:00 pm. Log it as taken now? |  | T45 (38.7); asked 2026-10-13 |
@@ -167,7 +171,7 @@ Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 101s; the process end
 
 ## Start 3: `CARDS_V2` on. Every card posted and edited in the new look, and the old look's messages edited under it
 
-Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`. Took 196s; the process ended with 0.
+Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`. Took 201s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -175,7 +179,8 @@ Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`. Took 196s; the process ende
 | 3.02 | An old-look reminder, Snooze pressed with the new look on | ✅ pass | Discord accepts the edit: the same message now says “Snoozed until …” | the message is Components V2 afterwards |  | asked: switching looks |
 | 3.03 | An old-look card, Save pressed with the new look on | ✅ pass | Discord accepts the edit: the card becomes its confirmation and Testa's dose is 2 tablets | the message is plain afterwards |  | asked: switching looks |
 | 3.04 | The old-look checklist, rewritten with the new look on (`took testany`) | ✅ pass | The checklist kept for today shows Testany taken. Either the same message turned into the new look in place, or it was replaced by one message: never two | the same message, edited; it is Components V2 |  | asked: switching looks |
-| 3.05 | `pills` with the new look on | ✅ pass | One message: “💊 Today · Thu 15 Oct”, then one box: “### 💊 Pills” with dots and a count, a pill an item, Testany (taken) in the small line at the bottom, and no separate message for a dose with no time | ## 💊 Today · Sat 17 Oct · boxes 0xfaa61a |  | T51 (41.3) |
+| 3.05 | `pills` with the new look on | ✅ pass | One message, one box: “### 💊 Pills” with dots and a count (no page title), a pill an item, Testany (taken) in the small line at the bottom, and no separate message for a dose with no time | ### 💊 Pills ●○○○○○ 1/6 · boxes 0xfaa61a |  | T51 (41.3) |
+| 3.05b | “What pills are left” in #selftest-inbox (golden 29) | ✅ pass | The answer itself, there: a first line naming no pill (“💊 **n left today** · dots and count”), then a dose a line with its time in bold; no new checklist in the hub, and no pointer in its place | 💊 **5 left today** · ●○○○○○ 1/6 | recorded answer | Alex, 15 Oct |
 | 3.06 | Taken is pressed in Testa's box on the checklist | ✅ pass | The checklist stays and is rewritten in place: dose 1 has ✅; the reminder for it goes |  |  | T53 (41.5) |
 | 3.07 | Taken pressed again in Testa's box: too soon | ✅ pass | An amber box “⚠️ You already logged dose 1 at … Add another dose?” with Log it and Cancel; nothing ticked off. Cancel |  |  | T54 (41.6); asked 2026-10-14 |
 | 3.08 | Skip is pressed in Otherpill's box | ✅ pass | Its box turns grey and says skipped, with no buttons for it |  |  | T55 (41.7) |
@@ -195,7 +200,7 @@ Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`. Took 196s; the process ende
 
 ## Start 4: `CARDS_V2` off again, and a tiny spend limit. The new look's messages edited under the old, and the spend line
 
-Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`, `DAILY_SPEND_LIMIT_NZD=0.001`, `USD_TO_NZD=1.70`. Took 58s; the process ended with 0.
+Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`, `DAILY_SPEND_LIMIT_NZD=0.001`, `USD_TO_NZD=1.70`. Took 61s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -214,7 +219,7 @@ Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`, `DAILY_SPEND_LIMIT_NZD=0.0
 
 ## Start 5: `BRIEFING_ENABLED` on (the starts before it had it off). The morning routine, “brief me”, and the briefing kept up to date in place
 
-Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `BRIEFING_ENABLED=true`, `DAY_PROGRESS=true`, `DAY_QUESTIONS=true`, `WEEKLY_SUMMARY=true`, `WEATHER_ENABLED=true`, `WEATHER_SOURCE=C:\Users\temp\projects\assistant-bot\tests\fixtures\weather_drizzle.json`. Took 87s; the process ended with 0.
+Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `BRIEFING_ENABLED=true`, `DAY_PROGRESS=true`, `DAY_QUESTIONS=true`, `WEEKLY_SUMMARY=true`, `WEATHER_ENABLED=true`, `WEATHER_SOURCE=C:\Users\temp\projects\assistant-bot\tests\fixtures\weather_drizzle.json`. Took 91s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -238,7 +243,7 @@ Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `BRIEFING_ENABLED=true`, `D
 
 ## Start 6: `HUB_TIDY` on as well (off until now). What is said in the hub goes once handled, pinned stays, yesterday goes in the morning, and a copy is saved first
 
-Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `BRIEFING_ENABLED=true`, `HUB_TIDY=true`. Took 111s; the process ended with 0.
+Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `BRIEFING_ENABLED=true`, `HUB_TIDY=true`. Took 115s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -252,6 +257,67 @@ Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `BRIEFING_ENABLED=true`, `H
 | 6.08 | The same exchange in #selftest-inbox | ✅ pass | Nothing goes after 2 minutes: the hub's rule is the hub's. The line that reports the change is recorded to last the day |  |  | scheduler stage 4 |
 | 6.09 | The next morning at 6:00 | ✅ pass | The tidy runs first: yesterday's checklist and briefing are gone and today's are there, one of each; yesterday's line in #selftest-inbox is gone; the reply I had pinned (and unpinned since) is left, being kept; nothing in #selftest-log | the tidy's line: 3 removed |  | scheduler stage 4 |
 | 6.10 | `dev clock reset` | ✅ pass | The clock is the real time again |  |  | housekeeping |
+
+## p7
+
+Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `BRIEFING_ENABLED=true`, `HUB_TIDY=true`, `TODOS_ENABLED=true`, `DESIGN_ROUND=4`. Took 86s; the process ended with 0.
+
+| Step | What | Result | Expected | Saw | Claude | From |
+|---|---|---|---|---|---|---|
+| 7.01 | To-dos are on, and the list is empty | ✅ pass | `my to-dos` says there is nothing on it, and there is no to-dos card in the hub (a card with nothing for today is not there) |  |  | to-dos (15 Oct) |
+| 7.02 | Add a to-do: “add buy stamps”, then Save | ✅ pass | A 📝 To-dos · new card with **Buy stamps** · any day; after Save the card in the hub appears with it and one Done dropdown holding it (round 4: no button under each) | ### 📝 To-dos ○ 0/1 | recorded answer | to-dos (15 Oct); the list rule (round 4) |
+| 7.03 | Add one with a day: “add call Ryan tomorrow”, then Save | ✅ pass | The card says **Call Ryan** · tomorrow; after Save it is on the list for tomorrow, and not on today's card |  | recorded answer | to-dos (15 Oct) |
+| 7.04 | A question: “what's on my to-do list?” | ✅ pass | The answer there, in #selftest-inbox: both to-dos, Call Ryan for tomorrow; nothing posted in the hub in its place |  | recorded answer | to-dos (15 Oct); a question is answered where it is asked |
+| 7.05 | Done by words: “I bought the stamps” | ✅ pass | Ticked off at once, no card: one line “✅ **Buy stamps** · done”, and the hub card counts it in its small line (“✅ 1 done”) |  | recorded answer | to-dos (15 Oct) |
+| 7.06 | Undo: “undo that” | ✅ pass | Buy stamps is back on the list, not done, and in the card's Done dropdown again |  | recorded answer | to-dos (15 Oct) |
+| 7.07 | Done by the dropdown on the hub card: pick Buy stamps | ✅ pass | The card is edited in place: “✅ 1 done” in its small line, and Buy stamps gone from the dropdown (Call Ryan, for tomorrow, still in it) |  |  | to-dos (15 Oct); the list rule (round 4) |
+| 7.08 | Carry over: two days on, Call Ryan (for the day before) was never done | ✅ pass | 9:00 am two days on: the morning routine has posted the to-dos card, and Call Ryan is on it overdue, amber, “from yesterday”; Buy stamps, done two days ago, is not | ### 📝 To-dos ○ 0/1 |  | to-dos (15 Oct) |
+| 7.09 | All done: pick Call Ryan in the dropdown | ✅ pass | The card stays, edited in place: green, every dot solid, “✅ 1 done” in its one small line and no dropdown or button left (a card is only away on a day with nothing for it: 7.01) |  |  | to-dos (15 Oct); the list rule (round 4) |
+
+## p8
+
+Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `DESIGN_ROUND=4`, `TODOS_ENABLED=true`. Took 58s; the process ended with 0.
+
+| Step | What | Result | Expected | Saw | Claude | From |
+|---|---|---|---|---|---|---|
+| 8.01 | `pills` in round 4 | ✅ pass | One box: a dose that can be taken now has one button, Taken (no Taken at…, no Skip); the rest of the day, what is done and what was missed are small lines | ### 💊 Pills ●●●○○○○ 3/7 / **Testhub** · any time / **Testa** · dose 2 of 3 · **11:00 am** · <t:1792188047:R> / -# later today · 2:00 pm, 8:00 pm |  | round 4 (15 Oct) |
+| 8.02 | Taken logs the dose at once, and a reply with a time puts it right | ✅ pass | No pop-up: the dose is taken now and a line says so, “reply to this with a time to put it right”; a reply to that line with a time two minutes earlier moves it (old time → new time) | taken: [('Testhub', 1)]; ✏️ **Testhub** · taken 9:00 am → 8:58 am · still to take today: Testa (dose 2 of 3) `11:00 am`, Testa (dose 3 of 3) `2:0 | recorded answer | round 4, question 67: variant 2 |
+| 8.03a | “add Testskip to my pills once a day”, then Save | ✅ pass | A card “💊 Pills · new” naming Testskip with Save and Cancel; after Save the pill exists and the card is its confirmation | ✅ Saved · 💊 **Testskip** · daily, any time | recorded answer | set up for 8.03 |
+| 8.03 | Skip is said in words, and “undo that” puts it back | ✅ pass | “skip testskip”: Testskip's dose is skipped, one line says so; “undo that”: it is back, not skipped |  | recorded answer | round 4: Skip in words only |
+| 8.04 | To-dos in round 4: the first three, “+1 more”, and one Done dropdown | ✅ pass | Four to-dos added: the card shows three in full, a small “+1 more”, no Done button under each, and one dropdown “✅ Done: pick one” holding all four | ### 📝 To-dos ●○○○○ 1/5 / **Buy stamps** / **Call the dentist** / **Book the WOF** / -# +1 more | recorded answer | round 4: the list rule (15 Oct) |
+| 8.05 | Pick one in the Done dropdown | ✅ pass | Picking “Water the plants”: it is done, and the card is rewritten in place with one more done, no “+1 more”, and the dropdown one shorter |  |  | round 4: the list rule (15 Oct) |
+
+## p9
+
+Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `DESIGN_ROUND=4`, `TODOS_ENABLED=true`, `NUDGES_ENABLED=true`, `HABITS_ENABLED=true`, `TODAY_CARD=true`. Took 62s; the process ended with 0.
+
+| Step | What | Result | Expected | Saw | Claude | From |
+|---|---|---|---|---|---|---|
+| 9.01 | Set a reminder: “remind me at <in 20 minutes> to call the bank”, then Save | ✅ pass | A ⏰ card with Save; after Save it is booked for that time | 9:20 am | recorded answer | reminders (15 Oct) |
+| 9.02 | It goes off in the hub, and Done deals with it | ✅ pass | At its time a reminder in the hub whose first line names nothing (“⏰ Reminder · <time>”), with Done and Snooze; Done takes the buttons away |  |  | reminders (15 Oct) |
+| 9.03 | Make a routine with a window: “make a testevening routine <in 30 minutes> to <in 3 hours>: brush teeth, floss, skincare: cleanser, toner, serum”, then Save | ✅ pass | A card naming the window and the 3 items, the group with its steps; after Save no card of its own yet (its window is still to come) |  | recorded answer | personal routines, layout B (15 Oct) |
+| 9.04 | Its window starts: its own card, and the Today card | ✅ pass | A 🔁 Testevening card in the hub with the first three items, Skincare's steps as a guide, and one Done dropdown; the 📅 Today card names it | ### 🔁 Testevening ○○○ 0/3 / -# 9:50 am to 12:20 pm / **Brush teeth** / **Floss** |  | personal routines, layout B; the Today card (15 Oct) |
+| 9.05 | Done: pick Skincare in the dropdown, then “did brush teeth and floss” | ✅ pass | The pick ticks the whole group (“✅ 1 done” on the card); the words tick the rest, and the routine's card is tidied away |  | recorded answer | personal routines (15 Oct) |
+
+## p10
+
+Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `DESIGN_ROUND=4`, `TODAY_CARD=true`, `CALENDAR_ENABLED=true`, `CALENDAR_ICS_URL=C:\Users\temp\projects\assistant-bot\tests\fixtures\calendar_selftest.ics`. Took 30s; the process ended with 0.
+
+| Step | What | Result | Expected | Saw | Claude | From |
+|---|---|---|---|---|---|---|
+| 10.01 | The feed is read at start-up | ✅ pass | A read booked at start-up runs: the copy holds the made-up events, and the feed it read is the fixture, not a link | 192 events kept |  | calendar (15 Oct) |
+| 10.02 | “what's on tomorrow?” | ✅ pass | In place: a first line with the day and a count and no event's name, then the made-up events with their times |  | recorded answer | calendar (15 Oct) |
+| 10.03 | “when is the dentist?” | ✅ pass | The next Test dentist: the first line says when and names nothing, the second names it |  | recorded answer | calendar (15 Oct) |
+| 10.04 | “am I free at 6:30 pm tomorrow?” | ✅ pass | Not free: Test gym is on then |  | recorded answer | calendar (15 Oct) |
+| 10.05 | The Today card has today's events | ✅ pass | The 📅 Today card in the hub: an event in full, or those that are over in one small line | ### 📅 Today / 📅 **Test dentist** / **3:00 pm** · <t:1792202400:R> / -# 📅 1 earlier today |  | calendar and the Today card (15 Oct) |
+
+## The cross-task conversations, as Claude last answered them (offline: no request sent, no bot started)
+
+Settings: . Took 4s; the process ended with 0.
+
+| Step | What | Result | Expected | Saw | Claude | From |
+|---|---|---|---|---|---|---|
+| u.01 | The cross-task conversations, as last recorded | ✅ pass | Every cross-task golden conversation reads as it did when recorded: the router's task and extraction's action, as the bot's own code reads them | 58 recorded answers read back right | recorded answer | asked (15 Oct): the cross-task golden conversations |
 
 ## Only you can check
 
@@ -277,5 +343,5 @@ Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `BRIEFING_ENABLED=true`, `H
 - The category `selftest` and its three channels are left in place, holding the last run. Every run empties them first.
 - To empty them now: `python -m selftest --clear`. To delete them and the category: `python -m selftest --remove` (the next run makes them again). Both work over HTTP, with live running.
 - `data/dev.db` and the dev clock are as they were before the run: they are moved aside for it and put back after.
-- The run's own database and each start's results are kept in `data/selftest/run-20261015-084301/` (never in git). Delete the folder when you like.
+- The run's own database and each start's results are kept in `data/selftest/run-20261015-173900/` (never in git). Delete the folder when you like.
 

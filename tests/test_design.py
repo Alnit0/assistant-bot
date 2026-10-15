@@ -229,10 +229,10 @@ def test_a_layout_discord_would_refuse_is_refused_with_the_reason():
 
 def test_the_words_of_a_drawn_card_can_be_read_back():
     drawn = SimpleNamespace(content="", components=[
-        SimpleNamespace(content="💊 Routine due · 11:12 am"),
+        SimpleNamespace(content="💊 Dose due · 11:12 am"),
         SimpleNamespace(children=[SimpleNamespace(content="**Pill A**"), SimpleNamespace(children=[SimpleNamespace(label="Taken")])]),
     ])
-    assert design.words(drawn) == "💊 Routine due · 11:12 am\n**Pill A**"
+    assert design.words(drawn) == "💊 Dose due · 11:12 am\n**Pill A**"
     assert design.words(SimpleNamespace(content=" plain ", components=[])) == "plain" and design.words(SimpleNamespace()) == ""
 
 
@@ -280,8 +280,8 @@ def test_on_it_is_sent_as_components_v2_with_no_text_beside_it_and_a_card_with_n
     sent = kwargs["view"].to_components()
     assert sent[0]["type"] == 10 and sent[1]["type"] == 17 and sent[1]["accent_color"] == design.COLOURS["blurple"]
     assert asyncio.run(cards.edit(5, 1, CARD)) and channel.edits[0]["content"] is None and isinstance(channel.edits[0]["view"], discord.ui.LayoutView)
-    asyncio.run(cards.send(5, Card("💊 Routine due · 11:12 am")))
-    assert channel.sent[1] == (("💊 Routine due · 11:12 am",), {"silent": False}), "what notifies is still one plain line"
+    asyncio.run(cards.send(5, Card("💊 Dose due · 11:12 am")))
+    assert channel.sent[1] == (("💊 Dose due · 11:12 am",), {"silent": False}), "what notifies is still one plain line"
 
 
 def test_a_message_that_is_components_v2_already_is_rewritten_as_a_layout_of_the_plain_card(monkeypatch):
@@ -372,11 +372,11 @@ def test_a_reminder_is_first_posted_as_the_one_neutral_line_and_the_pill_is_draw
     add(world, PILL_A)
     at(world, 8, 0)
     first = world.sent[-1].card
-    assert first.text == "💊 Routine due · 8:00 am" and first.layout == () and first.rows == (), "what notifies has no pill, no box and no button"
+    assert first.text == "💊 Dose due · 8:00 am" and first.layout == () and first.rows == (), "what notifies has no pill, no box and no button"
     message_id, drawn = world.edited[-1]
     assert message_id == world.sent[-1].id
     line, box = drawn.layout
-    assert line == design.Text("💊 Routine due · 8:00 am"), "the same line stays on top, outside the box"
+    assert line == design.Text("💊 Dose due · 8:00 am"), "the same line stays on top, outside the box"
     assert box.status == design.DUE and box.children[0].content.splitlines() == ["### 💊 Pill A ○○○ 0/3", "**Dose 1** · due **8:00 am**", "-# with food", "-# ⚠️ Take by 10:00 am so the doses after it still fit"]
     assert [button.label for button in box.children[1].buttons] == ["Taken", "Taken at…", "Snooze 15m", "Skip"]
     assert kinds(drawn.layout) == [10, (17, [10, 1])]
@@ -387,7 +387,7 @@ def test_a_snoozed_reminder_is_grey_and_one_asked_again_is_still_amber(world, v2
     at(world, 8, 0)
     at(world, 8, 15)
     again = world.edited[-1][1]
-    assert again.layout[0].content == "💊 Routine due · 8:00 am · reminder 1 of 3" and again.layout[1].status == design.DUE
+    assert again.layout[0].content == "💊 Dose due · 8:00 am · 2nd reminder" and again.layout[1].status == design.DUE
     pressed, _ = Press(world, prompts(world)[0][0], run(database.run(reminders.db_prompts, world.owner.id))[0].occurrence_id), None
     run(cards._actions[("pills", reminders.P_SNOOZE)].handler(pressed))
     assert pressed.shown[-1].layout[1].status == design.QUIET and "-# 💤 Snoozed until 8:30 am" in pressed.shown[-1].layout[1].children[0].content

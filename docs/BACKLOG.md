@@ -32,13 +32,17 @@ the full self-test run.
    commit (`scripts\setup-live-folder.ps1`), a reboot never loads work in
    progress. The merge of `feature/pills` into `main` comes with it once
    Alex has read `docs/REVIEW.md` and run QA blocks 53 to 55 (33).
-2. **The hub's look.** Round 3 is live (2026-10-15). Next: Alex's
-   feedback on his phone into `docs/DESIGN-LOG.md` as round 4.
+2. **The hub's look.** Round 4 is live (2026-10-15). Next: his answers
+   to questions 68 to 75, from the replay of a day in the hub
+   (`python -m selftest.day`, posted in the Design forum): the order
+   when a routine's card comes up mid-day, two Today counts, the same
+   thing in three places, the briefing's boxes moving about.
 3. **What the briefing shows**: whatever Alex's look at the real hub
    turns up.
 4. **How well it understands**: a correction straight after Save for
    schedules, as pills have ("no, 7pm": question 8, yes, later); task
-   ties asked too often (G4).
+   ties asked too often (G4); "is the gym on tonight?" comes back as
+   chat (x16, a known miss: chat hands it back, one request more).
 5. **Personal routines reworked** with groups of steps, one button a
    group (question 63, to discuss first; `HABITS_ENABLED` stays off),
    and **gym onboarding** designed before gym is built (24 to 28). The
@@ -86,8 +90,9 @@ the full self-test run.
 10. **The rest of the cards in the new look**, and with it: one way to
     tick a dose off from a button (three near copies), `dev mock` on
     the design's own records, the old plain checklist retired.
-11. **Costs**: shorten the router's rules with a live eval
-    (`docs/COSTS.md`), if wanted. Skipping the router for a message
+11. **Costs**: shorten the router's rules and the tasks' "only for"
+    lines with a live eval (`docs/COSTS.md`), if wanted: the router is
+    US$0.0040 a message in words now (15 Oct), up from US$0.0026. Skipping the router for a message
     that names a pill was turned down (2026-10-13).
 12. **Days of the week in the schedule model**, in core (wanted by gym
     if workouts go by weekday, and by reminders after pills). Comes

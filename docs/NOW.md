@@ -7,29 +7,30 @@ history is `docs/STATUS.md`. Read first, with `/catchup`.
 understanding, a cost check; ship once before 9 pm if all passes
 
 **Done**
-- 1. A day in the hub: `python -m selftest.day` (the dev bot, a made-up
-  day, 8 snapshots, rule checks), 33 of 33 steps. Fixed: the status
-  line held by overdue to-dos, the Taken line left all day, the
-  briefing's reminders and calendar boxes stuck on the morning, "Next"
-  for a dose long due. Choices: questions 68 to 75
+- 1. A day in the hub (`python -m selftest.day`), 33 of 33: four hub
+  bugs fixed; choices are questions 68 to 75
 - 2. Cross-task understanding: 44 conversations (58 recorded answers),
   15 of 55 wrong first time; fixed, one known miss (x16); replayed in
   every self-test run (step u.01)
+- Checkpoint commit `db4d19c` (steps 1 and 2), not pushed yet
+- 3. Cost check: a normal day about NZ$0.10, a busy one NZ$0.25
+  (`docs/COSTS.md` section 8); nothing changed for cost
+
+- Posted: "Design · A day in the hub" in the Design forum
+- Alex's screenshot: question 11 closed; the 2:14 pm reminder was on
+  time (the 2:29 one was its 2nd); the lock screen now says "💊 Dose due
+  · 2:14 pm", repeats "· 2nd reminder" to "· last reminder"
+- Self-test, full, recorded: 150 of 150 (two stale steps fixed)
 
 **In progress**
-- The final replay for the Design post; then the full test run and
-  the checkpoint commit of steps 1 and 2
+- Commit, push, then ship to live before 9 pm and check it
 
 **Next**
-- Dev-bot self-test (recorded), push, ship before 9 pm, check after
-- 3. The cost check; STATUS, ADVISOR 8 and 9 at the end
+- STATUS, ADVISOR 8 and 9 at the end
 
-**Spend so far:** NZ$0.76 of NZ$1.00 (understanding checks)
+**Spend so far:** NZ$0.79 of NZ$1.00 (understanding checks)
 
-**Drafts and worktrees**
-- Worktrees `../assistant-bot-hub-tasks`, `../assistant-bot-round4` and
-  `../assistant-bot-routines`: all merged
-- No drafts outside `docs/`
+**Drafts and worktrees:** three old worktrees, all merged; no drafts
 
 **Waiting on Alex**
 - Questions 68 to 75 (the hub through a day)
@@ -37,4 +38,3 @@ understanding, a cost check; ship once before 9 pm if all passes
 - Confirm live's folder is well, so the work folder's old `.env` and
   `data\` can go
 - Press Fixed on B2 and B5 (both checked, a note on each)
-- A lock-screen screenshot of a pill reminder (question 11)

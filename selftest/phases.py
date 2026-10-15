@@ -17,7 +17,7 @@ from selftest.harness import Harness
 #   Testiron  8:00 pm (asked on the card: morning or evening?)
 # ---------------------------------------------------------------------------
 TASK = "pills"
-NEUTRAL = "💊 Routine due · "
+NEUTRAL = "💊 Dose due · "
 CAUGHT_UP = "🔁 Caught up after a restart"
 PENDING, DONE, MISSED, SKIPPED = occurrences.PENDING, occurrences.DONE, occurrences.MISSED, occurrences.SKIPPED
 
@@ -402,7 +402,7 @@ async def p1(h: Harness) -> None:
         await no_marks(h, mine)
         h.saw(latest[0].text[:100])
 
-    async with h.step("1.15", "8:00 am: the reminder for Testa", "One new message in the hub that notifies. Its first line is “💊 Routine due · 8:00 am” and names no pill; it was posted as that line and written in after (an edit); under it Testa, dose 1 of 3, with Taken, Taken at…, Snooze 15m, Skip", "T41 (38.2), asked"):
+    async with h.step("1.15", "8:00 am: the reminder for Testa", "One new message in the hub that notifies. Its first line is “💊 Dose due · 8:00 am” and names no pill; it was posted as that line and written in after (an edit); under it Testa, dose 1 of 3, with Taken, Taken at…, Snooze 15m, Skip", "T41 (38.2), asked"):
         await h.clock_to(8, 0, 5)
         up = await prompts(h)
         h.check(len(up) == 1 and up[0].message_id, f"{len(up)} prompts are kept")
@@ -542,6 +542,8 @@ async def p1(h: Harness) -> None:
 # Start 2: after the cut-off
 # ---------------------------------------------------------------------------
 async def p2(h: Harness) -> None:
+    from tasks.pills import reminders
+
     async with h.step("2.01", "The catch-up after the restart is said once", "One new “🔁 Caught up after a restart” in #selftest-log. It says my message was cut off and that something ran late or was posted, and names no pill", "asked; T38 (36.4)"):
         cards_now = [each for each in await h.recent(h.botlog, 30) if CAUGHT_UP in each.all_text]
         h.check(len(cards_now) - h.memo.get("caught_up_before", 0) == 1, f"{len(cards_now) - h.memo.get('caught_up_before', 0)} new catch-up cards")
@@ -590,13 +592,13 @@ async def p2(h: Harness) -> None:
         h.check("Otherpill" in await h.pills(), f"the pills are {list(await h.pills())}")
 
     for number, minutes in ((1, 15), (2, 15), (3, 15)):
-        async with h.step(f"2.0{5 + number}", f"Left alone, the reminder is posted again ({number} of 3)", f"A new message in place of the old, saying “reminder {number} of 3”; only ever one", "T44 (38.5)"):
+        async with h.step(f"2.0{5 + number}", f"Left alone, the reminder is posted again ({number} of 3)", f"A new message in place of the old, its first line ending “{reminders.again(number)}”; only ever one", "T44 (38.5)"):
             before = h.memo["prompt"]
             await h.clock_by(minutes=minutes, seconds=10)
             up = await prompts(h)
             h.check(len(up) == 1 and up[0].message_id and up[0].message_id != before, f"the prompt kept is {up[0].message_id if up else None}, before {before}")
             shown = await h.get(h.hub, up[0].message_id)
-            h.check(shown is not None and f"reminder {number} of 3" in shown.text.lower(), f"it reads: {shown.text[:160] if shown else 'gone'}")
+            h.check(shown is not None and shown.text.splitlines()[0].endswith(f"· {reminders.again(number)}"), f"it reads: {shown.text[:160] if shown else 'gone'}")
             h.check(await h.get(h.hub, before) is None and await h.count(h.hub, NEUTRAL) == 1, "the old copy is still in the hub")
             h.memo["prompt"] = up[0].message_id
 
@@ -837,7 +839,8 @@ async def p3(h: Harness) -> None:
         await h.press(asked.id, "Cancel", where)
         h.check((await h.doses()).get(("Testa", 2)) == PENDING, "after Cancel the dose changed")
         sheet = await h.get(h.hub, h.memo["sheet_d2"])
-        h.check(sheet is not None and "Today" in sheet.text, "the checklist was lost to the card that asked")
+        # Its page title went with question 64 (15 Oct): the pills card is known by its card title
+        h.check(sheet is not None and "💊 Pills" in sheet.text, "the checklist was lost to the card that asked" if sheet is None else f"the checklist reads: {sheet.text[:160]}")
 
     async with h.step("3.08", "Skip is pressed in Otherpill's box", "Its box turns grey and says skipped, with no buttons for it", "T55 (41.7)"):
         which = await dose_id(h, "Otherpill", 1)
@@ -1600,12 +1603,19 @@ async def p8(h: Harness) -> None:
         h.check(moved is not None and earlier in moved.text, f"the correction: {moved.text[:160] if moved else 'none'}")
         h.saw(f"taken: {newly}; {moved.text[:120] if moved else ''}")
 
-    async with h.step("8.03", "Skip is said in words, and “undo that” puts it back", "“skip testlate”: Testlate's dose is skipped, one line says so; “undo that”: it is back, not skipped", "round 4: Skip in words only"):
-        await h.say("skip testlate", canned=log({"pill": "Testlate", "did": "skipped"}))
-        h.check((await h.doses()).get(("Testlate", 1)) == SKIPPED, f"the doses are {await h.doses()}")
+    # A pill of its own: in the whole run the story's other pills are taken by now (Testlate in start 3)
+    if "Testskip" not in await h.pills():
+        h.recorded_only = True
+        try:
+            await save_new(h, "8.03a", "add Testskip to my pills once a day", add({"name": "Testskip", "per_day": 1}), "Testskip", "set up for 8.03")
+        finally:
+            h.recorded_only = False
+    async with h.step("8.03", "Skip is said in words, and “undo that” puts it back", "“skip testskip”: Testskip's dose is skipped, one line says so; “undo that”: it is back, not skipped", "round 4: Skip in words only"):
+        await h.say("skip testskip", canned=log({"pill": "Testskip", "did": "skipped"}))
+        h.check((await h.doses()).get(("Testskip", 1)) == SKIPPED, f"the doses are {await h.doses()}")
         await h.say("undo that", canned=log({"pill": "@that", "did": "not_taken"}))
         said = await h.find(h.inbox, "not skipped after all")
-        h.check((await h.doses()).get(("Testlate", 1)) == PENDING and said is not None, f"the doses are {await h.doses()}; the line: {said.text[:120] if said else 'none'}")
+        h.check((await h.doses()).get(("Testskip", 1)) == PENDING and said is not None, f"the doses are {await h.doses()}; the line: {said.text[:120] if said else 'none'}")
 
     async with h.step("8.04", "To-dos in round 4: the first three, “+1 more”, and one Done dropdown", "Four to-dos added: the card shows three in full, a small “+1 more”, no Done button under each, and one dropdown “✅ Done: pick one” holding all four", "round 4: the list rule (15 Oct)"):
         h.check(config.TODOS_ENABLED, "TODOS_ENABLED is not on in this start")

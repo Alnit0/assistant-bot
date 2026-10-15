@@ -11,9 +11,8 @@ added here, nowhere else.
 
 ## Open
 
-11. One check only you can do: what does your lock screen show for a
-    pill reminder? → Tell me the exact words once (a screenshot is on
-    its way).
+Nothing here now: question 11 was closed on 15 Oct (the screenshot
+named no pill; see "Decided" in `docs/STATUS.md`).
 
 ## The hub through a day (from the replay of 15 Oct, `python -m selftest.day`)
 

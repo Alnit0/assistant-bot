@@ -6,6 +6,8 @@ backfilled from the git log.
 
 ## 2026-10-15
 
+- A pill reminder on the lock screen reads "💊 Dose due · 2:14 pm", and when it is posted again
+  "· 2nd reminder", "· 3rd reminder", "· last reminder" (it said "Routine due" and "reminder 1 of 3").
 - The status line no longer stays on overdue to-dos all day: a dose or a reminder due now comes first. The
   line after Taken leaves the hub after 30 minutes; the briefing's reminders box drops what is done
   ("✅ 1 earlier today"), its calendar line says what is next, on now or all over, and the pills box

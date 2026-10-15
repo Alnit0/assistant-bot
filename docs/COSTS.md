@@ -266,3 +266,52 @@ card (it is no longer read again as a follow-up to the card).
 3. A model with a lower caching minimum would cache the router and
    chat as well. That is a change of model, with its own prices and its
    own eval: only if you want it looked into.
+
+## 8. A normal day with every feature on (15 Oct)
+
+**From the record.** Live's own database holds 61 requests from 11 Oct
+at 10:47 pm to 15 Oct (the live database begins then): US$0.248 in
+all, a day between US$0.014 and US$0.094 (NZ$0.02 to NZ$0.17 at 1.78).
+89 messages came in, of which 27 went through the router and one to
+chat; the rest were buttons (24), typed words (31), follow-ups (4) and
+reactions (2), which cost nothing or next to it.
+
+| A message, now (11 tasks in the router's catalogue) | US$ | NZ$ |
+|---|---|---|
+| For pills in words, on its own (router, then pills extraction writing its cache) | about 0.014 (0.0138 measured on live today) | 0.025 |
+| For a to-do, a reminder, a routine, the calendar or a question about the day, on its own | about 0.007 (router 0.0040, extraction 0.0025 to 0.003, too short to cache) | 0.012 |
+| A follow-up straight after an answer, or to an open card (no router) | 0.002 to 0.004 | under 0.01 |
+| A question for chat (router, then chat) | about 0.0064 | 0.011 |
+| A button, a dropdown, "took <pill>", "my to-dos", the briefing, reminders and routines going off, the calendar's reads, the weather, the nightly self-test (recorded answers) | nothing | nothing |
+
+**A normal day** (the last four: up to 11 messages in words, most of
+the rest by button): six messages in words, two of them pills, is about
+US$0.056, **NZ$0.10**. A busy day of 15, five for pills, is about
+US$0.14, **NZ$0.25**. Both well under the NZ$1.00 daily alert; about
+NZ$3 to NZ$5 a month. A build day with live evals is what passes it.
+
+**The biggest cost per message** is a pills message in words, said on
+its own: the pills extraction writes its cached part (about 7,400
+tokens) every time, because messages come hours apart. **The biggest
+fixed cost** is the router, on every message in words: US$0.0040 now,
+up from US$0.0026 on 13 Oct, because each task added a line to its
+catalogue (11 tasks, about 3,300 tokens), and it is still under the
+4,096 tokens a prompt needs before it can be cached.
+
+**Cheap wins, none made** (nothing was changed for cost):
+
+1. The free paths are already there: Taken on a reminder, the Done
+   dropdowns, "took <pill>" typed. Using them for pills saves
+   US$0.014 a dose.
+2. Pills extraction's cache costs a quarter more when it is written cold,
+   which is most of the day: taking its mark off would save about
+   US$0.002 on a cold pills message, and cost about US$0.006 more on each
+   warm one straight after. Not worth it on today's mix.
+3. Shortening each task's "only for" line (question 2 above) would bring
+   the router back towards US$0.003, about US$0.001 on every message in
+   words; it needs a full live eval first (about US$0.30).
+
+**This batch** spent US$0.445 (NZ$0.79) on understanding checks (the
+cross-task fixtures and the routers of calendar and briefing after the
+line changes), five runs, the largest US$0.227 (NZ$0.40). The self-test
+and the day in the hub used recorded answers only.

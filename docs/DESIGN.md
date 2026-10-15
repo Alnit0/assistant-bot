@@ -324,7 +324,7 @@ message never loses an item to fit.
   about (`-# #inbox`, `-# 2 pills`).
 - **A message that notifies**: one plain line, outside any box, that is
   safe on a lock screen: what is due and when, never whose or what.
-  `💊 Routine due · 11:12 am`. It is posted as that line alone; the box
+  `💊 Dose due · 11:12 am`. It is posted as that line alone; the box
   with the details is added by an edit, which notifies nobody.
 
 ## A box

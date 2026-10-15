@@ -195,3 +195,16 @@ On the preview, 15 Oct (his decisions, as relayed):
 **Changes for round 5**
 
 (none yet)
+
+## A day in the hub (2026-10-15, evening)
+
+Not a round: the hub as it is (round 4) through one made-up day, read back
+at eight moments by `python -m selftest.day` and posted as "Design · A day
+in the hub" in the Design forum, a reply a moment with the status line and
+what changed. Alex's replies in the round 3 and 4 posts before it: none.
+What it found that was plainly wrong is fixed (the status line held by
+overdue to-dos, the line after Taken left all day, the briefing's reminders
+and calendar boxes stuck on the morning, "Next" for a dose long due); the
+choices are questions 68 to 75 in `docs/QUESTIONS.md`. Run it again for
+each round: it is the same day every time, set up in words with recorded
+answers.

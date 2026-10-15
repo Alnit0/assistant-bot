@@ -321,7 +321,7 @@ async def story(h) -> None:
             h.saw(f"{len(h.memo['snapshots'][-1]['messages'])} messages; status {h.memo['snapshots'][-1]['status'] or 'blank'}")
 
     async def reminder_taken() -> None:
-        went = await h.find(h.hub, "💊 Routine due")
+        went = await h.find(h.hub, "💊 Dose due")
         h.check(went is not None, "no pill reminder in the hub")
         await h.press(went.id, "Taken")
 

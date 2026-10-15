@@ -226,7 +226,7 @@ def test_no_reminder_sketch_names_a_pill_in_the_line_the_lock_screen_shows():
     # A notification shows the first line of the message: it says a routine is due, and when
     for name in ("reminder-v1", "reminder-v1-first", "reminder-renudge-v2"):
         first = mock.read(name).splitlines()[0]
-        assert first.startswith("💊 Routine due · ") and "Pill" not in first, name
+        assert first.startswith("💊 Dose due · ") and "Pill" not in first, name
 
 
 def test_the_gym_sketches_are_there_and_the_plan_cards_follow_the_card_rules():
@@ -259,7 +259,7 @@ def test_each_designed_sketch_renders_as_a_components_v2_message_within_the_limi
 
 def test_the_reminder_is_first_posted_as_one_line_that_names_no_pill():
     first = mock.read("reminder-v1-first").strip()
-    assert first == "💊 Routine due · 11:12 am"
+    assert first == "💊 Dose due · 11:12 am"
     assert mock.read("reminder-v1").splitlines()[0] == first, "the same line stays on top once the pill is written in"
     assert "Pill A" in mock.read("reminder-v1")
 

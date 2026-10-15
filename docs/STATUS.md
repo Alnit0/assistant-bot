@@ -65,8 +65,31 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
   router now costs US$0.0040 a request (3,300 tokens, 11 tasks).
 - The nightly self-test reads the recorded answers back offline, not with
   pytest: live's folder has no test tools.
+- Two self-test steps were wrong, not the bot: 3.07 looked for "Today" in
+  the checklist, whose page title went with question 64 (it failed the
+  same way on the commit before this batch, checked in a worktree); 8.03
+  skipped Testlate, which a full run has taken by then (start 8 was only
+  ever run alone). 3.07 now looks for the card title, 8.03 has a pill of
+  its own.
 - The checkpoint commit holds steps 1 and 2 together: their fixes share
   files (reminders, the briefing).
+- Question 11 closed (Alex's lock-screen screenshot of 15 Oct named no
+  pill). It read "💊 Routine due · 2:14 pm · reminder 1 of 3" at 2:29 pm.
+  Not late: the run log and live's log show the reminder posted at
+  2:14:01, on time (between the restarts of 1:41 and 3:03), and posted
+  again at 2:29:01 as the first of three repeats, a fresh message in
+  place of the first; deleting the first takes its notification off the
+  phone, so the lock screen showed only the 2:29 one. The 2:44 one was
+  not needed: the dose was dealt with at 2:37.
+- "reminder 1 of 3" meant the first of three repeats, not dose 1 of 3. A
+  dose with a time is posted at its time, again 15, 30 and 45 minutes
+  later if left, then it goes (and a last chance 30 minutes before it
+  stops fitting the day). Now said as "2nd reminder", "3rd reminder",
+  "last reminder", in the line and in the card's small line.
+- "Routine" was the bot's own word, never a pill's. Every pill reminder's
+  lock-screen line is now "💊 Dose due · 2:14 pm" (with "· 2nd reminder"
+  and so on when posted again); it never names a pill or a routine. The
+  sketches, the tests and the docs say the same.
 
 ## Live in its own folder, Windows Update, two old bugs (15 Oct, afternoon)
 

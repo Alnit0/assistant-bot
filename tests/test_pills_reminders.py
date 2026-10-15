@@ -18,7 +18,7 @@ from tasks.pills import task as pills_task
 HUB, INBOX = 400, 100
 PILL_A = {"name": "Pill A", "per_day": 3, "times": ["8:00 am", "11:30 am", "3:00 pm"], "min_gap_minutes": 180, "latest": "4:00 pm", "notes": "with food"}
 EVENING = {"name": "Evening pill", "times": ["8:00 pm"]}
-NOTICE = "💊 Routine due · "
+NOTICE = "💊 Dose due · "
 LAST_CHANCE = "💊 Last chance today · take by "
 
 
@@ -239,11 +239,11 @@ def test_at_its_time_a_dose_gets_one_prompt_and_what_the_phone_shows_names_no_pi
     assert notices(world) == []
     at(world, 20, 0)
     # What notifies is the message as it was sent: one neutral line. The pill is written in after (an edit notifies nobody)
-    assert notices(world) == ["💊 Routine due · 8:00 pm"]
+    assert notices(world) == ["💊 Dose due · 8:00 pm"]
     sent = world.sent[-1]
     assert sent.channel == HUB and not sent.silent and not sent.card.rows and "Evening" not in sent.card.text
     ((prompt_id, lines, buttons),) = prompts(world)
-    assert prompt_id == sent.id and lines == ["💊 Routine due · 8:00 pm", "**Evening pill**", "Due `8:00 pm`"]
+    assert prompt_id == sent.id and lines == ["💊 Dose due · 8:00 pm", "**Evening pill**", "Due `8:00 pm`"]
     assert buttons == ["Taken", "Taken at…", "Snooze 15m", "Skip"]
 
 
@@ -263,7 +263,7 @@ def test_the_prompt_says_which_dose_when_it_is_due_and_why_and_the_note(world):
     at(world, 8, 0)
     ((_, lines, _),) = prompts(world)
     assert lines == [
-        "💊 Routine due · 8:00 am", "**Pill A** · dose 1 of 3", "Due `8:00 am`", "-# with food",
+        "💊 Dose due · 8:00 am", "**Pill A** · dose 1 of 3", "Due `8:00 am`", "-# with food",
         "-# ⚠️ Take by 10:00 am so the doses after it still fit",
     ], "two more doses, three hours apart, before 4:00 pm: this one by 10:00 am, which is within two hours"
     assert lines[1:4] == ["**Pill A** · dose 1 of 3", "Due `8:00 am`", "-# with food"]
@@ -272,7 +272,7 @@ def test_the_prompt_says_which_dose_when_it_is_due_and_why_and_the_note(world):
     assert prompts(world) == [], "said in words: the prompt goes, as if Taken had been pressed"
     at(world, 11, 30)
     ((_, lines, _),) = prompts(world)
-    assert lines[:3] == ["💊 Routine due · 11:30 am", "**Pill A** · dose 2 of 3", "Due `11:30 am`"], "its planned time: 3h after 8:12 is earlier"
+    assert lines[:3] == ["💊 Dose due · 11:30 am", "**Pill A** · dose 2 of 3", "Due `11:30 am`"], "its planned time: 3h after 8:12 is earlier"
 
 
 def test_a_dose_moved_by_the_gap_says_so_and_take_by_shows_only_when_it_is_close(world):
@@ -285,7 +285,7 @@ def test_a_dose_moved_by_the_gap_says_so_and_take_by_shows_only_when_it_is_close
     at(world, 12, 0)
     ((_, lines, _),) = prompts(world)
     assert lines == [
-        "💊 Routine due · 12:00 pm", "**Pill A** · dose 2 of 3", "Due `12:00 pm` · 3h after dose 1 at 9:00 am", "-# with food",
+        "💊 Dose due · 12:00 pm", "**Pill A** · dose 2 of 3", "Due `12:00 pm` · 3h after dose 1 at 9:00 am", "-# with food",
         "-# ⚠️ Take by 1:00 pm so dose 3 still fits",
     ]
 
@@ -361,7 +361,7 @@ def test_cancel_on_that_card_logs_nothing_and_leaves_the_reminder_up(world):
     run(cards._actions[(confirm.CARDS, "cancel")].handler(cancelled))
     assert cancelled.removed and states(world)[("Pill A", 2)] == PENDING and len(prompts(world)) == 1
     at(world, 11, 45)
-    assert notices(world)[-1] == "💊 Routine due · 11:30 am · reminder 1 of 3", "and it goes on reminding"
+    assert notices(world)[-1] == "💊 Dose due · 11:30 am · 2nd reminder", "and it goes on reminding"
 
 
 def test_snooze_keeps_the_prompt_says_until_when_and_a_fresh_copy_comes_when_it_ends(world):
@@ -376,7 +376,7 @@ def test_snooze_keeps_the_prompt_says_until_when_and_a_fresh_copy_comes_when_it_
     at(world, 20, 20)
     ((second, lines, _),) = prompts(world)
     assert second != first and first in world.deleted, "a fresh copy, so the phone buzzes: the old one goes"
-    assert notices(world)[-1] == "💊 Routine due · 8:00 pm" and lines == ["💊 Routine due · 8:00 pm", "**Evening pill**", "Due `8:00 pm`"], "a snooze is not one of the reminders"
+    assert notices(world)[-1] == "💊 Dose due · 8:00 pm" and lines == ["💊 Dose due · 8:00 pm", "**Evening pill**", "Due `8:00 pm`"], "a snooze is not one of the reminders"
 
 
 # --- left alone ----------------------------------------------------------------------------------------------
@@ -389,11 +389,11 @@ def test_ignored_it_is_posted_again_every_15_minutes_three_times_and_then_it_sto
         seen.append(prompt_id)
         assert len(run(database.run(reminders.db_prompts))) == 1, "only ever one prompt for a dose"
     assert notices(world) == [
-        "💊 Routine due · 8:00 pm", "💊 Routine due · 8:00 pm · reminder 1 of 3",
-        "💊 Routine due · 8:00 pm · reminder 2 of 3", "💊 Routine due · 8:00 pm · reminder 3 of 3",
+        "💊 Dose due · 8:00 pm", "💊 Dose due · 8:00 pm · 2nd reminder",
+        "💊 Dose due · 8:00 pm · 3rd reminder", "💊 Dose due · 8:00 pm · last reminder",
     ]
     assert len(set(seen)) == 4 and set(seen[:3]) <= set(world.deleted), "each a new message in place of the one before"
-    assert lines[-1] == "-# ⏰ Reminder 3 of 3 · first asked 8:00 pm · the last reminder"
+    assert lines[-1] == "-# ⏰ Last reminder · first asked 8:00 pm · none after it"
     assert states(world)[("Evening pill", 1)] == PENDING
     at(world, 21, 0)
     assert prompts(world) == [] and seen[3] in world.deleted
@@ -483,16 +483,16 @@ def test_a_dose_whose_reminders_are_over_is_asked_about_afresh_only_if_it_comes_
     at(world, 15, 39)
     assert prompts(world) == [] and len(notices(world)) == 8
     at(world, 15, 40)
-    assert notices(world)[-1] == "💊 Routine due · 3:40 pm" and prompts(world)[0][1][1] == "**Pill A** · dose 2 of 3"
+    assert notices(world)[-1] == "💊 Dose due · 3:40 pm" and prompts(world)[0][1][1] == "**Pill A** · dose 2 of 3"
 
 
 def test_the_reminder_line_counts_down(world):
     add(world, EVENING)
     at(world, 20, 0)
     at(world, 20, 15)
-    assert prompts(world)[0][1][-1] == "-# ⏰ Reminder 1 of 3 · first asked 8:00 pm · 2 more, the next at 8:30 pm"
+    assert prompts(world)[0][1][-1] == "-# ⏰ 2nd reminder · first asked 8:00 pm · 2 more, the next at 8:30 pm"
     at(world, 20, 30)
-    assert prompts(world)[0][1][-1] == "-# ⏰ Reminder 2 of 3 · first asked 8:00 pm · one more at 8:45 pm"
+    assert prompts(world)[0][1][-1] == "-# ⏰ 3rd reminder · first asked 8:00 pm · one more at 8:45 pm"
 
 
 def test_a_missed_dose_can_still_be_ticked_off_and_is_asked_about_first(world):
@@ -544,7 +544,7 @@ def test_nothing_is_sent_after_the_latest_time_and_a_prompt_still_up_then_goes(w
     at(world, 15, 30)
     at(world, 15, 45)
     count = len(notices(world))
-    assert notices(world)[-1] == "💊 Routine due · 3:00 pm · reminder 3 of 3"
+    assert notices(world)[-1] == "💊 Dose due · 3:00 pm · last reminder"
     at(world, 16, 2)
     assert prompts(world) == [] and len(notices(world)) == count
     assert states(world)[("Pill A", 3)] == MISSED
@@ -594,12 +594,12 @@ def test_pill_a_through_a_day_taken_late(world):
     assert prompts(world)[0][1][2] == "Due `11:40 am` · 3h after dose 1 at 8:40 am"
     press(world, reminders.P_AT, {"at": "11:40 am"})  # the form's time
     at(world, 15, 0)
-    assert prompts(world)[0][1][:3] == ["💊 Routine due · 3:00 pm", "**Pill A** · dose 3 of 3", "Due `3:00 pm`"]
+    assert prompts(world)[0][1][:3] == ["💊 Dose due · 3:00 pm", "**Pill A** · dose 3 of 3", "Due `3:00 pm`"]
     press(world, reminders.P_TAKEN)
     assert [state for state in states(world).values()] == [DONE, DONE, DONE] and remind_job() == []
     assert notices(world) == [
-        "💊 Routine due · 8:00 am", "💊 Routine due · 8:00 am · reminder 1 of 3", "💊 Routine due · 8:00 am · reminder 2 of 3",
-        "💊 Routine due · 11:40 am", "💊 Routine due · 3:00 pm",
+        "💊 Dose due · 8:00 am", "💊 Dose due · 8:00 am · 2nd reminder", "💊 Dose due · 8:00 am · 3rd reminder",
+        "💊 Dose due · 11:40 am", "💊 Dose due · 3:00 pm",
     ]
 
 
@@ -621,7 +621,7 @@ def test_a_prompt_that_went_with_a_channel_reset_is_posted_again_and_the_card_sa
     assert run(pills_task.reposted(HUB, {prompt_id})) == ["A pill reminder"]
     run(pills_task.channel_cleared(HUB, {prompt_id}))
     ((again, lines, _),) = prompts(world)
-    assert again != prompt_id and lines[0] == "💊 Routine due · 8:00 pm · reminder 1 of 3", "the same reminder, not the next one"
+    assert again != prompt_id and lines[0] == "💊 Dose due · 8:00 pm · 2nd reminder", "the same reminder, not the next one"
 
 
 def stop_and_start(world, monkeypatch):
@@ -647,7 +647,7 @@ def test_off_for_an_hour_over_a_dose_s_time_it_gets_one_prompt_at_start_not_one_
     at(world, 19, 0)
     clock.advance_to(day.at(world.day, time(20, 50)))  # the bot was off from 7 until now: nothing ran
     lines = stop_and_start(world, monkeypatch)
-    assert notices(world) == ["💊 Routine due · 8:00 pm"], "one prompt, the first: it was never asked"
+    assert notices(world) == ["💊 Dose due · 8:00 pm"], "one prompt, the first: it was never asked"
     assert len(prompts(world)) == 1 and states(world)[("Evening pill", 1)] == PENDING
     assert "1 pill reminder posted at start: it came due while the bot was off" in lines and not any("Evening" in line for line in lines)
     assert remind_job() == [day.at(world.day, time(21, 5))]
@@ -668,7 +668,7 @@ def test_off_while_reminders_were_due_the_next_one_in_its_turn_is_posted_once(wo
     at(world, 20, 0)
     clock.advance_to(day.at(world.day, time(20, 50)))  # off through the reminders of 8:15, 8:30 and 8:45
     stop_and_start(world, monkeypatch)
-    assert notices(world) == ["💊 Routine due · 8:00 pm", "💊 Routine due · 8:00 pm · reminder 1 of 3"], "one, not three"
+    assert notices(world) == ["💊 Dose due · 8:00 pm", "💊 Dose due · 8:00 pm · 2nd reminder"], "one, not three"
     assert len(prompts(world)) == 1
 
 
@@ -904,10 +904,10 @@ def test_a_reminder_discord_refuses_is_tried_again_after_1_2_and_5_minutes_then_
     assert world.tries == 5, "not before its turn"
     at(world, 20, 18)
     ((_, lines, buttons),) = prompts(world)
-    assert notices(world) == ["💊 Routine due · 8:00 pm"] and lines[1] == "**Evening pill**" and "Snooze 15m" in buttons, "the first prompt, late, once"
+    assert notices(world) == ["💊 Dose due · 8:00 pm"] and lines[1] == "**Evening pill**" and "Snooze 15m" in buttons, "the first prompt, late, once"
     assert (kept(world)[0].attempts, kept(world)[0].tried_at) == (0, None)
     at(world, 20, 33)
-    assert notices(world)[-1] == "💊 Routine due · 8:00 pm · reminder 1 of 3", "and its reminders follow from when it went up"
+    assert notices(world)[-1] == "💊 Dose due · 8:00 pm · 2nd reminder", "and its reminders follow from when it went up"
 
 
 def test_a_try_that_went_through_after_all_is_taken_up_and_never_posted_twice(world):
@@ -918,7 +918,7 @@ def test_a_try_that_went_through_after_all_is_taken_up_and_never_posted_twice(wo
     at(world, 20, 1)
     assert len(world.sent) == 1 and world.tries == 1, "the hub was read first: the bare line was there, so nothing was posted again"
     ((message_id, lines, _),) = prompts(world)
-    assert message_id == world.sent[0].id and lines[:2] == ["💊 Routine due · 8:00 pm", "**Evening pill**"], "and the pill is written into that one"
+    assert message_id == world.sent[0].id and lines[:2] == ["💊 Dose due · 8:00 pm", "**Evening pill**"], "and the pill is written into that one"
     assert kept(world)[0].attempts == 0
 
 
@@ -966,8 +966,8 @@ def test_a_reminder_after_the_first_is_tried_again_too_with_the_copy_before_it_l
     assert (kept(world)[0].reminders, kept(world)[0].attempts) == (1, 2)
     at(world, 20, 18)
     ((second, lines, _),) = prompts(world)
-    assert second != first and first in world.deleted and lines[0] == "💊 Routine due · 8:00 pm · reminder 1 of 3"
-    assert notices(world) == ["💊 Routine due · 8:00 pm", "💊 Routine due · 8:00 pm · reminder 1 of 3"], "reminder 1, once"
+    assert second != first and first in world.deleted and lines[0] == "💊 Dose due · 8:00 pm · 2nd reminder"
+    assert notices(world) == ["💊 Dose due · 8:00 pm", "💊 Dose due · 8:00 pm · 2nd reminder"], "reminder 1, once"
 
 
 def test_tries_go_on_while_the_dose_can_still_be_taken_today_and_stop_when_it_cannot(world):
@@ -1026,9 +1026,22 @@ def test_how_long_until_the_next_try(world):
 
 def test_a_bare_line_older_than_the_tries_is_not_taken_up(world):
     add(world, EVENING)
-    old = SimpleNamespace(id=77, channel=HUB, content="💊 Routine due · 8:00 pm", author=SimpleNamespace(id=1), created_at=clock.real_now() - timedelta(hours=20))
+    old = SimpleNamespace(id=77, channel=HUB, content="💊 Dose due · 8:00 pm", author=SimpleNamespace(id=1), created_at=clock.real_now() - timedelta(hours=20))
     world.hub.append(old)  # left from another day, never finished
     world.refuse = 1
     at(world, 20, 0)
     at(world, 20, 1)
     assert len(world.sent) == 1 and prompts(world)[0][0] == world.sent[0].id, "a new one is posted: that old line is not this reminder"
+
+
+def test_the_lock_screen_says_dose_due_and_which_reminder_never_routine():
+    # 15 Oct: Alex's lock screen read "💊 Routine due · 2:14 pm · reminder 1 of 3". "Routine" was the
+    # bot's own word and now reads like a personal routine; "1 of 3" read like dose 1 of 3
+    from datetime import datetime, timezone
+    from types import SimpleNamespace
+
+    dose = SimpleNamespace(due=SimpleNamespace(at=datetime(2026, 10, 15, 1, 14, tzinfo=timezone.utc)))
+    said = [reminders.notice(dose, count) for count in range(reminders.REMINDERS + 1)]
+    assert said == ["💊 Dose due · 2:14 pm", "💊 Dose due · 2:14 pm · 2nd reminder", "💊 Dose due · 2:14 pm · 3rd reminder", "💊 Dose due · 2:14 pm · last reminder"]
+    assert not any("Routine" in each or " of " in each for each in said)
+

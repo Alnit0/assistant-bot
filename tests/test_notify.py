@@ -54,7 +54,7 @@ def said(request) -> tuple[str, str, str, str]:
     return title, request.data.decode("utf-8"), request.get_header("Click") or "", request.get_header("Priority")
 
 
-def post(name="pills.reminder", line="💊 Routine due · 8:00 am", item=None, **more):
+def post(name="pills.reminder", line="💊 Dose due · 8:00 am", item=None, **more):
     async def go():
         sent = await notify.post(name, HUB, Card(line), user_id=1, item=item or Item("a dose is due", TIMED, when=clock.now()), **more)
         await notify.settle()
@@ -86,7 +86,7 @@ def test_nothing_is_pushed_unless_switched_on_with_a_topic_and_never_by_the_dev_
 def test_off_an_alert_is_posted_in_discord_as_it_always_was(world):
     message_id = post()
     (sent,) = world.sent
-    assert (sent.id, sent.channel, sent.card.text, sent.silent) == (message_id, HUB, "💊 Routine due · 8:00 am", False), "it notifies in Discord"
+    assert (sent.id, sent.channel, sent.card.text, sent.silent) == (message_id, HUB, "💊 Dose due · 8:00 am", False), "it notifies in Discord"
 
 
 def test_both_notifies_in_discord_and_pushes_a_neutral_line_that_opens_the_message(world, phone):
@@ -94,7 +94,7 @@ def test_both_notifies_in_discord_and_pushes_a_neutral_line_that_opens_the_messa
     assert world.sent[-1].silent is False
     (request,) = phone
     assert request.full_url == f"https://ntfy.sh/{TOPIC}", "the bot's own topic"
-    assert said(request) == ("Reminder", "💊 Routine due · 8:00 am", f"https://discord.com/channels/7/{HUB}/{message_id}", "4"), "tapping opens the Discord message"
+    assert said(request) == ("Reminder", "💊 Dose due · 8:00 am", f"https://discord.com/channels/7/{HUB}/{message_id}", "4"), "tapping opens the Discord message"
 
 
 def test_ntfy_only_posts_in_discord_without_a_sound_and_falls_back_to_discord_when_it_can_not_push(world, phone, monkeypatch):
@@ -123,7 +123,7 @@ def test_a_line_that_names_one_of_my_things_is_never_pushed(world, phone, caplog
         post(line="💊 Pill A is due", private=("Pill A", "Evening pill"))
     assert said(phone[-1])[:2] == ("Reminder", notify.NOT_SAID), "the title goes by itself"
     assert "names one of the user's things" in caplog.text and "Pill A" not in caplog.text
-    assert notify.neutral("💊 Routine due · 8:00 am", ("Pill A",)) and not notify.neutral("take pill a now", ("Pill A",))
+    assert notify.neutral("💊 Dose due · 8:00 am", ("Pill A",)) and not notify.neutral("take pill a now", ("Pill A",))
 
 
 def test_a_push_that_fails_is_logged_without_the_topic_and_raises_nothing(world, phone, monkeypatch, caplog):
@@ -190,7 +190,7 @@ def test_what_is_held_is_posted_without_a_sound_never_pushed_and_kept_for_the_mo
     post(NOTE, line="📅 Event · 10:30 pm · again", key="event-1")
     post(NOTE, line="⚠️ Something needs a look", item=Item("backup failed", PROBLEM), key="backup")
     assert world.sent[-1].silent is True and phone == [], "something wrong is held too: level 1 respects quiet hours"
-    post(line="💊 Routine due · 10:45 pm", key="dose-1")
+    post(line="💊 Dose due · 10:45 pm", key="dose-1")
     assert world.sent[-1].silent is False and len(phone) == 1, "a pill reminder gets through, with its sound and its push"
     morning = world.day + timedelta(days=1)
     first, second = run(notify.held_overnight(world.owner.id, morning))
@@ -237,10 +237,10 @@ def test_a_pill_reminder_reaches_the_phone_as_the_neutral_line_and_never_names_t
     add(world, PILL_A)
     at(world, 8, 0)
     run(notify.settle())
-    assert notices(world) == ["💊 Routine due · 8:00 am"]
+    assert notices(world) == ["💊 Dose due · 8:00 am"]
     (request,) = phone
     title, body, click, priority = said(request)
-    assert (title, body, priority) == ("Reminder", "💊 Routine due · 8:00 am", "4") and "Pill A" not in title + body
+    assert (title, body, priority) == ("Reminder", "💊 Dose due · 8:00 am", "4") and "Pill A" not in title + body
     assert click.endswith(f"/{HUB}/{world.sent[-1].id}"), "the tap opens the reminder itself"
 
 
@@ -249,7 +249,7 @@ def test_a_pill_reminder_in_quiet_hours_gets_through_with_its_sound(world, phone
     at(world, 22, 30)
     run(notify.settle())
     assert [each.silent for each in world.sent if each.card.text.startswith(NOTICE)] == [False], "it sounds in Discord"
-    assert [said(each)[1] for each in phone] == ["💊 Routine due · 10:30 pm"], "and on the phone"
+    assert [said(each)[1] for each in phone] == ["💊 Dose due · 10:30 pm"], "and on the phone"
     assert run(notify.held_overnight(world.owner.id, world.day + timedelta(days=1))) == [], "nothing of it is held"
 
 
@@ -274,7 +274,7 @@ def test_a_held_pill_reminder_is_dropped_when_its_dose_is_taken(world, phone, ni
     add(world, LATE)
     at(world, 22, 30)
     morning = world.day + timedelta(days=1)
-    assert [each.line for each in run(notify.held_overnight(world.owner.id, morning))] == ["💊 Routine due · 10:30 pm"]
+    assert [each.line for each in run(notify.held_overnight(world.owner.id, morning))] == ["💊 Dose due · 10:30 pm"]
     press(world, reminders.P_TAKEN)
     assert run(notify.held_overnight(world.owner.id, morning)) == []
 
@@ -300,7 +300,7 @@ def test_the_sections_come_in_the_ranking_s_order_and_the_rest_stay_as_they_were
 def test_what_needs_a_look_is_said_with_its_bug():
     assert rules.problem(Item("backup failed", PROBLEM, bug="B14", icon="⚠️")) == "⚠️ B14 · backup failed"
     assert rules.problem(Item("dev mode is on", PROBLEM, icon="🛠️")) == "🛠️ dev mode is on"
-    assert rules.held("💊 Routine due · 11:00 pm") == "💊 Routine due · 11:00 pm" and rules.held("x", 3) == "x · 3 times"
+    assert rules.held("💊 Dose due · 11:00 pm") == "💊 Dose due · 11:00 pm" and rules.held("x", 3) == "x · 3 times"
 
 
 def test_the_briefing_reads_as_before_with_nothing_wrong_and_nothing_held():

@@ -35,7 +35,7 @@ otherwise. Say what to change in any of them, in your own words.
 | 3 | **The colours, in each theme you use** (block 39, steps 1 and 6) | `dev mock checklist-v2` | Whether amber, blue, green, red, grey and blurple can be told apart, and which to change |
 | 4 | **How the new cards read** (block 39, steps 3 to 5; block 41) | `dev mock confirm-card-v2`, `dev mock question-card-v1`, `dev mock too-soon-v2`, `dev mock reset-card-v2` | The boxes, the hint under a card, the buttons inside a pill's box: spacing, wording, order. After 2 to 4, `CARDS_V2` can go on for live (question 21) |
 | 5 | **The status line** (block 52) | Under live's name, a few times through a day | "💊 2/5 · 12pm", "💊 due 12pm", "🌅 6am": whether each reads right and fits, and never names a pill |
-| 6 | **The lock screen for a real reminder** (block 38, step 2; question 11) | When a dose next falls due, read the notification before opening it | The exact words. It should be "💊 Routine due · 8:00 am" and nothing about the pill. Whether the phone buzzes again when the reminder is posted again 15 minutes later |
+| 6 | **The lock screen for a real reminder** (block 38, step 2; question 11) | When a dose next falls due, read the notification before opening it | The exact words. It should be "💊 Dose due · 8:00 am" and nothing about the pill. Whether the phone buzzes again when the reminder is posted again 15 minutes later |
 | 7 | **The last-chance nudge** (block 57, step 6) | Only when one comes | That the lock screen says "💊 Last chance today · take by …" and names no pill |
 | 8 | **"Needs a look" and "worth knowing"** (block 55, rows 1 and 5) | Only when something has gone wrong, or after a restart you did not ask for | Whether the box on top of the briefing, the ping and the status line say the same thing, and whether the small line at the foot reads well |
 | 9 | **The gym sketches** (block 35) | `dev mock gym-import-v2`, `gym-change-v2`, `gym-workout-v1`, `gym-logged-set-v2` | What to change, with your answers to questions 23 to 28 |
@@ -871,10 +871,10 @@ Have your phone locked beside you for step 2. The clock is moved with
 | # | Do | Expect | Tests |
 |---|---|---|---|
 | 1 | Say `add Testrem to my pills at 3pm and 9pm, at least 4 hours apart, with food`. Press **Save**. Type `dev clock 2:59pm` | Nothing yet: no message about Testrem beyond the card and the checklist | R78 |
-| 2 | Type `dev clock 3:00pm`. Look at the lock screen, then at the hub | The lock screen says "💊 Routine due · 3:00 pm" and nothing about Testrem. In the hub the message reads: that line, "**Testrem** · dose 1 of 2", "Due `3:00 pm`", "with food", and **Taken**, **Taken at…**, **Snooze 15m**, **Skip** | R78 |
+| 2 | Type `dev clock 3:00pm`. Look at the lock screen, then at the hub | The lock screen says "💊 Dose due · 3:00 pm" and nothing about Testrem. In the hub the message reads: that line, "**Testrem** · dose 1 of 2", "Due `3:00 pm`", "with food", and **Taken**, **Taken at…**, **Snooze 15m**, **Skip** | R78 |
 | 3 | Press **Snooze 15m**. Type `dev clock 3:15pm` | The message gains "Snoozed until 3:15 pm". After the move a fresh message takes its place (the old one is gone) and the phone buzzes again with the same neutral line | R78 |
 | 4 | Press **Taken at…**, type `3:05pm`, submit | The message goes; the checklist shows Testrem dose 1 taken 3:05 pm, and dose 2 at `9:00 pm` | R78 |
-| 5 | Type `dev clock 9:00pm`, then `dev clock 9:15pm`, `dev clock 9:30pm`, `dev clock 9:45pm` | A prompt at 9:00 pm, then three more, each replacing the last: "reminder 1 of 3", "2 of 3", "3 of 3", with a line saying when the next comes. Only ever one message for the dose | R78 |
+| 5 | Type `dev clock 9:00pm`, then `dev clock 9:15pm`, `dev clock 9:30pm`, `dev clock 9:45pm` | A prompt at 9:00 pm, then three more, each replacing the last: "2nd reminder", "2 of 3", "3 of 3", with a line saying when the next comes. Only ever one message for the dose | R78 |
 | 6 | Type `dev clock 10:00pm` | The message goes and nothing more is sent. The checklist still shows 💊 Testrem (dose 2 of 2) · `9:00 pm`: not missed (changed 2026-10-14) | R78 |
 | 7 | Say `took testrem` | At once, with no card: "✅ **Testrem** (dose 2 of 2) · taken 10:00 pm" | R78 |
 | 8 | Say `add Testgap to my pills at 3pm and 9pm, at least 4 hours apart`, **Save**. Type `dev clock 3:00pm` (the next day's), press **Taken**. Type `dev clock 9:00pm`. On the 9:00 pm reminder press **Taken at…**, type `5pm`, submit | A card in the hub: "💊 Pills · change", "**Testgap** (dose 2 of 2) · taken 5:00 pm", "⚠️ That's 2h after dose 1, taken 3:00 pm. The gap is at least 4h. Log it anyway?", with **Log it** and **Cancel**. Nothing is ticked off yet and the reminder is still there | R78 |
@@ -902,7 +902,7 @@ buttons only say they are mock-ups. The style guide is `docs/DESIGN.md`.
 | # | Do | Expect | Tests |
 |---|---|---|---|
 | 1 | Type `dev mock checklist-v2` | A heading and the date, then a box an item: amber (due, with its buttons), blue (any time, still to take), green (taken), red (missed), grey (skipped by the bot), a separator, and Paused | J57 |
-| 2 | Lock your phone and type `dev mock reminder-v1-first` from the desktop; then `dev mock reminder-v1` | The lock screen shows "💊 Routine due · 11:12 am" for the first. The second is that line with an amber box under it naming the pill, with four buttons. Say what the lock screen showed for each | J57 |
+| 2 | Lock your phone and type `dev mock reminder-v1-first` from the desktop; then `dev mock reminder-v1` | The lock screen shows "💊 Dose due · 11:12 am" for the first. The second is that line with an amber box under it naming the pill, with four buttons. Say what the lock screen showed for each | J57 |
 | 3 | Type `dev mock confirm-card-v2`, then `dev mock question-card-v1` | A blurple box: two pills with `field · old → new`, ❓ on the guesses, Save and Cancel. Then a card that asks, with **8:00 am**, **8:00 pm** and **Cancel**, and no Save | J57 |
 | 4 | Type `dev mock reset-card-v2`, then `dev mock gym-workout-v1` | A red box for the reset. Then a workout: green (done), amber (the exercise you are on, with its buttons), grey (to come), and Finish | J57 |
 
@@ -949,7 +949,7 @@ On the dev database, dev mode off. Put `CARDS_V2=true` and
 | 1 | Say `add Testa to my pills at 8am, 11:30am and 3pm, at least 3 hours apart, not after 4pm, with food`, press **Save**. Before pressing, look at the card | A blurple box: "💊 Pills · new", a line under it, the pill's line, then **Save** and **Cancel** inside the box, and "or tell me what to change" in small text under it | S65 |
 | 2 | Say `add Testb twice a day at 8`. Press nothing yet | A blurple box that ends with the question in bold and a button for each answer, **Cancel**, and no Save. Press **Cancel** | S65 |
 | 3 | Say `add Testany once a day`, **Save**. Type `dev clock 7:55am` then `pills` | One message: "💊 Today · 0 of 4 taken" and the date, then a box a pill: Testa amber with "Due"/"Next" and **Taken**, **Taken at…**, **Skip**; Testany blue, "any time", with the same three buttons. No separate message for Testany | R79 |
-| 4 | Lock your phone. Type `dev clock 8:00am` | The lock screen shows only "💊 Routine due · 8:00 am". In the hub: that line with an amber box under it naming Testa, with four buttons | R80 |
+| 4 | Lock your phone. Type `dev clock 8:00am` | The lock screen shows only "💊 Dose due · 8:00 am". In the hub: that line with an amber box under it naming Testa, with four buttons | R80 |
 | 5 | On the checklist (not the reminder), press **Taken** in Testa's box | The checklist stays where it is and is rewritten: Testa shows "✅ dose 1 · 8:00 am" and "**Next:** dose 2"; the reminder goes | R79 |
 | 6 | Press **Taken** in Testa's box again straight away | An amber box: "💊 Pills · change", the dose, "⚠️ That's … after dose 1 … Log it anyway?", **Log it** and **Cancel**. Nothing is ticked off. Press **Cancel** | R79, S65 |
 | 7 | Press **Skip** in Testany's box | Testany's box turns grey with "⏭️ skipped" and has no buttons | R79 |
@@ -1143,9 +1143,9 @@ check rows 1, 5 and 7 with Discord's own notification.
 | # | Do | Expect | Tests |
 |---|---|---|---|
 | 1 | With both switches off, wait for a dose to fall due | The reminder in the hub as before, notifying in Discord. Nothing from ntfy | R93 |
-| 2 | Turn `NOTIFY_NTFY` on, restart, wait for a dose to fall due | A push titled "Reminder" reading "💊 Routine due · 12:00 pm": no pill's name on the lock screen. Discord notifies too | R93, K40 |
+| 2 | Turn `NOTIFY_NTFY` on, restart, wait for a dose to fall due | A push titled "Reminder" reading "💊 Dose due · 12:00 pm": no pill's name on the lock screen. Discord notifies too | R93, K40 |
 | 3 | Tap the push | Discord opens at the reminder, with its buttons | K40 |
-| 4 | Leave it: the first reminder after 15 minutes | A second push, "… · reminder 1 of 3" | R93 |
+| 4 | Leave it: the first reminder after 15 minutes | A second push, "… · 2nd reminder" | R93 |
 | 5 | A dose due after 10:00 pm | The reminder notifies with its sound, as by day: a pill reminder always gets through quiet hours | K41, R94 |
 | 6 | The next morning, look at the briefing | No "🌙 Held back overnight" box for it: nothing was held (nothing else pings yet, so the box has nothing to show today) | K41, R94 |
 | 7 | A dose due at noon | It notifies as ever | K41 |

@@ -35,7 +35,7 @@ version of this review is marked **(new)**.
   pressing; anything doubtful asks first. Yesterday, the week and a
   streak are answered from the record.
 - **Pill reminders** ping you at any hour, with a neutral line on the
-  lock screen ("💊 Routine due · 12:00 pm").
+  lock screen ("💊 Dose due · 12:00 pm").
 - **(new) The hub holds what matters.** Each morning at 6:00 am: the
   tidy (yesterday's messages go, a copy saved), then the briefing,
   then the checklist. The briefing is one "☀️ Today" card, edited in

@@ -54,7 +54,7 @@ log = logging.getLogger("assistant")
 # restart").
 #
 # The notification never names a pill: the message is posted as one neutral
-# line ("💊 Routine due · 11:12 am"), which is what the phone shows, and the
+# line ("💊 Dose due · 11:12 am"), which is what the phone shows, and the
 # pill, the dose and the buttons are written into it straight after (an edit
 # notifies nobody).
 #
@@ -214,12 +214,20 @@ def decide(dose: Dose, prompt: Prompt | None, now: datetime, by: datetime | None
 # The words (pure)
 # ---------------------------------------------------------------------------
 def notice(dose: Dose, reminders: int = 0, by: str = "") -> str:
-    """The one line the phone shows. It says a routine is due and when: never
-    which pill, its dose or its note."""
+    """The one line the phone shows. It says a dose is due and when: never
+    which pill, its dose number or its note ("Routine" was the bot's own word
+    until 15 Oct, and read like a personal routine). A reminder posted again
+    says which it is: the dose's time, then the 2nd, 3rd and last reminder,
+    15 minutes apart."""
     if reminders == LAST_UP:
         return f"💊 Last chance today · take by {by}"
-    line = f"💊 Routine due · {timeinput.format_moment(dose.due.at)}"
-    return f"{line} · reminder {reminders} of {REMINDERS}" if reminders else line
+    line = f"💊 Dose due · {timeinput.format_moment(dose.due.at)}"
+    return f"{line} · {again(reminders)}" if reminders else line
+
+
+def again(reminders: int) -> str:
+    """Which reminder a dose's prompt posted again is, in words: "2nd reminder" … "last reminder"."""
+    return "last reminder" if reminders >= REMINDERS else f"{reminders + 1}{'nd' if reminders + 1 == 2 else 'rd' if reminders + 1 == 3 else 'th'} reminder"
 
 
 def _take_by(dose: Dose, now: datetime) -> str | None:
@@ -258,8 +266,8 @@ def text(dose: Dose, listed: list[Dose], prompt: Prompt, now: datetime) -> str:
     elif prompt.reminders:
         left = REMINDERS - prompt.reminders
         coming = timeinput.format_moment(prompt.last_at + EVERY)
-        more = "the last reminder" if not left else (f"one more at {coming}" if left == 1 else f"{left} more, the next at {coming}")
-        lines.append(f"-# ⏰ Reminder {prompt.reminders} of {REMINDERS} · first asked {timeinput.format_moment(prompt.asked_at)} · {more}")
+        more = "none after it" if not left else (f"one more at {coming}" if left == 1 else f"{left} more, the next at {coming}")
+        lines.append(f"-# ⏰ {again(prompt.reminders).capitalize()} · first asked {timeinput.format_moment(prompt.asked_at)} · {more}")
     return "\n".join(lines)
 
 

@@ -649,7 +649,7 @@ Everything works in #inbox and in the hub.
 - **Reminders** are off unless `REMINDERS_ENABLED=true` is in `.env`
   (then restart). On, a dose with a time gets a message in the hub at
   that time, with **Taken**, **Taken at…**, **Snooze 15m** and **Skip**.
-  The phone shows only "💊 Routine due · 11:12 am". Left alone it comes
+  The phone shows only "💊 Dose due · 11:12 am". Left alone it comes
   again every 15 minutes, three times, and then it goes and nothing
   more is sent for that dose. The dose is still to take: it is missed
   only once it can no longer be taken today (the pill's latest time,
@@ -2083,7 +2083,7 @@ user. Two switches, both off unless set in `.env` (then restart live):
   subscribe to it in the ntfy app. The topic is a secret: anyone who
   knows it can read what is pushed.
   - What is pushed is neutral: a fixed title ("Reminder") and the one
-    line the hub shows first ("💊 Routine due · 12:00 pm"). Never a
+    line the hub shows first ("💊 Dose due · 12:00 pm"). Never a
     pill's name.
   - Tapping it opens the Discord message, where the buttons are.
   - **Where each kind goes is one table**, `KINDS` in `core/notify.py`:
