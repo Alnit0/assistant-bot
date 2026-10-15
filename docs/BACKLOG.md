@@ -126,6 +126,17 @@ the full self-test run.
   2026-10-14), in the project folder with remote control, so a
   restart of the PC never needs a Remote Desktop visit to bring it
   back.
+- **The calendar through the Google Calendar API, to add events** (Alex,
+  2026-10-15): the route for the bot writing to the calendar. A Google
+  Cloud service account, its key in live's `.env` folder only (never in a
+  doc, a log or a commit), given read access to the main calendar and
+  write access to a dedicated "Bot" calendar shared with it, and to
+  nothing else: the bot can read everything and add or change only what
+  is on its own calendar. It is a second source behind the calendar
+  task's source interface (`source.py`), picked by a setting, so the
+  rest of the task does not change; until then the task reads the
+  private iCal link and writes nothing. Every added event is a confirm
+  card first, as every change to one of Alex's things is.
 - **A RAM upgrade, 8 to 16 GB** (said 2026-10-14), if memory keeps
   running short: live uses about 100 MB, a self-test takes up to about
   240 MB, and it stops under 1.9 GB free.
