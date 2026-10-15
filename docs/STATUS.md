@@ -8,6 +8,19 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-15 (late night)
 
+## Shipped (15 Oct, 10:34 pm)
+
+Live on `9caace7` with `DESIGN_ROUND=5`, `WEEKLY_ALL=true` and
+`DIARY_ENABLED=true` (live's `.env` as it was is
+`data\env-before-2026-10-15-ship-r5`), one restart, no pill reminder
+near it. Checked: the account (live's), the diary's two migrations,
+the hub in round 5 (the date as the briefing's title, the finished
+checklist gone, Alex using it straight after), the bookings (3:30 am
+self-test, 6 am routine, the diary ask at 9 pm from 16 Oct, the Sunday
+7 pm summary). The full self-test before it: 150 of 150 on recorded
+answers. Design forum: Round 5 Live, Round 4 Retired. What's new for
+16 Oct: four lines. Nothing set back.
+
 ## Bug from live: when doses were taken (15 Oct, late night; ships at the next restart)
 
 "When did I take my pills today" (message #576) was read as what is

@@ -77,18 +77,18 @@ He is **not relying on the bot for reminders yet**. The hub is a daily overview 
 
 Messages go through fast paths (buttons, exact typed words), then sticky follow-ups and replies, then the router (Claude picks a task, with hints from the code about names he typed), then extraction (Claude fills a strict schema), then Python checks, applies and replies from templates. A question never sticks to the task that just answered, and an open card takes only what could answer or change it. **The scheduler** runs everything timed: tasks give handlers and default schedules, schedules are rows he changes in words ("my schedule"), one engine runs them, a run log stops doubles and catches up after restarts. **The attention model** ranks what matters (1 problem, 2 due now, 3 next timed, 4 untimed, 5 nothing) for the status line, the briefing and pings; something carried over from an earlier day ranks after what fell due today. **The task contract** gives each task a summary (the briefing), attention items, Today card lines and a week line. **The self-test** drives the dev bot against real Discord, files its own bugs, and runs nightly at 3:30 am with recorded answers, then reads back the recorded understanding checks offline.
 
-## 7. Design direction (round 4 live; round 5 built, waiting)
+## 7. Design direction (round 5 live since 15 Oct)
 
 **The hub, top to bottom**
 1. **Briefing (read):** posted at 6 am, edited in place all day.
-2. **Task cards (do):** one message a task in a fixed order (pills, the Today card, reminders, personal routines, gym, to-dos), each with its buttons; a card with nothing for today is not there.
+2. **Task cards (do):** one message a task in one order, said by each task (pills, the Today card, reminders, personal routines, gym, calendar, diary, to-dos), each with its buttons; a card with nothing for today is not there.
 3. **The moment:** reminders, pings and conversation at the bottom, tidied once dealt with.
 
 **Locked visual rules:** a box a topic, rules between items, the box edge the most urgent state in it; `##` page title, `###` card title with dots and a count (`●●○○○○ 2/6`, no bars, no percentages); bold names, small text for detail; times in bold with "in 2 hours"; changes struck through then bold; thin, stackable question cards; green for the positive action, red for destructive, blurple for other choices, grey only for Cancel.
 
-**Round 4 (live since 15 Oct):** the relevance rule, used by every card (`design.relevant`): what can be done now in full with its button; the next thing in full, no button; the rest of the day one small line of times; done and missed a small line each with a count; paused not shown. One Taken a dose, logged at once, corrected by a reply with a time. **The list rule** for list cards (`design.listed`): the first three in full, "+N more", one dropdown. Personal routines in layout B: the Today card as the overview, and a card a routine from its start time or window.
+**Round 4 (live 15 Oct, still the base of round 5):** the relevance rule, used by every card (`design.relevant`): what can be done now in full with its button; the next thing in full, no button; the rest of the day one small line of times; done and missed a small line each with a count; paused not shown. One Taken a dose, logged at once, corrected by a reply with a time. **The list rule** for list cards (`design.listed`): the first three in full, "+N more", one dropdown. Personal routines in layout B: the Today card as the overview, and a card a routine from its start time or window.
 
-**Round 5 (built 15 Oct behind `DESIGN_ROUND=5`, posted as "Design · Round 5", waiting on his yes):** from his feedback "there's a little bit of overlap with pills and calendar". The briefing becomes the morning overview: its title is the date with the day's dots ("☀️ Thursday 15 October ●●● 3/3"), so "Today" only means the Today card; Needs a look and Weather keep their boxes; every task with its own card is one line in one overview box, with no progress. A task card whose items are all done leaves the hub and comes back if something new is added (the pills checklist too, unless a dose was missed). No footer: the how-to is in help. With the suggested answers to questions 68 to 75, each marked in the post for his yes or no.
+**Round 5 (live since 15 Oct, 10:34 pm, `DESIGN_ROUND=5`; "Design · Round 5" tagged Live):** from his feedback "there's a little bit of overlap with pills and calendar". The briefing becomes the morning overview: its title is the date with the day's dots ("☀️ Thursday 15 October ●●● 3/3"), so "Today" only means the Today card; Needs a look and Weather keep their boxes; every task with its own card is one line in one overview box, with no progress. A task card whose items are all done leaves the hub and comes back if something new is added (the pills checklist too, unless a dose was missed). No footer: the how-to is in help. With the suggested answers to questions 68 to 75, each marked in the post for his yes or no, still to come item by item.
 
 **The design loop** (`docs/DESIGN-LOG.md` is the record: each round, his feedback word for word, what changed)
 - The Design forum has a post a round, tagged Live, Preview or Retired, drawn by the real code from made-up data (`python -m selftest.preview --post-round N`), plus other previews ("Design · …").
@@ -109,8 +109,11 @@ Messages go through fast paths (buttons, exact typed words), then sticky follow-
 - **The Today card** (live): today's routines, reminders as notes, events and to-dos, by the relevance rule.
 - **The calendar** (live): read only from the secret iCal link in live's `.env`; event names never go to Claude; on the Today card, in the briefing and the status line (an event within 30 minutes, its time only). Writing, later, through a service account and a calendar of the bot's own.
 - **Direct messages** are on: he can talk to the bot in a DM.
-- **The diary** (built, off): his words about his day, one entry a diary day (to 4:00 am), a mood on a small scale that can change (each entry keeps its scale; `DIARY_MOOD` off keeps none), one gentle ask at 9 pm, a streak with no warnings. Its words stay in the database: no line, log, notification or status line shows them (`Entry.private`).
-- **The weekly summary:** pills only, Sunday 7 pm (live). **For everything**, behind `WEEKLY_ALL` (built, off): one card, a box a task (pills taken, late, missed, streak; to-dos done and open; routines as dots; next week's events by day, times only).
+- **The diary** (live since 15 Oct): his words about his day, one entry a diary day (to 4:00 am), a mood Good, OK or Bad (each entry keeps its scale; to be looked at again about 30 Oct), one gentle ask at 9 pm in the hub, a streak with no warnings. He writes in #inbox or a DM. A message only about his day or a feeling is kept, with an Undo (question 85). Its words stay in the database: no line, log, notification or status line shows them (`Entry.private`).
+- **One order** for everything shown task after task (each task's `place`): pills, the Today card, reminders, personal routines, gym (later), calendar, diary, to-dos.
+- **"Remind me ..."** is a reminder even when it names another task as where something goes; with nothing named the router reads it, so a pill's time stays the pills'.
+- **When doses were taken** (`pill_taken`) and what is left (`pill_today`) are two answers; a question asking both gets both.
+- **The weekly summary for everything** (live since 15 Oct, `WEEKLY_ALL`): Sunday 7 pm, one card, a box a task (pills taken, late, missed, streak; to-dos done and open; routines as dots; the diary's moods; next week's events by day, times only).
 - **Cross-task understanding** (15 Oct): 44 golden conversations where a message could fit more than one task, recorded from the real router and extraction; fixes went into the tasks' own lines, never the router's rules. Every self-test run reads them back offline (step u.01).
 - **The status line** picks the single most important thing; overdue to-dos no longer hold it over a dose due now.
 - **What's new** (`core/whatsnew.py`): a batch can leave a few lines for one morning's briefing.
@@ -120,10 +123,10 @@ Messages go through fast paths (buttons, exact typed words), then sticky follow-
 ## 9. Open threads (update every batch)
 
 **Waiting on Alex**
-- **Round 5:** his yes or no on "Design · Round 5", item by item (questions 68 to 75 are marked there). Ready to ship: the latest commit, then `DESIGN_ROUND=5` in live's `.env`.
-- **The weekly summary for everything:** his look at "Design · Weekly summary"; for this Sunday, ship then `WEEKLY_ALL=true`, before 7 pm.
+- **Round 5** (live since 15 Oct with the suggested answers): his yes or no item by item on "Design · Round 5" (questions 68 to 75).
+- **The fix for when doses were taken** (`effbe2e`) ships at the next restart.
+- **What's new for 16 Oct** has four older lines queued besides the four new ones: whether they go.
 - **Gym onboarding:** questions 76 to 79 from "Design · Gym onboarding sketches" (which way in; whether the sheet or the bot holds the plan). Nothing of gym is built.
-- **The diary** (built 15 Oct, `DIARY_ENABLED` off): his look at "Design · Diary" and questions 80 to 85 (ask time, the 4 am day, where to write, the ask by DM, the mood scale, whether a feeling with no request should be kept).
 - **Live's own folder:** his word that it has had a good day, so the work folder's old `.env` and `data\` can be deleted.
 - **Bugs B2 and B5:** both fixed in what live runs (a note on each); only he presses Fixed.
 - **QA block 54** (direct messages, by hand): the self-test cannot send a DM.
