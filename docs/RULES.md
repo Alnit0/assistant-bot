@@ -473,7 +473,14 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   the hub that mentions me, removed once dealt with; in quiet hours
   nothing, and one check at 7:00 am if the box is not empty). A new
   kind of problem is an attention item with `PROBLEM`, never a card in
-  #bot-log alone; `ping=False` for one that needs nothing done. What is
+  #bot-log alone; `ping=False` for one that needs nothing done. **A
+  problem pings at most once, ever**: each is known for good by `once`
+  (its run, its kind of job, its bug), every key pinged is kept in
+  `alerts_pinged` and looked at before every ping, the 7:00 am check
+  included, so a restart, a new bug number, new words or a change of
+  status never pings again. **Self-test bugs (D, N) never ping**: Needs
+  a look and the briefing show them, Claude Code deals with them; the
+  one ping is the nightly failing two nights in a row. What is
   worth knowing but not urgent is `notify.worth_knowing(line)`: a small
   line in the briefing, no ping
 - Quiet hours (`QUIET_HOURS`, 10:00 pm to 7:00 am, in force only with

@@ -46,8 +46,14 @@ ICON = "⚠️"
 
 
 def key(item: Item) -> str:
-    """What a problem is known by: its bug if it has one, else what it says."""
+    """What a problem's line in the hub is kept under: its bug if it has one, else what it says."""
     return item.bug or f"{item.task}: {item.what}"
+
+
+def lasting(item: Item) -> str:
+    """What a problem is known by for good, for pinging: it pings once, ever (16 Oct: a bug renumbered
+    pinged again for a self-test run already pinged at 7:00 am)."""
+    return item.once or key(item)
 
 
 def line(item: Item) -> str:
@@ -93,6 +99,14 @@ def db_keep(conn: sqlite3.Connection, name: str, user_id: int, said: str, now: d
     )
 
 
+def db_pinged(conn: sqlite3.Connection) -> set[str]:
+    return {row[0] for row in conn.execute("SELECT key FROM alerts_pinged")}
+
+
+def db_ping(conn: sqlite3.Connection, names: list[str], user_id: int, said: str, now: datetime) -> None:
+    conn.executemany("INSERT OR IGNORE INTO alerts_pinged (key, user_id, line, at) VALUES (?, ?, ?, ?)", [(name, user_id, said, now.isoformat()) for name in names])
+
+
 def db_forget(conn: sqlite3.Connection, name: str) -> None:
     conn.execute("DELETE FROM needs_look WHERE key = ?", (name,))
 
@@ -133,8 +147,14 @@ async def look() -> tuple[int, int]:
             now = clock.now()
             needs = {key(item): item for item in await needing(user_id, now)}
             known = await database.run(db_known)
+            pinged = await database.run(db_pinged)
             for name, item in needs.items():
                 if name in known:
+                    continue
+                if lasting(item) in pinged:
+                    # Pinged once already (before a restart, a new number, a change of words): kept, never said again
+                    await database.run(db_keep, name, user_id, line(item), now, None, None)
+                    log.info("Needs a look, pinged before, not again: %s", line(item))
                     continue
                 if notify.holds(KIND, now):
                     # Quiet hours: nothing is posted. It is in the briefing's box, and the 7:00 am check pings once
@@ -142,6 +162,7 @@ async def look() -> tuple[int, int]:
                     log.info("Needs a look, held by quiet hours: %s", line(item))
                     continue
                 await _say(user_id, name, line(item), item, now)
+                await database.run(db_ping, [lasting(item)], user_id, line(item), now)
                 log.info("Needs a look, said in the hub: %s", line(item))
                 said += 1
             for name, (channel_id, message_id) in known.items():
@@ -181,9 +202,17 @@ async def check_job(job: scheduler.Job) -> None:
     if not needs:
         scheduler.note(job, "nothing needs a look: nothing said")
         return
+    pinged = await database.run(db_pinged)
+    fresh = [item for item in needs if lasting(item) not in pinged]
+    if not fresh:
+        scheduler.note(job, f"{len(needs)} need a look, every one pinged before: nothing said")
+        return
+    needs = fresh
     known = await database.run(db_known)
     await _take_down(*known.get(CHECK, (None, None)))  # yesterday's, if it is still up
     posted = await _say(user_id, CHECK, count_line(len(needs)), needs[0], now)
+    if posted is not None:
+        await database.run(db_ping, [lasting(item) for item in needs], user_id, count_line(len(needs)), now)
     scheduler.note(job, f"{len(needs)} need a look: " + ("said in the hub" if posted is not None else "held (quiet hours), or nowhere to say it"))
 
 

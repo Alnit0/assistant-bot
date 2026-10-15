@@ -293,6 +293,12 @@ time). Spend US$0.041.
 
 ## Decided (2026-10-16, midday)
 
+- **The 12:06 pm ping** was the 3:30 am nightly's failure again: closing
+  its D1 took the bug's id off the item, and pings were kept by bug id,
+  so it looked new. Now a problem pings once, ever, by a key that lasts
+  (`alerts_pinged`), and self-test bugs never ping, but for the nightly
+  failing two nights in a row (once, known by the first night).
+
 - **Duplicate D numbers:** D1 to D3 were each used twice: the work
   folder's self-test (D1 to D13, all closed) and the nightly, which runs
   in live's folder on a dev database of its own (D1 to D3, open). One

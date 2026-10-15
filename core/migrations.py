@@ -462,6 +462,12 @@ def _add_ended_to_bot_alive(conn: sqlite3.Connection) -> None:
     conn.execute("ALTER TABLE bot_alive ADD COLUMN ended TEXT")
 
 
+def _create_pinged(conn: sqlite3.Connection) -> None:
+    """Every problem that has ever pinged me, by what it is known by for good (core/alerts.py): never
+    deleted, so nothing pings twice."""
+    conn.execute("CREATE TABLE alerts_pinged (key TEXT PRIMARY KEY, user_id INTEGER REFERENCES users(id), line TEXT NOT NULL, at TEXT NOT NULL)")
+
+
 def _create_needs_look(conn: sqlite3.Connection) -> None:
     # What needs me that the bot knows it has told me about, or is waiting to (core/alerts.py):
     # one row a thing, with the ping's message if one is up. Gone when the thing is dealt with
@@ -519,6 +525,7 @@ MIGRATIONS = [
     _create_held_alerts,
     _add_ended_to_bot_alive,
     _create_needs_look,
+    _create_pinged,
     _create_exchange_rates,
 ]
 

@@ -69,6 +69,9 @@ class Item:
     # Said only beside something else that needs me (a bug whose fix is shipped and closes by itself): after
     # every other problem, never on the status line on its own, never a ping, and left out when it is alone
     quiet: bool = False
+    # What the problem is known by for good, for pinging (core/alerts.py): the same problem keeps it through
+    # a restart, a new bug number, a change of words or of status. "" is its bug, else its task and words
+    once: str = ""
 
 
 def level(item: Item, now: datetime) -> int | None:

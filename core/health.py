@@ -147,7 +147,7 @@ async def jobs(user_id: int, now: datetime) -> list[Item]:
     when = await scheduler.troubled_at()
     for task, kind, ended in await scheduler.troubled():
         said = job_problem(scheduler.label(task, kind), ended)
-        found.append(Item(said, PROBLEM, when=when.get((task, kind)), bug=await bug_for(job_key(task, kind)), short=(said,)))
+        found.append(Item(said, PROBLEM, when=when.get((task, kind)), bug=await bug_for(job_key(task, kind)), short=(said,), once=f"job:{task}/{kind}"))
     return found
 
 
@@ -368,6 +368,32 @@ def spend_problem(spent: float, limit: float) -> Item | None:
     return Item("the self-test has spent this month's limit: recorded answers only until next month", USEFUL, short=("self-test spend", money.shown(spent)), icon=SELFTEST_ICON, ping=False)
 
 
+def nights_failed(rows: list[dict]) -> list[str]:
+    """The days of the nightly runs that failed, the latest last, back to the last one that passed."""
+    nightly = [row for row in rows if (row.get("ran") or "").startswith("nightly")]
+    streak: list[str] = []
+    for row in reversed(nightly):
+        if not (row.get("failed_steps") or "").split():
+            break
+        streak.insert(0, (row.get("date") or "")[:10])
+    return streak
+
+
+def two_nights(rows: list[dict]) -> Item | None:
+    """One ping when the nightly has failed two nights running (the only self-test item that pings):
+    known by the first night of the run of failures, so a third night does not ping again."""
+    streak = nights_failed(rows)
+    if len(streak) < 2:
+        return None
+    try:
+        first, last = (datetime.strptime(each, "%Y-%m-%d").date() for each in (streak[-2], streak[-1]))
+    except ValueError:
+        return None
+    if (last - first).days != 1:
+        return None
+    return Item("nightly check failed two nights in a row", PROBLEM, short=("nightly failed twice",), once=f"selftest:nights-from-{streak[0]}")
+
+
 def selftest_problem(row: dict | None, bugs: dict) -> Item | None:
     """The item for a self-test's latest run, if it failed or did not finish.
     `bugs` is {step: the number of its bug}."""
@@ -386,7 +412,8 @@ def selftest_problem(row: dict | None, bugs: dict) -> Item | None:
         when = datetime.strptime(row.get("date") or "", "%Y-%m-%d %H:%M").replace(tzinfo=config.TIMEZONE)
     except ValueError:
         when = None
-    return Item(what, PROBLEM, when=when, bug=selftest_bug(number) if number is not None else "", short=(said,))
+    # Never a ping: Needs a look and the briefing show it, Claude Code deals with it. Known for good by its run
+    return Item(what, PROBLEM, when=when, bug=selftest_bug(number) if number is not None else "", short=(said,), ping=False, once=f"selftest:{row.get('date') or ''}")
 
 
 async def selftest(user_id: int, now: datetime) -> list[Item]:
@@ -398,7 +425,7 @@ async def selftest(user_id: int, now: datetime) -> list[Item]:
         bugs = {str(step): int(number) for step, number in json.loads((folder / "bugs.json").read_text(encoding="utf-8")).items()}
     except (OSError, ValueError, AttributeError, TypeError):
         bugs = {}
-    found = [selftest_problem(last_run(folder), bugs), spend_problem(*selftest_spend())]
+    found = [selftest_problem(last_run(folder), bugs), two_nights(history(folder)), spend_problem(*selftest_spend())]
     return [each for each in found if each is not None]
 
 

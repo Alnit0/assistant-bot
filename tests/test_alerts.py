@@ -189,3 +189,58 @@ def test_every_line_of_my_schedule_says_when_it_last_ran_and_whether_it_worked()
     assert schedule_rules.last_text(SimpleNamespace(last=("failed", "2026-10-13T03:00:00")), today) == "last: Tue 13 Oct 3:00 am ⚠️ failed"
     assert schedule_rules.last_text(SimpleNamespace(last=None), today) == "last: not run yet"
     assert "#bot-log" not in " ".join(schedule_rules._ENDED.values()), "I never read #bot-log: the line says it itself"
+
+
+# --- a problem pings once, ever (16 Oct: a renumbered self-test bug pinged again at 12:06) ------------------------------
+def test_a_problem_pings_once_ever_through_a_new_number_a_status_change_and_a_restart(box):
+    run_of = Item("nightly check failed, 20 steps", PROBLEM, bug="D1", once="selftest:2026-10-16 03:30", ping=True)
+    box.items.append(run_of)
+    assert run(alerts.look()) == (1, 0)
+    box.items[:] = [Item("nightly check failed, 20 steps", PROBLEM, bug="", once="selftest:2026-10-16 03:30", ping=True)]
+    run(alerts.look())
+    assert len(box.sent) == 1, "its bug's number gone or changed: the same problem, not pinged again"
+    box.items.clear()
+    run(alerts.look())
+    box.items.append(run_of)
+    run(alerts.look())
+    assert len(box.sent) == 1, "dealt with, then back (a status change): not pinged again"
+    from core import database
+
+    # A restart that lost every line it kept for the hub: what was pinged is kept apart, for good
+    for name in list(run(database.run(alerts.db_known))):
+        run(database.run(alerts.db_forget, name))
+    alerts._pending.clear()
+    run(alerts.look())
+    assert len(box.sent) == 1, "after a restart: not pinged again"
+
+
+def test_the_seven_o_clock_check_pings_only_for_what_never_pinged(box, monkeypatch):
+    notes = []
+    monkeypatch.setattr(scheduler, "note", lambda job, text: notes.append(text))
+    box.items.append(BACKUP)
+    run(alerts.look())
+    clock.advance_to(day.at(box.day + timedelta(days=1), time(7, 0)))
+    run(alerts.check_job(SimpleNamespace(user_id=box.owner.id, task="core", kind="needs_look", id=1)))
+    assert len(box.sent) == 1 and notes == ["1 need a look, every one pinged before: nothing said"]
+
+
+def test_a_self_test_failure_never_pings_but_two_nights_in_a_row_pings_once(box, monkeypatch):
+    def night(when, failed):
+        return {"date": when, "ran": "nightly, full", "failed": str(len(failed.split())), "failed_steps": failed, "note": ""}
+
+    item = health.selftest_problem(night("2026-10-16 03:30", "1.01b 5.01"), {"1.01b": 1})
+    assert not item.ping and item.once == "selftest:2026-10-16 03:30", "shown in Needs a look and the briefing, never a ping"
+    one = [night("2026-10-15 03:30", ""), night("2026-10-16 03:30", "1.01b")]
+    assert health.two_nights(one) is None
+    two = one + [night("2026-10-17 03:30", "1.01b")]
+    twice = health.two_nights(two)
+    assert twice.ping and twice.what == "nightly check failed two nights in a row" and twice.once == "selftest:nights-from-2026-10-16"
+    three = two + [night("2026-10-18 03:30", "6.01")]
+    assert health.two_nights(three).once == twice.once, "a third night is the same run of failures: no second ping"
+    box.items[:] = [item, twice]
+    run(alerts.look())
+    assert said(box) == [("<@1> ⚠️ nightly check failed two nights in a row", False)]
+    box.items[:] = [item, health.two_nights(three)]
+    run(alerts.look())
+    assert len(box.sent) == 1
+
