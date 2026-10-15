@@ -624,6 +624,23 @@
         "reports_doing": false,
         "chat_part": ""
       }
+    },
+    {
+      "golden": "30",
+      "message": "When did I take my pills today",
+      "tasks": [
+        "pills"
+      ],
+      "note": "bug from live, 15 Oct: when doses were taken, not what is left",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
     }
   ],
   "extraction": [
@@ -1734,6 +1751,22 @@
       "note": "the answer itself, never only a pointer to the hub",
       "recorded": [
         "pill_today",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "30",
+      "task": "pills",
+      "message": "When did I take my pills today",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:00 am, 2:00 pm · at least 3h apart [active]\n- pl2: 💊 Pill B · daily · 9:00 pm [active]",
+      "action": "pill_taken",
+      "data": {},
+      "note": "bug from live, 15 Oct: answered with what is left (pill_today)",
+      "recorded": [
+        "pill_taken",
         {
           "guessed": [],
           "not_included": []

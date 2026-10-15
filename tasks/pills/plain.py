@@ -7,7 +7,7 @@ from core.actions import BOOLEAN, INTEGER, ITEMS, LAST, LIST, MINUTES, TIME, TIM
 from core.actions import EACH_DAY, SEE, SET_UP, flag, is_guessed
 from core.actions import is_reference, point_at
 from core.errors import UserError
-from tasks.pills import checklist, history, listing, rules, store, today
+from tasks.pills import checklist, history, listing, rules, store, taken, today
 from tasks.pills import doses as limits
 from tasks.pills.store import DOSE
 from tasks.pills.today import Dose
@@ -1988,18 +1988,36 @@ ACTIONS = (
     ),
     Action(
         "pill_today",
-        "The user asks what is left to take today, or about today's doses (\"what pills are left?\", \"what pills "
-        "do I have left today?\", \"what's left to take?\", \"have I taken everything?\"). Answered in words where asked.",
+        "The user asks what is left to take today (\"what pills are left?\", \"what pills do I have left today?\", "
+        "\"what's left to take?\", \"have I taken everything?\"). Not when or whether a dose was taken: that is pill_taken.",
         needs_card=False,
         run=show_today,
         purpose=SEE,
         say=("what's left to take today?",),
     ),
     Action(
+        "pill_taken",
+        "The user asks when they took doses, or whether they took one, today or on a day gone by (\"when did I take my "
+        "pills today?\", \"what time did I take dose 2?\", \"did I take my morning one?\", \"when did I last take Pill A?\", "
+        "\"what did I take on Tuesday?\"). Not what is left: that is pill_today. Not how yesterday or the week went overall: that is pill_history.",
+        (
+            Field("day", "The day asked about, exactly as the user said it (\"today\", \"yesterday\", \"Tuesday\"). Never work out a date. Leave out for today."),
+            Field("pill", "The pill's name, only when the user names one (\"Pill A\"). Leave out for all of them."),
+            Field("dose", "Only when the user says which of the day's doses by its number (\"dose 2\", \"my second one\"): that number.", INTEGER),
+            Field("part", "Only when the user names a part of the day for the dose (\"my morning one\").", choices=tuple(taken.PARTS)),
+            Field("last", "true when the user asks when they LAST took a pill (\"when did I last take Pill A?\").", BOOLEAN),
+            Field("also_left", "true when the same question also asks what is still left to take today.", BOOLEAN),
+        ),
+        needs_card=False,
+        run=taken.show,
+        purpose=SEE,
+        say=("when did I take my pills today?", "did I take dose 2?"),
+    ),
+    Action(
         "pill_history",
         "The user asks what they took on a day that is over, or how the week went (\"what did I take yesterday?\", "
         "\"did I take everything yesterday?\" -> period yesterday; \"show my week\", \"how did I do this week?\", "
-        "\"my pills this week\" -> period week). Not for today: that is pill_today.",
+        "\"my pills this week\" -> period week). Not for today: that is pill_today. Not another day by name (\"on Tuesday\"): that is pill_taken.",
         (Field("period", "Which stretch of time: yesterday, or the week.", choices=(history.YESTERDAY, history.WEEK), required=True),),
         needs_card=False,
         run=history.show,

@@ -396,7 +396,7 @@ def test_every_golden_conversation_in_the_fixture_file_has_a_test_here():
     ids = {entry["golden"] for entry in [*FIXTURES["router"], *FIXTURES["extraction"]]}
     tested = {name.split("_")[1] for name in globals() if name.startswith("test_") and name.split("_")[1][0].isdigit()}
     assert ids <= tested, f"no test for: {sorted(ids - tested)}"
-    assert {"1", "1a", "1b", "1c", "1d", "2", "2a", "2b", "3", "4", "5", "6", "7", "8", "9", "10", "10a", "11", "12", "13", "14", "15", "16", "17", "18", "18a", "18b", "19", "19a", "20", "21", "22", "23", "23a", "24", "25", "2c", "18c", "26", "27", "27a", "28", "28a", "29"} == tested
+    assert {"1", "1a", "1b", "1c", "1d", "2", "2a", "2b", "3", "4", "5", "6", "7", "8", "9", "10", "10a", "11", "12", "13", "14", "15", "16", "17", "18", "18a", "18b", "19", "19a", "20", "21", "22", "23", "23a", "24", "25", "2c", "18c", "26", "27", "27a", "28", "28a", "29", "30"} == tested
 
 
 # --- QA 2026-10-10: "already so" ends in the task's own line, whichever way it was found --------------------
@@ -1401,6 +1401,24 @@ def test_29_what_pills_are_left_is_answered_where_it_is_asked_never_with_only_a_
     assert said.splitlines()[0] == "💊 **2 left today** · ○○ 0/2", "the answer, its first line naming no pill"
     assert "**Iron** · any time" in said and "**Zinc** · any time" in said
     assert len(bot.sent) == posted + 1 and "Today's checklist is in" not in said, "one reply, the answer itself: nothing posted in the hub, no pointer instead"
+
+
+# --- 30: when doses were taken is not what is left (bug from live, 15 Oct) -------------------------------------
+def test_30_when_did_i_take_my_pills_today_says_each_dose_taken_and_its_time(bot):
+    _with_zinc(bot)
+    bot.claude(route("pills"), ("pill_add", {"pills": [{"name": "Iron"}], "guessed": [], "not_included": []}))
+    bot.say("add iron to my pills")
+    press(bot)
+    bot.claude(route("pills"), ("pill_log", {"doses": [{"pill": "zinc", "did": "taken"}], "guessed": [], "not_included": []}))
+    bot.say("took my zinc")
+    bot.claude(ROUTED["30"], EXTRACTED["30"])
+    bot.say(SAID["30"])
+    assert SAID["30"] == "When did I take my pills today", "the message word for word"
+    said = _said(bot)
+    first, *rest = said.splitlines()
+    assert first == "💊 **1 taken today** · ●○ 1/2", "its first line naming no pill"
+    assert len(rest) == 1 and rest[0].startswith("✅ **Zinc** · taken "), said
+    assert "left" not in said, "what is left is another question"
 
 
 # --- the midnight edge (found chasing question 39): a reply corrects the day of the line it replies to ---------

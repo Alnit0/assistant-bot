@@ -539,9 +539,11 @@ async def _round_posts(client, forum) -> dict[int, object]:
     threads += [thread async for thread in forum.archived_threads(limit=100)]
     posts = {}
     for thread in threads:
-        name = thread.name.split(" · ")[0]
-        if name.startswith("Round ") and name[6:].isdigit():
-            posts.setdefault(int(name[6:]), thread)
+        # "Round 4 · …" or "Design · Round 5": the part that names the round, wherever it is
+        for name in thread.name.split(" · "):
+            if name.startswith("Round ") and name[6:].isdigit():
+                posts.setdefault(int(name[6:]), thread)
+                break
     return posts
 
 

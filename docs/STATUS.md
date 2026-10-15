@@ -8,6 +8,18 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-15 (late night)
 
+## Bug from live: when doses were taken (15 Oct, late night; ships at the next restart)
+
+"When did I take my pills today" (message #576) was read as what is
+left. A new action, `pill_taken` (`tasks/pills/taken.py`): each taken
+dose and its time, then skipped and missed, for today, yesterday or a
+named day, narrowed by a pill, a dose number or a part of the day; when
+a pill was last taken; `also_left` adds what is left. `pill_today` and
+`pill_history` say what is theirs. Golden 30 is the exact message;
+30a to 30g the phrasings, 9 of 9 after `pill_history` was told a named
+day is not its (yesterday may go either way: both list each dose's
+time). Spend US$0.041.
+
 ## Alex's answers: the order, the diary's misses (15 Oct, late night)
 
 1. **One order, said by each task** (`Task.place`, `Entry.place`; no

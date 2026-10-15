@@ -6,6 +6,8 @@ backfilled from the git log.
 
 ## 2026-10-15
 
+- "When did I take my pills today?" says each dose taken and its time, and anything skipped or missed, for today,
+  yesterday or a named day, one pill or one dose, or when a pill was last taken; "what's left?" is answered as before.
 - Live: round 5 of the hub, the Sunday summary for everything and the diary are on. Everything shown one task
   after another comes in one order: pills, reminders, personal routines, calendar, diary, to-dos.
 - The diary keeps a message that is only about your day or how you feel, with an Undo; "remind me to write in

@@ -1692,6 +1692,142 @@
           "not_included": []
         }
       ]
+    },
+    {
+      "task": "pills",
+      "message": "what time did I take dose 2?",
+      "action": "pill_taken",
+      "data": {
+        "dose": 2
+      },
+      "note": "which dose, by its number",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:00 am, 2:00 pm · at least 3h apart [active]\n- pl2: 💊 Pill B · daily · 9:00 pm [active]",
+      "golden": "30a",
+      "recorded": [
+        "pill_taken",
+        {
+          "dose": 2,
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "did I take my morning one?",
+      "action": "pill_taken",
+      "data": {
+        "part": "morning"
+      },
+      "note": "a part of the day",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:00 am, 2:00 pm · at least 3h apart [active]\n- pl2: 💊 Pill B · daily · 9:00 pm [active]",
+      "golden": "30b",
+      "recorded": [
+        "pill_taken",
+        {
+          "part": "morning",
+          "guessed": [
+            "part"
+          ],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "when did I last take Pill A?",
+      "action": "pill_taken",
+      "data": {
+        "pill": "Pill A",
+        "last": true
+      },
+      "note": "the last time, over the days",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:00 am, 2:00 pm · at least 3h apart [active]\n- pl2: 💊 Pill B · daily · 9:00 pm [active]",
+      "golden": "30c",
+      "recorded": [
+        "pill_taken",
+        {
+          "last": true,
+          "pill": "Pill A",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "when did I take my pills yesterday?",
+      "action": "pill_taken",
+      "data": {
+        "day": "yesterday"
+      },
+      "note": "a day gone by: yesterday's day list (pill_history) gives each dose and its time too",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:00 am, 2:00 pm · at least 3h apart [active]\n- pl2: 💊 Pill B · daily · 9:00 pm [active]",
+      "golden": "30d",
+      "recorded": [
+        "pill_history",
+        {
+          "period": "yesterday",
+          "guessed": [],
+          "not_included": []
+        }
+      ],
+      "also_ok": {
+        "action": "pill_history"
+      }
+    },
+    {
+      "task": "pills",
+      "message": "what did I take on Tuesday?",
+      "action": "pill_taken",
+      "data": {
+        "day": "Tuesday"
+      },
+      "note": "a named day, as said",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:00 am, 2:00 pm · at least 3h apart [active]\n- pl2: 💊 Pill B · daily · 9:00 pm [active]",
+      "golden": "30e",
+      "recorded": [
+        "pill_taken",
+        {
+          "day": "Tuesday",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "when did I take my pills today, and what's left?",
+      "action": "pill_taken",
+      "data": {
+        "also_left": true
+      },
+      "note": "both asked: both answered",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:00 am, 2:00 pm · at least 3h apart [active]\n- pl2: 💊 Pill B · daily · 9:00 pm [active]",
+      "golden": "30f",
+      "recorded": [
+        "pill_taken",
+        {
+          "guessed": [],
+          "not_included": [],
+          "also_left": true
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "what pills are left?",
+      "action": "pill_today",
+      "note": "what is left keeps its own answer",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:00 am, 2:00 pm · at least 3h apart [active]\n- pl2: 💊 Pill B · daily · 9:00 pm [active]",
+      "golden": "30g",
+      "recorded": [
+        "pill_today",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
     }
   ]
 }
