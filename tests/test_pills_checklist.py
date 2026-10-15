@@ -163,7 +163,7 @@ def test_a_question_about_what_is_left_is_answered_where_it_was_asked_never_with
     said = run(plain.show_today(world.request(INBOX), {}, frozenset()))
     lines = said.splitlines()
     assert lines[0] == "💊 **3 left today** · ●○○○ 1/4", "the first line names no pill: it is what a lock screen shows"
-    assert lines[1].startswith("**Pill A** · dose 2 of 3 · **12:00 pm** · <t:") and lines[2].startswith("**Pill A** · dose 3 of 3 · **4:00 pm** · <t:")
+    assert lines[1] == "**Pill A** · dose 2 of 3 · **12:00 pm**" and lines[2] == "**Pill A** · dose 3 of 3 · **4:00 pm**", "exact times only for pills"
     assert lines[3] == "**Pill B** · any time" and lines[-1] == "-# the checklist is in <#400>", "a pointer may follow the answer, small"
     assert "`" not in said and pointed == [] and len(world.sent) == sent, "times in bold; nothing posted in the hub, no pointer instead"
     in_hub = run(plain.show_today(world.request(HUB), {}, frozenset()))
@@ -1176,3 +1176,20 @@ def test_the_list_of_my_pills_is_a_card_with_the_same_words_and_a_box_a_pill(wor
     assert [piece.children[0].content for piece in listing.layout([], DAY) if isinstance(piece, design.Box)] == [rules.EMPTY_LIST]
     many = [*pills] * 9
     assert design.problem(listing.layout(many, DAY)) == "", "more pills than fit a box each share one"
+
+
+def test_pills_show_exact_times_only_never_a_relative_countdown():
+    """Alex, 16 Oct: the pills card said "in 10 minutes" at 11:43 for an 11:51 dose (drawn at 11:22; the
+    phone app had not brought it up to date). Exact times only wherever a pill appears: the pills card,
+    pill reminders and the "what's left today?" answer. Other tasks keep theirs."""
+    import inspect
+
+    from core import design
+    from tasks.pills import reminders, sheet
+    from tasks.pills import today as pills_today
+
+    for module in (sheet, reminders, pills_today):
+        source = inspect.getsource(module)
+        assert "design.when(" not in source and "design.relative(" not in source and ":R>" not in source, module.__name__
+    assert "design.when(" in inspect.getsource(__import__("core.today", fromlist=["today"])), "the Today card keeps its countdown"
+

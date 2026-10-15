@@ -51,7 +51,7 @@ def test_round_4_morning_with_nothing_taken_the_due_dose_in_full_with_one_button
     assert lines[0] == "### 💊 Pills ○○○○○ 0/5"
     assert "**Pill A** · dose 1 of 3 · due **8:00 am**" in lines and "**Any** · any time" in lines
     assert buttons == ["Taken", "Taken"], "one button a dose that can be taken now: no Taken at…, no Skip"
-    assert any(line.startswith("**Pill A** · dose 2 of 3 · **11:30 am** · <t:") for line in lines), "the next one coming up, in full, no button"
+    assert "**Pill A** · dose 2 of 3 · **11:30 am**" in lines, "the next one coming up, in full, no button, its exact time only"
     assert "-# later today · 3:00 pm, 8:00 pm" in lines, "the rest of the day: one small line of times"
 
 

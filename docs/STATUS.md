@@ -293,6 +293,19 @@ time). Spend US$0.041.
 
 ## Decided (2026-10-16, midday)
 
+- **Duplicate D numbers:** D1 to D3 were each used twice: the work
+  folder's self-test (D1 to D13, all closed) and the nightly, which runs
+  in live's folder on a dev database of its own (D1 to D3, open). One
+  letter a counter now: B live, D the work folder, N the nightly (live's
+  folder is told by `data\live-versions.txt`). The nightly's D1 to D3
+  were closed with a pointer to the earlier post of the same number, and
+  its step list emptied, so its next bug is N4. Nothing closed was
+  renumbered.
+- **Pills show exact times only** (Alex): no relative countdown on the
+  pills card, pill reminders or "what's left today?"; every other
+  countdown stays. The 11:43 card's timestamp was right (11:51 am): it
+  was drawn at 11:22, and the phone had not brought "in …" up to date.
+
 - The calendar switched to Google only (`CALENDAR_READ=google:CALENDAR_MAIN_ID,google:CALENDAR_BOT_ID`,
   the iCal link removed from live's `.env`, its copy in
   `data\env-before-2026-10-16-google-only`). The feed's Work series had

@@ -431,9 +431,9 @@ def test_the_checklist_is_one_box_with_no_page_title_in_time_order_with_what_is_
     names = [lines[0].split("**")[1] for lines, _ in items[:-1]]
     assert names == ["Pill A", "Evening pill", "Any"], "coming up in time order, then any time"
     pill_a, evening, anytime, tail = items
-    assert pill_a[0][0] == "**Pill A** ●○○" and pill_a[0][1].startswith("dose 2 · **11:30 am** · <t:") and pill_a[0][1].endswith(":R>")
+    assert pill_a[0][0] == "**Pill A** ●○○" and pill_a[0][1] == "dose 2 · **11:30 am**", "exact times only for pills, no countdown"
     assert pill_a[0][2:] == ["-# ✅ dose 1 · 8:00 am", "-# with food"] and pill_a[1] == ["Taken", "Taken at…", "Skip"]
-    assert evening[0][:2] == ["**Evening pill** ○", evening[0][1]] and evening[0][1].startswith("**8:00 pm** · <t:")
+    assert evening[0][:2] == ["**Evening pill** ○", evening[0][1]] and evening[0][1] == "**8:00 pm**"
     assert anytime == (["**Any** ○", "any time", "-# with water"], ["Taken", "Taken at…", "Skip"])
     assert tail == (["-# ✅ Done · 8:00 am · ⏸️ Off paused"], []), "done and paused collapsed into one small line"
     assert "`" not in "".join(design.texts(pieces)), "times in bold, never code"

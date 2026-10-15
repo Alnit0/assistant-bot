@@ -233,3 +233,18 @@ marked in the post "Design · Round 5" for a yes or no):
 
 Behind `DESIGN_ROUND=5`. The day in the hub was run in round 4 and in
 round 5 and posted side by side in the same post.
+
+## Pills show exact times only (2026-10-16, midday)
+
+Alex: "Live pills card at 11:43 showed dose 2 · 11:51 am · in 10 minutes
+(the Discord relative timestamp). It should have said 8 minutes."
+
+The timestamp was right (the dose's own due moment, 11:51 am); the card
+had been drawn at 11:22 and the phone app had not brought "in …" up to
+date. Discord's relative timestamps don't reliably refresh on the phone.
+
+**Alex's rule, pills only:** exact times, no relative countdown anywhere
+a pill appears: the pills card, pill reminders and the "what's left
+today?" answer. Every other countdown stays as it is (the briefing, the
+Today card, reminders).
+

@@ -100,7 +100,7 @@ def _next(dose: Dose, now: datetime) -> str:
     at = today.shown_time(dose)
     if at is not None:
         shown = timeinput.format_moment(at)
-        return f"{_which(dose)}{'due ' if at <= now else ''}{design.when(shown, at, now)}"
+        return f"{_which(dose)}{'due ' if at <= now else ''}{design.time(shown)}"  # exact only: pills have no countdown
     if dose.number > 1:
         return f"{_which(dose)}after dose {dose.number - 1}"
     return _which(dose).removesuffix(" · ") or "to take today"
@@ -245,7 +245,7 @@ def thing(dose: Dose, now: datetime) -> design.Thing:
         return design.Thing("\n".join(line for line in lines if line), design.NOW, at, status=design.ANY_TIME if at is None else design.DUE, row=(taken_button(dose),))
     if at is None:
         return design.Thing(f"{name} · after dose {dose.number - 1}", design.COMING)
-    return design.Thing(f"{name} · {design.when(timeinput.format_moment(at), at, now)}", design.COMING, at, timeinput.format_moment(at))
+    return design.Thing(f"{name} · {design.time(timeinput.format_moment(at))}", design.COMING, at, timeinput.format_moment(at))
 
 
 def layout_r4(listed: list[Dose], pills: list[Pill], day: date, now: datetime) -> tuple:

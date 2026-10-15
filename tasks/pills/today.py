@@ -254,7 +254,7 @@ def left_answer(listed: list[Dose], now: datetime) -> str:
         if at is None:
             when = "after the one before" if dose.due.why == WAITING else "any time"
         else:
-            when = ("due " if at <= now else "") + design.when(timeinput.format_moment(at), at, now)
+            when = ("due " if at <= now else "") + design.time(timeinput.format_moment(at))  # exact only: pills have no countdown
         lines.append(f"**{dose.pill.plan.name}**{which} · {when}")
     if missed:
         lines.append(design.small(f"{len(missed)} missed today"))

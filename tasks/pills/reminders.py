@@ -305,7 +305,7 @@ def drawn(dose: Dose, listed: list[Dose], prompt: Prompt, now: datetime, said: s
     done = sum(each.occurrence.state in (occurrences.DONE, occurrences.SKIPPED) for each in mine)
     heading = design.card_title(f"💊 {dose.pill.plan.name}", done, len(mine) if len(mine) > 1 else None)
     at = dose.due.at
-    when = design.when(timeinput.format_moment(at), at, now) if at is not None else ""
+    when = design.time(timeinput.format_moment(at)) if at is not None else ""  # exact only: pills have no countdown
     after = due.partition(" · ")[2] if " · " in due else ""
     which = design.name(f"Dose {dose.number}") + " · " if dose.of > 1 else ""
     lines = [heading, f"{which}{'due ' if at is not None and at <= now else ''}{when}", design.small(after) if after else "", *rest]

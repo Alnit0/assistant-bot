@@ -1558,3 +1558,19 @@ def test_a_python_with_no_pytest_is_said_not_counted_as_a_failing_test(bugs_db, 
         cli._passes([GOLDEN_TEST], "python-without-pytest")
     assert calls == [["python-without-pytest", "-c", "import pytest"]], "the tests are not run with it"
 
+
+def test_the_nightly_in_live_s_folder_has_a_letter_of_its_own_so_no_number_repeats(monkeypatch):
+    """Found 16 Oct: the nightly (live's folder, its own dev database) and the work folder's self-test
+    both gave out D1 to D3. One letter a counter: B live, D the work folder, N the nightly."""
+    from core import config, health
+
+    monkeypatch.setattr(rules, "DEV", True)
+    monkeypatch.setattr(config, "LIVE_FOLDER", False)
+    assert rules.bug_id(3) == "D3" and health.selftest_bug(3) == "D3"
+    monkeypatch.setattr(config, "LIVE_FOLDER", True)
+    assert rules.bug_id(4) == "N4" and rules.parse_id("n4") == 4 and health.selftest_bug(4) == "N4"
+    with pytest.raises(UserError, match="They look like N4"):
+        rules.parse_id("D4")
+    monkeypatch.setattr(rules, "DEV", False)
+    assert rules.bug_id(5) == "B5", "live's own bugs are B wherever"
+

@@ -33,6 +33,9 @@ MOCKUPS_DIR = BASE_DIR / "docs" / "mockups"
 
 LOG_DIR.mkdir(exist_ok=True)
 DATA_DIR.mkdir(exist_ok=True)
+# Live's own folder (scripts/update-live.ps1 writes data/live-versions.txt there only). The nightly
+# self-test runs there on a dev database of its own, so its bugs need letters of their own (N)
+LIVE_FOLDER = (DATA_DIR / "live-versions.txt").exists()
 
 # ---------------------------------------------------------------------------
 # Settings

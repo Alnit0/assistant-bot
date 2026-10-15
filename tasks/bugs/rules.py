@@ -74,15 +74,22 @@ QUESTIONS = (
 # A bug's number is its row's primary key, which SQLite never gives out twice
 # (AUTOINCREMENT): it is never worked out from a count of rows or of posts. The
 # letter in front says which database it is in: B for the live one, D for the
-# dev database (`--dev`), whose numbers start again whenever it is recreated.
-# Both post to the same forum, so a dev bug also carries the "dev" tag.
+# work folder's dev database (`--dev`), N for the dev database in live's own
+# folder, where the nightly self-test runs. Each counts for itself, so one
+# letter a counter: a number can never be given out twice under one letter
+# (found 16 Oct: the nightly and the work folder both gave out D1 to D3).
+# All post to the same forum, so a dev bug also carries the "dev" tag.
 DEV = DEV_DATABASE  # which database this is; never the channel a bug came from
-LIVE_PREFIX, DEV_PREFIX = "B", "D"
+LIVE_PREFIX, DEV_PREFIX, NIGHTLY_PREFIX = "B", "D", "N"
 DEV_TAG = "dev"
 
 
 def prefix() -> str:
-    return DEV_PREFIX if DEV else LIVE_PREFIX
+    from core import config
+
+    if not DEV:
+        return LIVE_PREFIX
+    return NIGHTLY_PREFIX if config.LIVE_FOLDER else DEV_PREFIX
 
 
 def bug_id(number: int) -> str:

@@ -36,7 +36,12 @@ log = logging.getLogger("assistant")
 # ---------------------------------------------------------------------------
 SELFTEST_DIR = "selftest"
 MORNING_ICON = "🌅"
-DEV_BUG = "D"  # a self-test's bugs are the dev database's (tasks/bugs/rules.py)
+DEV_BUG, NIGHTLY_BUG = "D", "N"  # a self-test's bugs: the work folder's dev database, or live's folder's (tasks/bugs/rules.py)
+
+
+def selftest_bug(number: int) -> str:
+    """A self-test bug's id as the forum names it: live reads the nightly's, which are N."""
+    return f"{NIGHTLY_BUG if config.LIVE_FOLDER else DEV_BUG}{number}"
 _SHORTER = ("nightly ",)  # "nightly backup failed" is "backup failed" on a status line
 
 
@@ -381,7 +386,7 @@ def selftest_problem(row: dict | None, bugs: dict) -> Item | None:
         when = datetime.strptime(row.get("date") or "", "%Y-%m-%d %H:%M").replace(tzinfo=config.TIMEZONE)
     except ValueError:
         when = None
-    return Item(what, PROBLEM, when=when, bug=f"{DEV_BUG}{number}" if number is not None else "", short=(said,))
+    return Item(what, PROBLEM, when=when, bug=selftest_bug(number) if number is not None else "", short=(said,))
 
 
 async def selftest(user_id: int, now: datetime) -> list[Item]:

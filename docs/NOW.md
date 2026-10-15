@@ -12,7 +12,7 @@ themselves, the self-test's retry (dev-bot self-test 150 of 150), and
 the calendar from Google only (the iCal link gone from live's `.env`).
 **Next:** the 3:30 am nightly on 17 Oct, checked and reported
 **Ready for the next restart:** repeating events on the Bot calendar;
-`shipped --with`. After it: `tasks.bugs.cli shipped B5 <its two golden
+pills with exact times only; N for the nightly's bugs; `shipped --with`. After it: `tasks.bugs.cli shipped B5 <its two golden
 tests> --with <the work folder's Python>` in live's folder
 
 **Drafts and worktrees:** `docs/drafts/gym-onboarding.md`; three old
