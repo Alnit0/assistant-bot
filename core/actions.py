@@ -410,6 +410,9 @@ class Entry:
     # look now (core/attention.py). The core ranks them with everyone else's, once; the
     # status line, the briefing and pings each show a slice of that one ranking
     attention: Callable[[int, datetime], Awaitable[list]] | None = None
+    # `async (user_id, now) -> list of today.Line`: this task's things for today, for the
+    # Today card (core/today.py): a to-do, a routine with its time, a reminder as a note
+    today: Callable[[int, datetime], Awaitable[list]] | None = None
     # What the user reads for it ("Personal routines"), where its name would not do; the name capitalised without one
     label: str = ""
 

@@ -48,6 +48,8 @@ for name, value in {
     "TODOS_ENABLED": "",  # off, as it is unless set: the to-dos tests switch it on
     "NUDGES_ENABLED": "",  # off, as it is unless set: the reminders tests switch it on
     "HABITS_ENABLED": "",  # off, as it is unless set: the personal routines tests switch it on
+    "ROUTINES_LAYOUT": "",  # b, as it is unless set: the routines tests pick one
+    "TODAY_CARD": "",  # off, as it is unless set: the Today card tests switch it on
     # Every other switch too: off, whatever this PC's own .env has turned on (tests/test_settings.py)
     "BRIEFING_ENABLED": "",
     "DAY_PROGRESS": "",

@@ -3,33 +3,36 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Queue** (2026-10-15, from 11:52 am, unattended): in this order
-1. Daytime batch: done before round 4 (all five steps), in tonight's
-   restart; the to-dos self-test now in round 4 with the dropdown, 9 of 9
-2. Round 4: shipped to this branch, tested, self-tested (start 8, 9 of 9)
-3. Design previews: done. A Design forum, tags Live, Preview, Retired;
-   posts Round 1 (Retired), 3 (Live), 4 (Preview, Live tonight)
-4. Routines on `feature/routines`: shared repeats, the rework, a Today
-   card, Layout A and B preview; not merged, previews only
+**Batch** (2026-10-15, from 12:35 pm): Alex tests everything now, no
+waiting for 6 pm
 
-**Done on `feature/routines`** (worktree `../assistant-bot-routines`)
-- 4. Repeat engine, routines rework, Today card, Layout A and B preview
-  posted (Design forum); pushed, not merged, all off. Questions 68, 69
+**Done**
+- Routines: fixtures recorded (15 of 15, NZ$0.14), group steps in full,
+  layout B the default (a by setting), merged into this branch
+- Earlier today: the daytime batch, round 4 merged, the Design forum
 
-**Tonight** (6 pm to 9 pm, clear of pill reminders)
-- One restart from this folder (clean, pushed): DESIGN_ROUND=4,
-  TODOS_ENABLED, WEEKLY_SUMMARY and DMS_ENABLED on; the nightly
-  self-test row to 3:30 am first
-- Checks: round 4 in the hub, the to-dos dropdown; What's new lines for
-  round 4, to-dos and DMs; `preview --ship 4`. Wrong: DESIGN_ROUND=3
+**In progress**
+- 2. Full test run, then one dev-bot self-test of what goes on (round 4
+  pills, to-dos, reminders, routines, the Today card, DMs it can reach)
+
+**Next**
+- 3. Commit, push; restart live once, now, 10 minutes clear of a pill
+  reminder: DESIGN_ROUND=4, TODOS_ENABLED, WEEKLY_SUMMARY, DMS_ENABLED,
+  NUDGES_ENABLED, HABITS_ENABLED, TODAY_CARD; the nightly row to 3:30 am
+  while live is stopped
+- 4. Checks: the account, round 4, the Today card, help and #commands;
+  `preview --ship 4`
+- 5. What's new lines for tomorrow. Wrong: that switch off, restart, a
+  note at the top of STATUS
 
 **Drafts and worktrees**
-- Worktrees `../assistant-bot-hub-tasks` and `../assistant-bot-round4`:
-  both merged; `../assistant-bot-routines`: not merged
+- Worktrees `../assistant-bot-hub-tasks`, `../assistant-bot-round4` and
+  `../assistant-bot-routines`: all merged
 - No drafts outside `docs/`
 
 **Waiting on Alex**
-- Routines: Layout A or B, and the rest of point 4 (questions 68, 69)
+- Question 68 (an overdue routine and Needs a look); the rest of his
+  routines point 4 ("Also show the Today card with a…")
 - The private Google Calendar link, for live's `.env` only
 - A lock-screen screenshot of a pill reminder (question 11)
-- QA item 0 (direct messages) once DMs are on tonight
+- QA item 0 (direct messages) once DMs are on

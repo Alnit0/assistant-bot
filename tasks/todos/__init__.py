@@ -61,6 +61,18 @@ async def items(user_id: int, now: datetime) -> list[Item]:
     return said
 
 
+async def today_lines(user_id: int, now: datetime) -> list:
+    """For the Today card: each to-do for today (overdue too), any time, done or not."""
+    from core.today import Line
+
+    day = days.day_of(now)
+    found = rules.on(await store.every(user_id), day)
+    lines = [Line(ICON, f"**{each.text}** · from {rules.day_text(each.day, day)}") for each in found.overdue]
+    lines += [Line(ICON, f"**{each.text}**") for each in found.today]
+    lines += [Line(ICON, f"**{each.text}**", done=True) for each in found.done]
+    return lines
+
+
 class TodosTask(Task):
     """The to-do list, in plain words, with a card in the hub."""
 
@@ -118,6 +130,9 @@ class TodosTask(Task):
 
     async def attention(self, user_id, now):
         return await items(user_id, now)
+
+    async def today(self, user_id, now):
+        return await today_lines(user_id, now)
 
 
 task = TodosTask()

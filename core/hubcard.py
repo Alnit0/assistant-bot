@@ -20,6 +20,9 @@ log = logging.getLogger("assistant")
 #
 # `render` is `async () -> Card | None`, read when it runs, so the edit that
 # happens shows how things stand. No Discord here: cards and the door do it.
+# A task with more than one card (a personal routine's own, in layout B) gives
+# each a `slot` of its own; the card still belongs to the task, so a message
+# that follows it goes to that task.
 # ---------------------------------------------------------------------------
 Render = Callable[[], Awaitable["Card | None"]]
 
@@ -29,7 +32,7 @@ def key(task: str) -> str:
     return f"{task}:hub"
 
 
-async def post(task: str, user_id: int, render: Render, channel_id: int | None = None) -> int | None:
+async def post(task: str, user_id: int, render: Render, channel_id: int | None = None, slot: str = "") -> int | None:
     """A fresh copy of the task's card at the bottom of the hub, in place of the
     one that was there. None (and the old one taken away) with nothing to show."""
     channel_id = channel_id or hub.channel_id()
@@ -37,23 +40,24 @@ async def post(task: str, user_id: int, render: Render, channel_id: int | None =
         return None
     shown = await render()
     if shown is None:
-        await remove(task, user_id)
+        await remove(task, user_id, slot)
         return None
     message_id = await cards.send(channel_id, shown, silent=True)
     if message_id is None:
         return None
-    # One a task in the hub: the newer one replaces the older (core/messages.py, with the tidy on)
-    old = await database.run(livelists.db_get, user_id, key(task))
-    await messages.record(message_id, channel_id, lifetime=messages.REPLACED, slot=key(task), task=task)
-    await livelists.placed(user_id, key(task), channel_id, message_id, task)
+    # One a slot in the hub: the newer one replaces the older (core/messages.py, with the tidy on)
+    where = key(slot or task)
+    old = await database.run(livelists.db_get, user_id, where)
+    await messages.record(message_id, channel_id, lifetime=messages.REPLACED, slot=where, task=task)
+    await livelists.placed(user_id, where, channel_id, message_id, task)
     if old is not None and old.message_id != message_id:
         await cards.delete(old.channel_id, old.message_id)
     return message_id
 
 
-async def remove(task: str, user_id: int) -> bool:
+async def remove(task: str, user_id: int, slot: str = "") -> bool:
     """Take the task's card away: there is nothing for it today. True if there was one."""
-    old = await database.run(livelists.db_get, user_id, key(task))
+    old = await database.run(livelists.db_get, user_id, key(slot or task))
     if old is None:
         return False
     await cards.delete(old.channel_id, old.message_id)
@@ -61,22 +65,22 @@ async def remove(task: str, user_id: int) -> bool:
     return True
 
 
-async def refresh(task: str, user_id: int, render: Render) -> str:
+async def refresh(task: str, user_id: int, render: Render, slot: str = "") -> str:
     """Bring the card up to date now: "edited", "posted" (there was none and now
     there is something to show), "removed" (nothing to show), or "" (nothing to do)."""
     shown = await render()
-    there = await database.run(livelists.db_get, user_id, key(task))
+    there = await database.run(livelists.db_get, user_id, key(slot or task))
     if shown is None:
-        return "removed" if there is not None and await remove(task, user_id) else ""
+        return "removed" if there is not None and await remove(task, user_id, slot) else ""
     if there is not None and await cards.edit(there.channel_id, there.message_id, shown):
         return "edited"
-    posted = await post(task, user_id, render)
+    posted = await post(task, user_id, render, slot=slot)
     return "posted" if posted is not None else ""
 
 
-def changed(task: str, user_id: int, render: Render) -> None:
+def changed(task: str, user_id: int, render: Render, slot: str = "") -> None:
     """What the card shows has changed: brought up to date in the background,
     several changes close together being one edit (core/live.py)."""
     from core import live
 
-    live.schedule(("hubcard", task, user_id), lambda: refresh(task, user_id, render))
+    live.schedule(("hubcard", slot or task, user_id), lambda: refresh(task, user_id, render, slot))

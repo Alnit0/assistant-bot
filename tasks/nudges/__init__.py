@@ -55,6 +55,13 @@ async def items(user_id: int, now: datetime) -> list[Item]:
     return found
 
 
+async def today_lines(user_id: int, now: datetime) -> list:
+    """For the Today card: each reminder due today, as a note at its time."""
+    from core.today import Line
+
+    return [Line(ICON, f"**{each.text}**", moment, note=True) for moment, each in rules.due_today(await store.every(user_id), days.day_of(now))]
+
+
 class NudgesTask(Task):
     """Reminders at a time I set, in plain words; they go off in the hub."""
 
@@ -111,6 +118,9 @@ class NudgesTask(Task):
 
     async def attention(self, user_id, now):
         return await items(user_id, now)
+
+    async def today(self, user_id, now):
+        return await today_lines(user_id, now)
 
 
 task = NudgesTask()

@@ -8,14 +8,51 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-15
 
-## Built on `feature/routines` (2026-10-15, not merged, all off)
+## Decided (2026-10-15, routines, shared repeats and the Today card)
 
-The shared repeat engine (`core/recurrence.py`, reminders on it with
-their tests unchanged), personal routines reworked (a repeat, a when, a
-nudge; steps and groups; an item's own days; cards by the list rule) and
-the Today card (`TODAY_CARD`). What was decided is on that branch, under
-Decided in its STATUS. Preview: "Routines layout preview" in the Design
-forum (questions 68 and 69).
+Built on `feature/routines` and merged into `feature/pills` the same
+day, when Alex asked to test everything at once: on in live from that
+restart (`HABITS_ENABLED`, `NUDGES_ENABLED`, `TODAY_CARD`). Preview:
+"Routines layout preview" in the Design forum.
+
+1. **One repeat engine** (`core/recurrence.py`): once, every day,
+   weekdays, weekends, chosen days, every N days, monthly on a date (a
+   date a month lacks is its last day) and monthly on the Nth weekday (the
+   last too). Local time, so daylight saving never moves one. Reminders
+   ask it now; their tests pass unchanged. To-dos later.
+2. **Routines follow round 4, not the earlier brief's buttons**: the
+   brief said every step shown with its buttons under it, and the queue
+   said the relevance rule and `design.listed` for any list. So a
+   routine's card is the first three open items in full, "+N more", and
+   one Done dropdown; a routine still to come has no dropdown (it can be
+   ticked in words), and a finished one folds to a line.
+3. **A step inside a group, said in words, ticks its group** ("did serum"
+   ticks Skincare): a group's steps are a guide, not ticked one by one.
+4. **A time that has come is due, not overdue**; only a window that closes
+   undone is overdue.
+5. **Attention**: any time is level 4; at a time is the next timed thing
+   (level 3), then due (level 2); a window is quiet while open and, closed
+   undone, level 2 only with a nudge. The brief also says Needs a look;
+   that box holds level 1 (problems) only, so an overdue routine shows in
+   the status line and on the Today card instead. Question 68 asks.
+6. **Layout B is the default** (Alex, question 69): the Today card as the
+   overview, and a card a routine from its time or window (any time: from
+   the morning) until it is done, posted by a run booked at its start, in
+   a hub slot of its own (`hubcard` gained `slot`). `ROUTINES_LAYOUT=a`
+   brings back the one card. Group steps always show in full; the first
+   three is items only. Not built yet: the nudge messages themselves (the
+   setting is kept and shown).
+7. **The Today card** (`core/today.py`, `tasks/today`, `TODAY_CARD`):
+   timed things by the relevance rule, any time after them by the list
+   rule, reminders as notes (a note whose time has gone is not shown), no
+   buttons, and one small line when all is done.
+8. **A time with no am or pm** is asked about, never guessed; a window
+   past midnight is not offered yet.
+9. **The extraction fixtures are recorded** from the real API: 15 of 15
+   on the second run, US$0.083 for both (about NZ$0.14). The first run
+   found two fixtures with the wrong state and one trap whose meaning had
+   changed: "move the morning routine to 7am" can now be a personal
+   routine, so the trap names the bot's own morning checklist instead.
 
 ## Decided (2026-10-15, Alex's answers on round 4)
 

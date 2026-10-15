@@ -60,6 +60,23 @@ def test_shipping_a_round_makes_it_live_and_retires_the_one_that_was():
     assert preview.shipped({3: "Live"}, 3) == {3: "Live"}, "shipping what is live changes nothing"
 
 
+def test_the_routines_preview_shows_layout_a_layout_b_and_the_today_card_by_the_list_rule():
+    found = preview.routines_layout()
+    labels = [label for label, _ in found]
+    assert any(label.startswith("Layout A") for label in labels) and any(label.startswith("Layout B") for label in labels)
+    assert sum("Today card" in label for label in labels) >= 3
+    first_a = found[0][1]
+    assert len(design.menus(first_a)) == 1 and design.buttons(first_a) == [], "7:10 am: a dropdown for Morning only (Evening is still to come), no buttons"
+    evening_b = next(pieces for label, pieces in found if label.startswith("Layout B · Evening"))
+    lines = [line for text in design.texts(evening_b) for line in text.splitlines()]
+    assert "-# +5 more" in lines and "-# ✅ 4 done" in lines, "12 items, 4 done: three in full and +5 more"
+    (menu,) = design.menus(evening_b)
+    assert len(menu.options) == 8
+    done = found[-1][1]
+    assert [text for text in design.texts(done)] == ["-# 📅 Today · all done ✅ 6"], "2 routines and 4 to-dos; the reminders are notes"
+    assert "A or B?" in preview.routines_opening()
+
+
 def test_the_round_4_preview_fits_shows_round_3_beside_it_and_names_only_made_up_pills():
     found = preview.checked(preview.round_4())
     labels = [label for label, _ in found if label]

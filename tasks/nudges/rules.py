@@ -1,7 +1,7 @@
 from dataclasses import dataclass
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time
 
-from core import cards, design, timeinput
+from core import cards, design, recurrence, timeinput
 from core import day as days
 from core.cards import Button
 
@@ -12,8 +12,8 @@ from core.cards import Button
 #
 # A reminder has a time of day and a repeat: once (on one day), every day,
 # weekdays, chosen days of the week, or every N days from a first day. When
-# it is next due is worked out from that, in local time, so daylight saving
-# never moves it ("9:00 am" stays 9:00 am).
+# it comes round, and how that is said, is the one repeat engine's
+# (core/recurrence.py): in local time, so daylight saving never moves it.
 # ---------------------------------------------------------------------------
 TASK = "nudges"
 ICON = "⏰"
@@ -56,35 +56,21 @@ class Fired:
         return self.done_at is None and self.snoozed_until is None
 
 
+def repeat_of(nudge: Nudge) -> recurrence.Repeat:
+    """The reminder's repeat, as the one engine takes it. Its first day counts only
+    for a one-off and for every N days, as it always has."""
+    kind = nudge.repeat if nudge.repeat in REPEATS else ONCE
+    return recurrence.Repeat(kind, nudge.first if kind in (ONCE, EVERY) else None, nudge.weekdays if kind == DAYS else (), nudge.every_days)
+
+
 def on_day(nudge: Nudge, day: date) -> bool:
     """Whether a reminder is due at all on a day."""
-    if nudge.repeat == ONCE:
-        return nudge.first == day
-    if nudge.repeat == DAILY:
-        return True
-    if nudge.repeat == WEEKDAYS:
-        return day.weekday() < 5
-    if nudge.repeat == DAYS:
-        return day.weekday() in nudge.weekdays
-    if nudge.repeat == EVERY:
-        start = nudge.first or day
-        return day >= start and (day - start).days % max(1, nudge.every_days) == 0
-    return False
+    return recurrence.on_day(repeat_of(nudge), day)
 
 
 def next_due(nudge: Nudge, after: datetime) -> datetime | None:
-    """The first moment it is due strictly after `after`, or None (a one-off gone by).
-    Worked out a day at a time in local time: daylight saving never moves it."""
-    day = days.day_of(after)
-    for offset in range(0, 400):
-        candidate = day + timedelta(days=offset)
-        if nudge.repeat == ONCE and nudge.first is not None and candidate > nudge.first:
-            return None
-        if on_day(nudge, candidate):
-            moment = days.at(candidate, nudge.at)
-            if moment > after:
-                return moment
-    return None
+    """The first moment it is due strictly after `after`, or None (a one-off gone by)."""
+    return recurrence.next_due(repeat_of(nudge), nudge.at, after)
 
 
 def local(moment: datetime) -> str:
@@ -99,20 +85,7 @@ def due_today(nudges: list[Nudge], day: date) -> list[tuple[datetime, Nudge]]:
 
 def repeat_text(nudge: Nudge, today: date) -> str:
     """When it is due, in words: "today", "Fri 16 Oct", "every day", "weekdays", "Mon and Thu", "every 3 days"."""
-    if nudge.repeat == ONCE:
-        if nudge.first == today:
-            return "today"
-        if nudge.first == today + timedelta(days=1):
-            return "tomorrow"
-        return f"{nudge.first:%a} {nudge.first.day} {nudge.first:%b}" if nudge.first else "once"
-    if nudge.repeat == DAILY:
-        return "every day"
-    if nudge.repeat == WEEKDAYS:
-        return "weekdays"
-    if nudge.repeat == DAYS:
-        names = [DAY_WORDS[each].capitalize() for each in sorted(nudge.weekdays)]
-        return "every " + (" and ".join(names) if len(names) <= 2 else ", ".join(names[:-1]) + " and " + names[-1])
-    return f"every {nudge.every_days} days"
+    return recurrence.text(repeat_of(nudge), today)
 
 
 def when_text(nudge: Nudge, today: date) -> str:
