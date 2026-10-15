@@ -8,6 +8,18 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-15
 
+## Live restarted at 3:03 pm, 15 Oct, with the calendar on
+
+From `cc759a3` (clean, pushed, full test run passed), with no pill
+reminder booked or open. `CALENDAR_ENABLED=true` in live's `.env` (the
+link was there already). Checked after: the account check passed; the
+calendar's table was made, with a copy of the database saved before; the
+first read worked (47 events kept, no failure) and the next is booked 15
+minutes on; the Today card is in place with today's event, and the
+briefing's line reads "1 event · first 9:00 am"; the link is in no log.
+What's new for 16 Oct: four lines (round 4, what is on, the Design
+forum, the calendar).
+
 ## Decided (2026-10-15, the calendar)
 
 Built on `feature/pills` behind `CALENDAR_ENABLED`, read only, from the

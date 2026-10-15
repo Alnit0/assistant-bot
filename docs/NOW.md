@@ -3,8 +3,8 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Batch** (2026-10-15, from 2:45 pm): the calendar, read only, on in
-live today
+**Batch** (2026-10-15, from 2:45 pm): the calendar, read only: **done**,
+on in live from 3:03 pm
 
 **Done**
 - 1. The task: reading the feed every 15 minutes, the copy, the hub
@@ -12,8 +12,11 @@ live today
 - 2. Understanding checks recorded: 15 of 15, NZ$0.18
 - 3. Self-test start 10 (made-up feed): 5 of 5; start 9 again: 5 of 5
 
-**In progress**
-- 4. Commit, push; restart live with CALENDAR_ENABLED; checks; What's new
+- 4. Live restarted 3:03 pm with CALENDAR_ENABLED: 47 events read, the
+  Today card and the briefing show it; What's new line queued
+
+**Next**
+- Nothing queued: waiting on Alex
 
 **Drafts and worktrees**
 - Worktrees `../assistant-bot-hub-tasks`, `../assistant-bot-round4` and
