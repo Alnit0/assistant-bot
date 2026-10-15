@@ -8,6 +8,24 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-15 (late night)
 
+## The daily read (15 Oct, late night; built, off, a preview)
+
+`tasks/reading`, behind `READING_ENABLED` (off): one article a day,
+AI usage, programming and tech news balanced over a week. The sources
+are `tasks/reading/feeds.json` (sixteen, each checked to work), with
+any added or removed in words. At 5:30 am the feeds are read, new
+articles' pages read to their text (paywalls and teasers skipped),
+and Claude picks one for the day's theme with a TL;DR from its text;
+with no text there is no TL;DR. Its card comes after the to-dos at
+6 am (the title a link, the source, the reading time, the TL;DR small,
+👍 and 👎); the briefing's overview has one line. In words: another,
+shorter, deeper, save for later (a to-do with the link), the week, the
+profile, more or less of something, a source. A failing source is
+quiet; every source failing 3 days running is in Needs a look. The
+Sunday summary has a line. Tests: 25. Recorded checks: 17 of 17
+(US$0.071); one real pick on the real feeds (US$0.005). Posted as
+"Design · Daily read"; questions 86 to 90.
+
 ## Shipped (15 Oct, 10:34 pm)
 
 Live on `9caace7` with `DESIGN_ROUND=5`, `WEEKLY_ALL=true` and
@@ -146,6 +164,29 @@ time). Spend US$0.041.
    checklist brought up to date in place, no warning but the usual one,
    every booking (midnight, 3 am backup, 3:30 am self-test, 6 am
    routine, 7 am check, Sunday summary). Spend NZ$0.79 of NZ$1.00.
+
+## Decided (2026-10-15, late night: the daily read)
+
+- The read lives on a small card of its own (after the to-dos), with
+  one line in the briefing's overview: round 5's overview is a line a
+  task with the detail on the task's card, and buttons never go on the
+  briefing.
+- "Save it for later" is a confirm card, and Save writes through the
+  to-dos task's own store and its own word that it changed: the one
+  write from one task into another's list, at Alex's word.
+- The theme of the day is the one furthest behind its share of the
+  week so far, so a week stays balanced however the weights move; a
+  theme with nothing new that day falls back to the others' articles.
+- A page is read for its text only (inside `<article>`, `<main>` or the
+  body). Under 250 words, or with paywall words on it, it is not an
+  article: never offered to Claude, so a TL;DR is always from text.
+- 👍 and 👎 move the theme's weight a step (within half and double);
+  words make a card, as any change to my things does.
+- The pick is one request with the text of up to five articles, about
+  450 words each (about US$0.004 a day).
+- The paywall words are a net for reading pages, not for understanding
+  what Alex says, so they are not in the word lists of
+  `docs/BACKLOG.md`.
 
 ## Decided (2026-10-15, late night: Alex's answers)
 

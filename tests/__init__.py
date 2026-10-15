@@ -47,6 +47,7 @@ for name, value in {
     "REMINDERS_ENABLED": "",  # off, as it is unless set: the reminder tests switch it on
     "DIARY_ENABLED": "",
     "DIARY_MOOD": "",
+    "READING_ENABLED": "",
     "TODOS_ENABLED": "",  # off, as it is unless set: the to-dos tests switch it on
     "NUDGES_ENABLED": "",  # off, as it is unless set: the reminders tests switch it on
     "HABITS_ENABLED": "",  # off, as it is unless set: the personal routines tests switch it on

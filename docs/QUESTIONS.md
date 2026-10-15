@@ -100,3 +100,18 @@ From the sketches of 15 Oct ("Design · Gym onboarding sketches";
     reads a `.csv`.
 79. When an exercise goes as planned, is one tap (Done as planned)
     right, with words or the Different… box for anything else? → Yes.
+
+## Reading (`READING_ENABLED` stays off; preview "Design · Daily read")
+
+86. Themes and balance: AI usage, programming and tech news, about a
+    third each over a week, shaped by 👍, 👎 and what you say? → Yes,
+    and look again after two weeks.
+87. Sources: the sixteen in `tasks/reading/feeds.json` (engineering
+    blogs, two web development publications, four tech news sites, the
+    Hacker News front page)? → Yes; drop or add any in words.
+88. Time of day: picked at 5:30 am, on the hub at 6:00 am with the
+    briefing? → Yes.
+89. Length: any length, the reading time on the card, "something
+    shorter" or "something deeper" when wanted? → Yes; no limit.
+90. One a day, or more (a second at lunch, or one in the evening)? →
+    One a day; "another one" when you want more.

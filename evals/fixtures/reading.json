@@ -1,0 +1,297 @@
+{
+  "router": [
+    {
+      "golden": "r1",
+      "message": "give me another article to read",
+      "tasks": [
+        "reading"
+      ],
+      "note": "another one, said in full",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "reading"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "r2",
+      "message": "something shorter to read today",
+      "tasks": [
+        "reading"
+      ],
+      "note": "shorter",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "reading"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "r3",
+      "message": "save today's article for later",
+      "tasks": [
+        "reading"
+      ],
+      "note": "saved for later: the reading task makes the to-do",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "reading"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "r4",
+      "message": "what have I read this week?",
+      "tasks": [
+        "reading"
+      ],
+      "note": "the week's reads",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "reading"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "r5",
+      "message": "less news in my daily read",
+      "tasks": [
+        "reading"
+      ],
+      "note": "shaping it",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "reading"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "r6",
+      "message": "remove The Verge from my reading sources",
+      "tasks": [
+        "reading"
+      ],
+      "note": "a source",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "reading"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "r7",
+      "message": "add call the dentist to my to-dos",
+      "tasks": [
+        "todos"
+      ],
+      "note": "a to-do, not the read",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "todos"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "r8",
+      "message": "explain how CSS grid works",
+      "chat": true,
+      "note": "a question about a topic: chat",
+      "recorded": {
+        "kind": "chat",
+        "tasks": [],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "r9",
+      "message": "remind me to read the article at 8pm",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "a reminder at a time",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "r10",
+      "message": "what's left today?",
+      "tasks": [
+        "briefing"
+      ],
+      "note": "the day, not the read",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "briefing"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    }
+  ],
+  "extraction": [
+    {
+      "golden": "r11",
+      "task": "reading",
+      "message": "something deeper",
+      "state": "The user's daily read:\n- today's read: A made-up deep dive into CSS grid (Programming, 9 min)\n- sources: Made-up AI blog, The Verge, Made-up code blog",
+      "action": "reading_another",
+      "data": {
+        "kind": "deeper"
+      },
+      "recorded": [
+        "reading_another",
+        {
+          "kind": "deeper",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "r12",
+      "task": "reading",
+      "message": "save it for later",
+      "state": "The user's daily read:\n- today's read: A made-up deep dive into CSS grid (Programming, 9 min)\n- sources: Made-up AI blog, The Verge, Made-up code blog",
+      "action": "reading_save",
+      "data": {},
+      "recorded": [
+        "reading_save",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "r13",
+      "task": "reading",
+      "message": "less news",
+      "state": "The user's daily read:\n- today's read: A made-up deep dive into CSS grid (Programming, 9 min)\n- sources: Made-up AI blog, The Verge, Made-up code blog",
+      "action": "reading_tune",
+      "data": {
+        "less_theme": "news"
+      },
+      "recorded": [
+        "reading_tune",
+        {
+          "less_theme": "news",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "r14",
+      "task": "reading",
+      "message": "more about agents",
+      "state": "The user's daily read:\n- today's read: A made-up deep dive into CSS grid (Programming, 9 min)\n- sources: Made-up AI blog, The Verge, Made-up code blog",
+      "action": "reading_tune",
+      "data": {
+        "more_topic": "agents"
+      },
+      "recorded": [
+        "reading_tune",
+        {
+          "more_topic": "agents",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "r15",
+      "task": "reading",
+      "message": "more like this",
+      "state": "The user's daily read:\n- today's read: A made-up deep dive into CSS grid (Programming, 9 min)\n- sources: Made-up AI blog, The Verge, Made-up code blog",
+      "action": "reading_tune",
+      "data": {
+        "like_this": true
+      },
+      "recorded": [
+        "reading_tune",
+        {
+          "like_this": true,
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "r16",
+      "task": "reading",
+      "message": "what do you know about what I like to read?",
+      "state": "The user's daily read:\n- today's read: A made-up deep dive into CSS grid (Programming, 9 min)\n- sources: Made-up AI blog, The Verge, Made-up code blog",
+      "action": "reading_show",
+      "data": {
+        "what": "profile"
+      },
+      "recorded": [
+        "reading_show",
+        {
+          "what": "profile",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "r17",
+      "task": "reading",
+      "message": "stop using The Verge",
+      "state": "The user's daily read:\n- today's read: A made-up deep dive into CSS grid (Programming, 9 min)\n- sources: Made-up AI blog, The Verge, Made-up code blog",
+      "action": "reading_source",
+      "data": {
+        "remove": true,
+        "name": "The Verge"
+      },
+      "recorded": [
+        "reading_source",
+        {
+          "name": "The Verge",
+          "remove": true,
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    }
+  ]
+}

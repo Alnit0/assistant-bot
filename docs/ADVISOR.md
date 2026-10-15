@@ -125,6 +125,7 @@ Messages go through fast paths (buttons, exact typed words), then sticky follow-
 **Waiting on Alex**
 - **Round 5** (live since 15 Oct with the suggested answers): his yes or no item by item on "Design · Round 5" (questions 68 to 75).
 - **The fix for when doses were taken** (`effbe2e`) ships at the next restart.
+- **The daily read** (built 15 Oct, `READING_ENABLED` off): his look at "Design · Daily read" and questions 86 to 90 (themes, sources, time, length, how many).
 - **What's new for 16 Oct** has four older lines queued besides the four new ones: whether they go.
 - **Gym onboarding:** questions 76 to 79 from "Design · Gym onboarding sketches" (which way in; whether the sheet or the bot holds the plan). Nothing of gym is built.
 - **Live's own folder:** his word that it has had a good day, so the work folder's old `.env` and `data\` can be deleted.

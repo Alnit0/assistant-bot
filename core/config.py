@@ -243,6 +243,8 @@ TODOS_ENABLED = flag(os.getenv("TODOS_ENABLED"), False)
 # The diary (tasks/diary): off, not loaded. DIARY_MOOD: whether it keeps a mood (on unless set off)
 DIARY_ENABLED = flag(os.getenv("DIARY_ENABLED"), False)
 DIARY_MOOD = flag(os.getenv("DIARY_MOOD"), True)
+# The daily read (tasks/reading): off, not loaded
+READING_ENABLED = flag(os.getenv("READING_ENABLED"), False)
 NUDGES_ENABLED = flag(os.getenv("NUDGES_ENABLED"), False)
 HABITS_ENABLED = flag(os.getenv("HABITS_ENABLED"), False)
 # How personal routines are shown (tasks/habits): b, the Today card as the overview and a card a

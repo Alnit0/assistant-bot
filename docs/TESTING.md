@@ -740,6 +740,9 @@ The real tasks on the router's way: timers, bugs and pills setup. On the dev dat
 | T47 | 🤖 Auto | Round 5 | The briefing as the morning overview (the date and dots as its title, Weather and Needs a look boxes, one overview box in a fixed order, no footer), the how-to in help, cards all done leave the hub, the order kept mid-day, the Today card with no count and no to-dos | ✅ Pass | 2026-10-15 | `tests/test_round5.py` |
 | T48 | 🤖 Auto | The diary | Appending, the 4:00 am day, the mood from words and by button with undo, the scale an entry keeps, the mood off, the evening ask once, the streak across midnight and missed days, reading back, deleting by card, the Today card and briefing lines, privacy | ✅ Pass | 2026-10-15 | `tests/test_diary.py` |
 | T49 | 👤 Manual | Round 5 and the diary on the phone | The posts “Design · Round 5” and “Design · Diary” | ⬜ Untested | |  |
+| T50 | 🤖 Auto | When doses were taken | Each taken dose and its time, skipped and missed, a day gone by, one pill, one dose, a part of the day, the last time, both questions at once; golden 30 | ✅ Pass | 2026-10-15 | `tests/test_pills_taken.py`, `tests/test_golden.py` |
+| T51 | 🤖 Auto | The daily read | Feeds read (RSS, Atom), pages read to their text, paywalls and teasers skipped, a balanced week, the pick and its checks, no TL;DR without text, the card, 👍 and 👎, another, shorter, deeper, save for later, the profile, sources added and removed, failures quiet until 3 days | ✅ Pass | 2026-10-15 | `tests/test_reading.py` |
+| T52 | 👤 Manual | The daily read on the phone | The post “Design · Daily read” | ⬜ Untested | |  |
 
 ## U. Channel reset
 

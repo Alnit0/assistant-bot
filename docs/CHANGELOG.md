@@ -6,6 +6,8 @@ backfilled from the git log.
 
 ## 2026-10-15
 
+- Built, not switched on: a daily read (`READING_ENABLED`): one article a day about using AI, programming or tech
+  news, with a short TL;DR from the article itself, 👍 and 👎 to shape it. Previewed as Design · Daily read.
 - "When did I take my pills today?" says each dose taken and its time, and anything skipped or missed, for today,
   yesterday or a named day, one pill or one dose, or when a pill was last taken; "what's left?" is answered as before.
 - Live: round 5 of the hub, the Sunday summary for everything and the diary are on. Everything shown one task

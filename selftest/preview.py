@@ -1019,6 +1019,59 @@ def diary_opening() -> str:
     ])
 
 
+# ---------------------------------------------------------------------------
+# The daily read (READING_ENABLED, off): `python -m selftest.preview --reading`,
+# a post of its own. Mock articles only, drawn by the task's own card.
+# ---------------------------------------------------------------------------
+READING_TITLE = "Design · Daily read"
+READING = Entry("reading", "📖", "Daily read", "x", ("y",), ())
+
+
+def reading_cards() -> list[tuple[str, tuple]]:
+    from core import confirm
+    from core.actions import Proposal
+    from tasks.reading import plain, rules
+    from tasks.reading.rules import Read
+
+    day = _day()
+    ai = Read("https://example.com/made-up/agents", "Made-up: how to give an agent the right tools", "Made-up AI blog", rules.AI, 9,
+              "Walks through building a small agent from one tool to five, and where it went wrong.\nShows the prompts used at each step, with the failures left in.\nUseful if you are wiring tools to a model yourself.", day)
+    code = Read("https://example.com/made-up/grid", "Made-up: CSS grid, from first principles", "Made-up web magazine", rules.PROGRAMMING, 14,
+                "Builds three common layouts with grid alone, explaining each line as it goes.\nEnds with the two mistakes that break layouts on phones.", day)
+    news = Read("https://example.com/made-up/chips", "Made-up: why a chip shortage is back, explained", "Made-up tech news", rules.NEWS, 6,
+                "Explains what changed in the supply chain this month, and what it means for the price of a laptop.\nSticks to what is known, with the rumours marked as such.", day)
+    down = Read(**{**news.__dict__, "vote": -1})
+    other = Read("https://example.com/made-up/testing", "Made-up: testing code that calls a model", "Made-up engineering blog", rules.PROGRAMMING, 7,
+                 "How one team records model answers once and replays them in their tests.\nCovers what to record, what to check, and when to record again.", day)
+    saved = confirm.render(READING, Proposal(lines=(f"📝 **Read: {code.title}** · any day", design.small(code.url)), data={}), 1).layout
+
+    def line_card(text):
+        return (design.Text(text),)
+
+    found = [
+        ("An AI usage pick: its card in the hub at 6:00 am, the title a link, the source and the reading time, the TL;DR small, 👍 and 👎", plain.card(ai).layout),
+        ("A programming pick (the next day's theme: the week keeps the three balanced)", plain.card(code).layout),
+        ("A tech news pick: the significant story, explained", plain.card(news).layout),
+        ("The briefing (round 5): one line in the overview box; the card has the rest", (design.topic(design.card_title("🗓️ The day"), lines=["💊 **Pills** · 6 doses · first 7:00 am", f"📖 **Daily read** · {rules.overview(news)}"], status=design.QUIET),)),
+        ("👎 pressed: noted (less like this), and Another one appears", plain.card(down).layout),
+        ("“another one” (or the button): a different article in its place", plain.card(other).layout),
+        ("“save it for later”: a card first, Save adds a to-do with the link", saved),
+        ("After Save", line_card("📝 Saved for later · on your to-dos")),
+    ]
+    return checked(found)
+
+
+def reading_opening() -> str:
+    return "\n".join([
+        f"## {READING_TITLE}",
+        "One article a day to keep learning: **AI usage** (practical use of AI tools, prompting, agents), **programming** (tutorials, deep dives, web development) and **tech news** (the significant stories, explained), balanced over each week. Explainers and deep dives over hot takes, listicles and rumours.",
+        "**Each morning** before the briefing: the feeds are read (a list in a config file; add or remove one in words), new articles' pages read down to their text (a paywall or a teaser is skipped), and one is picked for the day's theme with a TL;DR written from the article itself. No text, no TL;DR: another is picked.",
+        "**In words:** another one, something shorter, something deeper, save it for later, what have I read this week, more like this, less news, more about agents, harder or easier.",
+        "**Where:** one line in the briefing's overview box, and a small card of its own under the to-dos, with 👍 and 👎 (buttons never go on the briefing).",
+        "-# Mock articles only. Behind READING_ENABLED (off). The buttons here do nothing. Questions 86 to 90.",
+    ])
+
+
 def _number_after(args: list[str], flag: str) -> int:
     value = args[args.index(flag) + 1] if args.index(flag) + 1 < len(args) else ""
     if not value.isdigit() or int(value) not in design.ROUNDS:
@@ -1035,6 +1088,13 @@ def main() -> int:
             print(f"{len(found)} messages built, each within one message.")
             return 0
         print("Posted:", asyncio.run(post_preview(DIARY_TITLE, diary_opening(), found)))
+        return 0
+    if "--reading" in args:
+        found = reading_cards()
+        if "--check" in args:
+            print(f"{len(found)} messages built, each within one message.")
+            return 0
+        print("Posted:", asyncio.run(post_preview(READING_TITLE, reading_opening(), found)))
         return 0
     if "--gym" in args:
         found = gym_cards()

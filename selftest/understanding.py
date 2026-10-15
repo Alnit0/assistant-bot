@@ -28,7 +28,7 @@ def every_entry() -> list:
     from core import actions, config
     from tasks import registry
 
-    for name in ("BRIEFING_ENABLED", "WEATHER_ENABLED", "DAY_QUESTIONS", "TODOS_ENABLED", "NUDGES_ENABLED", "HABITS_ENABLED", "CALENDAR_ENABLED", "DIARY_ENABLED"):
+    for name in ("BRIEFING_ENABLED", "WEATHER_ENABLED", "DAY_QUESTIONS", "TODOS_ENABLED", "NUDGES_ENABLED", "HABITS_ENABLED", "CALENDAR_ENABLED", "DIARY_ENABLED", "READING_ENABLED"):
         setattr(config, name, True)
     registry.load()
     return actions.catalogue()

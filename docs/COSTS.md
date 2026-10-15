@@ -315,3 +315,11 @@ catalogue (11 tasks, about 3,300 tokens), and it is still under the
 cross-task fixtures and the routers of calendar and briefing after the
 line changes), five runs, the largest US$0.227 (NZ$0.40). The self-test
 and the day in the hub used recorded answers only.
+
+## 9. The daily read (15 Oct, built, off)
+
+One request a day when on (`purpose` reading): Claude chooses among up
+to five articles, about 450 words of each, and writes the TL;DR. About
+US$0.004 a day, and the same for each "another one". The router and
+extraction cost as for any task. Its recorded checks cost US$0.071; one
+real pick, end to end on the real feeds, US$0.005.

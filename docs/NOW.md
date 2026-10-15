@@ -3,8 +3,9 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Batch, 15 Oct late night:** Alex's answers built and shipped; next,
-the daily read (preview only, `READING_ENABLED` off)
+**Idle**, last batch was 15 Oct, late night: Alex's answers built and
+shipped, the bug from live fixed (not shipped), the daily read built
+(off, a preview)
 1. Done: the order, question 85, "remind me", "bought the milk",
    80 to 85 answered (`9caace7`)
 2. Done: shipped. Live on `9caace7` since 10:34 pm with
@@ -13,9 +14,11 @@ the daily read (preview only, `READING_ENABLED` off)
 3. Done: the bug from live (#576), when doses were taken (`effbe2e`):
    **not on live yet: ships at the next restart** with
    `scripts\update-live.ps1 -Ref effbe2e` (or later)
-4. Next: the daily read, `tasks/reading`, a preview in the forum
+4. Done: the daily read, `tasks/reading`, behind `READING_ENABLED`
+   (off), posted as "Design · Daily read"; questions 86 to 90
 
-**Spend:** about NZ$0.25 of NZ$0.30 for recordings (US$0.147)
+**Spend:** answers and the fix about NZ$0.25 of NZ$0.30 (US$0.147);
+the daily read about NZ$0.13 of NZ$0.25 (US$0.076)
 
 **Drafts and worktrees:** `docs/drafts/gym-onboarding.md`; three old
 worktrees, all merged
@@ -25,6 +28,7 @@ worktrees, all merged
   suggested answers
 - Tomorrow's What's new has four older lines queued for 16 Oct (one
   says Round 4 is live) besides the four new ones: say if they should go
+- The daily read: his look at its post, and questions 86 to 90
 - Questions 76 to 79 (gym), 63, 24 to 28
 - QA item 0 (direct messages)
 - Live's folder: his word, then the work folder's old `.env` and `data\`

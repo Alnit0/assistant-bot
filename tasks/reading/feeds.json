@@ -1,0 +1,21 @@
+{
+  "about": "The daily read's starter sources (tasks/reading). Each was checked to work on 15 Oct 2026. Alex adds or removes one in words; those changes are kept in the database, on top of this list.",
+  "sources": [
+    {"name": "Simon Willison", "url": "https://simonwillison.net/atom/everything/", "theme": "ai"},
+    {"name": "Latent Space", "url": "https://www.latent.space/feed", "theme": "ai"},
+    {"name": "Hugging Face blog", "url": "https://huggingface.co/blog/feed.xml", "theme": "ai"},
+    {"name": "One Useful Thing", "url": "https://www.oneusefulthing.org/feed", "theme": "ai"},
+    {"name": "Eugene Yan", "url": "https://eugeneyan.com/rss/", "theme": "ai"},
+    {"name": "Julia Evans", "url": "https://jvns.ca/atom.xml", "theme": "programming"},
+    {"name": "Martin Fowler", "url": "https://martinfowler.com/feed.atom", "theme": "programming"},
+    {"name": "Smashing Magazine", "url": "https://www.smashingmagazine.com/feed/", "theme": "programming"},
+    {"name": "CSS-Tricks", "url": "https://css-tricks.com/feed/", "theme": "programming"},
+    {"name": "Josh W. Comeau", "url": "https://www.joshwcomeau.com/rss.xml", "theme": "programming"},
+    {"name": "web.dev", "url": "https://web.dev/feed.xml", "theme": "programming"},
+    {"name": "Dan Luu", "url": "https://danluu.com/atom.xml", "theme": "programming"},
+    {"name": "Ars Technica", "url": "https://feeds.arstechnica.com/arstechnica/technology-lab", "theme": "news"},
+    {"name": "The Verge", "url": "https://www.theverge.com/rss/index.xml", "theme": "news"},
+    {"name": "Hacker News", "url": "https://hnrss.org/frontpage", "theme": "news"},
+    {"name": "The Register", "url": "https://www.theregister.com/headlines.atom", "theme": "news"}
+  ]
+}
