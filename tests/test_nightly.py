@@ -249,7 +249,7 @@ def test_the_last_real_run_and_a_night_with_nothing_new_are_read_from_what_is_ke
     ]
     assert stages.last_real(rows) == "aaa1111", "a run that did not finish, or has no commit, is not one to measure from"
     assert stages.last_real([]) is None
-    same = {"day": "abc", "briefing": "abc", "tidy": "abc", "todos": "abc", "round4": "abc", "hub": "abc"}
+    same = {"day": "abc", "briefing": "abc", "tidy": "abc", "todos": "abc", "round4": "abc", "hub": "abc", "calendar": "abc"}
     assert stages.nothing_new("abc", same) and not stages.nothing_new("def", same)
     assert not stages.nothing_new("abc", {"day": "abc", "briefing": "abc"}), "a stage that has never passed is something new"
     assert not stages.nothing_new(None, same)
@@ -259,7 +259,7 @@ def test_a_weeknight_with_no_new_commits_runs_nothing_and_leaves_its_line(monkey
     said, prepared = [], []
     monkeypatch.setattr(runner.instance_lock, "holder", lambda path: None)
     monkeypatch.setattr(runner.stages, "head", lambda root: "abc")
-    monkeypatch.setattr(runner.stages, "read_passed", lambda path: {"day": "abc", "briefing": "abc", "tidy": "abc", "todos": "abc", "round4": "abc", "hub": "abc"})
+    monkeypatch.setattr(runner.stages, "read_passed", lambda path: {"day": "abc", "briefing": "abc", "tidy": "abc", "todos": "abc", "round4": "abc", "hub": "abc", "calendar": "abc"})
     monkeypatch.setattr(runner, "quiet_night", lambda: said.append("line"))
     monkeypatch.setattr(runner, "prepare_channels", lambda *a, **k: prepared.append(1))
     monkeypatch.setattr(sys, "argv", ["selftest", "--nightly"])

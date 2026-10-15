@@ -1,0 +1,258 @@
+{
+  "router": [
+    {
+      "message": "what's on tomorrow?",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "a day of the calendar",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "what's on this week?",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "a week of the calendar",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "when is the dentist?",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "an event by its name: the name stays in Python",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "am I free at 3 tomorrow?",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "free or busy",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "what's on my calendar today?",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "today, the calendar named",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "remind me at 3 tomorrow to call the bank",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "a trap: a reminder to set, not a calendar question",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "what's on my to-do list?",
+      "tasks": [
+        "todos"
+      ],
+      "note": "a trap: the to-do list",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "todos"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    }
+  ],
+  "extraction": [
+    {
+      "task": "calendar",
+      "message": "what's on tomorrow?",
+      "action": "calendar_show",
+      "data": {
+        "day": "tomorrow"
+      },
+      "note": "",
+      "recorded": [
+        "calendar_show",
+        {
+          "day": "tomorrow",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "calendar",
+      "message": "what's on Friday?",
+      "action": "calendar_show",
+      "data": {
+        "day": "Friday"
+      },
+      "note": "",
+      "recorded": [
+        "calendar_show",
+        {
+          "day": "Friday",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "calendar",
+      "message": "what's on this week?",
+      "action": "calendar_show",
+      "data": {
+        "span": "week"
+      },
+      "note": "",
+      "recorded": [
+        "calendar_show",
+        {
+          "span": "week",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "calendar",
+      "message": "what have I got on next week?",
+      "action": "calendar_show",
+      "data": {
+        "span": "next_week"
+      },
+      "note": "",
+      "recorded": [
+        "calendar_show",
+        {
+          "span": "next_week",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "calendar",
+      "message": "when is the dentist?",
+      "action": "calendar_when",
+      "data": {
+        "search": "dentist"
+      },
+      "note": "the search words only",
+      "recorded": [
+        "calendar_when",
+        {
+          "search": "dentist",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "calendar",
+      "message": "when's my next team sync?",
+      "action": "calendar_when",
+      "data": {
+        "search": "team sync"
+      },
+      "note": "",
+      "recorded": [
+        "calendar_when",
+        {
+          "search": "team sync",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "calendar",
+      "message": "am I free at 3 tomorrow?",
+      "action": "calendar_free",
+      "data": {
+        "day": "tomorrow",
+        "time": "3:00"
+      },
+      "note": "a time with no am or pm, as said",
+      "recorded": [
+        "calendar_free",
+        {
+          "time": "3:00",
+          "day": "tomorrow",
+          "guessed": [
+            "time"
+          ],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "calendar",
+      "message": "am I busy at 10:30am?",
+      "action": "calendar_free",
+      "data": {
+        "time": "10:30 am"
+      },
+      "note": "today, left out",
+      "recorded": [
+        "calendar_free",
+        {
+          "time": "10:30 am",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    }
+  ]
+}

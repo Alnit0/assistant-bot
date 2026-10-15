@@ -24,9 +24,9 @@ from core import money
 # A stage that begins at start 5 makes its own pills first (`phases.seed`),
 # with recorded answers only.
 # ---------------------------------------------------------------------------
-STAGES = {"day": ("p1", "p2", "p3", "p4"), "briefing": ("p5",), "tidy": ("p5", "p6"), "todos": ("p7",), "round4": ("p8",), "hub": ("p9",)}
-ORDER = ("day", "briefing", "tidy", "todos", "round4", "hub")
-ABOUT_MINUTES = {"p1": 4, "p2": 2.5, "p3": 2, "p4": 1.5, "p5": 2, "p6": 2.5, "p7": 2, "p8": 1.5, "p9": 2}
+STAGES = {"day": ("p1", "p2", "p3", "p4"), "briefing": ("p5",), "tidy": ("p5", "p6"), "todos": ("p7",), "round4": ("p8",), "hub": ("p9",), "calendar": ("p10",)}
+ORDER = ("day", "briefing", "tidy", "todos", "round4", "hub", "calendar")
+ABOUT_MINUTES = {"p1": 4, "p2": 2.5, "p3": 2, "p4": 1.5, "p5": 2, "p6": 2.5, "p7": 2, "p8": 1.5, "p9": 2, "p10": 1}
 
 # What a changed file touches, first match wins. Anything not listed is the
 # bot's own code, shared by everything: all three stages.
@@ -35,7 +35,8 @@ RULES = (
     (("tasks/briefing/", "core/summaries.py", "tasks/pills/summary.py"), ("briefing",)),
     (("core/messages.py",), ("tidy",)),
     (("tasks/todos/", "core/hubcard.py"), ("todos", "hub")),
-    (("tasks/nudges/", "tasks/habits/", "tasks/today/", "core/today.py", "core/recurrence.py"), ("hub",)),
+    (("tasks/calendar/",), ("calendar",)),
+    (("tasks/nudges/", "tasks/habits/", "tasks/today/", "core/today.py", "core/recurrence.py"), ("hub", "calendar")),
     (("tasks/pills/sheet.py",), ("day", "round4")),
     (("tasks/",), ("day",)),
 )
@@ -51,7 +52,7 @@ LOW_MEMORY = 1900 * 1024 * 1024
 
 def phases_for(stages) -> list[str]:
     """The starts to run for these stages, each once, in the story's order."""
-    return sorted({phase for stage in stages for phase in STAGES[stage]})
+    return sorted({phase for stage in stages for phase in STAGES[stage]}, key=lambda name: int(name[1:]))  # p10 after p9, not after p1
 
 
 def stages_of(path: str) -> tuple[str, ...]:

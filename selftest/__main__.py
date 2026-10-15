@@ -115,7 +115,7 @@ def steps_expected(known: dict[str, int], wanted: list[str]) -> int:
 SWITCHES = {
     "CARDS_V2": "false", "REMINDERS_ENABLED": "false", "BRIEFING_ENABLED": "false", "DAY_PROGRESS": "false", "DAY_QUESTIONS": "false", "WEEKLY_SUMMARY": "false", "DMS_ENABLED": "false",
     "NIGHTLY_SELFTEST": "false", "HUB_TIDY": "false", "QUIET_HOURS_ENABLED": "false", "QUIET_HOURS": "22:00-07:00", "NOTIFY_NTFY": "false",
-    "NTFY_BOT_TOPIC": "", "WEATHER_ENABLED": "false", "TODOS_ENABLED": "false", "NUDGES_ENABLED": "false", "HABITS_ENABLED": "false", "TODAY_CARD": "false", "ROUTINES_LAYOUT": "b", "DESIGN_ROUND": "3", "DAILY_SPEND_LIMIT_NZD": "1.00", "SELFTEST_MONTHLY_LIMIT_NZD": "3.50", "USD_TO_NZD": "1.70",
+    "NTFY_BOT_TOPIC": "", "WEATHER_ENABLED": "false", "TODOS_ENABLED": "false", "NUDGES_ENABLED": "false", "HABITS_ENABLED": "false", "TODAY_CARD": "false", "ROUTINES_LAYOUT": "b", "CALENDAR_ENABLED": "false", "CALENDAR_ICS_URL": "", "DESIGN_ROUND": "3", "DAILY_SPEND_LIMIT_NZD": "1.00", "SELFTEST_MONTHLY_LIMIT_NZD": "3.50", "USD_TO_NZD": "1.70",
 }
 
 # (name, the settings it starts with, seconds to stay off before it)
@@ -132,6 +132,8 @@ PHASES = (
     ("p8", {"CARDS_V2": "true", "REMINDERS_ENABLED": "true", "DESIGN_ROUND": "4", "TODOS_ENABLED": "true"}, 0),
     # Reminders I set, personal routines (layout B) and the Today card, in round 4
     ("p9", {"CARDS_V2": "true", "REMINDERS_ENABLED": "true", "DESIGN_ROUND": "4", "TODOS_ENABLED": "true", "NUDGES_ENABLED": "true", "HABITS_ENABLED": "true", "TODAY_CARD": "true"}, 0),
+    # The calendar, from a file of made-up events: never Alex's link (SWITCHES blanks it for every start)
+    ("p10", {"CARDS_V2": "true", "REMINDERS_ENABLED": "true", "DESIGN_ROUND": "4", "TODAY_CARD": "true", "CALENDAR_ENABLED": "true", "CALENDAR_ICS_URL": str(config.BASE_DIR / "tests" / "fixtures" / "calendar_selftest.ics")}, 0),
 )
 
 
@@ -269,7 +271,7 @@ def put_back(saved: Path | None, stamp: str) -> None:
 def results_of(folder: Path) -> list[dict]:
     """The steps a run recorded, start by start, from what it left in its folder."""
     found = []
-    for path in sorted(folder.glob("p*.json")):
+    for path in sorted(folder.glob("p*.json"), key=lambda path: int(path.stem[1:]) if path.stem[1:].isdigit() else 0):
         try:
             found += json.loads(path.read_text(encoding="utf-8")).get("results", [])
         except (OSError, ValueError):

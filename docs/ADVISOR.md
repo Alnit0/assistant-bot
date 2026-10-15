@@ -127,6 +127,7 @@ Messages go through fast paths (buttons, exact shortcuts), then sticky follow-up
 - **A question gets the answer itself, where it is asked** (15 Oct): "what pills are left?" had been answered with only a pointer to the hub. Now the doses still to take, in time order, the first line naming no pill; a pointer may follow an answer, never replace it (golden 29). A DM while DMs are off gets one line saying so.
 - **A reply to a pill line corrects the day that line is about** (15 Oct): "actually I didn't" to last night's line after midnight makes that dose missed and leaves today alone.
 - **To-dos have their own self-test stage** (start 7, recorded answers, 9 of 9).
+- **The calendar** (15 Oct): read only from the secret iCal link; no event's name or description ever goes to Claude (extraction gets a day, a span or search words, Python finds the event and answers from a template whose first line names nothing); on the Today card, in the briefing's line and in attention (an event within 30 minutes, its time only). Writing, later, through a service account and a "Bot" calendar (backlog).
 - **Alex tested everything at once** (15 Oct): routines merged the day they were built, with layout B (the Today card, and a card a routine from its start) the default; the self-test gained start 9 (reminders, routines, the Today card). The Design forum has one post a round, tagged Live, Preview or Retired.
 - **Round 4 shipped the day it was previewed** (15 Oct): he picked Taken at once (question 67), asked for the list rule on to-dos at once rather than in round 5, and said ship it. Every self-test start but 8 is pinned to round 3, so live's own `DESIGN_ROUND` never decides a step.
 - **The test suite runs in about 40 seconds** (it had grown to nearly two minutes). `TESTS_AS_ON_LIVE=1` runs the same tests with real threads and connections, about 80 seconds.
@@ -134,6 +135,7 @@ Messages go through fast paths (buttons, exact shortcuts), then sticky follow-up
 ## 9. Open threads (update every batch)
 
 **Waiting on Alex**
+- **Calendar:** reminders before events (stage 2) are a later decision; nothing is told before an event yet.
 - **Round 3 on his phone:** it is live; his feedback (in the design-options post) goes into docs/DESIGN-LOG.md as round 4. His first piece, from question 64, is done: task cards have no `##` page title.
 - **docs/QUESTIONS.md:** three left after his answers of 15 Oct: 11 (his lock-screen screenshot of a pill reminder is on its way), 63 (personal routines reworked with groups of steps, one button a group: to discuss), 24 to 28 under "Gym onboarding" (he designs how a plan is set up first).
 - **QA block 54 by hand** (top of docs/QA-RUN.md): direct messages go on only once it has passed; the self-test cannot send a DM.
@@ -158,7 +160,8 @@ Messages go through fast paths (buttons, exact shortcuts), then sticky follow-up
 - **Scheduler:** handlers, schedule rows, one engine, run log; routines; missed-run rules; local time with daylight saving handled.
 - **Briefing:** one card built from each task's summary section; edited in place.
 - **Attention:** the five-level ranking above, shared by status line, briefing and pings.
-- **Gym and calendar:** drafted, waiting on Alex's answers.
+- **Calendar:** built 15 Oct, read only, from Google Calendar's secret iCal link (live's `.env` only); event names never go to Claude; a source interface so the Google Calendar API (a service account, writing only to its own calendar) can come later. Stage 2 (being told before an event) waits on his word.
+- **Gym:** drafted, waiting on his design of onboarding.
 
 ---
 

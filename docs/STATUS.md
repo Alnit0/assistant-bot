@@ -8,6 +8,44 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-15
 
+## Decided (2026-10-15, the calendar)
+
+Built on `feature/pills` behind `CALENDAR_ENABLED`, read only, from the
+secret iCal link in live's `.env` (`CALENDAR_ICS_URL`).
+
+1. **A source behind a small interface** (`tasks/calendar/source.py`):
+   the iCal link today, the Google Calendar API through a service
+   account later (`docs/BACKLOG.md`). An error never holds the link.
+2. **Read on start-up and every 15 minutes**, one run booked at a time
+   (`scheduler.ensure`). A failed read keeps the last good copy; after 6
+   hours of failing it is a problem in Needs a look.
+3. **The copy** is a title and times, yesterday to two months ahead,
+   replaced whole on each good read. No place, no description.
+4. **Events go nowhere near Claude**: the state says only how many there
+   are, `item_names` is empty, and extraction gets the day, a span or the
+   search words; `core/names.py` finds the event and the answer is a
+   template whose first line names no event (a phone may show it).
+5. **The Today card**: all-day events in one small line at the top,
+   events that are over in one small line ("📅 2 earlier today"), one on
+   now in full ("on now · until 4:00 pm"), the next in full and the rest
+   as times, with to-dos, routines and reminders. Events are not counted
+   in its dots. With every event over and nothing else on, no card.
+6. **The briefing's line**: "3 events · first 9:00 am" (or "all day").
+7. **Attention**: an event starting in the next 30 minutes is level 3,
+   the status line its time only ("9am"); an event on now adds nothing.
+8. **Questions**: "am I free at 3?" with no am or pm reads the one in the
+   day (7 am to 10 pm) and says which it read; an all-day event is not
+   busy. A week is a day a heading, each day by the list rule.
+9. **Routing**: with the calendar on, the briefing's routing line hands
+   a coming day or week of events to the calendar: "what's on this
+   week?" went to the briefing in the first recorded run.
+10. **Understanding checks recorded**: 15 of 15, US$0.106 for two runs
+    (about NZ$0.18). Self-test start 10 (stage `calendar`) reads a file
+    of made-up events that come round every day, never the link (every
+    other start blanks it): 5 of 5. Found on the way: the self-test
+    sorted its starts by name, so p10 would have run before p2; now by
+    number.
+
 ## Live restarted again at 1:41 pm, 15 Oct (for the #commands names)
 
 From `056572d` (clean, pushed, full test run passed), 33 minutes clear of

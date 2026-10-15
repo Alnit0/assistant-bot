@@ -136,7 +136,6 @@ class CalendarTask(Task):
     icon = ICON
     only_for = plain.ONLY_FOR
     examples = plain.EXAMPLES
-    show = "calendar_show"
     identity = ()  # it adds nothing
     on_repeat = repeats.ALLOW_ANOTHER
 

@@ -131,6 +131,19 @@ def test_off_unless_set_and_not_loaded():
     assert "calendar" not in [task.name for task in registry.loaded_tasks()]
 
 
+def test_switched_on_it_loads_with_no_problem_and_offers_its_three_questions(monkeypatch):
+    monkeypatch.setattr(config, "CALENDAR_ENABLED", True)
+    registry.load()
+    try:
+        assert "calendar" in [task.name for task in registry.loaded_tasks()]
+        assert not [problem for problem in registry.problems() if "calendar" in problem]
+        entry = next(each for each in __import__("core.actions", fromlist=["catalogue"]).catalogue() if each.name == "calendar")
+        assert sorted(action.name for action in entry.actions) == ["calendar_free", "calendar_show", "calendar_when"]
+    finally:
+        monkeypatch.undo()
+        registry.load()
+
+
 def test_a_read_keeps_two_months_and_a_failed_one_keeps_the_last_good_copy(world, monkeypatch):
     from tasks import calendar
 

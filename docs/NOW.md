@@ -9,10 +9,10 @@ live today
 **Done**
 - 1. The task: reading the feed every 15 minutes, the copy, the hub
   lines, questions in words, unit tests on a made-up feed
+- 2. Understanding checks recorded: 15 of 15, NZ$0.18
+- 3. Self-test start 10 (made-up feed): 5 of 5; start 9 again: 5 of 5
 
-**Next**
-- 2. Recorded understanding checks (cap NZ$0.30)
-- 3. Self-test start 10 with the made-up feed
+**In progress**
 - 4. Commit, push; restart live with CALENDAR_ENABLED; checks; What's new
 
 **Drafts and worktrees**

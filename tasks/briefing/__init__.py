@@ -51,6 +51,11 @@ ONLY_FOR_THE_DAY = (
     "task), and not when the briefing is posted (the schedule task)."
 )
 EXAMPLES_OF_THE_DAY = ("brief me", "what's on today?", "what's left today?", "how did I go yesterday?")
+# With the calendar on (CALENDAR_ENABLED): the events of a coming day or week are its, not the briefing's
+NOT_THE_CALENDAR = (
+    " Not the events in the user's calendar on a day or a week (\"what's on tomorrow?\", \"what's on this week?\", "
+    "\"when is the dentist?\"): that is the calendar task."
+)
 
 
 def enabled() -> bool:
@@ -241,7 +246,8 @@ class BriefingTask(Task):
 
     @property
     def only_for(self) -> str:
-        return ONLY_FOR_THE_DAY if answers_questions() else ONLY_FOR
+        said = ONLY_FOR_THE_DAY if answers_questions() else ONLY_FOR
+        return said + (NOT_THE_CALENDAR if config.CALENDAR_ENABLED else "")
 
     @property
     def examples(self) -> tuple:

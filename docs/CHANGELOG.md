@@ -6,6 +6,10 @@ backfilled from the git log.
 
 ## 2026-10-15
 
+- Your calendar, read only: today's events on the Today card, a line in
+  the briefing, the next event's time on the status line half an hour
+  before, and questions in words ("what's on tomorrow?", "when is the
+  dentist?", "am I free at 3 tomorrow?"). Event names never go to Claude.
 - Round 4 of the hub's design is live: each card shows what can be done
   now in full, the next thing in full and the rest small; one Taken
   button a dose that logs at once (reply to the line it leaves with a

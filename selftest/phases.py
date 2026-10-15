@@ -1710,4 +1710,41 @@ async def p9(h: Harness) -> None:
         h.check(await slot_card(h, f"habits.r{h.memo['habit']}") is None, "the routine's card is still there once it is done")
 
 
-PHASES = {"p1": p1, "p2": p2, "p3": p3, "p4": p4, "p5": p5, "p6": p6, "p7": p7, "p8": p8, "p9": p9}
+# ---------------------------------------------------------------------------
+# Start 10: the calendar, read only, from a feed of made-up events that come
+# round every day (tests/fixtures/calendar_selftest.ics), never Alex's link.
+# Recorded answers.
+# ---------------------------------------------------------------------------
+async def p10(h: Harness) -> None:
+    from tasks.calendar import store as calendar_store
+
+    async with h.step("10.01", "The feed is read at start-up", "A read booked at start-up runs: the copy holds the made-up events, and the feed it read is the fixture, not a link", "calendar (15 Oct)"):
+        h.check(config.CALENDAR_ENABLED and not config.CALENDAR_ICS_URL.lower().startswith("http"), "the calendar is not on, or the feed is a link, in this start")
+        await h.run_due()
+        await h.settle(2)
+        read = await database.run(calendar_store.db_read, h.user.id)
+        h.check(read is not None and read[0] is not None and read[3] > 0, f"the copy: {read}")
+        h.saw(f"{read[3]} events kept")
+
+    async with h.step("10.02", "“what's on tomorrow?”", "In place: a first line with the day and a count and no event's name, then the made-up events with their times", "calendar (15 Oct)"):
+        await h.say("what's on tomorrow?", canned=todo("calendar_show", day="tomorrow"), task="calendar")
+        said = await h.find(h.inbox, "Tomorrow")
+        h.check(said is not None and said.text.splitlines()[0] == "📅 **Tomorrow** · 3 events" and "Test standup" in said.text, f"the answer: {said.text[:300] if said else 'none'}")
+
+    async with h.step("10.03", "“when is the dentist?”", "The next Test dentist: the first line says when and names nothing, the second names it", "calendar (15 Oct)"):
+        await h.say("when is the dentist?", canned=todo("calendar_when", search="dentist"), task="calendar")
+        said = await h.find(h.inbox, "Next one")
+        h.check(said is not None and "Test" not in said.text.splitlines()[0] and "Test dentist" in said.text, f"the answer: {said.text[:300] if said else 'none'}")
+
+    async with h.step("10.04", "“am I free at 6:30 pm tomorrow?”", "Not free: Test gym is on then", "calendar (15 Oct)"):
+        await h.say("am I free at 6:30 pm tomorrow?", canned=todo("calendar_free", day="tomorrow", time="6:30 pm"), task="calendar")
+        said = await h.find(h.inbox, "free at")
+        h.check(said is not None and said.text.startswith("📅 Not free at **6:30 pm** tomorrow") and "Test gym" in said.text, f"the answer: {said.text[:300] if said else 'none'}")
+
+    async with h.step("10.05", "The Today card has today's events", "The 📅 Today card in the hub: an event in full, or those that are over in one small line", "calendar and the Today card (15 Oct)"):
+        today_card = await slot_card(h, "today")
+        h.check(today_card is not None and ("📅 **Test" in today_card.text or "earlier today" in today_card.text), f"the Today card: {today_card.text[:300] if today_card else 'none'}")
+        h.saw(" / ".join(today_card.text.splitlines()[:4])[:200] if today_card else "")
+
+
+PHASES = {"p1": p1, "p2": p2, "p3": p3, "p4": p4, "p5": p5, "p6": p6, "p7": p7, "p8": p8, "p9": p9, "p10": p10}
