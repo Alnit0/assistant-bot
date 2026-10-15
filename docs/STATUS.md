@@ -37,7 +37,17 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
    own expectations where they were wrong (3). After: 57 of 58 right;
    the one left is a known miss ("is the gym on tonight?" comes back as
    chat; chat then hands it back to the router). Every self-test run reads them back (step u.01).
-3. **Cost**: see "Decided" below.
+3. **Cost**: a normal day about NZ$0.10, a busy one NZ$0.25, against
+   the NZ$1.00 alert (`docs/COSTS.md`, section 8). Nothing changed.
+4. **Lock-screen line**: "💊 Dose due · 2:14 pm", repeats "· 2nd
+   reminder" to "· last reminder" (question 11 closed; see Decided).
+5. **Shipped** at 6:00 pm: live's folder on `85b0c4e` (from
+   `6a942d8`) by `scripts\update-live.ps1`, after the full test run
+   (3197 passed) and the full self-test (150 of 150, recorded answers).
+   No pill reminder was booked that evening. Checked: the account, the
+   checklist brought up to date in place, no warning but the usual one,
+   every booking (midnight, 3 am backup, 3:30 am self-test, 6 am
+   routine, 7 am check, Sunday summary). Spend NZ$0.79 of NZ$1.00.
 
 ## Decided (2026-10-15, evening batch)
 
