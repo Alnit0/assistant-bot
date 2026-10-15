@@ -362,10 +362,10 @@ def writing_actions() -> list:
             "calendar_add",
             "Add an event to the calendar: an appointment or a plan with a day and a time and no \"remind me\" (\"dentist Friday 3pm\" -> "
             "title dentist, day Friday, time 3pm; \"lunch with Sam Thursday at 1 for 90 minutes\" -> title lunch with Sam, length 90; "
-            "\"put the plumber on my calendar tomorrow at 10\"), or a repeating one (\"work every weekday 9 to 5:30\" -> title work, "
+            "\"put the plumber on my calendar tomorrow at 10\"; \"book lunch with Sam Thursday at 1\", \"make a dentist appointment for Friday at 3pm\": make, book and put are adding), or a repeating one (\"work every weekday 9 to 5:30\" -> title work, "
             "repeat weekdays, time 9, ends_at 5:30; \"swimming Mondays and Thursdays at 6pm until December\" -> repeat days, weekdays mon thu, until December).",
             (
-                Field("title", "What it is, in the user's own words exactly as said (\"dentist\", \"lunch with Sam\"), without the day, the time or the length.", required=True),
+                Field("title", "What it is, in the user's own words exactly as said (\"dentist\", \"lunch with Sam\"), without the day, the time or the length, and without add, make, book or put (\"book lunch with Sam\" -> lunch with Sam; \"make a dentist appointment\" -> dentist appointment).", required=True),
                 Field("day", _DAY),
                 Field("time", "When it starts, as the user said it.", TIME),
                 Field("length", "How long, only when the user says (\"for an hour\" -> 60, \"for 90 minutes\" -> 90).", MINUTES),
@@ -407,7 +407,8 @@ ONLY_FOR_WRITING = (
     "Events in the user's own calendar: reading what is on a day or a week (\"what's on tomorrow?\", \"what's on this week?\", "
     "\"my calendar\"), when an event is or whether it is on (\"when is the dentist?\", \"is the gym on tonight?\"), whether they "
     "are free (\"am I free at 3 tomorrow?\"), and adding an event: an appointment or a plan said with a day and a time and no "
-    "\"remind me\" (\"dentist Friday 3pm\", \"lunch with Sam Thursday at 1\", \"put the plumber on my calendar\"), a repeating event "
+    "\"remind me\" (\"dentist Friday 3pm\", \"lunch with Sam Thursday at 1\", \"put the plumber on my calendar\", \"book lunch with Sam\", "
+    "\"make a dentist appointment for Friday at 3pm\"), a repeating event "
     "(\"work every weekday 9 to 5:30\", \"swimming Mondays and Thursdays at 6pm\"), and moving, cancelling (\"cancel work next Tuesday\", "
     "\"stop work\"), deleting or undoing one. A request to be reminded (\"remind me about the dentist Friday\") is a reminder, not the calendar. "
     "The rest of today across everything (\"what's on tonight?\") is the briefing. Not pills, not to-dos (a thing to do with no "

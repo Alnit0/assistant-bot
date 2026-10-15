@@ -675,6 +675,114 @@
         "reports_doing": false,
         "chat_part": ""
       }
+    },
+    {
+      "golden": "w22",
+      "message": "book lunch with Sam Thursday at 1",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "make, put and book are adding",
+      "names": {
+        "calendar": [
+          "Work",
+          "Dentist",
+          "Swimming"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ],
+        "habits": [
+          "Morning",
+          "Stretch"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "w23",
+      "message": "make a dentist appointment for Friday at 3pm",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "make, put and book are adding",
+      "names": {
+        "calendar": [
+          "Work",
+          "Dentist",
+          "Swimming"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ],
+        "habits": [
+          "Morning",
+          "Stretch"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "w24",
+      "message": "put the plumber in for Monday at 10",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "make, put and book are adding",
+      "names": {
+        "calendar": [
+          "Work",
+          "Dentist",
+          "Swimming"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ],
+        "habits": [
+          "Morning",
+          "Stretch"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
     }
   ],
   "extraction": [
@@ -1016,6 +1124,70 @@
         {
           "search": "work",
           "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "w22",
+      "task": "calendar",
+      "message": "book lunch with Sam Thursday at 1",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_add",
+      "data": {
+        "title": "lunch with Sam"
+      },
+      "recorded": [
+        "calendar_add",
+        {
+          "title": "lunch with Sam",
+          "day": "Thursday",
+          "time": "1:00 pm",
+          "guessed": [
+            "time"
+          ],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "w23",
+      "task": "calendar",
+      "message": "make a dentist appointment for Friday at 3pm",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_add",
+      "data": {
+        "title": "dentist appointment"
+      },
+      "recorded": [
+        "calendar_add",
+        {
+          "title": "dentist appointment",
+          "day": "Friday",
+          "time": "3:00 pm",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "w24",
+      "task": "calendar",
+      "message": "put the plumber in for Monday at 10",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_add",
+      "data": {
+        "title": "plumber"
+      },
+      "recorded": [
+        "calendar_add",
+        {
+          "title": "plumber",
+          "day": "Monday",
+          "time": "10:00 am",
+          "guessed": [
+            "time"
+          ],
           "not_included": []
         }
       ]

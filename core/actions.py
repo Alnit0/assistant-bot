@@ -622,6 +622,15 @@ def _said_times(said: str) -> list[int]:
     return found
 
 
+# A time of day with no am or pm ("7" in "7 to 10pm", "7:30"): never in front of am or pm, a % or a word
+_BARE_TIME = re.compile(r"(?<![\w:.$])(\d{1,2})(?:[:.](\d{2}))?(?!\s*[ap]\.?m\b)(?![\w:.%])", re.IGNORECASE)
+
+
+def _bare_times(said: str) -> set[int]:
+    """The times a message gives with no am or pm, as minutes of a twelve-hour clock (7 and 7 pm alike)."""
+    return {(int(hour) % 12) * 60 + int(minute or 0) for hour, minute in _BARE_TIME.findall(said) if 1 <= int(hour) <= 12 and int(minute or 0) < 60}
+
+
 def _given_minutes(value) -> int | None:
     match = _GIVEN_TIME.fullmatch(value.strip()) if isinstance(value, str) else None
     return (int(match[1]) % 12 + (12 if match[3].lower() == "p" else 0)) * 60 + int(match[2]) if match else None
@@ -654,7 +663,10 @@ def restated(action: "Action", data: dict, said: str) -> tuple[dict, list[str]]:
     collect(action.fields, data)
     minutes = [_given_minutes(each) for each in given]
     missing = [each for each in dict.fromkeys(stated) if each not in minutes]
-    odd = [value for value, at in zip(given, minutes) if at is not None and at not in stated]
+    # A time handed over that I said without am or pm is mine too, never the odd one: in "dinner 7 to 10pm"
+    # the start is 7 pm and 10 pm its end (found 16 Oct: the start was swapped for the end, 7 pm -> 10 pm)
+    bare = _bare_times(said)
+    odd = [value for value, at in zip(given, minutes) if at is not None and at not in stated and at % 720 not in bare]
     if len(missing) != 1 or len(odd) != 1:
         return data, []
     hour, minute = divmod(missing[0], 60)

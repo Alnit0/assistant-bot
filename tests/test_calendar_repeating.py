@@ -363,3 +363,14 @@ def test_a_start_and_an_end_said_together_are_read_together():
     assert rules.read_span("9", "5:30") == (time(9, 0), time(17, 30))
     assert rules.read_span("10", "2") == (time(10, 0), time(14, 0))
     assert rules.read_span("8:30pm", "11pm") == (time(20, 30), time(23, 0))
+
+
+def test_a_range_said_with_one_am_or_pm_keeps_its_start(world):
+    """Found 16 Oct on live: "… 7 to 10pm" had its start put back to 10 pm by the stated-time check."""
+    from core import actions
+
+    add = next(each for each in plain.writing_actions() if each.name == "calendar_add")
+    data = {"title": "dinner", "day": "Friday", "time": "7:00 pm", "length": 180}
+    assert actions.restated(add, data, "dinner Friday 7 to 10pm") == (data, [])
+    assert actions.restated(add, {"title": "dinner", "time": "7:00 pm", "ends_at": "10:00 pm"}, "dinner Friday 7 to 10pm")[1] == []
+

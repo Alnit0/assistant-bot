@@ -293,6 +293,13 @@ time). Spend US$0.041.
 
 ## Decided (2026-10-16, midday)
 
+- **The range fix:** live's log at 11:05 showed "a stated time was put
+  back (7:00 pm → 10:00 pm)": in "… 7 to 10pm" the stated-time check
+  counted only times with am or pm, took Claude's 7 pm for one never
+  said, and swapped in 10 pm. A time said without am or pm now counts
+  as said. Make, put and book are adding ("book lunch with Sam Thursday
+  at 1"), the verb not part of the title: 6 of 6, US$0.03.
+
 - **The 12:06 pm ping** was the 3:30 am nightly's failure again: closing
   its D1 took the bug's id off the item, and pings were kept by bug id,
   so it looked new. Now a problem pings once, ever, by a key that lasts

@@ -792,5 +792,7 @@ def test_what_was_handed_over_is_left_alone_whenever_it_could_be_right():
         ({"pills": [{"name": "A", "times": ["7:00 am"]}, {"name": "B", "times": ["6:00 pm"]}]}, "A at 8am and B at 9pm"),  # two of mine missing
         ({"pills": [{"name": "A", "times": ["8:00"]}]}, "at 8"),  # no am or pm said: `unchosen` and the card deal with it
         ({"pills": [{"name": "A", "notes": "with food"}]}, "9pm"),  # no time handed over at all
+        ({"pills": [{"name": "A", "times": ["7:00 pm"]}]}, "dinner 7 to 10pm"),  # a range: the 7 is mine, said without pm
+        ({"pills": [{"name": "A", "times": ["7:30 pm"]}]}, "7:30 until 9pm"),
     ):
         assert actions.restated(add, data, said) == (data, []), said
