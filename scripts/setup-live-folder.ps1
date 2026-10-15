@@ -94,8 +94,12 @@ function Step([string]$What, [scriptblock]$Do) {
 }
 
 function Run([string]$Exe, [string[]]$Arguments) {
-    # A program that must succeed: its exit code is checked, since PowerShell does not stop for one
-    & $Exe @Arguments
+    # A program that must succeed: its exit code is checked, since PowerShell does not stop for one.
+    # What it writes to stderr (git's progress) is not an error: with the script's output redirected,
+    # Windows PowerShell would otherwise stop on it (found 15 Oct, with live stopped)
+    $was = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try { & $Exe @Arguments 2>&1 | ForEach-Object { "$_" } | Out-Host } finally { $ErrorActionPreference = $was }
     if ($LASTEXITCODE -ne 0) { throw "$Exe $($Arguments -join ' ') failed with exit code $LASTEXITCODE" }
 }
 

@@ -20,17 +20,22 @@ or a real pill name. Use the `.venv` Python. In this order:
    A boot after the last commit, or uncommitted work with no session
    running, means a batch was cut off: say what it had done (the diff's
    file names) and what it had not.
-4. **Live**:
-   - `Get-Service assistant-bot` (running or not) and `python -m
-     core.instance_lock` (which bots, since when)
-   - the account check: the last "Account checked" line in
+4. **Live** (it runs from its own folder, `C:\Users\temp\projects\assistant-bot-live`,
+   on one pushed commit: everything below is read there, not here):
+   - `Get-Service assistant-bot` (running or not), and `python -m
+     core.instance_lock` run in live's folder (which bots, since when)
+   - the commit live runs: `git -C ..\assistant-bot-live rev-parse --short
+     HEAD`, and the last line of its `data\live-versions.txt`; say how
+     far behind `origin/feature/pills` it is
+   - the account check: the last "Account checked" line in live's
      `logs/bot.log` (passed or not; say "live's own account", never its
      name)
-   - the switches: `Select-String .env -Pattern '^[A-Z_]*(ENABLED|CARDS_V2|DESIGN_ROUND|DAY_[A-Z]*)='`
-     (names and values only, nothing else from `.env`)
+   - the switches: `Select-String ..\assistant-bot-live\.env -Pattern '^[A-Z_]*(ENABLED|CARDS_V2|DESIGN_ROUND|DAY_[A-Z]*|TODAY_CARD)='`
+     (names and values only, nothing else from `.env`: never a link or a token)
    - today's 6 am briefing: the run log, read only, e.g. `sqlite3` on
-     `file:data/assistant.db?mode=ro`, table `scheduled_jobs`, `skill =
-     'briefing' AND kind = 'post'`, today's `local_at`, its status and note
+     live's `file:data/assistant.db?mode=ro`, table `scheduled_jobs`,
+     `skill = 'briefing' AND kind = 'post'`, today's `local_at`, its
+     status and note
 5. **Bugs**: `python -m tasks.bugs.cli list` (live) and the same with
    `--dev` (the self-test's). Anything opened or re-opened since the last
    session, one line each in plain words.

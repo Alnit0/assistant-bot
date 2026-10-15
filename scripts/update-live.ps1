@@ -7,8 +7,10 @@
     never loads work in progress (docs/LIVE-FOLDER.md). This script moves that
     folder to another commit:
 
-      1. checks the folder is a clean clone (nothing changed by hand)
-      2. fetches from origin, and checks the commit exists
+      1. puts back docs\SELFTEST.md (the nightly self-test writes it here), then
+         checks the folder is a clean clone (nothing changed by hand)
+      2. fetches from origin, and checks the commit exists and is pushed (on
+         origin/feature/pills): only pushed code ever runs as live
       3. writes the commit live is on now to data\live-versions.txt, for going back
       4. checks out the commit, detached (live never runs a branch that moves)
       5. installs requirements.txt into its .venv
@@ -23,7 +25,10 @@
     Run it yourself, as Administrator for the restart. The bot never runs it.
 
 .PARAMETER Target
-    Live's own folder.
+    Live's own folder. The default is C:\Users\temp\projects\assistant-bot-live.
+
+.PARAMETER Branch
+    The pushed branch the commit must be on. The default is feature/pills.
 
 .PARAMETER Ref
     The commit (or tag) to move to. A branch name is taken as the commit it points at now.
@@ -41,13 +46,14 @@
     Print every step and do none of them.
 
 .EXAMPLE
-    .\scripts\update-live.ps1 -Target C:\Users\temp\projects\assistant-bot-live -Ref 5a28d56
+    .\scripts\update-live.ps1 -Ref 5a28d56
 
 .EXAMPLE
-    .\scripts\update-live.ps1 -Target C:\Users\temp\projects\assistant-bot-live -Back
+    .\scripts\update-live.ps1 -Back
 #>
 param(
-    [Parameter(Mandatory = $true)][string]$Target,
+    [string]$Target = "C:\Users\temp\projects\assistant-bot-live",
+    [string]$Branch = "feature/pills",
     [string]$Ref = "",
     [switch]$Back,
     [string]$ServiceName = "assistant-bot",
@@ -69,7 +75,10 @@ function Step([string]$What, [scriptblock]$Do) {
 
 function GitHere([string[]]$Arguments) {
     # Named so: a function called Git would be what `git` means inside it, and call itself
-    $said = & git.exe -C $Target @Arguments
+    # git's progress on stderr is not an error (see setup-live-folder.ps1, Run)
+    $was = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try { $said = & git.exe -C $Target @Arguments 2>$null } finally { $ErrorActionPreference = $was }
     if ($LASTEXITCODE -ne 0) { throw "git $($Arguments -join ' ') failed with exit code $LASTEXITCODE" }
     return $said
 }
@@ -93,6 +102,10 @@ Say "  move to: $Ref"
 if ($WhatIf) { Say "  -WhatIf: nothing will be done; the steps are only printed." }
 Say ""
 
+Step "Put back docs\SELFTEST.md: the nightly self-test, which runs in this folder, writes its table there (its record stays in data\selftest)" {
+    GitHere @("checkout", "--quiet", "--", "docs/SELFTEST.md") | Out-Null
+}
+
 Step "Check that $Target is clean: nothing in it changed by hand (git status)" {
     $changed = GitHere @("status", "--porcelain", "--untracked-files=no")
     if ($changed) { throw "Files in $Target were changed by hand:`n$($changed -join "`n")`nLive's folder only ever moves between commits. Look at them, then git checkout -- . in it." }
@@ -102,6 +115,11 @@ Step "Fetch from origin, and check that $Ref is a commit" {
     GitHere @("fetch", "--quiet", "origin") | Out-Null
     $script:Commit = (GitHere @("rev-parse", "--verify", "--short", "$Ref^{commit}")) -join ""
     Say "  $Ref is $($script:Commit)"
+    $was = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try { & git.exe -C $Target merge-base --is-ancestor $script:Commit "origin/$Branch" 2>$null } finally { $ErrorActionPreference = $was }
+    if ($LASTEXITCODE -ne 0) { throw "$Ref is not on origin/${Branch}: push it first. Live only runs pushed code." }
+    Say "  it is pushed (on origin/$Branch)"
 }
 
 Step "Write the commit live is on now ($Now) to data\live-versions.txt, for going back" {

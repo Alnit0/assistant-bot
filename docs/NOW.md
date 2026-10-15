@@ -3,20 +3,18 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Batch** (2026-10-15, from 2:45 pm): the calendar, read only: **done**,
-on in live from 3:03 pm
+**Batch** (2026-10-15, from 3:06 pm): two safety jobs, then the two
+old live bugs
 
 **Done**
-- 1. The task: reading the feed every 15 minutes, the copy, the hub
-  lines, questions in words, unit tests on a made-up feed
-- 2. Understanding checks recorded: 15 of 15, NZ$0.18
-- 3. Self-test start 10 (made-up feed): 5 of 5; start 9 again: 5 of 5
-
-- 4. Live restarted 3:03 pm with CALENDAR_ENABLED: 47 events read, the
-  Today card and the briefing show it; What's new line queued
+- 1. Live in its own folder (`..\assistant-bot-live`, on 6a942d8) since
+  3:11 pm: account check, today's logs, the calendar and the bookings
+  checked; self-test from live's folder 28 of 28. Originals kept in the
+  work folder until Alex confirms. Ship with `scripts\update-live.ps1`
 
 **Next**
-- Nothing queued: waiting on Alex
+- 2. Windows Update: settings, active hours, pause
+- 3. Bugs B2 and B5: what they are; a small fix shipped with the script
 
 **Drafts and worktrees**
 - Worktrees `../assistant-bot-hub-tasks`, `../assistant-bot-round4` and
@@ -26,5 +24,6 @@ on in live from 3:03 pm
 **Waiting on Alex**
 - QA item 0 (direct messages, now on)
 - His look at A and B in the Routines layout preview (B is live)
-- The private Google Calendar link, for live's `.env` only
+- Confirm live's folder is well, so the work folder's old `.env` and
+  `data\` can go
 - A lock-screen screenshot of a pill reminder (question 11)

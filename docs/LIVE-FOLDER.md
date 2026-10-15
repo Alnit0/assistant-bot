@@ -1,7 +1,27 @@
 # Live in its own folder, on a committed version
 
-**Status (2026-10-15): prepared and dry-run, not switched over.** The
-switch-over waits for Alex's go-ahead at a later restart (backlog, Next 1).
+**Status: live runs from its own folder since 15 Oct, 3:11 pm**, on
+`6a942d8`. The originals in the work folder (`.env`, `.env.dev`,
+`data\`) are kept as a backup until Alex confirms all is well.
+
+How it went: the setup script stopped live and then stopped at the
+clone, because its output was redirected and Windows PowerShell treats a
+program's progress on stderr as an error then (live was started again
+from the work folder at once, about a minute down; both scripts now
+take stderr as output). The switch-over was then done in two halves, so
+live was down for well under a minute: the clone, the commit, the
+`.venv` and the packages while live ran; then, stopped, `.env`,
+`.env.dev` and `data\` copied (the database the same size both sides),
+the migration check (25 of 25), the service's settings written to
+`service-before.txt` and pointed at the new folder, and started. Then
+the account check, today's logs and doses, the calendar read, and the
+bookings (3:30 am self-test, 6 am routine, Sunday 7 pm summary) were
+all there, and the self-test from live's folder passed 28 of 28.
+
+Since then: `update-live.ps1` takes live's folder as its default
+`-Target`, refuses a commit that is not on `origin/feature/pills`, and
+puts back `docs\SELFTEST.md` (the nightly self-test rewrites it in live's
+folder) before it checks nothing was changed by hand.
 
 ## Why
 

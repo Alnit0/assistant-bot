@@ -176,17 +176,18 @@ pill's latest time; reminders running out never makes a dose missed;
   `TESTS_AS_ON_LIVE=1` after a database-layer change. Made-up settings,
   no real data. A test over a minute stops the run: look into it
 - The golden conversations (`tests/test_golden.py`) pass before a commit
-- Which bots run: `python -m core.instance_lock`, never a process count
+- Which bots run: `python -m core.instance_lock`
+- **Live runs from `..\assistant-bot-live`** on one pushed commit: code
+  ships only by `scripts\update-live.ps1 -Ref <commit>` (`-Back` undoes)
 - **The self-test** (`python -m selftest`): the dev bot, live left up,
   1.9 GB free at least; if "logged in as" is not the dev bot, stop it.
   Recorded answers unless prompts, schemas or routing changed. Read its
-  summary and `data/selftest/history.csv` (logs only for a failure);
-  edit nothing while it runs; it sets every switch itself
+  summary and history (logs only for a failure); edit nothing while it
+  runs
 - **Spend: at most NZ$0.40 a run before asking me**; say what each
   run cost, in NZ$
-- At the end of work, `end-of-task`: docs (STATUS, ARCHITECTURE,
-  DEVELOPMENT, TESTING, QA-RUN, CHANGELOG; ADVISOR at a batch's end),
-  the full test run, the commit. Commit only when asked (a batch says)
+- At the end of work, `end-of-task`: its docs (ADVISOR at a batch's
+  end), the full test run, the commit. Commit only when asked
 - **In a batch, a checkpoint commit after each finished step** whose
   full test run passed (push at the end): a crash loses one step at
   most. Drafts live in `docs/drafts/` (committed) or `docs/specs/`

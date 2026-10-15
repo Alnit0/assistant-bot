@@ -2211,6 +2211,26 @@ nssm restart assistant-bot
 nssm edit assistant-bot
 ```
 
+Live runs from its own folder (`C:\Users\temp\projects\assistant-bot-live`,
+on one pushed commit; `docs/LIVE-FOLDER.md`). `nssm restart` restarts it
+on the commit it is on. To ship code, move it to a newer pushed commit,
+which also restarts it; to undo, go back to the one before:
+
+```powershell
+.\scripts\update-live.ps1 -Ref <commit>
+.\scripts\update-live.ps1 -Back
+```
+
+Live runs from its own folder (`C:\Users\temp\projects\assistant-bot-live`,
+on one pushed commit; `docs/LIVE-FOLDER.md`). `nssm restart` restarts it
+on the commit it is on. To ship code, move it to a newer pushed commit,
+which also restarts it; to undo, go back to the one before:
+
+```powershell
+.\scripts\update-live.ps1 -Ref <commit>
+.\scripts\update-live.ps1 -Back
+```
+
 ## Dependencies
 
 After installing a package, update the list:

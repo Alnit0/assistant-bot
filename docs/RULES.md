@@ -562,6 +562,19 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   core.instance_lock`, which asks the lock (the source of truth) and
   says how many bots are running. Don't count `python.exe` lines: one
   bot is two of them (the `.venv` launcher and its child)
+- **Live runs from its own folder** (`C:\Users\temp\projects\assistant-bot-live`,
+  since 15 Oct; `docs/LIVE-FOLDER.md`), a clone checked out detached on
+  one pushed commit, with its own `.env`, `.env.dev`, `data\`, `logs\`
+  and `.venv`. The work folder is for development only: a restart of
+  live never loads it, and its `data\assistant.db` is an old copy.
+  Shipping code is `scripts\update-live.ps1 -Ref <commit>` (a commit on
+  `origin/feature/pills` whose full test run passed; it refuses one that
+  is not pushed or older than the database), at least 10 minutes from a
+  pill reminder; `-Back` returns to the commit before. A restart that
+  ships nothing is `nssm restart assistant-bot`. Live's `.env` is the one
+  in its folder: a switch is changed there. Nothing in live's folder is
+  edited by hand; the update script puts back `docs\SELFTEST.md`, which
+  the nightly self-test rewrites there
 - `python -m selftest` starts the dev bot against real Discord
   (`docs/DEVELOPMENT.md`, "The self-test"). Only when I ask. It runs
   as the dev bot, with live left running: never stop live for it.
