@@ -1,7 +1,7 @@
 from dataclasses import replace
 from datetime import time
 
-from core import attention, cards, clock, database, design, hubcard, names, recurrence, scheduler, summaries, timeinput
+from core import attention, cards, clock, config, database, design, hubcard, live, names, recurrence, scheduler, summaries, timeinput
 from core import day as days
 from core.actions import BOOLEAN, ITEMS, LIST, TIME, Field, LiveReply, Proposal, Request, State, flag, is_guessed, is_reference
 from core.cards import Card
@@ -27,6 +27,7 @@ from tasks.habits.rules import ANY_TIME, AT, GROUP, ICON, NUDGES, STEP, TASK, WI
 # ---------------------------------------------------------------------------
 LIST_KEY = "habits"
 REF = "h"
+START = "start"  # the job: a routine's own card at its time or its window's start (layout B)
 
 ONLY_FOR = (
     "The user's personal routines: their own named routines of steps and groups of steps (\"make an evening routine "
@@ -122,28 +123,90 @@ async def today_of(user_id: int) -> list[rules.Today]:
     return rules.due(await every(user_id), await store.ticked(user_id, day), day)
 
 
+def layout_b() -> bool:
+    """Layout B (the default): the Today card is the overview, and each routine has a
+    card of its own from its time or window until it is done. Layout A: one card."""
+    return config.ROUTINES_LAYOUT != "a"
+
+
+def slot(habit_id: int) -> str:
+    """A routine's own card's place in the hub (layout B)."""
+    return f"{TASK}.r{habit_id}"
+
+
 async def hub_card(user_id: int) -> Card | None:
-    """Layout A, the one Personal routines card, until Alex picks a layout (the preview
-    shows both): every routine on today, each by the list rule."""
+    """Layout A: the one Personal routines card, every routine on today by the list
+    rule. Layout B has none: each routine has its own (`own_card`)."""
+    if layout_b():
+        return None
     found = await today_of(user_id)
     if not found:
         return None
     return Card(rules.all_text(found), rules.buttons(found), rules.all_layout(found, clock.now()))
 
 
+async def own_card(user_id: int, habit_id: int) -> Card | None:
+    """Layout B: a routine's own card, from its time or its window's start (any time:
+    from the morning) until it is done; None before then, after, and on a day it is off."""
+    now = clock.now()
+    found = next((each for each in await today_of(user_id) if each.habit.id == habit_id), None)
+    if found is None or rules.state(found, now) in (rules.NOT_YET, rules.FINISHED):
+        return None
+    return Card(rules.routine_text(found), rules.buttons([found]), rules.routine_card(found, now))
+
+
+async def refresh_own(user_id: int) -> None:
+    """Each routine's own card as it should be now: posted once it has started, edited
+    while it is open, taken away once it is done or off; and its start booked."""
+    for each in await every(user_id):
+        await hubcard.refresh(TASK, user_id, lambda habit_id=each.id: own_card(user_id, habit_id), slot=slot(each.id))
+    await book_starts(user_id)
+
+
+async def book_starts(user_id: int) -> None:
+    """A run at the start of each routine still to come today, once (its key)."""
+    now = clock.now()
+    for each in await today_of(user_id):
+        start = each.starts()
+        if start is not None and start > now and not each.finished:
+            local = f"{days.day_of(start).isoformat()}T{days.local_time(start):%H:%M}"
+            await scheduler.add_job(TASK, START, start, {"id": each.habit.id}, user_id=user_id, key=f"h{each.habit.id}@{local}")
+
+
 def changed(user_id: int) -> None:
     hubcard.changed(TASK, user_id, lambda: hub_card(user_id))
+    if layout_b():
+        live.schedule(("habits-own", user_id), lambda: refresh_own(user_id))
     summaries.changed(TASK, user_id)
     attention.changed()
 
 
 async def post_job(job) -> None:
+    """With the morning routine: layout A's one card, or in layout B a fresh copy of
+    each routine's own card that has started (any time ones), and the starts booked."""
     user_id = job.user_id or await database.run(scheduler._db_owner)
     if user_id is None:
         scheduler.note(job, "not posted: there is nobody to post for")
         return
-    posted = await hubcard.post(TASK, user_id, lambda: hub_card(user_id))
-    scheduler.note(job, "posted" if posted is not None else "not posted: no personal routine today")
+    if not layout_b():
+        posted = await hubcard.post(TASK, user_id, lambda: hub_card(user_id))
+        scheduler.note(job, "posted" if posted is not None else "not posted: no personal routine today")
+        return
+    posted = 0
+    for each in await every(user_id):
+        posted += await hubcard.post(TASK, user_id, lambda habit_id=each.id: own_card(user_id, habit_id), slot=slot(each.id)) is not None
+    await book_starts(user_id)
+    scheduler.note(job, f"{posted} routine card{'' if posted == 1 else 's'} posted; the rest come at their start")
+
+
+async def start_job(job) -> None:
+    """A routine's time or window has come (layout B): its own card goes up."""
+    user_id = job.user_id or await database.run(scheduler._db_owner)
+    if user_id is None or not layout_b():
+        scheduler.note(job, "nothing to do: " + ("nobody to post for" if user_id is None else "layout A"))
+        return
+    shown = await hubcard.refresh(TASK, user_id, lambda: own_card(user_id, int(job.payload.get("id") or 0)), slot=slot(int(job.payload.get("id") or 0)))
+    scheduler.note(job, f"its card: {shown or 'nothing to show (done, off today, or gone)'}")
 
 
 async def show(request: Request, data: dict, guessed: frozenset) -> LiveReply:
@@ -432,6 +495,7 @@ async def remove_card(request: Request, data: dict, guessed: frozenset) -> Propo
 
 async def remove_save(request: Request, data: dict) -> str:
     await request.db.run(store.db_remove, data["id"], clock.now())
+    await hubcard.remove(TASK, request.user.id, slot(data["id"]))
     changed(request.user.id)
     return f"🗑️ Removed **{data['name']}**"
 

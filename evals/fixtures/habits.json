@@ -65,11 +65,11 @@
       }
     },
     {
-      "message": "move the morning routine to 7am",
+      "message": "post the morning pills checklist at 7am instead",
       "tasks": [
         "schedule"
       ],
-      "note": "a trap: the bot's own morning routine's time is the schedule's",
+      "note": "a trap: the bot's own morning routine of posts is the schedule's (with routines that have times, a bare 'morning routine' can be the user's own)",
       "recorded": {
         "kind": "task",
         "tasks": [
@@ -124,7 +124,33 @@
         "until": "11:00 pm"
       },
       "note": "a window, and a group with its steps",
-      "recorded": null
+      "recorded": [
+        "habit_add",
+        {
+          "routine": "evening",
+          "from": "6:00 pm",
+          "until": "11:00 pm",
+          "items": [
+            {
+              "text": "brush teeth"
+            },
+            {
+              "text": "floss"
+            },
+            {
+              "text": "skincare",
+              "steps": [
+                "cleanser",
+                "toner",
+                "serum",
+                "moisturiser"
+              ]
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
     },
     {
       "task": "habits",
@@ -146,7 +172,27 @@
         "repeat": "weekdays"
       },
       "note": "at a time, on weekdays",
-      "recorded": null
+      "recorded": [
+        "habit_add",
+        {
+          "routine": "morning",
+          "time": "7:00 am",
+          "repeat": "weekdays",
+          "items": [
+            {
+              "text": "stretch"
+            },
+            {
+              "text": "water"
+            },
+            {
+              "text": "journal"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
     },
     {
       "task": "habits",
@@ -167,7 +213,25 @@
       },
       "note": "a group added",
       "state": "The user's personal routines now:\n- Evening (every day; 6:00 pm to 11:00 pm; no nudge; items: Brush teeth, Floss)",
-      "recorded": null
+      "recorded": [
+        "habit_items",
+        {
+          "routine": "evening",
+          "items": [
+            {
+              "text": "skincare",
+              "steps": [
+                "cleanser",
+                "toner",
+                "serum",
+                "moisturiser"
+              ]
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
     },
     {
       "task": "habits",
@@ -180,7 +244,17 @@
       },
       "note": "a step moved within its group",
       "state": "The user's personal routines now:\n- Evening (every day; 6:00 pm to 11:00 pm; no nudge; items: Brush teeth, Floss, Skincare (Cleanser, Toner, Serum, Moisturiser))",
-      "recorded": null
+      "recorded": [
+        "habit_move",
+        {
+          "item": "serum",
+          "where": "before",
+          "other": "toner",
+          "routine": "Evening",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
     },
     {
       "task": "habits",
@@ -195,8 +269,21 @@
         ]
       },
       "note": "a step's own days",
-      "state": "The user's personal routines now:\n- Evening (every day; 6:00 pm to 11:00 pm; no nudge; items: Brush teeth, Floss, Skincare (Cleanser, Toner, Serum, Moisturiser))",
-      "recorded": null
+      "state": "The user's personal routines now:\n- Evening (every day; 6:00 pm to 11:00 pm; no nudge; items: Brush teeth, Floss, Skincare (Cleanser, Toner, Exfoliate, Serum, Moisturiser))",
+      "recorded": [
+        "habit_item_repeat",
+        {
+          "routine": "Evening",
+          "item": "Exfoliate",
+          "repeat": "days",
+          "weekdays": [
+            "mon",
+            "thu"
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
     },
     {
       "task": "habits",
@@ -207,8 +294,17 @@
         "until": "11:00 pm"
       },
       "note": "a window",
-      "state": "The user's personal routines now:\n- Evening (every day; 6:00 pm to 11:00 pm; no nudge; items: Brush teeth, Floss, Skincare (Cleanser, Toner, Serum, Moisturiser))",
-      "recorded": null
+      "state": "The user's personal routines now:\n- Evening (every day; any time; no nudge; items: Brush teeth, Floss, Skincare (Cleanser, Toner, Serum, Moisturiser))",
+      "recorded": [
+        "habit_change",
+        {
+          "routine": "Evening",
+          "from": "6:00 pm",
+          "until": "11:00 pm",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
     },
     {
       "task": "habits",
@@ -221,7 +317,16 @@
       },
       "note": "",
       "state": "The user's personal routines now:\n- Evening (every day; 6:00 pm to 11:00 pm; no nudge; items: Brush teeth, Floss, Skincare (Cleanser, Toner, Serum, Moisturiser))",
-      "recorded": null
+      "recorded": [
+        "habit_tick",
+        {
+          "items": [
+            "Floss"
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
     },
     {
       "task": "habits",
@@ -234,7 +339,16 @@
       },
       "note": "a group ticked as one",
       "state": "The user's personal routines now:\n- Evening (every day; 6:00 pm to 11:00 pm; no nudge; items: Brush teeth, Floss, Skincare (Cleanser, Toner, Serum, Moisturiser))",
-      "recorded": null
+      "recorded": [
+        "habit_tick",
+        {
+          "items": [
+            "Skincare"
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
     },
     {
       "task": "habits",
@@ -247,7 +361,16 @@
       },
       "note": "",
       "state": "The user's personal routines now:\n- Evening (every day; 6:00 pm to 11:00 pm; no nudge; items: Brush teeth, Floss, Skincare (Cleanser, Toner, Serum, Moisturiser))",
-      "recorded": null
+      "recorded": [
+        "habit_untick",
+        {
+          "items": [
+            "Floss"
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
     }
   ]
 }

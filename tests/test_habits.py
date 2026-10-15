@@ -250,7 +250,8 @@ def test_a_group_shows_its_steps_for_the_day_as_a_small_guide(world):
     assert "**Skincare**" in lines and "-# Cleanser → Toner → Serum → Moisturiser" in lines
 
 
-def test_layout_a_holds_every_routine_with_the_dropdowns_at_the_bottom(world):
+def test_layout_a_holds_every_routine_with_the_dropdowns_at_the_bottom(world, monkeypatch):
+    monkeypatch.setattr(config, "ROUTINES_LAYOUT", "a")
     evening(world)
     make(world, routine="reading", items=["read"])
     tick(world, "read")
@@ -261,6 +262,60 @@ def test_layout_a_holds_every_routine_with_the_dropdowns_at_the_bottom(world):
     assert isinstance(box.children[-1], cards.Select), "the dropdowns at the bottom"
     assert len(design.menus(shown.layout)) == 1, "a finished routine has none"
     cards.check_layout(shown.layout)
+
+
+def test_group_steps_always_show_in_full_the_first_three_is_items_only(world):
+    make(world, routine="long", items=[{"text": "skincare", "steps": [f"step {each}" for each in range(1, 11)]}, "a", "b", "c", "d"])
+    (shown,) = today(world)
+    lines = [line for text in design.texts(rules.routine_card(shown, clock.now())) for line in text.splitlines()]
+    assert "-# " + " → ".join(f"Step {each}" for each in range(1, 11)) in lines, "every step of the group"
+    assert [line for line in lines if line.startswith("**")] == ["**Skincare**", "**A**", "**B**"] and "-# +2 more" in lines
+
+
+# --- layout B (the default): the Today card, and a card a routine from its start ------------------------------
+def test_layout_b_is_the_default_and_has_no_one_card(world):
+    assert plain.layout_b()
+    evening(world)
+    assert run(plain.hub_card(world.owner.id)) is None
+
+
+def test_layout_a_by_setting(world, monkeypatch):
+    monkeypatch.setattr(config, "ROUTINES_LAYOUT", "a")
+    evening(world)
+    assert run(plain.hub_card(world.owner.id)) is not None
+
+
+def test_a_routines_own_card_from_its_start_until_it_is_done(world):
+    evening(world)
+    habit_id = mine(world).id
+    assert run(plain.own_card(world.owner.id, habit_id)) is None, "7:00 am: its window starts at 6 pm"
+    clock.advance_to(days.at(world.day, time(18, 0)))
+    shown = run(plain.own_card(world.owner.id, habit_id))
+    assert shown is not None and design.texts(shown.layout)[0].startswith("### 🔁 Evening ○○○ 0/3")
+    tick(world, "brush teeth", "floss", "skincare")
+    assert run(plain.own_card(world.owner.id, habit_id)) is None, "done: tidied away"
+
+
+def test_each_start_still_to_come_is_booked_once(world, monkeypatch):
+    from core import scheduler
+
+    booked = []
+
+    async def add_job(task, kind, due, payload=None, user_id=None, key=None):
+        booked.append((task, kind, due, payload, key))
+        return len(booked)
+
+    monkeypatch.setattr(scheduler, "add_job", add_job)
+    evening(world)
+    make(world, routine="reading", items=["read"])
+    run(plain.book_starts(world.owner.id))
+    ((task, kind, due, payload, key),) = booked
+    assert (task, kind, payload) == ("habits", plain.START, {"id": mine_named(world, "Evening").id}) and due == days.at(world.day, time(18, 0))
+    assert key == f"h{mine_named(world, 'Evening').id}@{world.day.isoformat()}T18:00", "any time has no start to book"
+
+
+def mine_named(world, name):
+    return next(each for each in run(store.every(world.owner.id)) if each.name == name)
 
 
 def test_the_briefing_line_has_its_when(world):

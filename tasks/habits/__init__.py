@@ -114,10 +114,10 @@ class HabitsTask(Task):
         return store.MIGRATIONS
 
     def job_handlers(self):
-        return {JOB: plain.post_job}
+        return {JOB: plain.post_job, plain.START: plain.start_job}
 
     def job_labels(self):
-        return {JOB: "personal routines card"}
+        return {JOB: "personal routines cards", plain.START: "a personal routine's card at its start"}
 
     def setup(self, client) -> None:
         cards.register(TASK, rules.TICK, plain.on_tick)

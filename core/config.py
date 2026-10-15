@@ -242,6 +242,9 @@ REMINDERS_ENABLED = flag(os.getenv("REMINDERS_ENABLED"), False)
 TODOS_ENABLED = flag(os.getenv("TODOS_ENABLED"), False)
 NUDGES_ENABLED = flag(os.getenv("NUDGES_ENABLED"), False)
 HABITS_ENABLED = flag(os.getenv("HABITS_ENABLED"), False)
+# How personal routines are shown (tasks/habits): b, the Today card as the overview and a card a
+# routine from its time or window until it is done; a, one Personal routines card for them all
+ROUTINES_LAYOUT = (os.getenv("ROUTINES_LAYOUT") or "b").strip().lower()
 # The Today card (tasks/today, core/today.py): the day in time order under the pills card. Off unless set
 TODAY_CARD = flag(os.getenv("TODAY_CARD"), False)
 # The briefing (tasks/briefing): one card a day in the hub that says what today holds, kept up
