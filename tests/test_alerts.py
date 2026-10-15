@@ -244,3 +244,19 @@ def test_a_self_test_failure_never_pings_but_two_nights_in_a_row_pings_once(box,
     run(alerts.look())
     assert len(box.sent) == 1
 
+
+def test_what_pinged_before_the_record_existed_counts_as_pinged():
+    import sqlite3
+
+    from core import migrations
+
+    conn = sqlite3.connect(":memory:")
+    migrations._create_needs_look(conn)
+    migrations._create_pinged(conn)
+    conn.execute("INSERT INTO needs_look (key, user_id, line, first_at, channel_id, message_id) VALUES ('B2', 1, 'x', 't', 5, 6)")
+    conn.execute("INSERT INTO needs_look (key, user_id, line, first_at, channel_id, message_id) VALUES ('B9', 1, 'held', 't', NULL, NULL)")
+    conn.execute("INSERT INTO needs_look (key, user_id, line, first_at, channel_id, message_id) VALUES ('the 7:00 am check', 1, 'x', 't', 5, 7)")
+    migrations._seed_pinged(conn)
+    assert alerts.db_pinged(conn) == {"B2"}, "said in the hub: pinged; held by quiet hours, or the check's own line: not"
+    assert alerts.pinged_before(Item("fix ready to check", PROBLEM, bug="B2", once="anything"), {"B2"})
+

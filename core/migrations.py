@@ -468,6 +468,14 @@ def _create_pinged(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE TABLE alerts_pinged (key TEXT PRIMARY KEY, user_id INTEGER REFERENCES users(id), line TEXT NOT NULL, at TEXT NOT NULL)")
 
 
+def _seed_pinged(conn: sqlite3.Connection) -> None:
+    """What was said in the hub before `alerts_pinged` existed has pinged already: kept as pinged."""
+    conn.execute(
+        "INSERT OR IGNORE INTO alerts_pinged (key, user_id, line, at) SELECT key, user_id, line, first_at FROM needs_look "
+        "WHERE key != 'the 7:00 am check' AND message_id IS NOT NULL"
+    )
+
+
 def _create_needs_look(conn: sqlite3.Connection) -> None:
     # What needs me that the bot knows it has told me about, or is waiting to (core/alerts.py):
     # one row a thing, with the ping's message if one is up. Gone when the thing is dealt with
@@ -526,6 +534,7 @@ MIGRATIONS = [
     _add_ended_to_bot_alive,
     _create_needs_look,
     _create_pinged,
+    _seed_pinged,
     _create_exchange_rates,
 ]
 

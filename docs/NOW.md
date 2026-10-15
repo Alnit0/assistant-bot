@@ -11,9 +11,17 @@ everything on, 41 golden conversations, a health check. All on live.
 themselves, the self-test's retry (dev-bot self-test 150 of 150), and
 the calendar from Google only (the iCal link gone from live's `.env`).
 **Next:** the 3:30 am nightly on 17 Oct, checked and reported
-**Ready for the next restart:** repeating events on the Bot calendar;
-pills with exact times only; N for the nightly's bugs; `shipped --with`. After it: `tasks.bugs.cli shipped B5 <its two golden
-tests> --with <the work folder's Python>` in live's folder
+**Queue for one ship** (full test run after each; one dev-bot self-test
+at the end; then the update script):
+1. Ping seed and ping-once (self-test bugs never @mention)
+2. B bug auto-close, 3 days after a covered fix ships (then B5 marked)
+3. The self-test's Discord 5xx and rate-limit retry
+4. Calendar: the range fix (7 to 10pm); make, put and book are adding
+5. Calendar: repeating events on the Bot calendar
+6. Calendar: Google for both calendars (done, live 11:22)
+7. Pills: exact times only
+8. Duplicate D numbers (N for the nightly)
+9. Daily read retuned to practical
 
 **Drafts and worktrees:** `docs/drafts/gym-onboarding.md`; three old
 worktrees, all merged

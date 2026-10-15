@@ -50,6 +50,11 @@ def key(item: Item) -> str:
     return item.bug or f"{item.task}: {item.what}"
 
 
+def pinged_before(item: Item, pinged: set[str]) -> bool:
+    """Whether it has pinged: by what it is known by for good, or by its line's key (from before `once`)."""
+    return lasting(item) in pinged or key(item) in pinged
+
+
 def lasting(item: Item) -> str:
     """What a problem is known by for good, for pinging: it pings once, ever (16 Oct: a bug renumbered
     pinged again for a self-test run already pinged at 7:00 am)."""
@@ -151,7 +156,7 @@ async def look() -> tuple[int, int]:
             for name, item in needs.items():
                 if name in known:
                     continue
-                if lasting(item) in pinged:
+                if pinged_before(item, pinged):
                     # Pinged once already (before a restart, a new number, a change of words): kept, never said again
                     await database.run(db_keep, name, user_id, line(item), now, None, None)
                     log.info("Needs a look, pinged before, not again: %s", line(item))
@@ -203,7 +208,7 @@ async def check_job(job: scheduler.Job) -> None:
         scheduler.note(job, "nothing needs a look: nothing said")
         return
     pinged = await database.run(db_pinged)
-    fresh = [item for item in needs if lasting(item) not in pinged]
+    fresh = [item for item in needs if not pinged_before(item, pinged)]
     if not fresh:
         scheduler.note(job, f"{len(needs)} need a look, every one pinged before: nothing said")
         return
