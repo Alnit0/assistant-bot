@@ -431,6 +431,16 @@ class Entry:
     private: bool = False
     # Whether a short message straight after this task answered goes to it first (most tasks: "it was 9pm actually")
     sticks: bool = True
+    # Where this task comes wherever tasks are shown one after another (the briefing's overview, the hub's cards,
+    # help, the week): lower first; 0 for one with no place, which keeps its own spot in the order they are loaded
+    place: int = 0
+    # A kind of statement that asks for nothing and is still this task's to keep (the diary: how the user's
+    # day went or how they feel), in a few words for the router; empty for none. The router's rule on
+    # remarks gives way to it (core/routing.py, KEEPS)
+    keeps: str = ""
+    # The words a message may start with that make it this task's in so many words, whatever other task it
+    # names as where something goes ("remind me to write in my diary" is a reminder): outranks a named destination
+    leads: tuple[str, ...] = ()
 
     @property
     def title(self) -> str:
@@ -863,6 +873,22 @@ def set_catalogue(entries: list[Entry]) -> None:
 
 def catalogue() -> list[Entry]:
     return list(_entries.values())
+
+
+def placed(items: list, place: Callable[[object], int]) -> list:
+    """The items with those that have a place put in its order, in the spots those took; one with no
+    place (0) keeps its own spot (help's built-in words stay first). Pure."""
+    items = list(items)
+    spots = [index for index, each in enumerate(items) if place(each)]
+    for index, each in zip(spots, sorted((items[index] for index in spots), key=place)):
+        items[index] = each
+    return items
+
+
+def in_place() -> list[Entry]:
+    """Every loaded entry in the order each says it comes (`Entry.place`). The router's catalogue
+    keeps the load order, so its cached prompt never moves."""
+    return placed(catalogue(), lambda each: each.place)
 
 
 def any_private() -> bool:

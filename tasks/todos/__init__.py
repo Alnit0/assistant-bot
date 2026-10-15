@@ -26,7 +26,8 @@ from tasks.todos.rules import ICON, TASK, TITLE
 # now (attention level 2), today's with no time are useful (level 4).
 # ---------------------------------------------------------------------------
 JOB = "card"
-ORDER = hub.CARDS_ORDER + 40  # the hub's order: pills, reminders, personal routines, gym, to-dos
+PLACE = 70  # where it comes (Task.place): pills, Today, reminders, personal routines, gym, calendar, diary, to-dos
+ORDER = hub.CARDS_ORDER + PLACE  # its card under the pills checklist, in that order
 hubcard.order(TASK, ORDER, lambda user_id: lambda: plain.hub_card(user_id))
 
 
@@ -83,6 +84,7 @@ class TodosTask(Task):
     """The to-do list, in plain words, with a card in the hub."""
 
     name = TASK
+    place = PLACE  # pills, Today, reminders, personal routines, gym, calendar, diary, to-dos
     title = TITLE
     description = "To-dos: the planned list of things to do, each with a day if it has one"
     icon = ICON

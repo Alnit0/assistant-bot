@@ -865,7 +865,7 @@ class TaskCapabilities:
 def catalogue(
     user: User | None = None, channel_id: int | None = None, task_name: str | None = None
 ) -> list[TaskCapabilities]:
-    """What each loaded task offers, in load order.
+    """What each loaded task offers, in the order each says it comes (`Task.place`).
 
     With a user, only what they are allowed to use. With a channel, only what
     works there. Tasks with nothing left to show are left out.
@@ -877,7 +877,7 @@ def catalogue(
         return user is None or is_allowed(user, item.permission)
 
     result = []
-    for task in _tasks:
+    for task in actions.placed(_tasks, lambda each: each.place):
         if task_name is not None and task.name != task_name:
             continue
         entry = TaskCapabilities(

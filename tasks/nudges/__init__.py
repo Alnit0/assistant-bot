@@ -25,7 +25,8 @@ from tasks.nudges.rules import ICON, TASK, TITLE
 # Snooze (tasks/nudges/plain.py). The hub's card shows what is still to come
 # today, and is not there when nothing is.
 # ---------------------------------------------------------------------------
-ORDER = hub.CARDS_ORDER + 10  # the hub's order: pills, reminders, personal routines, gym, to-dos
+PLACE = 20  # where it comes (Task.place): pills, Today, reminders, personal routines, gym, calendar, diary, to-dos
+ORDER = hub.CARDS_ORDER + PLACE  # its card under the pills checklist, in that order
 hubcard.order(TASK, ORDER, lambda user_id: lambda: plain.hub_card(user_id))
 
 
@@ -79,6 +80,7 @@ class NudgesTask(Task):
     """Reminders at a time I set, in plain words; they go off in the hub."""
 
     name = TASK
+    place = PLACE  # pills, Today, reminders, personal routines, gym, calendar, diary, to-dos
     title = TITLE
     description = "Reminders: at a time you set, once or repeating, posted in the hub with Done and Snooze"
     icon = ICON
@@ -87,6 +89,7 @@ class NudgesTask(Task):
     show = "nudge_show"
     identity = ()
     on_repeat = repeats.ALLOW_ANOTHER  # two reminders with the same words at different times are two
+    leads = ("remind me",)  # Alex, 15 Oct: a message starting so is a reminder, whatever destination it names
 
     def switched_on(self) -> bool:
         return bool(config.NUDGES_ENABLED)

@@ -287,11 +287,11 @@ OVERVIEW = "🗓️ The day"
 
 def _overview_box(sections: list[Section]) -> design.Box | None:
     """Round 5: one small box, a line a task that has a card of its own in the hub, what the
-    day holds for it and not how far it has got. In the catalogue's order, the same every day."""
+    day holds for it and not how far it has got. In the order each task says it comes, the same every day."""
     from core import actions
 
-    # Question 72: the same order every day, the order the tasks are loaded in, never the ranking's
-    loaded = [entry.name for entry in actions.catalogue()]
+    # Question 72: the same order every day, each task's own place (Entry.place), never the ranking's
+    loaded = [entry.name for entry in actions.in_place()]
     sections = sorted(sections, key=lambda each: loaded.index(each.task) if each.task in loaded else len(loaded))
     lines = [f"{each.icon} **{each.title}** · {each.summary.overview}" for each in sections if each.summary is not None and each.summary.overview]
     if not lines:

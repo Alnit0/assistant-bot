@@ -29,7 +29,8 @@ from tasks.habits.rules import ICON, TASK, TITLE
 # undone, overdue (level 2) only if a nudge was asked for. No streaks.
 # ---------------------------------------------------------------------------
 JOB = "card"
-ORDER = hub.CARDS_ORDER + 20  # the hub's order: pills, reminders, personal routines, gym, to-dos
+PLACE = 30  # where it comes (Task.place): pills, Today, reminders, personal routines, gym, calendar, diary, to-dos
+ORDER = hub.CARDS_ORDER + PLACE  # its card under the pills checklist, in that order
 hubcard.order(TASK, ORDER, lambda user_id: lambda: plain.hub_card(user_id))
 
 
@@ -87,6 +88,7 @@ class HabitsTask(Task):
     """Personal routines: my own checklists on chosen days."""
 
     name = TASK
+    place = PLACE  # pills, Today, reminders, personal routines, gym, calendar, diary, to-dos
     title = TITLE
     description = "Personal routines: your own named routines of steps and groups, each on its days at a time, in a window or any time"
     icon = ICON

@@ -34,6 +34,11 @@ ONLY_FOR = (
     "after an entry) are its, never a remark to pass over. Not a pill, to-do, routine or reminder "
     "done (those tasks), not a question about the day's plan (the briefing), and not a remark to the bot."
 )
+# Question 85 (Alex, 15 Oct: yes): with the diary on, a message only about the day or a feeling is kept
+KEEPS = (
+    "a message only about how the user's own day went or how they feel, with no request (\"rough day, work ran "
+    "late and I'm wiped\", \"I'm tired\", \"feeling great today\"): it goes into today's entry"
+)
 EXAMPLES = ("today was good, finally finished the essay", "what did I write last Tuesday?", "how was my mood this month?")
 _DAY = "The day asked about, exactly as the user said it (\"today\", \"yesterday\", \"last Tuesday\"). Never work out a date. Leave out for today."
 
@@ -72,18 +77,39 @@ async def write(request: Request, data: dict, guessed: frozenset):
         was_there = kept.notes > 1
         said = mood.checked(data.get("mood")) if mood.on() else None
         if said:
-            kept = await database.run(store.db_set_mood, request.user.id, on, mood.CURRENT.name, said, clock.now())
+            kept = await database.run(store.db_set_mood, request.user.id, on, mood.CURRENT.name, said, clock.now(), True)
     except Exception:
         log.exception("Diary: an entry could not be saved")  # never with its words
         raise UserError(NOT_SAVED) from None
     await _clear_ask(request.user.id, on)
     changed(request.user.id)
     line = rules.saved_line(kept, await _streak(request.user.id, on), added=was_there)
+    undo_row = (_undo_button(on),)
     if not mood.on() or kept.has_mood:
-        return line
-    # No mood yet: the line asks, with a button a level
-    message_id = await cards.send(request.channel_id, Card(f"{line}\n-# how was it?", (mood.buttons(TASK, MOOD, on.isoformat()),)))
+        message_id = await cards.send(request.channel_id, Card(line, (undo_row,)))
+    else:
+        # No mood yet: the line asks, with a button a level
+        message_id = await cards.send(request.channel_id, Card(f"{line}\n-# how was it?", (mood.buttons(TASK, MOOD, on.isoformat()), undo_row)))
     return Shown(line if message_id is not None else "not shown")
+
+
+def _undo_button(day: date) -> Button:
+    return Button("Undo", TASK, UNDO, day.isoformat(), emoji="↩️", style=cards.PRIMARY)
+
+
+async def _undo_last(db_run, user_id: int, day: date) -> str | None:
+    """Undo the last change to a day's entry: the last message written (and the mood said with it),
+    else the last mood change. The line to say, or None with nothing to undo."""
+    now = clock.now()
+    taken = await db_run(store.db_undo_write, user_id, day, now)
+    if taken is True:
+        return f"{ICON} Undone · nothing kept for {rules.short(day)}"
+    if taken is not None:
+        return f"{ICON} Undone · {rules.short(day)} as it was"
+    back = await db_run(store.db_undo_mood, user_id, day, now)
+    if back is None:
+        return None
+    return f"{ICON} Mood · back to {mood.shown(back.mood_scale, back.mood) or 'none'}"
 
 
 async def set_mood(request: Request, data: dict, guessed: frozenset):
@@ -97,18 +123,18 @@ async def set_mood(request: Request, data: dict, guessed: frozenset):
     kept = await database.run(store.db_set_mood, request.user.id, day, mood.CURRENT.name, said, clock.now())
     await _clear_ask(request.user.id, day)
     changed(request.user.id)
-    message_id = await cards.send(request.channel_id, Card(rules.mood_line(kept), ((Button("Undo", TASK, UNDO, day.isoformat(), emoji="↩️", style=cards.PRIMARY),),)))
+    message_id = await cards.send(request.channel_id, Card(rules.mood_line(kept), ((_undo_button(day),),)))
     return Shown(rules.mood_line(kept) if message_id is not None else "not shown")
 
 
 async def undo(request: Request, data: dict, guessed: frozenset) -> str:
-    """ "undo that" after a mood change: the mood as it was."""
+    """ "undo that" after an entry or a mood change: the last message written, or the mood as it was."""
     day = _day(data.get("day"), today())
-    back = await database.run(store.db_undo_mood, request.user.id, day, clock.now())
-    if back is None:
-        raise UserError("There is no mood change to undo.")
+    line = await _undo_last(database.run, request.user.id, day)
+    if line is None:
+        raise UserError("There is nothing in the diary to undo.")
     changed(request.user.id)
-    return f"{ICON} Mood · back to {mood.shown(back.mood_scale, back.mood) or 'none'}"
+    return line
 
 
 # --- reading back -------------------------------------------------------------------------------------------
@@ -166,7 +192,7 @@ async def on_mood(press: cards.Press) -> str:
     await press.db.run(store.db_clear_ask, press.user.id, day, clock.now())
     changed(press.user.id)
     line = rules.saved_line(kept, await _streak(press.user.id, today()))
-    await press.update(Card(line, ((Button("Undo", TASK, UNDO, day.isoformat(), emoji="↩️", style=cards.PRIMARY),),)))
+    await press.update(Card(line, ((_undo_button(day),),)))
     if asked is not None and asked[1] and asked[1] != press.message_id and asked[0]:
         await cards.delete(asked[0], asked[1])  # the evening ask, if this was the line under an entry
     return line
@@ -174,9 +200,8 @@ async def on_mood(press: cards.Press) -> str:
 
 async def on_undo(press: cards.Press) -> str:
     day = date.fromisoformat(press.arg)
-    back = await press.db.run(store.db_undo_mood, press.user.id, day, clock.now())
+    line = await _undo_last(press.db.run, press.user.id, day) or f"{ICON} Nothing to undo"
     changed(press.user.id)
-    line = f"{ICON} Mood · back to {mood.shown(back.mood_scale, back.mood) or 'none'}" if back is not None else f"{ICON} Nothing to undo"
     await press.update(Card(line))
     return line
 

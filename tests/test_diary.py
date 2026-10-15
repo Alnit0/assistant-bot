@@ -64,7 +64,9 @@ def world(make_db, monkeypatch, owner, dev_clock):
 
 
 def write(world, text=MADE_UP, said_mood=None):
-    return run(plain.write(world.request(text), {"mood": said_mood} if said_mood else {}, frozenset()))
+    """The line said back: every write posts it with an Undo button."""
+    said = run(plain.write(world.request(text), {"mood": said_mood} if said_mood else {}, frozenset()))
+    return said.summary if isinstance(said, Shown) else said
 
 
 def entry(world, day=None):
@@ -123,10 +125,10 @@ def test_a_mood_the_words_made_clear_is_on_the_line(world):
 
 
 def test_with_no_clear_mood_the_line_asks_with_a_blurple_button_a_mood(world):
-    result = write(world)
-    assert isinstance(result, Shown)
-    (row,) = world.sent[-1].card.rows
+    write(world)
+    row, undo_row = world.sent[-1].card.rows
     assert [button.label for button in row] == ["Good", "OK", "Bad"] and {button.style for button in row} == {cards.PRIMARY}
+    assert [button.label for button in undo_row] == ["Undo"]
     assert MADE_UP not in world.sent[-1].card.text
 
 
@@ -144,6 +146,31 @@ def test_a_mood_changed_in_words_shows_old_to_new_and_undo_puts_it_back(world):
     run(plain.set_mood(world.request("actually today was ok"), {"mood": "ok"}, frozenset()))
     assert world.sent[-1].card.text == "📔 Mood · ~~😞 Bad~~ → **😐 OK**"
     assert run(plain.undo(world.request("undo that"), {}, frozenset())) == "📔 Mood · back to 😞 Bad"
+
+
+def test_undo_after_a_first_entry_takes_it_away(world):
+    """Question 85: a message only about the day is kept with a quiet line and an Undo; Undo removes it."""
+    assert write(world, said_mood="bad") == "📔 Saved · 😞 Bad"
+    assert [[button.label for button in row] for row in world.sent[-1].card.rows] == [["Undo"]]
+    said = run(plain.on_undo(Press(world, world.day.isoformat())))
+    assert said.startswith("📔 Undone") and MADE_UP not in said
+    assert entry(world) is None, "nothing kept"
+
+
+def test_undo_after_a_second_note_puts_the_entry_back_as_it_was(world):
+    write(world, said_mood="good")
+    write(world, "Made-up: a second note.", said_mood="bad")
+    assert run(plain.undo(world.request("undo that"), {}, frozenset())).startswith("📔 Undone")
+    kept = entry(world)
+    assert kept.notes == 1 and kept.text == MADE_UP and kept.mood == "good", "the words and the mood as they were"
+    assert run(plain.undo(world.request("undo that"), {}, frozenset())) == "📔 Mood · back to none", "then the mood's own undo"
+
+
+def test_a_mood_change_after_an_entry_is_what_undo_takes_back(world):
+    write(world, said_mood="bad")
+    run(plain.set_mood(world.request("actually today was ok"), {"mood": "ok"}, frozenset()))
+    run(plain.undo(world.request("undo that"), {}, frozenset()))
+    assert entry(world).notes == 1 and entry(world).mood == "bad", "the entry stays; only the mood goes back"
 
 
 def test_a_mood_that_is_not_on_the_scale_is_never_kept(world):
@@ -165,7 +192,7 @@ def test_an_old_entry_reads_on_the_scale_it_was_recorded_on(monkeypatch):
 def test_with_the_mood_off_there_are_no_buttons_and_no_mood_actions(world, monkeypatch):
     monkeypatch.setattr(config, "DIARY_MOOD", False)
     assert write(world, said_mood="good") == "📔 Saved" and entry(world).mood is None
-    assert world.sent == [], "no buttons asked"
+    assert [[button.label for button in row] for row in world.sent[-1].card.rows] == [["Undo"]], "no mood asked"
     assert [action.name for action in plain.actions()] == ["diary_write", "diary_show", "diary_delete"]
 
 
@@ -222,7 +249,7 @@ def test_the_streak_counts_days_in_a_row_back_from_today_or_yesterday():
 def test_the_streak_holds_across_midnight(world):
     write(world, said_mood="good")
     world.at(9, 0, ahead=1)
-    assert write(world, "Made-up: the next day.").summary == "📔 Saved · streak 2", "no mood said: the line asks, and still says the streak"
+    assert write(world, "Made-up: the next day.") == "📔 Saved · streak 2", "no mood said: the line asks, and still says the streak"
 
 
 # --- reading back -------------------------------------------------------------------------------------------------

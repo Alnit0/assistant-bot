@@ -48,7 +48,7 @@ RULES = (
     "nothing done, give kind nothing with no tasks: the bot then says nothing at all. That is a note the "
     "user is leaving for themselves (\"note one\", \"scrap\", \"old news\"), a thank-you, an \"ok\", "
     "and any remark, opinion or statement that asks for nothing (\"shopping is boring\", \"that was "
-    "quick\", \"I'm tired\"), even when it mentions something a task deals with. Do not offer help in "
+    "quick\"), even when it mentions something a task deals with. Do not offer help in "
     "return for a remark. A question, or anything that asks the bot to do or say something, is never "
     "nothing: something phrased as a question gets an answer, however idle it seems (\"is shopping "
     "boring for everyone?\" is chat).\n"
@@ -72,6 +72,16 @@ RULES = (
     "and still set reports_doing to true, whatever the kind: the user is then told it can't be logged, so it "
     "is not a remark to pass over in silence. An opinion, a feeling or a thank-you (\"shopping is boring\", "
     "\"thanks\") reports nothing done."
+)
+
+
+# Said only when a task keeps a kind of statement (Entry.keeps): with none, the prompt is as it was
+KEEPS = (
+    "- A task with a \"Keeps\" line below keeps that kind of statement even though it asks for nothing. A "
+    "message that is only that kind of statement is that task's, kind task with confidence high, never nothing, "
+    "however short (\"I'm tired\"): "
+    "the rule on remarks gives way to it. A remark of any other kind (about the bot, a list, the weather) is "
+    "still nothing."
 )
 
 
@@ -99,14 +109,16 @@ def catalogue_text(entries: list[Entry]) -> str:
     lines = ["The tasks:"]
     for entry in entries:
         examples = "; ".join(f"\"{example}\"" for example in entry.examples)
-        lines.append(f"- {entry.name}: {entry.only_for} For example: {examples}")
+        keeps = f" Keeps: {entry.keeps}" if entry.keeps else ""
+        lines.append(f"- {entry.name}: {entry.only_for} For example: {examples}{keeps}")
     return "\n".join(lines)
 
 
 def system_blocks(entries: list[Entry]) -> list[dict]:
     """The router's instructions and the catalogue: one block, the same for every
     message, marked for caching."""
-    return [{"type": "text", "text": f"{RULES}\n\n{catalogue_text(entries)}", "cache_control": llm.CACHED}]
+    rules = f"{RULES}\n{KEEPS}" if any(entry.keeps for entry in entries) else RULES
+    return [{"type": "text", "text": f"{rules}\n\n{catalogue_text(entries)}", "cache_control": llm.CACHED}]
 
 
 def tool(entries: list[Entry]) -> dict:
@@ -193,8 +205,12 @@ def name_hints(message: str, named: dict[str, list[str]]) -> list[tuple[str, str
 def hint_line(hints: list[tuple[str, str]]) -> str:
     """The hints as the router is given them. No name of the user's is in it:
     only the word they typed and whose it might be."""
-    said = "; ".join(f"“{word}” could be the start of the name of one of the user's own things in {task}" for word, task in hints)
-    return f"A hint, not a decision: {said}. Weigh it with the rest of the message; the word may mean something else."
+    said = "; ".join(f"“{word}” could be part of the name of one of the user's own things in {task}" for word, task in hints)
+    return (
+        f"A hint, not a decision: {said}. Weigh it with the rest of the message; the word may mean something else. "
+        "If the message says such a thing was done (\"bought the milk\", with a to-do to buy milk), it is a report "
+        "for that task (reports_doing true), never a remark."
+    )
 
 
 def user_turn(
@@ -267,6 +283,25 @@ def named_destinations(message: str, entries: list[Entry]) -> list[Entry]:
         if re.search(rf"\b{_TO} (?:my|the|our) (?:{name})(?: list| task)?\b", said):
             found.append(entry)
     return found
+
+
+def led_by(message: str, entries: list[Entry]) -> Entry | None:
+    """The task a message starts by asking for in so many words (`Entry.leads`: "remind me ..." is the
+    reminders'), whatever else it names; None for none, or when two tasks could be meant. Pure."""
+    said = " ".join(message.lower().split())
+    found = [entry for entry in entries if any(re.match(rf"(?:please )?{re.escape(lead)}\b", said) for lead in entry.leads)]
+    return found[0] if len(found) == 1 else None
+
+
+def stated(message: str, entries: list[Entry]) -> list[str]:
+    """The tasks the message settles in so many words: the destinations it names (`named_destinations`),
+    unless it starts by asking a task in so many words (`led_by`): then that task, over the destination
+    ("remind me to write in my diary" is a reminder). With no destination named, a lead settles nothing: the
+    router reads it ("remind me to take my zinc at 8pm" is a pill's time, the pills', so no reminder names a
+    pill on the lock screen). Pure."""
+    named = [entry.name for entry in named_destinations(message, entries)]
+    led = led_by(message, entries) if named else None
+    return [led.name] if led is not None else named
 
 
 def named_alone(message: str, entries: list[Entry]) -> Entry | None:

@@ -38,6 +38,7 @@ class PillsTask(Task):
     """Pills: what to take, when, and what was taken. Setting them up, and the daily checklist."""
 
     name = "pills"
+    place = 10  # pills, Today, reminders, personal routines, gym, calendar, diary, to-dos
     description = "Pills: today's checklist of what to take, and setting up what you take and when"
     # In plain words (tasks/pills/plain.py): how the router knows this task
     icon = plain.ICON

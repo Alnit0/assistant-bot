@@ -6,7 +6,35 @@ No history is kept here: what changed is `docs/CHANGELOG.md`, and this
 file as it stood until midday on 2026-10-14 (every batch, every answer,
 all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
-**Updated:** 2026-10-15 (evening)
+**Updated:** 2026-10-15 (late night)
+
+## Alex's answers: the order, the diary's misses (15 Oct, late night)
+
+1. **One order, said by each task** (`Task.place`, `Entry.place`; no
+   list in the core): pills 10, the Today card 15, reminders 20,
+   personal routines 30, the gym 40 (later), calendar 50, diary 60,
+   to-dos 70. The briefing's overview, the hub's cards (their morning
+   order is `hub.CARDS_ORDER` plus the place), help and the week of
+   everything all follow it. The router's catalogue keeps the load order,
+   so its cached prompt does not move.
+2. **Question 85, yes:** with the diary on, a message only about the day
+   or a feeling is kept in today's entry (`Entry.keeps`; the router is
+   told of it only when a task keeps something, `routing.KEEPS`), with
+   the quiet line ("📔 Saved · 😞 Bad") and an Undo button. Every write
+   now has an Undo: it takes the entry back as it was before that
+   message, its mood too (a migration adds the undo columns).
+3. **"Remind me ..." is a reminder** even when it names the diary
+   (`Entry.leads`, reminders declare "remind me"): it outranks a named
+   destination (`routing.stated`).
+4. **"Bought the milk"** ticks off the open to-do: the hint the router
+   gets for a word of a name now says a thing done is a report.
+5. **Recorded checks:** d2, d11 and d12 no longer known misses; new
+   router checks d22 ("I'm so tired today", the diary), d23 and d24
+   (remarks, still nothing); a to-do done extraction for d11. Live: 18
+   of 19, then 5 of 5 after the router's "I'm tired" example moved into
+   the keeps rule. Spend US$0.106 (about NZ$0.18 of NZ$0.30).
+6. Questions 80 to 84 answered with the suggestions, 85 yes: gone from
+   `docs/QUESTIONS.md`.
 
 ## Round 5, the known miss, the advisor handover, a diary (15 Oct, late; nothing shipped)
 
@@ -93,6 +121,35 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
    checklist brought up to date in place, no warning but the usual one,
    every booking (midnight, 3 am backup, 3:30 am self-test, 6 am
    routine, 7 am check, Sunday summary). Spend NZ$0.79 of NZ$1.00.
+
+## Decided (2026-10-15, late night: Alex's answers)
+
+- 80: the diary's evening ask is at 9:00 pm. 81: the diary day ends at
+  4:00 am. 82: he writes in #inbox and DMs; the hub only holds the
+  evening ask and its buttons. 83: the ask is not sent by DM. 84: the
+  mood scale stays Good, OK and Bad, to be looked at again after two
+  weeks of use (about 30 Oct). 85: yes, a feeling with no request is
+  kept by the diary when it is on.
+- The order is a number on each task (10 apart, room for the gym at 40)
+  rather than a list of names anywhere: a task that says none comes
+  after every one that does, in load order.
+- The Today card keeps its place under the pills checklist (15): Alex's
+  order names the task cards, not the Today card.
+- The router's catalogue keeps the load order: reordering it would move
+  the cached prompt for no gain in understanding.
+- "Remind me" outranks only a destination named in so many words ("in
+  my diary"). With none named, the router reads the message as before,
+  so "remind me to take my zinc at 8pm" stays a pill's time: a reminder
+  of one would put a pill's name on the lock screen. A phrase in Python,
+  declared by the task at Alex's word; listed with the word lists in
+  `docs/BACKLOG.md`.
+- The keeps rule is said only when a task keeps something, so with the
+  diary off the router's prompt is the one it had, less the "I'm tired"
+  example, which now lives in the keeps rule.
+- Undo after a write takes back the words and the mood said with them;
+  a mood chosen afterwards by button is undone on its own.
+- Questions 68 to 75 stay in `docs/QUESTIONS.md` until Alex says yes or
+  no item by item, though round 5 ships with the suggested answers.
 
 ## Decided (2026-10-15, evening batch)
 

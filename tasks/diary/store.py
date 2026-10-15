@@ -46,7 +46,13 @@ def create_tables(conn: sqlite3.Connection) -> None:
     )
 
 
-MIGRATIONS = [create_tables]
+def add_undo(conn: sqlite3.Connection) -> None:
+    """The entry as it was before the last message was written to it, for undo; NULL with none."""
+    for column in ("undo_text TEXT", "undo_notes INTEGER", "undo_scale TEXT", "undo_mood TEXT"):
+        conn.execute(f"ALTER TABLE diary_entries ADD COLUMN {column}")
+
+
+MIGRATIONS = [create_tables, add_undo]
 
 _COLUMNS = "id, user_id, day, text, mood_scale, mood, mood_before, scale_before, notes"
 
@@ -70,22 +76,47 @@ def db_days(conn: sqlite3.Connection, user_id: int) -> set[date]:
 
 
 def db_append(conn: sqlite3.Connection, user_id: int, day: date, text: str, now: datetime) -> Entry:
-    """Add a message's words to the day's entry, made if there is none. Returns the entry as kept."""
+    """Add a message's words to the day's entry, made if there is none. Returns the entry as kept.
+    The entry as it was is kept for undo (`db_undo_write`), and a mood's own undo is gone."""
     there = db_get(conn, user_id, day)
     if there is None:
         conn.execute(
-            "INSERT INTO diary_entries (user_id, day, text, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
-            (user_id, day.isoformat(), text, 1 if text else 0, now.isoformat(), now.isoformat()),
+            "INSERT INTO diary_entries (user_id, day, text, notes, created_at, updated_at, undo_text, undo_notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (user_id, day.isoformat(), text, 1 if text else 0, now.isoformat(), now.isoformat(), "" if text else None, 0 if text else None),
         )
     elif text:
         joined = f"{there.text}\n\n{text}" if there.text else text
-        conn.execute("UPDATE diary_entries SET text = ?, notes = notes + 1, updated_at = ? WHERE id = ?", (joined, now.isoformat(), there.id))
+        conn.execute(
+            "UPDATE diary_entries SET undo_text = text, undo_notes = notes, undo_scale = mood_scale, undo_mood = mood, "
+            "scale_before = NULL, mood_before = NULL, text = ?, notes = notes + 1, updated_at = ? WHERE id = ?",
+            (joined, now.isoformat(), there.id),
+        )
     return db_get(conn, user_id, day)
 
 
-def db_set_mood(conn: sqlite3.Connection, user_id: int, day: date, scale: str, key: str, now: datetime) -> Entry:
-    """The day's mood, on a scale; what it was is kept for undo. An entry is made if there is none (a mood only)."""
+def db_undo_write(conn: sqlite3.Connection, user_id: int, day: date, now: datetime) -> Entry | None | bool:
+    """The entry back as it was before the last message was written to it (its mood too): the entry,
+    or True when there was none before and it is gone, or None with no write to undo."""
+    row = conn.execute("SELECT id, undo_text, undo_notes, undo_scale, undo_mood FROM diary_entries WHERE user_id = ? AND day = ?", (user_id, day.isoformat())).fetchone()
+    if row is None or row[2] is None:
+        return None
+    if row[2] == 0 and not row[1] and row[4] is None:
+        conn.execute("DELETE FROM diary_entries WHERE id = ?", (row[0],))
+        return True
+    conn.execute(
+        "UPDATE diary_entries SET text = undo_text, notes = undo_notes, mood_scale = undo_scale, mood = undo_mood, "
+        "undo_text = NULL, undo_notes = NULL, undo_scale = NULL, undo_mood = NULL, scale_before = NULL, mood_before = NULL, updated_at = ? WHERE id = ?",
+        (now.isoformat(), row[0]),
+    )
+    return db_get(conn, user_id, day)
+
+
+def db_set_mood(conn: sqlite3.Connection, user_id: int, day: date, scale: str, key: str, now: datetime, with_words: bool = False) -> Entry:
+    """The day's mood, on a scale; what it was is kept for undo. An entry is made if there is none (a mood only).
+    `with_words`: said in the message just written, so undoing that write takes the mood back too."""
     there = db_get(conn, user_id, day) or db_append(conn, user_id, day, "", now)
+    if not with_words:
+        conn.execute("UPDATE diary_entries SET undo_text = NULL, undo_notes = NULL, undo_scale = NULL, undo_mood = NULL WHERE id = ?", (there.id,))
     if there.mood != key or there.mood_scale != scale:
         conn.execute(
             "UPDATE diary_entries SET scale_before = mood_scale, mood_before = mood, mood_scale = ?, mood = ?, updated_at = ? WHERE id = ?",

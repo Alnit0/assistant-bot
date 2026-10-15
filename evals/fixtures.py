@@ -138,10 +138,11 @@ def _same(expected, actual, exact: bool = False) -> bool:
 
 def settled(fixture: RouterFixture, route, entries):
     """The router's answer as the bot acts on it: a destination the message
-    names ("to my pills") decides the task, in code (routing.with_named)."""
+    names ("to my pills") decides the task, in code (routing.with_named), and one it starts by asking
+    in so many words ("remind me ...", routing.led_by) decides it over that."""
     from core import routing
 
-    return routing.with_named(route, [entry.name for entry in routing.named_destinations(fixture.message, entries)])
+    return routing.with_named(route, routing.stated(fixture.message, entries))
 
 
 def router_problem(fixture: RouterFixture, route) -> str:

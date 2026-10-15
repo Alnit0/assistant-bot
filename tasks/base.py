@@ -279,7 +279,7 @@ class Task:
                 tally=self.tally if type(self).tally is not Task.tally else None, label=self.title,
                 today=self.today if type(self).today is not Task.today else None,
                 week=self.week if type(self).week is not Task.week else None,
-                private=self.private, sticks=self.sticks,
+                private=self.private, sticks=self.sticks, place=self.place, keeps=self.keeps, leads=tuple(self.leads),
             )
         ]
 
@@ -318,6 +318,11 @@ class Task:
 
     private = False  # its words are its own to keep (the diary): see actions.Entry
     sticks = True  # a short message straight after it answered goes to it first
+    # Where it comes in the hub, the briefing's overview, help and the week (actions.Entry.place):
+    # pills 10, Today 15, reminders 20, personal routines 30, gym 40, calendar 50, diary 60, to-dos 70
+    place = 0
+    keeps = ""  # a kind of statement asking for nothing that is still its to keep (actions.Entry.keeps)
+    leads: tuple[str, ...] = ()  # how a message may start that makes it this task's (actions.Entry.leads)
 
     async def week(self, user_id: int, monday: date, upto: date):
         """This task's week, Monday up to `upto` (a `weekly.Week`: a line, its dots,

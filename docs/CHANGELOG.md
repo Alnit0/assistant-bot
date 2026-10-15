@@ -6,6 +6,10 @@ backfilled from the git log.
 
 ## 2026-10-15
 
+- Live: round 5 of the hub, the Sunday summary for everything and the diary are on. Everything shown one task
+  after another comes in one order: pills, reminders, personal routines, calendar, diary, to-dos.
+- The diary keeps a message that is only about your day or how you feel, with an Undo; "remind me to write in
+  my diary" is a reminder; "bought the milk" ticks off the to-do.
 - Built, not switched on: round 5 of the hub (`DESIGN_ROUND=5`: the briefing as the morning overview, the
   date as its title, cards all done leave the hub, the suggested answers to questions 68 to 75), and a
   diary (`DIARY_ENABLED`: your words about your day, a mood, a streak, one gentle ask at 9 pm; its words

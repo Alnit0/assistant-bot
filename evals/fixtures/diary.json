@@ -25,13 +25,14 @@
       ],
       "note": "how the day felt",
       "recorded": {
-        "kind": "nothing",
-        "tasks": [],
+        "kind": "task",
+        "tasks": [
+          "diary"
+        ],
         "confidence": "high",
         "reports_doing": false,
         "chat_part": ""
-      },
-      "known_miss": "15 Oct: given as a remark (nothing), twice. The router's own rule passes over a feeling with no request (\"I'm tired\"); with the diary on that rule and the diary's line pull apart. A change to the rule is Alex's to decide (Diary question 85); until then such a message is not kept"
+      }
     },
     {
       "golden": "d3",
@@ -190,13 +191,14 @@
         ]
       },
       "recorded": {
-        "kind": "nothing",
-        "tasks": [],
+        "kind": "task",
+        "tasks": [
+          "todos"
+        ],
         "confidence": "high",
-        "reports_doing": false,
+        "reports_doing": true,
         "chat_part": ""
-      },
-      "known_miss": "15 Oct: given as a remark, not the to-do's report; the same message with a pill beside it goes right (x44). Not the diary's"
+      }
     },
     {
       "golden": "d12",
@@ -213,8 +215,7 @@
         "confidence": "high",
         "reports_doing": false,
         "chat_part": ""
-      },
-      "known_miss": "15 Oct: the router gives reminders, but \"in my diary\" names the diary, and a destination named in so many words decides it in code (routing.with_named): the bot would keep it as a diary entry. Left as it is: the named-destination rule is the router's backbone"
+      }
     },
     {
       "golden": "d13",
@@ -238,6 +239,49 @@
       "message": "thanks!",
       "nothing": true,
       "note": "a remark: not a diary entry",
+      "recorded": {
+        "kind": "nothing",
+        "tasks": [],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "d22",
+      "message": "I'm so tired today",
+      "tasks": [
+        "diary"
+      ],
+      "note": "a feeling with no request: kept (question 85)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "diary"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "d23",
+      "message": "shopping is boring",
+      "nothing": true,
+      "note": "a remark about a thing, not the user's day: still nothing",
+      "recorded": {
+        "kind": "nothing",
+        "tasks": [],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "d24",
+      "message": "that was quick",
+      "nothing": true,
+      "note": "a remark about the bot: still nothing",
       "recorded": {
         "kind": "nothing",
         "tasks": [],
@@ -365,6 +409,26 @@
       "recorded": [
         "diary_delete",
         {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "d11",
+      "task": "todos",
+      "message": "bought the milk",
+      "action": "todo_done",
+      "note": "a past-tense match to an open to-do: done, with the usual undo",
+      "state": "The user's to-dos now:\n- Buy milk (for today)\n- Call the plumber (any day)",
+      "recorded": [
+        "todo_done",
+        {
+          "todos": [
+            {
+              "todo": "Buy milk"
+            }
+          ],
           "guessed": [],
           "not_included": []
         }

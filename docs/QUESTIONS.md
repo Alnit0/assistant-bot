@@ -100,23 +100,3 @@ From the sketches of 15 Oct ("Design · Gym onboarding sketches";
     reads a `.csv`.
 79. When an exercise goes as planned, is one tap (Done as planned)
     right, with words or the Different… box for anything else? → Yes.
-
-## Diary (`DIARY_ENABLED` stays off; preview "Design · Diary")
-
-80. The evening ask at 9:00 pm (a schedule like any other: "move the
-    diary ask to 8:30")? → 9:00 pm.
-81. The diary day ends at 4:00 am, so a message just after midnight
-    counts for the evening before? → Yes.
-82. Where do you write: #inbox and DMs, or the hub too? → #inbox and
-    DMs; the hub only holds the evening ask and its buttons.
-83. Should the evening ask also come as a DM? → No: the hub only, one
-    a day.
-84. Which mood scale: Good, OK and Bad, or something else (five levels,
-    a score out of ten, tags, none)? → Keep three for now and revisit
-    after two weeks of use; old entries keep their scale either way.
-85. A feeling with no request ("rough day, work ran late and I'm
-    wiped") is a remark to the router today, passed over in silence,
-    so it is not kept. With the diary on, should such a message be a
-    diary entry? → Yes: a one-line change to the router's rules (a
-    feeling about the day goes to the diary when it is on), checked
-    live first.

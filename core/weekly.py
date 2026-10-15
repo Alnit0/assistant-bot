@@ -63,9 +63,9 @@ def text(sections: list[Section], monday: date, sunday: date) -> str:
 
 
 async def gather(user_id: int, monday: date, upto: date) -> list[Section]:
-    """Every task's week that has something to say, in the catalogue's order."""
+    """Every task's week that has something to say, in the order each task says it comes."""
     found = []
-    for entry in actions.catalogue():
+    for entry in actions.in_place():
         if entry.week is None:
             continue
         week = await entry.week(user_id, monday, upto)

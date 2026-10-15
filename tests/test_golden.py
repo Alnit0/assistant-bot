@@ -863,7 +863,7 @@ def test_part_of_a_pills_name_is_handed_to_the_router_as_a_hint_and_the_router_d
     bot.claude(route("pills"), ("pill_pause", {"pills": [{"pill": "Testvit"}], "guessed": [], "not_included": []}))
     bot.say("pause testv")
     asked = next(request for request in reversed(bot.requests) if request.purpose == "router")
-    assert "A hint, not a decision: “testv” could be the start of the name of one of the user's own things in pills." in asked.user
+    assert "A hint, not a decision: “testv” could be part of the name of one of the user's own things in pills." in asked.user
     hint = next(line for line in asked.user.splitlines() if line.startswith("A hint"))
     assert "Testvit" not in hint, "the hint holds the word typed and the task, never a name of mine"
     lines, buttons = card(bot)

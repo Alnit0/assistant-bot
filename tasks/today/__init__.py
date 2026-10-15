@@ -11,7 +11,8 @@ from tasks.base import Task
 # ---------------------------------------------------------------------------
 TASK = "today"
 JOB = "card"
-ORDER = hub.CARDS_ORDER + 5  # the hub's order: pills, then this, then the task cards
+PLACE = 15  # where it comes (Task.place): pills, Today, reminders, personal routines, gym, calendar, diary, to-dos
+ORDER = hub.CARDS_ORDER + PLACE  # its card under the pills checklist, in that order
 hubcard.order(TASK, ORDER, lambda user_id: lambda: card(user_id))
 
 
@@ -43,6 +44,7 @@ class TodayTask(Task):
     """The Today card: the day in time order, under the pills card."""
 
     name = TASK
+    place = PLACE  # pills, Today, reminders, personal routines, gym, calendar, diary, to-dos
     title = "Today"
     description = "The Today card: the day in time order (to-dos, personal routines, reminders) under the pills card"
     icon = today.ICON

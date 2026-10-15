@@ -78,10 +78,12 @@ class DiaryTask(Task):
     """Alex's diary: his words about his day, a mood, a streak, read back on request."""
 
     name = TASK
+    place = 60  # pills, Today, reminders, personal routines, gym, calendar, diary, to-dos
     title = TITLE
     description = "Diary: your own words about your day, a mood, and a streak; read back when you ask"
     icon = ICON
     only_for = plain.ONLY_FOR
+    keeps = plain.KEEPS  # question 85: a message only about the day or a feeling is kept
     examples = plain.EXAMPLES
     show = ""  # "diary" on its own is the typed word: this week, a line a day
     identity = ()

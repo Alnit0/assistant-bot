@@ -185,7 +185,7 @@ def test_a_word_that_starts_a_word_of_a_name_is_a_hint_from_four_letters():
 def test_the_router_is_given_the_hint_in_words_and_no_name_of_mine():
     hints = routing.name_hints("pause testv", {"pills": ["Testvit", "Testvit forte"]})
     turn = routing.user_turn("pause testv", hints=hints)
-    assert "A hint, not a decision: “testv” could be the start of the name of one of the user's own things in pills." in turn
+    assert "A hint, not a decision: “testv” could be part of the name of one of the user's own things in pills." in turn
     assert "the word may mean something else" in turn and "Testvit" not in turn, "the word typed and the task, never what I hold"
     assert turn.endswith("The message to route:\npause testv"), "the message is still last"
     assert "hint" not in routing.user_turn("pause testv"), "nothing is said when there is none"

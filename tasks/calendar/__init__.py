@@ -139,6 +139,7 @@ class CalendarTask(Task):
     """The calendar, read only: what is on, in the hub and in words."""
 
     name = TASK
+    place = 50  # pills, Today, reminders, personal routines, gym, calendar, diary, to-dos
     title = TITLE
     description = "Calendar: your events, read only, on the Today card, in the briefing and in answers"
     icon = ICON

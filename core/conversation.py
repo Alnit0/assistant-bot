@@ -623,7 +623,9 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
 
         # A destination the user names ("to my pills", "on the shopping list") decides the
         # task outright: a card or a list of another task on screen does not claim it
-        named = [entry.name for entry in routing.named_destinations(ctx.text, entries)]
+        # A message that starts by asking a task for something in so many words ("remind me ...") is that
+        # task's, even when it names another as where something goes ("remind me to write in my diary")
+        named = routing.stated(ctx.text, entries)
         if named:
             trace.note(f"named destination: {', '.join(named)} (stated, so it decides the task)")
         elsewhere_named = bool(named) and (open_card is None or open_card.task not in named)
