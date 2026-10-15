@@ -76,19 +76,44 @@ def _when(text: str | None) -> datetime | None:
     return found if found.tzinfo else found.replace(tzinfo=timezone.utc)
 
 
+def _closed_entries(raw: bytes) -> tuple[str, list]:
+    """A feed cut at MAX_BYTES (16 Oct: two full-text feeds were 3.9 and 6.6 MB): its root's tag and every
+    entry that closed before the cut. Feeds put the newest first, so nothing new is lost."""
+    parser = ET.XMLPullParser(events=("start", "end"))
+    root, entries = "", []
+    try:
+        for at in range(0, len(raw), 65536):
+            parser.feed(raw[at:at + 65536])
+            for event, element in parser.read_events():
+                if event == "start" and not root:
+                    root = element.tag
+                elif event == "end" and element.tag in ("item", f"{ATOM}entry"):
+                    entries.append(element)
+    except ET.ParseError:
+        pass
+    return root, entries
+
+
 def parse_feed(raw: bytes, source: Source) -> list[Item]:
-    """The items of an RSS or Atom feed: link, title, when. Raises on what is not a feed."""
-    root = ET.fromstring(raw)
+    """The items of an RSS or Atom feed: link, title, when. Raises on what is not a feed. One cut at the
+    size cap is read up to the cut."""
+    try:
+        tree = ET.fromstring(raw)
+        tag, entries = tree.tag, [*tree.iter("item"), *tree.iter(f"{ATOM}entry")]
+    except ET.ParseError:
+        if len(raw) < MAX_BYTES:
+            raise
+        tag, entries = _closed_entries(raw)
     found = []
-    for entry in root.iter("item"):
+    for entry in (each for each in entries if each.tag == "item"):
         link, title = (entry.findtext("link") or "").strip(), (entry.findtext("title") or "").strip()
         found.append(Item(link, title, source.name, source.theme, _when(entry.findtext("pubDate"))))
-    for entry in root.iter(f"{ATOM}entry"):
+    for entry in (each for each in entries if each.tag == f"{ATOM}entry"):
         links = entry.findall(f"{ATOM}link")
         link = next((each.get("href", "") for each in links if each.get("rel", "alternate") == "alternate"), links[0].get("href", "") if links else "")
         title = (entry.findtext(f"{ATOM}title") or "").strip()
         found.append(Item(link.strip(), title, source.name, source.theme, _when(entry.findtext(f"{ATOM}published") or entry.findtext(f"{ATOM}updated"))))
-    if root.tag not in ("rss", f"{ATOM}feed", "{http://www.w3.org/1999/02/22-rdf-syntax-ns#}RDF") and not found:
+    if tag not in ("rss", f"{ATOM}feed", "{http://www.w3.org/1999/02/22-rdf-syntax-ns#}RDF") and not found:
         raise ValueError("not a feed")
     return [each for each in found if each.url.startswith("http") and each.title]
 

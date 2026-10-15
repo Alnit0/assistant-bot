@@ -293,6 +293,21 @@ time). Spend US$0.041.
 
 ## Decided (2026-10-16, midday)
 
+- **The daily read, practical** (Alex: "very academic, maybe too high
+  level"): for a working web developer curious about AI; how-tos, tool
+  tips, worked examples, I built X with Y, plain-English news. Claude
+  rates every candidate for difficulty (1 beginner to 5 research) and
+  practicality (1 to 5); the pick is from difficulty 2 to 3 with
+  practicality 4 or more ("easier", "harder", "more practical" move it),
+  asked once more from those in range when the first is not; both kept
+  with the read. The TL;DR ends "After reading, you will be able to …".
+- **Sources:** dropped Latent Space, Hugging Face blog, Eugene Yan
+  (research-level) and Dan Luu (long essays, and the one that failed:
+  6.6 MB, over the 3 MB cap); added Addy Osmani, GitHub blog, Vercel
+  blog, Kent C. Dodds, Frontend Masters blog, each read through the
+  code. A feed over the cap is now read up to the cut (Vercel's is 3.9
+  MB), newest first, so nothing new is lost.
+
 - **The range fix:** live's log at 11:05 showed "a stated time was put
   back (7:00 pm → 10:00 pm)": in "… 7 to 10pm" the stated-time check
   counted only times with am or pm, took Claude's 7 pm for one never

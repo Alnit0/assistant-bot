@@ -301,3 +301,75 @@ def test_it_comes_after_the_to_dos():
     from tasks import reading, todos
 
     assert reading.PLACE > todos.PLACE and reading.ORDER > todos.ORDER
+
+
+# --- retuned to practical (Alex, 16 Oct: "very academic, maybe too high level") -------------------------------------------
+def _candidates(count):
+    return [Candidate(Item(f"https://example.com/{each}", f"Made-up piece {each}", "Made-up blog", "ai", None), WORDS, 5) for each in range(1, count + 1)]
+
+
+def test_the_target_is_practical_and_the_words_move_it():
+    assert rules.target(Profile()) == (2, 3, 4), "difficulty 2 to 3, practicality 4 or more"
+    assert rules.target(rules.tuned(Profile(), level=rules.EASIER)) == (1, 2, 4)
+    assert rules.target(rules.tuned(Profile(), level=rules.HARDER)) == (3, 4, 4)
+    practical = rules.tuned(Profile(), level=rules.PRACTICAL)
+    assert rules.target(practical) == (2, 3, 5) and Profile.from_dict(practical.as_dict()).practical == 1, "kept"
+    assert rules.in_target((3, 4), Profile()) and not rules.in_target((5, 5), Profile()) and not rules.in_target((2, 3), Profile()) and not rules.in_target(None, Profile())
+
+
+def test_every_candidate_is_rated_and_a_pick_out_of_the_target_is_asked_again_from_those_in_it(monkeypatch):
+    asked = []
+
+    async def call_tool(system, user, tools, *, choice, purpose, task="", max_tokens=600):
+        asked.append(user)
+        rated = [{"number": 1, "difficulty": 5, "practicality": 2}, {"number": 2, "difficulty": 2, "practicality": 5}, {"number": 3, "difficulty": 3, "practicality": 3}]
+        first = len(asked) == 1
+        return ("pick", {"ratings": rated, "choice": 1 if first else 2, "tldr": "A line.\nAnother.\nAfter reading, you will be able to try it."})
+
+    monkeypatch.setattr(pick.llm, "call_tool", call_tool)
+    chosen, tldr, rating = run(pick.choose(_candidates(3), "ai", Profile()))
+    assert chosen.item.url.endswith("/2") and rating == (2, 5) and len(asked) == 2
+    assert "Choose from difficulty 2 to 3 with practicality 4 or more." in asked[0] and "only 2 are in that range" in asked[1]
+    assert "web developer" in pick.SYSTEM and "research papers" in pick.SYSTEM and "After reading, you will be able to" in pick.SYSTEM
+
+
+def test_one_request_when_the_pick_is_in_the_target_or_nothing_is(monkeypatch):
+    asked = []
+
+    async def call_tool(system, user, tools, *, choice, purpose, task="", max_tokens=600):
+        asked.append(user)
+        return ("pick", {"ratings": [{"number": 1, "difficulty": 5, "practicality": 1}], "choice": 1, "tldr": "A line."})
+
+    monkeypatch.setattr(pick.llm, "call_tool", call_tool)
+    assert run(pick.choose(_candidates(1), "ai", Profile()))[2] == (5, 1) and len(asked) == 1, "nothing in the target: the closest, no second request"
+
+
+def test_the_tldr_keeps_its_after_reading_line_last():
+    said = "First.\nSecond.\nThird.\nFourth.\nAfter reading, you will be able to set up a made-up tool."
+    assert rules.tidy_tldr(said).splitlines() == ["First.", "Second.", "Third.", "After reading, you will be able to set up a made-up tool."]
+    assert rules.tidy_tldr("Only a line.") == "Only a line.", "a missing last line is not made up"
+
+
+def test_the_ratings_are_kept_with_the_read(world):
+    tldr = "A line.\nAfter reading, you will be able to try it."
+    shown = run(plain._show(world.owner.id, world.day, _candidates(1)[0], tldr, (2, 4)))
+    kept = run(store.current(world.owner.id, world.day))
+    assert (shown.difficulty, shown.practicality) == (2, 4) == (kept.difficulty, kept.practicality)
+
+
+def test_a_feed_cut_at_the_size_cap_is_read_up_to_the_cut(monkeypatch):
+    entries = "".join(f"<item><title>Made-up {each}</title><link>https://example.com/{each}</link></item>" for each in range(1, 4))
+    whole = f"<rss><channel>{entries}<item><title>Made-up 4</title><link>https://example.com/4</link><description>{'x' * 500}</description></item></channel></rss>".encode()
+    cut = whole[: whole.index(b"x" * 100)]
+    monkeypatch.setattr(sources, "MAX_BYTES", len(cut))
+    found = sources.parse_feed(cut, sources.Source("Made-up", "https://example.com/feed", "ai"))
+    assert [each.title for each in found] == ["Made-up 1", "Made-up 2", "Made-up 3"], "the entry open at the cut is left out"
+    with pytest.raises(Exception):
+        sources.parse_feed(b"<rss><channel><item>", sources.Source("Made-up", "https://example.com/feed", "ai"))
+
+
+def test_the_starter_sources_are_practical_ones():
+    names = {each["name"] for each in json.loads(sources.FEEDS.read_text(encoding="utf-8"))["sources"]}
+    assert not names & {"Latent Space", "Hugging Face blog", "Eugene Yan", "Dan Luu"}, "academic or research, or failing"
+    assert {"Addy Osmani", "GitHub blog", "Vercel blog", "Kent C. Dodds", "Frontend Masters blog", "Simon Willison"} <= names
+

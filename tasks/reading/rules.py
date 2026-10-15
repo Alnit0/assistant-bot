@@ -22,7 +22,14 @@ ABOUT = {
 }
 ANOTHER, SHORTER, DEEPER = "another", "shorter", "deeper"
 KINDS = (ANOTHER, SHORTER, DEEPER)
-HARDER, EASIER = "harder", "easier"
+HARDER, EASIER, PRACTICAL = "harder", "easier", "more_practical"
+# Who it is for (Alex, 16 Oct: "very academic, maybe too high level"): a working web developer curious about AI.
+# Every candidate is rated 1 (beginner) to 5 (research) for difficulty and 1 to 5 for practicality; the pick is
+# from DIFFICULTY (moved one either way by "easier" or "harder") with practicality PRACTICAL_MIN or more (5 after
+# "more practical"). Both ratings are kept with the read, so feedback can move the target later
+DIFFICULTY = (2, 3)
+PRACTICAL_MIN = 4
+AFTER = "After reading, you will be able to"
 WORDS_A_MINUTE = 230
 MIN_WORDS = 250  # less readable text than this is not an article (a teaser, a paywall, a link post)
 CANDIDATES = 5  # how many articles Claude chooses among
@@ -69,6 +76,8 @@ class Read:
     day: date
     vote: int = 0  # 1 thumbed up, -1 down, 0 neither
     saved: bool = False
+    difficulty: int | None = None  # Claude's rating when it was picked: 1 beginner to 5 research
+    practicality: int | None = None  # 1 to 5
 
 
 @dataclass
@@ -79,16 +88,17 @@ class Profile:
     more: list = field(default_factory=list)  # topics: "agents"
     less: list = field(default_factory=list)
     level: int = 0  # -1 easier, 0 as it comes, 1 harder
+    practical: int = 0  # 1 after "more practical": practicality 5 only
 
     def as_dict(self) -> dict:
-        return {"weights": self.weights, "more": self.more, "less": self.less, "level": self.level}
+        return {"weights": self.weights, "more": self.more, "less": self.less, "level": self.level, "practical": self.practical}
 
     @classmethod
     def from_dict(cls, data: dict | None) -> "Profile":
         if not data:
             return cls()
         weights = {theme: float((data.get("weights") or {}).get(theme, 1.0)) for theme in THEMES}
-        return cls(weights, list(data.get("more") or []), list(data.get("less") or []), int(data.get("level") or 0))
+        return cls(weights, list(data.get("more") or []), list(data.get("less") or []), int(data.get("level") or 0), int(data.get("practical") or 0))
 
 
 # --- which theme today ----------------------------------------------------------------------------------------
@@ -156,7 +166,19 @@ def tuned(profile: Profile, more_theme: str = "", less_theme: str = "", more_top
         less = [*(each for each in less if each != topic), topic][-8:]
         more = [each for each in more if each != topic]
     shift = {HARDER: 1, EASIER: -1}.get(level, 0)
-    return replace(profile, more=more, less=less, level=max(-1, min(1, profile.level + shift)))
+    practical = 1 if level == PRACTICAL else profile.practical
+    return replace(profile, more=more, less=less, level=max(-1, min(1, profile.level + shift)), practical=practical)
+
+
+def target(profile: Profile) -> tuple[int, int, int]:
+    """(lowest difficulty, highest, lowest practicality) the pick is made from."""
+    low, high = DIFFICULTY
+    return max(1, low + profile.level), min(5, high + profile.level), 5 if profile.practical else PRACTICAL_MIN
+
+
+def in_target(rating: tuple[int, int] | None, profile: Profile) -> bool:
+    low, high, practical = target(profile)
+    return rating is not None and low <= rating[0] <= high and rating[1] >= practical
 
 
 def changes(before: Profile, after: Profile) -> list[str]:
@@ -199,6 +221,8 @@ def guidance(profile: Profile) -> str:
         parts.append("less about " + ", ".join(profile.less))
     if profile.level:
         parts.append("prefer " + ("harder, more technical" if profile.level > 0 else "easier, more introductory") + " pieces")
+    if profile.practical:
+        parts.append("only the most practical pieces")
     return "; ".join(parts) or "nothing more yet"
 
 
@@ -251,7 +275,10 @@ def all_failed(days_failed: list[bool]) -> bool:
 
 
 def tidy_tldr(text: str) -> str:
-    """Claude's TL;DR as said: at most three lines, no em dashes, no headings."""
+    """Claude's TL;DR as said: at most three lines, then its "After reading, you will be able to …" line;
+    no em dashes, no headings. A last line that is missing is not made up here."""
     lines = [re.sub(r"^[#>*\-\s]+", "", line).strip() for line in str(text or "").replace("—", ",").replace("–", "-").splitlines()]
     lines = [line for line in lines if line]
-    return "\n".join(lines[:3])[:420]
+    after = next((line for line in reversed(lines) if line.startswith(AFTER)), "")
+    body = [line for line in lines if line != after][:3]
+    return "\n".join(body)[:420] + (f"\n{after[:160]}" if after and body else "")

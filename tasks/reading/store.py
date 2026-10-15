@@ -70,13 +70,19 @@ def create_tables(conn: sqlite3.Connection) -> None:
     )
 
 
-MIGRATIONS = [create_tables]
+def add_ratings(conn: sqlite3.Connection) -> None:
+    """Claude's ratings of the read when it was picked: difficulty and practicality, 1 to 5."""
+    conn.execute("ALTER TABLE reading_reads ADD COLUMN difficulty INTEGER")
+    conn.execute("ALTER TABLE reading_reads ADD COLUMN practicality INTEGER")
+
+
+MIGRATIONS = [create_tables, add_ratings]
 ADDED, REMOVED = "added", "removed"
-_READ = "url, title, source, theme, minutes, tldr, day, vote, saved"
+_READ = "url, title, source, theme, minutes, tldr, day, vote, saved, difficulty, practicality"
 
 
 def _read(row) -> Read:
-    return Read(row[0], row[1], row[2], row[3], row[4], row[5], date.fromisoformat(row[6]), row[7], bool(row[8]))
+    return Read(row[0], row[1], row[2], row[3], row[4], row[5], date.fromisoformat(row[6]), row[7], bool(row[8]), row[9], row[10])
 
 
 def db_current(conn: sqlite3.Connection, user_id: int, day: date) -> Read | None:
@@ -89,8 +95,8 @@ def db_show(conn: sqlite3.Connection, user_id: int, read: Read, now: datetime) -
     """A read shown for its day: the one shown before it that day is no longer current."""
     conn.execute("UPDATE reading_reads SET current = 0 WHERE user_id = ? AND day = ?", (user_id, read.day.isoformat()))
     conn.execute(
-        "INSERT INTO reading_reads (user_id, day, url, title, source, theme, minutes, tldr, shown_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (user_id, read.day.isoformat(), read.url, read.title, read.source, read.theme, read.minutes, read.tldr, now.isoformat()),
+        "INSERT INTO reading_reads (user_id, day, url, title, source, theme, minutes, tldr, shown_at, difficulty, practicality) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (user_id, read.day.isoformat(), read.url, read.title, read.source, read.theme, read.minutes, read.tldr, now.isoformat(), read.difficulty, read.practicality),
     )
 
 

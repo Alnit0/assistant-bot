@@ -132,8 +132,9 @@ async def _theme(user_id: int, day: date, profile: rules.Profile) -> str:
     return rules.theme_for(day, profile, shown)
 
 
-async def _show(user_id: int, day: date, chosen: Candidate, tldr: str) -> Read:
-    read = Read(chosen.item.url, chosen.item.title, chosen.item.source, chosen.item.theme, chosen.minutes, tldr, day)
+async def _show(user_id: int, day: date, chosen: Candidate, tldr: str, rating: tuple[int, int] | None = None) -> Read:
+    read = Read(chosen.item.url, chosen.item.title, chosen.item.source, chosen.item.theme, chosen.minutes, tldr, day,
+                difficulty=rating[0] if rating else None, practicality=rating[1] if rating else None)
     await database.run(store.db_show, user_id, read, clock.now())
     changed(user_id)
     return read
@@ -355,14 +356,14 @@ def actions() -> list:
             "reading_tune",
             "Shape what the daily read picks: \"more like this\" -> like_this true, \"less like this\" -> like_this false, "
             "\"less news\" -> less_theme news, \"more programming\" -> more_theme programming, \"more about agents\" -> "
-            "more_topic agents, \"harder\" or \"easier\" -> level.",
+            "more_topic agents, \"harder\", \"easier\" or \"more practical\" -> level.",
             (
                 Field("like_this", "true for more like today's read, false for less like it.", BOOLEAN),
                 Field("more_theme", "A theme to have more often.", choices=themes),
                 Field("less_theme", "A theme to have less often.", choices=themes),
                 Field("more_topic", "A topic to have more about, in a word or two (\"agents\")."),
                 Field("less_topic", "A topic to have less about, in a word or two."),
-                Field("level", "harder or easier.", choices=(rules.HARDER, rules.EASIER)),
+                Field("level", "harder, easier, or more_practical (\"more practical\", \"more hands-on\").", choices=(rules.HARDER, rules.EASIER, rules.PRACTICAL)),
             ),
             prepare=tune_card, apply=tune_apply, verify=tune_check, purpose=SET_UP, say=("more like this", "less news"),
         ),
