@@ -245,6 +245,10 @@ HABITS_ENABLED = flag(os.getenv("HABITS_ENABLED"), False)
 # How personal routines are shown (tasks/habits): b, the Today card as the overview and a card a
 # routine from its time or window until it is done; a, one Personal routines card for them all
 ROUTINES_LAYOUT = (os.getenv("ROUTINES_LAYOUT") or "b").strip().lower()
+# The calendar (tasks/calendar): read only, from the calendar's secret iCal link. Off unless set.
+# The link is a secret: never printed, logged or written anywhere but live's .env
+CALENDAR_ENABLED = flag(os.getenv("CALENDAR_ENABLED"), False)
+CALENDAR_ICS_URL = (os.getenv("CALENDAR_ICS_URL") or "").strip()
 # The Today card (tasks/today, core/today.py): the day in time order under the pills card. Off unless set
 TODAY_CARD = flag(os.getenv("TODAY_CARD"), False)
 # The briefing (tasks/briefing): one card a day in the hub that says what today holds, kept up

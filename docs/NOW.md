@@ -3,23 +3,17 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Batch** (2026-10-15, from 12:35 pm): Alex tests everything now:
-**done**, committed and pushed to `feature/pills`
+**Batch** (2026-10-15, from 2:45 pm): the calendar, read only, on in
+live today
 
 **Done**
-- Routines merged with layout B the default; fixtures recorded (NZ$0.14)
-- Self-test as the dev bot: to-dos 9/9, round 4 9/9, start 9 5/5, US$0
-- Live restarted 1:32 pm with every switch on (round 4, to-dos, the
-  weekly summary, DMs, reminders, routines, the Today card); nightly
-  self-test at 3:30 am; Design forum: Round 4 Live, Round 3 Retired
-- Restarted 1:41 pm for the #commands names: To-dos, Reminders,
-  Personal routines
-- Question 68 answered; What's new for 16 Oct: three true lines
-- Routines layout preview: a reply with A and B side by side, each with
-  its length on a phone
+- 1. The task: reading the feed every 15 minutes, the copy, the hub
+  lines, questions in words, unit tests on a made-up feed
 
 **Next**
-- Nothing queued: waiting on Alex
+- 2. Recorded understanding checks (cap NZ$0.30)
+- 3. Self-test start 10 with the made-up feed
+- 4. Commit, push; restart live with CALENDAR_ENABLED; checks; What's new
 
 **Drafts and worktrees**
 - Worktrees `../assistant-bot-hub-tasks`, `../assistant-bot-round4` and
