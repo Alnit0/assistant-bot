@@ -8,6 +8,23 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-15 (late night)
 
+## Overnight batch, 16 Oct
+
+1. **The calendar from several sources, and adding to the Bot calendar.**
+   `CALENDAR_READ` lists the calendars (`ics`, `google:<id or setting>`);
+   each is read through its source, its part of the copy kept apart, and
+   the events shown as one, each happening once. Writing, behind
+   `CALENDAR_WRITE`, only ever to the Bot calendar: add (a card with the
+   title in Alex's own words, the day, the time, the length, an hour
+   unless said, and what it clashes with in every calendar), move and
+   delete (the bot's own events only; delete a red card), and undo after
+   each. One on another calendar is never changed: it is said so, and an
+   add offered. 16 tests on a fake Google API; recorded checks 24 of 25
+   (the miss a title that was still his own words); x9 and x10 ("gym at
+   6", "dentist Friday 3pm") are the calendar's now. One real check of
+   the code on the Bot calendar: 0, 1, 0 events, read back, gone.
+   `docs/GOOGLE-SETUP.md`.
+
 ## The daily read (15 Oct, late night; built, off, a preview)
 
 `tasks/reading`, behind `READING_ENABLED` (off): one article a day,
@@ -164,6 +181,38 @@ time). Spend US$0.041.
    checklist brought up to date in place, no warning but the usual one,
    every booking (midnight, 3 am backup, 3:30 am self-test, 6 am
    routine, 7 am check, Sunday summary). Spend NZ$0.79 of NZ$1.00.
+
+## Decided (2026-10-16, overnight)
+
+- The calendars are listed in one setting, `CALENDAR_READ`, each as
+  `ics` or `google:` with an id or the name of the setting that holds
+  it, so an id need not be written twice. Unset, it is `ics`: live reads
+  as before until the setting says otherwise.
+- With writing on, the Bot calendar is read whether listed or not:
+  what the bot adds must show.
+- Each calendar's part of the copy is kept apart (`origin`): one that
+  fails keeps its last good part, and the others are read as usual. A
+  calendar no longer listed leaves the copy.
+- The same happening in two calendars is one: the same title (any case
+  or spacing) and the same times. The bot's own copy is kept when there
+  is one, as it is the one it can change.
+- Google is reached with `google-auth` (pure Python, with four small
+  packages) only to sign the token request; the calls themselves are
+  urllib, as the other sources are. No `requests`.
+- Only the Bot calendar is written to: the source checks its id against
+  `CALENDAR_BOT_ID` and `CALENDAR_WRITE` on every write, whoever asks.
+- A new event's title is the user's own words: the words extraction
+  gave, as they stand in the message; words he did not say are never a
+  title.
+- An event said with a day and a time and no "remind me" is the
+  calendar's while writing is on ("dentist Friday 3pm"); "remind me
+  about the dentist Friday" is a reminder. The reminders' and the
+  calendar's own lines say so, each only while writing is on.
+- Moving keeps the length unless one is said; an all-day event is not
+  added or moved in words yet.
+- The real check ran the task's own Google code from the work folder
+  with live's key and Bot calendar id read from live's `.env` (never
+  printed), not through the dev bot, which has no key.
 
 ## Decided (2026-10-15, late night: the daily read)
 

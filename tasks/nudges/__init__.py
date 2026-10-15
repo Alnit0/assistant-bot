@@ -84,7 +84,12 @@ class NudgesTask(Task):
     title = TITLE
     description = "Reminders: at a time you set, once or repeating, posted in the hub with Done and Snooze"
     icon = ICON
-    only_for = plain.ONLY_FOR
+    @property
+    def only_for(self) -> str:
+        # The calendar taking new events changes where "dentist Friday 3pm" goes (tasks/calendar)
+        calendar_adds = config.CALENDAR_ENABLED and config.CALENDAR_WRITE and bool(config.CALENDAR_BOT_ID)
+        return plain.ONLY_FOR_WITH_CALENDAR if calendar_adds else plain.ONLY_FOR
+
     examples = plain.EXAMPLES
     show = "nudge_show"
     identity = ()

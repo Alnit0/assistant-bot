@@ -43,6 +43,18 @@ ONLY_FOR = (
     "with no time that the user does not ask to be reminded of (the to-dos task), and not when the bot posts its own "
     "things (the schedule task)."
 )
+# With the calendar taking new events (CALENDAR_WRITE): an appointment said with a time is the
+# calendar's, and a reminder is what the user asks to be reminded of
+ONLY_FOR_WITH_CALENDAR = (
+    "Reminders the user asks for, at a time of day: \"remind me at 5pm to call Mum\", \"remind me about the dentist "
+    "Friday\", \"remind me to buy milk\" (asked to be reminded, no time yet: its card asks when), \"remind me in 20 "
+    "minutes to check the oven\", \"every Monday at 9am put the bins out\" (a thing to do at a time, again and again), "
+    "moving one (\"move that to 6\"), removing one, ticking off one that went off (\"done\" straight after it), and "
+    "seeing them. An appointment or a plan said with a day and a time and no \"remind me\" (\"dentist Friday 3pm\") "
+    "is an event for the calendar task. Not pills or their reminders (that is the pills task), not a thing to do with "
+    "no time that the user does not ask to be reminded of (the to-dos task), and not when the bot posts its own "
+    "things (the schedule task)."
+)
 EXAMPLES = ("remind me at 5pm to call Mum", "every weekday at 8am remind me to stretch", "move that to 6")
 
 _WHICH = (

@@ -30,8 +30,15 @@ def every_entry() -> list:
 
     for name in ("BRIEFING_ENABLED", "WEATHER_ENABLED", "DAY_QUESTIONS", "TODOS_ENABLED", "NUDGES_ENABLED", "HABITS_ENABLED", "CALENDAR_ENABLED", "DIARY_ENABLED", "READING_ENABLED"):
         setattr(config, name, True)
-    registry.load()
-    return actions.catalogue()
+    # The calendar's writing, with a made-up Bot calendar, only while the catalogue is read: put back at
+    # once, so the dev bot itself never reads or writes a calendar it was not given
+    writing = (config.CALENDAR_WRITE, config.CALENDAR_BOT_ID)
+    config.CALENDAR_WRITE, config.CALENDAR_BOT_ID = True, "made-up-bot@group.calendar.example"
+    try:
+        registry.load()
+        return actions.catalogue()
+    finally:
+        config.CALENDAR_WRITE, config.CALENDAR_BOT_ID = writing
 
 
 def judged(entries: list) -> tuple[int, list[str]]:

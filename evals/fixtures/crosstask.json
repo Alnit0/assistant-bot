@@ -140,9 +140,9 @@
       "golden": "x9",
       "message": "gym at 6",
       "tasks": [
-        "nudges"
+        "calendar"
       ],
-      "note": "a time and a thing to do: a reminder (the calendar only reads); the card asks morning or evening. With the calendar's hint too",
+      "note": "a thing at a time with no remind me: an event for the calendar, with writing on (live from 16 Oct); the card asks morning or evening. With the calendar's hint too",
       "names": {
         "todos": [
           "Renew the passport",
@@ -177,7 +177,7 @@
       "recorded": {
         "kind": "task",
         "tasks": [
-          "nudges"
+          "calendar"
         ],
         "confidence": "high",
         "reports_doing": false,
@@ -188,9 +188,9 @@
       "golden": "x10",
       "message": "dentist Friday 3pm",
       "tasks": [
-        "nudges"
+        "calendar"
       ],
-      "note": "a day and a time: a reminder (the calendar adds nothing). With the calendar's hint too",
+      "note": "a day and a time with no remind me: an event for the calendar, with writing on (live from 16 Oct). With the calendar's hint too",
       "names": {
         "todos": [
           "Renew the passport",
@@ -225,7 +225,7 @@
       "recorded": {
         "kind": "task",
         "tasks": [
-          "nudges"
+          "calendar"
         ],
         "confidence": "high",
         "reports_doing": false,
@@ -1015,18 +1015,18 @@
     },
     {
       "golden": "x9",
-      "task": "nudges",
+      "task": "calendar",
       "message": "gym at 6",
-      "action": "nudge_add",
+      "action": "calendar_add",
       "data": {
-        "text": "gym"
+        "title": "gym"
       },
-      "state": "The user's reminders now:\n- Call the bank (today at 10:30 am)\n- Put the bins out (every Mon at 5:00 pm)",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
       "note": "6 with no am or pm: the card asks",
       "recorded": [
-        "nudge_add",
+        "calendar_add",
         {
-          "text": "gym",
+          "title": "gym",
           "time": "6:00",
           "guessed": [
             "time"
@@ -1037,20 +1037,20 @@
     },
     {
       "golden": "x10",
-      "task": "nudges",
+      "task": "calendar",
       "message": "dentist Friday 3pm",
-      "action": "nudge_add",
+      "action": "calendar_add",
       "data": {
-        "text": "dentist",
+        "title": "dentist",
         "day": "Friday",
         "time": "3:00 pm"
       },
-      "state": "The user's reminders now:\n- Call the bank (today at 10:30 am)\n- Put the bins out (every Mon at 5:00 pm)",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
       "note": "",
       "recorded": [
-        "nudge_add",
+        "calendar_add",
         {
-          "text": "dentist",
+          "title": "dentist",
           "day": "Friday",
           "time": "3:00 pm",
           "guessed": [],

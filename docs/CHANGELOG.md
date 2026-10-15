@@ -4,6 +4,11 @@ What changed, newest first. One entry per task, as one to three bullets on
 what changed for the user. Entries before 2026-10-07's last one were
 backfilled from the git log.
 
+## 2026-10-16
+
+- The calendar reads several calendars at once (the iCal link and Google), shown as one. Built: adding, moving
+  and deleting events in words in the Bot calendar, each on a card, with undo (`CALENDAR_WRITE`).
+
 ## 2026-10-15
 
 - Built, not switched on: a daily read (`READING_ENABLED`): one article a day about using AI, programming or tech

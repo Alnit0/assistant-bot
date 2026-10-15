@@ -254,6 +254,14 @@ ROUTINES_LAYOUT = (os.getenv("ROUTINES_LAYOUT") or "b").strip().lower()
 # The link is a secret: never printed, logged or written anywhere but live's .env
 CALENDAR_ENABLED = flag(os.getenv("CALENDAR_ENABLED"), False)
 CALENDAR_ICS_URL = (os.getenv("CALENDAR_ICS_URL") or "").strip()
+# Which calendars to read, comma apart: ics (the link), google:<id or the setting that holds it>
+CALENDAR_READ = (os.getenv("CALENDAR_READ") or "").strip()
+# The Google service account (tasks/calendar/google.py): its key's path, and the calendars' ids. Never logged
+GOOGLE_SA_KEY_PATH = (os.getenv("GOOGLE_SA_KEY_PATH") or "").strip()
+CALENDAR_MAIN_ID = (os.getenv("CALENDAR_MAIN_ID") or "").strip()
+CALENDAR_BOT_ID = (os.getenv("CALENDAR_BOT_ID") or "").strip()
+# Adding, moving and deleting events in words, in the Bot calendar only: off unless set
+CALENDAR_WRITE = flag(os.getenv("CALENDAR_WRITE"), False)
 # The Today card (tasks/today, core/today.py): the day in time order under the pills card. Off unless set
 TODAY_CARD = flag(os.getenv("TODAY_CARD"), False)
 # The briefing (tasks/briefing): one card a day in the hub that says what today holds, kept up

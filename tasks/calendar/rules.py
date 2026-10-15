@@ -41,6 +41,13 @@ class Event:
     end: datetime | None = None  # UTC
     first_day: date | None = None  # for an all-day event: its first local day
     last_day: date | None = None  # and its last (the same for a one-day event)
+    origin: str = ""  # which calendar it came from ("link", "bot"): never the calendar's id
+    ref: str = ""  # the event's id in that calendar, for the Bot calendar's events (to move or delete)
+
+    @property
+    def mine(self) -> bool:
+        """An event the bot added, in its own calendar: the only kind it may change."""
+        return self.origin == "bot" and bool(self.ref)
 
     @property
     def all_day(self) -> bool:
@@ -102,6 +109,52 @@ def week_line(by_day: list[tuple[date, list]]):
     timed = sorted(each for each in starts if each is not None)
     small = f"first: {first_day:%a} {timeinput.format_moment(timed[0])}" if timed else f"first: {first_day:%a}, all day"
     return Week(line, None, None, small, design.QUIET)
+
+
+def merged(events) -> list[Event]:
+    """Every calendar's events as one: the same happening in two calendars (the same title, the same
+    times) is shown once, the bot's own copy kept when there is one, as it is the one it can change."""
+    kept: dict = {}
+    for each in events:
+        same = (" ".join(each.title.lower().split()), each.start, each.end, each.first_day, each.last_day)
+        if same not in kept or (each.mine and not kept[same].mine):
+            kept[same] = each
+    return ordered(kept.values())
+
+
+def clashes(events, start: datetime, end: datetime, leaving: str = "") -> list[Event]:
+    """The timed events (from every calendar) that overlap a stretch of time, but the one being moved."""
+    return [each for each in ordered(events) if not each.all_day and each.start < end and each.end > start and not (leaving and each.ref == leaving)]
+
+
+def title_from(said: str, message: str) -> str:
+    """A new event's title in the user's own words: the words extraction gave, as they stand in the
+    message (its casing), the first letter made a capital. "" when they are not the message's words."""
+    words = str(said or "").split()
+    if not words:
+        return ""
+    text = " ".join(str(message or "").split())
+    at = text.lower().find(" ".join(words).lower())
+    if at >= 0:
+        found = text[at:at + len(" ".join(words))]
+    else:
+        typed = text.lower().split()
+        if not all(word.lower().strip(".,!?") in [each.strip(".,!?") for each in typed] for word in words):
+            return ""
+        found = " ".join(words)
+    found = found.strip(" .,!?")
+    return found[:1].upper() + found[1:]
+
+
+def span_text(start: datetime, end: datetime, today: date) -> str:
+    """ "Fri 16 Oct · `3:00 pm` to `4:00 pm` · 1 hour" """
+    day = days.day_of(start)
+    minutes = int((end - start).total_seconds() // 60)
+    length = f"{minutes // 60} hour{'s' if minutes // 60 != 1 else ''}" if minutes % 60 == 0 else f"{minutes} minutes"
+    return f"{day_name(day, today)} · `{timeinput.format_moment(start)}` to `{timeinput.format_moment(end)}` · {length}"
+
+
+NOT_MINE = "{icon} I can only change events I added, and **{title}** is on another calendar. Say “add …” and I'll add a new one."
 
 
 def ordered(events) -> list[Event]:

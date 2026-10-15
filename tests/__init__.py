@@ -54,6 +54,11 @@ for name, value in {
     "ROUTINES_LAYOUT": "",  # b, as it is unless set: the routines tests pick one
     "CALENDAR_ENABLED": "",  # off, as it is unless set: the calendar tests switch it on
     "CALENDAR_ICS_URL": "",  # never a real link in a test: the tests use tests/fixtures/calendar.ics
+    "CALENDAR_READ": "",
+    "GOOGLE_SA_KEY_PATH": "",  # never a real key in a test: the Google API is mocked
+    "CALENDAR_MAIN_ID": "",
+    "CALENDAR_BOT_ID": "",
+    "CALENDAR_WRITE": "",
     "TODAY_CARD": "",  # off, as it is unless set: the Today card tests switch it on
     # Every other switch too: off, whatever this PC's own .env has turned on (tests/test_settings.py)
     "BRIEFING_ENABLED": "",

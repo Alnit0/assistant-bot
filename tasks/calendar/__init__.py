@@ -15,19 +15,21 @@ log = logging.getLogger("assistant")
 
 # ---------------------------------------------------------------------------
 # The calendar (docs/specs/calendar.md, private), behind CALENDAR_ENABLED:
-# off, it is not loaded at all. Read only, from the calendar's secret iCal
-# link (CALENDAR_ICS_URL, in live's .env only), through a source that can be
-# swapped later (source.py).
+# off, it is not loaded at all. Read from every calendar CALENDAR_READ lists
+# (the secret iCal link, calendars through Google: source.py, google.py),
+# shown as one; written only to the Bot calendar, behind CALENDAR_WRITE.
 #
 #   Reading   on start-up and every 15 minutes (a run booked by the engine,
-#             one at a time). The copy is replaced whole on a good read; a
-#             read that fails keeps the last good copy and is not an alert
-#             until it has failed for 6 hours, then it needs a look.
+#             one at a time). Each calendar's part of the copy is replaced on
+#             a good read of it; one that fails keeps its last good part and
+#             is not an alert until a read has failed for 6 hours.
+#   Writing   add, move, delete in words, each on a card, undo after each,
+#             the bot's own events only (plain.py, docs/GOOGLE-SETUP.md).
 #   The hub   today's events on the Today card, the briefing's line (a count
 #             and the first time), and attention: an event starting in the
 #             next 30 minutes is level 3, with only its time on the status
 #             line. Never an event's name anywhere a lock screen can show.
-#   Words     questions only (plain.py): no event's name goes to Claude.
+#   Words     questions, and writing when on (plain.py): no event's name goes to Claude.
 #
 # No reminders before events yet.
 # ---------------------------------------------------------------------------
@@ -40,25 +42,31 @@ def enabled() -> bool:
 
 
 async def update(user_id: int) -> str:
-    """Read the feed and keep the copy. Returns "" if that worked, else why not in words that
-    never hold the link; the last good copy stays. Never raises."""
-    found = source.current()
+    """Read every calendar and keep the copy, a part a calendar. Returns "" if all were read, else
+    why not, in words that never hold a link or an id; a calendar that failed keeps its last good
+    part. Never raises."""
+    found = source.sources()
     now = clock.now()
-    if found is None:
-        await database.run(store.db_failed, user_id, "no calendar link is set", now)
-        return "no calendar link is set"
+    if not found:
+        await database.run(store.db_failed, user_id, "no calendar is set", now)
+        return "no calendar is set"
     today = days.day_of(now)
-    try:
-        events = await found.events(today - timedelta(days=rules.BEHIND_DAYS), today + timedelta(days=rules.AHEAD_DAYS))
-    except source.FetchFailed as error:
-        why = str(error)
-    except Exception as error:
-        why = f"it could not be read ({type(error).__name__})"
-    else:
-        await database.run(store.db_keep, user_id, events, now)
-        summaries.changed(TASK, user_id)
-        attention.changed()
+    first, last = today - timedelta(days=rules.BEHIND_DAYS), today + timedelta(days=rules.AHEAD_DAYS)
+    failed = []
+    await database.run(store.db_keep_only, user_id, [each.origin for each in found])
+    for each in found:
+        try:
+            events = await each.events(first, last)
+        except Exception as error:
+            failed.append(f"{each.origin}: {error}" if str(error) and "http" not in str(error).lower() else f"{each.origin}: {type(error).__name__}")
+            continue
+        await database.run(store.db_keep_from, user_id, each.origin, events)
+    summaries.changed(TASK, user_id)
+    attention.changed()
+    if not failed:
+        await database.run(store.db_read_ok, user_id, now)
         return ""
+    why = "; ".join(failed)
     log.warning("Calendar: not read (%s); the last copy stays", why)
     await database.run(store.db_failed, user_id, why, now)
     attention.changed()
@@ -141,10 +149,14 @@ class CalendarTask(Task):
     name = TASK
     place = 50  # pills, Today, reminders, personal routines, gym, calendar, diary, to-dos
     title = TITLE
-    description = "Calendar: your events, read only, on the Today card, in the briefing and in answers"
+    description = "Calendar: your events on the Today card, in the briefing and in answers; add, move and delete in the Bot calendar"
     icon = ICON
-    only_for = plain.ONLY_FOR
     examples = plain.EXAMPLES
+
+    @property
+    def only_for(self) -> str:
+        # With writing on, adding an event said with a time is the calendar's, not a reminder's
+        return plain.ONLY_FOR_WRITING if plain.writing() else plain.ONLY_FOR
     identity = ()  # it adds nothing
     on_repeat = repeats.ALLOW_ANOTHER
 

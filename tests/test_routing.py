@@ -29,13 +29,16 @@ def _every_entry():
     # WEATHER_ENABLED, DAY_QUESTIONS): on while the catalogue is read, so their fixtures are
     # replayed too, then as the tests have them and the tasks loaded again as they were
     switches = {name: getattr(config, name) for name in ("BRIEFING_ENABLED", "WEATHER_ENABLED", "DAY_QUESTIONS", "TODOS_ENABLED", "NUDGES_ENABLED", "HABITS_ENABLED", "CALENDAR_ENABLED", "DIARY_ENABLED", "READING_ENABLED")}
+    # The calendar's writing too (CALENDAR_WRITE, with a made-up Bot calendar): its fixtures are replayed
+    writing = {"CALENDAR_WRITE": config.CALENDAR_WRITE, "CALENDAR_BOT_ID": config.CALENDAR_BOT_ID}
     try:
         for name in switches:
             setattr(config, name, True)
+        config.CALENDAR_WRITE, config.CALENDAR_BOT_ID = True, "made-up-bot@group.calendar.example"
         registry.load()
         return [*demo.ENTRIES, *[entry for entry in actions.catalogue() if entry.name not in NAMES]]
     finally:
-        for name, value in switches.items():
+        for name, value in {**switches, **writing}.items():
             setattr(config, name, value)
         registry.load()
 

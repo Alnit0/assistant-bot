@@ -42,7 +42,32 @@ def create_tables(conn: sqlite3.Connection) -> None:
     )
 
 
-MIGRATIONS = [create_tables]
+def add_origins(conn: sqlite3.Connection) -> None:
+    """Which calendar each event came from and its id there (the Bot calendar's, to change), and a
+    record of each change made, for undo."""
+    conn.execute("ALTER TABLE calendar_events ADD COLUMN origin TEXT NOT NULL DEFAULT ''")
+    conn.execute("ALTER TABLE calendar_events ADD COLUMN ref TEXT NOT NULL DEFAULT ''")
+    conn.execute(
+        """
+        CREATE TABLE calendar_changes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            kind TEXT NOT NULL,
+            ref TEXT NOT NULL,
+            title TEXT NOT NULL,
+            before_start TEXT,
+            before_end TEXT,
+            after_start TEXT,
+            after_end TEXT,
+            at TEXT NOT NULL,
+            undone INTEGER NOT NULL DEFAULT 0
+        )
+        """
+    )
+
+
+MIGRATIONS = [create_tables, add_origins]
+ADDED, MOVED, DELETED = "added", "moved", "deleted"
 
 
 def _when(text: str | None) -> datetime | None:
@@ -54,27 +79,84 @@ def _day(text: str | None) -> date | None:
 
 
 def db_events(conn: sqlite3.Connection, user_id: int) -> list[Event]:
-    rows = conn.execute("SELECT key, title, start_at, end_at, first_day, last_day FROM calendar_events WHERE user_id = ? ORDER BY id", (user_id,)).fetchall()
-    return [Event(key, title, _when(start), _when(end), _day(first), _day(last)) for key, title, start, end, first, last in rows]
+    rows = conn.execute("SELECT key, title, start_at, end_at, first_day, last_day, origin, ref FROM calendar_events WHERE user_id = ? ORDER BY id", (user_id,)).fetchall()
+    return [Event(key, title, _when(start), _when(end), _day(first), _day(last), origin, ref) for key, title, start, end, first, last, origin, ref in rows]
+
+
+def _row(user_id: int, each: Event) -> tuple:
+    return (user_id, each.key, each.title, each.start.isoformat() if each.start else None, each.end.isoformat() if each.end else None,
+            each.first_day.isoformat() if each.first_day else None, each.last_day.isoformat() if each.last_day else None, each.origin, each.ref)
+
+
+_INSERT = "INSERT INTO calendar_events (user_id, key, title, start_at, end_at, first_day, last_day, origin, ref) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+
+
+def db_keep_from(conn: sqlite3.Connection, user_id: int, origin: str, events: list[Event]) -> None:
+    """One calendar read well: its part of the copy is these events. The link's part takes the place of
+    rows from before calendars were told apart (no origin)."""
+    gone = (origin, "") if origin == "link" else (origin, origin)
+    conn.execute("DELETE FROM calendar_events WHERE user_id = ? AND origin IN (?, ?)", (user_id, *gone))
+    conn.executemany(_INSERT, [_row(user_id, each) for each in events])
+
+
+def db_keep_only(conn: sqlite3.Connection, user_id: int, origins: list[str]) -> None:
+    """A calendar no longer read leaves the copy."""
+    kept = [*origins, *([""] if "link" in origins else [])]
+    marks = ", ".join("?" for _ in kept) or "''"
+    conn.execute(f"DELETE FROM calendar_events WHERE user_id = ? AND origin NOT IN ({marks})", (user_id, *kept))
+
+
+def db_put(conn: sqlite3.Connection, user_id: int, event: Event) -> None:
+    """One of the bot's own events into the copy at once (added or moved), in place of what it was."""
+    conn.execute("DELETE FROM calendar_events WHERE user_id = ? AND origin = ? AND ref = ?", (user_id, event.origin, event.ref))
+    conn.execute(_INSERT, _row(user_id, event))
+
+
+def db_drop(conn: sqlite3.Connection, user_id: int, origin: str, ref: str) -> None:
+    conn.execute("DELETE FROM calendar_events WHERE user_id = ? AND origin = ? AND ref = ?", (user_id, origin, ref))
+
+
+def db_change(conn: sqlite3.Connection, user_id: int, kind: str, ref: str, title: str, before: tuple, after: tuple, now: datetime) -> None:
+    """A change made to the Bot calendar, kept for undo: what it was and what it became."""
+    iso = lambda moment: moment.isoformat() if moment else None  # noqa: E731
+    conn.execute(
+        "INSERT INTO calendar_changes (user_id, kind, ref, title, before_start, before_end, after_start, after_end, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (user_id, kind, ref, title, iso(before[0]), iso(before[1]), iso(after[0]), iso(after[1]), now.isoformat()),
+    )
+
+
+def db_last_change(conn: sqlite3.Connection, user_id: int) -> tuple | None:
+    """(id, kind, ref, title, before (start, end), after (start, end)) of the last change not undone."""
+    row = conn.execute(
+        "SELECT id, kind, ref, title, before_start, before_end, after_start, after_end FROM calendar_changes WHERE user_id = ? AND undone = 0 ORDER BY id DESC LIMIT 1", (user_id,)
+    ).fetchone()
+    return (row[0], row[1], row[2], row[3], (_when(row[4]), _when(row[5])), (_when(row[6]), _when(row[7]))) if row else None
+
+
+def db_undone(conn: sqlite3.Connection, change_id: int) -> None:
+    conn.execute("UPDATE calendar_changes SET undone = 1 WHERE id = ?", (change_id,))
+
+
+def db_read_ok(conn: sqlite3.Connection, user_id: int, now: datetime) -> None:
+    """Every calendar was read: when, and how many events the copy holds."""
+    count = conn.execute("SELECT COUNT(*) FROM calendar_events WHERE user_id = ?", (user_id,)).fetchone()[0]
+    db_counted(conn, user_id, count, now)
 
 
 def db_keep(conn: sqlite3.Connection, user_id: int, events: list[Event], now: datetime) -> None:
-    """A good read: the copy is these events, in place of the ones before."""
+    """A good read of the link alone: the copy is these events, in place of the ones before."""
     conn.execute("DELETE FROM calendar_events WHERE user_id = ?", (user_id,))
-    conn.executemany(
-        "INSERT INTO calendar_events (user_id, key, title, start_at, end_at, first_day, last_day) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        [
-            (user_id, each.key, each.title, each.start.isoformat() if each.start else None, each.end.isoformat() if each.end else None,
-             each.first_day.isoformat() if each.first_day else None, each.last_day.isoformat() if each.last_day else None)
-            for each in events
-        ],
-    )
+    conn.executemany(_INSERT, [_row(user_id, each) for each in events])
+    db_counted(conn, user_id, len(events), now)
+
+
+def db_counted(conn: sqlite3.Connection, user_id: int, count: int, now: datetime) -> None:
     conn.execute(
         """
         INSERT INTO calendar_reads (user_id, read_at, tried_at, failing_since, failure, events) VALUES (?, ?, ?, NULL, '', ?)
         ON CONFLICT(user_id) DO UPDATE SET read_at = excluded.read_at, tried_at = excluded.tried_at, failing_since = NULL, failure = '', events = excluded.events
         """,
-        (user_id, now.isoformat(), now.isoformat(), len(events)),
+        (user_id, now.isoformat(), now.isoformat(), count),
     )
 
 
@@ -97,4 +179,7 @@ def db_read(conn: sqlite3.Connection, user_id: int) -> tuple[datetime | None, da
 
 
 async def events(user_id: int) -> list[Event]:
-    return await database.run(db_events, user_id)
+    """Every calendar's events as one, each happening once (rules.merged)."""
+    from tasks.calendar import rules
+
+    return rules.merged(await database.run(db_events, user_id))

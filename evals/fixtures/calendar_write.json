@@ -1,0 +1,454 @@
+{
+  "router": [
+    {
+      "golden": "w1",
+      "message": "dentist Friday at 3pm for an hour",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "an appointment with a day, a time and a length",
+      "names": {
+        "calendar": [
+          "Dentist",
+          "Lunch with Sam",
+          "Test standup"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "w2",
+      "message": "put lunch with Sam on my calendar Thursday at 1",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "named: the calendar",
+      "names": {
+        "calendar": [
+          "Dentist",
+          "Lunch with Sam",
+          "Test standup"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "w3",
+      "message": "remind me about the dentist Friday",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "asked to be reminded: a reminder, whatever it is about",
+      "names": {
+        "calendar": [
+          "Dentist",
+          "Lunch with Sam",
+          "Test standup"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "w4",
+      "message": "remind me at 2pm Friday to leave for the dentist",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "remind me, with a time",
+      "names": {
+        "calendar": [
+          "Dentist",
+          "Lunch with Sam",
+          "Test standup"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "w5",
+      "message": "move the dentist to 4pm",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "one of the calendar's events, by name",
+      "names": {
+        "calendar": [
+          "Dentist",
+          "Lunch with Sam",
+          "Test standup"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "w6",
+      "message": "delete the dentist from my calendar",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "named: the calendar",
+      "names": {
+        "calendar": [
+          "Dentist",
+          "Lunch with Sam",
+          "Test standup"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "w7",
+      "message": "cancel lunch with Sam",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "one of the calendar's events, by name",
+      "names": {
+        "calendar": [
+          "Dentist",
+          "Lunch with Sam",
+          "Test standup"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "w8",
+      "message": "call the plumber",
+      "tasks": [
+        "todos"
+      ],
+      "note": "a thing to do with no time: a to-do",
+      "names": {
+        "calendar": [
+          "Dentist",
+          "Lunch with Sam",
+          "Test standup"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "todos"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "w9",
+      "message": "plumber coming tomorrow at 10",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "an appointment at a time",
+      "names": {
+        "calendar": [
+          "Dentist",
+          "Lunch with Sam",
+          "Test standup"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "w10",
+      "message": "what's on Friday?",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "reading, as before",
+      "names": {
+        "calendar": [
+          "Dentist",
+          "Lunch with Sam",
+          "Test standup"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    }
+  ],
+  "extraction": [
+    {
+      "golden": "w1",
+      "task": "calendar",
+      "message": "dentist Friday at 3pm for an hour",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_add",
+      "data": {
+        "title": "dentist",
+        "day": "Friday",
+        "time": "3:00 pm",
+        "length": 60
+      },
+      "recorded": [
+        "calendar_add",
+        {
+          "title": "dentist",
+          "day": "Friday",
+          "time": "3:00 pm",
+          "length": 60,
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "w2",
+      "task": "calendar",
+      "message": "put lunch with Sam on my calendar Thursday at 1",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_add",
+      "data": {
+        "title": "lunch with Sam",
+        "day": "Thursday"
+      },
+      "recorded": [
+        "calendar_add",
+        {
+          "title": "lunch with Sam",
+          "day": "Thursday",
+          "time": "1:00 pm",
+          "guessed": [
+            "time"
+          ],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "w5",
+      "task": "calendar",
+      "message": "move the dentist to 4pm",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_move",
+      "data": {
+        "search": "dentist",
+        "time": "4:00 pm"
+      },
+      "recorded": [
+        "calendar_move",
+        {
+          "search": "dentist",
+          "time": "4:00 pm",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "w11",
+      "task": "calendar",
+      "message": "move lunch with Sam to Monday",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_move",
+      "data": {
+        "search": "lunch with Sam",
+        "day": "Monday"
+      },
+      "recorded": [
+        "calendar_move",
+        {
+          "search": "lunch with Sam",
+          "day": "Monday",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "w6",
+      "task": "calendar",
+      "message": "delete the dentist from my calendar",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_delete",
+      "data": {
+        "search": "dentist"
+      },
+      "recorded": [
+        "calendar_delete",
+        {
+          "search": "dentist",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "w9",
+      "task": "calendar",
+      "message": "plumber coming tomorrow at 10",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_add",
+      "data": {
+        "day": "tomorrow"
+      },
+      "recorded": [
+        "calendar_add",
+        {
+          "title": "plumber coming",
+          "day": "tomorrow",
+          "time": "10:00 am",
+          "guessed": [
+            "time"
+          ],
+          "not_included": []
+        }
+      ],
+      "note": "the title is the user's own words, whichever of them (plumber, plumber coming)"
+    }
+  ]
+}
