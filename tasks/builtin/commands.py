@@ -114,7 +114,7 @@ def build(entries) -> list[str]:
         tidy["reactions"] += [item for item in entry.reactions if item not in mine["reactions"]]
         tidy["buttons"] += [button for button in task.buttons() if button not in mine["buttons"]]
         if any(mine.values()):
-            page = _page(f"## {task.icon or DEFAULT_ICON} {task.name.capitalize()}", about(task), _grouped(**mine))
+            page = _page(f"## {task.icon or DEFAULT_ICON} {task.label}", about(task), _grouped(**mine))
             (testing if task.testing else everyday).append(page)
     pages = list(everyday)
     if any(tidy.values()):

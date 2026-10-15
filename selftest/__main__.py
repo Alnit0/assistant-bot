@@ -574,8 +574,20 @@ def main() -> int:
         for stage in stages.passed_stages([name for name, _, _ in phases], failed):
             passed[stage] = commit
         stages.write_passed(PASSED, passed)
-    print(f"--- {len(results)} steps, {len(bad)} failed, US${spent:.4f} spent. Report: {path}")
-    return 1 if bad else 0
+    crashed = crashed_starts(phases)
+    print(f"--- {len(results)} steps, {len(bad)} failed{crashed_text(crashed)}, US${spent:.4f} spent. Report: {path}")
+    return 1 if bad or crashed else 0
+
+
+def crashed_starts(phases) -> list[tuple[str, int]]:
+    """The starts whose process did not end well (a step's own code raised, or it ran
+    out of time): (name, exit code). Found 15 Oct: one such start was counted as
+    nothing failed, because its steps had all passed before it stopped."""
+    return [(name, found.get("exit")) for name, _, found in phases if found.get("exit") != 0]
+
+
+def crashed_text(crashed) -> str:
+    return "".join(f"; start {name} stopped (exit {code}): read its log" for name, code in crashed)
 
 
 if __name__ == "__main__":

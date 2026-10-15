@@ -54,6 +54,12 @@ def test_the_tags_live_preview_and_retired_are_added_only_where_missing():
     assert preview.tag_named("preview") == "Preview"
 
 
+def test_a_posts_tag_is_read_from_its_ids():
+    by_id = {1: "Live", 2: "Preview", 3: "Retired", 4: "Open"}
+    assert preview.tag_of([1], by_id) == "Live" and preview.tag_of([4, 3], by_id) == "Retired"
+    assert preview.tag_of([], by_id) == "Preview" and preview.tag_of(None, by_id) == "Preview"
+
+
 def test_shipping_a_round_makes_it_live_and_retires_the_one_that_was():
     assert preview.shipped({1: "Retired", 3: "Live", 4: "Preview"}, 4) == {1: "Retired", 3: "Retired", 4: "Live"}
     assert preview.shipped({3: "Live", 4: "Live"}, 4) == {3: "Retired", 4: "Live"}

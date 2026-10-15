@@ -222,7 +222,12 @@ class Task:
     on_repeat: str = ""
     # What the user reads for this task where its name would not do ("Personal routines" for
     # habits): cards, the briefing, #commands. Empty: the name, capitalised
-    title: str = ""
+    title: str = ""  # what the user reads for it ("Personal routines"), where its folder's name would not do
+
+    @property
+    def label(self) -> str:
+        """The task's name as the user reads it: its title, or its name capitalised."""
+        return self.title or self.name.capitalize()
 
     def switched_on(self) -> bool:
         """Whether this task's switch is on (its setting in .env). One that is off is

@@ -457,6 +457,13 @@ def missing_tags(have: list[str]) -> list[tuple[str, str]]:
     return [(name, emoji) for name, emoji in TAGS if name.lower() not in there]
 
 
+def tag_of(tag_ids, by_id: dict[int, str]) -> str:
+    """A post's tag of TAGS, from the ids Discord holds for it (over HTTP alone the names
+    are not filled in: there is no cache of the forum), or Preview with none."""
+    names = [by_id.get(int(each), "") for each in tag_ids or ()]
+    return next((name for name in names if name in dict(TAGS)), PREVIEW)
+
+
 def shipped(tags: dict[int, str], number: int) -> dict[int, str]:
     """Each round's tag once `number` ships: it is Live, the round that was Live is
     Retired, and the rest keep theirs."""
@@ -596,7 +603,8 @@ async def ship(number: int) -> str:
         posts = await _round_posts(client, forum)
         if number not in posts:
             raise SystemExit(f"Round {number} has no post: nothing changed.")
-        now = {each: next((tag.name for tag in thread.applied_tags if tag.name in by_name and tag.name in dict(TAGS)), PREVIEW) for each, thread in posts.items()}
+        by_id = {tag.id: tag.name for tag in forum.available_tags}
+        now = {each: tag_of(getattr(thread, "_applied_tags", ()), by_id) for each, thread in posts.items()}
         after = shipped(now, number)
         changed = []
         for each, tag in after.items():

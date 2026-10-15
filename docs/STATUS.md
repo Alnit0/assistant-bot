@@ -8,6 +8,32 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-15
 
+## Live restarted at 1:32 pm, 15 Oct (Alex: test everything now)
+
+From `e06d30f` (clean, pushed, full test run passed), 42 minutes clear of
+the next pill reminder (2:14 pm). Switched on in live's `.env` (a copy of
+the one before is `data/env-before-2026-10-15-restart`): `DESIGN_ROUND=4`,
+`TODOS_ENABLED`, `WEEKLY_SUMMARY`, `DMS_ENABLED`, `NUDGES_ENABLED`,
+`HABITS_ENABLED`, `TODAY_CARD` (routines in layout B, the default). The
+nightly self-test's row moved to 3:30 am while live was stopped.
+
+Checked after: the account check passed (live's own account); the
+migrations for to-dos, reminders and routines applied, with a copy of the
+database saved before; the pills checklist redrawn in round 4; no Today
+card (nothing on today: hidden while empty); the nightly self-test booked
+for 3:30 am and the weekly summary for Sunday 7 pm; #commands lists
+to-dos, reminders and routines. Two things found and fixed in code:
+- **#commands headed them "Todos", "Nudges" and "Habits"** (the folders'
+  names): it now uses each task's title (To-dos, Reminders, Personal
+  routines), and help does too. Live shows the fix from its next restart.
+- **`preview --ship 4` left Round 3 tagged Live**: over HTTP alone a post's
+  tag names are not filled in. It reads the tag ids now; run again, Round
+  3 is Retired and Round 4 Live.
+Also fixed: a self-test start that stops was counted as nothing failed.
+Six What's new lines are queued for 16 Oct (the four from before, and two
+on round 4 and on what went on, with an example of each). DMs: QA item 0
+by hand (the self-test cannot send one).
+
 ## Decided (2026-10-15, routines, shared repeats and the Today card)
 
 Built on `feature/routines` and merged into `feature/pills` the same

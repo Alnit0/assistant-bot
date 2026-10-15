@@ -284,6 +284,13 @@ def test_a_changed_file_touches_the_stages_it_can_break():
     assert stages.stages_of("selftest/phases.py") == stages.ORDER
 
 
+def test_a_start_that_stops_is_said_and_fails_the_run_even_with_every_step_passed():
+    phases = [("p8", {}, {"exit": 0, "results": [{"status": "pass"}]}), ("p9", {}, {"exit": 1, "results": [{"status": "pass"}]})]
+    assert runner.crashed_starts(phases) == [("p9", 1)]
+    assert runner.crashed_text(runner.crashed_starts(phases)) == "; start p9 stopped (exit 1): read its log"
+    assert runner.crashed_text([]) == ""
+
+
 def test_only_the_stages_touched_since_each_last_passed_are_run_and_one_never_passed_always_is():
     from selftest import stages
 

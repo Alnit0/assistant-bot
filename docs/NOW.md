@@ -13,19 +13,15 @@ waiting for 6 pm
 
 - 2. Self-test as the dev bot: to-dos 9/9, round 4 9/9, start 9 (new:
   reminders, routines, the Today card) 5/5, US$0. DMs: QA item 0 by hand
+- 3. Live restarted 1:32 pm with every switch on; nightly row 3:30 am
+- 4. Checks passed; #commands headings and `--ship 4` fixed (Round 4
+  Live, Round 3 Retired); 5. What's new: 6 lines for 16 Oct
 
 **In progress**
-- 3. Commit, push, restart live
+- A short report to Alex
 
 **Next**
-- 3. Restart live once, now, 10 minutes clear of a pill
-  reminder: DESIGN_ROUND=4, TODOS_ENABLED, WEEKLY_SUMMARY, DMS_ENABLED,
-  NUDGES_ENABLED, HABITS_ENABLED, TODAY_CARD; the nightly row to 3:30 am
-  while live is stopped
-- 4. Checks: the account, round 4, the Today card, help and #commands;
-  `preview --ship 4`
-- 5. What's new lines for tomorrow. Wrong: that switch off, restart, a
-  note at the top of STATUS
+- The #commands headings fix shows in live from its next restart
 
 **Drafts and worktrees**
 - Worktrees `../assistant-bot-hub-tasks`, `../assistant-bot-round4` and

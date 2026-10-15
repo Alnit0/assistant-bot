@@ -113,6 +113,22 @@ def test_a_task_that_is_only_talked_to_has_a_page_for_what_one_can_say_to_it(mon
     assert [text.splitlines()[0] for text in commands.pages()].count("## 🌤️ Weather") == 1
 
 
+def test_a_task_with_a_title_is_headed_by_it_never_by_its_folder(monkeypatch):
+    # Found on live, 2026-10-15: #commands said "Todos", "Nudges" and "Habits", the folders' names
+    from core import config
+
+    for name in ("TODOS_ENABLED", "NUDGES_ENABLED", "HABITS_ENABLED"):
+        monkeypatch.setattr(config, name, True)
+    registry.load()
+    try:
+        titles = [text.splitlines()[0] for text in commands.pages() if text.startswith("## ")]
+        assert {"## 📝 To-dos", "## ⏰ Reminders", "## 🔁 Personal routines"} <= set(titles), titles
+        assert not any(title.endswith((" Todos", " Nudges", " Habits")) for title in titles)
+    finally:
+        monkeypatch.undo()
+        registry.load()
+
+
 def test_the_pages_are_built_from_what_is_registered_and_nothing_else():
     async def handler(ctx):
         return None

@@ -50,7 +50,7 @@ def _typed(item) -> str:
 
 
 def _task_lines(entry: registry.TaskCapabilities, full: bool) -> list[str]:
-    lines = [f"**{entry.task.name.capitalize()}**"]
+    lines = [f"**{entry.task.label}**"]
     if len(entry.keywords) > OVERVIEW_LIMIT and not full:
         lines.append(", ".join(f"`{keyword.name}`" for keyword in entry.keywords))
         lines.append(f"-# `help {entry.task.name}` explains each one")
@@ -80,7 +80,7 @@ def build_task_help(ctx: Context, task: Task) -> str:
     """One task in full, wherever its words work."""
     entries = registry.catalogue(ctx.user, task_name=task.name)
     if not entries:
-        return f"**{task.name.capitalize()}** has nothing you can use."
+        return f"**{task.label}** has nothing you can use."
     lines = _task_lines(entries[0], full=True)
     if task.description:
         lines.insert(1, f"-# {task.description}")
@@ -94,7 +94,7 @@ def build_item_help(kind: str, task: Task, item) -> str:
         "reaction": "a reaction to add to a message",
     }[kind]
     title = item.emoji if kind == "reaction" else f"`{item.name}{' ' + item.usage if item.usage else ''}`"
-    lines = [f"**{title}** · {task.name.capitalize()} · {how}", item.description or "(no description)"]
+    lines = [f"**{title}** · {task.label} · {how}", item.description or "(no description)"]
     if getattr(item, "aliases", None):
         lines.append("Also: " + ", ".join(f"`{alias}`" for alias in item.aliases))
     if item.examples:

@@ -127,6 +127,7 @@ Messages go through fast paths (buttons, exact shortcuts), then sticky follow-up
 - **A question gets the answer itself, where it is asked** (15 Oct): "what pills are left?" had been answered with only a pointer to the hub. Now the doses still to take, in time order, the first line naming no pill; a pointer may follow an answer, never replace it (golden 29). A DM while DMs are off gets one line saying so.
 - **A reply to a pill line corrects the day that line is about** (15 Oct): "actually I didn't" to last night's line after midnight makes that dose missed and leaves today alone.
 - **To-dos have their own self-test stage** (start 7, recorded answers, 9 of 9).
+- **Alex tested everything at once** (15 Oct): routines merged the day they were built, with layout B (the Today card, and a card a routine from its start) the default; the self-test gained start 9 (reminders, routines, the Today card). The Design forum has one post a round, tagged Live, Preview or Retired.
 - **Round 4 shipped the day it was previewed** (15 Oct): he picked Taken at once (question 67), asked for the list rule on to-dos at once rather than in round 5, and said ship it. Every self-test start but 8 is pinned to round 3, so live's own `DESIGN_ROUND` never decides a step.
 - **The test suite runs in about 40 seconds** (it had grown to nearly two minutes). `TESTS_AS_ON_LIVE=1` runs the same tests with real threads and connections, about 80 seconds.
 
@@ -142,7 +143,7 @@ Messages go through fast paths (buttons, exact shortcuts), then sticky follow-up
 - **Bugs:** 2 open on live, both from before 12 Oct. Only he closes a live bug (he presses Fixed).
 
 **Ready when he wants**
-- To-dos go on at this evening's restart (with `WEEKLY_SUMMARY`); reminders and personal routines stay off (routines wait on question 63).
+- Everything built on 15 Oct is live from 1:32 pm that day: round 4, to-dos, reminders, personal routines (layout B), the Today card, the weekly summary and DMs. If one misbehaves, its switch goes off and live restarts (`data/env-before-2026-10-15-restart` is the `.env` before).
 - Live in its own folder on a committed version: prepared and dry-run (docs/LIVE-FOLDER.md, `scripts\update-live.ps1`, with `-Back` to roll back); the switch-over is his go-ahead at a later restart.
 - Personal routines reworked (groups, windows, nudges), a shared repeat system and a Today card: asked on 15 Oct, to be built on `feature/routines`, off in live. His message was cut off at its fourth point (the preview, "Also show the Today card with a…"): ask him for the rest.
 - A watch on live (a Windows scheduled task that pings his phone if the service is down): later.
