@@ -12,6 +12,7 @@ from tasks.base import Task
 TASK = "today"
 JOB = "card"
 ORDER = hub.CARDS_ORDER + 5  # the hub's order: pills, then this, then the task cards
+hubcard.order(TASK, ORDER, lambda user_id: lambda: card(user_id))
 
 
 async def card(user_id: int) -> Card | None:

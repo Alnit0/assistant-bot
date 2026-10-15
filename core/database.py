@@ -15,6 +15,7 @@ log = logging.getLogger("assistant")
 # worker thread so the event loop is never held up.
 # ---------------------------------------------------------------------------
 LOG_COLUMNS = {
+    "content",
     "reply",
     "model",
     "input_tokens",

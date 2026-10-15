@@ -240,6 +240,9 @@ REMINDERS_ENABLED = flag(os.getenv("REMINDERS_ENABLED"), False)
 # himself (tasks/nudges: REMINDERS_ENABLED above is the pills' own) and personal routines
 # (tasks/habits: "routine" in code is the scheduler's). Off, the task is not loaded at all
 TODOS_ENABLED = flag(os.getenv("TODOS_ENABLED"), False)
+# The diary (tasks/diary): off, not loaded. DIARY_MOOD: whether it keeps a mood (on unless set off)
+DIARY_ENABLED = flag(os.getenv("DIARY_ENABLED"), False)
+DIARY_MOOD = flag(os.getenv("DIARY_MOOD"), True)
 NUDGES_ENABLED = flag(os.getenv("NUDGES_ENABLED"), False)
 HABITS_ENABLED = flag(os.getenv("HABITS_ENABLED"), False)
 # How personal routines are shown (tasks/habits): b, the Today card as the overview and a card a

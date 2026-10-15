@@ -971,6 +971,52 @@ def gym_opening() -> str:
     ])
 
 
+# ---------------------------------------------------------------------------
+# The diary (DIARY_ENABLED, off): `python -m selftest.preview --diary`, a post
+# of its own. Made-up entries only, drawn by the diary's own words and buttons.
+# ---------------------------------------------------------------------------
+DIARY_TITLE = "Design · Diary"
+
+
+def diary_cards() -> list[tuple[str, tuple]]:
+    from core import today as today_card
+    from core.today import Line
+    from tasks.diary import mood, rules
+    from tasks.diary.rules import Entry
+
+    day = _day()
+    happy = Entry(1, 1, day, "Made-up: finished the essay at last, then a long walk.", "three", "good", notes=1)
+    plain_entry = Entry(2, 1, day, "Made-up: a long day of meetings.", notes=1)
+
+    def line_card(text, row=()):
+        return (design.Text(text), *((design.Row(tuple(row)),) if row else ()))
+
+    week = [Entry(10 + at, 1, day - timedelta(days=at), "Made-up words.", "three", key, notes=1) for at, key in ((1, "good"), (2, "ok"), (3, "good"), (5, "bad"))]
+    today_lines = [Line("🔁", "**Evening**", _at(20), _at(23)), Line("📔", "**Diary** · not yet"), Line("⏰", "**Put the bins out**", _at(21), note=True)]
+    found = [
+        ("“today was good, finally finished the essay”: the mood from the words, on the line (no words of the entry on it)", line_card(rules.saved_line(happy, 4))),
+        ("“a long day of meetings”: no mood clear from it, so the line asks, a blurple button a mood", line_card(f"{rules.saved_line(plain_entry, 4)}\n-# how was it?", mood.buttons("diary", "mood", day.isoformat()))),
+        ("9:00 pm, nothing written today: one gentle ask at the bottom of the hub, once a day, never again that day", line_card(rules.ASK, mood.buttons("diary", "mood", day.isoformat()))),
+        ("The Today card: one line, written or not yet (with its mood once written)", today_card.layout(today_lines, _at(19))),
+        ("The briefing (round 5): one line in the overview box, the streak and yesterday's mood", (design.topic(design.card_title("🗓️ The day"), lines=["💊 **Pills** · 6 doses · first 7:00 am", "📔 **Diary** · streak 4 · yesterday 😊"], status=design.QUIET),)),
+        ("“show this week's diary”: a line a day with its mood, never the words", line_card(rules.span_answer(week, rules.week_of(day), day, "This week"))),
+        ("“what did I write yesterday?”: that day, the words only because they were asked for", line_card(rules.day_answer(week[0], week[0].day, day, words=True))),
+        ("“how was my mood this month?”", line_card(rules.mood_answer(week, rules.month_of(day), f"{day:%B}"))),
+    ]
+    return checked(found)
+
+
+def diary_opening() -> str:
+    return "\n".join([
+        f"## {DIARY_TITLE}",
+        "Your own words about your day, sent in #inbox or a DM. Several messages on one day add to one entry; the day ends at 4:00 am, so just after midnight still counts for the evening before.",
+        "**Mood:** Good, OK or Bad, from the words when they make it clear, otherwise three buttons; changed in words or by button, with Undo. One small mood scale, so it can change later (the number of levels, a score, or off) and old entries still read.",
+        "**Evening:** if nothing is written by 9:00 pm, one gentle ask in the hub. **Streak:** days in a row with an entry, in the briefing and the week of everything. Nothing is ever said about missing a day.",
+        "**Private:** the words stay in the database; no line, notification, log or status line shows them.",
+        "-# Made-up entries only. Behind DIARY_ENABLED (off). The buttons here do nothing. Questions 80 to 85.",
+    ])
+
+
 def _number_after(args: list[str], flag: str) -> int:
     value = args[args.index(flag) + 1] if args.index(flag) + 1 < len(args) else ""
     if not value.isdigit() or int(value) not in design.ROUNDS:
@@ -981,6 +1027,13 @@ def _number_after(args: list[str], flag: str) -> int:
 def main() -> int:
     sys.stdout.reconfigure(encoding="utf-8")
     args = sys.argv[1:]
+    if "--diary" in args:
+        found = diary_cards()
+        if "--check" in args:
+            print(f"{len(found)} messages built, each within one message.")
+            return 0
+        print("Posted:", asyncio.run(post_preview(DIARY_TITLE, diary_opening(), found)))
+        return 0
     if "--gym" in args:
         found = gym_cards()
         if "--check" in args:

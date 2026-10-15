@@ -162,6 +162,7 @@ ABOUT_DATA = (
 
 
 PART_OF_A_NAME = 4  # the fewest letters of a typed word that may be the start of a word of a name
+WHOLE_WORD = 3  # a typed word this short is a hint only when it is a whole word of a name ("gym", an event called Gym)
 
 
 def name_hints(message: str, named: dict[str, list[str]]) -> list[tuple[str, str]]:
@@ -169,16 +170,22 @@ def name_hints(message: str, named: dict[str, list[str]]) -> list[tuple[str, str
     start of a word in the name of something a task holds ("testv", with a
     pill called Testvit), or that word with an ending of a letter or two
     ("stretches", with a routine step called Stretch): four letters or more,
-    whatever the case. `named` is
+    whatever the case; or, from three letters, a whole word of a name of one or two words ("gym",
+    with an event called Gym; never "the" in "Renew the passport").
+    `named` is
     each task's names. Only a hint for the router, which still decides: a
     word such as "evening" may be part of a pill's name and mean nothing of
     the kind. Pure."""
     found: list[tuple[str, str]] = []
     for word in dict.fromkeys(names.words(message)):
-        if len(word) < PART_OF_A_NAME:
+        if len(word) < WHOLE_WORD:
             continue
         for task, held in named.items():
-            if any(of.startswith(word) or (len(of) >= PART_OF_A_NAME and word.startswith(of) and len(word) - len(of) <= 2) for name in held for of in names.words(name)):
+            if any(
+                (len(word) >= PART_OF_A_NAME and of.startswith(word)) or (word == of and len(names.words(name)) <= 2)
+                or (len(of) >= PART_OF_A_NAME and word.startswith(of) and len(word) - len(of) <= 2)
+                for name in held for of in names.words(name)
+            ):
                 found.append((word, task))
     return found
 

@@ -4,7 +4,7 @@ import logging
 import discord
 from discord import app_commands
 
-from core import account, alerts, backup, money, cards, clock, config, conversation, database, day, devmode, dms, health, identity, instance_lock, interactions, lifecycle, live, messages, missed, nightly, restart, scheduler, tidy, timing
+from core import account, actions, alerts, backup, money, cards, clock, config, conversation, database, day, devmode, dms, health, identity, instance_lock, interactions, lifecycle, live, messages, missed, nightly, restart, scheduler, tidy, timing
 from core.config import SEPARATE_BOT
 from core.config import mine as my_channel
 from core.config import (
@@ -352,7 +352,8 @@ async def _handle(message: discord.Message, user, text: str) -> bool:
     if not conversation.listens_in(message.channel.id):
         return False
     in_inbox = message.channel.id == INBOX_CHANNEL_ID
-    log.info("Received: %s", text)
+    # With a task loaded that keeps its words to itself (the diary), no message's words go to the log file
+    log.info("Received: %s", f"a message of {len(text)} characters" if actions.any_private() else text)
 
     # Seen: 👀 straight away, and "typing" with it. Neither is waited for
     timing.start()

@@ -101,7 +101,8 @@ async def summary(user_id: int, day: date) -> Summary | None:
         glance = rules.count_text(len(found)) + " · all over"
     status = DUE if upcoming else ANY_TIME if not timed else DONE
     coming = [each for each in upcoming if each.start > now]
-    return Summary(glance, status, left=tuple(f"{each.title} `{timeinput.format_moment(each.start)}`" for each in coming), left_at=tuple(each.start for each in coming))
+    said = rules.count_text(len(found)) + (f" · first {timeinput.format_moment(timed[0].start)}" if timed else " · all day")
+    return Summary(glance, status, overview=said, left=tuple(f"{each.title} `{timeinput.format_moment(each.start)}`" for each in coming), left_at=tuple(each.start for each in coming))
 
 
 async def items(user_id: int, now: datetime) -> list[Item]:
@@ -156,7 +157,12 @@ class CalendarTask(Task):
         return await plain.state(request)
 
     async def item_names(self, request):
-        return []  # an event's name is never handed on: the router and extraction never see one
+        """This week's events by name, for the code's own matching only (core/routing.py): a word the
+        user typed that starts one is a hint to the router that the message may be the calendar's
+        ("is the gym on tonight?"). The router is told the word typed, never the event's name."""
+        today = days.today()
+        events = await store.events(request.user.id)
+        return list(dict.fromkeys(each.title for ahead in range(8) for each in rules.on_day(events, today + timedelta(days=ahead))))
 
     def keywords(self) -> list[Keyword]:
         return [Keyword(["calendar", "my calendar"], "what is on your calendar today", show_word, examples=["calendar"], channels=ANY, exact=True, purpose=SEE)]

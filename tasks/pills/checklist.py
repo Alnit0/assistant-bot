@@ -199,6 +199,13 @@ async def post(user_id: int, channel_id: int | None = None) -> int | None:
     return message_id
 
 
+def all_done(listed: list[Dose]) -> bool:
+    """Round 5: today has doses and each is taken or skipped (a missed one keeps the checklist up)."""
+    from core import design
+
+    return design.current() >= 5 and bool(listed) and all(dose.occurrence.state in (DONE, SKIPPED) for dose in listed)
+
+
 async def refresh(user_id: int) -> None:
     """Bring today's checklist and the messages under it up to date in place.
     Nothing to do if it hasn't been posted today; posted afresh if it has gone."""
@@ -209,6 +216,12 @@ async def refresh(user_id: int) -> None:
     held = await database.run(store.db_messages, user_id, day)
     sheet = next((message for message in held if message.kind == CHECKLIST), None)
     if sheet is None:
+        return
+    if all_done(listed):
+        # Round 5: every dose taken or skipped, so the checklist leaves the hub. Its record stays, so
+        # the day still counts as posted; a dose to take again (a new pill, an undo) brings it back,
+        # as a checklist that has gone is posted again below
+        await cards.delete(sheet.channel_id, sheet.message_id)
         return
     if not await cards.edit(sheet.channel_id, sheet.message_id, sheet_card(listed, pills, day)):
         log.info("Today's pills checklist has gone from channel %s: posting it again", sheet.channel_id)

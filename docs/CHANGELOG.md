@@ -6,6 +6,12 @@ backfilled from the git log.
 
 ## 2026-10-15
 
+- Built, not switched on: round 5 of the hub (`DESIGN_ROUND=5`: the briefing as the morning overview, the
+  date as its title, cards all done leave the hub, the suggested answers to questions 68 to 75), and a
+  diary (`DIARY_ENABLED`: your words about your day, a mood, a streak, one gentle ask at 9 pm; its words
+  kept in the database only). Both previewed in the Design forum.
+- "Is the gym on tonight?" goes to the calendar: a word that starts one of this week's events is a hint
+  to the router (it is told the word you typed, never the event).
 - Previews, nothing switched on: the Sunday summary for everything (pills, to-dos, personal routines,
   next week's calendar) in one card, behind `WEEKLY_ALL`; and three sketches of how a gym plan could
   get into the bot (`docs/drafts/gym-onboarding.md`). Both posted in the Design forum.

@@ -75,4 +75,11 @@ async def summary(user_id: int, day: date) -> Summary | None:
     lines = tuple(line for line in (next_line(listed, clock.now()), streak) if line)
     # The checklist's own count of what is dealt with (taken or skipped), so the two never disagree
     done, total = today.progress(listed)
-    return Summary(glance=glance, status=status(listed), lines=lines, hint=any_time(listed), before=before, done=done, total=total, left=today.left_lines(listed), left_at=today.left_moments(listed))
+    return Summary(glance=glance, status=status(listed), lines=lines, hint=any_time(listed), before=before, done=done, total=total, left=today.left_lines(listed), left_at=today.left_moments(listed), overview=overview(listed))
+
+
+def overview(listed: list[Dose]) -> str:
+    """The day's doses for the morning overview: "6 doses · first 7:00 am", whatever has been taken."""
+    planned = sorted(at for dose in listed if (at := dose.due.at) is not None)
+    count = f"{len(listed)} dose{'' if len(listed) == 1 else 's'}"
+    return count + (f" · first {timeinput.format_moment(planned[0])}" if planned else " · any time")

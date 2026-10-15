@@ -92,7 +92,8 @@ def layout(lines: list[Line], now: datetime) -> tuple:
     earlier = [f"{events_over[0].icon} {len(events_over)} earlier today"] if events_over else []
     small = [*earlier, *shown.small, design.more_line(any_time.more), *([f"✅ {len(done)} done"] if done else [])]
     top = [design.small(f"{all_day[0].icon} all day · " + " · ".join(each.text for each in all_day))] if all_day else []
-    title = design.card_title(f"{ICON} {TITLE}", len(done), len(doable)) if doable else design.card_title(f"{ICON} {TITLE}")
+    # Round 5 (question 69): no count of its own; the briefing's title has the day's
+    title = design.card_title(f"{ICON} {TITLE}", len(done), len(doable)) if doable and design.current() < 5 else design.card_title(f"{ICON} {TITLE}")
     box = design.topic(title, entries, lines=top, tail="\n".join(line for line in small if line), status="" if entries else design.QUIET)
     return design.fit(design.bolded((box,)))
 

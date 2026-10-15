@@ -8,6 +8,34 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-15 (evening)
 
+## Round 5, the known miss, the advisor handover, a diary (15 Oct, late; nothing shipped)
+
+1. **Round 5**, behind `DESIGN_ROUND=5`, posted as "Design · Round 5" with
+   a yes or no asked item by item: the briefing as the morning overview
+   (the date with the dots as its title, Needs a look and Weather boxes,
+   one overview box with a line a task and no progress, no footer), cards
+   all done leave the hub, and the suggested answers to 68 to 75. The day
+   in the hub run in round 4 and round 5 (33 of 33 each), side by side.
+2. **The known miss** (x16, "is the gym on tonight?"): the calendar now
+   gives this week's event names to the code's own name matching, so
+   the router is hinted that the word typed is one of its events; a
+   hint now also takes a whole word of three letters of a name of one
+   or two words ("gym"; never "the"), as "gym" was too short for one.
+   Checked live with the hint sent: x16 the calendar, x9 ("gym at 6")
+   and x10 still reminders, 3 of 3. No longer a known miss.
+3. **The advisor handover** rewritten to match today.
+4. **A diary** (`tasks/diary`, behind `DIARY_ENABLED`, off; `DIARY_MOOD`
+   on): an entry a diary day to 4:00 am, messages appended, a mood on a
+   small scale (`tasks/diary/mood.py`, each entry keeping its scale), the
+   mood by words or buttons with undo, one evening ask at 9 pm, a streak,
+   the Today card's line, the briefing's line, the week's moods, reading
+   back and deleting. Its words stay in the database: the message log,
+   #bot-log, errors, the log file and the router's memory keep a note in
+   their place (`Entry.private`). Understanding checks: 18 of 21 right,
+   three known misses. Posted as "Design · Diary"; questions 80 to 85.
+5. Spend: about NZ$0.20 of NZ$0.40 (the diary checks NZ$0.18, the
+   known miss NZ$0.02).
+
 ## Previews: the week of everything, gym onboarding (15 Oct, late)
 
 1. **The Sunday summary for everything**, behind `WEEKLY_ALL` (off; it
@@ -92,6 +120,26 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
   router now costs US$0.0040 a request (3,300 tokens, 11 tasks).
 - The nightly self-test reads the recorded answers back offline, not with
   pytest: live's folder has no test tools.
+- Round 5 is gated by `design.current() >= 5` everywhere, the
+  behaviour changes too (questions 73 and 75), so one setting ships or
+  takes back the whole round.
+- The overview's order is the catalogue's (the order tasks are
+  loaded in): fixed, and no list of tasks in the code.
+- A card's place in the hub is said by the task (`hubcard.order`);
+  round 5 posts the cards that come after a card again under it when it
+  comes up mid-day.
+- A pills checklist all taken or skipped is deleted from Discord but
+  its record kept, so the day still counts as posted; a dose to take
+  again posts it afresh.
+- The diary's words: with any private task loaded, the log file logs a
+  message's length, not its words. A task nothing sticks to
+  (`Entry.sticks`): a short message after an entry is read afresh, so a
+  pill or a to-do is never taken as more diary.
+- The diary's read-back takes a day gone by (`timeinput.parse_past_date`:
+  "last Tuesday", "yesterday").
+- "remind me to write in my diary at 9pm" is kept as a diary entry,
+  because a destination named in so many words decides in code: left as
+  it is (a known miss, d12).
 - The week of everything goes through the task contract (`Entry.week`),
   as the briefing does with `summary`, and the pills task's Sunday job
   posts it when `WEEKLY_ALL` is on, so its schedule stays the one there

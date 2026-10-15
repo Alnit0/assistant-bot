@@ -171,7 +171,9 @@ def test_a_word_that_starts_a_word_of_a_name_is_a_hint_from_four_letters():
     assert routing.name_hints("pause testv", held) == [("testv", "pills")]
     assert routing.name_hints("Pause TESTVIT", held) == [("testvit", "pills")], "a whole word is a start too"
     assert routing.name_hints("skip the fort", held) == [("fort", "pills")], "the start of any word of the name"
-    assert routing.name_hints("pause tes", held) == [] and routing.name_hints("stop tea", held) == [], "under four letters is no hint"
+    assert routing.name_hints("pause tes", held) == [], "under four letters, the start of a word is no hint"
+    assert routing.name_hints("stop tea", held) == [("tea", "timers")], "but a whole word of a short name is, from three letters (15 Oct: gym)"
+    assert routing.name_hints("put the pasta on", held) == [("pasta", "timers")], "never the word \"the\""
     assert routing.name_hints("how is zinc absorbed, and pasta?", held) == [("zinc", "pills"), ("pasta", "timers")]
     assert routing.name_hints("good evening", held) == [("evening", "pills")], "only a hint: the router still decides"
     assert routing.name_hints("pause it", held) == [] and routing.name_hints("testv testv", held) == [("testv", "pills")]

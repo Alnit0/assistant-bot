@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from core import attention, cards, config, hub, livelists, repeats, scheduler
+from core import attention, cards, config, hub, hubcard, livelists, repeats, scheduler
 from core import day as days
 from core.actions import EACH_DAY, Summary
 from core.attention import TIMED, USEFUL, Item
@@ -27,6 +27,7 @@ from tasks.todos.rules import ICON, TASK, TITLE
 # ---------------------------------------------------------------------------
 JOB = "card"
 ORDER = hub.CARDS_ORDER + 40  # the hub's order: pills, reminders, personal routines, gym, to-dos
+hubcard.order(TASK, ORDER, lambda user_id: lambda: plain.hub_card(user_id))
 
 
 async def show_word(ctx: Context) -> str:
@@ -45,7 +46,8 @@ async def summary(user_id: int, day: date) -> Summary | None:
     waiting = [f"{rules.line(each, day)} · overdue" for each in found.overdue] + [f"**{each.text}**" for each in found.today]
     status = DUE if found.overdue else ANY_TIME if found.today else DONE
     left = tuple(each.text for each in (*found.overdue, *found.today))
-    return Summary(f"{len(found.done)} of {found.total} done", status, tuple(waiting), done=len(found.done), total=found.total, left=left)
+    said = f"{found.total} today" + (f" · {len(found.overdue)} overdue" if found.overdue else "")
+    return Summary(f"{len(found.done)} of {found.total} done", status, tuple(waiting), done=len(found.done), total=found.total, left=left, overview=said)
 
 
 async def items(user_id: int, now: datetime) -> list[Item]:
@@ -65,6 +67,10 @@ async def today_lines(user_id: int, now: datetime) -> list:
     """For the Today card: each to-do for today (overdue too), any time, done or not."""
     from core.today import Line
 
+    from core import design
+
+    if design.current() >= 5:
+        return []  # round 5 (question 70): to-dos are on their own card, not the Today card too
     day = days.day_of(now)
     found = rules.on(await store.every(user_id), day)
     lines = [Line(ICON, f"**{each.text}** · from {rules.day_text(each.day, day)}") for each in found.overdue]

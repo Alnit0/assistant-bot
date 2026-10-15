@@ -67,6 +67,8 @@ KINDS: dict[str, Kind] = {
     "pills.reminder": Kind("Reminder", BOTH, through=True),
     # A reminder I set myself (tasks/nudges): I chose its time, so it gets through quiet hours; never ntfy
     "nudges.reminder": Kind("Reminder", DISCORD, through=True),
+    # The diary's evening ask: Discord only, never ntfy, held back (posted without a sound) in quiet hours
+    "diary.ask": Kind("Diary", DISCORD),
     # Something wrong that needs me (core/alerts.py): a ping in the hub by day, held by quiet hours
     "system.problem": Kind("Needs a look", DISCORD),
 }

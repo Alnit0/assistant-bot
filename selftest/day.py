@@ -400,7 +400,7 @@ def may_run(now: datetime) -> str:
     return ""
 
 
-def run_day(anyway: bool = False) -> Path | None:
+def run_day(anyway: bool = False, round_: int | None = None) -> Path | None:
     from selftest import __main__ as launcher
     from selftest import stages
     from core import instance_lock
@@ -430,7 +430,7 @@ def run_day(anyway: bool = False) -> Path | None:
     channels = asyncio.run(launcher.prepare_channels())
     saved = launcher.set_aside(stamp)
     try:
-        found = launcher.run_phase(NAME, {**SETTINGS, "CALENDAR_ICS_URL": str(feed)}, channels, False, 0.0, {}, stamp)
+        found = launcher.run_phase(NAME, {**SETTINGS, "CALENDAR_ICS_URL": str(feed), **({"DESIGN_ROUND": str(round_)} if round_ else {})}, channels, False, 0.0, {}, stamp)
     finally:
         launcher.put_back(saved, stamp)
         try:
@@ -440,7 +440,7 @@ def run_day(anyway: bool = False) -> Path | None:
     bad = [each for each in found["results"] if each["status"] in ("fail", "error")]
     for each in bad:
         print(f"[{each['status']}] {each['key']} {each['title']} :: {each['saw'][:300]}")
-    out = launcher.WORK / f"day-{stamp}.json"
+    out = launcher.WORK / f"day-{stamp}{f'-r{round_}' if round_ else ''}.json"
     out.write_text(json.dumps({"stamp": stamp, "exit": found.get("exit"), "results": found["results"], "snapshots": found.get("memo", {}).get("snapshots", [])}, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"--- {len(found['results'])} steps, {len(bad)} failed, exit {found.get('exit')}. Kept: {out}")
     return out
@@ -496,9 +496,77 @@ async def post(snapshots: list[dict]) -> str:
     return await preview._as_dev_bot(work)
 
 
+ROUND_5_TITLE = "Design · Round 5"
+ROUND_5_FEEDBACK = "there's a little bit of overlap with pills and calendar"
+# Each change, with whether it was asked for or is a suggested answer to a question, for a yes or no each
+ROUND_5_CHANGES = (
+    ("R5.1", "asked", "The briefing is the morning overview: Needs a look and Weather keep their boxes; every task with a card of its own is one line in one small overview box, with no progress (its card has it)"),
+    ("R5.2", "asked", "The briefing's page title is the date with the day's dots (“☀️ Thursday 15 October ●●● 3/3”): “Today” only ever means the Today card"),
+    ("R5.3", "asked", "A task card whose items are all done leaves the hub, and comes back if something new is added (the pills checklist too, unless a dose was missed)"),
+    ("R5.4", "asked", "No footer on the briefing: the how-to is in help (`help briefing`)"),
+    ("Q68", "suggested", "A card that comes up mid-day (a routine's window) has the cards that belong under it posted again under it, so the order holds"),
+    ("Q69", "suggested", "The Today card has no count of its own: the briefing's title has the day's"),
+    ("Q70", "suggested", "The briefing keeps a line a task and no detail (R5.1), and the to-dos are on their own card, not on the Today card too"),
+    ("Q71", "already so", "A routine whose window closed undone keeps its card, amber, until it is done or the morning tidy"),
+    ("Q72", "suggested", "The overview's lines are in one fixed order every day (the order the tasks are loaded in), not by the ranking"),
+    ("Q73", "suggested", "A plain “I can't find that” in the hub goes 2 minutes after, like any answer; only a failure of the bot's own keeps its ⚠️"),
+    ("Q74", "replaced", "Replaced by R5.3: a card all done leaves the hub, the reminders card and the to-dos card alike"),
+    ("Q75", "suggested", "A missed dose holds the status line until the evening (as “all taken” does), then the line looks ahead"),
+)
+
+
+def round_5_opening() -> str:
+    lines = [
+        f"## {ROUND_5_TITLE}",
+        f"Your feedback on the live hub, word for word: “{ROUND_5_FEEDBACK}”. Round 5 is built behind DESIGN_ROUND=5 and is not on live.",
+        "**Reply with a yes or no for each** (for example “yes to all but Q73”):",
+        *(f"- **{key}** ({kind}): {words}" for key, kind, words in ROUND_5_CHANGES),
+        "-# Below: the same made-up day run by the dev bot twice, round 4 (live now) and round 5, side by side at each of the eight moments. Made-up data only.",
+    ]
+    return "\n".join(lines)
+
+
+async def post_compare(before: list[dict], after: list[dict], title: str, intro: str, names: tuple[str, str] = ("Round 4", "Round 5")) -> str:
+    """One post: the opening, then at each moment a line of what changed in each run, then each run's hub, copied."""
+    import discord
+    from discord.http import Route
+
+    from selftest import preview
+
+    async def work(client):
+        quiet = discord.AllowedMentions.none()
+        forum = await preview._design_forum(client)
+        tags = [each for each in (await preview._with_tags(forum)).available_tags if each.name == preview.tag_named(preview.PREVIEW)]
+        made = await forum.create_thread(name=title, content=intro[:2000], applied_tags=tags, allowed_mentions=quiet)
+        thread = made.thread
+        last = (None, None)
+        for one, two in zip(before, after):
+            head = [f"## {one['label']}", f"**Since the last:** {one.get('since', '')}",
+                    f"-# {names[0]}: status line {one.get('status') or '(blank)'} · {changes(last[0], one)}"[:700],
+                    f"-# {names[1]}: status line {two.get('status') or '(blank)'} · {changes(last[1], two)}"[:700]]
+            await thread.send("\n".join(head)[:2000], allowed_mentions=quiet)
+            for name, snap in zip(names, (one, two)):
+                await thread.send(f"### {name} · {one['label']}", allowed_mentions=quiet)
+                for each in snap["messages"]:
+                    if each.get("typed"):
+                        await thread.send(f"-# 🗨️ you, in the hub: {(each['raw'].get('content') or '')[:300]}", allowed_mentions=quiet)
+                    else:
+                        await client.http.request(Route("POST", "/channels/{channel_id}/messages", channel_id=thread.id), json=copy_payload(each["raw"]))
+                    await asyncio.sleep(0.6)  # paced: well under Discord's rate limit
+            last = (one, two)
+        return thread.jump_url
+
+    return await preview._as_dev_bot(work)
+
+
 def main() -> int:
     sys.stdout.reconfigure(encoding="utf-8")
     args = sys.argv[1:]
+    if "--compare" in args:
+        first, second = (Path(each) for each in args[args.index("--compare") + 1:args.index("--compare") + 3])
+        before, after = (json.loads(path.read_text(encoding="utf-8"))["snapshots"] for path in (first, second))
+        print("Posted:", asyncio.run(post_compare(before, after, ROUND_5_TITLE, round_5_opening())))
+        return 0
     if "--check" in args or "--post" in args:
         flag = "--check" if "--check" in args else "--post"
         named = args[args.index(flag) + 1] if args.index(flag) + 1 < len(args) else ""
@@ -512,7 +580,8 @@ def main() -> int:
             return 0
         print("Posted:", asyncio.run(post(snapshots)))
         return 0
-    out = run_day(anyway="--anyway" in args)
+    wanted = args[args.index("--round") + 1] if "--round" in args and args.index("--round") + 1 < len(args) else ""
+    out = run_day(anyway="--anyway" in args, round_=int(wanted) if wanted.isdigit() else None)
     if out is None:
         return 3
     print(transcript(json.loads(out.read_text(encoding="utf-8"))["snapshots"]))

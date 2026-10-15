@@ -3,24 +3,30 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Idle**, last work was 15 Oct, evening: a day in the hub, cross-task
-understanding, the cost check and "💊 Dose due" (live on `85b0c4e` since
-6:00 pm, checked); then two previews, nothing shipped:
-- **The Sunday summary for everything** (`WEEKLY_ALL`, off), posted as
-  "Design · Weekly summary". **Ready to switch on before Sunday 7 pm**:
-  with Alex's OK, ship the latest commit (`scripts\update-live.ps1`),
-  then `WEEKLY_ALL=true` in live's `.env` and one restart
-- **Gym onboarding sketches** (no code), posted as "Design · Gym
-  onboarding sketches"; `docs/drafts/gym-onboarding.md`
-Spend NZ$0.79 for the evening batch, NZ$0.00 for the previews.
+**Batch** (2026-10-15, late evening, background; nothing ships to live)
 
-**Drafts and worktrees:** `docs/drafts/gym-onboarding.md`; three old
-worktrees, all merged
+**Done**
+- 1. Round 5 behind `DESIGN_ROUND=5`, posted as "Design · Round 5"
+  (a yes or no asked item by item; round 4 and 5 days side by side)
+- 2. The known miss: "is the gym on tonight?" goes to the calendar
+  (a hint from this week's events); checked live, 3 of 3
+- 3. The advisor handover rewritten to match today
+- 4. A diary (`tasks/diary`, `DIARY_ENABLED` off), posted as "Design ·
+  Diary"; questions 80 to 85; checks 18 of 21 (three known misses)
+
+**In progress**
+- The checkpoint commit, then a dev-bot self-test (recorded)
+
+**Spend:** about NZ$0.20 of NZ$0.40
 
 **Waiting on Alex**
-- Questions 68 to 75 (the hub through a day) and 76 to 79 (gym)
-- His look at the weekly summary preview, and the OK to switch it on
+- **Round 5** and **`WEEKLY_ALL`**: both built and off. To ship either,
+  update live to the latest commit (`scripts\update-live.ps1`), then
+  `DESIGN_ROUND=5` and/or `WEEKLY_ALL=true` in live's `.env` and one
+  restart (`WEEKLY_ALL` before Sunday 7 pm to have it this week)
+- The diary: his look, and questions 80 to 85
+- Questions 76 to 79 (gym)
 - QA item 0 (direct messages, now on)
-- Confirm live's folder is well, so the work folder's old `.env` and
-  `data\` can go
+- Live's folder: his word, then the work folder's old `.env` and `data\`
+  go
 - Press Fixed on B2 and B5 (both checked, a note on each)

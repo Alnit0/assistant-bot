@@ -1,0 +1,374 @@
+{
+  "router": [
+    {
+      "golden": "d1",
+      "message": "today was good, finally finished the essay",
+      "tasks": [
+        "diary"
+      ],
+      "note": "words about the day, to keep",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "diary"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "d2",
+      "message": "rough day, work ran late and I'm wiped",
+      "tasks": [
+        "diary"
+      ],
+      "note": "how the day felt",
+      "recorded": {
+        "kind": "nothing",
+        "tasks": [],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      },
+      "known_miss": "15 Oct: given as a remark (nothing), twice. The router's own rule passes over a feeling with no request (\"I'm tired\"); with the diary on that rule and the diary's line pull apart. A change to the rule is Alex's to decide (Diary question 85); until then such a message is not kept"
+    },
+    {
+      "golden": "d3",
+      "message": "dear diary, went for a long walk with Sam",
+      "tasks": [
+        "diary"
+      ],
+      "note": "named: the diary",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "diary"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "d4",
+      "message": "add to today's diary: had a nice lunch out",
+      "tasks": [
+        "diary"
+      ],
+      "note": "appending",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "diary"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "d5",
+      "message": "what did I write last Tuesday?",
+      "tasks": [
+        "diary"
+      ],
+      "note": "reading a day back",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "diary"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "d6",
+      "message": "how was my mood this month?",
+      "tasks": [
+        "diary"
+      ],
+      "note": "moods over a month",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "diary"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "d7",
+      "message": "show this week's diary",
+      "tasks": [
+        "diary"
+      ],
+      "note": "the week read back",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "diary"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "d8",
+      "message": "delete today's diary",
+      "tasks": [
+        "diary"
+      ],
+      "note": "a red card first",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "diary"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "d9",
+      "message": "actually today was ok",
+      "tasks": [
+        "diary"
+      ],
+      "note": "straight after an entry was saved: its mood",
+      "exchanges": [
+        [
+          "",
+          "📔 Saved · 😞 Bad"
+        ]
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "diary"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "d10",
+      "message": "took pill A, and today was a good day",
+      "tasks": [
+        "pills",
+        "diary"
+      ],
+      "note": "a dose and the day: both",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills",
+          "diary"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "d11",
+      "message": "bought the milk",
+      "tasks": [
+        "todos"
+      ],
+      "note": "a to-do done, not the diary",
+      "names": {
+        "todos": [
+          "Buy milk"
+        ]
+      },
+      "recorded": {
+        "kind": "nothing",
+        "tasks": [],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      },
+      "known_miss": "15 Oct: given as a remark, not the to-do's report; the same message with a pill beside it goes right (x44). Not the diary's"
+    },
+    {
+      "golden": "d12",
+      "message": "remind me to write in my diary at 9pm",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "a reminder at a time, about the diary",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      },
+      "known_miss": "15 Oct: the router gives reminders, but \"in my diary\" names the diary, and a destination named in so many words decides it in code (routing.with_named): the bot would keep it as a diary entry. Left as it is: the named-destination rule is the router's backbone"
+    },
+    {
+      "golden": "d13",
+      "message": "what's left today?",
+      "tasks": [
+        "briefing"
+      ],
+      "note": "a question about the day: never the diary",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "briefing"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "d14",
+      "message": "thanks!",
+      "nothing": true,
+      "note": "a remark: not a diary entry",
+      "recorded": {
+        "kind": "nothing",
+        "tasks": [],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    }
+  ],
+  "extraction": [
+    {
+      "golden": "d1",
+      "task": "diary",
+      "message": "today was good, finally finished the essay",
+      "action": "diary_write",
+      "data": {
+        "mood": "good"
+      },
+      "state": "The user's diary (its words are never given here):\n- today: not written yet\n- streak: 3 days",
+      "recorded": [
+        "diary_write",
+        {
+          "mood": "good",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "d2",
+      "task": "diary",
+      "message": "awful day, everything went wrong",
+      "action": "diary_write",
+      "data": {
+        "mood": "bad"
+      },
+      "state": "The user's diary (its words are never given here):\n- today: not written yet\n- streak: 0 days",
+      "recorded": [
+        "diary_write",
+        {
+          "mood": "bad",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "d4",
+      "task": "diary",
+      "message": "add to today's diary: had a nice lunch out",
+      "action": "diary_write",
+      "note": "no mood is clear from it: the code asks with buttons",
+      "state": "The user's diary (its words are never given here):\n- today: written\n- streak: 2 days",
+      "recorded": [
+        "diary_write",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "d5",
+      "task": "diary",
+      "message": "what did I write last Tuesday?",
+      "action": "diary_show",
+      "data": {
+        "words": true
+      },
+      "state": "The user's diary (its words are never given here):\n- today: written\n- streak: 2 days",
+      "recorded": [
+        "diary_show",
+        {
+          "day": "last Tuesday",
+          "words": true,
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "d6",
+      "task": "diary",
+      "message": "how was my mood this month?",
+      "action": "diary_show",
+      "data": {
+        "span": "month",
+        "moods": true
+      },
+      "state": "The user's diary (its words are never given here):\n- today: written\n- streak: 2 days",
+      "recorded": [
+        "diary_show",
+        {
+          "span": "month",
+          "moods": true,
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "d9",
+      "task": "diary",
+      "message": "actually today was ok",
+      "action": "diary_mood",
+      "data": {
+        "mood": "ok"
+      },
+      "state": "The user's diary (its words are never given here):\n- today: written\n- streak: 2 days",
+      "recorded": [
+        "diary_mood",
+        {
+          "mood": "ok",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "d8",
+      "task": "diary",
+      "message": "delete today's diary",
+      "action": "diary_delete",
+      "state": "The user's diary (its words are never given here):\n- today: written\n- streak: 2 days",
+      "recorded": [
+        "diary_delete",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    }
+  ]
+}

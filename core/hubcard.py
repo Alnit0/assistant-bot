@@ -25,6 +25,26 @@ log = logging.getLogger("assistant")
 # that follows it goes to that task.
 # ---------------------------------------------------------------------------
 Render = Callable[[], Awaitable["Card | None"]]
+# Each task's place in the hub's order and how its card is drawn for a user (`order`): round 5
+# (question 68) posts the cards that belong under one again under it when it comes up mid-day
+_orders: dict[str, tuple[int, Callable[[int], Render]]] = {}
+
+
+def order(task: str, place: int, render_for: Callable[[int], Render]) -> None:
+    """Say where a task's card goes in the hub's order (core/hub.py, CARDS_ORDER), and how to draw it."""
+    _orders[task] = (place, render_for)
+
+
+async def _keep_order(task: str, user_id: int) -> None:
+    """Round 5: the cards placed after this task's, posted again under it, in order."""
+    from core import design
+
+    if design.current() < 5 or task not in _orders:
+        return
+    mine = _orders[task][0]
+    for later, (place, render_for) in sorted(_orders.items(), key=lambda each: each[1][0]):
+        if place > mine and await database.run(livelists.db_get, user_id, key(later)) is not None:
+            await post(later, user_id, render_for(user_id), keep_order=False)
 
 
 def key(task: str) -> str:
@@ -32,7 +52,7 @@ def key(task: str) -> str:
     return f"{task}:hub"
 
 
-async def post(task: str, user_id: int, render: Render, channel_id: int | None = None, slot: str = "") -> int | None:
+async def post(task: str, user_id: int, render: Render, channel_id: int | None = None, slot: str = "", keep_order: bool = True) -> int | None:
     """A fresh copy of the task's card at the bottom of the hub, in place of the
     one that was there. None (and the old one taken away) with nothing to show."""
     channel_id = channel_id or hub.channel_id()
@@ -52,6 +72,8 @@ async def post(task: str, user_id: int, render: Render, channel_id: int | None =
     await livelists.placed(user_id, where, channel_id, message_id, task)
     if old is not None and old.message_id != message_id:
         await cards.delete(old.channel_id, old.message_id)
+    if keep_order:
+        await _keep_order(task, user_id)
     return message_id
 
 

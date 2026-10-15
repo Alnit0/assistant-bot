@@ -142,7 +142,38 @@
       "tasks": [
         "nudges"
       ],
-      "note": "a time and a thing to do: a reminder (the calendar only reads); the card asks morning or evening",
+      "note": "a time and a thing to do: a reminder (the calendar only reads); the card asks morning or evening. With the calendar's hint too",
+      "names": {
+        "todos": [
+          "Renew the passport",
+          "Buy milk",
+          "Call the plumber"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Skincare",
+          "Cleanse",
+          "Tone",
+          "Moisturise",
+          "Brush teeth",
+          "Floss",
+          "Read for 10 minutes"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B",
+          "Pill C"
+        ],
+        "calendar": [
+          "Test standup",
+          "Test lunch",
+          "Test gym",
+          "Test dentist"
+        ]
+      },
       "recorded": {
         "kind": "task",
         "tasks": [
@@ -159,7 +190,38 @@
       "tasks": [
         "nudges"
       ],
-      "note": "a day and a time: a reminder (the calendar adds nothing)",
+      "note": "a day and a time: a reminder (the calendar adds nothing). With the calendar's hint too",
+      "names": {
+        "todos": [
+          "Renew the passport",
+          "Buy milk",
+          "Call the plumber"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Skincare",
+          "Cleanse",
+          "Tone",
+          "Moisturise",
+          "Brush teeth",
+          "Floss",
+          "Read for 10 minutes"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B",
+          "Pill C"
+        ],
+        "calendar": [
+          "Test standup",
+          "Test lunch",
+          "Test gym",
+          "Test dentist"
+        ]
+      },
       "recorded": {
         "kind": "task",
         "tasks": [
@@ -261,11 +323,43 @@
       "tasks": [
         "calendar"
       ],
-      "note": "a question about an event: the calendar",
-      "known_miss": "15 Oct: came back as chat twice after the calendar line said what is the briefing's; chat then says it is about the user's data and the router is asked again, told to find the owner (core/conversation.py), so it still reaches the calendar, at one request more",
+      "note": "a question about an event: the calendar, which hints that gym is the start of one of its events (15 Oct: it went to chat without the hint)",
+      "names": {
+        "todos": [
+          "Renew the passport",
+          "Buy milk",
+          "Call the plumber"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Skincare",
+          "Cleanse",
+          "Tone",
+          "Moisturise",
+          "Brush teeth",
+          "Floss",
+          "Read for 10 minutes"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B",
+          "Pill C"
+        ],
+        "calendar": [
+          "Test standup",
+          "Test lunch",
+          "Test gym",
+          "Test dentist"
+        ]
+      },
       "recorded": {
-        "kind": "chat",
-        "tasks": [],
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
         "confidence": "high",
         "reports_doing": false,
         "chat_part": ""
@@ -341,6 +435,12 @@
           "Pill A",
           "Pill B",
           "Pill C"
+        ],
+        "calendar": [
+          "Test standup",
+          "Test lunch",
+          "Test gym",
+          "Test dentist"
         ]
       },
       "recorded": {
@@ -723,6 +823,12 @@
           "Pill A",
           "Pill B",
           "Pill C"
+        ],
+        "calendar": [
+          "Test standup",
+          "Test lunch",
+          "Test gym",
+          "Test dentist"
         ]
       },
       "recorded": {
@@ -767,6 +873,12 @@
           "Pill A",
           "Pill B",
           "Pill C"
+        ],
+        "calendar": [
+          "Test standup",
+          "Test lunch",
+          "Test gym",
+          "Test dentist"
         ]
       },
       "recorded": {

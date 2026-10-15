@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from core import attention, clock, config, database, hub, repeats, scheduler, timeinput
+from core import attention, clock, config, database, hub, hubcard, repeats, scheduler, timeinput
 from core import day as days
 from core.actions import SEE, Summary
 from core.attention import TIMED, Item
@@ -26,6 +26,7 @@ from tasks.nudges.rules import ICON, TASK, TITLE
 # today, and is not there when nothing is.
 # ---------------------------------------------------------------------------
 ORDER = hub.CARDS_ORDER + 10  # the hub's order: pills, reminders, personal routines, gym, to-dos
+hubcard.order(TASK, ORDER, lambda user_id: lambda: plain.hub_card(user_id))
 
 
 async def show_word(ctx: Context) -> str:
@@ -49,6 +50,7 @@ async def summary(user_id: int, day: date) -> Summary | None:
     gone = len(due) - len(coming) - len(waiting)
     return Summary(
         f"{len(due)} today", DUE if waiting else QUIET, lines, hint=f"✅ {gone} earlier today" if gone > 0 else "",
+        overview=f"{len(due)} today · first {timeinput.format_moment(due[0][0])}",
         left=tuple(f"{each.text} `{timeinput.format_moment(moment)}`" for moment, each in left), left_at=tuple(moment for moment, _ in left),
     )
 

@@ -6,7 +6,7 @@ from dataclasses import dataclass, field, replace
 
 import discord
 
-from core import actions, cards, confirm, costs, database, dms, extraction, livelists, llm, messages, outgoing, routing, timing, trace
+from core import actions, cards, confirm, costs, database, design, dms, extraction, livelists, llm, messages, outgoing, routing, timing, trace
 from core.actions import LIST, ITEMS, Answer, Entry, LiveReply, Request, Shown
 from core.cards import Card
 from core.config import CHANNELS, INBOX_CHANNEL_ID
@@ -356,15 +356,16 @@ async def act(
                         await messages.record(message_id, request.channel_id, lifetime=lasts, task=entry.name)
             else:
                 await say(f"{result}\n{left_out}" if left_out else result)
-            # For a few minutes a short message that follows is this task's first
-            llm.task_answered(request.channel_id, entry.name)
+            # For a few minutes a short message that follows is this task's first (not one nothing sticks to)
+            llm.task_answered(request.channel_id, entry.name if entry.sticks else "")
     except UserError as error:
-        # The task's own words for a problem the user can fix: the one plain line
-        turn.failed = True
+        # The task's own words for a problem the user can fix: the one plain line. Round 5 (question
+        # 73): an answer, not a failure of the bot's, so in the hub it goes 2 minutes after as answers do
+        turn.failed = design.current() < 5
         turn.error = turn.error or f"{action.name}: {error}"
         await say(f"⚠️ {error}")
     except Exception as error:
-        await _failed(turn, f"Action failed: {action.name}", error, request.text, say)
+        await _failed(turn, f"Action failed: {action.name}", error, actions.PRIVATE_NOTE if entry.private else request.text, say)
 
 
 async def _failed(turn: Turn, title: str, error: BaseException, said: str, say) -> None:
@@ -887,6 +888,11 @@ async def _finish(ctx_or_request, row_id: int, turn: Turn, spent: timing.Turn, d
     """Record the outcome and the cost, remember the exchange, post the log card."""
     channel_id, text = ctx_or_request.channel_id, ctx_or_request.text
     reply = "\n".join(turn.said)
+    private = any((actions.entry(name) is not None and actions.entry(name).private) for name in turn.tasks)
+    if private:
+        # A message for a task that keeps its words (the diary): a note in their place, here and after
+        text = actions.PRIVATE_NOTE
+        await log_result(row_id, content=text)
     calls = costs.calls_from(spent.claude_calls, costs.PURPOSE_CHAT)
     await log_result(
         row_id,
@@ -897,7 +903,7 @@ async def _finish(ctx_or_request, row_id: int, turn: Turn, spent: timing.Turn, d
         model=calls[0].model if calls else None,
         timing=json.dumps(timing.as_dict(spent, duration)),
         extracted=json.dumps(turn.extracted, ensure_ascii=False) if turn.extracted else None,
-        trace=turn.as_trace(),
+        trace=None if private else turn.as_trace(),
     )
     await database.record_cost(row_id, turn.route, turn.tasks, calls)
     if text:

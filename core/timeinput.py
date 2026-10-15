@@ -196,6 +196,33 @@ def _on_or_after(today: date, month: int, day_of_month: int, year: int | None, t
     return this_year if this_year >= today else date(today.year + 1, month, day_of_month)
 
 
+def parse_past_date(text: str, today: date) -> date:
+    """The date in `text`, for a day that has been (a diary looking back): "yesterday",
+    and a weekday or a date with no year is the latest one on or before today ("last
+    tuesday" reads as tuesday). A day still to come is refused. Raises UserError."""
+    typed = text.strip()
+    value = re.sub(r"\s+", " ", typed.lower().replace(",", " ")).strip().removeprefix("on ").removeprefix("last ")
+    if value == "yesterday":
+        return today - timedelta(days=1)
+    found = parse_date(value, today)
+    if found <= today:
+        return found
+    if _named(_WEEKDAYS, value) is not None:
+        return found - timedelta(days=7)
+    if _DAY_ONLY.fullmatch(value):
+        back = (today.replace(day=1) - timedelta(days=1)).replace(day=1)
+        try:
+            return back.replace(day=found.day)
+        except ValueError:
+            raise _unreadable_date(typed) from None
+    if any(pattern.fullmatch(value) for pattern in (_DAY_MONTH, _MONTH_DAY, _SLASHED)) and not re.search(r"\d{4}", value):
+        try:
+            return found.replace(year=found.year - 1)
+        except ValueError:
+            return found - timedelta(days=365)
+    raise UserError(f"{typed} hasn't come yet.")
+
+
 def parse_date(text: str, today: date) -> date:
     """The date in `text`, given what day it is.
 

@@ -44,9 +44,13 @@ async def _doses(user_id: int, now: datetime) -> list[Item]:
     taken = sum(dose.occurrence.state == DONE for dose in listed)
     progress = f"{taken}/{len(listed)}"
     missed = sorted(moment for dose in listed if dose.occurrence.state == MISSED and (moment := dose.due.at or dose.occurrence.due_at) is not None and moment <= now)
+    from core import design
+
+    # Round 5 (question 75): said until the evening, as "all taken" is, then the line looks ahead
+    until = days.at(day, config.STATUS_DONE_UNTIL) if design.current() >= 5 else None
     if not pending:
         if missed:
-            return [Item("a dose was missed", TIMED, when=missed[-1], can_act=True, short=(f"{MISSED_WORD} {attention.short_time(missed[-1])}",))]
+            return [Item("a dose was missed", TIMED, when=missed[-1], can_act=True, short=(f"{MISSED_WORD} {attention.short_time(missed[-1])}",), until=until)]
         # The day is done: said until the evening, and then the line looks ahead
         skipped = len(listed) - taken
         said = (f"all {len(listed)} taken",) if not skipped else (progress, f"{skipped} skipped")
@@ -60,7 +64,7 @@ async def _doses(user_id: int, now: datetime) -> list[Item]:
         found.append(Item("a dose is due", TIMED, when=overdue[0], can_act=True, short=(f"{DUE_WORD} {attention.short_time(overdue[0])}",)))
     elif missed:
         # Nothing is due now: the dose that was missed is what to know, until the next one falls due
-        found.append(Item("a dose was missed", TIMED, when=missed[-1], can_act=True, short=(f"{MISSED_WORD} {attention.short_time(missed[-1])}",)))
+        found.append(Item("a dose was missed", TIMED, when=missed[-1], can_act=True, short=(f"{MISSED_WORD} {attention.short_time(missed[-1])}",), until=until))
     if coming:
         found.append(Item("the next dose", TIMED, when=coming[0], can_act=True, short=(progress, attention.short_time(coming[0]))))
     if not timed:

@@ -751,7 +751,7 @@ def asking(
 # the look built before round 3: a box an item, `# ` for a standing message,
 # the heading inside a decision's box. Kept as it was; never restyled.
 # ---------------------------------------------------------------------------
-ROUNDS = (1, 3, 4)  # the rounds that were built, oldest first (config's default stays the one that is shipped)
+ROUNDS = (1, 3, 4, 5)  # the rounds that were built, oldest first (config's default stays the one that is shipped)
 LATEST = ROUNDS[-1]
 
 

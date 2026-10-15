@@ -215,6 +215,10 @@ class Summary:
     # When each of `left` is due (UTC), None for one with no time; empty when none has a time. For
     # "what's on tonight?" and for the day's own order across tasks: the code sorts and picks, never Claude
     left_at: tuple[datetime | None, ...] = ()
+    # Round 5: the task's one line in the briefing's overview box, what the day holds for it and
+    # not how far it has got ("6 doses · first 7:00 am"): its own card in the hub has the progress.
+    # A task with none (the weather) keeps a box of its own
+    overview: str = ""
 
 
 @dataclass(frozen=True)
@@ -422,6 +426,11 @@ class Entry:
     week: Callable[[int, date, date], Awaitable[object]] | None = None
     # What the user reads for it ("Personal routines"), where its name would not do; the name capitalised without one
     label: str = ""
+    # The words of a message for this task are its own to keep (the diary): the message log, #bot-log, an error
+    # and the router's memory keep a note in their place
+    private: bool = False
+    # Whether a short message straight after this task answered goes to it first (most tasks: "it was 9pm actually")
+    sticks: bool = True
 
     @property
     def title(self) -> str:
@@ -854,6 +863,14 @@ def set_catalogue(entries: list[Entry]) -> None:
 
 def catalogue() -> list[Entry]:
     return list(_entries.values())
+
+
+def any_private() -> bool:
+    """Whether a task that keeps its words to itself is loaded: then no message's words go to the log file."""
+    return any(each.private for each in _entries.values())
+
+
+PRIVATE_NOTE = "(words kept by the task alone)"
 
 
 def entry(name: str) -> Entry | None:

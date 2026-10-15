@@ -45,6 +45,8 @@ for name, value in {
     "CARDS_V2": "",  # off, as it is unless set: the design tests switch it on
     "DESIGN_ROUND": "",
     "REMINDERS_ENABLED": "",  # off, as it is unless set: the reminder tests switch it on
+    "DIARY_ENABLED": "",
+    "DIARY_MOOD": "",
     "TODOS_ENABLED": "",  # off, as it is unless set: the to-dos tests switch it on
     "NUDGES_ENABLED": "",  # off, as it is unless set: the reminders tests switch it on
     "HABITS_ENABLED": "",  # off, as it is unless set: the personal routines tests switch it on

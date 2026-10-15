@@ -8,7 +8,7 @@ sticks), and the rest of today by part ("what's on tonight?", "what's next?"). C
 the recorded answer; everything else is the bot's own code against a temporary database.
 """
 import json
-from datetime import time
+from datetime import time, timedelta
 from pathlib import Path
 
 import pytest
@@ -182,3 +182,22 @@ def test_a_wrong_answer_or_a_replay_that_breaks_is_a_failed_step_that_says_which
     assert failed["status"] == "fail" and failed["saw"] == "x9: gym at 6 (expected ['nudges'], got ['todos'])"
     assert understanding.step(0, [])["status"] == "fail", "nothing read back is not a pass"
     assert understanding.step(0, [], "the replay could not be run: OSError")["status"] == "error"
+
+
+def test_x16_a_word_that_starts_one_of_this_week_s_events_is_a_hint_and_the_event_s_name_never_leaves(make_db, owner, dev_clock, monkeypatch, tmp_path):
+    from core import config, routing
+    from selftest import day as replay
+    from tasks import calendar
+    from tasks.calendar import store
+
+    feed = tmp_path / "day.ics"
+    feed.write_text(replay.ics(days.today() + timedelta(days=1)), encoding="utf-8")
+    make_db({"calendar": store.MIGRATIONS})
+    monkeypatch.setattr(config, "CALENDAR_ICS_URL", str(feed))
+    run(calendar.update(owner.id))
+    names = run(calendar.task.item_names(Request(owner, 100, "is the gym on tonight?")))
+    assert "Test gym" in names
+    hints = routing.name_hints("is the gym on tonight?", {"calendar": names})
+    assert hints == [("gym", "calendar")]
+    assert "Test gym" not in routing.hint_line(hints), "the router is told the word typed, never the event"
+    assert routing.name_hints("is the gym on tonight?", {"todos": ["Renew the passport"]}) == [], "a short word is a hint only against a short name"

@@ -282,6 +282,45 @@ def _box(section: Section) -> design.Box:
     return design.topic(heading, lines=lines, status=said.status or design.QUIET)
 
 
+OVERVIEW = "🗓️ The day"
+
+
+def _overview_box(sections: list[Section]) -> design.Box | None:
+    """Round 5: one small box, a line a task that has a card of its own in the hub, what the
+    day holds for it and not how far it has got. In the catalogue's order, the same every day."""
+    from core import actions
+
+    # Question 72: the same order every day, the order the tasks are loaded in, never the ranking's
+    loaded = [entry.name for entry in actions.catalogue()]
+    sections = sorted(sections, key=lambda each: loaded.index(each.task) if each.task in loaded else len(loaded))
+    lines = [f"{each.icon} **{each.title}** · {each.summary.overview}" for each in sections if each.summary is not None and each.summary.overview]
+    if not lines:
+        return None
+    return design.topic(design.card_title(OVERVIEW), lines=lines, status=design.QUIET)
+
+
+def _layout_r5(sections: list[Section], day: date, problems: tuple[str, ...] = (), held_back: tuple[str, ...] = (), hours: str = "", notes: tuple[str, ...] = (), spend: str = "", so_far: tuple[str, ...] = (), news: tuple[str, ...] = ()) -> tuple:
+    """Round 5 (Alex, 15 Oct: "a little bit of overlap with pills and calendar"): the briefing is the
+    morning overview. Its page title is the date with the day's dots, so "Today" is only ever the
+    Today card; what needs a look and the weather stay boxes; every task with a card of its own is
+    one line in one small overview box, with no progress (its card has it); no footer (the how-to
+    is in help)."""
+    boxes = []
+    if problems:
+        boxes.append(design.topic(design.card_title(NEEDS.replace("**", "")), [design.Entry(each, design.MISSED) for each in problems], status=design.MISSED))
+    if news:
+        boxes.append(design.topic(design.card_title(NEWS.replace("**", "")), [design.Entry(each, design.QUIET) for each in news], status=design.QUIET))
+    if held_back:
+        boxes.append(design.topic(design.card_title(HELD.replace("**", "")), lines=[*held_back, *([design.small(held_note(hours))] if hours else [])], status=design.QUIET))
+    boxes += [_box(section) for section in sections if section.summary is None or not section.summary.overview]
+    overview = _overview_box(sections)
+    if overview is not None:
+        boxes.append(overview)
+    title = f"{ICON} {date_line(day)}" + (f" {so_far[0]}" if so_far else "")
+    foot = [*([spend] if spend else []), *worth_knowing(notes)]
+    return design.page([design.page_title(title)], boxes, foot)
+
+
 def layout(sections: list[Section], day: date, problems: tuple[str, ...] = (), held_back: tuple[str, ...] = (), hours: str = "", notes: tuple[str, ...] = (), spend: str = "", so_far: tuple[str, ...] = (), news: tuple[str, ...] = ()) -> tuple:
     """The briefing as a page (docs/DESIGN.md, round 3): the page title with the
     day's progress, then a box a topic: what needs a look (only when something
@@ -293,6 +332,8 @@ def layout(sections: list[Section], day: date, problems: tuple[str, ...] = (), h
     In round 1 of the design (DESIGN_ROUND=1) it is `_layout_r1`."""
     if design.current() < 3:
         return _layout_r1(sections, day, problems, held_back, hours, notes, spend, so_far, news)
+    if design.current() >= 5:
+        return _layout_r5(sections, day, problems, held_back, hours, notes, spend, so_far, news)
     boxes = []
     if problems:
         boxes.append(design.topic(design.card_title(NEEDS.replace("**", "")), [design.Entry(each, design.MISSED) for each in problems], status=design.MISSED))

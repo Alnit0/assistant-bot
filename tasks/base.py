@@ -279,6 +279,7 @@ class Task:
                 tally=self.tally if type(self).tally is not Task.tally else None, label=self.title,
                 today=self.today if type(self).today is not Task.today else None,
                 week=self.week if type(self).week is not Task.week else None,
+                private=self.private, sticks=self.sticks,
             )
         ]
 
@@ -314,6 +315,9 @@ class Task:
         Claude nothing; the card is brought up to date when its summary changes
         (`summaries.changed`). Only used if overridden."""
         return []
+
+    private = False  # its words are its own to keep (the diary): see actions.Entry
+    sticks = True  # a short message straight after it answered goes to it first
 
     async def week(self, user_id: int, monday: date, upto: date):
         """This task's week, Monday up to `upto` (a `weekly.Week`: a line, its dots,

@@ -1,6 +1,6 @@
 from datetime import date, datetime, timedelta
 
-from core import cards, config, hub, repeats, scheduler
+from core import cards, config, hub, hubcard, repeats, scheduler, timeinput
 from core import day as days
 from core.actions import SEE, Summary
 from core.attention import TIMED, USEFUL, Item
@@ -30,6 +30,7 @@ from tasks.habits.rules import ICON, TASK, TITLE
 # ---------------------------------------------------------------------------
 JOB = "card"
 ORDER = hub.CARDS_ORDER + 20  # the hub's order: pills, reminders, personal routines, gym, to-dos
+hubcard.order(TASK, ORDER, lambda user_id: lambda: plain.hub_card(user_id))
 
 
 async def show_word(ctx: Context) -> str:
@@ -47,7 +48,9 @@ async def summary(user_id: int, day: date) -> Summary | None:
     done, total = sum(each.done for each in found), sum(each.total for each in found)
     waiting = [each for each in found if each.next_item is not None]
     left = tuple(f"{each.habit.name}: {each.next_item.text}" for each in waiting)
-    return Summary(f"{done} of {total} items", DONE if done == total else ANY_TIME, lines, done=done, total=total, left=left, left_at=tuple(each.starts() for each in waiting))
+    starts = [f"{each.habit.name} {timeinput.format_moment(each.starts())}" if each.starts() else f"{each.habit.name} any time" for each in found]
+    said = f"{len(found)} routine{'' if len(found) == 1 else 's'} · {', '.join(starts)}"
+    return Summary(f"{done} of {total} items", DONE if done == total else ANY_TIME, lines, done=done, total=total, left=left, left_at=tuple(each.starts() for each in waiting), overview=said)
 
 
 def attention_of(today: rules.Today, now: datetime) -> Item | None:

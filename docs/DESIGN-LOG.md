@@ -208,3 +208,28 @@ and calendar boxes stuck on the morning, "Next" for a dose long due); the
 choices are questions 68 to 75 in `docs/QUESTIONS.md`. Run it again for
 each round: it is the same day every time, set up in words with recorded
 answers.
+
+## Round 5 (built 2026-10-15, late; Preview, waiting on Alex)
+
+**His feedback on the live hub (round 4), word for word:** "there's a
+little bit of overlap with pills and calendar"
+
+**The changes it led to, and his suggested answers applied** (each
+marked in the post "Design · Round 5" for a yes or no):
+
+1. R5.1 The briefing is the morning overview: Needs a look and Weather
+   keep their boxes; every task with its own card is one line in one
+   overview box ("🗓️ The day"), with no progress.
+2. R5.2 Its page title is the date with the day's dots: "Today" is only
+   the Today card.
+3. R5.3 A task card whose items are all done leaves the hub; something
+   new brings it back (the pills checklist too, unless a dose was missed).
+4. R5.4 No footer: the how-to is in `help briefing`.
+5. Questions 68 (order kept when a card comes up mid-day), 69 (no count
+   on the Today card), 70 (to-dos off the Today card), 72 (the overview
+   in one fixed order), 73 (a "can't find that" goes like any answer),
+   75 (a missed dose on the status line until the evening). 71 was
+   already so; 74 is replaced by R5.3.
+
+Behind `DESIGN_ROUND=5`. The day in the hub was run in round 4 and in
+round 5 and posted side by side in the same post.

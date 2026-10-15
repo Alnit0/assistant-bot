@@ -236,4 +236,9 @@ def test_extraction_is_told_no_event_name_and_nothing_is_named_to_the_router(wor
     run(calendar.update(world.owner.id))
     said = run(plain.state(world.request()))
     assert all(each.title not in " ".join(said.lines) + said.heading for each in kept(world))
-    assert run(calendar_task.item_names(world.request())) == []
+    # This week's names go to the code's own matching only: a hint to the router says the word typed (15 Oct)
+    from core import routing
+
+    names = run(calendar_task.item_names(world.request()))
+    hints = routing.name_hints("is the team on tonight", {"calendar": names})
+    assert all(each not in routing.hint_line(hints) for each in names if each.lower() != "team") if hints else True

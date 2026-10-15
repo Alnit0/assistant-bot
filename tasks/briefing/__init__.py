@@ -310,7 +310,8 @@ class BriefingTask(Task):
             Keyword(
                 ["briefing", "brief me"],
                 "what today holds, a section from each task that has something to say: brought up to date in place in the hub, "
-                "a copy of its own anywhere else",
+                "a copy of its own anywhere else. It is always up to date; tick things off on their own card, and say "
+                "“my schedule” to change when it is posted",
                 show_word,
                 examples=["brief me"],
                 channels=ANY,

@@ -737,6 +737,9 @@ The real tasks on the router's way: timers, bugs and pills setup. On the dev dat
 | T44 | 👤 Manual | A day in the hub on the phone | The post “Design · A day in the hub” in the Design forum: read each moment on the phone and answer questions 68 to 75 | ⬜ Untested | |  |
 | T45 | 🤖 Auto | The week of everything | Each task's line for the week (pills taken, late, missed, the streak; to-dos done, open, the oldest; routines as dots; the calendar counted by day with times only), one card a box a task, a task with nothing left out, the title naming nothing | ✅ Pass | 2026-10-15 | `tests/test_weekly.py` |
 | T46 | 👤 Manual | The week of everything on the phone | The post “Design · Weekly summary” in the Design forum, then a Sunday with `WEEKLY_ALL=true` | ⬜ Untested | |  |
+| T47 | 🤖 Auto | Round 5 | The briefing as the morning overview (the date and dots as its title, Weather and Needs a look boxes, one overview box in a fixed order, no footer), the how-to in help, cards all done leave the hub, the order kept mid-day, the Today card with no count and no to-dos | ✅ Pass | 2026-10-15 | `tests/test_round5.py` |
+| T48 | 🤖 Auto | The diary | Appending, the 4:00 am day, the mood from words and by button with undo, the scale an entry keeps, the mood off, the evening ask once, the streak across midnight and missed days, reading back, deleting by card, the Today card and briefing lines, privacy | ✅ Pass | 2026-10-15 | `tests/test_diary.py` |
+| T49 | 👤 Manual | Round 5 and the diary on the phone | The posts “Design · Round 5” and “Design · Diary” | ⬜ Untested | |  |
 
 ## U. Channel reset
 
