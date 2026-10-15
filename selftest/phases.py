@@ -125,12 +125,12 @@ async def p1(h: Harness) -> None:
             h.check(nick.endswith(" · testing"), "the nickname does not end “· testing”")
         h.saw(line)
 
-    async with h.step("1.01b", "The schedules the engine made at start", "Five rows, each once: Nightly backup, End of the day and Exchange rate (the bot's own, locked), Pills checklist at 6:00 am every day in the hub, silent, and the Needs-a-look check at 7:00 am; each with exactly one run booked, with a key", "scheduler stage 1"):
+    async with h.step("1.01b", "The schedules the engine made at start", "Six rows, each once: Nightly backup, End of the day, Exchange rate and the bugs' 9:00 am round (the bot's own, locked), Pills checklist at 6:00 am every day in the hub, silent, and the Needs-a-look check at 7:00 am; each with exactly one run booked, with a key", "scheduler stage 1"):
         made = {each.name: each for each in await h.schedules()}
-        h.check(sorted(made) == ["End of the day", "Exchange rate", "Needs-a-look check", "Nightly backup", "Pills checklist"], f"the schedules are {sorted(made)}")
+        h.check(sorted(made) == ["Bugs with a fix shipped", "End of the day", "Exchange rate", "Needs-a-look check", "Nightly backup", "Pills checklist"], f"the schedules are {sorted(made)}")
         sheet = made["Pills checklist"]
         h.check((f"{sheet.at:%H:%M}", sheet.days, sheet.notify, sheet.channel, sheet.locked, sheet.steps) == ("06:00", (0, 1, 2, 3, 4, 5, 6), "silent", "hub", False, ("pills.checklist",)), f"Pills checklist is {sheet}")
-        h.check(made["Nightly backup"].locked and made["End of the day"].locked and made["Nightly backup"].user_id is None, "the bot's own are not locked, or have an owner")
+        h.check(made["Nightly backup"].locked and made["End of the day"].locked and made["Bugs with a fix shipped"].locked and made["Nightly backup"].user_id is None, "the bot's own are not locked, or have an owner")
         for task, kind in (("core", "nightly_backup"), ("core", "day_rollover"), ("pills", "checklist")):
             waiting = [each for each in await h.runs(task, kind) if each[0] == "pending"]
             h.check(len(waiting) == 1 and waiting[0][2] and waiting[0][2].startswith("s") and "@" in waiting[0][2], f"{task}/{kind} has {waiting} booked")
