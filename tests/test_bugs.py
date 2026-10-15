@@ -1023,7 +1023,7 @@ def test_the_bugs_task_meets_the_contract_and_neither_action_needs_a_card():
     registry.load()
     entry = actions.entry("bugs")
     assert entry is not None and entry.icon == rules.BUG_EMOJI and "Only when the user says bug or report" in entry.only_for
-    assert [(action.name, action.needs_card) for action in entry.actions] == [("bug_report", False), ("bug_list", False), ("bug_close", False)]
+    assert [(action.name, action.needs_card) for action in entry.actions] == [("bug_report", False), ("bug_list", False), ("bug_close", False), ("bug_reopen", False)]
     assert actions.problems([entry]) == [] and registry.problems() == []
 
 
@@ -1379,3 +1379,161 @@ def test_needs_a_look_says_a_bug_in_a_few_plain_words_never_its_report(monkeypat
     (item,) = asyncio.run(bugs.needs_me(1, None))
     assert briefing_rules.problem(item) == "⚠️ B5 · fix ready to check"
     assert "Pill A" not in item.what and "💊" not in item.what and attention.status_line(item) == "⚠️ B5 · retest"
+
+
+# --- a fix shipped: closing by itself in three days ---------------------------------------------------------------------
+from datetime import date as _date  # noqa: E402
+
+FRIDAY = _date(2026, 10, 16)
+
+
+def mine(message_id, content):
+    return snap(message_id, content, "Alex")
+
+
+def alex_report(*said):
+    """A report of mine: my messages before the bot's reply, as a reaction on that reply."""
+    return report(target=snap(5100, "✅ **Pill A** · taken 9:00 am"), preceding=[mine(5000 + at, each) for at, each in enumerate(said)])
+
+
+def shipped_bug(owner, *said, on=FRIDAY):
+    number = asyncio.run(store.add(owner.id, alex_report(*said)))
+    asyncio.run(database.run(store._db_mark_shipped, number, rules.closes_on(on).isoformat(), "tests/test_golden.py::test_x"))
+    return number
+
+
+def test_my_own_words_are_the_messages_no_bot_wrote_or_in_an_old_report_not_the_bots_author():
+    old = alex_report("I took it at 9am", "I took dose 1 of Pill a at 9am")
+    assert rules.owner_words(old) == ["i took it at 9am", "i took dose 1 of pill a at 9am"]
+    flagged = report(target=rules.Snapshot(1, "Hive", "a reply", AT.isoformat(), "", True), preceding=[rules.Snapshot(2, "Hive", "a line", AT.isoformat(), "", True), rules.Snapshot(3, "Al", "Hello  There", AT.isoformat(), "", False)])
+    assert rules.owner_words(flagged) == ["hello there"]
+    said = report(source=rules.WORD, target=mine(9, "set a timer"), preceding=[snap(8, "a line of the bot's")])
+    assert rules.owner_words(said) == ["set a timer"], "the word reports my own message"
+    assert rules.uncovered(rules.owner_words(old), 'bot.say("I took dose 1 of Pill A at 9am")') == ["i took it at 9am"]
+
+
+def test_a_shipped_bug_closes_three_days_on_and_a_change_of_status_ends_the_mark(bugs_db, owner):
+    number = shipped_bug(owner, "I took it at 9am")
+    item = asyncio.run(store.get(number))
+    assert item.shipped and item.closes_on == "2026-10-19" and not item.shipped_said
+    assert [each.id for each in asyncio.run(store.shipped(owner.id))] == [number]
+    asyncio.run(store.set_status(number, rules.FIXED, owner.id))
+    after = asyncio.run(store.get(number))
+    assert not after.shipped and after.closes_on is None and asyncio.run(store.shipped()) == []
+
+
+def test_needs_a_look_shows_it_as_one_quiet_line_only_beside_something_else(bugs_db, owner):
+    from core import attention
+    from tasks.briefing import rules as briefing_rules
+
+    shipped_bug(owner, "I took it at 9am")
+    (item,) = asyncio.run(bugs.needs_me(owner.id, None))
+    assert briefing_rules.problem(item) == "⚠️ B1 · fix shipped, closing Mon" and item.quiet and not item.ping
+    now = datetime(2026, 10, 16, 1, 0, tzinfo=timezone.utc)
+    assert attention.ranked([item], now) == [], "alone it is left out: Needs a look stays empty"
+    backup = attention.Item("backup failed", attention.PROBLEM, bug="B9", short=("backup failed",))
+    assert [each.bug for _, each in attention.ranked([item, backup], now)] == ["B9", "B1"], "beside another, after it"
+    assert attention.top([item, backup], now).bug == "B9"
+
+
+def test_the_morning_round_tells_the_post_once_then_closes_it_on_its_day(bugs_db, owner, monkeypatch):
+    from tasks.bugs import plain
+
+    said = []
+
+    async def bring_up_to_date(item, text, channel=None):
+        said.append((item.id, item.status, text))
+
+    monkeypatch.setattr(posts, "bring_up_to_date", bring_up_to_date)
+    number = shipped_bug(owner, "I took it at 9am")
+    assert asyncio.run(plain.shipped_round(FRIDAY)) == (1, 0)
+    assert said == [(number, rules.OPEN, "🚀 Fix shipped. B1 closes by itself on Mon 19 Oct unless you say reopen B1 or report it again")]
+    assert asyncio.run(plain.shipped_round(_date(2026, 10, 18))) == (0, 0), "told once; not closed before its day"
+    assert asyncio.run(plain.shipped_round(_date(2026, 10, 19))) == (0, 1)
+    assert asyncio.run(store.get(number)).status == rules.FIXED and said[-1][1:] == (rules.FIXED, rules.closed_by_itself_text(number))
+    assert asyncio.run(plain.shipped_round(_date(2026, 10, 20))) == (0, 0), "safe to run twice"
+
+
+def test_reopen_in_words_keeps_a_shipped_bug_open_and_opens_a_closed_one(closing, owner):
+    from core.actions import Request
+
+    asyncio.run(database.run(store._db_mark_shipped, 1, "2026-10-19", "t"))
+    closing.close(["B2"])
+    reopen = lambda *said: asyncio.run(closing.plain.reopen_said(Request(owner, INBOX, "reopen", message_id=4300), {"bugs": list(said)}, frozenset()))
+    assert reopen("B1", "B2") == "🔄 Re-opened · B1, B2"
+    assert closing.status(1) == closing.status(2) == rules.OPEN and not asyncio.run(store.get(1)).shipped
+    with pytest.raises(UserError, match="B3 is open already"):
+        reopen("B3")
+    assert "does not close by itself" in asyncio.run(store.notes(1))[-1].content
+
+
+def test_only_the_owner_reopens(closing, owner):
+    from dataclasses import replace
+
+    from core.actions import Request
+
+    with pytest.raises(UserError, match="isn't for you"):
+        asyncio.run(closing.plain.reopen_said(Request(replace(owner, role="member"), INBOX, "reopen", message_id=1), {"bugs": ["B1"]}, frozenset()))
+
+
+def test_the_same_words_reported_again_keep_the_bug_open_with_a_note_and_file_nothing_new(bugs_db, owner, monkeypatch):
+    from tasks.bugs import filing as filed
+
+    said = []
+
+    async def bring_up_to_date(item, text, channel=None):
+        said.append(text)
+
+    monkeypatch.setattr(posts, "bring_up_to_date", bring_up_to_date)
+    number = shipped_bug(owner, "I took dose 1 of Pill a at 9am")
+    asyncio.run(store.set_post(number, 7000, URL))
+    again = alex_report("i took dose 1 of pill A at 9am ")
+    assert asyncio.run(filed.reported_again(owner, again)) == f"🐞 That looks like [B1]({URL}) again: it stays open, with this as a note"
+    assert not asyncio.run(store.get(number)).shipped and said == [rules.kept_open_text(number, "you reported it again")]
+    assert asyncio.run(store.notes(number))[-1].content.startswith("Reported again: ")
+    assert asyncio.run(filed.reported_again(owner, alex_report("something else"))) is None
+
+
+# --- the command line: shipped --------------------------------------------------------------------------------------
+@pytest.fixture
+def live_folder(bugs_db, owner, tmp_path, monkeypatch):
+    from core import config
+
+    (tmp_path / cli.LIVE_MARK).write_text("7daa77c", encoding="utf-8")
+    monkeypatch.setattr(config, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(config, "DEV_DATABASE", False)
+    world = SimpleNamespace(ran=[], passes=True)
+
+    def passes(nodes):
+        world.ran.append(nodes)
+        return world.passes
+
+    monkeypatch.setattr(cli, "_passes", passes)
+    monkeypatch.setattr(cli, "_commit", lambda: "68b954e")
+    monkeypatch.setattr(cli.days, "today", lambda now=None: FRIDAY)
+    asyncio.run(store.add(owner.id, alex_report("I took dose 1 of Pill A at 9am")))
+    return world
+
+
+GOLDEN_TEST = "tests/test_golden.py::test_dose_1_at_9am_as_claude_really_read_it_is_about_dose_1_with_nothing_left_out"
+
+
+def test_shipped_marks_a_bug_whose_golden_test_replays_my_words_and_passes(live_folder):
+    assert cli.run(["shipped", "B1", GOLDEN_TEST]) == "B1: fix shipped, closes by itself on Mon 19 Oct (its post is told at the bot's next 9:00 am round)."
+    item = asyncio.run(store.get(1))
+    assert item.shipped and item.closes_on == "2026-10-19" and live_folder.ran == [[GOLDEN_TEST]]
+    assert "live runs 68b954e" in asyncio.run(store.notes(1))[-1].content
+
+
+def test_shipped_refuses_outside_live_s_folder_a_test_that_does_not_replay_my_words_or_fails(live_folder, tmp_path):
+    with pytest.raises(UserError, match="not replayed word for word"):
+        cli.run(["shipped", "B1", "tests/test_golden.py::test_3_a_timer_starts_with_no_card"])
+    with pytest.raises(UserError, match="isn't a golden test"):
+        cli.run(["shipped", "B1", "tests/test_bugs.py::test_x"])
+    live_folder.passes = False
+    with pytest.raises(UserError, match="don't pass"):
+        cli.run(["shipped", "B1", GOLDEN_TEST])
+    (tmp_path / cli.LIVE_MARK).unlink()
+    with pytest.raises(UserError, match="live's folder"):
+        cli.run(["shipped", "B1", GOLDEN_TEST])
+    assert not asyncio.run(store.get(1)).shipped

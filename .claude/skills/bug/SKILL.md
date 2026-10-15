@@ -59,7 +59,17 @@ safe to run while the bot or the service is running.
 
 **Never mark a bug fixed.** There is no command for it on purpose: the
 user retests in Discord and presses **Fixed** or **Won't fix** on the
-bug's post.
+bug's post, or says close B4.
+
+**Once the fix is live** (shipped with `scripts\update-live.ps1`), for a
+bug the user reported, with a golden test in `tests/test_golden.py`
+that replays their own messages from the report word for word: run, in
+live's folder, `.\.venv\Scripts\python.exe -m tasks.bugs.cli shipped B4
+tests/test_golden.py::<test> [more]`. It checks the words and runs the
+tests on live's code, then marks the bug: it closes by itself three
+days later unless the user says reopen B4 or reports the same words
+again. A bug with none of their words in its report (only the bot's)
+can't be marked: leave it to Fixed.
 
 ## 5. Finish
 

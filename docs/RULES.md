@@ -434,6 +434,15 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   a DM): closed as fixed at once, one line with an Undo, only by me.
   Needs a look says a bug in a few words of its own ("B5 · fix ready to
   check", "D1 · nightly check failed, 2 steps"), never the report's text.
+- **A bug I reported closes by itself** three days after its fix is
+  marked shipped: `python -m tasks.bugs.cli shipped B5 <golden tests>`,
+  run in live's folder, marks it only when the golden tests named replay
+  my own messages from the report word for word and pass on live's code.
+  Meanwhile its post is told (the 9:00 am round), and Needs a look has
+  one quiet line ("B5 · fix shipped, closing Mon") only beside something
+  else; it is never a ping or the status line. "reopen B5", "B5 is
+  back", or a new report holding one of my messages word for word keeps
+  it open with a note (no new bug). Close by words still works any time
   The one exception is the self-test's own bugs (`selftest/bugs.py`),
   and only a bug the self-test opened itself: the first step to fail in
   a stage is a dev bug (D number) with what was expected and seen and

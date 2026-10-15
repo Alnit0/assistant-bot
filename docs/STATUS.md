@@ -257,6 +257,36 @@ time). Spend US$0.041.
   (to the end of the diary day, 4 am); a 6 pm schedule of the bot's own
   draws the card again then.
 
+## Bugs close by themselves (16 Oct, late morning)
+
+- A bug I reported, once its fix is live and a golden test replaying my
+  exact messages passes on live's code, is marked fix shipped and closes
+  by itself three days later, unless I say reopen B5 or report the same
+  words again (then it stays open with a note). Meanwhile Needs a look
+  has one quiet line, "B5 · fix shipped, closing Mon", only when
+  something else is there too. Close by words still works any time.
+- B5 is covered: two golden tests replay its two messages and pass. It
+  is marked once this code is live (the mark runs on live's code, at
+  the next restart). B2 can't be: its report holds none of Alex's words
+  (only the bot's reply), so it waits for close B2 or Fixed.
+
+## Decided (2026-10-16, late morning)
+
+- Fix shipped is marked by Claude Code with `tasks.bugs.cli shipped`, run
+  in live's folder only (its data folder has `live-versions.txt`): there
+  the tests run on the code live runs, so passing there is the fix being
+  live. Only golden tests (`tests/test_golden.py`) count, and each of
+  his messages in the report must be in the named tests' own code word
+  for word (case and spacing aside).
+- His own messages are those no bot wrote (each captured message now
+  records that); in a report from before, those not by the reported
+  message's author (a reaction or reply is on the bot's).
+- The same problem again is a new report holding one of his messages of
+  the shipped bug word for word: no word lists, no guessing.
+- The post is told, and the closing done, by a round of the bot's own at
+  9:00 am, so it is safe to run twice and survives a restart. The
+  closing day is the shipped day plus three.
+
 ## Decided (2026-10-16, morning)
 
 - Closing by words closes as Fixed, never Won't fix: that stays the

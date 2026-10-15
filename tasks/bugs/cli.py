@@ -4,21 +4,85 @@ the database directly: the bot isn't started and may be running.
     python -m tasks.bugs.cli list
     python -m tasks.bugs.cli show B4
     python -m tasks.bugs.cli note B4 "fix ready, needs retest: what changed"
+    python -m tasks.bugs.cli shipped B4 tests/test_golden.py::test_name [more tests]
+
+`shipped` is run in live's folder once a fix is live: for a bug I reported, it
+checks that the golden tests named replay my own messages from the report word
+for word and pass on the code live runs, then marks the bug: it closes by
+itself in three days unless I say reopen or report it again.
 
 A bug of the dev database has a D in front (D4) and needs `--dev`, which picks
 that database:
 
     python -m tasks.bugs.cli show D4 --dev
 
-A bug is closed by pressing Fixed or Won't fix on its post, never from here.
+A bug is never closed from here: Fixed or Won't fix on its post, close B4 in
+words, or by itself three days after `shipped`.
 """
+import ast
+import subprocess
 import sys
 
-from core import database
+from core import config, database
+from core import day as days
 from core.errors import UserError
 from tasks.bugs import rules, store
 
-USAGE = 'Usage: python -m tasks.bugs.cli list | show <id> | note <id> "<text>"'
+USAGE = 'Usage: python -m tasks.bugs.cli list | show <id> | note <id> "<text>" | shipped <id> <golden test>...'
+GOLDEN = "tests/test_golden.py"
+LIVE_MARK = "live-versions.txt"  # in live's data folder only: the update script writes it
+
+
+def _test_code(node: str) -> str:
+    """A golden test's own code, its decorators with it (the messages it replays may be parameters)."""
+    path, _, name = node.partition("::")
+    if path.replace("\\", "/") != GOLDEN or not name:
+        raise UserError(f"{node} isn't a golden test: name one in {GOLDEN}, as {GOLDEN}::test_name")
+    source = (config.BASE_DIR / GOLDEN).read_text(encoding="utf-8")
+    bare = name.split("[")[0]
+    for each in ast.walk(ast.parse(source)):
+        if isinstance(each, ast.FunctionDef) and each.name == bare:
+            start = min([each.lineno, *(decorator.lineno for decorator in each.decorator_list)])
+            return "\n".join(source.splitlines()[start - 1:each.end_lineno])
+    raise UserError(f"There is no {bare} in {GOLDEN}.")
+
+
+def _passes(nodes: list[str]) -> bool:
+    """The tests run on the code of this folder (live's): True only if every one passes."""
+    done = subprocess.run([sys.executable, "-m", "pytest", "-q", *nodes], cwd=config.BASE_DIR, capture_output=True, text=True)
+    return done.returncode == 0
+
+
+def _commit() -> str:
+    done = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=config.BASE_DIR, capture_output=True, text=True)
+    return done.stdout.strip() or "this folder's commit"
+
+
+def shipped(conn, args: list[str]) -> str:
+    if not (config.DATA_DIR / LIVE_MARK).exists() or config.DEV_DATABASE:
+        raise UserError("Run this in live's folder, on live's database: the fix must be what live runs.")
+    item = store._db_get(conn, rules.parse_id(args[0]))
+    nodes = args[1:]
+    if item is None:
+        raise UserError(f"There is no bug {args[0]}.")
+    name = rules.bug_id(item.id)
+    if item.status != rules.OPEN:
+        raise UserError(f"{name} is closed already.")
+    if item.report.source not in rules.MINE:
+        raise UserError(f"{name} wasn't reported by you: only a bug you reported closes by itself.")
+    if not nodes:
+        raise UserError(f"Name the golden test that replays the messages of {name}.")
+    code = "\n".join(_test_code(node) for node in nodes)
+    missing = rules.uncovered(rules.owner_words(item.report), code)
+    if missing:
+        raise UserError(f"{len(missing)} of your messages in {name} {'is' if len(missing) == 1 else 'are'} not replayed word for word by the tests named.")
+    if not _passes(nodes):
+        raise UserError(f"The tests named don't pass on this folder's code: {name} is not marked.")
+    on = rules.closes_on(days.today())
+    store._db_mark_shipped(conn, item.id, on.isoformat(), " ".join(nodes))
+    store._db_add_note(conn, item.id, item.user_id, rules.CLAUDE_CODE, rules.shipped_note(_commit(), nodes, on, item.id))
+    conn.commit()
+    return f"{name}: fix shipped, closes by itself on {on:%a} {on.day} {on:%b} (its post is told at the bot's next 9:00 am round)."
 
 
 def run(args: list[str]) -> str:
@@ -27,6 +91,8 @@ def run(args: list[str]) -> str:
     try:
         if args == ["list"]:
             return rules.list_text(store._db_open(conn))
+        if len(args) >= 2 and args[0] == "shipped":
+            return shipped(conn, args[1:])
         if len(args) >= 2 and args[0] in ("show", "note"):
             item = store._db_get(conn, rules.parse_id(args[1]))
             if item is None:

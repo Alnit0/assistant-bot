@@ -66,6 +66,9 @@ class Item:
     # at a time of its own (a dose, a reminder), whatever the clock says of the two (found 15 Oct, a day in
     # the hub: "📝 2 overdue" stood on the status line all day, over every dose and reminder that came due)
     carried: bool = False
+    # Said only beside something else that needs me (a bug whose fix is shipped and closes by itself): after
+    # every other problem, never on the status line on its own, never a ping, and left out when it is alone
+    quiet: bool = False
 
 
 def level(item: Item, now: datetime) -> int | None:
@@ -87,15 +90,17 @@ def ranked(items: list[Item], now: datetime) -> list[tuple[int, Item]]:
     """The items in the order they deserve attention: (level, item). The one
     ranking, used by every surface."""
     found = [(level(item, now), index, item) for index, item in enumerate(items)]
+    if not any(rank == LEVEL_PROBLEM and not item.quiet for rank, _, item in found):
+        found = [entry for entry in found if not entry[2].quiet]
 
     def order(entry):
         rank, index, item = entry
         if rank == LEVEL_PROBLEM:
             # The most recent problem first; one with no time after those, in the order given
-            return (rank, 0 if item.when is not None else 1, -(item.when.timestamp()) if item.when is not None else 0, index)
+            return (rank, 1 if item.quiet else 0, 0 if item.when is not None else 1, -(item.when.timestamp()) if item.when is not None else 0, index)
         if rank in (LEVEL_DUE, LEVEL_NEXT):
-            return (rank, 1 if item.carried else 0, item.when.timestamp(), index)
-        return (rank, 0, 0, index)
+            return (rank, 0, 1 if item.carried else 0, item.when.timestamp(), index)
+        return (rank, 0, 0, 0, index)
 
     return [(rank, item) for rank, _, item in sorted((entry for entry in found if entry[0] is not None), key=order)]
 

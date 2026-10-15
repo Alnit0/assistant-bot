@@ -1,7 +1,7 @@
 import json
 import re
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from core import design, repeats
 from core.config import CHANNELS, DEV_DATABASE, TIMEZONE
@@ -28,6 +28,9 @@ STATUS_MARKS = {OPEN: "🟢", FIXED: "✅", WONTFIX: "🚫"}
 # What happened to a bug after it was reported, as its history words it
 REOPENED = "reopened"
 READY_TO_CHECK = "fix ready to check"  # a bug in Needs a look: "B5 · fix ready to check"
+# A fix shipped for a bug I reported, with a golden test replaying my own messages passing on live's
+# code: the bug closes by itself this many days later, unless I say reopen or report it again
+SHIPPED_DAYS = 3
 EVENTS = {FIXED: "Closed as Fixed", WONTFIX: "Closed as Won't fix", REOPENED: "Re-opened"}
 CARD_LIMIT = 2000  # Discord's limit for one message
 
@@ -131,6 +134,7 @@ class Snapshot:
     content: str
     at: str  # UTC, ISO
     url: str = ""
+    bot: bool | None = None  # written by a bot (ours); None in a report from before 16 Oct
 
 
 @dataclass
@@ -178,7 +182,8 @@ def snapshot(message) -> Snapshot:
     """A message of Discord's as plain values."""
     author = getattr(message.author, "display_name", None) or str(message.author)
     return Snapshot(
-        message.id, author, message_text(message), message.created_at.isoformat(), getattr(message, "jump_url", "") or ""
+        message.id, author, message_text(message), message.created_at.isoformat(), getattr(message, "jump_url", "") or "",
+        getattr(message.author, "bot", None),
     )
 
 
@@ -530,3 +535,70 @@ def export_text(entries: list[tuple], now: datetime) -> str:
         f"{count} open bug{'' if count == 1 else 's'}. Not in git: it holds Discord messages.",
     ]
     return "\n".join(head) + "".join(f"\n\n{detail_text(*entry)}" for entry in entries) + "\n"
+
+
+# --- a fix shipped: closing by itself in three days ---------------------------------------------------------------------
+def closes_on(shipped: date) -> date:
+    return shipped + timedelta(days=SHIPPED_DAYS)
+
+
+def _day(on: date) -> str:
+    return f"{on:%a} {on.day} {on:%b}"
+
+
+def shipped_line(on: date) -> str:
+    """Needs a look's words for it, after the id: "fix shipped, closing Mon"."""
+    return f"fix shipped, closing {on:%a}"
+
+
+def shipped_note(commit: str, tests: list[str], on: date, number: int) -> str:
+    named = ", ".join(test.split("::")[-1] for test in tests)
+    return (
+        f"Fix shipped: live runs {commit}, and the golden test replaying your messages passes there ({named}). "
+        f"Closes by itself on {_day(on)} unless you say reopen {bug_id(number)} or report it again."
+    )
+
+
+def shipped_post_text(number: int, on: date) -> str:
+    return f"🚀 Fix shipped. {bug_id(number)} closes by itself on {_day(on)} unless you say reopen {bug_id(number)} or report it again"
+
+
+def closed_by_itself_text(number: int) -> str:
+    return f"✅ {bug_id(number)} closed by itself as Fixed: the fix was live {SHIPPED_DAYS} days and nothing reopened it"
+
+
+def kept_open_text(number: int, why: str) -> str:
+    return f"🔄 {bug_id(number)} stays open: {why}. The fix shipped mark is off"
+
+
+def _plain(text: str) -> str:
+    return " ".join(text.lower().split())
+
+
+def owner_words(report: "Report") -> list[str]:
+    """What I said in the messages a report holds, each as one plain line (lower case, spaces as one).
+    A message is mine when no bot wrote it; in a report from before that was kept, when its author is
+    not the reported message's (a reaction or a reply is on the bot's message), or is (the word: on mine)."""
+    found = []
+    for each in [*report.preceding, report.target]:
+        if each.bot is not None:
+            mine = not each.bot
+        elif report.source == WORD:
+            mine = each.author == report.target.author
+        else:
+            mine = each.author != report.target.author
+        if mine and each.content.strip() and _plain(each.content) not in found:
+            found.append(_plain(each.content))
+    return found
+
+
+def said_again(before: "Report", now: "Report") -> bool:
+    """Whether a new report holds one of my own messages of an earlier one, word for word: the same problem again."""
+    earlier = set(owner_words(before))
+    return any(each in earlier for each in owner_words(now))
+
+
+def uncovered(words: list[str], source: str) -> list[str]:
+    """Which of my messages a test's own code does not replay word for word (case aside)."""
+    code = _plain(source)
+    return [each for each in words if each not in code]

@@ -11,6 +11,8 @@ backfilled from the git log.
 - "When did I take my pills today?" and the daily read went live overnight with the rest.
 - Close bugs in words: "close B2", "close B2 and B5" or "B5 is fixed", one line with an Undo. Needs a look says
   each bug in a few plain words ("B5 · fix ready to check").
+- A bug you reported closes by itself three days after its fix is live and a golden test replaying your own
+  messages passes, unless you say reopen B5 or report it again; meanwhile a quiet line, B5 · fix shipped, closing Mon.
 - The Sunday summary is posted at the bottom of the hub and goes at the next morning's tidy; the Today card says
   "Diary · not yet" only from 6 pm. The nightly self-test no longer takes live's switches.
 

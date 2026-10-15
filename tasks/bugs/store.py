@@ -73,10 +73,19 @@ def create_events(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX bugs_events_bug ON bugs_events (bug_id)")
 
 
+def add_shipped(conn: sqlite3.Connection) -> None:
+    # A fix shipped for the bug: when, the day it closes by itself, whether its post was told, and the tests
+    conn.execute("ALTER TABLE bugs_items ADD COLUMN shipped_at TEXT")
+    conn.execute("ALTER TABLE bugs_items ADD COLUMN closes_on TEXT")
+    conn.execute("ALTER TABLE bugs_items ADD COLUMN shipped_said INTEGER NOT NULL DEFAULT 0")
+    conn.execute("ALTER TABLE bugs_items ADD COLUMN shipped_tests TEXT")
+
+
 MIGRATIONS = [
     create_items,
     create_notes,
     create_events,
+    add_shipped,
 ]
 
 
@@ -94,6 +103,13 @@ class Item:
     note_count: int = 0
     fix_ready: bool = False  # Claude Code has left a note since the bug was reported
     changed_at: str | None = None  # when it was last closed or re-opened, if ever
+    shipped_at: str | None = None  # a fix shipped for it, closing by itself on `closes_on`
+    closes_on: str | None = None  # ISO day
+    shipped_said: bool = False  # its post has been told
+
+    @property
+    def shipped(self) -> bool:
+        return self.status == rules.OPEN and self.closes_on is not None
 
 
 @dataclass(frozen=True)
@@ -113,7 +129,8 @@ _ITEM = """
     SELECT id, user_id, status, summary, report, thread_id, post_url, created_at, closed_at,
            (SELECT COUNT(*) FROM bugs_notes WHERE bug_id = bugs_items.id),
            EXISTS (SELECT 1 FROM bugs_notes WHERE bug_id = bugs_items.id AND author = ?),
-           (SELECT created_at FROM bugs_events WHERE bug_id = bugs_items.id ORDER BY id DESC LIMIT 1)
+           (SELECT created_at FROM bugs_events WHERE bug_id = bugs_items.id ORDER BY id DESC LIMIT 1),
+           shipped_at, closes_on, shipped_said
     FROM bugs_items
 """
 
@@ -126,6 +143,7 @@ def _item(row: tuple | None) -> Item | None:
         bool(row[10]),
         # A bug closed before the history was kept has only the time it was closed
         row[11] or row[8],
+        row[12], row[13], bool(row[14]),
     )
 
 
@@ -183,11 +201,34 @@ def _db_set_status(conn: sqlite3.Connection, bug_id: int, status: str, user_id: 
     """Close or re-open a bug, and add that to its history."""
     now = to_db(real_now())
     closed_at = None if status == rules.OPEN else now
-    conn.execute("UPDATE bugs_items SET status = ?, closed_at = ? WHERE id = ?", (status, closed_at, bug_id))
+    # A change of status, either way, ends a fix shipped mark: closed, or open with no day to close on
+    conn.execute(
+        "UPDATE bugs_items SET status = ?, closed_at = ?, shipped_at = NULL, closes_on = NULL, shipped_said = 0 WHERE id = ?",
+        (status, closed_at, bug_id),
+    )
     conn.execute(
         "INSERT INTO bugs_events (bug_id, user_id, event, created_at) VALUES (?, ?, ?, ?)",
         (bug_id, user_id, rules.REOPENED if status == rules.OPEN else status, now),
     )
+
+
+def _db_mark_shipped(conn: sqlite3.Connection, bug_id: int, closes_on: str, tests: str) -> None:
+    conn.execute(
+        "UPDATE bugs_items SET shipped_at = ?, closes_on = ?, shipped_said = 0, shipped_tests = ? WHERE id = ? AND status = ?",
+        (to_db(real_now()), closes_on, tests, bug_id, rules.OPEN),
+    )
+
+
+def _db_unship(conn: sqlite3.Connection, bug_id: int) -> None:
+    conn.execute("UPDATE bugs_items SET shipped_at = NULL, closes_on = NULL, shipped_said = 0 WHERE id = ?", (bug_id,))
+
+
+def _db_shipped_said(conn: sqlite3.Connection, bug_id: int) -> None:
+    conn.execute("UPDATE bugs_items SET shipped_said = 1 WHERE id = ?", (bug_id,))
+
+
+def _db_shipped(conn: sqlite3.Connection, user_id: int | None = None) -> list[Item]:
+    return [item for item in _db_open(conn, user_id) if item.shipped]
 
 
 def _db_events(conn: sqlite3.Connection, bug_id: int) -> list[Event]:
@@ -267,6 +308,19 @@ async def in_full(user_id: int) -> list[tuple[Item, list[Note], list[Event]]]:
 
 async def set_status(bug_id: int, status: str, user_id: int | None = None) -> None:
     await database.run(_db_set_status, bug_id, status, user_id)
+
+
+async def shipped(user_id: int | None = None) -> list[Item]:
+    """The open bugs with a fix shipped, closing by themselves."""
+    return await database.run(_db_shipped, user_id)
+
+
+async def unship(bug_id: int) -> None:
+    await database.run(_db_unship, bug_id)
+
+
+async def shipped_said(bug_id: int) -> None:
+    await database.run(_db_shipped_said, bug_id)
 
 
 async def events(bug_id: int) -> list[Event]:

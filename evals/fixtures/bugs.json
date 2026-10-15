@@ -132,7 +132,7 @@
           "bugs"
         ],
         "confidence": "high",
-        "reports_doing": false,
+        "reports_doing": true,
         "chat_part": ""
       }
     },
@@ -148,6 +148,36 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "reopen B5",
+      "tasks": [
+        "bugs"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "bugs"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "message": "B5 is back",
+      "tasks": [
+        "bugs"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "bugs"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
         "chat_part": ""
       }
     }
@@ -175,6 +205,7 @@
       "recorded": [
         "bug_report",
         {
+          "note": "log that as a bug",
           "guessed": [],
           "not_included": []
         }
@@ -248,7 +279,7 @@
         "none",
         {
           "why": "unclear",
-          "reason": "This is a correction of a previous request, not a bug report or bug management action"
+          "reason": "This is a correction of a previous request, not a bug report or bug management action."
         }
       ]
     },
@@ -287,6 +318,48 @@
       "left_out": false,
       "recorded": [
         "bug_close",
+        {
+          "bugs": [
+            "B5"
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "bugs",
+      "message": "reopen B5",
+      "action": "bug_reopen",
+      "data": {
+        "bugs": [
+          "B5"
+        ]
+      },
+      "left_out": false,
+      "recorded": [
+        "bug_reopen",
+        {
+          "bugs": [
+            "B5"
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "bugs",
+      "message": "B5 is back",
+      "action": "bug_reopen",
+      "data": {
+        "bugs": [
+          "B5"
+        ]
+      },
+      "left_out": false,
+      "recorded": [
+        "bug_reopen",
         {
           "bugs": [
             "B5"

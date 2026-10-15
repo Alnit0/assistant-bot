@@ -14,6 +14,10 @@ list, fixed; the dev-bot self-test before the ship 150 of 150. **Next:**
 the 3:30 am nightly on 17 Oct, its result checked and reported (D1
 should close by itself)
 
+**Ready for the next restart:** bugs closing by themselves (fix shipped,
+3 days). After it, in live's folder: `tasks.bugs.cli shipped B5` with
+its two golden tests (`docs/STATUS.md`)
+
 **Drafts and worktrees:** `docs/drafts/gym-onboarding.md`; three old
 worktrees, all merged
 
@@ -27,6 +31,6 @@ worktrees, all merged
 - The daily read: his look at its post, and questions 86 to 90
 - Questions 76 to 79 (gym), 63, 24 to 28
 - QA item 0 (direct messages)
-- Close B2 and B5: say close B2 and B5 in #inbox (only his account can)
+- B2: say close B2 in #inbox (its report has none of his words to replay)
 - Live's folder: his word, then the work folder's old `.env` and `data\`
   go (not deleted)

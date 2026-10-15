@@ -27,6 +27,9 @@ async def file_report(
     report = await capture.build(
         source=source, channel_id=channel_id, target=target, preceding=before, exclude_message_id=exclude_message_id
     )
+    again = await reported_again(user, report)
+    if again is not None:
+        return again
     number = await store.add(user.id, report)
     thread_id, url = await posts.create_post(number, report)
     await store.set_post(number, thread_id, url)
@@ -36,6 +39,19 @@ async def file_report(
         raise UserError(NOT_LOGGED)
     listing.changed(user.id)
     return rules.logged_text(saved.id, saved.post_url)
+
+
+async def reported_again(user: User, report: rules.Report) -> str | None:
+    """A bug with a fix shipped, reported again with one of my own messages word for word: that bug
+    stays open (no longer closing by itself) with this report as a note, and no new bug. None otherwise."""
+    for item in await store.shipped(user.id):
+        if rules.said_again(item.report, report):
+            await store.unship(item.id)
+            await store.add_note(item.id, user.id, rules.OWNER, f"Reported again: {report.target.url or 'the same words'}")
+            await posts.bring_up_to_date(await store.get(item.id), rules.kept_open_text(item.id, "you reported it again"))
+            listing.changed(user.id)
+            return f"🐞 That looks like [{rules.bug_id(item.id)}]({item.post_url}) again: it stays open, with this as a note"
+    return None
 
 
 async def add_note(item_id: int, user_id: int | None, content: str, message_id: int | None) -> bool:

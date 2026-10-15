@@ -1,3 +1,5 @@
+from datetime import date, time
+
 from core import cards
 from core.actions import EACH_DAY, LIST, SEE, Action, Field, LiveReply, Request, Shown
 from core.cards import Button, Card
@@ -12,6 +14,7 @@ from tasks.bugs import filing, listing, posts, rules, store
 # closes at once.
 # ---------------------------------------------------------------------------
 TASK, UNDO = "bugs", "undo"
+SHIPPED_AT = time(9, 0)  # the morning round for bugs with a fix shipped
 NOT_YOURS = "Closing bugs isn't for you."
 async def report_said(request: Request, data: dict, guessed: frozenset) -> str:
     """Report the message replied to, or else the user's own newest message
@@ -117,6 +120,58 @@ async def on_undo(press: cards.Press) -> str:
     return line
 
 
+async def reopen_said(request: Request, data: dict, guessed: frozenset) -> str:
+    """ "reopen B5", "B5 is back": a closed bug open again; one with a fix shipped stays open and no
+    longer closes by itself. Each with a note, its post as after a press. Only the owner."""
+    if not is_allowed(request.user, posts.PERMISSION):
+        raise UserError("Re-opening bugs isn't for you.")
+    numbers = _numbers(data.get("bugs") or [])
+    if not numbers:
+        raise UserError(f"Which bug? Say its id, like {rules.bug_id(4)}.")
+    done, already = [], []
+    for number in numbers:
+        item = await store.get(number)
+        if item is None or item.user_id not in (None, request.user.id):
+            raise UserError(f"I have no {rules.bug_id(number)}.")
+        if item.shipped:
+            await store.unship(number)
+            await store.add_note(number, request.user.id, rules.OWNER, "Re-opened in words: it does not close by itself.")
+            await posts.bring_up_to_date(await store.get(number), rules.kept_open_text(number, "you said reopen"))
+            done.append(number)
+        elif item.status != rules.OPEN:
+            await _set([number], rules.OPEN, request.user.id)
+            await store.add_note(number, request.user.id, rules.OWNER, "Re-opened in words.")
+            done.append(number)
+        else:
+            already.append(number)
+    listing.changed(request.user.id)
+    if not done:
+        said = ", ".join(rules.bug_id(number) for number in already)
+        raise UserError(f"{said} {'is' if len(already) == 1 else 'are'} open already.")
+    return f"🔄 Re-opened · {', '.join(rules.bug_id(number) for number in done)}" + (f"\n-# open already: {', '.join(rules.bug_id(number) for number in already)}" if already else "")
+
+
+async def shipped_round(today: date) -> tuple[int, int]:
+    """Each bug with a fix shipped: its post told once, and closed as fixed by itself once its day
+    has come. (told, closed). A post that cannot be brought up to date never undoes the change."""
+    told = closed = 0
+    for item in await store.shipped():
+        on = date.fromisoformat(item.closes_on)
+        if today >= on:
+            await store.set_status(item.id, rules.FIXED)
+            after = await store.get(item.id)
+            if after is not None and after.status == rules.FIXED:
+                await posts.bring_up_to_date(after, rules.closed_by_itself_text(item.id))
+                listing.changed(item.user_id)
+                closed += 1
+            continue
+        if not item.shipped_said:
+            await posts.bring_up_to_date(item, rules.shipped_post_text(item.id, on))
+            await store.shipped_said(item.id)
+            told += 1
+    return told, closed
+
+
 def register() -> None:
     cards.register(TASK, UNDO, on_undo)
 
@@ -156,5 +211,15 @@ ACTIONS = (
         run=close_said,
         purpose=EACH_DAY,
         say=("close B2 and B5",),
+    ),
+    Action(
+        "bug_reopen",
+        "The user says one or more bugs, by their id, are to be re-opened or are happening again: \"reopen B5\", "
+        "\"B5 is back\", \"B5 happened again\" -> bugs [\"B5\"].",
+        (Field("bugs", "Each bug id the user said, as written (\"B5\").", type=LIST, required=True),),
+        needs_card=False,
+        run=reopen_said,
+        purpose=EACH_DAY,
+        say=("reopen B5",),
     ),
 )
