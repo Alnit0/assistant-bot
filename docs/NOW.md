@@ -11,12 +11,14 @@ waiting for 6 pm
   layout B the default (a by setting), merged into this branch
 - Earlier today: the daytime batch, round 4 merged, the Design forum
 
+- 2. Self-test as the dev bot: to-dos 9/9, round 4 9/9, start 9 (new:
+  reminders, routines, the Today card) 5/5, US$0. DMs: QA item 0 by hand
+
 **In progress**
-- 2. Full test run, then one dev-bot self-test of what goes on (round 4
-  pills, to-dos, reminders, routines, the Today card, DMs it can reach)
+- 3. Commit, push, restart live
 
 **Next**
-- 3. Commit, push; restart live once, now, 10 minutes clear of a pill
+- 3. Restart live once, now, 10 minutes clear of a pill
   reminder: DESIGN_ROUND=4, TODOS_ENABLED, WEEKLY_SUMMARY, DMS_ENABLED,
   NUDGES_ENABLED, HABITS_ENABLED, TODAY_CARD; the nightly row to 3:30 am
   while live is stopped

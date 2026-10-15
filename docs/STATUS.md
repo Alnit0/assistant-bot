@@ -48,6 +48,15 @@ restart (`HABITS_ENABLED`, `NUDGES_ENABLED`, `TODAY_CARD`). Preview:
    buttons, and one small line when all is done.
 8. **A time with no am or pm** is asked about, never guessed; a window
    past midnight is not offered yet.
+10. **Self-test start 9, stage `hub`**: a reminder set and gone off
+    (Done), a routine with a window (no card before its start, its own
+    card with the dropdown at the start, Skincare picked, the rest in
+    words, the card tidied away) and the Today card naming it; recorded
+    answers. Before tonight's restart: to-dos 9 of 9, round 4 9 of 9 and
+    start 9 5 of 5, as the dev bot, US$0. Step 8.05 had assumed no to-dos
+    from start 7: it now compares with the card before the pick. Found: a
+    start that crashes is not counted as a failure in the summary (it said
+    0 failed); to fix next.
 9. **The extraction fixtures are recorded** from the real API: 15 of 15
    on the second run, US$0.083 for both (about NZ$0.14). The first run
    found two fixtures with the wrong state and one trap whose meaning had

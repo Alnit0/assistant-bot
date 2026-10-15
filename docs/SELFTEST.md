@@ -15,11 +15,14 @@ see: `docs/DEVELOPMENT.md`, "The self-test".
 <!-- run history: written by python -m selftest -->
 ## Run history
 
-The latest 15 of 37 runs, newest first. All of them, a line a run, are in
+The latest 15 of 40 runs, newest first. All of them, a line a run, are in
 `data/selftest/history.csv` (never rewritten). The first step to fail in a stage is a bug in the forum until it passes again.
 
 | Run | Commit | What ran | Passed | Failed | Failed steps | Spend | Took |
 |---|---|---|---|---|---|---|---|
+| 2026-10-15 13:28 | `2e5b3b5` | hub | 5 of 5 | 0 | · | US$0.0000 (recorded) | 1 min 16 s |
+| 2026-10-15 13:26 | `2e5b3b5` | round4, hub | 9 of 9 | 0 | · | US$0.0000 (recorded) | 1 min 51 s |
+| 2026-10-15 13:22 | `2e5b3b5` | todos, round4, hub | 17 of 18 | **1** | 8.05 | US$0.0000 (recorded) | 3 min 12 s |
 | 2026-10-15 11:54 | `9acf081` | todos | 9 of 9 | 0 | · | US$0.0000 (recorded) | 1 min 41 s |
 | 2026-10-15 11:48 | `6c16dba` | round4 | 9 of 9 | 0 | · | US$0.0000 (recorded) | 1 min 31 s |
 | 2026-10-15 11:00 | `287006c` | todos | 9 of 9 | 0 | · | US$0.0000 (recorded) | 1 min 45 s |
@@ -32,9 +35,6 @@ The latest 15 of 37 runs, newest first. All of them, a line a run, are in
 | 2026-10-14 14:25 | `74f1a8f` | briefing | 21 of 21 | 0 | · | US$0.0000 (recorded) | 2 min 07 s |
 | 2026-10-14 14:22 | `74f1a8f` | briefing | 20 of 21 | **1** | 5.03d | US$0.0000 (recorded) | 2 min 08 s |
 | 2026-10-14 14:03 | `50d6c9e` | briefing | 17 of 17 | 0 | · | US$0.0000 (recorded) | 1 min 52 s |
-| 2026-10-14 13:51 | `50d6c9e` | briefing | 17 of 17 | 0 | · | US$0.0000 (recorded) | 1 min 58 s |
-| 2026-10-14 11:42 | `e189959` | full | 116 of 117 | 0 | · | US$0.0000 (recorded) | 13 min 45 s |
-| 2026-10-14 10:51 | `9b5bc7a` | starts p1 | 41 of 41 | 0 | · | US$0.0000 (recorded) | 3 min 45 s |
 
 <!-- end of run history -->
 

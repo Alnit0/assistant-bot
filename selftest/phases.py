@@ -1,6 +1,6 @@
 import asyncio
 import os
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from core import clock, config, confirm, database, design, occurrences, scheduler, surface, timeinput
 from core import day as days
@@ -1620,12 +1620,94 @@ async def p8(h: Harness) -> None:
         h.memo["todos_r4"] = hub_card.id
         h.saw(" / ".join(hub_card.text.splitlines()[:5])[:200])
 
-    async with h.step("8.05", "Pick one in the Done dropdown", "Picking “Water the plants”: it is done, and the card is rewritten in place with three open and “✅ 1 done”", "round 4: the list rule (15 Oct)"):
+    async with h.step("8.05", "Pick one in the Done dropdown", "Picking “Water the plants”: it is done, and the card is rewritten in place with one more done, no “+1 more”, and the dropdown one shorter", "round 4: the list rule (15 Oct)"):
+        before = await todos_card(h)
+        held_before = len(before.menus[0][2]) if before is not None and before.menus else 0
         await h.pick(h.memo["todos_r4"], "Water the plants")
         await h.settle(3)
         hub_card = await todos_card(h)
-        h.check(hub_card is not None and "✅ 1 done" in hub_card.text and "+1 more" not in hub_card.text, f"the hub card: {hub_card.text[:300] if hub_card else 'none'}")
-        h.check(len(hub_card.menus) == 1 and len(hub_card.menus[0][2]) == 3, f"its dropdowns: {hub_card.menus}")
+        h.check(hub_card is not None and "✅" in hub_card.text and "+1 more" not in hub_card.text, f"the hub card: {hub_card.text[:300] if hub_card else 'none'}")
+        h.check(len(hub_card.menus) == 1 and len(hub_card.menus[0][2]) == held_before - 1 and "Water the plants" not in in_menu(hub_card), f"its dropdowns: {hub_card.menus}, {held_before} before")
 
 
-PHASES = {"p1": p1, "p2": p2, "p3": p3, "p4": p4, "p5": p5, "p6": p6, "p7": p7, "p8": p8}
+# ---------------------------------------------------------------------------
+# Start 9: what went on on 15 Oct with the rest: reminders I set, personal
+# routines (layout B: a card a routine from its start) and the Today card,
+# in round 4. Recorded answers. Times are worked out from the dev clock.
+# ---------------------------------------------------------------------------
+def _soon(minutes: int):
+    """A moment `minutes` on from the dev clock, on a five-minute mark, and how it is said."""
+    moment = clock.now() + timedelta(minutes=minutes)
+    moment = moment - timedelta(minutes=days.local_time(moment).minute % 5, seconds=moment.second, microseconds=moment.microsecond)
+    return moment, timeinput.format_moment(moment)
+
+
+async def slot_card(h: Harness, slot: str):
+    """The hub card in a slot ("today", "habits.r3"), as Discord has it, or None."""
+    from core import hubcard, livelists
+
+    placed = await database.run(livelists.db_get, h.user.id, hubcard.key(slot))
+    return await h.get(h.hub, placed.message_id) if placed is not None else None
+
+
+async def p9(h: Harness) -> None:
+    from tasks.habits import store as habits_store
+
+    async with h.step("9.01", "Set a reminder: “remind me at <in 20 minutes> to call the bank”, then Save", "A ⏰ card with Save; after Save it is booked for that time", "reminders (15 Oct)"):
+        h.check(config.NUDGES_ENABLED and config.HABITS_ENABLED and config.TODAY_CARD, "reminders, routines and the Today card are not all on in this start")
+        due, said = _soon(20)
+        await h.say(f"remind me at {said} to call the bank", canned=todo("nudge_add", text="call the bank", time=said), task="nudges")
+        _, shown = await card(h)
+        h.check(shown is not None and any("Save" in label for label in shown.labels), f"the card: {shown.text[:200] if shown else 'none'}")
+        await h.press(shown.id, "Save", h.inbox)
+        jobs = await scheduler.pending_jobs("nudges", "fire")
+        h.check(any(job.due_at == due for job in jobs), f"booked: {[job.due_at.isoformat() for job in jobs]}, wanted {due.isoformat()}")
+        h.memo["nudge_due"] = due.isoformat()  # the memo is saved as JSON
+        h.saw(said)
+
+    async with h.step("9.02", "It goes off in the hub, and Done deals with it", "At its time a reminder in the hub whose first line names nothing (“⏰ Reminder · <time>”), with Done and Snooze; Done takes the buttons away", "reminders (15 Oct)"):
+        await h.clock_at(datetime.fromisoformat(h.memo["nudge_due"]))
+        went = await h.find(h.hub, "Reminder ·")
+        h.check(went is not None and "call the bank" not in went.text.splitlines()[0].lower(), f"the reminder: {went.text[:200] if went else 'none'}")
+        h.check(any("Done" in label for label in went.labels) and any("Snooze" in label for label in went.labels), f"its buttons: {went.labels}")
+        await h.press(went.id, "Done")
+        after = await h.get(h.hub, went.id)
+        h.check(after is None or not any("Done" in label for label in after.labels), f"after Done: {after.labels if after else 'gone'}")
+
+    async with h.step("9.03", "Make a routine with a window: “make a testevening routine <in 30 minutes> to <in 3 hours>: brush teeth, floss, skincare: cleanser, toner, serum”, then Save", "A card naming the window and the 3 items, the group with its steps; after Save no card of its own yet (its window is still to come)", "personal routines, layout B (15 Oct)"):
+        start, start_said = _soon(30)
+        _, end_said = _soon(180)
+        data = {"routine": "testevening", "items": [{"text": "brush teeth"}, {"text": "floss"}, {"text": "skincare", "steps": ["cleanser", "toner", "serum"]}], "from": start_said, "until": end_said}
+        await h.say(f"make a testevening routine {start_said} to {end_said}: brush teeth, floss, skincare: cleanser, toner, serum", canned=todo("habit_add", **data), task="habits")
+        _, shown = await card(h)
+        h.check(shown is not None and "Testevening" in shown.text and "3 items" in shown.text and "Skincare (Cleanser, Toner, Serum)" in shown.text, f"the card: {shown.text[:300] if shown else 'none'}")
+        await h.press(shown.id, "Save", h.inbox)
+        await h.settle(3)
+        (habit,) = [each for each in await habits_store.every(h.user.id) if each.name == "Testevening"]
+        h.memo["habit"], h.memo["start"] = habit.id, start.isoformat()
+        h.check(await slot_card(h, f"habits.r{habit.id}") is None, "a card of its own before its window starts")
+
+    async with h.step("9.04", "Its window starts: its own card, and the Today card", "A 🔁 Testevening card in the hub with the first three items, Skincare's steps as a guide, and one Done dropdown; the 📅 Today card names it", "personal routines, layout B; the Today card (15 Oct)"):
+        await h.clock_at(datetime.fromisoformat(h.memo["start"]))
+        await h.settle(3)
+        own = await slot_card(h, f"habits.r{h.memo['habit']}")
+        h.check(own is not None and own.text.startswith("### 🔁 Testevening") and "Cleanser → Toner → Serum" in own.text, f"its card: {own.text[:300] if own else 'none'}")
+        h.check(len(own.menus) == 1 and len(own.menus[0][2]) == 3 and not own.labels, f"its dropdown: {own.menus}; buttons {own.labels}")
+        h.memo["own"] = own.id
+        today_card = await slot_card(h, "today")
+        h.check(today_card is not None and "Today" in today_card.text and "Testevening" in today_card.text, f"the Today card: {today_card.text[:300] if today_card else 'none'}")
+        h.saw(" / ".join(own.text.splitlines()[:4])[:200])
+
+    async with h.step("9.05", "Done: pick Skincare in the dropdown, then “did brush teeth and floss”", "The pick ticks the whole group (“✅ 1 done” on the card); the words tick the rest, and the routine's card is tidied away", "personal routines (15 Oct)"):
+        await h.pick(h.memo["own"], "Skincare")
+        await h.settle(3)
+        own = await slot_card(h, f"habits.r{h.memo['habit']}")
+        h.check(own is not None and "✅ 1 done" in own.text, f"its card: {own.text[:300] if own else 'gone'}")
+        await h.say("did brush teeth and floss", canned=todo("habit_tick", items=["brush teeth", "floss"]), task="habits")
+        said = await h.find(h.inbox, "Testevening done")
+        h.check(said is not None, f"the line: {[each.text[:80] for each in await h.recent(h.inbox, 3) if each.id not in h.typed]}")
+        await h.settle(3)
+        h.check(await slot_card(h, f"habits.r{h.memo['habit']}") is None, "the routine's card is still there once it is done")
+
+
+PHASES = {"p1": p1, "p2": p2, "p3": p3, "p4": p4, "p5": p5, "p6": p6, "p7": p7, "p8": p8, "p9": p9}
