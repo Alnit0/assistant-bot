@@ -1,10 +1,10 @@
 from datetime import datetime, timedelta
 
-from core import clock, config, database, design, timeinput
+from core import clock, config, database, design, recurrence, timeinput
 from core import day as days
 from core.actions import TIME, Field, Proposal, Request, State
 from core.errors import UserError
-from tasks.calendar import rules, source, store
+from tasks.calendar import rules, series, source, store
 from tasks.calendar.rules import ICON, NEXT_WEEK, SPANS, WEEK
 
 # ---------------------------------------------------------------------------
@@ -164,9 +164,14 @@ async def add_card(request: Request, data: dict, guessed: frozenset) -> Proposal
     if not data.get("time"):
         raise UserError(f"{ICON} What time? Say it with a time, like “{title.lower()} Friday 3pm”.")
     today = days.today()
-    start = days.at(read_day(data.get("day"), today), rules.read_time(str(data["time"])))
-    end = start + timedelta(minutes=_length(data.get("length"), DEFAULT_LENGTH))
+    day = read_day(data.get("day"), today)
+    at = rules.read_span(str(data["time"]), str(data["ends_at"]))[0] if data.get("ends_at") else rules.read_time(str(data["time"]))
+    start = days.at(day, at)
+    end = _ends(data, start, DEFAULT_LENGTH)
     warnings = list(_clash_lines(await store.events(request.user.id), start, end, today))
+    repeat = series.said_repeat(data, day, read_day(data["until"], today) if data.get("until") else None)
+    if repeat is not None:
+        return series.add_card(title, repeat, at, int((end - start).total_seconds() // 60), today, clock.now(), [])
     if start < clock.now():
         warnings.insert(0, "That time has gone by")
     return Proposal(
@@ -175,7 +180,19 @@ async def add_card(request: Request, data: dict, guessed: frozenset) -> Proposal
     )
 
 
+def _ends(data: dict, start: datetime, default: int) -> datetime:
+    """When it ends: the end said ("9 to 5:30": the one after the start), else the length said, else `default` minutes."""
+    if data.get("ends_at"):
+        end = days.at(days.day_of(start), rules.read_span(timeinput.format_moment(start), str(data["ends_at"]))[1])
+        if end <= start:
+            end += timedelta(hours=12) if end + timedelta(hours=12) > start else timedelta(days=1)
+        return end
+    return start + timedelta(minutes=_length(data.get("length"), default))
+
+
 async def add_save(request: Request, data: dict) -> str:
+    if data.get("rrule"):
+        return await series.add_save(request, data, _writer())
     made = await _writer().add(data["title"], _moment(data["start"]), _moment(data["end"]))
     await database.run(store.db_put, request.user.id, made)
     await database.run(store.db_change, request.user.id, store.ADDED, made.ref, made.title, (None, None), (made.start, made.end), clock.now())
@@ -193,11 +210,16 @@ async def add_check(request: Request, data: dict) -> str:
     return "" if ref and await _writer().get(ref) is not None else "it is not in the Bot calendar"
 
 
-async def _mine(request: Request, words) -> rules.Event:
-    """The next event whose name fits the words; one on another calendar is said, never changed."""
+async def _mine(request: Request, words, day_said=None) -> rules.Event:
+    """The next event whose name fits the words (a repeating one: its happening on the day said, if
+    one was; pass no day for a change from a day on, where the day is where the series is cut);
+    one on another calendar is said, never changed."""
     if not str(words or "").strip():
         raise UserError(f"{ICON} Which event?")
-    found = rules.next_matching(await store.events(request.user.id), str(words), clock.now())
+    events = await store.events(request.user.id)
+    found = rules.next_matching(events, str(words), clock.now())
+    if found.repeats and day_said:
+        found = rules.matching_on(events, str(words), read_day(day_said, days.today()))
     if not found.mine or found.all_day:
         raise UserError(rules.NOT_MINE.format(icon=ICON, title=found.title))
     return found
@@ -205,8 +227,12 @@ async def _mine(request: Request, words) -> rules.Event:
 
 async def move_card(request: Request, data: dict, guessed: frozenset) -> Proposal:
     """ "move the dentist to 4pm", "move the dentist to Monday": its day, its time or its length."""
-    _writer()
-    event = await _mine(request, data.get("search"))
+    writer = _writer()
+    event = await _mine(request, data.get("search"), None if series.scope_of(data) == series.FOLLOWING else data.get("day"))
+    if event.repeats:
+        if not (data.get("time") or data.get("length") or data.get("ends_at")):
+            raise UserError(f"{ICON} To what time?")
+        return await series.move_card(request, data, event, writer)
     if not (data.get("day") or data.get("time") or data.get("length")):
         raise UserError(f"{ICON} Move it to when?")
     today = days.today()
@@ -224,6 +250,8 @@ async def move_card(request: Request, data: dict, guessed: frozenset) -> Proposa
 
 
 async def move_save(request: Request, data: dict) -> str:
+    if data.get("op") in (series.ALL, series.FOLLOWING):
+        return await series.series_save(request, data, _writer())
     moved = await _writer().move(data["ref"], _moment(data["start"]), _moment(data["end"]))
     await database.run(store.db_put, request.user.id, moved)
     was = tuple(_moment(each) for each in data["was"])
@@ -233,13 +261,17 @@ async def move_save(request: Request, data: dict) -> str:
 
 
 async def move_check(request: Request, data: dict) -> str:
+    if data.get("op") in (series.ALL, series.FOLLOWING):
+        return await series.series_check(request, data, _writer())
     found = await _writer().get(data["ref"])
     return "" if found is not None and found.start == _moment(data["start"]) else "the Bot calendar still has the old time"
 
 
 async def delete_card(request: Request, data: dict, guessed: frozenset) -> Proposal:
-    _writer()
-    event = await _mine(request, data.get("search"))
+    writer = _writer()
+    event = await _mine(request, data.get("search"), data.get("day"))
+    if event.repeats:
+        return await series.delete_card(event, writer)
     return Proposal(
         lines=(f"**{event.title}** · {rules.span_text(event.start, event.end, days.today())}",),
         data={"ref": event.ref, "title": event.title, "was": [_iso(event.start), _iso(event.end)]},
@@ -248,6 +280,8 @@ async def delete_card(request: Request, data: dict, guessed: frozenset) -> Propo
 
 
 async def delete_save(request: Request, data: dict) -> str:
+    if data.get("op") == "series_delete":
+        return await series.delete_save(request, data, _writer())
     await _writer().delete(data["ref"])
     await database.run(store.db_drop, request.user.id, source.BOT, data["ref"])
     was = tuple(_moment(each) for each in data["was"])
@@ -257,7 +291,31 @@ async def delete_save(request: Request, data: dict) -> str:
 
 
 async def delete_check(request: Request, data: dict) -> str:
+    if data.get("op") == "series_delete":
+        return await series.delete_check(request, data, _writer())
     return "" if await _writer().get(data["ref"]) is None else "it is still in the Bot calendar"
+
+
+async def cancel_card(request: Request, data: dict, guessed: frozenset) -> Proposal:
+    """ "cancel work next Tuesday", "stop work": a repeating event's happening or its series from a
+    day; a one-off is deleted, on its red card."""
+    writer = _writer()
+    event = await _mine(request, data.get("search"), None if series.scope_of(data) == series.FOLLOWING else data.get("day"))
+    if not event.repeats:
+        return await delete_card(request, data, guessed)
+    return await series.cancel_card(request, data, event, writer)
+
+
+async def cancel_save(request: Request, data: dict) -> str:
+    if data.get("op") in ("cancel_one", "stop"):
+        return await series.cancel_save(request, data, _writer())
+    return await delete_save(request, data)
+
+
+async def cancel_check(request: Request, data: dict) -> str:
+    if data.get("op") in ("cancel_one", "stop"):
+        return await series.cancel_check(request, data, _writer())
+    return await delete_check(request, data)
 
 
 async def undo(request: Request, data: dict, guessed: frozenset) -> str:
@@ -266,8 +324,10 @@ async def undo(request: Request, data: dict, guessed: frozenset) -> str:
     last = await database.run(store.db_last_change, request.user.id)
     if last is None:
         raise UserError(f"{ICON} There is nothing in the calendar to undo.")
-    change_id, kind, ref, title, before, after = last
-    if kind == store.ADDED:
+    change_id, kind, ref, title, before, after, detail = last
+    if kind in (store.CANCELLED_ONE, store.SERIES_CHANGED, store.SERIES_DELETED):
+        said = await series.undo(kind, ref, title, detail, writer)
+    elif kind == store.ADDED:
         await writer.delete(ref)
         await database.run(store.db_drop, request.user.id, source.BOT, ref)
         said = f"↩️ {ICON} **{title}** · taken off the calendar"
@@ -280,6 +340,7 @@ async def undo(request: Request, data: dict, guessed: frozenset) -> str:
         await database.run(store.db_put, request.user.id, again)
         said = f"↩️ {ICON} **{title}** · back on the calendar"
     await database.run(store.db_undone, change_id)
+    await series.refresh(request.user.id, writer)  # a series is many happenings: the copy read again
     _changed(request.user.id)
     return said
 
@@ -288,31 +349,51 @@ def writing_actions() -> list:
     from core.actions import EACH_DAY, MINUTES, Action
 
     which = Field("search", "The words naming the event, exactly as the user said them, without \"my\", \"the\" or \"next\". Never complete or correct them.", required=True)
+    ends_at = Field("ends_at", "When it ends, only when the user says (\"9 to 5:30\" -> 5:30; \"10 to 2\" -> 2).", TIME)
+    scope = Field(
+        "scope",
+        "For a repeating event: one (that day only: \"next Tuesday\", \"on the 20th\", \"just today\"), following (from a day on: "
+        "\"from next week\", \"from now on\", \"stop\"), all (every time: \"always\", \"every day\"). Leave out when it could be either.",
+        choices=series.SCOPES,
+    )
+    which_day = Field("day", "For a repeating event, the day of the one meant or the first day of the change, as the user said it (\"next Tuesday\"; \"from next week\" -> next Monday). Never work out a date.")
     return [
         Action(
             "calendar_add",
             "Add an event to the calendar: an appointment or a plan with a day and a time and no \"remind me\" (\"dentist Friday 3pm\" -> "
             "title dentist, day Friday, time 3pm; \"lunch with Sam Thursday at 1 for 90 minutes\" -> title lunch with Sam, length 90; "
-            "\"put the plumber on my calendar tomorrow at 10\").",
+            "\"put the plumber on my calendar tomorrow at 10\"), or a repeating one (\"work every weekday 9 to 5:30\" -> title work, "
+            "repeat weekdays, time 9, ends_at 5:30; \"swimming Mondays and Thursdays at 6pm until December\" -> repeat days, weekdays mon thu, until December).",
             (
                 Field("title", "What it is, in the user's own words exactly as said (\"dentist\", \"lunch with Sam\"), without the day, the time or the length.", required=True),
                 Field("day", _DAY),
                 Field("time", "When it starts, as the user said it.", TIME),
                 Field("length", "How long, only when the user says (\"for an hour\" -> 60, \"for 90 minutes\" -> 90).", MINUTES),
+                ends_at,
+                *recurrence.fields(),
+                *recurrence.end_fields(),
             ),
             prepare=add_card, apply=add_save, verify=add_check, purpose=EACH_DAY, say=("dentist Friday 3pm for an hour",),
         ),
         Action(
             "calendar_move",
             "Move an event the bot added to the calendar to another day, time or length (\"move the dentist to 4pm\" -> search dentist, time 4pm; "
-            "\"move lunch with Sam to Monday\" -> day Monday).",
-            (which, Field("day", _DAY), Field("time", "The new start, as the user said it.", TIME), Field("length", "A new length, only when said.", MINUTES)),
+            "\"move lunch with Sam to Monday\" -> day Monday), or change the times of a repeating one (\"work next Friday is 10 to 2\" -> "
+            "search work, day next Friday, time 10, ends_at 2, scope one; \"work starts at 8:30 from next week\" -> day next Monday, time 8:30, scope following).",
+            (which, Field("day", _DAY + " For a repeating event: the day of the one meant, or the first day of the change."), Field("time", "The new start, as the user said it.", TIME), Field("length", "A new length, only when said.", MINUTES), ends_at, scope),
             prepare=move_card, apply=move_save, verify=move_check, purpose=EACH_DAY, say=("move the dentist to 4pm",),
         ),
         Action(
             "calendar_delete",
-            "Delete an event the bot added to the calendar (\"delete the dentist from my calendar\", \"cancel lunch with Sam\").",
+            "Delete an event the bot added to the calendar (\"delete the dentist from my calendar\"), or a repeating one completely, every time (\"delete work completely\").",
             (which,), prepare=delete_card, apply=delete_save, verify=delete_check, purpose=EACH_DAY, say=("delete the dentist from my calendar",),
+        ),
+        Action(
+            "calendar_cancel",
+            "Cancel an event the bot added: one day of a repeating event (\"cancel work next Tuesday\" -> search work, day next Tuesday, scope one), "
+            "a repeating event from a day on, past ones kept (\"stop work\" -> scope following; \"cancel work from November\" -> day 1 November, scope following), "
+            "or a one-off (\"cancel lunch with Sam\").",
+            (which, which_day, scope), prepare=cancel_card, apply=cancel_save, verify=cancel_check, purpose=EACH_DAY, say=("cancel work next Tuesday",),
         ),
         Action(
             "calendar_undo",
@@ -326,8 +407,9 @@ ONLY_FOR_WRITING = (
     "Events in the user's own calendar: reading what is on a day or a week (\"what's on tomorrow?\", \"what's on this week?\", "
     "\"my calendar\"), when an event is or whether it is on (\"when is the dentist?\", \"is the gym on tonight?\"), whether they "
     "are free (\"am I free at 3 tomorrow?\"), and adding an event: an appointment or a plan said with a day and a time and no "
-    "\"remind me\" (\"dentist Friday 3pm\", \"lunch with Sam Thursday at 1\", \"put the plumber on my calendar\"), and moving, "
-    "deleting or undoing one. A request to be reminded (\"remind me about the dentist Friday\") is a reminder, not the calendar. "
+    "\"remind me\" (\"dentist Friday 3pm\", \"lunch with Sam Thursday at 1\", \"put the plumber on my calendar\"), a repeating event "
+    "(\"work every weekday 9 to 5:30\", \"swimming Mondays and Thursdays at 6pm\"), and moving, cancelling (\"cancel work next Tuesday\", "
+    "\"stop work\"), deleting or undoing one. A request to be reminded (\"remind me about the dentist Friday\") is a reminder, not the calendar. "
     "The rest of today across everything (\"what's on tonight?\") is the briefing. Not pills, not to-dos (a thing to do with no "
     "time), not personal routines, and not when the bot's own jobs run (that is the schedule task)."
 )

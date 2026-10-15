@@ -145,15 +145,22 @@ def to_event(item: dict, origin: str) -> Event | None:
     title = " ".join(str(item.get("summary") or "").split()) or rules.NO_TITLE
     start, end = item.get("start") or {}, item.get("end") or {}
     ref = str(item.get("id") or "")
+    series = str(item.get("recurringEventId") or "")  # one happening of a repeating event (singleEvents)
     if "dateTime" in start:
         begins = _moment(start["dateTime"])
         ends = _moment(end["dateTime"]) if "dateTime" in end else begins
-        return Event(f"{origin}:{ref}@{begins.isoformat()}", title, begins, max(ends, begins), origin=origin, ref=ref)
+        return Event(f"{origin}:{ref}@{begins.isoformat()}", title, begins, max(ends, begins), origin=origin, ref=ref, series=series)
     if "date" in start:
         first = date.fromisoformat(start["date"])
         last = date.fromisoformat(end["date"]) - timedelta(days=1) if "date" in end else first
-        return Event(f"{origin}:{ref}@{first.isoformat()}", title, first_day=first, last_day=max(last, first), origin=origin, ref=ref)
+        return Event(f"{origin}:{ref}@{first.isoformat()}", title, first_day=first, last_day=max(last, first), origin=origin, ref=ref, series=series)
     return None
+
+
+def local_time(moment: datetime) -> dict:
+    """A start or an end as the API takes it for a repeating event: the local time and its zone, so
+    Google keeps the time of day through daylight saving (9:00 am stays 9:00 am)."""
+    return {"dateTime": moment.astimezone(config.TIMEZONE).replace(tzinfo=None).isoformat(), "timeZone": str(config.TIMEZONE)}
 
 
 @dataclass(frozen=True)
@@ -196,6 +203,24 @@ class GoogleSource:
         body = {"summary": title, "start": {"dateTime": start.isoformat()}, "end": {"dateTime": end.isoformat()}}
         made = await asyncio.to_thread(_call, "POST", self._path("events"), None, body)
         return to_event(made, self.origin)
+
+    # --- a repeating event: the series itself, as the API keeps it -------------------------------------------
+    async def insert(self, body: dict) -> dict:
+        """A new event as the API takes it (a series: with `recurrence`); the API's answer."""
+        self._writable()
+        return await asyncio.to_thread(_call, "POST", self._path("events"), None, body)
+
+    async def patch(self, ref: str, body: dict) -> dict:
+        """A change to a series, or to one of its happenings (which becomes an exception); the answer."""
+        self._writable()
+        return await asyncio.to_thread(_call, "PATCH", self._path("events", ref), None, body)
+
+    async def raw(self, ref: str) -> dict | None:
+        """A series or a happening as the API keeps it, or None if it is gone."""
+        try:
+            return await asyncio.to_thread(_call, "GET", self._path("events", ref))
+        except FetchFailed:
+            return None
 
     async def move(self, ref: str, start: datetime, end: datetime) -> Event:
         self._writable()

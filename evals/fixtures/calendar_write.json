@@ -351,6 +351,330 @@
         "reports_doing": false,
         "chat_part": ""
       }
+    },
+    {
+      "golden": "w13",
+      "message": "work every weekday 9 to 5:30",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "a repeating event: weekdays, a start and an end",
+      "names": {
+        "calendar": [
+          "Work",
+          "Dentist",
+          "Swimming"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ],
+        "habits": [
+          "Morning",
+          "Stretch"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "w14",
+      "message": "swimming every 2 weeks on Mondays and Thursdays at 6pm",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "every 2 weeks on chosen days",
+      "names": {
+        "calendar": [
+          "Work",
+          "Dentist",
+          "Swimming"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ],
+        "habits": [
+          "Morning",
+          "Stretch"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "w15",
+      "message": "book club on the 1st of every month at 7pm, 6 times",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "monthly on a date, a number of times (rent on the 1st went to reminders: a payment, fair)",
+      "names": {
+        "calendar": [
+          "Work",
+          "Dentist",
+          "Swimming"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ],
+        "habits": [
+          "Morning",
+          "Stretch"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "w16",
+      "message": "cancel work next Tuesday",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "one day of a repeating event, cancelled",
+      "names": {
+        "calendar": [
+          "Work",
+          "Dentist",
+          "Swimming"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ],
+        "habits": [
+          "Morning",
+          "Stretch"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "w17",
+      "message": "work next Friday is 10 to 2",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "one day of a repeating event, new times",
+      "names": {
+        "calendar": [
+          "Work",
+          "Dentist",
+          "Swimming"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ],
+        "habits": [
+          "Morning",
+          "Stretch"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "w18",
+      "message": "work starts at 8:30 from next week",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "this and following",
+      "names": {
+        "calendar": [
+          "Work",
+          "Dentist",
+          "Swimming"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ],
+        "habits": [
+          "Morning",
+          "Stretch"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "w19",
+      "message": "stop work",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "the series ends, past ones kept",
+      "names": {
+        "calendar": [
+          "Work",
+          "Dentist",
+          "Swimming"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ],
+        "habits": [
+          "Morning",
+          "Stretch"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "w20",
+      "message": "delete work completely",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "the whole series, deleted",
+      "names": {
+        "calendar": [
+          "Work",
+          "Dentist",
+          "Swimming"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ],
+        "habits": [
+          "Morning",
+          "Stretch"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "w21",
+      "message": "cancel work on Thursday",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "one day or the series: the card asks",
+      "names": {
+        "calendar": [
+          "Work",
+          "Dentist",
+          "Swimming"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ],
+        "habits": [
+          "Morning",
+          "Stretch"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
     }
   ],
   "extraction": [
@@ -499,6 +823,198 @@
           "title": "dentist",
           "day": "Friday",
           "time": "3:00 pm",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "w13",
+      "task": "calendar",
+      "message": "work every weekday 9 to 5:30",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_add",
+      "data": {
+        "title": "work",
+        "repeat": "weekdays"
+      },
+      "recorded": [
+        "calendar_add",
+        {
+          "title": "work",
+          "repeat": "weekdays",
+          "time": "9:00 am",
+          "ends_at": "5:30 pm",
+          "guessed": [
+            "time",
+            "ends_at"
+          ],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "w14",
+      "task": "calendar",
+      "message": "swimming every 2 weeks on Mondays and Thursdays at 6pm",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_add",
+      "data": {
+        "title": "swimming",
+        "repeat": "days",
+        "weekdays": [
+          "mon",
+          "thu"
+        ],
+        "every_weeks": 2
+      },
+      "recorded": [
+        "calendar_add",
+        {
+          "title": "swimming",
+          "repeat": "days",
+          "weekdays": [
+            "mon",
+            "thu"
+          ],
+          "every_weeks": 2,
+          "time": "6:00 pm",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "w15",
+      "task": "calendar",
+      "message": "book club on the 1st of every month at 7pm, 6 times",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_add",
+      "data": {
+        "title": "book club",
+        "repeat": "monthly",
+        "month_day": 1,
+        "times": 6
+      },
+      "recorded": [
+        "calendar_add",
+        {
+          "title": "book club",
+          "repeat": "monthly",
+          "month_day": 1,
+          "time": "7:00 pm",
+          "times": 6,
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "w16",
+      "task": "calendar",
+      "message": "cancel work next Tuesday",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_cancel",
+      "data": {
+        "search": "work",
+        "day": "next Tuesday",
+        "scope": "one"
+      },
+      "recorded": [
+        "calendar_cancel",
+        {
+          "search": "work",
+          "day": "next Tuesday",
+          "scope": "one",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "w17",
+      "task": "calendar",
+      "message": "work next Friday is 10 to 2",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_move",
+      "data": {
+        "search": "work",
+        "day": "next Friday",
+        "scope": "one"
+      },
+      "recorded": [
+        "calendar_move",
+        {
+          "search": "work",
+          "day": "next Friday",
+          "time": "10:00 am",
+          "ends_at": "2:00 pm",
+          "scope": "one",
+          "guessed": [
+            "time",
+            "ends_at"
+          ],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "w18",
+      "task": "calendar",
+      "message": "work starts at 8:30 from next week",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_move",
+      "data": {
+        "search": "work",
+        "scope": "following"
+      },
+      "recorded": [
+        "calendar_move",
+        {
+          "search": "work",
+          "day": "next Monday",
+          "time": "8:30 am",
+          "scope": "following",
+          "guessed": [
+            "time"
+          ],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "w19",
+      "task": "calendar",
+      "message": "stop work",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_cancel",
+      "data": {
+        "search": "work",
+        "scope": "following"
+      },
+      "recorded": [
+        "calendar_cancel",
+        {
+          "search": "work",
+          "scope": "following",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "w20",
+      "task": "calendar",
+      "message": "delete work completely",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_delete",
+      "data": {
+        "search": "work"
+      },
+      "recorded": [
+        "calendar_delete",
+        {
+          "search": "work",
           "guessed": [],
           "not_included": []
         }

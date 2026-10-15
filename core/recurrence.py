@@ -25,6 +25,12 @@ from core import day as days
 # moves one ("9:00 am" stays 9:00 am). Claude hands over the fields as they
 # were said (`from_fields`); this file checks them and does every sum. Pure:
 # no Discord, no database.
+#
+# Any kind but once may also have an end and a pace (the calendar's
+# repeating events, `end_fields`): every N weeks for the weekly kinds
+# (`every_weeks`, counted from `first`), an end day (`until`, itself
+# included), or a number of times (`times`, from `first`). `rrule` writes
+# one as an iCalendar RRULE, for Google Calendar.
 # ---------------------------------------------------------------------------
 ONCE, DAILY, WEEKDAYS, WEEKENDS, DAYS, EVERY, MONTHLY, MONTHLY_NTH = "once", "daily", "weekdays", "weekends", "days", "every", "monthly", "monthly_nth"
 KINDS = (ONCE, DAILY, WEEKDAYS, WEEKENDS, DAYS, EVERY, MONTHLY, MONTHLY_NTH)
@@ -42,6 +48,13 @@ class Repeat:
     month_day: int = 1  # for MONTHLY: 1 to 31
     nth: int = 1  # for MONTHLY_NTH: 1 to 4, or -1 for the last
     weekday: int = 0  # for MONTHLY_NTH: Monday 0
+    every_weeks: int = 1  # for WEEKDAYS, WEEKENDS and DAYS: every N weeks from the week of `first`
+    until: date | None = None  # the last day it may come round on
+    times: int | None = None  # how many times in all, from `first`
+
+    @property
+    def ends(self) -> bool:
+        return self.kind == ONCE or self.until is not None or self.times is not None
 
 
 EVERY_DAY = Repeat(DAILY)
@@ -58,6 +71,12 @@ def on_day(repeat: Repeat, day: date) -> bool:
         return repeat.first == day
     if repeat.first is not None and day < repeat.first and kind != EVERY:
         return False  # not before it was set to start
+    if repeat.until is not None and day > repeat.until:
+        return False
+    if kind in WEEKLY and repeat.every_weeks > 1 and repeat.first is not None:
+        weeks = ((day - timedelta(days=day.weekday())) - (repeat.first - timedelta(days=repeat.first.weekday()))).days // 7
+        if weeks % repeat.every_weeks:
+            return False
     if kind == DAILY:
         return True
     if kind == WEEKDAYS:
@@ -78,6 +97,30 @@ def on_day(repeat: Repeat, day: date) -> bool:
             return day.day + 7 > last_day(day)
         return (day.day - 1) // 7 + 1 == repeat.nth
     return False
+
+
+WEEKLY = (WEEKDAYS, WEEKENDS, DAYS)
+
+
+def dates(repeat: Repeat, start: date, count: int) -> list[date]:
+    """Up to `count` days it comes round on from `start` (itself included), its end and its
+    number of times kept: the times are counted from `first`, so ones before `start` count."""
+    found: list[date] = []
+    seen = 0
+    day = repeat.first if repeat.times is not None and repeat.first is not None and repeat.first < start else start
+    for _ in range(LOOK_AHEAD * 3):
+        if len(found) >= count or (repeat.until is not None and day > repeat.until):
+            break
+        if on_day(repeat, day):
+            seen += 1
+            if repeat.times is not None and seen > repeat.times:
+                break
+            if day >= start:
+                found.append(day)
+        if repeat.kind == ONCE and repeat.first is not None and day >= repeat.first:
+            break
+        day += timedelta(days=1)
+    return found
 
 
 def next_day(repeat: Repeat, start: date) -> date | None:
@@ -144,6 +187,76 @@ def text(repeat: Repeat, today: date) -> str:
     return kind
 
 
+def full_text(repeat: Repeat, today: date) -> str:
+    """`text`, with its pace and its end: "every 2 weeks on Mon and Thu", "weekdays, until Fri
+    5 Aug", "monthly on the 1st, 6 times"."""
+    said = text(repeat, today)
+    if repeat.kind in WEEKLY and repeat.every_weeks > 1:
+        days_said = {WEEKDAYS: "Mon to Fri", WEEKENDS: "Sat and Sun"}.get(repeat.kind) or _joined([DAY_WORDS[each].capitalize() for each in sorted(repeat.weekdays)])
+        said = f"every {repeat.every_weeks} weeks on {days_said}"
+    if repeat.until is not None:
+        said += f", until {repeat.until:%a} {repeat.until.day} {repeat.until:%b}"
+    if repeat.times is not None:
+        said += f", {repeat.times} time{'' if repeat.times == 1 else 's'}"
+    return said
+
+
+# --- as an iCalendar RRULE (Google Calendar's recurrence) ---------------------------------------------------------
+_BYDAY = ("MO", "TU", "WE", "TH", "FR", "SA", "SU")
+
+
+def rrule(repeat: Repeat, until_utc: datetime | None = None) -> str:
+    """The repeat as one RRULE line, or "" for a one-off. `until_utc` is the moment its end day
+    is over, in UTC (the caller knows the time zone): an RRULE's UNTIL is a moment."""
+    kind = repeat.kind
+    if kind == ONCE:
+        return ""
+    if kind == DAILY:
+        parts = ["FREQ=DAILY"]
+    elif kind == EVERY:
+        parts = ["FREQ=DAILY", f"INTERVAL={max(1, repeat.every_days)}"]
+    elif kind in WEEKLY:
+        chosen = {WEEKDAYS: (0, 1, 2, 3, 4), WEEKENDS: (5, 6)}.get(kind) or tuple(sorted(repeat.weekdays))
+        parts = ["FREQ=WEEKLY", *([f"INTERVAL={repeat.every_weeks}"] if repeat.every_weeks > 1 else []), "BYDAY=" + ",".join(_BYDAY[each] for each in chosen)]
+    elif kind == MONTHLY:
+        wanted = max(1, min(31, repeat.month_day))
+        # A date a month lacks is that month's last day, as `on_day` says: the last of 28 to N there is
+        parts = ["FREQ=MONTHLY", f"BYMONTHDAY={wanted}"] if wanted <= 28 else ["FREQ=MONTHLY", "BYMONTHDAY=" + ",".join(str(each) for each in range(28, wanted + 1)), "BYSETPOS=-1"]
+    elif kind == MONTHLY_NTH:
+        parts = ["FREQ=MONTHLY", f"BYDAY={repeat.nth}{_BYDAY[repeat.weekday]}"]
+    else:
+        return ""
+    if repeat.times is not None:
+        parts.append(f"COUNT={max(1, repeat.times)}")
+    elif until_utc is not None:
+        parts.append(f"UNTIL={until_utc:%Y%m%dT%H%M%SZ}")
+    return "RRULE:" + ";".join(parts)
+
+
+def from_rrule(line: str, first: date | None, until: date | None = None) -> Repeat:
+    """A repeat from an RRULE this file wrote (or one like it): its kind, pace and end. `until` is the
+    end day the caller read from UNTIL in its own time zone. Anything it cannot say is every day."""
+    found = dict(part.split("=", 1) for part in line.removeprefix("RRULE:").split(";") if "=" in part)
+    freq, interval = found.get("FREQ", "DAILY"), int(found.get("INTERVAL", "1") or 1)
+    times = int(found["COUNT"]) if found.get("COUNT") else None
+    byday = [each for each in found.get("BYDAY", "").split(",") if each]
+    if freq == "DAILY":
+        base = Repeat(EVERY, first, every_days=interval) if interval > 1 else Repeat(DAILY, first)
+    elif freq == "WEEKLY":
+        chosen = tuple(sorted(_BYDAY.index(each[-2:]) for each in byday if each[-2:] in _BYDAY)) or ((first.weekday(),) if first else (0,))
+        kind = WEEKDAYS if chosen == (0, 1, 2, 3, 4) else WEEKENDS if chosen == (5, 6) else DAYS
+        base = Repeat(kind, first, chosen if kind == DAYS else (), every_weeks=interval)
+    elif freq == "MONTHLY" and byday:
+        nth, word = int(byday[0][:-2] or 1), byday[0][-2:]
+        base = Repeat(MONTHLY_NTH, first, nth=nth, weekday=_BYDAY.index(word) if word in _BYDAY else 0)
+    elif freq == "MONTHLY":
+        numbers = [int(each) for each in found.get("BYMONTHDAY", "").split(",") if each.lstrip("-").isdigit()]
+        base = Repeat(MONTHLY, first, month_day=max(numbers) if numbers else (first.day if first else 1))
+    else:
+        base = Repeat(DAILY, first)
+    return Repeat(base.kind, first, base.weekdays, base.every_days, base.month_day, base.nth, base.weekday, base.every_weeks, until, times)
+
+
 # --- kept with a record ---------------------------------------------------------------------------------------
 def to_dict(repeat: Repeat) -> dict:
     """What a store keeps (as JSON): only what this kind uses."""
@@ -158,6 +271,12 @@ def to_dict(repeat: Repeat) -> dict:
         kept["month_day"] = repeat.month_day
     if repeat.kind == MONTHLY_NTH:
         kept["nth"], kept["weekday"] = repeat.nth, repeat.weekday
+    if repeat.every_weeks > 1:
+        kept["every_weeks"] = repeat.every_weeks
+    if repeat.until is not None:
+        kept["until"] = repeat.until.isoformat()
+    if repeat.times is not None:
+        kept["times"] = repeat.times
     return kept
 
 
@@ -172,6 +291,9 @@ def from_dict(kept: dict | None) -> Repeat:
         int(kept.get("month_day") or 1),
         int(kept.get("nth") or 1),
         int(kept.get("weekday") or 0),
+        int(kept.get("every_weeks") or 1),
+        date.fromisoformat(kept["until"]) if kept.get("until") else None,
+        int(kept["times"]) if kept.get("times") else None,
     )
 
 
@@ -212,6 +334,26 @@ REPEAT_HELP = (
     "days (chosen days of the week: fill weekdays), every (every N days: fill every_days), "
     "monthly (on a date each month: fill month_day), monthly_nth (the first Monday and the like: fill nth and weekday)."
 )
+
+
+def with_end(repeat: Repeat, fields: dict, first: date, until: date | None) -> Repeat:
+    """A repeat with the pace and the end from `end_fields` (`until` read by the caller from what was
+    said), starting on `first`. Every N weeks is for the weekly kinds only; N times is at least 1."""
+    weeks = max(1, int(fields.get("every_weeks") or 1)) if repeat.kind in WEEKLY else 1
+    times = fields.get("times")
+    times = max(1, int(times)) if times not in (None, "") and str(times).lstrip("-").isdigit() else None
+    return Repeat(repeat.kind, first if repeat.kind != ONCE or repeat.first is None else repeat.first, repeat.weekdays, repeat.every_days, repeat.month_day, repeat.nth, repeat.weekday, weeks, until if times is None else None, times)
+
+
+def end_fields() -> tuple:
+    """The fields for a pace and an end, beside `fields()`: only where a task offers them (the calendar)."""
+    from core.actions import INTEGER, STRING, Field
+
+    return (
+        Field("every_weeks", "Every N weeks, for weekdays, weekends or days (\"every 2 weeks on Monday\" -> 2). Leave out for every week.", INTEGER),
+        Field("until", "The last day, exactly as the user said it (\"until 5 August\", \"until the end of the year\"). Never work out a date.", STRING),
+        Field("times", "How many times in all, when the user says (\"for 6 weeks\" on one day a week -> 6; \"10 times\" -> 10).", INTEGER),
+    )
 
 
 def fields() -> tuple:

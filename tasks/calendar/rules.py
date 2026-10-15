@@ -43,6 +43,11 @@ class Event:
     last_day: date | None = None  # and its last (the same for a one-day event)
     origin: str = ""  # which calendar it came from ("link", "bot"): never the calendar's id
     ref: str = ""  # the event's id in that calendar, for the Bot calendar's events (to move or delete)
+    series: str = ""  # for one happening of a repeating event in the Bot calendar: the series' id
+
+    @property
+    def repeats(self) -> bool:
+        return bool(self.series)
 
     @property
     def mine(self) -> bool:
@@ -150,7 +155,8 @@ def span_text(start: datetime, end: datetime, today: date) -> str:
     """ "Fri 16 Oct · `3:00 pm` to `4:00 pm` · 1 hour" """
     day = days.day_of(start)
     minutes = int((end - start).total_seconds() // 60)
-    length = f"{minutes // 60} hour{'s' if minutes // 60 != 1 else ''}" if minutes % 60 == 0 else f"{minutes} minutes"
+    hours = f"{minutes // 60} hour{'s' if minutes // 60 != 1 else ''}"
+    length = hours if minutes % 60 == 0 else f"{hours} {minutes % 60} minutes" if minutes >= 120 else f"{minutes} minutes"
     return f"{day_name(day, today)} · `{timeinput.format_moment(start)}` to `{timeinput.format_moment(end)}` · {length}"
 
 
@@ -269,6 +275,21 @@ def next_matching(events, words: str, now: datetime) -> Event:
     return next(each for each in upcoming if each.title == title)
 
 
+def matching_on(events, words: str, day: date) -> Event:
+    """The event on a day whose title fits the words (core/names.py): "work next Tuesday"."""
+    there = on_day(events, day)
+    titles = sorted({each.title for each in there})
+    try:
+        title = names.find(titles, words, lambda each: each) if titles else None
+    except names.Unknown:
+        title = None
+    except names.Ambiguous as which:
+        raise UserError(f"{ICON} “{words}” could be {' or '.join(f'**{each}**' for each in which.candidates[:4])}: say which.")
+    if title is None:
+        raise UserError(f"{ICON} Nothing like “{words}” is on your calendar on {day:%a} {day.day} {day:%b}.")
+    return next(each for each in there if each.title == title)
+
+
 def when_answer(event: Event, today: date) -> str:
     if event.all_day:
         day = event.first_day if event.first_day >= today else today
@@ -296,6 +317,27 @@ def read_time(said: str) -> time:
         daytime = [each for each in which.options if time(7, 0) <= each <= time(22, 0)]
         if len(daytime) == 1:
             return daytime[0]
-        raise UserError(f"Is that {said} {' or '.join(timeinput.format_time(each) for each in which.options)}?")
+        raise UserError(f"Is that {' or '.join(timeinput.format_time(each) for each in which.options)}?")
     except Exception:
         raise UserError(f"“{said}” is not a time I can read.")
+
+
+def _readings(said: str) -> list[time]:
+    try:
+        return [timeinput.parse_time(str(said))]
+    except timeinput.AmbiguousTime as which:
+        return list(which.options)
+    except Exception:
+        raise UserError(f"“{said}” is not a time I can read.")
+
+
+def read_span(start_said: str, end_said: str) -> tuple[time, time]:
+    """A start and an end said together ("9 to 5:30", "10 to 2"): of the readings, the one that
+    starts and ends on the same day; else each read on its own (read_time)."""
+    pairs = [(start, end) for start in _readings(start_said) for end in _readings(end_said) if start < end]
+    if len(pairs) == 1:
+        return pairs[0]
+    daytime = [(start, end) for start, end in pairs if time(7, 0) <= start <= time(22, 0)]
+    if len({start for start, _ in daytime}) == 1 and len(daytime) >= 1:
+        return min(daytime, key=lambda pair: pair[1])
+    return read_time(start_said), read_time(end_said)

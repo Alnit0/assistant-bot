@@ -11,6 +11,9 @@ backfilled from the git log.
 - "When did I take my pills today?" and the daily read went live overnight with the rest.
 - Close bugs in words: "close B2", "close B2 and B5" or "B5 is fixed", one line with an Undo. Needs a look says
   each bug in a few plain words ("B5 · fix ready to check").
+- Repeating events on the Bot calendar: say work every weekday 9 to 5:30; cancel or move one day, change it from a
+  day on or every time, stop it from a day (past ones kept) or delete it completely, each on a card with undo.
+- The calendar is read from Google only now: the old iCal link had a work series Google ended in 2022.
 - A bug you reported closes by itself three days after its fix is live and a golden test replaying your own
   messages passes, unless you say reopen B5 or report it again; meanwhile a quiet line, B5 · fix shipped, closing Mon.
 - The Sunday summary is posted at the bottom of the hub and goes at the next morning's tidy; the Today card says

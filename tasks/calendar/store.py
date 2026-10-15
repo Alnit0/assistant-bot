@@ -66,8 +66,17 @@ def add_origins(conn: sqlite3.Connection) -> None:
     )
 
 
-MIGRATIONS = [create_tables, add_origins]
+def add_series(conn: sqlite3.Connection) -> None:
+    """A happening of a repeating event knows its series; a change keeps what undo needs for a series (JSON)."""
+    conn.execute("ALTER TABLE calendar_events ADD COLUMN series TEXT NOT NULL DEFAULT ''")
+    conn.execute("ALTER TABLE calendar_changes ADD COLUMN detail TEXT")
+
+
+MIGRATIONS = [create_tables, add_origins, add_series]
 ADDED, MOVED, DELETED = "added", "moved", "deleted"
+# A repeating event: one happening cancelled, the series changed (its times, its end, split in two), or the
+# whole series deleted (undo makes it again from what `detail` kept)
+CANCELLED_ONE, SERIES_CHANGED, SERIES_DELETED = "cancelled_one", "series_changed", "series_deleted"
 
 
 def _when(text: str | None) -> datetime | None:
@@ -79,16 +88,16 @@ def _day(text: str | None) -> date | None:
 
 
 def db_events(conn: sqlite3.Connection, user_id: int) -> list[Event]:
-    rows = conn.execute("SELECT key, title, start_at, end_at, first_day, last_day, origin, ref FROM calendar_events WHERE user_id = ? ORDER BY id", (user_id,)).fetchall()
-    return [Event(key, title, _when(start), _when(end), _day(first), _day(last), origin, ref) for key, title, start, end, first, last, origin, ref in rows]
+    rows = conn.execute("SELECT key, title, start_at, end_at, first_day, last_day, origin, ref, series FROM calendar_events WHERE user_id = ? ORDER BY id", (user_id,)).fetchall()
+    return [Event(key, title, _when(start), _when(end), _day(first), _day(last), origin, ref, series) for key, title, start, end, first, last, origin, ref, series in rows]
 
 
 def _row(user_id: int, each: Event) -> tuple:
     return (user_id, each.key, each.title, each.start.isoformat() if each.start else None, each.end.isoformat() if each.end else None,
-            each.first_day.isoformat() if each.first_day else None, each.last_day.isoformat() if each.last_day else None, each.origin, each.ref)
+            each.first_day.isoformat() if each.first_day else None, each.last_day.isoformat() if each.last_day else None, each.origin, each.ref, each.series)
 
 
-_INSERT = "INSERT INTO calendar_events (user_id, key, title, start_at, end_at, first_day, last_day, origin, ref) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+_INSERT = "INSERT INTO calendar_events (user_id, key, title, start_at, end_at, first_day, last_day, origin, ref, series) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
 
 def db_keep_from(conn: sqlite3.Connection, user_id: int, origin: str, events: list[Event]) -> None:
@@ -116,21 +125,26 @@ def db_drop(conn: sqlite3.Connection, user_id: int, origin: str, ref: str) -> No
     conn.execute("DELETE FROM calendar_events WHERE user_id = ? AND origin = ? AND ref = ?", (user_id, origin, ref))
 
 
-def db_change(conn: sqlite3.Connection, user_id: int, kind: str, ref: str, title: str, before: tuple, after: tuple, now: datetime) -> None:
-    """A change made to the Bot calendar, kept for undo: what it was and what it became."""
+def db_change(conn: sqlite3.Connection, user_id: int, kind: str, ref: str, title: str, before: tuple, after: tuple, now: datetime, detail: dict | None = None) -> None:
+    """A change made to the Bot calendar, kept for undo: what it was and what it became (and for a
+    series, what undo needs to put it back, as JSON)."""
+    import json
+
     iso = lambda moment: moment.isoformat() if moment else None  # noqa: E731
     conn.execute(
-        "INSERT INTO calendar_changes (user_id, kind, ref, title, before_start, before_end, after_start, after_end, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (user_id, kind, ref, title, iso(before[0]), iso(before[1]), iso(after[0]), iso(after[1]), now.isoformat()),
+        "INSERT INTO calendar_changes (user_id, kind, ref, title, before_start, before_end, after_start, after_end, at, detail) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (user_id, kind, ref, title, iso(before[0]), iso(before[1]), iso(after[0]), iso(after[1]), now.isoformat(), json.dumps(detail) if detail is not None else None),
     )
 
 
 def db_last_change(conn: sqlite3.Connection, user_id: int) -> tuple | None:
-    """(id, kind, ref, title, before (start, end), after (start, end)) of the last change not undone."""
+    """(id, kind, ref, title, before (start, end), after (start, end), detail) of the last change not undone."""
+    import json
+
     row = conn.execute(
-        "SELECT id, kind, ref, title, before_start, before_end, after_start, after_end FROM calendar_changes WHERE user_id = ? AND undone = 0 ORDER BY id DESC LIMIT 1", (user_id,)
+        "SELECT id, kind, ref, title, before_start, before_end, after_start, after_end, detail FROM calendar_changes WHERE user_id = ? AND undone = 0 ORDER BY id DESC LIMIT 1", (user_id,)
     ).fetchone()
-    return (row[0], row[1], row[2], row[3], (_when(row[4]), _when(row[5])), (_when(row[6]), _when(row[7]))) if row else None
+    return (row[0], row[1], row[2], row[3], (_when(row[4]), _when(row[5])), (_when(row[6]), _when(row[7])), json.loads(row[8]) if row[8] else {}) if row else None
 
 
 def db_undone(conn: sqlite3.Connection, change_id: int) -> None:

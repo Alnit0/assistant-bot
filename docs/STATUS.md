@@ -257,6 +257,27 @@ time). Spend US$0.041.
   (to the end of the diary day, 4 am); a 6 pm schedule of the bot's own
   draws the card again then.
 
+## Repeating events in the Bot calendar (16 Oct, midday; ships at the next restart)
+
+- Made in words with the shared repeat engine (every weekday, chosen
+  days, every 2 weeks, monthly on a date, until a day, N times) and
+  saved as a real Google recurrence: the card shows the pattern, the
+  time, the start, the next three dates and its end. One day cancelled
+  or moved, this and following (the series split, the past unchanged),
+  every time, ended from a day (past kept), deleted completely on a red
+  card; "just that day, or from then on?" when it could be either; a
+  card first and undo after, each. Only ever the Bot calendar.
+- 21 tests on a fake Google that expands a series as the API does
+  (daylight saving, a series ended in the past, exceptions); 17 new
+  golden conversations, 16 of 17 on the first run (rent on the 1st went
+  to reminders, fair for a payment: the fixture is a book club now),
+  then 2 of 2. NZ$0.13. The older calendar fixtures were not run again
+  (it would have passed the NZ$0.20 cap): their recorded answers replay.
+- Found on the way: "9 to 5:30" asked "Is that 9 9:00 am or 9:00 pm?";
+  a start and an end said together are now read together (the reading
+  that ends the same day), and the question no longer says the time
+  twice. A day's length over two hours reads "8 hours 30 minutes".
+
 ## Bugs close by themselves (16 Oct, late morning)
 
 - A bug I reported, once its fix is live and a golden test replaying my
@@ -269,6 +290,24 @@ time). Spend US$0.041.
   is marked once this code is live (the mark runs on live's code, at
   the next restart). B2 can't be: its report holds none of Alex's words
   (only the bot's reply), so it waits for close B2 or Fixed.
+
+## Decided (2026-10-16, midday)
+
+- The calendar switched to Google only (`CALENDAR_READ=google:CALENDAR_MAIN_ID,google:CALENDAR_BOT_ID`,
+  the iCal link removed from live's `.env`, its copy in
+  `data\env-before-2026-10-16-google-only`). The feed's Work series had
+  no end (no UNTIL; Google last changed it there in March 2020) while
+  Google ended it on 5 Aug 2022: the feed was wrong, not our reading
+  (the reader stops a series at its UNTIL, checked).
+- A repeating event's day field is the happening meant ("next
+  Tuesday"); for a change from a day on it is where the series is cut
+  ("from 1 November"), found by its name, not by a happening that day.
+- "Starts at 8:30" for an event at 9:00 am is the reading nearer its own
+  time; "9 to 5:30" is the reading that ends the same day.
+- Ending a series before its first happening is refused with "say
+  delete": an end with nothing kept is a delete, on its red card.
+- The repeat engine's pace and end fields are offered to the calendar
+  only, so reminders' and routines' prompts are unchanged.
 
 ## Decided (2026-10-16, late morning)
 
