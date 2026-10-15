@@ -372,12 +372,16 @@ def selftest_problem(row: dict | None, bugs: dict) -> Item | None:
     if not failed and not row.get("note"):
         return None
     said = "self-test failed" if failed else "self-test did not finish"
+    # Needs a look says it in a few words: which check, and how many steps ("nightly check failed, 2 steps")
+    check = "nightly check" if (row.get("ran") or "").startswith("nightly") else "self-test"
+    count = f", {len(failed)} step{'' if len(failed) == 1 else 's'}" if failed else ""
+    what = f"{check} {'failed' if failed else 'did not finish'}{count}"
     number = next((bugs[step] for step in failed if step in bugs), None)
     try:
         when = datetime.strptime(row.get("date") or "", "%Y-%m-%d %H:%M").replace(tzinfo=config.TIMEZONE)
     except ValueError:
         when = None
-    return Item(said, PROBLEM, when=when, bug=f"{DEV_BUG}{number}" if number is not None else "", short=(said,))
+    return Item(what, PROBLEM, when=when, bug=f"{DEV_BUG}{number}" if number is not None else "", short=(said,))
 
 
 async def selftest(user_id: int, now: datetime) -> list[Item]:

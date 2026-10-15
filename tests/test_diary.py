@@ -349,3 +349,32 @@ def test_the_message_log_keeps_a_note_in_place_of_a_private_task_s_words(make_db
     finally:
         conn.close()
     assert content == actions.PRIVATE_NOTE and conversation is not None
+
+
+def test_not_yet_is_an_evening_line_to_the_end_of_the_diary_day():
+    from datetime import datetime
+
+    from core.config import TIMEZONE
+
+    def at(hour, minute=0):
+        return datetime(2026, 10, 16, hour, minute, tzinfo=TIMEZONE)
+
+    assert [rules.evening(at(hour)) for hour in (6, 12, 17)] == [False, False, False]
+    assert [rules.evening(at(18)), rules.evening(at(23, 59)), rules.evening(at(3, 59)), rules.evening(at(4))] == [True, True, True, False]
+
+
+def test_the_today_card_says_not_yet_only_from_6pm(world):
+    from tasks import diary
+
+    world.at(12, 0, ahead=1)
+    assert run(diary.today_lines(world.owner.id, clock.now())) == []
+    world.at(18, 0, ahead=1)
+    (line,) = run(diary.today_lines(world.owner.id, clock.now()))
+    assert line.text == "**Diary** · not yet"
+
+
+def test_at_6pm_the_today_card_is_drawn_again_by_a_schedule_of_the_bots_own():
+    from tasks import diary
+
+    assert (diary.TODAY_DEFAULT.at, diary.TODAY_DEFAULT.locked) == (rules.SHOWN_FROM, True)
+    assert diary.task.job_handlers()[plain.TODAY_JOB] is plain.today_job

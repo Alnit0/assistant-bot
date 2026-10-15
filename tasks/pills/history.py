@@ -38,7 +38,9 @@ WEEK_AT = time(19, 0)
 SUNDAY = 6
 # Sunday at 7:00 pm in the hub, without a notification; a Sunday the bot was off for is skipped the next day
 DEFAULT = timetable.Default("Weekly pills summary", WEEK_AT, days=(SUNDAY,), missed=timetable.skip_after(5 * 60))
-SLOT = "pills.week"  # one at a time in the hub: a newer one takes the older one's place
+SLOT = "pills.week"  # the week's slot, kept for what was posted under it before 16 Oct
+# The Sunday summary is news of the moment: posted at the bottom of the hub, once, and gone at the
+# next morning's tidy (question 91), never moved above the cards that come up after it
 YESTERDAY, WEEK = "yesterday", "week"
 LOOK_BACK = timedelta(days=400)  # how far back a streak is counted
 STREAK_FROM = 2  # a streak is worth saying from this many days
@@ -296,7 +298,7 @@ async def week_job(job: scheduler.Job) -> None:
                 log.info("Weekly summary, job %s, user %s: no task had anything this week, nothing posted", job.id, user_id)
                 continue
             message_id = await cards.send(where, card, silent=job.notify != timetable.NOTIFY)
-            await messages.record(message_id, where, lifetime=messages.REPLACED, slot=SLOT, task=TASK, user_id=user_id)
+            await messages.record(message_id, where, lifetime=messages.DAY, task=TASK, user_id=user_id)
             posted += 1
             log.info("Weekly summary of everything, job %s, user %s: posted", job.id, user_id)
             continue
@@ -308,7 +310,7 @@ async def week_job(job: scheduler.Job) -> None:
         run = await streak_days(user_id, now_day)
         text = week_text(found, now_day, run, "Your week")
         message_id = await cards.send(where, Card(text, (), week_layout(found, now_day, run, "Your week")), silent=job.notify != timetable.NOTIFY)
-        await messages.record(message_id, where, lifetime=messages.REPLACED, slot=SLOT, task=TASK, user_id=user_id)
+        await messages.record(message_id, where, lifetime=messages.DAY, task=TASK, user_id=user_id)
         posted += 1
         log.info("Weekly pills summary, job %s, user %s: posted (%s)", job.id, user_id, text.splitlines()[0])
     scheduler.note(job, f"posted for {posted}" if posted else "nothing was to take this week")

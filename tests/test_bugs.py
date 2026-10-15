@@ -1023,7 +1023,7 @@ def test_the_bugs_task_meets_the_contract_and_neither_action_needs_a_card():
     registry.load()
     entry = actions.entry("bugs")
     assert entry is not None and entry.icon == rules.BUG_EMOJI and "Only when the user says bug or report" in entry.only_for
-    assert [(action.name, action.needs_card) for action in entry.actions] == [("bug_report", False), ("bug_list", False)]
+    assert [(action.name, action.needs_card) for action in entry.actions] == [("bug_report", False), ("bug_list", False), ("bug_close", False)]
     assert actions.problems([entry]) == [] and registry.problems() == []
 
 
@@ -1287,3 +1287,95 @@ def test_the_open_bugs_are_a_card_with_the_same_words_and_a_box_a_bug():
     assert [(piece.status, piece.children[0].content) for piece in none if isinstance(piece, design.Box)] == [(design.DONE, "No open bugs.")]
     many = rules.list_layout([bug(n, f"bug {n}") for n in range(1, 30)])
     assert design.problem(many) == "" and len([piece for piece in many if isinstance(piece, design.Box)]) == 1
+
+
+# --- closing in words: "close B2", "close B2 and B5", "B5 is fixed" ----------------------------------------------------
+@pytest.fixture
+def closing(bugs_db, owner, monkeypatch):
+    from core import cards as core_cards
+    from core.actions import Request
+    from tasks.bugs import plain
+
+    world = SimpleNamespace(sent=[], posts=[], plain=plain)
+
+    async def send(channel_id, card):
+        world.sent.append(card)
+        return 7100
+
+    async def bring_up_to_date(item, said, channel=None):
+        world.posts.append((item.id, item.status, said))
+
+    monkeypatch.setattr(core_cards, "send", send)
+    monkeypatch.setattr(posts, "bring_up_to_date", bring_up_to_date)
+    for number in range(1, 4):
+        asyncio.run(store.add(owner.id, report(target=snap(5000 + number, f"made-up {number}"))))
+    world.close = lambda bugs_said, user=owner: asyncio.run(plain.close_said(Request(user, INBOX, "close", message_id=4200), {"bugs": bugs_said}, frozenset()))
+    world.status = lambda number: asyncio.run(store.get(number)).status
+    return world
+
+
+def _press(owner, arg):
+    from core import cards as core_cards
+
+    shown = []
+
+    class Pressed(core_cards.Press):
+        async def update(self, card):
+            shown.append(card.text)
+
+    press = Pressed(owner, "bugs", "undo", arg, INBOX, 7100)
+    return press, shown
+
+
+def test_close_b2_and_b5_closes_both_as_fixed_with_one_line_and_an_undo(closing):
+    shown = closing.close(["B1", "b3"])
+    assert shown.summary == "✅ Closed as fixed · B1, B3"
+    assert (closing.status(1), closing.status(2), closing.status(3)) == (rules.FIXED, rules.OPEN, rules.FIXED)
+    (card,) = closing.sent
+    ((undo,),) = card.rows
+    assert (undo.label, undo.task, undo.action, undo.arg) == ("Undo", "bugs", "undo", "1,3")
+    assert [(number, status) for number, status, _ in closing.posts] == [(1, rules.FIXED), (3, rules.FIXED)], "each post as after a press"
+
+
+def test_undo_opens_them_again(closing, owner):
+    closing.close(["B1", "B3"])
+    press, shown = _press(owner, "1,3")
+    assert asyncio.run(closing.plain.on_undo(press)) == "↩️ Undone · B1, B3 open again" == shown[0]
+    assert closing.status(1) == closing.status(3) == rules.OPEN
+    assert [status for _, status, _ in closing.posts[2:]] == [rules.OPEN, rules.OPEN]
+
+
+def test_a_bug_already_closed_is_said_and_an_unknown_one_refused(closing):
+    closing.close(["B1"])
+    with pytest.raises(UserError, match="B1 is already closed"):
+        closing.close(["B1"])
+    assert closing.close(["B1", "B2"]).summary == "✅ Closed as fixed · B2\n-# already closed: B1"
+    with pytest.raises(UserError, match="I have no B9"):
+        closing.close(["B9"])
+    with pytest.raises(UserError, match="isn't a bug id"):
+        closing.close(["D1"]), "a self-test's bug is never closed by words on live"
+
+
+def test_only_the_owner_closes_bugs_in_words(closing, owner):
+    from dataclasses import replace
+
+    someone = replace(owner, role="member")
+    with pytest.raises(UserError, match="isn't for you"):
+        closing.close(["B1"], user=someone)
+    press, _ = _press(someone, "1")
+    assert asyncio.run(closing.plain.on_undo(press)) == closing.plain.NOT_YOURS
+    assert closing.status(1) == rules.OPEN and closing.sent == []
+
+
+def test_needs_a_look_says_a_bug_in_a_few_plain_words_never_its_report(monkeypatch):
+    from core import attention
+    from tasks.briefing import rules as briefing_rules
+
+    async def open_items(user_id):
+        # A report's own text can hold anything the bot said: an emoji, a made-up pill's name
+        return [SimpleNamespace(id=5, summary="💊 Pill A taken at 8:00 am", post_url="https://discord.test/5", fix_ready=True)]
+
+    monkeypatch.setattr(store, "open_items", open_items)
+    (item,) = asyncio.run(bugs.needs_me(1, None))
+    assert briefing_rules.problem(item) == "⚠️ B5 · fix ready to check"
+    assert "Pill A" not in item.what and "💊" not in item.what and attention.status_line(item) == "⚠️ B5 · retest"

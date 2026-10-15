@@ -27,6 +27,7 @@ TAGS = {OPEN: "Open", FIXED: "Fixed", WONTFIX: "Won't fix"}
 STATUS_MARKS = {OPEN: "🟢", FIXED: "✅", WONTFIX: "🚫"}
 # What happened to a bug after it was reported, as its history words it
 REOPENED = "reopened"
+READY_TO_CHECK = "fix ready to check"  # a bug in Needs a look: "B5 · fix ready to check"
 EVENTS = {FIXED: "Closed as Fixed", WONTFIX: "Closed as Won't fix", REOPENED: "Re-opened"}
 CARD_LIMIT = 2000  # Discord's limit for one message
 

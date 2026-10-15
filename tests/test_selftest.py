@@ -137,6 +137,7 @@ def test_the_phases_run_the_old_look_twice_then_the_new_then_the_old_again_with_
     assert all(runner.SWITCHES[name] == "false" for name in ("TODOS_ENABLED", "NUDGES_ENABLED", "HABITS_ENABLED", "TODAY_CARD"))
     assert [settings.get("HABITS_ENABLED", "false") for _, settings, _ in runner.PHASES] == ["false"] * 8 + ["true", "false"], "routines and reminders in start 9 only"
     assert runner.SWITCHES["CALENDAR_ENABLED"] == "false" and runner.SWITCHES["CALENDAR_ICS_URL"] == "", "never live's calendar link in a self-test"
+    assert all(runner.SWITCHES[name] == "" for name in ("CALENDAR_READ", "CALENDAR_MAIN_ID", "CALENDAR_BOT_ID", "GOOGLE_SA_KEY_PATH")), "never live's Google calendars in a self-test"
     calendar = [settings for name, settings, _ in runner.PHASES if settings.get("CALENDAR_ENABLED") == "true"]
     assert len(calendar) == 1 and calendar[0]["CALENDAR_ICS_URL"].endswith("calendar_selftest.ics"), "the calendar start reads made-up events"
     assert [settings.get("DESIGN_ROUND", "") for _, settings, _ in runner.PHASES] == [""] * 6 + ["4", "4", "4", "4"], "round 4 from the to-dos start on"
@@ -838,3 +839,17 @@ def test_round_three_s_type_scale_sketches_are_a_page_with_one_box_a_topic_and_t
     assert options.picked([("a",), ("b",), ("c",)], ("c", "a")) == [("a",), ("c",)]
     with pytest.raises(SystemExit):
         options.picked([("a",)], ("nope",))
+
+
+def test_every_switch_is_said_for_every_start():
+    """A switch live has on must never reach a self-test start (D1, 16 Oct: the daily read and the diary did)."""
+    import re
+
+    # Settings that are not a feature's switch: how a feature behaves once on, kept at live's choice
+    not_switches = {"KEEP_CONFIRMATIONS", "POMO_AUTO_CONTINUE", "DIARY_MOOD"}
+    example = (config.BASE_DIR / ".env.example").read_text(encoding="utf-8")
+    switches = {name for name, value in re.findall(r"(?m)^([A-Z_]+)=(true|false)\s*$", example)} - not_switches
+    missing = sorted(switches - set(runner.SWITCHES))
+    assert not missing, f"say these in selftest SWITCHES: {missing}"
+    for name in ("CALENDAR_READ", "CALENDAR_BOT_ID", "GOOGLE_SA_KEY_PATH", "READING_SOURCE", "GOOGLE_CALENDAR_FAKE"):
+        assert name in runner.SWITCHES, name

@@ -584,3 +584,13 @@ def test_the_scheduler_tells_of_a_run_that_worked(db, monkeypatch):
 
     asyncio.run(scenario())
     assert worked == ["works"]
+
+
+def test_needs_a_look_says_which_check_failed_and_how_many_steps():
+    from tasks.briefing import rules as briefing_rules
+
+    nightly = {"date": "2026-10-16 03:30", "ran": "nightly, full", "failed": "2", "failed_steps": "1.01b 5.01", "note": ""}
+    by_hand = {"date": "2026-10-16 10:00", "ran": "calendar", "failed": "1", "failed_steps": "10.02", "note": ""}
+    assert briefing_rules.problem(health.selftest_problem(nightly, {"1.01b": 1})) == "⚠️ D1 · nightly check failed, 2 steps"
+    assert briefing_rules.problem(health.selftest_problem(by_hand, {})) == "⚠️ self-test failed, 1 step"
+    assert attention.status_line(health.selftest_problem(nightly, {"1.01b": 1})) == "⚠️ D1 · self-test failed", "the status line stays short"

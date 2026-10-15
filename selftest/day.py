@@ -216,9 +216,11 @@ def place(message: dict) -> int:
 
 def rule_problems(snapshot: dict) -> list[str]:
     """What breaks the hub's rules in one snapshot: the order (briefing, task cards,
-    then the moment), a card twice, and anything left from another day."""
+    then the moment), a card twice, and anything left from another day. A moment's
+    message (a reminder, the Sunday summary) stays where it was posted: a card that
+    comes up after it goes under it (question 91), so only the cards' order is checked."""
     problems = []
-    places = [place(each) for each in snapshot["messages"] if not each.get("typed")]
+    places = [place(each) for each in snapshot["messages"] if not each.get("typed") and place(each) != 9]
     for at in range(1, len(places)):
         if places[at] < places[at - 1]:
             problems.append(f"out of order: “{heading(snapshot['messages'][at]['raw'])}” is under something that comes after it")

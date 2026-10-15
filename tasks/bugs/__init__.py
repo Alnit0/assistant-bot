@@ -8,9 +8,9 @@ from core.errors import UserError
 from core.clock import real_now
 from core.users import User
 from tasks.base import ANY, ButtonNote, Keyword, Reaction, ReplyAction, Task
-from tasks.bugs import capture, filing, listing, posts, rules, store, system
+from tasks.bugs import capture, filing, listing, plain, posts, rules, store, system
 from tasks.bugs.filing import file_report as _file
-from tasks.bugs.plain import ACTIONS, list_said, report_said  # noqa: F401  (the plain-words code is plain.py)
+from tasks.bugs.plain import ACTIONS, close_said, list_said, report_said  # noqa: F401  (the plain-words code is plain.py)
 
 EXPORT_FILE = BASE_DIR / "docs" / "BUGS.md"
 
@@ -51,11 +51,13 @@ async def report_reaction(payload, user: User) -> str:
 
 async def needs_me(user_id: int, now) -> list:
     """The bugs that need me now: one with a fix ready is mine to retest. A
-    bug that is only waiting to be fixed is not."""
+    bug that is only waiting to be fixed is not. Said in a few words of its
+    own ("B5 · fix ready to check"), never the report's text, which can hold
+    anything the bot said (an emoji, a pill's name)."""
     from core.attention import PROBLEM, Item
 
     return [
-        Item(f"{item.summary}: a fix is ready to retest", PROBLEM, can_act=True, link=item.post_url or "", bug=rules.bug_id(item.id), short=("retest",))
+        Item(rules.READY_TO_CHECK, PROBLEM, can_act=True, link=item.post_url or "", bug=rules.bug_id(item.id), short=("retest",))
         for item in await store.open_items(user_id) if item.fix_ready
     ]
 
@@ -99,11 +101,12 @@ class BugsTask(Task):
     # In plain words: how the router knows this task
     icon = rules.BUG_EMOJI
     only_for = (
-        "Reporting that the bot itself did something wrong, as a bug report, and listing the bug reports "
-        "that are open. Only when the user says bug or report: not a correction of a request, not "
-        "something the bot should do, and not a problem with anything outside the bot."
+        "Reporting that the bot itself did something wrong, as a bug report, listing the bug reports "
+        "that are open, and closing bugs named by their id (B2) as fixed. Only when the user says bug or "
+        "report, or names a bug by its id: not a correction of a request, not something the bot should "
+        "do, and not a problem with anything outside the bot."
     )
-    examples = ("that's a bug", "log that as a bug: it started two timers", "show my open bugs")
+    examples = ("that's a bug", "log that as a bug: it started two timers", "show my open bugs", "close B2 and B5")
     # A report for a message that already has an open bug shows that one (filing.py)
     identity = rules.IDENTITY
     on_repeat = rules.ON_REPEAT
@@ -181,6 +184,7 @@ class BugsTask(Task):
         return list(store.MIGRATIONS)
 
     def setup(self, client) -> None:
+        plain.register()  # Undo under "closed as fixed"
         # Before connecting, so the buttons on old posts still work
         client.add_view(posts.CloseButtons())
         client.add_view(posts.ReopenButton())

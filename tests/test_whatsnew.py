@@ -6,7 +6,7 @@ from core import clock, database, design, notify, whatsnew
 from core import day as days
 from tasks.briefing import rules
 
-DAY = date(2026, 10, 16)
+DAY = date(2030, 10, 16)  # a day to come: the dev clock only moves forward (it failed once 16 Oct 2026 was past 6 am)
 
 
 def run(coroutine):

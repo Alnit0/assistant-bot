@@ -23,6 +23,7 @@ log = logging.getLogger("assistant")
 MOOD, UNDO = "mood", "undo"
 KIND = "diary.ask"  # the evening ask: Discord only, never ntfy, held back in quiet hours (core/notify.py)
 ASK_JOB = "ask"
+TODAY_JOB = "today"  # 6 pm: the Today card drawn again, for its evening line
 NOT_SAVED = "That didn't save: nothing was written to the diary. Try again in a moment."
 
 ONLY_FOR = (
@@ -241,6 +242,18 @@ async def ask_job(job: scheduler.Job) -> None:
     await database.run(store.db_asked, owner.id, on, channel_id, message_id)
     await messages.record(message_id, channel_id, lifetime=messages.DAY, task=TASK, user_id=owner.id)
     scheduler.note(job, "asked")
+
+
+async def today_job(job: scheduler.Job) -> None:
+    """Scheduler handler, 6 pm: the Today card is drawn again, so a day not written yet gets its line."""
+    from core.users import get_user_by_discord_id
+
+    owner = await get_user_by_discord_id(int(config.OWNER_ID)) if config.OWNER_ID else None
+    if owner is None:
+        scheduler.note(job, "nothing drawn: no owner")
+        return
+    changed(owner.id)
+    scheduler.note(job, "the Today card drawn again for the evening")
 
 
 # --- what extraction is told and offered ----------------------------------------------------------------------

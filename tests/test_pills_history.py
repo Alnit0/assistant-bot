@@ -135,7 +135,7 @@ def test_it_is_off_unless_switched_on_and_its_schedule_is_sunday_evening(world, 
     assert notes == ["off (WEEKLY_SUMMARY)"] and len(world.sent) == before, "a run booked before it was switched off posts nothing"
 
 
-def test_on_sunday_evening_the_week_is_posted_in_the_hub_one_at_a_time(sunday):
+def test_on_sunday_evening_the_week_is_posted_at_the_bottom_of_the_hub_for_the_day(sunday):
     add(sunday, {"name": "Zinc"})
     for offset in range(6):
         lived(sunday, DAY + timedelta(days=offset), "zinc")
@@ -146,7 +146,7 @@ def test_on_sunday_evening_the_week_is_posted_in_the_hub_one_at_a_time(sunday):
     lines = posted.card.text.splitlines()
     assert posted.channel == HUB and posted.silent is True
     assert lines[0] == "💊 **Your week** · Mon 12 – Sun 18 Oct · 7 of 7 taken" and lines[-1] == "🔥 Streak · 7 days" and len(lines) == 9
-    assert sunday.recorded == [(posted.id, HUB, messages.REPLACED, "pills.week")] and sunday.notes == ["posted for 1"] and sunday.reported == []
+    assert sunday.recorded == [(posted.id, HUB, messages.DAY, None)] and sunday.notes == ["posted for 1"] and sunday.reported == []
     run(history.week_job(_job("notify")))
     assert sunday.sent[-1].silent is False, "notifying is the schedule's to say"
 

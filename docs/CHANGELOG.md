@@ -9,6 +9,10 @@ backfilled from the git log.
 - The calendar reads several calendars at once (the iCal link and Google), shown as one, and adds, moves and
   deletes events in words in the Bot calendar, each on a card, with undo: say add dentist Friday 3pm to try it.
 - "When did I take my pills today?" and the daily read went live overnight with the rest.
+- Close bugs in words: "close B2", "close B2 and B5" or "B5 is fixed", one line with an Undo. Needs a look says
+  each bug in a few plain words ("B5 · fix ready to check").
+- The Sunday summary is posted at the bottom of the hub and goes at the next morning's tidy; the Today card says
+  "Diary · not yet" only from 6 pm. The nightly self-test no longer takes live's switches.
 
 ## 2026-10-15
 

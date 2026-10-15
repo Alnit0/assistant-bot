@@ -26,6 +26,9 @@ from tasks.diary.rules import ICON, TASK, TITLE
 # No attention items: it is never something to be told about.
 # ---------------------------------------------------------------------------
 ASK_DEFAULT = timetable.Default("Diary evening ask", rules.ASK_AT)
+# The bot's own: at 6 pm the Today card is drawn again, so "Diary · not yet" comes up. Any other
+# change to the card draws it right too: nothing depends on this having run
+TODAY_DEFAULT = timetable.Default("Diary on the Today card", rules.SHOWN_FROM, locked=True)
 
 
 async def summary(user_id: int, day: date) -> Summary | None:
@@ -45,12 +48,13 @@ async def summary(user_id: int, day: date) -> Summary | None:
 
 
 async def today_lines(user_id: int, now: datetime) -> list:
-    """For the Today card: one line, written or not yet, with the mood when written. No words."""
+    """For the Today card: one line, written or not yet, with the mood when written. No words.
+    Not yet is said only in the evening (from 6 pm): a line written earlier shows all day."""
     from core.today import Line
 
     there = await store.entry(user_id, rules.diary_day(now))
     if there is None:
-        return [Line(ICON, f"**{TITLE}** · not yet")]
+        return [Line(ICON, f"**{TITLE}** · not yet")] if rules.evening(now) else []
     shown = mood.shown(there.mood_scale, there.mood) if mood.on() and there.has_mood else "written"
     return [Line(ICON, f"**{TITLE}** · {shown}", done=True)]
 
@@ -112,14 +116,15 @@ class DiaryTask(Task):
         return store.MIGRATIONS
 
     def job_handlers(self):
-        return {plain.ASK_JOB: plain.ask_job}
+        return {plain.ASK_JOB: plain.ask_job, plain.TODAY_JOB: plain.today_job}
 
     def job_labels(self):
-        return {plain.ASK_JOB: "diary evening ask"}
+        return {plain.ASK_JOB: "diary evening ask", plain.TODAY_JOB: "diary on the Today card"}
 
     def setup(self, client) -> None:
         plain.register()
         scheduler.default_schedule(TASK, plain.ASK_JOB, ASK_DEFAULT)
+        scheduler.default_schedule(TASK, plain.TODAY_JOB, TODAY_DEFAULT)
 
     async def summary(self, user_id, day):
         return await summary(user_id, day)

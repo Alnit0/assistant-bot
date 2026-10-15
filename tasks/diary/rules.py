@@ -15,6 +15,7 @@ ICON = "📔"
 TITLE = "Diary"
 DAY_ENDS = time(4, 0)  # a diary day runs to 4:00 am: just after midnight is still the evening before
 ASK_AT = time(21, 0)  # the evening ask, a schedule like any other ("my schedule" moves it)
+SHOWN_FROM = time(18, 0)  # the Today card says "Diary · not yet" from 6 pm: in the morning there is nothing to write yet
 ASK = f"{ICON} How was today?"
 ASK_WORDS = f"{ICON} How was today? A few words, if you like."
 
@@ -41,6 +42,12 @@ def diary_day(moment: datetime) -> date:
     local = days.local_time(moment)
     day = days.day_of(moment)
     return day - timedelta(days=1) if local < DAY_ENDS else day
+
+
+def evening(moment: datetime) -> bool:
+    """From 6 pm to the end of the diary day (4:00 am): when a day not written yet is worth a line."""
+    local = days.local_time(moment)
+    return local >= SHOWN_FROM or local < DAY_ENDS
 
 
 def streak(written: set[date], today: date) -> int:

@@ -230,6 +230,42 @@ time). Spend US$0.041.
    every booking (midnight, 3 am backup, 3:30 am self-test, 6 am
    routine, 7 am check, Sunday summary). Spend NZ$0.79 of NZ$1.00.
 
+## D1, closing bugs in words, questions 91 and 92 (16 Oct, morning)
+
+- **D1 was the 3:30 am nightly self-test on the 1:16 am code:** 20 of
+  150 steps failed (1.01b on, 5.01, 6.01 and after). The bot was not
+  at fault: the self-test says every switch for each of its starts so
+  that live's `.env` never decides a step, but its list had no line for
+  the switches added this week (the diary, the daily read, calendar
+  writing and the Google calendars). Run from live's folder, the dev bot
+  took them from live's `.env`: the schedules had two rows more than
+  the steps expect, and the daily read pick failed in the dev bot with
+  no feeds, which then topped the status line steps. Fixed: the list says
+  them all, and a test fails when a switch in `.env.example` is missing
+  from it. Live's own 5:30 am pick worked (one feed of 16 unreadable).
+- **Closing bugs in words:** "close B2", "close B2 and B5", "B5 is
+  fixed", in #inbox or a DM: closed as fixed at once, each post as after
+  Fixed, one line with an Undo. Only the owner; a self-test's D bug is
+  never closed by words on live.
+- **Needs a look says a bug in a few words of its own:** "B5 · fix ready
+  to check", "D1 · nightly check failed, 20 steps"; never the report's
+  text (it can hold an emoji or a pill's name).
+- **Question 91:** the Sunday summary is posted at the bottom of the hub
+  as a one-off and goes at the next morning's tidy; the replay's order
+  check no longer counts a moment's message.
+- **Question 92:** the Today card says "Diary · not yet" only from 6 pm
+  (to the end of the diary day, 4 am); a 6 pm schedule of the bot's own
+  draws the card again then.
+
+## Decided (2026-10-16, morning)
+
+- Closing by words closes as Fixed, never Won't fix: that stays the
+  post's button.
+- The status line keeps its shortest form for a bug (`B5 · retest`,
+  `D1 · self-test failed`); the longer plain words are Needs a look's.
+- After every ship, the next nightly self-test's result is checked and
+  reported, its failed steps and why (RULES.md, Running and testing).
+
 ## Decided (2026-10-16, overnight)
 
 - The calendars are listed in one setting, `CALENDAR_READ`, each as

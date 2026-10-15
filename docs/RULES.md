@@ -429,7 +429,11 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   work, its memory use: `core/health.py` asks, `tasks/bugs/system.py`
   files): one for each kind of problem, a note on the open one when it
   repeats, never a second. It never closes one
-- Claude Code never closes a bug: I press Fixed or Won't fix on the post.
+- Claude Code never closes a bug: I press Fixed or Won't fix on the post,
+  or say so ("close B2", "close B2 and B5", "B5 is fixed", in #inbox or
+  a DM): closed as fixed at once, one line with an Undo, only by me.
+  Needs a look says a bug in a few words of its own ("B5 · fix ready to
+  check", "D1 · nightly check failed, 2 steps"), never the report's text.
   The one exception is the self-test's own bugs (`selftest/bugs.py`),
   and only a bug the self-test opened itself: the first step to fail in
   a stage is a dev bug (D number) with what was expected and seen and
@@ -603,6 +607,13 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   start is a real problem and is said in #bot-log. The phone is pinged
   only for a failing step (`selftest/notify.py`; the topic is never
   printed)
+- **After every ship** (in a batch, overnight or not), the next nightly
+  self-test's result is checked and reported: its line in
+  `data/selftest/history.csv` in live's folder, and for a failure which
+  steps and why, in plain words. NOW.md keeps a line for it until then.
+  The self-test's switch list (`SWITCHES` in `selftest/__main__.py`)
+  names every switch in `.env.example`: live's `.env` never decides a
+  step (D1, 16 Oct)
 - A test that runs for more than a minute stops the run with its name
   and where it was stuck (`tests/watchdog.py`, exit code 70). Look
   into it; never raise the limit to get past it
