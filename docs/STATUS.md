@@ -8,6 +8,17 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-15
 
+## Live restarted again at 1:41 pm, 15 Oct (for the #commands names)
+
+From `056572d` (clean, pushed, full test run passed), 33 minutes clear of
+the 2:14 pm pill reminder; no switch changed. The account check passed,
+and #commands now heads them 📝 To-dos, ⏰ Reminders and 🔁 Personal
+routines (3 messages edited); help uses the same titles. What's new for
+16 Oct is now three true lines (round 4, what is on, the Design forum):
+the four from before were out of date and are gone. The Routines layout
+preview post has a reply with A and B side by side at 7:10 am, 8:30 pm
+part done and all done, each labelled, with its length on a phone.
+
 ## Live restarted at 1:32 pm, 15 Oct (Alex: test everything now)
 
 From `e06d30f` (clean, pushed, full test run passed), 42 minutes clear of
@@ -60,7 +71,9 @@ restart (`HABITS_ENABLED`, `NUDGES_ENABLED`, `TODAY_CARD`). Preview:
    (level 3), then due (level 2); a window is quiet while open and, closed
    undone, level 2 only with a nudge. The brief also says Needs a look;
    that box holds level 1 (problems) only, so an overdue routine shows in
-   the status line and on the Today card instead. Question 68 asks.
+   the status line and on the Today card instead. Alex agreed (question
+   68): an overdue routine stays out of Needs a look, which is for things
+   that are wrong.
 6. **Layout B is the default** (Alex, question 69): the Today card as the
    overview, and a card a routine from its time or window (any time: from
    the morning) until it is done, posted by a run booked at its start, in

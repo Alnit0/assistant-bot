@@ -732,6 +732,85 @@ async def post_preview(title: str, intro: str, found: list[tuple[str, tuple]], t
     return await _as_dev_bot(work)
 
 
+PHONE_LINES = 20  # about how many lines of a card one phone screen shows, with a dropdown as two
+
+
+def phone_note(pieces) -> str:
+    """How long a card is on a phone, said under it: its lines and controls, and a screen's worth."""
+    lines, controls = _count(pieces)
+    tall = lines + 2 * len(design.menus(pieces)) + len(design.buttons(pieces))
+    if tall <= PHONE_LINES // 2:
+        share = "under half a screen"
+    elif tall <= PHONE_LINES * 3 // 4:
+        share = "about half a screen"
+    elif tall <= PHONE_LINES + 3:
+        share = "about a screen"
+    else:
+        share = f"about {tall / PHONE_LINES:.1f} screens"
+    return design.small(f"on a phone: {lines} line{'' if lines == 1 else 's'} and {controls} control{'' if controls == 1 else 's'}, {share}")
+
+
+def routines_compare() -> list[tuple[str, tuple]]:
+    """The reply to the Routines layout preview: A and B side by side at the same moments
+    (a mix of to-dos, two routines and two reminders as notes), each labelled and with
+    how long it is on a phone under it."""
+    from core import today
+    from tasks.habits import rules
+
+    morning = _routine_days({11})
+    evening = _routine_days({11, 12, 13, 21, 22, 23, 24})
+    done = _routine_days({11, 12, 13, *range(21, 33)})
+    found = []
+
+    def add(label, pieces):
+        found.append((label, pieces))
+        found.append(("", (design.Text(phone_note(pieces)),)))
+
+    add("A · 7:10 am · one Personal routines card", rules.all_layout(morning, _at(7, 10)))
+    add("B · 7:10 am · the Today card", today.layout(_today_lines(morning), _at(7, 10)))
+    add("B · 7:10 am · Morning's own card", rules.routine_card(morning[0], _at(7, 10)))
+    add("A · 8:30 pm, part done · one Personal routines card", rules.all_layout(evening, _at(20, 30)))
+    add("B · 8:30 pm, part done · the Today card", today.layout(_today_lines(evening), _at(20, 30)))
+    add("B · 8:30 pm, part done · Evening's own card (Morning's is gone, done)", rules.routine_card(evening[1], _at(20, 30)))
+    add("A · all done · one Personal routines card", rules.all_layout(done, _at(23, 30)))
+    add("B · all done · the Today card (the routines' own cards are gone)", today.layout(_today_lines(done, all_done=True), _at(23, 30)))
+    return checked(found)
+
+
+def routines_compare_opening() -> str:
+    return "\n".join([
+        "## A and B, side by side",
+        "The same day in both layouts: two routines (Morning, Evening), four to-dos and two reminders as notes, at 7:10 am, at 8:30 pm part done, and all done. Each card is labelled **A** or **B**, with how long it is on a phone under it.",
+        "-# Layout B is what is live now; A is one setting away (ROUTINES_LAYOUT=a). The buttons here do nothing.",
+    ])
+
+
+async def reply_preview(title: str, intro: str, found: list[tuple[str, tuple]]) -> str:
+    """More messages in a post of the Design forum that is there already, found by its title."""
+    import discord
+
+    from interfaces.discord import render
+
+    async def work(client):
+        quiet = discord.AllowedMentions.none()
+        forum = await _design_forum(client)
+        active = await client.http.get_active_threads(forum.guild.id)
+        threads = [await client.fetch_channel(int(each["id"])) for each in active.get("threads", []) if str(each.get("parent_id")) == str(forum.id) and each.get("name") == title]
+        threads += [thread async for thread in forum.archived_threads(limit=100) if thread.name == title]
+        if not threads:
+            raise SystemExit(f"No post called {title!r} in the Design forum: nothing posted.")
+        thread = threads[0]
+        await thread.send(intro, allowed_mentions=quiet)
+        for label, pieces in found:
+            if label:
+                await thread.send(f"### {label}", allowed_mentions=quiet)
+            await thread.send(view=render.layout_view(pieces), allowed_mentions=quiet)
+            await asyncio.sleep(1)  # paced: well under Discord's rate limit
+        return thread.jump_url
+
+    return await _as_dev_bot(work)
+
+
 def _number_after(args: list[str], flag: str) -> int:
     value = args[args.index(flag) + 1] if args.index(flag) + 1 < len(args) else ""
     if not value.isdigit() or int(value) not in design.ROUNDS:
@@ -742,6 +821,13 @@ def _number_after(args: list[str], flag: str) -> int:
 def main() -> int:
     sys.stdout.reconfigure(encoding="utf-8")
     args = sys.argv[1:]
+    if "--routines-compare" in args:
+        found = routines_compare()
+        if "--check" in args:
+            print(f"{len(found)} messages built, each within one message.")
+            return 0
+        print("Posted:", asyncio.run(reply_preview(ROUTINES_TITLE, routines_compare_opening(), found)))
+        return 0
     if "--routines" in args:
         found = routines_layout()
         if "--check" in args:

@@ -83,6 +83,21 @@ def test_the_routines_preview_shows_layout_a_layout_b_and_the_today_card_by_the_
     assert "A or B?" in preview.routines_opening()
 
 
+def test_the_routines_reply_labels_each_card_a_or_b_with_its_length_on_a_phone():
+    found = preview.routines_compare()
+    labels = [label for label, _ in found if label]
+    assert labels and all(label.startswith(("A · ", "B · ")) for label in labels)
+    assert {label.split(" · ")[1] for label in labels} == {"7:10 am", "8:30 pm, part done", "all done"}
+    notes = [design.texts(pieces)[0] for label, pieces in found if not label]
+    assert len(notes) == len(labels) and all(note.startswith("-# on a phone: ") for note in notes)
+    today_b = next(pieces for label, pieces in found if label.startswith("B · 8:30 pm") and "Today" in label)
+    words = "\n".join(design.texts(today_b))
+    assert "📝" in words and "🔁" in words, "a mix of to-dos and routines"
+    assert preview.phone_note((design.Text("a\nb"),)) == "-# on a phone: 2 lines and 0 controls, under half a screen"
+    assert preview.phone_note((design.Text("a"),)) == "-# on a phone: 1 line and 0 controls, under half a screen"
+    assert preview.phone_note((design.Text("\n".join("x" * 13)),)) == "-# on a phone: 13 lines and 0 controls, about half a screen"
+
+
 def test_the_round_4_preview_fits_shows_round_3_beside_it_and_names_only_made_up_pills():
     found = preview.checked(preview.round_4())
     labels = [label for label, _ in found if label]
