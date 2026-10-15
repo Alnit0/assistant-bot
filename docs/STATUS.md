@@ -272,6 +272,13 @@ time). Spend US$0.041.
 
 ## Decided (2026-10-16, late morning)
 
+- The self-test runs a step once more (after 10 s) when it failed while
+  Discord answered 5xx or a rate limit, and marks it Discord unavailable
+  if it fails so again: no D bug, not counted as failed, said in the
+  summary. Its stage is not marked passed, so it runs again next time.
+  Steps that fail later because of a card left open by it are still
+  failures: they saw no Discord error themselves.
+
 - Fix shipped is marked by Claude Code with `tasks.bugs.cli shipped`, run
   in live's folder only (its data folder has `live-versions.txt`): there
   the tests run on the code live runs, so passing there is the fix being

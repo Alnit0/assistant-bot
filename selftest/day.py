@@ -310,11 +310,12 @@ async def story(h) -> None:
     h.background["reading"] = ("pick", {"choice": 1, "tldr": TLDR_FIRST})
 
     async def save(key: str, said: str, canned, task: str) -> None:
-        async with h.step(key, f"“{said}”, then Save", "a card, and after Save it is kept", "a day in the hub (set up)"):
-            await h.say(said, canned=canned, task=task)
-            _, shown = await card(h)
-            h.check(shown is not None and any("Save" in label for label in shown.labels), f"the card: {shown.text[:200] if shown else 'none'}")
-            await h.press(shown.id, "Save", h.inbox)
+        async for attempt in h.step(key, f"“{said}”, then Save", "a card, and after Save it is kept", "a day in the hub (set up)"):
+            async with attempt:
+                await h.say(said, canned=canned, task=task)
+                _, shown = await card(h)
+                h.check(shown is not None and any("Save" in label for label in shown.labels), f"the card: {shown.text[:200] if shown else 'none'}")
+                await h.press(shown.id, "Save", h.inbox)
         _, left = await card(h)
         if left is not None and any("Cancel" in label for label in left.labels):
             await h.press(left.id, "Cancel", h.inbox)  # a card left open would take the next words
@@ -342,15 +343,17 @@ async def story(h) -> None:
     routines = {each.name: each.id for each in await habits_store.every(h.user.id)}
 
     async def step(key: str, title: str, work) -> None:
-        async with h.step(key, title, "done as said", "a day in the hub"):
-            await work()
+        async for attempt in h.step(key, title, "done as said", "a day in the hub"):
+            async with attempt:
+                await work()
 
     async def snap(at: int) -> None:
         moment, since = MOMENTS[at]
         await _at(h, the_day, *moment)
-        async with h.step(f"d.s{at + 1}", f"Snapshot at {label(*moment)}", "the hub read back", "a day in the hub"):
-            await snapshot(h, the_day, moment, since)
-            h.saw(f"{len(h.memo['snapshots'][-1]['messages'])} messages; status {h.memo['snapshots'][-1]['status'] or 'blank'}")
+        async for attempt in h.step(f"d.s{at + 1}", f"Snapshot at {label(*moment)}", "the hub read back", "a day in the hub"):
+            async with attempt:
+                await snapshot(h, the_day, moment, since)
+                h.saw(f"{len(h.memo['snapshots'][-1]['messages'])} messages; status {h.memo['snapshots'][-1]['status'] or 'blank'}")
 
     async def reminder_taken() -> None:
         went = await h.find(h.hub, "💊 Dose due")
@@ -427,9 +430,10 @@ async def story(h) -> None:
     await step("d.24", "“did brush teeth and floss”", lambda: h.say("did brush teeth and floss", channel=h.hub, canned=todo("habit_tick", items=["brush teeth", "floss"]), task="habits"))
     await snap(7)
 
-    async with h.step("d.99", "The doses at the end of the day", "Pill A 1 and 2 taken, 3 missed; Pill B and C taken; Pill D skipped", "a day in the hub"):
-        found = await h.doses()
-        h.saw(", ".join(f"{name} {seq}: {state}" for (name, seq), state in sorted(found.items())))
+    async for attempt in h.step("d.99", "The doses at the end of the day", "Pill A 1 and 2 taken, 3 missed; Pill B and C taken; Pill D skipped", "a day in the hub"):
+        async with attempt:
+            found = await h.doses()
+            h.saw(", ".join(f"{name} {seq}: {state}" for (name, seq), state in sorted(found.items())))
 
 
 PHASES = {NAME: story}

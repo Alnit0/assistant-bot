@@ -576,13 +576,14 @@ def main() -> int:
     ran = "full" if whole else ", ".join(chosen) or "starts " + ",".join(wanted)
     keep(record.row(stamp, commit, ("nightly, " if asked.nightly else "") + ran, results, spent, real, int((datetime.now() - began).total_seconds())), results, stamp, channels, asked.nightly)
     # A stage that ran whole with nothing failed has passed on this commit: it is not run again until something touches it
-    failed = {name for name, _, found in phases if found.get("exit") != 0 or any(each["status"] in ("fail", "error") for each in found["results"])}
+    # A step Discord got in the way of has not passed either: its stage is run again next time
+    failed = {name for name, _, found in phases if found.get("exit") != 0 or any(each["status"] in ("fail", "error", "discord") for each in found["results"])}
     if commit:
         for stage in stages.passed_stages([name for name, _, _ in phases], failed):
             passed[stage] = commit
         stages.write_passed(PASSED, passed)
     crashed = crashed_starts(phases)
-    print(f"--- {len(results)} steps, {len(bad)} failed{crashed_text(crashed)}, US${spent:.4f} spent. Report: {path}")
+    print(f"--- {len(results)} steps, {len(bad)} failed{unavailable_text(results)}{crashed_text(crashed)}, US${spent:.4f} spent. Report: {path}")
     return 1 if bad or crashed else 0
 
 
@@ -591,6 +592,12 @@ def crashed_starts(phases) -> list[tuple[str, int]]:
     out of time): (name, exit code). Found 15 Oct: one such start was counted as
     nothing failed, because its steps had all passed before it stopped."""
     return [(name, found.get("exit")) for name, _, found in phases if found.get("exit") != 0]
+
+
+def unavailable_text(results) -> str:
+    """The run summary's note of the steps Discord got in the way of, twice: not failures, no bug."""
+    keys = [each["key"] for each in results if each["status"] == "discord"]
+    return f" ({len(keys)} Discord unavailable, not counted: {' '.join(keys)})" if keys else ""
 
 
 def crashed_text(crashed) -> str:

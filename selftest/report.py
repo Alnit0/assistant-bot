@@ -12,7 +12,7 @@ from selftest import onlyyou
 PATH = config.BASE_DIR / "docs" / "SELFTEST.md"
 # The log of the bot that ran the steps: the dev bot's own when there is one
 LOG = config.BASE_DIR / "logs" / ("dev-bot.log" if config.test_bot_token() else "bot.log")
-MARK = {"pass": "✅ pass", "fail": "❌ fail", "error": "💥 broke", "skip": "⏭️ skipped"}
+MARK = {"pass": "✅ pass", "fail": "❌ fail", "error": "💥 broke", "skip": "⏭️ skipped", "discord": "📡 Discord unavailable"}
 SLOW = 12.0  # seconds: a step slower than this is listed (most of a step is waiting on Discord)
 PHASE_WORDS = {
     "p1": "Start 1: the old look, reminders on. A day of pills up to the afternoon, then the bot is cut off mid-message",
@@ -149,7 +149,9 @@ def text(phases, cost: float, claude: bool, stamp: str, partial: bool = False, b
         "",
         f"**Run:** {stamp[:4]}-{stamp[4:6]}-{stamp[6:8]} {stamp[9:11]}:{stamp[11:13]}, {seconds // 60} min {seconds % 60} s"
         + ((f" · **part of the run only: {ran}**" if ran else " · **part of the run only**") if partial else ""),
-        f"**Result:** {counts['pass']} passed, {counts['fail']} failed, {counts['error']} broke, {counts['skip']} skipped, of {len(results)} steps",
+        f"**Result:** {counts['pass']} passed, {counts['fail']} failed, {counts['error']} broke, {counts['skip']} skipped"
+        + (f", {counts['discord']} Discord unavailable (no bug: Discord answered with a server error or a rate limit, twice)" if counts.get("discord") else "")
+        + f", of {len(results)} steps",
         f"**Requests to Claude:** {'real for ' + str(real) + ' steps' if claude else 'none real: every language step used a recorded answer'} · US${cost:.4f} spent",
         "",
     ]

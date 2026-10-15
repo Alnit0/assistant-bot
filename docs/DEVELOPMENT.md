@@ -1956,6 +1956,13 @@ report is `docs/SELFTEST.md`, written again by every full run.
   - one message in #selftest-log ("🧪 Self-test · …"): what ran, what
     failed, the spend, and the bugs touched. The emptying before a run
     leaves these, so the channel is a list of runs
+  - **Discord unavailable**: a step that fails while Discord answers
+    with a server error (5xx) or a rate limit (seen in the log while it
+    ran, or raised) is run once more after 10 seconds; failing so again
+    it is marked 📡 Discord unavailable, not a failure: no bug, and the
+    run's summary line and report say which steps. A step is written
+    `async for attempt in h.step(...):` with `async with attempt:` and
+    its body under it, so it can be run again in place
   - **a bug for the first step that fails in a stage**, in the #bugs
     forum as a dev bug (D number, the "dev" tag), with what was
     expected and what was seen. The steps that failed after it in that

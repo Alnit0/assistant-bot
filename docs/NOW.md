@@ -14,7 +14,8 @@ list, fixed; the dev-bot self-test before the ship 150 of 150. **Next:**
 the 3:30 am nightly on 17 Oct, its result checked and reported (D1
 should close by itself)
 
-**Ready for the next restart:** bugs closing by themselves (fix shipped,
+**Ready for the next restart:** a self-test step Discord got in the way
+of is run once more, else Discord unavailable (no bug); bugs closing by themselves (fix shipped,
 3 days). After it, in live's folder: `tasks.bugs.cli shipped B5` with
 its two golden tests (`docs/STATUS.md`)
 

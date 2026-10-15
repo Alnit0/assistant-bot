@@ -853,3 +853,110 @@ def test_every_switch_is_said_for_every_start():
     assert not missing, f"say these in selftest SWITCHES: {missing}"
     for name in ("CALENDAR_READ", "CALENDAR_BOT_ID", "GOOGLE_SA_KEY_PATH", "READING_SOURCE", "GOOGLE_CALENDAR_FAKE"):
         assert name in runner.SWITCHES, name
+
+
+# --- a step Discord got in the way of ---------------------------------------------------------------------------------
+def _bare_harness(tmp_path, monkeypatch):
+    from selftest import harness
+
+    h = object.__new__(harness.Harness)
+    h.phase, h.out, h.results, h._record, h.memo = "p1", tmp_path / "p1.json", [], None, {}
+    h.steps_before = h.failed_before = h.steps_in_all = 0
+    h.ends_at = 0.0
+    monkeypatch.setattr(harness, "RETRY_WAIT", 0)
+    monkeypatch.setattr(harness.Harness, "tell_progress", lambda self: None)
+    return h
+
+
+def _run_step(h, body):
+    async def go():
+        tries = 0
+        async for attempt in h.step("1.09c", "pause testv", "a card"):
+            async with attempt:
+                tries += 1
+                body(tries)
+        return tries
+
+    import logging
+
+    logging.disable(logging.NOTSET)  # the tests switch logging off; what Discord did is read from it
+    try:
+        return asyncio.run(go())
+    finally:
+        logging.disable(logging.CRITICAL)
+
+
+def test_a_step_that_fails_while_discord_answers_503_is_run_once_more_and_can_pass(tmp_path, monkeypatch):
+    import logging
+
+    from selftest import harness
+
+    h = _bare_harness(tmp_path, monkeypatch)
+
+    def body(tries):
+        if tries == 1:
+            logging.getLogger("assistant").error("Action failed: 503 Service Unavailable (error code: 0)")
+            h.check(False, "no card was posted")
+
+    assert _run_step(h, body) == 2
+    (record,) = h.results
+    assert record["status"] == harness.PASS, "one record a step, the second go's"
+
+
+def test_failing_twice_so_is_discord_unavailable_with_no_bug_and_a_note_in_the_summary(tmp_path, monkeypatch):
+    import logging
+
+    from selftest import bugs as selftest_bugs
+    from selftest import harness
+
+    h = _bare_harness(tmp_path, monkeypatch)
+
+    def body(tries):
+        logging.getLogger("discord.http").warning("We are being rate limited. PATCH responded with 429.")
+        h.check(False, "no card was posted")
+
+    assert _run_step(h, body) == 2
+    (record,) = h.results
+    assert record["status"] == harness.DISCORD and record["saw"].startswith("Discord unavailable (being rate limited), twice: no card was posted")
+    assert record["status"] not in selftest_bugs.BAD, "no D bug for it"
+    assert runner.unavailable_text(h.results) == " (1 Discord unavailable, not counted: 1.09c)"
+
+
+def test_a_step_that_broke_on_a_discord_server_error_is_retried_too(tmp_path, monkeypatch):
+    import discord
+
+    from selftest import harness
+
+    h = _bare_harness(tmp_path, monkeypatch)
+    response = SimpleNamespace(status=503, reason="Service Unavailable")
+
+    def body(tries):
+        raise discord.DiscordServerError(response, "upstream connect error")
+
+    assert _run_step(h, body) == 2 and h.results[0]["status"] == harness.DISCORD
+
+
+def test_a_failure_with_no_discord_trouble_is_a_failure_at_once(tmp_path, monkeypatch):
+    from selftest import harness
+
+    h = _bare_harness(tmp_path, monkeypatch)
+
+    def body(tries):
+        h.check(False, "Testb was saved")
+
+    assert _run_step(h, body) == 1 and h.results[0]["status"] == harness.FAIL
+
+
+def test_the_report_counts_discord_unavailable_apart_from_failures():
+    from selftest import harness
+
+    assert report.MARK[harness.DISCORD] == "📡 Discord unavailable"
+    line = logging_record("We are being rate limited. Retrying in 2.25 seconds.")
+    assert harness.discord_trouble(line) == "being rate limited" and harness.discord_trouble(logging_record("Received: pause testv")) == ""
+
+
+def logging_record(message):
+    import logging
+
+    return logging.LogRecord("discord.http", logging.WARNING, "", 0, message, (), None)
+
