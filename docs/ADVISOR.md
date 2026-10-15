@@ -58,7 +58,8 @@ He is **not relying on the bot for reminders yet**. The hub is a daily overview 
 - **Claude Code** runs on the EliteDesk, started with `claude --remote-control "assistant-bot"`. Alex drives it from the Claude app on his PC or phone. For a fresh start: `/clear`, never `/exit` (that needs a Remote Desktop visit). It pings his phone through ntfy hooks when it finishes or needs him (quiet 10 pm to 7 am).
 - **`docs/NOW.md`:** what is happening now, 40 lines at most: the batch, steps done, in progress and next, drafts, what waits on Alex. Updated after every step, "Idle" at a batch's end. A SessionStart hook (`.claude/settings.json`, `scripts/now.ps1`) prints it at every start, resume, `/clear` and compact. Batches commit a checkpoint after each step, so a crash loses one step at most.
 - **`/catchup`:** a read-only skill for a session's start or after a reboot: NOW.md, git, the last boot, live in its folder (service, commit, how far behind, account check, switches, the 6 am briefing) and new bugs, in four short parts.
-- **Memory:** live about 100 MB; a full self-test adds about 240 MB at most. It won't start under 1.9 GB free.
+- **Memory (measured 16 Oct, every feature on):** live 110 MB private, 129 MB working set; the dev bot in a full self-test peaks at 105 MB a start (3.5 GB free during it). The self-test won't start under 1.9 GB free. Nothing near the 300 MB line.
+- **The test suite:** about 45 seconds for 3,400 tests (`TESTS_AS_ON_LIVE=1` about 95): under the 60-second line, nothing to speed up.
 - **Remote access:** Tailscale plus Remote Desktop, only when something is truly stuck.
 - **Costs:** recorded in US$ (what Anthropic bills), shown in NZ$. Daily alert NZ$1.00; self-test cap NZ$3.50 a month (spent for October: recorded answers until November). **A normal day with every feature on is about NZ$0.10**, a busy one about NZ$0.25 (`docs/COSTS.md`, section 8). The router, on every message in words, is US$0.0040 and grows a little with each task. Buttons, dropdowns and typed words cost nothing. 15 Oct batches: NZ$0.25 and NZ$0.79 on understanding checks.
 
@@ -107,7 +108,7 @@ Messages go through fast paths (buttons, exact typed words), then sticky follow-
 - **Reminders he sets** (live; `nudges` in code): once or repeating, in the hub with Done and Snooze (10 minutes, 1 hour, tomorrow). "done" straight after one went off, or "done the bins", ticks it off. A thing said with a time ("gym at 6", "dentist Friday 3pm") is a reminder; "remind me to …" with no time is a reminder whose card asks when.
 - **Personal routines** (live; `habits` in code, layout B): his checklists on chosen days, groups of steps, at a time, any time or in a window, fresh each day.
 - **The Today card** (live): today's routines, reminders as notes, events and to-dos, by the relevance rule.
-- **The calendar** (live): read only from the secret iCal link in live's `.env`; event names never go to Claude; on the Today card, in the briefing and the status line (an event within 30 minutes, its time only). Writing, later, through a service account and a calendar of the bot's own.
+- **The calendar** (live): several calendars at once (`CALENDAR_READ`: the secret iCal link, and calendars through Google as the service account), shown as one, each happening once. His events still come from the iCal link; the Bot calendar is read and written through Google. **Adding in words** (`CALENDAR_WRITE`): "dentist Friday 3pm for an hour" makes a card (title in his own words, an hour unless said, clashes in every calendar), move and delete the bot's own events on a card, undo after each; only the Bot calendar is ever written to (checked on every write). With writing on, an event with a time and no "remind me" is the calendar's; "remind me about …" a reminder. Event names never go to Claude. `docs/GOOGLE-SETUP.md`.
 - **Direct messages** are on: he can talk to the bot in a DM.
 - **The diary** (live since 15 Oct): his words about his day, one entry a diary day (to 4:00 am), a mood Good, OK or Bad (each entry keeps its scale; to be looked at again about 30 Oct), one gentle ask at 9 pm in the hub, a streak with no warnings. He writes in #inbox or a DM. A message only about his day or a feeling is kept, with an Undo (question 85). Its words stay in the database: no line, log, notification or status line shows them (`Entry.private`).
 - **One order** for everything shown task after task (each task's `place`): pills, the Today card, reminders, personal routines, gym (later), calendar, diary, to-dos.
@@ -117,6 +118,8 @@ Messages go through fast paths (buttons, exact typed words), then sticky follow-
 - **Cross-task understanding** (15 Oct): 44 golden conversations where a message could fit more than one task, recorded from the real router and extraction; fixes went into the tasks' own lines, never the router's rules. Every self-test run reads them back offline (step u.01).
 - **The status line** picks the single most important thing; overdue to-dos no longer hold it over a dose due now.
 - **What's new** (`core/whatsnew.py`): a batch can leave a few lines for one morning's briefing.
+- **Understanding across all tasks** (16 Oct): 41 more golden conversations of the newer tasks (diary, daily read, calendar adding) against the older, with undo and corrections; the nightly self-test replays every newer file, 157 recorded answers.
+- **A day in the hub** (`python -m selftest.day`): a made-up Sunday with everything live has on, read back at eight moments; `--post <file> --reply` adds it to "Design · A day in the hub".
 - **The golden conversations run at noon** on a test clock, never by the real time of day.
 - **The test suite** runs in about 40 seconds; `TESTS_AS_ON_LIVE=1` about 80.
 
@@ -127,6 +130,8 @@ Messages go through fast paths (buttons, exact typed words), then sticky follow-
 - **The fix for when doses were taken** (`effbe2e`) ships at the next restart.
 - **The daily read** (built 15 Oct, `READING_ENABLED` off): his look at "Design · Daily read" and questions 86 to 90 (themes, sources, time, length, how many).
 - **What's new for 16 Oct** has four older lines queued besides the four new ones: whether they go.
+- **Calendar ids:** which calendar his events are really on (the Gmail one showed 1 event against 5 that week); then `CALENDAR_READ` lists it and the iCal link goes (`docs/GOOGLE-SETUP.md`).
+- **Questions 91 and 92** from the day in the hub with everything on.
 - **Gym onboarding:** questions 76 to 79 from "Design · Gym onboarding sketches" (which way in; whether the sheet or the bot holds the plan). Nothing of gym is built.
 - **Live's own folder:** his word that it has had a good day, so the work folder's old `.env` and `data\` can be deleted.
 - **Bugs B2 and B5:** both fixed in what live runs (a note on each); only he presses Fixed.
@@ -149,7 +154,7 @@ Messages go through fast paths (buttons, exact typed words), then sticky follow-
 - **Scheduler:** handlers, schedule rows, one engine, run log; routines of steps; missed-run rules; local time with daylight saving handled.
 - **Briefing:** one card from each task's summary; edited in place.
 - **Attention:** the five-level ranking, shared by the status line, the briefing and pings.
-- **Calendar:** read only from the secret iCal link; a source interface so the Google Calendar API (a service account, writing only to its own calendar) can come later.
+- **Calendar:** several sources behind one interface (the iCal link, the Google Calendar API as a service account); writing only to the bot's own calendar.
 - **Gym:** drafted, waiting on his choice of how a plan comes in.
 
 ---

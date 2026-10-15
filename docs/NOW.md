@@ -5,8 +5,9 @@ history is `docs/STATUS.md`. Read first, with `/catchup`.
 
 **Overnight batch, 16 Oct** (unattended; ship before 5:20 am or not at all)
 - Done: step 1 (calendars, writing to the Bot calendar), step 2 (a day
-  in the hub, everything on), step 3 (41 golden conversations)
-- Next: step 4 (health check), the full self-test, then the ship
+  in the hub, everything on), step 3 (41 golden conversations), step 4
+  (live 110 MB, self-test peak 105 MB, tests 45 s); self-test 150 of 150
+- Next: the ship (`CALENDAR_WRITE=true`, `CALENDAR_READ`), one restart
 
 **Live:** `fb88613` since 15 Oct, 11:26 pm, everything on but calendar
 writing. **After 6 am:** check the first real daily read pick (5:30 am);

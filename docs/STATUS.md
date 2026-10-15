@@ -52,6 +52,14 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
    file (crosstask, spanning, calendar_write, diary, reading): 157
    recorded answers, all right.
 
+4. **Health check.** Live, with every feature on: 110 MB private
+   (129 MB working set), far under 300 MB. The dev bot in a full
+   self-test: 105 MB at its peak. The full test run: about 45 seconds,
+   under the 60-second line, so nothing was changed. The full dev-bot
+   self-test: 150 of 150 on recorded answers, 157 understanding answers
+   read back right. Spend for the batch so far: US$0.33 (about NZ$0.55
+   of NZ$1.50).
+
 ## The daily read (15 Oct, late night; built, off, a preview)
 
 `tasks/reading`, behind `READING_ENABLED` (off): one article a day,

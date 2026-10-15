@@ -48,6 +48,7 @@ for name, value in {
     "DIARY_ENABLED": "",
     "DIARY_MOOD": "",
     "READING_ENABLED": "",
+    "READING_SOURCE": "",  # the replay's made-up feeds: never in a test unless it sets them
     "TODOS_ENABLED": "",  # off, as it is unless set: the to-dos tests switch it on
     "NUDGES_ENABLED": "",  # off, as it is unless set: the reminders tests switch it on
     "HABITS_ENABLED": "",  # off, as it is unless set: the personal routines tests switch it on
@@ -59,6 +60,7 @@ for name, value in {
     "CALENDAR_MAIN_ID": "",
     "CALENDAR_BOT_ID": "",
     "CALENDAR_WRITE": "",
+    "GOOGLE_CALENDAR_FAKE": "",  # the replay's stand-in for Google: the tests use a fake of their own
     "TODAY_CARD": "",  # off, as it is unless set: the Today card tests switch it on
     # Every other switch too: off, whatever this PC's own .env has turned on (tests/test_settings.py)
     "BRIEFING_ENABLED": "",
