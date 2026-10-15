@@ -85,10 +85,12 @@ def test_the_replay_never_starts_in_the_nightly_self_test_s_window():
 
 
 def test_the_replay_turns_on_every_switch_live_has_and_never_a_real_calendar():
-    for name in ("REMINDERS_ENABLED", "BRIEFING_ENABLED", "HUB_TIDY", "QUIET_HOURS_ENABLED", "TODOS_ENABLED", "NUDGES_ENABLED", "HABITS_ENABLED", "TODAY_CARD", "CALENDAR_ENABLED", "WEATHER_ENABLED"):
+    for name in ("REMINDERS_ENABLED", "BRIEFING_ENABLED", "HUB_TIDY", "QUIET_HOURS_ENABLED", "TODOS_ENABLED", "NUDGES_ENABLED", "HABITS_ENABLED", "TODAY_CARD", "CALENDAR_ENABLED", "WEATHER_ENABLED", "WEEKLY_ALL", "DIARY_ENABLED", "READING_ENABLED", "CALENDAR_WRITE"):
         assert replay.SETTINGS[name] == "true", name
     assert "CALENDAR_ICS_URL" not in replay.SETTINGS, "the made-up file is handed over by the launcher, never a link"
-    assert [moment for moment, _ in replay.MOMENTS] == [(6, 0), (7, 30), (9, 15), (12, 0), (15, 0), (18, 30), (21, 0), (23, 45)]
+    assert not {"GOOGLE_SA_KEY_PATH", "READING_SOURCE", "GOOGLE_CALENDAR_FAKE"} & set(replay.SETTINGS), "no key; the made-up files by the launcher"
+    assert replay.SETTINGS["CALENDAR_BOT_ID"].startswith("made-up")
+    assert [moment for moment, _ in replay.MOMENTS] == [(6, 0), (7, 30), (9, 45), (12, 0), (15, 0), (18, 30), (21, 0), (23, 45)]
 
 
 # --- the status line: what fell due today at a time beats what was carried over -----------------------------------

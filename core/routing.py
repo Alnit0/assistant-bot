@@ -278,11 +278,24 @@ def named_destinations(message: str, entries: list[Entry]) -> list[Entry]:
     said = " ".join(message.lower().split())
     found = []
     for entry in entries:
-        names = {entry.name, entry.name.removesuffix("s")}
+        # Its name and the name it is shown by ("to-dos" for todos)
+        names = {entry.name, entry.name.removesuffix("s"), entry.title.lower(), entry.title.lower().removesuffix("s")}
         name = "|".join(re.escape(each) for each in sorted(names, key=len, reverse=True))
-        if re.search(rf"\b{_TO} (?:my|the|our) (?:{name})(?: list| task)?\b", said):
-            found.append(entry)
-    return found
+        where = re.search(rf"\b{_TO} (?:my|the|our) (?:{name})(?: list| task)?\b", said)
+        if where:
+            found.append((where.start(), entry))
+    # Two named in one clause ("add write in my diary to my to-dos"): the last is where it goes, the
+    # first is part of what is added. Parts joined by "and" or a comma keep a destination each
+    if len(found) > 1:
+        found.sort(key=lambda each: each[0])
+        kept = [found[-1]]
+        for at, entry in reversed(found[:-1]):
+            between = said[at:kept[0][0]]
+            if re.search(r"\band\b|,|;", between):
+                kept.insert(0, (at, entry))
+        found = kept
+    chosen = [entry for _, entry in found]
+    return [entry for entry in entries if entry in chosen]
 
 
 def led_by(message: str, entries: list[Entry]) -> Entry | None:

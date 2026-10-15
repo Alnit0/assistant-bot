@@ -339,3 +339,13 @@ def test_a_routine_made_before_the_rework_keeps_its_days_as_its_repeat():
     old, daily = store.db_all(conn, 1)
     assert old.repeat == recurrence.Repeat(recurrence.DAYS, weekdays=(0, 3)) and daily.repeat == recurrence.EVERY_DAY
     assert old.items[0].kind == rules.STEP and old.when == rules.ANY_TIME
+
+
+def test_the_week_counts_a_routine_only_from_the_day_it_was_made(world):
+    """Found 16 Oct in a day in the hub: routines made on a Saturday were counted 1 of 7 for that week."""
+    from tasks import habits
+
+    clock.advance_to(days.at(world.day + timedelta(days=5), time(7, 0)))  # the Saturday
+    evening(world)
+    week = run(habits.task.week(world.owner.id, world.day, world.day + timedelta(days=6)))
+    assert week.total == 2, "Saturday and Sunday only: the days before it was made were never its"

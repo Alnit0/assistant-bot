@@ -179,6 +179,11 @@ def db_step(conn: sqlite3.Connection, item_id: int) -> tuple[int, int, str] | No
     return conn.execute("SELECT user_id, habit_id, text FROM habits_steps WHERE id = ? AND removed_at IS NULL", (item_id,)).fetchone()
 
 
+def db_made(conn, user_id: int) -> dict:
+    """When each routine was made, by its id: the moment as it was kept."""
+    return {row[0]: row[1] for row in conn.execute("SELECT id, created_at FROM habits_items WHERE user_id = ?", (user_id,))}
+
+
 async def every(user_id: int) -> list[Habit]:
     return await database.run(db_all, user_id)
 

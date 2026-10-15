@@ -743,6 +743,7 @@ The real tasks on the router's way: timers, bugs and pills setup. On the dev dat
 | T50 | 🤖 Auto | When doses were taken | Each taken dose and its time, skipped and missed, a day gone by, one pill, one dose, a part of the day, the last time, both questions at once; golden 30 | ✅ Pass | 2026-10-15 | `tests/test_pills_taken.py`, `tests/test_golden.py` |
 | T51 | 🤖 Auto | The daily read | Feeds read (RSS, Atom), pages read to their text, paywalls and teasers skipped, a balanced week, the pick and its checks, no TL;DR without text, the card, 👍 and 👎, another, shorter, deeper, save for later, the profile, sources added and removed, failures quiet until 3 days | ✅ Pass | 2026-10-15 | `tests/test_reading.py` |
 | T52 | 👤 Manual | The daily read on the phone | The post “Design · Daily read” | ⬜ Untested | |  |
+| T54 | 🤖 Auto | Understanding across all tasks | 34 router and 7 extraction golden conversations of the newer tasks against the older, replayed every run and nightly | ✅ Pass | 2026-10-16 | `evals/fixtures/spanning.json`, `selftest/understanding.py` |
 | T53 | 🤖 Auto | Calendars from several sources, and writing | The setting, the merge with each happening once, one failing, one no longer listed, only the Bot calendar written, adding (title from the words, an hour unless said, clashes), moving, deleting, undo, another calendar's event never changed, no name to Claude | ✅ Pass | 2026-10-16 | `tests/test_calendar_google.py` |
 
 ## U. Channel reset

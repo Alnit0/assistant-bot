@@ -115,3 +115,16 @@ From the sketches of 15 Oct ("Design · Gym onboarding sketches";
     shorter" or "something deeper" when wanted? → Yes; no limit.
 90. One a day, or more (a second at lunch, or one in the evening)? →
     One a day; "another one" when you want more.
+
+## A day in the hub, everything on (16 Oct; the post's reply "Round 5 with everything on")
+
+91. The Sunday summary (7 pm) stays where it was posted, so the evening
+    routine's card (from 8 pm) comes up under it, and the replay's
+    order check says a card is under something that comes after it.
+    Should a card that comes up later go above the evening's moment
+    messages, or is the summary fine where it is? → Fine where it is:
+    it is news of the moment, like a reminder; the check will treat a
+    summary as a moment.
+92. The Today card says "📔 Diary · not yet" from 6 am. Only from the
+    evening (say 6 pm), or all day as now? → From 6 pm: in the morning
+    there is nothing to write yet.

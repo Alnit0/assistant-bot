@@ -40,7 +40,10 @@ class NotAllowed(Exception):
 
 
 def _send(method: str, url: str, body: bytes | None, headers: dict) -> tuple[int, bytes]:
-    """One HTTP request: (status, body). The one place that reaches Google; tests replace it."""
+    """One HTTP request: (status, body). The one place that reaches Google; tests replace it. With
+    GOOGLE_CALENDAR_FAKE set (the dev bot's replay, never live) a file stands in for it."""
+    if config.GOOGLE_CALENDAR_FAKE:
+        return _fake(method, url, body)
     request = urllib.request.Request(url, data=body, method=method, headers=headers)
     try:
         with urllib.request.urlopen(request, timeout=TIMEOUT) as answer:
@@ -49,8 +52,40 @@ def _send(method: str, url: str, body: bytes | None, headers: dict) -> tuple[int
         return error.code, error.read()
 
 
+def _fake(method: str, url: str, body: bytes | None) -> tuple[int, bytes]:
+    """The Calendar API as a JSON file of calendars and their events (made-up, for the replay)."""
+    from pathlib import Path
+
+    where = Path(config.GOOGLE_CALENDAR_FAKE)
+    kept = json.loads(where.read_text(encoding="utf-8")) if where.exists() else {"calendars": {}, "next": 0}
+    path = urllib.parse.urlparse(url).path.split("/calendars/", 1)[-1].split("/")
+    calendar_id, ref = urllib.parse.unquote(path[0]), (urllib.parse.unquote(path[2]) if len(path) > 2 else "")
+    found = kept["calendars"].setdefault(calendar_id, {})
+    payload = json.loads(body) if body else {}
+    status, answer = 200, {}
+    if method == "GET" and not ref:
+        answer = {"items": list(found.values())}
+    elif method == "POST":
+        kept["next"] += 1
+        answer = found[f"e{kept['next']}"] = {"id": f"e{kept['next']}", "status": "confirmed", **payload}
+    elif ref not in found:
+        status = 404
+    elif method == "GET":
+        answer = found[ref]
+    elif method == "PATCH":
+        found[ref].update(payload)
+        answer = found[ref]
+    elif method == "DELETE":
+        del found[ref]
+        status, answer = 204, None
+    where.write_text(json.dumps(kept), encoding="utf-8")
+    return status, (json.dumps(answer).encode() if answer is not None else b"")
+
+
 def _access_token() -> str:
     """A token for the service account, made by signing a request with its key (blocking)."""
+    if config.GOOGLE_CALENDAR_FAKE:
+        return "made-up"
     if _token.get("value") and _token.get("until", 0) > clock_time.time() + 60:
         return _token["value"]
     from google.auth import crypt, jwt

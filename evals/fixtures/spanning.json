@@ -1,0 +1,1698 @@
+{
+  "router": [
+    {
+      "golden": "n1",
+      "message": "feeling a bit flat today",
+      "tasks": [
+        "diary"
+      ],
+      "note": "a feeling about the day, no request: kept",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "diary"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "n2",
+      "message": "today was great, got loads done",
+      "tasks": [
+        "diary"
+      ],
+      "note": "how the day went",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "diary"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "n3",
+      "message": "nice, that was fast",
+      "nothing": true,
+      "note": "a remark about the bot: still nothing",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "nothing",
+        "tasks": [],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "n4",
+      "message": "finished the essay, finally",
+      "tasks": [
+        "todos"
+      ],
+      "note": "a to-do done, said in the past: the to-do, not the diary",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "todos"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "n5",
+      "message": "had a lovely walk with Sam this evening",
+      "tasks": [
+        "diary"
+      ],
+      "note": "the day, to keep",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "diary"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "n6",
+      "message": "dear diary, the plumber never showed up",
+      "tasks": [
+        "diary"
+      ],
+      "note": "named: the diary",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "diary"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "n7",
+      "message": "add write in my diary to my to-dos",
+      "tasks": [
+        "todos"
+      ],
+      "note": "a to-do whose words name the diary: the destination named is the to-dos",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "todos"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "n8",
+      "message": "something to read please",
+      "tasks": [
+        "reading"
+      ],
+      "note": "another read",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "reading"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "n9",
+      "message": "remind me to read the daily article at lunch",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "remind me: a reminder",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "n10",
+      "message": "save the article to read tonight",
+      "tasks": [
+        "reading"
+      ],
+      "note": "saved for later",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "reading"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "n11",
+      "message": "what did I read on Monday?",
+      "tasks": [
+        "reading"
+      ],
+      "note": "the week's reads",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "reading"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "n12",
+      "message": "put reading time on my calendar Saturday at 10",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "named: the calendar",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "n13",
+      "message": "more articles about agents please",
+      "tasks": [
+        "reading"
+      ],
+      "note": "shaping the read",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "reading"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "n14",
+      "message": "haircut Saturday at 11",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "an appointment with a day and a time",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "n15",
+      "message": "remind me about the haircut Saturday",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "asked to be reminded",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "n16",
+      "message": "remind me at 10 on Saturday to leave for the haircut",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "remind me, with a time",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "n17",
+      "message": "car service Tuesday 8am",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "an appointment",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "n18",
+      "message": "call the garage Tuesday",
+      "tasks": [
+        "todos"
+      ],
+      "note": "a thing to do on a day, no time: a to-do",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "todos"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "n19",
+      "message": "delete the haircut",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "one of the calendar's events, by name",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "n20",
+      "message": "undo that",
+      "tasks": [
+        "calendar"
+      ],
+      "exchanges": [
+        [
+          "haircut Saturday at 11",
+          "card: calendar · new: **Haircut** · Sat 17 Oct · `11:00 am` to `12:00 pm` · 1 hour"
+        ],
+        [
+          "(pressed the card's button)",
+          "📅 Added · **Haircut** · Sat 17 Oct · `11:00 am` to `12:00 pm` · 1 hour"
+        ]
+      ],
+      "note": "straight after an event was added",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "n21",
+      "message": "actually it was ok",
+      "tasks": [
+        "diary"
+      ],
+      "exchanges": [
+        [
+          "feeling a bit flat today",
+          "📔 Saved · 😞 Bad"
+        ]
+      ],
+      "note": "straight after an entry: its mood",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "diary"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "n22",
+      "message": "undo that",
+      "tasks": [
+        "diary"
+      ],
+      "exchanges": [
+        [
+          "feeling a bit flat today",
+          "📔 Saved · 😞 Bad"
+        ]
+      ],
+      "note": "straight after an entry",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "diary"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "n23",
+      "message": "something shorter",
+      "tasks": [
+        "reading"
+      ],
+      "exchanges": [
+        [
+          "another one",
+          "### 📖 Daily read · AI usage\n📖 [Made-up: testing code that calls a model](https://example.com/made-up/testing) · Made-up blog · 12 min"
+        ]
+      ],
+      "note": "straight after another read was shown",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "reading"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "n24",
+      "message": "undo that",
+      "tasks": [
+        "todos"
+      ],
+      "exchanges": [
+        [
+          "finished the essay, finally",
+          "✅ **Finish the essay** · done"
+        ]
+      ],
+      "note": "straight after a to-do was ticked off",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "todos"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "n25",
+      "message": "no, 12:30",
+      "tasks": [
+        "calendar"
+      ],
+      "exchanges": [
+        [
+          "move the haircut to 12",
+          "card: calendar · change: **Haircut** · ~~Sat 17 Oct · `11:00 am`~~ → **Sat 17 Oct · `12:00 pm`**"
+        ]
+      ],
+      "note": "a correction on the calendar's card",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "n26",
+      "message": "no, make it 11:30",
+      "tasks": [
+        "calendar"
+      ],
+      "exchanges": [
+        [
+          "haircut Saturday at 11",
+          "card: calendar · new: **Haircut** · Sat 17 Oct · `11:00 am` to `12:00 pm` · 1 hour"
+        ],
+        [
+          "(pressed the card's button)",
+          "📅 Added · **Haircut** · Sat 17 Oct · `11:00 am` to `12:00 pm` · 1 hour"
+        ]
+      ],
+      "note": "straight after Save: a change to the event just added",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "n27",
+      "message": "what have I still got on today?",
+      "tasks": [
+        "briefing"
+      ],
+      "note": "the rest of today, across everything",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "briefing"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "n28",
+      "message": "how's today going?",
+      "tasks": [
+        "briefing"
+      ],
+      "note": "the day as a whole",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "briefing"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "n29",
+      "message": "anything on this evening?",
+      "tasks": [
+        "briefing"
+      ],
+      "note": "part of today, across everything",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "briefing"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "n30",
+      "message": "what's on Saturday?",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "a coming day: the calendar",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "n31",
+      "message": "what did I read and write this week?",
+      "tasks": [
+        "reading",
+        "diary"
+      ],
+      "note": "two tasks in one question",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "reading",
+          "diary"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "n32",
+      "message": "done my stretches and I'm feeling great",
+      "tasks": [
+        "habits",
+        "diary"
+      ],
+      "note": "a routine ticked and a feeling, two tasks",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "habits",
+          "diary"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "n33",
+      "message": "how did I go this week?",
+      "tasks": [
+        "briefing"
+      ],
+      "note": "the week as a whole",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "briefing"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "n34",
+      "message": "is the haircut still on Saturday?",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "one of the calendar's events",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Renew the passport"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup",
+          "Test lunch"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Brush teeth"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    }
+  ],
+  "extraction": [
+    {
+      "golden": "n14",
+      "task": "calendar",
+      "message": "haircut Saturday at 11",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_add",
+      "data": {
+        "title": "haircut",
+        "day": "Saturday",
+        "time": "11:00 am"
+      },
+      "recorded": [
+        "calendar_add",
+        {
+          "title": "haircut",
+          "day": "Saturday",
+          "time": "11:00 am",
+          "guessed": [
+            "time"
+          ],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "n12",
+      "task": "calendar",
+      "message": "put reading time on my calendar Saturday at 10",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_add",
+      "data": {
+        "title": "reading time",
+        "day": "Saturday"
+      },
+      "recorded": [
+        "calendar_add",
+        {
+          "title": "reading time",
+          "day": "Saturday",
+          "time": "10:00",
+          "guessed": [
+            "time"
+          ],
+          "not_included": []
+        }
+      ],
+      "note": "10 with no am or pm: the code reads it as 10 am, the one in the day"
+    },
+    {
+      "golden": "n20",
+      "task": "calendar",
+      "message": "undo that",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_undo",
+      "data": {},
+      "after_answer": true,
+      "recorded": [
+        "calendar_undo",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "n21",
+      "task": "diary",
+      "message": "actually it was ok",
+      "state": "The user's diary (its words are never given here):\n- today: written\n- streak: 3 days",
+      "action": "diary_mood",
+      "data": {
+        "mood": "ok"
+      },
+      "after_answer": true,
+      "recorded": [
+        "diary_mood",
+        {
+          "mood": "ok",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "n23",
+      "task": "reading",
+      "message": "something shorter",
+      "state": "The user's daily read:\n- today's read: Made-up: testing code that calls a model (AI usage, 12 min)\n- sources: Made-up AI blog",
+      "action": "reading_another",
+      "data": {
+        "kind": "shorter"
+      },
+      "after_answer": true,
+      "recorded": [
+        "reading_another",
+        {
+          "kind": "shorter",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "n4",
+      "task": "todos",
+      "message": "finished the essay, finally",
+      "state": "The user's to-dos now:\n- Finish the essay (for today)\n- Call the garage (any day)",
+      "action": "todo_done",
+      "data": {
+        "todos": [
+          {
+            "todo": "Finish the essay"
+          }
+        ]
+      },
+      "recorded": [
+        "todo_done",
+        {
+          "todos": [
+            {
+              "todo": "Finish the essay"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "n19",
+      "task": "calendar",
+      "message": "delete the haircut",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_delete",
+      "data": {
+        "search": "haircut"
+      },
+      "recorded": [
+        "calendar_delete",
+        {
+          "search": "haircut",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    }
+  ]
+}

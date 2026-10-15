@@ -4,10 +4,9 @@ What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
 **Overnight batch, 16 Oct** (unattended; ship before 5:20 am or not at all)
-- Step 1 done: calendars from several sources, writing to the Bot
-  calendar (`CALENDAR_WRITE`, off on live until the ship)
-- Next: step 2 (a day in the hub, everything on), step 3 (golden
-  conversations), step 4 (health check), then the ship
+- Done: step 1 (calendars, writing to the Bot calendar), step 2 (a day
+  in the hub, everything on), step 3 (41 golden conversations)
+- Next: step 4 (health check), the full self-test, then the ship
 
 **Live:** `fb88613` since 15 Oct, 11:26 pm, everything on but calendar
 writing. **After 6 am:** check the first real daily read pick (5:30 am);

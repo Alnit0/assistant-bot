@@ -1,6 +1,6 @@
 from datetime import date, datetime, timedelta
 
-from core import cards, config, hub, hubcard, repeats, scheduler, timeinput
+from core import cards, config, database, hub, hubcard, repeats, scheduler, timeinput
 from core import day as days
 from core.actions import SEE, Summary
 from core.attention import TIMED, USEFUL, Item
@@ -136,10 +136,13 @@ class HabitsTask(Task):
     async def week(self, user_id, monday, upto):
         habits = await store.every(user_id)
         found: dict[int, tuple[str, list[bool]]] = {each.id: (each.name, []) for each in habits}
+        # A routine counts from the day it was made: the days before it were never its (found 16 Oct, a day in the hub)
+        made = {key: days.day_of(datetime.fromisoformat(value)) for key, value in (await database.run(store.db_made, user_id)).items()}
         day = monday
         while day <= upto:
             for each in rules.due(habits, await store.ticked(user_id, day), day):
-                found[each.habit.id][1].append(each.finished)
+                if made.get(each.habit.id, day) <= day:
+                    found[each.habit.id][1].append(each.finished)
             day += timedelta(days=1)
         return rules.week_line(list(found.values()))
 

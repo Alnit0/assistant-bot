@@ -51,6 +51,8 @@ class Harness:
         self._record: dict | None = None
         self.cut_here = False  # the next request to Claude is where the process dies
         self.recorded_only = False  # while it is set, a recorded answer is used even when real requests are on
+        # A recorded answer for a request no message makes (a job's: the daily read's pick), by purpose
+        self.background: dict[str, tuple[str, dict]] = {}
         # How far the whole run is, for the dev bot's status line ("🧪 41/103 · 6m"): told by the launcher
         self.steps_before = int(os.getenv("SELFTEST_DONE") or 0)
         self.failed_before = int(os.getenv("SELFTEST_FAILED") or 0)
@@ -90,6 +92,8 @@ class Harness:
             os._exit(0)
         names = [tool.get("name") for tool in tools]
         canned = self._canned
+        if canned is None and purpose in self.background:
+            return self.background[purpose]
         if canned is not None:
             if ROUTE_TOOL in names:
                 return ROUTE_TOOL, canned["route"]

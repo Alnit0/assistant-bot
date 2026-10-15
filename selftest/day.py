@@ -29,24 +29,49 @@ from core import day as days
 
 TITLE = "Design · A day in the hub"
 NAME = "day"
-# Live's switches as of 15 Oct (live's .env), with the made-up sources in place of real ones
+# Live's switches as of 16 Oct (live's .env) with calendar writing too, and made-up sources in place of real
+# ones: the weather, the calendar's link, the Bot calendar (a file in place of Google), the daily read's feeds
+BOT_CALENDAR = "made-up-bot@group.calendar.example"
 SETTINGS = {
-    "CARDS_V2": "true", "DESIGN_ROUND": "4", "REMINDERS_ENABLED": "true", "BRIEFING_ENABLED": "true", "HUB_TIDY": "true",
+    "CARDS_V2": "true", "DESIGN_ROUND": "5", "REMINDERS_ENABLED": "true", "BRIEFING_ENABLED": "true", "HUB_TIDY": "true",
     "DAY_PROGRESS": "true", "DAY_QUESTIONS": "true", "WEEKLY_SUMMARY": "true", "QUIET_HOURS_ENABLED": "true",
     "TODOS_ENABLED": "true", "NUDGES_ENABLED": "true", "HABITS_ENABLED": "true", "TODAY_CARD": "true",
     "WEATHER_ENABLED": "true", "WEATHER_SOURCE": str(config.BASE_DIR / "tests" / "fixtures" / "weather_drizzle.json"),
-    "CALENDAR_ENABLED": "true",
+    "CALENDAR_ENABLED": "true", "WEEKLY_ALL": "true", "DIARY_ENABLED": "true", "READING_ENABLED": "true",
+    "CALENDAR_WRITE": "true", "CALENDAR_BOT_ID": BOT_CALENDAR, "CALENDAR_READ": "ics,google:CALENDAR_BOT_ID",
 }
+TLDR_FIRST = "Builds a small agent from one tool to five, showing the prompt at each step.\nThe failures are left in, which is the useful part."
+TLDR_SECOND = "How one team records model answers once and replays them in tests.\nCovers what to record and when to record again."
+
+
+def day_of_run(today: date) -> date:
+    """The day the replay is about: the next Sunday (from tomorrow), so the week's summary runs at 7 pm."""
+    ahead = (6 - today.weekday()) % 7
+    return today + timedelta(days=ahead or 7)
+
+
+def reading_source(day: date) -> dict:
+    """Made-up feeds and pages for the daily read, dated the day before the replay's day."""
+    stamp = f"{day - timedelta(days=1):%Y-%m-%d}T20:00:00+00:00"
+    words = " ".join(["Made-up words about building with models, explained step by step."] * 70)
+
+    def page(title):
+        return f"<html><body><article><h1>{title}</h1><p>{words}</p></article></body></html>"
+
+    items = [("https://example.com/made-up/agents", "Made-up: giving an agent the right tools"), ("https://example.com/made-up/testing", "Made-up: testing code that calls a model")]
+    feed = "<rss version='2.0'><channel><title>Made-up</title>" + "".join(f"<item><title>{title}</title><link>{link}</link><pubDate>{stamp}</pubDate></item>" for link, title in items) + "</channel></rss>"
+    return {"sources": [{"name": "Made-up AI blog", "url": "https://example.com/made-up/feed", "theme": "ai"}],
+            "pages": {"https://example.com/made-up/feed": feed, **{link: page(title) for link, title in items}}}
 # The moments the hub is read, and the story's own line for what happened since the one before
 MOMENTS = (
-    ((6, 0), "The night: yesterday closed, the 6 am tidy, then the briefing and the morning cards"),
+    ((6, 0), "The night: yesterday closed; the daily read picked at 5:30; the 6 am tidy, then the briefing and the morning cards, the read's card last"),
     ((7, 30), "Quiet hours ended at 7; the morning routine's window opened at 6:30 and its card came up; Pill B's 7:00 reminder, Taken by its button at 7:05; Skincare ticked in the routine's dropdown at 7:20"),
-    ((9, 15), "Pill A's 8:00 reminder went off and was left; Stretch and Glass of water ticked at 8:45, so the routine's card went; “took pill a” at 9:05, an hour late; Buy stamps done at 9:10; the 9:00 standup"),
+    ((9, 45), "Pill A's 8:00 reminder went off and was left; 👎 on the daily read at 7:40, then Another one; Stretch and Glass of water ticked at 8:45, so the routine's card went; “took pill a” at 9:05, an hour late; Buy stamps done at 9:10; the 9:00 standup; “dentist at 4pm for an hour” added to the Bot calendar at 9:30"),
     ((12, 0), "The 10:30 reminder snoozed for an hour, then Done at 11:35; “skip pill d” at 11:00; Pill A's second dose moved to 12:05, three hours after the first"),
-    ((15, 0), "Pill A's second dose taken by its reminder at 12:10; the 12:30 lunch; “paid the power bill” at 2:00; the 3:00 event was cancelled; the third dose is due at 3:10"),
-    ((18, 30), "Pill A's third dose was never taken: missed at 5:00, its latest time; Call the plumber done at 4:00; the 5:00 reminder done at 5:05; the gym at 6"),
-    ((21, 0), "The evening routine's window opened at 8; Pill C's 9:00 reminder has just gone off"),
-    ((23, 45), "Pill C taken at 9:05; Brush teeth and Floss ticked at 9:30, Read left; quiet hours from 10; the evening window closed at 11"),
+    ((15, 0), "Pill A's second dose taken by its reminder at 12:10; the 12:30 lunch; “move the dentist to 4:30pm” at 1:00; “paid the power bill” at 2:00; the 3:00 event was cancelled; the third dose is due at 3:10"),
+    ((18, 30), "Pill A's third dose was never taken: missed at 5:00, its latest time; Call the plumber done at 4:00; the dentist at 4:30; the 5:00 reminder done at 5:05; the gym at 6"),
+    ((21, 0), "The week's summary of everything at 7 pm (a Sunday); the evening routine's window opened at 8; the diary's evening ask and Pill C's reminder at 9:00"),
+    ((23, 45), "Pill C taken at 9:05; a diary entry at 9:15 with its mood; Brush teeth and Floss ticked at 9:30, Read left; quiet hours from 10; the evening window closed at 11"),
 )
 
 
@@ -174,7 +199,7 @@ def changes(before: dict | None, after: dict) -> str:
 
 
 # Where a message belongs in the hub, top to bottom: the briefing, the task cards in their fixed order, then the moment
-PLACES = ("briefing:hub", "pills", "today", "nudges", "habits", "gym", "todos")
+PLACES = ("briefing:hub", "pills", "today", "nudges", "habits", "gym", "todos", "reading")
 
 
 def place(message: dict) -> int:
@@ -275,7 +300,12 @@ async def story(h) -> None:
     from tasks.habits import store as habits_store
 
     h.recorded_only = True
-    the_day = days.today() + timedelta(days=1)
+    the_day = day_of_run(days.today())
+    # The day before at 4 pm, straight there: the setting up is the afternoon before, as it would be
+    clock.advance_to(max(clock.now(), days.at(the_day - timedelta(days=1), time(16, 0))))
+    await h.run_due()
+    # The daily read's pick at 5:30 is a job's request, with no message: its recorded answer
+    h.background["reading"] = ("pick", {"choice": 1, "tldr": TLDR_FIRST})
 
     async def save(key: str, said: str, canned, task: str) -> None:
         async with h.step(key, f"“{said}”, then Save", "a card, and after Save it is kept", "a day in the hub (set up)"):
@@ -330,6 +360,13 @@ async def story(h) -> None:
         h.check(went is not None, "no reminder in the hub")
         return await h.press(went.id, button)
 
+    async def thumbs_down_then_another() -> None:
+        shown = await h.find(h.hub, "Daily read")
+        h.check(shown is not None, "no daily read card in the hub")
+        await h.press(shown.id, "", arg=f"{the_day.isoformat()}:down")
+        h.background["reading"] = ("pick", {"choice": 1, "tldr": TLDR_SECOND})
+        await h.press(shown.id, "Another one", arg=the_day.isoformat())
+
     async def pick(slot: str, option: str) -> None:
         shown = await slot_card(h, slot) if slot != "todos" else await todos_card(h)
         h.check(shown is not None, f"no {slot} card in the hub")
@@ -343,11 +380,16 @@ async def story(h) -> None:
     await step("d.12", "Morning routine: Skincare in its dropdown", lambda: pick(f"habits.r{routines['Morning']}", "Skincare"))
     await snap(1)
     await _at(h, the_day, 8, 45)
+    await _at(h, the_day, 7, 40)
+    await step("d.25", "The daily read: 👎, then Another one", thumbs_down_then_another)
+    await _at(h, the_day, 8, 45)
     await step("d.13", "“did stretch and glass of water”", lambda: h.say("did stretch and glass of water", channel=h.hub, canned=todo("habit_tick", items=["stretch", "glass of water"]), task="habits"))
     await _at(h, the_day, 9, 5)
     await step("d.14", "Pill A's first dose, late: “took pill a” in the hub", lambda: h.say("took pill a", channel=h.hub, canned=log({"pill": "Pill A", "did": "taken"})))
     await _at(h, the_day, 9, 10)
     await step("d.15", "To-dos: Buy stamps in the Done dropdown", lambda: pick("todos", "Buy stamps"))
+    await _at(h, the_day, 9, 30)
+    await save("d.26", "dentist at 4pm for an hour", todo("calendar_add", title="dentist", time="4:00 pm", length=60), "calendar")
     await snap(2)
     await _at(h, the_day, 10, 32)
 
@@ -364,6 +406,8 @@ async def story(h) -> None:
     await snap(3)
     await _at(h, the_day, 12, 10)
     await step("d.19", "Pill A's noon dose: Taken on its reminder", reminder_taken)
+    await _at(h, the_day, 13, 0)
+    await save("d.27", "move the dentist to 4:30pm", todo("calendar_move", search="dentist", time="4:30 pm"), "calendar")
     await _at(h, the_day, 14, 0)
     await step("d.20", "“paid the power bill”", lambda: h.say("paid the power bill", channel=h.hub, canned=todo("todo_done", todos=[{"todo": "power bill"}]), task="todos"))
     await snap(4)
@@ -375,6 +419,8 @@ async def story(h) -> None:
     await snap(6)
     await _at(h, the_day, 21, 5)
     await step("d.23", "Pill C: Taken on its reminder", reminder_taken)
+    await _at(h, the_day, 21, 15)
+    await step("d.28", "A diary entry: “made-up: a good day, finished the essay”", lambda: h.say("made-up: a good day, finished the essay", canned=todo("diary_write", mood="good"), task="diary"))
     await _at(h, the_day, 21, 30)
     await step("d.24", "“did brush teeth and floss”", lambda: h.say("did brush teeth and floss", channel=h.hub, canned=todo("habit_tick", items=["brush teeth", "floss"]), task="habits"))
     await snap(7)
@@ -426,11 +472,15 @@ def run_day(anyway: bool = False, round_: int | None = None) -> Path | None:
     folder = launcher.WORK / f"run-{stamp}"
     folder.mkdir(parents=True, exist_ok=True)
     feed = folder / "day.ics"
-    feed.write_text(ics(config.now_nz().date() + timedelta(days=1)), encoding="utf-8")
+    the_day = day_of_run(config.now_nz().date())
+    feed.write_text(ics(the_day), encoding="utf-8")
+    reading = folder / "reading.json"
+    reading.write_text(json.dumps(reading_source(the_day)), encoding="utf-8")
+    made_up = {"CALENDAR_ICS_URL": str(feed), "READING_SOURCE": str(reading), "GOOGLE_CALENDAR_FAKE": str(folder / "google-calendar.json")}
     channels = asyncio.run(launcher.prepare_channels())
     saved = launcher.set_aside(stamp)
     try:
-        found = launcher.run_phase(NAME, {**SETTINGS, "CALENDAR_ICS_URL": str(feed), **({"DESIGN_ROUND": str(round_)} if round_ else {})}, channels, False, 0.0, {}, stamp)
+        found = launcher.run_phase(NAME, {**SETTINGS, **made_up, **({"DESIGN_ROUND": str(round_)} if round_ else {})}, channels, False, 0.0, {}, stamp)
     finally:
         launcher.put_back(saved, stamp)
         try:
@@ -456,17 +506,33 @@ def latest() -> Path | None:
 def opening(snapshots: list[dict]) -> str:
     return "\n".join([
         f"## {TITLE}",
-        "One made-up day, 6 am to midnight, run by the dev bot on its own clock with every switch live has on (round 4). "
+        "One made-up day, a Sunday, 6 am to midnight, run by the dev bot on its own clock with every switch live has on (round 5), and adding to the Bot calendar. "
         f"The hub is read back {len(snapshots)} times: each reply below is one moment, with the status line live would show, "
         "what happened since the moment before, and then every message in the hub, top to bottom, as you would see it.",
         "-# Made-up data only: Pill A to Pill D (6 doses: one late, one missed, one skipped), six to-dos (two overdue), "
-        "two reminders (one snoozed), a morning and an evening routine (one with a group), and a calendar with an all-day event, "
-        "three timed and one cancelled, all set up at about 4 pm the day before (so the pills box says yesterday's doses were missed). "
+        "two reminders (one snoozed), a morning and an evening routine (one with a group), a calendar with an all-day event, "
+        "three timed and one cancelled, an event added to the Bot calendar and moved, the daily read (👎 then another one), "
+        "a diary entry, and the week's summary at 7 pm, all set up at 4 pm the day before. "
         "The buttons here do nothing. Run again with `python -m selftest.day`.",
     ])
 
 
-async def post(snapshots: list[dict]) -> str:
+EVERYTHING = "Round 5 with everything on"
+
+
+async def _thread_named(client, forum, name: str):
+    """The forum's post with that name (open or archived), or None."""
+    found = await client.http.get_active_threads(forum.guild.id)
+    for each in found.get("threads", []):
+        if str(each.get("parent_id")) == str(forum.id) and each.get("name") == name:
+            return await client.fetch_channel(int(each["id"]))
+    async for thread in forum.archived_threads(limit=100):
+        if thread.name == name:
+            return thread
+    return None
+
+
+async def post(snapshots: list[dict], heading: str = "") -> str:
     """One post in the Design forum: the opening, then a reply a moment (its line and the hub's
     messages, copied as they were). Over HTTP only, as the dev bot."""
     import discord
@@ -477,8 +543,13 @@ async def post(snapshots: list[dict]) -> str:
     async def work(client):
         quiet = discord.AllowedMentions.none()
         forum = await preview._design_forum(client)
-        made = await forum.create_thread(name=TITLE, content=opening(snapshots), allowed_mentions=quiet)
-        thread = made.thread
+        thread = await _thread_named(client, forum, TITLE) if heading else None
+        if thread is not None:
+            if getattr(thread, "archived", False):
+                await thread.edit(archived=False)
+            await thread.send(f"# {heading}\n" + opening(snapshots).split("\n", 1)[1], allowed_mentions=quiet)
+        else:
+            thread = (await forum.create_thread(name=TITLE, content=opening(snapshots), allowed_mentions=quiet)).thread
         before = None
         for snap in snapshots:
             head = [f"## {snap['label']}", f"**Status line:** {snap.get('status') or '(blank)'}", f"**Since the last:** {snap.get('since', '')}"]
@@ -578,7 +649,7 @@ def main() -> int:
         if flag == "--check":
             print(transcript(snapshots))
             return 0
-        print("Posted:", asyncio.run(post(snapshots)))
+        print("Posted:", asyncio.run(post(snapshots, EVERYTHING if "--reply" in args else "")))
         return 0
     wanted = args[args.index("--round") + 1] if "--round" in args and args.index("--round") + 1 < len(args) else ""
     out = run_day(anyway="--anyway" in args, round_=int(wanted) if wanted.isdigit() else None)

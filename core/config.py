@@ -245,6 +245,8 @@ DIARY_ENABLED = flag(os.getenv("DIARY_ENABLED"), False)
 DIARY_MOOD = flag(os.getenv("DIARY_MOOD"), True)
 # The daily read (tasks/reading): off, not loaded
 READING_ENABLED = flag(os.getenv("READING_ENABLED"), False)
+# The dev bot's replay only: a JSON file of made-up feeds and pages read in place of the internet
+READING_SOURCE = (os.getenv("READING_SOURCE") or "").strip()
 NUDGES_ENABLED = flag(os.getenv("NUDGES_ENABLED"), False)
 HABITS_ENABLED = flag(os.getenv("HABITS_ENABLED"), False)
 # How personal routines are shown (tasks/habits): b, the Today card as the overview and a card a
@@ -262,6 +264,8 @@ CALENDAR_MAIN_ID = (os.getenv("CALENDAR_MAIN_ID") or "").strip()
 CALENDAR_BOT_ID = (os.getenv("CALENDAR_BOT_ID") or "").strip()
 # Adding, moving and deleting events in words, in the Bot calendar only: off unless set
 CALENDAR_WRITE = flag(os.getenv("CALENDAR_WRITE"), False)
+# The dev bot's replay only: a JSON file that stands in for the Google Calendar API (never on live)
+GOOGLE_CALENDAR_FAKE = (os.getenv("GOOGLE_CALENDAR_FAKE") or "").strip()
 # The Today card (tasks/today, core/today.py): the day in time order under the pills card. Off unless set
 TODAY_CARD = flag(os.getenv("TODAY_CARD"), False)
 # The briefing (tasks/briefing): one card a day in the hub that says what today holds, kept up

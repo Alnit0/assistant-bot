@@ -33,13 +33,25 @@ class Source:
     theme: str
 
 
+def _made_up() -> dict | None:
+    """READING_SOURCE (the dev bot's replay only): made-up feeds and pages, read in place of the internet."""
+    from core import config
+
+    return json.loads(Path(config.READING_SOURCE).read_text(encoding="utf-8")) if config.READING_SOURCE else None
+
+
 def starter() -> list[Source]:
-    """The sources in feeds.json."""
-    data = json.loads(FEEDS.read_text(encoding="utf-8"))
+    """The sources in feeds.json (or in the made-up file, for the replay)."""
+    data = _made_up() or json.loads(FEEDS.read_text(encoding="utf-8"))
     return [Source(each["name"], each["url"], each["theme"]) for each in data["sources"] if each.get("theme") in THEMES]
 
 
 def _get(url: str) -> bytes:
+    made_up = _made_up()
+    if made_up is not None:
+        if url not in made_up["pages"]:
+            raise OSError("not in the made-up pages")
+        return made_up["pages"][url].encode("utf-8")
     request = urllib.request.Request(url, headers={"User-Agent": AGENT, "Accept": "*/*"})
     with urllib.request.urlopen(request, timeout=TIMEOUT) as answer:
         return answer.read(MAX_BYTES)

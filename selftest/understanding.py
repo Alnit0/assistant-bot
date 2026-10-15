@@ -19,7 +19,8 @@ from pathlib import Path
 
 NAME = "understanding"
 WORDS = "The cross-task conversations, as Claude last answered them (offline: no request sent, no bot started)"
-FILE = "crosstask"
+# The golden conversations across tasks (15 Oct) and those of the newer tasks against the older (16 Oct)
+FILES = ("crosstask", "spanning", "calendar_write", "diary", "reading")
 TIMEOUT = 120
 
 
@@ -49,7 +50,7 @@ def judged(entries: list) -> tuple[int, list[str]]:
     names = [entry.name for entry in entries]
     routers, extractions = fixtures.load()
     ran, bad = 0, []
-    for fixture in (each for each in routers if each.file == FILE):
+    for fixture in (each for each in routers if each.file in FILES):
         if fixture.recorded is None or set(fixture.tasks) - set(names):
             bad.append(f"{fixture.golden}: {fixture.message} (not recorded, or its task is not loaded)")
             continue
@@ -57,7 +58,7 @@ def judged(entries: list) -> tuple[int, list[str]]:
         problem = fixtures.router_problem(fixture, fixtures.settled(fixture, routing.parse(fixture.recorded, names), entries))
         if problem and not fixture.known_miss:
             bad.append(f"{fixture.golden}: {fixture.message} ({problem})")
-    for fixture in (each for each in extractions if each.file == FILE):
+    for fixture in (each for each in extractions if each.file in FILES):
         entry = next((each for each in entries if each.name == fixture.task), None)
         if fixture.recorded is None or entry is None:
             bad.append(f"{fixture.golden}: {fixture.message} (not recorded, or its task is not loaded)")

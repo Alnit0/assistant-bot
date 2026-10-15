@@ -36,8 +36,10 @@ ONLY_FOR = (
 )
 # Question 85 (Alex, 15 Oct: yes): with the diary on, a message only about the day or a feeling is kept
 KEEPS = (
-    "a message only about how the user's own day went or how they feel, with no request (\"rough day, work ran "
-    "late and I'm wiped\", \"I'm tired\", \"feeling great today\"): it goes into today's entry"
+    "a message only about how the user's own day went, what they did today or how they feel, with no request "
+    "(\"rough day, work ran late and I'm wiped\", \"I'm tired\", \"had a lovely walk this evening\", \"feeling great "
+    "today\"): it goes into today's entry. Beside a report or a request for another task (\"done my stretches and I'm "
+    "feeling great\"), the feeling is a part of its own: give both tasks, never a tie"
 )
 EXAMPLES = ("today was good, finally finished the essay", "what did I write last Tuesday?", "how was my mood this month?")
 _DAY = "The day asked about, exactly as the user said it (\"today\", \"yesterday\", \"last Tuesday\"). Never work out a date. Leave out for today."

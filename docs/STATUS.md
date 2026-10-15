@@ -25,6 +25,33 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
    the code on the Bot calendar: 0, 1, 0 events, read back, gone.
    `docs/GOOGLE-SETUP.md`.
 
+2. **A day in the hub, everything on.** `python -m selftest.day` now
+   runs a Sunday with every switch live has (round 5, the diary, the
+   daily read, the week of everything) and calendar writing: the 5:30
+   am pick, 👎 then Another one, the dentist added to the Bot calendar
+   and moved, the diary's 9 pm ask and an entry, the 7 pm summary. Its
+   made-up sources: `READING_SOURCE` (feeds and pages) and
+   `GOOGLE_CALENDAR_FAKE` (a file in place of Google), the dev bot's
+   only; a job's request has a recorded answer by purpose
+   (`h.background`). 37 steps, none failed. Fixed: the week of
+   everything counted a personal routine over all seven days, even
+   days before it was made (Morning 1/7 when made the day before). Two
+   design choices to `docs/QUESTIONS.md` (91, 92). Posted as a reply in
+   "Design · A day in the hub", titled Round 5 with everything on.
+3. **Understanding across all tasks.** 34 golden conversations (router)
+   and 7 (extraction) in `evals/fixtures/spanning.json`: the diary
+   against remarks and to-dos, the daily read against reminders and the
+   calendar, adding to the calendar against reminders and to-dos, undo
+   and corrections straight after each, and questions about the day
+   across everything. First run 37 of 41; fixed: the diary keeps what
+   was done today too, and gives both tasks beside another's report,
+   never a tie (its own line); a destination named by a task's title
+   ("to my to-dos") is read, and with two in one clause the last is
+   where it goes (Python); a time with no am or pm is the code's to
+   read. Then 10 of 10. The nightly self-test now replays every newer
+   file (crosstask, spanning, calendar_write, diary, reading): 157
+   recorded answers, all right.
+
 ## The daily read (15 Oct, late night; built, off, a preview)
 
 `tasks/reading`, behind `READING_ENABLED` (off): one article a day,
@@ -210,6 +237,15 @@ time). Spend US$0.041.
   calendar's own lines say so, each only while writing is on.
 - Moving keeps the length unless one is said; an all-day event is not
   added or moved in words yet.
+- The replay's day is a Sunday, set up at 4 pm the day before (the
+  clock goes there straight, not through every job of the night), so
+  the week of everything runs at 7 pm.
+- The replay's made-up sources are settings of the dev bot's own
+  (`READING_SOURCE`, `GOOGLE_CALENDAR_FAKE`), as `WEATHER_SOURCE` is:
+  never set on live.
+- A destination named twice in one clause: the last is where it goes
+  ("add write in my diary to my to-dos"); parts joined by "and" or a
+  comma keep one each.
 - The real check ran the task's own Google code from the work folder
   with live's key and Bot calendar id read from live's `.env` (never
   printed), not through the dev bot, which has no key.
