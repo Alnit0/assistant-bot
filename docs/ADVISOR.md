@@ -49,7 +49,7 @@ He is **not relying on the bot for reminders yet**. The hub is a daily overview 
 
 ## 4. Environment
 
-- **The EliteDesk:** Windows 11, 8 GB RAM. Live runs as the NSSM service `assistant-bot` from **its own folder**, `C:\Users\temp\projects\assistant-bot-live` (since 15 Oct, 3:11 pm): a clone on one pushed commit, with its own `.env`, `data\`, `logs\` and `.venv`. It is on `85b0c4e` (shipped 15 Oct, 6:00 pm). The work folder `C:\Users\temp\projects\assistant-bot` is for development only.
+- **The EliteDesk:** Windows 11, 8 GB RAM. Live runs as the NSSM service `assistant-bot` from **its own folder**, `C:\Users\temp\projects\assistant-bot-live` (since 15 Oct, 3:11 pm): a clone on one pushed commit, with its own `.env`, `data\`, `logs\` and `.venv`. It is on `7daa77c` (shipped 16 Oct, 1:16 am), with every feature on, calendar writing too. The work folder `C:\Users\temp\projects\assistant-bot` is for development only.
 - **Shipping:** only by `scripts\update-live.ps1 -Ref <commit>` from a pushed commit (it refuses one not on `origin/feature/pills`, puts back the self-test's report, installs packages, checks migrations, restarts); `-Back` returns to the commit before. Batch rule: ship at most once, before 9 pm, after the full test run and a dev-bot self-test, at least 10 minutes from any pill reminder; check the account, the hub and the bookings after.
 - **The old backup:** the work folder still holds the `.env` and `data\` from before the switch-over. They go once Alex says live has had a good day in its own folder.
 - **Branch:** all work is on `feature/pills`. Nothing is merged into `main` yet; `docs/REVIEW.md` is the checkpoint for that.

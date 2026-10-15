@@ -3,15 +3,15 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Overnight batch, 16 Oct** (unattended; ship before 5:20 am or not at all)
-- Done: step 1 (calendars, writing to the Bot calendar), step 2 (a day
-  in the hub, everything on), step 3 (41 golden conversations), step 4
-  (live 110 MB, self-test peak 105 MB, tests 45 s); self-test 150 of 150
-- Next: the ship (`CALENDAR_WRITE=true`, `CALENDAR_READ`), one restart
+**Idle**, last batch was overnight 16 Oct: calendars from several
+sources and adding to the Bot calendar, a day in the hub with
+everything on, 41 golden conversations, a health check. All on live.
 
-**Live:** `fb88613` since 15 Oct, 11:26 pm, everything on but calendar
-writing. **After 6 am:** check the first real daily read pick (5:30 am);
-if it failed it is quiet by design (no card, a note on the job)
+**Live:** `7daa77c` since 16 Oct, 1:16 am, with `CALENDAR_WRITE=true`
+and `CALENDAR_READ=ics,google:CALENDAR_BOT_ID`; checked: the account,
+the hub, the calendar (47 events from the link, the Bot calendar read),
+every booking. **After 6 am:** check the first real daily read pick
+(5:30 am); if it failed it is quiet by design (no card, a note on the job)
 
 **Drafts and worktrees:** `docs/drafts/gym-onboarding.md`; three old
 worktrees, all merged
@@ -22,6 +22,7 @@ worktrees, all merged
   calendar they are on, list them in live's `.env`, comma apart:
   `CALENDAR_READ=google:<that calendar's id>,google:CALENDAR_BOT_ID`,
   then one restart, then the iCal link goes (`docs/GOOGLE-SETUP.md`)
+- Questions 91 and 92 (a day in the hub, everything on)
 - Round 5 item by item (Q68 to Q75 in its post)
 - The daily read: his look at its post, and questions 86 to 90
 - Questions 76 to 79 (gym), 63, 24 to 28

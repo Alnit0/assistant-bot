@@ -319,6 +319,38 @@
         "reports_doing": false,
         "chat_part": ""
       }
+    },
+    {
+      "golden": "w12",
+      "message": "add dentist Friday 3pm",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "the What's new line's own words: an appointment with a time, added",
+      "names": {
+        "calendar": [
+          "Dentist",
+          "Lunch with Sam",
+          "Test standup"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
     }
   ],
   "extraction": [
@@ -449,6 +481,28 @@
         }
       ],
       "note": "the title is the user's own words, whichever of them (plumber, plumber coming)"
+    },
+    {
+      "golden": "w12",
+      "task": "calendar",
+      "message": "add dentist Friday 3pm",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_add",
+      "data": {
+        "title": "dentist",
+        "day": "Friday",
+        "time": "3:00 pm"
+      },
+      "recorded": [
+        "calendar_add",
+        {
+          "title": "dentist",
+          "day": "Friday",
+          "time": "3:00 pm",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
     }
   ]
 }

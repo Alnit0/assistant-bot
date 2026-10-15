@@ -8,6 +8,19 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-15 (late night)
 
+## Shipped (16 Oct, 1:16 am)
+
+Live on `7daa77c` with `CALENDAR_WRITE=true` and
+`CALENDAR_READ=ics,google:CALENDAR_BOT_ID` (live's `.env` as it was is
+`data\env-before-2026-10-16-calendar-write`), one restart, no pill
+reminder near it. Checked: the account, the calendar's migration, the
+hub, the calendar (47 events from the link as before, the Bot calendar
+read through Google, nothing failing), every booking (3:30 am self-test,
+5:30 am reading pick, 6 am routine, 8 am pill reminder, 9 pm diary ask,
+Sunday 7 pm summary). What's new for 16 Oct: "say add dentist Friday 3pm
+to try it", its words checked live first (w12, right). Nothing set back.
+Batch spend US$0.34 (about NZ$0.58 of NZ$1.50).
+
 ## Overnight batch, 16 Oct
 
 1. **The calendar from several sources, and adding to the Bot calendar.**

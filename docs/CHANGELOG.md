@@ -6,8 +6,9 @@ backfilled from the git log.
 
 ## 2026-10-16
 
-- The calendar reads several calendars at once (the iCal link and Google), shown as one. Built: adding, moving
-  and deleting events in words in the Bot calendar, each on a card, with undo (`CALENDAR_WRITE`).
+- The calendar reads several calendars at once (the iCal link and Google), shown as one, and adds, moves and
+  deletes events in words in the Bot calendar, each on a card, with undo: say add dentist Friday 3pm to try it.
+- "When did I take my pills today?" and the daily read went live overnight with the rest.
 
 ## 2026-10-15
 
