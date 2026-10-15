@@ -7,11 +7,12 @@ history is `docs/STATUS.md`. Read first, with `/catchup`.
 sources and adding to the Bot calendar, a day in the hub with
 everything on, 41 golden conversations, a health check. All on live.
 
-**Live:** `7daa77c` since 16 Oct, 1:16 am. Its daily read pick at
-5:30 am worked. D1 (the 3:30 am nightly, 20 steps) was the self-test's
-own switch list, fixed. **Shipping:** closing bugs in words, Needs a
-look's plain bug lines, questions 91 and 92. **After the ship:** check
-the 3:30 am nightly's result on 17 Oct and report it (D1 should close)
+**Live:** `68b954e` since 16 Oct, 9:31 am (one restart, no errors):
+closing bugs in words, Needs a look's plain bug lines, questions 91 and
+92. D1 (the 3:30 am nightly, 20 steps) was the self-test's own switch
+list, fixed; the dev-bot self-test before the ship 150 of 150. **Next:**
+the 3:30 am nightly on 17 Oct, its result checked and reported (D1
+should close by itself)
 
 **Drafts and worktrees:** `docs/drafts/gym-onboarding.md`; three old
 worktrees, all merged
@@ -26,5 +27,6 @@ worktrees, all merged
 - The daily read: his look at its post, and questions 86 to 90
 - Questions 76 to 79 (gym), 63, 24 to 28
 - QA item 0 (direct messages)
+- Close B2 and B5: say close B2 and B5 in #inbox (only his account can)
 - Live's folder: his word, then the work folder's old `.env` and `data\`
   go (not deleted)
