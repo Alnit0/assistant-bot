@@ -12,9 +12,15 @@ old live bugs
   checked; self-test from live's folder 28 of 28. Originals kept in the
   work folder until Alex confirms. Ship with `scripts\update-live.ps1`
 
+- 2. Windows Update: active hours 6 am to 12 am (were automatic),
+  updates paused until 19 Nov 3:43 pm (were not); the backlog has a
+  monthly reminder to update by hand
+
+- 3. B2 and B5: both already fixed in what live runs; checked (33
+  tests) and noted. Nothing to ship. They wait for Alex's Fixed
+
 **Next**
-- 2. Windows Update: settings, active hours, pause
-- 3. Bugs B2 and B5: what they are; a small fix shipped with the script
+- Nothing queued: waiting on Alex
 
 **Drafts and worktrees**
 - Worktrees `../assistant-bot-hub-tasks`, `../assistant-bot-round4` and
@@ -26,4 +32,5 @@ old live bugs
 - His look at A and B in the Routines layout preview (B is live)
 - Confirm live's folder is well, so the work folder's old `.env` and
   `data\` can go
+- Press Fixed on B2 and B5 (both checked, a note on each)
 - A lock-screen screenshot of a pill reminder (question 11)

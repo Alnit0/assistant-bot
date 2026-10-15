@@ -49,7 +49,7 @@ He is **not relying on the bot for reminders yet**. The hub is a daily overview 
 
 ## 4. Environment
 
-- **The EliteDesk:** Windows 11, 8 GB RAM. Runs the live bot as the NSSM service `assistant-bot` from `C:\Users\temp\projects\assistant-bot`.
+- **The EliteDesk:** Windows 11, 8 GB RAM. Runs the live bot as the NSSM service `assistant-bot` from its own folder, `C:\Users\temp\projects\assistant-bot-live` (since 15 Oct, 3:11 pm): a clone on one pushed commit, with its own `.env`, `data\`, `logs\` and `.venv`. Code ships only by `scripts\update-live.ps1 -Ref <commit>` (`-Back` returns to the one before); the work folder `C:\Users\temp\projects\assistant-bot` is for development, and its `.env` and `data\` are an old copy kept as a backup until Alex confirms all is well (`docs/LIVE-FOLDER.md`).
 - **Branch:** all work is on `feature/pills`. Nothing is merged into `main` yet; `docs/REVIEW.md` is the checkpoint for that.
 - **Two bots:** live, and the dev bot (own token in `.env.dev`). A per-bot lock lets both run at once. Every start checks it logged in as the expected account (`BOT_USER_ID`) and exits with code 4 if not; the service stops on exit 4 rather than looping.
 - **Claude Code** runs on the EliteDesk, started with `claude --remote-control "assistant-bot"` in the project folder. Alex controls it from the Claude desktop app on his PC or phone.
@@ -57,10 +57,10 @@ He is **not relying on the bot for reminders yet**. The hub is a daily overview 
   - It pings Alex's phone through ntfy hooks when it finishes or needs him: priority 5 by day, quiet 10 pm to 7 am.
 - **Memory:** live uses about 100 MB; a full self-test's own processes peak at about 180 MB (the dev bot about 120), taking at most about 240 MB off what's free. Chrome and VS Code left open on the EliteDesk were what ran it short. The self-test won't start under 1.9 GB free.
 - **Remote access:** Tailscale plus Remote Desktop, only when something is truly stuck.
-- **Reboots:** Windows Update restarted the EliteDesk twice on the night of 15 Oct (00:23 and 00:26), cutting a batch off. Live came back by itself, but from the project folder, so on the batch's uncommitted work; the 3 am self-test ran on it too. Live in its own folder on a commit is the fix (backlog, Next 5).
+- **Reboots:** Windows Update restarted the EliteDesk twice on the night of 15 Oct (00:23 and 00:26), cutting a batch off and bringing live back on uncommitted work. Since that afternoon live runs from its own folder on a pushed commit, so a reboot brings back only the version chosen; and Windows Update has active hours 6 am to 12 am (they were automatic) and is paused until 19 Nov (the longest Windows allows, 5 weeks). A monthly reminder to update by hand is in the backlog.
 - **`docs/NOW.md`:** what is happening now (40 lines at most): the batch, steps done, in progress and next, drafts and worktrees, what waits on Alex. Claude Code updates it after every step and resets it to Idle at a batch's end; a SessionStart hook in the committed `.claude/settings.json` (`scripts/now.ps1`) prints it at every start, resume, `/clear` and compact. Batches commit a checkpoint after each finished step (push at the end), so a crash loses one step at most; drafts live in `docs/drafts/` (committed) or `docs/specs/` (private), never only in a scratchpad.
-- **`/catchup`:** a Claude Code skill Alex runs at a session's start or after a reboot (works through remote control): reads `docs/NOW.md` first, git, the last boot, live (service, account check, switches, the 6 am briefing) and new bugs, reports in four short parts, then waits. Read only.
-- **Live's look:** `CARDS_V2=true` and `DESIGN_ROUND=3` in live's `.env` since 15 Oct, 8:59 am: the hub is in round 3.
+- **`/catchup`:** a Claude Code skill Alex runs at a session's start or after a reboot (works through remote control): reads `docs/NOW.md` first, git, the last boot, live from its own folder (service, the commit it runs and how far behind it is, account check, switches, the 6 am briefing) and new bugs, reports in four short parts, then waits. Read only.
+- **Live's look:** `CARDS_V2=true` and `DESIGN_ROUND=4` in live's `.env` since 15 Oct, 1:32 pm: the hub is in round 4.
 - **Costs:** recorded in US$ (what Anthropic bills), shown in NZ$ at a daily rate. Daily alert NZ$1.00; self-test cap NZ$3.50 a month (spent for October, so self-tests use recorded answers until November). 15 Oct: the batch spent NZ$0.25 on understanding checks for the new tasks. A heavy build day cost about NZ$2.30; a normal day should be well under NZ$0.50.
 
 ## 5. Principles behind the product
@@ -135,6 +135,9 @@ Messages go through fast paths (buttons, exact shortcuts), then sticky follow-up
 ## 9. Open threads (update every batch)
 
 **Waiting on Alex**
+- **Live's own folder:** his word that all is well, so the work folder's old `.env` and `data\` (the backup from the switch-over) can go.
+- **Bugs B2 and B5:** both fixed in what live runs and checked on 15 Oct (a note on each); only he presses Fixed.
+- **Windows updates:** paused until 19 Nov; run them by hand before then (a monthly reminder is in the backlog).
 - **Calendar:** reminders before events (stage 2) are a later decision; nothing is told before an event yet.
 - **Round 3 on his phone:** it is live; his feedback (in the design-options post) goes into docs/DESIGN-LOG.md as round 4. His first piece, from question 64, is done: task cards have no `##` page title.
 - **docs/QUESTIONS.md:** three left after his answers of 15 Oct: 11 (his lock-screen screenshot of a pill reminder is on its way), 63 (personal routines reworked with groups of steps, one button a group: to discuss), 24 to 28 under "Gym onboarding" (he designs how a plan is set up first).

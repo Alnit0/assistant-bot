@@ -126,6 +126,16 @@ the full self-test run.
   2026-10-14), in the project folder with remote control, so a
   restart of the PC never needs a Remote Desktop visit to bring it
   back.
+- **A monthly reminder to run Windows updates by hand** (Alex,
+  2026-10-15): a line in the briefing once a month, on a day and at a time
+  Alex chooses, saying it is time to update the EliteDesk (and to stop
+  live first, or let it restart itself). Since 15 Oct updates are paused
+  and only restart the PC between midnight and 6 am; the pause can be
+  set for 5 weeks at most, so the reminder is what keeps it from lapsing
+  into an unplanned restart. Probably a reminder Alex sets in words
+  ("remind me on the first Saturday of each month at 10am to update the
+  PC", once reminders take monthly repeats from `core/recurrence.py`), or
+  a What's new line the bot adds itself.
 - **The calendar through the Google Calendar API, to add events** (Alex,
   2026-10-15): the route for the bot writing to the calendar. A Google
   Cloud service account, its key in live's `.env` folder only (never in a

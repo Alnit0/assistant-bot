@@ -8,6 +8,43 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-15
 
+## Live in its own folder, Windows Update, two old bugs (15 Oct, afternoon)
+
+1. **Live runs from `C:\Users\temp\projects\assistant-bot-live`**
+   since 3:11 pm, on `6a942d8` (everything pushed then). The setup
+   script stopped live and then stopped itself at the clone (its output
+   was redirected, and Windows PowerShell takes git's progress on stderr
+   as an error); live was started again from the work folder at once,
+   about a minute down. Then the switch-over in two halves: clone,
+   commit, `.venv` and packages while live ran; stopped for well under a
+   minute for `.env`, `.env.dev`, `data\` (the database the same size
+   both sides), the migration check (25 of 25), and the service pointed
+   at the new folder. Checked: the account check, today's 34 logged
+   messages and 3 doses, the calendar read (47 events), the bookings
+   (3:30 am self-test, 6 am routine, Sunday 7 pm summary), and the
+   self-test from live's folder, 28 of 28. The work folder's `.env` and
+   `data\` stay as a backup until Alex says all is well.
+2. **`scripts\update-live.ps1`** is how code ships from now on: live's
+   folder by default, a commit that must be on `origin/feature/pills`,
+   `-Back` for the one before. It puts back `docs\SELFTEST.md`, which
+   the nightly self-test now rewrites in live's folder, before checking
+   nothing was changed by hand. Not used yet: nothing since has changed
+   the code live runs.
+3. **Windows Update**: active hours were automatic (Windows's guess) and
+   nothing was paused. Set from this Administrator terminal, no prompt
+   at the machine: active hours 6 am to 12 am (18 hours, the most
+   allowed), and updates (quality and feature) paused for 35 days, until
+   19 Nov 3:43 pm, the longest allowed. Backlog: a monthly reminder in
+   the briefing to update by hand.
+4. **B2 and B5**, the two open live bugs: B2 was a test of bug reporting
+   (it worked); what it caught, the bot offering help in answer to a
+   remark, was fixed when the router began to give words only to
+   questions and requests. B5 was "I took dose 1 of Pill A at 9am"
+   logged as dose 2 with "Not included: dose 1 of"; fixed in the QA of 12
+   Oct, with a golden test of those very messages. Both checked against
+   the code live runs (33 tests) and given a note; there is no command
+   to close a bug, so they wait for Alex's Fixed.
+
 ## Live restarted at 3:03 pm, 15 Oct, with the calendar on
 
 From `cc759a3` (clean, pushed, full test run passed), with no pill
