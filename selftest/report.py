@@ -21,6 +21,7 @@ PHASE_WORDS = {
     "p4": "Start 4: `CARDS_V2` off again, and a tiny spend limit. The new look's messages edited under the old, and the spend line",
     "p5": "Start 5: `BRIEFING_ENABLED` on (the starts before it had it off). The morning routine, “brief me”, and the briefing kept up to date in place",
     "p6": "Start 6: `HUB_TIDY` on as well (off until now). What is said in the hub goes once handled, pinned stays, yesterday goes in the morning, and a copy is saved first",
+    "understanding": "The cross-task conversations, as Claude last answered them (offline: no request sent, no bot started)",
 }
 _LINE = re.compile(r"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d),\d+ (WARNING|ERROR|CRITICAL) (.*)$")
 

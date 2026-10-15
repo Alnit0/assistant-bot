@@ -2,7 +2,7 @@ import logging
 from dataclasses import replace
 from datetime import date, datetime, time, timedelta
 
-from core import attention, cards, clock, database, hub, hubcard, messages, names, notify, scheduler, summaries, timeinput
+from core import attention, cards, clock, database, hub, hubcard, llm, messages, names, notify, scheduler, summaries, timeinput
 from core import day as days
 from core.actions import BOOLEAN, INTEGER, LIST, MINUTES, TIME, Choice, Field, LiveReply, Proposal, Question, Request, State, flag, is_guessed, is_reference
 from core.attention import TIMED, Item
@@ -35,10 +35,13 @@ LIST_KEY = "nudges"
 REF = "n"
 
 ONLY_FOR = (
-    "Reminders the user sets for themselves at a time of day: \"remind me at 5pm to call Mum\", \"remind me in 20 "
-    "minutes to check the oven\", \"every Monday at 9am put the bins out\", moving one (\"move that to 6\"), removing "
-    "one, and seeing them. Not pills or their reminders (that is the pills task), not a to-do with no time (the to-dos "
-    "task), and not when the bot posts its own things (the schedule task)."
+    "Reminders the user sets for themselves at a time of day: \"remind me at 5pm to call Mum\", \"gym at 6\", "
+    "\"dentist Friday 3pm\" (a thing with a time is a reminder, even an appointment), \"remind me to buy milk\" (asked "
+    "to be reminded, no time yet: its card asks when), \"remind me in 20 minutes to check the oven\", \"every Monday at "
+    "9am put the bins out\", moving one (\"move that to 6\"), removing one, ticking off one that went off (\"done\" "
+    "straight after it), and seeing them. Not pills or their reminders (that is the pills task), not a thing to do "
+    "with no time that the user does not ask to be reminded of (the to-dos task), and not when the bot posts its own "
+    "things (the schedule task)."
 )
 EXAMPLES = ("remind me at 5pm to call Mum", "every weekday at 8am remind me to stretch", "move that to 6")
 
@@ -373,6 +376,8 @@ async def fire_job(job) -> None:
     row = rules.fired_row(fired_id)
     await cards.edit(channel_id, message_id, Card(rules.fired_text(nudge, job.due_at, late), (row,), rules.fired_layout(nudge, job.due_at, late, row)))
     await messages.record(message_id, channel_id, lifetime=messages.DAY, task=TASK, user_id=nudge.user_id)
+    # The bot's latest word in the hub is about this reminder: "done" straight after is its (core/llm.py)
+    llm.task_answered(channel_id, TASK)
     changed(nudge.user_id)
     scheduler.note(job, "posted" + (", late" if late else ""))
 
@@ -438,6 +443,28 @@ async def on_snooze_for(press: cards.Press) -> str:
     return f"💤 {nudge.text} · again at {timeinput.format_moment(until)}"
 
 
+async def done(request: Request, data: dict, guessed: frozenset) -> str:
+    """ "done" in words for a reminder that went off, as its Done button: the one replied to,
+    else the one named, else the latest still waiting. A log: no card."""
+    waiting = await request.db.run(store.db_open, request.user.id)  # the latest first
+    if not waiting:
+        raise UserError("No reminder that went off is waiting: there is nothing to tick off.")
+    nudges = {each.id: each for each in await every(request.user.id)}
+    fired = next((each for each in waiting if request.replied_to is not None and each.message_id == request.replied_to), None)
+    wanted = str(data.get("reminder") or "").strip()
+    if fired is None and wanted and not is_reference(wanted):
+        meant = await _which(request, {"reminder": wanted}, [nudges[each.nudge_id] for each in waiting if each.nudge_id in nudges])
+        fired = next(each for each in waiting if each.nudge_id == meant.id)
+    fired = fired or waiting[0]
+    await request.db.run(store.db_done, fired.id, clock.now())
+    channel_id = hub.channel_id()
+    if fired.message_id and channel_id is not None:
+        await cards.delete(channel_id, fired.message_id)  # dealt with: it leaves the hub, as with the button
+    changed(request.user.id)
+    nudge = nudges.get(fired.nudge_id)
+    return f"✅ {nudge.text if nudge else 'Reminder'} · done"
+
+
 def register() -> None:
     cards.register(TASK, rules.DONE, on_done)
     cards.register(TASK, rules.SNOOZE, on_snooze)
@@ -464,19 +491,21 @@ _FIELDS = (
 )
 _CHANGE = (Field("reminder", _WHICH, required=True), *(replace(each, required=False) for each in _FIELDS))
 DESCRIPTIONS = {
-    "nudge_add": "Set a reminder at a time (\"remind me at 5pm to call Mum\" -> text call Mum, time 5:00 pm; \"every Monday 9am bins out\" -> repeat days, weekdays mon, time 9:00 am).",
+    "nudge_add": "Set a reminder at a time (\"remind me at 5pm to call Mum\" -> text call Mum, time 5:00 pm; \"every Monday 9am bins out\" -> repeat days, weekdays mon, time 9:00 am). With no time said (\"remind me to buy milk\"), leave time out: the card asks.",
     "nudge_change": "Change a reminder: its time, its days or its words (\"move that to 6\" -> reminder @that, time 6:00). Give a time with no am or pm when the user said none.",
     "nudge_remove": "Remove a reminder (\"cancel the bins reminder\", \"stop reminding me to stretch\").",
     "nudge_show": "The user asks what reminders they have (\"my reminders\", \"what have I asked you to remind me of?\").",
+    "nudge_done": "A reminder that went off is done (\"done\" straight after it, \"done the bins\", \"called the bank\"). A log: no card. With nothing named, leave reminder as @that.",
 }
 
 
 def actions() -> list:
-    from core.actions import SEE, SET_UP, Action
+    from core.actions import EACH_DAY, SEE, SET_UP, Action
 
     return [
         Action("nudge_add", DESCRIPTIONS["nudge_add"], _FIELDS, prepare=add_card, apply=add_save, verify=add_check, purpose=SET_UP, say=("remind me at 5pm to call Mum",)),
         Action("nudge_change", DESCRIPTIONS["nudge_change"], _CHANGE, prepare=change_card, apply=change_save, verify=change_check, purpose=SET_UP, say=("move that to 6",)),
         Action("nudge_remove", DESCRIPTIONS["nudge_remove"], (Field("reminder", _WHICH, required=True),), prepare=remove_card, apply=remove_save, verify=remove_check, purpose=SET_UP, say=("cancel the bins reminder",)),
         Action("nudge_show", DESCRIPTIONS["nudge_show"], needs_card=False, run=show, purpose=SEE, say=("my reminders",)),
+        Action("nudge_done", DESCRIPTIONS["nudge_done"], (Field("reminder", _WHICH),), needs_card=False, run=done, purpose=EACH_DAY, say=("done the bins",)),
     ]

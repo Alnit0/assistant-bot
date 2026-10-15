@@ -167,7 +167,9 @@ PART_OF_A_NAME = 4  # the fewest letters of a typed word that may be the start o
 def name_hints(message: str, named: dict[str, list[str]]) -> list[tuple[str, str]]:
     """(the word typed, the task) for each word of the message that is the
     start of a word in the name of something a task holds ("testv", with a
-    pill called Testvit): four letters or more, whatever the case. `named` is
+    pill called Testvit), or that word with an ending of a letter or two
+    ("stretches", with a routine step called Stretch): four letters or more,
+    whatever the case. `named` is
     each task's names. Only a hint for the router, which still decides: a
     word such as "evening" may be part of a pill's name and mean nothing of
     the kind. Pure."""
@@ -176,7 +178,7 @@ def name_hints(message: str, named: dict[str, list[str]]) -> list[tuple[str, str
         if len(word) < PART_OF_A_NAME:
             continue
         for task, held in named.items():
-            if any(of.startswith(word) for name in held for of in names.words(name)):
+            if any(of.startswith(word) or (len(of) >= PART_OF_A_NAME and word.startswith(of) and len(word) - len(of) <= 2) for name in held for of in names.words(name)):
                 found.append((word, task))
     return found
 

@@ -6,7 +6,67 @@ No history is kept here: what changed is `docs/CHANGELOG.md`, and this
 file as it stood until midday on 2026-10-14 (every batch, every answer,
 all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
-**Updated:** 2026-10-15
+**Updated:** 2026-10-15 (evening)
+
+## A day in the hub, cross-task understanding, a cost check (15 Oct, evening)
+
+1. **A day in the hub** (`python -m selftest.day`): the dev bot on an
+   empty dev database, every switch live has on, a made-up day set up in
+   words with recorded answers (Pill A to Pill D, six to-dos, two
+   reminders, two routines, a calendar file of made-up events), the
+   clock walked from 6 am to midnight stopping at each job, the hub read
+   back at 8 moments with the status line live would show; 33 of 33
+   steps. Posted in the Design forum as "Design · A day in the hub".
+   Fixed (with tests): overdue to-dos held the status line all day over
+   every dose and reminder that came due; the line after Taken stayed in
+   the hub all day (three of them by night); the briefing's reminders
+   box listed what was done, and its calendar line said "first 9:00 am"
+   all day; the pills box said "Next" for a dose long due. Choices are
+   questions 68 to 75.
+2. **Cross-task understanding**: 44 conversations (39 router and 19
+   extraction fixtures, `evals/fixtures/crosstask.json`), 6 end to end.
+   First run: 15 of 55 wrong. Kinds: a time said with a thing ("gym at
+   6", "dentist Friday 3pm") went to to-dos and the calendar; questions
+   about part of the day went to the calendar or chat; two things done in
+   one message lost the second; "remind me to buy milk" was declined for
+   having no time; "done" for a reminder had no action at all; "undo
+   that" after a pill was declined; "that was at 9" after a to-do became a
+   rename. Fixed: three "only for" lines and four descriptions (no router
+   rule), `nudge_done`, `day_left` by part of the day in time order across
+   tasks, name hints that allow an ending ("stretches"), and the fixtures'
+   own expectations where they were wrong (3). After: 57 of 58 right;
+   the one left is a known miss ("is the gym on tonight?" comes back as
+   chat; chat then hands it back to the router). Every self-test run reads them back (step u.01).
+3. **Cost**: see "Decided" below.
+
+## Decided (2026-10-15, evening batch)
+
+- The day replay is a start of its own (`selftest/day.py`), not part of
+  the nightly run: it takes about 7 minutes and is for design rounds.
+- A snapshot in the post is a header reply (time, status line, what
+  happened since, what the hub shows changed) followed by copies of the
+  hub's messages: one Discord message holds 40 components at most, and
+  a whole hub is more.
+- Among things due now, one carried over from an earlier day
+  (`Item.carried`, overdue to-dos) comes after what fell due today at a
+  time of its own. Its level stays 2, as decided for to-dos.
+- The line after Taken goes 30 minutes after, as long as a card waits; a
+  time said in words still corrects the dose after that.
+- The briefing's reminders box keeps one that went off and is waiting,
+  then those still to come; the rest is "✅ N earlier today". The
+  calendar line is "next", "on now until" or "all over".
+- `Summary.left_at`: when each thing left is due, so "what's left today?"
+  is in time order across tasks (untimed last; the pills test's order
+  changed with it) and a part of today is worked out by the code.
+- A reminder that went off is the hub's latest answer: a short message
+  straight after goes to reminders first (one extraction more for a
+  question then; it still goes to the router).
+- The understanding fixes are prompt lines only: no router rule. The
+  router now costs US$0.0040 a request (3,300 tokens, 11 tasks).
+- The nightly self-test reads the recorded answers back offline, not with
+  pytest: live's folder has no test tools.
+- The checkpoint commit holds steps 1 and 2 together: their fixes share
+  files (reminders, the briefing).
 
 ## Live in its own folder, Windows Update, two old bugs (15 Oct, afternoon)
 

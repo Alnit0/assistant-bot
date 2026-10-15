@@ -203,7 +203,7 @@ def test_the_today_card_and_the_briefing(world):
     assert shown[0] == "### 📅 Today" and "📅 **Team sync**" in shown, "the next event in full"
     assert today.layout(lines, at(TODAY, 10, 0)) == (), "every event over and nothing else on: no card"
     said = run(calendar.summary(world.owner.id, TODAY))
-    assert said.glance == "2 events · first 9:00 am", "the end of last night's shift is on today too; the Team sync is the first to start"
+    assert said.glance == "2 events · next 9:00 am", "the end of last night's shift is on today too; the Team sync is the next to start"
     assert run(calendar.summary(world.owner.id, date(2026, 10, 27))) is None
 
 

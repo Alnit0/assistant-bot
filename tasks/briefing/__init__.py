@@ -45,7 +45,8 @@ EXAMPLES = ("brief me", "what's on today?")
 # With DAY_QUESTIONS on, what the router reads instead: the day as a whole, also what is left and how it went
 ONLY_FOR_THE_DAY = (
     "The user's day as a whole, across everything the bot keeps: what is on today (\"brief me\", \"what's on "
-    "today?\"), what is still left to do today (\"what's left today?\"), and how yesterday or this week went "
+    "today?\"), what is still left to do today or in part of it (\"what's left today?\", \"what's on tonight?\", "
+    "\"what have I got this afternoon?\", \"what's next?\"), and how yesterday or this week went "
     "overall (\"how did I go yesterday?\", \"how's this week going?\"). Not one named task's own list or history "
     "(which pills are left, or which were taken yesterday, is the pills task), not the weather (the weather "
     "task), and not when the briefing is posted (the schedule task)."
@@ -210,8 +211,10 @@ async def show(request: Request, data: dict, guessed: frozenset):
 
 
 async def left_today(request: Request, data: dict, guessed: frozenset) -> str:
-    """ "what's left today?": from every task's summary of today, in words from a template."""
-    return rules.left(await summaries.gather(request.user.id, days.today()))
+    """ "what's left today?", "what's on tonight?", "what's next?": from every task's summary of
+    today, in words from a template. Which part of the day is the code's to work out from `part`."""
+    part = str(data.get("part") or "").strip().lower()
+    return rules.left(await summaries.gather(request.user.id, days.today()), part if part in (*rules.PARTS, rules.NEXT) else "", clock.now())
 
 
 async def looking_back(request: Request, data: dict, guessed: frozenset) -> str:
@@ -278,7 +281,10 @@ class BriefingTask(Task):
             Action(
                 "day_left",
                 "The user asks what is still to do today, across everything (\"what's left today?\", \"what do I still "
-                "have to do today?\", \"am I done for today?\"). Not what is on today as a whole: that is briefing_show.",
+                "have to do today?\", \"am I done for today?\"), or in part of today (\"what's on tonight?\" -> part tonight; "
+                "\"what have I got this afternoon?\" -> part afternoon; \"what's next?\" -> part next). Not what is on today as a "
+                "whole: that is briefing_show.",
+                (Field("part", "Only when a part of today is asked about: morning, afternoon, evening, tonight, or next (what comes next).", choices=(*rules.PARTS, rules.NEXT)),),
                 needs_card=False,
                 run=left_today,
                 purpose=SEE,

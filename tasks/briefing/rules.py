@@ -1,5 +1,6 @@
-from datetime import date
+from datetime import date, datetime
 
+from core import day as days
 from core import design
 from core.attention import Item
 from core.summaries import Section
@@ -112,19 +113,56 @@ def short_date(day: date) -> str:
     return f"{day:%a} {day.day} {day:%b}"
 
 
-def left(sections: list[Section]) -> str:
+# A part of the day asked about ("what's on tonight?"), as local hours [from, until), and how it is said.
+# NEXT is "what's next?": the first thing still to come. Claude names the part; the code does the rest
+MORNING, AFTERNOON, EVENING, TONIGHT, NEXT = "morning", "afternoon", "evening", "tonight", "next"
+PARTS = {MORNING: (0, 12, "this morning"), AFTERNOON: (12, 17, "this afternoon"), EVENING: (17, 24, "this evening"), TONIGHT: (17, 24, "tonight")}
+
+
+def _things(sections: list[Section]) -> list[tuple[str, datetime | None]]:
+    """Each thing still to do, (its line under its task's icon, when it is due or None), in time
+    order across tasks: what has a time by its time, then what has none, each task's as it gave them."""
+    found = []
+    for each in sections:
+        if each.summary is None:
+            continue
+        moments = each.summary.left_at if len(each.summary.left_at) == len(each.summary.left) else (None,) * len(each.summary.left)
+        found += [(f"{each.icon} {line}", moment) for line, moment in zip(each.summary.left, moments)]
+    timed = sorted((pair for pair in found if pair[1] is not None), key=lambda pair: pair[1])
+    return [*timed, *(pair for pair in found if pair[1] is None)]
+
+
+def left(sections: list[Section], part: str = "", now: datetime | None = None) -> str:
     """ "what's left today?": the day's dots and count, then each thing still to
-    do in its task's own words, under the task's icon. Every number is a
+    do in its task's own words, under the task's icon, in time order. For a part
+    of the day ("tonight") only what is due in it, and what has no time in one
+    small line; "next" is the first thing still to come. Every number is a
     task's; with nothing to count it says there is nothing on."""
     counted = [(each.summary.done or 0, each.summary.total) for each in sections if each.summary is not None and each.summary.total]
-    if not counted:
+    things = _things(sections)
+    if not counted and not things:
         return NOTHING
-    so_far = design.progress(sum(done for done, _ in counted), sum(total for _, total in counted))
-    lines = [f"{each.icon} {line}" for each in sections if each.summary is not None for line in each.summary.left]
-    if not lines:
-        return f"{ICON} **Nothing left today** · {so_far}"
+    so_far = f" · {design.progress(sum(done for done, _ in counted), sum(total for _, total in counted))}" if counted else ""
+    untimed = [line for line, moment in things if moment is None]
+    if part == NEXT:
+        coming = [(line, moment) for line, moment in things if moment is not None and (now is None or moment >= now)]
+        if not coming:
+            return f"{ICON} **Nothing else at a time today**{so_far}" + (f"\n-# {len(untimed)} with no time" if untimed else "")
+        rest = len(things) - 1
+        return "\n".join([f"{ICON} **Next**{so_far}", coming[0][0], *([f"-# then {rest} more today"] if rest > 0 else [])])
+    if part in PARTS:
+        start, end, said = PARTS[part]
+        lines = [line for line, moment in things if moment is not None and start <= days.local_time(moment).hour < end]
+        title = f"Left {said}"
+        if not lines:
+            return f"{ICON} **Nothing at a time {said}**{so_far}" + (f"\n-# {len(untimed)} with no time, any time today" if untimed else "")
+        small = [f"-# and {len(untimed)} with no time, any time today"] if untimed else []
+    else:
+        lines, title, small = [line for line, _ in things], "Left today", []
+        if not lines:
+            return f"{ICON} **Nothing left today**{so_far}"
     shown = lines[:MAX_LEFT] + ([f"…and {len(lines) - MAX_LEFT} more"] if len(lines) > MAX_LEFT else [])
-    return "\n".join([f"{ICON} **Left today** · {so_far}", *shown])
+    return "\n".join([f"{ICON} **{title}**{so_far}", *shown, *small])
 
 
 def yesterday(day: date, tallies: list, sections: list[Section]) -> str:

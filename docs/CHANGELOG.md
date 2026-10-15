@@ -6,6 +6,16 @@ backfilled from the git log.
 
 ## 2026-10-15
 
+- The status line no longer stays on overdue to-dos all day: a dose or a reminder due now comes first. The
+  line after Taken leaves the hub after 30 minutes; the briefing's reminders box drops what is done
+  ("✅ 1 earlier today"), its calendar line says what is next, on now or all over, and the pills box
+  says Due for a dose whose time has come.
+- "done" straight after a reminder went off (or "done the bins") ticks it off; "what's on tonight?",
+  "what have I got this afternoon?" and "what's next?" are answered across every task, in time
+  order; "gym at 6" and "dentist Friday 3pm" are reminders; "undo that" after a pill puts it back.
+- A day in the hub, for design rounds: `python -m selftest.day` runs the dev bot through a made-up day
+  and posts the hub at eight moments in the Design forum.
+
 - Your calendar, read only: today's events on the Today card, a line in
   the briefing, the next event's time on the status line half an hour
   before, and questions in words ("what's on tomorrow?", "when is the

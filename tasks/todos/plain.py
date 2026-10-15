@@ -352,7 +352,7 @@ DESCRIPTIONS = {
     "todo_add": "Add one or more to-dos (\"add call Ryan Friday\" -> text call Ryan, day Friday; \"put stamps and milk on my list\" -> two items).",
     "todo_done": "One or more to-dos are done (\"I called Ryan\", \"done the stamps\", \"tick off call Ryan\"). A log: no card.",
     "todo_undone": "A to-do ticked off by mistake is not done after all (\"undo that\", \"call Ryan isn't done\"). With nothing named, leave todo as @that.",
-    "todo_change": "Move a to-do to another day or change its words (\"move call Ryan to Monday\", \"call Ryan is call Ryan back\").",
+    "todo_change": "Move a to-do to another day or change its words (\"move call Ryan to Monday\", \"call Ryan is call Ryan back\"). Never for a time of day: a to-do keeps none, so \"that was at 9\" is none.",
     "todo_remove": "Take one or more to-dos off the list (\"remove buy stamps\", \"forget the dentist one\").",
     "todo_show": "The user asks what is on their to-do list (\"my to-dos\", \"what's on my list?\").",
 }

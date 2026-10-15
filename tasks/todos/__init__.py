@@ -55,7 +55,7 @@ async def items(user_id: int, now: datetime) -> list[Item]:
     found = rules.on(await store.every(user_id), day)
     said = []
     if found.overdue:
-        said.append(Item("to-dos overdue", TIMED, when=days.start_of(day), can_act=True, short=(f"{len(found.overdue)} overdue",)))
+        said.append(Item("to-dos overdue", TIMED, when=days.start_of(day), can_act=True, short=(f"{len(found.overdue)} overdue",), carried=True))
     if found.today:
         said.append(Item("to-dos for today", USEFUL, can_act=True, short=(f"{len(found.done)}/{found.total}",)))
     return said

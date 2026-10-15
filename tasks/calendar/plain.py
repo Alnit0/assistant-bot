@@ -20,8 +20,10 @@ from tasks.calendar.rules import ICON, NEXT_WEEK, SPANS, WEEK
 # ---------------------------------------------------------------------------
 ONLY_FOR = (
     "Events in the user's own calendar, to read: what is on a day or a week (\"what's on tomorrow?\", \"what's on "
-    "Friday?\", \"what's on this week?\", \"my calendar\"), when an event is (\"when is the dentist?\"), and whether "
-    "they are free at a time (\"am I free at 3 tomorrow?\"). It adds and changes nothing. Not pills, not reminders "
+    "Friday?\", \"what's on this week?\", \"my calendar\"), when an event is, or whether it is on (\"when is the dentist?\", \"is the gym on tonight?\"), and whether "
+    "they are free at a time (\"am I free at 3 tomorrow?\"). Events only. It adds and changes nothing: a new event "
+    "said with a time (\"dentist Friday 3pm\") is a reminder. The rest of today across everything (\"what's on "
+    "tonight?\", \"what have I got this afternoon?\") is the briefing. Not pills, not reminders "
     "the user set, not to-dos, not personal routines, and not when the bot's own jobs run (that is the schedule task)."
 )
 EXAMPLES = ("what's on tomorrow?", "when is the dentist?", "am I free at 3 tomorrow?")

@@ -23,8 +23,10 @@ ARGS = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.Raw
 ARGS.add_argument("--live", action="store_true", help="really call the API (costs money)")
 ARGS.add_argument("--record", action="store_true", help="save what Claude returned into the fixture files")
 ARGS.add_argument("--strict", action="store_true", help="send action schemas as strict")
-ARGS.add_argument("--only", default="", help="run one fixture file, by its name without .json")
+ARGS.add_argument("--only", default="", help="run one fixture file, by its name without .json (or several, with commas)")
 ARGS.add_argument("--dev", action="store_true", help="include the demo lists of tests/demo.py")
+ARGS.add_argument("--routers", action="store_true", help="only the router fixtures: to check a change to a task's \"only for\" line")
+ARGS.add_argument("--golden", default="", help="only the fixtures of these golden conversations, e.g. x9,x10: to run again only what failed")
 ARGS.add_argument("--part", default="", help="one part of what would run, e.g. 1/2 then 2/2: to keep one run under a spend limit")
 
 # Roughly what one request costs with the current model: for the estimate before running
@@ -49,13 +51,20 @@ def main() -> int:
     routers, extractions = fixtures.load()
     known = {entry.name for entry in entries}
     if options.only:
-        routers = [fixture for fixture in routers if fixture.file == options.only]
-        extractions = [fixture for fixture in extractions if fixture.file == options.only]
+        files = {each.strip() for each in options.only.split(",") if each.strip()}
+        routers = [fixture for fixture in routers if fixture.file in files]
+        extractions = [fixture for fixture in extractions if fixture.file in files]
     skipped = [fixture.name for fixture in routers if set(fixture.tasks) - known]
     skipped += [fixture.name for fixture in extractions if fixture.task not in known]
     routers = [fixture for fixture in routers if not set(fixture.tasks) - known]
     extractions = [fixture for fixture in extractions if fixture.task in known]
 
+    if options.routers:
+        extractions = []
+    if options.golden:
+        wanted = {each.strip() for each in options.golden.split(",") if each.strip()}
+        routers = [fixture for fixture in routers if fixture.golden in wanted]
+        extractions = [fixture for fixture in extractions if fixture.golden in wanted]
     if options.part:
         # Every other fixture (or every third…), in the files' own order: the parts together are the whole
         which, of = (int(number) for number in options.part.split("/"))
@@ -114,7 +123,7 @@ def main() -> int:
 
         return await llm.call_tool(
             routing.system_blocks(entries),
-            routing.user_turn(fixture.message, fixture.on_screen, [tuple(pair) for pair in fixture.exchanges or []]),
+            routing.user_turn(fixture.message, fixture.on_screen, [tuple(pair) for pair in fixture.exchanges or []], hints=routing.name_hints(fixture.message, fixture.names or {})),
             [routing.tool(entries)],
             choice={"type": "tool", "name": routing.TOOL},
             purpose=costs.PURPOSE_ROUTER,

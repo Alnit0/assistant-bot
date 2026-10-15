@@ -90,11 +90,18 @@ async def summary(user_id: int, day: date) -> Summary | None:
     if not found:
         return None
     timed = [each for each in found if not each.all_day and days.day_of(each.start) == day]
-    glance = rules.count_text(len(found)) + (f" · first {timeinput.format_moment(timed[0].start)}" if timed else " · all day")
     now = clock.now()
     upcoming = [each for each in timed if each.end > now]
+    if not timed:
+        glance = rules.count_text(len(found)) + " · all day"
+    elif upcoming:
+        on_now = upcoming[0].start <= now
+        glance = rules.count_text(len(found)) + (f" · on now until {timeinput.format_moment(upcoming[0].end)}" if on_now else f" · next {timeinput.format_moment(upcoming[0].start)}")
+    else:
+        glance = rules.count_text(len(found)) + " · all over"
     status = DUE if upcoming else ANY_TIME if not timed else DONE
-    return Summary(glance, status)
+    coming = [each for each in upcoming if each.start > now]
+    return Summary(glance, status, left=tuple(f"{each.title} `{timeinput.format_moment(each.start)}`" for each in coming), left_at=tuple(each.start for each in coming))
 
 
 async def items(user_id: int, now: datetime) -> list[Item]:

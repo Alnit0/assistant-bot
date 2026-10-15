@@ -29,7 +29,7 @@ import discord
 
 from core import config, health, instance_lock, money
 from core.timeinput import format_time
-from selftest import bugs, notify, record, report, stages
+from selftest import bugs, notify, record, report, stages, understanding
 
 # ---------------------------------------------------------------------------
 # The self-test's own run: channels, the database set aside, a start of the
@@ -565,6 +565,9 @@ def main() -> int:
             print(f"--- the dev bot's name: {asyncio.run(plain_name(channels['inbox']))}", flush=True)
         except Exception as error:
             print(f"--- the dev bot's name could not be put back ({type(error).__name__}): its next start does it", flush=True)
+    # The cross-task conversations, as Claude last answered them: offline, a few seconds, every run
+    phases.append((understanding.NAME, {}, understanding.run(WORK / f"run-{stamp}")))
+    print(f"--- {understanding.NAME}: {phases[-1][2]['results'][0]['saw']}", flush=True)
     path = report.write(phases, spent, real, stamp, partial=not whole, began=began, ended=datetime.now(), ran=", ".join(chosen) if chosen and not whole else "")
     results = [each for _, _, found in phases for each in found["results"]]
     bad = [each for each in results if each["status"] in ("fail", "error")]

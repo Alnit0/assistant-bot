@@ -221,6 +221,15 @@ async def handled(message_id: int, failed: bool = False) -> None:
     await book_expiry()
 
 
+async def expire_in(message_id: int | None, after: timedelta) -> None:
+    """A message of the bot's goes by itself once `after` is up (a line that only
+    invites a reply for a while). Nothing for one with no row, or one kept."""
+    if not enabled() or message_id is None:
+        return
+    await database.run(db_expire, [message_id], clock.now() + after)
+    await book_expiry()
+
+
 async def card_opened(message_id: int | None) -> None:
     """A confirm card went up: what it answers waits for it to be saved,
     cancelled or to expire."""

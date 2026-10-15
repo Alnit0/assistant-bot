@@ -1,7 +1,7 @@
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
-from core import actions, cards, clock, config, confirm, database, design, llm, occurrences, timeinput
+from core import actions, cards, clock, config, confirm, database, design, llm, messages, occurrences, timeinput
 from core.actions import Request
 from core.cards import Button, Field, Form
 from core.occurrences import DONE, MISSED, PENDING, SKIPPED
@@ -29,6 +29,7 @@ log = logging.getLogger("assistant")
 # ---------------------------------------------------------------------------
 S_TAKEN, S_AT, S_SKIP = "sheet_taken", "sheet_at", "sheet_skip"
 CORRECT_HINT = "reply to this with a time to put it right"
+CORRECTABLE_FOR = timedelta(minutes=30)  # as long as a card waits (docs/CONVERSATION.md, section 4)
 MARKS = {DONE: "●", PENDING: "○", MISSED: "✕", SKIPPED: "⏭"}
 NOTHING = "Nothing to take today."
 FORM_TITLE = "When did you take it?"
@@ -329,6 +330,9 @@ async def correctable_line(press: cards.Press, dose: Dose, said: str) -> None:
     message_id = await cards.send(press.channel_id, cards.Card(f"{said} · {CORRECT_HINT}"), silent=True)
     if message_id is not None:
         await database.run(store.db_add_lines, press.user.id, message_id, [(dose.pill.id, dose.occurrence.id)])
+        # It invites a reply for as long as a card waits for one, then leaves the hub (a time said in
+        # words still corrects the dose after that): found 15 Oct, a day's worth of them stood there at night
+        await messages.expire_in(message_id, CORRECTABLE_FOR)
 
 
 async def on_skip(press: cards.Press) -> str:

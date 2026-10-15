@@ -1,6 +1,6 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
-from core import design, occurrences, timeinput
+from core import clock, design, occurrences, timeinput
 from core.actions import Summary
 from core.occurrences import DONE, MISSED, SKIPPED
 from tasks.pills import checklist, history, sheet, today
@@ -29,14 +29,15 @@ def status(listed: list[Dose]) -> str:
     return design.DONE if DONE in states else design.QUIET
 
 
-def next_line(listed: list[Dose]) -> str:
-    """The next dose with a time: "**Next:** Pill A, dose 2 · `12:00 pm`"."""
+def next_line(listed: list[Dose], now: datetime | None = None) -> str:
+    """The next dose with a time: "**Next:** Pill A, dose 2 · `12:00 pm`"; one whose time
+    has come is "**Due:**" (found 15 Oct: "Next: … 8:00 am" still stood at 3 pm)."""
     timed = [(today.shown_time(dose), dose) for dose in listed if dose.is_pending and today.shown_time(dose) is not None]
     if not timed:
         return ""
     at, dose = min(timed, key=lambda each: each[0])
     which = f"{dose.pill.plan.name}, dose {dose.number}" if dose.of > 1 else dose.pill.plan.name
-    return f"**Next:** {which} · `{timeinput.format_moment(at)}`"
+    return f"**{'Due' if now is not None and at <= now else 'Next'}:** {which} · `{timeinput.format_moment(at)}`"
 
 
 def any_time(listed: list[Dose]) -> str:
@@ -71,7 +72,7 @@ async def summary(user_id: int, day: date) -> Summary | None:
     glance = sheet.title(listed).partition(" · ")[2]  # the checklist's own count: "2 of 6 taken"
     # The streak, in days, one for all pills: said from two days up (tasks/pills/history.py)
     streak = history.streak_line(await history.streak_days(user_id, day))
-    lines = tuple(line for line in (next_line(listed), streak) if line)
+    lines = tuple(line for line in (next_line(listed, clock.now()), streak) if line)
     # The checklist's own count of what is dealt with (taken or skipped), so the two never disagree
     done, total = today.progress(listed)
-    return Summary(glance=glance, status=status(listed), lines=lines, hint=any_time(listed), before=before, done=done, total=total, left=today.left_lines(listed))
+    return Summary(glance=glance, status=status(listed), lines=lines, hint=any_time(listed), before=before, done=done, total=total, left=today.left_lines(listed), left_at=today.left_moments(listed))

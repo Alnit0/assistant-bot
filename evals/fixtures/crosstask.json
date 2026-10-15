@@ -1,0 +1,1230 @@
+{
+  "router": [
+    {
+      "golden": "x1",
+      "message": "remind me to buy milk",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "“remind me” with no time: a reminder, and its card asks when (a to-do has no time)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x2",
+      "message": "buy milk tomorrow",
+      "tasks": [
+        "todos"
+      ],
+      "note": "a thing to do on a day, no time: a to-do",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "todos"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x3",
+      "message": "remind me to buy milk at 5pm",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "a time of day: a reminder",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x4",
+      "message": "put buy milk on my to-do list for tomorrow",
+      "tasks": [
+        "todos"
+      ],
+      "note": "named: the to-do list",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "todos"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x5",
+      "message": "I need to call the bank on Friday",
+      "tasks": [
+        "todos"
+      ],
+      "note": "a plan for a day, no time: a to-do",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "todos"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x6",
+      "message": "remind me on Friday to call the bank",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "“remind me” with a day and no time: a reminder, the card asks the time",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x7",
+      "message": "don't let me forget to pick up the parcel tomorrow at 10am",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "a time of day: a reminder",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x8",
+      "message": "renew my passport this week",
+      "tasks": [
+        "todos"
+      ],
+      "note": "no time of day: a to-do",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "todos"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x9",
+      "message": "gym at 6",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "a time and a thing to do: a reminder (the calendar only reads); the card asks morning or evening",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x10",
+      "message": "dentist Friday 3pm",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "a day and a time: a reminder (the calendar adds nothing)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x11",
+      "message": "when's the dentist?",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "a question about an event: the calendar",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x12",
+      "message": "am I free at 3 tomorrow?",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "free at a time: the calendar",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x13",
+      "message": "every weekday at 7am: stretch, glass of water and skincare",
+      "tasks": [
+        "habits"
+      ],
+      "note": "steps on chosen days at a time: a personal routine",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "habits"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x14",
+      "message": "every Monday at 8am remind me to put the recycling out",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "a repeating reminder",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x15",
+      "message": "add floss to my evening routine",
+      "tasks": [
+        "habits"
+      ],
+      "note": "a step added to a personal routine",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "habits"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x16",
+      "message": "is the gym on tonight?",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "a question about an event: the calendar",
+      "known_miss": "15 Oct: came back as chat twice after the calendar line said what is the briefing's; chat then says it is about the user's data and the router is asked again, told to find the owner (core/conversation.py), so it still reaches the calendar, at one request more",
+      "recorded": {
+        "kind": "chat",
+        "tasks": [],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x17",
+      "message": "move the bins reminder to 6pm",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "a reminder moved",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x18",
+      "message": "done",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "straight after a reminder went off, its message the latest: that reminder",
+      "exchanges": [
+        [
+          "",
+          "⏰ Reminder · 10:30 am\nCall the bank"
+        ]
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x19",
+      "message": "done the plumber",
+      "tasks": [
+        "todos"
+      ],
+      "note": "a to-do named: the code hints that plumber may be one of the to-dos",
+      "names": {
+        "todos": [
+          "Renew the passport",
+          "Buy milk",
+          "Call the plumber"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Skincare",
+          "Cleanse",
+          "Tone",
+          "Moisturise",
+          "Brush teeth",
+          "Floss",
+          "Read for 10 minutes"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B",
+          "Pill C"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "todos"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x20",
+      "message": "done skincare",
+      "tasks": [
+        "habits"
+      ],
+      "note": "a routine's group named",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "habits"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x21",
+      "message": "undo that",
+      "tasks": [
+        "todos"
+      ],
+      "note": "straight after a to-do was ticked off",
+      "exchanges": [
+        [
+          "bought the milk",
+          "✅ **Buy milk** · done"
+        ]
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "todos"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x27",
+      "message": "I did the evening routine",
+      "tasks": [
+        "habits"
+      ],
+      "note": "a whole routine done",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "habits"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x28",
+      "message": "done the bins",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "a reminder that went off, named",
+      "exchanges": [
+        [
+          "",
+          "⏰ Reminder · 5:00 pm\nPut the bins out"
+        ]
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x29",
+      "message": "what's left today?",
+      "tasks": [
+        "briefing"
+      ],
+      "note": "the day as a whole",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "briefing"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x30",
+      "message": "what's left today?",
+      "tasks": [
+        "briefing"
+      ],
+      "note": "straight after a to-do was ticked off: a question never sticks",
+      "exchanges": [
+        [
+          "bought the milk",
+          "✅ **Buy milk** · done"
+        ]
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "briefing"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x31",
+      "message": "what's on tonight?",
+      "tasks": [
+        "briefing"
+      ],
+      "note": "the rest of the day across everything (pills, routines, reminders, events)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "briefing"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x32",
+      "message": "what have I got this afternoon?",
+      "tasks": [
+        "briefing"
+      ],
+      "note": "the rest of the day across everything",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "briefing"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x33",
+      "message": "any to-dos left?",
+      "tasks": [
+        "todos"
+      ],
+      "note": "one task's list",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "todos"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x34",
+      "message": "what pills are left?",
+      "tasks": [
+        "pills"
+      ],
+      "note": "one task's list",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x35",
+      "message": "what's left on my evening routine?",
+      "tasks": [
+        "habits"
+      ],
+      "note": "one routine",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "habits"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x36",
+      "message": "what reminders have I got today?",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "one task's list",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x37",
+      "message": "what's next?",
+      "tasks": [
+        "briefing"
+      ],
+      "note": "the next thing still to come, across everything",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "briefing"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x38",
+      "message": "what's on today?",
+      "tasks": [
+        "briefing"
+      ],
+      "note": "straight after a reminder went off: a question never sticks",
+      "exchanges": [
+        [
+          "",
+          "⏰ Reminder · 10:30 am\nCall the bank"
+        ]
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "briefing"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x39",
+      "message": "am I done for the day?",
+      "tasks": [
+        "briefing"
+      ],
+      "note": "straight after a routine tick",
+      "exchanges": [
+        [
+          "did floss",
+          "✅ **Floss** · done"
+        ]
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "briefing"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x40",
+      "message": "no, remind me at 5pm",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "a to-do card is open: the user moves it to a reminder at 5",
+      "on_screen": "an open 📝 To-dos card (new): Buy milk · tomorrow",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x41",
+      "message": "actually make that a to-do",
+      "tasks": [
+        "todos"
+      ],
+      "note": "a reminder card is open: moved to the to-dos",
+      "on_screen": "an open ⏰ Reminders card (new): Call Mum · today at 5:00 pm",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "todos"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x42",
+      "message": "no, that's for my evening routine",
+      "tasks": [
+        "habits"
+      ],
+      "note": "a to-do card for floss is open: moved to the evening routine",
+      "on_screen": "an open 📝 To-dos card (new): Floss · any day",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "habits"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x43",
+      "message": "took pill A and did my stretches",
+      "tasks": [
+        "pills",
+        "habits"
+      ],
+      "note": "two things done, for two tasks (the code hints at both)",
+      "names": {
+        "todos": [
+          "Renew the passport",
+          "Buy milk",
+          "Call the plumber"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Skincare",
+          "Cleanse",
+          "Tone",
+          "Moisturise",
+          "Brush teeth",
+          "Floss",
+          "Read for 10 minutes"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B",
+          "Pill C"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills",
+          "habits"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x44",
+      "message": "bought the milk and took pill B",
+      "tasks": [
+        "todos",
+        "pills"
+      ],
+      "note": "two things done, for two tasks (the code hints at both)",
+      "names": {
+        "todos": [
+          "Renew the passport",
+          "Buy milk",
+          "Call the plumber"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Skincare",
+          "Cleanse",
+          "Tone",
+          "Moisturise",
+          "Brush teeth",
+          "Floss",
+          "Read for 10 minutes"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B",
+          "Pill C"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "todos",
+          "pills"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "chat_part": ""
+      }
+    }
+  ],
+  "extraction": [
+    {
+      "golden": "x1",
+      "task": "nudges",
+      "message": "remind me to buy milk",
+      "action": "nudge_add",
+      "data": {
+        "text": "buy milk"
+      },
+      "state": "The user's reminders now:\n- Call the bank (today at 10:30 am)\n- Put the bins out (every Mon at 5:00 pm)",
+      "note": "no time given: none is made up (the card asks)",
+      "recorded": [
+        "nudge_add",
+        {
+          "text": "buy milk",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "x2",
+      "task": "todos",
+      "message": "buy milk tomorrow",
+      "action": "todo_add",
+      "data": {
+        "todos": [
+          {
+            "text": "buy milk",
+            "day": "tomorrow"
+          }
+        ]
+      },
+      "state": "The user's to-dos now:\n- Renew the passport (for yesterday)\n- Call the plumber (any day)",
+      "note": "",
+      "recorded": [
+        "todo_add",
+        {
+          "todos": [
+            {
+              "text": "buy milk",
+              "day": "tomorrow"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "x3",
+      "task": "nudges",
+      "message": "remind me to buy milk at 5pm",
+      "action": "nudge_add",
+      "data": {
+        "text": "buy milk",
+        "time": "5:00 pm"
+      },
+      "state": "The user's reminders now:\n- Call the bank (today at 10:30 am)\n- Put the bins out (every Mon at 5:00 pm)",
+      "note": "",
+      "recorded": [
+        "nudge_add",
+        {
+          "text": "buy milk",
+          "time": "5:00 pm",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "x5",
+      "task": "todos",
+      "message": "I need to call the bank on Friday",
+      "action": "todo_add",
+      "data": {
+        "todos": [
+          {
+            "text": "call the bank",
+            "day": "Friday"
+          }
+        ]
+      },
+      "state": "The user's to-dos now:\n- Renew the passport (for yesterday)\n- Buy milk (for today)\n- Call the plumber (any day)",
+      "note": "",
+      "recorded": [
+        "todo_add",
+        {
+          "todos": [
+            {
+              "text": "call the bank",
+              "day": "Friday"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "x6",
+      "task": "nudges",
+      "message": "remind me on Friday to call the bank",
+      "action": "nudge_add",
+      "data": {
+        "text": "call the bank",
+        "day": "Friday"
+      },
+      "state": "The user's reminders now:\n- Call the bank (today at 10:30 am)\n- Put the bins out (every Mon at 5:00 pm)",
+      "note": "",
+      "recorded": [
+        "nudge_add",
+        {
+          "text": "call the bank",
+          "day": "Friday",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "x9",
+      "task": "nudges",
+      "message": "gym at 6",
+      "action": "nudge_add",
+      "data": {
+        "text": "gym"
+      },
+      "state": "The user's reminders now:\n- Call the bank (today at 10:30 am)\n- Put the bins out (every Mon at 5:00 pm)",
+      "note": "6 with no am or pm: the card asks",
+      "recorded": [
+        "nudge_add",
+        {
+          "text": "gym",
+          "time": "6:00",
+          "guessed": [
+            "time"
+          ],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "x10",
+      "task": "nudges",
+      "message": "dentist Friday 3pm",
+      "action": "nudge_add",
+      "data": {
+        "text": "dentist",
+        "day": "Friday",
+        "time": "3:00 pm"
+      },
+      "state": "The user's reminders now:\n- Call the bank (today at 10:30 am)\n- Put the bins out (every Mon at 5:00 pm)",
+      "note": "",
+      "recorded": [
+        "nudge_add",
+        {
+          "text": "dentist",
+          "day": "Friday",
+          "time": "3:00 pm",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "x18",
+      "task": "nudges",
+      "message": "done",
+      "action": "nudge_done",
+      "data": {
+        "reminder": "@that"
+      },
+      "state": "The user's reminders now:\n- Call the bank (today at 10:30 am)\n- Put the bins out (every Mon at 5:00 pm)\n- (the last one that went off: Call the bank, at 10:30 am)",
+      "note": "the one that just went off, handed over as a reference: the code finds it",
+      "after_answer": true,
+      "recorded": [
+        "nudge_done",
+        {
+          "reminder": "@that",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "x19",
+      "task": "todos",
+      "message": "done the plumber",
+      "action": "todo_done",
+      "state": "The user's to-dos now:\n- Renew the passport (for yesterday)\n- Buy milk (for today)\n- Call the plumber (any day)",
+      "note": "which to-do is the code's to match (core/names.py): the words or the name both find it",
+      "recorded": [
+        "todo_done",
+        {
+          "todos": [
+            {
+              "todo": "Call the plumber"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "x21",
+      "task": "todos",
+      "message": "undo that",
+      "action": "todo_undone",
+      "data": {
+        "todos": [
+          {
+            "todo": "@that"
+          }
+        ]
+      },
+      "state": "The user's to-dos now:\n- Renew the passport (for yesterday)\n- Buy milk (done today)\n- Call the plumber (any day)",
+      "note": "",
+      "after_answer": true,
+      "recorded": [
+        "todo_undone",
+        {
+          "todos": [
+            {
+              "todo": "@that"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "x22",
+      "task": "pills",
+      "message": "undo that",
+      "action": "pill_log",
+      "data": {
+        "doses": [
+          {
+            "pill": "@that",
+            "did": "not_taken"
+          }
+        ]
+      },
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 12:00 pm, 3:00 pm · at least 3h apart · not after 5:00 pm [active]\n- pl2: 💊 Pill B · daily at 7:00 am [active]\n- pl3: 💊 Pill C · daily at 9:00 pm [active]",
+      "note": "straight after a dose was logged",
+      "after_answer": true,
+      "recorded": [
+        "pill_log",
+        {
+          "doses": [
+            {
+              "pill": "@that",
+              "did": "not_taken"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "x23",
+      "task": "habits",
+      "message": "undo that",
+      "action": "habit_untick",
+      "state": "The user's personal routines now:\n- Morning (every day; 6:30 am to 9:00 am; no nudge; items: Stretch, Glass of water, Skincare (Cleanse, Tone, Moisturise))\n- Evening (every day; 8:00 pm to 11:00 pm; no nudge; items: Brush teeth, Floss (done today), Read for 10 minutes)",
+      "note": "straight after floss was ticked: @that, or Floss (the one done today), both find it",
+      "after_answer": true,
+      "recorded": [
+        "habit_untick",
+        {
+          "items": [
+            "Floss"
+          ],
+          "guessed": [
+            "items[0]"
+          ],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "x24",
+      "task": "pills",
+      "message": "that was at 9",
+      "action": "pill_log",
+      "data": {
+        "doses": [
+          {
+            "pill": "@that",
+            "did": "taken"
+          }
+        ]
+      },
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 12:00 pm, 3:00 pm · at least 3h apart · not after 5:00 pm [active]\n- pl2: 💊 Pill B · daily at 7:00 am [active]\n- pl3: 💊 Pill C · daily at 9:00 pm [active]",
+      "note": "straight after a dose was logged: a correction of its time (9, the code takes the latest 9 that has happened)",
+      "after_answer": true,
+      "recorded": [
+        "pill_log",
+        {
+          "doses": [
+            {
+              "pill": "@that",
+              "did": "taken",
+              "at": "9:00 am"
+            }
+          ],
+          "guessed": [
+            "at"
+          ],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "x25",
+      "task": "todos",
+      "message": "that was at 9",
+      "action": "none",
+      "state": "The user's to-dos now:\n- Renew the passport (for yesterday)\n- Buy milk (done today)\n- Call the plumber (any day)",
+      "note": "straight after a to-do was ticked off: to-dos keep no time, so nothing fits",
+      "after_answer": true,
+      "also_ok": {
+        "action": "not_this"
+      },
+      "recorded": [
+        "none",
+        {
+          "why": "unclear",
+          "reason": "The message refers to a time of day (9), but to-dos do not have times attached. Cannot determine what is meant or which to-do this refers to."
+        }
+      ]
+    },
+    {
+      "golden": "x26",
+      "task": "pills",
+      "message": "that was at 9",
+      "action": "pill_log",
+      "data": {
+        "doses": [
+          {
+            "pill": "@that",
+            "did": "taken"
+          }
+        ]
+      },
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 12:00 pm, 3:00 pm · at least 3h apart · not after 5:00 pm [active]\n- pl2: 💊 Pill B · daily at 7:00 am [active]\n- pl3: 💊 Pill C · daily at 9:00 pm [active]",
+      "note": "a reply to a dose's reminder: that dose, at 9",
+      "replied": true,
+      "recorded": [
+        "pill_log",
+        {
+          "doses": [
+            {
+              "pill": "@that",
+              "did": "taken",
+              "at": "9:00 am"
+            }
+          ],
+          "guessed": [
+            "at"
+          ],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "x30",
+      "task": "todos",
+      "message": "what's left today?",
+      "action": "todo_show",
+      "state": "The user's to-dos now:\n- Renew the passport (for yesterday)\n- Buy milk (for today)\n- Call the plumber (any day)",
+      "note": "straight after its own answer: read as its own question, which goes to the router all the same",
+      "after_answer": true,
+      "also_ok": {
+        "action": "not_this"
+      },
+      "recorded": [
+        "todo_show",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "x31",
+      "task": "briefing",
+      "message": "what's on tonight?",
+      "action": "day_left",
+      "data": {
+        "part": "tonight"
+      },
+      "state": "",
+      "note": "the code picks what is due tonight",
+      "recorded": [
+        "day_left",
+        {
+          "part": "tonight",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "x32",
+      "task": "briefing",
+      "message": "what have I got this afternoon?",
+      "action": "day_left",
+      "data": {
+        "part": "afternoon"
+      },
+      "state": "",
+      "note": "",
+      "recorded": [
+        "day_left",
+        {
+          "part": "afternoon",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "x37",
+      "task": "briefing",
+      "message": "what's next?",
+      "action": "day_left",
+      "data": {
+        "part": "next"
+      },
+      "state": "",
+      "note": "",
+      "recorded": [
+        "day_left",
+        {
+          "part": "next",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    }
+  ]
+}

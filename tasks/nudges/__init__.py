@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from core import attention, config, database, hub, repeats, scheduler, timeinput
+from core import attention, clock, config, database, hub, repeats, scheduler, timeinput
 from core import day as days
 from core.actions import SEE, Summary
 from core.attention import TIMED, Item
@@ -34,12 +34,23 @@ async def show_word(ctx: Context) -> str:
 
 
 async def summary(user_id: int, day: date) -> Summary | None:
-    """The day's reminders for the briefing, in time order, a line each."""
-    due = rules.due_today(await store.every(user_id), day)
+    """The day's reminders for the briefing, in time order: one that went off and is waiting, then
+    those still to come, a line each; those dealt with (or gone by) one small line with a count."""
+    nudges = await store.every(user_id)
+    due = rules.due_today(nudges, day)
     if not due:
         return None
-    lines = tuple(f"**{timeinput.format_moment(moment)}** · {each.text}" for moment, each in due)
-    return Summary(f"{len(due)} today", DUE if due else QUIET, lines)
+    now = clock.now()
+    by_id = {each.id: each for each in nudges}
+    waiting = [(each.due_at, by_id[each.nudge_id]) for each in reversed(await database.run(store.db_open, user_id)) if each.nudge_id in by_id and days.day_of(each.due_at) == day]
+    coming = [(moment, each) for moment, each in due if moment > now] if day == days.day_of(now) else due
+    left = [*waiting, *coming]
+    lines = tuple(f"**{timeinput.format_moment(moment)}** · {each.text}" for moment, each in left)
+    gone = len(due) - len(coming) - len(waiting)
+    return Summary(
+        f"{len(due)} today", DUE if waiting else QUIET, lines, hint=f"✅ {gone} earlier today" if gone > 0 else "",
+        left=tuple(f"{each.text} `{timeinput.format_moment(moment)}`" for moment, each in left), left_at=tuple(moment for moment, _ in left),
+    )
 
 
 async def items(user_id: int, now: datetime) -> list[Item]:

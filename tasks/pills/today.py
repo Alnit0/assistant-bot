@@ -205,6 +205,11 @@ def left_text(listed: list[Dose]) -> str:
     return "still to take today: " + ", ".join(named)
 
 
+def left_moments(listed: list[Dose]) -> tuple:
+    """When each of `left_lines` is due, None for one with no time: the same doses, in the same order."""
+    return tuple(dose.due.at if shown_time(dose) is not None else None for dose in listed if dose.is_pending)
+
+
 def left_lines(listed: list[Dose]) -> tuple[str, ...]:
     """Each dose still to take today, with its time if it has one: "Pill A (dose 2 of 3) `11:30 am`"."""
     named = []

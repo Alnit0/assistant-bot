@@ -432,7 +432,7 @@ def test_what_s_left_and_how_yesterday_and_the_week_went_are_answered_from_pills
     add(on, PILL_A, {"name": "Any"})
     request = Request(on.owner, INBOX, "asked")
     assert run(briefing.left_today(request, {}, frozenset())).splitlines() == [
-        "☀️ **Left today** · ○○○○ 0/4", "💊 Any", "💊 Pill A (dose 1 of 3) `8:00 am`", "💊 Pill A (dose 2 of 3) `11:30 am`", "💊 Pill A (dose 3 of 3) `3:00 pm`",
+        "☀️ **Left today** · ○○○○ 0/4", "💊 Pill A (dose 1 of 3) `8:00 am`", "💊 Pill A (dose 2 of 3) `11:30 am`", "💊 Pill A (dose 3 of 3) `3:00 pm`", "💊 Any",
     ]
     log(on, {"pill": "any", "did": "taken"})
     assert run(briefing.left_today(request, {}, frozenset())).splitlines()[0] == "☀️ **Left today** · ●○○○ 1/4"

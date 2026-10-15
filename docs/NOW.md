@@ -3,24 +3,28 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Batch** (2026-10-15, from 3:06 pm): two safety jobs, then the two
-old live bugs
+**Batch** (2026-10-15, from 3:58 pm): a day in the hub, cross-task
+understanding, a cost check; ship once before 9 pm if all passes
 
 **Done**
-- 1. Live in its own folder (`..\assistant-bot-live`, on 6a942d8) since
-  3:11 pm: account check, today's logs, the calendar and the bookings
-  checked; self-test from live's folder 28 of 28. Originals kept in the
-  work folder until Alex confirms. Ship with `scripts\update-live.ps1`
+- 1. A day in the hub: `python -m selftest.day` (the dev bot, a made-up
+  day, 8 snapshots, rule checks), 33 of 33 steps. Fixed: the status
+  line held by overdue to-dos, the Taken line left all day, the
+  briefing's reminders and calendar boxes stuck on the morning, "Next"
+  for a dose long due. Choices: questions 68 to 75
+- 2. Cross-task understanding: 44 conversations (58 recorded answers),
+  15 of 55 wrong first time; fixed, one known miss (x16); replayed in
+  every self-test run (step u.01)
 
-- 2. Windows Update: active hours 6 am to 12 am (were automatic),
-  updates paused until 19 Nov 3:43 pm (were not); the backlog has a
-  monthly reminder to update by hand
-
-- 3. B2 and B5: both already fixed in what live runs; checked (33
-  tests) and noted. Nothing to ship. They wait for Alex's Fixed
+**In progress**
+- The final replay for the Design post; then the full test run and
+  the checkpoint commit of steps 1 and 2
 
 **Next**
-- Nothing queued: waiting on Alex
+- Dev-bot self-test (recorded), push, ship before 9 pm, check after
+- 3. The cost check; STATUS, ADVISOR 8 and 9 at the end
+
+**Spend so far:** NZ$0.76 of NZ$1.00 (understanding checks)
 
 **Drafts and worktrees**
 - Worktrees `../assistant-bot-hub-tasks`, `../assistant-bot-round4` and
@@ -28,8 +32,8 @@ old live bugs
 - No drafts outside `docs/`
 
 **Waiting on Alex**
+- Questions 68 to 75 (the hub through a day)
 - QA item 0 (direct messages, now on)
-- His look at A and B in the Routines layout preview (B is live)
 - Confirm live's folder is well, so the work folder's old `.env` and
   `data\` can go
 - Press Fixed on B2 and B5 (both checked, a note on each)

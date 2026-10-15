@@ -34,7 +34,7 @@ def main() -> int:
     from core.logging_setup import setup_logging
     from core.migrations import migrate
     from core.users import ensure_owner
-    from selftest import phases
+    from selftest import day, phases
     from selftest.harness import Harness
     from interfaces import discord as discord_interface
     from tasks import registry
@@ -69,7 +69,7 @@ def main() -> int:
             try:
                 await asyncio.wait_for(ready.wait(), 180)
                 await harness.setup()
-                await phases.PHASES[name](harness)
+                await {**phases.PHASES, **day.PHASES}[name](harness)
             finally:
                 harness.save()
                 await bot.client.close()

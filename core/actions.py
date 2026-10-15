@@ -2,6 +2,7 @@ import logging
 import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
+from datetime import datetime
 
 from core import database, durations, repeats, trace
 from core.errors import UserError
@@ -211,6 +212,9 @@ class Summary:
     # What is still to do that day, a line each, in the task's own words ("Pill A (dose 2 of 3) `12:00 pm`"):
     # for "what's left today?". Not trimmed to three: whoever shows them counts what it leaves out
     left: tuple[str, ...] = ()
+    # When each of `left` is due (UTC), None for one with no time; empty when none has a time. For
+    # "what's on tonight?" and for the day's own order across tasks: the code sorts and picks, never Claude
+    left_at: tuple[datetime | None, ...] = ()
 
 
 @dataclass(frozen=True)

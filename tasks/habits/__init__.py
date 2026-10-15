@@ -45,8 +45,9 @@ async def summary(user_id: int, day: date) -> Summary | None:
 
     lines = tuple(f"**{each.habit.name}** {design.progress(each.done, each.total)} · {rules.when_text(each.habit)}" for each in found)
     done, total = sum(each.done for each in found), sum(each.total for each in found)
-    left = tuple(f"{each.habit.name}: {each.next_item.text}" for each in found if each.next_item is not None)
-    return Summary(f"{done} of {total} items", DONE if done == total else ANY_TIME, lines, done=done, total=total, left=left)
+    waiting = [each for each in found if each.next_item is not None]
+    left = tuple(f"{each.habit.name}: {each.next_item.text}" for each in waiting)
+    return Summary(f"{done} of {total} items", DONE if done == total else ANY_TIME, lines, done=done, total=total, left=left, left_at=tuple(each.starts() for each in waiting))
 
 
 def attention_of(today: rules.Today, now: datetime) -> Item | None:
