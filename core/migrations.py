@@ -524,6 +524,22 @@ def _create_inbox_kept(conn: sqlite3.Connection) -> None:
     )
 
 
+def _create_wishes(conn: sqlite3.Connection) -> None:
+    # The wishlist (core/wishes.py): what live could not do, the task and why in the code's own words, never a message
+    conn.execute(
+        """
+        CREATE TABLE wishes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            task TEXT NOT NULL,
+            why TEXT NOT NULL,
+            summary TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+
+
 MIGRATIONS = [
     _create_message_log,
     _create_users,
@@ -555,6 +571,7 @@ MIGRATIONS = [
     _create_pinged,
     _seed_pinged,
     _create_inbox_kept,
+    _create_wishes,
 ]
 
 

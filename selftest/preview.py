@@ -1131,6 +1131,41 @@ def inbox_opening() -> str:
     ])
 
 
+# ---------------------------------------------------------------------------
+# The brainstorm (docs/BRAINSTORM.md): `python -m selftest.preview --brainstorm`,
+# a post of its own. The top 10, each a reply with a two-line sketch of how it
+# would look in the hub. Nothing of these is built; made-up names only.
+# ---------------------------------------------------------------------------
+BRAINSTORM_TITLE = "Design · Brainstorm"
+BRAINSTORM_TOP = (
+    ("32 · Hours by message", "“2h on the Made-up Co site” after you finish:", "⏱️ **Made-up Co** · 2h logged · 9h this week\n-# Sunday: the week's hours by client"),
+    ("1 · Plan my day", "“plan my day”:", "☀️ **Your day** · 8:00 Pill B · 9:00 standup · free 9:15 to 12:30 · 12:30 lunch\n-# then 3 more, and 2 to-dos with no time"),
+    ("2 · Free time finder", "“when am I free for 2 hours this week?”:", "📅 **Free for 2 hours** · Tue 6:00 pm · Thu 7:30 pm · Sat all afternoon\n-# from every calendar, after work"),
+    ("25 · Bin day", "Said once, “bins Tuesday, recycling every other week”:", "⏰ **Bins out tonight** · rubbish and recycling\n-# Monday 8:00 pm, the evening before"),
+    ("38 · Birthdays", "Said once, “Sam's birthday 3 May”:", "🎂 **Sam's birthday** · Sat 3 May, in a week\n-# your gift note: a book on climbing"),
+    ("26 · The usual", "“need the usual and eggs”:", "📝 To-dos · **Milk**, **Bread**, **Coffee**, **Eggs** · any day\n-# the usual: milk, bread, coffee (change it in words)"),
+    ("9 · Draft the email", "“draft an email to the landlord about the leak”:", "✉️ **Draft** · Hi, the kitchen tap has been leaking since Monday…\n-# copy it, or say what to change"),
+    ("13 · Pill refill countdown", "Said once, “I have 60 of Pill A”:", "💊 **Pill A** · order more by Wed 12 Nov\n-# 14 days left at 3 a day: one line in the briefing a week ahead"),
+    ("23 · Flat expenses", "“I paid the power 180, split three ways”:", "🏠 **Power** · $180 · Made-up A and Made-up B owe you $60 each\n-# “who owes me?” any time"),
+    ("19 · Subscriptions from a bank CSV", "A bank CSV sent in #inbox:", "💳 **7 subscriptions** · $94 a month · next: Made-up Music Fri 21 Nov\n-# each one an expiry, if you say so"),
+)
+
+
+def brainstorm_cards() -> list[tuple[str, tuple]]:
+    found = [(f"{name} · {how}", (design.Text(sketch),)) for name, how, sketch in BRAINSTORM_TOP]
+    found.append(("", (design.Text("**Which of these should I build first?** Reply with the numbers, most wanted first (for example “32, 23, 13”)."),)))
+    return checked(found)
+
+
+def brainstorm_opening() -> str:
+    return "\n".join([
+        f"## {BRAINSTORM_TITLE}",
+        "48 ideas for taking admin off your plate, in docs/BRAINSTORM.md, grouped (daily planning, admin and paperwork, health, money, home and flat, work and freelance, people and social, learning, fun), each with how you'd use it, its value to you, the effort and what it needs from you.",
+        "**Below: the top 10 by value for effort**, each with a two-line sketch of how it would look in the hub. Nothing of these is built.",
+        "-# From Claude's own knowledge of assistants and life-admin apps (no web search). Made-up names only. No ideas inbox and no uni deadlines, as asked.",
+    ])
+
+
 def _number_after(args: list[str], flag: str) -> int:
     value = args[args.index(flag) + 1] if args.index(flag) + 1 < len(args) else ""
     if not value.isdigit() or int(value) not in design.ROUNDS:
@@ -1147,6 +1182,13 @@ def main() -> int:
             print(f"{len(found)} messages built, each within one message.")
             return 0
         print("Posted:", asyncio.run(post_preview(DIARY_TITLE, diary_opening(), found)))
+        return 0
+    if "--brainstorm" in args:
+        found = brainstorm_cards()
+        if "--check" in args:
+            print(f"{len(found)} messages built, each within one message.")
+            return 0
+        print("Posted:", asyncio.run(post_preview(BRAINSTORM_TITLE, brainstorm_opening(), found)))
         return 0
     if "--inbox" in args:
         found = inbox_cards()

@@ -453,3 +453,9 @@ def test_the_design_preview_is_drawn_by_the_inbox_s_own_card_and_fits_in_a_messa
     found = preview.inbox_cards()
     assert len(found) == 7 and preview.INBOX_TITLE == "Design · Smart inbox"
     assert "Made-up items only" in preview.inbox_opening()
+
+
+def test_a_file_with_no_words_in_the_hub_costs_nothing_and_says_nothing(inbox):
+    before = len(inbox.sent)
+    say_with(inbox, "", attached("a.png", image(), "image/png"), channel_id=HUB)
+    assert inbox.requests == [] and len(inbox.sent) == before

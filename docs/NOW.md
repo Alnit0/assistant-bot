@@ -3,36 +3,33 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Batch:** overnight 17 Oct, unattended (Alex asleep), started 11:51 pm.
-Cap NZ$1.00 bot spend, NZ$0.40 a run, NZ$0.80 for the inbox's checks.
+**Batch:** overnight 17 Oct, unattended, started 11:51 pm. Spend so far
+US$0.26 (about NZ$0.45) of NZ$1.00, the largest run US$0.15.
 
-1. **Smart inbox** (core): several things in one message, or a photo,
-   screenshot, PDF or CSV, sorted onto one card (Save, Cancel, fix a
-   line in words, Undo); preview "Design · Smart inbox". Built and
-   recorded (14 conversations, US$0.26), `SMART_INBOX`; preview posted
-2. A fix shipped from the command line shows on live within a minute:
-   done (`tasks/bugs/watch.py`, a look a minute)
-3. Record expiry phrasings e3 and e6: done, both right (US$0.02)
-4. Next: `selftest.day` with expiries, Bot calendar series, Needs a look
-   changes and the smart inbox; reply "Everything on, 17 Oct"
+1. Smart inbox (`SMART_INBOX`): done, recorded, "Design · Smart inbox"
+2. A fix shipped from the command line in Needs a look within a minute:
+   done (`tasks/bugs/watch.py`)
+3. Expiry phrasings e3 and e6 recorded: done, both right
+4. `selftest.day` with expiries, a Bot calendar series, Needs a look
+   changes and the smart inbox: done, "Everything on, 17 Oct" posted;
+   three bugs found and fixed
+5. Brainstorm, wishlist, `/suggest`: done, "Design · Brainstorm" posted
+6. In progress: dev-bot self-test, then one ship (before 3:15 am)
 
-5. If time: brainstorm and wishlist (lowest priority, never delays the ship)
+**Sundays:** run `/suggest` (the brainstorm with the wishlist).
+**Next:** check the 3:30 am nightly of 17 Oct and report it.
 
-**Then:** full test run, dev-bot self-test (not 3:15 to 4:30 am), one
-ship by 5:20 am if ready by 5:00 am. Check the 3:30 am nightly.
-
-**Live:** `fe8252f` since 16 Oct, 3:29 pm: Needs a look as it is now,
-B bugs in live's folder only. Briefing: B2 fix ready, B5 closing Mon.
+**Live:** `fe8252f` since 16 Oct, 3:29 pm (until the ship).
 
 **Drafts and worktrees:** `docs/drafts/gym-onboarding.md`; three old
 worktrees, all merged
 
 **Waiting on Alex**
+- Questions 93 to 98 (smart inbox, brainstorm: which to build first)
 - Reset the old iCal link in Google Calendar (the bot no longer reads it)
 - Round 5 item by item (Q68 to Q75 in its post)
 - The daily read: his look at its post, and questions 86 to 90
-- Questions 76 to 79 (gym), 63, 24 to 28
-- QA item 0 (direct messages)
+- Questions 76 to 79 (gym), 63, 24 to 28; QA item 0 (direct messages)
 - B2: say close B2 in #inbox (its report has none of his words to replay)
 - Live's folder: his word, then the work folder's old `.env` and `data\`
   go (not deleted)

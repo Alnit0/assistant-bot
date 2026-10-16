@@ -39,6 +39,7 @@ SETTINGS = {
     "WEATHER_ENABLED": "true", "WEATHER_SOURCE": str(config.BASE_DIR / "tests" / "fixtures" / "weather_drizzle.json"),
     "CALENDAR_ENABLED": "true", "WEEKLY_ALL": "true", "DIARY_ENABLED": "true", "READING_ENABLED": "true",
     "CALENDAR_WRITE": "true", "CALENDAR_BOT_ID": BOT_CALENDAR, "CALENDAR_READ": "ics,google:CALENDAR_BOT_ID",
+    "SMART_INBOX": "true",
 }
 TLDR_FIRST = "Builds a small agent from one tool to five, showing the prompt at each step.\nThe failures are left in, which is the useful part."
 TLDR_SECOND = "How one team records model answers once and replays them in tests.\nCovers what to record and when to record again."
@@ -66,9 +67,9 @@ def reading_source(day: date) -> dict:
 MOMENTS = (
     ((6, 0), "The night: yesterday closed; the daily read picked at 5:30; the 6 am tidy, then the briefing and the morning cards, the read's card last"),
     ((7, 30), "Quiet hours ended at 7; the morning routine's window opened at 6:30 and its card came up; Pill B's 7:00 reminder, Taken by its button at 7:05; Skincare ticked in the routine's dropdown at 7:20"),
-    ((9, 45), "Pill A's 8:00 reminder went off and was left; 👎 on the daily read at 7:40, then Another one; Stretch and Glass of water ticked at 8:45, so the routine's card went; “took pill a” at 9:05, an hour late; Buy stamps done at 9:10; the 9:00 standup; “dentist at 4pm for an hour” added to the Bot calendar at 9:30"),
-    ((12, 0), "The 10:30 reminder snoozed for an hour, then Done at 11:35; “skip pill d” at 11:00; Pill A's second dose moved to 12:05, three hours after the first"),
-    ((15, 0), "Pill A's second dose taken by its reminder at 12:10; the 12:30 lunch; “move the dentist to 4:30pm” at 1:00; “paid the power bill” at 2:00; the 3:00 event was cancelled; the third dose is due at 3:10"),
+    ((9, 45), "Pill A's 8:00 reminder went off and was left; 👎 on the daily read at 7:40, then Another one; Stretch and Glass of water ticked at 8:45, so the routine's card went; “took pill a” at 9:05, an hour late; Buy stamps done at 9:10; the 9:00 standup; “dentist at 4pm for an hour” added to the Bot calendar at 9:30, and Test swimming every Sunday at 7pm; the 9:00 renewals check: the rego is due in 7 days"),
+    ((12, 0), "The 10:30 reminder snoozed for an hour, then Done at 11:35; “skip pill d” at 11:00; Pill A's second dose moved to 12:05, three hours after the first; a fix marked shipped from outside the bot at 11:40, in Needs a look within a minute"),
+    ((15, 0), "Pill A's second dose taken by its reminder at 12:10; the 12:30 lunch; “move the dentist to 4:30pm” at 1:00; “paid the power bill” at 2:00; two things in one message in #inbox at 1:30, and a screenshot of a booking at 2:30, each sorted onto one card and saved; the bug closed from outside the bot at 2:45; the 3:00 event was cancelled; the third dose is due at 3:10"),
     ((18, 30), "Pill A's third dose was never taken: missed at 5:00, its latest time; Call the plumber done at 4:00; the dentist at 4:30; the 5:00 reminder done at 5:05; the gym at 6"),
     ((21, 0), "The week's summary of everything at 7 pm (a Sunday); the evening routine's window opened at 8; the diary's evening ask and Pill C's reminder at 9:00"),
     ((23, 45), "Pill C taken at 9:05; a diary entry at 9:15 with its mood; Brush teeth and Floss ticked at 9:30, Read left; quiet hours from 10; the evening window closed at 11"),
@@ -336,6 +337,9 @@ async def story(h) -> None:
                todo("todo_add", todos=[{"text": "call the plumber", "day": "tomorrow"}, {"text": "book a haircut", "day": "tomorrow"}]), "todos")
     await save("d.07", "remind me tomorrow at 10:30 am to call the bank", todo("nudge_add", text="call the bank", time="10:30 am", day="tomorrow"), "nudges")
     await save("d.08", "remind me tomorrow at 5pm to put the bins out", todo("nudge_add", text="put the bins out", time="5:00 pm", day="tomorrow"), "nudges")
+    # Straight after a reminder was saved, as a short message after its task's answer goes to that task first
+    rego = the_day + timedelta(days=7)
+    await save("d.29", f"rego due {rego.day} {rego:%b}, every year", todo("expiry_add", name="rego", date=f"{rego.day} {rego:%b}", cycle="yearly"), "nudges")
     await save("d.09", "make a morning routine 6:30 am to 9 am: stretch, glass of water, skincare: cleanse, tone, moisturise",
                todo("habit_add", routine="morning", items=[{"text": "stretch"}, {"text": "glass of water"}, {"text": "skincare", "steps": ["cleanse", "tone", "moisturise"]}], **{"from": "6:30 am", "until": "9:00 am"}), "habits")
     await save("d.10", "make an evening routine 8pm to 11pm: brush teeth, floss, read for 10 minutes",
@@ -395,6 +399,7 @@ async def story(h) -> None:
     await step("d.15", "To-dos: Buy stamps in the Done dropdown", lambda: pick("todos", "Buy stamps"))
     await _at(h, the_day, 9, 30)
     await save("d.26", "dentist at 4pm for an hour", todo("calendar_add", title="dentist", time="4:00 pm", length=60), "calendar")
+    await save("d.30", "Test swimming every Sunday at 7pm", todo("calendar_add", title="Test swimming", repeat="days", weekdays=["sun"], time="7:00 pm", length=60), "calendar")
     await snap(2)
     await _at(h, the_day, 10, 32)
 
@@ -408,6 +413,8 @@ async def story(h) -> None:
     await step("d.17", "“skip pill d”", lambda: h.say("skip pill d", channel=h.hub, canned=log({"pill": "Pill D", "did": "skipped"})))
     await _at(h, the_day, 11, 35)
     await step("d.18", "The snoozed reminder again: Done", lambda: nudge("Done"))
+    await _at(h, the_day, 11, 40)
+    await step("d.31", "A fix marked shipped from outside the bot: in Needs a look within a minute", lambda: bug_outside(h, shipped=True))
     await snap(3)
     await _at(h, the_day, 12, 10)
     await step("d.19", "Pill A's noon dose: Taken on its reminder", reminder_taken)
@@ -415,6 +422,12 @@ async def story(h) -> None:
     await save("d.27", "move the dentist to 4:30pm", todo("calendar_move", search="dentist", time="4:30 pm"), "calendar")
     await _at(h, the_day, 14, 0)
     await step("d.20", "“paid the power bill”", lambda: h.say("paid the power bill", channel=h.hub, canned=todo("todo_done", todos=[{"todo": "power bill"}]), task="todos"))
+    await _at(h, the_day, 13, 30)
+    await step("d.32", "Two things in one message, sorted onto one card, then Save all", lambda: inbox_words(h))
+    await _at(h, the_day, 14, 30)
+    await step("d.33", "A screenshot of a booking, sorted into an event, then Save all", lambda: inbox_file(h))
+    await _at(h, the_day, 14, 45)
+    await step("d.34", "The bug closed from outside the bot: gone from Needs a look within a minute", lambda: bug_outside(h, shipped=False))
     await snap(4)
     await _at(h, the_day, 16, 0)
     await step("d.21", "To-dos: Call the plumber in the Done dropdown", lambda: pick("todos", "Call the plumber"))
@@ -434,6 +447,75 @@ async def story(h) -> None:
         async with attempt:
             found = await h.doses()
             h.saw(", ".join(f"{name} {seq}: {state}" for (name, seq), state in sorted(found.items())))
+
+
+# --- what came in 17 Oct: a fix shipped from outside the bot, and the smart inbox ---------------------------------
+async def _briefing_text(h) -> str:
+    from core import livelists
+
+    placed = await database.run(livelists.db_get, h.user.id, "briefing:hub")
+    shown = await h.get(h.hub, placed.message_id) if placed is not None else None
+    return shown.all_text if shown is not None else ""
+
+
+async def bug_outside(h, shipped: bool) -> None:
+    """What `python -m tasks.bugs.cli shipped` does, and then a Fixed pressed elsewhere: written straight to the
+    database, as another process would, and seen by the bot's own look a minute (tasks/bugs/watch.py)."""
+    import asyncio
+
+    from tasks.bugs import rules, store
+
+    if shipped:
+        made = rules.Report("word", h.inbox.id, "inbox", rules.Snapshot(1, "made-up", "made-up words", clock.now().isoformat()))
+        bug_id = await store.add(h.user.id, made)
+        h.memo["outside bug"] = bug_id
+        closes = days.today() + timedelta(days=3)
+        await database.run(lambda conn: conn.execute("UPDATE bugs_items SET shipped_at = ?, closes_on = ? WHERE id = ?", (clock.now().isoformat(), closes.isoformat(), bug_id)))
+    else:
+        bug_id = h.memo["outside bug"]
+        await database.run(lambda conn: conn.execute("UPDATE bugs_items SET status = 'fixed', closed_at = ?, shipped_at = NULL, closes_on = NULL WHERE id = ?", (clock.now().isoformat(), bug_id)))
+    wanted = rules.bug_id(bug_id)
+    for _ in range(26):  # a look a minute, then the briefing's own 30 seconds: under two minutes in all
+        await asyncio.sleep(5)
+        if (wanted in await _briefing_text(h)) == shipped:
+            h.saw(f"{wanted} {'in' if shipped else 'gone from'} the briefing")
+            return
+    h.check(False, f"{wanted} is {'not in' if shipped else 'still in'} the briefing after two minutes")
+
+
+SEVERAL = {"kind": "task", "tasks": ["todos", "calendar"], "confidence": "high", "reports_doing": False, "several": True, "chat_part": ""}
+
+
+async def _save_inbox(h) -> None:
+    from core import smartinbox
+
+    stored = await database.run(smartinbox.db_open, h.user.id, h.inbox.id)
+    h.check(stored is not None, "no inbox card in #inbox")
+    shown = await h.get(h.inbox, stored.message_id)
+    h.check(shown is not None and "📥 Inbox ·" in shown.all_text.splitlines()[0], f"the card: {shown.all_text[:200] if shown else 'none'}")
+    h.saw(" / ".join(line for line in shown.all_text.splitlines()[:4]))
+    await h.press(shown.id, "Save all", h.inbox)
+    saved = await h.get(h.inbox, shown.id)
+    h.check(saved is not None and saved.all_text.startswith("✅ Saved ·") and any("Undo" in each for each in saved.labels), f"after Save: {saved.all_text[:200] if saved else 'none'}")
+
+
+async def inbox_words(h) -> None:
+    from selftest.phases import todo
+
+    sort = {"items": [{"words": "Test haircut Tuesday 10am", "task": "calendar"}, {"words": "need bin bags", "task": "todos"}], "saw": "", "about_card": True}
+    await h.say("Test haircut Tuesday 10am, need bin bags", canned=todo("calendar_add", title="Test haircut", day="Tuesday", time="10:00 am", length=60), task="calendar",
+                route=SEVERAL, sort=sort, also=(todo("todo_add", todos=[{"text": "bin bags"}]),))
+    await _save_inbox(h)
+
+
+async def inbox_file(h) -> None:
+    from evals import inbox_files
+    from selftest.phases import todo
+
+    name, data, _ = inbox_files.appointment()
+    sort = {"items": [{"words": "Test dental clinic Thursday 5 November 2026 3pm for 45 minutes", "task": "calendar"}], "saw": "", "about_card": False}
+    await h.say("", canned=todo("calendar_add", title="Test dental clinic", day="Thursday 5 November 2026", time="3:00 pm", length=45), task="calendar", sort=sort, files=((name, data),))
+    await _save_inbox(h)
 
 
 PHASES = {NAME: story}
@@ -519,6 +601,9 @@ def opening(snapshots: list[dict]) -> str:
         "two reminders (one snoozed), a morning and an evening routine (one with a group), a calendar with an all-day event, "
         "three timed and one cancelled, an event added to the Bot calendar and moved, the daily read (👎 then another one), "
         "a diary entry, and the week's summary at 7 pm, all set up at 4 pm the day before. "
+        "Since 17 Oct: an expiry (the rego, due in 7 days), a repeating Bot calendar event (Test swimming, Sundays), a fix marked "
+        "shipped and then closed from outside the bot (each in Needs a look within a minute), and the smart inbox: two things in one "
+        "message, and a made-up booking screenshot, each sorted onto one card in #inbox and saved. "
         "The buttons here do nothing. Run again with `python -m selftest.day`.",
     ])
 
@@ -655,7 +740,8 @@ def main() -> int:
         if flag == "--check":
             print(transcript(snapshots))
             return 0
-        print("Posted:", asyncio.run(post(snapshots, EVERYTHING if "--reply" in args else "")))
+        heading = args[args.index("--heading") + 1] if "--heading" in args and args.index("--heading") + 1 < len(args) else EVERYTHING
+        print("Posted:", asyncio.run(post(snapshots, heading if "--reply" in args else "")))
         return 0
     wanted = args[args.index("--round") + 1] if "--round" in args and args.index("--round") + 1 < len(args) else ""
     out = run_day(anyway="--anyway" in args, round_=int(wanted) if wanted.isdigit() else None)

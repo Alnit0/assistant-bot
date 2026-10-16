@@ -6,7 +6,7 @@ from dataclasses import dataclass, field, replace
 
 import discord
 
-from core import actions, cards, confirm, costs, database, design, dms, extraction, livelists, llm, messages, outgoing, routing, smartinbox, timing, trace
+from core import actions, cards, confirm, costs, database, design, dms, extraction, livelists, llm, messages, outgoing, routing, smartinbox, timing, trace, wishes
 from core.actions import LIST, ITEMS, Answer, Entry, LiveReply, Request, Shown
 from core.cards import Card
 from core import config
@@ -292,6 +292,9 @@ async def act(
                 log.exception("Task %s could not say what is already so", entry.name)
             trace.note("already so: " + ("said in the task's own line" if line else "the task has no line for it; the plain one is said"))
         await say(line or nothing_fitted(found))
+        if found.declined != actions.ALREADY_SO:
+            # Live could not do it: kept quietly for the wishlist, in the code's own words
+            await wishes.note(request.user.id, entry.name, entry.title, wishes.DECLINED if found.declined == actions.CANNOT else wishes.NOT_UNDERSTOOD)
         return
     action = found.action
     if not is_allowed(request.user, f"action:{action.name}"):
@@ -616,6 +619,9 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
                 await act(request, found, turn)
                 return
             await act(replace(request, previous=on_card.data, asked=confirm.asked_about(card)), found, turn, replaces=card, undone=undoing)
+            if undoing:
+                entry = actions.entry(card.task)
+                await wishes.note(ctx.user.id, card.task, entry.title if entry else "", wishes.MISREAD)
 
         # "No, shopping": the request on the card was meant for another task. Only
         # the card is re-routed: the redirect's own words are never handed to
@@ -642,6 +648,10 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
         elif inbox_on and request.attachments and (ctx.channel_id == INBOX_CHANNEL_ID or dms.is_dm(ctx.channel_id)) and not ctx.text.strip():
             turn.said.append(smartinbox.CANT_READ)
             await cards.send(ctx.channel_id, Card(smartinbox.CANT_READ))
+            settled = True
+        elif not ctx.text.strip():
+            # A file with no words where files are not read (the hub, or the smart inbox off): nothing asked, no request
+            turn.why.append("a file and no words, where files are not read: nothing to do")
             settled = True
         sorting = await smartinbox.open_card(ctx.user.id, ctx.channel_id) if inbox_on and not settled else None
         if sorting is not None:
@@ -824,6 +834,7 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
                 turn.router["report"] = True
                 routed = replace(routed, nothing=True)  # handled here: one plain line, and no more
                 await _say(ctx, turn, CANT_LOG)
+                await wishes.note(ctx.user.id, "", "", wishes.NO_TASK)
             elif routed.nothing:
                 # A message that names one of my things is never a remark to drop in silence
                 # ("I've taken my Zinc today"): it goes to the task that holds the thing
@@ -858,6 +869,7 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
                     if not routed.tasks:
                         routed = replace(routed, nothing=True)  # handled here: one plain line, and no more
                         await _say(ctx, turn, CANT_LOG if acknowledged or routed.reports else NOT_UNDERSTOOD)
+                        await wishes.note(ctx.user.id, "", "", wishes.NO_TASK if acknowledged or routed.reports else wishes.NOT_UNDERSTOOD)
                 else:
                     await _say(ctx, turn, outgoing.without_offer(result.reply), reply=True)
                     llm.task_answered(ctx.channel_id, "")  # the last answer here is chat's: nothing sticks to it

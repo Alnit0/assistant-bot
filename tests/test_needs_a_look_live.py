@@ -182,3 +182,11 @@ def test_the_bot_starts_looking_for_bug_changes_when_it_starts():
     from tasks import bugs
 
     assert "watch.watching()" in inspect.getsource(bugs.BugsTask.startup)
+
+
+def test_the_dev_bot_redraws_the_briefing_as_often_as_any_message(monkeypatch):
+    # 17 Oct: with half a minute between redraws, every step of the day's replay waited for it and the run ran out of time
+    monkeypatch.setattr(config, "SEPARATE_BOT", True)
+    assert live._dev_bot()
+    monkeypatch.setattr(config, "SEPARATE_BOT", False)
+    assert not live._dev_bot()

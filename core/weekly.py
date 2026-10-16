@@ -43,23 +43,24 @@ def span(monday: date, sunday: date) -> str:
     return f"{first} to {sunday:%a} {sunday.day} {sunday:%b}"
 
 
-def layout(sections: list[Section], monday: date, sunday: date) -> tuple:
-    """The card: its page title and the week's dates, then a box a task."""
+def layout(sections: list[Section], monday: date, sunday: date, foot: str = "") -> tuple:
+    """The card: its page title and the week's dates, then a box a task. `foot`: one small line under them
+    (the wishlist's count), or none."""
     top = [design.page_title(TITLE), design.small(span(monday, sunday))]
     if not sections:
-        return design.page([*top, QUIET_WEEK], [])
+        return design.page([*top, QUIET_WEEK], [], [design.small(foot)] if foot else [])
     boxes = [
         design.topic(design.card_title(f"{each.icon} {each.title}", each.week.done, each.week.total), lines=[each.week.line], tail=each.week.small, status=each.week.status)
         for each in sections
     ]
-    return design.fit(design.page(top, boxes))
+    return design.fit(design.page(top, boxes, [design.small(foot)] if foot else []))
 
 
-def text(sections: list[Section], monday: date, sunday: date) -> str:
+def text(sections: list[Section], monday: date, sunday: date, foot: str = "") -> str:
     """The same in words: the title first (what a phone shows), then a line a task."""
     lines = [f"{TITLE} · {span(monday, sunday)}"]
     lines += [f"{each.icon} {each.week.line}" for each in sections] or [QUIET_WEEK]
-    return "\n".join(lines)
+    return "\n".join([*lines, *([design.small(foot)] if foot else [])])
 
 
 async def gather(user_id: int, monday: date, upto: date) -> list[Section]:

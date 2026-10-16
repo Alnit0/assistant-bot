@@ -14,6 +14,30 @@ added here, nowhere else.
 Nothing here now: question 11 was closed on 15 Oct (the screenshot
 named no pill; see "Decided" in `docs/STATUS.md`).
 
+## The smart inbox (live from 17 Oct, `SMART_INBOX`; preview "Design · Smart inbox")
+
+93. Where the inbox card lives: in #inbox (or the DM) where you sent the
+    things, not the hub; what it saved then shows on the hub's own
+    cards? → Yes.
+94. "renew rego by Friday" was read once as a to-do and once as a
+    reminder that then asks for a time: either is right. Should a thing
+    to do by a day, with no time, always be a to-do? → Yes: a reminder
+    only when you ask to be reminded or give a time.
+95. A file with no words sent in the hub is left alone (no request, no
+    reply); only #inbox and a DM read files. → Yes.
+96. A renewal at 7 days is a line in the briefing ("🔁 Rego in 7
+    days"); only its last nudge, the day before, posts in the hub (as
+    built on 16 Oct). → Keep it so.
+
+## The brainstorm (posted "Design · Brainstorm")
+
+97. Which of the top 10 to build first? → 32 (hours by message), then
+    23 (flat expenses), then 13 (pill refill countdown).
+98. The wishlist keeps what live could not do with no word of your
+    message in it (task and why only): enough to brainstorm from, or
+    should it keep a few words of what was asked, never in a log? →
+    Task and why only, as built.
+
 ## The hub through a day (from the replay of 15 Oct, `python -m selftest.day`)
 
 The post "Design · A day in the hub" in the Design forum shows each of

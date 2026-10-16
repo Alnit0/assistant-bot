@@ -13,6 +13,19 @@ async def ping(ctx: Context) -> None:
     await ctx.reply("🏓 Pong!")
 
 
+async def wish(ctx: Context) -> str:
+    """`add to my wishlist: …`: one for the wishlist in his own words (core/wishes.py), kept as said."""
+    from core import wishes
+
+    words = " ".join(ctx.args).strip(" :")
+    if not words:
+        await ctx.reply("✨ Say what to add: `add to my wishlist: plan my day`")
+        return "nothing to add"
+    await wishes.add_said(ctx.user.id, words)
+    await ctx.confirm("✨ On your wishlist")
+    return "a wish added"
+
+
 async def reset(ctx: Context) -> None:
     clear_history(ctx.channel_id)
     await ctx.confirm("🧹 Conversation memory cleared.")
@@ -133,6 +146,16 @@ class BuiltinTask(Task):
     def keywords(self) -> list[Keyword]:
         return [
             Keyword("ping", "check the bot is alive", ping, examples=["ping"]),
+            Keyword(
+                ["add to my wishlist", "add to wishlist"],
+                "something you wish the bot could do, kept for the next brainstorm",
+                wish,
+                examples=["add to my wishlist: plan my day"],
+                channels=ANY,
+                takes_args=True,
+                usage="[what you wish it could do]",
+                exact=True,
+            ),
             Keyword(
                 ["reset", "clear", "clear chat", "wipe"],
                 "clear conversation memory",

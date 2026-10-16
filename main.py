@@ -274,7 +274,7 @@ def _mine(channel) -> bool:
 async def _sender(message: discord.Message):
     """Who sent a message, if it is one the bot acts on: not a bot's (its own
     included), in a channel that is this bot's, from someone allowed, with
-    words in it. None otherwise."""
+    words or a file in it (a photo alone is for the smart inbox). None otherwise."""
     if message.author.bot:
         return None
     if getattr(message, "guild", True) is None and not dms.enabled() and not config.DEV_DATABASE:
@@ -290,7 +290,7 @@ async def _sender(message: discord.Message):
     if not _mine(message.channel):
         return None
     user = await get_user_by_discord_id(message.author.id)
-    if not is_allowed(user, "message") or not message.content.strip():
+    if not is_allowed(user, "message") or not (message.content.strip() or getattr(message, "attachments", None)):
         return None
     if getattr(message, "guild", True) is None and dms.enabled():
         # A direct message, with DMS_ENABLED on: mine alone, read as #inbox, and from here on

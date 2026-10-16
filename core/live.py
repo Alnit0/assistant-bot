@@ -48,6 +48,14 @@ def wait_needed(last: float | None, now: float, interval: float | None = None) -
     return max(0.0, last + interval - now)
 
 
+def _dev_bot() -> bool:
+    """The dev bot (the self-test, a day in the hub) on its own clock: the briefing is redrawn as often as any
+    live message, or every step would wait half a minute for it (17 Oct: the day's replay ran out of time)."""
+    from core import config
+
+    return bool(config.SEPARATE_BOT)
+
+
 def schedule(key, refresh: Refresh, slow: bool = False) -> None:
     """Bring one live message up to date soon, in the background. `key` names
     the message (("board", channel_id)); the latest `refresh` for a key wins.
@@ -63,7 +71,7 @@ def schedule(key, refresh: Refresh, slow: bool = False) -> None:
 async def _work(key) -> None:
     # Runs until nothing more has been asked for this key
     while key in _pending:
-        wait = wait_needed(_last.get(key), time.monotonic(), SLOW_INTERVAL if key in _slow and MIN_INTERVAL > 0 else None)
+        wait = wait_needed(_last.get(key), time.monotonic(), SLOW_INTERVAL if key in _slow and MIN_INTERVAL > 0 and not _dev_bot() else None)
         if wait > 0:
             await asyncio.sleep(wait)
         refresh = _pending.pop(key, None)

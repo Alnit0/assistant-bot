@@ -6,7 +6,60 @@ No history is kept here: what changed is `docs/CHANGELOG.md`, and this
 file as it stood until midday on 2026-10-14 (every batch, every answer,
 all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
-**Updated:** 2026-10-15 (late night)
+**Updated:** 2026-10-17 (overnight)
+
+## Overnight batch, 17 Oct (unattended)
+
+1. **The smart inbox** (`core/smartinbox.py`, `SMART_INBOX`): several
+   things in one message (the router's new `several`), or a photo,
+   screenshot, PDF or CSV in #inbox or a DM, sorted onto one card, each
+   item read by its own task; Save all, Cancel, a line fixed in words,
+   Undo (`Action.undo`). Recorded checks: 14 conversations, US$0.26.
+   Preview "Design · Smart inbox" posted.
+2. **A fix shipped from the command line shows within a minute**
+   (`tasks/bugs/watch.py`).
+3. **Expiry phrasings e3 and e6** recorded, both right.
+4. **A day in the hub** with an expiry, a repeating Bot calendar event,
+   a fix shipped then closed from outside the bot (each in Needs a look
+   within a minute) and the smart inbox (words, then a screenshot);
+   posted as "Everything on, 17 Oct". It found three bugs, fixed with
+   tests: a message with a file and no words was dropped before it was
+   read (`main._sender`); a whole date after a weekday ("Thursday 5
+   November 2026") could not be read; the briefing's 30-second redraw
+   held every dev-bot step for half a minute (live only now).
+5. **Brainstorm** (`docs/BRAINSTORM.md`, 48 ideas, from Claude's own
+   knowledge, no web search), "Design · Brainstorm" posted with the top
+   10, the wishlist (`core/wishes.py`) and the `suggest` skill.
+
+## Decided (2026-10-17, overnight)
+
+- **The smart inbox is behind `SMART_INBOX`** (off by default, the
+  rule for new features), turned on in live's `.env` at the ship, since
+  the what's-new line says to use it.
+- **Only the router's `several` sends a message to the inbox**: two
+  tasks without it still get a card each, as before, and an answer
+  recorded before `several` existed says no, so every older golden
+  conversation reads as it did.
+- **A question is never an item**: the chat part is answered first and
+  left out; a question the sorting still finds is answered as any.
+- **An unclear item, or a task's own question, is asked on the card**;
+  Save saves the rest ("Save 3") and says what it leaves out.
+- **Undo is each action's own `undo`**: to-dos, reminders, expiries,
+  the calendar and the diary have one; a pill log does not (it is
+  undone on the checklist, as ever), and the card says so.
+- **Files are read only in #inbox and a DM**; a file with no words
+  elsewhere is left alone at no cost. Nothing of a file is kept but a
+  gym plan's rows (`inbox_kept`); what a file held is a placeholder in
+  every log and trace.
+- **A gym plan is recognised by Claude, not by a word list** (the
+  sorting's own destination `gym_plan`), as the rules ask.
+- **"i1" accepted with "renew rego by Friday" as a reminder** (asking
+  its time on the card): question 94 asks whether it should always be a
+  to-do.
+- **The briefing's half-minute redraw is live's only**: the dev bot
+  redraws at the usual 2 seconds, or its replay runs out of time.
+- **The wishlist keeps no message words**: task and why only; Alex's
+  own wishes in his own words.
 
 ## Shipped (16 Oct, 1:16 am)
 

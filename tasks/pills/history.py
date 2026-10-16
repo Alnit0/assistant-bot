@@ -269,7 +269,10 @@ async def everything_card(user_id: int, now_day: date) -> Card | None:
     if not sections:
         return None
     sunday = weekly.sunday_of(monday)
-    return Card(weekly.text(sections, monday, sunday), (), weekly.layout(sections, monday, sunday))
+    from core import wishes
+
+    foot = await wishes.week_line(user_id, monday)  # the wishlist's count, one small line
+    return Card(weekly.text(sections, monday, sunday, foot), (), weekly.layout(sections, monday, sunday, foot))
 
 
 # --- the weekly summary ----------------------------------------------------------------------------------------------

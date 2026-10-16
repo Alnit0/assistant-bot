@@ -2,7 +2,7 @@
 
 **Read this first** when Alex starts a new chat with Claude (the advisor). It holds what the code and the other docs don't: how we work together, the thinking behind decisions, and what's open right now.
 
-**Kept up to date by Claude Code** at the end of every batch (see "Maintaining this file" at the bottom). Last brought fully up to date: 15 Oct 2026, late evening.
+**Kept up to date by Claude Code** at the end of every batch (see "Maintaining this file" at the bottom). Last brought fully up to date: 17 Oct 2026, overnight.
 
 Never write here: a real pill name, a real event name, a bot's display name, a location more precise than "Auckland", a token, topic, link or ID.
 
@@ -49,7 +49,7 @@ He is **not relying on the bot for reminders yet**. The hub is a daily overview 
 
 ## 4. Environment
 
-- **The EliteDesk:** Windows 11, 8 GB RAM. Live runs as the NSSM service `assistant-bot` from **its own folder**, `C:\Users\temp\projects\assistant-bot-live` (since 15 Oct, 3:11 pm): a clone on one pushed commit, with its own `.env`, `data\`, `logs\` and `.venv`. It is on `7daa77c` (shipped 16 Oct, 1:16 am), with every feature on, calendar writing too. The work folder `C:\Users\temp\projects\assistant-bot` is for development only.
+- **The EliteDesk:** Windows 11, 8 GB RAM. Live runs as the NSSM service `assistant-bot` from **its own folder**, `C:\Users\temp\projects\assistant-bot-live` (since 15 Oct, 3:11 pm): a clone on one pushed commit, with its own `.env`, `data\`, `logs\` and `.venv`. It was on `fe8252f` (shipped 16 Oct, 3:29 pm), with every feature on, calendar writing too; the 17 Oct batch ships the smart inbox (see `docs/NOW.md` for what live runs now). The work folder `C:\Users\temp\projects\assistant-bot` is for development only.
 - **Shipping:** only by `scripts\update-live.ps1 -Ref <commit>` from a pushed commit (it refuses one not on `origin/feature/pills`, puts back the self-test's report, installs packages, checks migrations, restarts); `-Back` returns to the commit before. Batch rule: ship at most once, before 9 pm, after the full test run and a dev-bot self-test, at least 10 minutes from any pill reminder; check the account, the hub and the bookings after.
 - **The old backup:** the work folder still holds the `.env` and `data\` from before the switch-over. They go once Alex says live has had a good day in its own folder.
 - **Branch:** all work is on `feature/pills`. Nothing is merged into `main` yet; `docs/REVIEW.md` is the checkpoint for that.
@@ -121,11 +121,15 @@ Messages go through fast paths (buttons, exact typed words), then sticky follow-
 - **Understanding across all tasks** (16 Oct): 41 more golden conversations of the newer tasks (diary, daily read, calendar adding) against the older, with undo and corrections; the nightly self-test replays every newer file, 157 recorded answers.
 - **A day in the hub** (`python -m selftest.day`): a made-up Sunday with everything live has on, read back at eight moments; `--post <file> --reply` adds it to "Design · A day in the hub".
 - **The golden conversations run at noon** on a test clock, never by the real time of day.
+- **The smart inbox** (17 Oct, `SMART_INBOX`): several things in one message (the router's `several`), or a photo, screenshot, PDF or CSV in #inbox or a DM, sorted by one request onto one card, each item read by its own task; Save all, Cancel, a line fixed in words, Undo. A question is never an item; one thing works as before. Files are not kept (a gym plan's rows are, for the gym task to come), and nothing of a file reaches a log.
+- **The wishlist** (17 Oct, `core/wishes.py`): a quiet row each time live could not do what was asked, task and why only; "add to my wishlist: …" adds his own; the count in the week's summary; `/suggest` reruns `docs/BRAINSTORM.md` with it (Sundays).
+- **Bugs changed outside the bot** (a fix marked shipped from the command line) show in Needs a look within a minute (`tasks/bugs/watch.py`).
 - **The test suite** runs in about 40 seconds; `TESTS_AS_ON_LIVE=1` about 80.
 
 ## 9. Open threads (update every batch)
 
 **Waiting on Alex**
+- **The smart inbox and the brainstorm** (17 Oct): questions 93 to 98; which of the brainstorm's top 10 to build ("Design · Brainstorm").
 - **Round 5** (live since 15 Oct with the suggested answers): his yes or no item by item on "Design · Round 5" (questions 68 to 75).
 - **The fix for when doses were taken** (`effbe2e`) ships at the next restart.
 - **The daily read** (built 15 Oct, `READING_ENABLED` off): his look at "Design · Daily read" and questions 86 to 90 (themes, sources, time, length, how many).

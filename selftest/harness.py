@@ -1,4 +1,5 @@
 import asyncio
+import io
 import json
 import logging
 import os
@@ -36,6 +37,7 @@ DISCORD = "discord"
 RETRY_WAIT = 10.0  # seconds before a step Discord got in the way of is run once more
 _TROUBLE = re.compile(r"\b(429 Too Many Requests|5\d\d (Service Unavailable|Bad Gateway|Internal Server Error|Gateway Timeout)|DiscordServerError|being rate limited)")
 ROUTE_TOOL = "route"
+SORT_TOOL = "sort"  # the smart inbox's (core/smartinbox.py)
 SETTLE = 1.2  # seconds given to Discord and to background work after each input
 
 
@@ -163,6 +165,13 @@ class Harness:
         if canned is not None:
             if ROUTE_TOOL in names:
                 return ROUTE_TOOL, canned["route"]
+            if SORT_TOOL in names and canned.get("sort") is not None:
+                return SORT_TOOL, canned["sort"]
+            # Several things in one message (the smart inbox): each item's extraction in turn, the last kept
+            queued = canned.get("also") or []
+            if canned.get("asked") and queued:
+                return queued.pop(0)
+            canned["asked"] = True
             return canned["extract"]
         if not self.claude:
             raise RuntimeError(f"A request to Claude ({purpose}) with no canned answer, and real requests are off")
@@ -247,13 +256,19 @@ class Harness:
         await asyncio.sleep(seconds)
         await live.settle()
 
-    async def say(self, text: str, channel=None, reply_to: int | None = None, canned=None, task: str = "pills", route: dict | None = None, wait: float = SETTLE) -> int:
+    async def say(
+        self, text: str, channel=None, reply_to: int | None = None, canned=None, task: str = "pills", route: dict | None = None, wait: float = SETTLE,
+        *, sort: dict | None = None, also: tuple = (), files: tuple = (),
+    ) -> int:
         """Type `text` as the owner. `canned` is the extraction Claude would
         return, as (tool, input); with it no request leaves the machine unless
         real requests are on and there is money left."""
         channel = channel or self.inbox
         reference = channel.get_partial_message(reply_to) if reply_to else None
-        real = await channel.send(text, reference=reference)
+        # `files`: (name, bytes) sent with it, made up (evals/inbox_files.py); `sort` and `also`: the smart inbox's
+        # recorded answers, its sorting and each item's extraction after the first
+        sent = [discord.File(io.BytesIO(data), filename=name) for name, data in files]
+        real = await channel.send(text, reference=reference, **({"files": sent} if sent else {}))
         self.typed.add(real.id)
         use_canned = canned is not None and (self.recorded_only or not await self.can_ask_claude())
         if canned is None and not await self.can_ask_claude():
@@ -261,7 +276,7 @@ class Harness:
         if use_canned:
             self._canned = {
                 "route": route or {"kind": "task", "tasks": [task], "confidence": "high", "reports_doing": False, "chat_part": ""},
-                "extract": (canned[0], dict(canned[1])),
+                "extract": (canned[0], dict(canned[1])), "sort": sort, "also": [(each[0], dict(each[1])) for each in also],
             }
         if self._record is not None and canned is not None:
             self._record["claude"] = "recorded answer" if use_canned else "real request"

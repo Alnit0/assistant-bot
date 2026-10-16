@@ -311,6 +311,7 @@ def test_the_bot_takes_only_my_words_in_a_channel_that_is_its_own(monkeypatch, o
     assert run(main._sender(_message(2, 1, bot=True))) is None, "a bot's, its own included"
     assert run(main._sender(_message(3, 1, channel_id=HUB))) is None, "said in the other bot's channel"
     assert run(main._sender(_message(4, 1, text="  "))) is None, "nothing in it"
+    assert run(main._sender(_message(7, 1, text="", files=1))) is owner, "a file with no words is taken (17 Oct: the smart inbox reads it)"
     stranger = _message(5, 1)
     stranger.author = SimpleNamespace(bot=False, id=2)
     assert run(main._sender(stranger)) is None
