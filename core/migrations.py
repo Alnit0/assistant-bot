@@ -533,9 +533,11 @@ MIGRATIONS = [
     _create_held_alerts,
     _add_ended_to_bot_alive,
     _create_needs_look,
+    _create_exchange_rates,
+    # Appended, never inserted: a database at version N has run the first N (16 Oct: these two were put before
+    # _create_exchange_rates, and live at version 25 ran the seed without its table and did not start)
     _create_pinged,
     _seed_pinged,
-    _create_exchange_rates,
 ]
 
 

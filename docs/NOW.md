@@ -11,6 +11,8 @@ everything on, 41 golden conversations, a health check. All on live.
 themselves, the self-test's retry (dev-bot self-test 150 of 150), and
 the calendar from Google only (the iCal link gone from live's `.env`).
 **Next:** the 3:30 am nightly on 17 Oct, checked and reported
+**Live:** back on `b668745` after the ship of `dbbdcc8` stopped it at its start (1:31 pm, a minute down): fixed, shipping again.
+
 **Queue for one ship** (full test run after each; one dev-bot self-test
 at the end; then the update script):
 1. Ping seed and ping-once (self-test bugs never @mention)

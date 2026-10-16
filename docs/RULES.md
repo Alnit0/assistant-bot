@@ -589,8 +589,10 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   live never loads it, and its `data\assistant.db` is an old copy.
   Shipping code is `scripts\update-live.ps1 -Ref <commit>` (a commit on
   `origin/feature/pills` whose full test run passed; it refuses one that
-  is not pushed or older than the database), at least 10 minutes from a
-  pill reminder; `-Back` returns to the commit before. A restart that
+  is not pushed or older than the database, or whose migrations fail on a
+  copy of the database, before anything is restarted), at least 10
+  minutes from a pill reminder. A migration is only ever appended at the
+  end of its list, never put in between (16 Oct: live did not start); `-Back` returns to the commit before. A restart that
   ships nothing is `nssm restart assistant-bot`. Live's `.env` is the one
   in its folder: a switch is changed there. Nothing in live's folder is
   edited by hand; the update script puts back `docs\SELFTEST.md`, which

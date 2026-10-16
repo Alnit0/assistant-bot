@@ -291,6 +291,18 @@ time). Spend US$0.041.
   the next restart). B2 can't be: its report holds none of Alex's words
   (only the bot's reply), so it waits for close B2 or Fixed.
 
+## Live down for a minute (16 Oct, 1:31 pm)
+
+The ship of `dbbdcc8` stopped live at its start: the two ping migrations
+had been put in the middle of the core list (before
+`_create_exchange_rates`), so live's database, at version 25, ran the
+seed without its table. Put back with `-Back` at 1:32 pm, about a
+minute down; every database stayed at version 25 (each migration runs
+in a transaction). Fixed: the two appended at the end, a test that pins
+the order of the 25 live has, and the update script now migrates a copy
+of the database with the new code before it restarts anything (it
+refuses the broken order, and passes the fixed one: version 27).
+
 ## Decided (2026-10-16, midday)
 
 - **Expiries in reminders** (not a task of their own): "Kiwa domain

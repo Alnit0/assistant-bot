@@ -156,6 +156,33 @@ sys.exit(0 if known >= done else 4)
     if ($code -ne 0) { throw "The check could not be run (exit code $code)." }
 }
 
+Step "Migrate a copy of the database with that code, before anything is restarted" {
+    # Found 16 Oct: a migration put in the middle of the list stopped live at its start. The copy is a
+    # temporary file; live's own database is only read. No double quotes: PowerShell drops them
+    $trial = @'
+import pathlib, sqlite3, sys, tempfile
+from core import config, database
+source = sqlite3.connect('file:' + sys.argv[1] + '?mode=ro', uri=True)
+copy = pathlib.Path(tempfile.mkdtemp()) / 'copy.db'
+target = sqlite3.connect(str(copy))
+source.backup(target)
+target.close()
+config.DB_PATH = database.DB_PATH = copy
+from core import migrations
+from tasks import registry
+registry.load()
+migrations.migrate(registry.task_migrations())
+print('a copy of the database migrated to version', sqlite3.connect(str(copy)).execute('PRAGMA user_version').fetchone()[0])
+'@
+    $Database = if (Test-Path (Join-Path $Target "data/assistant.db")) { "data/assistant.db" } else { "data/dev.db" }
+    Push-Location $Target
+    try { & $Python -c $trial $Database | Out-Host; $code = $LASTEXITCODE } finally { Pop-Location }
+    if ($code -ne 0) {
+        GitHere @("checkout", "--quiet", "--detach", $Now) | Out-Null
+        throw "A copy of the database could not be migrated with ${Ref} (exit code $code): nothing was restarted. Put back on $Now."
+    }
+}
+
 if (-not $NoRestart) {
     Step "Restart the service (nssm restart $ServiceName)" {
         & nssm restart $ServiceName | Out-Host
