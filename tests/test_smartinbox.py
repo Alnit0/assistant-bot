@@ -445,3 +445,11 @@ def test_with_the_switch_off_several_things_are_read_as_before_and_files_are_not
     assert inbox_cards() == [] and len([card for card in open_cards() if card.kind == "card"]) == 2
     say_with(inbox, "", attached("a.png", image(), "image/png"))
     assert [each.purpose for each in inbox.requests].count("sort") == 0
+
+
+def test_the_design_preview_is_drawn_by_the_inbox_s_own_card_and_fits_in_a_message_each():
+    from selftest import preview
+
+    found = preview.inbox_cards()
+    assert len(found) == 7 and preview.INBOX_TITLE == "Design · Smart inbox"
+    assert "Made-up items only" in preview.inbox_opening()

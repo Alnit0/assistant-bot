@@ -244,6 +244,11 @@ def parse_date(text: str, today: date) -> date:
     except ValueError:
         pass
 
+    # A weekday before a whole date ("Thursday 5 November 2026", as a booking confirmation writes it): the date decides
+    first, _, rest = value.partition(" ")
+    if rest and _named(_WEEKDAYS, first) is not None and any(pattern.fullmatch(rest) for pattern in (_DAY_MONTH, _MONTH_DAY, _SLASHED)):
+        return parse_date(rest, today)
+
     weekday = _named(_WEEKDAYS, value)
     if weekday is not None:
         return today + timedelta(days=(weekday - today.weekday() - 1) % 7 + 1)

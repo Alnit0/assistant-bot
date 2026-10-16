@@ -415,7 +415,8 @@ async def sort(
     turn.route = costs.ROUTER
     turn.why.append("smart inbox: " + (f"read {len(read.kinds)} file(s): {', '.join(read.kinds)}" if from_file else "a change to its card" if replaces else "several things in one message"))
     if not found.items:
-        line = f"{NOTHING_FOUND}: {found.saw}" if found.saw else f"{NOTHING_FOUND}."
+        saw = found.saw[:1].lower() + found.saw[1:] if found.saw[1:2].islower() else found.saw
+        line = f"{NOTHING_FOUND}: {saw.rstrip('.')}" if saw else f"{NOTHING_FOUND}."
         turn.said.append(NOTHING_FOUND if from_file else line)
         await cards.send(request.channel_id, Card(line))
         return True

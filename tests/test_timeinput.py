@@ -228,3 +228,15 @@ def test_what_is_not_a_date_is_refused_with_examples(typed):
 def test_a_run_of_days_is_shown_briefly(first, last, shown):
     assert timeinput.format_dates(first, last) == shown
     assert timeinput.format_date(date(2026, 10, 20)) == "20 Oct"
+
+
+def test_a_weekday_before_a_whole_date_is_that_date():
+    from datetime import date
+
+    from core.timeinput import parse_date
+
+    today = date(2026, 10, 17)
+    assert parse_date("Thursday 5 November 2026", today) == date(2026, 11, 5)
+    assert parse_date("Thu, 5 Nov", today) == date(2026, 11, 5)
+    assert parse_date("Friday 20/11", today) == date(2026, 11, 20)
+    assert parse_date("Friday", today) == date(2026, 10, 23), "a weekday alone is as it was"

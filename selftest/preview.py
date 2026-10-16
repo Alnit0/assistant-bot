@@ -1072,6 +1072,65 @@ def reading_opening() -> str:
     ])
 
 
+# ---------------------------------------------------------------------------
+# The smart inbox (SMART_INBOX): `python -m selftest.preview --inbox`, a post of
+# its own. Made-up items only, drawn by core/smartinbox.py's own card; each
+# item's lines are the words its task's own code wrote for them in the tests.
+# ---------------------------------------------------------------------------
+INBOX_TITLE = "Design · Smart inbox"
+
+
+def inbox_cards() -> list[tuple[str, tuple]]:
+    from core import smartinbox
+    from core.cards import Button
+
+    before = config.DESIGN_ROUND
+    config.DESIGN_ROUND = 5
+    try:
+        entries = [Entry("nudges", "⏰", "x", ("y",), (), label="Reminders"), Entry("todos", "📝", "x", ("y",), (), label="To-dos"),
+                   Entry("calendar", "📅", "x", ("y",), (), label="Calendar")]
+        rego_asks = {"task": "nudges", "lines": ["**Renew rego** · at ❔", "❓ At what time?"], "ready": False}
+        rego = {"task": "nudges", "lines": ["**Renew rego** · Fri 6 Nov at **9:00 am**", "-# next: Fri 6 Nov at 9:00 am"], "ready": True}
+        mum = {"task": "nudges", "lines": ["**Call Mum** · Sun 8 Nov at **2:00 pm**", "-# next: Sun 8 Nov at 2:00 pm"], "ready": True}
+        milk = {"task": "todos", "lines": ["**Need milk** · any day"], "ready": True}
+        dentist = {"task": "calendar", "lines": ["**Dentist**", "Thu 5 Nov · `3:00 pm` to `4:00 pm` · 1 hour", "-# on the Bot calendar"], "ready": True}
+        booked = {"task": "calendar", "lines": ["**Made-up Dental Clinic**", "Thu 5 Nov · `3:00 pm` to `3:45 pm` · 45 minutes", "-# on the Bot calendar"], "ready": True}
+        renewal = {"task": "nudges", "lines": ["**Car registration** · Sat 14 Nov 2026", "Yearly · told 30 days, 7 days, 1 day before", "-# in your reminders"], "ready": True}
+        saved = "\n".join([
+            "✅ Saved · 4 of 4", "✅ Saved · ⏰ **Renew rego** · Fri 6 Nov at **9:00 am** · next 9:00 am",
+            "✅ Saved · ⏰ **Call Mum** · Sun 8 Nov at **2:00 pm** · next 2:00 pm", "✅ Added · 📝 **Need milk**",
+            "📅 Added · **Dentist** · Thu 5 Nov · `3:00 pm` to `4:00 pm` · 1 hour",
+        ])
+        undo = design.Row((Button("Undo", smartinbox.CARDS, "undo", "1", emoji="↩️", style="primary"),))
+
+        def drawn(items):
+            return smartinbox.render(items, entries, 1).layout
+
+        found = [
+            ("“renew rego by Friday, call Mum Sunday 2pm, need milk, dentist Thursday 3pm”: one card, each thing where it will go with its day and time. The reminder with no time asks on the card, and Save leaves it out until it is answered", drawn([rego_asks, mum, milk, dentist])),
+            ("“make the rego one a reminder at 9am Friday”: that line is read again (no other), the card redrawn in place of the old one, and Save is for all four", drawn([rego, mum, milk, dentist])),
+            ("Save all: each thing saved by its own task, in its own words, then Undo for a while", (design.Text(saved), undo)),
+            ("A screenshot of a booking confirmation, sent in #inbox: an event, with its day, time and length from the picture", drawn([booked])),
+            ("A renewal letter as a PDF: an expiry with its date, yearly, and the nudges before it", drawn([renewal])),
+            ("A CSV that is plainly a gym plan: its rows kept for the gym task to come (nothing of gym is built yet)", drawn([{"task": "gym_plan", "lines": ["🏋️ Gym · **gym plan** · 5 rows kept for the gym task to come"], "ready": True}])),
+            ("A photo with nothing to keep: what it saw, in one line", (design.Text(f"{smartinbox.NOTHING_FOUND}: an image with a blue circle and a red square"),)),
+        ]
+    finally:
+        config.DESIGN_ROUND = before
+    return checked(found)
+
+
+def inbox_opening() -> str:
+    return "\n".join([
+        f"## {INBOX_TITLE}",
+        "Send whatever you have: several things in one message, or a photo, screenshot, PDF or CSV in #inbox or a DM. The bot splits it into things, gives each to the task that takes it (to-dos, reminders, expiries, calendar events, routine steps, a pill taken, the diary) and shows **one card** with every item, where it goes and its day and time.",
+        "**Save all** (green) saves each with its own task; **Cancel** (grey) saves nothing; say what to change (“make the rego one a reminder at 9am Friday”) and only that line is read again. **Undo** after Save takes each back. Something it can't place, or a time a task needs, is asked on the card and left out of Save until answered.",
+        "**Files:** read once and not kept, except a gym plan's rows (for the gym task to come). What a file holds never goes in a log, and the card's first line never names anything, so a lock screen shows nothing private. A medicine label is only ever a suggested pill to add, never saved without Save.",
+        "**One thing** in a message works exactly as before; a question is never sorted.",
+        "-# Made-up items only. Behind SMART_INBOX. The buttons here do nothing.",
+    ])
+
+
 def _number_after(args: list[str], flag: str) -> int:
     value = args[args.index(flag) + 1] if args.index(flag) + 1 < len(args) else ""
     if not value.isdigit() or int(value) not in design.ROUNDS:
@@ -1088,6 +1147,13 @@ def main() -> int:
             print(f"{len(found)} messages built, each within one message.")
             return 0
         print("Posted:", asyncio.run(post_preview(DIARY_TITLE, diary_opening(), found)))
+        return 0
+    if "--inbox" in args:
+        found = inbox_cards()
+        if "--check" in args:
+            print(f"{len(found)} messages built, each within one message.")
+            return 0
+        print("Posted:", asyncio.run(post_preview(INBOX_TITLE, inbox_opening(), found)))
         return 0
     if "--reading" in args:
         found = reading_cards()

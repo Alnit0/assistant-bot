@@ -115,6 +115,7 @@ def test_i7_to_i9_one_thing_a_list_and_a_question_never_reach_the_inbox(inbox):
 def test_f1_a_booking_screenshot_is_an_event_and_nothing_of_it_is_logged(inbox):
     card = replay(inbox, "f1")
     assert first_lines(card)[0] == "📥 Inbox · 1 thing" and "📅 Calendar ·" in card.text
+    assert "Thu 5 Nov" in card.text and "3:00 pm" in card.text and buttons(card) == ["Save all", "Cancel"], card.text
     reply = logged_rows()[-1][1] or ""
     assert "Dental" not in reply and smartinbox.FROM_A_FILE in reply
 
@@ -140,4 +141,4 @@ def test_f4_a_gym_plan_csv_is_kept_as_rows(inbox):
 
 def test_f5_a_file_with_nothing_useful_says_what_it_saw(inbox):
     card = replay(inbox, "f5")
-    assert card.text.startswith(smartinbox.NOTHING_FOUND + ": ") and inbox_cards() == []
+    assert card.text == smartinbox.NOTHING_FOUND + ": an image with a blue circle and a red square" and inbox_cards() == []
