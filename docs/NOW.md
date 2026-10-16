@@ -3,8 +3,8 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Batch:** overnight 17 Oct, unattended, started 11:51 pm. Spend so far
-US$0.26 (about NZ$0.45) of NZ$1.00, the largest run US$0.15.
+**Idle, last batch was** overnight 17 Oct (unattended, 11:51 pm to 3:50
+am). Spend US$0.28 (about NZ$0.48) of NZ$1.00, the largest run US$0.15.
 
 1. Smart inbox (`SMART_INBOX`): done, recorded, "Design · Smart inbox"
 2. A fix shipped from the command line in Needs a look within a minute:
@@ -18,7 +18,7 @@ US$0.26 (about NZ$0.45) of NZ$1.00, the largest run US$0.15.
    shipped at 2:25 am
 
 **Sundays:** run `/suggest` (the brainstorm with the wishlist).
-**Next:** check the 3:30 am nightly of 17 Oct and report it.
+**Nightly 17 Oct, 3:30 am:** 149 of 150 on `98697d4`, none failed.
 
 **Live:** `98697d4` since 17 Oct, 2:25 am, `SMART_INBOX=true` (live's
 `.env` before: `data\env-before-2026-10-17-smart-inbox`); migrations 28
