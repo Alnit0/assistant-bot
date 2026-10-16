@@ -368,9 +368,29 @@ def spend_problem(spent: float, limit: float) -> Item | None:
     return Item("the self-test has spent this month's limit: recorded answers only until next month", USEFUL, short=("self-test spend", money.shown(spent)), icon=SELFTEST_ICON, ping=False)
 
 
-def nights_failed(rows: list[dict]) -> list[str]:
-    """The days of the nightly runs that failed, the latest last, back to the last one that passed."""
-    nightly = [row for row in rows if (row.get("ran") or "").startswith("nightly")]
+def last_ship() -> datetime | None:
+    """When live last moved to a new commit: the last line of data/live-versions.txt (scripts/update-live.ps1
+    writes "<commit> <yyyy-mm-dd hh:mm> before moving to <commit>"), in local time. None outside live's folder."""
+    try:
+        lines = [line for line in (config.DATA_DIR / "live-versions.txt").read_text(encoding="utf-8-sig").splitlines() if line.strip()]
+        when = " ".join(lines[-1].split()[1:3])
+        return datetime.strptime(when, "%Y-%m-%d %H:%M").replace(tzinfo=config.TIMEZONE)
+    except (OSError, IndexError, ValueError):
+        return None
+
+
+def _run_at(row: dict) -> datetime | None:
+    try:
+        return datetime.strptime(row.get("date") or "", "%Y-%m-%d %H:%M").replace(tzinfo=config.TIMEZONE)
+    except ValueError:
+        return None
+
+
+def nights_failed(rows: list[dict], since: datetime | None = None) -> list[str]:
+    """The days of the nightly runs that failed, the latest last, back to the last one that passed or the last
+    ship, whichever is later: a ship carries the fix for what failed before it (16 Oct: two nights with one
+    cause, already fixed and shipped, pinged as two nights in a row)."""
+    nightly = [row for row in rows if (row.get("ran") or "").startswith("nightly") and (since is None or (_run_at(row) or since) > since)]
     streak: list[str] = []
     for row in reversed(nightly):
         if not (row.get("failed_steps") or "").split():
@@ -379,10 +399,10 @@ def nights_failed(rows: list[dict]) -> list[str]:
     return streak
 
 
-def two_nights(rows: list[dict]) -> Item | None:
-    """One ping when the nightly has failed two nights running (the only self-test item that pings):
-    known by the first night of the run of failures, so a third night does not ping again."""
-    streak = nights_failed(rows)
+def two_nights(rows: list[dict], since: datetime | None = None) -> Item | None:
+    """One ping when the nightly has failed two nights running since the last ship (the only self-test item
+    that pings): known by the first night of the run of failures, so a third night does not ping again."""
+    streak = nights_failed(rows, since)
     if len(streak) < 2:
         return None
     try:
@@ -394,13 +414,33 @@ def two_nights(rows: list[dict]) -> Item | None:
     return Item("nightly check failed two nights in a row", PROBLEM, short=("nightly failed twice",), once=f"selftest:nights-from-{streak[0]}")
 
 
-def selftest_problem(row: dict | None, bugs: dict) -> Item | None:
-    """The item for a self-test's latest run, if it failed or did not finish.
-    `bugs` is {step: the number of its bug}."""
+def nightly_bug_open(number: int) -> bool:
+    """Whether a self-test bug is still open, in the dev database beside this one (the nightly's, in live's
+    folder). One that can't be read counts as open: a problem is never hidden for want of a look."""
+    import sqlite3
+
+    try:
+        conn = sqlite3.connect(f"file:{config.DATA_DIR / config.DEV_DB_NAME}?mode=ro", uri=True)
+        row = conn.execute("SELECT status FROM bugs_items WHERE id = ?", (number,)).fetchone()
+        conn.close()
+    except sqlite3.Error:
+        return True
+    return row is None or row[0] == "open"
+
+
+def selftest_problem(row: dict | None, bugs: dict, since: datetime | None = None, is_open: Callable[[int], bool] = lambda number: True) -> Item | None:
+    """The item for a self-test's latest run, if it failed or did not finish, and is not dealt with: its
+    bug closed, or (with no bug for it) a ship since. `bugs` is {step: the number of its bug}."""
     if row is None:
         return None
     failed = (row.get("failed_steps") or "").split()
     if not failed and not row.get("note"):
+        return None
+    numbered = next((bugs[step] for step in failed if step in bugs), None)
+    if numbered is not None and not is_open(numbered):
+        return None
+    ran = _run_at(row)
+    if numbered is None and since is not None and ran is not None and since > ran:
         return None
     said = "self-test failed" if failed else "self-test did not finish"
     # Needs a look says it in a few words: which check, and how many steps ("nightly check failed, 2 steps")
@@ -425,7 +465,8 @@ async def selftest(user_id: int, now: datetime) -> list[Item]:
         bugs = {str(step): int(number) for step, number in json.loads((folder / "bugs.json").read_text(encoding="utf-8")).items()}
     except (OSError, ValueError, AttributeError, TypeError):
         bugs = {}
-    found = [selftest_problem(last_run(folder), bugs), two_nights(history(folder)), spend_problem(*selftest_spend())]
+    since = last_ship()
+    found = [selftest_problem(last_run(folder), bugs, since, nightly_bug_open), two_nights(history(folder), since), spend_problem(*selftest_spend())]
     return [each for each in found if each is not None]
 
 

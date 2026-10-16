@@ -133,6 +133,9 @@ async def _say(user_id: int, name: str, text: str, item: Item, now: datetime) ->
         return None
     message_id = await notify.post(KIND, channel_id, Card(addressed(text)), user_id=user_id, item=item, key=name, quiet=config.DEV_DATABASE)
     await database.run(db_keep, name, user_id, text, now, channel_id, message_id)
+    # A ping is for the moment: it goes when what it points at is dealt with (`look`), or at the next
+    # morning's tidy, whichever comes first
+    await messages.record(message_id, channel_id, lifetime=messages.DAY, task="core", user_id=user_id)
     return message_id
 
 

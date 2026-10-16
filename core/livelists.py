@@ -137,10 +137,11 @@ async def refresh(user_id: int, key: str, render: Render) -> bool:
     return await cards.edit(found.channel_id, found.message_id, _as_card(await render()))
 
 
-def changed(user_id: int, key: str, render: Render) -> None:
+def changed(user_id: int, key: str, render: Render, slow: bool = False) -> None:
     """The data behind a list has changed: bring its Live copy up to date, in
-    the background. Does nothing if the list was never shown."""
-    live.schedule(("list", user_id, key), lambda: refresh(user_id, key, render))
+    the background. Does nothing if the list was never shown. `slow`: at most
+    one edit every 30 seconds (core/live.py)."""
+    live.schedule(("list", user_id, key), lambda: refresh(user_id, key, render), slow)
 
 
 async def message_class(message_id: int) -> MessageClass | None:

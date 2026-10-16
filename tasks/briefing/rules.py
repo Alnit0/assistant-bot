@@ -53,6 +53,11 @@ def problem(item: Item) -> str:
     return f"{item.icon or '⚠️'} {f'{item.bug} · ' if item.bug else ''}{item.what}"
 
 
+def info(item: Item) -> str:
+    """A line only worth knowing (a fix shipped, closing Mon): its bug and its words, no warning."""
+    return f"{f'{item.bug} · ' if item.bug else ''}{item.what}"
+
+
 def held(line: str, times: int = 1) -> str:
     """One alert quiet hours held back: the neutral line it was posted as, and
     how often it was asked for if more than once."""
@@ -218,13 +223,16 @@ def worth_knowing(notes: tuple[str, ...]) -> list[str]:
     return [*([design.small(f"🗒️ …and {len(notes) - MAX_NOTES} more before")] if len(notes) > MAX_NOTES else []), *shown]
 
 
-def text(sections: list[Section], day: date, problems: tuple[str, ...] = (), held_back: tuple[str, ...] = (), hours: str = "", notes: tuple[str, ...] = (), spend: str = "", so_far: tuple[str, ...] = (), news: tuple[str, ...] = ()) -> str:
+def text(sections: list[Section], day: date, problems: tuple[str, ...] = (), held_back: tuple[str, ...] = (), hours: str = "", notes: tuple[str, ...] = (), spend: str = "", so_far: tuple[str, ...] = (), news: tuple[str, ...] = (), info: tuple[str, ...] = ()) -> str:
     """The briefing as a plain message (the old look, and what is logged).
-    `so_far` is the day's progress (`progress`), at the top."""
+    `so_far` is the day's progress (`progress`), at the top. `info`: lines only
+    worth knowing, small and last in Needs a look, or on their own one small line."""
     title, under = _top(day, so_far)
     lines = [f"## {title}", *under]
     if problems:
-        lines += ["", NEEDS, *problems]
+        lines += ["", NEEDS, *problems, *(design.small(each) for each in info)]
+    elif info:
+        lines += ["", design.small(" · ".join(info))]
     if news:
         lines += ["", NEWS, *news]
     if held_back:
@@ -239,13 +247,15 @@ def text(sections: list[Section], day: date, problems: tuple[str, ...] = (), hel
     return "\n".join(lines)
 
 
-def _layout_r1(sections: list[Section], day: date, problems: tuple[str, ...] = (), held_back: tuple[str, ...] = (), hours: str = "", notes: tuple[str, ...] = (), spend: str = "", so_far: tuple[str, ...] = (), news: tuple[str, ...] = ()) -> tuple:
+def _layout_r1(sections: list[Section], day: date, problems: tuple[str, ...] = (), held_back: tuple[str, ...] = (), hours: str = "", notes: tuple[str, ...] = (), spend: str = "", so_far: tuple[str, ...] = (), news: tuple[str, ...] = (), info: tuple[str, ...] = ()) -> tuple:
     """Round 1 (kept as it was built): a standing message, a box a task in the
     colour of its status, and no buttons. What needs a look is a box of its own
     on top, then what was held back overnight."""
     boxes = []
     if problems:
-        boxes.append(design.item(design.MISSED, NEEDS, *problems))
+        boxes.append(design.item(design.MISSED, NEEDS, *problems, *(design.small(each) for each in info)))
+    elif info:
+        boxes.append(design.item(design.QUIET, design.small(" · ".join(info))))
     if news:
         boxes.append(design.item(design.QUIET, NEWS, *news))
     if held_back:
@@ -285,7 +295,7 @@ def _box(section: Section) -> design.Box:
 OVERVIEW = "🗓️ The day"
 
 
-def _overview_box(sections: list[Section]) -> design.Box | None:
+def _overview_box(sections: list[Section], aside: str = "") -> design.Box | None:
     """Round 5: one small box, a line a task that has a card of its own in the hub, what the
     day holds for it and not how far it has got. In the order each task says it comes, the same every day."""
     from core import actions
@@ -294,12 +304,14 @@ def _overview_box(sections: list[Section]) -> design.Box | None:
     loaded = [entry.name for entry in actions.in_place()]
     sections = sorted(sections, key=lambda each: loaded.index(each.task) if each.task in loaded else len(loaded))
     lines = [f"{each.icon} **{each.title}** · {each.summary.overview}" for each in sections if each.summary is not None and each.summary.overview]
+    if aside:
+        lines.append(design.small(aside))  # only worth knowing, with nothing wrong: one small line here
     if not lines:
         return None
     return design.topic(design.card_title(OVERVIEW), lines=lines, status=design.QUIET)
 
 
-def _layout_r5(sections: list[Section], day: date, problems: tuple[str, ...] = (), held_back: tuple[str, ...] = (), hours: str = "", notes: tuple[str, ...] = (), spend: str = "", so_far: tuple[str, ...] = (), news: tuple[str, ...] = ()) -> tuple:
+def _layout_r5(sections: list[Section], day: date, problems: tuple[str, ...] = (), held_back: tuple[str, ...] = (), hours: str = "", notes: tuple[str, ...] = (), spend: str = "", so_far: tuple[str, ...] = (), news: tuple[str, ...] = (), info: tuple[str, ...] = ()) -> tuple:
     """Round 5 (Alex, 15 Oct: "a little bit of overlap with pills and calendar"): the briefing is the
     morning overview. Its page title is the date with the day's dots, so "Today" is only ever the
     Today card; what needs a look and the weather stay boxes; every task with a card of its own is
@@ -307,13 +319,14 @@ def _layout_r5(sections: list[Section], day: date, problems: tuple[str, ...] = (
     is in help)."""
     boxes = []
     if problems:
-        boxes.append(design.topic(design.card_title(NEEDS.replace("**", "")), [design.Entry(each, design.MISSED) for each in problems], status=design.MISSED))
+        entries = [design.Entry(each, design.MISSED) for each in problems] + [design.Entry(design.small(each), design.QUIET) for each in info]
+        boxes.append(design.topic(design.card_title(NEEDS.replace("**", "")), entries, status=design.MISSED))
     if news:
         boxes.append(design.topic(design.card_title(NEWS.replace("**", "")), [design.Entry(each, design.QUIET) for each in news], status=design.QUIET))
     if held_back:
         boxes.append(design.topic(design.card_title(HELD.replace("**", "")), lines=[*held_back, *([design.small(held_note(hours))] if hours else [])], status=design.QUIET))
     boxes += [_box(section) for section in sections if section.summary is None or not section.summary.overview]
-    overview = _overview_box(sections)
+    overview = _overview_box(sections, "" if problems else " · ".join(info))
     if overview is not None:
         boxes.append(overview)
     title = f"{ICON} {date_line(day)}" + (f" {so_far[0]}" if so_far else "")
@@ -321,7 +334,7 @@ def _layout_r5(sections: list[Section], day: date, problems: tuple[str, ...] = (
     return design.page([design.page_title(title)], boxes, foot)
 
 
-def layout(sections: list[Section], day: date, problems: tuple[str, ...] = (), held_back: tuple[str, ...] = (), hours: str = "", notes: tuple[str, ...] = (), spend: str = "", so_far: tuple[str, ...] = (), news: tuple[str, ...] = ()) -> tuple:
+def layout(sections: list[Section], day: date, problems: tuple[str, ...] = (), held_back: tuple[str, ...] = (), hours: str = "", notes: tuple[str, ...] = (), spend: str = "", so_far: tuple[str, ...] = (), news: tuple[str, ...] = (), info: tuple[str, ...] = ()) -> tuple:
     """The briefing as a page (docs/DESIGN.md, round 3): the page title with the
     day's progress, then a box a topic: what needs a look (only when something
     is wrong, red, a rule between problems), what was held back overnight,
@@ -331,12 +344,15 @@ def layout(sections: list[Section], day: date, problems: tuple[str, ...] = (), h
 
     In round 1 of the design (DESIGN_ROUND=1) it is `_layout_r1`."""
     if design.current() < 3:
-        return _layout_r1(sections, day, problems, held_back, hours, notes, spend, so_far, news)
+        return _layout_r1(sections, day, problems, held_back, hours, notes, spend, so_far, news, info)
     if design.current() >= 5:
-        return _layout_r5(sections, day, problems, held_back, hours, notes, spend, so_far, news)
+        return _layout_r5(sections, day, problems, held_back, hours, notes, spend, so_far, news, info)
     boxes = []
     if problems:
-        boxes.append(design.topic(design.card_title(NEEDS.replace("**", "")), [design.Entry(each, design.MISSED) for each in problems], status=design.MISSED))
+        entries = [design.Entry(each, design.MISSED) for each in problems] + [design.Entry(design.small(each), design.QUIET) for each in info]
+        boxes.append(design.topic(design.card_title(NEEDS.replace("**", "")), entries, status=design.MISSED))
+    elif info:
+        boxes.append(design.topic(design.card_title(NEEDS.replace("**", "")), lines=[design.small(" · ".join(info))], status=design.QUIET))
     if news:
         # What changed overnight, for this morning only (core/whatsnew.py): a rule between items
         boxes.append(design.topic(design.card_title(NEWS.replace("**", "")), [design.Entry(each, design.QUIET) for each in news], status=design.QUIET))

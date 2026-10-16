@@ -26,6 +26,8 @@ log = logging.getLogger("assistant")
 # #bot-log card, say). No Discord calls here: the callers bring their own.
 # ---------------------------------------------------------------------------
 MIN_INTERVAL = 2.0  # seconds between two edits of the same message
+SLOW_INTERVAL = 30.0  # for a message many things change (the briefing): at most one edit this often
+_slow: set = set()
 
 Refresh = Callable[[], Awaitable[None]]
 
@@ -46,9 +48,12 @@ def wait_needed(last: float | None, now: float, interval: float | None = None) -
     return max(0.0, last + interval - now)
 
 
-def schedule(key, refresh: Refresh) -> None:
+def schedule(key, refresh: Refresh, slow: bool = False) -> None:
     """Bring one live message up to date soon, in the background. `key` names
-    the message (("board", channel_id)); the latest `refresh` for a key wins."""
+    the message (("board", channel_id)); the latest `refresh` for a key wins.
+    `slow`: at most one edit every SLOW_INTERVAL, the rest coalesced."""
+    if slow:
+        _slow.add(key)
     _pending[key] = refresh
     worker = _workers.get(key)
     if worker is None or worker.done():
@@ -58,7 +63,7 @@ def schedule(key, refresh: Refresh) -> None:
 async def _work(key) -> None:
     # Runs until nothing more has been asked for this key
     while key in _pending:
-        wait = wait_needed(_last.get(key), time.monotonic())
+        wait = wait_needed(_last.get(key), time.monotonic(), SLOW_INTERVAL if key in _slow and MIN_INTERVAL > 0 else None)
         if wait > 0:
             await asyncio.sleep(wait)
         refresh = _pending.pop(key, None)

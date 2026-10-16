@@ -291,6 +291,28 @@ time). Spend US$0.041.
   the next restart). B2 can't be: its report holds none of Alex's words
   (only the bot's reply), so it waits for close B2 or Fixed.
 
+## Needs a look as it is now (16 Oct, afternoon; ships at the next restart)
+
+- **The nightly's count is reset by a ship:** only a failure on a night
+  after the last ship (`data\live-versions.txt`) counts, so the 1:59 pm
+  "two nights in a row" (one cause, fixed and shipped) is not said again.
+  A ship is taken to carry the fix for what failed before it.
+- **A nightly failure leaves Needs a look** once its bug is closed, or,
+  with no bug on record, once a ship came after it.
+- **Pings are transient:** each goes when what it points at is dealt
+  with, or at the next morning's tidy, whichever is first.
+- **Severity:** only real problems are ⚠️ and red; what is only worth
+  knowing ("B5 · fix shipped, closing Mon") is small and last, and on its
+  own one small line in the overview, no box. The briefing is redrawn on
+  every change (a bug opened, closed, reopened or marked shipped, a
+  nightly result, a restart) at most once every 30 seconds.
+- **B posts:** four extra B posts of 10 Oct (two B1, a B2, a B3), filed by
+  a dev database before dev bugs had their own letter and held by no
+  database, were closed with a note; Alex's real B1 to B5 untouched, none
+  renumbered (no two share a number). B bugs can be filed only in live's
+  folder now; close B2 acts on live's own B2, found by its number in
+  live's database.
+
 ## Live down for a minute (16 Oct, 1:31 pm)
 
 The ship of `dbbdcc8` stopped live at its start: the two ping migrations

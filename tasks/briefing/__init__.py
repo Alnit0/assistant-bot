@@ -72,22 +72,26 @@ async def card_for(user_id: int) -> Card | None:
     """The briefing as it reads now, or None with nothing to say."""
     today = days.today()
     now = clock.now()
-    order = attention.ranked(await attention.gather(user_id, now), now)
+    gathered_items = await attention.gather(user_id, now)
+    order = attention.ranked(gathered_items, now)
     gathered = await summaries.gather(user_id, today)
     # The day's progress is counted in the order the tasks come, so its line never shuffles
     so_far = rules.progress(gathered) if config.DAY_PROGRESS else ()
     sections = rules.ordered(gathered, [item.task for _, item in order])
-    problems = tuple(rules.problem(item) for rank, item in order if rank == attention.LEVEL_PROBLEM)
+    # Only real problems are warnings; what is only worth knowing (a fix shipped, closing Mon) comes last and
+    # small, and on its own is one small line in the overview, never a red box
+    problems = tuple(rules.problem(item) for rank, item in order if rank == attention.LEVEL_PROBLEM and not item.quiet)
+    info = tuple(rules.info(item) for item in gathered_items if item.quiet and attention.level(item, now) == attention.LEVEL_PROBLEM)
     held = tuple(rules.held(each.line, each.times) for each in await notify.held_overnight(user_id, today))
     # What is worth knowing and what is new, in one read: no more waiting on the database than before
     kept, found = await whatsnew.notes_and_news(user_id, today)
     notes = tuple(f"{timeinput.format_moment(each.at)} · {each.line}" for each in kept)
     news = tuple(whatsnew.lines(found))
-    if not (sections or problems or held or notes or news):
+    if not (sections or problems or info or held or notes or news):
         return None
     hours = " to ".join(timeinput.format_time(each) for each in config.QUIET_HOURS)
     spend = await spend_line(today)
-    return Card(rules.text(sections, today, problems, held, hours, notes, spend, so_far, news), (), rules.layout(sections, today, problems, held, hours, notes, spend, so_far, news))
+    return Card(rules.text(sections, today, problems, held, hours, notes, spend, so_far, news, info), (), rules.layout(sections, today, problems, held, hours, notes, spend, so_far, news, info))
 
 
 async def spend_line(today) -> str:
@@ -163,7 +167,8 @@ def summary_changed(task: str, user_id: int) -> None:
     """A task's summary may have changed: each copy that is up is rewritten in
     place. Several changes close together are one edit (core/live.py)."""
     for key in (IN_THE_HUB, ELSEWHERE):
-        livelists.changed(user_id, key, lambda: _shown(user_id))
+        # Needs a look is live: every change redraws it, at most one edit every 30 seconds (Discord's limits)
+        livelists.changed(user_id, key, lambda: _shown(user_id), slow=True)
 
 
 async def look_again() -> bool:

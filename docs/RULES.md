@@ -480,7 +480,12 @@ The rules are in `docs/specs/pills.md` and the Pills section of
   included, so a restart, a new bug number, new words or a change of
   status never pings again. **Self-test bugs (D, N) never ping**: Needs
   a look and the briefing show them, Claude Code deals with them; the
-  one ping is the nightly failing two nights in a row. What is
+  one ping is the nightly failing two nights in a row since the last
+  ship (a ship carries the fix for what failed before it). A ping is
+  transient: it goes when what it points at is dealt with, or at the
+  next morning's tidy. In Needs a look only real problems are ⚠️ and
+  red; what is only worth knowing is small and last, and alone one small
+  line in the overview. What is
   worth knowing but not urgent is `notify.worth_knowing(line)`: a small
   line in the briefing, no ping
 - Quiet hours (`QUIET_HOURS`, 10:00 pm to 7:00 am, in force only with

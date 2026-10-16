@@ -147,6 +147,13 @@ async def ensure_tags() -> None:
 async def create_post(number: int, report: rules.Report, channel: discord.ForumChannel | None = None) -> tuple[int, str]:
     """Open the bug's forum post. Returns (thread id, link to it). `channel`
     is the forum when the caller has fetched it itself."""
+    from core import config
+
+    # One counter for B numbers, live's own database (found 16 Oct: four B posts of 10 Oct came from a dev
+    # database before dev bugs had their own letter). Outside live's folder, a database that is not a dev one
+    # files nothing in the forum: tests never reach here, the dev bot's are D, the nightly's N
+    if not rules.DEV and not config.LIVE_FOLDER:
+        raise UserError("B bugs are filed on live only: this database is not live's. Start with --dev.")
     channel = channel or forum()
     first, *rest = rules.post_sections(number, report)
     try:
