@@ -785,7 +785,8 @@ async def p2(h: Harness) -> None:
             await h.say("show my week", canned=("pill_history", {"period": "week", "guessed": [], "not_included": []}))
             said = await h.find(h.inbox, "This week")
             h.check(said is not None and " taken" in said.text.splitlines()[0], f"the reply: {[each.text[:100] for each in await h.recent(h.inbox, 2) if each.id not in h.typed]}")
-            h.check(len(said.text.splitlines()) >= 2 and any(mark in said.text for mark in ("✅", "❌")), f"no line for a day: {said.text[:300]}")
+            # A mark a dose, whatever it is: on a Monday morning the week is today alone, every dose still ▫️ (17 Oct: run on a Saturday night)
+            h.check(len(said.text.splitlines()) >= 2 and any(mark in said.text for mark in ("✅", "❌", "▫️")), f"no line for a day: {said.text[:300]}")
             h.saw(" / ".join(said.text.splitlines()[:3])[:200])
 
     async for attempt in h.step("2.13", "6:00 am the next day: a fresh checklist", "A new message for the new day with every dose still to take; one checklist for today", "asked; 23"):
