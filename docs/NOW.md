@@ -14,12 +14,16 @@ US$0.26 (about NZ$0.45) of NZ$1.00, the largest run US$0.15.
    changes and the smart inbox: done, "Everything on, 17 Oct" posted;
    three bugs found and fixed
 5. Brainstorm, wishlist, `/suggest`: done, "Design · Brainstorm" posted
-6. In progress: dev-bot self-test, then one ship (before 3:15 am)
+6. Self-test 149 of 150, no step failed (one fix to its own check);
+   shipped at 2:25 am
 
 **Sundays:** run `/suggest` (the brainstorm with the wishlist).
 **Next:** check the 3:30 am nightly of 17 Oct and report it.
 
-**Live:** `fe8252f` since 16 Oct, 3:29 pm (until the ship).
+**Live:** `98697d4` since 17 Oct, 2:25 am, `SMART_INBOX=true` (live's
+`.env` before: `data\env-before-2026-10-17-smart-inbox`); migrations 28
+and 29, no errors; every booking there; briefing as before (B2, B5).
+What's new for 17 Oct: send several things at once, or a screenshot.
 
 **Drafts and worktrees:** `docs/drafts/gym-onboarding.md`; three old
 worktrees, all merged

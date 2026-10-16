@@ -8,6 +8,20 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-17 (overnight)
 
+## Shipped (17 Oct, 2:25 am)
+
+Live on `98697d4` with `SMART_INBOX=true` (live's `.env` as it was is
+`data\env-before-2026-10-17-smart-inbox`), one restart, no pill
+reminder near it. Checked: the account, migrations 28 (inbox_kept) and
+29 (wishes) applied, no errors, every booking (3:00 am backup, 3:30 am
+nightly, 5:30 am read pick, 6 am briefing and cards, 9 am renewals and
+bugs, 9 pm diary ask, Sunday 7 pm summary), the briefing's Needs a look
+(B2 fix ready, B5 closing Mon). What's new for 17 Oct: "Send several
+things at once, or a screenshot, and it sorts them". Nothing set back.
+The dev-bot self-test before it: 149 of 150, no step failed (the first
+run failed 2.12d by its own check on a Monday's week: fixed). Batch spend
+US$0.26 (about NZ$0.45 of NZ$1.00).
+
 ## Overnight batch, 17 Oct (unattended)
 
 1. **The smart inbox** (`core/smartinbox.py`, `SMART_INBOX`): several
