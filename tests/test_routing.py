@@ -90,7 +90,7 @@ def test_the_router_can_only_name_tasks_in_the_catalogue():
     schema = routing.tool(ENTRIES)["input_schema"]
     assert schema["properties"]["tasks"]["items"]["enum"] == ["shopping", "packing"]
     assert schema["properties"]["confidence"]["enum"] == ["high", "tie"]
-    assert schema["required"] == ["kind", "tasks", "confidence", "reports_doing", "chat_part"] and schema["additionalProperties"] is False
+    assert schema["required"] == ["kind", "tasks", "confidence", "reports_doing", "several", "chat_part"] and schema["additionalProperties"] is False
     assert schema["properties"]["reports_doing"]["type"] == "boolean"
 
 

@@ -345,6 +345,11 @@ async def undo(request: Request, data: dict, guessed: frozenset) -> str:
     return said
 
 
+async def add_undo(request: Request, data: dict) -> str:
+    """Take back an add saved a moment ago: the last change in the Bot calendar, undone."""
+    return await undo(request, {}, frozenset())
+
+
 def writing_actions() -> list:
     from core.actions import EACH_DAY, MINUTES, Action
 
@@ -373,7 +378,7 @@ def writing_actions() -> list:
                 *recurrence.fields(),
                 *recurrence.end_fields(),
             ),
-            prepare=add_card, apply=add_save, verify=add_check, purpose=EACH_DAY, say=("dentist Friday 3pm for an hour",),
+            prepare=add_card, apply=add_save, verify=add_check, undo=add_undo, purpose=EACH_DAY, say=("dentist Friday 3pm for an hour",),
         ),
         Action(
             "calendar_move",

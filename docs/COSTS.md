@@ -323,3 +323,14 @@ to five articles, about 450 words of each, and writes the TL;DR. About
 US$0.004 a day, and the same for each "another one". The router and
 extraction cost as for any task. Its recorded checks cost US$0.071; one
 real pick, end to end on the real feeds, US$0.005.
+
+## 10. The smart inbox (17 Oct)
+
+A message with several things costs one request more than before: the
+router, then `sort` (purpose sort, about US$0.004), then one extraction
+for each item, as each would cost alone. A change in words to the card
+is `sort` again and one extraction for each item that changed only. A
+file is `sort` with the file (no router): a photo or a one-page PDF adds
+about 1,500 tokens, about US$0.002. A CSV's rows go as words. A single
+thing costs exactly what it did. The recorded checks cost US$0.24
+(NZ$0.41) over four runs, the largest US$0.153.

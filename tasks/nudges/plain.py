@@ -253,6 +253,18 @@ async def add_save(request: Request, data: dict) -> str:
     return f"✅ Saved · {ICON} {rules.line(saved, days.today())}" + (f" · next {timeinput.format_moment(due)}" if due else "")
 
 
+async def add_undo(request: Request, data: dict) -> str:
+    """Take back an add: the newest reminder of that name, removed, and its booking with it."""
+    there = [each for each in await every(request.user.id) if each.text == data["nudge"]["text"]]
+    if not there:
+        return f"↩️ {ICON} **{data['nudge']['text']}** · was not there"
+    newest = max(there, key=lambda each: each.id)
+    await request.db.run(store.db_remove, newest.id, clock.now())
+    await cancel(newest.id)
+    changed(request.user.id)
+    return f"↩️ {ICON} Taken off · **{newest.text}**"
+
+
 async def add_check(request: Request, data: dict) -> str:
     there = [each for each in await every(request.user.id) if each.text == data["nudge"]["text"]]
     if not there:
@@ -521,7 +533,7 @@ def actions() -> list:
     from tasks.nudges import expiry
 
     return [
-        Action("nudge_add", DESCRIPTIONS["nudge_add"], _FIELDS, prepare=add_card, apply=add_save, verify=add_check, purpose=SET_UP, say=("remind me at 5pm to call Mum",)),
+        Action("nudge_add", DESCRIPTIONS["nudge_add"], _FIELDS, prepare=add_card, apply=add_save, verify=add_check, undo=add_undo, purpose=SET_UP, say=("remind me at 5pm to call Mum",)),
         Action("nudge_change", DESCRIPTIONS["nudge_change"], _CHANGE, prepare=change_card, apply=change_save, verify=change_check, purpose=SET_UP, say=("move that to 6",)),
         Action("nudge_remove", DESCRIPTIONS["nudge_remove"], (Field("reminder", _WHICH, required=True),), prepare=remove_card, apply=remove_save, verify=remove_check, purpose=SET_UP, say=("cancel the bins reminder",)),
         Action("nudge_show", DESCRIPTIONS["nudge_show"], needs_card=False, run=show, purpose=SEE, say=("my reminders",)),

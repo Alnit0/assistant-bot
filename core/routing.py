@@ -71,7 +71,12 @@ RULES = (
     "task here keeps track of it (\"I walked the dog at 6\", \"finished my book last night\"), give no tasks "
     "and still set reports_doing to true, whatever the kind: the user is then told it can't be logged, so it "
     "is not a remark to pass over in silence. An opinion, a feeling or a thank-you (\"shopping is boring\", "
-    "\"thanks\") reports nothing done."
+    "\"thanks\") reports nothing done.\n"
+    "- Set several to true when the message holds two or more separate things to deal with, each a request or a note "
+    "of its own, for different tasks or the same one (\"renew rego by Friday, call Mum Sunday 2pm, need milk\", "
+    "\"dentist Thursday 3pm and remind me to call the bank at 9\"); give every task they are for. It is false for one "
+    "request, however many items it lists for one list (\"add milk, eggs and bread\"), and for a question: a question "
+    "is never one of the things, and a message that only asks is never several."
 )
 
 
@@ -98,6 +103,9 @@ class Route:
     # The message says the user did or took something, or when something happened.
     # With no task to take it, it is neither chat nor silence: the bot says it didn't understand
     reports: bool = False
+    # The message holds two or more separate things to deal with: the smart inbox sorts them onto one card
+    # (core/smartinbox.py). An answer recorded before the router was asked this says nothing, so False
+    several: bool = False
 
     @property
     def chat(self) -> bool:
@@ -151,6 +159,10 @@ def tool(entries: list[Entry]) -> dict:
                         "answered by chat."
                     ),
                 },
+                "several": {
+                    "type": "boolean",
+                    "description": "true if the message holds two or more separate things to deal with (not one request with a list of items, never a question).",
+                },
                 "chat_part": {
                     "type": "string",
                     "description": (
@@ -159,7 +171,7 @@ def tool(entries: list[Entry]) -> dict:
                     ),
                 },
             },
-            "required": ["kind", "tasks", "confidence", "reports_doing", "chat_part"],
+            "required": ["kind", "tasks", "confidence", "reports_doing", "several", "chat_part"],
             "additionalProperties": False,
         },
     }
@@ -265,6 +277,7 @@ def parse(raw, names: list[str]) -> Route:
         problem=problem,
         chat_part=aside.strip() if isinstance(aside, str) else "",
         reports=reports,
+        several=raw.get("several") is True,
     )
 
 
@@ -359,7 +372,7 @@ def with_named(found: Route, named: list[str]) -> Route:
     if not named:
         return found
     if all(name in found.tasks for name in named):
-        return Route(found.tasks, tie=False, problem=found.problem, chat_part=found.chat_part, reports=found.reports)
+        return Route(found.tasks, tie=False, problem=found.problem, chat_part=found.chat_part, reports=found.reports, several=found.several)
     return Route(tuple(named), problem=found.problem, reports=found.reports)
 
 

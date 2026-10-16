@@ -49,6 +49,9 @@ class RouterFixture:
     # never be chat (an answer would read as if it had been recorded): either marked as a
     # report with no task (the bot says it didn't understand) or as a remark (no reply)
     reports: bool = False
+    # The message holds several separate things, for the smart inbox (core/smartinbox.py): None doesn't check.
+    # With True and no `tasks`, which tasks the router lists is not judged: the sorting call decides each
+    several: bool | None = None
     recorded: dict | None = None
 
     @property
@@ -161,6 +164,10 @@ def router_problem(fixture: RouterFixture, route) -> str:
         return "" if route.chat else f"expected chat, got {list(route.tasks)}"
     if route.chat:
         return f"expected {fixture.tasks}, got chat"
+    if fixture.several is not None and route.several != fixture.several:
+        return f"expected several={fixture.several}, got several={route.several}"
+    if fixture.several and not fixture.tasks:
+        return "" if not route.tie else "expected no tie, got a tie"
     if sorted(route.tasks) != sorted(fixture.tasks):
         return f"expected {fixture.tasks}, got {list(route.tasks)}"
     if route.tie != fixture.tie:

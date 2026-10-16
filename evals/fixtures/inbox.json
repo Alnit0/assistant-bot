@@ -1,0 +1,720 @@
+{
+  "inbox": [
+    {
+      "golden": "i1",
+      "message": "renew rego by Friday, call Mum Sunday 2pm, need milk, dentist Thursday 3pm",
+      "note": "four things: renew rego by Friday is read as a reminder (a to-do would be as right), dentist an event",
+      "expect": {
+        "several": true,
+        "items": [
+          "nudges",
+          "nudges",
+          "todos",
+          "calendar"
+        ],
+        "actions": [
+          "nudge_add",
+          "todo_add",
+          "calendar_add"
+        ]
+      },
+      "recorded": {
+        "extract": [
+          [
+            "renew rego by Friday",
+            "nudges",
+            [
+              "nudge_add",
+              {
+                "text": "renew rego",
+                "day": "Friday",
+                "guessed": [],
+                "not_included": []
+              }
+            ]
+          ],
+          [
+            "call Mum Sunday 2pm",
+            "nudges",
+            [
+              "nudge_add",
+              {
+                "text": "call Mum",
+                "day": "Sunday",
+                "time": "2:00 pm",
+                "guessed": [],
+                "not_included": []
+              }
+            ]
+          ],
+          [
+            "need milk",
+            "todos",
+            [
+              "todo_add",
+              {
+                "todos": [
+                  {
+                    "text": "need milk"
+                  }
+                ],
+                "guessed": [],
+                "not_included": []
+              }
+            ]
+          ],
+          [
+            "dentist Thursday 3pm",
+            "calendar",
+            [
+              "calendar_add",
+              {
+                "title": "dentist",
+                "day": "Thursday",
+                "time": "3:00 pm",
+                "guessed": [],
+                "not_included": []
+              }
+            ]
+          ]
+        ],
+        "route": {
+          "kind": "task",
+          "tasks": [
+            "nudges",
+            "nudges",
+            "todos",
+            "calendar"
+          ],
+          "confidence": "high",
+          "reports_doing": false,
+          "several": true,
+          "chat_part": ""
+        },
+        "sort": {
+          "items": [
+            {
+              "words": "renew rego by Friday",
+              "task": "nudges"
+            },
+            {
+              "words": "call Mum Sunday 2pm",
+              "task": "nudges"
+            },
+            {
+              "words": "need milk",
+              "task": "todos"
+            },
+            {
+              "words": "dentist Thursday 3pm",
+              "task": "calendar"
+            }
+          ],
+          "saw": "",
+          "about_card": false
+        }
+      }
+    },
+    {
+      "golden": "i2",
+      "message": "make the rego one a reminder at 9am Friday",
+      "after": "i1",
+      "note": "a line fixed in words",
+      "expect": {
+        "items": [
+          "nudges",
+          "nudges",
+          "todos",
+          "calendar"
+        ],
+        "actions": [
+          "nudge_add"
+        ]
+      },
+      "recorded": {
+        "extract": [
+          [
+            "remind me at 9am Friday to renew rego",
+            "nudges",
+            [
+              "nudge_add",
+              {
+                "text": "renew rego",
+                "time": "9:00 am",
+                "day": "Friday",
+                "guessed": [],
+                "not_included": []
+              }
+            ]
+          ]
+        ],
+        "sort": {
+          "items": [
+            {
+              "words": "remind me at 9am Friday to renew rego",
+              "task": "nudges"
+            },
+            {
+              "words": "call Mum Sunday 2pm",
+              "task": "nudges"
+            },
+            {
+              "words": "need milk",
+              "task": "todos"
+            },
+            {
+              "words": "dentist Thursday 3pm",
+              "task": "calendar"
+            }
+          ],
+          "saw": "",
+          "about_card": true
+        }
+      }
+    },
+    {
+      "golden": "i3",
+      "message": "need milk, sort out the thing with Sam",
+      "note": "an item whose place is unclear",
+      "expect": {
+        "several": true
+      },
+      "recorded": {
+        "extract": [
+          [
+            "buy milk",
+            "todos",
+            [
+              "todo_add",
+              {
+                "todos": [
+                  {
+                    "text": "buy milk"
+                  }
+                ],
+                "guessed": [],
+                "not_included": []
+              }
+            ]
+          ],
+          [
+            "sort out the thing with Sam",
+            "todos",
+            [
+              "none",
+              {
+                "why": "unclear",
+                "reason": "The message is too vague to act on as a to-do: \"sort out the thing with Sam\" does not specify what action to take or what the task is."
+              }
+            ]
+          ]
+        ],
+        "route": {
+          "kind": "task",
+          "tasks": [
+            "todos"
+          ],
+          "confidence": "high",
+          "reports_doing": false,
+          "several": true,
+          "chat_part": ""
+        },
+        "sort": {
+          "items": [
+            {
+              "words": "buy milk",
+              "task": "todos"
+            },
+            {
+              "words": "sort out the thing with Sam",
+              "task": "todos"
+            }
+          ],
+          "saw": "",
+          "about_card": false
+        }
+      }
+    },
+    {
+      "golden": "i4",
+      "message": "rego due 14 Nov every year, and remind me to put the bins out every Tuesday at 7pm",
+      "note": "an expiry and a repeating reminder",
+      "expect": {
+        "several": true,
+        "items": [
+          "nudges",
+          "nudges"
+        ],
+        "actions": [
+          "expiry_add",
+          "nudge_add"
+        ]
+      },
+      "recorded": {
+        "extract": [
+          [
+            "rego due 14 Nov every year",
+            "nudges",
+            [
+              "expiry_add",
+              {
+                "name": "rego",
+                "date": "14 Nov",
+                "cycle": "yearly",
+                "guessed": [],
+                "not_included": []
+              }
+            ]
+          ],
+          [
+            "remind me to put the bins out every Tuesday at 7pm",
+            "nudges",
+            [
+              "nudge_add",
+              {
+                "text": "put the bins out",
+                "time": "7:00 pm",
+                "repeat": "days",
+                "weekdays": [
+                  "tue"
+                ],
+                "guessed": [],
+                "not_included": []
+              }
+            ]
+          ]
+        ],
+        "route": {
+          "kind": "task",
+          "tasks": [
+            "nudges"
+          ],
+          "confidence": "high",
+          "reports_doing": false,
+          "several": true,
+          "chat_part": ""
+        },
+        "sort": {
+          "items": [
+            {
+              "words": "rego due 14 Nov every year",
+              "task": "nudges"
+            },
+            {
+              "words": "remind me to put the bins out every Tuesday at 7pm",
+              "task": "nudges"
+            }
+          ],
+          "saw": "",
+          "about_card": false
+        }
+      }
+    },
+    {
+      "golden": "i5",
+      "message": "took Testvit just now, today was a good day, and add stretch to my morning routine",
+      "note": "a pill taken, the diary, a routine step",
+      "expect": {
+        "several": true,
+        "items": [
+          "pills",
+          "diary",
+          "habits"
+        ],
+        "actions": [
+          "pill_log",
+          "diary_write"
+        ]
+      },
+      "recorded": {
+        "extract": [
+          [
+            "took Testvit just now",
+            "pills",
+            [
+              "pill_log",
+              {
+                "doses": [
+                  {
+                    "pill": "Testvit",
+                    "did": "taken"
+                  }
+                ],
+                "guessed": [],
+                "not_included": []
+              }
+            ]
+          ],
+          [
+            "today was a good day",
+            "diary",
+            [
+              "diary_write",
+              {
+                "mood": "good",
+                "guessed": [],
+                "not_included": []
+              }
+            ]
+          ],
+          [
+            "add stretch to my morning routine",
+            "habits",
+            [
+              "habit_items",
+              {
+                "routine": "morning",
+                "items": [
+                  {
+                    "text": "stretch"
+                  }
+                ],
+                "guessed": [],
+                "not_included": []
+              }
+            ]
+          ]
+        ],
+        "route": {
+          "kind": "task",
+          "tasks": [
+            "pills",
+            "diary",
+            "habits"
+          ],
+          "confidence": "high",
+          "reports_doing": true,
+          "several": true,
+          "chat_part": ""
+        },
+        "sort": {
+          "items": [
+            {
+              "words": "took Testvit just now",
+              "task": "pills"
+            },
+            {
+              "words": "today was a good day",
+              "task": "diary"
+            },
+            {
+              "words": "add stretch to my morning routine",
+              "task": "habits"
+            }
+          ],
+          "saw": "",
+          "about_card": false
+        }
+      }
+    },
+    {
+      "golden": "i6",
+      "message": "call the plumber tomorrow and lunch with Sam Friday at 1",
+      "note": "a to-do and an event",
+      "expect": {
+        "several": true,
+        "items": [
+          "todos",
+          "calendar"
+        ],
+        "actions": [
+          "todo_add",
+          "calendar_add"
+        ]
+      },
+      "recorded": {
+        "extract": [
+          [
+            "call the plumber tomorrow",
+            "todos",
+            [
+              "todo_add",
+              {
+                "todos": [
+                  {
+                    "text": "call the plumber",
+                    "day": "tomorrow"
+                  }
+                ],
+                "guessed": [],
+                "not_included": []
+              }
+            ]
+          ],
+          [
+            "lunch with Sam Friday at 1",
+            "calendar",
+            [
+              "calendar_add",
+              {
+                "title": "lunch with Sam",
+                "day": "Friday",
+                "time": "1:00 pm",
+                "guessed": [
+                  "time"
+                ],
+                "not_included": []
+              }
+            ]
+          ]
+        ],
+        "route": {
+          "kind": "task",
+          "tasks": [
+            "calendar"
+          ],
+          "confidence": "high",
+          "reports_doing": false,
+          "several": true,
+          "chat_part": ""
+        },
+        "sort": {
+          "items": [
+            {
+              "words": "call the plumber tomorrow",
+              "task": "todos"
+            },
+            {
+              "words": "lunch with Sam Friday at 1",
+              "task": "calendar"
+            }
+          ],
+          "saw": "",
+          "about_card": false
+        }
+      }
+    },
+    {
+      "golden": "i7",
+      "message": "add call Ryan Friday",
+      "note": "one thing: as before",
+      "expect": {
+        "several": false
+      },
+      "recorded": {
+        "extract": [],
+        "route": {
+          "kind": "task",
+          "tasks": [
+            "todos"
+          ],
+          "confidence": "high",
+          "reports_doing": false,
+          "several": false,
+          "chat_part": ""
+        }
+      }
+    },
+    {
+      "golden": "i8",
+      "message": "add milk, eggs and bread to my to-dos",
+      "note": "one request with a list: as before",
+      "expect": {
+        "several": false
+      },
+      "recorded": {
+        "extract": [],
+        "route": {
+          "kind": "task",
+          "tasks": [
+            "todos"
+          ],
+          "confidence": "high",
+          "reports_doing": false,
+          "several": false,
+          "chat_part": ""
+        }
+      }
+    },
+    {
+      "golden": "i9",
+      "message": "what's left today?",
+      "note": "a question is never several",
+      "expect": {
+        "several": false
+      },
+      "recorded": {
+        "extract": [],
+        "route": {
+          "kind": "task",
+          "tasks": [
+            "briefing"
+          ],
+          "confidence": "high",
+          "reports_doing": false,
+          "several": false,
+          "chat_part": ""
+        }
+      }
+    },
+    {
+      "golden": "f1",
+      "message": "",
+      "file": "appointment",
+      "note": "a booking screenshot is an event",
+      "expect": {
+        "items": [
+          "calendar"
+        ],
+        "actions": [
+          "calendar_add"
+        ]
+      },
+      "recorded": {
+        "extract": [
+          [
+            "Made-up Dental Clinic Thursday 5 November 2026 3:00 pm",
+            "calendar",
+            [
+              "calendar_add",
+              {
+                "title": "Made-up Dental Clinic",
+                "day": "Thursday 5 November 2026",
+                "time": "3:00 pm",
+                "guessed": [],
+                "not_included": []
+              }
+            ]
+          ]
+        ],
+        "sort": {
+          "items": [
+            {
+              "words": "Made-up Dental Clinic Thursday 5 November 2026 3:00 pm",
+              "task": "calendar"
+            }
+          ],
+          "saw": "Booking confirmation for dental clinic appointment.",
+          "about_card": false
+        }
+      }
+    },
+    {
+      "golden": "f2",
+      "message": "",
+      "file": "bill",
+      "note": "a bill as a PDF is a reminder on its due day",
+      "expect": {
+        "items": [
+          "nudges"
+        ]
+      },
+      "recorded": {
+        "extract": [
+          [
+            "remind me to pay Made-up Power Co invoice by 20 November 2026",
+            "nudges",
+            [
+              "nudge_add",
+              {
+                "text": "pay Made-up Power Co invoice",
+                "day": "20 November 2026",
+                "guessed": [],
+                "not_included": []
+              }
+            ]
+          ]
+        ],
+        "sort": {
+          "items": [
+            {
+              "words": "remind me to pay Made-up Power Co invoice by 20 November 2026",
+              "task": "nudges"
+            }
+          ],
+          "saw": "Invoice from Made-up Power Co due 20 November.",
+          "about_card": false
+        }
+      }
+    },
+    {
+      "golden": "f3",
+      "message": "",
+      "file": "label",
+      "note": "a medicine label is a suggested pill to add",
+      "expect": {
+        "items": [
+          "pills"
+        ],
+        "actions": [
+          "pill_add"
+        ]
+      },
+      "recorded": {
+        "extract": [
+          [
+            "add Testvit 10 mg 1 tablet twice daily with food",
+            "pills",
+            [
+              "pill_add",
+              {
+                "pills": [
+                  {
+                    "name": "Testvit",
+                    "dose": "10 mg 1 tablet",
+                    "per_day": 2,
+                    "notes": "with food"
+                  }
+                ],
+                "guessed": [],
+                "not_included": []
+              }
+            ]
+          ]
+        ],
+        "sort": {
+          "items": [
+            {
+              "words": "add Testvit 10 mg 1 tablet twice daily with food",
+              "task": "pills"
+            }
+          ],
+          "saw": "Medicine label with dosage and frequency instructions",
+          "about_card": false
+        }
+      }
+    },
+    {
+      "golden": "f4",
+      "message": "",
+      "file": "gym_plan",
+      "note": "a CSV that is a gym plan is kept as rows",
+      "expect": {
+        "items": [
+          "gym_plan"
+        ]
+      },
+      "recorded": {
+        "extract": [],
+        "sort": {
+          "items": [
+            {
+              "words": "gym plan",
+              "task": "gym_plan"
+            }
+          ],
+          "saw": "Gym plan with squats, bench press, deadlifts, overhead press.",
+          "about_card": false
+        }
+      }
+    },
+    {
+      "golden": "f5",
+      "message": "",
+      "file": "shapes",
+      "note": "nothing useful: what it saw in one line",
+      "expect": {
+        "items": [],
+        "saw": true
+      },
+      "recorded": {
+        "extract": [],
+        "sort": {
+          "items": [],
+          "saw": "An image with a blue circle and a red square.",
+          "about_card": false
+        }
+      }
+    }
+  ]
+}

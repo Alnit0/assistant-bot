@@ -273,7 +273,7 @@ def actions() -> list:
             "A diary entry: the user's words about their day or how they feel, to keep (\"today was good, finally finished the "
             "essay\", \"add to today's diary: saw Sam\"). The code keeps the words exactly as sent: give only the mood, and only "
             "if the words make it clear. A log: no card.",
-            (mood.field(),) if mood.on() else (), needs_card=False, run=write, purpose=EACH_DAY, say=("today was good",),
+            (mood.field(),) if mood.on() else (), needs_card=False, run=write, undo=lambda request, data: undo(request, {}, frozenset()), purpose=EACH_DAY, say=("today was good",),
         ),
         Action(
             "diary_show",

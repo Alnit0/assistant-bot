@@ -266,6 +266,21 @@ async def add_save(request: Request, data: dict) -> str:
     return f"{RENEW_ICON} Saved · **{made.name}** · {short(due, days.today())} · {recurrence.cycle_text(made.cycle_months)}"
 
 
+def db_take_back(conn: sqlite3.Connection, user_id: int, name: str, due: str, now: datetime) -> bool:
+    """The newest open expiry of that name and day, closed: an add taken back."""
+    row = conn.execute("SELECT id FROM nudges_expiries WHERE user_id = ? AND name = ? AND due = ? AND done_at IS NULL ORDER BY id DESC LIMIT 1", (user_id, name, due)).fetchone()
+    if row is not None:
+        conn.execute("UPDATE nudges_expiries SET done_at = ? WHERE id = ?", (now.isoformat(), row[0]))
+    return row is not None
+
+
+async def add_undo(request: Request, data: dict) -> str:
+    """Take back an add: the expiry just saved, gone from the list."""
+    gone = await database.run(db_take_back, request.user.id, data["name"], data["due"], clock.now())
+    changed(request.user.id)
+    return f"↩️ {RENEW_ICON} Taken off · **{data['name']}**" if gone else f"↩️ {RENEW_ICON} **{data['name']}** · was not there"
+
+
 async def add_check(request: Request, data: dict) -> str:
     there = [each for each in await every(request.user.id) if each.name == data["name"] and each.due.isoformat() == data["due"]]
     return "" if there else "it is not among your expiries"
@@ -542,7 +557,7 @@ def actions() -> list:
             "expires June 2031\" -> cycle none; \"rego due 14 Nov, every year\" -> name rego, cycle yearly). A thing to do at a "
             "time is a reminder; an appointment is the calendar.",
             (Field("name", "What expires, in the user's words (\"Kiwa domain\", \"passport\", \"rego\").", required=True), _DATE, _CYCLE, _EVERY, _BEFORE),
-            prepare=add_card, apply=add_save, verify=add_check, purpose=SET_UP, say=("Kiwa domain expires 3 March, yearly",),
+            prepare=add_card, apply=add_save, verify=add_check, undo=add_undo, purpose=SET_UP, say=("Kiwa domain expires 3 March, yearly",),
         ),
         Action(
             "expiry_change",

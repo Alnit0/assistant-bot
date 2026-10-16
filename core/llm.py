@@ -194,7 +194,7 @@ def format_cost(cost: float | None) -> str:
 # ---------------------------------------------------------------------------
 async def call_tool(
     system: list[dict],
-    user: str,
+    user: str | list[dict],  # words, or content blocks (a file read by the smart inbox: core/smartinbox.py)
     tools: list[dict],
     *,
     choice: dict,

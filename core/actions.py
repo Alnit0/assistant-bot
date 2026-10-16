@@ -328,6 +328,8 @@ Apply = Callable[[Request, dict], Awaitable["str | Answer"]]
 # to change and say what does not match the card's data ("" if it all does).
 # A confirmation is only ever sent after this has come back empty
 Verify = Callable[[Request, dict], Awaitable[str]]
+# Takes back what `apply` (or a direct `run`) did with this data: the smart inbox's Undo (core/smartinbox.py)
+Undo = Callable[[Request, dict], Awaitable[str]]
 Run = Callable[[Request, dict, frozenset], Awaitable["str | LiveReply | Shown | Answer"]]
 # `async (request, data, guessed) -> bool`: `guessed` is what Claude said it guessed, so a guess
 # about which thing is meant can be shown on a card instead of acted on
@@ -351,6 +353,9 @@ class Action:
     # After `apply`: the change re-read from the database (see Verify). Every
     # action with an `apply` has one. A direct action re-reads inside `run`
     verify: Verify | None = None
+    # Takes back what was saved with this data, in the task's own words (the smart inbox's Undo,
+    # core/smartinbox.py). An action with none is said to be undone in its own task instead
+    undo: Undo | None = None
     # For an action that only sometimes needs a card (cancelling one timer acts
     # at once, cancelling several asks first): `async (request, data) -> bool`.
     # Such an action has all three of `prepare`, `apply` and `run`

@@ -6,9 +6,10 @@ from dataclasses import dataclass, field, replace
 
 import discord
 
-from core import actions, cards, confirm, costs, database, design, dms, extraction, livelists, llm, messages, outgoing, routing, timing, trace
+from core import actions, cards, confirm, costs, database, design, dms, extraction, livelists, llm, messages, outgoing, routing, smartinbox, timing, trace
 from core.actions import LIST, ITEMS, Answer, Entry, LiveReply, Request, Shown
 from core.cards import Card
+from core import config
 from core.config import CHANNELS, INBOX_CHANNEL_ID
 from core.context import Context
 from core.database import log_received, log_result
@@ -473,6 +474,13 @@ async def _latest_bot_message_id(ctx: Context) -> int | None:
     return None
 
 
+def routed_text(text: str, chat_part: str) -> str:
+    """The message less the part already answered as chat, for the smart inbox: a question is never an item. Pure."""
+    if chat_part and chat_part in text:
+        return " ".join(text.replace(chat_part, " ").split()).strip(" ,;.") or text
+    return text
+
+
 def _of(name: str) -> str:
     """A task's name as the owner of something: "pills'", "archive's"."""
     return name + ("'" if name.endswith("s") else "'s")
@@ -614,7 +622,37 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
         # extraction, so they can't be saved as anything
         # A task's name on its own ("pills", "my shopping list") asks to see what it has:
         # that task's own code shows it, with no request to Claude at all
-        alone = routing.named_alone(ctx.text, entries)
+        async def answer(asked: Request, found: Extracted) -> None:
+            await act(asked, found, turn)
+
+        async def state_of(entry: Entry, asked: Request) -> str:
+            return await _state(entry, asked, turn)
+
+        # The smart inbox (core/smartinbox.py): a photo, a screenshot, a PDF or a CSV sent in #inbox or a
+        # direct message is read and sorted onto one card; a message about an open inbox card changes it
+        inbox_on = bool(config.SMART_INBOX)
+        if inbox_on and smartinbox.files_for(ctx.channel_id, request.attachments):
+            read = await smartinbox.read_files(request.attachments)
+            if read.kinds:
+                await smartinbox.sort(request, entries, turn, state_of, answer, read=read)
+            else:
+                turn.said.append(smartinbox.TOO_BIG)
+                await cards.send(ctx.channel_id, Card(smartinbox.TOO_BIG + ": 5 MB for a photo, 10 MB for a PDF, 1 MB for a CSV."))
+            settled = True
+        elif inbox_on and request.attachments and (ctx.channel_id == INBOX_CHANNEL_ID or dms.is_dm(ctx.channel_id)) and not ctx.text.strip():
+            turn.said.append(smartinbox.CANT_READ)
+            await cards.send(ctx.channel_id, Card(smartinbox.CANT_READ))
+            settled = True
+        sorting = await smartinbox.open_card(ctx.user.id, ctx.channel_id) if inbox_on and not settled else None
+        if sorting is not None:
+            latest = None if ctx.is_reply else await _latest_bot_message_id(ctx)
+            if smartinbox.sticks(sorting, utc_now(), ctx.reply_target_id, latest):
+                trace.note(f"sticky check: inbox card {sorting.id} sticks: read as a change to it")
+                settled = await smartinbox.sort(request, entries, turn, state_of, answer, replaces=sorting)
+                if settled:
+                    turn.route = costs.FOLLOW_UP
+
+        alone = routing.named_alone(ctx.text, entries) if not settled else None
         if alone is not None and alone.show:
             turn.route = costs.SHORTCUT
             turn.why.append(f"the message is just the name of {alone.name}: its list is shown by code, at no cost")
@@ -769,6 +807,8 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
                 hints=await _hints(ctx.text, entries, request),
             )
             turn.router = {"tasks": list(routed.tasks), "tie": routed.tie, "chat": routed.chat, "chat_part": routed.chat_part, "problem": routed.problem}
+            if routed.several:
+                turn.router["several"] = True
             if routed.nothing:
                 turn.router["nothing"] = True
             turn.why.append("nothing on screen claimed it" + (f"; the router was shown {on_screen}" if on_screen else ""))
@@ -833,6 +873,10 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
             turn.extracted += [found.as_log() for name, found in questions.items() if routed.tie or name not in routed.tasks or len(routed.tasks) != 1]
             if routed.chat or routed.nothing:
                 pass
+            elif routed.several and not routed.tie and config.SMART_INBOX:
+                # Two or more separate things: sorted onto one card by the smart inbox, each by its own task
+                asked = replace(request, text=routed_text(ctx.text, routed.chat_part))
+                await smartinbox.sort(asked, entries, turn, state_of, answer)
             elif routed.tie:
                 tied = [actions.entry(name) for name in routed.tasks]
                 turn.tasks += [entry.name for entry in tied]
@@ -964,4 +1008,5 @@ async def on_pick(press: cards.Press) -> str | None:
 
 def setup() -> None:
     confirm.setup()
+    smartinbox.setup()
     cards.register(confirm.CARDS, "pick", on_pick)

@@ -508,6 +508,22 @@ def _create_exchange_rates(conn: sqlite3.Connection) -> None:
     )
 
 
+def _create_inbox_kept(conn: sqlite3.Connection) -> None:
+    # What the smart inbox keeps of a file, for a task to come (core/smartinbox.py): a gym plan's rows, never the file
+    conn.execute(
+        """
+        CREATE TABLE inbox_kept (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            kind TEXT NOT NULL,
+            name TEXT NOT NULL,
+            rows TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+
+
 MIGRATIONS = [
     _create_message_log,
     _create_users,
@@ -538,6 +554,7 @@ MIGRATIONS = [
     # _create_exchange_rates, and live at version 25 ran the seed without its table and did not start)
     _create_pinged,
     _seed_pinged,
+    _create_inbox_kept,
 ]
 
 

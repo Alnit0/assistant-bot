@@ -246,6 +246,8 @@ TODOS_ENABLED = flag(os.getenv("TODOS_ENABLED"), False)
 # The diary (tasks/diary): off, not loaded. DIARY_MOOD: whether it keeps a mood (on unless set off)
 DIARY_ENABLED = flag(os.getenv("DIARY_ENABLED"), False)
 DIARY_MOOD = flag(os.getenv("DIARY_MOOD"), True)
+# The smart inbox (core/smartinbox.py): several things in one message, or a file, sorted onto one card. Off unless set
+SMART_INBOX = flag(os.getenv("SMART_INBOX"), False)
 # The daily read (tasks/reading): off, not loaded
 READING_ENABLED = flag(os.getenv("READING_ENABLED"), False)
 # The dev bot's replay only: a JSON file of made-up feeds and pages read in place of the internet

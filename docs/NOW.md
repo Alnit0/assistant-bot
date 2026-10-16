@@ -8,7 +8,8 @@ Cap NZ$1.00 bot spend, NZ$0.40 a run, NZ$0.80 for the inbox's checks.
 
 1. **Smart inbox** (core): several things in one message, or a photo,
    screenshot, PDF or CSV, sorted onto one card (Save, Cancel, fix a
-   line in words, Undo); preview "Design · Smart inbox". In progress
+   line in words, Undo); preview "Design · Smart inbox". Built and
+   recorded (14 conversations, US$0.26), `SMART_INBOX`; preview next
 2. A fix shipped from the command line shows on live within a minute:
    done (`tasks/bugs/watch.py`, a look a minute)
 3. Record expiry phrasings e3 and e6: done, both right (US$0.02)

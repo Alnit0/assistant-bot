@@ -192,6 +192,20 @@ async def add_save(request: Request, data: dict) -> str:
     return f"✅ Added · {ICON} {said}"
 
 
+async def add_undo(request: Request, data: dict) -> str:
+    """Take back an add: each to-do it added, the newest open one of that name, off the list."""
+    now = clock.now()
+    open_ = sorted((each for each in await every(request.user.id) if not each.is_done), key=lambda each: each.id, reverse=True)
+    gone = []
+    for item in data[LIST]:
+        found = next((each for each in open_ if each.text == item["text"] and each not in gone), None)
+        if found is not None:
+            gone.append(found)
+    await request.db.run(lambda conn: [store.db_remove(conn, each.id, now) for each in gone])
+    changed(request.user.id)
+    return f"↩️ {ICON} Taken off · " + (", ".join(f"**{each.text}**" for each in gone) or "nothing was there")
+
+
 async def add_check(request: Request, data: dict) -> str:
     there = {each.text for each in await every(request.user.id) if not each.is_done}
     missing = [item["text"] for item in data[LIST] if item["text"] not in there]
@@ -367,7 +381,7 @@ def actions() -> list:
 
     items = lambda fields, what: (Field(LIST, what, ITEMS, required=True, item_fields=fields),)  # noqa: E731
     return [
-        Action("todo_add", DESCRIPTIONS["todo_add"], items(FIELDS_ADD, "Each to-do to add, one item each."), prepare=add_card, apply=add_save, verify=add_check, purpose=SET_UP, say=("add call Ryan Friday",)),
+        Action("todo_add", DESCRIPTIONS["todo_add"], items(FIELDS_ADD, "Each to-do to add, one item each."), prepare=add_card, apply=add_save, verify=add_check, undo=add_undo, purpose=SET_UP, say=("add call Ryan Friday",)),
         Action("todo_done", DESCRIPTIONS["todo_done"], items(FIELDS_WHICH, "Each to-do that is done, one item each."), needs_card=False, run=done, purpose=EACH_DAY, say=("done call Ryan",)),
         Action("todo_undone", DESCRIPTIONS["todo_undone"], items(FIELDS_WHICH, "Each to-do that is not done after all."), needs_card=False, run=undone, purpose=EACH_DAY, say=("undo that",)),
         Action("todo_change", DESCRIPTIONS["todo_change"], items(FIELDS_CHANGE, "Each to-do to change, one item each."), prepare=change_card, apply=change_save, verify=change_check, purpose=SET_UP, say=("move call Ryan to Monday",)),
