@@ -11,6 +11,11 @@ everything on, 41 golden conversations, a health check. All on live.
 themselves, the self-test's retry (dev-bot self-test 150 of 150), and
 the calendar from Google only (the iCal link gone from live's `.env`).
 **Next:** the 3:30 am nightly on 17 Oct, checked and reported
+**Live:** `fe8252f` since 16 Oct, 3:29 pm: the whole queue, and Needs
+a look as it is now (a ship resets the nightly's count, pings go when
+dealt with, info small, redrawn on every change), B bugs in live's
+folder only. The briefing checked after it: B2 fix ready, B5 closing Mon.
+**Next:** the 3:30 am nightly on 17 Oct, checked and reported
 **Live:** `75c0130` since 16 Oct, 1:59 pm: the whole queue (ping once,
 bug auto-close, the self-test's retry, the calendar's range fix, make,
 put and book, repeating events, Google only, pills exact times, N for
