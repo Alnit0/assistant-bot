@@ -2,7 +2,7 @@ import logging
 from dataclasses import replace
 from datetime import date, datetime, time, timedelta
 
-from core import attention, cards, clock, database, hub, hubcard, llm, messages, names, notify, scheduler, summaries, timeinput
+from core import attention, cards, clock, database, hub, hubcard, llm, messages, names, notify, recurrence, scheduler, summaries, timeinput
 from core import day as days
 from core.actions import BOOLEAN, INTEGER, LIST, MINUTES, TIME, Choice, Field, LiveReply, Proposal, Question, Request, State, flag, is_guessed, is_reference
 from core.attention import TIMED, Item
@@ -39,7 +39,7 @@ ONLY_FOR = (
     "\"dentist Friday 3pm\" (a thing with a time is a reminder, even an appointment), \"remind me to buy milk\" (asked "
     "to be reminded, no time yet: its card asks when), \"remind me in 20 minutes to check the oven\", \"every Monday at "
     "9am put the bins out\", moving one (\"move that to 6\"), removing one, ticking off one that went off (\"done\" "
-    "straight after it), and seeing them. Not pills or their reminders (that is the pills task), not a thing to do "
+    "straight after it), and seeing them. Also things that expire or must be renewed on a day, with nudges before it: \"Kiwa domain expires 3 March, yearly\", \"passport expires June 2031\", \"rego due 14 Nov, every year\", \"renewed the Kiwa domain\", \"what's expiring soon?\". A thing to do with no day it expires on (\"renew the passport\") is a to-do. Not pills or their reminders (that is the pills task), not a thing to do "
     "with no time that the user does not ask to be reminded of (the to-dos task), and not when the bot posts its own "
     "things (the schedule task)."
 )
@@ -50,7 +50,7 @@ ONLY_FOR_WITH_CALENDAR = (
     "Friday\", \"remind me to buy milk\" (asked to be reminded, no time yet: its card asks when), \"remind me in 20 "
     "minutes to check the oven\", \"every Monday at 9am put the bins out\" (a thing to do at a time, again and again), "
     "moving one (\"move that to 6\"), removing one, ticking off one that went off (\"done\" straight after it), and "
-    "seeing them. An appointment or a plan said with a day and a time and no \"remind me\" (\"dentist Friday 3pm\") "
+    "seeing them. Also things that expire or must be renewed on a day, with nudges before it: \"Kiwa domain expires 3 March, yearly\", \"passport expires June 2031\", \"rego due 14 Nov, every year\", \"renewed the Kiwa domain\", \"what's expiring soon?\". A thing to do with no day it expires on (\"renew the passport\") is a to-do. An appointment or a plan said with a day and a time and no \"remind me\" (\"dentist Friday 3pm\") "
     "is an event for the calendar task. Not pills or their reminders (that is the pills task), not a thing to do with "
     "no time that the user does not ask to be reminded of (the to-dos task), and not when the bot posts its own "
     "things (the schedule task)."
@@ -144,11 +144,16 @@ async def state(request: Request) -> State:
         gone = await database.run(store.db_get, latest.nudge_id)
         if gone is not None:
             lines.append(f"(the last one that went off: {gone.text}, at {timeinput.format_moment(latest.due_at)})")
+    from tasks.nudges import expiry
+
+    lines += [f"expires: {each.name} ({expiry.short(each.due, today)}, {recurrence.cycle_text(each.cycle_months)})" for each in await expiry.every(request.user.id)]
     return State("The user's reminders now", tuple(lines), "none")
 
 
 async def item_names(request: Request) -> list[str]:
-    return [each.text for each in await every(request.user.id)]
+    from tasks.nudges import expiry
+
+    return [each.text for each in await every(request.user.id)] + [each.name for each in await expiry.every(request.user.id)]
 
 
 # ---------------------------------------------------------------------------
@@ -513,6 +518,7 @@ DESCRIPTIONS = {
 
 def actions() -> list:
     from core.actions import EACH_DAY, SEE, SET_UP, Action
+    from tasks.nudges import expiry
 
     return [
         Action("nudge_add", DESCRIPTIONS["nudge_add"], _FIELDS, prepare=add_card, apply=add_save, verify=add_check, purpose=SET_UP, say=("remind me at 5pm to call Mum",)),
@@ -520,4 +526,5 @@ def actions() -> list:
         Action("nudge_remove", DESCRIPTIONS["nudge_remove"], (Field("reminder", _WHICH, required=True),), prepare=remove_card, apply=remove_save, verify=remove_check, purpose=SET_UP, say=("cancel the bins reminder",)),
         Action("nudge_show", DESCRIPTIONS["nudge_show"], needs_card=False, run=show, purpose=SEE, say=("my reminders",)),
         Action("nudge_done", DESCRIPTIONS["nudge_done"], (Field("reminder", _WHICH),), needs_card=False, run=done, purpose=EACH_DAY, say=("done the bins",)),
+        *expiry.actions(),
     ]

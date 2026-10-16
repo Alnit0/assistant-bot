@@ -1,0 +1,422 @@
+{
+  "router": [
+    {
+      "golden": "e1",
+      "message": "Kiwa domain expires 3 March, yearly",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "an expiry with a yearly cycle",
+      "names": {
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ],
+        "calendar": [
+          "Dentist",
+          "Lunch with Sam"
+        ],
+        "habits": [
+          "Morning",
+          "Stretch"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "e2",
+      "message": "passport expires June 2031",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "an expiry, no cycle",
+      "names": {
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ],
+        "calendar": [
+          "Dentist",
+          "Lunch with Sam"
+        ],
+        "habits": [
+          "Morning",
+          "Stretch"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "e3",
+      "message": "rego due 14 Nov, every year",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "due on a day, yearly",
+      "names": {
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ],
+        "calendar": [
+          "Dentist",
+          "Lunch with Sam"
+        ],
+        "habits": [
+          "Morning",
+          "Stretch"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "e4",
+      "message": "renewed the Kiwa domain",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "renewed: one cycle on",
+      "names": {
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ],
+        "calendar": [
+          "Dentist",
+          "Lunch with Sam"
+        ],
+        "habits": [
+          "Morning",
+          "Stretch"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "e5",
+      "message": "what's expiring soon?",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "the next 90 days",
+      "names": {
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ],
+        "calendar": [
+          "Dentist",
+          "Lunch with Sam"
+        ],
+        "habits": [
+          "Morning",
+          "Stretch"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "e6",
+      "message": "remind me 60 days before the passport expires",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "when to be told",
+      "names": {
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ],
+        "calendar": [
+          "Dentist",
+          "Lunch with Sam"
+        ],
+        "habits": [
+          "Morning",
+          "Stretch"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "e7",
+      "message": "renew the passport",
+      "tasks": [
+        "todos"
+      ],
+      "note": "a thing to do: the to-do of that name, not an expiry",
+      "names": {
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ],
+        "calendar": [
+          "Dentist",
+          "Lunch with Sam"
+        ],
+        "habits": [
+          "Morning",
+          "Stretch"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "todos"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "e8",
+      "message": "dentist Friday 3pm",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "an appointment with a time: the calendar's",
+      "names": {
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ],
+        "calendar": [
+          "Dentist",
+          "Lunch with Sam"
+        ],
+        "habits": [
+          "Morning",
+          "Stretch"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "e9",
+      "message": "remind me at 5pm to call Mum",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "a reminder at a time, as before",
+      "names": {
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ],
+        "calendar": [
+          "Dentist",
+          "Lunch with Sam"
+        ],
+        "habits": [
+          "Morning",
+          "Stretch"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "chat_part": ""
+      }
+    }
+  ],
+  "extraction": [
+    {
+      "golden": "e1",
+      "task": "nudges",
+      "message": "Kiwa domain expires 3 March, yearly",
+      "state": "The user's reminders now:\n- Put the bins out (every Mon at 7:00 pm)",
+      "action": "expiry_add",
+      "data": {
+        "name": "Kiwa domain",
+        "date": "3 March",
+        "cycle": "yearly"
+      },
+      "recorded": [
+        "expiry_add",
+        {
+          "name": "Kiwa domain",
+          "date": "3 March",
+          "cycle": "yearly",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "e2",
+      "task": "nudges",
+      "message": "passport expires June 2031",
+      "state": "The user's reminders now:\n- Put the bins out (every Mon at 7:00 pm)",
+      "action": "expiry_add",
+      "data": {
+        "name": "passport",
+        "date": "June 2031"
+      },
+      "recorded": [
+        "expiry_add",
+        {
+          "name": "passport",
+          "date": "June 2031",
+          "cycle": "none",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "e3",
+      "task": "nudges",
+      "message": "rego due 14 Nov, every year",
+      "state": "The user's reminders now:\n- Put the bins out (every Mon at 7:00 pm)",
+      "action": "expiry_add",
+      "data": {
+        "name": "rego",
+        "date": "14 Nov",
+        "cycle": "yearly"
+      }
+    },
+    {
+      "golden": "e4",
+      "task": "nudges",
+      "message": "renewed the Kiwa domain",
+      "state": "The user's reminders now:\n- Put the bins out (every Mon at 7:00 pm)\n- expires: Kiwa domain (3 Mar, yearly)\n- expires: Passport (1 Jun 2031, once)",
+      "action": "expiry_renewed",
+      "data": {
+        "expiry": "Kiwa domain"
+      },
+      "recorded": [
+        "expiry_renewed",
+        {
+          "expiry": "Kiwa domain",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "e5",
+      "task": "nudges",
+      "message": "what's expiring soon?",
+      "state": "The user's reminders now:\n- Put the bins out (every Mon at 7:00 pm)\n- expires: Kiwa domain (3 Mar, yearly)\n- expires: Passport (1 Jun 2031, once)",
+      "action": "expiry_soon",
+      "data": {},
+      "recorded": [
+        "expiry_soon",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "e6",
+      "task": "nudges",
+      "message": "remind me 60 days before the passport expires",
+      "state": "The user's reminders now:\n- Put the bins out (every Mon at 7:00 pm)\n- expires: Kiwa domain (3 Mar, yearly)\n- expires: Passport (1 Jun 2031, once)",
+      "action": "expiry_change",
+      "data": {
+        "expiry": "passport",
+        "before": [
+          "60"
+        ]
+      }
+    }
+  ]
+}

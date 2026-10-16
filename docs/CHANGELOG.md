@@ -11,6 +11,8 @@ backfilled from the git log.
 - "When did I take my pills today?" and the daily read went live overnight with the rest.
 - Close bugs in words: "close B2", "close B2 and B5" or "B5 is fixed", one line with an Undo. Needs a look says
   each bug in a few plain words ("B5 · fix ready to check").
+- Expiries in reminders: say Kiwa domain expires 3 March, yearly. Told 30, 7 and 1 day before, renewed in words or
+  by Done with undo, and "what's expiring soon?".
 - Repeating events on the Bot calendar: say work every weekday 9 to 5:30; cancel or move one day, change it from a
   day on or every time, stop it from a day (past ones kept) or delete it completely, each on a card with undo.
 - The calendar is read from Google only now: the old iCal link had a work series Google ended in 2022.

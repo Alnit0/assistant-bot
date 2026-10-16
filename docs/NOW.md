@@ -22,6 +22,7 @@ at the end; then the update script):
 7. Pills: exact times only
 8. Duplicate D numbers (N for the nightly)
 9. Daily read retuned to practical
+10. Expiries in reminders
 
 **Drafts and worktrees:** `docs/drafts/gym-onboarding.md`; three old
 worktrees, all merged

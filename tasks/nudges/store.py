@@ -49,7 +49,52 @@ def create_tables(conn: sqlite3.Connection) -> None:
     )
 
 
-MIGRATIONS = [create_tables]
+def add_expiries(conn: sqlite3.Connection) -> None:
+    """Expiries and renewals (tasks/nudges/expiry.py): the day, its cycle in months (none: once), the days
+    before to be told; the 1-day nudge posted once a due day; and each renewal, for undo."""
+    conn.execute(
+        """
+        CREATE TABLE nudges_expiries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            name TEXT NOT NULL,
+            due TEXT NOT NULL,
+            anchor INTEGER NOT NULL,
+            cycle_months INTEGER,
+            before TEXT NOT NULL DEFAULT '[30, 7, 1]',
+            done_at TEXT,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE nudges_renewal_posts (
+            expiry_id INTEGER NOT NULL REFERENCES nudges_expiries(id),
+            due TEXT NOT NULL,
+            channel_id INTEGER,
+            message_id INTEGER,
+            done INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (expiry_id, due)
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE nudges_renewals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            expiry_id INTEGER NOT NULL REFERENCES nudges_expiries(id),
+            was_due TEXT NOT NULL,
+            was_done TEXT,
+            at TEXT NOT NULL,
+            undone INTEGER NOT NULL DEFAULT 0
+        )
+        """
+    )
+
+
+MIGRATIONS = [create_tables, add_expiries]
 
 _ITEM = "id, user_id, text, at, repeat, first_day, weekdays, every_days"
 _FIRED = "id, nudge_id, local, due_at, message_id, done_at, snoozed_until, late"

@@ -293,6 +293,24 @@ time). Spend US$0.041.
 
 ## Decided (2026-10-16, midday)
 
+- **Expiries in reminders** (not a task of their own): "Kiwa domain
+  expires 3 March, yearly", "passport expires June 2031" (a month alone
+  is its 1st, said on the card), "rego due 14 Nov, every year". Told 30,
+  7 and 1 day before ("remind me 60 days before" changes it): quiet in
+  the briefing's overview line, then the day before posted like a
+  reminder with Done and Snooze, held by quiet hours, never ntfy, the
+  phone showing "🔁 Renewal due · 3 Mar". Renewed in words or by Done:
+  one cycle on from its own date (31 Jan monthly is 28 Feb then 31 Mar;
+  29 Feb yearly is 28 Feb, then 29 Feb in a leap year), the new date said,
+  Undo; with no cycle it is done. "What's expiring soon?": 90 days. Gone
+  by: one line in Needs a look, never a ping. 14 tests. Recorded checks
+  against reminders, to-dos and the calendar: 11 of 15 first, three of
+  the misses the fixtures' own (a state that had them already; "60" as
+  text), one real ("renew the passport", a to-do, went to reminders: a
+  line in the reminders' description), then 5 of 5; US$0.11, about
+  NZ$0.19. Two extraction fixtures (e3, e6) are left without a recorded
+  answer: asking again would have passed the NZ$0.20 cap.
+
 - **The daily read, practical** (Alex: "very academic, maybe too high
   level"): for a working web developer curious about AI; how-tos, tool
   tips, worked examples, I built X with Y, plain-English news. Claude

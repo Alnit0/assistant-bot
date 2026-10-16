@@ -102,6 +102,44 @@ def on_day(repeat: Repeat, day: date) -> bool:
 WEEKLY = (WEEKDAYS, WEEKENDS, DAYS)
 
 
+# --- every N months: renewals and expiries (tasks/nudges/expiry.py) -------------------------------------------------
+CYCLES = ("yearly", "monthly", "months", "none")
+
+
+def add_months(day: date, months: int, anchor: int | None = None) -> date:
+    """`day` moved on `months` months, on its own date of the month (`anchor`, kept from the first), or
+    that month's last day when it has fewer: 31 Jan monthly is 28 or 29 Feb, then 31 Mar; 29 Feb yearly
+    is 28 Feb, and 29 Feb again in a leap year."""
+    wanted = anchor or day.day
+    month = day.month - 1 + months
+    year, month = day.year + month // 12, month % 12 + 1
+    return date(year, month, min(wanted, calendar.monthrange(year, month)[1]))
+
+
+def cycle_months(word: str | None, every_months: int | None = None) -> int | None:
+    """A cycle as months, from the words extraction gave: yearly 12, monthly 1, months N; none, None."""
+    said = str(word or "").lower()
+    if said == "yearly":
+        return 12
+    if said == "monthly":
+        return 1
+    if said == "months":
+        return max(1, int(every_months or 1))
+    return None
+
+
+def cycle_text(months: int | None) -> str:
+    if months is None:
+        return "once"
+    if months == 12:
+        return "yearly"
+    if months == 1:
+        return "monthly"
+    if months % 12 == 0:
+        return f"every {months // 12} years"
+    return f"every {months} months"
+
+
 def dates(repeat: Repeat, start: date, count: int) -> list[date]:
     """Up to `count` days it comes round on from `start` (itself included), its end and its
     number of times kept: the times are counted from `first`, so ones before `start` count."""
