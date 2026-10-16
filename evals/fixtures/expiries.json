@@ -370,7 +370,17 @@
         "name": "rego",
         "date": "14 Nov",
         "cycle": "yearly"
-      }
+      },
+      "recorded": [
+        "expiry_add",
+        {
+          "name": "rego",
+          "date": "14 Nov",
+          "cycle": "yearly",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
     },
     {
       "golden": "e4",
@@ -416,7 +426,18 @@
         "before": [
           "60"
         ]
-      }
+      },
+      "recorded": [
+        "expiry_change",
+        {
+          "expiry": "Passport",
+          "before": [
+            "60"
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
     }
   ]
 }

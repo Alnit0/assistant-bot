@@ -10,7 +10,7 @@ from core.errors import UserError
 from core.clock import real_now
 from core.users import User
 from tasks.base import ANY, ButtonNote, Keyword, Reaction, ReplyAction, Task
-from tasks.bugs import capture, filing, listing, plain, posts, rules, store, system
+from tasks.bugs import capture, filing, listing, plain, posts, rules, store, system, watch
 from tasks.bugs.filing import file_report as _file
 from tasks.bugs.plain import ACTIONS, close_said, list_said, reopen_said, report_said  # noqa: F401  (the plain-words code is plain.py)
 
@@ -219,6 +219,11 @@ class BugsTask(Task):
     async def startup(self, client) -> None:
         await capture.git_commit()
         await posts.ensure_tags()
+        # A fix marked shipped from the command line shows on live within a minute (tasks/bugs/watch.py)
+        global _watching
+        if _watching is None or _watching.done():
+            _watching = asyncio.create_task(watch.watching(), name="bugs changed outside the bot")
 
 
+_watching: asyncio.Task | None = None
 task = BugsTask()

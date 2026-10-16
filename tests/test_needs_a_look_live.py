@@ -132,3 +132,53 @@ def test_a_b_bug_is_never_filed_outside_live_s_folder(monkeypatch):
     monkeypatch.setattr(config, "LIVE_FOLDER", False)
     with pytest.raises(UserError, match="B bugs are filed on live only"):
         run(posts.create_post(1, SimpleNamespace()))
+
+
+# --- a fix marked shipped from the command line shows within a minute (17 Oct) --------------------------------------------
+def test_a_change_made_outside_the_bot_is_seen_at_the_next_look_and_redraws_needs_a_look(make_db, owner, monkeypatch):
+    from core import database
+    from tasks.bugs import listing, store, watch
+
+    make_db({"bugs": store.MIGRATIONS})
+    told = []
+    monkeypatch.setattr(listing, "changed", lambda user_id: told.append(user_id))
+    conn = database.connect()
+    try:
+        conn.execute(
+            "INSERT INTO bugs_items (user_id, status, summary, source, channel_id, target_message_id, git_commit, report, created_at)"
+            " VALUES (?, 'open', 'made up', 'test', 1, 2, 'abc', '{}', '2026-10-16T10:00:00+00:00')", (owner.id,),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    seen = run(watch.look(None))
+    assert told == [], "the first look only learns where things stand"
+    assert run(watch.look(seen)) == seen and told == [], "no change: nothing told"
+    conn = database.connect()
+    try:
+        # What python -m tasks.bugs.cli shipped does, in another process
+        conn.execute("UPDATE bugs_items SET shipped_at = '2026-10-17T01:00:00+00:00', closes_on = '2026-10-20'")
+        conn.commit()
+    finally:
+        conn.close()
+    run(watch.look(seen))
+    assert told == [owner.id], "the owner's bugs list and Needs a look are told, once"
+    assert watch.EVERY == 60.0
+
+
+def test_which_users_changed_between_two_looks():
+    from tasks.bugs import watch
+
+    before = ((1, 7, "open", None, None), (2, 8, "open", None, None))
+    assert watch.users_changed(before, before) == []
+    assert watch.users_changed(before, ((1, 7, "open", "x", "y"), (2, 8, "open", None, None))) == [7]
+    assert watch.users_changed(before, ((1, 7, "open", None, None),)) == [8], "a bug gone"
+    assert watch.users_changed(before, (*before, (3, 7, "open", None, None), (4, None, "open", None, None))) == [7]
+
+
+def test_the_bot_starts_looking_for_bug_changes_when_it_starts():
+    import inspect
+
+    from tasks import bugs
+
+    assert "watch.watching()" in inspect.getsource(bugs.BugsTask.startup)

@@ -3,27 +3,23 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Idle**, last batch was overnight 16 Oct: calendars from several
-sources and adding to the Bot calendar, a day in the hub with
-everything on, 41 golden conversations, a health check. All on live.
+**Batch:** overnight 17 Oct, unattended (Alex asleep), started 11:51 pm.
+Cap NZ$1.00 bot spend, NZ$0.40 a run, NZ$0.80 for the inbox's checks.
 
-**Live:** `b668745` since 16 Oct, 11:22 am (no errors): bugs closing by
-themselves, the self-test's retry (dev-bot self-test 150 of 150), and
-the calendar from Google only (the iCal link gone from live's `.env`).
-**Next:** the 3:30 am nightly on 17 Oct, checked and reported
-**Live:** `fe8252f` since 16 Oct, 3:29 pm: the whole queue, and Needs
-a look as it is now (a ship resets the nightly's count, pings go when
-dealt with, info small, redrawn on every change), B bugs in live's
-folder only. The briefing checked after it: B2 fix ready, B5 closing Mon.
-**Next:** the 3:30 am nightly on 17 Oct, checked and reported
-**Live:** `75c0130` since 16 Oct, 1:59 pm: the whole queue (ping once,
-bug auto-close, the self-test's retry, the calendar's range fix, make,
-put and book, repeating events, Google only, pills exact times, N for
-the nightly, the daily read retuned, expiries in reminders). One ship
-before it stopped live for a minute (1:31 pm, a migration out of
-order): put back, fixed, guarded in the update script.
-**Next:** the 3:30 am nightly on 17 Oct, checked and reported; B5
-closes by itself on Mon 19 Oct unless reopened
+1. **Smart inbox** (core): several things in one message, or a photo,
+   screenshot, PDF or CSV, sorted onto one card (Save, Cancel, fix a
+   line in words, Undo); preview "Design · Smart inbox". In progress
+2. A fix shipped from the command line shows on live within a minute:
+   done (`tasks/bugs/watch.py`, a look a minute)
+3. Record expiry phrasings e3 and e6: done, both right (US$0.02)
+4. `selftest.day` with expiries, Bot calendar series, Needs a look
+   changes and the smart inbox; reply "Everything on, 17 Oct"
+
+**Then:** full test run, dev-bot self-test (not 3:15 to 4:30 am), one
+ship by 5:20 am if ready by 5:00 am. Check the 3:30 am nightly.
+
+**Live:** `fe8252f` since 16 Oct, 3:29 pm: Needs a look as it is now,
+B bugs in live's folder only. Briefing: B2 fix ready, B5 closing Mon.
 
 **Drafts and worktrees:** `docs/drafts/gym-onboarding.md`; three old
 worktrees, all merged
