@@ -260,6 +260,8 @@ BIRTHDAYS_ENABLED = flag(os.getenv("BIRTHDAYS_ENABLED"), False)
 # to a Google Sheet (GYM_SHEET_ID, shared with the service account): off until Alex shares one
 GYM_ENABLED = flag(os.getenv("GYM_ENABLED"), False)
 GYM_SHEET = flag(os.getenv("GYM_SHEET"), False)
+# The gym's weight tracker (tasks/gym/weight.py): weigh-ins in words, a smoothed trend. Off unless set
+GYM_WEIGHT = flag(os.getenv("GYM_WEIGHT"), False)
 GYM_SHEET_ID = (os.getenv("GYM_SHEET_ID") or "").strip()
 # The daily read (tasks/reading): off, not loaded
 READING_ENABLED = flag(os.getenv("READING_ENABLED"), False)

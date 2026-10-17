@@ -100,8 +100,14 @@ async def keep(user_id: int, channel_id: int | None, on: date, words: str, said_
 
 
 async def write(request: Request, data: dict, guessed: frozenset):
-    """A diary entry: the words as sent, added to the day's entry; the mood if the words gave one."""
-    return Shown(await keep(request.user.id, request.channel_id, today(), request.text, data.get("mood")))
+    """A diary entry: the words as sent, added to the day's entry; the mood if the words gave one; a mention of
+    pain (and where) for the gym's pain tracker, when the gym is on: never the words."""
+    said = await keep(request.user.id, request.channel_id, today(), request.text, data.get("mood"))
+    if data.get("pain") and config.GYM_ENABLED:
+        from tasks.gym import pain
+
+        await pain.from_diary(request.user.id, today(), str(data.get("body_part") or ""))
+    return Shown(said)
 
 
 def write_button(day: date, label: str = WRITE_LABEL) -> Button:
@@ -343,6 +349,12 @@ async def state(request: Request) -> State:
     return State("The user's diary (its words are never given here)", (f"today: {'written' if there else 'not written yet'}", f"streak: {await _streak(request.user.id, on)} days"), "nothing yet")
 
 
+_PAIN = (
+    Field("pain", "True when the words speak of pain or discomfort in the body (\"my shoulder's sore\").", BOOLEAN),
+    Field("body_part", "With pain: where, in a word or two (\"shoulder\")."),
+)
+
+
 def actions() -> list:
     from core.actions import EACH_DAY, SEE, SET_UP, Action
 
@@ -352,7 +364,7 @@ def actions() -> list:
             "A diary entry: the user's words about their day or how they feel, to keep (\"today was good, finally finished the "
             "essay\", \"add to today's diary: saw Sam\"). The code keeps the words exactly as sent: give only the mood, and only "
             "if the words make it clear. A log: no card.",
-            (mood.field(),) if mood.on() else (), needs_card=False, run=write, undo=lambda request, data: undo(request, {}, frozenset()), purpose=EACH_DAY, say=("today was good",),
+            ((mood.field(),) if mood.on() else ()) + _PAIN, needs_card=False, run=write, undo=lambda request, data: undo(request, {}, frozenset()), purpose=EACH_DAY, say=("today was good",),
         ),
         Action(
             "diary_show",

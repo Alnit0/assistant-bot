@@ -54,6 +54,7 @@ for name, value in {
     "BIRTHDAYS_ENABLED": "",  # off, as it is unless set: the birthdays' tests switch it on
     "GYM_ENABLED": "",  # off, as it is unless set: the gym's tests switch it on
     "GYM_SHEET": "",
+    "GYM_WEIGHT": "",
     "GYM_SHEET_ID": "",
     "READING_ENABLED": "",
     "READING_SOURCE": "",  # the replay's made-up feeds: never in a test unless it sets them

@@ -85,7 +85,7 @@ def test_the_replay_never_starts_in_the_nightly_self_test_s_window():
 
 
 def test_the_replay_turns_on_every_switch_live_has_and_never_a_real_calendar():
-    for name in ("REMINDERS_ENABLED", "BRIEFING_ENABLED", "HUB_TIDY", "QUIET_HOURS_ENABLED", "TODOS_ENABLED", "NUDGES_ENABLED", "HABITS_ENABLED", "TODAY_CARD", "CALENDAR_ENABLED", "WEATHER_ENABLED", "WEEKLY_ALL", "DIARY_ENABLED", "READING_ENABLED", "PLAN_MY_DAY", "BIRTHDAYS_ENABLED", "GYM_ENABLED", "CALENDAR_WRITE"):
+    for name in ("REMINDERS_ENABLED", "BRIEFING_ENABLED", "HUB_TIDY", "QUIET_HOURS_ENABLED", "TODOS_ENABLED", "NUDGES_ENABLED", "HABITS_ENABLED", "TODAY_CARD", "CALENDAR_ENABLED", "WEATHER_ENABLED", "WEEKLY_ALL", "DIARY_ENABLED", "READING_ENABLED", "PLAN_MY_DAY", "BIRTHDAYS_ENABLED", "GYM_ENABLED", "GYM_WEIGHT", "CALENDAR_WRITE"):
         assert replay.SETTINGS[name] == "true", name
     assert "CALENDAR_ICS_URL" not in replay.SETTINGS, "the made-up file is handed over by the launcher, never a link"
     assert not {"GOOGLE_SA_KEY_PATH", "READING_SOURCE", "GOOGLE_CALENDAR_FAKE"} & set(replay.SETTINGS), "no key; the made-up files by the launcher"

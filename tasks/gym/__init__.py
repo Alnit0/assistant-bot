@@ -51,11 +51,16 @@ async def week(user_id: int, monday: date, upto: date):
     """The week's summary: only with a target ("aim for 3 a week"), sessions against it."""
     from core.weekly import Week
 
+    from tasks.gym import insights
+
     target = await database.run(store.db_target, user_id)
-    if not target:
-        return None
+    insight = await insights.week_line(user_id, upto)  # an imbalance, stalls, a lighter week
     count = sum(1 for each in await database.run(store.db_sessions, user_id, monday) if each.day <= upto and each.status != store.OPEN)
-    return Week(f"{count} of {target} sessions", min(count, target), target, "", ANY_TIME)
+    if not target and not insight:
+        return None
+    if target:
+        return Week(f"{count} of {target} sessions", min(count, target), target, insight, ANY_TIME)
+    return Week(f"{count} session{'' if count == 1 else 's'}", None, None, insight, ANY_TIME)
 
 
 async def plan_pieces(user_id: int, day: date) -> list:
@@ -89,6 +94,14 @@ class GymTask(Task):
     def actions(self) -> list:
         return plain.actions()
 
+    def entries(self):
+        found = super().entries()
+        if found and config.GYM_WEIGHT:
+            from tasks.gym import weight
+
+            found.append(weight.entry())  # the weight tracker: an entry of its own, private
+        return found
+
     async def action_state(self, request):
         return await plain.state(request)
 
@@ -115,6 +128,10 @@ class GymTask(Task):
 
     def setup(self, client) -> None:
         session.register()
+        if config.GYM_WEIGHT:
+            from tasks.gym import weight
+
+            weight.register()
 
     async def owns_message(self, message_id):
         return await database.run(store.db_session_of_message, message_id) is not None

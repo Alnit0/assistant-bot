@@ -112,7 +112,25 @@ _TABLES = (
 )
 
 
-MIGRATIONS = [create_tables]
+def add_weights(conn: sqlite3.Connection) -> None:
+    from tasks.gym import weight
+
+    weight.create_tables(conn)
+
+
+def add_muscles(conn: sqlite3.Connection) -> None:
+    from tasks.gym import insights
+
+    insights.create_tables(conn)
+
+
+def add_pain(conn: sqlite3.Connection) -> None:
+    from tasks.gym import pain
+
+    pain.create_tables(conn)
+
+
+MIGRATIONS = [create_tables, add_weights, add_muscles, add_pain]  # appended, never in between
 
 
 def _sets_json(sets) -> str:
@@ -332,23 +350,23 @@ def db_all_sets(conn: sqlite3.Connection, user_id: int, before_session: int | No
 
 def db_add_note(conn: sqlite3.Connection, user_id: int, session_id: int, note: Note) -> int:
     return conn.execute(
-        "INSERT INTO gym_notes (user_id, session_id, exercise, text, pain, target_low, target_high) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (user_id, session_id, note.exercise, note.text, int(note.pain), note.target_low, note.target_high),
+        "INSERT INTO gym_notes (user_id, session_id, exercise, text, pain, target_low, target_high, body_part) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (user_id, session_id, note.exercise, note.text, int(note.pain), note.target_low, note.target_high, (note.body_part or "").strip().lower()[:40]),
     ).lastrowid
 
 
 def db_notes(conn: sqlite3.Connection, session_id: int) -> list[Note]:
-    return [Note(row[0], row[1], bool(row[2]), row[3], row[4]) for row in conn.execute("SELECT exercise, text, pain, target_low, target_high FROM gym_notes WHERE session_id = ? ORDER BY id", (session_id,))]
+    return [Note(row[0], row[1], bool(row[2]), row[3], row[4], row[5]) for row in conn.execute("SELECT exercise, text, pain, target_low, target_high, body_part FROM gym_notes WHERE session_id = ? ORDER BY id", (session_id,))]
 
 
 def db_exercise_notes(conn: sqlite3.Connection, user_id: int, names: list[str]) -> list[tuple[date, Note]]:
     lowered = [each.lower() for each in names]
     marks = ",".join("?" * len(lowered))
     rows = conn.execute(
-        f"SELECT s.day, n.exercise, n.text, n.pain, n.target_low, n.target_high FROM gym_notes n JOIN gym_sessions s ON s.id = n.session_id "
+        f"SELECT s.day, n.exercise, n.text, n.pain, n.target_low, n.target_high, n.body_part FROM gym_notes n JOIN gym_sessions s ON s.id = n.session_id "
         f"WHERE n.user_id = ? AND lower(n.exercise) IN ({marks}) ORDER BY s.day, n.id", (user_id, *lowered),
     ).fetchall()
-    return [(date.fromisoformat(row[0]), Note(row[1], row[2], bool(row[3]), row[4], row[5])) for row in rows]
+    return [(date.fromisoformat(row[0]), Note(row[1], row[2], bool(row[3]), row[4], row[5], row[6] or "")) for row in rows]
 
 
 def db_delete_notes(conn: sqlite3.Connection, ids: list[int]) -> None:

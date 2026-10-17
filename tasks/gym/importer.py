@@ -45,7 +45,8 @@ MEANING_SYSTEM = (
     "type (warm-up or working) or part of the name (\"high foot\" is part of the name). For each purpose, say which "
     "it is: to_failure, near_failure, technique (find groove, form check) or warm_up. For each exercise, its kind: "
     "barbell, dumbbell, machine, cable or bodyweight. For each note, whether it speaks of pain or discomfort (pain), "
-    "whether it says the weight was per hand (dumbbells: per_hand), and any weight in kg it says to go to next "
+    "where the pain is when it does (body_part: shoulder, knee), whether it says the weight was per hand "
+    "(dumbbells: per_hand), and any weight in kg it says to go to next "
     "(\"go up to 40-45kg next week\" -> target_low 40, target_high 45)."
 )
 
@@ -88,7 +89,7 @@ def meaning_tool() -> dict:
             "brackets": item({"meaning": {"type": "string", "enum": ["warm-up", "working", "name"]}}),
             "purposes": item({"category": {"type": "string", "enum": list(rules.PURPOSES)}}),
             "exercises": item({"kind": {"type": "string", "enum": list(rules.KINDS)}}),
-            "notes": item({"pain": {"type": "boolean"}, "per_hand": {"type": "boolean"}, "target_low": {"type": "number"}, "target_high": {"type": "number"}}),
+            "notes": item({"pain": {"type": "boolean"}, "body_part": {"type": "string"}, "per_hand": {"type": "boolean"}, "target_low": {"type": "number"}, "target_high": {"type": "number"}}),
         }, "required": ["brackets", "purposes", "exercises", "notes"]},
     }
 
@@ -163,7 +164,7 @@ def meanings_from(raw, brackets: list[str], purposes: list[str], exercises: list
     read_notes = {}
     for each in raw.get("notes", []) or []:
         if isinstance(each, dict) and isinstance(each.get("index"), int) and 0 <= each["index"] < len(notes):
-            read_notes[notes[each["index"]]] = {key: each.get(key) for key in ("pain", "per_hand", "target_low", "target_high")}
+            read_notes[notes[each["index"]]] = {key: each.get(key) for key in ("pain", "body_part", "per_hand", "target_low", "target_high")}
     return Meanings(pick("brackets", brackets, "meaning", ("warm-up", "working", "name")), pick("purposes", purposes, "category", rules.PURPOSES),
                     pick("exercises", exercises, "kind", rules.KINDS), read_notes)
 
@@ -281,7 +282,7 @@ def read(tables: list[Table], mappings: dict[str, Mapping], meanings: Meanings) 
                         sets.append(DoneSet(exercise_name, set_type, purpose, category, low, high, reps_done, weight_kg, per_hand or said_per_hand, position))
                         position += 1
                 if note:
-                    notes.append(Note(exercise_name, note, bool(read_note.get("pain")), _number(read_note.get("target_low")), _number(read_note.get("target_high"))))
+                    notes.append(Note(exercise_name, note, bool(read_note.get("pain")), _number(read_note.get("target_low")), _number(read_note.get("target_high")), str(read_note.get("body_part") or "") if read_note.get("pain") else ""))
             if not exercises:
                 continue
             last_seen[name.lower()] = (day, exercises) if name.lower() not in last_seen or (day or date.min) >= (last_seen[name.lower()][0] or date.min) else last_seen[name.lower()]

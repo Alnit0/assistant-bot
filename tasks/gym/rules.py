@@ -79,6 +79,7 @@ class Note:
     pain: bool = False  # Claude: it speaks of pain or discomfort
     target_low: float | None = None  # Claude: a weight it says to go to ("go up to 40-45kg next week")
     target_high: float | None = None
+    body_part: str = ""  # Claude: where the pain is, when it speaks of pain ("shoulder")
 
 
 # --- reading values --------------------------------------------------------------------------------------------

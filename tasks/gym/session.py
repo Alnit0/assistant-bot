@@ -130,6 +130,9 @@ async def exercise_box(session: store.Session, exercise: Exercise, logged: list[
             lines.append(design.small(f"why: {why}"))
     if note is not None:
         lines.append(design.small(("⚠️ " if note.pain else "") + f"last note: “{note.text}”"))
+    from tasks.gym import pain
+
+    lines += [design.small(each) for each in pain.pattern(exercise.name, await pain.flags(session.user_id, exercise.name))]
     status = design.QUIET
     row = ()
     if mine:
@@ -260,7 +263,7 @@ async def read_note(exercise: str, text: str) -> Note:
     from tasks.gym import importer
 
     meant = (await importer.ask_meanings([], [], [], [text])).notes.get(text, {})
-    return Note(exercise, text, bool(meant.get("pain")), importer._number(meant.get("target_low")), importer._number(meant.get("target_high")))
+    return Note(exercise, text, bool(meant.get("pain")), importer._number(meant.get("target_low")), importer._number(meant.get("target_high")), str(meant.get("body_part") or "") if meant.get("pain") else "")
 
 
 async def log_sets(session: store.Session, exercise: str, sets: list[DoneSet], note: Note | None, replace_logged: bool = True) -> int:

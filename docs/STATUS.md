@@ -36,6 +36,12 @@ new for 18 Oct: send your gym spreadsheet; say starting a workout.
 3. **Design · Gym** posted; it found a bug, fixed with tests: the real
    API gives a note with no target a target of 0 kg, which became the
    suggestion; 0 is none now.
+4. **The gym's add-ons** (asked overnight, lowest priority): the weight
+   tracker (`GYM_WEIGHT`), training insights, the pain tracker (gym
+   notes and the diary). 10 tests; recorded checks 13 of 15 then 8 of 8
+   after the gym's description named pain and training; the gym's own
+   router 14 of 14 and the diary's fixtures 25 of 25 after it. US$0.14
+   (about NZ$0.24 of NZ$0.40).
 
 ## Decided (2026-10-18, overnight: the gym)
 
@@ -75,6 +81,20 @@ new for 18 Oct: send your gym spreadsheet; say starting a workout.
 - **Nicknames**: Python matches the whole name, part of one, and a
   plural ("laterals"); an initialism ("RDLs") is Claude's to hand over
   as the plan names it, from the state it is given.
+- **Weight is a private entry of the gym** (as birthdays are of
+  reminders): no weight in a log, no attention item, so never on the
+  lock screen or the status line. The trend is exponentially smoothed,
+  each weigh-in moving it a tenth of the way (the Hacker's Diet way).
+- **Muscle groups and swaps are config tables** by exercise name (as
+  Alex asked), with Claude only for a name the table doesn't know, kept
+  so it is asked once. A stall is no gain in the top set's weight, then
+  reps, over 3 sessions against the one before; an imbalance is one
+  side half as much again as the other over 4 weeks.
+- **Pain from the diary**: the diary's own extraction now says when its
+  words speak of pain and where; the gym keeps the day and the body
+  part only, never the words. No medical advice: a count, a swap to try,
+  and from 3 times on one exercise "worth checking with a physio or
+  doctor".
 - **The grid reader is core** (`core/grid.py`): the smart inbox reads
   XLSX with it too, and a gym logbook sent there goes to the gym's own
   import card.

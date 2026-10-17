@@ -1,0 +1,279 @@
+{
+  "router": [
+    {
+      "golden": "ga1",
+      "message": "weighed 82.4 this morning",
+      "tasks": [
+        "weight"
+      ],
+      "note": "the gym's add-ons (18 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "weight"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "ga2",
+      "message": "82.4kg today",
+      "tasks": [
+        "weight"
+      ],
+      "note": "the gym's add-ons (18 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "weight"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "ga3",
+      "message": "what's my weight trend?",
+      "tasks": [
+        "weight"
+      ],
+      "note": "the gym's add-ons (18 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "weight"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "ga4",
+      "message": "aim for 80",
+      "tasks": [
+        "weight"
+      ],
+      "note": "the gym's add-ons (18 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "weight"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "ga5",
+      "message": "how's my training going?",
+      "tasks": [
+        "gym"
+      ],
+      "note": "the gym's add-ons (18 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "gym"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "ga6",
+      "message": "any pain?",
+      "tasks": [
+        "gym"
+      ],
+      "note": "the gym's add-ons (18 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "gym"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "ga7",
+      "message": "pain history",
+      "tasks": [
+        "gym"
+      ],
+      "note": "the gym's add-ons (18 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "gym"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "ga8",
+      "message": "bench 82.5 for 5",
+      "tasks": [
+        "gym"
+      ],
+      "note": "the gym's add-ons (18 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "gym"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "several": false,
+        "chat_part": ""
+      }
+    }
+  ],
+  "extraction": [
+    {
+      "golden": "ga1",
+      "task": "weight",
+      "message": "weighed 82.4 this morning",
+      "state": "",
+      "action": "weight_log",
+      "data": {
+        "kg": 82.4
+      },
+      "recorded": [
+        "weight_log",
+        {
+          "kg": 82.4,
+          "time": "8:00 am",
+          "guessed": [
+            "time"
+          ],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "ga2",
+      "task": "weight",
+      "message": "82.4kg today",
+      "state": "",
+      "action": "weight_log",
+      "data": {
+        "kg": 82.4
+      },
+      "recorded": [
+        "weight_log",
+        {
+          "kg": 82.4,
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "ga3",
+      "task": "weight",
+      "message": "what's my weight trend?",
+      "state": "",
+      "action": "weight_trend",
+      "data": {},
+      "recorded": [
+        "weight_trend",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "ga4",
+      "task": "weight",
+      "message": "aim for 80",
+      "state": "",
+      "action": "weight_target",
+      "data": {
+        "kg": 80
+      },
+      "recorded": [
+        "weight_target",
+        {
+          "kg": 80,
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "ga5",
+      "task": "gym",
+      "message": "how's my training going?",
+      "state": "The user's gym plan (workouts in rotation order, each with its exercises):\n- next in turn: Lower 1\n- Upper 1: Bench press, Incline press, Lat pulldown - wide grip, Lateral raise\n- Lower 1: Squat, Leg press (high foot), Romanian deadlift\n- Upper 2: Overhead press, Seated row\n- Lower 2: Deadlift, Leg curl",
+      "action": "gym_ask",
+      "data": {
+        "question": "training"
+      },
+      "recorded": [
+        "gym_ask",
+        {
+          "question": "training",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "ga6",
+      "task": "gym",
+      "message": "any pain?",
+      "state": "The user's gym plan (workouts in rotation order, each with its exercises):\n- next in turn: Lower 1\n- Upper 1: Bench press, Incline press, Lat pulldown - wide grip, Lateral raise\n- Lower 1: Squat, Leg press (high foot), Romanian deadlift\n- Upper 2: Overhead press, Seated row\n- Lower 2: Deadlift, Leg curl",
+      "action": "gym_ask",
+      "data": {
+        "question": "pain"
+      },
+      "recorded": [
+        "gym_ask",
+        {
+          "question": "pain",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "ga9",
+      "task": "diary",
+      "message": "rough day, and my shoulder's sore again",
+      "state": "The user's diary (its words are never given here):\n- today: not written yet\n- streak: 3 days",
+      "action": "diary_write",
+      "data": {
+        "pain": true,
+        "body_part": "shoulder"
+      },
+      "recorded": [
+        "diary_write",
+        {
+          "mood": "bad",
+          "pain": true,
+          "body_part": "shoulder",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    }
+  ]
+}

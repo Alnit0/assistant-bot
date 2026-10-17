@@ -353,7 +353,8 @@ def test_the_briefing_line_the_weekly_target_and_the_week_view(world):
     imported(world)
     line = run(gym.summary(world.owner.id, world.today)).overview
     assert line.startswith("next: Lower 1 · last session ") and "days ago" in line
-    assert run(gym.week(world.owner.id, world.today - timedelta(days=world.today.weekday()), world.today)) is None, "no target: no line"
+    quiet = run(gym.week(world.owner.id, world.today - timedelta(days=world.today.weekday()), world.today))
+    assert (quiet.line, quiet.small) == ("0 sessions", "pushing 8 sets against pulling 3 over 4 weeks"), "no target: only the training insight"
     target = run(plain.target_card(world.request(), {"per_week": 3}, frozenset()))
     run(plain.target_save(world.request(), target.data))
     started = run(session.start(world.owner.id))

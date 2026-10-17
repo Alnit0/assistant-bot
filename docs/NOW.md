@@ -8,11 +8,11 @@ task (`tasks/gym`, `GYM_ENABLED`), with Alex's plain-words logging asked
 mid-batch. Cap NZ$1.00, any one run under NZ$0.40. Spent: US$0.27 (NZ$0.46). Ship by
 5:20 am (not 3:15 to 4:30 am); not ready by 5:00 am: push, list here.
 
-1. to 5. built and committed: import, the rotation and card in #gym,
-   the Log form, Finish, words, questions, the briefing's line, the
-   week view, the target, the sheet mirror (off)
-6. Shipped 12:35 am on `55e3695`, GYM_ENABLED=true; checked
-7. The gym's add-ons (weight, insights, pain): in progress
+1. to 6. The gym: built, checked, Design · Gym posted; shipped 12:35 am
+   on `55e3695` with GYM_ENABLED=true, checked
+7. The add-ons (weight, insights, pain): built, checked, committed
+8. The bedtime nudge: in progress; then a self-test and one ship before
+   3:15 am with GYM_WEIGHT and BEDTIME_ENABLED
 
 **Queued after the ship, lowest first last** (ship by 4:45 am if tested,
 else push and list here): the gym's weight tracker, training insights

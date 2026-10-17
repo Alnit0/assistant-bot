@@ -13,7 +13,7 @@
           "gym"
         ],
         "confidence": "high",
-        "reports_doing": false,
+        "reports_doing": true,
         "several": false,
         "chat_part": ""
       }

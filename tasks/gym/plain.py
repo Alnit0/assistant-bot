@@ -29,7 +29,8 @@ ONLY_FOR = (
     "to Upper 1\"), logging sets or a whole session in words, during or after (\"bench 20 for 15, 40 for 9, 40 for "
     "8\", \"did Upper 1 this morning: …\"), finishing (\"finish the workout\"), questions about their lifts "
     "(\"what did I do on bench last time?\", \"my notes on RDLs\", \"best leg press\", \"how's my bench going?\", "
-    "\"sessions this month\"), a weekly target (\"aim for 3 a week\") and planning a session at a time (\"gym "
+    "\"sessions this month\", \"how's my training going?\"), pain or discomfort noted in workouts or the diary (\"any pain?\", "
+    "\"pain history\"), a weekly target (\"aim for 3 a week\") and planning a session at a time (\"gym "
     "tomorrow 6pm\"). Not general fitness questions (chat), not body weight or food, and not a reminder."
 )
 EXAMPLES = ("starting a workout", "bench 20 for 15, 40 for 9, 40 for 8", "how's my bench going?")
@@ -322,7 +323,7 @@ def _sets_of(items: list[dict], exercises: list[Exercise]) -> tuple[dict[str, li
         if found is None and name not in extra:
             extra.append(name)
         if item.get("note"):
-            notes.append(Note(name, str(item["note"]).strip(), bool(item.get("pain"))))
+            notes.append(Note(name, str(item["note"]).strip(), bool(item.get("pain")), body_part=str(item.get("body_part") or "") if item.get("pain") else ""))
         if item.get("skipped"):
             skipped.append(name)
             continue
@@ -457,7 +458,7 @@ async def describe_check(request: Request, data: dict) -> str:
 
 
 # --- questions ------------------------------------------------------------------------------------------------------------------
-QUESTIONS = ("last", "notes", "best", "trend", "sessions")
+QUESTIONS = ("last", "notes", "best", "trend", "sessions", "training", "pain")
 
 
 async def _named(request: Request, said: str) -> list[str]:
@@ -471,6 +472,14 @@ async def _named(request: Request, said: str) -> list[str]:
 async def ask(request: Request, data: dict, guessed: frozenset) -> str:
     what = str(data.get("question") or "last")
     today = days.today()
+    if what == "training":
+        from tasks.gym import insights
+
+        return await insights.answer(request.user.id, today)
+    if what == "pain":
+        from tasks.gym import pain
+
+        return pain.history_text(await database.run(pain.db_history, request.user.id), today)
     if what == "sessions":
         span = str(data.get("span") or "month")
         since = today - timedelta(days=today.weekday()) if span == "week" else today.replace(day=1)
@@ -600,6 +609,7 @@ def actions() -> list:
         Field("skipped", "True when the exercise was skipped (\"skipped laterals\").", BOOLEAN),
         Field("note", "What the user said about this exercise, word for word (\"shoulder felt off\", \"last set was a grind\"), on the exercise it was said with (\"bench 40 for 9, knee was sore\" is bench's note), on one item only. Leave out when nothing."),
         Field("pain", "True when the note speaks of pain or discomfort (sore, hurt, felt off, a joint).", BOOLEAN),
+        Field("body_part", "With pain: where, in a word or two (\"shoulder\", \"left knee\")."),
     )
     return [
         Action("gym_import", "Import the gym plan or logbook from a spreadsheet sent with the message or rows pasted in it (\"here's my gym logbook\"). On the open import card, say what a column is (\"the Load column is the weight\" -> columns).",
@@ -622,7 +632,7 @@ def actions() -> list:
                 Field("corrections", "On the open card only: a set put right.", ITEMS, item_fields=(Field("exercise", _EXERCISE, required=True), Field("set", "Which set of it, counting from 1.", INTEGER, required=True), Field("reps", "The reps it should be.", INTEGER), Field("weight", "The weight it should be, in kg.", NUMBER)))),
                prepare=describe_card, apply=describe_save, verify=describe_check, purpose=EACH_DAY, say=("bench 20 for 15, 40 for 9, 40 for 8",)),
         Action("gym_finish", "Finish the workout that is open (\"finish the workout\", \"done at the gym\").", (), needs_card=False, run=finish, purpose=EACH_DAY, say=("finish the workout",)),
-        Action("gym_ask", "A question about the user's lifts: last time (\"what did I do on bench last time?\" -> last), notes (\"my notes on RDLs\"), best (\"best leg press\"), trend (\"how's my bench going?\"), sessions (\"sessions this month\" -> span month).",
+        Action("gym_ask", "A question about the user's lifts: last time (\"what did I do on bench last time?\" -> last), notes (\"my notes on RDLs\"), best (\"best leg press\"), trend (\"how's my bench going?\"), sessions (\"sessions this month\" -> span month), training (\"how's my training going?\"), pain (\"any pain?\", \"pain history\").",
                (Field("question", "last, notes, best, trend or sessions.", choices=QUESTIONS, required=True), Field("exercise", _EXERCISE), Field("span", "week or month, for sessions.", choices=("week", "month"))),
                needs_card=False, run=ask, purpose=SEE, say=("how's my bench going?",)),
         Action("gym_plan_show", "Show the gym plan (\"my gym plan\").", (), needs_card=False, run=show_plan, purpose=SEE, say=("my gym plan",)),
