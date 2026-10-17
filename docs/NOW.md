@@ -11,9 +11,14 @@ mid-batch. Cap NZ$1.00, any one run under NZ$0.40. Spent: US$0.27 (NZ$0.46). Shi
 1. to 5. built and committed: import, the rotation and card in #gym,
    the Log form, Finish, words, questions, the briefing's line, the
    week view, the target, the sheet mirror (off)
-6. Recorded checks done (29 of 29; import 3 of 3; router 72 of 73, the
-   miss not the gym's); Design · Gym posted; next: the self-test, then
-   ship with GYM_ENABLED=true before 3:15 am
+6. Checks done; Design · Gym posted; self-test 149 of 150, none failed;
+   shipping now with GYM_ENABLED=true
+
+**Queued after the ship, lowest first last** (ship by 4:45 am if tested,
+else push and list here): the gym's weight tracker, training insights
+and pain tracker; then the bedtime nudge. **After the batch:** the
+settle-in week (a freeze to Sun 25 Oct, #guide, the setup checklist,
+the Sunday feature-use report), at the next restart.
 
 **Earlier tonight:** shipped `e9997d1` at 11:10 pm (prompt caching draft
 in `docs/drafts/prompt-caching.md`, nothing of it built).
