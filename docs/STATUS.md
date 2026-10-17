@@ -8,7 +8,15 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-17 (evening)
 
-## For the next restart (17 Oct, late; committed, not on live)
+## Shipped (17 Oct, 11:10 pm)
+
+Live on `e9997d1` (from `e127088`), one restart, no pill reminder before
+the 6 am checklist. Checked: live's own account, no errors, #commands
+unchanged, the hub as it was (nothing posted by the start), all 24
+bookings there (12:01 am Week view, 3:00 am backup, 3:30 am nightly, the
+6 am routine, 9 am renewals and birthdays, 9 pm diary ask).
+
+## Shipped with it (17 Oct, late)
 
 - **A day and no time is a to-do** (Alex's rule): "I need to call the
   bank on Friday" is a to-do for Friday, "call the bank Friday at 10" a
