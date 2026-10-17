@@ -48,11 +48,12 @@ def test_every_inbox_conversation_is_recorded_and_judged_right():
         assert problem(conversation, route, found, [each[2] for each in recorded["extract"]]) == "", conversation["golden"]
 
 
-def test_i1_four_things_one_card_and_the_reminder_with_no_time_asks_on_it(inbox):
+def test_i1_four_things_one_card_and_renew_rego_by_friday_is_a_to_do(inbox):
     card = replay(inbox, "i1")
     lines = first_lines(card)
     assert lines[0] == "📥 Inbox · 4 things"
-    assert any(line.startswith("⏰ Reminders · **Renew rego**") for line in lines), lines
+    # Sorted as a reminder with a day and no time: a to-do for that day (Alex's rule, 17 Oct)
+    assert any(line.startswith("📝 To-dos · **Renew rego** · Fri") for line in lines), lines
     assert any(line.startswith("⏰ Reminders · **Call Mum**") and "2:00 pm" in line for line in lines), lines
     assert any(line.startswith("📝 To-dos · **Need milk**") or line.startswith("📝 To-dos · **Milk**") for line in lines), lines
     assert any(line.startswith("📅 Calendar · **Dentist**") for line in lines), lines

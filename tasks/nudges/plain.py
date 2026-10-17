@@ -230,11 +230,32 @@ def _next_line(nudge: Nudge, now: datetime) -> str:
 # ---------------------------------------------------------------------------
 # Add, change, remove: cards
 # ---------------------------------------------------------------------------
+def to_do_instead(request: Request, item: dict) -> dict | None:
+    """Alex's rule (17 Oct): a thing to do on a day with no time ("I need to call the bank on Friday") is a
+    to-do for that day; with a time it is a reminder. Read from the values handed over (a day, no time, no "in
+    20 minutes", no repeat), never from the words; asked to be reminded in so many words ("remind me …", the
+    task's own lead) it stays a reminder, whose card asks when. The to-do's data, or None."""
+    from core import actions, routing
+
+    if request.previous or item.get("time") or item.get("in_minutes") or not item.get("day"):
+        return None
+    if str(item.get("repeat") or ONCE) != ONCE or actions.entry("todos") is None:
+        return None
+    if routing.led_by(request.text, [entry for entry in actions.catalogue() if entry.name == TASK]) is not None:
+        return None
+    return {"todos": [{"text": str(item["text"]).strip(), "day": str(item["day"])}]}
+
+
 async def add_card(request: Request, data: dict, guessed: frozenset) -> Proposal:
+    from core.actions import HandOff
+
     now = clock.now()
     item = {**(request.previous or {}).get("said", {}), **{key: value for key, value in data.items() if value not in (None, "", [])}}
     if not str(item.get("text") or "").strip():
         raise UserError("What should I remind you of?")
+    instead = to_do_instead(request, item)
+    if instead is not None:
+        raise HandOff("todos", "todo_add", instead, "a day and no time: a to-do for that day")
     held, warnings, question, mine = _read(item, now)
     if question is not None:
         words = str(item.get("text")).strip()

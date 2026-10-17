@@ -56,8 +56,6 @@ the full self-test run.
   moved by the existing rules, and the conversation tidy (10 minutes after an exchange; What's new and restart
   notes gone by noon). Gathered through the contract (`Entry.plan`, the Today lines), with the done line's
   names and times from each task.
-- **x5, "I need to call the bank on Friday"** (17 Oct): reminders, not to-dos, every time, with or without the
-  new tasks. A reminder card asks the time, so nothing is saved unseen; which it should be is Alex's to say.
 - **The week view's past days** (17 Oct): the calendar's copy keeps yesterday to two months ahead, so this
   week's Monday seen on a Thursday has no events. Keeping a week back would fill it.
 - **Pills in a plan for today** are the doses still to take; the week view's count for today shrinks as doses

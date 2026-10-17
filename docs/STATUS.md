@@ -8,6 +8,19 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-17 (evening)
 
+## For the next restart (17 Oct, late; committed, not on live)
+
+- **A day and no time is a to-do** (Alex's rule): "I need to call the
+  bank on Friday" is a to-do for Friday, "call the bank Friday at 10" a
+  reminder. In code after extraction: reminders' `prepare` hands the
+  request to the to-dos' add (`actions.HandOff`, core shows that task's
+  card; the smart inbox too). Golden tests x45, x46 and "remind me …";
+  the inbox's i1 (renew rego by Friday) is a to-do now. Recorded checks
+  x5, x45, x46: 6 of 6, US$0.02 (about NZ$0.04).
+- **The dev bot's own status line** is its last self-test and this
+  month's self-test spend ("✅ 149/150 · NZ$3.64 of NZ$3.50", the clock
+  after it when moved); live's line never shows any of it.
+
 ## Shipped (17 Oct, 10:07 pm)
 
 Live on `e127088` with `PLAN_MY_DAY`, `BIRTHDAYS_ENABLED`, `WEEK_VIEW`
@@ -135,11 +148,15 @@ recorded answers. Batch spend US$0.27 (about NZ$0.46).
   they are Alex asking. Every surface he does not ask for shows none.
 - **The ask without moods** (`DIARY_MOOD` off) is the same question
   with Write alone.
-- **x5, "I need to call the bank on Friday"**, goes to reminders, not
-  to-dos, three times of three, with the new tasks on and with them off:
-  it is not tonight's, and a reminder's card asks for the time, so
-  nothing is saved unseen. Left as a known miss (question for Alex: a
-  plan for a day with no time, to-do or reminder?).
+- **x5, "I need to call the bank on Friday"**: Alex's answer (17 Oct,
+  late) is a to-do for that day; with a time, a reminder. Decided: the
+  router may keep picking reminders (it does, every time), and the rule
+  is the reminders' own code after extraction, read from the values (a
+  day, no time, no "in 20 minutes", no repeat), never from the words.
+  Said as "remind me …" (the reminders' own lead), it stays a reminder
+  whose card asks the time. The hand-off is core's (`actions.HandOff`),
+  so any task may hand a request to another this way; the router's
+  fixture for x5 now expects reminders, the card a to-do.
 - **The week view reads what a plan reads** (`Entry.plan`): one
   contract for both. A `Piece` that comes every day says so (`fold`:
   doses, routines) and is counted, never listed. To-dos are not in it.

@@ -32,7 +32,8 @@ log = logging.getLogger("assistant")
 #   nothing                                  (blank)
 # Other bots, other lines:
 #   the dev bot during a self-test           🧪 41/103 · 6m   (· ❌2 once steps fail)
-#   the dev bot otherwise                    🧪 DEV database · clock +13h
+#   the dev bot otherwise                    ✅ 149/150 · NZ$3.64 of NZ$3.50 · clock +13h
+#                                            (its last self-test and this month's self-test spend; 17 Oct)
 #   a self-test on live's account (no dev bot)   🧪 Self-test running · back about 4:15 pm
 # Dev mode on live is one of the things that need me (a level 1 item of its
 # own, core/health.py): it is no longer a mark in front of the line.
@@ -96,7 +97,23 @@ def selftest_line(done: int, total: int, minutes_left: int, failed: int = 0) -> 
     return f"{SELFTEST_ICON} {' · '.join(pieces)}"
 
 
-def status_line(dev: bool, ahead: timedelta, top: str = "", selftest_back: str = "", progress: str = "") -> str:
+def dev_line(row: dict | None, spent: float, limit: float) -> str:
+    """The dev bot's own line when no self-test is running: its last run's result and this month's spend
+    ("✅ 149/150 · NZ$3.64 of NZ$3.50", ❌ when a step failed). Live's line never has any of it."""
+    from core import money
+
+    spend = f"{money.shown(spent)} of {money.shown(limit)}"
+    if row is None:
+        return f"{SELFTEST_ICON} no self-test yet · {spend}"
+    try:
+        steps, passed, failed = int(row.get("steps") or 0), int(row.get("passed") or 0), int(row.get("failed") or 0)
+    except ValueError:
+        return f"{SELFTEST_ICON} DEV database · {spend}"
+    mark = FAILED_MARK if failed or row.get("note") else "✅"
+    return f"{mark} {passed}/{steps} · {spend}"
+
+
+def status_line(dev: bool, ahead: timedelta, top: str = "", selftest_back: str = "", progress: str = "", dev_said: str = "") -> str:
     """The status line. `top` is the attention model's top item in its short
     form (live's line; "" is blank). `progress` is a self-test's own line on
     the dev bot. `selftest_back` is when live is expected back, in a
@@ -108,7 +125,7 @@ def status_line(dev: bool, ahead: timedelta, top: str = "", selftest_back: str =
         return progress[:MAX_STATUS]
     if dev:
         moved = f" · clock +{format_duration(ahead.total_seconds())}" if ahead.total_seconds() >= 1 else ""
-        line = f"{SELFTEST_ICON} DEV database{moved}"
+        line = f"{dev_said or SELFTEST_ICON + ' DEV database'}{moved}"
     else:
         line = top
     return line[:MAX_STATUS]
@@ -162,7 +179,19 @@ async def current_line(items: list | None = None, now: datetime | None = None) -
     items = await _items(now) if items is None else items
     # Only Alex's own things: dev mode, the self-test and the nightly are never on it (17 Oct)
     top = attention.status_line(attention.top_mine(items, now))
-    return status_line(DEV_DATABASE, clock.offset(), top, SELFTEST_BACK, _progress)
+    return status_line(DEV_DATABASE, clock.offset(), top, SELFTEST_BACK, _progress, _dev_said() if DEV_DATABASE else "")
+
+
+def _dev_said() -> str:
+    """The dev bot's line, read from the self-test's own files (data/selftest): never live's."""
+    from core import health
+
+    try:
+        folder = config.DATA_DIR / health.SELFTEST_DIR
+        return dev_line(health.last_run(folder), *health.selftest_spend())
+    except Exception:
+        log.exception("The dev bot's status line could not read the self-test's files")
+        return ""
 
 
 def _wait_for(when: datetime | None, now: datetime) -> None:

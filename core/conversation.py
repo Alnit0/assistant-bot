@@ -308,7 +308,17 @@ async def act(
             needs_card = await action.card_if(request, found.data, frozenset(found.guessed))
             trace.note(f"card check: {action.name} " + ("asks first with a card" if needs_card else "acts at once, no card"))
         if needs_card:
-            proposal = await action.prepare(request, found.data, found.guessed)
+            try:
+                proposal = await action.prepare(request, found.data, found.guessed)
+            except actions.HandOff as handoff:
+                # A task's own rule says this is another task's (a day and no time: a to-do, not a reminder)
+                target = actions.handed(handoff)
+                if target is None:
+                    raise UserError("That can't be done here.") from None
+                trace.note(f"handed off: {entry.name}/{action.name} -> {handoff.task}/{handoff.action} ({handoff.why})")
+                entry, action = target
+                turn.tasks.append(entry.name)
+                proposal = await action.prepare(request, handoff.data, frozenset())
             if found.not_included:
                 proposal = replace(proposal, warnings=(*proposal.warnings, not_included(found.not_included)))
             guesses = frozenset(found.guessed) | frozenset(proposal.guessed)

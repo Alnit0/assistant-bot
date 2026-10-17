@@ -72,16 +72,17 @@
       "golden": "x5",
       "message": "I need to call the bank on Friday",
       "tasks": [
-        "todos"
+        "nudges"
       ],
-      "note": "a plan for a day, no time: a to-do",
+      "note": "a plan for a day, no time: the router picks reminders, and the rule after extraction (Alex, 17 Oct) makes it a to-do for that day",
       "recorded": {
         "kind": "task",
         "tasks": [
-          "todos"
+          "nudges"
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -891,6 +892,42 @@
         "reports_doing": true,
         "chat_part": ""
       }
+    },
+    {
+      "golden": "x45",
+      "message": "I need to call the bank on Friday",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "a day and no time: a to-do after extraction (17 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x46",
+      "message": "call the bank Friday at 10",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "a day and a time: a reminder (17 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
     }
   ],
   "extraction": [
@@ -1334,6 +1371,49 @@
         {
           "part": "next",
           "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "x45",
+      "task": "nudges",
+      "message": "I need to call the bank on Friday",
+      "state": "The user's reminders now:\n- Put the bins out (every Mon at 7:00 pm)",
+      "action": "nudge_add",
+      "data": {
+        "day": "Friday"
+      },
+      "recorded": [
+        "nudge_add",
+        {
+          "text": "call the bank",
+          "day": "Friday",
+          "guessed": [
+            "time"
+          ],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "x46",
+      "task": "nudges",
+      "message": "call the bank Friday at 10",
+      "state": "The user's reminders now:\n- Put the bins out (every Mon at 7:00 pm)",
+      "action": "nudge_add",
+      "data": {
+        "day": "Friday"
+      },
+      "recorded": [
+        "nudge_add",
+        {
+          "text": "call the bank",
+          "day": "Friday",
+          "time": "10:00",
+          "guessed": [
+            "time"
+          ],
           "not_included": []
         }
       ]

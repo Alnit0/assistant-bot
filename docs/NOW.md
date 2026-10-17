@@ -9,6 +9,8 @@ my day, birthdays, the diary's Write, the status line, the week view in
 10:07 pm on `e127088`. Spend US$0.27 (about NZ$0.46) of NZ$0.60.
 
 **Nightly 18 Oct, 3:30 am:** to check (the first after the ship).
+**For the next restart** (committed, pushed, not on live): a day and no
+time is a to-do (Alex's rule, x45/x46); the dev bot's own status line.
 
 **Sundays:** run `/suggest` (the brainstorm with the wishlist).
 **Nightly 17 Oct, 3:30 am:** 149 of 150 on `98697d4`, none failed.

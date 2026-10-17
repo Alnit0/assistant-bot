@@ -198,6 +198,23 @@ class Proposal:
 ALSO = "_also"  # in a card's kept data: its `also` choices, for the press; never applied
 
 
+class HandOff(Exception):
+    """Raised by a task's `prepare` when, by a rule of its own read from the values extraction handed over,
+    the request is another task's action: core shows that task's card instead ("call the bank on Friday", a day
+    and no time, is a to-do: Alex, 17 Oct). `data` is that action's data, as its extraction would give it."""
+
+    def __init__(self, task: str, action: str, data: dict, why: str = ""):
+        super().__init__(why or f"handed to {task}/{action}")
+        self.task, self.action, self.data, self.why = task, action, data, why
+
+
+def handed(handoff: "HandOff") -> "tuple[Entry, Action] | None":
+    """The entry and action a hand-off names, when that task is loaded; None otherwise."""
+    entry = _entries.get(handoff.task)
+    action = entry.action(handoff.action) if entry is not None else None
+    return (entry, action) if action is not None and action.prepare is not None else None
+
+
 @dataclass(frozen=True)
 class Summary:
     """A task in a few lines, for whatever shows summaries (the briefing): what

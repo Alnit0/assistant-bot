@@ -287,3 +287,18 @@ def test_a_status_discord_refuses_never_raises(server, db, dev_off, monkeypatch)
 
     monkeypatch.setattr(discord_utils.client, "change_presence", broken)
     assert run(identity.refresh()) is False
+
+
+def test_the_dev_bot_s_own_line_is_its_last_self_test_and_the_month_s_spend_and_live_s_never_is(monkeypatch):
+    from datetime import timedelta
+
+    from core import config, identity
+
+    monkeypatch.setattr(config, "USD_TO_NZD", 1.0)
+    row = {"steps": "150", "passed": "149", "failed": "0", "note": ""}
+    assert identity.dev_line(row, 3.64, 3.50) == "✅ 149/150 · NZ$3.64 of NZ$3.50"
+    assert identity.dev_line({**row, "failed": "2", "passed": "147"}, 0.0, 3.5).startswith("❌ 147/150")
+    assert identity.dev_line(None, 0.0, 3.5) == "🧪 no self-test yet · NZ$0.00 of NZ$3.50"
+    said = identity.dev_line(row, 3.64, 3.50)
+    assert identity.status_line(True, timedelta(hours=13), dev_said=said) == said + " · clock +13h"
+    assert identity.status_line(False, timedelta(0), top="💊 due 8pm", dev_said=said) == "💊 due 8pm", "live's line never has it"

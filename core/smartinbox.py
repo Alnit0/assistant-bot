@@ -4,7 +4,7 @@ import io
 import json
 import logging
 import sqlite3
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Awaitable, Callable
 
 from core import actions, cards, confirm, costs, database, design, dms, extraction, llm, messages, routing, scheduler, trace
@@ -290,7 +290,17 @@ async def prepare(request: Request, words: str, task: str, entries: list[Entry],
         if not needs_card or action.prepare is None:
             # A log (a dose taken, a note about the day): done at Save, its words as he said them
             return {**item, "data": found.data, "direct": True, "ready": True, "lines": [f"“{words}”"]}
-        proposal = await action.prepare(request, found.data, frozenset(found.guessed))
+        try:
+            proposal = await action.prepare(request, found.data, frozenset(found.guessed))
+        except actions.HandOff as handoff:
+            # A task's own rule hands it to another task (a day and no time: a to-do)
+            target = actions.handed(handoff)
+            if target is None:
+                raise UserError("That can't be done here.") from None
+            task, action = target[0].name, target[1]
+            item = {**item, "task": task, "action": action.name, "guessed": []}
+            found = replace(found, data=handoff.data, guessed=frozenset())
+            proposal = await action.prepare(request, handoff.data, frozenset())
     except UserError as error:
         return {**item, "lines": [design.warning(str(error))], "ready": False}
     lines = [*proposal.lines, *[design.warning(each) for each in proposal.warnings]]
