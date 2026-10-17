@@ -8,6 +8,15 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-17 (evening)
 
+## Shipped (18 Oct, 12:35 am): the gym
+
+Live on `55e3695` (from `e9997d1`) with `GYM_ENABLED=true` (live's
+`.env` as it was: `data\env-before-2026-10-18-gym`), one restart, the
+next pill reminder at 8:00 am. Checked: live's own account; the gym's
+migration applied; openpyxl installed; no errors; the hub as it was;
+25 bookings. The self-test before it: 149 of 150, none failed. What's
+new for 18 Oct: send your gym spreadsheet; say starting a workout.
+
 ## Overnight batch, 17 to 18 Oct (unattended, from 11:45 pm): the gym
 
 1. **The gym task** (`tasks/gym`, `GYM_ENABLED`): import, the rotation,
