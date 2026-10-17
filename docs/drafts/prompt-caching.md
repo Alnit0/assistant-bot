@@ -72,3 +72,51 @@ a quarter more for the cached part than none would. The saving depends
 on how often requests to the same task come within 5 minutes. The
 report after a week: per prompt, requests, warm share, and NZ$ with and
 without the marks, from `llm_calls`.
+
+## Added 17 Oct, late: the 1-hour cache kept warm, and fast paths
+
+**(1) The 1-hour cache with a keep-warm read** about every 55 minutes
+from 7 am to 11 pm (about 18 reads a day a prompt), turned on only if a
+week's numbers show it saves money overall.
+
+Live's last 7 days (`llm_calls`, read only): 83 requests to Claude,
+US$0.36 (about NZ$0.62). Pills' extraction 23 requests (US$0.15, 94,601
+tokens written to the cache, so about 11 cold), the router 37 (US$0.12,
+none cached: its prefix was under the minimum until tonight's tasks
+took it to 4,737), timers 9, calendar 7, channel 5, bugs 1, chat 1.
+
+Projected at Haiku 4.5's prices (input US$1, a 1-hour cache write US$2,
+a cache read US$0.10, a million tokens):
+
+| Prompt | Keep-warm a week | Saved a week if every request were warm | Net |
+|---|---|---|---|
+| Pills' extraction (8,781 tokens) | about US$0.23 | about US$0.11 (11 cold writes) | **loses** about NZ$0.20 |
+| The router (4,737 tokens) | about US$0.13 | about US$0.16 against no cache, less against the 5-minute cache it now gets | about even |
+
+At about five requests a day, a keep-warm read costs more than it saves.
+**Projected: no saving; left off.** Decided after a week of the router
+on the 5-minute cache (it starts caching with tonight's ship), from that
+week's `llm_calls`.
+
+**(2) Fast paths for frequent phrasings**, from the last 14 days of live
+messages that reached Claude (read only; nothing of the messages is
+written here): 158 messages, US$0.72 (about NZ$1.23), most of them on
+the old way of sending every tool, from before the router (13 to 15
+Oct), and most of them testing. **No phrasing came more than 3 times**;
+the repeated ones were a joke for chat (3), a channel's clearing in
+other words (3, about US$0.02), a test word (2), "keep me" and "pin me"
+(2 each), a reply of yes or skip (2 each, which only a card or the task
+that just answered can read), a timer by its id (2), help for a word
+(2), and a pill taken at a time (2: the pills task's own, which a
+shortcut already covers for an exact name and no time).
+
+The one safe fast path: the channel's reset said as "clear channel",
+which the `reset channel` word does at no cost and which always asks
+first on a card. Projected saving: about US$0.01 a fortnight (NZ$0.02).
+Yes, skip and the rest are not safe for code: they mean different things
+on different cards. **Projected overall: under NZ$0.05 a month.** To
+build next batch with its golden test (an exact keyword, as the rules
+allow), and to look again at a month of router-era messages.
+
+**Actual saving**: reported a week after each change ships, from
+`llm_calls` against the week before, in NZ$.
