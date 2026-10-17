@@ -715,6 +715,80 @@
           "about_card": false
         }
       }
+    },
+    {
+      "golden": "i15",
+      "message": "Mum's birthday 12 March, and I need to buy milk",
+      "note": "a birthday and a to-do: the birthday goes to birthdays (17 Oct)",
+      "expect": {
+        "several": true,
+        "items": [
+          "birthdays",
+          "todos"
+        ],
+        "actions": [
+          "birthday_add",
+          "todo_add"
+        ]
+      },
+      "recorded": {
+        "extract": [
+          [
+            "Mum's birthday 12 March",
+            "birthdays",
+            [
+              "birthday_add",
+              {
+                "person": "Mum",
+                "date": "12 March",
+                "guessed": [],
+                "not_included": []
+              }
+            ]
+          ],
+          [
+            "buy milk",
+            "todos",
+            [
+              "todo_add",
+              {
+                "todos": [
+                  {
+                    "text": "buy milk"
+                  }
+                ],
+                "guessed": [],
+                "not_included": []
+              }
+            ]
+          ]
+        ],
+        "route": {
+          "kind": "task",
+          "tasks": [
+            "birthdays",
+            "todos"
+          ],
+          "confidence": "high",
+          "reports_doing": false,
+          "several": true,
+          "chat_part": ""
+        },
+        "sort": {
+          "items": [
+            {
+              "words": "Mum's birthday 12 March",
+              "task": "birthdays"
+            },
+            {
+              "words": "buy milk",
+              "task": "todos"
+            }
+          ],
+          "saw": "",
+          "about_card": false
+        }
+      }
     }
   ]
 }

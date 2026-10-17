@@ -207,7 +207,12 @@ def calendar_writer():
 
 async def plan_card(request: Request, data: dict, guessed: frozenset) -> Proposal:
     before = (request.previous or {}).get("said") or data.get("said") or {}
-    said = _merged(before, {key: value for key, value in data.items() if key not in ("said", "calendar")})
+    now_said = {key: value for key, value in data.items() if key not in ("said", "calendar")}
+    if request.previous and str(now_said.get("day") or "").lower() == TODAY:
+        # A change to the open card comes back with "today" filled in by habit: it never moves a card that is
+        # for tomorrow ("tomorrow" said on a card for today still does)
+        now_said.pop("day")
+    said = _merged(before, now_said)
     on_calendar = bool(data.get("calendar", (request.previous or {}).get("calendar", False)))
     plan, used, warnings, mine = await build(request, said)
     today = days.today()
@@ -324,7 +329,7 @@ def actions() -> list:
             "starts 8:00, day tomorrow). For a new plan, fill estimates for every to-do in the state. Never work out a time "
             "or place anything: the code does.",
             (
-                Field("day", "today or tomorrow. Leave out for today.", choices=(TODAY, TOMORROW)),
+                Field("day", "today or tomorrow, only when this message names the day (\"plan tomorrow\"). Leave out otherwise: a change to the open card keeps its day.", choices=(TODAY, TOMORROW)),
                 Field("from_now", "True for \"replan\" and \"what should I do now?\": planned again from now.", BOOLEAN),
                 Field("starts", "When the user's day starts, only if said (\"I start at 8\").", TIME),
                 Field("ends", "When the user's day ends, only if said (\"done by 9pm\").", TIME),

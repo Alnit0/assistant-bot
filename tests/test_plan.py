@@ -135,6 +135,8 @@ def test_changes_in_words_before_saving(world):
     assert essay["minutes"] == 120 and longer.data["lengths"][world.todos["Write the essay"]] == [120, True]
     later = card(world, {"starts": "9:00", "day": "tomorrow"}, previous=longer.data, text="I start at 9 tomorrow")
     assert later.data["day"] == (world.day + timedelta(days=1)).isoformat()
+    kept = card(world, {"day": "today", "drop": ["Weekly shop"]}, previous=later.data, text="drop the shopping")
+    assert kept.data["day"] == later.data["day"], "a change on the card that comes back with today keeps the card's day"
     assert min(datetime.fromisoformat(each["start"]) for each in later.data["slots"]) >= at(world, 9, day=world.day + timedelta(days=1))
 
 

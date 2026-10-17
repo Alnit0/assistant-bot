@@ -1,12 +1,131 @@
 {
   "router": [
-    {"golden": "pl1", "message": "plan my day", "tasks": ["plan"], "note": "plan my day"},
-    {"golden": "pl2", "message": "plan tomorrow", "tasks": ["plan"], "note": "tomorrow"},
-    {"golden": "pl3", "message": "replan", "tasks": ["plan"], "note": "planned again from now"},
-    {"golden": "pl4", "message": "what should I do now?", "tasks": ["plan"], "note": "a question, the plan's: never the day's what's next"},
-    {"golden": "pl5", "message": "can you plan out my afternoon?", "tasks": ["plan"], "note": "said another way"},
-    {"golden": "pl6", "message": "what's left today?", "tasks": ["briefing"], "note": "the day as a whole, not a plan"},
-    {"golden": "pl7", "message": "add call Ryan Friday", "tasks": ["todos"], "note": "adding a to-do is the to-dos task's, not the plan's"}
+    {
+      "golden": "pl1",
+      "message": "plan my day",
+      "tasks": [
+        "plan"
+      ],
+      "note": "plan my day",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "plan"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "pl2",
+      "message": "plan tomorrow",
+      "tasks": [
+        "plan"
+      ],
+      "note": "tomorrow",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "plan"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "pl3",
+      "message": "replan",
+      "tasks": [
+        "plan"
+      ],
+      "note": "planned again from now",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "plan"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "pl4",
+      "message": "what should I do now?",
+      "tasks": [
+        "plan"
+      ],
+      "note": "a question, the plan's: never the day's what's next",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "plan"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "pl5",
+      "message": "can you plan out my afternoon?",
+      "tasks": [
+        "plan"
+      ],
+      "note": "said another way",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "plan"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "pl6",
+      "message": "what's left today?",
+      "tasks": [
+        "briefing"
+      ],
+      "note": "the day as a whole, not a plan",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "briefing"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "pl7",
+      "message": "add call Ryan Friday",
+      "tasks": [
+        "todos"
+      ],
+      "note": "adding a to-do is the to-dos task's, not the plan's",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "todos"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    }
   ],
   "extraction": [
     {
@@ -15,7 +134,32 @@
       "message": "plan my day",
       "state": "The user's open to-dos, by id:\n- t3: Write the essay (overdue)\n- t4: Weekly shop (for today)\n- t5: Email Sam (any day)",
       "action": "plan_day",
-      "data": {}
+      "data": {},
+      "recorded": [
+        "plan_day",
+        {
+          "estimates": [
+            {
+              "todo": "t3",
+              "length": "90"
+            },
+            {
+              "todo": "t4",
+              "length": "60"
+            },
+            {
+              "todo": "t5",
+              "length": "15"
+            }
+          ],
+          "guessed": [
+            "estimates[0].length",
+            "estimates[1].length",
+            "estimates[2].length"
+          ],
+          "not_included": []
+        }
+      ]
     },
     {
       "golden": "pl2",
@@ -23,7 +167,18 @@
       "message": "plan tomorrow",
       "state": "The user's open to-dos, by id:\n- t4: Weekly shop (for today)\n- t5: Email Sam (any day)",
       "action": "plan_day",
-      "data": {"day": "tomorrow"}
+      "data": {
+        "day": "tomorrow"
+      },
+      "recorded": [
+        "plan_day",
+        {
+          "day": "tomorrow",
+          "estimates": [],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
     },
     {
       "golden": "pl3",
@@ -31,52 +186,203 @@
       "message": "what should I do now?",
       "state": "The user's open to-dos, by id:\n- t4: Weekly shop (for today)\n- t5: Email Sam (any day)\n- (a plan is saved for today)",
       "action": "plan_day",
-      "data": {"from_now": true}
+      "data": {
+        "from_now": true
+      },
+      "recorded": [
+        "plan_day",
+        {
+          "from_now": true,
+          "estimates": [
+            {
+              "todo": "t4",
+              "length": "60"
+            },
+            {
+              "todo": "t5",
+              "length": "15"
+            }
+          ]
+        }
+      ]
     },
     {
       "golden": "pl4",
       "task": "plan",
       "message": "I'm out 2 to 4",
       "state": "The user's open to-dos, by id:\n- t4: Weekly shop (for today)\n- t5: Email Sam (any day)",
-      "card": {"action": "plan_day", "data": {"day": "2026-10-19"}, "guessed": [], "said": "plan my day"},
+      "card": {
+        "action": "plan_day",
+        "data": {
+          "day": "2026-10-19"
+        },
+        "guessed": [],
+        "said": "plan my day"
+      },
       "action": "plan_day",
-      "data": {"out": [{"from": "2:00", "to": "4:00"}]}
+      "data": {
+        "out": [
+          {
+            "from": "2:00",
+            "to": "4:00"
+          }
+        ]
+      },
+      "recorded": [
+        "plan_day",
+        {
+          "out": [
+            {
+              "from": "2:00",
+              "to": "4:00"
+            }
+          ]
+        }
+      ]
     },
     {
       "golden": "pl5",
       "task": "plan",
       "message": "move laundry to the evening",
       "state": "The user's open to-dos, by id:\n- t6: Laundry (any day)\n- t5: Email Sam (any day)",
-      "card": {"action": "plan_day", "data": {"day": "2026-10-19"}, "guessed": [], "said": "plan my day"},
+      "card": {
+        "action": "plan_day",
+        "data": {
+          "day": "2026-10-19"
+        },
+        "guessed": [],
+        "said": "plan my day"
+      },
       "action": "plan_day",
-      "data": {"moves": [{"todo": "t6", "part": "evening"}]}
+      "data": {
+        "moves": [
+          {
+            "todo": "t6",
+            "part": "evening"
+          }
+        ]
+      },
+      "recorded": [
+        "plan_day",
+        {
+          "moves": [
+            {
+              "todo": "t6",
+              "part": "evening"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
     },
     {
       "golden": "pl6",
       "task": "plan",
       "message": "drop the shopping",
       "state": "The user's open to-dos, by id:\n- t4: Weekly shop (for today)\n- t5: Email Sam (any day)",
-      "card": {"action": "plan_day", "data": {"day": "2026-10-19"}, "guessed": [], "said": "plan my day"},
+      "card": {
+        "action": "plan_day",
+        "data": {
+          "day": "2026-10-19"
+        },
+        "guessed": [],
+        "said": "plan my day"
+      },
       "action": "plan_day",
-      "data": {}
+      "data": {},
+      "recorded": [
+        "plan_day",
+        {
+          "day": "today",
+          "drop": [
+            "Weekly shop"
+          ],
+          "estimates": [
+            {
+              "todo": "Email Sam",
+              "length": "15"
+            }
+          ],
+          "guessed": [
+            "estimates[0].length"
+          ],
+          "not_included": []
+        }
+      ]
     },
     {
       "golden": "pl7",
       "task": "plan",
       "message": "make the essay 2 hours",
       "state": "The user's open to-dos, by id:\n- t3: Write the essay (overdue)\n- t5: Email Sam (any day)",
-      "card": {"action": "plan_day", "data": {"day": "2026-10-19"}, "guessed": [], "said": "plan my day"},
+      "card": {
+        "action": "plan_day",
+        "data": {
+          "day": "2026-10-19"
+        },
+        "guessed": [],
+        "said": "plan my day"
+      },
       "action": "plan_day",
-      "data": {"lengths": [{"todo": "t3", "minutes": 120}]}
+      "data": {
+        "lengths": [
+          {
+            "todo": "t3",
+            "minutes": 120
+          }
+        ]
+      },
+      "recorded": [
+        "plan_day",
+        {
+          "lengths": [
+            {
+              "todo": "t3",
+              "minutes": 120
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
     },
     {
       "golden": "pl8",
       "task": "plan",
       "message": "I start at 8 tomorrow",
       "state": "The user's open to-dos, by id:\n- t5: Email Sam (any day)",
-      "card": {"action": "plan_day", "data": {"day": "2026-10-19"}, "guessed": [], "said": "plan my day"},
+      "card": {
+        "action": "plan_day",
+        "data": {
+          "day": "2026-10-19"
+        },
+        "guessed": [],
+        "said": "plan my day"
+      },
       "action": "plan_day",
-      "data": {"day": "tomorrow", "starts": "8:00"}
+      "data": {
+        "day": "tomorrow",
+        "starts": "8:00 am"
+      },
+      "recorded": [
+        "plan_day",
+        {
+          "day": "tomorrow",
+          "starts": "8:00 am",
+          "estimates": [
+            {
+              "todo": "t5",
+              "length": "15"
+            }
+          ],
+          "guessed": [
+            "estimates[0].length"
+          ],
+          "not_included": []
+        }
+      ],
+      "note": "a start with no am or pm may come back as the morning: the code reads it so either way"
     }
   ]
 }

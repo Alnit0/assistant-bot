@@ -38,8 +38,8 @@ def test_every_inbox_conversation_is_recorded_and_judged_right():
     from core import routing
     from evals.inbox import problem
 
-    names = ["briefing", "bugs", "calendar", "channel", "diary", "habits", "nudges", "pills", "schedule", "timers", "todos", "weather"]
-    assert len(FIXTURES) >= 14
+    names = ["briefing", "bugs", "calendar", "channel", "diary", "habits", "nudges", "pills", "schedule", "timers", "todos", "weather", "birthdays"]
+    assert len(FIXTURES) >= 15
     for conversation in FIXTURES:
         recorded = conversation.get("recorded")
         assert recorded, f"{conversation['golden']} is not recorded"

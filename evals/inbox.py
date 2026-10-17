@@ -50,7 +50,7 @@ def problem(conversation: dict, route, found, extracted: list) -> str:
 def main() -> int:
     options = ARGS.parse_args()
     # Every task the inbox sorts into, whatever the work folder's settings say
-    for name in ("TODOS_ENABLED", "NUDGES_ENABLED", "HABITS_ENABLED", "DIARY_ENABLED", "CALENDAR_ENABLED", "CALENDAR_WRITE", "BRIEFING_ENABLED", "DAY_QUESTIONS", "WEATHER_ENABLED"):
+    for name in ("TODOS_ENABLED", "NUDGES_ENABLED", "HABITS_ENABLED", "DIARY_ENABLED", "CALENDAR_ENABLED", "CALENDAR_WRITE", "BRIEFING_ENABLED", "DAY_QUESTIONS", "WEATHER_ENABLED", "NUDGES_ENABLED", "BIRTHDAYS_ENABLED"):
         os.environ[name] = "true"
     # Writing to a Bot calendar, as live has it (a made-up id: nothing is ever written from here)
     os.environ["CALENDAR_BOT_ID"] = "made-up-bot-calendar"
