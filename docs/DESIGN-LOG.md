@@ -249,6 +249,18 @@ today?" answer. Every other countdown stays as it is (the briefing, the
 Today card, reminders).
 
 
+## The gym (18 Oct, overnight)
+
+Alex's goals for it, word for word: "help upkeep data entry, data
+retrieval, create consistency, lower administration, see progress, easy
+access to notes, make life easier. Flexible, never naggy." And: "describe
+a workout in plain words as full data entry, as an equal to the buttons."
+
+Built to round 5's rules and round 6-ready (one card a session, a box an
+exercise, its button only while it can be acted on): "Design · Gym" shows
+the import card, the workout card, the Log form, a summary with a best
+and a session described in words, from a made-up logbook.
+
 ## Alex's design decisions, 17 Oct (evening)
 
 Sent during the evening batch, recorded here word for word in their parts.

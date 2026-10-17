@@ -29,6 +29,7 @@ FIELDS = ("workout", "date", "week", "exercise", "set_type", "sets", "reps", "se
 MAP_TOOL, MEANING_TOOL = "map_columns", "read_words"
 PURPOSE_MAP, PURPOSE_MEANING = "gym-map", "gym-words"
 MAX_WORDS = 120  # distinct words sent to be read, of each kind
+MAP_TOKENS = 3000  # a workbook of a tab a workout is many headings: room for every one (17 Oct: 800 cut it off)
 
 MAP_SYSTEM = (
     "You map the columns of a gym logbook or plan to fields. You are given each table's name, its headings and up "
@@ -103,7 +104,7 @@ def map_turn(tables: list[Table]) -> str:
 
 async def ask_mapping(tables: list[Table]) -> dict[str, Mapping]:
     called = await llm.call_tool([{"type": "text", "text": MAP_SYSTEM, "cache_control": llm.CACHED}], map_turn(tables), [map_tool()],
-                                 choice={"type": "tool", "name": MAP_TOOL}, purpose=PURPOSE_MAP, task=rules.TASK, max_tokens=800)
+                                 choice={"type": "tool", "name": MAP_TOOL}, purpose=PURPOSE_MAP, task=rules.TASK, max_tokens=MAP_TOKENS)
     return mapping_from(called[1] if called else None, tables)
 
 
@@ -295,10 +296,12 @@ def read(tables: list[Table], mappings: dict[str, Mapping], meanings: Meanings) 
 
 
 def _number(value) -> float | None:
+    """A weight Claude handed over; none, or 0 (what it gives for a note with no target: 18 Oct), is None."""
     try:
-        return float(value) if value is not None else None
+        found = float(value) if value is not None else None
     except (TypeError, ValueError):
         return None
+    return found if found is not None and found > 0 else None
 
 
 async def imported(tables: list[Table], overrides: dict[str, dict[str, str]] | None = None) -> Imported:

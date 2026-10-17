@@ -598,8 +598,8 @@ def actions() -> list:
         Field("weight", "The weight in kg, as a number (\"14s\" -> 14).", NUMBER),
         Field("per_hand", "True for dumbbells or a weight said per hand (\"14s\", \"14 each\").", BOOLEAN),
         Field("skipped", "True when the exercise was skipped (\"skipped laterals\").", BOOLEAN),
-        Field("note", "What the user said about it, word for word (\"shoulder felt off\", \"last set was a grind\"). Leave out when nothing."),
-        Field("pain", "True when the note speaks of pain or discomfort.", BOOLEAN),
+        Field("note", "What the user said about this exercise, word for word (\"shoulder felt off\", \"last set was a grind\"), on the exercise it was said with (\"bench 40 for 9, knee was sore\" is bench's note), on one item only. Leave out when nothing."),
+        Field("pain", "True when the note speaks of pain or discomfort (sore, hurt, felt off, a joint).", BOOLEAN),
     )
     return [
         Action("gym_import", "Import the gym plan or logbook from a spreadsheet sent with the message or rows pasted in it (\"here's my gym logbook\"). On the open import card, say what a column is (\"the Load column is the weight\" -> columns).",

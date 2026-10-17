@@ -5,19 +5,15 @@ history is `docs/STATUS.md`. Read first, with `/catchup`.
 
 **Batch overnight 17 to 18 Oct** (unattended, from 11:45 pm): the gym
 task (`tasks/gym`, `GYM_ENABLED`), with Alex's plain-words logging asked
-mid-batch. Cap NZ$1.00, any one run under NZ$0.40. Spent: 0. Ship by
+mid-batch. Cap NZ$1.00, any one run under NZ$0.40. Spent: US$0.27 (NZ$0.46). Ship by
 5:20 am (not 3:15 to 4:30 am); not ready by 5:00 am: push, list here.
 
-1. Plan and log: the import (CSV, XLSX, pasted rows; Claude maps the
-   columns, Python reads the values), plan and log apart: in progress
-2. The rotation and the workout card in #gym (🥋_gym: live can post
-   there), the log form, Finish with PBs, suggested weights, undo
-3. Plain words: start, instead, skip, off-plan, extra, swap, changes; a
-   whole session described in words (and a photo by the inbox)
-4. Retrieval, PBs, the briefing's line, the week view, a weekly target
-5. The sheet mirror (`GYM_SHEET`, off) and docs/GYM-SHEET-SETUP.md
-6. Recorded checks and golden conversations; Design · Gym; self-test;
-   ship with GYM_ENABLED=true
+1. to 5. built and committed: import, the rotation and card in #gym,
+   the Log form, Finish, words, questions, the briefing's line, the
+   week view, the target, the sheet mirror (off)
+6. Recorded checks done (29 of 29; import 3 of 3; router 72 of 73, the
+   miss not the gym's); Design · Gym posted; next: the self-test, then
+   ship with GYM_ENABLED=true before 3:15 am
 
 **Earlier tonight:** shipped `e9997d1` at 11:10 pm (prompt caching draft
 in `docs/drafts/prompt-caching.md`, nothing of it built).

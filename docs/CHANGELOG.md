@@ -4,6 +4,14 @@ What changed, newest first. One entry per task, as one to three bullets on
 what changed for the user. Entries before 2026-10-07's last one were
 backfilled from the git log.
 
+## 2026-10-18
+
+- The gym: send your gym spreadsheet (CSV or XLSX, or paste its rows) to import your plan and your log; say
+  starting a workout and the next one in turn is posted in #gym, each exercise with a suggested weight, last
+  time and your note. Log each exercise with its button or in words, during or after; Finish gives a summary
+  with your bests. Skip one, do another instead, swap an exercise, ask how's my bench going.
+- A thing to do on a day with no time (call the bank on Friday) is a to-do for that day; with a time, a reminder.
+
 ## 2026-10-17
 
 - Plan my day: say plan my day, plan tomorrow or replan, and your to-dos are placed in the free time around what

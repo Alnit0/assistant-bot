@@ -133,6 +133,7 @@ Messages go through fast paths (buttons, exact typed words), then sticky follow-
 ## 9. Open threads (update every batch)
 
 **Waiting on Alex**
+- **The gym** (built 18 Oct, overnight): his logbook sent to #inbox to import; "Design · Gym"; the sheet mirror waits for a sheet shared with the service account (`docs/GYM-SHEET-SETUP.md`).
 - **Round 6** (17 Oct): his look at "Design · Round 6 timeline", and whether to build it into the hub (a card per dose, or the one moving pills card).
 - **Plan my day, birthdays, the week view, the diary's Write** shipped 17 Oct: his first days with them ("Design · Plan my day and birthdays").
 - **x5**: is "I need to call the bank on Friday" a to-do or a reminder? It goes to reminders.
@@ -143,7 +144,6 @@ Messages go through fast paths (buttons, exact typed words), then sticky follow-
 - **What's new for 16 Oct** has four older lines queued besides the four new ones: whether they go.
 - **Calendar ids:** which calendar his events are really on (the Gmail one showed 1 event against 5 that week); then `CALENDAR_READ` lists it and the iCal link goes (`docs/GOOGLE-SETUP.md`).
 - **Questions 91 and 92** from the day in the hub with everything on.
-- **Gym onboarding:** questions 76 to 79 from "Design · Gym onboarding sketches" (which way in; whether the sheet or the bot holds the plan). Nothing of gym is built.
 - **Live's own folder:** his word that it has had a good day, so the work folder's old `.env` and `data\` can be deleted.
 - **Bugs B2 and B5:** both fixed in what live runs (a note on each); only he presses Fixed.
 - **QA block 54** (direct messages, by hand): the self-test cannot send a DM.

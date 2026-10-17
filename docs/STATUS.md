@@ -16,6 +16,17 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
    words; swaps and plan changes; questions; the briefing's line, the
    weekly target, the week view; the sheet mirror (`GYM_SHEET`, off).
    19 tests on made-up logbooks (`tests/gym_files.py`).
+2. **Recorded checks**: the gym's router and extraction 29 of 29 (the
+   note on the right exercise after one description change, 3 of 3);
+   the import's two requests on the made-up CSV, workbook and wide
+   layout, all three right after the mapping got room for every heading
+   (`evals/gym_import.py`, replayed by `test_gym_import_recorded`); the
+   router over every task's conversations with the gym on 72 of 73 (the
+   miss the same with it off). Golden conversations gy1, gy9, gy15,
+   gy16 end to end. About US$0.27 (NZ$0.46) of NZ$1.00.
+3. **Design · Gym** posted; it found a bug, fixed with tests: the real
+   API gives a note with no target a target of 0 kg, which became the
+   suggestion; 0 is none now.
 
 ## Decided (2026-10-18, overnight: the gym)
 

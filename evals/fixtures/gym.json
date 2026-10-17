@@ -1,0 +1,659 @@
+{
+  "router": [
+    {
+      "golden": "gy1",
+      "message": "starting a workout",
+      "tasks": [
+        "gym"
+      ],
+      "note": "the gym (18 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "gym"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "gy2",
+      "message": "gym now",
+      "tasks": [
+        "gym"
+      ],
+      "note": "the gym (18 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "gym"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "gy3",
+      "message": "what's my workout?",
+      "tasks": [
+        "gym"
+      ],
+      "note": "the gym (18 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "gym"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "gy4",
+      "message": "do Lower 2 instead",
+      "tasks": [
+        "gym"
+      ],
+      "note": "the gym (18 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "gym"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "gy5",
+      "message": "skip Upper 1",
+      "tasks": [
+        "gym"
+      ],
+      "note": "the gym (18 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "gym"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "gy6",
+      "message": "did a 30 min run instead of the gym",
+      "tasks": [
+        "gym"
+      ],
+      "note": "the gym (18 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "gym"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "gy7",
+      "message": "swap bench for dumbbell press today",
+      "tasks": [
+        "gym"
+      ],
+      "note": "the gym (18 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "gym"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "gy8",
+      "message": "bench 20 for 15, 40 for 9, 40 for 8",
+      "tasks": [
+        "gym"
+      ],
+      "note": "the gym (18 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "gym"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "gy9",
+      "message": "did Upper 1 this morning; bench warm-up 20 for 15, then 40 for 9 and 8; incline 14s for 10 and 9; skipped laterals, shoulder felt off; pulldown 57 for 12 and 10, last set was a grind",
+      "tasks": [
+        "gym"
+      ],
+      "note": "the gym (18 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "gym"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "gy10",
+      "message": "how's my bench going?",
+      "tasks": [
+        "gym"
+      ],
+      "note": "the gym (18 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "gym"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "gy11",
+      "message": "my notes on RDLs",
+      "tasks": [
+        "gym"
+      ],
+      "note": "the gym (18 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "gym"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "gy12",
+      "message": "aim for 3 a week",
+      "tasks": [
+        "gym"
+      ],
+      "note": "the gym (18 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "gym"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "gy13",
+      "message": "gym tomorrow 6pm",
+      "tasks": [
+        "gym"
+      ],
+      "note": "the gym (18 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "gym"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "gy14",
+      "message": "remind me to pack my gym bag at 7am",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "the gym (18 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    }
+  ],
+  "extraction": [
+    {
+      "golden": "gy1",
+      "task": "gym",
+      "message": "starting a workout",
+      "state": "The user's gym plan (workouts in rotation order, each with its exercises):\n- next in turn: Lower 1\n- Upper 1: Bench press, Incline press, Lat pulldown - wide grip, Lateral raise\n- Lower 1: Squat, Leg press (high foot), Romanian deadlift\n- Upper 2: Overhead press, Seated row\n- Lower 2: Deadlift, Leg curl",
+      "action": "gym_start",
+      "data": {},
+      "recorded": [
+        "gym_start",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "gy4",
+      "task": "gym",
+      "message": "do Lower 2 instead",
+      "state": "The user's gym plan (workouts in rotation order, each with its exercises):\n- next in turn: Lower 1\n- Upper 1: Bench press, Incline press, Lat pulldown - wide grip, Lateral raise\n- Lower 1: Squat, Leg press (high foot), Romanian deadlift\n- Upper 2: Overhead press, Seated row\n- Lower 2: Deadlift, Leg curl",
+      "action": "gym_start",
+      "data": {
+        "workout": "Lower 2"
+      },
+      "recorded": [
+        "gym_start",
+        {
+          "workout": "Lower 2",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "gy5",
+      "task": "gym",
+      "message": "skip Upper 1",
+      "state": "The user's gym plan (workouts in rotation order, each with its exercises):\n- next in turn: Lower 1\n- Upper 1: Bench press, Incline press, Lat pulldown - wide grip, Lateral raise\n- Lower 1: Squat, Leg press (high foot), Romanian deadlift\n- Upper 2: Overhead press, Seated row\n- Lower 2: Deadlift, Leg curl",
+      "action": "gym_skip",
+      "data": {
+        "workout": "Upper 1"
+      },
+      "recorded": [
+        "gym_skip",
+        {
+          "workout": "Upper 1",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "gy6",
+      "task": "gym",
+      "message": "did a 30 min run instead of the gym",
+      "state": "The user's gym plan (workouts in rotation order, each with its exercises):\n- next in turn: Lower 1\n- Upper 1: Bench press, Incline press, Lat pulldown - wide grip, Lateral raise\n- Lower 1: Squat, Leg press (high foot), Romanian deadlift\n- Upper 2: Overhead press, Seated row\n- Lower 2: Deadlift, Leg curl",
+      "action": "gym_off_plan",
+      "data": {},
+      "recorded": [
+        "gym_off_plan",
+        {
+          "activity": "30 min run",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "gy7",
+      "task": "gym",
+      "message": "swap bench for dumbbell press today",
+      "state": "The user's gym plan (workouts in rotation order, each with its exercises):\n- next in turn: Lower 1\n- Upper 1: Bench press, Incline press, Lat pulldown - wide grip, Lateral raise\n- Lower 1: Squat, Leg press (high foot), Romanian deadlift\n- Upper 2: Overhead press, Seated row\n- Lower 2: Deadlift, Leg curl",
+      "action": "gym_swap",
+      "data": {
+        "exercise": "Bench press"
+      },
+      "recorded": [
+        "gym_swap",
+        {
+          "exercise": "Bench press",
+          "instead": "dumbbell press today",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "gy8",
+      "task": "gym",
+      "message": "bench 20 for 15, 40 for 9, 40 for 8",
+      "state": "The user's gym plan (workouts in rotation order, each with its exercises):\n- next in turn: Lower 1\n- Upper 1: Bench press, Incline press, Lat pulldown - wide grip, Lateral raise\n- Lower 1: Squat, Leg press (high foot), Romanian deadlift\n- Upper 2: Overhead press, Seated row\n- Lower 2: Deadlift, Leg curl",
+      "action": "gym_log",
+      "data": {},
+      "recorded": [
+        "gym_log",
+        {
+          "sets": [
+            {
+              "exercise": "Bench press",
+              "weight": 20,
+              "reps": 15,
+              "set_type": "warm-up"
+            },
+            {
+              "exercise": "Bench press",
+              "weight": 40,
+              "reps": 9
+            },
+            {
+              "exercise": "Bench press",
+              "weight": 40,
+              "reps": 8
+            }
+          ],
+          "guessed": [
+            "sets[0].set_type"
+          ],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "gy9",
+      "task": "gym",
+      "message": "did Upper 1 this morning; bench warm-up 20 for 15, then 40 for 9 and 8; incline 14s for 10 and 9; skipped laterals, shoulder felt off; pulldown 57 for 12 and 10, last set was a grind",
+      "state": "The user's gym plan (workouts in rotation order, each with its exercises):\n- next in turn: Lower 1\n- Upper 1: Bench press, Incline press, Lat pulldown - wide grip, Lateral raise\n- Lower 1: Squat, Leg press (high foot), Romanian deadlift\n- Upper 2: Overhead press, Seated row\n- Lower 2: Deadlift, Leg curl",
+      "action": "gym_log",
+      "data": {
+        "workout": "Upper 1"
+      },
+      "recorded": [
+        "gym_log",
+        {
+          "day": "this morning",
+          "workout": "Upper 1",
+          "sets": [
+            {
+              "exercise": "Bench press",
+              "weight": 20,
+              "reps": 15,
+              "set_type": "warm-up"
+            },
+            {
+              "exercise": "Bench press",
+              "weight": 40,
+              "reps": 9,
+              "set_type": "working"
+            },
+            {
+              "exercise": "Bench press",
+              "weight": 40,
+              "reps": 8,
+              "set_type": "working"
+            },
+            {
+              "exercise": "Incline press",
+              "weight": 14,
+              "reps": 10,
+              "per_hand": true,
+              "set_type": "working"
+            },
+            {
+              "exercise": "Incline press",
+              "weight": 14,
+              "reps": 9,
+              "per_hand": true,
+              "set_type": "working"
+            },
+            {
+              "exercise": "Lateral raise",
+              "skipped": true,
+              "note": "shoulder felt off",
+              "pain": true
+            },
+            {
+              "exercise": "Lat pulldown - wide grip",
+              "weight": 57,
+              "reps": 12,
+              "set_type": "working"
+            },
+            {
+              "exercise": "Lat pulldown - wide grip",
+              "weight": 57,
+              "reps": 10,
+              "set_type": "working",
+              "note": "last set was a grind"
+            }
+          ],
+          "guessed": [
+            "sets[0].set_type",
+            "sets[1].set_type",
+            "sets[2].set_type",
+            "sets[3].set_type",
+            "sets[4].set_type",
+            "sets[6].set_type",
+            "sets[7].set_type"
+          ],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "gy15",
+      "task": "gym",
+      "message": "yesterday: squats 80 for 6, rdls 70 for 8 and 8",
+      "state": "The user's gym plan (workouts in rotation order, each with its exercises):\n- next in turn: Lower 1\n- Upper 1: Bench press, Incline press, Lat pulldown - wide grip, Lateral raise\n- Lower 1: Squat, Leg press (high foot), Romanian deadlift\n- Upper 2: Overhead press, Seated row\n- Lower 2: Deadlift, Leg curl",
+      "action": "gym_log",
+      "data": {
+        "day": "yesterday"
+      },
+      "recorded": [
+        "gym_log",
+        {
+          "day": "yesterday",
+          "sets": [
+            {
+              "exercise": "Squat",
+              "weight": 80,
+              "reps": 6
+            },
+            {
+              "exercise": "Romanian deadlift",
+              "weight": 70,
+              "reps": 8
+            },
+            {
+              "exercise": "Romanian deadlift",
+              "weight": 70,
+              "reps": 8
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "gy16",
+      "task": "gym",
+      "message": "last Tuesday I only got through bench, 40 for 9, 9, 8, knee was sore",
+      "state": "The user's gym plan (workouts in rotation order, each with its exercises):\n- next in turn: Lower 1\n- Upper 1: Bench press, Incline press, Lat pulldown - wide grip, Lateral raise\n- Lower 1: Squat, Leg press (high foot), Romanian deadlift\n- Upper 2: Overhead press, Seated row\n- Lower 2: Deadlift, Leg curl",
+      "action": "gym_log",
+      "data": {
+        "day": "last Tuesday"
+      },
+      "recorded": [
+        "gym_log",
+        {
+          "day": "last Tuesday",
+          "workout": "Upper 1",
+          "sets": [
+            {
+              "exercise": "Bench press",
+              "weight": 40,
+              "reps": 9,
+              "set_type": "working"
+            },
+            {
+              "exercise": "Bench press",
+              "weight": 40,
+              "reps": 9,
+              "set_type": "working"
+            },
+            {
+              "exercise": "Bench press",
+              "weight": 40,
+              "reps": 8,
+              "set_type": "working",
+              "note": "knee was sore",
+              "pain": true
+            }
+          ],
+          "guessed": [
+            "workout"
+          ],
+          "not_included": []
+        }
+      ],
+      "note": "the knee note is bench's, with pain; the exercises not done may be skipped"
+    },
+    {
+      "golden": "gy10",
+      "task": "gym",
+      "message": "how's my bench going?",
+      "state": "The user's gym plan (workouts in rotation order, each with its exercises):\n- next in turn: Lower 1\n- Upper 1: Bench press, Incline press, Lat pulldown - wide grip, Lateral raise\n- Lower 1: Squat, Leg press (high foot), Romanian deadlift\n- Upper 2: Overhead press, Seated row\n- Lower 2: Deadlift, Leg curl",
+      "action": "gym_ask",
+      "data": {
+        "question": "trend",
+        "exercise": "Bench press"
+      },
+      "recorded": [
+        "gym_ask",
+        {
+          "question": "trend",
+          "exercise": "Bench press",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "gy11",
+      "task": "gym",
+      "message": "my notes on RDLs",
+      "state": "The user's gym plan (workouts in rotation order, each with its exercises):\n- next in turn: Lower 1\n- Upper 1: Bench press, Incline press, Lat pulldown - wide grip, Lateral raise\n- Lower 1: Squat, Leg press (high foot), Romanian deadlift\n- Upper 2: Overhead press, Seated row\n- Lower 2: Deadlift, Leg curl",
+      "action": "gym_ask",
+      "data": {
+        "question": "notes",
+        "exercise": "Romanian deadlift"
+      },
+      "recorded": [
+        "gym_ask",
+        {
+          "question": "notes",
+          "exercise": "Romanian deadlift",
+          "guessed": [
+            "exercise"
+          ],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "gy17",
+      "task": "gym",
+      "message": "best leg press",
+      "state": "The user's gym plan (workouts in rotation order, each with its exercises):\n- next in turn: Lower 1\n- Upper 1: Bench press, Incline press, Lat pulldown - wide grip, Lateral raise\n- Lower 1: Squat, Leg press (high foot), Romanian deadlift\n- Upper 2: Overhead press, Seated row\n- Lower 2: Deadlift, Leg curl",
+      "action": "gym_ask",
+      "data": {
+        "question": "best"
+      },
+      "recorded": [
+        "gym_ask",
+        {
+          "question": "best",
+          "exercise": "Leg press (high foot)",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "gy18",
+      "task": "gym",
+      "message": "make RDLs 6-10",
+      "state": "The user's gym plan (workouts in rotation order, each with its exercises):\n- next in turn: Lower 1\n- Upper 1: Bench press, Incline press, Lat pulldown - wide grip, Lateral raise\n- Lower 1: Squat, Leg press (high foot), Romanian deadlift\n- Upper 2: Overhead press, Seated row\n- Lower 2: Deadlift, Leg curl",
+      "action": "gym_change",
+      "data": {
+        "change": "reps",
+        "exercise": "Romanian deadlift",
+        "reps": "6-10"
+      },
+      "recorded": [
+        "gym_change",
+        {
+          "change": "reps",
+          "exercise": "Romanian deadlift",
+          "reps": "6-10",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "gy12",
+      "task": "gym",
+      "message": "aim for 3 a week",
+      "state": "The user's gym plan (workouts in rotation order, each with its exercises):\n- next in turn: Lower 1\n- Upper 1: Bench press, Incline press, Lat pulldown - wide grip, Lateral raise\n- Lower 1: Squat, Leg press (high foot), Romanian deadlift\n- Upper 2: Overhead press, Seated row\n- Lower 2: Deadlift, Leg curl",
+      "action": "gym_target",
+      "data": {
+        "per_week": 3
+      },
+      "recorded": [
+        "gym_target",
+        {
+          "per_week": 3,
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "gy13",
+      "task": "gym",
+      "message": "gym tomorrow 6pm",
+      "state": "The user's gym plan (workouts in rotation order, each with its exercises):\n- next in turn: Lower 1\n- Upper 1: Bench press, Incline press, Lat pulldown - wide grip, Lateral raise\n- Lower 1: Squat, Leg press (high foot), Romanian deadlift\n- Upper 2: Overhead press, Seated row\n- Lower 2: Deadlift, Leg curl",
+      "action": "gym_at",
+      "data": {
+        "day": "tomorrow",
+        "time": "6:00 pm"
+      },
+      "recorded": [
+        "gym_at",
+        {
+          "day": "tomorrow",
+          "time": "6:00 pm",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    }
+  ]
+}

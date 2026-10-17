@@ -208,7 +208,7 @@ def suggest(exercise: Exercise, last: list[DoneSet], note: Note | None = None) -
     one) reached the top of its range, a bigger jump when it beat the top by 5 or more (enough to land back in
     the range), a note's own target first, and the same when it fell short."""
     working = [each for each in last if each.done and each.set_type == WORKING and each.weight is not None]
-    if note is not None and note.target_low is not None:
+    if note is not None and note.target_low is not None and note.target_low > 0:
         aim = note.target_low if note.target_high is None else note.target_low
         return Suggestion(aim, f"your note: {kg(note.target_low)}" + (f" to {kg(note.target_high)}" if note.target_high else ""))
     if not working:

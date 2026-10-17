@@ -145,6 +145,7 @@ def test_the_suggested_weight_double_progression_and_its_edge_cases():
     assert rules.estimated(120, 21, 15) > 120
     noted = rules.suggest(bench, [_set(6, 40)], Note("Bench press", "go up to 45kg", target_low=45.0))
     assert noted.weight == 45.0 and noted.why.startswith("your note")
+    assert rules.suggest(bench, [_set(8, 40)], Note("Bench press", "too easy", target_low=0.0)).weight == 42.5, "a target of 0 is none"
     # The last to-failure set decides, not a near-failure one after it
     assert rules.suggest(bench, [_set(8, 40), _set(5, 40, category=rules.NEAR_FAILURE)]).weight == 42.5
     assert rules.suggest(Exercise("Bench press", (), rules.BARBELL, step=1.25), [_set(8, 40)]).weight == 41.25, "a step of its own"

@@ -51,6 +51,12 @@ the full self-test run.
 
 ### Soon
 
+- **"Will it rain?" with a card open (golden 28a)** goes to chat, every time, with the gym on and off (18 Oct,
+  the router check): found, not tonight's. The card stays open either way.
+- **Gym, next**: a photo of a handwritten log is read by the smart inbox's vision and sorted into a gym item
+  in words, as any item is; worth a recorded check with a made-up photo. The sheet mirror waits for Alex's
+  sheet (docs/GYM-SHEET-SETUP.md).
+
 - **Round 6 in the hub itself** (17 Oct): `core/timeline.py` is the layout and its preview is posted; when Alex
   picks it, each card becomes a message in a fixed slot of the hub, rewritten in place, with the doses' cards
   moved by the existing rules, and the conversation tidy (10 minutes after an exchange; What's new and restart
