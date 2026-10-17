@@ -379,3 +379,19 @@ def test_the_gym_task_is_in_the_catalogue_with_its_words_for_commands(world):
     assert not actions.problems(entries)
     assert all(action.say for action in entries[0].actions)
     assert gym.task.switched_on()
+
+
+def test_a_logbook_sent_to_the_smart_inbox_is_the_gym_s_own_import_and_save_saves_it(world, monkeypatch):
+    from core import smartinbox
+    from tasks import gym
+
+    entries = gym.task.entries()
+    monkeypatch.setattr(actions, "_entries", {})
+    actions.set_catalogue(entries)
+    request = world.request("", attachments=(attached("logbook.csv", gym_files.logbook_csv()),))
+    item = run(smartinbox.prepare(request, "gym logbook", smartinbox.GYM_PLAN, entries, None, file=True, rows=[["Date", "Day"]]))
+    assert item["task"] == "gym" and item["action"] == "gym_import" and item["ready"]
+    assert item["lines"][0].startswith("**Upper 1** · 4 exercises")
+    said = run(smartinbox._save_one(request, item))
+    assert said.startswith("🏋️ Saved · 4 workouts · 4 sessions logged")
+    assert [each.name for each in run(store.plan(world.owner.id))][0] == "Upper 1"
