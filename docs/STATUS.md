@@ -8,6 +8,20 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-17 (evening)
 
+## Shipped (17 Oct, 10:07 pm)
+
+Live on `e127088` with `PLAN_MY_DAY`, `BIRTHDAYS_ENABLED`, `WEEK_VIEW`
+and `CALENDAR_CHANNEL_ID` (📅_calendar) added (live's `.env` as it was:
+`data\env-before-2026-10-17-evening`), one restart, no pill reminder due
+before morning. Checked: live's own account; the task migrations
+(reminders 3, plan 1, week 1) applied, no errors; #calendar has this week
+pinned and next week below; every booking there (12:01 am Week view, 3:00
+am backup, 3:30 am nightly, 5:30 am read pick, 6 am briefing and cards,
+9 am renewals, birthdays and bugs, 9 pm diary ask, Sunday 7 pm summary).
+What's new for 18 Oct: plan my day, birthdays, ✍️ Write, the week in
+#calendar. The dev-bot self-test before it: 149 of 150, none failed,
+recorded answers. Batch spend US$0.27 (about NZ$0.46).
+
 ## Evening batch, 17 Oct (unattended, from 8:30 pm)
 
 1. **Plan my day** (`core/planning.py`, `tasks/plan`, `PLAN_MY_DAY`):
