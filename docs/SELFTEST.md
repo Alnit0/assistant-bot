@@ -8,18 +8,19 @@ the bot posts, edits and deletes is real, and is read back from Discord and
 from the database before a step passes. How it works and what it can't
 see: `docs/DEVELOPMENT.md`, "The self-test".
 
-**Run:** 2026-10-18 00:14, 18 min 44 s
+**Run:** 2026-10-18 00:53, 18 min 45 s
 **Result:** 149 passed, 0 failed, 0 broke, 1 skipped, of 150 steps
 **Requests to Claude:** none real: every language step used a recorded answer · US$0.0000 spent
 
 <!-- run history: written by python -m selftest -->
 ## Run history
 
-The latest 15 of 62 runs, newest first. All of them, a line a run, are in
+The latest 15 of 63 runs, newest first. All of them, a line a run, are in
 `data/selftest/history.csv` (never rewritten). The first step to fail in a stage is a bug in the forum until it passes again.
 
 | Run | Commit | What ran | Passed | Failed | Failed steps | Spend | Took |
 |---|---|---|---|---|---|---|---|
+| 2026-10-18 00:53 | `7f79c34` | full | 149 of 150 | 0 | · | US$0.0000 (recorded) | 18 min 45 s |
 | 2026-10-18 00:14 | `1e2a8c2` | full | 149 of 150 | 0 | · | US$0.0000 (recorded) | 18 min 44 s |
 | 2026-10-17 21:46 | `37eb01a` | full | 149 of 150 | 0 | · | US$0.0000 (recorded) | 18 min 53 s |
 | 2026-10-17 02:04 | `4745dd1` | full | 149 of 150 | 0 | · | US$0.0000 (recorded) | 18 min 37 s |
@@ -34,7 +35,6 @@ The latest 15 of 62 runs, newest first. All of them, a line a run, are in
 | 2026-10-16 10:38 | `bffbc1e` | full | 148 of 150 | **1** | 1.03 | US$0.0000 (recorded) | 18 min 35 s |
 | 2026-10-16 10:16 | `7a7c234` | full | 142 of 150 | **7** | 1.01b 1.09c 1.17 1.17b 2.04b 3.09 4.07a | US$0.0000 (recorded) | 19 min 15 s |
 | 2026-10-16 09:11 | `5ff7604` | full | 149 of 150 | 0 | · | US$0.0000 (recorded) | 18 min 22 s |
-| 2026-10-16 00:55 | `4c7a56e` | full | 149 of 150 | 0 | · | US$0.0000 (recorded) | 18 min 32 s |
 
 <!-- end of run history -->
 
@@ -60,18 +60,19 @@ What is worth a look whether or not its step passed.
 
 **Slow steps** (12 seconds or more; a step is mostly waiting for Discord, and each input is given about a second to settle)
 
-- 3.14 Every sketch in docs/mockups (19) posted with `dev mock`: 69s
+- 3.14 Every sketch in docs/mockups (19) posted with `dev mock`: 66s
 - 3.13d Pause and resume: “pause the evening checklist”, Save; then “turn the evening checklist back on”, Save: 16s
-- 6.09 The next morning at 6:00: 16s
 - 6.01 A start with HUB_TIDY on: 16s
 - 6.06 The same, then Save: 16s
-- 1.08 Names: “add Testvit and Testvit forte”, “I took testvit”, “skip forte”: 15s
+- 6.09 The next morning at 6:00: 15s
 - 9.05 Done: pick Skincare in the dropdown, then “did brush teeth and floss”: 14s
-- 7.08 Carry over: two days on, Call Ryan (for the day before) was never done: 14s
-- 6.05 Something I say in the hub that leads to a card, then Cancel: 13s
+- 1.08 Names: “add Testvit and Testvit forte”, “I took testvit”, “skip forte”: 14s
+- 7.08 Carry over: two days on, Call Ryan (for the day before) was never done: 13s
 - 6.03 I say something in the hub and get a reply: `took testany`: 13s
+- 6.05 Something I say in the hub that leads to a card, then Cancel: 13s
+- 3.13b2 The lists that were plain, in the new look: `my pills`, “show my week”, `bugs`: 12s
 
-The whole run took 18 min 44 s, 75 seconds of it with the bot off on purpose.
+The whole run took 18 min 45 s, 75 seconds of it with the bot off on purpose.
 
 **In the specs and not tested here**
 
@@ -92,7 +93,7 @@ The whole run took 18 min 44 s, 75 seconds of it with the bot off on purpose.
 
 ## Start 1: the old look, reminders on. A day of pills up to the afternoon, then the bot is cut off mid-message
 
-Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 223s; the process ended with 0.
+Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 225s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -141,7 +142,7 @@ Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 223s; the process end
 
 ## Start 2: the same settings, after 75 seconds off. The catch-up, then the rest of the day and the next morning
 
-Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 103s; the process ended with 0.
+Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 107s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -169,7 +170,7 @@ Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`. Took 103s; the process end
 
 ## Start 3: `CARDS_V2` on. Every card posted and edited in the new look, and the old look's messages edited under it
 
-Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`. Took 213s; the process ended with 0.
+Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`. Took 208s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -198,7 +199,7 @@ Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`. Took 213s; the process ende
 
 ## Start 4: `CARDS_V2` off again, and a tiny spend limit. The new look's messages edited under the old, and the spend line
 
-Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`, `DAILY_SPEND_LIMIT_NZD=0.001`, `USD_TO_NZD=1.70`. Took 60s; the process ended with 0.
+Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`, `DAILY_SPEND_LIMIT_NZD=0.001`, `USD_TO_NZD=1.70`. Took 61s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -217,7 +218,7 @@ Settings: `CARDS_V2=false`, `REMINDERS_ENABLED=true`, `DAILY_SPEND_LIMIT_NZD=0.0
 
 ## Start 5: `BRIEFING_ENABLED` on (the starts before it had it off). The morning routine, “brief me”, and the briefing kept up to date in place
 
-Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `BRIEFING_ENABLED=true`, `DAY_PROGRESS=true`, `DAY_QUESTIONS=true`, `WEEKLY_SUMMARY=true`, `WEATHER_ENABLED=true`, `WEATHER_SOURCE=C:\Users\temp\projects\assistant-bot\tests\fixtures\weather_drizzle.json`. Took 84s; the process ended with 0.
+Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `BRIEFING_ENABLED=true`, `DAY_PROGRESS=true`, `DAY_QUESTIONS=true`, `WEEKLY_SUMMARY=true`, `WEATHER_ENABLED=true`, `WEATHER_SOURCE=C:\Users\temp\projects\assistant-bot\tests\fixtures\weather_drizzle.json`. Took 85s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -241,7 +242,7 @@ Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `BRIEFING_ENABLED=true`, `D
 
 ## Start 6: `HUB_TIDY` on as well (off until now). What is said in the hub goes once handled, pinned stays, yesterday goes in the morning, and a copy is saved first
 
-Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `BRIEFING_ENABLED=true`, `HUB_TIDY=true`. Took 108s; the process ended with 0.
+Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `BRIEFING_ENABLED=true`, `HUB_TIDY=true`. Took 109s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -299,7 +300,7 @@ Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `DESIGN_ROUND=4`, `TODOS_EN
 
 ## p10
 
-Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `DESIGN_ROUND=4`, `TODAY_CARD=true`, `CALENDAR_ENABLED=true`, `CALENDAR_ICS_URL=C:\Users\temp\projects\assistant-bot\tests\fixtures\calendar_selftest.ics`. Took 31s; the process ended with 0.
+Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `DESIGN_ROUND=4`, `TODAY_CARD=true`, `CALENDAR_ENABLED=true`, `CALENDAR_ICS_URL=C:\Users\temp\projects\assistant-bot\tests\fixtures\calendar_selftest.ics`. Took 29s; the process ended with 0.
 
 | Step | What | Result | Expected | Saw | Claude | From |
 |---|---|---|---|---|---|---|
@@ -341,5 +342,5 @@ Settings: . Took 4s; the process ended with 0.
 - The category `selftest` and its three channels are left in place, holding the last run. Every run empties them first.
 - To empty them now: `python -m selftest --clear`. To delete them and the category: `python -m selftest --remove` (the next run makes them again). Both work over HTTP, with live running.
 - `data/dev.db` and the dev clock are as they were before the run: they are moved aside for it and put back after.
-- The run's own database and each start's results are kept in `data/selftest/run-20261018-001449/` (never in git). Delete the folder when you like.
+- The run's own database and each start's results are kept in `data/selftest/run-20261018-005358/` (never in git). Delete the folder when you like.
 
