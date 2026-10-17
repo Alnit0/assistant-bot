@@ -41,6 +41,13 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 6. **The diary is never on the Today card**: its one line is in the
    briefing's The day ("📔 streak 5 · written today", "· not yet" from
    6 pm).
+7. **The week view in #calendar** (`tasks/week`, `core/weekview.py`,
+   `WEEK_VIEW`): this week pinned (a box a day, today highlighted, past
+   days faint), next week below (a line a day), edited in place at most
+   once a minute; "my week" anywhere, and the calendar's "this week",
+   "next week" and "what's on Thursday" in the same layout. Live can
+   view, send, read, edit and pin in `📅_calendar` (checked from
+   Discord's own answer): nothing to grant. 10 tests.
 
 ## Decided (2026-10-17, evening)
 
@@ -111,6 +118,20 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
   it is not tonight's, and a reminder's card asks for the time, so
   nothing is saved unseen. Left as a known miss (question for Alex: a
   plan for a day with no time, to-do or reminder?).
+- **The week view reads what a plan reads** (`Entry.plan`): one
+  contract for both. A `Piece` that comes every day says so (`fold`:
+  doses, routines) and is counted, never listed. To-dos are not in it.
+  The calendar's copy keeps yesterday to two months ahead, so a day of
+  this week before yesterday shows only what the other tasks have.
+- **The calendar's week and day answers use the week view's layout**
+  with it on, so "this week", "next week" and "what's on Thursday" show
+  reminders, birthdays and expiries too, with no routing change; the
+  router's recorded answers for them already pick the calendar.
+- **At most one edit a minute** is core's live-message queue with its
+  own interval (`every`), so the changes coalesce; the bot's own 12:01
+  am schedule (locked) draws today on and, on Mondays, the new week.
+  The first post is silent; an edit never notifies. Nothing is said in
+  #calendar but the two messages (and Discord's own "pinned" line).
 - **Dev items still in Needs a look**: the rules keep self-test bugs and
   the nightly there (Claude Code deals with them); only the status line
   leaves them out. The spend over the cap is in neither.

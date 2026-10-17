@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 from core import clock, config, database, design, recurrence, timeinput
 from core import day as days
-from core.actions import TIME, Field, Proposal, Request, State
+from core.actions import TIME, Field, Proposal, Request, Shown, State
 from core.errors import UserError
 from tasks.calendar import rules, series, source, store
 from tasks.calendar.rules import ICON, NEXT_WEEK, SPANS, WEEK
@@ -43,14 +43,34 @@ def read_day(said, today):
         raise UserError(f"“{said}” is not a day I can read.")
 
 
-async def show(request: Request, data: dict, guessed: frozenset) -> str:
-    """What is on a day, or this week, or next week."""
+async def show(request: Request, data: dict, guessed: frozenset):
+    """What is on a day, or this week, or next week. With the week view on, in its layout: every task's day,
+    not only the calendar's (core/weekview.py), answered where it was asked."""
     today = days.today()
-    events = await store.events(request.user.id)
     span = data.get("span") if data.get("span") in SPANS else rules.DAY_SPAN
+    if config.WEEK_VIEW:
+        return await _week_view(request, span, data, today)
+    events = await store.events(request.user.id)
     if span in (WEEK, NEXT_WEEK):
         return rules.week_answer(events, rules.span_days(span, today), today, "this week" if span == WEEK else "next week")
     return rules.day_answer(events, read_day(data.get("day"), today), today)
+
+
+async def _week_view(request: Request, span: str, data: dict, today) -> Shown:
+    from core import cards, weekview
+    from core.cards import Card
+
+    if span in (WEEK, NEXT_WEEK):
+        first = today if span == WEEK else today + timedelta(days=7)
+        found = await weekview.gather(request.user.id, weekview.week_of(first))
+        title = weekview.THIS_WEEK if span == WEEK else weekview.NEXT_WEEK
+        layout = weekview.this_week(found, today) if span == WEEK else weekview.next_week(found, today)
+        card = Card(weekview.text(found, today, title), (), layout)
+    else:
+        (found,) = await weekview.gather(request.user.id, [read_day(data.get("day"), today)])
+        card = Card(weekview.short_line(found, today), (), weekview.one_day(found, today))
+    message_id = await cards.send(request.channel_id, card)
+    return Shown(card.text if message_id is not None else "not shown")
 
 
 async def when(request: Request, data: dict, guessed: frozenset) -> str:

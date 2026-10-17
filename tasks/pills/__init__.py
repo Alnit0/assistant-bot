@@ -43,14 +43,14 @@ async def plan_pieces(user_id: int, on) -> list:
     if on == day.today():
         _, listed, _ = await checklist.read(user_id, on)
         return [
-            planning.Piece("pills", f"p{dose.pill.id}.{dose.number}", plain.ICON, dose.pill.plan.name, at)
+            planning.Piece("pills", f"p{dose.pill.id}.{dose.number}", plain.ICON, dose.pill.plan.name, at, fold="dose")
             for dose in listed if dose.is_pending and (at := pills_today.shown_time(dose)) is not None
         ]
     found = []
     for pill in await store.pills(user_id):
         for number, planned in pills_today.wanted(pill, on):
             if planned is not None:
-                found.append(planning.Piece("pills", f"p{pill.id}.{number}", plain.ICON, pill.plan.name, day.at(on, planned)))
+                found.append(planning.Piece("pills", f"p{pill.id}.{number}", plain.ICON, pill.plan.name, day.at(on, planned), fold="dose"))
     return found
 
 

@@ -181,6 +181,7 @@ CHANNELS: dict[str, int] = {
         "bugs": os.getenv("BUGS_CHANNEL_ID"),
         "hub": os.getenv("HUB_CHANNEL_ID"),
         "commands": os.getenv("COMMANDS_CHANNEL_ID"),
+        "calendar": os.getenv("CALENDAR_CHANNEL_ID"),
     }.items()
     if value
 }
@@ -250,6 +251,9 @@ DIARY_MOOD = flag(os.getenv("DIARY_MOOD"), True)
 SMART_INBOX = flag(os.getenv("SMART_INBOX"), False)
 # Plan my day (core/planning.py, tasks/plan): to-dos placed in the free time around what is fixed. Off: not loaded
 PLAN_MY_DAY = flag(os.getenv("PLAN_MY_DAY"), False)
+# The week view in #calendar (tasks/week, core/weekview.py): this week pinned, next week below. Off: not loaded
+WEEK_VIEW = flag(os.getenv("WEEK_VIEW"), False)
+CALENDAR_CHANNEL_ID = int(os.getenv("CALENDAR_CHANNEL_ID")) if (os.getenv("CALENDAR_CHANNEL_ID") or "").isdigit() else None
 # Birthdays, part of reminders (tasks/nudges/birthdays.py; with NUDGES_ENABLED). Off: not loaded
 BIRTHDAYS_ENABLED = flag(os.getenv("BIRTHDAYS_ENABLED"), False)
 # The daily read (tasks/reading): off, not loaded

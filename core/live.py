@@ -28,6 +28,7 @@ log = logging.getLogger("assistant")
 MIN_INTERVAL = 2.0  # seconds between two edits of the same message
 SLOW_INTERVAL = 30.0  # for a message many things change (the briefing): at most one edit this often
 _slow: set = set()
+_every: dict[object, float] = {}  # a key's own interval between edits (`schedule(..., every=)`)
 
 Refresh = Callable[[], Awaitable[None]]
 
@@ -56,12 +57,15 @@ def _dev_bot() -> bool:
     return bool(config.SEPARATE_BOT)
 
 
-def schedule(key, refresh: Refresh, slow: bool = False) -> None:
+def schedule(key, refresh: Refresh, slow: bool = False, every: float | None = None) -> None:
     """Bring one live message up to date soon, in the background. `key` names
     the message (("board", channel_id)); the latest `refresh` for a key wins.
-    `slow`: at most one edit every SLOW_INTERVAL, the rest coalesced."""
+    `slow`: at most one edit every SLOW_INTERVAL, the rest coalesced; `every`:
+    at most one edit that often, in seconds (the week view: a minute)."""
     if slow:
         _slow.add(key)
+    if every is not None:
+        _every[key] = every
     _pending[key] = refresh
     worker = _workers.get(key)
     if worker is None or worker.done():
@@ -71,7 +75,8 @@ def schedule(key, refresh: Refresh, slow: bool = False) -> None:
 async def _work(key) -> None:
     # Runs until nothing more has been asked for this key
     while key in _pending:
-        wait = wait_needed(_last.get(key), time.monotonic(), SLOW_INTERVAL if key in _slow and MIN_INTERVAL > 0 and not _dev_bot() else None)
+        interval = _every.get(key) if key in _every and MIN_INTERVAL > 0 and not _dev_bot() else SLOW_INTERVAL if key in _slow and MIN_INTERVAL > 0 and not _dev_bot() else None
+        wait = wait_needed(_last.get(key), time.monotonic(), interval)
         if wait > 0:
             await asyncio.sleep(wait)
         refresh = _pending.pop(key, None)

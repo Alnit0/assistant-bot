@@ -100,7 +100,7 @@ async def plan_pieces(user_id: int, day: date) -> list:
         if each.ends() is not None:
             until = min(until, each.ends())
         note = rules.when_text(each.habit) if each.ends() is not None else ""
-        found.append(planning.Piece(TASK, f"h{each.habit.id}", ICON, each.habit.name, starts, until, note=note))
+        found.append(planning.Piece(TASK, f"h{each.habit.id}", ICON, each.habit.name, starts, until, note=note, fold="routine"))
     return found
 
 
