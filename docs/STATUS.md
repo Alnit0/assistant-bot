@@ -42,6 +42,9 @@ new for 18 Oct: send your gym spreadsheet; say starting a workout.
    after the gym's description named pain and training; the gym's own
    router 14 of 14 and the diary's fixtures 25 of 25 after it. US$0.14
    (about NZ$0.24 of NZ$0.40).
+5. **The bedtime nudge** (`tasks/bedtime`, `BEDTIME_ENABLED`; asked
+   overnight, lowest priority): 9 tests; recorded checks 10 of 10,
+   US$0.03 (about NZ$0.05 of NZ$0.20).
 
 ## Decided (2026-10-18, overnight: the gym)
 
@@ -95,6 +98,21 @@ new for 18 Oct: send your gym spreadsheet; say starting a workout.
   part only, never the words. No medical advice: a count, a swap to try,
   and from 3 times on one exercise "worth checking with a physio or
   doctor".
+- **The bedtime's rows are Alex's schedules**: saving a bedtime makes a
+  Wind down and a Bedtime row for each time and its days (the old ones
+  removed), so "my schedule" shows and moves them; a bedtime before
+  4:00 am is the next morning's run. Until one is set nothing runs.
+- **"Goodnight" quietens the bot's own nudges for the night**: the
+  wind-down, the bedtime line and the diary's ask. Pill reminders keep
+  their rules, and reminders Alex set himself still come: they are his
+  own asks, like a pill's.
+- **The diary's ask folds into the wind-down** when the wind-down comes
+  within 30 minutes after the ask's time: the ask steps aside and the
+  wind-down carries its question and buttons (and a reply to it is the
+  entry, as before). An ask after the wind-down is folded the same way,
+  having been asked there already.
+- **Tomorrow's first thing** is the first event (a planned gym session
+  is one) or the first dose, from every task's day.
 - **The grid reader is core** (`core/grid.py`): the smart inbox reads
   XLSX with it too, and a gym logbook sent there goes to the gym's own
   import card.

@@ -11,8 +11,9 @@ mid-batch. Cap NZ$1.00, any one run under NZ$0.40. Spent: US$0.27 (NZ$0.46). Shi
 1. to 6. The gym: built, checked, Design · Gym posted; shipped 12:35 am
    on `55e3695` with GYM_ENABLED=true, checked
 7. The add-ons (weight, insights, pain): built, checked, committed
-8. The bedtime nudge: in progress; then a self-test and one ship before
-   3:15 am with GYM_WEIGHT and BEDTIME_ENABLED
+8. The bedtime nudge: built, checked, committed
+9. The self-test, then one ship before 3:15 am: GYM_WEIGHT and
+   BEDTIME_ENABLED (nothing runs until a bedtime is set)
 
 **Queued after the ship, lowest first last** (ship by 4:45 am if tested,
 else push and list here): the gym's weight tracker, training insights

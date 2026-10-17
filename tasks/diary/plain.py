@@ -309,6 +309,15 @@ async def ask_job(job: scheduler.Job) -> None:
     if await store.entry(owner.id, on) is not None:
         scheduler.note(job, "not asked: today is written")
         return
+    if config.BEDTIME_ENABLED:
+        from tasks import bedtime
+
+        if await bedtime.is_quiet(owner.id, clock.now()):
+            scheduler.note(job, "not asked: goodnight was said")
+            return
+        if await bedtime.folds_diary(owner.id, clock.now()):
+            scheduler.note(job, "not asked: folded into the wind-down within 30 minutes")
+            return
     if not await database.run(store.db_claim_ask, owner.id, on, clock.now()):
         scheduler.note(job, "not asked: asked already today")
         return

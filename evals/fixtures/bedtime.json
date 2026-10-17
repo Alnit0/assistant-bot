@@ -1,0 +1,190 @@
+{
+  "router": [
+    {
+      "golden": "bt1",
+      "message": "bedtime 11pm; midnight on Fridays and Saturdays",
+      "tasks": [
+        "bedtime"
+      ],
+      "note": "bedtime (18 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "bedtime"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "bt2",
+      "message": "goodnight",
+      "tasks": [
+        "bedtime"
+      ],
+      "note": "bedtime (18 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "bedtime"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "bt3",
+      "message": "heading to bed",
+      "tasks": [
+        "bedtime"
+      ],
+      "note": "bedtime (18 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "bedtime"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "bt4",
+      "message": "going to sleep",
+      "tasks": [
+        "bedtime"
+      ],
+      "note": "bedtime (18 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "bedtime"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "bt5",
+      "message": "wind down 45 minutes before",
+      "tasks": [
+        "bedtime"
+      ],
+      "note": "bedtime (18 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "bedtime"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "bt6",
+      "message": "remind me at 10pm to set an alarm",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "bedtime (18 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    }
+  ],
+  "extraction": [
+    {
+      "golden": "bt1",
+      "task": "bedtime",
+      "message": "bedtime 11pm; midnight on Fridays and Saturdays",
+      "state": "",
+      "action": "bedtime_set",
+      "data": {},
+      "recorded": [
+        "bedtime_set",
+        {
+          "bedtimes": [
+            {
+              "time": "11:00 pm"
+            },
+            {
+              "time": "12:00 am",
+              "days": [
+                "fri",
+                "sat"
+              ]
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "bt2",
+      "task": "bedtime",
+      "message": "goodnight",
+      "state": "",
+      "action": "bedtime_goodnight",
+      "data": {},
+      "recorded": [
+        "bedtime_goodnight",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "bt3",
+      "task": "bedtime",
+      "message": "heading to bed",
+      "state": "",
+      "action": "bedtime_goodnight",
+      "data": {},
+      "recorded": [
+        "bedtime_goodnight",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "bt5",
+      "task": "bedtime",
+      "message": "wind down 45 minutes before",
+      "state": "",
+      "action": "bedtime_set",
+      "data": {
+        "wind_down": 45
+      },
+      "recorded": [
+        "bedtime_set",
+        {
+          "wind_down": 45,
+          "bedtimes": [],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    }
+  ]
+}

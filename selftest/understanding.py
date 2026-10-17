@@ -29,7 +29,7 @@ def every_entry() -> list:
     from core import actions, config
     from tasks import registry
 
-    for name in ("BRIEFING_ENABLED", "WEATHER_ENABLED", "DAY_QUESTIONS", "TODOS_ENABLED", "NUDGES_ENABLED", "HABITS_ENABLED", "CALENDAR_ENABLED", "DIARY_ENABLED", "READING_ENABLED", "PLAN_MY_DAY", "BIRTHDAYS_ENABLED", "GYM_ENABLED", "GYM_WEIGHT"):
+    for name in ("BRIEFING_ENABLED", "WEATHER_ENABLED", "DAY_QUESTIONS", "TODOS_ENABLED", "NUDGES_ENABLED", "HABITS_ENABLED", "CALENDAR_ENABLED", "DIARY_ENABLED", "READING_ENABLED", "PLAN_MY_DAY", "BIRTHDAYS_ENABLED", "GYM_ENABLED", "GYM_WEIGHT", "BEDTIME_ENABLED"):
         setattr(config, name, True)
     # The calendar's writing, with a made-up Bot calendar, only while the catalogue is read: put back at
     # once, so the dev bot itself never reads or writes a calendar it was not given

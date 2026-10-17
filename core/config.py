@@ -262,6 +262,8 @@ GYM_ENABLED = flag(os.getenv("GYM_ENABLED"), False)
 GYM_SHEET = flag(os.getenv("GYM_SHEET"), False)
 # The gym's weight tracker (tasks/gym/weight.py): weigh-ins in words, a smoothed trend. Off unless set
 GYM_WEIGHT = flag(os.getenv("GYM_WEIGHT"), False)
+# The bedtime nudge (tasks/bedtime): a wind-down message and a line at bedtime, once a bedtime is set. Off: not loaded
+BEDTIME_ENABLED = flag(os.getenv("BEDTIME_ENABLED"), False)
 GYM_SHEET_ID = (os.getenv("GYM_SHEET_ID") or "").strip()
 # The daily read (tasks/reading): off, not loaded
 READING_ENABLED = flag(os.getenv("READING_ENABLED"), False)
