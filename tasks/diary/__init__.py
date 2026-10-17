@@ -45,15 +45,8 @@ async def summary(user_id: int, day: date) -> Summary | None:
 
 
 async def today_lines(user_id: int, now: datetime) -> list:
-    """For the Today card: the streak and whether today is written ("not yet" only from 6 pm). No mood, no words."""
-    from core.today import Line
-
-    on = rules.diary_day(now)
-    written = await database.run(store.db_days, user_id)
-    if on not in written and not rules.evening(now):
-        return []
-    line = rules.streak_line(rules.streak(written, on), on in written, True)
-    return [Line(ICON, f"**{TITLE}** · {line}", done=on in written)]
+    """Never on the Today card (Alex, 17 Oct): the diary's one line is in the briefing's The day only."""
+    return []
 
 
 async def week(user_id: int, monday: date, upto: date):
@@ -133,8 +126,6 @@ class DiaryTask(Task):
     async def summary(self, user_id, day):
         return await summary(user_id, day)
 
-    async def today(self, user_id, now):
-        return await today_lines(user_id, now)
 
     async def week(self, user_id, monday, upto):
         return await week(user_id, monday, upto)

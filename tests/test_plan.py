@@ -59,6 +59,7 @@ def world(make_db, dev_clock, monkeypatch, owner):
     monday = days.today() + timedelta(days=(0 - days.today().weekday()) % 7 or 7)
     seen.day = monday
     clock.advance_to(days.at(monday, time(8, 0)))
+    monkeypatch.setattr(actions, "_entries", {})  # put back after the test
     actions.set_catalogue([*todos_task.entries(), *nudges_task.entries(), *calendar_task.entries(), *plan_task.entries()])
     monkeypatch.setattr(summaries, "changed", lambda task, user_id: seen.told.append(task))
     monkeypatch.setattr(plain, "calendar_writer", lambda: seen.bot)

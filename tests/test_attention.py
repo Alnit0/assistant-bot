@@ -594,3 +594,30 @@ def test_needs_a_look_says_which_check_failed_and_how_many_steps():
     assert briefing_rules.problem(health.selftest_problem(nightly, {"1.01b": 1})) == "⚠️ D1 · nightly check failed, 2 steps"
     assert briefing_rules.problem(health.selftest_problem(by_hand, {})) == "⚠️ self-test failed, 1 step"
     assert attention.status_line(health.selftest_problem(nightly, {"1.01b": 1})) == "⚠️ D1 · self-test failed", "the status line stays short"
+
+
+def test_no_development_or_self_test_item_can_win_the_status_line(monkeypatch):
+    """Alex, 17 Oct: the status line shows only his own things. Dev mode, a self-test's result or bug, the nightly
+    and the self-test's spend never win it, whatever their rank; Needs a look may still show the first three."""
+    import asyncio
+    from datetime import datetime, timedelta, timezone
+
+    from core import attention, config, health, identity
+
+    now = datetime(2026, 10, 17, 20, 0, tzinfo=timezone.utc)
+    monkeypatch.setattr(config, "DEV_DATABASE", False)
+    dev_items = [
+        attention.Item("dev mode is on", attention.PROBLEM, short=("dev mode",), icon="🛠️", ping=False, dev=True),
+        health.selftest_problem({"date": "2026-10-17 03:30", "ran": "nightly, full", "failed_steps": "1.02 2.04"}, {"1.02": 4}),
+        health.two_nights([{"date": "2026-10-16 03:30", "ran": "nightly", "failed_steps": "1.02"}, {"date": "2026-10-17 03:30", "ran": "nightly", "failed_steps": "1.02"}]),
+    ]
+    assert all(each is not None and each.dev for each in dev_items)
+    assert attention.top(dev_items, now).dev, "they still rank, for Needs a look"
+    assert attention.top_mine(dev_items, now) is None
+    dose = attention.Item("dose due", attention.TIMED, when=now - timedelta(minutes=5), can_act=True, short=("due 8pm",), icon="💊")
+    assert attention.status_line(attention.top_mine([*dev_items, dose], now)) == "💊 due 8pm"
+    line = asyncio.run(identity.current_line([*dev_items, dose], now))
+    assert "self-test" not in line and "dev mode" not in line and "nightly" not in line and "D4" not in line
+    assert asyncio.run(identity.current_line(dev_items, now)) == "", "with only those, the line is blank"
+    monkeypatch.setattr(health, "selftest_spend", lambda now=None: (9.0, 2.0))
+    assert all("spend" not in " ".join(each.short) for each in asyncio.run(health.selftest(1, now))), "the spend is never an item"

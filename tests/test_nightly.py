@@ -288,7 +288,9 @@ def test_the_self_test_s_month_is_added_up_from_its_history_and_over_the_limit_i
     assert health.selftest_spend(now) == (pytest.approx(2.1), 2.0)
     monkeypatch.setattr(health, "selftest_spend", lambda now=None: (2.1, 2.0))
     found = asyncio.run(health.selftest(1, now))
-    assert [attention.status_line(item) for item in found] == ["🧪 self-test spend · NZ$2.10"], "live shows it when there is nothing else to show (the run itself passed)"
+    assert found == [], "never Needs a look or the status line: the week's summary has it (17 Oct)"
+    assert health.spend_week_line(2.1, 2.0) == "For Claude Code: the self-test spent NZ$2.10 of its NZ$2.00 this month; recorded answers only until it ends"
+    assert health.spend_week_line(1.9, 2.0) == ""
     assert config.SELFTEST_MONTHLY_LIMIT_NZD == 2.0
 
 

@@ -72,6 +72,9 @@ class Item:
     # What the problem is known by for good, for pinging (core/alerts.py): the same problem keeps it through
     # a restart, a new bug number, a change of words or of status. "" is its bug, else its task and words
     once: str = ""
+    # Development or self-test information (dev mode, a self-test's result or bug, the nightly): Needs a look may
+    # show it, the status line never does (Alex, 17 Oct): the status line is his own things only
+    dev: bool = False
 
 
 def level(item: Item, now: datetime) -> int | None:
@@ -112,6 +115,11 @@ def top(items: list[Item], now: datetime) -> Item | None:
     """The one item to look at first, or None: nothing."""
     order = ranked(items, now)
     return order[0][1] if order else None
+
+
+def top_mine(items: list[Item], now: datetime) -> Item | None:
+    """The status line's item: the top one that is Alex's own, never development or self-test information."""
+    return top([each for each in items if not each.dev], now)
 
 
 def next_change(items: list[Item], now: datetime) -> datetime | None:

@@ -271,7 +271,10 @@ async def everything_card(user_id: int, now_day: date) -> Card | None:
     sunday = weekly.sunday_of(monday)
     from core import wishes
 
-    foot = await wishes.week_line(user_id, monday)  # the wishlist's count, one small line
+    from core import health
+
+    # The wishlist's count, and the self-test's month over its cap (for Claude Code): small lines
+    foot = " · ".join(each for each in (await wishes.week_line(user_id, monday), health.spend_week_line(*health.selftest_spend())) if each)
     return Card(weekly.text(sections, monday, sunday, foot), (), weekly.layout(sections, monday, sunday, foot))
 
 

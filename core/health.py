@@ -159,7 +159,7 @@ async def dev_mode(user_id: int, now: datetime) -> list[Item]:
     """On live, dev mode is something to put right: waits are short and nothing tidies itself."""
     if config.DEV_DATABASE or not devmode.enabled:
         return []
-    return [Item("dev mode is on", PROBLEM, can_act=True, short=("dev mode",), icon=DEV_MODE_ICON, ping=False)]
+    return [Item("dev mode is on", PROBLEM, can_act=True, short=("dev mode",), icon=DEV_MODE_ICON, ping=False, dev=True)]
 
 
 # --- Claude spend over the day's limit --------------------------------------------------------------------------------------
@@ -364,7 +364,7 @@ def spend_problem(spent: float, limit: float) -> Item | None:
     if spent < limit:
         return None
     # Useful to know, not something wrong: nothing is to be done about it, and it lasts until the month ends.
-    # So it is shown only when nothing else is (level 4), never in the box and never as a ping
+    # Since 17 Oct it is no attention item at all: the week's summary has it (`spend_week_line`)
     return Item("the self-test has spent this month's limit: recorded answers only until next month", USEFUL, short=("self-test spend", money.shown(spent)), icon=SELFTEST_ICON, ping=False)
 
 
@@ -411,7 +411,7 @@ def two_nights(rows: list[dict], since: datetime | None = None) -> Item | None:
         return None
     if (last - first).days != 1:
         return None
-    return Item("nightly check failed two nights in a row", PROBLEM, short=("nightly failed twice",), once=f"selftest:nights-from-{streak[0]}")
+    return Item("nightly check failed two nights in a row", PROBLEM, short=("nightly failed twice",), once=f"selftest:nights-from-{streak[0]}", dev=True)
 
 
 def nightly_bug_open(number: int) -> bool:
@@ -453,7 +453,7 @@ def selftest_problem(row: dict | None, bugs: dict, since: datetime | None = None
     except ValueError:
         when = None
     # Never a ping: Needs a look and the briefing show it, Claude Code deals with it. Known for good by its run
-    return Item(what, PROBLEM, when=when, bug=selftest_bug(number) if number is not None else "", short=(said,), ping=False, once=f"selftest:{row.get('date') or ''}")
+    return Item(what, PROBLEM, when=when, bug=selftest_bug(number) if number is not None else "", short=(said,), ping=False, once=f"selftest:{row.get('date') or ''}", dev=True)
 
 
 async def selftest(user_id: int, now: datetime) -> list[Item]:
@@ -466,8 +466,17 @@ async def selftest(user_id: int, now: datetime) -> list[Item]:
     except (OSError, ValueError, AttributeError, TypeError):
         bugs = {}
     since = last_ship()
-    found = [selftest_problem(last_run(folder), bugs, since, nightly_bug_open), two_nights(history(folder), since), spend_problem(*selftest_spend())]
+    # The month's spend over its cap is not here: it is one small line in the week's summary (`spend_week_line`)
+    found = [selftest_problem(last_run(folder), bugs, since, nightly_bug_open), two_nights(history(folder), since)]
     return [each for each in found if each is not None]
+
+
+def spend_week_line(spent: float, limit: float) -> str:
+    """The week's summary's small line for Claude Code when the self-test's month is over its cap (its runs use
+    recorded answers until the month ends, and still run): never Needs a look or the status line (17 Oct)."""
+    if config.DEV_DATABASE or spent < limit:
+        return ""
+    return f"For Claude Code: the self-test spent {money.shown(spent)} of its {money.shown(limit)} this month; recorded answers only until it ends"
 
 
 async def morning(user_id: int, now: datetime) -> list[Item]:

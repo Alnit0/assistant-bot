@@ -160,7 +160,8 @@ async def current_line(items: list | None = None, now: datetime | None = None) -
     """The status line as things stand now."""
     now = now or clock.now()
     items = await _items(now) if items is None else items
-    top = attention.status_line(attention.top(items, now))
+    # Only Alex's own things: dev mode, the self-test and the nightly are never on it (17 Oct)
+    top = attention.status_line(attention.top_mine(items, now))
     return status_line(DEV_DATABASE, clock.offset(), top, SELFTEST_BACK, _progress)
 
 

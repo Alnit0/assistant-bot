@@ -271,6 +271,7 @@ def test_birthdays_are_a_private_entry_of_reminders_only_when_switched_on(world,
 
 
 def test_a_message_for_birthdays_keeps_no_name_or_gift_note_in_the_log(world, monkeypatch):
+    monkeypatch.setattr(actions, "_entries", {})  # put back after the test
     actions.set_catalogue(nudges_task.entries())
     logged = []
 

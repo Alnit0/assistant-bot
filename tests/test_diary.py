@@ -294,11 +294,9 @@ def test_deleting_a_day_is_a_red_card_first_and_its_words_go(world):
 def test_the_today_card_and_the_briefing_show_only_the_streak_and_whether_today_is_written(world):
     from tasks import diary
 
-    (line,) = run(diary.today_lines(world.owner.id, clock.now()))
-    assert line.text == "**Diary** · not yet" and not line.done
+    assert run(diary.today_lines(world.owner.id, clock.now())) == [] and diary.task.entries()[0].today is None if config.DIARY_ENABLED else True
     write(world, said_mood="good")
-    (line,) = run(diary.today_lines(world.owner.id, clock.now()))
-    assert line.text == "**Diary** · streak 1 · written today" and line.done, "never the mood"
+    assert run(diary.today_lines(world.owner.id, clock.now())) == [], "never on the Today card"
     said = run(diary.summary(world.owner.id, world.day))
     assert said.overview == "streak 1 · written today"
     world.at(9, 0, ahead=1)
@@ -391,8 +389,7 @@ def test_the_today_card_says_not_yet_only_from_6pm(world):
     world.at(12, 0, ahead=1)
     assert run(diary.today_lines(world.owner.id, clock.now())) == []
     world.at(18, 0, ahead=1)
-    (line,) = run(diary.today_lines(world.owner.id, clock.now()))
-    assert line.text == "**Diary** · not yet"
+    assert run(diary.today_lines(world.owner.id, clock.now())) == [], "the Today card never has the diary: The day says not yet"
 
 
 def test_at_6pm_the_today_card_is_drawn_again_by_a_schedule_of_the_bots_own():

@@ -25,6 +25,22 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
    once; a Write on a written day appends. Every surface shows only the
    streak and whether today is written; the week says days written out
    of 7. Nothing is deleted. Tests updated and 10 more.
+4. **Recorded checks**: plan and birthdays 26 of 28, then 9 of 9; the
+   inbox's birthday 1 of 1; the router over every task's cross-task and
+   golden conversations 70 of 71 (x5, below). US$0.26 (NZ$0.44).
+5. **The status line is Alex's own things only** (asked mid-batch, from
+   a screenshot of live: self-test spend · NZ$3.64): `attention.Item.dev`
+   for dev mode, a self-test's result or bug and the nightly, and
+   `top_mine` never picks one; the self-test's spend over its cap is a
+   small line in the week's summary only. Which runs took it over: the
+   15 runs with real requests on 13 and 14 Oct (13 full self-tests at
+   about US$0.15 each, while the self-test was being built), US$2.06,
+   NZ$3.64 at today's rate; the one at 1:47 am on 14 Oct crossed
+   NZ$3.50, and nothing has spent since. The cap already only stops real
+   requests: every run goes ahead on recorded answers, the nightly too.
+6. **The diary is never on the Today card**: its one line is in the
+   briefing's The day ("📔 streak 5 · written today", "· not yet" from
+   6 pm).
 
 ## Decided (2026-10-17, evening)
 
@@ -90,6 +106,14 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
   they are Alex asking. Every surface he does not ask for shows none.
 - **The ask without moods** (`DIARY_MOOD` off) is the same question
   with Write alone.
+- **x5, "I need to call the bank on Friday"**, goes to reminders, not
+  to-dos, three times of three, with the new tasks on and with them off:
+  it is not tonight's, and a reminder's card asks for the time, so
+  nothing is saved unseen. Left as a known miss (question for Alex: a
+  plan for a day with no time, to-do or reminder?).
+- **Dev items still in Needs a look**: the rules keep self-test bugs and
+  the nightly there (Claude Code deals with them); only the status line
+  leaves them out. The spend over the cap is in neither.
 
 ## Shipped (17 Oct, 2:25 am)
 
