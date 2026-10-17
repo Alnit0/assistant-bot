@@ -94,7 +94,14 @@ def add_expiries(conn: sqlite3.Connection) -> None:
     )
 
 
-MIGRATIONS = [create_tables, add_expiries]
+def add_birthdays(conn: sqlite3.Connection) -> None:
+    """Birthdays (tasks/nudges/birthdays.py): appended, never in between."""
+    from tasks.nudges import birthdays
+
+    birthdays.add_tables(conn)
+
+
+MIGRATIONS = [create_tables, add_expiries, add_birthdays]
 
 _ITEM = "id, user_id, text, at, repeat, first_day, weekdays, every_days"
 _FIRED = "id, nudge_id, local, due_at, message_id, done_at, snoozed_until, late"

@@ -43,6 +43,7 @@ ONLY_FOR = (
     "with no time that the user does not ask to be reminded of (the to-dos task), and not when the bot posts its own "
     "things (the schedule task)."
 )
+NOT_BIRTHDAYS = " Not birthdays or gift ideas (the birthdays task)."
 # With the calendar taking new events (CALENDAR_WRITE): an appointment said with a time is the
 # calendar's, and a reminder is what the user asks to be reminded of
 ONLY_FOR_WITH_CALENDAR = (

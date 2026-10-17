@@ -15,6 +15,10 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
    to-dos placed around what is fixed, a card with Save, Put it on my
    calendar and Cancel, changes in words before saving, the times on
    the Today card. 21 tests.
+2. **Birthdays** (`tasks/nudges/birthdays.py`, `BIRTHDAYS_ENABLED`):
+   "Mum's birthday 12 March", "Sam 3 June 1995", gift notes, a quiet
+   line from 14 days, posts 3 days before and on the day, the Bot
+   calendar's yearly all-day event, upcoming and when. 16 tests.
 
 ## Decided (2026-10-17, evening)
 
@@ -46,6 +50,25 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
   reason; after 10:00 pm "plan my day" says to plan tomorrow.
 - **A plan never pings**: nothing is booked by it; the reminders the
   things already have are all there is.
+- **Birthdays are a private entry of the reminders task**: in reminders
+  as asked, and an entry of their own to the router so that, like the
+  diary, a name or a gift note is never in a log (the message log, its
+  reply and what was extracted, #bot-log, a Save's log line, a job's
+  note). This also keeps the diary's replies and extractions out of the
+  log from now on. Behind `BIRTHDAYS_ENABLED`, turned on in live's
+  `.env` at the ship with `PLAN_MY_DAY`, since the what's-new lines ask
+  to try them.
+- **29 February is the 28th** in a year without one, for the posts and
+  on the calendar (the last day of February every year).
+- **Timing in words**: "tell me 5 days before" changes the days posted
+  before (the day itself is always posted); "a month before" changes
+  the quiet line's 14 days. A post missed while the bot was off is
+  posted late, once, at the nearest stage reached.
+- **Done** on a birthday's post takes it away (the day's own post still
+  comes); Snooze is the reminders' (10 minutes, 1 hour, tomorrow).
+- **A gift note is a card**, as every change to one of my things is.
+- **In a plan**, a birthday is all day; one on the Bot calendar comes
+  from the calendar only, never twice.
 
 ## Shipped (17 Oct, 2:25 am)
 

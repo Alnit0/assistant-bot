@@ -7,7 +7,7 @@ from core.attention import TIMED, Item
 from core.context import Context
 from core.design import DUE, QUIET
 from tasks.base import ANY, ButtonNote, Keyword, Task
-from tasks.nudges import expiry, plain, rules, store
+from tasks.nudges import birthdays, expiry, plain, rules, store
 from tasks.nudges.rules import ICON, TASK, TITLE
 
 # ---------------------------------------------------------------------------
@@ -42,6 +42,10 @@ async def summary(user_id: int, day: date) -> Summary | None:
     due = rules.due_today(nudges, day)
     # Renewals between their first nudge and the day before: a quiet part of the overview line
     renewals = expiry.overview(await expiry.every(user_id), day)
+    if config.BIRTHDAYS_ENABLED:
+        # Birthdays from their heads-up to the day before their first post: quiet in the same line
+        coming_up = birthdays.overview(await birthdays.every(user_id), day)
+        renewals = " · ".join(each for each in (renewals, coming_up) if each)
     if not due:
         return Summary("", QUIET, overview=renewals) if renewals else None
     now = clock.now()
@@ -88,6 +92,17 @@ async def plan_pieces(user_id: int, day: date) -> list:
     return found
 
 
+def birthdays_entry():
+    """Birthdays to the router: an entry of their own, private (a name or a gift note is never in a log), whose
+    buttons and jobs are this task's."""
+    from core.actions import Entry
+
+    return Entry(
+        birthdays.NAME, birthdays.ICON, birthdays.ONLY_FOR, birthdays.EXAMPLES, tuple(birthdays.actions()), live_state=birthdays.state,
+        identity=(), on_repeat=repeats.ALLOW_ANOTHER, label="Birthdays", private=True, place=PLACE + 1, plan=birthdays.plan_pieces,
+    )
+
+
 class NudgesTask(Task):
     """Reminders at a time I set, in plain words; they go off in the hub."""
 
@@ -100,7 +115,8 @@ class NudgesTask(Task):
     def only_for(self) -> str:
         # The calendar taking new events changes where "dentist Friday 3pm" goes (tasks/calendar)
         calendar_adds = config.CALENDAR_ENABLED and config.CALENDAR_WRITE and bool(config.CALENDAR_BOT_ID)
-        return plain.ONLY_FOR_WITH_CALENDAR if calendar_adds else plain.ONLY_FOR
+        said = plain.ONLY_FOR_WITH_CALENDAR if calendar_adds else plain.ONLY_FOR
+        return said + (plain.NOT_BIRTHDAYS if config.BIRTHDAYS_ENABLED else "")
 
     examples = plain.EXAMPLES
     show = "nudge_show"
@@ -114,6 +130,10 @@ class NudgesTask(Task):
     def actions(self) -> list:
         return plain.actions()
 
+    def entries(self):
+        found = super().entries()
+        return [*found, birthdays_entry()] if found and config.BIRTHDAYS_ENABLED else found
+
     async def action_state(self, request):
         return await plain.state(request)
 
@@ -125,7 +145,7 @@ class NudgesTask(Task):
 
     def buttons(self) -> list[ButtonNote]:
         return [
-            ButtonNote("✅ Done", "on a reminder that went off: it is dealt with, and leaves the hub"),
+            ButtonNote("✅ Done", "on a reminder that went off (a birthday's too): it is dealt with, and leaves the hub"),
             ButtonNote("💤 Snooze", "on a reminder that went off: again in 10 minutes, in 1 hour, or tomorrow at the same time"),
         ]
 
@@ -133,20 +153,29 @@ class NudgesTask(Task):
         return store.MIGRATIONS
 
     def job_handlers(self):
-        return {plain.FIRE: plain.fire_job, plain.CARD: plain.post_job, expiry.CHECK_JOB: expiry.check_job, expiry.AGAIN_JOB: expiry.again_job}
+        found = {plain.FIRE: plain.fire_job, plain.CARD: plain.post_job, expiry.CHECK_JOB: expiry.check_job, expiry.AGAIN_JOB: expiry.again_job}
+        if config.BIRTHDAYS_ENABLED:
+            found |= {birthdays.CHECK_JOB: birthdays.check_job, birthdays.AGAIN_JOB: birthdays.again_job}
+        return found
 
     def job_labels(self):
         # Never the reminder's words: a job's name is shown where anyone may glance
-        return {plain.FIRE: "reminder", plain.CARD: "reminders card", expiry.CHECK_JOB: "renewals check", expiry.AGAIN_JOB: "renewal"}
+        return {plain.FIRE: "reminder", plain.CARD: "reminders card", expiry.CHECK_JOB: "renewals check", expiry.AGAIN_JOB: "renewal", birthdays.CHECK_JOB: "birthdays check", birthdays.AGAIN_JOB: "birthday"}
 
     def setup(self, client) -> None:
         plain.register()
         expiry.register()
         scheduler.default_schedule(TASK, expiry.CHECK_JOB, expiry.CHECK_DEFAULT)
+        if config.BIRTHDAYS_ENABLED:
+            birthdays.register()
+            scheduler.default_schedule(TASK, birthdays.CHECK_JOB, birthdays.CHECK_DEFAULT)
         scheduler.join_routine(hub.MORNING, scheduler.handler_name(TASK, plain.CARD), order=ORDER, name=hub.MORNING_NAME)
 
     async def owns_message(self, message_id):
-        return await database.run(store.db_message, message_id) is not None or await database.run(expiry.db_post_of, message_id) is not None
+        return (
+            await database.run(store.db_message, message_id) is not None or await database.run(expiry.db_post_of, message_id) is not None
+            or (config.BIRTHDAYS_ENABLED and await database.run(birthdays.db_post_of, message_id) is not None)
+        )
 
     async def summary(self, user_id, day):
         return await summary(user_id, day)

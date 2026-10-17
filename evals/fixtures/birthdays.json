@@ -1,0 +1,43 @@
+{
+  "router": [
+    {"golden": "bd1", "message": "Mum's birthday 12 March", "tasks": ["birthdays"], "note": "a birthday"},
+    {"golden": "bd2", "message": "Sam's birthday is 3 June 1995", "tasks": ["birthdays"], "note": "with a year"},
+    {"golden": "bd3", "message": "gift idea for Mum: a scarf", "tasks": ["birthdays"], "note": "a gift note"},
+    {"golden": "bd4", "message": "when is Mum's birthday?", "tasks": ["birthdays"], "note": "a question, answered in place"},
+    {"golden": "bd5", "message": "upcoming birthdays", "tasks": ["birthdays"], "note": "the next 90 days"},
+    {"golden": "bd6", "message": "tell me 5 days before Mum's birthday", "tasks": ["birthdays"], "note": "timing in words"},
+    {"golden": "bd7", "message": "remind me at 5pm to call Mum", "tasks": ["nudges"], "note": "a reminder that names Mum is still a reminder"}
+  ],
+  "extraction": [
+    {
+      "golden": "bd1", "task": "birthdays", "message": "Mum's birthday 12 March",
+      "state": "The user's birthdays now:\n- Made-up Friend (3 June, in 40 days)",
+      "action": "birthday_add", "data": {"person": "Mum", "date": "12 March"}
+    },
+    {
+      "golden": "bd2", "task": "birthdays", "message": "Sam's birthday is 3 June 1995",
+      "state": "The user's birthdays now:\n- Mum (12 March, in 146 days)",
+      "action": "birthday_add", "data": {"person": "Sam", "date": "3 June 1995"}
+    },
+    {
+      "golden": "bd3", "task": "birthdays", "message": "gift idea for Mum: a scarf",
+      "state": "The user's birthdays now:\n- Mum (12 March, in 146 days)",
+      "action": "birthday_gift", "data": {"person": "Mum", "note": "a scarf"}
+    },
+    {
+      "golden": "bd4", "task": "birthdays", "message": "when is Mum's birthday?",
+      "state": "The user's birthdays now:\n- Mum (12 March, in 146 days)",
+      "action": "birthday_when", "data": {"person": "Mum"}
+    },
+    {
+      "golden": "bd5", "task": "birthdays", "message": "upcoming birthdays",
+      "state": "The user's birthdays now:\n- Mum (12 March, in 146 days)",
+      "action": "birthday_soon", "data": {}
+    },
+    {
+      "golden": "bd6", "task": "birthdays", "message": "tell me 5 days before Mum's birthday",
+      "state": "The user's birthdays now:\n- Mum (12 March, in 146 days)",
+      "action": "birthday_change", "data": {"person": "Mum", "before": [5]}
+    }
+  ]
+}
