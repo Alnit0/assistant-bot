@@ -8,6 +8,18 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-17 (evening)
 
+## Shipped (18 Oct, 1:14 am): the gym's add-ons and the bedtime nudge
+
+Live on `8f78b5f` (from `55e3695`) with `GYM_WEIGHT=true` and
+`BEDTIME_ENABLED=true` (live's `.env` as it was:
+`data\env-before-2026-10-18-weight-bedtime`), one restart, the next pill
+reminder at 8:00 am. Checked: live's own account; the bedtime's and the
+gym's three migrations applied; no errors; the hub as it was; 25
+bookings. The bedtime sends nothing until Alex sets one. The self-test
+before it: 149 of 150, none failed. Overnight spend in all: about
+US$0.44 (NZ$0.75) of the gym's NZ$1.00, its add-ons' NZ$0.40 and the
+bedtime's NZ$0.20.
+
 ## Shipped (18 Oct, 12:35 am): the gym
 
 Live on `55e3695` (from `e9997d1`) with `GYM_ENABLED=true` (live's

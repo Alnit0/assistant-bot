@@ -133,7 +133,9 @@ Messages go through fast paths (buttons, exact typed words), then sticky follow-
 ## 9. Open threads (update every batch)
 
 **Waiting on Alex**
-- **The gym** (built 18 Oct, overnight): his logbook sent to #inbox to import; "Design · Gym"; the sheet mirror waits for a sheet shared with the service account (`docs/GYM-SHEET-SETUP.md`).
+- **The gym** (live 18 Oct, overnight, with its weight tracker, training insights and pain tracker): his logbook sent to #inbox to import; "Design · Gym"; the sheet mirror waits for a sheet shared with the service account (`docs/GYM-SHEET-SETUP.md`).
+- **The bedtime nudge** (live 18 Oct, silent until he says "bedtime 11pm").
+- **The settle-in week** (next, at the next restart): a feature freeze to Sun 25 Oct, #guide, the setup checklist, the Sunday feature-use report.
 - **Round 6** (17 Oct): his look at "Design · Round 6 timeline", and whether to build it into the hub (a card per dose, or the one moving pills card).
 - **Plan my day, birthdays, the week view, the diary's Write** shipped 17 Oct: his first days with them ("Design · Plan my day and birthdays").
 - **x5**: is "I need to call the bank on Friday" a to-do or a reminder? It goes to reminders.

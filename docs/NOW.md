@@ -3,31 +3,25 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Batch overnight 17 to 18 Oct** (unattended, from 11:45 pm): the gym
-task (`tasks/gym`, `GYM_ENABLED`), with Alex's plain-words logging asked
-mid-batch. Cap NZ$1.00, any one run under NZ$0.40. Spent: US$0.27 (NZ$0.46). Ship by
-5:20 am (not 3:15 to 4:30 am); not ready by 5:00 am: push, list here.
+**Idle, last batch was** overnight 17 to 18 Oct (11:45 pm to 1:20 am):
+the gym (shipped 12:35 am), its weight tracker, training insights and
+pain tracker, and the bedtime nudge (shipped 1:14 am on `8f78b5f`, all
+checked). Spend about US$0.44 (NZ$0.75). Previews: Design · Gym.
 
-1. to 6. The gym: built, checked, Design · Gym posted; shipped 12:35 am
-   on `55e3695` with GYM_ENABLED=true, checked
-7. The add-ons (weight, insights, pain): built, checked, committed
-8. The bedtime nudge: built, checked, committed
-9. The self-test, then one ship before 3:15 am: GYM_WEIGHT and
-   BEDTIME_ENABLED (nothing runs until a bedtime is set)
+**Next, at the next restart** (not overnight): the settle-in week, a
+feature freeze to Sun 25 Oct (fixes and polish from real use only, new
+ideas to the backlog; into CLAUDE.md too), #guide with a pinned message
+a live feature and the setup checklist card (docs/SETUP-CHECKLIST.md),
+and the Sunday feature-use report (`/catchup` on Sundays, and here).
 
-**Queued after the ship, lowest first last** (ship by 4:45 am if tested,
-else push and list here): the gym's weight tracker, training insights
-and pain tracker; then the bedtime nudge. **After the batch:** the
-settle-in week (a freeze to Sun 25 Oct, #guide, the setup checklist,
-the Sunday feature-use report), at the next restart.
-
-**Earlier tonight:** shipped `e9997d1` at 11:10 pm (prompt caching draft
-in `docs/drafts/prompt-caching.md`, nothing of it built).
+**For Alex to try:** send the gym logbook to #inbox; "starting a
+workout"; "weighed 82.4"; "bedtime 11pm" (the bedtime stays silent until
+set). The sheet mirror waits for a sheet (docs/GYM-SHEET-SETUP.md).
 
 **Sundays:** run `/suggest` (the brainstorm with the wishlist).
 **Nightly 17 Oct, 3:30 am:** 149 of 150 on `98697d4`, none failed.
 
-**Live:** `55e3695` since 18 Oct, 12:35 am; previous `e9997d1` (`-Back`).
+**Live:** `8f78b5f` since 18 Oct, 1:14 am; previous `55e3695` (`-Back`).
 **Drafts and worktrees:** `docs/drafts/gym-onboarding.md`; three old
 worktrees, all merged
 
