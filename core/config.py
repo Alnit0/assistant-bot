@@ -256,6 +256,11 @@ WEEK_VIEW = flag(os.getenv("WEEK_VIEW"), False)
 CALENDAR_CHANNEL_ID = int(os.getenv("CALENDAR_CHANNEL_ID")) if (os.getenv("CALENDAR_CHANNEL_ID") or "").isdigit() else None
 # Birthdays, part of reminders (tasks/nudges/birthdays.py; with NUDGES_ENABLED). Off: not loaded
 BIRTHDAYS_ENABLED = flag(os.getenv("BIRTHDAYS_ENABLED"), False)
+# The gym (tasks/gym): its plan, the rotation, logging and progress. Off: not loaded. GYM_SHEET mirrors every set
+# to a Google Sheet (GYM_SHEET_ID, shared with the service account): off until Alex shares one
+GYM_ENABLED = flag(os.getenv("GYM_ENABLED"), False)
+GYM_SHEET = flag(os.getenv("GYM_SHEET"), False)
+GYM_SHEET_ID = (os.getenv("GYM_SHEET_ID") or "").strip()
 # The daily read (tasks/reading): off, not loaded
 READING_ENABLED = flag(os.getenv("READING_ENABLED"), False)
 # The dev bot's replay only: a JSON file of made-up feeds and pages read in place of the internet

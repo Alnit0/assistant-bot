@@ -8,6 +8,57 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-17 (evening)
 
+## Overnight batch, 17 to 18 Oct (unattended, from 11:45 pm): the gym
+
+1. **The gym task** (`tasks/gym`, `GYM_ENABLED`): import, the rotation,
+   the workout card in #gym (🥋_gym: live can post there), the Log
+   form, Finish with bests, suggestions, undo; a session described in
+   words; swaps and plan changes; questions; the briefing's line, the
+   weekly target, the week view; the sheet mirror (`GYM_SHEET`, off).
+   19 tests on made-up logbooks (`tests/gym_files.py`).
+
+## Decided (2026-10-18, overnight: the gym)
+
+- **What words mean is Claude's, values Python's**: Alex asked for
+  notes about dumbbells to mark a per-hand weight and pain words to
+  flag an exercise; the rules forbid a word list in Python, so Claude
+  reads each note (pain, per hand, a target weight like "go up to
+  40-45kg") and each set's purpose (to failure or not) and each
+  exercise's kind (for its weight step); at import in one request for
+  all the distinct words, and for a note typed in the Log form in one
+  small request. Python reads every number.
+- **The plan is each workout as last done**, in the order the workouts
+  were first seen; the log is every dated session. A DNF workout, or
+  one with nothing done, is planned and not done: in the plan, not in
+  the log, counted on the card. The rotation goes on after the last
+  workout logged.
+- **The queue**: finishing a workout sends it to the back, wherever it
+  was; so "do Lower 2 instead" leaves the head of the queue next, as
+  asked. "Skip" sends one to the back. Off-plan leaves it as it was.
+  One session open at a time: starting another finishes the open one
+  as it stands.
+- **The Log form**: Discord's forms hold five boxes, so up to four
+  sets are a box each (the suggestion filled in, "40 kg × "), and more
+  are one long box, a line a set; the note is the last box. A box left
+  as it was filled in is a set not done.
+- **The card's buttons**: a Log button on each exercise not logged; if
+  that is more than one message holds, one dropdown instead.
+- **Suggested weight**: double progression from the last to-failure
+  set (else the last working set): at the top of the range +2.5 kg
+  (barbell, dumbbell), +5 kg (machine, cable); 5 or more over the top,
+  Epley's estimate for the top of the range, rounded down to the step;
+  a note's target first; under or in the range, the same. Warm-ups
+  about half. Each exercise may have its own step ("bench steps are
+  2.5").
+- **Bests**: the heaviest weight for a target rep range, and the most
+  reps at a weight, working sets only; a first time is no best.
+- **Nicknames**: Python matches the whole name, part of one, and a
+  plural ("laterals"); an initialism ("RDLs") is Claude's to hand over
+  as the plan names it, from the state it is given.
+- **The grid reader is core** (`core/grid.py`): the smart inbox reads
+  XLSX with it too, and a gym logbook sent there goes to the gym's own
+  import card.
+
 ## Shipped (17 Oct, 11:10 pm)
 
 Live on `e9997d1` (from `e127088`), one restart, no pill reminder before

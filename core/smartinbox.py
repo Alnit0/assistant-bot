@@ -82,11 +82,13 @@ def kind_of(attachment: Attachment) -> str:
         return "pdf"
     if said in ("text/csv", "application/vnd.ms-excel") or attachment.extension == "csv":
         return "csv"
+    if said == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" or attachment.extension == "xlsx":
+        return "xlsx"
     return ""
 
 
 def too_big(attachment: Attachment) -> bool:
-    limit = {"image": MAX_IMAGE, "pdf": MAX_PDF, "csv": MAX_CSV}.get(kind_of(attachment), 0)
+    limit = {"image": MAX_IMAGE, "pdf": MAX_PDF, "csv": MAX_CSV, "xlsx": MAX_CSV * 2}.get(kind_of(attachment), 0)
     return attachment.size > limit
 
 
@@ -127,6 +129,12 @@ async def read_files(attachments: tuple[Attachment, ...]) -> Read:
         kinds.append(kind)
         if kind == "csv":
             tables.append((attachment.name, tuple(tuple(row) for row in table(data))))
+        elif kind == "xlsx":
+            from core import grid
+
+            # A workbook: each tab a table, its headings its first row (a gym logbook has a tab a workout)
+            for found in grid.from_xlsx(attachment.name, data):
+                tables.append((f"{attachment.name} · {found.name}", tuple([found.headings, *[row for row in found.rows if any(row)]][:CSV_ROWS])))
         elif kind == "pdf":
             blocks.append({"type": "document", "source": {"type": "base64", "media_type": "application/pdf", "data": base64.b64encode(data).decode("ascii")}})
         else:
@@ -266,6 +274,17 @@ def unclear(words: str, task: str, why: str = "where does this go?", file: bool 
 async def prepare(request: Request, words: str, task: str, entries: list[Entry], state_of, *, file: bool = False, rows=None) -> dict:
     """One item as its task reads it: what the card shows for it and what Save does. A question for a
     task is returned as {"question": Extracted}, to be answered as any question is."""
+    if task == GYM_PLAN and _entry("gym", entries) is not None:
+        # The gym task is on: its own import reads the files sent (every tab, every row) onto its card's item
+        entry = _entry("gym", entries)
+        action = entry.action("gym_import")
+        try:
+            proposal = await action.prepare(request, {}, frozenset())
+        except UserError as error:
+            return {"words": words, "task": "gym", "lines": [design.warning(str(error))], "ready": False, "file": file}
+        lines = [*proposal.lines, *[design.warning(each) for each in proposal.warnings]]
+        return {"words": words, "task": "gym", "action": "gym_import", "guessed": [], "file": file, "data": proposal.data, "lines": lines,
+                "ready": proposal.can_save and proposal.question is None, "kind": proposal.kind}
     if task == GYM_PLAN:
         if not rows:
             return unclear(words, UNSURE, "a gym plan needs its table: send the CSV", file)

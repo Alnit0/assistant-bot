@@ -52,6 +52,9 @@ for name, value in {
     "WEEK_VIEW": "",  # off, as it is unless set: the week view's tests switch it on
     "CALENDAR_CHANNEL_ID": "",
     "BIRTHDAYS_ENABLED": "",  # off, as it is unless set: the birthdays' tests switch it on
+    "GYM_ENABLED": "",  # off, as it is unless set: the gym's tests switch it on
+    "GYM_SHEET": "",
+    "GYM_SHEET_ID": "",
     "READING_ENABLED": "",
     "READING_SOURCE": "",  # the replay's made-up feeds: never in a test unless it sets them
     "TODOS_ENABLED": "",  # off, as it is unless set: the to-dos tests switch it on

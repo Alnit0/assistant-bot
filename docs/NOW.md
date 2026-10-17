@@ -3,15 +3,24 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Idle, last batch was** the evening of 17 Oct (8:30 to 10:15 pm): plan
-my day, birthdays, the diary's Write, the status line, the week view in
-#calendar, previews of plan and birthdays and of round 6. Shipped at
-10:07 pm on `e127088`. Spend US$0.27 (about NZ$0.46) of NZ$0.60.
+**Batch overnight 17 to 18 Oct** (unattended, from 11:45 pm): the gym
+task (`tasks/gym`, `GYM_ENABLED`), with Alex's plain-words logging asked
+mid-batch. Cap NZ$1.00, any one run under NZ$0.40. Spent: 0. Ship by
+5:20 am (not 3:15 to 4:30 am); not ready by 5:00 am: push, list here.
 
-**Nightly 18 Oct, 3:30 am:** to check (the first after the ship).
-**Shipped 11:10 pm:** `e9997d1`, a day and no time is a to-do (x45/x46)
-and the dev bot's own status line. Next, low priority: prompt caching
-(`docs/drafts/prompt-caching.md`), nothing of it shipped.
+1. Plan and log: the import (CSV, XLSX, pasted rows; Claude maps the
+   columns, Python reads the values), plan and log apart: in progress
+2. The rotation and the workout card in #gym (🥋_gym: live can post
+   there), the log form, Finish with PBs, suggested weights, undo
+3. Plain words: start, instead, skip, off-plan, extra, swap, changes; a
+   whole session described in words (and a photo by the inbox)
+4. Retrieval, PBs, the briefing's line, the week view, a weekly target
+5. The sheet mirror (`GYM_SHEET`, off) and docs/GYM-SHEET-SETUP.md
+6. Recorded checks and golden conversations; Design · Gym; self-test;
+   ship with GYM_ENABLED=true
+
+**Earlier tonight:** shipped `e9997d1` at 11:10 pm (prompt caching draft
+in `docs/drafts/prompt-caching.md`, nothing of it built).
 
 **Sundays:** run `/suggest` (the brainstorm with the wishlist).
 **Nightly 17 Oct, 3:30 am:** 149 of 150 on `98697d4`, none failed.
