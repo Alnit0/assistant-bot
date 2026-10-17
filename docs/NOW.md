@@ -6,19 +6,14 @@ history is `docs/STATUS.md`. Read first, with `/catchup`.
 **Batch 17 Oct evening** (unattended, from 8:30 pm), with two asks that
 came in during it. One ship for all of it. Spent US$0.26 (NZ$0.44).
 
-1. Plan my day (`PLAN_MY_DAY`): done, committed
-2. Birthdays (`BIRTHDAYS_ENABLED`): done, committed
-3. Diary (Write form, reply, one offer, streak only): done, committed
-4. Recorded checks: done (plan, birthdays, inbox; the router 70 of 71)
-5. Status line: never dev or self-test things; the self-test cap only
-   stops real requests; over the cap a small line in the week only
-6. Diary: its one line in the briefing's The day only, not Today
-7. Week view in #calendar (this week pinned, next week below; my week,
-   what's on Thursday in place)
-8. Previews: Design · Plan my day and birthdays; Design · Round 6
-   timeline (behind `DESIGN_ROUND=6`, live stays on 5); design log
-9. Dev-bot self-test, then ship (10 minutes from any pill reminder, not
-   3:15 to 4:30 am): account, hub, #calendar, every booking
+1. to 8. done and committed: plan my day, birthdays, the diary, the
+   recorded checks, the status line, the diary off the Today card, the
+   week view in #calendar, the previews (Design · Plan my day and
+   birthdays; Design · Round 6 timeline, round 5's day 43 of 43)
+9. Dev-bot self-test, then ship (10 minutes from any pill reminder: none
+   due before morning; not 3:15 to 4:30 am): account, hub, #calendar,
+   every booking. Live's `.env` gets PLAN_MY_DAY, BIRTHDAYS_ENABLED,
+   WEEK_VIEW and CALENDAR_CHANNEL_ID (📅_calendar: all permissions there)
 
 **Sundays:** run `/suggest` (the brainstorm with the wishlist).
 **Nightly 17 Oct, 3:30 am:** 149 of 150 on `98697d4`, none failed.

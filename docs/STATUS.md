@@ -48,6 +48,14 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
    "next week" and "what's on Thursday" in the same layout. Live can
    view, send, read, edit and pin in `📅_calendar` (checked from
    Discord's own answer): nothing to grant. 10 tests.
+8. **Previews**: "Design · Plan my day and birthdays" (16 cards, the
+   diary's Write and the week view too) and "Design · Round 6 timeline"
+   (`core/timeline.py`, `DESIGN_ROUND=6` a preview round). Phone screens,
+   round 5's real hub (a day run by the dev bot tonight, 43 of 43) at
+   7:30 am, 12 pm and 9 pm: 3.5, 2.5, 4.5; round 6 at 7 am, 12 pm and
+   8 pm: 2.5, 2.1, 1.4 (a busy day of 18 items: 2.8, 2.4, 1.6). Alex's
+   words are in `docs/DESIGN-LOG.md`. The day replay no longer stops when
+   started after 4 pm the day before its Sunday.
 
 ## Decided (2026-10-17, evening)
 
@@ -132,6 +140,11 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
   am schedule (locked) draws today on and, on Mondays, the new week.
   The first post is silent; an edit never notifies. Nothing is said in
   #calendar but the two messages (and Discord's own "pinned" line).
+- **Round 6 is a layout, not yet the hub**: built and tested as
+  `core/timeline.py`, drawn from the replay's made-up day; the hub's own
+  messages in fixed slots and the conversation tidy wait for Alex to
+  pick it (BACKLOG, Soon). Round 5's side is the real hub at the
+  replay's nearest moments (7:30 am, 12 pm, 9 pm), said in the post.
 - **Dev items still in Needs a look**: the rules keep self-test bugs and
   the nightly there (Claude Code deals with them); only the status line
   leaves them out. The spend over the cap is in neither.
