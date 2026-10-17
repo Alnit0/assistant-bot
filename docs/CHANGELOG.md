@@ -4,6 +4,20 @@ What changed, newest first. One entry per task, as one to three bullets on
 what changed for the user. Entries before 2026-10-07's last one were
 backfilled from the git log.
 
+## 2026-10-17
+
+- Plan my day: say plan my day, plan tomorrow or replan, and your to-dos are placed in the free time around what
+  is fixed, on a card you can change in words (I'm out 2 to 4, move laundry to the evening); Save puts the times
+  on the Today card, or Put it on my calendar adds them to the Bot calendar.
+- Birthdays in reminders: say Mum's birthday 12 March, or Sam 3 June 1995, and gift idea for Mum: a scarf. A quiet
+  line 14 days before, a post 3 days before with the gift ideas and one on the day, and a yearly all-day event on
+  the Bot calendar. Upcoming birthdays and when is Mum's birthday are answered in place.
+- The week in #calendar: this week pinned, a box a day, and next week below it, kept up to date; my week anywhere.
+- The diary: the 9 pm ask has ✍️ Write (a box for as many words as you like), a reply to it is the entry, and the
+  only line about it is the streak in the briefing's The day. The status line shows only your own things: never the
+  self-test, dev mode or the nightly.
+- Earlier: send several things at once, or a screenshot, and they are sorted onto one card (the smart inbox).
+
 ## 2026-10-16
 
 - The calendar reads several calendars at once (the iCal link and Google), shown as one, and adds, moves and

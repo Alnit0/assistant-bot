@@ -305,7 +305,10 @@ async def story(h) -> None:
     h.recorded_only = True
     the_day = day_of_run(days.today())
     # The day before at 4 pm, straight there: the setting up is the afternoon before, as it would be
-    clock.advance_to(max(clock.now(), days.at(the_day - timedelta(days=1), time(16, 0))))
+    # (Started after that, the clock stays where it is: asking it for "now" again is a moment back, and refused: 17 Oct)
+    setting_up = days.at(the_day - timedelta(days=1), time(16, 0))
+    if setting_up > clock.now():
+        clock.advance_to(setting_up)
     await h.run_due()
     # The daily read's pick at 5:30 is a job's request, with no message: its recorded answer
     h.background["reading"] = ("pick", {"choice": 1, "tldr": TLDR_FIRST})

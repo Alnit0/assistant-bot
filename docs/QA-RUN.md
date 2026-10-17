@@ -20,6 +20,13 @@ against what is built and switched on.
 
 Block numbers never change: other docs name them.
 
+## The short list, 17 Oct (only Alex can check)
+
+- At 9 pm: ✍️ Write opens a box; what is written is saved; a reply to the ask is saved too
+- #calendar: this week pinned at the top, next week below; a reminder added shows there within a minute
+- "plan my day": the card, then Save; the planned times on the Today card
+- "Mum's birthday 12 March": the card, and the event on the Bot calendar
+
 ## Only you can check
 
 Most useful first, by today's priorities: what the hub shows and how it

@@ -91,6 +91,10 @@ Messages go through fast paths (buttons, exact typed words), then sticky follow-
 
 **Round 5 (live since 15 Oct, 10:34 pm, `DESIGN_ROUND=5`; "Design · Round 5" tagged Live):** from his feedback "there's a little bit of overlap with pills and calendar". The briefing becomes the morning overview: its title is the date with the day's dots ("☀️ Thursday 15 October ●●● 3/3"), so "Today" only means the Today card; Needs a look and Weather keep their boxes; every task with its own card is one line in one overview box, with no progress. A task card whose items are all done leaves the hub and comes back if something new is added (the pills checklist too, unless a dose was missed). No footer: the how-to is in help. With the suggested answers to questions 68 to 75, each marked in the post for his yes or no, still to come item by item.
 
+**Round 6 (a preview, 17 Oct, `DESIGN_ROUND=6` in `design.PREVIEW_ROUNDS`):** the timeline hub as Alex set it out: the briefing a header (date with dots, weather and what's next, a faint done line, Needs a look only for a real problem), then one card an item in time order (doses at their times, moved ones struck through with why; routines, events with "on now · until"; reminders, planned to-dos, the diary from 6 pm, what is due, free gaps of 90 minutes or more), to-dos with no time last. `core/timeline.py` is the layout; "Design · Round 6 timeline" shows it beside round 5's real hub at 7 am, 12 pm and 8 pm, a busy day, the one-moving-pills-card variant and the conversation tidy. Not in the hub yet: that waits for his pick.
+
+**The week view (17 Oct):** this week pinned in #calendar, a box a day (today amber, past days faint, doses and routines counted in one small line), next week below, a line a day, edited at most once a minute; "my week" anywhere; the calendar's week and day answers in the same layout.
+
 **The design loop** (`docs/DESIGN-LOG.md` is the record: each round, his feedback word for word, what changed)
 - The Design forum has a post a round, tagged Live, Preview or Retired, drawn by the real code from made-up data (`python -m selftest.preview --post-round N`), plus other previews ("Design · …").
 - **The day-in-the-hub replay** (`python -m selftest.day [--round N]`) runs the dev bot through one made-up day and reads the hub back at eight moments with the status line live would show; `--post` puts it in the forum. Use it for every round.
@@ -129,6 +133,9 @@ Messages go through fast paths (buttons, exact typed words), then sticky follow-
 ## 9. Open threads (update every batch)
 
 **Waiting on Alex**
+- **Round 6** (17 Oct): his look at "Design · Round 6 timeline", and whether to build it into the hub (a card per dose, or the one moving pills card).
+- **Plan my day, birthdays, the week view, the diary's Write** shipped 17 Oct: his first days with them ("Design · Plan my day and birthdays").
+- **x5**: is "I need to call the bank on Friday" a to-do or a reminder? It goes to reminders.
 - **The smart inbox and the brainstorm** (17 Oct): questions 93 to 98; which of the brainstorm's top 10 to build ("Design · Brainstorm").
 - **Round 5** (live since 15 Oct with the suggested answers): his yes or no item by item on "Design · Round 5" (questions 68 to 75).
 - **The fix for when doses were taken** (`effbe2e`) ships at the next restart.

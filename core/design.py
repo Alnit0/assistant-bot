@@ -753,6 +753,9 @@ def asking(
 # ---------------------------------------------------------------------------
 ROUNDS = (1, 3, 4, 5)  # the rounds that were built, oldest first (config's default stays the one that is shipped)
 LATEST = ROUNDS[-1]
+# Rounds drawn for a preview only (round 6, the timeline hub: core/timeline.py, 17 Oct). Chosen, the hub's own cards
+# are drawn as the latest built round's: nothing of live's changes until one is built and shipped
+PREVIEW_ROUNDS = (6,)
 
 
 def current() -> int:
@@ -760,7 +763,7 @@ def current() -> int:
     from core import config  # read when drawn, so a test or a restart can change it
 
     wanted = getattr(config, "DESIGN_ROUND", LATEST)
-    return wanted if wanted in ROUNDS else LATEST
+    return wanted if wanted in ROUNDS or wanted in PREVIEW_ROUNDS else LATEST
 
 
 def _standing_r1(title: str, context: str, boxes: list, later: list | tuple = (), hint: str = "", under: tuple = ()) -> tuple:

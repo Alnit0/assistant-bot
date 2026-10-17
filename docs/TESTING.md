@@ -48,6 +48,12 @@ Last updated: 2026-10-14
 | U | Channel reset | 10 | 4 | 6 | 5 | 5 | 0 | 0 |
 | | **Total** | **572** | **241** | **331** | **261** | **310** | **0** | **1** |
 
+**17 Oct, evening (automated):** `test_planning` and `test_plan` (plan my day: placing, the card, changes in
+words, Save, the calendar, replan, no free time), `test_birthdays` (dates and 29 February, the card and the
+Bot calendar, the posts, timing, private logs), `test_diary` (the Write form, a reply to the ask, append, the
+one offer, no past mood or words anywhere), `test_week_view`, `test_timeline` (round 6), and the status line's
+test in `test_attention`. By hand once live has them: QA-RUN's short list (a Write at 9 pm, #calendar's pin).
+
 Unless a test says otherwise: type in #inbox, as the owner, with dev mode
 off and `KEEP_CONFIRMATIONS=false` (the tests expect confirmations to
 tidy themselves away; M5 covers the setting). "Log card" means a card in

@@ -248,3 +248,64 @@ a pill appears: the pills card, pill reminders and the "what's left
 today?" answer. Every other countdown stays as it is (the briefing, the
 Today card, reminders).
 
+
+## Alex's design decisions, 17 Oct (evening)
+
+Sent during the evening batch, recorded here word for word in their parts.
+
+**The diary:** "The 9pm ask: 📔 How was today? with a ✍️ Write button
+(opens a Discord modal with a multi-line text box) and the three mood
+buttons. Replying to the ask also saves the reply as the entry. Tapping a
+mood saves it, then shows one small follow-up offering ✍️ Add a few words,
+never repeated. Writing any time still works; a Write on a day with an
+entry appends." And: "Show only the streak: the diary has exactly one
+line, in the briefing's The day only: 📔 streak N, plus · not yet from 6pm
+or · written today. Never in the Today card. Remove yesterday's mood and
+any past-day mood or content from every surface, including the weekly
+summary (replace the moods line with days written out of 7). Past entries
+only when Alex asks. Keep all stored data."
+
+**The week view:** "One message, pinned, edited in place as things change
+(coalesced, at most one edit a minute): one box per day Monday to Sunday
+of the current week. Each day lists the notable items in time order
+(calendar events with times, timed reminders, birthdays, expiries and
+renewals due, gym days when gym exists); daily repeats folded into one
+small line (💊 3 doses · 🔁 2 routines). Today highlighted, past days
+faint. Rolls over each Monday at 12:01am." "A second message below, also
+kept up to date: next week, same layout, collapsed to one line per day."
+"my week, this week, next week, what's on Thursday answered in place
+anywhere with the same layout." "Lock-screen rules unchanged; edits never
+ping."
+
+**Round 6, a preview:** "Header (the briefing): date with the day's dots;
+one small line with weather and what's next; one faint line listing what
+is done today (name and time); Needs a look only for real problems. No
+other boxes." "Below it, one card per item in time order: pills, personal
+routines, calendar events, timed reminders, to-dos with a planned time,
+the diary (from 6pm), expiries or birthdays due today, and free time gaps
+of 90 minutes or more outside events (with how many to-dos could fit).
+Each card: emoji, title and time; one or two detail lines; its own button
+only if it can be acted on now." "Pills: one card per dose at its planned
+time; later doses marked planned; when a dose is taken or skipped,
+recalculate later doses with the existing rules and update their cards in
+place, moving them if needed, showing a change as struck-through old time
+then bold new time with why (dose 1 was taken at 9:15am). Only the due
+dose shows Taken. Also show the one-moving-card variant for comparison,
+labelled." "Long events (work 8am to 5pm): placed at the start time;
+while on, shown as on now · until 5:00pm with time left; items during it
+appear below it in time order; free time never shown inside an event;
+when finished, joins the done line." "Finished items leave their card and
+join the done line. Untimed to-dos in one card at the end. Order kept by
+rewriting cards in fixed message slots, not reposting." "Conversation
+tidy (preview it too): Alex's messages in the hub and the bot's replies
+deleted 10 minutes after the exchange is finished; replies to deleted
+messages deleted with them; What's new and restart notes gone by noon,
+and restart notes only when something was missed."
+
+**What was done with them:** the diary and the week view are built and
+ship tonight (STATUS, "Evening batch, 17 Oct"). Round 6 is a layout
+(`core/timeline.py`, `DESIGN_ROUND=6` a preview round in
+`design.PREVIEW_ROUNDS`), drawn from the made-up day beside round 5's real
+hub in "Design · Round 6 timeline"; the hub's own messages are not
+switched to it, and the conversation tidy is shown, not built, until Alex
+picks round 6. Live stays on round 5.
