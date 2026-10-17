@@ -37,7 +37,7 @@ SETTINGS = {
     "DAY_PROGRESS": "true", "DAY_QUESTIONS": "true", "WEEKLY_SUMMARY": "true", "QUIET_HOURS_ENABLED": "true",
     "TODOS_ENABLED": "true", "NUDGES_ENABLED": "true", "HABITS_ENABLED": "true", "TODAY_CARD": "true",
     "WEATHER_ENABLED": "true", "WEATHER_SOURCE": str(config.BASE_DIR / "tests" / "fixtures" / "weather_drizzle.json"),
-    "CALENDAR_ENABLED": "true", "WEEKLY_ALL": "true", "DIARY_ENABLED": "true", "READING_ENABLED": "true",
+    "CALENDAR_ENABLED": "true", "WEEKLY_ALL": "true", "DIARY_ENABLED": "true", "READING_ENABLED": "true", "PLAN_MY_DAY": "true", "BIRTHDAYS_ENABLED": "true",
     "CALENDAR_WRITE": "true", "CALENDAR_BOT_ID": BOT_CALENDAR, "CALENDAR_READ": "ics,google:CALENDAR_BOT_ID",
     "SMART_INBOX": "true",
 }

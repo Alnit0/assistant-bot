@@ -138,6 +138,17 @@ async def today_lines(user_id: int, now: datetime) -> list:
     ]
 
 
+async def plan_pieces(user_id: int, day: date) -> list:
+    """For a plan (core/planning.py): each event that day, fixed; an all-day one at no time."""
+    from core import planning
+
+    return [
+        planning.Piece(TASK, each.ref or each.key, ICON, each.title, all_day=True) if each.all_day
+        else planning.Piece(TASK, each.ref or each.key, ICON, each.title, each.start, each.end)
+        for each in rules.on_day(await store.events(user_id), day)
+    ]
+
+
 async def show_word(ctx: Context) -> str:
     await ctx.reply(rules.day_answer(await store.events(ctx.user.id), days.today(), days.today()))
     return "shown"
@@ -207,6 +218,9 @@ class CalendarTask(Task):
 
     async def today(self, user_id, now):
         return await today_lines(user_id, now)
+
+    async def plan(self, user_id, day):
+        return await plan_pieces(user_id, day)
 
 
 task = CalendarTask()

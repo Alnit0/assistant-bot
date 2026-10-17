@@ -48,6 +48,8 @@ for name, value in {
     "DIARY_ENABLED": "",
     "DIARY_MOOD": "",
     "SMART_INBOX": "",  # off, as it is unless set: the smart inbox's tests switch it on
+    "PLAN_MY_DAY": "",  # off, as it is unless set: the plan's tests switch it on
+    "BIRTHDAYS_ENABLED": "",  # off, as it is unless set: the birthdays' tests switch it on
     "READING_ENABLED": "",
     "READING_SOURCE": "",  # the replay's made-up feeds: never in a test unless it sets them
     "TODOS_ENABLED": "",  # off, as it is unless set: the to-dos tests switch it on

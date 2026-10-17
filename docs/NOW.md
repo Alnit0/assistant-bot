@@ -3,19 +3,19 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Idle, last batch was** overnight 17 Oct (unattended, 11:51 pm to 3:50
-am). Spend US$0.28 (about NZ$0.48) of NZ$1.00, the largest run US$0.15.
+**Batch 17 Oct evening** (unattended, from 8:30 pm): plan my day and
+birthdays, then ship. Cap NZ$0.60, any one run under NZ$0.40. Spent: 0.
 
-1. Smart inbox (`SMART_INBOX`): done, recorded, "Design · Smart inbox"
-2. A fix shipped from the command line in Needs a look within a minute:
-   done (`tasks/bugs/watch.py`)
-3. Expiry phrasings e3 and e6 recorded: done, both right
-4. `selftest.day` with expiries, a Bot calendar series, Needs a look
-   changes and the smart inbox: done, "Everything on, 17 Oct" posted;
-   three bugs found and fixed
-5. Brainstorm, wishlist, `/suggest`: done, "Design · Brainstorm" posted
-6. Self-test 149 of 150, no step failed (one fix to its own check);
-   shipped at 2:25 am
+1. Plan my day (`PLAN_MY_DAY`, core/planning.py, tasks/plan): in progress
+2. Birthdays in reminders (`BIRTHDAYS_ENABLED`, tasks/nudges/birthdays.py)
+3. Diary (asked mid-batch): the 9 pm ask with Write (a form), a reply
+   saves, a mood then one Add a few words; only the streak shown, no
+   past mood or words anywhere unasked; nothing deleted. Checks NZ$0.20
+4. Recorded understanding checks for all three, the router against
+   every task
+5. Design · Plan my day and birthdays (mock data), design log, docs
+6. Dev-bot self-test, then ship everything in one update (10 minutes
+   from any pill reminder, not 3:15 to 4:30 am), account, hub, bookings
 
 **Sundays:** run `/suggest` (the brainstorm with the wishlist).
 **Nightly 17 Oct, 3:30 am:** 149 of 150 on `98697d4`, none failed.

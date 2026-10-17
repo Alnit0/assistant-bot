@@ -6,7 +6,46 @@ No history is kept here: what changed is `docs/CHANGELOG.md`, and this
 file as it stood until midday on 2026-10-14 (every batch, every answer,
 all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
-**Updated:** 2026-10-17 (overnight)
+**Updated:** 2026-10-17 (evening)
+
+## Evening batch, 17 Oct (unattended, from 8:30 pm)
+
+1. **Plan my day** (`core/planning.py`, `tasks/plan`, `PLAN_MY_DAY`):
+   "plan my day", "plan tomorrow", "replan", "what should I do now?";
+   to-dos placed around what is fixed, a card with Save, Put it on my
+   calendar and Cancel, changes in words before saving, the times on
+   the Today card. 21 tests.
+
+## Decided (2026-10-17, evening)
+
+- **Plan my day's engine is core, its words a task**: the router routes
+  only to tasks, so `tasks/plan` is the conversation over
+  `core/planning.py` (as the schedule task is over the scheduler); no
+  hub card, no job, no ping. Every task hands its day over through a
+  new contract hook, `plan` (`Entry.plan`, a `planning.Piece` each).
+- **What is fixed, and how long it takes**: an event its own span; a
+  dose with a time or a timed reminder 5 minutes; a personal routine at
+  a time its first 30 minutes, one in a window the first 30 minutes of
+  it (the rest of the window stays free); an any-time routine is not
+  planned around. Expiries due that day, and birthdays, are all day.
+  Today's doses are when each is due now; tomorrow's their planned times.
+- **The free block** is 30 minutes, counted without the buffers; a gap
+  under 15 minutes is not shown. Starts are on 5-minute marks.
+- **A time with no am or pm**: the reading inside the window; a start
+  takes the morning, an end the evening; when both fit, the earlier, ❓.
+- **Lengths are kept** (`plan_lengths`): Claude's estimate the first
+  time, so a replan places the same lengths; one the user says wins and
+  is kept as said.
+- **Put it on my calendar** is a second card first (core's new
+  `Proposal.also`): Save there keeps the plan and adds the blocks.
+  Planning the day again takes the day's earlier blocks off, and the
+  plan's own blocks are never planned around. A block on the calendar
+  is not also a "planned" line on the Today card (the calendar's line
+  is there).
+- **A day with nothing that fits** is a card with Cancel only and the
+  reason; after 10:00 pm "plan my day" says to plan tomorrow.
+- **A plan never pings**: nothing is booked by it; the reminders the
+  things already have are all there is.
 
 ## Shipped (17 Oct, 2:25 am)
 

@@ -278,6 +278,7 @@ class Task:
                 attention=self.attention if type(self).attention is not Task.attention else None,
                 tally=self.tally if type(self).tally is not Task.tally else None, label=self.title,
                 today=self.today if type(self).today is not Task.today else None,
+                plan=self.plan if type(self).plan is not Task.plan else None,
                 week=self.week if type(self).week is not Task.week else None,
                 private=self.private, sticks=self.sticks, place=self.place, keeps=self.keeps, leads=tuple(self.leads),
             )
@@ -314,6 +315,13 @@ class Task:
         is done, and whether it is only a note (a reminder). It only reads and asks
         Claude nothing; the card is brought up to date when its summary changes
         (`summaries.changed`). Only used if overridden."""
+        return []
+
+    async def plan(self, user_id: int, day) -> list:
+        """This task's things on a day for a plan (core/planning.py), as
+        `planning.Piece`s: fixed ones with their times (never moved), all-day
+        ones, and to-dos to be placed. It only reads and asks Claude nothing.
+        Only used if overridden."""
         return []
 
     private = False  # its words are its own to keep (the diary): see actions.Entry

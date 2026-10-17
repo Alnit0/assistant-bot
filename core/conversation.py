@@ -947,20 +947,25 @@ async def _finish(ctx_or_request, row_id: int, turn: Turn, spent: timing.Turn, d
     channel_id, text = ctx_or_request.channel_id, ctx_or_request.text
     reply = "\n".join(turn.said)
     private = any((actions.entry(name) is not None and actions.entry(name).private) for name in turn.tasks)
+    # What the log keeps of the reply and of what was extracted: for a task that keeps its words to
+    # itself (the diary, birthdays), a note in their place and only which action it was
+    logged_reply, extracted = reply, turn.extracted
     if private:
         # A message for a task that keeps its words (the diary): a note in their place, here and after
         text = actions.PRIVATE_NOTE
         await log_result(row_id, content=text)
+        logged_reply = actions.PRIVATE_NOTE if reply else ""
+        extracted = [{"task": each.get("task"), "action": each.get("action")} for each in turn.extracted]
     calls = costs.calls_from(spent.claude_calls, costs.PURPOSE_CHAT)
     await log_result(
         row_id,
-        reply=reply,
+        reply=logged_reply,
         status="error" if turn.failed else "ok",
         error=turn.error or None,
         duration_s=duration,
         model=calls[0].model if calls else None,
         timing=json.dumps(timing.as_dict(spent, duration)),
-        extracted=json.dumps(turn.extracted, ensure_ascii=False) if turn.extracted else None,
+        extracted=json.dumps(extracted, ensure_ascii=False) if extracted else None,
         trace=None if private else turn.as_trace(),
     )
     await database.record_cost(row_id, turn.route, turn.tasks, calls)
@@ -972,13 +977,13 @@ async def _finish(ctx_or_request, row_id: int, turn: Turn, spent: timing.Turn, d
     cost = sum(call.cost or 0 for call in calls)
     embed = discord.Embed(title="🧭 Message routed", colour=COLOUR_OK, timestamp=real_now_nz())
     embed.add_field(name="Input", value=truncate(text) or "(a button)", inline=False)
-    embed.add_field(name="Shown", value=truncate(reply) or "(nothing)", inline=False)
+    embed.add_field(name="Shown", value=truncate(logged_reply) or "(nothing)", inline=False)
     embed.add_field(name="Route", value=f"{turn.route} · {len(calls)} request(s)", inline=True)
     embed.add_field(name="Tasks", value=", ".join(dict.fromkeys(turn.tasks)) or "none", inline=True)
     embed.add_field(name="Cost", value=costs.usd(cost), inline=True)  # the record, as billed
     embed.add_field(name="Time", value=f"{duration:.1f}s", inline=True)
-    if turn.extracted:
-        embed.add_field(name="Extracted", value=truncate(json.dumps(turn.extracted, ensure_ascii=False)), inline=False)
+    if extracted:
+        embed.add_field(name="Extracted", value=truncate(json.dumps(extracted, ensure_ascii=False)), inline=False)
     await send_log(embed)
 
 

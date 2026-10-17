@@ -189,6 +189,13 @@ class Proposal:
     # shows everything that was understood, then asks; there is no Save until
     # it is answered, by a button or by typing
     question: Question | None = None
+    # Another way to save, beside Save (blurple, before Cancel): each makes the card again from its
+    # data, as a question's answer does, so the card says what it will do before anything is saved
+    # ("Put it on my calendar": a card that adds the blocks too). Never on a card that asks
+    also: tuple[Choice, ...] = ()
+
+
+ALSO = "_also"  # in a card's kept data: its `also` choices, for the press; never applied
 
 
 @dataclass(frozen=True)
@@ -426,6 +433,9 @@ class Entry:
     # `async (user_id, now) -> list of today.Line`: this task's things for today, for the
     # Today card (core/today.py): a to-do, a routine with its time, a reminder as a note
     today: Callable[[int, datetime], Awaitable[list]] | None = None
+    # `async (user_id, day) -> list of planning.Piece`: this task's things on a day for a plan
+    # (core/planning.py): fixed ones with their times, all-day ones, and to-dos to be placed
+    plan: Callable[[int, date], Awaitable[list]] | None = None
     # `async (user_id, monday, upto) -> weekly.Week | None`: this task's week, Monday up to that
     # day, in a line of its own words, for the Sunday summary of everything (core/weekly.py)
     week: Callable[[int, date, date], Awaitable[object]] | None = None

@@ -117,7 +117,7 @@ SWITCHES = {
     "NIGHTLY_SELFTEST": "false", "HUB_TIDY": "false", "QUIET_HOURS_ENABLED": "false", "QUIET_HOURS": "22:00-07:00", "NOTIFY_NTFY": "false",
     "NTFY_BOT_TOPIC": "", "WEATHER_ENABLED": "false", "TODOS_ENABLED": "false", "NUDGES_ENABLED": "false", "HABITS_ENABLED": "false", "TODAY_CARD": "false", "ROUTINES_LAYOUT": "b", "CALENDAR_ENABLED": "false", "CALENDAR_ICS_URL": "",
     "CALENDAR_READ": "", "CALENDAR_WRITE": "false", "CALENDAR_MAIN_ID": "", "CALENDAR_BOT_ID": "", "GOOGLE_SA_KEY_PATH": "", "GOOGLE_CALENDAR_FAKE": "",
-    "DIARY_ENABLED": "false", "SMART_INBOX": "false", "READING_ENABLED": "false", "READING_SOURCE": "", "DESIGN_ROUND": "3", "DAILY_SPEND_LIMIT_NZD": "1.00", "SELFTEST_MONTHLY_LIMIT_NZD": "3.50", "USD_TO_NZD": "1.70",
+    "DIARY_ENABLED": "false", "SMART_INBOX": "false", "PLAN_MY_DAY": "false", "BIRTHDAYS_ENABLED": "false","READING_ENABLED": "false", "READING_SOURCE": "", "DESIGN_ROUND": "3", "DAILY_SPEND_LIMIT_NZD": "1.00", "SELFTEST_MONTHLY_LIMIT_NZD": "3.50", "USD_TO_NZD": "1.70",
 }
 
 # (name, the settings it starts with, seconds to stay off before it)

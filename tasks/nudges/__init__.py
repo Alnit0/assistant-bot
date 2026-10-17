@@ -78,6 +78,16 @@ async def today_lines(user_id: int, now: datetime) -> list:
     return [Line(ICON, f"**{each.text}**", moment, note=True) for moment, each in rules.due_today(await store.every(user_id), days.day_of(now))]
 
 
+async def plan_pieces(user_id: int, day: date) -> list:
+    """For a plan (core/planning.py): each reminder that day at its time, fixed; a renewal due that day at
+    no time."""
+    from core import planning
+
+    found = [planning.Piece(TASK, f"n{each.id}", ICON, each.text, moment) for moment, each in rules.due_today(await store.every(user_id), day)]
+    found += [planning.Piece(TASK, f"e{each.id}", expiry.RENEW_ICON, f"{each.name} due", all_day=True) for each in await expiry.every(user_id) if each.open and each.due == day]
+    return found
+
+
 class NudgesTask(Task):
     """Reminders at a time I set, in plain words; they go off in the hub."""
 
@@ -146,6 +156,9 @@ class NudgesTask(Task):
 
     async def today(self, user_id, now):
         return await today_lines(user_id, now)
+
+    async def plan(self, user_id, day):
+        return await plan_pieces(user_id, day)
 
 
 task = NudgesTask()

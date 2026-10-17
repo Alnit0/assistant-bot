@@ -80,6 +80,18 @@ async def today_lines(user_id: int, now: datetime) -> list:
     return lines
 
 
+async def plan_pieces(user_id: int, day: date) -> list:
+    """For a plan (core/planning.py): each open to-do to be placed, overdue first, then the day's, then any
+    day's; those done that day as done."""
+    from core import planning
+
+    found = rules.on(await store.every(user_id), day)
+    pieces = [planning.Piece(TASK, f"t{each.id}", ICON, each.text, flexible=True, rank=planning.OVERDUE) for each in found.overdue]
+    pieces += [planning.Piece(TASK, f"t{each.id}", ICON, each.text, flexible=True, rank=planning.TODAY if each.day == day else planning.ANY_DAY) for each in found.today]
+    pieces += [planning.Piece(TASK, f"t{each.id}", ICON, each.text, flexible=True, done=True) for each in found.done]
+    return pieces
+
+
 class TodosTask(Task):
     """The to-do list, in plain words, with a card in the hub."""
 
@@ -144,6 +156,9 @@ class TodosTask(Task):
 
     async def today(self, user_id, now):
         return await today_lines(user_id, now)
+
+    async def plan(self, user_id, day):
+        return await plan_pieces(user_id, day)
 
 
 task = TodosTask()

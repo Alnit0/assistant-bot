@@ -1,0 +1,82 @@
+{
+  "router": [
+    {"golden": "pl1", "message": "plan my day", "tasks": ["plan"], "note": "plan my day"},
+    {"golden": "pl2", "message": "plan tomorrow", "tasks": ["plan"], "note": "tomorrow"},
+    {"golden": "pl3", "message": "replan", "tasks": ["plan"], "note": "planned again from now"},
+    {"golden": "pl4", "message": "what should I do now?", "tasks": ["plan"], "note": "a question, the plan's: never the day's what's next"},
+    {"golden": "pl5", "message": "can you plan out my afternoon?", "tasks": ["plan"], "note": "said another way"},
+    {"golden": "pl6", "message": "what's left today?", "tasks": ["briefing"], "note": "the day as a whole, not a plan"},
+    {"golden": "pl7", "message": "add call Ryan Friday", "tasks": ["todos"], "note": "adding a to-do is the to-dos task's, not the plan's"}
+  ],
+  "extraction": [
+    {
+      "golden": "pl1",
+      "task": "plan",
+      "message": "plan my day",
+      "state": "The user's open to-dos, by id:\n- t3: Write the essay (overdue)\n- t4: Weekly shop (for today)\n- t5: Email Sam (any day)",
+      "action": "plan_day",
+      "data": {}
+    },
+    {
+      "golden": "pl2",
+      "task": "plan",
+      "message": "plan tomorrow",
+      "state": "The user's open to-dos, by id:\n- t4: Weekly shop (for today)\n- t5: Email Sam (any day)",
+      "action": "plan_day",
+      "data": {"day": "tomorrow"}
+    },
+    {
+      "golden": "pl3",
+      "task": "plan",
+      "message": "what should I do now?",
+      "state": "The user's open to-dos, by id:\n- t4: Weekly shop (for today)\n- t5: Email Sam (any day)\n- (a plan is saved for today)",
+      "action": "plan_day",
+      "data": {"from_now": true}
+    },
+    {
+      "golden": "pl4",
+      "task": "plan",
+      "message": "I'm out 2 to 4",
+      "state": "The user's open to-dos, by id:\n- t4: Weekly shop (for today)\n- t5: Email Sam (any day)",
+      "card": {"action": "plan_day", "data": {"day": "2026-10-19"}, "guessed": [], "said": "plan my day"},
+      "action": "plan_day",
+      "data": {"out": [{"from": "2:00", "to": "4:00"}]}
+    },
+    {
+      "golden": "pl5",
+      "task": "plan",
+      "message": "move laundry to the evening",
+      "state": "The user's open to-dos, by id:\n- t6: Laundry (any day)\n- t5: Email Sam (any day)",
+      "card": {"action": "plan_day", "data": {"day": "2026-10-19"}, "guessed": [], "said": "plan my day"},
+      "action": "plan_day",
+      "data": {"moves": [{"todo": "t6", "part": "evening"}]}
+    },
+    {
+      "golden": "pl6",
+      "task": "plan",
+      "message": "drop the shopping",
+      "state": "The user's open to-dos, by id:\n- t4: Weekly shop (for today)\n- t5: Email Sam (any day)",
+      "card": {"action": "plan_day", "data": {"day": "2026-10-19"}, "guessed": [], "said": "plan my day"},
+      "action": "plan_day",
+      "data": {}
+    },
+    {
+      "golden": "pl7",
+      "task": "plan",
+      "message": "make the essay 2 hours",
+      "state": "The user's open to-dos, by id:\n- t3: Write the essay (overdue)\n- t5: Email Sam (any day)",
+      "card": {"action": "plan_day", "data": {"day": "2026-10-19"}, "guessed": [], "said": "plan my day"},
+      "action": "plan_day",
+      "data": {"lengths": [{"todo": "t3", "minutes": 120}]}
+    },
+    {
+      "golden": "pl8",
+      "task": "plan",
+      "message": "I start at 8 tomorrow",
+      "state": "The user's open to-dos, by id:\n- t5: Email Sam (any day)",
+      "card": {"action": "plan_day", "data": {"day": "2026-10-19"}, "guessed": [], "said": "plan my day"},
+      "action": "plan_day",
+      "data": {"day": "tomorrow", "starts": "8:00"}
+    }
+  ]
+}

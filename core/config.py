@@ -248,6 +248,10 @@ DIARY_ENABLED = flag(os.getenv("DIARY_ENABLED"), False)
 DIARY_MOOD = flag(os.getenv("DIARY_MOOD"), True)
 # The smart inbox (core/smartinbox.py): several things in one message, or a file, sorted onto one card. Off unless set
 SMART_INBOX = flag(os.getenv("SMART_INBOX"), False)
+# Plan my day (core/planning.py, tasks/plan): to-dos placed in the free time around what is fixed. Off: not loaded
+PLAN_MY_DAY = flag(os.getenv("PLAN_MY_DAY"), False)
+# Birthdays, part of reminders (tasks/nudges/birthdays.py; with NUDGES_ENABLED). Off: not loaded
+BIRTHDAYS_ENABLED = flag(os.getenv("BIRTHDAYS_ENABLED"), False)
 # The daily read (tasks/reading): off, not loaded
 READING_ENABLED = flag(os.getenv("READING_ENABLED"), False)
 # The dev bot's replay only: a JSON file of made-up feeds and pages read in place of the internet

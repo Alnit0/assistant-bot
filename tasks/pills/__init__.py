@@ -34,6 +34,26 @@ async def show_today(ctx) -> str:
     return "posted today's checklist"
 
 
+async def plan_pieces(user_id: int, on) -> list:
+    """For a plan (core/planning.py): each dose with a time still to take that day, fixed. Today's are when
+    each is due now (from what was taken); another day's are their planned times."""
+    from core import planning
+    from tasks.pills import today as pills_today
+
+    if on == day.today():
+        _, listed, _ = await checklist.read(user_id, on)
+        return [
+            planning.Piece("pills", f"p{dose.pill.id}.{dose.number}", plain.ICON, dose.pill.plan.name, at)
+            for dose in listed if dose.is_pending and (at := pills_today.shown_time(dose)) is not None
+        ]
+    found = []
+    for pill in await store.pills(user_id):
+        for number, planned in pills_today.wanted(pill, on):
+            if planned is not None:
+                found.append(planning.Piece("pills", f"p{pill.id}.{number}", plain.ICON, pill.plan.name, day.at(on, planned)))
+    return found
+
+
 class PillsTask(Task):
     """Pills: what to take, when, and what was taken. Setting them up, and the daily checklist."""
 
@@ -168,6 +188,9 @@ class PillsTask(Task):
 
     async def tally(self, user_id, day):
         return await history.tally(user_id, day)
+
+    async def plan(self, user_id, on):
+        return await plan_pieces(user_id, on)
 
     async def week(self, user_id, monday, upto):
         return await history.week_of_pills(user_id, monday, upto)

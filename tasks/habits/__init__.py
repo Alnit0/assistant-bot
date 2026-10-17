@@ -84,6 +84,26 @@ async def today_lines(user_id: int, now: datetime) -> list:
     return [Line(ICON, f"**{each.habit.name}** · {rules.when_text(each.habit)} · {each.done}/{each.total}", each.starts(), each.ends(), each.finished) for each in found]
 
 
+async def plan_pieces(user_id: int, day: date) -> list:
+    """For a plan (core/planning.py): each routine at a time or in a window that day and not done, fixed:
+    it takes its first half hour (a window keeps the rest free); one any time is not planned around."""
+    from datetime import timedelta
+
+    from core import planning
+
+    found = []
+    for each in rules.due(await store.every(user_id), await store.ticked(user_id, day), day):
+        starts = each.starts()
+        if starts is None or each.finished:
+            continue
+        until = starts + timedelta(minutes=planning.ROUTINE)
+        if each.ends() is not None:
+            until = min(until, each.ends())
+        note = rules.when_text(each.habit) if each.ends() is not None else ""
+        found.append(planning.Piece(TASK, f"h{each.habit.id}", ICON, each.habit.name, starts, until, note=note))
+    return found
+
+
 class HabitsTask(Task):
     """Personal routines: my own checklists on chosen days."""
 
@@ -151,6 +171,9 @@ class HabitsTask(Task):
 
     async def today(self, user_id, now):
         return await today_lines(user_id, now)
+
+    async def plan(self, user_id, day):
+        return await plan_pieces(user_id, day)
 
 
 task = HabitsTask()

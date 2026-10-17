@@ -116,8 +116,24 @@ def render(entry: Entry, proposal: Proposal, card_id: int) -> Card:
     else:
         confirm = Button(proposal.confirm_label, CARDS, "save", str(card_id), emoji="✅", style=cards.SUCCESS)
     cancel = cards.cancel(CARDS, "cancel", str(card_id))
-    row = (confirm, cancel) if proposal.can_save else (cancel,)
+    also = tuple(
+        Button(cards.truncate_label(choice.label), CARDS, "also", f"{card_id}:{index}", style=cards.PRIMARY)
+        for index, choice in enumerate(proposal.also[: actions.MAX_CHOICES - 2])
+    )
+    row = (confirm, *also, cancel) if proposal.can_save else (cancel,)
     return Card("\n".join(lines), (row,), _designed(heading, proposal, row, FOOTER))
+
+
+def kept(proposal: Proposal) -> dict:
+    """What a card keeps of its proposal: the data Save applies, and its other ways to save (`also`)."""
+    if not proposal.also or proposal.question is not None:
+        return proposal.data
+    return {**proposal.data, actions.ALSO: [{"label": choice.label, "data": choice.data} for choice in proposal.also]}
+
+
+def applied(data: dict) -> dict:
+    """A card's kept data as Save applies it: without its other ways to save."""
+    return {key: value for key, value in data.items() if key != actions.ALSO}
 
 
 def things(lines: tuple[str, ...]) -> list[str]:
@@ -252,7 +268,7 @@ def db_asking(conn: sqlite3.Connection, card_id: int, proposal: Proposal, guesse
     """Keep what a card now shows: its data, what was guessed, and its question (or none)."""
     conn.execute(
         "UPDATE confirm_cards SET data = ?, guessed = ?, question = ? WHERE id = ?",
-        (json.dumps(proposal.data, ensure_ascii=False), json.dumps(sorted(guessed)), _asked(proposal.question), card_id),
+        (json.dumps(kept(proposal), ensure_ascii=False), json.dumps(sorted(guessed)), _asked(proposal.question), card_id),
     )
 
 
@@ -428,7 +444,7 @@ async def show(
     previous = (replaces.previous if undone else replaces.data) if same_action else None
     card = await database.run(
         db_add, request.user.id, request.channel_id, CARD, entry.name, action_name,
-        proposal.data, guessed, said, None, previous,
+        kept(proposal), guessed, said, None, previous,
     )
     if proposal.question is not None:
         await database.run(db_asking, card.id, proposal, guessed)
@@ -487,7 +503,8 @@ async def on_save(press: cards.Press) -> str | None:
         raise UserError(ANSWER_FIRST)  # no card that asks has a Save: this is only a guard
     # A UserError here (the name was taken meanwhile) is shown to the presser and the card stays
     request = Request(press.user, card.channel_id)
-    said = await action.apply(request, card.data)
+    data = applied(card.data)
+    said = await action.apply(request, data)
     placed = None
     if isinstance(said, actions.Answer):
         # About things of the task's own: once the card says so, the task is told which message it is
@@ -496,12 +513,14 @@ async def on_save(press: cards.Press) -> str | None:
     await database.run(db_confirmed, card.id, said)
     # Nothing is confirmed on the strength of `apply` having returned: the change is
     # read back from the database first, and "saved" is only said if it is there
-    wrong = await action.verify(request, card.data) if action.verify is not None else ""
+    wrong = await action.verify(request, data) if action.verify is not None else ""
     closed = await database.run(db_close, card.id, FAILED if wrong else SAVED)
     await scheduler.cancel_job(card.job_id)
     if wrong:
-        log.error("Save of %s/%s did not take: %s (card %s, data %s)", card.task, card.action, wrong, card.id, card.data)
-        await log_error(f"Save did not take: {card.action}", wrong, json.dumps(card.data, ensure_ascii=False))
+        # A task that keeps its words to itself (birthdays, the diary) has none of them in a log
+        logged = actions.PRIVATE_NOTE if entry.private else json.dumps(data, ensure_ascii=False)
+        log.error("Save of %s/%s did not take: %s (card %s, data %s)", card.task, card.action, wrong, card.id, logged)
+        await log_error(f"Save did not take: {card.action}", wrong, logged)
         said = f"⚠️ That didn't save: {wrong}. Nothing is confirmed; please check and ask again."
         await press.update(Card(said))
         llm.remember(card.channel_id, "(pressed the card's button)", said)
@@ -522,7 +541,7 @@ async def on_save(press: cards.Press) -> str | None:
     llm.remember(card.channel_id, "(pressed the card's button)", said)
     # And what follows shortly is that task's first: about this card, if it points at nothing else
     llm.task_answered(card.channel_id, card.task, saved=card.id)
-    return f"saved {card.task}/{card.action}: {said}"
+    return f"saved {card.task}/{card.action}" + ("" if entry.private else f": {said}")
 
 
 async def on_answer(press: cards.Press) -> str | None:
@@ -576,6 +595,30 @@ async def on_answer(press: cards.Press) -> str | None:
     return f"answered {choice['label']} on card {card.id}"
 
 
+async def on_also(press: cards.Press) -> str | None:
+    """Another way to save, beside Save ("Put it on my calendar"): the card is made again in place
+    from that choice's data, so it says what it will do; nothing is saved by the press."""
+    card_id, _, index = press.arg.partition(":")
+    card = await _open_card(press, card_id)
+    if card is None:
+        return "card had gone"
+    choices = card.data.get(actions.ALSO) or []
+    entry = actions.entry(card.task)
+    action = entry.action(card.action) if entry else None
+    if action is None or action.prepare is None or not index.isdigit() or int(index) >= len(choices):
+        await press.update(Card(LAPSED))
+        await database.run(db_close, card.id, EXPIRED)
+        return f"no such choice on card {card.id}"
+    choice = choices[int(index)]
+    request = Request(press.user, card.channel_id)
+    proposal = await action.prepare(request, choice["data"], frozenset(card.guessed))
+    await database.run(db_asking, card.id, proposal, frozenset(card.guessed) | frozenset(proposal.guessed))
+    shown = render(entry, proposal, card.id)
+    await press.update(shown)
+    llm.remember(card.channel_id, f"(pressed “{choice['label']}” on the card)", shown.text)
+    return f"pressed {choice['label']} on card {card.id}"
+
+
 async def on_cancel(press: cards.Press) -> str | None:
     card = await database.run(db_get, int(press.arg)) if press.arg.isdigit() else None
     if card is not None and card.user_id == press.user.id and await database.run(db_close, card.id, CANCELLED):
@@ -606,7 +649,7 @@ async def save_cut_off(cut: restart.CutOff, arg: str) -> str:
         user = await users.get_user(card.user_id)
         if action is None or action.verify is None or user is None:
             return f"Save of {name} was cut off by the stop and can't be checked: its card is still open"
-        wrong = await action.verify(Request(user, card.channel_id), card.data)
+        wrong = await action.verify(Request(user, card.channel_id), applied(card.data))
         if wrong:
             return f"Save of {name} was cut off by the stop before it took ({wrong}): its card is still open, press Save again"
         await database.run(db_close, card.id, SAVED)
@@ -622,6 +665,7 @@ def setup() -> None:
     cards.register(CARDS, "save", on_save)
     cards.register(CARDS, "cancel", on_cancel)
     cards.register(CARDS, "answer", on_answer)
+    cards.register(CARDS, "also", on_also)
     scheduler.register_handler(JOB_TASK, JOB_KIND, expired, "a card's expiry", housekeeping=True)
 
 
