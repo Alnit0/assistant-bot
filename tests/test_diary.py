@@ -291,26 +291,48 @@ def test_deleting_a_day_is_a_red_card_first_and_its_words_go(world):
 
 
 # --- the hub: the Today card, the briefing, the week ------------------------------------------------------------------
-def test_the_today_card_line_and_the_briefing_line_name_no_words(world):
+def test_the_today_card_and_the_briefing_show_only_the_streak_and_whether_today_is_written(world):
     from tasks import diary
 
     (line,) = run(diary.today_lines(world.owner.id, clock.now()))
     assert line.text == "**Diary** · not yet" and not line.done
     write(world, said_mood="good")
     (line,) = run(diary.today_lines(world.owner.id, clock.now()))
-    assert line.text == "**Diary** · 😊 Good" and line.done
+    assert line.text == "**Diary** · streak 1 · written today" and line.done, "never the mood"
+    said = run(diary.summary(world.owner.id, world.day))
+    assert said.overview == "streak 1 · written today"
     world.at(9, 0, ahead=1)
     said = run(diary.summary(world.owner.id, world.day + timedelta(days=1)))
-    assert said.overview == "streak 1 · yesterday 😊" and said.glance == "not written yet today"
+    assert said.overview == "streak 1" and said.glance == "not written yet today", "no yesterday's mood, and not yet only from 6 pm"
+    world.at(19, 0, ahead=1)
+    said = run(diary.summary(world.owner.id, world.day + timedelta(days=1)))
+    assert said.overview == "streak 1 · not yet"
 
 
-def test_the_week_of_everything_shows_a_mood_a_day(world):
+def test_the_week_of_everything_says_the_days_written_never_a_mood(world):
     from tasks import diary
 
     write(world, said_mood="good")
     monday = world.day - timedelta(days=world.day.weekday())
     week = run(diary.week(world.owner.id, monday, world.day))
-    assert week.line.endswith("😊") and week.line.count("·") == (world.day - monday).days
+    out_of = (world.day - monday).days + 1
+    assert week.line == f"1 of {out_of} day{'' if out_of == 1 else 's'} written"
+
+
+def test_no_surface_shows_a_past_mood_or_words(world):
+    from tasks import diary
+
+    write(world, said_mood="bad")
+    for ahead in (1, 2):
+        for hour in (9, 19):
+            world.at(hour, 0, ahead=ahead)
+            day = world.day + timedelta(days=ahead)
+            shown = [run(diary.summary(world.owner.id, day)), *run(diary.today_lines(world.owner.id, clock.now()))]
+            monday = day - timedelta(days=day.weekday())
+            shown.append(run(diary.week(world.owner.id, monday, day)) if monday <= world.day else None)
+            every = repr(shown)
+            assert MADE_UP not in every and "Made-up" not in every
+            assert all(level.emoji not in every and level.label not in every for level in mood.CURRENT.levels), every
 
 
 # --- privacy ------------------------------------------------------------------------------------------------------
@@ -378,3 +400,105 @@ def test_at_6pm_the_today_card_is_drawn_again_by_a_schedule_of_the_bots_own():
 
     assert (diary.TODAY_DEFAULT.at, diary.TODAY_DEFAULT.locked) == (rules.SHOWN_FROM, True)
     assert diary.task.job_handlers()[plain.TODAY_JOB] is plain.today_job
+
+
+# --- the evening ask: Write (a form), the moods, a reply, one offer of words -------------------------------------------
+class FormPress(Press):
+    def __init__(self, world, arg, message_id=1, fields=None):
+        super().__init__(world, arg, message_id)
+        self.fields, self.forms = fields, []
+
+    async def open_form(self, form):
+        cards.check_form(form)
+        self.forms.append(form)
+
+
+def test_the_ask_has_write_and_the_three_moods(world, monkeypatch):
+    from core import notify
+
+    posted = []
+
+    async def post(kind, channel, card, **more):
+        posted.append(card)
+        return 7001
+
+    monkeypatch.setattr(notify, "post", post)
+    world.at(21, 0)
+    run(plain.ask_job(_job()))
+    assert posted[0].text == "📔 How was today?"
+    message_id, card = world.edited[-1]
+    assert message_id == 7001 and card.text.startswith("📔 How was today?")
+    (row,) = card.rows
+    assert row[0].label == "Write" and row[0].emoji == "✍️" and row[0].style == cards.PRIMARY
+    assert [button.label for button in row[1:]] == [level.label for level in mood.CURRENT.levels]
+    assert plain.claims(7001), "a reply to it is the diary's"
+
+
+def _job():
+    return SimpleNamespace(payload={}, id=1, kind="ask", task="diary", due_at=clock.now(), is_late=False, user_id=None)
+
+
+def test_write_opens_a_long_box_and_what_is_typed_is_the_entry(world):
+    press = FormPress(world, world.day.isoformat())
+    run(plain.on_write(press))
+    (form,) = press.forms
+    (field,) = form.fields
+    assert field.long and form.title == "How was today?" and form.action == plain.WRITTEN
+    typed = FormPress(world, world.day.isoformat(), fields={"words": "Made-up: a long day.\nAnd a second line."})
+    said = run(plain.on_written(typed))
+    assert said == "written in the form" and "Made-up" not in said, "what is logged names no words"
+    assert entry(world).text == "Made-up: a long day.\nAnd a second line."
+
+
+def test_a_second_write_on_a_day_with_an_entry_appends(world):
+    write(world, said_mood="good")
+    run(plain.on_written(FormPress(world, world.day.isoformat(), fields={"words": "Made-up: later on."})))
+    kept = entry(world)
+    assert kept.notes == 2 and kept.text == f"{MADE_UP}\n\nMade-up: later on." and kept.mood == "good"
+
+
+def test_an_empty_form_keeps_nothing(world):
+    with pytest.raises(UserError, match="Nothing was written"):
+        run(plain.on_written(FormPress(world, world.day.isoformat(), fields={"words": "  "})))
+    assert entry(world) is None
+
+
+def test_a_reply_to_the_ask_is_the_day_s_entry_and_never_goes_to_claude(world):
+    from tasks import diary
+
+    plain.remember_ask(7002, world.owner.id, world.day)
+    ctx = SimpleNamespace(reply_target_id=7002, user=world.owner, channel_id=HUB, text="Made-up reply about the day.")
+    handler = diary.task.claim(ctx)
+    assert handler is plain.take_reply
+    run(handler(ctx))
+    assert entry(world).text == "Made-up reply about the day."
+    assert diary.task.claim(SimpleNamespace(reply_target_id=1234)) is None, "any other reply is read as before"
+    assert diary.task.claim(SimpleNamespace(reply_target_id=None)) is None
+
+
+def test_asks_are_found_again_after_a_restart(world):
+    run(database.run(store.db_claim_ask, world.owner.id, world.day, clock.now()))
+    run(database.run(store.db_asked, world.owner.id, world.day, HUB, 7003))
+    plain._asks.clear()
+    run(plain.load_asks())
+    assert plain.claims(7003)
+
+
+def test_a_mood_with_no_words_offers_a_few_words_once(world):
+    press = Press(world, f"{world.day.isoformat()}:good")
+    run(plain.on_mood(press))
+    (card,) = press.shown
+    assert card.text.endswith("-# a few words too?")
+    (row,) = card.rows
+    assert [button.label for button in row] == [plain.ADD_LABEL, "Undo"] and row[0].action == plain.WRITE
+    again = Press(world, f"{world.day.isoformat()}:ok")
+    write(world)
+    run(plain.on_mood(again))
+    assert "a few words" not in again.shown[0].text, "with words written, no offer"
+
+
+def test_what_is_typed_in_the_form_is_never_in_the_log(world, monkeypatch):
+    from core import cards as core_cards
+
+    registered = core_cards._actions[(plain.TASK, plain.WRITTEN)]
+    assert registered.private and core_cards._actions[(plain.TASK, plain.WRITE)].opens_form

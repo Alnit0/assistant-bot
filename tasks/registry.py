@@ -829,7 +829,8 @@ async def dispatch_claimed(ctx: Context) -> bool:
             continue
         if handler is None:
             continue
-        row_id = await log_received(ctx.text, "claimed", ctx.message_id, ctx.channel_id, user_id=ctx.user.id)
+        # A task that keeps its words to itself (the diary: a reply to its evening ask) has a note logged in their place
+        row_id = await log_received(actions.PRIVATE_NOTE if task.private else ctx.text, "claimed", ctx.message_id, ctx.channel_id, user_id=ctx.user.id)
         permission = f"message:{task.name}"
         if not is_allowed(ctx.user, permission):
             await log_result(row_id, reply="not allowed", status="denied")

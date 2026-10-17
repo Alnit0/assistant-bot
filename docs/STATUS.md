@@ -19,6 +19,12 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
    "Mum's birthday 12 March", "Sam 3 June 1995", gift notes, a quiet
    line from 14 days, posts 3 days before and on the day, the Bot
    calendar's yearly all-day event, upcoming and when. 16 tests.
+3. **The diary, asked mid-batch**: the 9 pm ask is "📔 How was today?"
+   with ✍️ Write (a form, one long box) and the three moods; a reply to
+   the ask is the entry; a mood with no words offers "Add a few words"
+   once; a Write on a written day appends. Every surface shows only the
+   streak and whether today is written; the week says days written out
+   of 7. Nothing is deleted. Tests updated and 10 more.
 
 ## Decided (2026-10-17, evening)
 
@@ -69,6 +75,21 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 - **A gift note is a card**, as every change to one of my things is.
 - **In a plan**, a birthday is all day; one on the Bot calendar comes
   from the calendar only, never twice.
+- **The diary's Write is a form** (`cards.Form` with a long box, drawn
+  in `interfaces/discord/render.py` only); Discord allows 4,000
+  characters in it. A form's words are never logged
+  (`cards.register(..., private=True)`), nor is a reply to the ask
+  (claimed by the diary, a note logged in its place).
+- **A reply to the ask is the entry, in code**: the diary claims a
+  reply to its ask's message (kept in memory, read again at start for
+  the last two diary days), so no request to Claude and no routing
+  change: no recorded checks needed for the diary.
+- **"Not yet" from 6 pm**, as before; with no streak the line is "not
+  yet" alone, and "no streak" only when there is nothing else to say.
+- **"My diary" and "show this week's diary"** still show a mood a day:
+  they are Alex asking. Every surface he does not ask for shows none.
+- **The ask without moods** (`DIARY_MOOD` off) is the same question
+  with Write alone.
 
 ## Shipped (17 Oct, 2:25 am)
 

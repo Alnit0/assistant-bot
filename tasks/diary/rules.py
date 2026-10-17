@@ -60,6 +60,21 @@ def streak(written: set[date], today: date) -> int:
     return count
 
 
+def streak_line(run: int, written_today: bool, evening_now: bool) -> str:
+    """ "streak 5 · written today", "streak 5 · not yet" (from 6 pm), "not yet", "streak 5"; "no streak" with nothing else."""
+    said = [f"streak {run}"] if run else []
+    if written_today:
+        said.append("written today")
+    elif evening_now:
+        said.append("not yet")
+    return " · ".join(said) or "no streak"
+
+
+def days_written(written: int, out_of: int) -> str:
+    """The week's line: "5 of 7 days written"."""
+    return f"{written} of {out_of} day{'' if out_of == 1 else 's'} written"
+
+
 def short(day: date) -> str:
     return f"{day:%a} {day.day} {day:%b}"
 

@@ -165,5 +165,11 @@ def db_clear_ask(conn: sqlite3.Connection, user_id: int, day: date, now: datetim
     return (row[0], row[1]) if row[1] else None
 
 
+def db_recent_asks(conn: sqlite3.Connection, since: date) -> list[tuple[int, int, date]]:
+    """(message, user, day) of each ask posted since that day."""
+    rows = conn.execute("SELECT message_id, user_id, day FROM diary_asks WHERE day >= ? AND message_id IS NOT NULL", (since.isoformat(),)).fetchall()
+    return [(row[0], row[1], date.fromisoformat(row[2])) for row in rows]
+
+
 async def entry(user_id: int, day: date) -> Entry | None:
     return await database.run(db_get, user_id, day)

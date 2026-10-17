@@ -87,6 +87,8 @@ class _Modal(discord.ui.Modal):
                 default=entry.value or None,
                 placeholder=entry.placeholder or None,
                 required=entry.required,
+                style=discord.TextStyle.paragraph if entry.long else discord.TextStyle.short,
+                max_length=cards.MAX_LONG if entry.long else None,
             )
             self.inputs[entry.name] = text_input
             self.add_item(text_input)

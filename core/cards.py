@@ -50,6 +50,7 @@ MAX_LABEL = 80
 MAX_OPTION_TEXT = 100
 MAX_FORM_FIELDS = 5
 MAX_FORM_TITLE = 45
+MAX_LONG = 4000  # the most a form's long box holds (Discord's own limit)
 
 _BUTTON, _SELECT, _FORM = "b", "s", "f"
 _NAME = r"[a-z0-9_]+"
@@ -101,6 +102,7 @@ class Field:
     value: str = ""
     placeholder: str = ""
     required: bool = True
+    long: bool = False  # several lines (a paragraph box), up to MAX_LONG characters; one line otherwise
 
 
 @dataclass(frozen=True)
@@ -338,20 +340,23 @@ class _Action:
     handler: Handler
     permission: str
     opens_form: bool
+    private: bool = False  # what is typed in its form is the task's alone: never in the log
 
 
 _actions: dict[tuple[str, str], _Action] = {}
 
 
-def register(task: str, action: str, handler: Handler, *, permission: str = "", opens_form: bool = False) -> None:
+def register(task: str, action: str, handler: Handler, *, permission: str = "", opens_form: bool = False, private: bool = False) -> None:
     """Say what runs when a component with this task and action is used.
 
     `handler(press)` returns what to record in the log (None records what the
     presser was shown). `permission` is what is_allowed is asked, by default
-    "card:<task>". Set `opens_form` if the handler may answer with a form.
+    "card:<task>". Set `opens_form` if the handler may answer with a form, and
+    `private` if what is typed in it is the task's alone (the diary): the log
+    then says only that something was typed.
     """
     make_id(_BUTTON, task, action)  # the names must be usable in an id
-    _actions[(task, action)] = _Action(handler, permission or f"card:{task}", opens_form)
+    _actions[(task, action)] = _Action(handler, permission or f"card:{task}", opens_form, private)
 
 
 async def handle(
@@ -381,7 +386,7 @@ async def handle(
 
         press = Press(user, task, action, arg, answer.channel_id, answer.message_id, values, fields, source)
         detail = "".join(
-            [f" {arg}" if arg else "", f" picked {list(values)}" if values else "", f" typed {fields}" if fields else ""]
+            [f" {arg}" if arg else "", f" picked {list(values)}" if values else "", (" typed (kept by the task alone)" if registered.private else f" typed {fields}") if fields else ""]
         )
         row_id = await log_received(
             f"card: {task}/{action}{detail}", "card", press.message_id, press.channel_id, user_id=user.id

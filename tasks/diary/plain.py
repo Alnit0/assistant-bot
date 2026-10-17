@@ -21,6 +21,9 @@ log = logging.getLogger("assistant")
 # message log, #bot-log and the router's memory keep a note in their place.
 # ---------------------------------------------------------------------------
 MOOD, UNDO = "mood", "undo"
+WRITE, WRITTEN = "write", "written"  # the ✍️ Write button and what its form sends back
+WRITE_LABEL, ADD_LABEL = "Write", "Add a few words"
+FORM_TITLE = "How was today?"
 KIND = "diary.ask"  # the evening ask: Discord only, never ntfy, held back in quiet hours (core/notify.py)
 ASK_JOB = "ask"
 TODAY_JOB = "today"  # 6 pm: the Today card drawn again, for its evening line
@@ -72,28 +75,94 @@ async def _clear_ask(user_id: int, day: date) -> None:
 
 
 # --- writing ------------------------------------------------------------------------------------------------
-async def write(request: Request, data: dict, guessed: frozenset):
-    """A diary entry: the words as sent, added to the day's entry; the mood if the words gave one."""
-    on = today()
+async def keep(user_id: int, channel_id: int | None, on: date, words: str, said_mood=None) -> str:
+    """Words kept for a day, added to its entry (a second Write, or another message, appends); the mood
+    if the words gave one; the line said, with Undo and, with no mood yet, a button a level. Never the words."""
     try:
-        kept = await database.run(store.db_append, request.user.id, on, request.text.strip(), clock.now())
+        kept = await database.run(store.db_append, user_id, on, words.strip(), clock.now())
         was_there = kept.notes > 1
-        said = mood.checked(data.get("mood")) if mood.on() else None
+        said = mood.checked(said_mood) if mood.on() else None
         if said:
-            kept = await database.run(store.db_set_mood, request.user.id, on, mood.CURRENT.name, said, clock.now(), True)
+            kept = await database.run(store.db_set_mood, user_id, on, mood.CURRENT.name, said, clock.now(), True)
     except Exception:
         log.exception("Diary: an entry could not be saved")  # never with its words
         raise UserError(NOT_SAVED) from None
-    await _clear_ask(request.user.id, on)
-    changed(request.user.id)
-    line = rules.saved_line(kept, await _streak(request.user.id, on), added=was_there)
+    await _clear_ask(user_id, on)
+    changed(user_id)
+    line = rules.saved_line(kept, await _streak(user_id, on), added=was_there)
     undo_row = (_undo_button(on),)
     if not mood.on() or kept.has_mood:
-        message_id = await cards.send(request.channel_id, Card(line, (undo_row,)))
+        message_id = await cards.send(channel_id, Card(line, (undo_row,)))
     else:
         # No mood yet: the line asks, with a button a level
-        message_id = await cards.send(request.channel_id, Card(f"{line}\n-# how was it?", (mood.buttons(TASK, MOOD, on.isoformat()), undo_row)))
-    return Shown(line if message_id is not None else "not shown")
+        message_id = await cards.send(channel_id, Card(f"{line}\n-# how was it?", (mood.buttons(TASK, MOOD, on.isoformat()), undo_row)))
+    return line if message_id is not None else "not shown"
+
+
+async def write(request: Request, data: dict, guessed: frozenset):
+    """A diary entry: the words as sent, added to the day's entry; the mood if the words gave one."""
+    return Shown(await keep(request.user.id, request.channel_id, today(), request.text, data.get("mood")))
+
+
+def write_button(day: date, label: str = WRITE_LABEL) -> Button:
+    """✍️ Write (blurple): opens the form with one long box."""
+    return Button(label, TASK, WRITE, day.isoformat(), emoji="✍️", style=cards.PRIMARY)
+
+
+def ask_row(day: date) -> tuple:
+    """The evening ask's row: ✍️ Write, then a button a mood."""
+    return (write_button(day), *(mood.buttons(TASK, MOOD, day.isoformat()) if mood.on() else ()))
+
+
+def form(day: date) -> cards.Form:
+    return cards.Form(FORM_TITLE, TASK, WRITTEN, (cards.Field("words", "Your day", placeholder="A few words, or as many as you like", long=True),), arg=day.isoformat())
+
+
+async def on_write(press: cards.Press) -> str:
+    """✍️ Write, on the ask or after a mood: the form, for that day."""
+    day = date.fromisoformat(press.arg) if press.arg else today()
+    await press.open_form(form(day))
+    return "the diary's form opened"
+
+
+async def on_written(press: cards.Press) -> str:
+    """What was typed in the form: kept for that day, as a message would be. The words never in the log."""
+    day = date.fromisoformat(press.arg) if press.arg else today()
+    words = str((press.fields or {}).get("words") or "").strip()
+    if not words:
+        raise UserError("Nothing was written: the diary is as it was.")
+    line = await keep(press.user.id, press.channel_id, day, words)
+    there = await store.entry(press.user.id, day)
+    if there is not None:
+        # The ask, or the line after a mood: its button has done its job
+        await press.update(Card(rules.saved_line(there, await _streak(press.user.id, today())), ((_undo_button(day),),)))
+    return "written in the form" if line != "not shown" else "not shown"
+
+
+# --- a reply to the evening ask is the day's entry ---------------------------------------------------------------
+_asks: dict[int, tuple[int, date]] = {}  # the evening ask's message: (whose, which day), for a reply to it
+
+
+def remember_ask(message_id: int, user_id: int, day: date) -> None:
+    _asks[message_id] = (user_id, day)
+
+
+async def load_asks() -> None:
+    """At start: the asks of the last two diary days, so a reply to one still finds it after a restart."""
+    for message_id, user_id, day in await database.run(store.db_recent_asks, today() - timedelta(days=1)):
+        remember_ask(message_id, user_id, day)
+
+
+def claims(message_id: int | None) -> bool:
+    return message_id is not None and message_id in _asks
+
+
+async def take_reply(ctx) -> str:
+    """A reply to the evening ask (or to the line it became): the reply's words kept for its day."""
+    user_id, day = _asks[ctx.reply_target_id]
+    if user_id != ctx.user.id:
+        raise UserError("That diary is not yours.")
+    return await keep(user_id, ctx.channel_id, day, ctx.text)
 
 
 def _undo_button(day: date) -> Button:
@@ -195,7 +264,11 @@ async def on_mood(press: cards.Press) -> str:
     await press.db.run(store.db_clear_ask, press.user.id, day, clock.now())
     changed(press.user.id)
     line = rules.saved_line(kept, await _streak(press.user.id, today()))
-    await press.update(Card(line, ((_undo_button(day),),)))
+    if kept.text:
+        await press.update(Card(line, ((_undo_button(day),),)))
+    else:
+        # A mood with no words yet: one small offer, on this line only, never again
+        await press.update(Card(f"{line}\n-# a few words too?", ((write_button(day, ADD_LABEL), _undo_button(day)),)))
     if asked is not None and asked[1] and asked[1] != press.message_id and asked[0]:
         await cards.delete(asked[0], asked[1])  # the evening ask, if this was the line under an entry
     return line
@@ -212,6 +285,8 @@ async def on_undo(press: cards.Press) -> str:
 def register() -> None:
     cards.register(TASK, MOOD, on_mood)
     cards.register(TASK, UNDO, on_undo)
+    cards.register(TASK, WRITE, on_write, opens_form=True)
+    cards.register(TASK, WRITTEN, on_written, private=True)
 
 
 # --- the evening ask -------------------------------------------------------------------------------------------
@@ -231,15 +306,19 @@ async def ask_job(job: scheduler.Job) -> None:
     if not await database.run(store.db_claim_ask, owner.id, on, clock.now()):
         scheduler.note(job, "not asked: asked already today")
         return
-    first = Card(rules.ASK if mood.on() else rules.ASK_WORDS)
+    first = Card(rules.ASK)
     item = Item("the diary", TIMED, when=clock.now(), short=())
     message_id = await notify.post(KIND, channel_id, first, user_id=owner.id, item=item, key=f"diary{on.isoformat()}")
     if message_id is None:
         scheduler.note(job, "not asked: the hub can't be found")
         return
-    if mood.on():
-        await cards.edit(channel_id, message_id, Card(rules.ASK, (mood.buttons(TASK, MOOD, on.isoformat()),)))
+    # Plan my day, when it is on: one small line from 8 pm offering tomorrow (core/planning.py)
+    from core import planning
+
+    offer = planning.offer_line(clock.now())
+    await cards.edit(channel_id, message_id, Card(rules.ASK + (f"\n{offer}" if offer else ""), (ask_row(on),)))
     await database.run(store.db_asked, owner.id, on, channel_id, message_id)
+    remember_ask(message_id, owner.id, on)
     await messages.record(message_id, channel_id, lifetime=messages.DAY, task=TASK, user_id=owner.id)
     scheduler.note(job, "asked")
 

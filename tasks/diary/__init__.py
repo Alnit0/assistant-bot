@@ -32,35 +32,32 @@ TODAY_DEFAULT = timetable.Default("Diary on the Today card", rules.SHOWN_FROM, l
 
 
 async def summary(user_id: int, day: date) -> Summary | None:
-    """For the briefing: the streak and yesterday's mood (round 5's overview line), and today's state."""
-    on = day
+    """For the briefing: the streak and whether today is written (round 5's overview line), "not yet" only
+    from 6 pm. Never a past day's mood or words (Alex, 17 Oct): those are shown only when asked for."""
+    from core import clock
+
     written = await database.run(store.db_days, user_id)
     if not written:
         return None
-    run = rules.streak(written, on)
-    before = await store.entry(user_id, on - timedelta(days=1))
-    today_entry = await store.entry(user_id, on)
-    parts = [f"streak {run}" if run else "no streak"]
-    if before is not None and before.has_mood and mood.on():
-        parts.append(f"yesterday {mood.emoji(before.mood_scale, before.mood)}")
-    glance = "written today" if today_entry is not None else "not written yet today"
-    return Summary(glance, DONE if today_entry is not None else QUIET, overview=" · ".join(parts))
+    line = rules.streak_line(rules.streak(written, day), day in written, rules.evening(clock.now()))
+    glance = "written today" if day in written else "not written yet today"
+    return Summary(glance, DONE if day in written else QUIET, overview=line)
 
 
 async def today_lines(user_id: int, now: datetime) -> list:
-    """For the Today card: one line, written or not yet, with the mood when written. No words.
-    Not yet is said only in the evening (from 6 pm): a line written earlier shows all day."""
+    """For the Today card: the streak and whether today is written ("not yet" only from 6 pm). No mood, no words."""
     from core.today import Line
 
-    there = await store.entry(user_id, rules.diary_day(now))
-    if there is None:
-        return [Line(ICON, f"**{TITLE}** · not yet")] if rules.evening(now) else []
-    shown = mood.shown(there.mood_scale, there.mood) if mood.on() and there.has_mood else "written"
-    return [Line(ICON, f"**{TITLE}** · {shown}", done=True)]
+    on = rules.diary_day(now)
+    written = await database.run(store.db_days, user_id)
+    if on not in written and not rules.evening(now):
+        return []
+    line = rules.streak_line(rules.streak(written, on), on in written, True)
+    return [Line(ICON, f"**{TITLE}** · {line}", done=on in written)]
 
 
 async def week(user_id: int, monday: date, upto: date):
-    """For the week of everything: the week's moods, one emoji a day; the streak small."""
+    """For the week of everything: the days written out of the week's; the streak small. No moods."""
     from core.weekly import Week
 
     span = [monday + timedelta(days=ahead) for ahead in range((upto - monday).days + 1)]
@@ -68,7 +65,7 @@ async def week(user_id: int, monday: date, upto: date):
     if not found:
         return None
     run = rules.streak(await database.run(store.db_days, user_id), upto)
-    return Week(rules.week_emoji(found, span), len(found), len(span), f"streak {run}" if run >= 2 else "", ANY_TIME)
+    return Week(rules.days_written(len(found), len(span)), len(found), len(span), f"streak {run}" if run >= 2 else "", ANY_TIME)
 
 
 async def show_word(ctx: Context) -> str:
@@ -125,6 +122,13 @@ class DiaryTask(Task):
         plain.register()
         scheduler.default_schedule(TASK, plain.ASK_JOB, ASK_DEFAULT)
         scheduler.default_schedule(TASK, plain.TODAY_JOB, TODAY_DEFAULT)
+
+    async def startup(self, client) -> None:
+        await plain.load_asks()  # a reply to the evening ask still finds it after a restart
+
+    def claim(self, ctx: Context):
+        # A reply to the evening ask is the day's entry, as it was sent; never sent to Claude
+        return plain.take_reply if plain.claims(ctx.reply_target_id) else None
 
     async def summary(self, user_id, day):
         return await summary(user_id, day)
