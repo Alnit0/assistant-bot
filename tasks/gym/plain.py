@@ -30,8 +30,9 @@ ONLY_FOR = (
     "8\", \"did Upper 1 this morning: …\"), finishing (\"finish the workout\"), questions about their lifts "
     "(\"what did I do on bench last time?\", \"my notes on RDLs\", \"best leg press\", \"how's my bench going?\", "
     "\"sessions this month\", \"how's my training going?\"), pain or discomfort noted in workouts or the diary (\"any pain?\", "
-    "\"pain history\"), a weekly target (\"aim for 3 a week\") and planning a session at a time (\"gym "
-    "tomorrow 6pm\"). Not general fitness questions (chat), not body weight or food, and not a reminder."
+    "\"pain history\"), a weekly target (\"aim for 3 a week\"), planning a session at a time (\"gym "
+    "tomorrow 6pm\") and the user's gym plans, a version for each logbook imported: listing them (\"show my gym "
+    "plans\"), switching (\"switch to the October plan\", \"go back to the previous plan\") and deleting one. Not general fitness questions (chat), not body weight or food, and not a reminder."
 )
 EXAMPLES = ("starting a workout", "bench 20 for 15, 40 for 9, 40 for 8", "how's my bench going?")
 _EXERCISE = "The exercise as the user's plan names it, from the state, when it is clear which (\"laterals\" -> Lateral raise, \"RDLs\" -> Romanian deadlift); else exactly as said."
@@ -47,6 +48,11 @@ async def state(request: Request) -> State:
     open_ = await database.run(store.db_open_session, request.user.id)
     if open_ is not None:
         lines.append(f"(a session of {open_.name} is open, started {open_.day:%a})")
+    from tasks.gym import plans
+
+    kept = await plans.every(request.user.id)
+    if kept:
+        lines.append("plans kept: " + "; ".join(each.name + (" (active)" if each.active else "") for each in kept))
     return State("The user's gym plan (workouts in rotation order, each with its exercises)", tuple(lines), "no plan yet")
 
 
@@ -70,7 +76,10 @@ async def tables_of(request: Request, data: dict) -> list[grid.Table]:
 
 
 def _kept(found: importer.Imported) -> dict:
+    from tasks.gym import plans
+
     return {
+        "name": plans.plan_name(days.today(), found.split, found.weeks), "split": found.split, "weeks": found.weeks,
         "plan": [{"name": workout.name, "exercises": [{"name": each.name, "kind": each.kind, "sets": [asdict(one) for one in each.sets]} for each in workout.exercises]} for workout in found.plan],
         "sessions": [{"workout": each["workout"], "day": each["day"].isoformat(), "sets": [asdict(one) for one in each["sets"]], "notes": [asdict(one) for one in each["notes"]]} for each in found.sessions],
     }
@@ -99,7 +108,8 @@ async def import_card(request: Request, data: dict, guessed: frozenset) -> Propo
     there = await store.plan(request.user.id)
     kind = "change" if there else "new"
     if there:
-        lines.insert(0, design.small(f"in place of your plan of {len(there)} workouts (its history is kept)"))
+        lines.insert(0, design.small("your active plan now · the one before is kept, to switch back to, and your log stays as it is"))
+    lines.insert(0, f"**{keep['name']}**")
     return Proposal(lines=tuple(lines), data=keep, kind=kind, question=question)
 
 
@@ -108,15 +118,21 @@ def _workouts_from(data: dict) -> list[Workout]:
 
 
 async def import_save(request: Request, data: dict) -> str:
+    from tasks.gym import plans
+
     workouts = _workouts_from(data)
     now = clock.now()
-    ids = await database.run(store.db_replace_plan, request.user.id, workouts, now)
+    name = data.get("name") or plans.plan_name(days.today(), data.get("split", ""), data.get("weeks"))
+    ids = await database.run(store.db_replace_plan, request.user.id, workouts, now, name, data.get("split", ""), data.get("weeks"))
     by_name = {workout.name.lower(): workout_id for workout, workout_id in zip(workouts, ids)}
 
     def keep_log(conn):
         last = None
+        kept = {(row[0], row[1].lower()) for row in conn.execute("SELECT day, name FROM gym_sessions WHERE user_id = ?", (request.user.id,))}
         for each in data["sessions"]:
             workout_id = by_name.get(each["workout"].lower())
+            if (each["day"], each["workout"].lower()) in kept:
+                continue  # logged already (the same logbook sent again): the log has it once
             session_id = store.db_add_session(conn, request.user.id, workout_id, each["workout"], date.fromisoformat(each["day"]), store.FINISHED, now, "import")
             store.db_add_sets(conn, request.user.id, session_id, [DoneSet(**one) for one in each["sets"]])
             for note in each["notes"]:
@@ -129,9 +145,12 @@ async def import_save(request: Request, data: dict) -> str:
             store.db_set_queue(conn, request.user.id, ids[at:] + ids[:at], now)
 
     await database.run(keep_log)
+    await plans.write_copies(request.user.id)
     session.changed(request.user.id)
     nxt = await session.next_workout(request.user.id)
-    return f"{ICON} Saved · {len(workouts)} workouts · {len(data['sessions'])} sessions logged" + (f" · next: **{nxt.name}**" if nxt else "")
+    exercises = sum(len(each.exercises) for each in workouts)
+    small = f"{len(data['sessions'])} sessions in the log" + (f" · next: **{nxt.name}**" if nxt else "")
+    return f"{plans.active_line(name)}\n{plans.summary_line(exercises, len(workouts), data.get('weeks'))}\n{design.small(small)}"
 
 
 async def import_check(request: Request, data: dict) -> str:
@@ -597,8 +616,15 @@ async def post_job(job) -> None:
 
 
 # --- what extraction fills in ---------------------------------------------------------------------------------------------------
+_PLAN_FIELDS = (
+    Field("plan", "The words that name the plan, as the user said them (\"October\", \"upper lower\", \"2026-10-19\"). Leave out with previous."),
+    Field("previous", "True for the plan before the active one (\"the previous plan\", \"the old one\").", BOOLEAN),
+)
+
+
 def actions() -> list:
     from core.actions import EACH_DAY, SEE, SET_UP, Action
+    from tasks.gym import plans
 
     set_item = (
         Field("exercise", _EXERCISE, required=True),
@@ -641,4 +667,9 @@ def actions() -> list:
         Action("gym_at", "A session planned at a time (\"gym tomorrow 6pm\" -> day tomorrow, time 6:00 pm).", (Field("day", "The day as said."), Field("time", "The time.", TIME, required=True)),
                prepare=at_card, apply=at_save, verify=at_check, purpose=SET_UP, say=("gym tomorrow 6pm",)),
         Action("gym_undo", "Undo the last gym change (\"undo that\" straight after one).", (), needs_card=False, run=undo, purpose=EACH_DAY, say=("undo that",)),
+        Action("gym_plans", "The gym plans kept, a version for each logbook imported (\"show my gym plans\", \"what plans do I have\").", (), needs_card=False, run=plans.list_said, purpose=SEE, say=("show my gym plans",)),
+        Action("gym_plan_switch", "Make another kept plan the active one (\"switch to the October plan\" -> plan October; \"use the upper lower one\" -> plan upper lower; \"go back to the previous plan\" -> previous).",
+               _PLAN_FIELDS, prepare=plans.switch_card, apply=plans.switch_save, verify=plans.switch_check, purpose=SET_UP, say=("switch to the October plan",)),
+        Action("gym_plan_delete", "Delete a kept plan (\"delete the October plan\"). Never the log.",
+               _PLAN_FIELDS, prepare=plans.delete_card, apply=plans.delete_save, verify=plans.delete_check, purpose=SET_UP, say=("delete the October plan",)),
     ]

@@ -1,623 +1,638 @@
 {
-  "csv": [
-    [
-      "map_columns",
-      {
-        "columns": [
-          {
-            "table": "logbook.csv",
-            "heading": "Date",
-            "field": "date",
-            "sure": true
-          },
-          {
-            "table": "logbook.csv",
-            "heading": "Week",
-            "field": "week",
-            "sure": true
-          },
-          {
-            "table": "logbook.csv",
-            "heading": "Day",
-            "field": "workout",
-            "sure": true
-          },
-          {
-            "table": "logbook.csv",
-            "heading": "Exercise",
-            "field": "exercise",
-            "sure": true
-          },
-          {
-            "table": "logbook.csv",
-            "heading": "Sets",
-            "field": "sets",
-            "sure": true
-          },
-          {
-            "table": "logbook.csv",
-            "heading": "Reps",
-            "field": "reps",
-            "sure": true
-          },
-          {
-            "table": "logbook.csv",
-            "heading": "Reps Achieved",
-            "field": "reps_done",
-            "sure": true
-          },
-          {
-            "table": "logbook.csv",
-            "heading": "Weight",
-            "field": "weight",
-            "sure": true
-          },
-          {
-            "table": "logbook.csv",
-            "heading": "Objective",
-            "field": "purpose",
-            "sure": true
-          },
-          {
-            "table": "logbook.csv",
-            "heading": "Notes",
-            "field": "notes",
-            "sure": true
-          }
-        ]
-      }
-    ],
-    [
-      "read_words",
-      {
-        "brackets": [
-          {
-            "index": 0,
-            "meaning": "warm-up"
-          },
-          {
-            "index": 1,
-            "meaning": "working"
-          },
-          {
-            "index": 2,
-            "meaning": "name"
-          }
-        ],
-        "purposes": [
-          {
-            "index": 0,
-            "category": "warm_up"
-          },
-          {
-            "index": 1,
-            "category": "to_failure"
-          },
-          {
-            "index": 2,
-            "category": "near_failure"
-          },
-          {
-            "index": 3,
-            "category": "technique"
-          }
-        ],
-        "exercises": [
-          {
-            "index": 0,
-            "kind": "barbell"
-          },
-          {
-            "index": 1,
-            "kind": "barbell"
-          },
-          {
-            "index": 2,
-            "kind": "cable"
-          },
-          {
-            "index": 3,
-            "kind": "dumbbell"
-          },
-          {
-            "index": 4,
-            "kind": "barbell"
-          },
-          {
-            "index": 5,
-            "kind": "machine"
-          },
-          {
-            "index": 6,
-            "kind": "barbell"
-          },
-          {
-            "index": 7,
-            "kind": "barbell"
-          },
-          {
-            "index": 8,
-            "kind": "machine"
-          },
-          {
-            "index": 9,
-            "kind": "barbell"
-          },
-          {
-            "index": 10,
-            "kind": "machine"
-          }
-        ],
-        "notes": [
-          {
-            "index": 0,
-            "pain": false,
-            "per_hand": true,
-            "target_low": 0,
-            "target_high": 0
-          },
-          {
-            "index": 1,
-            "pain": false,
-            "per_hand": false,
-            "target_low": 57,
-            "target_high": 60
-          },
-          {
-            "index": 2,
-            "pain": false,
-            "per_hand": false,
-            "target_low": 0,
-            "target_high": 0
-          },
-          {
-            "index": 3,
-            "pain": true,
-            "per_hand": false,
-            "target_low": 0,
-            "target_high": 0
-          },
-          {
-            "index": 4,
-            "pain": false,
-            "per_hand": true,
-            "target_low": 0,
-            "target_high": 0
-          },
-          {
-            "index": 5,
-            "pain": true,
-            "per_hand": false,
-            "target_low": 0,
-            "target_high": 0
-          }
-        ]
-      }
+ "csv": [
+  [
+   "map_columns",
+   {
+    "columns": [
+     {
+      "table": "logbook.csv",
+      "heading": "Date",
+      "field": "date",
+      "sure": true
+     },
+     {
+      "table": "logbook.csv",
+      "heading": "Week",
+      "field": "week",
+      "sure": true
+     },
+     {
+      "table": "logbook.csv",
+      "heading": "Day",
+      "field": "workout",
+      "sure": true
+     },
+     {
+      "table": "logbook.csv",
+      "heading": "Exercise",
+      "field": "exercise",
+      "sure": true
+     },
+     {
+      "table": "logbook.csv",
+      "heading": "Sets",
+      "field": "sets",
+      "sure": true
+     },
+     {
+      "table": "logbook.csv",
+      "heading": "Reps",
+      "field": "reps",
+      "sure": true
+     },
+     {
+      "table": "logbook.csv",
+      "heading": "Reps Achieved",
+      "field": "reps_done",
+      "sure": true
+     },
+     {
+      "table": "logbook.csv",
+      "heading": "Weight",
+      "field": "weight",
+      "sure": true
+     },
+     {
+      "table": "logbook.csv",
+      "heading": "Objective",
+      "field": "purpose",
+      "sure": true
+     },
+     {
+      "table": "logbook.csv",
+      "heading": "Notes",
+      "field": "notes",
+      "sure": true
+     }
     ]
+   }
   ],
-  "xlsx": [
-    [
-      "map_columns",
-      {
-        "columns": [
-          {
-            "table": "Upper 1",
-            "heading": "Date",
-            "field": "date",
-            "sure": true
-          },
-          {
-            "table": "Upper 1",
-            "heading": "Week",
-            "field": "week",
-            "sure": true
-          },
-          {
-            "table": "Upper 1",
-            "heading": "Exercise",
-            "field": "exercise",
-            "sure": true
-          },
-          {
-            "table": "Upper 1",
-            "heading": "Sets",
-            "field": "sets",
-            "sure": true
-          },
-          {
-            "table": "Upper 1",
-            "heading": "Reps",
-            "field": "reps",
-            "sure": true
-          },
-          {
-            "table": "Upper 1",
-            "heading": "Reps Achieved",
-            "field": "reps_done",
-            "sure": true
-          },
-          {
-            "table": "Upper 1",
-            "heading": "Weight",
-            "field": "weight",
-            "sure": true
-          },
-          {
-            "table": "Upper 1",
-            "heading": "Objective",
-            "field": "purpose",
-            "sure": true
-          },
-          {
-            "table": "Upper 1",
-            "heading": "Notes",
-            "field": "notes",
-            "sure": true
-          },
-          {
-            "table": "Lower 1",
-            "heading": "Date",
-            "field": "date",
-            "sure": true
-          },
-          {
-            "table": "Lower 1",
-            "heading": "Week",
-            "field": "week",
-            "sure": true
-          },
-          {
-            "table": "Lower 1",
-            "heading": "Exercise",
-            "field": "exercise",
-            "sure": true
-          },
-          {
-            "table": "Lower 1",
-            "heading": "Sets",
-            "field": "sets",
-            "sure": true
-          },
-          {
-            "table": "Lower 1",
-            "heading": "Reps",
-            "field": "reps",
-            "sure": true
-          },
-          {
-            "table": "Lower 1",
-            "heading": "Reps Achieved",
-            "field": "reps_done",
-            "sure": true
-          },
-          {
-            "table": "Lower 1",
-            "heading": "Weight",
-            "field": "weight",
-            "sure": true
-          },
-          {
-            "table": "Lower 1",
-            "heading": "Objective",
-            "field": "purpose",
-            "sure": true
-          },
-          {
-            "table": "Lower 1",
-            "heading": "Notes",
-            "field": "notes",
-            "sure": true
-          },
-          {
-            "table": "Upper 2",
-            "heading": "Date",
-            "field": "date",
-            "sure": true
-          },
-          {
-            "table": "Upper 2",
-            "heading": "Week",
-            "field": "week",
-            "sure": true
-          },
-          {
-            "table": "Upper 2",
-            "heading": "Exercise",
-            "field": "exercise",
-            "sure": true
-          },
-          {
-            "table": "Upper 2",
-            "heading": "Sets",
-            "field": "sets",
-            "sure": true
-          },
-          {
-            "table": "Upper 2",
-            "heading": "Reps",
-            "field": "reps",
-            "sure": true
-          },
-          {
-            "table": "Upper 2",
-            "heading": "Reps Achieved",
-            "field": "reps_done",
-            "sure": true
-          },
-          {
-            "table": "Upper 2",
-            "heading": "Weight",
-            "field": "weight",
-            "sure": true
-          },
-          {
-            "table": "Upper 2",
-            "heading": "Objective",
-            "field": "purpose",
-            "sure": true
-          },
-          {
-            "table": "Upper 2",
-            "heading": "Notes",
-            "field": "notes",
-            "sure": true
-          },
-          {
-            "table": "Lower 2",
-            "heading": "Date",
-            "field": "date",
-            "sure": true
-          },
-          {
-            "table": "Lower 2",
-            "heading": "Week",
-            "field": "week",
-            "sure": true
-          },
-          {
-            "table": "Lower 2",
-            "heading": "Exercise",
-            "field": "exercise",
-            "sure": true
-          },
-          {
-            "table": "Lower 2",
-            "heading": "Sets",
-            "field": "sets",
-            "sure": true
-          },
-          {
-            "table": "Lower 2",
-            "heading": "Reps",
-            "field": "reps",
-            "sure": true
-          },
-          {
-            "table": "Lower 2",
-            "heading": "Reps Achieved",
-            "field": "reps_done",
-            "sure": true
-          },
-          {
-            "table": "Lower 2",
-            "heading": "Weight",
-            "field": "weight",
-            "sure": true
-          },
-          {
-            "table": "Lower 2",
-            "heading": "Objective",
-            "field": "purpose",
-            "sure": true
-          },
-          {
-            "table": "Lower 2",
-            "heading": "Notes",
-            "field": "notes",
-            "sure": true
-          }
-        ]
-      }
+  [
+   "read_words",
+   {
+    "split": "Upper/Lower",
+    "brackets": [
+     {
+      "index": 0,
+      "meaning": "warm-up"
+     },
+     {
+      "index": 1,
+      "meaning": "working"
+     },
+     {
+      "index": 2,
+      "meaning": "name"
+     }
     ],
-    [
-      "read_words",
-      {
-        "brackets": [
-          {
-            "index": 0,
-            "meaning": "warm-up"
-          },
-          {
-            "index": 1,
-            "meaning": "working"
-          },
-          {
-            "index": 2,
-            "meaning": "name"
-          }
-        ],
-        "purposes": [
-          {
-            "index": 0,
-            "category": "warm_up"
-          },
-          {
-            "index": 1,
-            "category": "to_failure"
-          },
-          {
-            "index": 2,
-            "category": "near_failure"
-          },
-          {
-            "index": 3,
-            "category": "technique"
-          }
-        ],
-        "exercises": [
-          {
-            "index": 0,
-            "kind": "barbell"
-          },
-          {
-            "index": 1,
-            "kind": "barbell"
-          },
-          {
-            "index": 2,
-            "kind": "cable"
-          },
-          {
-            "index": 3,
-            "kind": "dumbbell"
-          },
-          {
-            "index": 4,
-            "kind": "barbell"
-          },
-          {
-            "index": 5,
-            "kind": "machine"
-          },
-          {
-            "index": 6,
-            "kind": "barbell"
-          },
-          {
-            "index": 7,
-            "kind": "barbell"
-          },
-          {
-            "index": 8,
-            "kind": "machine"
-          },
-          {
-            "index": 9,
-            "kind": "barbell"
-          },
-          {
-            "index": 10,
-            "kind": "machine"
-          }
-        ],
-        "notes": [
-          {
-            "index": 0,
-            "pain": false,
-            "per_hand": true,
-            "target_low": 0,
-            "target_high": 0
-          },
-          {
-            "index": 1,
-            "pain": false,
-            "per_hand": false,
-            "target_low": 57,
-            "target_high": 60
-          },
-          {
-            "index": 2,
-            "pain": false,
-            "per_hand": false,
-            "target_low": 0,
-            "target_high": 0
-          },
-          {
-            "index": 3,
-            "pain": true,
-            "per_hand": false,
-            "target_low": 0,
-            "target_high": 0
-          },
-          {
-            "index": 4,
-            "pain": false,
-            "per_hand": false,
-            "target_low": 0,
-            "target_high": 0
-          },
-          {
-            "index": 5,
-            "pain": true,
-            "per_hand": false,
-            "target_low": 0,
-            "target_high": 0
-          }
-        ]
-      }
-    ]
-  ],
-  "wide": [
-    [
-      "map_columns",
-      {
-        "columns": [
-          {
-            "table": "wide.csv",
-            "heading": "Workout",
-            "field": "workout",
-            "sure": true
-          },
-          {
-            "table": "wide.csv",
-            "heading": "Exercise",
-            "field": "exercise",
-            "sure": true
-          },
-          {
-            "table": "wide.csv",
-            "heading": "Plan",
-            "field": "sets_and_reps",
-            "sure": true
-          },
-          {
-            "table": "wide.csv",
-            "heading": "Set 1",
-            "field": "result",
-            "sure": true
-          },
-          {
-            "table": "wide.csv",
-            "heading": "Set 2",
-            "field": "result",
-            "sure": true
-          },
-          {
-            "table": "wide.csv",
-            "heading": "Set 3",
-            "field": "result",
-            "sure": true
-          },
-          {
-            "table": "wide.csv",
-            "heading": "Date",
-            "field": "date",
-            "sure": true
-          }
-        ]
-      }
+    "purposes": [
+     {
+      "index": 0,
+      "category": "warm_up"
+     },
+     {
+      "index": 1,
+      "category": "to_failure"
+     },
+     {
+      "index": 2,
+      "category": "near_failure"
+     },
+     {
+      "index": 3,
+      "category": "technique"
+     }
     ],
-    [
-      "read_words",
-      {
-        "brackets": [],
-        "purposes": [],
-        "exercises": [
-          {
-            "index": 0,
-            "kind": "barbell"
-          },
-          {
-            "index": 1,
-            "kind": "bodyweight"
-          },
-          {
-            "index": 2,
-            "kind": "barbell"
-          }
-        ],
-        "notes": []
-      }
+    "exercises": [
+     {
+      "index": 0,
+      "kind": "barbell"
+     },
+     {
+      "index": 1,
+      "kind": "barbell"
+     },
+     {
+      "index": 2,
+      "kind": "cable"
+     },
+     {
+      "index": 3,
+      "kind": "dumbbell"
+     },
+     {
+      "index": 4,
+      "kind": "barbell"
+     },
+     {
+      "index": 5,
+      "kind": "machine"
+     },
+     {
+      "index": 6,
+      "kind": "barbell"
+     },
+     {
+      "index": 7,
+      "kind": "barbell"
+     },
+     {
+      "index": 8,
+      "kind": "cable"
+     },
+     {
+      "index": 9,
+      "kind": "barbell"
+     },
+     {
+      "index": 10,
+      "kind": "machine"
+     }
+    ],
+    "notes": [
+     {
+      "index": 0,
+      "pain": false,
+      "body_part": "hands",
+      "per_hand": true,
+      "target_low": 14,
+      "target_high": 14
+     },
+     {
+      "index": 1,
+      "pain": false,
+      "body_part": "general",
+      "per_hand": false,
+      "target_low": 57,
+      "target_high": 60
+     },
+     {
+      "index": 2,
+      "pain": false,
+      "body_part": "general",
+      "per_hand": false,
+      "target_low": 0,
+      "target_high": 0
+     },
+     {
+      "index": 3,
+      "pain": true,
+      "body_part": "knee",
+      "per_hand": false,
+      "target_low": 0,
+      "target_high": 0
+     },
+     {
+      "index": 4,
+      "pain": false,
+      "body_part": "hands",
+      "per_hand": true,
+      "target_low": 0,
+      "target_high": 0
+     },
+     {
+      "index": 5,
+      "pain": true,
+      "body_part": "shoulder",
+      "per_hand": false,
+      "target_low": 0,
+      "target_high": 0
+     }
     ]
+   }
   ]
+ ],
+ "xlsx": [
+  [
+   "map_columns",
+   {
+    "columns": [
+     {
+      "table": "Upper 1",
+      "heading": "Date",
+      "field": "date",
+      "sure": true
+     },
+     {
+      "table": "Upper 1",
+      "heading": "Week",
+      "field": "week",
+      "sure": true
+     },
+     {
+      "table": "Upper 1",
+      "heading": "Exercise",
+      "field": "exercise",
+      "sure": true
+     },
+     {
+      "table": "Upper 1",
+      "heading": "Sets",
+      "field": "sets",
+      "sure": true
+     },
+     {
+      "table": "Upper 1",
+      "heading": "Reps",
+      "field": "reps",
+      "sure": true
+     },
+     {
+      "table": "Upper 1",
+      "heading": "Reps Achieved",
+      "field": "reps_done",
+      "sure": true
+     },
+     {
+      "table": "Upper 1",
+      "heading": "Weight",
+      "field": "weight",
+      "sure": true
+     },
+     {
+      "table": "Upper 1",
+      "heading": "Objective",
+      "field": "purpose",
+      "sure": true
+     },
+     {
+      "table": "Upper 1",
+      "heading": "Notes",
+      "field": "notes",
+      "sure": true
+     },
+     {
+      "table": "Lower 1",
+      "heading": "Date",
+      "field": "date",
+      "sure": true
+     },
+     {
+      "table": "Lower 1",
+      "heading": "Week",
+      "field": "week",
+      "sure": true
+     },
+     {
+      "table": "Lower 1",
+      "heading": "Exercise",
+      "field": "exercise",
+      "sure": true
+     },
+     {
+      "table": "Lower 1",
+      "heading": "Sets",
+      "field": "sets",
+      "sure": true
+     },
+     {
+      "table": "Lower 1",
+      "heading": "Reps",
+      "field": "reps",
+      "sure": true
+     },
+     {
+      "table": "Lower 1",
+      "heading": "Reps Achieved",
+      "field": "reps_done",
+      "sure": true
+     },
+     {
+      "table": "Lower 1",
+      "heading": "Weight",
+      "field": "weight",
+      "sure": true
+     },
+     {
+      "table": "Lower 1",
+      "heading": "Objective",
+      "field": "purpose",
+      "sure": true
+     },
+     {
+      "table": "Lower 1",
+      "heading": "Notes",
+      "field": "notes",
+      "sure": true
+     },
+     {
+      "table": "Upper 2",
+      "heading": "Date",
+      "field": "date",
+      "sure": true
+     },
+     {
+      "table": "Upper 2",
+      "heading": "Week",
+      "field": "week",
+      "sure": true
+     },
+     {
+      "table": "Upper 2",
+      "heading": "Exercise",
+      "field": "exercise",
+      "sure": true
+     },
+     {
+      "table": "Upper 2",
+      "heading": "Sets",
+      "field": "sets",
+      "sure": true
+     },
+     {
+      "table": "Upper 2",
+      "heading": "Reps",
+      "field": "reps",
+      "sure": true
+     },
+     {
+      "table": "Upper 2",
+      "heading": "Reps Achieved",
+      "field": "reps_done",
+      "sure": true
+     },
+     {
+      "table": "Upper 2",
+      "heading": "Weight",
+      "field": "weight",
+      "sure": true
+     },
+     {
+      "table": "Upper 2",
+      "heading": "Objective",
+      "field": "purpose",
+      "sure": true
+     },
+     {
+      "table": "Upper 2",
+      "heading": "Notes",
+      "field": "notes",
+      "sure": true
+     },
+     {
+      "table": "Lower 2",
+      "heading": "Date",
+      "field": "date",
+      "sure": true
+     },
+     {
+      "table": "Lower 2",
+      "heading": "Week",
+      "field": "week",
+      "sure": true
+     },
+     {
+      "table": "Lower 2",
+      "heading": "Exercise",
+      "field": "exercise",
+      "sure": true
+     },
+     {
+      "table": "Lower 2",
+      "heading": "Sets",
+      "field": "sets",
+      "sure": true
+     },
+     {
+      "table": "Lower 2",
+      "heading": "Reps",
+      "field": "reps",
+      "sure": true
+     },
+     {
+      "table": "Lower 2",
+      "heading": "Reps Achieved",
+      "field": "reps_done",
+      "sure": true
+     },
+     {
+      "table": "Lower 2",
+      "heading": "Weight",
+      "field": "weight",
+      "sure": true
+     },
+     {
+      "table": "Lower 2",
+      "heading": "Objective",
+      "field": "purpose",
+      "sure": true
+     },
+     {
+      "table": "Lower 2",
+      "heading": "Notes",
+      "field": "notes",
+      "sure": true
+     }
+    ]
+   }
+  ],
+  [
+   "read_words",
+   {
+    "split": "Upper/Lower",
+    "brackets": [
+     {
+      "index": 0,
+      "meaning": "warm-up"
+     },
+     {
+      "index": 1,
+      "meaning": "working"
+     },
+     {
+      "index": 2,
+      "meaning": "name"
+     }
+    ],
+    "purposes": [
+     {
+      "index": 0,
+      "category": "warm_up"
+     },
+     {
+      "index": 1,
+      "category": "to_failure"
+     },
+     {
+      "index": 2,
+      "category": "near_failure"
+     },
+     {
+      "index": 3,
+      "category": "technique"
+     }
+    ],
+    "exercises": [
+     {
+      "index": 0,
+      "kind": "barbell"
+     },
+     {
+      "index": 1,
+      "kind": "barbell"
+     },
+     {
+      "index": 2,
+      "kind": "cable"
+     },
+     {
+      "index": 3,
+      "kind": "dumbbell"
+     },
+     {
+      "index": 4,
+      "kind": "barbell"
+     },
+     {
+      "index": 5,
+      "kind": "machine"
+     },
+     {
+      "index": 6,
+      "kind": "barbell"
+     },
+     {
+      "index": 7,
+      "kind": "barbell"
+     },
+     {
+      "index": 8,
+      "kind": "cable"
+     },
+     {
+      "index": 9,
+      "kind": "barbell"
+     },
+     {
+      "index": 10,
+      "kind": "machine"
+     }
+    ],
+    "notes": [
+     {
+      "index": 0,
+      "pain": false,
+      "body_part": "<UNKNOWN>",
+      "per_hand": true,
+      "target_low": 14,
+      "target_high": 14
+     },
+     {
+      "index": 1,
+      "pain": false,
+      "body_part": "<UNKNOWN>",
+      "per_hand": false,
+      "target_low": 57,
+      "target_high": 60
+     },
+     {
+      "index": 2,
+      "pain": false,
+      "body_part": "<UNKNOWN>",
+      "per_hand": true,
+      "target_low": 0,
+      "target_high": 0
+     },
+     {
+      "index": 3,
+      "pain": true,
+      "body_part": "shoulder",
+      "per_hand": false,
+      "target_low": 0,
+      "target_high": 0
+     },
+     {
+      "index": 4,
+      "pain": false,
+      "body_part": "<UNKNOWN>",
+      "per_hand": false,
+      "target_low": 0,
+      "target_high": 0
+     },
+     {
+      "index": 5,
+      "pain": true,
+      "body_part": "knee",
+      "per_hand": false,
+      "target_low": 0,
+      "target_high": 0
+     }
+    ]
+   }
+  ]
+ ],
+ "wide": [
+  [
+   "map_columns",
+   {
+    "columns": [
+     {
+      "table": "wide.csv",
+      "heading": "Workout",
+      "field": "workout",
+      "sure": true
+     },
+     {
+      "table": "wide.csv",
+      "heading": "Exercise",
+      "field": "exercise",
+      "sure": true
+     },
+     {
+      "table": "wide.csv",
+      "heading": "Plan",
+      "field": "sets_and_reps",
+      "sure": true
+     },
+     {
+      "table": "wide.csv",
+      "heading": "Set 1",
+      "field": "result",
+      "sure": true
+     },
+     {
+      "table": "wide.csv",
+      "heading": "Set 2",
+      "field": "result",
+      "sure": true
+     },
+     {
+      "table": "wide.csv",
+      "heading": "Set 3",
+      "field": "result",
+      "sure": true
+     },
+     {
+      "table": "wide.csv",
+      "heading": "Date",
+      "field": "date",
+      "sure": true
+     }
+    ]
+   }
+  ],
+  [
+   "read_words",
+   {
+    "split": "Push/Pull",
+    "brackets": [],
+    "purposes": [],
+    "exercises": [
+     {
+      "index": 0,
+      "kind": "barbell"
+     },
+     {
+      "index": 1,
+      "kind": "bodyweight"
+     },
+     {
+      "index": 2,
+      "kind": "barbell"
+     }
+    ],
+    "notes": []
+   }
+  ]
+ ]
 }

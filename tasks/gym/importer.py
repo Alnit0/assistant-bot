@@ -47,7 +47,10 @@ MEANING_SYSTEM = (
     "barbell, dumbbell, machine, cable or bodyweight. For each note, whether it speaks of pain or discomfort (pain), "
     "where the pain is when it does (body_part: shoulder, knee), whether it says the weight was per hand "
     "(dumbbells: per_hand), and any weight in kg it says to go to next "
-    "(\"go up to 40-45kg next week\" -> target_low 40, target_high 45)."
+    "(\"go up to 40-45kg next week\" -> target_low 40, target_high 45). And the plan's split, read from the Workouts "
+    "list only, in a few words with a capital each: Upper 1, Lower 1, Upper 2 -> Upper/Lower; Push, Pull, Legs -> "
+    "Push/Pull/Legs; Push, Pull -> Push/Pull. When the names show no split (Day 1, Day 2, Day 3), a short description "
+    "of what is there (\"Full Body 3-day\")."
 )
 
 
@@ -65,6 +68,8 @@ class Imported:
     unused: list[str] = field(default_factory=list)  # headings mapped to none
     unsure: list[str] = field(default_factory=list)  # "Objective → purpose"
     problems: list[str] = field(default_factory=list)
+    split: str = ""  # "Upper/Lower", as Claude read it
+    weeks: int | None = None  # weeks of data, counted by Python (tasks/gym/plans.py weeks_of)
 
     @property
     def set_count(self) -> int:
@@ -90,7 +95,8 @@ def meaning_tool() -> dict:
             "purposes": item({"category": {"type": "string", "enum": list(rules.PURPOSES)}}),
             "exercises": item({"kind": {"type": "string", "enum": list(rules.KINDS)}}),
             "notes": item({"pain": {"type": "boolean"}, "body_part": {"type": "string"}, "per_hand": {"type": "boolean"}, "target_low": {"type": "number"}, "target_high": {"type": "number"}}),
-        }, "required": ["brackets", "purposes", "exercises", "notes"]},
+            "split": {"type": "string", "description": "The plan's split (\"Upper/Lower\"), or a short description (\"Full Body 3-day\")."},
+        }, "required": ["brackets", "purposes", "exercises", "notes", "split"]},
     }
 
 
@@ -134,19 +140,20 @@ class Meanings:
     purposes: dict[str, str] = field(default_factory=dict)  # purpose (lower case) -> category
     kinds: dict[str, str] = field(default_factory=dict)  # exercise (lower case) -> kind
     notes: dict[str, dict] = field(default_factory=dict)  # note text -> {pain, per_hand, target_low, target_high}
+    split: str = ""  # the plan's split as Claude read it from the workouts' names ("Upper/Lower")
 
 
-def words_turn(brackets: list[str], purposes: list[str], exercises: list[str], notes: list[str]) -> str:
+def words_turn(brackets: list[str], purposes: list[str], exercises: list[str], notes: list[str], workouts: list[str] = ()) -> str:
     def listed(title: str, values: list[str]) -> str:
         return f"{title}:\n" + "\n".join(f"{index}. {value}" for index, value in enumerate(values)) if values else f"{title}: none"
 
-    return "\n\n".join([listed("Brackets", brackets), listed("Purposes", purposes), listed("Exercises", exercises), listed("Notes", notes)])
+    return "\n\n".join([listed("Workouts", list(workouts)), listed("Brackets", brackets), listed("Purposes", purposes), listed("Exercises", exercises), listed("Notes", notes)])
 
 
-async def ask_meanings(brackets: list[str], purposes: list[str], exercises: list[str], notes: list[str]) -> Meanings:
+async def ask_meanings(brackets: list[str], purposes: list[str], exercises: list[str], notes: list[str], workouts: list[str] = ()) -> Meanings:
     if not any((brackets, purposes, exercises, notes)):
         return Meanings()
-    called = await llm.call_tool([{"type": "text", "text": MEANING_SYSTEM, "cache_control": llm.CACHED}], words_turn(brackets, purposes, exercises, notes), [meaning_tool()],
+    called = await llm.call_tool([{"type": "text", "text": MEANING_SYSTEM, "cache_control": llm.CACHED}], words_turn(brackets, purposes, exercises, notes, workouts), [meaning_tool()],
                                  choice={"type": "tool", "name": MEANING_TOOL}, purpose=PURPOSE_MEANING, task=rules.TASK, max_tokens=2000)
     return meanings_from(called[1] if called else None, brackets, purposes, exercises, notes)
 
@@ -165,8 +172,9 @@ def meanings_from(raw, brackets: list[str], purposes: list[str], exercises: list
     for each in raw.get("notes", []) or []:
         if isinstance(each, dict) and isinstance(each.get("index"), int) and 0 <= each["index"] < len(notes):
             read_notes[notes[each["index"]]] = {key: each.get(key) for key in ("pain", "body_part", "per_hand", "target_low", "target_high")}
+    split = " ".join(str(raw.get("split") or "").split())[:40]
     return Meanings(pick("brackets", brackets, "meaning", ("warm-up", "working", "name")), pick("purposes", purposes, "category", rules.PURPOSES),
-                    pick("exercises", exercises, "kind", rules.KINDS), read_notes)
+                    pick("exercises", exercises, "kind", rules.KINDS), read_notes, split)
 
 
 # --- Python reads the values ----------------------------------------------------------------------------------------------
@@ -224,7 +232,10 @@ def _groups(table: Table, columns: dict[int, str]) -> list[list[tuple[str, ...]]
 
 def read(tables: list[Table], mappings: dict[str, Mapping], meanings: Meanings) -> Imported:
     """The plan and the log from the tables, every value read by Python."""
+    from tasks.gym import plans
+
     found = Imported()
+    week_cells: list[str] = []
     order: list[str] = []
     last_seen: dict[str, tuple[date | None, list[Exercise]]] = {}
     for table in tables:
@@ -243,6 +254,7 @@ def read(tables: list[Table], mappings: dict[str, Mapping], meanings: Meanings) 
                 order.append(name)
             said_date = _cell(first, columns, "date")
             day = rules.logbook_date(said_date)
+            week_cells += [_cell(row, columns, "week") for row in group if _cell(row, columns, "week")]
             exercises, sets, notes = [], [], []
             position = 0
             for row in group:
@@ -293,6 +305,8 @@ def read(tables: list[Table], mappings: dict[str, Mapping], meanings: Meanings) 
     found.plan = [Workout(name, tuple(last_seen[name.lower()][1])) for name in order if name.lower() in last_seen]
     found.unused = sorted(set(found.unused))
     found.sessions.sort(key=lambda each: each["day"])
+    found.split = meanings.split
+    found.weeks = plans.weeks_of(week_cells, [each["day"] for each in found.sessions])
     return found
 
 
@@ -320,8 +334,20 @@ async def imported(tables: list[Table], overrides: dict[str, dict[str, str]] | N
                     columns[index] = field_name
                     unsure = [each for each in unsure if each != index]
             mappings[table.name] = Mapping(columns, tuple(unsure))
-    meanings = await ask_meanings(*words_of(tables, mappings))
+    meanings = await ask_meanings(*words_of(tables, mappings), workouts=workout_names(tables, mappings))
     return read(tables, mappings, meanings)
+
+
+def workout_names(tables: list[Table], mappings: dict[str, Mapping]) -> list[str]:
+    """The workouts' names, each once, in the order first seen: for Claude to read the split from."""
+    found: list[str] = []
+    for table in tables:
+        columns = mappings[table.name].columns
+        for group in _groups(table, columns):
+            name = rules.tidy(_cell(group[0], columns, "workout") or table.name)
+            if name.lower() not in [each.lower() for each in found]:
+                found.append(name)
+    return found[:MAX_WORDS]
 
 
 # --- the card's words -------------------------------------------------------------------------------------------------------

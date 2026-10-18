@@ -6,6 +6,9 @@ backfilled from the git log.
 
 ## 2026-10-19
 
+- Gym plans have versions: each logbook you import is a plan of its own, named like 2026-10-19 — Upper/Lower
+  4-week, and becomes the active one. Say show my gym plans, switch to the October plan, go back to the previous
+  plan or delete one; your workout log never changes.
 - #gym now listens: say bench 40 for 10 or starting a workout there without the word gym, and anything else is
   answered as usual. Send your logbook (CSV or XLSX) there to import it.
 - A card now waits a day for Save (through restarts); a slow Save says ⏳ Saving… so it is not pressed twice,

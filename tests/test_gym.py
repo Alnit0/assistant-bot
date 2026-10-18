@@ -62,7 +62,9 @@ def answer(system, user, tools, *, choice=None, purpose="", task="", max_tokens=
             found = re.search(r"(\d+)-(\d+)kg", each)
             notes.append({"index": index, "pain": any(word in each.lower() for word in ("knee", "shoulder", "hurt")), "per_hand": "dumbbell" in each.lower(),
                           **({"target_low": float(found[1]), "target_high": float(found[2])} if found else {})})
-        return name, {"brackets": brackets, "purposes": purposes, "exercises": kinds, "notes": notes}
+        from tasks.gym import plans
+
+        return name, {"brackets": brackets, "purposes": purposes, "exercises": kinds, "notes": notes, "split": plans.split_of(_listed(user, "Workouts"))}
     raise AssertionError(f"an unscripted request: {name}")
 
 
@@ -183,12 +185,13 @@ def test_a_logbook_is_a_plan_and_a_log_apart_with_a_dnf_workout_not_done(world):
 
 def test_a_workbook_with_a_tab_a_workout_and_a_wide_layout_and_pasted_rows(world):
     proposal = run(plain.import_card(world.request(attachments=(attached("logbook.xlsx", gym_files.logbook_xlsx()),)), {}, frozenset()))
-    assert [line.split(" · ")[0] for line in proposal.lines if line.startswith("**") and not line.startswith("**Log")] == ["**Upper 1**", "**Lower 1**", "**Upper 2**", "**Lower 2**"]
+    assert proposal.lines[0].startswith("**20") and proposal.lines[0].endswith(" — Upper/Lower 2-week**"), "named: the day, the split, the weeks"
+    assert [line.split(" · ")[0] for line in proposal.lines[1:] if line.startswith("**") and not line.startswith("**Log")] == ["**Upper 1**", "**Lower 1**", "**Upper 2**", "**Lower 2**"]
     wide = run(plain.import_card(world.request(attachments=(attached("wide.csv", gym_files.wide_csv()),)), {}, frozenset()))
-    assert wide.lines[0] == "**Push** · 2 exercises · 6 sets" and any("2 sessions" in line for line in wide.lines)
+    assert wide.lines[1] == "**Push** · 2 exercises · 6 sets" and any("2 sessions" in line for line in wide.lines)
     pasted = "\n".join(line for line in gym_files.wide_csv().decode().splitlines())
     from_words = run(plain.import_card(world.request(pasted), {}, frozenset()))
-    assert from_words.lines[0] == wide.lines[0]
+    assert from_words.lines[1] == wide.lines[1]
 
 
 def test_an_unsure_column_is_asked_about_on_the_card(world, monkeypatch):
@@ -392,7 +395,8 @@ def test_a_logbook_sent_to_the_smart_inbox_is_the_gym_s_own_import_and_save_save
     request = world.request("", attachments=(attached("logbook.csv", gym_files.logbook_csv()),))
     item = run(smartinbox.prepare(request, "gym logbook", smartinbox.GYM_PLAN, entries, None, file=True, rows=[["Date", "Day"]]))
     assert item["task"] == "gym" and item["action"] == "gym_import" and item["ready"]
-    assert item["lines"][0].startswith("**Upper 1** · 4 exercises")
+    assert item["lines"][0].endswith(" — Upper/Lower 2-week**") and item["lines"][1].startswith("**Upper 1** · 4 exercises")
     said = run(smartinbox._save_one(request, item))
-    assert said.startswith("🏋️ Saved · 4 workouts · 4 sessions logged")
+    assert said.splitlines()[0].startswith("✅ 20") and said.splitlines()[0].endswith(" — Upper/Lower 2-week is now your active plan.")
+    assert said.splitlines()[1] == "11 exercises across 4 days, 2 weeks." and "4 sessions in the log" in said
     assert [each.name for each in run(store.plan(world.owner.id))][0] == "Upper 1"

@@ -30,6 +30,7 @@ def test_the_logbook_csv_as_the_real_api_read_it(monkeypatch):
     found = replayed(monkeypatch, "csv", grid.from_file("logbook.csv", gym_files.logbook_csv()))
     assert [each.name for each in found.plan] == ["Upper 1", "Lower 1", "Upper 2", "Lower 2"]
     assert (len(found.sessions), found.set_count, found.not_done) == (4, 17, 1)
+    assert (found.split, found.weeks) == ("Upper/Lower", 2), "the split as Claude read it, the weeks as Python counted"
     notes = {note.text: note for session in found.sessions for note in session["notes"]}
     assert notes["knee felt a bit off"].pain, "a note about pain, as Claude read it"
     assert (notes["go up to 57-60kg next week"].target_low, notes["go up to 57-60kg next week"].target_high) == (57.0, 60.0)
@@ -51,3 +52,4 @@ def test_the_wide_layout_as_the_real_api_read_it(monkeypatch):
     assert [each.name for each in found.plan] == ["Push", "Pull"]
     assert [len(each.sets) for each in found.plan[0].exercises] == [3, 3]
     assert (len(found.sessions), found.set_count) == (2, 9)
+    assert found.split == "Push/Pull", "from the workouts' names, never the prompt's example (19 Oct)"

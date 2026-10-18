@@ -8,6 +8,40 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-17 (evening)
 
+## Gym plan versions (19 Oct, midday; ships at the next restart)
+
+As Alex asked: each CSV or XLSX imported is a plan of its own, named
+"YYYY-MM-DD — <split> <weeks>-week" and made active, the one before kept;
+show, switch and delete in words; the log separate, each session with the
+plan active then. Recorded checks: every gym extraction again (the schema
+changed) 20 of 20 once three plan names were accepted as Claude gave them
+(from the state, which Python's match finds the same); routers 9 of 9; the
+import's three logbooks again twice (the split, then sharper). About
+US$0.15 (NZ$0.27). 14 tests.
+
+### Decided (19 Oct, gym plans)
+
+- **The database keeps the plans; the JSON files are copies.** The rules
+  keep every record in SQLite with a user_id and appended migrations, so
+  `gym_plans` is where a plan is; `data/gym/plans/<day>.json` is written as
+  Alex described (name, uploaded, active, exercises) whenever a plan is
+  added, switched or deleted, and never read back. A second plan on the
+  same day is `<day>-2.json`. The dev bot's go to `data/dev-gym/plans`.
+- **Switching and deleting are cards** (every change is), and the
+  confirmation is in Alex's words: "✅ <name> is now your active plan." with
+  "<n> exercises across <d> days, <w> weeks." Importing says the same.
+- **The split is Claude's** (in the importer's existing words request, no
+  new one); the weeks are Python's: the logbook's own week numbers, else the
+  dated sessions' span rounded up. With no weeks, the name has none.
+- **Switching starts the rotation at the plan's first workout.**
+- **The same logbook sent again is not logged twice**: a session already
+  in the log (its day and workout) is left out. Before, it was added again.
+- **The plan kept before** became the first version at the migration,
+  named from its workouts (`split_of`, mechanical: a trailing number or
+  letter dropped) and its log's weeks, dated the day of the migration.
+- **Matching a plan is Python's**: the words' tokens against the name and
+  the month it came; two that fit equally are a question on the card.
+
 ## #gym listens (19 Oct, late morning; ships at the next restart)
 
 Live gap: the bot read plain words only in #inbox, the hub and direct

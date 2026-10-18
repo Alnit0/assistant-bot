@@ -9,7 +9,8 @@ twice); 24-hour cards, the tidy, Redo. Shipped 10:08 am on `a41e8aa`.
 **Then, his answers:** the 20 Oct row made his own, the pronoun exception
 in RULES.md, "I was born on…" routed, all birthday checks recorded again:
 shipped 10:20 am on `f2c8b78`, checked.
-**Then:** #gym listens, gym first; a spreadsheet there is imported: built,
+**Then:** #gym listens, gym first, a spreadsheet there is imported; gym plan
+versions (show, switch, delete; JSON copies in data/gym/plans): built,
 checked, committed; for the next restart.
 
 **Next, at the next restart** (not overnight): the settle-in week, a

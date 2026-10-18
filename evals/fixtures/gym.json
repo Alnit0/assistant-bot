@@ -380,6 +380,96 @@
         "several": false,
         "chat_part": ""
       }
+    },
+    {
+      "golden": "gp1",
+      "message": "show my gym plans",
+      "tasks": [
+        "gym"
+      ],
+      "note": "the plans kept",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "gym"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "gp2",
+      "message": "switch to the October plan",
+      "tasks": [
+        "gym"
+      ],
+      "note": "the plans kept",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "gym"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "gp3",
+      "message": "go back to the previous plan",
+      "tasks": [
+        "gym"
+      ],
+      "note": "the plans kept",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "gym"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "gp4",
+      "message": "use the upper lower one",
+      "tasks": [
+        "gym"
+      ],
+      "note": "the plans kept",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "gym"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "gp5",
+      "message": "delete the October plan",
+      "tasks": [
+        "gym"
+      ],
+      "note": "the plans kept",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "gym"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
     }
   ],
   "extraction": [
@@ -463,7 +553,7 @@
         "gym_swap",
         {
           "exercise": "Bench press",
-          "instead": "dumbbell press today",
+          "instead": "dumbbell press",
           "guessed": [],
           "not_included": []
         }
@@ -489,16 +579,20 @@
             {
               "exercise": "Bench press",
               "weight": 40,
-              "reps": 9
+              "reps": 9,
+              "set_type": "working"
             },
             {
               "exercise": "Bench press",
               "weight": 40,
-              "reps": 8
+              "reps": 8,
+              "set_type": "working"
             }
           ],
           "guessed": [
-            "sets[0].set_type"
+            "sets[0].set_type",
+            "sets[1].set_type",
+            "sets[2].set_type"
           ],
           "not_included": []
         }
@@ -555,7 +649,8 @@
               "exercise": "Lateral raise",
               "skipped": true,
               "note": "shoulder felt off",
-              "pain": true
+              "pain": true,
+              "body_part": "shoulder"
             },
             {
               "exercise": "Lat pulldown - wide grip",
@@ -652,7 +747,8 @@
               "reps": 8,
               "set_type": "working",
               "note": "knee was sore",
-              "pain": true
+              "pain": true,
+              "body_part": "knee"
             }
           ],
           "guessed": [
@@ -678,7 +774,9 @@
         {
           "question": "trend",
           "exercise": "Bench press",
-          "guessed": [],
+          "guessed": [
+            "exercise"
+          ],
           "not_included": []
         }
       ]
@@ -783,6 +881,96 @@
           "not_included": []
         }
       ]
+    },
+    {
+      "golden": "gp1",
+      "task": "gym",
+      "message": "show my gym plans",
+      "state": "The user's gym plan (workouts in rotation order, each with its exercises):\n- next in turn: Lower 1\n- Upper 1: Bench press, Incline press, Lat pulldown - wide grip, Lateral raise\n- Lower 1: Squat, Leg press (high foot), Romanian deadlift\n- Upper 2: Overhead press, Seated row\n- Lower 2: Deadlift, Leg curl\n- plans kept: 2026-11-15 — Push/Pull/Legs 6-week (active); 2026-10-19 — Upper/Lower 4-week",
+      "action": "gym_plans",
+      "data": {},
+      "recorded": [
+        "gym_plans",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "gp2",
+      "task": "gym",
+      "message": "switch to the October plan",
+      "state": "The user's gym plan (workouts in rotation order, each with its exercises):\n- next in turn: Lower 1\n- Upper 1: Bench press, Incline press, Lat pulldown - wide grip, Lateral raise\n- Lower 1: Squat, Leg press (high foot), Romanian deadlift\n- Upper 2: Overhead press, Seated row\n- Lower 2: Deadlift, Leg curl\n- plans kept: 2026-11-15 — Push/Pull/Legs 6-week (active); 2026-10-19 — Upper/Lower 4-week",
+      "action": "gym_plan_switch",
+      "data": {
+        "plan": "2026-10-19"
+      },
+      "recorded": [
+        "gym_plan_switch",
+        {
+          "plan": "2026-10-19",
+          "guessed": [],
+          "not_included": []
+        }
+      ],
+      "note": "Claude names the plan from the state; Python's match finds it the same either way"
+    },
+    {
+      "golden": "gp3",
+      "task": "gym",
+      "message": "go back to the previous plan",
+      "state": "The user's gym plan (workouts in rotation order, each with its exercises):\n- next in turn: Lower 1\n- Upper 1: Bench press, Incline press, Lat pulldown - wide grip, Lateral raise\n- Lower 1: Squat, Leg press (high foot), Romanian deadlift\n- Upper 2: Overhead press, Seated row\n- Lower 2: Deadlift, Leg curl\n- plans kept: 2026-11-15 — Push/Pull/Legs 6-week (active); 2026-10-19 — Upper/Lower 4-week",
+      "action": "gym_plan_switch",
+      "data": {
+        "previous": true
+      },
+      "recorded": [
+        "gym_plan_switch",
+        {
+          "previous": true,
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "gp4",
+      "task": "gym",
+      "message": "use the upper lower one",
+      "state": "The user's gym plan (workouts in rotation order, each with its exercises):\n- next in turn: Lower 1\n- Upper 1: Bench press, Incline press, Lat pulldown - wide grip, Lateral raise\n- Lower 1: Squat, Leg press (high foot), Romanian deadlift\n- Upper 2: Overhead press, Seated row\n- Lower 2: Deadlift, Leg curl\n- plans kept: 2026-11-15 — Push/Pull/Legs 6-week (active); 2026-10-19 — Upper/Lower 4-week",
+      "action": "gym_plan_switch",
+      "data": {
+        "plan": "Upper/Lower 4-week"
+      },
+      "recorded": [
+        "gym_plan_switch",
+        {
+          "plan": "Upper/Lower 4-week",
+          "guessed": [],
+          "not_included": []
+        }
+      ],
+      "note": "Claude names the plan from the state; Python's match finds it the same either way"
+    },
+    {
+      "golden": "gp5",
+      "task": "gym",
+      "message": "delete the October plan",
+      "state": "The user's gym plan (workouts in rotation order, each with its exercises):\n- next in turn: Lower 1\n- Upper 1: Bench press, Incline press, Lat pulldown - wide grip, Lateral raise\n- Lower 1: Squat, Leg press (high foot), Romanian deadlift\n- Upper 2: Overhead press, Seated row\n- Lower 2: Deadlift, Leg curl\n- plans kept: 2026-11-15 — Push/Pull/Legs 6-week (active); 2026-10-19 — Upper/Lower 4-week",
+      "action": "gym_plan_delete",
+      "data": {
+        "plan": "2026-10-19"
+      },
+      "recorded": [
+        "gym_plan_delete",
+        {
+          "plan": "2026-10-19",
+          "guessed": [],
+          "not_included": []
+        }
+      ],
+      "note": "Claude names the plan from the state; Python's match finds it the same either way"
     }
   ]
 }

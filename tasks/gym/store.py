@@ -130,7 +130,14 @@ def add_pain(conn: sqlite3.Connection) -> None:
     pain.create_tables(conn)
 
 
-MIGRATIONS = [create_tables, add_weights, add_muscles, add_pain]  # appended, never in between
+def add_plans(conn: sqlite3.Connection) -> None:
+    """19 Oct: a plan a version (tasks/gym/plans.py)."""
+    from tasks.gym import plans
+
+    plans.add_tables(conn)
+
+
+MIGRATIONS = [create_tables, add_weights, add_muscles, add_pain, add_plans]  # appended, never in between
 
 
 def _sets_json(sets) -> str:
@@ -143,7 +150,12 @@ def _sets_of(text: str) -> tuple[PlannedSet, ...]:
 
 # --- the plan --------------------------------------------------------------------------------------------------------
 def db_plan(conn: sqlite3.Connection, user_id: int) -> list[Workout]:
-    workouts = conn.execute("SELECT id, name FROM gym_workouts WHERE user_id = ? AND removed_at IS NULL ORDER BY position, id", (user_id,)).fetchall()
+    """The active plan's workouts (tasks/gym/plans.py): none with no plan active."""
+    workouts = conn.execute(
+        "SELECT id, name FROM gym_workouts WHERE user_id = ? AND removed_at IS NULL AND plan_id = "
+        "(SELECT id FROM gym_plans WHERE user_id = ? AND active = 1 AND removed_at IS NULL) ORDER BY position, id",
+        (user_id, user_id),
+    ).fetchall()
     found = []
     for workout_id, name in workouts:
         rows = conn.execute("SELECT id, name, kind, step, sets FROM gym_exercises WHERE workout_id = ? AND removed_at IS NULL ORDER BY position, id", (workout_id,)).fetchall()
@@ -151,13 +163,17 @@ def db_plan(conn: sqlite3.Connection, user_id: int) -> list[Workout]:
     return found
 
 
-def db_replace_plan(conn: sqlite3.Connection, user_id: int, workouts: list[Workout], now: datetime) -> list[int]:
-    """The plan, in place of the one before (whose rows are kept as removed); the queue starts at the first."""
-    conn.execute("UPDATE gym_workouts SET removed_at = ? WHERE user_id = ? AND removed_at IS NULL", (now.isoformat(), user_id))
-    conn.execute("UPDATE gym_exercises SET removed_at = ? WHERE user_id = ? AND removed_at IS NULL", (now.isoformat(), user_id))
+def db_replace_plan(conn: sqlite3.Connection, user_id: int, workouts: list[Workout], now: datetime, name: str = "", split: str = "", weeks: int | None = None) -> list[int]:
+    """A new plan, active, in place of the one that was (kept, inactive, to switch back to: tasks/gym/plans.py);
+    the queue starts at its first workout."""
+    from tasks.gym import plans
+
+    from core import day as days
+
+    plan_id = plans.db_add(conn, user_id, name or plans.plan_name(days.day_of(now), split, weeks), split, weeks, now)
     ids = []
     for position, workout in enumerate(workouts):
-        workout_id = conn.execute("INSERT INTO gym_workouts (user_id, name, position) VALUES (?, ?, ?)", (user_id, workout.name, position)).lastrowid
+        workout_id = conn.execute("INSERT INTO gym_workouts (user_id, name, position, plan_id) VALUES (?, ?, ?, ?)", (user_id, workout.name, position, plan_id)).lastrowid
         ids.append(workout_id)
         for order, exercise in enumerate(workout.exercises):
             conn.execute(
@@ -242,8 +258,9 @@ def db_add_session(conn: sqlite3.Connection, user_id: int, workout_id: int | Non
     if workout_id is not None or status != OFF_PLAN:
         number = 1 + conn.execute("SELECT COUNT(*) FROM gym_sessions WHERE user_id = ? AND lower(name) = lower(?) AND status IN (?, ?, ?)", (user_id, name, FINISHED, OPEN, OFF_PLAN)).fetchone()[0]
     return conn.execute(
-        "INSERT INTO gym_sessions (user_id, workout_id, name, day, number, status, source, off_plan, started_at, finished_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (user_id, workout_id, name, day.isoformat(), number, status, source, off_plan, now.isoformat(), None if status == OPEN else now.isoformat()),
+        "INSERT INTO gym_sessions (user_id, workout_id, name, day, number, status, source, off_plan, started_at, finished_at, plan_id) VALUES "
+        "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (SELECT id FROM gym_plans WHERE user_id = ? AND active = 1 AND removed_at IS NULL))",
+        (user_id, workout_id, name, day.isoformat(), number, status, source, off_plan, now.isoformat(), None if status == OPEN else now.isoformat(), user_id),
     ).lastrowid
 
 
