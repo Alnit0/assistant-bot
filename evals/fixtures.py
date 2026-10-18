@@ -38,6 +38,8 @@ class RouterFixture:
     # The names of what each task holds ({task: [names]}): the router is given the hints the bot's own
     # code makes from them (routing.name_hints), as it is in the bot
     names: dict | None = None
+    # Sent in a task's own channel: [task, channel] (routing.home_line), as the bot tells the router there
+    home: list | None = None
     note: str = ""
     golden: str = ""  # the golden conversation this is a step of ("1c"), if it is one
     # Why the model is known to get this one wrong, at least some of the time.
@@ -105,7 +107,7 @@ def load() -> tuple[list[RouterFixture], list[ExtractionFixture]]:
 
 def _key(entry: dict) -> str:
     """What tells one fixture from another: the message and what it was said against."""
-    return json.dumps([entry.get(name) or None for name in ("message", "state", "card", "on_screen", "earlier", "moved", "exchanges", "after_answer", "replied")], sort_keys=True)
+    return json.dumps([entry.get(name) or None for name in ("message", "state", "card", "on_screen", "earlier", "moved", "exchanges", "after_answer", "replied", "home")], sort_keys=True)
 
 
 def save_recorded(routers: list[RouterFixture], extractions: list[ExtractionFixture]) -> None:

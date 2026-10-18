@@ -126,7 +126,7 @@ def main() -> int:
 
         return await llm.call_tool(
             routing.system_blocks(entries),
-            routing.user_turn(fixture.message, fixture.on_screen, [tuple(pair) for pair in fixture.exchanges or []], hints=routing.name_hints(fixture.message, fixture.names or {})),
+            routing.user_turn(fixture.message, fixture.on_screen, [tuple(pair) for pair in fixture.exchanges or []], hints=routing.name_hints(fixture.message, fixture.names or {}), home=tuple(fixture.home) if fixture.home else None),
             [routing.tool(entries)],
             choice={"type": "tool", "name": routing.TOOL},
             purpose=costs.PURPOSE_ROUTER,

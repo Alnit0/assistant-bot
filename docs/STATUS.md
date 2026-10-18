@@ -8,6 +8,26 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-17 (evening)
 
+## #gym listens (19 Oct, late morning; ships at the next restart)
+
+Live gap: the bot read plain words only in #inbox, the hub and direct
+messages. Now a task may name its own channel (`Entry.home`; the gym's is
+#gym): the bot reads there, the router is told a message there is most
+likely the gym's (`routing.home_line`), and anything else is routed as
+anywhere. A CSV or XLSX sent there is the gym's import at once
+(`Entry.home_files`), with no router. Router checks in #gym: 6 of 6
+(gh1 to gh6), US$0.029 (NZ$0.05). 7 tests.
+
+### Decided (19 Oct, #gym)
+
+- **A hint, not a shortcut**: a message in #gym still goes through the
+  router (one request, as anywhere), with one line saying where it was
+  sent; nothing is decided in code, so a question or another task's
+  request is answered normally.
+- **The weight tracker has no home of its own**: "weighed 82.4" in #gym
+  is routed as anywhere (it is plainly the weight's).
+- **Replies in #gym are not swept**: the conversation tidy is the hub's.
+
 ## Shipped (19 Oct, 10:20 am): Alex's answers
 
 Live on `f2c8b78` (from `a41e8aa`), one restart with no card waiting. The

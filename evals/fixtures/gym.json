@@ -251,6 +251,135 @@
         "several": false,
         "chat_part": ""
       }
+    },
+    {
+      "golden": "gh1",
+      "message": "bench 40 for 10",
+      "tasks": [
+        "gym"
+      ],
+      "note": "in #gym: a set, no word gym",
+      "home": [
+        "gym",
+        "gym"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "gym"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "gh2",
+      "message": "starting a workout",
+      "tasks": [
+        "gym"
+      ],
+      "note": "in #gym",
+      "home": [
+        "gym",
+        "gym"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "gym"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "gh3",
+      "message": "done, squats 80 for 5, 5 and 4",
+      "tasks": [
+        "gym"
+      ],
+      "note": "in #gym: sets in passing",
+      "home": [
+        "gym",
+        "gym"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "gym"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "gh4",
+      "message": "what's the capital of France?",
+      "tasks": [],
+      "note": "in #gym: anything else is answered as anywhere",
+      "home": [
+        "gym",
+        "gym"
+      ],
+      "chat": true,
+      "recorded": {
+        "kind": "chat",
+        "tasks": [],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "gh5",
+      "message": "remind me at 6pm to stretch",
+      "tasks": [
+        "nudges"
+      ],
+      "note": "in #gym: a reminder stays a reminder",
+      "home": [
+        "gym",
+        "gym"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "nudges"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "gh6",
+      "message": "add eggs to my to-dos",
+      "tasks": [
+        "todos"
+      ],
+      "note": "in #gym: another task named",
+      "home": [
+        "gym",
+        "gym"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "todos"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
     }
   ],
   "extraction": [

@@ -293,7 +293,8 @@ only, any channel, no slash. It is off after every restart.
 - "At 8" is taken as 8:00 am and marked ❓; say "8pm" to correct the card
 - A card nobody saves waits 24 hours, then says it expired, with Redo
 - There is never an "ok" step: the card's **Save** is the one confirmation
-- Everything works in #inbox and in the hub
+- Everything works in #inbox and in the hub; #gym is read too, gym first (bench 40 for 10), and a
+  spreadsheet sent there is imported
 
 ## Seeing what the bot did (`.env`)
 

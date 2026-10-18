@@ -58,9 +58,9 @@ def what_i_can_do(error: BaseException) -> str:
 
 
 def listens_in(channel_id: int) -> bool:
-    """Where plain words are read: #inbox and the hub, and a direct message of
-    mine while DMS_ENABLED is on (core/dms.py)."""
-    return channel_id == INBOX_CHANNEL_ID or channel_id == CHANNELS.get("hub") or dms.is_dm(channel_id)
+    """Where plain words are read: #inbox and the hub, a direct message of mine
+    while DMS_ENABLED is on (core/dms.py), and a task's own channel (`Entry.home`: #gym)."""
+    return channel_id == INBOX_CHANNEL_ID or channel_id == CHANNELS.get("hub") or dms.is_dm(channel_id) or actions.home_of(channel_id) is not None
 
 
 async def private_names(user, channel_id: int | None, text: str = "") -> dict[str, str]:
@@ -647,7 +647,16 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
         # The smart inbox (core/smartinbox.py): a photo, a screenshot, a PDF or a CSV sent in #inbox or a
         # direct message is read and sorted onto one card; a message about an open inbox card changes it
         inbox_on = bool(config.SMART_INBOX)
-        if inbox_on and smartinbox.files_for(ctx.channel_id, request.attachments):
+        home = actions.home_of(ctx.channel_id)
+        home = home if home in entries else None
+        tables = [each for each in request.attachments if smartinbox.kind_of(each) in ("csv", "xlsx")]
+        if home is not None and home.home_files and tables and home.action(home.home_files) is not None:
+            # A spreadsheet sent in a task's own channel (a gym logbook in #gym): its import, at once, no router
+            turn.route = costs.SHORTCUT
+            turn.why.append(f"a spreadsheet sent in {home.name}'s own channel: its {home.home_files}")
+            await act(request, Extracted(home, home.action(home.home_files), {}, frozenset()), turn)
+            settled = True
+        elif inbox_on and smartinbox.files_for(ctx.channel_id, request.attachments):
             read = await smartinbox.read_files(request.attachments)
             if read.kinds:
                 await smartinbox.sort(request, entries, turn, state_of, answer, read=read)
@@ -825,6 +834,7 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
                 exchanges=_exchanges(ctx.channel_id),
                 attached=attached,
                 hints=await _hints(ctx.text, entries, request),
+                home=(home.name, home.home) if home is not None else None,
             )
             turn.router = {"tasks": list(routed.tasks), "tie": routed.tie, "chat": routed.chat, "chat_part": routed.chat_part, "problem": routed.problem}
             if routed.several:

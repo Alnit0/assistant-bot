@@ -478,6 +478,13 @@ class Entry:
     # The words a message may start with that make it this task's in so many words, whatever other task it
     # names as where something goes ("remind me to write in my diary" is a reminder): outranks a named destination
     leads: tuple[str, ...] = ()
+    # The task's own channel, by its name in config.CHANNELS ("gym"): plain words are read there too
+    # (core/conversation.py listens_in), and the router is told a message there is most likely this task's
+    # (routing.home_line), while anything else is still answered as anywhere. Empty for none
+    home: str = ""
+    # The action that takes a spreadsheet (CSV or XLSX) sent in the home channel, at once and without the
+    # router ("gym_import"); empty for none
+    home_files: str = ""
 
     @property
     def title(self) -> str:
@@ -950,6 +957,15 @@ PRIVATE_NOTE = "(words kept by the task alone)"
 
 def entry(name: str) -> Entry | None:
     return _entries.get(name)
+
+
+def home_of(channel_id: int | None) -> Entry | None:
+    """The loaded task whose own channel this is (`Entry.home`), or None."""
+    from core.config import CHANNELS
+
+    if channel_id is None:
+        return None
+    return next((each for each in _entries.values() if each.home and CHANNELS.get(each.home) == channel_id), None)
 
 
 def problems(entries: list[Entry]) -> list[str]:

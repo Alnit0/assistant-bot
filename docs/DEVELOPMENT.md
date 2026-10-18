@@ -521,7 +521,9 @@ owner.
 
 What you take and when, and today's checklist of it. Reminders at each
 dose's time come in the next stage, so nothing notifies you yet.
-Everything works in #inbox and in the hub.
+Everything works in #inbox and in the hub. A task's own channel is read
+too (`Entry.home`: #gym), its task first; a spreadsheet sent there goes to
+its `home_files` action.
 
 | Type or say | What happens |
 |---|---|

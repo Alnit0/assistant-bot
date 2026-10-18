@@ -6,6 +6,8 @@ backfilled from the git log.
 
 ## 2026-10-19
 
+- #gym now listens: say bench 40 for 10 or starting a workout there without the word gym, and anything else is
+  answered as usual. Send your logbook (CSV or XLSX) there to import it.
 - A card now waits a day for Save (through restarts); a slow Save says ⏳ Saving… so it is not pressed twice,
   and a card that did expire has a Redo button instead of asking you to say it again.
 - Birthdays are quieter: no more posts or pings. From 14 days before, a small grey Upcoming birthdays box low in

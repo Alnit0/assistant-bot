@@ -87,6 +87,8 @@ class GymTask(Task):
     examples = plain.EXAMPLES
     identity = ()
     on_repeat = repeats.ALLOW_ANOTHER  # a new logbook is a change to the plan, on its card (plain.import_card)
+    home = "gym"  # Alex, 19 Oct: #gym listens like #inbox, gym first; anything else answered as anywhere
+    home_files = "gym_import"  # a CSV or XLSX sent there is imported
 
     def switched_on(self) -> bool:
         return bool(config.GYM_ENABLED)

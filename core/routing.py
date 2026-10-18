@@ -225,6 +225,15 @@ def hint_line(hints: list[tuple[str, str]]) -> str:
     )
 
 
+def home_line(task: str, channel: str) -> str:
+    """What the router is told of a message sent in a task's own channel."""
+    return (
+        f"Sent in #{channel}, the {task} task's own channel: a message about {task} there need not name it "
+        f"(\"bench 40 for 10\", \"starting a workout\"), so read it as {task}'s first. Anything plainly about "
+        "something else is routed as anywhere."
+    )
+
+
 def user_turn(
     message: str,
     on_screen: str = "",
@@ -232,6 +241,7 @@ def user_turn(
     about_data: bool = False,
     attached: tuple[str, ...] = (),
     hints: list[tuple[str, str]] | tuple = (),
+    home: tuple[str, str] | None = None,
 ) -> str:
     """What changes from message to message: the last exchanges, what is on
     screen, and the message. Never part of the cached block. `about_data` is
@@ -249,6 +259,8 @@ def user_turn(
         parts.append("Sent with the message, as a file: " + ", ".join(attached))
     if hints:
         parts.append(hint_line(list(hints)))
+    if home:
+        parts.append(home_line(*home))
     parts.append(f"The message to route:\n{message}")
     return "\n\n".join(parts)
 
@@ -378,14 +390,15 @@ def with_named(found: Route, named: list[str]) -> Route:
 
 async def route(
     message: str, entries: list[Entry], on_screen: str = "", exchanges=None, about_data: bool = False, attached: tuple[str, ...] = (),
-    hints: list[tuple[str, str]] | tuple = (),
+    hints: list[tuple[str, str]] | tuple = (), home: tuple[str, str] | None = None,
 ) -> Route:
     """Ask the router. One request; the result is checked and never raises for
     something the router got wrong. `hints` are words of the message that may
-    be part of the name of something a task holds (`name_hints`)."""
+    be part of the name of something a task holds (`name_hints`); `home` is
+    (task, channel) when it was sent in a task's own channel (`home_line`)."""
     called = await llm.call_tool(
         system_blocks(entries),
-        user_turn(message, on_screen, exchanges, about_data, attached, hints),
+        user_turn(message, on_screen, exchanges, about_data, attached, hints, home),
         [tool(entries)],
         choice={"type": "tool", "name": TOOL},
         purpose=costs.PURPOSE_ROUTER,

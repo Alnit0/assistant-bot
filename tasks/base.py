@@ -281,6 +281,7 @@ class Task:
                 plan=self.plan if type(self).plan is not Task.plan else None,
                 week=self.week if type(self).week is not Task.week else None,
                 private=self.private, sticks=self.sticks, place=self.place, keeps=self.keeps, leads=tuple(self.leads),
+                home=self.home, home_files=self.home_files,
             )
         ]
 
@@ -331,6 +332,8 @@ class Task:
     place = 0
     keeps = ""  # a kind of statement asking for nothing that is still its to keep (actions.Entry.keeps)
     leads: tuple[str, ...] = ()  # how a message may start that makes it this task's (actions.Entry.leads)
+    home = ""  # the task's own channel, by its name in config.CHANNELS (actions.Entry.home)
+    home_files = ""  # the action that takes a spreadsheet sent there (actions.Entry.home_files)
 
     async def week(self, user_id: int, monday: date, upto: date):
         """This task's week, Monday up to `upto` (a `weekly.Week`: a line, its dots,
