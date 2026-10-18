@@ -3,17 +3,10 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Idle, last batch was** 19 Oct (morning): birthdays reworked with the
-"My" name fix, and the card that had "gone" on Save (a slow Save pressed
-twice); 24-hour cards, the tidy, Redo. Shipped 10:08 am on `a41e8aa`.
-**Then, his answers:** the 20 Oct row made his own, the pronoun exception
-in RULES.md, "I was born on…" routed, all birthday checks recorded again:
-shipped 10:20 am on `f2c8b78`, checked.
-**Then:** #gym listens, gym first, a spreadsheet there is imported; gym plan
-versions (show, switch, delete; JSON copies in data/gym/plans): shipped
-11:27 am on `3fab84c`, checked. Then "delete the gym plan" declined:
-the plan actions' words fixed, shipped 11:41 am on `9b9a078`; the
-self-test after: 98 touched steps, none failed. Idle.
+**Idle, last batch was** 19 Oct (morning to 11:41 am), all shipped and
+checked: birthdays reworked and the "My" fix; cards that wait a day, with
+Redo; #gym listens; gym plan versions; the plan actions' words fixed.
+Live on `9b9a078`; the self-test after it: 98 steps, none failed.
 
 **Next, at the next restart** (not overnight): the settle-in week, a
 feature freeze to Sun 25 Oct (fixes and polish from real use only, new
