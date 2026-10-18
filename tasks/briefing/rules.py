@@ -68,9 +68,23 @@ def held_note(hours: str) -> str:
     return f"quiet hours ({hours}): posted without a sound"
 
 
+def _title(section: Section) -> str:
+    """The box's name: the task's title, or the summary's own heading for a box placed low."""
+    return section.summary.heading if section.summary is not None and section.summary.heading else section.title
+
+
+def _low(section: Section) -> bool:
+    return section.summary is not None and section.summary.low
+
+
+def low_last(sections: list[Section]) -> list[Section]:
+    """Those placed low (`Summary.low`: birthdays coming up) after everything else, each keeping its order."""
+    return [*(each for each in sections if not _low(each)), *(each for each in sections if _low(each))]
+
+
 def _name(section: Section) -> str:
     glance = section.summary.glance if section.summary is not None else ""
-    return f"{section.icon} **{section.title}**" + (f" · {glance}" if glance else "")
+    return f"{section.icon} **{_title(section)}**" + (f" · {glance}" if glance else "")
 
 
 def _lines(section: Section) -> list[str]:
@@ -237,7 +251,7 @@ def text(sections: list[Section], day: date, problems: tuple[str, ...] = (), hel
         lines += ["", NEWS, *news]
     if held_back:
         lines += ["", HELD, *held_back, *([design.small(held_note(hours))] if hours else [])]
-    for section in sections:
+    for section in low_last(sections):
         lines += ["", _name(section), *_lines(section)]
     if spend:
         lines += ["", spend]
@@ -262,7 +276,7 @@ def _layout_r1(sections: list[Section], day: date, problems: tuple[str, ...] = (
         boxes.append(design.item(design.QUIET, HELD, *held_back, *([design.small(held_note(hours))] if hours else [])))
     boxes += [
         design.item(section.summary.status if section.summary is not None and section.summary.status else design.QUIET, _name(section), *_lines(section))
-        for section in sections
+        for section in low_last(sections)
     ]
     title, under = _top(day, so_far)
     pieces = design.standing(title, "", boxes, under=tuple(under))
@@ -278,7 +292,7 @@ def in_page_order(sections: list[Section]) -> list[Section]:
     """The order of the boxes on the page: first what sets the scene and counts
     nothing (the weather), then the day's things in the ranking's order, which
     puts the next timed thing first. Each keeps the order it was given in."""
-    return [*(each for each in sections if not _counts(each)), *(each for each in sections if _counts(each))]
+    return low_last([*(each for each in sections if not _counts(each)), *(each for each in sections if _counts(each))])
 
 
 def _box(section: Section) -> design.Box:
@@ -287,7 +301,7 @@ def _box(section: Section) -> design.Box:
     said = section.summary
     if said is None:
         return design.topic(design.card_title(f"{section.icon} {section.title}"), lines=[design.small(f"⚠️ {section.problem or 'couldn’t be read'}")], status=design.QUIET)
-    heading = design.card_title(f"{section.icon} {section.title}", said.done, said.total)
+    heading = design.card_title(f"{section.icon} {_title(section)}", said.done, said.total)
     lines = [*([said.glance] if said.glance and not said.total else []), *said.lines, *(design.small(line) for line in (said.hint, said.before) if line)]
     return design.topic(heading, lines=lines, status=said.status or design.QUIET)
 
@@ -325,10 +339,11 @@ def _layout_r5(sections: list[Section], day: date, problems: tuple[str, ...] = (
         boxes.append(design.topic(design.card_title(NEWS.replace("**", "")), [design.Entry(each, design.QUIET) for each in news], status=design.QUIET))
     if held_back:
         boxes.append(design.topic(design.card_title(HELD.replace("**", "")), lines=[*held_back, *([design.small(held_note(hours))] if hours else [])], status=design.QUIET))
-    boxes += [_box(section) for section in sections if section.summary is None or not section.summary.overview]
+    boxes += [_box(section) for section in sections if (section.summary is None or not section.summary.overview) and not _low(section)]
     overview = _overview_box(sections, "" if problems else " · ".join(info))
     if overview is not None:
         boxes.append(overview)
+    boxes += [_box(section) for section in sections if _low(section)]  # below the day's things
     title = f"{ICON} {date_line(day)}" + (f" {so_far[0]}" if so_far else "")
     foot = [*([spend] if spend else []), *worth_knowing(notes)]
     return design.page([design.page_title(title)], boxes, foot)

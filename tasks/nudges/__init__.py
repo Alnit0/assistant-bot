@@ -42,10 +42,6 @@ async def summary(user_id: int, day: date) -> Summary | None:
     due = rules.due_today(nudges, day)
     # Renewals between their first nudge and the day before: a quiet part of the overview line
     renewals = expiry.overview(await expiry.every(user_id), day)
-    if config.BIRTHDAYS_ENABLED:
-        # Birthdays from their heads-up to the day before their first post: quiet in the same line
-        coming_up = birthdays.overview(await birthdays.every(user_id), day)
-        renewals = " · ".join(each for each in (renewals, coming_up) if each)
     if not due:
         return Summary("", QUIET, overview=renewals) if renewals else None
     now = clock.now()
@@ -94,12 +90,13 @@ async def plan_pieces(user_id: int, day: date) -> list:
 
 def birthdays_entry():
     """Birthdays to the router: an entry of their own, private (a name or a gift note is never in a log), whose
-    buttons and jobs are this task's."""
+    buttons and jobs are this task's; the briefing's Upcoming birthdays box and the week's line are its own."""
     from core.actions import Entry
 
     return Entry(
         birthdays.NAME, birthdays.ICON, birthdays.ONLY_FOR, birthdays.EXAMPLES, tuple(birthdays.actions()), live_state=birthdays.state,
-        identity=(), on_repeat=repeats.ALLOW_ANOTHER, label="Birthdays", private=True, place=PLACE + 1, plan=birthdays.plan_pieces,
+        identity=(), on_repeat=repeats.ALLOW_ANOTHER, label="Birthdays", private=True, place=PLACE + 1,
+        summary=birthdays.summary, week=birthdays.week,
     )
 
 
@@ -145,7 +142,7 @@ class NudgesTask(Task):
 
     def buttons(self) -> list[ButtonNote]:
         return [
-            ButtonNote("✅ Done", "on a reminder that went off (a birthday's too): it is dealt with, and leaves the hub"),
+            ButtonNote("✅ Done", "on a reminder that went off: it is dealt with, and leaves the hub"),
             ButtonNote("💤 Snooze", "on a reminder that went off: again in 10 minutes, in 1 hour, or tomorrow at the same time"),
         ]
 
@@ -160,7 +157,7 @@ class NudgesTask(Task):
 
     def job_labels(self):
         # Never the reminder's words: a job's name is shown where anyone may glance
-        return {plain.FIRE: "reminder", plain.CARD: "reminders card", expiry.CHECK_JOB: "renewals check", expiry.AGAIN_JOB: "renewal", birthdays.CHECK_JOB: "birthdays check", birthdays.AGAIN_JOB: "birthday"}
+        return {plain.FIRE: "reminder", plain.CARD: "reminders card", expiry.CHECK_JOB: "renewals check", expiry.AGAIN_JOB: "renewal", birthdays.CHECK_JOB: "birthdays list", birthdays.AGAIN_JOB: "birthday"}
 
     def setup(self, client) -> None:
         plain.register()
@@ -171,10 +168,25 @@ class NudgesTask(Task):
             scheduler.default_schedule(TASK, birthdays.CHECK_JOB, birthdays.CHECK_DEFAULT)
         scheduler.join_routine(hub.MORNING, scheduler.handler_name(TASK, plain.CARD), order=ORDER, name=hub.MORNING_NAME)
 
+    async def startup(self, client) -> None:
+        from core import live
+        from core.users import get_user_by_discord_id
+
+        if not config.BIRTHDAYS_ENABLED:
+            return
+        owner = await get_user_by_discord_id(int(config.OWNER_ID)) if config.OWNER_ID else None
+        if owner is not None:
+            live.background(birthdays.startup(owner.id))  # a start says nothing: the list is only brought up to date
+
+    async def message_class(self, message_id):
+        from core.lifecycle import MessageClass
+
+        return MessageClass.LIVE if config.BIRTHDAYS_ENABLED and await database.run(birthdays.db_is_list, message_id) else None
+
     async def owns_message(self, message_id):
         return (
             await database.run(store.db_message, message_id) is not None or await database.run(expiry.db_post_of, message_id) is not None
-            or (config.BIRTHDAYS_ENABLED and await database.run(birthdays.db_post_of, message_id) is not None)
+            or (config.BIRTHDAYS_ENABLED and (await database.run(birthdays.db_post_of, message_id) is not None or await database.run(birthdays.db_is_list, message_id)))
         )
 
     async def summary(self, user_id, day):

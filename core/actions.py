@@ -243,6 +243,11 @@ class Summary:
     # not how far it has got ("6 doses · first 7:00 am"): its own card in the hub has the progress.
     # A task with none (the weather) keeps a box of its own
     overview: str = ""
+    # A box of its own placed low, below the day's things (round 5: under The day), for what only sets the
+    # scene ahead: birthdays coming up (Alex, 19 Oct). Its `heading` names the box in place of the task's
+    # title ("Upcoming birthdays"), under the entry's icon
+    low: bool = False
+    heading: str = ""
 
 
 @dataclass(frozen=True)

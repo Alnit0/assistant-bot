@@ -39,10 +39,16 @@ def db_add(conn: sqlite3.Connection, user_id: int, task: str, why: str, said: st
 
 
 def db_since(conn: sqlite3.Connection, user_id: int, since: date) -> list[tuple[str, str, str, str]]:
-    """(day, task, why, summary) of each wish from `since`, oldest first."""
+    """(day, task, why, summary) of each wish from `since` (its local midnight: a Monday morning's wish is
+    the Sunday before in UTC), oldest first."""
+    from datetime import timezone
+
+    from core import day as days
+
+    start = days.start_of(since).astimezone(timezone.utc).isoformat()
     return [
         (row[0][:10], row[1], row[2], row[3])
-        for row in conn.execute("SELECT created_at, task, why, summary FROM wishes WHERE user_id = ? AND created_at >= ? ORDER BY id", (user_id, since.isoformat()))
+        for row in conn.execute("SELECT created_at, task, why, summary FROM wishes WHERE user_id = ? AND created_at >= ? ORDER BY id", (user_id, start))
     ]
 
 

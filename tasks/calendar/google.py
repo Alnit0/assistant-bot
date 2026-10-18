@@ -28,6 +28,16 @@ from tasks.calendar.rules import Event
 API = "https://www.googleapis.com/calendar/v3/calendars/"
 SCOPE = "https://www.googleapis.com/auth/calendar"
 TIMEOUT = 20
+# The bot's own marker on an event it keeps for another task (a birthday's yearly all-day event): a private
+# extended property, never the title. Such an event is shown by that task alone, never as a calendar item
+# (the hub, the Today card, the timeline, #calendar's days, the answers): Google Calendar shows it, and its own
+# notification is set there. Alex, 19 Oct
+HIDDEN = "assistant_hidden"
+
+
+def hidden(item: dict) -> bool:
+    """Whether an API event carries the bot's marker. Pure."""
+    return bool(((item.get("extendedProperties") or {}).get("private") or {}).get(HIDDEN))
 _token: dict = {}  # the access token and when it expires, kept in memory only
 
 
@@ -140,8 +150,8 @@ def _moment(value: str) -> datetime:
 
 def to_event(item: dict, origin: str) -> Event | None:
     """One API event as the task keeps it; None for a cancelled one. Pure."""
-    if item.get("status") == "cancelled":
-        return None
+    if item.get("status") == "cancelled" or hidden(item):
+        return None  # cancelled, or kept by another task (`HIDDEN`): never a calendar item
     title = " ".join(str(item.get("summary") or "").split()) or rules.NO_TITLE
     start, end = item.get("start") or {}, item.get("end") or {}
     ref = str(item.get("id") or "")

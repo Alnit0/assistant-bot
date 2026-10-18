@@ -201,14 +201,17 @@ def parse_past_date(text: str, today: date) -> date:
     and a weekday or a date with no year is the latest one on or before today ("last
     tuesday" reads as tuesday). A day still to come is refused. Raises UserError."""
     typed = text.strip()
-    value = re.sub(r"\s+", " ", typed.lower().replace(",", " ")).strip().removeprefix("on ").removeprefix("last ")
+    said = re.sub(r"\s+", " ", typed.lower().replace(",", " ")).strip().removeprefix("on ")
+    value = said.removeprefix("last ")
     if value == "yesterday":
         return today - timedelta(days=1)
     found = parse_date(value, today)
+    if _named(_WEEKDAYS, value) is not None:
+        found = found if found <= today else found - timedelta(days=7)
+        # "last Tuesday" said on a Tuesday is a week ago; "Tuesday" alone, today
+        return found - timedelta(days=7) if found == today and said != value else found
     if found <= today:
         return found
-    if _named(_WEEKDAYS, value) is not None:
-        return found - timedelta(days=7)
     if _DAY_ONLY.fullmatch(value):
         back = (today.replace(day=1) - timedelta(days=1)).replace(day=1)
         try:

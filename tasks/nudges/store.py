@@ -101,7 +101,14 @@ def add_birthdays(conn: sqlite3.Connection) -> None:
     birthdays.add_tables(conn)
 
 
-MIGRATIONS = [create_tables, add_expiries, add_birthdays]
+def add_birthdays_mine_and_list(conn: sqlite3.Connection) -> None:
+    """19 Oct: the user's own birthday, a relation, and the pinned list (tasks/nudges/birthdays.py): appended."""
+    from tasks.nudges import birthdays
+
+    birthdays.add_mine_and_list(conn)
+
+
+MIGRATIONS = [create_tables, add_expiries, add_birthdays, add_birthdays_mine_and_list]
 
 _ITEM = "id, user_id, text, at, repeat, first_day, weekdays, every_days"
 _FIRED = "id, nudge_id, local, due_at, message_id, done_at, snoozed_until, late"

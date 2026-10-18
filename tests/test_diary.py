@@ -269,6 +269,9 @@ def test_last_tuesday_is_the_one_gone_by():
     assert timeinput.parse_past_date("20 Oct", thursday) == date(2025, 10, 20)
     with pytest.raises(UserError):
         timeinput.parse_past_date("tomorrow", thursday)
+    tuesday = date(2026, 10, 20)
+    assert timeinput.parse_past_date("last Tuesday", tuesday) == date(2026, 10, 13), "said on a Tuesday: a week ago"
+    assert timeinput.parse_past_date("Tuesday", tuesday) == tuesday
 
 
 def test_the_week_and_the_month_read_back_with_moods_and_no_words():

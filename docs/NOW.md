@@ -3,10 +3,12 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Idle, last batch was** overnight 17 to 18 Oct (11:45 pm to 1:20 am):
-the gym (shipped 12:35 am), its weight tracker, training insights and
-pain tracker, and the bedtime nudge (shipped 1:14 am on `8f78b5f`, all
-checked). Spend about US$0.44 (NZ$0.75). Previews: Design · Gym.
+**Batch 19 Oct (morning), for the next restart:**
+1. Birthdays reworked (no posts; the Upcoming birthdays box; the pinned
+   list; events marked, never a calendar item) and the "My" name bug:
+   built, checked, committed
+2. The calendar card that had "gone" on Save: in progress
+3. Then one ship, with no card waiting if that can be helped
 
 **Next, at the next restart** (not overnight): the settle-in week, a
 feature freeze to Sun 25 Oct (fixes and polish from real use only, new

@@ -321,3 +321,30 @@ ship tonight (STATUS, "Evening batch, 17 Oct"). Round 6 is a layout
 hub in "Design · Round 6 timeline"; the hub's own messages are not
 switched to it, and the conversation tidy is shown, not built, until Alex
 picks round 6. Live stays on round 5.
+
+## Birthdays reworked (19 Oct)
+
+**Alex's words:** "they only really need to be a calendar notification and
+somewhere else they need to be listed; a heads-up 14 days in advance, up
+until the birthday, but subtle." Then: "instead of a line in The day, show
+its own small box in the briefing titled 🎂 Upcoming birthdays, only when
+at least one birthday is within 14 days. Subtle: grey edge (no colour),
+each birthday on its own line in small text (Sam · Thu 29 Oct · 10 days;
+on the day, Sam · today), soonest first, placed low in the briefing below
+the day's items. No buttons, never red or amber, never on the status line
+or lock screen." And: "the yearly birthday events the bot puts on the Bot
+calendar are never shown as calendar items in the hub, the Today card, the
+timeline or #calendar's day lists; birthdays appear only through the
+Upcoming birthdays box and the pinned 🎂 Birthdays list (and Google
+Calendar itself). Identify them by the bot's own marker on the event, not
+by title."
+
+**What was done with them:** the 3-day and on-the-day posts are gone (an
+old post's buttons take it away). The briefing's box is a section placed
+low (`Summary.low`, its own `heading`), drawn after The day with the grey
+(quiet) edge. The list is one pinned message in #calendar, edited in
+place. Each event carries a private extended property
+(`assistant_hidden`), and the calendar reader leaves any event with it
+out, so a birthday is never a calendar item in the hub, the Today card,
+the timeline or the week view. The plan no longer lists birthdays either.
+Preview: `selftest/tonight.py --plan` draws the box and the list.

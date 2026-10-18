@@ -18,6 +18,24 @@ they are in live's `.env` and next to it only.
    `data\secrets\` (outside git, readable by his Windows user and the
    service only), and the upload was deleted.
 
+## Birthdays: the day itself (19 Oct)
+
+The bot never posts or pings for a birthday: the day itself is the yearly
+all-day event it keeps on the Bot calendar, and Google Calendar is what
+notifies. To be told on the day:
+
+1. In Google Calendar (web), open the Bot calendar's **Settings and
+   sharing**.
+2. Under **Event notifications** → **All-day event notifications**, add
+   one: for example **On the day at 9am**, as a notification.
+3. Make sure notifications for that calendar are on in the Google
+   Calendar app on the phone.
+
+The events carry the bot's own private marker, so the bot never shows
+them as calendar items (the hub, the Today card, #calendar's days): they
+show in the briefing's Upcoming birthdays box and the pinned 🎂 Birthdays
+list in #calendar.
+
 ## The settings (live's `.env`)
 
 | Setting | What it is |

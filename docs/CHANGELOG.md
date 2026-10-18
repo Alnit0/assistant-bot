@@ -4,6 +4,13 @@ What changed, newest first. One entry per task, as one to three bullets on
 what changed for the user. Entries before 2026-10-07's last one were
 backfilled from the git log.
 
+## 2026-10-19
+
+- Birthdays are quieter: no more posts or pings. From 14 days before, a small grey Upcoming birthdays box low in
+  the briefing counts down; one pinned 🎂 Birthdays list in #calendar has everyone, the age they turn and your
+  gift notes; the day itself is the Bot calendar's yearly event (set its notification in Google Calendar).
+- My birthday is 20 October is now your own birthday (Your birthday), and my brother Tom's birthday is Tom (brother).
+
 ## 2026-10-18
 
 - The gym: send your gym spreadsheet (CSV or XLSX, or paste its rows) to import your plan and your log; say

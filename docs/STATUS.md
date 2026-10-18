@@ -8,6 +8,48 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-17 (evening)
 
+## Birthdays reworked (19 Oct, morning; ships at the next restart)
+
+Alex's rework (his words in DESIGN-LOG): no posts or pings; the briefing's
+small grey 🎂 Upcoming birthdays box from 14 days; one pinned 🎂 Birthdays
+list in #calendar; the Bot calendar's events marked and never a calendar
+item; the weekly line. With it the live bug "my birthday is 20 October"
+saved as a person called My, fixed after extraction and in the data by an
+appended migration (every kept name tidied; each event renamed and marked
+at the next start, once the Bot calendar can be written to). Recorded
+checks: 11 of 12 new or changed (bd9's router a known miss), US$0.058
+(NZ$0.099 of NZ$0.10).
+
+### Decided (19 Oct, birthdays)
+
+- **Tidying a name in Python** (Alex asked for it after extraction): the
+  rules forbid a word list as the way something is understood, so
+  extraction is told the rule (`_WHO`: the name alone; the user's own is
+  "me") and Python's `tidy` is a safety net only: the spaces, a trailing
+  's, a leading "my", a capital, and what is left of my, me, myself, I or
+  mine is the user's own. CLAUDE.md's rule and this request conflict on
+  that one small list: said here.
+- **The name is not required on birthday_add**: a required name is turned
+  into "it" by `as_references` when the message points ("it's my birthday
+  on 20 October"). A missing name asks whose. This was changed after the
+  checks were recorded (the cap was reached); the recorded answers all
+  have the name.
+- **"I was born on 3 June 1995"** routes to nothing (a statement): a known
+  miss in the fixture, not fixed, since the cap was reached. Its extraction
+  is right once routed; "my birthday is…" routes correctly.
+- **The heads-up is each birthday's own** (14 days unless changed in
+  words: "tell me 5 days before Mum's birthday"); the posts' "days before"
+  are gone from what extraction is told.
+- **1 day to go reads "tomorrow"** in the box and the list.
+- **The weekly summary's birthdays line is new**: there was none to keep,
+  so the next 14 days after the week are one line.
+- **The plan no longer lists a birthday** (Alex: only the box and the
+  list). The calendar's reader leaves out any event with the bot's marker,
+  so the marker is checked in one place for every surface.
+- **Also fixed**, found by the suite on a Monday: "last Tuesday" said on a
+  Tuesday read as today (now a week ago), and the weekly wishlist line
+  missed a wish made on Monday morning (UTC still Sunday).
+
 ## Shipped (18 Oct, 1:14 am): the gym's add-ons and the bedtime nudge
 
 Live on `8f78b5f` (from `55e3695`) with `GYM_WEIGHT=true` and

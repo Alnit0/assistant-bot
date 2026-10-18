@@ -47,7 +47,7 @@ def _day_pieces(day: date = DAY) -> list[Piece]:
         Piece("calendar", "e2", "📅", "Made-up lunch", at(12, 30, day), at(13, 30, day)),
         Piece("nudges", "n1", "⏰", "Made-up call", at(17, 0, day)),
         Piece("habits", "h1", "🔁", "Evening", at(20, 0, day), at(20, 30, day), note="8:00 pm to 11:00 pm", fold="routine"),
-        Piece("birthdays", "b1", "🎂", "Mum's birthday", all_day=True),
+        Piece("nudges", "e1", "🪪", "Made-up passport due", all_day=True),  # birthdays are never a calendar item (19 Oct)
         Piece("todos", "t1", "📝", "Write the essay", flexible=True, rank=planning.OVERDUE),
         Piece("todos", "t2", "📝", "Weekly shop", flexible=True, rank=planning.TODAY),
         Piece("todos", "t3", "📝", "Laundry", flexible=True),
@@ -71,7 +71,7 @@ def plan_cards() -> list[tuple[str, tuple]]:
     from core.today import Line
     from tasks.diary import mood, plain as diary_plain, rules as diary_rules
     from tasks.nudges import birthdays
-    from tasks.nudges.birthdays import Birthday, Gift
+    from tasks.nudges.birthdays import Birthday
 
     lengths = {"t1": 90, "t2": 60, "t3": 60, "t4": 15}
     start, end = planning.window(DAY, at(7, 50))
@@ -88,9 +88,15 @@ def plan_cards() -> list[tuple[str, tuple]]:
     today_lines.sort(key=lambda each: each.at)
     mum = Birthday(1, 1, "Mum", 3, 12, 1966)
     sam = Birthday(2, 1, "Sam", 6, 3, 1995)
-    on_day = date(2027, 3, 12)
     friend = Birthday(3, 1, "Made-up Friend", 2, 29, 1992)
-    gifts = [Gift(1, 1, "a scarf"), Gift(2, 1, "the climbing book")]
+    own = Birthday(4, 1, "", 2, 22, mine=True)
+    tom = Birthday(5, 1, "Tom", 3, 2, relation="brother")
+    ahead = date(2027, 2, 20)
+    box_lines = [design.small(birthdays.box_line(each, ahead)) for each in birthdays.coming([mum, friend, own, tom], ahead)]
+    listed = [mum, sam, friend, own, tom]
+    list_lines = []
+    for each in sorted(listed, key=lambda each: birthdays.days_left(each, ahead)):
+        list_lines += [birthdays.list_line(each, ahead), *([design.small("🎁 a scarf"), design.small("🎁 the climbing book")] if each is mum else [])]
     this = [weekview.of(day, _day_pieces(day) if day.weekday() in (0, 2) else _day_pieces(day)[:3]) for day in weekview.week_of(DAY)]
     following = [weekview.of(day, _day_pieces(day)[:3] + ([_day_pieces(day)[5]] if day.weekday() == 3 else [])) for day in weekview.week_of(DAY + timedelta(days=7))]
     ask_row = diary_plain.ask_row(DAY)
@@ -107,13 +113,15 @@ def plan_cards() -> list[tuple[str, tuple]]:
          _in_round(5, lambda: today_card.layout(today_lines, at(7, 55)))),
         ("“Mum's birthday 12 March 1966”: a card first, the age she is turning, and the Bot calendar's yearly all-day event",
          _birthday_card(mum)),
-        ("29 February: told on the 28th in a year without one (said on the card)",
-         _birthday_card(friend, ("29 February: told on the 28th in a year without one",))),
-        ("3 days before, at 9 am: posted like a reminder with her gift notes, Done and Snooze. The lock screen shows only “🎂 Birthday in 3 days”",
-         birthdays.post_card(mum, gifts, on_day - timedelta(days=3), birthdays.post_row(1, on_day, 3)).layout),
-        ("On the day", birthdays.post_card(mum, [], on_day, birthdays.post_row(1, on_day, 0)).layout),
-        ("14 days before: a quiet line in the briefing's overview, no post",
-         (design.topic(design.card_title("🗓️ The day"), lines=["💊 **Pills** · 6 doses · first 7:00 am", "⏰ **Reminders** · 2 today · first 10:30 am · 🎂 Mum in 12 days", "📔 **Diary** · streak 4"], status=design.QUIET),)),
+        ("29 February: on the 28th in a year without one (said on the card)",
+         _birthday_card(friend, ("29 February: on the 28th in a year without one",))),
+        ("“my birthday is 22 February”: your own, never a person called My",
+         _birthday_card(own)),
+        ("From 14 days before, low in the briefing below The day: a small grey box, a line each counting down, soonest first. No post, no ping, no button",
+         (design.topic(design.card_title("🗓️ The day"), lines=["💊 **Pills** · 6 doses · first 7:00 am", "⏰ **Reminders** · 2 today · first 10:30 am"], status=design.QUIET),
+          design.topic(design.card_title("🎂 Upcoming birthdays"), lines=box_lines, status=design.QUIET))),
+        ("#calendar, pinned: everyone in order of who is next, the days to go, the age turning, gift notes small; edited in place",
+         design.fit((design.topic(design.card_title(birthdays.LIST_TITLE), lines=list_lines, status=design.QUIET),))),
         ("“upcoming birthdays”: the next 90 days, soonest first",
          design.fit((design.topic(design.card_title("🎂 Birthdays coming up"), [design.Entry(birthdays.when_line(each, date(2027, 2, 20)), design.QUIET) for each in (mum, sam)], status=design.QUIET),))),
         ("#calendar, pinned: this week, a box a day, today highlighted, past days faint, doses and routines counted",
@@ -135,7 +143,7 @@ def _birthday_card(birthday, warnings=()) -> tuple:
     from tasks.nudges import birthdays
 
     entry = Entry("birthdays", birthdays.ICON, "x", ("y",), (), label="Birthdays")
-    lines = (birthdays.when_line(birthday, DAY), f"Told: {birthdays.told_text(birthday)}", birthdays.calendar_line(True))
+    lines = (birthdays.when_line(birthday, DAY), f"Shown {birthdays.told_text(birthday)}", birthdays.calendar_line(True))
     return confirm.render(entry, Proposal(lines=lines, data={}, warnings=tuple(warnings)), 1).layout
 
 
@@ -143,7 +151,7 @@ def plan_opening() -> str:
     return "\n".join([
         f"## {PLAN_TITLE}",
         "**Plan my day** (say plan my day, plan tomorrow, replan, what should I do now?): your open to-dos placed in the free time between 7:00 am and 10:00 pm around everything fixed (events, doses, reminders, routines), overdue first, 15 minutes between things, never more than 6 hours of them and always one free block left. Change it in words before saving: I'm out 2 to 4, move laundry to the evening, drop the shopping, make the essay 2 hours, I start at 8 tomorrow. Save puts the times on the Today card; Put it on my calendar adds blocks to the Bot calendar (a card first). It never pings.",
-        "**Birthdays** (in reminders): Mum's birthday 12 March, Sam 3 June 1995, gift idea for Mum: a scarf. A quiet line 14 days before, a post 3 days before with the gift notes, one on the day; a yearly all-day event on the Bot calendar; upcoming birthdays, when is Mum's birthday. The lock screen names nobody; no name or gift note is ever in a log.",
+        "**Birthdays** (in reminders): Mum's birthday 12 March, Sam 3 June 1995, gift idea for Mum: a scarf. Never posted or pinged (19 Oct): from 14 days before a small grey Upcoming birthdays box low in the briefing; one pinned list in #calendar; the day itself is the Bot calendar's yearly all-day event, never a calendar item in the hub; upcoming birthdays, when is Mum's birthday. No name or gift note is ever in a log.",
         "**Also tonight:** the week in #calendar, and the diary's Write and its one line.",
         "-# Made-up items only. The buttons here do nothing.",
     ])
@@ -183,7 +191,6 @@ def _round_6_day(now: datetime, busy: bool = False) -> tuple[timeline.Header, li
         T.Item(T.REMINDER, "⏰", "Call the bank", at(10, 30), done=h >= 11.6, done_at=at(11, 35), button="Done" if 10.5 <= h < 11.6 else ""),
         T.Item(T.REMINDER, "⏰", "Put the bins out", at(17), done=h >= 17.1, done_at=at(17, 5), button="Done" if 17 <= h < 17.1 else ""),
         T.Item(T.TODO, "📝", "Write the essay · planned", at(13, 45), at(15, 15), ("1h 30m",), button="Done" if h >= 13.75 else ""),
-        T.Item(T.DUE, "🎂", "Made-up Friend's birthday", all_day=True, details=("turns 30",)),
     ]
     if h >= 18:
         items.append(T.Item(T.DIARY, "📔", "Diary", at(18), details=("streak 4 · not yet",), button="Write"))

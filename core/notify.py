@@ -69,8 +69,6 @@ KINDS: dict[str, Kind] = {
     "nudges.reminder": Kind("Reminder", DISCORD, through=True),
     # A renewal due tomorrow (tasks/nudges/expiry.py): Discord only, never ntfy, held back in quiet hours
     "nudges.renewal": Kind("Renewal", DISCORD),
-    # A birthday coming up or today (tasks/nudges/birthdays.py): Discord only, never ntfy, held back in quiet hours
-    "nudges.birthday": Kind("Birthday", DISCORD),
     # The wind-down and bedtime nudges (tasks/bedtime): Alex set their time, so they get through quiet hours; never ntfy
     "bedtime.nudge": Kind("Bedtime", DISCORD, through=True),
     # The diary's evening ask: Discord only, never ntfy, held back (posted without a sound) in quiet hours

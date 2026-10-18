@@ -125,6 +125,59 @@
         "several": false,
         "chat_part": ""
       }
+    },
+    {
+      "golden": "bd8",
+      "message": "my birthday is 20 October",
+      "tasks": [
+        "birthdays"
+      ],
+      "note": "the user's own",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "birthdays"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "bd9",
+      "message": "I was born on 3 June 1995",
+      "tasks": [
+        "birthdays"
+      ],
+      "note": "the user's own, said another way",
+      "recorded": {
+        "kind": "nothing",
+        "tasks": [],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      },
+      "known_miss": "19 Oct: the router says nothing to be said for “I was born on …” (a statement); its extraction is right once routed. Not fixed: the check's cap was reached"
+    },
+    {
+      "golden": "bd12",
+      "message": "my brother Tom's birthday is 4 May",
+      "tasks": [
+        "birthdays"
+      ],
+      "note": "a relation with a name",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "birthdays"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
     }
   ],
   "extraction": [
@@ -229,17 +282,153 @@
       "action": "birthday_change",
       "data": {
         "person": "Mum",
-        "before": [
-          "5"
-        ]
+        "heads_up": 5
       },
       "recorded": [
         "birthday_change",
         {
           "person": "Mum",
-          "before": [
-            "5"
-          ],
+          "heads_up": 5,
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "bd8",
+      "task": "birthdays",
+      "message": "my birthday is 20 October",
+      "state": "The user's birthdays now:\n- Made-up Friend (3 June, in 40 days)",
+      "action": "birthday_add",
+      "data": {
+        "person": "me",
+        "date": "20 October"
+      },
+      "recorded": [
+        "birthday_add",
+        {
+          "person": "me",
+          "date": "20 October",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "bd9",
+      "task": "birthdays",
+      "message": "I was born on 3 June 1995",
+      "state": "The user's birthdays now:\n- Made-up Friend (3 June, in 40 days)",
+      "action": "birthday_add",
+      "data": {
+        "person": "me",
+        "date": "3 June 1995"
+      },
+      "recorded": [
+        "birthday_add",
+        {
+          "person": "me",
+          "date": "3 June 1995",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "bd10",
+      "task": "birthdays",
+      "message": "it's my birthday on 20 October",
+      "state": "The user's birthdays now:\n- Made-up Friend (3 June, in 40 days)",
+      "action": "birthday_add",
+      "data": {
+        "person": "me",
+        "date": "20 October"
+      },
+      "recorded": [
+        "birthday_add",
+        {
+          "person": "me",
+          "date": "20 October",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "bd11",
+      "task": "birthdays",
+      "message": "my mum's birthday is 12 March",
+      "state": "The user's birthdays now:\n- Made-up Friend (3 June, in 40 days)",
+      "action": "birthday_add",
+      "data": {
+        "person": "Mum",
+        "date": "12 March"
+      },
+      "recorded": [
+        "birthday_add",
+        {
+          "person": "Mum",
+          "date": "12 March",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "bd12",
+      "task": "birthdays",
+      "message": "my brother Tom's birthday is 4 May",
+      "state": "The user's birthdays now:\n- Made-up Friend (3 June, in 40 days)",
+      "action": "birthday_add",
+      "data": {
+        "person": "Tom",
+        "relation": "brother",
+        "date": "4 May"
+      },
+      "recorded": [
+        "birthday_add",
+        {
+          "person": "Tom",
+          "date": "4 May",
+          "relation": "brother",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "bd13",
+      "task": "birthdays",
+      "message": "Sam's birthday is 3 June",
+      "state": "The user's birthdays now:\n- Made-up Friend (3 June, in 40 days)",
+      "action": "birthday_add",
+      "data": {
+        "person": "Sam",
+        "date": "3 June"
+      },
+      "recorded": [
+        "birthday_add",
+        {
+          "person": "Sam",
+          "date": "3 June",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "bd14",
+      "task": "birthdays",
+      "message": "when is my birthday?",
+      "state": "The user's birthdays now:\n- Made-up Friend (3 June, in 40 days)",
+      "action": "birthday_when",
+      "data": {
+        "person": "me"
+      },
+      "recorded": [
+        "birthday_when",
+        {
+          "person": "me",
           "guessed": [],
           "not_included": []
         }
