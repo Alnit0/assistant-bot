@@ -29,19 +29,26 @@ log = logging.getLogger("assistant")
 # The card says what would be saved, with every guess flagged and every
 # problem shown with its fix applied. Save applies exactly the data on the
 # card; nothing is saved before it. Saying what to change makes a new card
-# and takes this one away. Left alone for 30 minutes it goes, with nothing
-# saved.
+# and takes this one away. Left alone for 24 hours it goes, with nothing
+# saved (one in #guide, or pinned or marked 📌, waits a week at a time), and
+# what it became has a Redo button that makes it again from what was said.
 #
 # A card is a row (confirm_cards), not memory: it survives a restart, and so
-# do its buttons (core/cards.py). The same table holds the question asked on
-# a tie between tasks ("which is this for?").
+# do its buttons (core/cards.py); the hub's tidy never takes one that is
+# waiting (core/messages.py). A Save that takes a while says so on the card
+# first, and a second press meanwhile does nothing; one after it shows what
+# was saved (19 Oct, live: a repeating event took 5.8 seconds to add, the
+# second press said the card had gone). The same table holds the question
+# asked on a tie between tasks ("which is this for?").
 #
 # No discord.py here. Deciding what to do with a message is
 # core/conversation.py's job; this file shows, stores, saves and expires.
 # ---------------------------------------------------------------------------
 CARDS = "confirm"  # the name these cards' buttons go by in core/cards.py
 JOB_TASK, JOB_KIND = "core", "confirm_expire"
-EXPIRY_MINUTES = 30
+EXPIRY_MINUTES = 24 * 60  # Alex, 19 Oct: at least a day
+KEPT_LONGER = timedelta(days=7)  # a card in #guide, or pinned or 📌: looked at again a week later
+SLOW_SAVE = 1.0  # seconds: a Save still going then says so on the card
 STICKY_MINUTES = 5  # how long a plain message is taken as being about the card
 
 CARD, TIE = "card", "tie"
@@ -52,6 +59,9 @@ FOOTER = "-# or tell me what to change"
 ASKING = "-# or type your answer"  # under a card that asks a question
 ANSWER_FIRST = "Answer the question on the card first."
 LAPSED = "⌛ That card has gone and nothing was saved. Say it again to start over."
+EXPIRED_TEXT = "⌛ That card expired and nothing was saved."
+SAVING = "⏳ Saving…"
+REDO = "redo"  # the button that makes an expired card again from what was said
 # Under the confirmation of a Save that was cut off by a restart, once the change has been read back
 CHECKED = "-# checked after a restart"
 # The confirmation itself is the task's own, kept when the change was applied. If the bot
@@ -354,14 +364,24 @@ async def latest_open(user_id: int, channel_id: int) -> Stored | None:
     return await database.run(db_latest_open, user_id, channel_id)
 
 
+def _in_guide(channel_id: int | None) -> bool:
+    from core import config
+
+    guide = (getattr(config, "CHANNELS", None) or {}).get("guide")
+    return guide is not None and channel_id == guide
+
+
+def lifetime(channel_id: int | None) -> timedelta:
+    """How long a card waits: a day, or a week in #guide."""
+    return KEPT_LONGER if _in_guide(channel_id) else timedelta(minutes=EXPIRY_MINUTES)
+
+
 async def _place(card: Stored, shown: Card) -> Stored:
     """Post a stored card and book its expiry."""
     message_id = await cards.send(card.channel_id, shown)
     # What it answers (a message of mine in the hub) waits for it to be saved, cancelled or to expire
     await messages.card_opened(message_id)
-    job_id = await scheduler.add_job(
-        JOB_TASK, JOB_KIND, utc_now() + timedelta(minutes=EXPIRY_MINUTES), {"card": card.id}, card.user_id
-    )
+    job_id = await scheduler.add_job(JOB_TASK, JOB_KIND, utc_now() + lifetime(card.channel_id), {"card": card.id}, card.user_id)
     await database.run(db_placed, card.id, message_id, job_id)
     return await database.run(db_get, card.id)
 
@@ -380,6 +400,11 @@ async def _take_away(card: Stored, status: str) -> None:
         if card.message_id is not None:
             await cards.delete(card.channel_id, card.message_id)
             await messages.card_closed(card.message_id, saved=False)
+
+
+def db_redone(conn: sqlite3.Connection, card_id: int) -> bool:
+    """An expired card taken for Redo, once: a second tap finds it taken."""
+    return conn.execute("UPDATE confirm_cards SET status = ? WHERE id = ? AND status = ?", (REPLACED, card_id, EXPIRED)).rowcount == 1
 
 
 def db_forget(conn: sqlite3.Connection, gone: set[int]) -> list[int | None]:
@@ -463,10 +488,43 @@ async def ask_which(request: Request, entries: list[Entry]) -> Stored:
     return await _place(card, render_tie(entries, card.id, request.text))
 
 
+async def _kept(card: Stored) -> bool:
+    """Whether a card waits longer: in #guide, or its message pinned or marked 📌."""
+    if _in_guide(card.channel_id):
+        return True
+    if card.message_id is None:
+        return False
+    from core import protection, surface
+
+    try:
+        return protection.is_protected(await surface.fetch(card.channel_id, card.message_id))
+    except Exception:
+        return False
+
+
+def redo_row(card_id: int) -> tuple:
+    return (Button("Redo", CARDS, REDO, str(card_id), emoji="🔁", style=cards.PRIMARY),)
+
+
+def expired_card(card: Stored) -> Card:
+    """What an expired card becomes: said so, with Redo (a tie's question has none: it is asked again by saying it)."""
+    if card.kind != CARD or not card.said.strip():
+        return Card(EXPIRED_TEXT)
+    return Card(EXPIRED_TEXT, (redo_row(card.id),))
+
+
 async def expired(job: scheduler.Job) -> None:
-    """Scheduler handler: a card nobody answered goes, and nothing is saved."""
+    """Scheduler handler: a card nobody answered goes, and nothing is saved. One in #guide, pinned or marked 📌
+    waits another week."""
     card = await database.run(db_get, job.payload.get("card", 0))
-    if card is None or card.job_id != job.id or not await database.run(db_close, card.id, EXPIRED):
+    if card is None or card.job_id != job.id or not card.is_open:
+        return
+    if await _kept(card):
+        job_id = await scheduler.add_job(JOB_TASK, JOB_KIND, utc_now() + KEPT_LONGER, {"card": card.id}, card.user_id)
+        await database.run(db_placed, card.id, card.message_id, job_id)
+        scheduler.note(job, "kept another week: in #guide, or pinned")
+        return
+    if not await database.run(db_close, card.id, EXPIRED):
         return
     if card.message_id is None:
         return
@@ -474,25 +532,65 @@ async def expired(job: scheduler.Job) -> None:
     if lifecycle.deletes(MessageClass.TRANSIENT):
         await cards.delete(card.channel_id, card.message_id)
     else:
-        await cards.edit(card.channel_id, card.message_id, Card("⌛ Expired: nothing was saved."))
+        await cards.edit(card.channel_id, card.message_id, expired_card(card))
 
 
 # ---------------------------------------------------------------------------
 # The buttons
 # ---------------------------------------------------------------------------
+_saving: set[int] = set()  # cards whose Save is under way: a second press does nothing
+
+
+def gone_card(card: Stored | None) -> Card:
+    """What a press on a card no longer open shows: what Save said, if it was saved; Redo if it expired;
+    otherwise that it has gone."""
+    if card is not None and card.status == SAVED:
+        return Card(card.confirmation or SAVED_PLAIN)
+    if card is not None and card.status == EXPIRED:
+        return expired_card(card)
+    return Card(LAPSED)
+
+
 async def _open_card(press: cards.Press, card_id: str) -> Stored | None:
     card = await database.run(db_get, int(card_id)) if card_id.isdigit() else None
-    if card is None or card.user_id != press.user.id or not card.is_open:
-        await press.update(Card(LAPSED))
+    if card is not None and card.user_id != press.user.id:
+        card = None
+    if card is None or not card.is_open:
+        await press.update(gone_card(card))
         return None
     return card
 
 
 async def on_save(press: cards.Press) -> str | None:
     """Save: apply exactly what the card showed, then say so in the task's own words."""
+    if press.arg.isdigit() and int(press.arg) in _saving:
+        return "pressed again while saving: nothing done"
     card = await _open_card(press, press.arg)
     if card is None:
         return "card had gone"
+    _saving.add(card.id)
+    try:
+        return await _save(press, card)
+    finally:
+        _saving.discard(card.id)
+
+
+async def _apply(press: cards.Press, action, request: Request, data: dict):
+    """The task's apply; one still going after a second says so on the card first (no buttons), so it is
+    not pressed again."""
+    import asyncio
+
+    work = asyncio.ensure_future(action.apply(request, data))
+    finished, _ = await asyncio.wait({work}, timeout=SLOW_SAVE)
+    if not finished:
+        try:
+            await press.update(Card(SAVING))
+        except Exception:
+            log.warning("A card could not say it was saving")
+    return await work
+
+
+async def _save(press: cards.Press, card: Stored) -> str | None:
     entry = actions.entry(card.task)
     action = entry.action(card.action) if entry else None
     if action is None or action.apply is None:
@@ -504,7 +602,7 @@ async def on_save(press: cards.Press) -> str | None:
     # A UserError here (the name was taken meanwhile) is shown to the presser and the card stays
     request = Request(press.user, card.channel_id)
     data = applied(card.data)
-    said = await action.apply(request, data)
+    said = await _apply(press, action, request, data)
     placed = None
     if isinstance(said, actions.Answer):
         # About things of the task's own: once the card says so, the task is told which message it is

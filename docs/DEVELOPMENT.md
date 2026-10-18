@@ -809,7 +809,9 @@ the hub): a shopping list and a packing list.
 - **A message is "about the open card"** if it is a Discord reply to it,
   or if the card is the last thing the bot said in the channel and is
   under five minutes old.
-- **A card left for 30 minutes is deleted** and nothing is saved.
+- **A card left for 24 hours expires** and nothing is saved; one in
+  #guide, or pinned or 📌, waits a week at a time. What it becomes has
+  Redo, which makes it again from what was said (one extraction).
 - **A list you ask for is Live.** "What do I need to buy?" posts the
   list; saving, ticking off or clearing afterwards edits that message in
   place. Ask again and the new copy is the one kept up to date; the older

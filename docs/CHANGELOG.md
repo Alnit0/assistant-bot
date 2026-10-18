@@ -6,6 +6,8 @@ backfilled from the git log.
 
 ## 2026-10-19
 
+- A card now waits a day for Save (through restarts); a slow Save says ⏳ Saving… so it is not pressed twice,
+  and a card that did expire has a Redo button instead of asking you to say it again.
 - Birthdays are quieter: no more posts or pings. From 14 days before, a small grey Upcoming birthdays box low in
   the briefing counts down; one pinned 🎂 Birthdays list in #calendar has everyone, the age they turn and your
   gift notes; the day itself is the Bot calendar's yearly event (set its notification in Google Calendar).

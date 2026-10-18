@@ -7,7 +7,8 @@ history is `docs/STATUS.md`. Read first, with `/catchup`.
 1. Birthdays reworked (no posts; the Upcoming birthdays box; the pinned
    list; events marked, never a calendar item) and the "My" name bug:
    built, checked, committed
-2. The calendar card that had "gone" on Save: in progress
+2. The calendar card that had "gone" on Save (a slow Save pressed twice):
+   fixed, 24-hour cards, the tidy, Redo: committed
 3. Then one ship, with no card waiting if that can be helped
 
 **Next, at the next restart** (not overnight): the settle-in week, a

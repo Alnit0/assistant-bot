@@ -8,6 +8,21 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-17 (evening)
 
+## A card that had "gone" on Save (19 Oct, morning; ships at the next restart)
+
+Live, 9:33 am: Save on a repeating Work event took 5.8 seconds (the Bot
+calendar's write); the card showed nothing meanwhile, a second tap 6
+seconds later found it saved and said "the card has gone and nothing was
+saved" over the confirmation. The event was saved (the calendar's change
+log has it). Not a restart (none since 1:14 am), an expiry or the tidy.
+Fixed: a Save still going after a second says ⏳ Saving… with no buttons; a
+second press meanwhile does nothing; a press after Save shows what Save
+said. As Alex asked: a card waits 24 hours (a week at a time in #guide, or
+pinned or 📌), the hub's morning tidy never takes a waiting card (it took
+any hub message from a day that was over), and an expired card offers
+Redo, the task's extraction on what was said (one request; the router is
+not asked again), once.
+
 ## Birthdays reworked (19 Oct, morning; ships at the next restart)
 
 Alex's rework (his words in DESIGN-LOG): no posts or pings; the briefing's

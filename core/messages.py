@@ -124,6 +124,8 @@ def db_due(conn: sqlite3.Connection, now: datetime, hub_channel: int | None, exp
     for each in db_all(conn):
         if each.lifetime == KEPT:
             continue  # pinned, or left after it could not be deleted
+        if each.waits:
+            continue  # a card still waiting, and what it answers: they go with the card, never at a tidy
         expired = each.lifetime == EXPIRY and each.expires_at is not None and each.expires_at <= now
         past = each.day < today and (each.channel_id == hub_channel or each.lifetime == DAY)
         if expired or (past and not expiry_only):

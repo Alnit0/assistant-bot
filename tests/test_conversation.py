@@ -280,10 +280,11 @@ def test_save_applies_exactly_what_the_card_showed_and_python_says_so(world):
     assert open_cards()[0].status == "saved" and "saved shopping/demo_shop_change" in result
     assert run(scheduler.pending_jobs(confirm.JOB_TASK, confirm.JOB_KIND)) == [], "nothing left to expire"
 
-    # Pressed again (a second tap, or an old card): nothing happens twice
+    # Pressed again (a second tap, or an old card): nothing happens twice, and it still says what was saved
+    # (19 Oct, live: the second tap said the card had gone and nothing was saved)
     again = world.Press(stored.id)
     assert run(confirm.on_save(again)) == "card had gone"
-    assert again.cards[-1].text == confirm.LAPSED and shopping_list() == [{"item": "milk", "quantity": 2}]
+    assert again.cards[-1].text == "✅ Saved · 🛒 **milk** × 2 is on the shopping list" and shopping_list() == [{"item": "milk", "quantity": 2}]
 
 
 def test_cancel_removes_the_card_and_saves_nothing(world):
@@ -646,7 +647,7 @@ def test_with_clean_up_off_an_expired_card_stays_and_says_so(world, dev_clock, d
         await scheduler.run_all_due()
 
     run(later())
-    assert world.deleted == [] and world.edited == [(world.sent[0][0], "⌛ Expired: nothing was saved.")]
+    assert world.deleted == [] and world.edited == [(world.sent[0][0], confirm.EXPIRED_TEXT)]
 
 
 def test_a_card_survives_a_restart_because_it_is_a_row(world):

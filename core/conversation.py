@@ -1033,7 +1033,41 @@ async def on_pick(press: cards.Press) -> str | None:
     return f"picked {name}: " + "\n".join(turn.said)
 
 
+async def on_redo(press: cards.Press) -> str | None:
+    """Redo on a card that expired: the card made again from what was said, by its task's extraction (the
+    router is not asked again), as if it had been said just now. The old message becomes the new card's
+    place: it is taken away."""
+    card = await database.run(confirm.db_get, int(press.arg)) if press.arg.isdigit() else None
+    entry = actions.entry(card.task) if card is not None else None
+    if card is None or card.user_id != press.user.id or card.status != confirm.EXPIRED or entry is None or not card.said.strip():
+        await press.update(Card(confirm.LAPSED))
+        return "nothing to redo"
+    if not await database.run(confirm.db_redone, card.id):
+        return "redone already"
+    started = time.perf_counter()
+    spent = timing.start()
+    request = Request(press.user, card.channel_id, card.said)
+    turn = Turn(route=costs.FOLLOW_UP)
+    turn.checks = trace.start()
+    turn.why.append(f"Redo on expired card {card.id}")
+    found = await extraction.extract(entry, card.said, await _state(entry, request, turn))
+    await press.remove()
+    await act(request, found, turn)
+    trace.stop()
+    timing.stop()
+    if press.row_id is not None:
+        calls = costs.calls_from(spent.claude_calls, costs.PURPOSE_EXTRACTION)
+        await database.record_cost(press.row_id, turn.route, turn.tasks, calls)
+        await log_result(
+            press.row_id, extracted=actions.PRIVATE_NOTE if entry.private else json.dumps(turn.extracted, ensure_ascii=False),
+            duration_s=time.perf_counter() - started, trace=turn.as_trace(),
+        )
+    llm.remember(card.channel_id, card.said, "\n".join(turn.said))
+    return f"redone card {card.id}" + ("" if entry.private else ": " + "\n".join(turn.said))
+
+
 def setup() -> None:
     confirm.setup()
     smartinbox.setup()
     cards.register(confirm.CARDS, "pick", on_pick)
+    cards.register(confirm.CARDS, confirm.REDO, on_redo)

@@ -348,13 +348,23 @@ def test_a_confirm_card_from_before_the_restart_still_saves_exactly_what_it_show
     assert run(database.run(confirm.db_get, card.id)).status == confirm.SAVED
 
 
-def test_a_card_that_expired_while_the_bot_was_off_goes_at_start_and_can_no_longer_save(world, monkeypatch):
+def test_a_card_still_saves_after_a_restart_23_hours_later(world, monkeypatch):
     card = add_card(world)
-    lines = stop_and_start(world, monkeypatch, day.at(DAY, time(10, 0)))
-    assert card.message_id in world.deleted and run(database.run(confirm.db_get, card.id)).status == confirm.EXPIRED
-    assert lines == ["Ran late, as the bot was off when they were due: a card's expiry (30m late)"]
+    stop_and_start(world, monkeypatch, day.at(DAY + timedelta(days=1), time(8, 0)))
+    assert run(database.run(confirm.db_get, card.id)).status == confirm.OPEN, "a card waits at least a day"
     press = pressed(world, confirm.CARDS, "save", card.id, card.message_id)
-    assert press.shown[-1].text == confirm.LAPSED and names(world) == []
+    assert names(world) == ["Zinc"] and press.shown[-1].text.startswith("✅")
+
+
+def test_a_card_that_expired_while_the_bot_was_off_goes_at_start_and_offers_redo(world, monkeypatch):
+    card = add_card(world)
+    lines = stop_and_start(world, monkeypatch, day.at(DAY + timedelta(days=1), time(10, 0)))
+    assert card.message_id in world.deleted and run(database.run(confirm.db_get, card.id)).status == confirm.EXPIRED
+    assert len(lines) == 1 and lines[0].startswith("Ran late, as the bot was off when they were due: a card's expiry")
+    press = pressed(world, confirm.CARDS, "save", card.id, card.message_id)
+    shown = press.shown[-1]
+    assert shown.text == confirm.EXPIRED_TEXT and names(world) == [], "nothing saved"
+    assert [button.label for row in shown.rows for button in row] == ["Redo"], "one tap to make it again, never typing it"
 
 
 def test_cancel_on_a_card_from_before_the_restart_still_cancels(world, monkeypatch):

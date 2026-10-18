@@ -153,7 +153,9 @@ When two principles clash, the higher one wins.
 - "No, …" undoes the mistake it corrects, and only that
 - **Just after Save**, the same kind of correction ("no, I meant 9pm")
   becomes a change card for what was just saved: "8:00 pm → 9:00 pm"
-- Cards expire after 30 minutes
+- Cards wait 24 hours (a week at a time in #guide, or pinned or 📌), through
+  restarts; an expired one says so with a Redo button that makes it again
+  from what was said (Alex, 19 Oct)
 
 ---
 

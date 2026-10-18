@@ -291,7 +291,7 @@ only, any channel, no slash. It is off after every restart.
 | "delete iron and its history" | A separate question; can't be undone |
 
 - "At 8" is taken as 8:00 am and marked ❓; say "8pm" to correct the card
-- A card nobody saves disappears after 30 minutes
+- A card nobody saves waits 24 hours, then says it expired, with Redo
 - There is never an "ok" step: the card's **Save** is the one confirmation
 - Everything works in #inbox and in the hub
 
