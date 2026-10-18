@@ -163,3 +163,23 @@ def test_the_plan_kept_before_becomes_the_first_with_its_sessions():
     assert plan.active and plan.name.endswith(" — Upper/Lower 3-week")
     assert [each.name for each in store.db_plan(conn, 1)] == ["Upper 1", "Lower 1"]
     assert {row[0] for row in conn.execute("SELECT plan_id FROM gym_sessions")} == {plan.id}
+
+
+# --- none named (live, 19 Oct: "Delete the gym plan" was declined) ----------------------------------------------------------
+def test_delete_the_gym_plan_with_none_named_is_the_active_one(world):
+    imported(world)
+    imported(world, gym_files.wide_csv(), "wide.csv")
+    card = run(plans.delete_card(world.request("delete the gym plan"), {}, frozenset()))
+    assert card.kind == "remove" and "Push/Pull" in card.lines[0] and card.confirm_label == "Delete"
+
+
+def test_switch_plans_with_none_named_is_the_other_one_or_asks_which(world):
+    imported(world)
+    imported(world, gym_files.wide_csv(), "wide.csv")
+    card = run(plans.switch_card(world.request("switch plans"), {}, frozenset()))
+    assert card.question is None and "Upper/Lower" in card.lines[0]
+    imported(world)
+    asked = run(plans.switch_card(world.request("switch plans"), {}, frozenset()))
+    assert asked.question is not None and len(asked.question.choices) == 2
+    picked = asked.question.choices[0].data
+    assert run(plans.switch_card(world.request(), picked, frozenset())).question is None, "an answer names its plan by id"

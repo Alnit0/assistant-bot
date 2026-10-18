@@ -8,6 +8,20 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-17 (evening)
 
+## "Delete the gym plan" was declined (19 Oct, after 11:36 am)
+
+Live: said a minute after the first import was saved, so the gym read it
+first (its own answer, without the router), extraction said it can't: the
+actions said "a kept plan", which Claude read as never the active one
+("No action deletes the active plan"). Not routing: the router sends these
+to the gym (checked again: 7 of 7, with "Delete the gym plan" and "switch
+to the previous plan" in #gym). Fixed in the actions' words: any of the
+user's plans, the active one included; "the gym plan" with none named is
+the active one (switching with none named is the other, or asks which); "my
+gym plan" (its workouts) apart from "my gym plans" (the list). A card's
+answer names its plan by id. Checks: every gym extraction 23 of 23 (with
+the live case after an answer), routers 7 of 7, US$0.086 (NZ$0.15).
+
 ## Shipped (19 Oct, 11:27 am): #gym listens, and gym plan versions
 
 Live on `3fab84c` (from `f2c8b78`), one restart with no card waiting. The

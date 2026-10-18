@@ -9,7 +9,7 @@ import pytest
 from core import actions, config, conversation, llm, routing
 from tests.test_conversation import open_cards, world  # noqa: F401
 from tests.test_golden import bot  # noqa: F401
-from tests.test_golden_gym import EXTRACTED, GYM, ROUTER, gym_bot  # noqa: F401
+from tests.test_golden_gym import EXTRACTED, FIXTURES, GYM, ROUTER, gym_bot  # noqa: F401
 
 
 def say_in_gym(bot, text, attachments=()):
@@ -69,3 +69,27 @@ def test_a_spreadsheet_sent_in_gym_is_imported_at_once_with_no_router(gym_bot, m
     card = open_cards()[-1]
     assert card.task == "gym" and card.action == "gym_import" and card.channel_id == GYM
     assert config.CHANNELS["gym"] == GYM
+
+
+def test_delete_the_gym_plan_straight_after_the_import_is_a_card_then_gone(gym_bot):
+    """Live, 19 Oct: said a minute after the import was saved (so the gym read it first, without the router) it was
+    declined as something the bot can't do. On the real API's answer since (gp6, after_answer)."""
+    from core import confirm
+    from tasks.gym import plans
+
+    recorded = next(each["recorded"] for each in FIXTURES["extraction"] if each["golden"] == "gp6" and each.get("after_answer"))
+    llm.task_answered(GYM, "gym")
+    gym_bot.claude(tuple(recorded))
+    say_in_gym(gym_bot, "Delete the gym plan")
+    card = open_cards()[-1]
+    assert card.task == "gym" and card.action == "gym_plan_delete" and gym_bot.sent[-1][1].text.startswith("🏋️ Gym · remove")
+    press = gym_bot.Press(card.id, card.message_id)
+    asyncio.run(confirm.on_save(press))
+    assert press.cards[-1].text.startswith("🗑️ Deleted **") and asyncio.run(plans.every(gym_bot.user.id)) == []
+
+
+def test_switch_to_the_previous_plan_in_gym_goes_to_the_gym(gym_bot):
+    assert ROUTER["gp7"]["tasks"] == ["gym"] and ROUTER["gp6"]["tasks"] == ["gym"]
+    gym_bot.claude(("route", ROUTER["gp7"]), tuple(EXTRACTED["gp7"]))
+    say_in_gym(gym_bot, "switch to the previous plan")
+    assert gym_bot.sent[-1][1].text == "⚠️ 🏋️ There is no plan before this one.", "one plan only: said in the gym's own words"

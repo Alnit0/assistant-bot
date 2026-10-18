@@ -617,7 +617,7 @@ async def post_job(job) -> None:
 
 # --- what extraction fills in ---------------------------------------------------------------------------------------------------
 _PLAN_FIELDS = (
-    Field("plan", "The words that name the plan, as the user said them (\"October\", \"upper lower\", \"2026-10-19\"). Leave out with previous."),
+    Field("plan", "The words that name the plan, as the user said them (\"October\", \"upper lower\", \"2026-10-19\"). Leave out with previous, and when no plan is named (\"the gym plan\", \"my plan\")."),
     Field("previous", "True for the plan before the active one (\"the previous plan\", \"the old one\").", BOOLEAN),
 )
 
@@ -661,15 +661,15 @@ def actions() -> list:
         Action("gym_ask", "A question about the user's lifts: last time (\"what did I do on bench last time?\" -> last), notes (\"my notes on RDLs\"), best (\"best leg press\"), trend (\"how's my bench going?\"), sessions (\"sessions this month\" -> span month), training (\"how's my training going?\"), pain (\"any pain?\", \"pain history\").",
                (Field("question", "last, notes, best, trend or sessions.", choices=QUESTIONS, required=True), Field("exercise", _EXERCISE), Field("span", "week or month, for sessions.", choices=("week", "month"))),
                needs_card=False, run=ask, purpose=SEE, say=("how's my bench going?",)),
-        Action("gym_plan_show", "Show the gym plan (\"my gym plan\").", (), needs_card=False, run=show_plan, purpose=SEE, say=("my gym plan",)),
+        Action("gym_plan_show", "Show the active plan's workouts and exercises (\"my gym plan\", \"what's in my plan?\"). Not the list of plans kept (gym_plans).", (), needs_card=False, run=show_plan, purpose=SEE, say=("my gym plan",)),
         Action("gym_target", "A weekly target of sessions (\"aim for 3 a week\" -> per_week 3; \"no gym target\" -> 0).", (Field("per_week", "Sessions a week; 0 for none.", INTEGER, required=True),),
                prepare=target_card, apply=target_save, verify=target_check, purpose=SET_UP, say=("aim for 3 a week",)),
         Action("gym_at", "A session planned at a time (\"gym tomorrow 6pm\" -> day tomorrow, time 6:00 pm).", (Field("day", "The day as said."), Field("time", "The time.", TIME, required=True)),
                prepare=at_card, apply=at_save, verify=at_check, purpose=SET_UP, say=("gym tomorrow 6pm",)),
         Action("gym_undo", "Undo the last gym change (\"undo that\" straight after one).", (), needs_card=False, run=undo, purpose=EACH_DAY, say=("undo that",)),
-        Action("gym_plans", "The gym plans kept, a version for each logbook imported (\"show my gym plans\", \"what plans do I have\").", (), needs_card=False, run=plans.list_said, purpose=SEE, say=("show my gym plans",)),
-        Action("gym_plan_switch", "Make another kept plan the active one (\"switch to the October plan\" -> plan October; \"use the upper lower one\" -> plan upper lower; \"go back to the previous plan\" -> previous).",
+        Action("gym_plans", "List every gym plan the user has, the active one included: a version for each logbook imported (\"show my gym plans\", \"what plans do I have\", \"list my plans\").", (), needs_card=False, run=plans.list_said, purpose=SEE, say=("show my gym plans",)),
+        Action("gym_plan_switch", "Make another of the user's gym plans the active one (\"switch to the October plan\" -> plan October; \"use the upper lower one\" -> plan upper lower; \"switch to the previous plan\", \"go back to the previous plan\" -> previous).",
                _PLAN_FIELDS, prepare=plans.switch_card, apply=plans.switch_save, verify=plans.switch_check, purpose=SET_UP, say=("switch to the October plan",)),
-        Action("gym_plan_delete", "Delete a kept plan (\"delete the October plan\"). Never the log.",
+        Action("gym_plan_delete", "Delete one of the user's gym plans, the active one included (\"delete the gym plan\", \"delete my plan\" -> nothing named: the active one; \"delete the October plan\" -> plan October). A card asks first; the log is never deleted.",
                _PLAN_FIELDS, prepare=plans.delete_card, apply=plans.delete_save, verify=plans.delete_check, purpose=SET_UP, say=("delete the October plan",)),
     ]

@@ -295,6 +295,9 @@ async def _which(request: Request, data: dict) -> tuple[Plan | None, list[Plan],
     found = await every(request.user.id)
     if not found:
         raise UserError(f"{ICON} You have no gym plans yet.")
+    picked = next((each for each in found if each.id == data.get("plan_id")), None)
+    if picked is not None:
+        return picked, [picked], found
     if data.get("previous"):
         before = previous_of(found)
         if before is None:
@@ -302,7 +305,12 @@ async def _which(request: Request, data: dict) -> tuple[Plan | None, list[Plan],
         return before, [before], found
     said = str(data.get("plan") or "").strip()
     if not said:
-        raise UserError(f"{ICON} Which plan? " + " · ".join(f"**{each.name}**" for each in found[:4]))
+        # None named ("delete the gym plan"): the active one when there is one, else the only one; otherwise asked
+        active = next((each for each in found if each.active), None)
+        if active is not None or len(found) == 1:
+            one = active or found[0]
+            return one, [one], found
+        return None, found, found
     fits = matches(found, said)
     if not fits:
         raise UserError(f"{ICON} No plan fits “{said}”. Your plans: " + " · ".join(f"**{each.name}**" for each in found[:4]))
@@ -310,11 +318,21 @@ async def _which(request: Request, data: dict) -> tuple[Plan | None, list[Plan],
 
 
 def _ask(fits: list[Plan], data: dict, verb: str) -> Question:
-    return Question(f"Which plan to {verb}?", tuple(Choice(each.name[:80], {**data, "plan": each.name, "previous": False}, ("plan",)) for each in fits[:4]))
+    # Each answer names its plan by id: two plans of the same day and split have the same name
+    return Question(f"Which plan to {verb}?", tuple(Choice(each.name[:80], {**data, "plan": each.name, "plan_id": each.id, "previous": False}, ("plan",)) for each in fits[:4]))
 
 
 async def switch_card(request: Request, data: dict, guessed: frozenset) -> Proposal:
     """ "switch to the October plan", "go back to the previous plan", "use the upper lower one"."""
+    if not str(data.get("plan") or "").strip() and not data.get("previous"):
+        # "switch plans": which, of the others
+        found = await every(request.user.id)
+        others = [each for each in found if not each.active]
+        if not others:
+            raise UserError(f"{ICON} You have only the one plan: send another logbook to have one to switch to.")
+        if len(others) > 1:
+            return Proposal(lines=(f"{len(others)} plans to switch to",), data=dict(data), kind="change", question=_ask(others, data, "switch to"))
+        data = {**data, "plan": others[0].name}
     one, fits, found = await _which(request, data)
     if one is None:
         return Proposal(lines=(f"{len(fits)} plans fit “{data.get('plan')}”",), data=dict(data), kind="change", question=_ask(fits, data, "switch to"))

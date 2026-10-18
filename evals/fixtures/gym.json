@@ -470,6 +470,50 @@
         "several": false,
         "chat_part": ""
       }
+    },
+    {
+      "golden": "gp6",
+      "message": "Delete the gym plan",
+      "tasks": [
+        "gym"
+      ],
+      "note": "in #gym",
+      "home": [
+        "gym",
+        "gym"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "gym"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "gp7",
+      "message": "switch to the previous plan",
+      "tasks": [
+        "gym"
+      ],
+      "note": "in #gym",
+      "home": [
+        "gym",
+        "gym"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "gym"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
     }
   ],
   "extraction": [
@@ -727,33 +771,27 @@
         "gym_log",
         {
           "day": "last Tuesday",
-          "workout": "Upper 1",
           "sets": [
             {
               "exercise": "Bench press",
               "weight": 40,
-              "reps": 9,
-              "set_type": "working"
+              "reps": 9
             },
             {
               "exercise": "Bench press",
               "weight": 40,
-              "reps": 9,
-              "set_type": "working"
+              "reps": 9
             },
             {
               "exercise": "Bench press",
               "weight": 40,
               "reps": 8,
-              "set_type": "working",
               "note": "knee was sore",
               "pain": true,
               "body_part": "knee"
             }
           ],
-          "guessed": [
-            "workout"
-          ],
+          "guessed": [],
           "not_included": []
         }
       ],
@@ -971,6 +1009,56 @@
         }
       ],
       "note": "Claude names the plan from the state; Python's match finds it the same either way"
+    },
+    {
+      "golden": "gp6",
+      "task": "gym",
+      "message": "Delete the gym plan",
+      "state": "The user's gym plan (workouts in rotation order, each with its exercises):\n- next in turn: Lower 1\n- Upper 1: Bench press, Incline press, Lat pulldown - wide grip, Lateral raise\n- Lower 1: Squat, Leg press (high foot), Romanian deadlift\n- Upper 2: Overhead press, Seated row\n- Lower 2: Deadlift, Leg curl\n- plans kept: 2026-10-19 — Upper/Lower 1-week (active)",
+      "action": "gym_plan_delete",
+      "data": {},
+      "recorded": [
+        "gym_plan_delete",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "gp6",
+      "task": "gym",
+      "message": "Delete the gym plan",
+      "state": "The user's gym plan (workouts in rotation order, each with its exercises):\n- next in turn: Lower 1\n- Upper 1: Bench press, Incline press, Lat pulldown - wide grip, Lateral raise\n- Lower 1: Squat, Leg press (high foot), Romanian deadlift\n- Upper 2: Overhead press, Seated row\n- Lower 2: Deadlift, Leg curl\n- plans kept: 2026-10-19 — Upper/Lower 1-week (active)",
+      "action": "gym_plan_delete",
+      "data": {},
+      "after_answer": true,
+      "note": "live, 19 Oct: straight after the import was saved, declined as cannot",
+      "recorded": [
+        "gym_plan_delete",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "gp7",
+      "task": "gym",
+      "message": "switch to the previous plan",
+      "state": "The user's gym plan (workouts in rotation order, each with its exercises):\n- next in turn: Lower 1\n- Upper 1: Bench press, Incline press, Lat pulldown - wide grip, Lateral raise\n- Lower 1: Squat, Leg press (high foot), Romanian deadlift\n- Upper 2: Overhead press, Seated row\n- Lower 2: Deadlift, Leg curl\n- plans kept: 2026-11-15 — Push/Pull/Legs 6-week (active); 2026-10-19 — Upper/Lower 4-week",
+      "action": "gym_plan_switch",
+      "data": {
+        "previous": true
+      },
+      "recorded": [
+        "gym_plan_switch",
+        {
+          "previous": true,
+          "guessed": [],
+          "not_included": []
+        }
+      ]
     }
   ]
 }

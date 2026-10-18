@@ -11,7 +11,8 @@ in RULES.md, "I was born on…" routed, all birthday checks recorded again:
 shipped 10:20 am on `f2c8b78`, checked.
 **Then:** #gym listens, gym first, a spreadsheet there is imported; gym plan
 versions (show, switch, delete; JSON copies in data/gym/plans): shipped
-11:27 am on `3fab84c`, checked. Idle.
+11:27 am on `3fab84c`, checked. Then "delete the gym plan" declined:
+the plan actions' words fixed; to ship now.
 
 **Next, at the next restart** (not overnight): the settle-in week, a
 feature freeze to Sun 25 Oct (fixes and polish from real use only, new
