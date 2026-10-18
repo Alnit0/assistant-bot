@@ -8,6 +8,17 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-17 (evening)
 
+## Shipped (19 Oct, 10:08 am): birthdays reworked, and cards that wait a day
+
+Live on `a41e8aa` (from `8f78b5f`), one restart with no card waiting, the
+next pill reminder at 11:18 am. The self-test before it: 150 steps, none
+failed. Checked: live's own account; the nudges migration applied; no
+errors; every birthday's event renamed and marked at the start; the pinned
+Birthdays list posted in #calendar (after Discord's rate limit). Not done:
+the 20 Oct row is named Alex, not "My" (Alex had saved it again), so the
+migration left it a person; marking it his own needs a write to live's
+database, which was not allowed. Spend this batch: US$0.058 (NZ$0.10).
+
 ## A card that had "gone" on Save (19 Oct, morning; ships at the next restart)
 
 Live, 9:33 am: Save on a repeating Work event took 5.8 seconds (the Bot

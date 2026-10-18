@@ -3,13 +3,12 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Batch 19 Oct (morning), for the next restart:**
-1. Birthdays reworked (no posts; the Upcoming birthdays box; the pinned
-   list; events marked, never a calendar item) and the "My" name bug:
-   built, checked, committed
-2. The calendar card that had "gone" on Save (a slow Save pressed twice):
-   fixed, 24-hour cards, the tidy, Redo: committed
-3. Then one ship, with no card waiting if that can be helped
+**Idle, last batch was** 19 Oct (morning): birthdays reworked with the
+"My" name fix, and the card that had "gone" on Save (a slow Save pressed
+twice); 24-hour cards, the tidy, Redo. Shipped 10:08 am on `a41e8aa`.
+**Waiting on Alex:** the 20 Oct birthday is kept as a person called Alex,
+not as his own (a write to live's database was not allowed): his word, or
+"my birthday is 20 October" then "remove Alex's birthday".
 
 **Next, at the next restart** (not overnight): the settle-in week, a
 feature freeze to Sun 25 Oct (fixes and polish from real use only, new
@@ -24,7 +23,7 @@ set). The sheet mirror waits for a sheet (docs/GYM-SHEET-SETUP.md).
 **Sundays:** run `/suggest` (the brainstorm with the wishlist).
 **Nightly 17 Oct, 3:30 am:** 149 of 150 on `98697d4`, none failed.
 
-**Live:** `8f78b5f` since 18 Oct, 1:14 am; previous `55e3695` (`-Back`).
+**Live:** `a41e8aa` since 19 Oct, 10:08 am; previous `8f78b5f` (`-Back`).
 **Drafts and worktrees:** `docs/drafts/gym-onboarding.md`; three old
 worktrees, all merged
 
