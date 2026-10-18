@@ -57,7 +57,7 @@ ONLY_FOR = (
     "(\"tell me 5 days before Mum's birthday\"), changing or removing one, when someone's birthday is (\"when is Mum's birthday?\") and the birthdays coming up (\"upcoming "
     "birthdays\"). Not a reminder at a time (the reminders task) and not an event (the calendar task)."
 )
-EXAMPLES = ("Mum's birthday 12 March", "gift idea for Mum: a scarf", "when is Mum's birthday?")
+EXAMPLES = ("Mum's birthday 12 March", "I was born on 3 June 1995", "gift idea for Mum: a scarf", "when is Mum's birthday?")
 
 
 @dataclass(frozen=True)

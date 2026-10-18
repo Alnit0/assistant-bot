@@ -8,6 +8,19 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-17 (evening)
 
+## Alex's answers (19 Oct, late morning; ships at the next restart)
+
+- The 20 Oct row named Alex is his own birthday now (`mine`, shown "Your
+  birthday"): one row in live's database, with his yes; its event is
+  renamed and the list redrawn at the next start.
+- The pronoun list in `birthdays.tidy` is an approved exception (RULES.md,
+  and the word-list table in BACKLOG.md).
+- "I was born on 3 June 1995" routes to birthdays (an example in its
+  entry) and is his own birthday with the year. Every birthday extraction
+  checked again against the schema with the name not required: 13 of 13;
+  the routers for bd1, bd2, bd7 and bd9: 4 of 4. US$0.075 (NZ$0.13 of
+  NZ$0.15). `evals.live --extractions` runs only the extraction checks.
+
 ## Shipped (19 Oct, 10:08 am): birthdays reworked, and cards that wait a day
 
 Live on `a41e8aa` (from `8f78b5f`), one restart with no card waiting, the

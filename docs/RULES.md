@@ -210,6 +210,9 @@ SQLite for storage. Single user for now, designed to be multi-user ready.
   `actions.unchosen`, `as_references`, `unstated`): the word lists that
   exist are listed in `docs/BACKLOG.md`, and none may grow into the way
   something is understood
+- Approved exception (Alex, 19 Oct): the birthdays' safety net
+  (`tasks/nudges/birthdays.py` `tidy`) keeps the user's own pronouns (my,
+  me, myself, I, mine): a closed grammatical set, not task phrasing
 
 ### Where the standard lives in the code
 

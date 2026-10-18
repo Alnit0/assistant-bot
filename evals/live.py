@@ -26,6 +26,7 @@ ARGS.add_argument("--strict", action="store_true", help="send action schemas as 
 ARGS.add_argument("--only", default="", help="run one fixture file, by its name without .json (or several, with commas)")
 ARGS.add_argument("--dev", action="store_true", help="include the demo lists of tests/demo.py")
 ARGS.add_argument("--routers", action="store_true", help="only the router fixtures: to check a change to a task's \"only for\" line")
+ARGS.add_argument("--extractions", action="store_true", help="only the extraction fixtures: to check a change to an action's fields")
 ARGS.add_argument("--golden", default="", help="only the fixtures of these golden conversations, e.g. x9,x10: to run again only what failed")
 ARGS.add_argument("--part", default="", help="one part of what would run, e.g. 1/2 then 2/2: to keep one run under a spend limit")
 
@@ -61,6 +62,8 @@ def main() -> int:
 
     if options.routers:
         extractions = []
+    if options.extractions:
+        routers = []
     if options.golden:
         wanted = {each.strip() for each in options.golden.split(",") if each.strip()}
         routers = [fixture for fixture in routers if fixture.golden in wanted]

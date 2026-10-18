@@ -6,9 +6,9 @@ history is `docs/STATUS.md`. Read first, with `/catchup`.
 **Idle, last batch was** 19 Oct (morning): birthdays reworked with the
 "My" name fix, and the card that had "gone" on Save (a slow Save pressed
 twice); 24-hour cards, the tidy, Redo. Shipped 10:08 am on `a41e8aa`.
-**Waiting on Alex:** the 20 Oct birthday is kept as a person called Alex,
-not as his own (a write to live's database was not allowed): his word, or
-"my birthday is 20 October" then "remove Alex's birthday".
+**Then, his answers:** the 20 Oct row made his own (done in live's
+database), the pronoun exception in RULES.md, "I was born on…" routed, all
+birthday checks recorded again: for the next restart.
 
 **Next, at the next restart** (not overnight): the settle-in week, a
 feature freeze to Sun 25 Oct (fixes and polish from real use only, new

@@ -58,6 +58,14 @@ def test_the_user_s_own_birthday_in_each_phrasing_is_your_birthday(birthday_bot,
     assert own.mine and own.name == ""
 
 
+def test_i_was_born_on_is_the_user_s_own_birthday_with_the_year(birthday_bot):
+    said = replay(birthday_bot, "bd9", routed="bd9")  # its own routing: a statement, never nothing to be said
+    assert "**Your birthday** · " in said and "· turns " in said, "the year kept: the age turning is shown"
+    save(birthday_bot)
+    (own,) = kept(birthday_bot)
+    assert own.mine and own.year == 1995
+
+
 def test_my_mum_s_birthday_is_mum(birthday_bot):
     said = replay(birthday_bot, "bd11")
     assert "**Mum** · Thu 12 Mar" in said or "**Mum** · " in said

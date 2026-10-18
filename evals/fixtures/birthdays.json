@@ -152,14 +152,15 @@
       ],
       "note": "the user's own, said another way",
       "recorded": {
-        "kind": "nothing",
-        "tasks": [],
+        "kind": "task",
+        "tasks": [
+          "birthdays"
+        ],
         "confidence": "high",
-        "reports_doing": false,
+        "reports_doing": true,
         "several": false,
         "chat_part": ""
-      },
-      "known_miss": "19 Oct: the router says nothing to be said for “I was born on …” (a statement); its extraction is right once routed. Not fixed: the check's cap was reached"
+      }
     },
     {
       "golden": "bd12",
