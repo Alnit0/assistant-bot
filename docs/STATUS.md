@@ -8,7 +8,15 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-17 (evening)
 
-## Alex's answers (19 Oct, late morning; ships at the next restart)
+## Shipped (19 Oct, 10:20 am): Alex's answers
+
+Live on `f2c8b78` (from `a41e8aa`), one restart with no card waiting. The
+self-test before it: the 11 touched steps, none failed. Checked: live's own
+account, no errors, every event up to date (his own renamed), the pinned
+list redrawn: "**Your birthday** · Tue 20 Oct · tomorrow", and the same
+line in the briefing's Upcoming birthdays box.
+
+## Alex's answers (19 Oct, late morning)
 
 - The 20 Oct row named Alex is his own birthday now (`mine`, shown "Your
   birthday"): one row in live's database, with his yes; its event is
