@@ -8,7 +8,15 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-17 (evening)
 
-## Gym plan versions (19 Oct, midday; ships at the next restart)
+## Shipped (19 Oct, 11:27 am): #gym listens, and gym plan versions
+
+Live on `3fab84c` (from `f2c8b78`), one restart with no card waiting. The
+self-test before it: 150 steps, none failed. Checked: live's own account;
+the gym migration applied; no errors. Live had no gym plan imported yet,
+so nothing was carried over: the first logbook sent in #gym is the first
+version.
+
+## Gym plan versions (19 Oct, midday)
 
 As Alex asked: each CSV or XLSX imported is a plan of its own, named
 "YYYY-MM-DD — <split> <weeks>-week" and made active, the one before kept;

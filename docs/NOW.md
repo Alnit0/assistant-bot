@@ -10,8 +10,8 @@ twice); 24-hour cards, the tidy, Redo. Shipped 10:08 am on `a41e8aa`.
 in RULES.md, "I was born on…" routed, all birthday checks recorded again:
 shipped 10:20 am on `f2c8b78`, checked.
 **Then:** #gym listens, gym first, a spreadsheet there is imported; gym plan
-versions (show, switch, delete; JSON copies in data/gym/plans): built,
-checked, committed; for the next restart.
+versions (show, switch, delete; JSON copies in data/gym/plans): shipped
+11:27 am on `3fab84c`, checked. Idle.
 
 **Next, at the next restart** (not overnight): the settle-in week, a
 feature freeze to Sun 25 Oct (fixes and polish from real use only, new
@@ -26,7 +26,7 @@ set). The sheet mirror waits for a sheet (docs/GYM-SHEET-SETUP.md).
 **Sundays:** run `/suggest` (the brainstorm with the wishlist).
 **Nightly 17 Oct, 3:30 am:** 149 of 150 on `98697d4`, none failed.
 
-**Live:** `f2c8b78` since 19 Oct, 10:20 am; previous `a41e8aa` (`-Back`).
+**Live:** `3fab84c` since 19 Oct, 11:27 am; previous `f2c8b78` (`-Back`).
 **Drafts and worktrees:** `docs/drafts/gym-onboarding.md`; three old
 worktrees, all merged
 
