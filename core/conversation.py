@@ -395,9 +395,17 @@ async def _failed(turn: Turn, title: str, error: BaseException, said: str, say) 
         await say(line)
 
 
+def _same_words(text: str) -> str:
+    return " ".join(text.replace("’", "'").replace("‘", "'").lower().split())
+
+
 def _in_common(entry_field, new, old) -> bool:
     """Whether a field's new value shares anything with the old: the same value,
-    or, for a list, at least one item that was already there."""
+    or, for a list, at least one item that was already there. Words are the same whatever their
+    case, spacing or apostrophe: the card keeps "Jo’s Hen do" as typed, Claude hands back
+    "kadie's hen do" (live, 21 Oct: "All day" under a card's question was taken as a request of its own)."""
+    if isinstance(new, str) and isinstance(old, str):
+        return _same_words(new) == _same_words(old)
     if entry_field.type not in (LIST, ITEMS) or not isinstance(new, list) or not isinstance(old, list):
         return new == old
     if entry_field.type == LIST:

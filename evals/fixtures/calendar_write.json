@@ -783,6 +783,80 @@
         "reports_doing": false,
         "chat_part": ""
       }
+    },
+    {
+      "golden": "w25",
+      "message": "Add an all day event 21 and 22 November, Sam & Jo’s Hen/Stag",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "live, 21 Oct: an all-day event over two days, no time: said as an event, the calendar, never a to-do",
+      "names": {
+        "calendar": [
+          "Work",
+          "Dentist",
+          "Swimming"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ],
+        "habits": [
+          "Morning",
+          "Stretch"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "w26",
+      "message": "hen do Saturday, all day",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "all day, with a day and a title: the calendar",
+      "names": {
+        "calendar": [
+          "Work",
+          "Dentist",
+          "Swimming"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ],
+        "habits": [
+          "Morning",
+          "Stretch"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
     }
   ],
   "extraction": [
@@ -1188,6 +1262,143 @@
           "guessed": [
             "time"
           ],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "w25",
+      "task": "calendar",
+      "message": "Add an all day event 21 and 22 November, Sam & Jo’s Hen/Stag",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_add",
+      "data": {
+        "day": "21 November",
+        "last_day": "22 November",
+        "all_day": true
+      },
+      "note": "live, 21 Oct: asked for a time instead",
+      "recorded": [
+        "calendar_add",
+        {
+          "title": "Sam & Jo's Hen/Stag",
+          "day": "21 November",
+          "last_day": "22 November",
+          "all_day": true,
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "w26",
+      "task": "calendar",
+      "message": "hen do Saturday, all day",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_add",
+      "data": {
+        "title": "hen do",
+        "day": "Saturday",
+        "all_day": true
+      },
+      "recorded": [
+        "calendar_add",
+        {
+          "title": "hen do",
+          "day": "Saturday",
+          "all_day": true,
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "w27",
+      "task": "calendar",
+      "message": "Add an event 21 and 22 November, Sam & Jo’s Hen/Stag",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_add",
+      "data": {
+        "day": "21 November",
+        "last_day": "22 November"
+      },
+      "note": "no time and no all day: the card asks At what time?",
+      "recorded": [
+        "calendar_add",
+        {
+          "title": "Sam & Jo's Hen/Stag",
+          "day": "21 November",
+          "last_day": "22 November",
+          "all_day": true,
+          "guessed": [
+            "all_day"
+          ],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "w27",
+      "task": "calendar",
+      "message": "All day",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_add",
+      "data": {
+        "all_day": true
+      },
+      "card": {
+        "action": "calendar_add",
+        "data": {
+          "title": "Sam & Jo’s Hen/Stag",
+          "day": "21 November",
+          "last_day": "22 November",
+          "time": ""
+        },
+        "guessed": [],
+        "said": "Add an event 21 and 22 November, Sam & Jo’s Hen/Stag"
+      },
+      "note": "live, 21 Oct: the answer to What time? went to the router and was Not included: All day",
+      "recorded": [
+        "calendar_add",
+        {
+          "day": "21 November",
+          "last_day": "22 November",
+          "title": "Sam & Jo's Hen/Stag",
+          "all_day": true,
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "w27",
+      "task": "calendar",
+      "message": "3pm",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_add",
+      "data": {
+        "time": "3:00 pm"
+      },
+      "card": {
+        "action": "calendar_add",
+        "data": {
+          "title": "Sam & Jo’s Hen/Stag",
+          "day": "21 November",
+          "last_day": "22 November",
+          "time": ""
+        },
+        "guessed": [],
+        "said": "Add an event 21 and 22 November, Sam & Jo’s Hen/Stag"
+      },
+      "note": "a time typed as the answer instead",
+      "recorded": [
+        "calendar_add",
+        {
+          "day": "21 November",
+          "last_day": "22 November",
+          "time": "3:00 pm",
+          "title": "Sam & Jo's Hen/Stag",
+          "guessed": [],
           "not_included": []
         }
       ]

@@ -214,6 +214,13 @@ class GoogleSource:
         made = await asyncio.to_thread(_call, "POST", self._path("events"), None, body)
         return to_event(made, self.origin)
 
+    async def add_all_day(self, title: str, first: date, last: date) -> Event:
+        """An all-day event from its first local day to its last (the API's end is the day after)."""
+        self._writable()
+        body = {"summary": title, "start": {"date": first.isoformat()}, "end": {"date": (last + timedelta(days=1)).isoformat()}}
+        made = await asyncio.to_thread(_call, "POST", self._path("events"), None, body)
+        return to_event(made, self.origin)
+
     # --- a repeating event: the series itself, as the API keeps it -------------------------------------------
     async def insert(self, body: dict) -> dict:
         """A new event as the API takes it (a series: with `recurrence`); the API's answer."""

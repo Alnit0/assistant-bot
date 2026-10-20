@@ -8,6 +8,31 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-17 (evening)
 
+## All-day events (21 Oct, midday)
+
+Live, 11:08 am: "Add an all day event 21 and 22 November, <a hen/stag do>"
+reached the calendar, which could not add an all-day event and, with no
+time, asked "What time?" in a message of its own (not a question on a
+card, against CLAUDE.md). "All day" then went to the router as a new
+message, and extraction said "Not included: All day". Fixed: `calendar_add`
+takes `all_day` and `last_day` (an all-day event over 1 to 31 days, the
+API's end the day after; a repeating one is said to be not yet possible);
+with no time the card asks "At what time?" with an All day button, and a
+typed answer is read against the card (`request.previous` keeps its title
+and days). Two causes found on the way: a title typed with a curly
+apostrophe ("Jo’s") is handed back straight ("Jo's"), so `title_from`
+folds them; and `conversation._in_common`, which decides whether a
+follow-up is about the open card, compared titles exactly (case and
+apostrophe), so "All day" restating the title was taken as a request of
+its own. It now compares words whatever their case, spacing or apostrophe.
+Checks: the new 7 of 7 (w25 to w27, made-up names), every calendar check
+61 of 63 (the two misses: "work starts at 8:30 from next week" to the plan
+task, from a longer routing line, put right and 3 of 3 since; "am I free
+at 3" read as 3:00 pm, as on the code before). Not done (not asked; put
+to Alex): moving or deleting an all-day event in words is still refused,
+with the line meant for another calendar's events; "undo that" after the
+add works.
+
 ## "Delete the gym plan" was declined (19 Oct, after 11:36 am)
 
 Live: said a minute after the first import was saved, so the gym read it

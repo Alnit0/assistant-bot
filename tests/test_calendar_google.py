@@ -240,9 +240,11 @@ def test_a_title_is_only_ever_the_users_own_words(world):
         _add(world, "Friday 3pm", {"title": "appointment", "time": "3pm", "day": "Friday"})
 
 
-def test_no_time_no_card(world):
-    with pytest.raises(UserError, match="What time"):
-        _add(world, "dentist Friday", {"title": "dentist", "day": "Friday"})
+def test_no_time_the_card_asks(world):
+    """Asked on the card, never in a message of its own: the answer is read against the card
+    (live, 21 Oct; tests/test_calendar_all_day.py)."""
+    proposal = _add(world, "dentist Friday", {"title": "dentist", "day": "Friday"})
+    assert proposal.question.text == "At what time?" and proposal.lines[1] == "Fri 6 Nov · ❔"
 
 
 # --- moving and deleting --------------------------------------------------------------------------------------------------

@@ -1,8 +1,8 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from core import clock, config, database, design, recurrence, timeinput
 from core import day as days
-from core.actions import TIME, Field, Proposal, Request, Shown, State
+from core.actions import BOOLEAN, TIME, Choice, Field, Proposal, Question, Request, Shown, State
 from core.errors import UserError
 from tasks.calendar import rules, series, source, store
 from tasks.calendar.rules import ICON, NEXT_WEEK, SPANS, WEEK
@@ -108,7 +108,7 @@ def reading_actions() -> list:
     return [
         Action(
             "calendar_show",
-            "What is on the user's calendar on a day or a week (\"what's on tomorrow?\" -> day tomorrow; \"what's on this week?\" -> span week; \"next week\" -> span next_week; \"my calendar\" -> nothing).",
+            "What is on the user's calendar on a day or a week (\"what's on tomorrow?\" -> day tomorrow; \"what's on this week?\" -> span week; \"next week\" -> span next_week; \"my calendar\" -> nothing). A question only: a new event said with a title and all day (\"hen do Saturday, all day\") is adding, never this.",
             (Field("day", _DAY), Field("span", "day (one day), week (the rest of this week), next_week (Monday to Sunday next week). Leave out for one day.", choices=SPANS)),
             needs_card=False, run=show, purpose=SEE, say=("what's on tomorrow?", "what's on this week?"),
         ),
@@ -176,15 +176,24 @@ def _moment(text):
 
 async def add_card(request: Request, data: dict, guessed: frozenset) -> Proposal:
     """ "dentist Friday 3pm for an hour": a card with the title, the day, the time and the length,
-    and what it clashes with in every calendar."""
+    and what it clashes with in every calendar. "All day event 21 and 22 November, the hen do": an
+    all-day one. With no time said, the card asks for one, with All day a button; a typed answer
+    ("All day", "3pm") is read against the card, what it asked kept (`request.previous`)."""
     _writer()
-    title = rules.title_from(data.get("title"), request.text)
+    previous = request.previous or {}
+    title = rules.title_from(data.get("title"), request.text) or rules.title_from(data.get("title") or previous.get("title"), str(previous.get("title") or ""))
     if not title:
         raise UserError(f"{ICON} What is it called? Say it with its name, like “dentist Friday 3pm”.")
-    if not data.get("time"):
-        raise UserError(f"{ICON} What time? Say it with a time, like “{title.lower()} Friday 3pm”.")
+    said = {"title": title, "day": data.get("day") or previous.get("day") or "", "last_day": data.get("last_day") or previous.get("last_day") or ""}
     today = days.today()
-    day = read_day(data.get("day"), today)
+    if data.get("all_day"):
+        return _all_day_card(said, data, today)
+    if not data.get("time"):
+        first, last = _days_of(said, today)
+        line = rules.day_name(first, today) + (f" to {rules.day_name(last, today)}" if last != first else "")
+        question = Question("At what time?", (Choice("All day", {**said, "all_day": True}, ("time", "all_day")),))
+        return Proposal(lines=(f"**{title}**", f"{line} · ❔", design.small("on the Bot calendar")), data={**said, "time": ""}, kind="new", question=question)
+    day = read_day(said["day"], today)
     at = rules.read_span(str(data["time"]), str(data["ends_at"]))[0] if data.get("ends_at") else rules.read_time(str(data["time"]))
     start = days.at(day, at)
     end = _ends(data, start, DEFAULT_LENGTH)
@@ -197,6 +206,34 @@ async def add_card(request: Request, data: dict, guessed: frozenset) -> Proposal
     return Proposal(
         lines=(f"**{title}**", rules.span_text(start, end, today), design.small("on the Bot calendar")),
         data={"title": title, "start": _iso(start), "end": _iso(end)}, warnings=tuple(warnings), kind="new",
+    )
+
+
+LONGEST_DAYS = 31  # an all-day event's days at most
+
+
+def _days_of(said: dict, today):
+    """The first and last day of an event as said ("21 and 22 November": day 21 November, last_day 22
+    November); one day when no last day is said."""
+    first = read_day(said.get("day"), today)
+    last = read_day(said["last_day"], first) if said.get("last_day") else first
+    if last < first:
+        raise UserError(f"{ICON} It ends before it starts: {rules.day_name(last, today)} is before {rules.day_name(first, today)}.")
+    if (last - first).days >= LONGEST_DAYS:
+        raise UserError(f"{ICON} That is more than {LONGEST_DAYS} days: say its first and last day.")
+    return first, last
+
+
+def _all_day_card(said: dict, data: dict, today) -> Proposal:
+    """An all-day event on the Bot calendar, over one day or several. Never a to-do or a reminder:
+    "event" or "all day" was said."""
+    if data.get("repeat"):
+        raise UserError(f"{ICON} I can't add a repeating all-day event yet: say it with a time, or one day at a time.")
+    first, last = _days_of(said, today)
+    warnings = ("That day has gone by",) if last < today else ()
+    return Proposal(
+        lines=(f"**{said['title']}**", rules.days_text(first, last, today), design.small("on the Bot calendar")),
+        data={**said, "all_day": True, "first": first.isoformat(), "last": last.isoformat()}, warnings=warnings, kind="new",
     )
 
 
@@ -213,11 +250,16 @@ def _ends(data: dict, start: datetime, default: int) -> datetime:
 async def add_save(request: Request, data: dict) -> str:
     if data.get("rrule"):
         return await series.add_save(request, data, _writer())
-    made = await _writer().add(data["title"], _moment(data["start"]), _moment(data["end"]))
+    if data.get("first"):
+        made = await _writer().add_all_day(data["title"], date.fromisoformat(data["first"]), date.fromisoformat(data["last"]))
+        when_said = rules.days_text(made.first_day, made.last_day, days.today())
+    else:
+        made = await _writer().add(data["title"], _moment(data["start"]), _moment(data["end"]))
+        when_said = rules.span_text(made.start, made.end, days.today())
     await database.run(store.db_put, request.user.id, made)
     await database.run(store.db_change, request.user.id, store.ADDED, made.ref, made.title, (None, None), (made.start, made.end), clock.now())
     _changed(request.user.id)
-    return f"{ICON} Added · **{made.title}** · {rules.span_text(made.start, made.end, days.today())}"
+    return f"{ICON} Added · **{made.title}** · {when_said}"
 
 
 async def _last_ref(request: Request, kind: str) -> str:
@@ -388,10 +430,15 @@ def writing_actions() -> list:
             "Add an event to the calendar: an appointment or a plan with a day and a time and no \"remind me\" (\"dentist Friday 3pm\" -> "
             "title dentist, day Friday, time 3pm; \"lunch with Sam Thursday at 1 for 90 minutes\" -> title lunch with Sam, length 90; "
             "\"put the plumber on my calendar tomorrow at 10\"; \"book lunch with Sam Thursday at 1\", \"make a dentist appointment for Friday at 3pm\": make, book and put are adding), or a repeating one (\"work every weekday 9 to 5:30\" -> title work, "
-            "repeat weekdays, time 9, ends_at 5:30; \"swimming Mondays and Thursdays at 6pm until December\" -> repeat days, weekdays mon thu, until December).",
+            "repeat weekdays, time 9, ends_at 5:30; \"swimming Mondays and Thursdays at 6pm until December\" -> repeat days, weekdays mon thu, until December), "
+            "or an all-day one, over one day or several (\"add an all day event 21 and 22 November, Sam's party\" -> title Sam's party, day 21 November, "
+            "last_day 22 November, all_day; \"hen do Saturday, all day\" -> title hen do, day Saturday, all_day; \"conference Friday to Sunday, all day\"). Said as an event or all day, it is an event even with no time, never a to-do. "
+            "With no time said, leave time out: the card asks.",
             (
-                Field("title", "What it is, in the user's own words exactly as said (\"dentist\", \"lunch with Sam\"), without the day, the time or the length, and without add, make, book or put (\"book lunch with Sam\" -> lunch with Sam; \"make a dentist appointment\" -> dentist appointment).", required=True),
-                Field("day", _DAY),
+                Field("title", "What it is, in the user's own words exactly as said (\"dentist\", \"lunch with Sam\"), without the day, the time or the length, and without add, make, book or put (\"book lunch with Sam\" -> lunch with Sam; \"make a dentist appointment\" -> dentist appointment; \"an all day event\" is not part of it).", required=True),
+                Field("day", _DAY + " For an event over several days, its first day."),
+                Field("last_day", "For an event over several days, its last day exactly as said (\"21 and 22 November\" -> day 21 November, last_day 22 November; \"Friday to Sunday\" -> day Friday, last_day Sunday). Never work out a date. Leave out for one day."),
+                Field("all_day", "True when the user says all day or all-day (\"an all day event\"; \"All day\" as the answer to the card's \"At what time?\"). Leave out otherwise.", BOOLEAN),
                 Field("time", "When it starts, as the user said it.", TIME),
                 Field("length", "How long, only when the user says (\"for an hour\" -> 60, \"for 90 minutes\" -> 90).", MINUTES),
                 ends_at,
@@ -435,7 +482,7 @@ ONLY_FOR_WRITING = (
     "\"remind me\" (\"dentist Friday 3pm\", \"lunch with Sam Thursday at 1\", \"put the plumber on my calendar\", \"book lunch with Sam\", "
     "\"make a dentist appointment for Friday at 3pm\"), a repeating event "
     "(\"work every weekday 9 to 5:30\", \"swimming Mondays and Thursdays at 6pm\"), and moving, cancelling (\"cancel work next Tuesday\", "
-    "\"stop work\"), deleting or undoing one. A request to be reminded (\"remind me about the dentist Friday\") is a reminder, not the calendar. "
+    "\"stop work\"), deleting or undoing one. An all-day event (\"all day event 21 and 22 November\") is the calendar too, with no time. A request to be reminded (\"remind me about the dentist Friday\") is a reminder, not the calendar. "
     "The rest of today across everything (\"what's on tonight?\") is the briefing. Not pills, not to-dos (a thing to do with no "
     "time), not personal routines, and not when the bot's own jobs run (that is the schedule task)."
 )

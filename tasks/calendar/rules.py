@@ -139,16 +139,29 @@ def title_from(said: str, message: str) -> str:
     if not words:
         return ""
     text = " ".join(str(message or "").split())
-    at = text.lower().find(" ".join(words).lower())
+    # A curly apostrophe typed on a phone ("Jo’s") is the straight one Claude hands back: the same
+    # length, so where it stands in the message is unchanged
+    at = _plain_quotes(text.lower()).find(_plain_quotes(" ".join(words).lower()))
     if at >= 0:
         found = text[at:at + len(" ".join(words))]
     else:
-        typed = text.lower().split()
-        if not all(word.lower().strip(".,!?") in [each.strip(".,!?") for each in typed] for word in words):
+        typed = _plain_quotes(text.lower()).split()
+        if not all(_plain_quotes(word.lower()).strip(".,!?") in [each.strip(".,!?") for each in typed] for word in words):
             return ""
         found = " ".join(words)
     found = found.strip(" .,!?")
     return found[:1].upper() + found[1:]
+
+
+def _plain_quotes(text: str) -> str:
+    return text.replace("’", "'").replace("‘", "'")
+
+
+def days_text(first: date, last: date, today: date) -> str:
+    """An all-day event's days: "Sat 21 Nov · all day", "Sat 21 Nov to Sun 22 Nov · all day · 2 days"."""
+    if last == first:
+        return f"{day_name(first, today)} · all day"
+    return f"{day_name(first, today)} to {day_name(last, today)} · all day · {(last - first).days + 1} days"
 
 
 def span_text(start: datetime, end: datetime, today: date) -> str:

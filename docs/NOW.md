@@ -3,10 +3,10 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Idle, last batch was** 19 Oct (morning to 11:41 am), all shipped and
-checked: birthdays reworked and the "My" fix; cards that wait a day, with
-Redo; #gym listens; gym plan versions; the plan actions' words fixed.
-Live on `9b9a078`; the self-test after it: 98 steps, none failed.
+**Now (21 Oct, midday):** all-day events in the calendar (live's
+"all day event 21 and 22 November" asked a time; "All day" was Not
+included). Fixed and tested; shipping, then the self-test.
+Before: 19 Oct batch, all shipped and checked (live on `9b9a078`).
 
 **Next, at the next restart** (not overnight): the settle-in week, a
 feature freeze to Sun 25 Oct (fixes and polish from real use only, new

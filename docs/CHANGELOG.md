@@ -4,6 +4,12 @@ What changed, newest first. One entry per task, as one to three bullets on
 what changed for the user. Entries before 2026-10-07's last one were
 backfilled from the git log.
 
+## 2026-10-21
+
+- Add an all day event 21 and 22 November, the hen do now makes an all-day event over both days on the Bot
+  calendar (one day or several, never a to-do). Said with no time, the card asks At what time? with an All day
+  button, and typing All day (or 3pm) under it answers the card.
+
 ## 2026-10-19
 
 - Gym plans have versions: each logbook you import is a plan of its own, named like 2026-10-19 — Upper/Lower
