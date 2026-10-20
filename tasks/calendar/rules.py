@@ -30,7 +30,12 @@ SOON = timedelta(minutes=30)  # an event this close is worth a look (attention l
 STALE = timedelta(hours=6)  # a feed not read for this long needs a look
 NO_TITLE = "(no title)"
 DAY_SPAN, WEEK, NEXT_WEEK = "day", "week", "next_week"
-SPANS = (DAY_SPAN, WEEK, NEXT_WEEK)
+MONTH, NEXT_MONTH, YEAR, NEXT_YEAR = "month", "next_month", "year", "next_year"
+SPANS = (DAY_SPAN, WEEK, NEXT_WEEK, MONTH, NEXT_MONTH, YEAR, NEXT_YEAR)
+BY_DAY_UP_TO = 7  # days: a span this long or shorter is grouped by day
+BY_WEEK_UP_TO = 62  # days: longer than a week and up to this, grouped by week; longer, one list in date order
+LONGEST_SPAN = 2 * 366  # days a question may cover
+SPAN_SHOWN = 25  # events listed in full for a span longer than a week, then "+N more"
 
 
 @dataclass(frozen=True)
@@ -253,13 +258,124 @@ def span_days(span: str, today: date, said: date | None = None) -> list[date]:
     return [said or today]
 
 
-def week_answer(events, span_of: list[date], today: date, label: str) -> str:
+@dataclass(frozen=True)
+class Span:
+    """What a question covers: its first and last local day, its heading ("November") and how it
+    is said after "Nothing on" ("in November")."""
+
+    first: date
+    last: date
+    heading: str
+    phrase: str
+
+    @property
+    def days(self) -> list[date]:
+        return [self.first + timedelta(days=offset) for offset in range((self.last - self.first).days + 1)]
+
+
+def _month_name(first: date, today: date) -> str:
+    return f"{first:%B}" if first.year == today.year else f"{first:%B %Y}"
+
+
+def _month_span(first: date, today: date) -> Span:
+    following = (first.replace(day=28) + timedelta(days=4)).replace(day=1)
+    name = _month_name(first, today)
+    return Span(first, following - timedelta(days=1), name, f"in {name}")
+
+
+def span_of(span: str, today: date, read_day, day=None, until=None, month=None, year=None) -> Span:
+    """The days a question covers, from what was said (each value as said; `read_day(said, from_day)`
+    reads a day). A last day said makes it a range from the first ("Monday to Friday": Friday on or
+    after Monday). A week with a day in it is that day's Monday to Sunday; this week with none is
+    today to Sunday. A month or a year with none said is this one."""
+    from core import timeinput
+
+    if until:
+        first = read_day(day, today) if day else today
+        last = read_day(until, first)
+        if last < first:
+            raise UserError(f"{ICON} {day_name(last, today)} is before {day_name(first, today)}: say the first day, then the last.")
+        if (last - first).days >= LONGEST_SPAN:
+            raise UserError(f"{ICON} That is more than two years: say a shorter span.")
+        said = f"{day_name(first, today)} to {day_name(last, today)}"
+        return Span(first, last, said, f"from {said}")
+    if span == WEEK and day:
+        monday = read_day(day, today) - timedelta(days=read_day(day, today).weekday())
+        said = f"the week of {day_name(monday, today)}"
+        return Span(monday, monday + timedelta(days=6), said[:1].upper() + said[1:], f"in {said}")
+    if span in (WEEK, NEXT_WEEK):
+        found = span_days(span, today)
+        return Span(found[0], found[-1], "This week" if span == WEEK else "Next week", "this week" if span == WEEK else "next week")
+    if span == MONTH:
+        return _month_span(timeinput.parse_month(str(month or ""), today), today)
+    if span == NEXT_MONTH:
+        return _month_span((today.replace(day=28) + timedelta(days=4)).replace(day=1), today)
+    if span in (YEAR, NEXT_YEAR):
+        number = today.year + 1 if span == NEXT_YEAR else timeinput.parse_year(str(year or ""), today)
+        return Span(date(number, 1, 1), date(number, 12, 31), str(number), f"in {number}")
+    found = read_day(day, today)
+    return Span(found, found, day_name(found, today), day_name(found, today))
+
+
+def in_span(events, first: date, last: date) -> list[Event]:
+    """The events that touch any of the days, each once, in date order: by the first of its days in
+    the span, all-day ones first on a day, then by start."""
+    begin, end = days.start_of(first), days.start_of(last + timedelta(days=1))
+    found = []
+    for each in events:
+        if each.all_day:
+            if each.first_day <= last and each.last_day >= first:
+                found.append((max(each.first_day, first), 0, 0.0, each))
+        elif each.start < end and (each.end > begin or (each.end == each.start and each.start >= begin)):
+            found.append((max(days.day_of(each.start), first), 1, each.start.timestamp(), each))
+    return [each for *_, each in sorted(found, key=lambda row: (row[0], row[1], row[2], row[3].title.lower()))]
+
+
+def span_line(event: Event, span: Span, today: date) -> str:
+    """One event in a span longer than a week: its day, when, and its name: "Fri 6 Nov · **3:00 pm** ·
+    **Dentist**", "Sat 21 Nov to Sun 22 Nov · all day · **Hen do**"."""
+    if event.all_day:
+        first, last = max(event.first_day, span.first), min(event.last_day, span.last)
+        on = day_name(first, today) + (f" to {day_name(last, today)}" if last != first else "")
+        return f"{on} · all day · **{event.title}**"
+    day = max(days.day_of(event.start), span.first)
+    return f"{day_name(day, today)} · {event_line(event, day)}"
+
+
+def span_answer(events, span: Span, today: date) -> str:
+    """Everything on in a span, in date order: by day up to a week (the week's layout), by week up to
+    two months (a heading a Monday), and one list in order for longer; the first SPAN_SHOWN in full,
+    then "+N more". An empty span is said."""
+    if span.first == span.last:
+        return day_answer(events, span.first, today)
+    if len(span.days) <= BY_DAY_UP_TO:
+        return week_answer(events, span.days, today, span.phrase, span.heading)
+    found = in_span(events, span.first, span.last)
+    if not found:
+        return f"{ICON} Nothing on {span.phrase}."
+    lines, week = [f"{ICON} **{span.heading}** · {count_text(len(found))}"], None
+    for each in found[:SPAN_SHOWN]:
+        if len(span.days) <= BY_WEEK_UP_TO:
+            first = max(each.first_day if each.all_day else days.day_of(each.start), span.first)
+            monday = first - timedelta(days=first.weekday())
+            if monday != week:
+                week = monday
+                shown = max(monday, span.first)
+                lines.append(f"**Week of {shown:%a} {shown.day} {shown:%b}**")  # a date, never "Today"
+        lines.append(span_line(each, span, today))
+    if len(found) > SPAN_SHOWN:
+        lines.append(design.small(f"{design.more_line(len(found) - SPAN_SHOWN)}: ask about a shorter span to see them all"))
+    return "\n".join(lines)
+
+
+def week_answer(events, span_of: list[date], today: date, label: str, heading: str = "") -> str:
     """A week: a day a heading, each day's first three events in full and "+N more" (the list
     rule, design.listed); a day with nothing is left out."""
-    total = sum(len(on_day(events, day)) for day in span_of)
+    total = len(in_span(events, span_of[0], span_of[-1]))
     if not total:
         return f"{ICON} Nothing on {label}."
-    lines = [f"{ICON} **{label[:1].upper() + label[1:]}** · {count_text(total)}"]
+    heading = heading or label[:1].upper() + label[1:]
+    lines = [f"{ICON} **{heading}** · {count_text(total)}"]
     for day in span_of:
         found = on_day(events, day)
         if not found:

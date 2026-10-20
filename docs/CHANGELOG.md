@@ -6,6 +6,9 @@ backfilled from the git log.
 
 ## 2026-10-21
 
+- Ask what's on over any span: a day, a week (the week of 28 November), a month (in November, next month,
+  December), a year (in 2027, next year) or a range (from Monday to Friday, 21 to 25 November). Events come in
+  date order, all-day and timed alike: by day up to a week, by week up to two months, one list for longer.
 - Add an all day event 21 and 22 November, the hen do now makes an all-day event over both days on the Bot
   calendar (one day or several, never a to-do). Said with no time, the card asks At what time? with an All day
   button, and typing All day (or 3pm) under it answers the card.

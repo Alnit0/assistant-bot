@@ -1179,10 +1179,9 @@
         "calendar_add",
         {
           "title": "book club",
-          "day": "the 1st",
-          "time": "7:00 pm",
           "repeat": "monthly",
           "month_day": 1,
+          "time": "7:00 pm",
           "times": 6,
           "guessed": [],
           "not_included": []
@@ -1256,8 +1255,7 @@
           "time": "8:30 am",
           "scope": "following",
           "guessed": [
-            "time",
-            "day"
+            "time"
           ],
           "not_included": []
         }
@@ -1460,9 +1458,9 @@
       "recorded": [
         "calendar_add",
         {
+          "title": "Sam & Jo's Hen/Stag",
           "day": "21 November",
           "last_day": "22 November",
-          "title": "Sam & Jo's Hen/Stag",
           "all_day": true,
           "guessed": [],
           "not_included": []

@@ -8,6 +8,24 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-17 (evening)
 
+## What's on over any span (21 Oct, afternoon)
+
+Alex: the calendar lookup knew a day, this week and next week only.
+`calendar_show` now takes a span of day, week (with a day: that week, Monday
+to Sunday), next_week, month (`month` as said, else this one: a month with no
+year is this one or the next of that name), next_month, year (`year`), next_year,
+or a range (`day` and `until` as said, the last read on or after the first,
+up to two years). Python works out every day (`rules.span_of`,
+`timeinput.parse_month` and `parse_year`). The copy (yesterday to 62 days
+ahead) answers a span it covers; any other span reads every calendar for it
+there and then (`plain._read_span`: one that fails is a small line, all failing
+is said). The answer is in date order (`rules.in_span`: all-day first on a day,
+a multi-day event once): by day up to 7 days (the week's layout), by week up to
+62 (a "Week of" heading, a date), one list longer, 25 in full then "+N more".
+With the week view on, a day, this week and next week keep its layout. A week's
+count is now of events, not of event-days. Checks: every calendar check 85 of
+85 (12 new phrasings, routers too), US$0.154.
+
 ## All-day events (21 Oct, midday)
 
 Live, 11:08 am: "Add an all day event 21 and 22 November, <a hen/stag do>"

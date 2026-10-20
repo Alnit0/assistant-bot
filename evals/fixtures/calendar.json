@@ -13,6 +13,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -29,6 +30,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -45,6 +47,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -61,6 +64,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -77,6 +81,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -93,6 +98,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -109,6 +115,133 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "s1",
+      "message": "what's on in November?",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "any span (21 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "s1",
+      "message": "what's on next month?",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "any span (21 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "s1",
+      "message": "what's on in 2027?",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "any span (21 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "s1",
+      "message": "what's on next year?",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "any span (21 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "s1",
+      "message": "what's on from Monday to Friday?",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "any span (21 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "s1",
+      "message": "what's on 21 to 25 November?",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "any span (21 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "s1",
+      "message": "what's on the week of 28 November?",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "any span (21 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     }
@@ -143,6 +276,7 @@
         "calendar_show",
         {
           "day": "Friday",
+          "span": "day",
           "guessed": [],
           "not_included": []
         }
@@ -249,6 +383,198 @@
         "calendar_free",
         {
           "time": "10:30 am",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "s1",
+      "task": "calendar",
+      "message": "what's on 21 November?",
+      "action": "calendar_show",
+      "data": {
+        "day": "21 November"
+      },
+      "note": "any span (21 Oct)",
+      "recorded": [
+        "calendar_show",
+        {
+          "day": "21 November",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "s1",
+      "task": "calendar",
+      "message": "what's on next week?",
+      "action": "calendar_show",
+      "data": {
+        "span": "next_week"
+      },
+      "note": "any span (21 Oct)",
+      "recorded": [
+        "calendar_show",
+        {
+          "span": "next_week",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "s1",
+      "task": "calendar",
+      "message": "what's on the week of 28 November?",
+      "action": "calendar_show",
+      "data": {
+        "span": "week",
+        "day": "28 November"
+      },
+      "note": "any span (21 Oct)",
+      "recorded": [
+        "calendar_show",
+        {
+          "span": "week",
+          "day": "28 November",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "s1",
+      "task": "calendar",
+      "message": "what's on in November?",
+      "action": "calendar_show",
+      "data": {
+        "span": "month",
+        "month": "November"
+      },
+      "note": "any span (21 Oct)",
+      "recorded": [
+        "calendar_show",
+        {
+          "span": "month",
+          "month": "November",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "s1",
+      "task": "calendar",
+      "message": "what's on next month?",
+      "action": "calendar_show",
+      "data": {
+        "span": "next_month"
+      },
+      "note": "any span (21 Oct)",
+      "recorded": [
+        "calendar_show",
+        {
+          "span": "next_month",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "s1",
+      "task": "calendar",
+      "message": "what's on in December?",
+      "action": "calendar_show",
+      "data": {
+        "span": "month",
+        "month": "December"
+      },
+      "note": "any span (21 Oct)",
+      "recorded": [
+        "calendar_show",
+        {
+          "span": "month",
+          "month": "December",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "s1",
+      "task": "calendar",
+      "message": "what's on in 2027?",
+      "action": "calendar_show",
+      "data": {
+        "span": "year",
+        "year": "2027"
+      },
+      "note": "any span (21 Oct)",
+      "recorded": [
+        "calendar_show",
+        {
+          "span": "year",
+          "year": "2027",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "s1",
+      "task": "calendar",
+      "message": "what's on next year?",
+      "action": "calendar_show",
+      "data": {
+        "span": "next_year"
+      },
+      "note": "any span (21 Oct)",
+      "recorded": [
+        "calendar_show",
+        {
+          "span": "next_year",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "s1",
+      "task": "calendar",
+      "message": "what's on from Monday to Friday?",
+      "action": "calendar_show",
+      "data": {
+        "day": "Monday",
+        "until": "Friday"
+      },
+      "note": "any span (21 Oct)",
+      "recorded": [
+        "calendar_show",
+        {
+          "day": "Monday",
+          "until": "Friday",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "s1",
+      "task": "calendar",
+      "message": "what's on 21 to 25 November?",
+      "action": "calendar_show",
+      "data": {
+        "day": "21 November",
+        "until": "25 November"
+      },
+      "note": "any span (21 Oct)",
+      "recorded": [
+        "calendar_show",
+        {
+          "day": "21 November",
+          "until": "25 November",
           "guessed": [],
           "not_included": []
         }

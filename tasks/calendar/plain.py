@@ -1,3 +1,4 @@
+import logging
 from datetime import date, datetime, timedelta
 
 from core import clock, config, database, design, recurrence, timeinput
@@ -6,6 +7,8 @@ from core.actions import BOOLEAN, TIME, Choice, Field, Proposal, Question, Reque
 from core.errors import UserError
 from tasks.calendar import rules, series, source, store
 from tasks.calendar.rules import ICON, NEXT_WEEK, SPANS, WEEK
+
+log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # The calendar in plain words: questions only (it is read only). Extraction
@@ -21,8 +24,8 @@ from tasks.calendar.rules import ICON, NEXT_WEEK, SPANS, WEEK
 #   "am I free at 3 tomorrow?"                    what is on then, or free
 # ---------------------------------------------------------------------------
 ONLY_FOR = (
-    "Events in the user's own calendar, to read: what is on a day or a week (\"what's on tomorrow?\", \"what's on "
-    "Friday?\", \"what's on this week?\", \"my calendar\"), when an event is, or whether it is on (\"when is the dentist?\", \"is the gym on tonight?\"), and whether "
+    "Events in the user's own calendar, to read: what is on a day, a week, a month, a year or a range of days (\"what's on tomorrow?\", \"what's on "
+    "Friday?\", \"what's on this week?\", \"what's on in November?\", \"what's on from Monday to Friday?\", \"my calendar\"), when an event is, or whether it is on (\"when is the dentist?\", \"is the gym on tonight?\"), and whether "
     "they are free at a time (\"am I free at 3 tomorrow?\"). Events only. It adds and changes nothing: a new event "
     "said with a time (\"dentist Friday 3pm\") is a reminder. The rest of today across everything (\"what's on "
     "tonight?\", \"what have I got this afternoon?\") is the briefing. Not pills, not reminders "
@@ -48,12 +51,38 @@ async def show(request: Request, data: dict, guessed: frozenset):
     not only the calendar's (core/weekview.py), answered where it was asked."""
     today = days.today()
     span = data.get("span") if data.get("span") in SPANS else rules.DAY_SPAN
-    if config.WEEK_VIEW:
+    asked = rules.span_of(span, today, read_day, data.get("day"), data.get("until"), data.get("month"), data.get("year"))
+    in_copy = _in_copy(asked, today)
+    # The week view's layout where it was before: a day, this week and next week (it reads the copy)
+    plain_week = span in (WEEK, NEXT_WEEK) and not data.get("until") and not (span == WEEK and data.get("day"))
+    plain_day = span == rules.DAY_SPAN and not data.get("until")
+    if config.WEEK_VIEW and in_copy and (plain_week or plain_day):
         return await _week_view(request, span, data, today)
-    events = await store.events(request.user.id)
-    if span in (WEEK, NEXT_WEEK):
-        return rules.week_answer(events, rules.span_days(span, today), today, "this week" if span == WEEK else "next week")
-    return rules.day_answer(events, read_day(data.get("day"), today), today)
+    events, missed = (await store.events(request.user.id), "") if in_copy else await _read_span(asked)
+    said = rules.span_answer(events, asked, today)
+    return said + (f"\n{design.small(missed)}" if missed else "")
+
+
+def _in_copy(asked: rules.Span, today) -> bool:
+    """Whether the copy kept every 15 minutes covers the span (yesterday to AHEAD_DAYS ahead)."""
+    return asked.first >= today - timedelta(days=rules.BEHIND_DAYS) and asked.last <= today + timedelta(days=rules.AHEAD_DAYS)
+
+
+async def _read_span(asked: rules.Span) -> tuple[list, str]:
+    """Every calendar read for a span the copy does not reach (a month or a year ahead, the past), as
+    one; a calendar that can't be read just now is said in a small line, and all of them failing is
+    said instead of an answer."""
+    found, failed = [], 0
+    every = source.sources()
+    for each in every:
+        try:
+            found += await each.events(asked.first, asked.last)
+        except Exception as error:
+            failed += 1
+            log.warning("Calendar: a span not read from %s (%s)", each.origin, type(error).__name__)
+    if not every or failed == len(every):
+        raise UserError(f"{ICON} I couldn't read your calendar for that just now. Try again in a minute.")
+    return rules.merged(found), ("⚠️ One of your calendars couldn't be read just now: this is the rest." if failed else "")
 
 
 async def _week_view(request: Request, span: str, data: dict, today) -> Shown:
@@ -108,8 +137,20 @@ def reading_actions() -> list:
     return [
         Action(
             "calendar_show",
-            "What is on the user's calendar on a day or a week (\"what's on tomorrow?\" -> day tomorrow; \"what's on this week?\" -> span week; \"next week\" -> span next_week; \"my calendar\" -> nothing). A question only: a new event said with a title and all day (\"hen do Saturday, all day\") is adding, never this.",
-            (Field("day", _DAY), Field("span", "day (one day), week (the rest of this week), next_week (Monday to Sunday next week). Leave out for one day.", choices=SPANS)),
+            "What is on the user's calendar over any span (\"what's on tomorrow?\" -> day tomorrow; \"what's on 21 November?\" -> day 21 November; "
+            "\"what's on this week?\" -> span week; \"next week\" -> span next_week; \"the week of 28 November\" -> span week, day 28 November; "
+            "\"what's on in November?\" -> span month, month November; \"next month\" -> span next_month; \"December\" -> span month, month December; "
+            "\"what's on in 2027?\" -> span year, year 2027; \"next year\" -> span next_year; \"from Monday to Friday\" -> day Monday, until Friday; "
+            "\"21 to 25 November\" -> day 21 November, until 25 November; \"my calendar\" -> nothing). "
+            "A question only: a new event said with a title and all day (\"hen do Saturday, all day\") is adding, never this.",
+            (
+                Field("day", _DAY + " For a week: a day in it (\"the week of 28 November\" -> 28 November). For a range: its first day."),
+                Field("until", "For a range, its last day exactly as said (\"from Monday to Friday\" -> Friday; \"21 to 25 November\" -> 25 November). Never work out a date. Leave out otherwise."),
+                Field("month", "For span month, the month as said (\"November\", \"December 2027\"). Leave out for this month."),
+                Field("year", "For span year, the year as said (\"2027\"). Leave out for this year."),
+                Field("span", "day (one day), week (the rest of this week, or the week a day said is in), next_week (Monday to Sunday next week), "
+                      "month (a month: the one said, or this one), next_month, year (a year: the one said, or this one), next_year. Leave out for one day or a range.", choices=SPANS),
+            ),
             needs_card=False, run=show, purpose=SEE, say=("what's on tomorrow?", "what's on this week?"),
         ),
         Action(
@@ -536,8 +577,8 @@ def writing_actions() -> list:
 
 
 ONLY_FOR_WRITING = (
-    "Events in the user's own calendar: reading what is on a day or a week (\"what's on tomorrow?\", \"what's on this week?\", "
-    "\"my calendar\"), when an event is or whether it is on (\"when is the dentist?\", \"is the gym on tonight?\"), whether they "
+    "Events in the user's own calendar: reading what is on a day, a week, a month, a year or a range of days (\"what's on tomorrow?\", \"what's on this week?\", "
+    "\"what's on in November?\", \"what's on from Monday to Friday?\", \"my calendar\"), when an event is or whether it is on (\"when is the dentist?\", \"is the gym on tonight?\"), whether they "
     "are free (\"am I free at 3 tomorrow?\"), and adding an event: an appointment or a plan said with a day and a time and no "
     "\"remind me\" (\"dentist Friday 3pm\", \"lunch with Sam Thursday at 1\", \"put the plumber on my calendar\", \"book lunch with Sam\", "
     "\"make a dentist appointment for Friday at 3pm\"), a repeating event "

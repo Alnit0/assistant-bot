@@ -196,6 +196,33 @@ def _on_or_after(today: date, month: int, day_of_month: int, year: int | None, t
     return this_year if this_year >= today else date(today.year + 1, month, day_of_month)
 
 
+def parse_month(text: str, today: date) -> date:
+    """The first day of the month in `text` ("November", "nov 2027", "this month"): with no year,
+    this month or the next one of that name to come. Raises UserError if it isn't a month."""
+    typed = text.strip()
+    value = re.sub(r"\s+", " ", typed.lower().replace(",", " ")).strip().removeprefix("in ").removeprefix("this ")
+    if value in ("", "month"):
+        return today.replace(day=1)
+    word, _, year = value.partition(" ")
+    month = _named(_MONTHS, word)
+    if month is None or (year and not re.fullmatch(r"\d{4}", year)):
+        raise UserError(f"“{typed}” is not a month I can read.")
+    if year:
+        return date(int(year), month + 1, 1)
+    return date(today.year if month + 1 >= today.month else today.year + 1, month + 1, 1)
+
+
+def parse_year(text: str, today: date) -> int:
+    """The year in `text` ("2027", "this year"). Raises UserError if it isn't one."""
+    typed = text.strip()
+    value = typed.lower().removeprefix("in ").removeprefix("this ").strip()
+    if value in ("", "year"):
+        return today.year
+    if not re.fullmatch(r"\d{4}", value):
+        raise UserError(f"“{typed}” is not a year I can read.")
+    return int(value)
+
+
 def parse_past_date(text: str, today: date) -> date:
     """The date in `text`, for a day that has been (a diary looking back): "yesterday",
     and a weekday or a date with no year is the latest one on or before today ("last
