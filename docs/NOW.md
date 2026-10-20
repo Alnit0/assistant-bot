@@ -3,9 +3,9 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Idle, last was** 21 Oct: all-day events in the calendar (live asked a
-time for "all day event 21 and 22 November"; "All day" was Not included).
-Shipped `2e190f2` at 11:29 am; the self-test after: 150 steps, none failed.
+**Now (21 Oct):** moving and deleting all-day events (refused before).
+Fixed and tested; shipping, then the self-test. Before: all-day events
+added, shipped `2e190f2` at 11:29 am, self-test 150 of 150.
 
 **Next, at the next restart** (not overnight): the settle-in week, a
 feature freeze to Sun 25 Oct (fixes and polish from real use only, new

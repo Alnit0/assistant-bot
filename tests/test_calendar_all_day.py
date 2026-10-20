@@ -93,3 +93,69 @@ def test_a_follow_up_naming_the_card_s_title_in_other_case_or_quotes_is_about_th
     title = Field("title", "made up", required=True)
     assert conversation._in_common(title, "sam & jo's hen/stag", "Sam & Jo’s  Hen/Stag")
     assert not conversation._in_common(title, "dentist", "Sam & Jo’s Hen/Stag")
+
+
+# --- moving and deleting one (Alex, 21 Oct: refused before, with the line meant for another calendar) --------------------
+MOVED = "Sat 28 Nov to Sun 29 Nov · all day · 2 days"
+
+
+def hen_do(world):
+    proposal = _add(world, "hen do 21 and 22 November all day", {"title": "hen do", "day": "21 November", "last_day": "22 November", "all_day": True})
+    run(plain.add_save(world.request(), proposal.data))
+    (ref,) = world.fake.calendars[BOT_ID]
+    return ref
+
+
+def recorded(message):
+    action, data = next(each["recorded"] for each in FIXTURES["extraction"] if each.get("golden") in ("w28", "w29") and each["message"] == message)
+    return action, {key: value for key, value in data.items() if key not in ("guessed", "not_included")}
+
+
+def test_an_all_day_event_is_moved_on_a_card_keeping_its_days_and_undo_puts_it_back(world):
+    ref = hen_do(world)
+    action, data = recorded("move the hen do to 28 November")
+    assert action == "calendar_move"
+    card = run(plain.move_card(world.request("move the hen do to 28 November"), data, frozenset()))
+    assert card.kind == "change" and card.lines == ("**Hen do**", design.change(TWO_DAYS, MOVED))
+    assert run(plain.move_save(world.request(), card.data)) == f"📅 Moved · **Hen do** · {MOVED}"
+    assert run(plain.move_check(world.request(), card.data)) == ""
+    made = world.fake.calendars[BOT_ID][ref]
+    assert made["start"] == {"date": "2026-11-28"} and made["end"] == {"date": "2026-11-30"}
+    assert run(plain.undo(world.request("undo that"), {}, frozenset())) == f"↩️ 📅 **Hen do** · back to {TWO_DAYS}"
+    assert world.fake.calendars[BOT_ID][ref]["start"] == {"date": "2026-11-21"} and world.fake.calendars[BOT_ID][ref]["end"] == {"date": "2026-11-23"}
+    assert next(each for each in kept(world) if each.title == "Hen do").first_day.isoformat() == "2026-11-21", "the copy too"
+
+
+def test_a_new_last_day_said_is_used(world):
+    hen_do(world)
+    _, data = recorded("move the hen do to 28 and 29 November")
+    assert data.get("last_day") == "29 November"
+    card = run(plain.move_card(world.request("move the hen do to 28 and 29 November"), {**data, "last_day": "28 November"}, frozenset()))
+    assert card.lines[1].endswith("**Sat 28 Nov · all day**"), "one day now"
+
+
+def test_a_time_for_an_all_day_event_or_the_same_days_is_said(world):
+    hen_do(world)
+    with pytest.raises(UserError, match="is all day"):
+        run(plain.move_card(world.request("move the hen do to 4pm"), {"search": "hen do", "time": "4pm"}, frozenset()))
+    with pytest.raises(UserError, match="on those days already"):
+        run(plain.move_card(world.request(), {"search": "hen do", "day": "21 November"}, frozenset()))
+
+
+def test_an_all_day_event_is_deleted_on_a_red_card_and_undo_puts_it_back(world):
+    hen_do(world)
+    action, data = recorded("delete the hen do")
+    assert action == "calendar_delete"
+    card = run(plain.delete_card(world.request("delete the hen do"), data, frozenset()))
+    assert card.destructive and card.confirm_label == "Delete" and card.lines == (f"**Hen do** · {TWO_DAYS}",)
+    assert run(plain.delete_save(world.request(), card.data)) == "🗑️ 📅 **Hen do** · deleted"
+    assert run(plain.delete_check(world.request(), card.data)) == "" and world.fake.calendars[BOT_ID] == {}
+    assert run(plain.undo(world.request("undo that"), {}, frozenset())) == "↩️ 📅 **Hen do** · back on the calendar"
+    (again,) = world.fake.calendars[BOT_ID].values()
+    assert again["summary"] == "Hen do" and again["start"] == {"date": "2026-11-21"} and again["end"] == {"date": "2026-11-23"}
+
+
+def test_cancel_a_one_off_all_day_event_is_its_delete(world):
+    hen_do(world)
+    card = run(plain.cancel_card(world.request("cancel the hen do"), {"search": "hen do"}, frozenset()))
+    assert card.destructive and card.data["all_day"]

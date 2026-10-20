@@ -28,10 +28,15 @@ its own. It now compares words whatever their case, spacing or apostrophe.
 Checks: the new 7 of 7 (w25 to w27, made-up names), every calendar check
 61 of 63 (the two misses: "work starts at 8:30 from next week" to the plan
 task, from a longer routing line, put right and 3 of 3 since; "am I free
-at 3" read as 3:00 pm, as on the code before). Not done (not asked; put
-to Alex): moving or deleting an all-day event in words is still refused,
-with the line meant for another calendar's events; "undo that" after the
-add works.
+at 3" read as 3:00 pm, as on the code before).
+
+Then (Alex, 21 Oct, after midday): moving and deleting one, refused before
+with the line meant for another calendar. `_mine` takes the bot's own
+all-day events (a repeating all-day one is said, never changed); a move is
+to a new first day keeping its number of days, or to a last day said
+(`calendar_move.last_day`), a time for one said; a delete is its red card;
+undo puts either back (`calendar_changes.detail`: all_day, before, after).
+Every calendar write check 53 of 53 (with w28, w29), US$0.104.
 
 ## "Delete the gym plan" was declined (19 Oct, after 11:36 am)
 

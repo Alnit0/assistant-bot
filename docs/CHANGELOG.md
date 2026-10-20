@@ -9,6 +9,8 @@ backfilled from the git log.
 - Add an all day event 21 and 22 November, the hen do now makes an all-day event over both days on the Bot
   calendar (one day or several, never a to-do). Said with no time, the card asks At what time? with an All day
   button, and typing All day (or 3pm) under it answers the card.
+- All-day events the bot added can be moved (move the hen do to 28 November: as many days as before) and
+  deleted (delete the hen do), each on a card, and undo that puts either back.
 
 ## 2026-10-19
 

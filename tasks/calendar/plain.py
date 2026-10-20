@@ -275,22 +275,55 @@ async def add_check(request: Request, data: dict) -> str:
 async def _mine(request: Request, words, day_said=None) -> rules.Event:
     """The next event whose name fits the words (a repeating one: its happening on the day said, if
     one was; pass no day for a change from a day on, where the day is where the series is cut);
-    one on another calendar is said, never changed."""
+    one on another calendar is said, never changed. An all-day one the bot added is its own too (21 Oct);
+    a repeating all-day one (a birthday's is hidden, never found) is said, never changed."""
     if not str(words or "").strip():
         raise UserError(f"{ICON} Which event?")
     events = await store.events(request.user.id)
     found = rules.next_matching(events, str(words), clock.now())
     if found.repeats and day_said:
         found = rules.matching_on(events, str(words), read_day(day_said, days.today()))
-    if not found.mine or found.all_day:
+    if not found.mine:
         raise UserError(rules.NOT_MINE.format(icon=ICON, title=found.title))
+    if found.all_day and found.repeats:
+        raise UserError(f"{ICON} **{found.title}** repeats all day: I can't change that one in words yet.")
     return found
+
+
+def _all_day_data(event: rules.Event) -> dict:
+    return {"ref": event.ref, "title": event.title, "all_day": True, "was": [event.first_day.isoformat(), event.last_day.isoformat()]}
+
+
+def _move_all_day_card(data: dict, event: rules.Event) -> Proposal:
+    """ "move the hen do to 28 November": to a new first day, as many days as before unless a last day is said."""
+    if data.get("time") or data.get("length") or data.get("ends_at"):
+        raise UserError(f"{ICON} **{event.title}** is all day: say the day to move it to, like “move it to 28 November”.")
+    if not data.get("day"):
+        raise UserError(f"{ICON} Move it to which day?")
+    today = days.today()
+    first = read_day(data["day"], today)
+    last = first + (event.last_day - event.first_day)
+    if data.get("last_day"):
+        first, last = _days_of({"day": data["day"], "last_day": data["last_day"]}, today)
+    if (first, last) == (event.first_day, event.last_day):
+        raise UserError(f"{ICON} **{event.title}** is on those days already.")
+    return Proposal(
+        lines=(f"**{event.title}**", design.change(rules.days_text(event.first_day, event.last_day, today), rules.days_text(first, last, today))),
+        data={**_all_day_data(event), "first": first.isoformat(), "last": last.isoformat()},
+        warnings=("That day has gone by",) if last < today else (), kind="change",
+    )
+
+
+def _dates(pair) -> tuple:
+    return tuple(date.fromisoformat(each) for each in pair)
 
 
 async def move_card(request: Request, data: dict, guessed: frozenset) -> Proposal:
     """ "move the dentist to 4pm", "move the dentist to Monday": its day, its time or its length."""
     writer = _writer()
     event = await _mine(request, data.get("search"), None if series.scope_of(data) == series.FOLLOWING else data.get("day"))
+    if event.all_day:
+        return _move_all_day_card(data, event)
     if event.repeats:
         if not (data.get("time") or data.get("length") or data.get("ends_at")):
             raise UserError(f"{ICON} To what time?")
@@ -314,6 +347,13 @@ async def move_card(request: Request, data: dict, guessed: frozenset) -> Proposa
 async def move_save(request: Request, data: dict) -> str:
     if data.get("op") in (series.ALL, series.FOLLOWING):
         return await series.series_save(request, data, _writer())
+    if data.get("all_day"):
+        moved = await _writer().move_all_day(data["ref"], *_dates((data["first"], data["last"])))
+        await database.run(store.db_put, request.user.id, moved)
+        await database.run(store.db_change, request.user.id, store.MOVED, moved.ref, moved.title, (None, None), (None, None), clock.now(),
+                           {"all_day": True, "before": data["was"], "after": [data["first"], data["last"]]})
+        _changed(request.user.id)
+        return f"{ICON} Moved · **{moved.title}** · {rules.days_text(moved.first_day, moved.last_day, days.today())}"
     moved = await _writer().move(data["ref"], _moment(data["start"]), _moment(data["end"]))
     await database.run(store.db_put, request.user.id, moved)
     was = tuple(_moment(each) for each in data["was"])
@@ -326,6 +366,8 @@ async def move_check(request: Request, data: dict) -> str:
     if data.get("op") in (series.ALL, series.FOLLOWING):
         return await series.series_check(request, data, _writer())
     found = await _writer().get(data["ref"])
+    if data.get("all_day"):
+        return "" if found is not None and found.first_day == date.fromisoformat(data["first"]) else "the Bot calendar still has the old day"
     return "" if found is not None and found.start == _moment(data["start"]) else "the Bot calendar still has the old time"
 
 
@@ -334,6 +376,11 @@ async def delete_card(request: Request, data: dict, guessed: frozenset) -> Propo
     event = await _mine(request, data.get("search"), data.get("day"))
     if event.repeats:
         return await series.delete_card(event, writer)
+    if event.all_day:
+        return Proposal(
+            lines=(f"**{event.title}** · {rules.days_text(event.first_day, event.last_day, days.today())}",),
+            data=_all_day_data(event), kind="remove", destructive=True, confirm_label="Delete",
+        )
     return Proposal(
         lines=(f"**{event.title}** · {rules.span_text(event.start, event.end, days.today())}",),
         data={"ref": event.ref, "title": event.title, "was": [_iso(event.start), _iso(event.end)]},
@@ -346,8 +393,11 @@ async def delete_save(request: Request, data: dict) -> str:
         return await series.delete_save(request, data, _writer())
     await _writer().delete(data["ref"])
     await database.run(store.db_drop, request.user.id, source.BOT, data["ref"])
-    was = tuple(_moment(each) for each in data["was"])
-    await database.run(store.db_change, request.user.id, store.DELETED, data["ref"], data["title"], was, (None, None), clock.now())
+    if data.get("all_day"):
+        await database.run(store.db_change, request.user.id, store.DELETED, data["ref"], data["title"], (None, None), (None, None), clock.now(), {"all_day": True, "before": data["was"]})
+    else:
+        was = tuple(_moment(each) for each in data["was"])
+        await database.run(store.db_change, request.user.id, store.DELETED, data["ref"], data["title"], was, (None, None), clock.now())
     _changed(request.user.id)
     return f"🗑️ {ICON} **{data['title']}** · deleted"
 
@@ -393,10 +443,18 @@ async def undo(request: Request, data: dict, guessed: frozenset) -> str:
         await writer.delete(ref)
         await database.run(store.db_drop, request.user.id, source.BOT, ref)
         said = f"↩️ {ICON} **{title}** · taken off the calendar"
+    elif kind == store.MOVED and detail.get("all_day"):
+        back = await writer.move_all_day(ref, *_dates(detail["before"]))
+        await database.run(store.db_put, request.user.id, back)
+        said = f"↩️ {ICON} **{title}** · back to {rules.days_text(back.first_day, back.last_day, days.today())}"
     elif kind == store.MOVED:
         back = await writer.move(ref, before[0], before[1])
         await database.run(store.db_put, request.user.id, back)
         said = f"↩️ {ICON} **{title}** · back to {rules.span_text(back.start, back.end, days.today())}"
+    elif detail.get("all_day"):
+        again = await writer.add_all_day(title, *_dates(detail["before"]))
+        await database.run(store.db_put, request.user.id, again)
+        said = f"↩️ {ICON} **{title}** · back on the calendar"
     else:
         again = await writer.add(title, before[0], before[1])
         await database.run(store.db_put, request.user.id, again)
@@ -450,9 +508,11 @@ def writing_actions() -> list:
         Action(
             "calendar_move",
             "Move an event the bot added to the calendar to another day, time or length (\"move the dentist to 4pm\" -> search dentist, time 4pm; "
-            "\"move lunch with Sam to Monday\" -> day Monday), or change the times of a repeating one (\"work next Friday is 10 to 2\" -> "
+            "\"move lunch with Sam to Monday\" -> day Monday; an all-day one: \"move the hen do to 28 November\" -> search hen do, day 28 November), or change the times of a repeating one (\"work next Friday is 10 to 2\" -> "
             "search work, day next Friday, time 10, ends_at 2, scope one; \"work starts at 8:30 from next week\" -> day next Monday, time 8:30, scope following).",
-            (which, Field("day", _DAY + " For a repeating event: the day of the one meant, or the first day of the change."), Field("time", "The new start, as the user said it.", TIME), Field("length", "A new length, only when said.", MINUTES), ends_at, scope),
+            (which, Field("day", _DAY + " For a repeating event: the day of the one meant, or the first day of the change. For one over several days, its new first day."),
+             Field("last_day", "For an event over several days, a new last day, only when said (\"to 28 and 29 November\" -> day 28 November, last_day 29 November). Never work out a date."),
+             Field("time", "The new start, as the user said it.", TIME), Field("length", "A new length, only when said.", MINUTES), ends_at, scope),
             prepare=move_card, apply=move_save, verify=move_check, purpose=EACH_DAY, say=("move the dentist to 4pm",),
         ),
         Action(

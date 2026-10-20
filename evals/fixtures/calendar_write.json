@@ -29,6 +29,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -61,6 +62,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -93,6 +95,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -125,6 +128,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -157,6 +161,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -189,6 +194,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -221,6 +227,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -253,6 +260,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -285,6 +293,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -317,6 +326,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -349,6 +359,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -385,6 +396,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -421,6 +433,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -457,6 +470,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -493,6 +507,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -529,6 +544,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -565,6 +581,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -601,6 +618,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -637,6 +655,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -673,6 +692,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -709,6 +729,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -745,6 +766,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -781,6 +803,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -833,6 +856,80 @@
           "Work",
           "Dentist",
           "Swimming"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ],
+        "habits": [
+          "Morning",
+          "Stretch"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "w28",
+      "message": "move the hen do to 28 November",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "an all-day event the bot added, moved",
+      "names": {
+        "calendar": [
+          "Hen do",
+          "Dentist",
+          "Work"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ],
+        "habits": [
+          "Morning",
+          "Stretch"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "w29",
+      "message": "delete the hen do",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "an all-day event the bot added, deleted",
+      "names": {
+        "calendar": [
+          "Hen do",
+          "Dentist",
+          "Work"
         ],
         "nudges": [
           "Call the bank",
@@ -1082,9 +1179,10 @@
         "calendar_add",
         {
           "title": "book club",
+          "day": "the 1st",
+          "time": "7:00 pm",
           "repeat": "monthly",
           "month_day": 1,
-          "time": "7:00 pm",
           "times": 6,
           "guessed": [],
           "not_included": []
@@ -1158,7 +1256,8 @@
           "time": "8:30 am",
           "scope": "following",
           "guessed": [
-            "time"
+            "time",
+            "day"
           ],
           "not_included": []
         }
@@ -1394,10 +1493,70 @@
       "recorded": [
         "calendar_add",
         {
+          "title": "Sam & Jo's Hen/Stag",
           "day": "21 November",
           "last_day": "22 November",
           "time": "3:00 pm",
-          "title": "Sam & Jo's Hen/Stag",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "w28",
+      "task": "calendar",
+      "message": "move the hen do to 28 November",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_move",
+      "data": {
+        "search": "hen do",
+        "day": "28 November"
+      },
+      "recorded": [
+        "calendar_move",
+        {
+          "search": "hen do",
+          "day": "28 November",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "w28",
+      "task": "calendar",
+      "message": "move the hen do to 28 and 29 November",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_move",
+      "data": {
+        "search": "hen do",
+        "day": "28 November",
+        "last_day": "29 November"
+      },
+      "recorded": [
+        "calendar_move",
+        {
+          "search": "hen do",
+          "day": "28 November",
+          "last_day": "29 November",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "w29",
+      "task": "calendar",
+      "message": "delete the hen do",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_delete",
+      "data": {
+        "search": "hen do"
+      },
+      "recorded": [
+        "calendar_delete",
+        {
+          "search": "hen do",
           "guessed": [],
           "not_included": []
         }

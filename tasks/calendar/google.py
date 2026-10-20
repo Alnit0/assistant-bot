@@ -245,6 +245,13 @@ class GoogleSource:
         moved = await asyncio.to_thread(_call, "PATCH", self._path("events", ref), None, body)
         return to_event(moved, self.origin)
 
+    async def move_all_day(self, ref: str, first: date, last: date) -> Event:
+        """An all-day event to other days (the API's end is the day after its last)."""
+        self._writable()
+        body = {"start": {"date": first.isoformat()}, "end": {"date": (last + timedelta(days=1)).isoformat()}}
+        moved = await asyncio.to_thread(_call, "PATCH", self._path("events", ref), None, body)
+        return to_event(moved, self.origin)
+
     async def delete(self, ref: str) -> None:
         self._writable()
         await asyncio.to_thread(_call, "DELETE", self._path("events", ref))
