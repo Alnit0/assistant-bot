@@ -3,9 +3,9 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Now (21 Oct):** moving and deleting all-day events (refused before).
-Fixed and tested; shipping, then the self-test. Before: all-day events
-added, shipped `2e190f2` at 11:29 am, self-test 150 of 150.
+**Idle, last was** 21 Oct: all-day events added (`2e190f2`), then moved
+and deleted on cards with undo, shipped `6b3e97b` at 11:57 am; the
+self-test after: 6 touched steps, none failed.
 
 **Next, at the next restart** (not overnight): the settle-in week, a
 feature freeze to Sun 25 Oct (fixes and polish from real use only, new
@@ -20,7 +20,7 @@ set). The sheet mirror waits for a sheet (docs/GYM-SHEET-SETUP.md).
 **Sundays:** run `/suggest` (the brainstorm with the wishlist).
 **Nightly 17 Oct, 3:30 am:** 149 of 150 on `98697d4`, none failed.
 
-**Live:** `2e190f2` since 21 Oct, 11:29 am; previous `9b9a078` (`-Back`).
+**Live:** `6b3e97b` since 21 Oct, 11:57 am; previous `2e190f2` (`-Back`).
 **Drafts and worktrees:** `docs/drafts/gym-onboarding.md`; three old
 worktrees, all merged
 

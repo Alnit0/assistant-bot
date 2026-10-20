@@ -15,11 +15,12 @@ see: `docs/DEVELOPMENT.md`, "The self-test".
 <!-- run history: written by python -m selftest -->
 ## Run history
 
-The latest 15 of 68 runs, newest first. All of them, a line a run, are in
+The latest 15 of 69 runs, newest first. All of them, a line a run, are in
 `data/selftest/history.csv` (never rewritten). The first step to fail in a stage is a bug in the forum until it passes again.
 
 | Run | Commit | What ran | Passed | Failed | Failed steps | Spend | Took |
 |---|---|---|---|---|---|---|---|
+| 2026-10-21 11:58 | `6b3e97b` | calendar | 6 of 6 | 0 | · | US$0.0000 (recorded) | 0 min 57 s |
 | 2026-10-21 11:30 | `2e190f2` | full | 149 of 150 | 0 | · | US$0.0000 (recorded) | 18 min 41 s |
 | 2026-10-19 11:41 | `9b9a078` | day | 97 of 98 | 0 | · | US$0.0000 (recorded) | 11 min 11 s |
 | 2026-10-19 11:07 | `77790c7` | full | 149 of 150 | 0 | · | US$0.0000 (recorded) | 18 min 30 s |
@@ -34,7 +35,6 @@ The latest 15 of 68 runs, newest first. All of them, a line a run, are in
 | 2026-10-16 13:38 | `3096e99` | full | 149 of 150 | 0 | · | US$0.0000 (recorded) | 18 min 58 s |
 | 2026-10-16 13:11 | `0c34ef0` | full | 149 of 150 | 0 | · | US$0.0000 (recorded) | 18 min 46 s |
 | 2026-10-16 12:29 | `99bf62f` | full | 149 of 150 | 0 | · | US$0.0000 (recorded) | 18 min 47 s |
-| 2026-10-16 12:06 | `846540a` | full | 149 of 150 | 0 | · | US$0.0000 (recorded) | 18 min 45 s |
 
 <!-- end of run history -->
 
