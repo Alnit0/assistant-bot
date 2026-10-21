@@ -2,36 +2,39 @@ import asyncio
 import logging
 from datetime import date, timedelta
 
-from core import cards, clock, config, database, design, hubcard, names, scheduler, summaries
+from core import cards, clock, database, design, names, scheduler, summaries, thumbsup, timeinput
 from core import day as days
-from core.actions import BOOLEAN, EACH_DAY, SEE, SET_UP, Action, Field, Proposal, Request, Shown, State
-from core.cards import Button, Card
+from core.actions import BOOLEAN, EACH_DAY, INTEGER, PREPARED, SEE, SET_UP, TAKEN, Action, DayItem, Field, Proposal, Request, Shown, State
+from core.cards import Button, Card, Embed
 from core.errors import UserError
-from tasks.reading import pick, rules, sources, store
-from tasks.reading.rules import ICON, LABELS, TASK, THEMES, TITLE, Candidate, Read
+from tasks.reading import news, pick, rules, sources, store
+from tasks.reading.news import ALL_TOPICS, FROM_THEME, ICON, LABELS, TITLE, Story
+from tasks.reading.rules import TASK
 
 log = logging.getLogger("assistant")
 
 # ---------------------------------------------------------------------------
-# The daily read's words, its morning job and its buttons.
+# The morning news (behind READING_ENABLED, off): its morning job, its card
+# and its words.
 #
-#   5:30 am       the feeds read, the new items' pages read down to their text
-#                 (never a paywall, never a headline alone), Claude picks one
-#                 for today's theme with a TL;DR from its text
-#   6:00 am       its card in the hub, under the other task cards: the title
-#                 as a link, the source, the reading time, the TL;DR small,
-#                 👍 and 👎; the briefing's overview has one line
-#   in words      another one, something shorter, something deeper, save it
-#                 for later (a to-do with the link), what have I read this
-#                 week, more like this, less news, more about agents, harder,
-#                 what do you know about what I like, add or remove a source
+#   5:30 am       every feed read at once (a timeout each; one that fails is
+#                 noted in the run log and skipped), the window's free items
+#                 each story once (tasks/reading/news.py), Claude picks 7 or 8
+#                 and writes their TL;DRs (tasks/reading/pick.py), the set kept
+#   6:00 am       in round 7's hub, one purple embed in the briefing's second
+#                 message (`day_items`); a 👍 on it is "good set today"
+#   in words      another one, more like 3, less AI, more NZ politics, skip
+#                 housing tomorrow, what do you know about what I like, the
+#                 news, add or remove a source
 #
-# A source that fails is quiet (logged); only every source failing three
-# days running is something to look at (the task's attention item).
+# What an article says goes to Claude and into the set's own message only:
+# never a log, #bot-log, a notification or the status line.
 # ---------------------------------------------------------------------------
-PICK_JOB, CARD_JOB = "pick", "card"
-TEXT_KEPT = 1500  # words of an article kept with the day's candidates
-TRIES = 12  # pages read at most to find the day's candidates
+PICK_JOB = "pick"
+LIKED, UNLIKED = "liked", "unliked"  # 👍 on the news, and taken away (core/thumbsup.py)
+FEED_TIMEOUT = 20  # seconds a feed gets
+PAGE_TIMEOUT = 15  # seconds a chosen article's page gets
+SHOWN_FOR = 7  # days a story shown is never shown again
 
 
 def today() -> date:
@@ -39,252 +42,189 @@ def today() -> date:
 
 
 def changed(user_id: int) -> None:
-    hubcard.changed(TASK, user_id, lambda: hub_card(user_id))
-    summaries.changed(TASK, user_id)
+    summaries.changed(TASK, user_id)  # the briefing's second message is drawn again
 
 
-# --- the card ---------------------------------------------------------------------------------------------------
-def buttons(read: Read) -> tuple:
-    day = read.day.isoformat()
-    row = [
-        Button("", TASK, rules.VOTE, f"{day}:up", emoji="👍", style=cards.PRIMARY),
-        Button("", TASK, rules.VOTE, f"{day}:down", emoji="👎", style=cards.PRIMARY),
-    ]
-    if read.vote < 0:
-        row.append(Button("Another one", TASK, rules.ANOTHER_BUTTON, day, emoji="🔄", style=cards.PRIMARY))
-    return (tuple(row),)
-
-
-def card(read: Read) -> Card:
-    lines = [rules.headline(read), *(design.small(line) for line in read.tldr.splitlines())]
-    if read.vote:
-        lines.append(design.small(rules.vote_note(read)))
-    layout = (design.topic(design.card_title(f"{ICON} {TITLE} · {LABELS.get(read.theme, read.theme)}"), [design.Entry("\n".join(lines), design.QUIET, buttons(read)[0])], status=design.QUIET),)
-    return Card(rules.card_text(read), buttons(read), layout)
-
-
-async def hub_card(user_id: int) -> Card | None:
-    read = await store.current(user_id, today())
-    return card(read) if read is not None else None
-
-
-async def post_job(job) -> None:
-    """The morning routine's step: the day's read, under the other task cards."""
-    user_id = job.user_id or await database.run(scheduler._db_owner)
-    if user_id is None:
-        scheduler.note(job, "not posted: there is nobody to post for")
-        return
-    posted = await hubcard.post(TASK, user_id, lambda: hub_card(user_id))
-    scheduler.note(job, "posted" if posted is not None else "not posted: no read picked today")
-
-
-# --- reading the sources and picking --------------------------------------------------------------------------------
+# --- the sources ---------------------------------------------------------------------------------------------------
 async def sources_for(user_id: int) -> list[sources.Source]:
-    """The starter list, with what was added or removed in words."""
-    found = {each.url: each for each in sources.starter()}
+    """The starter feeds, with what was added or removed in words (an old daily read's theme read as its topic)."""
+    found = {each.url: sources.Source(each.name, each.url, FROM_THEME.get(each.theme, each.theme)) for each in sources.starter()}
     for url, name, theme, state in await database.run(store.db_source_changes, user_id):
         if state == store.REMOVED:
             found.pop(url, None)
         else:
-            found[url] = sources.Source(name, url, theme)
-    return list(found.values())
+            found[url] = sources.Source(name, url, FROM_THEME.get(theme, theme))
+    return [each for each in found.values() if each.theme in ALL_TOPICS]
 
 
-async def _items(user_id: int, day: date) -> list[rules.Item]:
-    """Every feed's items; a feed that fails is logged and left out. Records the day's fetch."""
+async def read_feeds(user_id: int, day: date) -> tuple[list, list[str]]:
+    """Every feed's items, read at once with a timeout each; the names of those that failed. Records the day's fetch."""
     listed = await sources_for(user_id)
-    read = await asyncio.gather(*(sources.feed(each) for each in listed), return_exceptions=True)
-    found, failed = [], 0
+    read = await asyncio.gather(*(asyncio.wait_for(sources.feed(each), FEED_TIMEOUT) for each in listed), return_exceptions=True)
+    found, failed = [], []
     for source, result in zip(listed, read):
         if isinstance(result, BaseException):
-            failed += 1
-            log.info("Daily read: %s could not be read (%s)", source.name, type(result).__name__)
+            failed.append(source.name)
+            log.info("Morning news: %s could not be read (%s)", source.name, type(result).__name__)
         else:
             found += result
-    await database.run(store.db_fetched, user_id, day, len(listed), failed)
-    return found
+    await database.run(store.db_fetched, user_id, day, len(listed), len(failed))
+    return found, failed
 
 
-async def candidates(user_id: int, day: date, theme: str) -> list[Candidate]:
-    """Up to CANDIDATES new articles whose text could be read, today's theme first. Kept for the day."""
-    now = clock.now()
-    seen = await database.run(store.db_seen, user_id)
-    ordered = rules.for_theme(rules.eligible(await _items(user_id, day), seen, now), theme)
-    found: list[Candidate] = []
-    for item in ordered[:TRIES]:
-        try:
-            text = await sources.article(item.url)
-        except Exception as problem:
-            log.info("Daily read: an article could not be read (%s)", type(problem).__name__)
-            continue
-        if not rules.readable(text):
-            continue  # a paywall, a teaser or a link post: never a TL;DR from the headline alone
-        found.append(Candidate(item, " ".join(text.split()[:TEXT_KEPT]), rules.minutes(text)))
-        if len(found) >= rules.CANDIDATES:
-            break
-    await database.run(store.db_keep_candidates, user_id, day, found)
-    return found
+async def text_of(item) -> str:
+    """A chosen article's text, for its TL;DR; its feed snippet when the page can't be read or is behind a paywall."""
+    try:
+        page = await asyncio.wait_for(sources.article(item.url), PAGE_TIMEOUT)
+    except Exception as problem:
+        log.info("Morning news: an article's page could not be read (%s)", type(problem).__name__)
+        page = ""
+    return page if rules.readable(page) else (item.snippet or item.title)
 
 
-async def _theme(user_id: int, day: date, profile: rules.Profile) -> str:
-    monday = day - timedelta(days=day.weekday())
-    shown = await database.run(store.db_themes_between, user_id, monday, day - timedelta(days=1))
-    return rules.theme_for(day, profile, shown)
-
-
-async def _show(user_id: int, day: date, chosen: Candidate, tldr: str, rating: tuple[int, int] | None = None) -> Read:
-    read = Read(chosen.item.url, chosen.item.title, chosen.item.source, chosen.item.theme, chosen.minutes, tldr, day,
-                difficulty=rating[0] if rating else None, practicality=rating[1] if rating else None)
-    await database.run(store.db_show, user_id, read, clock.now())
-    changed(user_id)
-    return read
-
-
-async def pick_today(user_id: int, day: date) -> Read | None:
-    """The day's read: the sources read, Claude's pick shown. None when nothing could be picked."""
-    profile = await database.run(store.db_profile, user_id)
-    theme = await _theme(user_id, day, profile)
-    found = await candidates(user_id, day, theme)
-    picked = await pick.choose(found, theme, profile)
+# --- the morning's set --------------------------------------------------------------------------------------------
+async def build(user_id: int, day: date) -> tuple[list[Story], list[str]]:
+    """The day's set: read, picked, written and kept; and the feeds that failed. An empty set when nothing could be picked."""
+    items, failed = await read_feeds(user_id, day)
+    shown = await database.run(store.db_news_shown, user_id, day - timedelta(days=SHOWN_FOR))
+    found = news.eligible(items, news.window_start(clock.now()), shown)
+    prefs = await database.run(store.db_prefs, user_id)
+    liked = await database.run(store.db_liked_sets, user_id)
+    skipped = news.skipped_on(prefs, day)
+    picked = await pick.choose(found, day, news.guidance(prefs, day, liked), skipped)
     if picked is None:
-        return None
-    return await _show(user_id, day, *picked)
+        return [], failed
+    chosen, nexts = picked
+    texts = await asyncio.gather(*(text_of(found[index]) for index in chosen))
+    tldrs = await pick.write([(found[index], text) for index, text in zip(chosen, texts)])
+    stories = [Story(found[index].url, found[index].title, found[index].source, found[index].theme, tldr) for index, tldr in zip(chosen, tldrs)]
+    await database.run(store.db_put_news, user_id, day, stories, clock.now())
+    await database.run(store.db_put_spares, user_id, day, [found[index] for index in nexts])
+    changed(user_id)
+    return stories, failed
 
 
 async def pick_job(job) -> None:
-    """Before the briefing: the day's read, once. Safe to run twice."""
+    """Before the briefing: the day's set, once. Safe to run twice."""
     user_id = job.user_id or await database.run(scheduler._db_owner)
     if user_id is None:
         scheduler.note(job, "not picked: there is nobody to pick for")
         return
     day = today()
-    if await store.current(user_id, day) is not None:
+    if await database.run(store.db_news, user_id, day) is not None:
         scheduler.note(job, "not picked: today's is picked already")
         return
-    read = await pick_today(user_id, day)
-    scheduler.note(job, f"picked: {LABELS.get(read.theme, read.theme)}, {read.minutes} min" if read else "not picked: no article could be read today")
+    stories, failed = await build(user_id, day)
+    missing = f"; {len(failed)} feed{'' if len(failed) == 1 else 's'} not read: {', '.join(failed[:6])}{'…' if len(failed) > 6 else ''}" if failed else ""
+    scheduler.note(job, (f"{len(stories)} stories" if stories else "not picked: nothing could be picked today") + missing)
 
 
-async def another(user_id: int, kind: str = rules.ANOTHER) -> Read:
-    """Another one (shorter, deeper) from the day's articles, read afresh if they have run out."""
-    day = today()
-    shown = await store.current(user_id, day)
-    seen = await database.run(store.db_seen, user_id)
-    profile = await database.run(store.db_profile, user_id)
-    theme = shown.theme if shown is not None else await _theme(user_id, day, profile)
-    found = [each for each in await database.run(store.db_candidates, user_id, day) if each.item.url not in seen]
-    if not found:
-        found = await candidates(user_id, day, theme)
-    fitting = [each for each in found if rules.fits(each, kind, shown.minutes if shown else None)]
-    if not fitting:
-        raise UserError(f"{ICON} Nothing {'shorter' if kind == rules.SHORTER else 'deeper' if kind == rules.DEEPER else 'else'} to read today.")
-    picked = await pick.choose(fitting, theme, profile, kind)
-    if picked is None:
-        raise UserError(f"{ICON} Another one couldn't be picked just now. Try again in a moment.")
-    return await _show(user_id, day, *picked)
+# --- how it is shown --------------------------------------------------------------------------------------------------
+def yes_button(day: date) -> Button | None:
+    """What a 👍 on the set stands for: a good set that day. None with 👍 off."""
+    return Button("Good set", TASK, LIKED, day.isoformat(), emoji="👍", style=cards.SUCCESS) if thumbsup.enabled() else None
 
 
-# --- the buttons ----------------------------------------------------------------------------------------------------
-async def _vote(user_id: int, day: date, up: bool) -> Read | None:
-    shown = await store.current(user_id, day)
-    if shown is None:
-        return None
-    profile = await database.run(store.db_profile, user_id)
-    await database.run(store.db_set_profile, user_id, rules.voted(profile, shown.theme, up), clock.now())
-    return await database.run(store.db_vote, user_id, shown.url, 1 if up else -1)
+async def day_items(user_id: int, day: date) -> list:
+    """For round 7's hub: the day's set as one purple embed in the briefing's second message. Before round 7 the news is
+    not in the hub (Alex, 21 Oct): it is asked for in words."""
+    if design.current() != design.EMBEDS_ROUND:
+        return []
+    found = await database.run(store.db_news, user_id, day)
+    if found is None or not found[0]:
+        return []
+    stories, liked = found
+    return [DayItem(PREPARED, news.description(stories), icon=ICON, title=TITLE, state=TAKEN if liked else "pending", yes=yes_button(day))]
 
 
-async def on_vote(press: cards.Press) -> str:
-    day_text, _, which = press.arg.partition(":")
-    read = await _vote(press.user.id, date.fromisoformat(day_text), which == "up")
-    if read is None:
-        return "that read is gone"
-    await press.update(card(read))
-    changed(press.user.id)
-    return rules.vote_note(read)
+def news_card(stories: list[Story], day: date) -> Card:
+    """The set as one purple embed of its own, for "the news" said anywhere."""
+    embed = Embed(news.description(stories), f"{ICON} {TITLE} · {day:%a} {day.day} {day:%b}", design.PREPARED)
+    return Card(news.plain_text(stories, day), embeds=(embed,), thumbs_up=yes_button(day))
 
 
-async def on_another(press: cards.Press) -> str:
-    try:
-        read = await another(press.user.id)
-    except UserError as said:
-        return str(said)
-    await press.update(card(read))
-    return f"another: {read.minutes} min"
+# --- 👍 on the set ------------------------------------------------------------------------------------------------------
+async def on_liked(press: cards.Press) -> str:
+    """👍 on the news (core/thumbsup.py): a good set that day, kept as a light signal for the next picks."""
+    day = date.fromisoformat(press.arg)
+    if not await database.run(store.db_like_news, press.user.id, day, True):
+        return "that day's news is gone"
+    press.offer_undo(Button("Undo", TASK, UNLIKED, press.arg))
+    return f"{ICON} noted: a good set"
+
+
+async def on_unliked(press: cards.Press) -> str:
+    await database.run(store.db_like_news, press.user.id, date.fromisoformat(press.arg), False)
+    return f"{ICON} not noted after all"
 
 
 def register() -> None:
-    cards.register(TASK, rules.VOTE, on_vote)
-    cards.register(TASK, rules.ANOTHER_BUTTON, on_another)
+    cards.register(TASK, LIKED, on_liked)
+    cards.register(TASK, UNLIKED, on_unliked)
 
 
-# --- plain words ----------------------------------------------------------------------------------------------------
-async def answer_another(request: Request, data: dict, guessed: frozenset):
-    kind = data.get("kind") if data.get("kind") in rules.KINDS else rules.ANOTHER
-    read = await another(request.user.id, kind)
-    message_id = await cards.send(request.channel_id, card(read))
-    return Shown(rules.headline(read) if message_id is not None else "not shown")
+# --- plain words --------------------------------------------------------------------------------------------------------
+async def show(request: Request, data: dict, guessed: frozenset):
+    """Today's news anywhere, or what it knows about what he likes."""
+    if data.get("what") == "prefs":
+        return news.profile_text(await database.run(store.db_prefs, request.user.id), today())
+    found = await database.run(store.db_news, request.user.id, today())
+    if found is None or not found[0]:
+        return f"{ICON} No morning news picked today yet."
+    message_id = await cards.send(request.channel_id, news_card(found[0], today()))
+    return Shown(news.plain_text(found[0], today()) if message_id is not None else "not shown")
 
 
-async def show(request: Request, data: dict, guessed: frozenset) -> str:
-    if data.get("what") == "profile":
-        return rules.profile_text(await database.run(store.db_profile, request.user.id))
+async def another(request: Request, data: dict, guessed: frozenset) -> str:
+    """ "another one": the best story not shown yet today, its TL;DR written now, as a reply."""
     day = today()
-    reads = await database.run(store.db_between, request.user.id, day - timedelta(days=day.weekday()), day)
-    return rules.week_answer(reads)
+    found = await database.run(store.db_news, request.user.id, day)
+    if found is None:
+        raise UserError(f"{ICON} No morning news picked today yet.")
+    item = await database.run(store.db_next_spare, request.user.id, day)
+    if item is None:
+        raise UserError(f"{ICON} That's every story worth showing today.")
+    (tldr,) = await pick.write([(item, await text_of(item))])
+    shown_already = len(found[0]) + 1
+    return news.story_line(shown_already, Story(item.url, item.title, item.source, item.theme, tldr))
 
 
-async def save_card(request: Request, data: dict, guessed: frozenset) -> Proposal:
-    if not config.TODOS_ENABLED:
-        raise UserError(f"{ICON} To-dos are off, so there is nowhere to save it for later.")
-    read = await store.current(request.user.id, today())
-    if read is None:
-        raise UserError(f"{ICON} There is no read today to save.")
-    return Proposal(lines=(f"📝 **Read: {read.title}** · any day", design.small(read.url)), data={"url": read.url, "title": read.title})
+def _skip_day(said, now) -> date:
+    """The day a skip is for: the one said, else the next morning's set (today's, before 5:30 am)."""
+    local = days.day_of(now)
+    if said:
+        return timeinput.parse_date(str(said), local)
+    return local if days.local_time(now) < news.RUN_AT else local + timedelta(days=1)
 
 
-async def save_apply(request: Request, data: dict) -> str:
-    # The to-dos task's own store and its own word that it changed: the one write into another task's
-    # list, by Alex's word ("save it for later adds a to-do with the link")
-    from tasks.todos import plain as todos_plain
-    from tasks.todos import store as todos_store
-
-    now = clock.now()
-    await database.run(todos_store.db_add, request.user.id, f"Read: {data['title']} {data['url']}", None, today(), now)
-    await database.run(store.db_saved, request.user.id, data["url"])
-    todos_plain.changed(request.user.id)
-    return f"📝 Saved for later · on your to-dos"
-
-
-async def save_check(request: Request, data: dict) -> str:
-    from tasks.todos import store as todos_store
-
-    found = [each for each in await todos_store.every(request.user.id) if data["url"] in each.text]
-    return "" if found else "the to-do isn't there"
-
-
-async def tune_card(request: Request, data: dict, guessed: frozenset) -> Proposal:
-    before = await database.run(store.db_profile, request.user.id)
-    after = before
-    if data.get("like_this") is not None:
-        read = await store.current(request.user.id, today())
-        if read is not None:
-            after = rules.voted(after, read.theme, bool(data["like_this"]))
-    after = rules.tuned(after, str(data.get("more_theme") or ""), str(data.get("less_theme") or ""), str(data.get("more_topic") or ""), str(data.get("less_topic") or ""), str(data.get("level") or ""))
-    lines = rules.changes(before, after)
+async def steer_card(request: Request, data: dict, guessed: frozenset) -> Proposal:
+    """ "more like 3", "less AI", "more NZ politics", "skip housing tomorrow": a card that says what changes."""
+    before = await database.run(store.db_prefs, request.user.id)
+    like = None
+    if data.get("like") is not None:
+        found = await database.run(store.db_news, request.user.id, today())
+        stories = found[0] if found else []
+        number = data["like"] if isinstance(data["like"], int) else 0
+        if not 1 <= number <= len(stories):
+            raise UserError(f"{ICON} There is no story {number} today." if stories else f"{ICON} No morning news picked today yet.")
+        like = stories[number - 1]
+    skip = str(data.get("skip") or "")
+    skip_on = _skip_day(data.get("skip_day"), clock.now()) if skip else None
+    after = news.steered(before, str(data.get("more") or ""), str(data.get("less") or ""), like, skip, skip_on, today())
+    lines = news.changes(before, after)
     if not lines:
-        raise UserError(f"{ICON} That is how the daily read is already.")
-    return Proposal(lines=tuple(lines), data={"profile": after.as_dict()}, kind="change")
+        raise UserError(f"{ICON} That is how the morning news is already.")
+    return Proposal(lines=tuple(lines), data={"prefs": after.as_dict()}, kind="change")
 
 
-async def tune_apply(request: Request, data: dict) -> str:
-    await database.run(store.db_set_profile, request.user.id, rules.Profile.from_dict(data["profile"]), clock.now())
-    return f"{ICON} Noted for the next reads"
+async def steer_apply(request: Request, data: dict) -> str:
+    await database.run(store.db_set_prefs, request.user.id, news.Prefs.from_dict(data["prefs"]), clock.now())
+    return f"{ICON} Noted for the next mornings"
 
 
-async def tune_check(request: Request, data: dict) -> str:
-    kept = await database.run(store.db_profile, request.user.id)
-    return "" if kept.as_dict() == rules.Profile.from_dict(data["profile"]).as_dict() else "the change didn't save"
+async def steer_check(request: Request, data: dict) -> str:
+    kept = await database.run(store.db_prefs, request.user.id)
+    return "" if kept.as_dict() == news.Prefs.from_dict(data["prefs"]).as_dict() else "the change didn't save"
 
 
 async def source_card(request: Request, data: dict, guessed: frozenset) -> Proposal:
@@ -297,19 +237,19 @@ async def source_card(request: Request, data: dict, guessed: frozenset) -> Propo
         except (names.Unknown, names.Ambiguous):
             raise UserError("Sources: " + ", ".join(each.name for each in listed) + ".")
         return Proposal(lines=(f"**{gone.name}** · {LABELS[gone.theme]}",), data={"url": gone.url, "name": gone.name, "theme": gone.theme, "state": store.REMOVED}, kind="remove")
-    url, theme = str(data.get("url") or "").strip(), str(data.get("theme") or "")
+    url, topic = str(data.get("url") or "").strip(), str(data.get("topic") or "")
     if not url.startswith("http"):
         raise UserError("Which feed? Its address, starting with https://")
-    if theme not in THEMES:
-        raise UserError("Which theme is it for: " + ", ".join(LABELS[each] for each in THEMES) + "?")
+    if topic not in ALL_TOPICS:
+        raise UserError("Which topic is it for: " + ", ".join(LABELS[each] for each in ALL_TOPICS) + "?")
     try:
-        found = await sources.feed(sources.Source(str(data.get("name") or url), url, theme))
+        found = await sources.feed(sources.Source(str(data.get("name") or url), url, topic))
     except Exception:
         raise UserError("That feed couldn't be read: nothing added.") from None
     if not found:
         raise UserError("That feed has nothing in it: nothing added.")
     name = str(data.get("name") or "").strip() or found[0].source
-    return Proposal(lines=(f"**{name}** · {LABELS[theme]} · {len(found)} items now", design.small(url)), data={"url": url, "name": name, "theme": theme, "state": store.ADDED})
+    return Proposal(lines=(f"**{name}** · {LABELS[topic]} · {len(found)} items now", design.small(url)), data={"url": url, "name": name, "theme": topic, "state": store.ADDED})
 
 
 async def source_apply(request: Request, data: dict) -> str:
@@ -324,68 +264,63 @@ async def source_check(request: Request, data: dict) -> str:
 
 
 async def state(request: Request) -> State:
-    read = await store.current(request.user.id, today())
-    lines = [f"today's read: {read.title} ({LABELS[read.theme]}, {read.minutes} min)" if read else "today's read: none yet"]
+    found = await database.run(store.db_news, request.user.id, today())
+    lines = [f"story {number}: {each.title} ({LABELS[each.topic]})" for number, each in enumerate(found[0], start=1)] if found else ["today's news: not picked yet"]
     lines.append("sources: " + ", ".join(each.name for each in await sources_for(request.user.id)))
-    return State("The user's daily read", tuple(lines), "nothing yet")
+    return State("The user's morning news today (the stories are numbered as shown)", tuple(lines), "nothing yet")
 
 
 def actions() -> list:
-    themes = tuple(THEMES)
+    topics = tuple(ALL_TOPICS)
+    topic_words = "; ".join(f"{each} = {LABELS[each]}" for each in ALL_TOPICS)
     return [
         Action(
-            "reading_another",
-            "Another article instead of today's (\"another one\", \"something else to read\"), or one shorter or deeper "
-            "(\"something shorter\" -> kind shorter, \"something deeper\" -> kind deeper).",
-            (Field("kind", "another, shorter or deeper. Leave out for just another.", choices=rules.KINDS),),
-            needs_card=False, run=answer_another, purpose=EACH_DAY, say=("another one", "something shorter"),
+            "news_another",
+            "One more story from today's morning news, the next best not shown yet (\"another one\", \"one more story\", \"anything else in the news?\").",
+            (), needs_card=False, run=another, purpose=EACH_DAY, say=("another one",),
         ),
         Action(
-            "reading_save",
-            "Save today's read for later (\"save it for later\", \"save this article\"): a to-do with its link.",
-            (), prepare=save_card, apply=save_apply, verify=save_check, purpose=EACH_DAY, say=("save it for later",),
-        ),
-        Action(
-            "reading_show",
-            "What the user has read this week (\"what have I read this week?\" -> what week), or what the daily read knows "
-            "about what they like (\"what do you know about what I like to read?\" -> what profile).",
-            (Field("what", "week or profile.", choices=("week", "profile"), required=True),),
-            needs_card=False, run=show, purpose=SEE, say=("what have I read this week?",),
-        ),
-        Action(
-            "reading_tune",
-            "Shape what the daily read picks: \"more like this\" -> like_this true, \"less like this\" -> like_this false, "
-            "\"less news\" -> less_theme news, \"more programming\" -> more_theme programming, \"more about agents\" -> "
-            "more_topic agents, \"harder\", \"easier\" or \"more practical\" -> level.",
+            "news_steer",
+            "Shape what the morning news picks from now on: \"more like 3\" -> like 3 (story 3 of today's); \"less AI\" -> less ai; "
+            "\"more NZ politics\" -> more nz_politics; \"skip housing tomorrow\" -> skip nz_money, skip_day tomorrow (one day only). "
+            f"Topics: {topic_words} (housing, house prices, interest rates, the OCR and the economy are nz_money).",
             (
-                Field("like_this", "true for more like today's read, false for less like it.", BOOLEAN),
-                Field("more_theme", "A theme to have more often.", choices=themes),
-                Field("less_theme", "A theme to have less often.", choices=themes),
-                Field("more_topic", "A topic to have more about, in a word or two (\"agents\")."),
-                Field("less_topic", "A topic to have less about, in a word or two."),
-                Field("level", "harder, easier, or more_practical (\"more practical\", \"more hands-on\").", choices=(rules.HARDER, rules.EASIER, rules.PRACTICAL)),
+                Field("like", "The number of today's story to have more like, as said (\"more like 3\" -> 3).", INTEGER),
+                Field("more", "A topic to have more of.", choices=topics),
+                Field("less", "A topic to have less of.", choices=topics),
+                Field("skip", "A topic to leave out on one day.", choices=topics),
+                Field("skip_day", "The day to leave it out, exactly as said (\"tomorrow\", \"Friday\"). Leave out when no day is said."),
             ),
-            prepare=tune_card, apply=tune_apply, verify=tune_check, purpose=SET_UP, say=("more like this", "less news"),
+            prepare=steer_card, apply=steer_apply, verify=steer_check, purpose=SET_UP, say=("less AI", "more like 3"),
         ),
         Action(
-            "reading_source",
-            "Add a feed to the daily read's sources (\"add https://example.com/feed.xml to my reading, for programming\"), or "
-            "remove one (\"stop using The Verge\" -> remove true, name The Verge).",
+            "news_show",
+            "Today's morning news (\"the news\", \"show me today's news\" -> what today), or what it knows about what the user likes in "
+            "the news (\"what do you know about my news?\" -> what prefs).",
+            (Field("what", "today or prefs.", choices=("today", "prefs"), required=True),),
+            needs_card=False, run=show, purpose=SEE, say=("show me today's news",),
+        ),
+        Action(
+            "news_source",
+            "Add a news feed (\"add https://example.com/feed.xml to my news, for tech\"), or remove one (\"stop using The Verge\" -> "
+            "remove true, name The Verge).",
             (
                 Field("remove", "true to remove a source.", BOOLEAN),
                 Field("url", "The feed's address, as given."),
                 Field("name", "The source's name, as said."),
-                Field("theme", "Which theme it is for, when adding.", choices=themes),
+                Field("topic", "Which topic it is for, when adding.", choices=topics),
             ),
-            prepare=source_card, apply=source_apply, verify=source_check, purpose=SET_UP, say=("remove The Verge from my reading",),
+            prepare=source_card, apply=source_apply, verify=source_check, purpose=SET_UP, say=("remove The Verge from my news",),
         ),
     ]
 
 
 ONLY_FOR = (
-    "The user's daily read: one article a day for keeping learning (AI usage, programming, tech news). Asking for another "
-    "one, something shorter or deeper, saving it for later, what they have read this week, shaping what it picks (\"more "
-    "like this\", \"less news\", \"more about agents\", \"harder\"), what it knows about what they like, and adding or "
-    "removing a source. Not a to-do in general (the to-dos task), and not a question about a tech topic itself (chat)."
+    "The user's morning news: today's set of 7 or 8 news stories (world and NZ politics, world news, tech, AI, NZ housing and "
+    "money). Showing it (\"the news\"), one more story (\"another one\"), and steering what it picks from now on: more like one "
+    "of today's stories by its number (\"more like 3\"), more or less of a topic (\"less AI\", \"more NZ politics\"), leaving a "
+    "topic out on a day (\"skip housing tomorrow\"); what it knows about what they like; adding or removing a news source. Not "
+    "a to-do or a reminder (those tasks, even about reading something), not the diary, and not a question about a news topic "
+    "itself (chat)."
 )
-EXAMPLES = ("another one", "save it for later", "less news")
+EXAMPLES = ("another one", "less AI", "skip housing tomorrow")

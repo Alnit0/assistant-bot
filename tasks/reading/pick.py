@@ -1,149 +1,157 @@
 import logging
+import re
+from datetime import date
 
 from core import llm
-from tasks.reading import rules
-from tasks.reading.rules import ABOUT, LABELS, Candidate, Profile
+from tasks.reading import news
+from tasks.reading.news import ABOUT, LABELS, TOPICS, WEBDEV
 
 log = logging.getLogger("assistant")
 
 # ---------------------------------------------------------------------------
-# Claude picks the day's article from a few whose text was read, and writes
-# its TL;DR from that text. One request; Python checks what comes back (the
-# choice in range, the TL;DR at most three lines) and says nothing of a
-# choice it can't use. Claude never sees a headline without its article.
+# Claude's two parts of the morning news, a request each (Haiku):
+#
+#   choose   from the day's headlines and their feed snippets (numbered, with
+#            each one's topic and how many outlets carried it), the topic
+#            slots, the wildcard's rule and his preferences as plain data:
+#            7 or 8 numbers, and the next best ranked for "another one".
+#            Python checks the answer (news.checked_pick): only numbers it
+#            gave, one a topic where any exist, never more than 8
+#   write    a TL;DR of about 30 words each, from each chosen article's text
+#            (or its snippet). Python checks each one's length; the link is
+#            always the item's own, never a word of Claude's
+#
+# What an article says goes to Claude here and nowhere else: never a log,
+# #bot-log, a notification or the status line.
 # ---------------------------------------------------------------------------
 PURPOSE = "reading"
-TOOL = "pick"
-WORDS_SHOWN = 450  # of each article, for choosing and for the TL;DR
-MAX_TOKENS = 350
+CHOOSE, WRITE = "pick_news", "write_tldrs"
+NEXT_KEPT = 12  # stories ranked next, for "another one"
+TEXT_WORDS = 600  # of each chosen article, for its TL;DR
 
-SYSTEM = (
-    "You choose one article for a person's daily read and write its TL;DR. The person is a working web developer "
-    "curious about AI, not a researcher: the read is practical and hands-on, about using AI, programming, and the "
-    "significant tech news.\n"
-    "- Prefer how-tos, tool tips, worked examples, \"I built X with Y\" write-ups, and plain-English explainers of "
-    "significant news. Avoid research papers, maths-heavy or theory-only pieces, and anything without a practical "
-    "takeaway; avoid hot takes, listicles, rumours and thin news rewrites too.\n"
-    "- Rate every article: difficulty from 1 (beginner) to 5 (research), and practicality from 1 (nothing to use) to 5 "
-    "(something to try today). Choose only from those in the range the message gives.\n"
-    "- Prefer the day's theme, and what the person said they want more or less of.\n"
-    "- The TL;DR is 2 or 3 short lines, each a sentence of at most 20 words on a line of its own, then one last line "
-    "that starts \"After reading, you will be able to\". Plain English with no jargon, written only from the article's "
-    "text given here: what it shows and why it is worth the time. Never promise what the article does not deliver, "
-    "never add facts that are not in the text, and never use clickbait. UK English, no em dashes, no headings.\n"
-    "- Call the pick tool with every article's ratings, the article's number and the TL;DR."
+CHOOSE_SYSTEM = (
+    "You choose a person's morning news: 7 or 8 stories from the numbered headlines given, for a busy reader in New "
+    "Zealand who wants to know what matters today.\n"
+    "- One story for each topic slot that has any headline: " + ", ".join(f"{LABELS[each]} ({ABOUT[each]})" for each in TOPICS) + ". "
+    "Never invent a story for a topic with none.\n"
+    "- Then 1 or 2 extras for the biggest news of the day, whatever the topic. A headline carried by several outlets is "
+    "a sign of big news.\n"
+    f"- {LABELS[WEBDEV]} is a wildcard, never a slot: it may be one of the extras only on a day with something notable "
+    f"({ABOUT[WEBDEV]}). Most days it is left out.\n"
+    "- Prefer real news with substance: what happened, decided or changed. Avoid opinion pieces, live blogs, quizzes, "
+    "listicles, rumours, celebrity gossip and sport.\n"
+    "- Follow what the person said they want more or less of, and the sets they liked.\n"
+    f"- Also rank up to {NEXT_KEPT} more, best first, for when the person asks for another one.\n"
+    "- Call the pick_news tool with the numbers."
 )
-WANTS = {
-    rules.ANOTHER: "The person asked for another one.",
-    rules.SHORTER: "The person asked for something shorter than the last one.",
-    rules.DEEPER: "The person asked for something deeper: a longer, more thorough piece.",
-}
+WRITE_SYSTEM = (
+    "You write the TL;DR of each news story for a person's morning news. Each is about 30 words, never more than 40: "
+    "what happened, and why the person should read it. Write it only from the text given for that story; never add a "
+    "fact that is not there, never guess, and never use clickbait. Plain English, UK spelling, one paragraph, no "
+    "headings, no em dashes, no links. Call the write_tldrs tool with one TL;DR for each story's number."
+)
 
 
-def tool(count: int) -> dict:
+def choose_tool(count: int) -> dict:
+    numbers = {"type": "array", "items": {"type": "integer"}}
     return {
-        "name": TOOL,
-        "description": "The article chosen, and its TL;DR.",
+        "name": CHOOSE,
+        "description": "The day's stories, and the next best.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "ratings": {
-                    "type": "array",
-                    "description": "Every article's ratings, one each.",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "number": {"type": "integer"},
-                            "difficulty": {"type": "integer", "description": "1 beginner to 5 research."},
-                            "practicality": {"type": "integer", "description": "1 nothing to use to 5 something to try today."},
-                        },
-                        "required": ["number", "difficulty", "practicality"],
-                    },
-                },
-                "choice": {"type": "integer", "description": f"The chosen article's number, 1 to {count}."},
-                "tldr": {"type": "string", "description": "2 or 3 short lines, one sentence each, separated by line breaks, from the article's text only, then a line starting \"After reading, you will be able to\"."},
+                "chosen": {**numbers, "description": f"7 or 8 headline numbers, 1 to {count}: one a topic slot, then the extras."},
+                "next": {**numbers, "description": f"Up to {NEXT_KEPT} more numbers, best first, none of them chosen."},
             },
-            "required": ["ratings", "choice", "tldr"],
+            "required": ["chosen", "next"],
         },
     }
 
 
-def user_turn(found: list[Candidate], theme: str, profile: Profile, kind: str = "", only: list[int] | None = None) -> str:
-    low, high, practical = rules.target(profile)
-    parts = [
-        f"Today's theme: {LABELS[theme]} ({ABOUT[theme]}).",
-        f"What the person wants: {rules.guidance(profile)}.",
-        f"Choose from difficulty {low} to {high} with practicality {practical} or more.",
-    ]
-    if only:
-        parts.append(f"Of these, only {', '.join(str(each) for each in only)} are in that range: choose one of them.")
-    if kind in WANTS:
-        parts.append(WANTS[kind])
-    for number, each in enumerate(found, start=1):
-        words = each.text.split()
-        shown = " ".join(words[:WORDS_SHOWN]) + (" …" if len(words) > WORDS_SHOWN else "")
-        parts.append(f"[{number}] {each.item.title} · {each.item.source} · {LABELS.get(each.item.theme, each.item.theme)} · {each.minutes} min\n{shown}")
+WRITE_TOOL = {
+    "name": WRITE,
+    "description": "The TL;DR of each story.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "tldrs": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {"number": {"type": "integer"}, "tldr": {"type": "string", "description": "About 30 words, never more than 40."}},
+                    "required": ["number", "tldr"],
+                },
+            }
+        },
+        "required": ["tldrs"],
+    },
+}
+
+
+def choose_turn(items: list, day: date, guidance: str) -> str:
+    """The headlines as plain data: the date, what he said, then a numbered line each."""
+    lines = [f"Today: {day:%A} {day.day} {day:%B} {day.year}.", f"What the person said: {guidance}", "Headlines:"]
+    for number, each in enumerate(items, start=1):
+        carried = f" · {each.outlets} outlets" if each.outlets > 1 else ""
+        lines.append(f"[{number}] {LABELS.get(each.theme, each.theme)} · {each.source}{carried} · {each.title}" + (f"\n    {each.snippet}" if each.snippet else ""))
+    return "\n".join(lines)
+
+
+def write_turn(found: list[tuple[object, str]]) -> str:
+    """Each chosen story's headline and text (its article's, or its snippet), numbered."""
+    parts = []
+    for number, (item, text) in enumerate(found, start=1):
+        words = text.split()
+        shown = " ".join(words[:TEXT_WORDS]) + (" …" if len(words) > TEXT_WORDS else "")
+        parts.append(f"[{number}] {item.title} · {item.source}\n{shown}")
     return "\n\n".join(parts)
 
 
-def ratings(raw, count: int) -> dict[int, tuple[int, int]]:
-    """{article number: (difficulty, practicality)} for the ratings that can be used, each 1 to 5. Pure."""
-    found = {}
-    for each in (raw or {}).get("ratings") or [] if isinstance(raw, dict) else []:
-        if not isinstance(each, dict):
-            continue
-        number, difficulty, practicality = each.get("number"), each.get("difficulty"), each.get("practicality")
-        if all(isinstance(value, int) for value in (number, difficulty, practicality)) and 1 <= number <= count and 1 <= difficulty <= 5 and 1 <= practicality <= 5:
-            found[number] = (difficulty, practicality)
-    return found
-
-
-def checked(raw, found: list[Candidate]) -> tuple[Candidate, str, tuple[int, int] | None] | None:
-    """The chosen candidate, its TL;DR and its ratings, or None for anything that can't be used. Pure."""
-    if not isinstance(raw, dict):
+async def choose(items: list, day: date, guidance: str, skipped: frozenset[str] = frozenset()) -> tuple[list[int], list[int]] | None:
+    """(the chosen indexes, as Python checked them; the next best, in Claude's order), or None when no usable answer came."""
+    if not items:
         return None
-    choice = raw.get("choice")
-    if not isinstance(choice, int) or not 1 <= choice <= len(found):
-        return None
-    tldr = rules.tidy_tldr(raw.get("tldr"))
-    if not tldr:
-        return None
-    return found[choice - 1], tldr, ratings(raw, len(found)).get(choice)
-
-
-async def _ask(found: list[Candidate], theme: str, profile: Profile, kind: str, only: list[int] | None = None):
     called = await llm.call_tool(
-        [{"type": "text", "text": SYSTEM, "cache_control": llm.CACHED}],
-        user_turn(found, theme, profile, kind, only),
-        [tool(len(found))],
-        choice={"type": "tool", "name": TOOL},
+        [{"type": "text", "text": CHOOSE_SYSTEM, "cache_control": llm.CACHED}],
+        choose_turn(items, day, guidance),
+        [choose_tool(len(items))],
+        choice={"type": "tool", "name": CHOOSE},
         purpose=PURPOSE,
-        task=rules.TASK,
-        max_tokens=MAX_TOKENS,
+        task="reading",
+        max_tokens=300,
     )
-    return called[1] if called else None
+    if called is None or not isinstance(called[1], dict):
+        log.warning("Morning news: the pick came back with no call")
+        return None
+    chosen = news.checked_pick(called[1].get("chosen"), items, skipped)
+    if not chosen:
+        return None
+    nexts = [number - 1 for number in called[1].get("next") or [] if isinstance(number, int) and 1 <= number <= len(items)]
+    nexts = [index for index in dict.fromkeys(nexts) if index not in chosen and items[index].theme not in skipped][:NEXT_KEPT]
+    return chosen, nexts
 
 
-async def choose(found: list[Candidate], theme: str, profile: Profile, kind: str = "") -> tuple[Candidate, str, tuple[int, int] | None] | None:
-    """The article to show, its TL;DR and its ratings, or None. One request; a second only when the one
-    chosen is out of the target while others are in it (they are named, and the choice is from them)."""
+_LINK = re.compile(r"https?://\S+")
+
+
+async def write(found: list[tuple[object, str]]) -> list[str]:
+    """A TL;DR for each (item, text), in order, as Python checked it; one that came back unusable is its snippet,
+    shortened. Never a link: any address in Claude's words is taken out."""
     if not found:
-        return None
-    raw = await _ask(found, theme, profile, kind)
-    picked = checked(raw, found)
-    if picked is None:
-        log.warning("Daily read: the pick came back unusable (%s)", "no tool call" if raw is None else "out of range or empty")
-        return None
-    rated = ratings(raw, len(found))
-    fitting = sorted(number for number, rating in rated.items() if rules.in_target(rating, profile))
-    if rated and not rules.in_target(picked[2], profile) and fitting:
-        again = checked(await _ask(found, theme, profile, kind, fitting), found)
-        if again is not None and rules.in_target(again[2] or rated.get(found.index(again[0]) + 1), profile):
-            picked = (again[0], again[1], again[2] or rated.get(found.index(again[0]) + 1))
-        else:
-            log.info("Daily read: the second pick was out of the target too; the first is kept")
-    elif rated and not fitting:
-        log.info("Daily read: nothing today was in the target; the closest was picked")
-    if not picked[1].splitlines()[-1].startswith(rules.AFTER):
-        log.info("Daily read: the TL;DR came without its After reading line")
-    return picked
+        return []
+    called = await llm.call_tool(
+        [{"type": "text", "text": WRITE_SYSTEM, "cache_control": llm.CACHED}],
+        write_turn(found),
+        [WRITE_TOOL],
+        choice={"type": "tool", "name": WRITE},
+        purpose=PURPOSE,
+        task="reading",
+        max_tokens=110 * len(found) + 100,
+    )
+    said: dict[int, str] = {}
+    for each in (called[1].get("tldrs") or []) if called and isinstance(called[1], dict) else []:
+        if isinstance(each, dict) and isinstance(each.get("number"), int):
+            said[each["number"]] = news.checked_tldr(_LINK.sub("", str(each.get("tldr") or "")))
+    if called is None:
+        log.warning("Morning news: the TL;DRs came back with no call; the snippets stand in")
+    return [said.get(number) or news.checked_tldr(" ".join(item.snippet.split()[: news.TLDR_WORDS])) or item.title for number, (item, _) in enumerate(found, start=1)]

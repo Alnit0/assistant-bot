@@ -6,8 +6,9 @@ history is `docs/STATUS.md`. Read first, with `/catchup`.
 **Batch (21 Oct, evening): the morning news** (the daily read and News
 headlines as one task, on tasks/reading; not shipped). Steps:
 1. Feeds and reading them (39 feeds, topics, the window, paid, duplicates): done
-2. The pick, the TL;DRs, the store, the 5:30 job, the hub embed, 👍, steering
-3. Golden conversations, live checks, the cost of one morning
+2. The pick, the TL;DRs, the store, the 5:30 job, the hub embed, 👍, steering,
+   and the golden conversations (21 of 21 live, cross-task routers 86 of 86): done
+3. A real morning's run and its cost
 4. The preview post, the dev-bot self-test, the docs
 Live: round 7 and 👍 since 3:23 pm (`DESIGN_ROUND=7`, `THUMBS_UP=true`).
 

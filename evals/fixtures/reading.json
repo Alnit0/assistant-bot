@@ -1,12 +1,31 @@
 {
   "router": [
     {
-      "golden": "r1",
-      "message": "give me another article to read",
+      "golden": "m1",
+      "message": "another one",
+      "note": "one more story: the morning news's own words",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Read the housing report"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup"
+        ]
+      },
       "tasks": [
         "reading"
       ],
-      "note": "another one, said in full",
       "recorded": {
         "kind": "task",
         "tasks": [
@@ -14,16 +33,36 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
     {
-      "golden": "r2",
-      "message": "something shorter to read today",
+      "golden": "m2",
+      "message": "one more news story please",
+      "note": "one more story, said in full",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Read the housing report"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup"
+        ]
+      },
       "tasks": [
         "reading"
       ],
-      "note": "shorter",
       "recorded": {
         "kind": "task",
         "tasks": [
@@ -31,16 +70,36 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
     {
-      "golden": "r3",
-      "message": "save today's article for later",
+      "golden": "m3",
+      "message": "more like 3",
+      "note": "more like one of today's stories, by its number",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Read the housing report"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup"
+        ]
+      },
       "tasks": [
         "reading"
       ],
-      "note": "saved for later: the reading task makes the to-do",
       "recorded": {
         "kind": "task",
         "tasks": [
@@ -48,16 +107,36 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
     {
-      "golden": "r4",
-      "message": "what have I read this week?",
+      "golden": "m4",
+      "message": "less AI in my news",
+      "note": "less of a topic",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Read the housing report"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup"
+        ]
+      },
       "tasks": [
         "reading"
       ],
-      "note": "the week's reads",
       "recorded": {
         "kind": "task",
         "tasks": [
@@ -65,16 +144,36 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
     {
-      "golden": "r5",
-      "message": "less news in my daily read",
+      "golden": "m5",
+      "message": "more NZ politics",
+      "note": "more of a topic, said with no word news",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Read the housing report"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup"
+        ]
+      },
       "tasks": [
         "reading"
       ],
-      "note": "shaping it",
       "recorded": {
         "kind": "task",
         "tasks": [
@@ -82,16 +181,110 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
     {
-      "golden": "r6",
-      "message": "remove The Verge from my reading sources",
+      "golden": "m6",
+      "message": "skip housing tomorrow",
+      "note": "a topic left out for one day",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Read the housing report"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup"
+        ]
+      },
       "tasks": [
         "reading"
       ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "reading"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "m7",
+      "message": "show me today's news",
+      "note": "the set, asked for",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Read the housing report"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup"
+        ]
+      },
+      "tasks": [
+        "reading"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "reading"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "m8",
+      "message": "remove The Verge from my news",
       "note": "a source",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Read the housing report"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup"
+        ]
+      },
+      "tasks": [
+        "reading"
+      ],
       "recorded": {
         "kind": "task",
         "tasks": [
@@ -99,16 +292,36 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
     {
-      "golden": "r7",
-      "message": "add call the dentist to my to-dos",
+      "golden": "m9",
+      "message": "add read the housing report to my to-dos",
+      "note": "a to-do about reading: the to-dos task",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Read the housing report"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup"
+        ]
+      },
       "tasks": [
         "todos"
       ],
-      "note": "a to-do, not the read",
       "recorded": {
         "kind": "task",
         "tasks": [
@@ -116,29 +329,36 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
     {
-      "golden": "r8",
-      "message": "explain how CSS grid works",
-      "chat": true,
-      "note": "a question about a topic: chat",
-      "recorded": {
-        "kind": "chat",
-        "tasks": [],
-        "confidence": "high",
-        "reports_doing": false,
-        "chat_part": ""
-      }
-    },
-    {
-      "golden": "r9",
-      "message": "remind me to read the article at 8pm",
+      "golden": "m10",
+      "message": "remind me to read the news at 7pm",
+      "note": "a reminder at a time: reminders",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Read the housing report"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup"
+        ]
+      },
       "tasks": [
         "nudges"
       ],
-      "note": "a reminder at a time",
       "recorded": {
         "kind": "task",
         "tasks": [
@@ -146,55 +366,129 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
     {
-      "golden": "r10",
-      "message": "what's left today?",
+      "golden": "m11",
+      "message": "today I read about the election and it made me anxious",
+      "note": "how the day went: the diary",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Read the housing report"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup"
+        ]
+      },
       "tasks": [
-        "briefing"
+        "diary"
       ],
-      "note": "the day, not the read",
       "recorded": {
         "kind": "task",
         "tasks": [
-          "briefing"
+          "diary"
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "m12",
+      "message": "what does the OCR do?",
+      "note": "a question about a news topic itself: chat",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Read the housing report"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup"
+        ]
+      },
+      "chat": true,
+      "recorded": {
+        "kind": "chat",
+        "tasks": [],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "m13",
+      "message": "done read the housing report",
+      "note": "a to-do ticked off, not the news",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Read the housing report"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup"
+        ]
+      },
+      "tasks": [
+        "todos"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "todos"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "several": false,
         "chat_part": ""
       }
     }
   ],
   "extraction": [
     {
-      "golden": "r11",
+      "golden": "m14",
       "task": "reading",
-      "message": "something deeper",
-      "state": "The user's daily read:\n- today's read: A made-up deep dive into CSS grid (Programming, 9 min)\n- sources: Made-up AI blog, The Verge, Made-up code blog",
-      "action": "reading_another",
-      "data": {
-        "kind": "deeper"
-      },
-      "recorded": [
-        "reading_another",
-        {
-          "kind": "deeper",
-          "guessed": [],
-          "not_included": []
-        }
-      ]
-    },
-    {
-      "golden": "r12",
-      "task": "reading",
-      "message": "save it for later",
-      "state": "The user's daily read:\n- today's read: A made-up deep dive into CSS grid (Programming, 9 min)\n- sources: Made-up AI blog, The Verge, Made-up code blog",
-      "action": "reading_save",
+      "message": "another one",
+      "state": "The user's morning news today (the stories are numbered as shown):\n- story 1: Made-up election called in a northern republic (World politics)\n- story 2: Made-up parliament passes the water reform bill (NZ politics)\n- story 3: Made-up earthquake shakes an island chain (World news)\n- story 4: Made-up chip maker unveils a faster processor (Tech)\n- story 5: Made-up lab releases an open reasoning model (AI)\n- story 6: Made-up Reserve Bank holds the OCR steady (NZ housing and money)\n- story 7: Made-up summit ends with a trade pact (World politics)\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
+      "action": "news_another",
       "data": {},
+      "note": "",
       "recorded": [
-        "reading_save",
+        "news_another",
         {
           "guessed": [],
           "not_included": []
@@ -202,89 +496,136 @@
       ]
     },
     {
-      "golden": "r13",
+      "golden": "m15",
       "task": "reading",
-      "message": "less news",
-      "state": "The user's daily read:\n- today's read: A made-up deep dive into CSS grid (Programming, 9 min)\n- sources: Made-up AI blog, The Verge, Made-up code blog",
-      "action": "reading_tune",
+      "message": "more like 3",
+      "state": "The user's morning news today (the stories are numbered as shown):\n- story 1: Made-up election called in a northern republic (World politics)\n- story 2: Made-up parliament passes the water reform bill (NZ politics)\n- story 3: Made-up earthquake shakes an island chain (World news)\n- story 4: Made-up chip maker unveils a faster processor (Tech)\n- story 5: Made-up lab releases an open reasoning model (AI)\n- story 6: Made-up Reserve Bank holds the OCR steady (NZ housing and money)\n- story 7: Made-up summit ends with a trade pact (World politics)\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
+      "action": "news_steer",
       "data": {
-        "less_theme": "news"
+        "like": 3
       },
+      "note": "",
       "recorded": [
-        "reading_tune",
+        "news_steer",
         {
-          "less_theme": "news",
+          "like": 3,
           "guessed": [],
           "not_included": []
         }
       ]
     },
     {
-      "golden": "r14",
+      "golden": "m16",
       "task": "reading",
-      "message": "more about agents",
-      "state": "The user's daily read:\n- today's read: A made-up deep dive into CSS grid (Programming, 9 min)\n- sources: Made-up AI blog, The Verge, Made-up code blog",
-      "action": "reading_tune",
+      "message": "less AI",
+      "state": "The user's morning news today (the stories are numbered as shown):\n- story 1: Made-up election called in a northern republic (World politics)\n- story 2: Made-up parliament passes the water reform bill (NZ politics)\n- story 3: Made-up earthquake shakes an island chain (World news)\n- story 4: Made-up chip maker unveils a faster processor (Tech)\n- story 5: Made-up lab releases an open reasoning model (AI)\n- story 6: Made-up Reserve Bank holds the OCR steady (NZ housing and money)\n- story 7: Made-up summit ends with a trade pact (World politics)\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
+      "action": "news_steer",
       "data": {
-        "more_topic": "agents"
+        "less": "ai"
       },
+      "note": "",
       "recorded": [
-        "reading_tune",
+        "news_steer",
         {
-          "more_topic": "agents",
+          "less": "ai",
           "guessed": [],
           "not_included": []
         }
       ]
     },
     {
-      "golden": "r15",
+      "golden": "m17",
       "task": "reading",
-      "message": "more like this",
-      "state": "The user's daily read:\n- today's read: A made-up deep dive into CSS grid (Programming, 9 min)\n- sources: Made-up AI blog, The Verge, Made-up code blog",
-      "action": "reading_tune",
+      "message": "more NZ politics",
+      "state": "The user's morning news today (the stories are numbered as shown):\n- story 1: Made-up election called in a northern republic (World politics)\n- story 2: Made-up parliament passes the water reform bill (NZ politics)\n- story 3: Made-up earthquake shakes an island chain (World news)\n- story 4: Made-up chip maker unveils a faster processor (Tech)\n- story 5: Made-up lab releases an open reasoning model (AI)\n- story 6: Made-up Reserve Bank holds the OCR steady (NZ housing and money)\n- story 7: Made-up summit ends with a trade pact (World politics)\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
+      "action": "news_steer",
       "data": {
-        "like_this": true
+        "more": "nz_politics"
       },
+      "note": "",
       "recorded": [
-        "reading_tune",
+        "news_steer",
         {
-          "like_this": true,
+          "more": "nz_politics",
           "guessed": [],
           "not_included": []
         }
       ]
     },
     {
-      "golden": "r16",
+      "golden": "m18",
       "task": "reading",
-      "message": "what do you know about what I like to read?",
-      "state": "The user's daily read:\n- today's read: A made-up deep dive into CSS grid (Programming, 9 min)\n- sources: Made-up AI blog, The Verge, Made-up code blog",
-      "action": "reading_show",
+      "message": "skip housing tomorrow",
+      "state": "The user's morning news today (the stories are numbered as shown):\n- story 1: Made-up election called in a northern republic (World politics)\n- story 2: Made-up parliament passes the water reform bill (NZ politics)\n- story 3: Made-up earthquake shakes an island chain (World news)\n- story 4: Made-up chip maker unveils a faster processor (Tech)\n- story 5: Made-up lab releases an open reasoning model (AI)\n- story 6: Made-up Reserve Bank holds the OCR steady (NZ housing and money)\n- story 7: Made-up summit ends with a trade pact (World politics)\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
+      "action": "news_steer",
       "data": {
-        "what": "profile"
+        "skip": "nz_money",
+        "skip_day": "tomorrow"
       },
+      "note": "housing is nz_money; the day as said",
       "recorded": [
-        "reading_show",
+        "news_steer",
         {
-          "what": "profile",
+          "skip": "nz_money",
+          "skip_day": "tomorrow",
           "guessed": [],
           "not_included": []
         }
       ]
     },
     {
-      "golden": "r17",
+      "golden": "m19",
+      "task": "reading",
+      "message": "no tech news on Friday",
+      "state": "The user's morning news today (the stories are numbered as shown):\n- story 1: Made-up election called in a northern republic (World politics)\n- story 2: Made-up parliament passes the water reform bill (NZ politics)\n- story 3: Made-up earthquake shakes an island chain (World news)\n- story 4: Made-up chip maker unveils a faster processor (Tech)\n- story 5: Made-up lab releases an open reasoning model (AI)\n- story 6: Made-up Reserve Bank holds the OCR steady (NZ housing and money)\n- story 7: Made-up summit ends with a trade pact (World politics)\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
+      "action": "news_steer",
+      "data": {
+        "skip": "tech",
+        "skip_day": "Friday"
+      },
+      "note": "",
+      "recorded": [
+        "news_steer",
+        {
+          "skip": "tech",
+          "skip_day": "Friday",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "m20",
+      "task": "reading",
+      "message": "what do you know about what I like in the news?",
+      "state": "The user's morning news today (the stories are numbered as shown):\n- story 1: Made-up election called in a northern republic (World politics)\n- story 2: Made-up parliament passes the water reform bill (NZ politics)\n- story 3: Made-up earthquake shakes an island chain (World news)\n- story 4: Made-up chip maker unveils a faster processor (Tech)\n- story 5: Made-up lab releases an open reasoning model (AI)\n- story 6: Made-up Reserve Bank holds the OCR steady (NZ housing and money)\n- story 7: Made-up summit ends with a trade pact (World politics)\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
+      "action": "news_show",
+      "data": {
+        "what": "prefs"
+      },
+      "note": "",
+      "recorded": [
+        "news_show",
+        {
+          "what": "prefs",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "m21",
       "task": "reading",
       "message": "stop using The Verge",
-      "state": "The user's daily read:\n- today's read: A made-up deep dive into CSS grid (Programming, 9 min)\n- sources: Made-up AI blog, The Verge, Made-up code blog",
-      "action": "reading_source",
+      "state": "The user's morning news today (the stories are numbered as shown):\n- story 1: Made-up election called in a northern republic (World politics)\n- story 2: Made-up parliament passes the water reform bill (NZ politics)\n- story 3: Made-up earthquake shakes an island chain (World news)\n- story 4: Made-up chip maker unveils a faster processor (Tech)\n- story 5: Made-up lab releases an open reasoning model (AI)\n- story 6: Made-up Reserve Bank holds the OCR steady (NZ housing and money)\n- story 7: Made-up summit ends with a trade pact (World politics)\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
+      "action": "news_source",
       "data": {
         "remove": true,
         "name": "The Verge"
       },
+      "note": "",
       "recorded": [
-        "reading_source",
+        "news_source",
         {
           "name": "The Verge",
           "remove": true,

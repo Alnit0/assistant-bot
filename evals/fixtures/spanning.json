@@ -305,50 +305,6 @@
       }
     },
     {
-      "golden": "n8",
-      "message": "something to read please",
-      "tasks": [
-        "reading"
-      ],
-      "note": "another read",
-      "names": {
-        "todos": [
-          "Finish the essay",
-          "Call the garage",
-          "Renew the passport"
-        ],
-        "calendar": [
-          "Haircut",
-          "Test standup",
-          "Test lunch"
-        ],
-        "nudges": [
-          "Call the bank",
-          "Put the bins out"
-        ],
-        "habits": [
-          "Morning",
-          "Evening",
-          "Stretch",
-          "Glass of water",
-          "Brush teeth"
-        ],
-        "pills": [
-          "Pill A",
-          "Pill B"
-        ]
-      },
-      "recorded": {
-        "kind": "task",
-        "tasks": [
-          "reading"
-        ],
-        "confidence": "high",
-        "reports_doing": false,
-        "chat_part": ""
-      }
-    },
-    {
       "golden": "n9",
       "message": "remind me to read the daily article at lunch",
       "tasks": [
@@ -393,94 +349,6 @@
       }
     },
     {
-      "golden": "n10",
-      "message": "save the article to read tonight",
-      "tasks": [
-        "reading"
-      ],
-      "note": "saved for later",
-      "names": {
-        "todos": [
-          "Finish the essay",
-          "Call the garage",
-          "Renew the passport"
-        ],
-        "calendar": [
-          "Haircut",
-          "Test standup",
-          "Test lunch"
-        ],
-        "nudges": [
-          "Call the bank",
-          "Put the bins out"
-        ],
-        "habits": [
-          "Morning",
-          "Evening",
-          "Stretch",
-          "Glass of water",
-          "Brush teeth"
-        ],
-        "pills": [
-          "Pill A",
-          "Pill B"
-        ]
-      },
-      "recorded": {
-        "kind": "task",
-        "tasks": [
-          "reading"
-        ],
-        "confidence": "high",
-        "reports_doing": false,
-        "chat_part": ""
-      }
-    },
-    {
-      "golden": "n11",
-      "message": "what did I read on Monday?",
-      "tasks": [
-        "reading"
-      ],
-      "note": "the week's reads",
-      "names": {
-        "todos": [
-          "Finish the essay",
-          "Call the garage",
-          "Renew the passport"
-        ],
-        "calendar": [
-          "Haircut",
-          "Test standup",
-          "Test lunch"
-        ],
-        "nudges": [
-          "Call the bank",
-          "Put the bins out"
-        ],
-        "habits": [
-          "Morning",
-          "Evening",
-          "Stretch",
-          "Glass of water",
-          "Brush teeth"
-        ],
-        "pills": [
-          "Pill A",
-          "Pill B"
-        ]
-      },
-      "recorded": {
-        "kind": "task",
-        "tasks": [
-          "reading"
-        ],
-        "confidence": "high",
-        "reports_doing": false,
-        "chat_part": ""
-      }
-    },
-    {
       "golden": "n12",
       "message": "put reading time on my calendar Saturday at 10",
       "tasks": [
@@ -518,50 +386,6 @@
         "kind": "task",
         "tasks": [
           "calendar"
-        ],
-        "confidence": "high",
-        "reports_doing": false,
-        "chat_part": ""
-      }
-    },
-    {
-      "golden": "n13",
-      "message": "more articles about agents please",
-      "tasks": [
-        "reading"
-      ],
-      "note": "shaping the read",
-      "names": {
-        "todos": [
-          "Finish the essay",
-          "Call the garage",
-          "Renew the passport"
-        ],
-        "calendar": [
-          "Haircut",
-          "Test standup",
-          "Test lunch"
-        ],
-        "nudges": [
-          "Call the bank",
-          "Put the bins out"
-        ],
-        "habits": [
-          "Morning",
-          "Evening",
-          "Stretch",
-          "Glass of water",
-          "Brush teeth"
-        ],
-        "pills": [
-          "Pill A",
-          "Pill B"
-        ]
-      },
-      "recorded": {
-        "kind": "task",
-        "tasks": [
-          "reading"
         ],
         "confidence": "high",
         "reports_doing": false,
@@ -987,56 +811,6 @@
       }
     },
     {
-      "golden": "n23",
-      "message": "something shorter",
-      "tasks": [
-        "reading"
-      ],
-      "exchanges": [
-        [
-          "another one",
-          "### 📖 Daily read · AI usage\n📖 [Made-up: testing code that calls a model](https://example.com/made-up/testing) · Made-up blog · 12 min"
-        ]
-      ],
-      "note": "straight after another read was shown",
-      "names": {
-        "todos": [
-          "Finish the essay",
-          "Call the garage",
-          "Renew the passport"
-        ],
-        "calendar": [
-          "Haircut",
-          "Test standup",
-          "Test lunch"
-        ],
-        "nudges": [
-          "Call the bank",
-          "Put the bins out"
-        ],
-        "habits": [
-          "Morning",
-          "Evening",
-          "Stretch",
-          "Glass of water",
-          "Brush teeth"
-        ],
-        "pills": [
-          "Pill A",
-          "Pill B"
-        ]
-      },
-      "recorded": {
-        "kind": "task",
-        "tasks": [
-          "reading"
-        ],
-        "confidence": "high",
-        "reports_doing": false,
-        "chat_part": ""
-      }
-    },
-    {
       "golden": "n24",
       "message": "undo that",
       "tasks": [
@@ -1367,52 +1141,6 @@
       }
     },
     {
-      "golden": "n31",
-      "message": "what did I read and write this week?",
-      "tasks": [
-        "reading",
-        "diary"
-      ],
-      "note": "two tasks in one question",
-      "names": {
-        "todos": [
-          "Finish the essay",
-          "Call the garage",
-          "Renew the passport"
-        ],
-        "calendar": [
-          "Haircut",
-          "Test standup",
-          "Test lunch"
-        ],
-        "nudges": [
-          "Call the bank",
-          "Put the bins out"
-        ],
-        "habits": [
-          "Morning",
-          "Evening",
-          "Stretch",
-          "Glass of water",
-          "Brush teeth"
-        ],
-        "pills": [
-          "Pill A",
-          "Pill B"
-        ]
-      },
-      "recorded": {
-        "kind": "task",
-        "tasks": [
-          "reading",
-          "diary"
-        ],
-        "confidence": "high",
-        "reports_doing": false,
-        "chat_part": ""
-      }
-    },
-    {
       "golden": "n32",
       "message": "done my stretches and I'm feeling great",
       "tasks": [
@@ -1626,25 +1354,6 @@
         "diary_mood",
         {
           "mood": "ok",
-          "guessed": [],
-          "not_included": []
-        }
-      ]
-    },
-    {
-      "golden": "n23",
-      "task": "reading",
-      "message": "something shorter",
-      "state": "The user's daily read:\n- today's read: Made-up: testing code that calls a model (AI usage, 12 min)\n- sources: Made-up AI blog",
-      "action": "reading_another",
-      "data": {
-        "kind": "shorter"
-      },
-      "after_answer": true,
-      "recorded": [
-        "reading_another",
-        {
-          "kind": "shorter",
           "guessed": [],
           "not_included": []
         }

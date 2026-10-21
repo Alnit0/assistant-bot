@@ -254,6 +254,7 @@ class Summary:
 # by the briefing as one embed whose border colour says what it is. The kinds and states are the hub's words,
 # never a task's name: the briefing lays them out without knowing whose they are
 EVENT, DOSE, ROUTINE, TODO, TRACKING = "event", "dose", "routine", "todo", "tracking"
+PREPARED = "prepared"  # something the bot prepared (the morning news): its own embed in message 2, purple
 PENDING, TAKEN, SKIPPED, MISSED = "pending", "taken", "skipped", "missed"
 
 
@@ -270,7 +271,9 @@ class DayItem:
     state: str = PENDING  # a dose: PENDING, TAKEN, SKIPPED or MISSED; a to-do or a routine: TAKEN once done
     done_at: datetime | None = None  # when a dose was taken, as the user said
     repeats: bool = False  # an event that comes round again (work): routine, not notable
-    icon: str = ""  # a TRACKING line's own icon ("📓")
+    icon: str = ""  # a TRACKING line's own icon ("📓"), a PREPARED one's ("📰")
+    title: str = ""  # a PREPARED one's title ("Morning news"); its `text` is the whole of what it says
+    yes: object | None = None  # a cards.Button a 👍 on its message stands for (core/thumbsup.py)
 
 
 @dataclass(frozen=True)

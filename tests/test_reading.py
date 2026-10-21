@@ -1,43 +1,75 @@
-"""The daily read (tasks/reading, behind READING_ENABLED, off): one article a day, picked from feeds.
+"""The morning news (tasks/reading, behind READING_ENABLED, off; Alex, 21 Oct): the daily read and News headlines as one
+task. The 5:30 am job reads every feed, Claude picks 7 or 8 (one a topic, then extras) and writes their TL;DRs, the set
+is kept and shown in round 7's hub as one purple embed; 👍 on it, steering in words, another one, sources.
 
-Made-up feeds, pages and articles only: nothing here reaches the network or Claude.
+Made-up feeds, pages and headlines only: nothing here reaches the network or Claude.
 """
 import asyncio
 import json
+import logging
 from datetime import date, datetime, time, timedelta, timezone
 from types import SimpleNamespace
 
 import pytest
 
-from core import cards, clock, config, database, live
+from core import cards, clock, config, database, design, live, thumbsup
 from core import day as days
-from core.actions import Request
+from core.actions import PREPARED, Request
 from core.errors import UserError
-from tasks.reading import pick, plain, rules, sources, store
-from tasks.reading.rules import Candidate, Item, Profile
+from tasks import reading
+from tasks.briefing import embeds
+from tasks.reading import news, pick, plain, rules, sources, store
+from tasks.reading.news import AI, NZ_MONEY, NZ_POLITICS, TECH, WEBDEV, WORLD, WORLD_POLITICS
 
-WORDS = " ".join(["Made-up words about building with models, explained step by step."] * 60)  # about 600 words
+UTC = timezone.utc
+WORDS = " ".join(["Made-up words about what happened today, set out plainly for a reader."] * 40)  # about 480 words
+SECRET = "Zanzibarquill"  # a made-up word only in an article's text: it must reach no log
 
 
 def article_page(title, body=WORDS, extra=""):
-    return f"<html><head><script>var x=1;</script></head><body><nav>Home About Subscribe</nav><article><h1>{title}</h1><p>{body}</p>{extra}</article><footer>Made-up footer</footer></body></html>".encode()
+    return f"<html><body><nav>Home Subscribe</nav><article><h1>{title}</h1><p>{body} {SECRET}</p>{extra}</article></body></html>".encode()
 
 
 def rss(items):
-    entries = "".join(f"<item><title>{title}</title><link>{link}</link><pubDate>{when}</pubDate></item>" for title, link, when in items)
+    entries = "".join(
+        f"<item><title>{title}</title><link>{link}</link><pubDate>{when}</pubDate><description>A made-up snippet about {title.lower()}.</description>{extra}</item>"
+        for title, link, when, extra in items
+    )
     return f"<?xml version='1.0'?><rss version='2.0'><channel><title>Made-up</title>{entries}</channel></rss>".encode()
 
 
-def atom(items):
-    entries = "".join(f"<entry><title>{title}</title><link rel='alternate' href='{link}'/><updated>{when}</updated></entry>" for title, link, when in items)
-    return f"<?xml version='1.0'?><feed xmlns='http://www.w3.org/2005/Atom'><title>Made-up</title>{entries}</feed>".encode()
+# A made-up feed a topic, two headlines each, and one for the wildcard
+HEADLINES = {
+    WORLD_POLITICS: ["Made-up election called in a northern republic", "Made-up summit ends with a trade pact"],
+    NZ_POLITICS: ["Made-up parliament passes the water reform bill", "Made-up minister quits over a funding report"],
+    WORLD: ["Made-up earthquake shakes an island chain", "Made-up flood warning for a river delta"],
+    TECH: ["Made-up chip maker unveils a faster processor", "Made-up phone recall over battery faults"],
+    AI: ["Made-up lab releases an open reasoning model", "Made-up regulator drafts rules for chatbots"],
+    NZ_MONEY: ["Made-up Reserve Bank holds the OCR steady", "Made-up house prices slip for a sixth month"],
+    WEBDEV: ["Made-up browser ships a major release", "Made-up package registry patches a security hole"],
+}
 
 
-FEEDS = [
-    sources.Source("Made-up AI blog", "https://ai.example/feed", rules.AI),
-    sources.Source("Made-up code blog", "https://code.example/atom", rules.PROGRAMMING),
-    sources.Source("Made-up news", "https://news.example/rss", rules.NEWS),
-]
+def feed_url(topic):
+    return f"https://{topic.replace('_', '-')}.example/rss"
+
+
+def link(topic, number, day=""):
+    return f"https://{topic.replace('_', '-')}.example/story-{number}{day}?utm_source=rss"
+
+
+def fresh(world, same_links=False):
+    """Each feed as it reads this morning: its headlines two hours old, with links of the day (or the same every day)."""
+    stamp = (clock.now() - timedelta(hours=2)).strftime("%a, %d %b %Y %H:%M:%S +0000")
+    day = "" if same_links else f"-{days.today().isoformat()}"
+    for topic, titles in HEADLINES.items():
+        extra = [("Made-up premium story on mortgage stress", "https://nz-money.example/premium/stress", stamp, "<category>premium</category>")] if topic == NZ_MONEY else []
+        world.pages[feed_url(topic)] = rss([(title, link(topic, number, day), stamp, "") for number, title in enumerate(titles)] + extra)
+        for number, title in enumerate(titles):
+            world.pages.setdefault(link(topic, number, day).split("?")[0], article_page(title))
+
+
+FEEDS = [sources.Source(f"Made-up {news.LABELS[topic]}", feed_url(topic), topic) for topic in news.ALL_TOPICS]
 
 
 def run(coroutine):
@@ -51,23 +83,14 @@ def run(coroutine):
 
 @pytest.fixture
 def world(make_db, monkeypatch, owner, dev_clock):
-    from tasks.todos import store as todos_store
-
-    make_db({"reading": store.MIGRATIONS, "todos": todos_store.MIGRATIONS})
-    clock.advance_to(days.at(date(2026, 10, 15) + timedelta(days=30), time(5, 30)))
-    now = clock.now()
-    stamp = now.isoformat()
-    seen = SimpleNamespace(owner=owner, sent=[], asked=[], pages={}, failing=set(), choose=1, tldr="Made-up TL;DR line one.\nMade-up line two.")
-    seen.pages.update({
-        "https://ai.example/feed": rss([("Prompting agents, explained", "https://ai.example/agents", stamp), ("A short AI note", "https://ai.example/short", stamp)]),
-        "https://code.example/atom": atom([("A deep dive into CSS grid", "https://code.example/grid", stamp)]),
-        "https://news.example/rss": rss([("A big chip story, explained", "https://news.example/chips", stamp), ("Paywalled story", "https://news.example/paid", stamp)]),
-        "https://ai.example/agents": article_page("Prompting agents, explained"),
-        "https://ai.example/short": article_page("A short AI note", " ".join(["Short made-up note."] * 90)),
-        "https://code.example/grid": article_page("A deep dive into CSS grid", WORDS * 4),
-        "https://news.example/chips": article_page("A big chip story, explained"),
-        "https://news.example/paid": article_page("Paywalled story", WORDS, "<p>Subscribe to continue reading.</p>"),
-    })
+    make_db({"reading": store.MIGRATIONS})
+    clock.advance_to(days.at(date(2026, 10, 21) + timedelta(days=21), time(5, 30)))  # a Wednesday
+    seen = SimpleNamespace(owner=owner, sent=[], asked=[], pages={}, failing=set(), chosen=None, nexts=None, tldr=None)
+    seen.day = days.today()
+    seen.same_links = True  # the first morning's links are the plain ones; later mornings' are the day's
+    for topic, titles in HEADLINES.items():
+        for number, title in enumerate(titles):
+            seen.pages[link(topic, number).split("?")[0]] = article_page(title)
 
     def get(url):
         if url in seen.failing or url not in seen.pages:
@@ -75,8 +98,14 @@ def world(make_db, monkeypatch, owner, dev_clock):
         return seen.pages[url]
 
     async def call_tool(system, user, tools, *, choice, purpose, task="", max_tokens=600):
-        seen.asked.append(user)
-        return ("pick", {"choice": seen.choose, "tldr": seen.tldr})
+        seen.asked.append((tools[0]["name"], user))
+        if tools[0]["name"] == pick.CHOOSE:
+            numbered = [line for line in user.splitlines() if line.startswith("[")]
+            count = len(numbered)
+            chosen = seen.chosen if seen.chosen is not None else [index + 1 for index, line in enumerate(numbered) if "one-" not in line][: 8]
+            return (pick.CHOOSE, {"chosen": chosen, "next": seen.nexts if seen.nexts is not None else list(range(1, count + 1))})
+        found = [int(line[1:line.index("]")]) for line in user.splitlines() if line.startswith("[")]
+        return (pick.WRITE, {"tldrs": [{"number": number, "tldr": seen.tldr or f"Made-up TL;DR {number}: what happened and why it matters to you today."} for number in found]})
 
     async def send(channel_id, card, silent=False):
         cards.check(card)
@@ -89,286 +118,275 @@ def world(make_db, monkeypatch, owner, dev_clock):
     monkeypatch.setattr(cards, "send", send)
     monkeypatch.setattr(cards, "_actions", {})
     monkeypatch.setattr(plain, "changed", lambda user_id: None)
-    monkeypatch.setattr(config, "TODOS_ENABLED", True)
     plain.register()
     live.reset()
-    seen.day = days.today()
     seen.request = lambda text="": Request(owner, 100, text)
     return seen
 
 
-def picked(world):
-    return run(plain.pick_today(world.owner.id, world.day))
-
-
-# --- off, and the sources ----------------------------------------------------------------------------------------
-def test_off_unless_switched_on():
-    assert config.READING_ENABLED is False
-
-
-def test_the_starter_sources_are_a_config_file_each_with_a_topic():
-    """21 Oct: the morning news's feeds (tests/test_news.py has the rest)."""
-    data = json.loads(sources.FEEDS.read_text(encoding="utf-8"))
-    assert all(each["url"].startswith("https://") and each["topic"] for each in data["sources"])
-
-
-def test_rss_and_atom_feeds_are_read():
-    source = FEEDS[0]
-    items = sources.parse_feed(rss([("One", "https://a.example/1", "Thu, 15 Oct 2026 08:00:00 +0000")]), source)
-    assert items == [Item("https://a.example/1", "One", "Made-up AI blog", rules.AI, datetime(2026, 10, 15, 8, tzinfo=timezone.utc))]
-    items = sources.parse_feed(atom([("Two", "https://a.example/2", "2026-10-15T08:00:00Z")]), source)
-    assert items[0].url == "https://a.example/2" and items[0].published.year == 2026
-    with pytest.raises(Exception):
-        sources.parse_feed(b"<html>not a feed</html>", source)
-
-
-def test_a_page_is_read_down_to_its_article_text():
-    text = sources.page_text(article_page("Made-up title"))
-    assert text.startswith("Made-up title") and "var x" not in text and "Home About" not in text and "footer" not in text
-    assert rules.readable(text) and rules.minutes(text) == 3
-
-
-def test_a_paywall_or_a_teaser_is_never_readable():
-    assert not rules.readable(sources.page_text(article_page("Paid", WORDS, "<p>Subscribe to continue reading.</p>")))
-    assert not rules.readable("A made-up teaser of a few words.")
-
-
-# --- choosing ----------------------------------------------------------------------------------------------------
-def test_a_week_keeps_the_themes_balanced():
-    profile, day = Profile(), date(2026, 10, 12)  # a Monday
-    shown = []
-    for ahead in range(6):
-        shown.append(rules.theme_for(day + timedelta(days=ahead), profile, shown))
-    assert sorted(shown.count(theme) for theme in rules.THEMES) == [2, 2, 2]
-
-
-def test_a_weight_shifts_the_balance():
-    profile = rules.tuned(Profile(), less_theme=rules.NEWS)
-    shown = []
-    for ahead in range(7):
-        shown.append(rules.theme_for(date(2026, 10, 12) + timedelta(days=ahead), profile, shown))
-    assert shown.count(rules.NEWS) < shown.count(rules.AI)
-
-
-def test_only_new_and_recent_items_once_each():
-    now = datetime(2026, 10, 15, tzinfo=timezone.utc)
-    items = [Item("https://x/1", "A", "S", rules.AI, now), Item("https://x/1", "A", "S", rules.AI, now), Item("https://x/2", "B", "S", rules.AI, now - timedelta(days=40)), Item("https://x/3", "C", "S", rules.AI, now)]
-    assert [each.url for each in rules.eligible(items, {"https://x/3"}, now)] == ["https://x/1"]
-
-
-def test_the_days_read_is_picked_from_articles_whose_text_was_read(world):
-    read = picked(world)
-    assert read is not None and read.day == world.day and read.tldr == world.tldr
-    (asked,) = world.asked
-    assert "Paywalled story" not in asked, "a paywalled article is never offered"
-    assert "Made-up words about building" in asked, "Claude sees the article's text, never a headline alone"
-    assert run(store.current(world.owner.id, world.day)) == read
-
-
-def test_no_text_no_tldr(world):
-    world.failing.update({"https://ai.example/agents", "https://ai.example/short", "https://code.example/grid", "https://news.example/chips", "https://news.example/paid"})
-    assert picked(world) is None and world.asked == [], "Claude is never asked to write from a headline alone"
-
-
-def test_a_pick_out_of_range_or_empty_is_not_used():
-    found = [Candidate(Item("https://x", "T", "S", rules.AI), WORDS, 3)]
-    assert pick.checked({"choice": 2, "tldr": "x"}, found) is None and pick.checked({"choice": 1, "tldr": " "}, found) is None
-    assert pick.checked({"choice": 1, "tldr": "One.\nTwo.\nThree.\nFour."}, found)[1] == "One.\nTwo.\nThree."
-
-
-def test_the_tldr_has_no_em_dash():
-    assert "—" not in rules.tidy_tldr("A made-up line — with a dash.")
-
-
-def test_the_pick_job_runs_once_a_day(world):
-    job = SimpleNamespace(id=1, user_id=world.owner.id, payload={}, notes=[])
+def morning(world, keep_pages=False):
+    if not keep_pages:
+        fresh(world, same_links=world.same_links)
+        world.same_links = False
+    job = SimpleNamespace(user_id=world.owner.id, notes=[])
     from core import scheduler
 
-    noted = []
     original = scheduler.note
-    scheduler.note = lambda job, text: noted.append(text)
+    scheduler.note = lambda job, text: job.notes.append(text)
     try:
-        run(plain.pick_job(job))
         run(plain.pick_job(job))
     finally:
         scheduler.note = original
-    assert noted[0].startswith("picked: ") and noted[1] == "not picked: today's is picked already" and len(world.asked) == 1
+    return job.notes[-1]
 
 
-# --- the card ------------------------------------------------------------------------------------------------------
-def test_the_card_is_the_link_source_time_and_tldr_with_blurple_thumbs(world):
-    read = picked(world)
-    shown = plain.card(read)
-    cards.check(shown)
-    assert f"[{read.title}]({read.url}) · {read.source} · {read.minutes} min" in shown.text
-    assert "-# Made-up TL;DR line one." in shown.text
-    (row,) = shown.rows
-    assert [button.emoji for button in row] == ["👍", "👎"] and {button.style for button in row} == {cards.PRIMARY}
+def the_set(world):
+    found = run(database.run(store.db_news, world.owner.id, world.day))
+    return found[0] if found else []
 
 
-def test_the_overview_line_is_the_theme_and_time():
-    read = rules.Read("https://x", "Made-up", "Made-up blog", rules.PROGRAMMING, 7, "x", date(2026, 10, 15))
-    assert rules.overview(read) == "Programming · 7 min"
+# --- off, and its parts -------------------------------------------------------------------------------------------------
+def test_off_unless_switched_on():
+    assert config.READING_ENABLED is False and not reading.task.switched_on()
 
 
-def test_thumbs_down_shapes_the_profile_and_offers_another(world):
-    read = picked(world)
-    said = run(plain.on_vote(SimpleNamespace(user=world.owner, arg=f"{read.day.isoformat()}:down", update=lambda card: _keep(world, card))))
-    assert said == "👎 less like this"
-    assert run(database.run(store.db_profile, world.owner.id)).weights[read.theme] < 1.0
-    assert [button.label for button in world.updated.rows[0]][-1] == "Another one"
+def test_its_actions_and_its_one_job():
+    assert [each.name for each in plain.actions()] == ["news_another", "news_steer", "news_show", "news_source"]
+    assert reading.task.job_handlers() == {plain.PICK_JOB: plain.pick_job}
+    assert (reading.PICK_DEFAULT.name, reading.PICK_DEFAULT.at) == ("Morning news", time(5, 30))
 
 
-async def _keep(world, card):
-    world.updated = card
+# --- the morning --------------------------------------------------------------------------------------------------------
+def test_the_morning_is_one_a_topic_then_an_extra_with_its_tldrs_and_its_own_links(world):
+    said = morning(world)
+    stories = the_set(world)
+    assert said == f"{len(stories)} stories" and 7 <= len(stories) <= 8
+    assert [each.topic for each in stories[:6]] == list(news.TOPICS), "one a topic, in the topics' order"
+    assert all(len(each.tldr.split()) <= news.TLDR_MOST for each in stories)
+    links = {link(topic, number).split("?")[0] for topic in HEADLINES for number in (0, 1)}
+    assert all(each.url in links for each in stories), "each link the item's own, the tracking taken off"
+    assert [name for name, _ in world.asked] == [pick.CHOOSE, pick.WRITE], "two requests in all"
 
 
-def test_another_one_is_a_different_article(world):
-    first = picked(world)
-    second = run(plain.another(world.owner.id))
-    assert second.url != first.url and run(store.current(world.owner.id, world.day)) == second
+def test_a_paid_story_never_goes_to_claude(world):
+    morning(world)
+    choose_turn = world.asked[0][1]
+    assert "premium story" not in choose_turn and "Made-up Reserve Bank holds the OCR steady" in choose_turn
 
 
-def test_something_shorter_or_deeper(world):
-    first = picked(world)
-    deeper = run(plain.another(world.owner.id, rules.DEEPER))
-    assert deeper.minutes > first.minutes
-    with pytest.raises(UserError):
-        world.choose = 1
-        for _ in range(5):
-            run(plain.another(world.owner.id, rules.SHORTER))
+def test_a_morning_twice_is_one_set(world):
+    morning(world)
+    assert morning(world) == "not picked: today's is picked already" and len(world.asked) == 2
 
 
-# --- words -----------------------------------------------------------------------------------------------------------
-def test_save_it_for_later_is_a_card_then_a_to_do_with_the_link(world):
-    from tasks.todos import store as todos_store
-
-    read = picked(world)
-    proposal = run(plain.save_card(world.request("save it for later"), {}, frozenset()))
-    assert proposal.lines[0] == f"📝 **Read: {read.title}** · any day" and read.url in proposal.lines[1]
-    assert run(plain.save_apply(world.request(), proposal.data)) == "📝 Saved for later · on your to-dos"
-    assert any(read.url in each.text for each in run(todos_store.every(world.owner.id)))
-    assert run(plain.save_check(world.request(), proposal.data)) == ""
+def test_a_feed_that_fails_is_skipped_and_noted_and_its_topic_left_out(world):
+    fresh(world, same_links=True)
+    world.same_links = False
+    world.failing.add(feed_url(AI))
+    said = morning(world, keep_pages=True)
+    assert said.endswith("; 1 feed not read: Made-up AI") and AI not in [each.topic for each in the_set(world)]
 
 
-def test_less_news_and_more_about_agents_are_a_card(world):
-    proposal = run(plain.tune_card(world.request(), {"less_theme": "news", "more_topic": "agents", "level": "harder"}, frozenset()))
-    assert proposal.lines == ("**Tech news** · less often", "**More about** agents", "**Level** · harder")
-    run(plain.tune_apply(world.request(), proposal.data))
-    kept = run(database.run(store.db_profile, world.owner.id))
-    assert kept.more == ["agents"] and kept.level == 1 and run(plain.tune_check(world.request(), proposal.data)) == ""
-    assert "more about agents" in rules.guidance(kept)
+def test_a_topic_claude_leaves_out_gets_its_newest_and_more_than_eight_never(world):
+    world.chosen = [1, 2, 3, 99, 3]
+    morning(world)
+    stories = the_set(world)
+    assert {each.topic for each in stories} >= set(news.TOPICS) and len(stories) <= 8
 
 
-def test_what_have_i_read_this_week_and_the_profile(world):
-    picked(world)
-    said = run(plain.show(world.request(), {"what": "week"}, frozenset()))
-    assert said.startswith("📖 **This week** · 1 read · 0 👍")
-    assert run(plain.show(world.request(), {"what": "profile"}, frozenset())).startswith("📖 **What you like to read**")
+def test_a_tldr_over_forty_words_is_cut_and_one_missing_is_the_snippet(world):
+    world.tldr = " ".join(["word"] * 60)
+    morning(world)
+    assert all(len(each.tldr.split()) <= news.TLDR_MOST for each in the_set(world))
 
 
-def test_a_source_is_added_only_when_its_feed_works_and_removed_by_name(world):
-    world.pages["https://new.example/feed"] = rss([("Made-up", "https://new.example/1", clock.now().isoformat())])
-    proposal = run(plain.source_card(world.request(), {"url": "https://new.example/feed", "theme": "programming", "name": "Made-up new"}, frozenset()))
-    run(plain.source_apply(world.request(), proposal.data))
-    assert "Made-up new" in [each.name for each in run(plain.sources_for(world.owner.id))]
-    with pytest.raises(UserError):
-        run(plain.source_card(world.request(), {"url": "https://broken.example/feed", "theme": "news"}, frozenset()))
-    gone = run(plain.source_card(world.request(), {"remove": True, "name": "Made-up news"}, frozenset()))
+def test_a_page_behind_a_paywall_falls_back_to_its_snippet(world):
+    fresh(world, same_links=True)
+    world.same_links = False
+    world.pages[link(TECH, 0).split("?")[0]] = article_page("Made-up chip maker unveils a faster processor", WORDS, "<p>Subscribe to continue reading.</p>")
+    morning(world, keep_pages=True)
+    write_turn = world.asked[1][1]
+    assert "A made-up snippet about made-up chip maker" in write_turn
+
+
+def test_nothing_of_an_article_reaches_a_log(world, caplog):
+    with caplog.at_level(logging.DEBUG):
+        world.failing.add(link(WORLD, 0).split("?")[0])
+        morning(world)
+    assert SECRET not in caplog.text and "Made-up earthquake" not in caplog.text
+
+
+def test_on_a_monday_the_window_is_since_saturday_5_30_am(world):
+    monday = world.day + timedelta(days=(7 - world.day.weekday()) % 7 or 7)
+    clock.advance_to(days.at(monday, time(5, 30)))
+    world.day = monday
+    saturday = (days.at(monday - timedelta(days=2), time(9, 0))).strftime("%a, %d %b %Y %H:%M:%S +0000")
+    fresh(world, same_links=True)
+    world.same_links = False
+    world.pages[feed_url(WORLD)] = rss([("Made-up weekend storm closes a port", link(WORLD, 5), saturday, "")])
+    world.pages[link(WORLD, 5).split("?")[0]] = article_page("Made-up weekend storm closes a port")
+    morning(world, keep_pages=True)
+    assert "Made-up weekend storm closes a port" in world.asked[0][1]
+
+
+# --- the hub: round 7's second message ----------------------------------------------------------------------------------
+def test_in_round_7_it_is_one_purple_embed_in_message_two_and_before_it_is_not_in_the_hub(world, monkeypatch):
+    morning(world)
+    monkeypatch.setattr(config, "DESIGN_ROUND", 5)
+    assert run(plain.day_items(world.owner.id, world.day)) == []
+    monkeypatch.setattr(config, "DESIGN_ROUND", 7)
+    (item,) = run(plain.day_items(world.owner.id, world.day))
+    assert item.kind == PREPARED and item.title == "Morning news" and item.text.startswith("1. **[")
+    card = embeds.everything_else([item])
+    (embed,) = card.embeds
+    assert (embed.title, embed.status) == ("📰 Morning news", design.PREPARED) and len(embed.description) <= news.EMBED_BUDGET
+    assert design.embed_colour(embed.status) == 0x9B59B6
+
+
+def test_message_two_puts_the_news_after_the_to_dos_and_the_diary(world, monkeypatch):
+    from core.actions import TODO, TRACKING, DayItem
+
+    morning(world)
+    monkeypatch.setattr(config, "DESIGN_ROUND", 7)
+    (item,) = run(plain.day_items(world.owner.id, world.day))
+    card = embeds.everything_else([item, DayItem(TODO, "Buy stamps"), DayItem(TRACKING, "Diary · Streak: 3 days", icon="📓")])
+    assert [each.status for each in card.embeds] == [design.TODOS, design.TRACKING, design.PREPARED]
+
+
+# --- 👍: a good set ----------------------------------------------------------------------------------------------------
+def test_thumbs_up_on_the_news_is_a_good_set_kept_for_the_picker_and_undone_by_taking_it_away(world, monkeypatch):
+    monkeypatch.setattr(config, "THUMBS_UP", True)
+    monkeypatch.setattr(config, "DESIGN_ROUND", 7)
+    thumbsup.reset()
+    morning(world)
+    (item,) = run(plain.day_items(world.owner.id, world.day))
+    card = embeds.everything_else([item])
+    assert card.thumbs_up.task == "reading" and card.thumbs_up.action == plain.LIKED
+    thumbsup.register(777, 100, card.thumbs_up)
+    assert run(thumbsup.confirm(777, world.owner)) == "📰 noted: a good set"
+    assert run(database.run(store.db_news, world.owner.id, world.day))[1] is True
+    assert run(database.run(store.db_liked_sets, world.owner.id)) == [[each.title for each in the_set(world)]]
+    run(thumbsup.undo(777, world.owner))
+    assert run(database.run(store.db_news, world.owner.id, world.day))[1] is False
+    thumbsup.reset()
+
+
+def test_a_liked_set_is_given_to_the_next_morning_s_pick(world):
+    morning(world)
+    run(database.run(store.db_like_news, world.owner.id, world.day, True))
+    clock.advance(timedelta(days=1))
+    world.day = days.today()
+    morning(world)
+    assert "A set he said was good:" in world.asked[2][1]
+
+
+# --- steering in words ------------------------------------------------------------------------------------------------
+def steer(world, **data):
+    card = run(plain.steer_card(world.request(), data, frozenset()))
+    run(plain.steer_apply(world.request(), card.data))
+    assert run(plain.steer_check(world.request(), card.data)) == ""
+    return card
+
+
+def test_more_like_3_less_ai_and_more_nz_politics_are_kept_and_given_to_every_later_pick(world):
+    morning(world)
+    third = the_set(world)[2]
+    card = steer(world, like=3)
+    assert card.lines == (f"More **{news.LABELS[third.topic]}**", f"More like **{third.title}**")
+    steer(world, less=AI)
+    steer(world, more=NZ_POLITICS)
+    with pytest.raises(UserError, match="already"):
+        run(plain.steer_card(world.request(), {}, frozenset()))
+    clock.advance(timedelta(days=1))
+    world.day = days.today()
+    morning(world)
+    turn = world.asked[2][1]
+    assert "He wants more of:" in turn and "NZ politics" in turn and "He wants less of: AI" in turn and third.title in turn
+
+
+def test_skip_housing_tomorrow_leaves_it_out_tomorrow_only(world):
+    morning(world)
+    card = steer(world, skip=NZ_MONEY, skip_day="tomorrow")
+    tomorrow = world.day + timedelta(days=1)
+    assert card.lines == (f"No **NZ housing and money** on {tomorrow:%a} {tomorrow.day} {tomorrow:%b}",)
+    clock.advance(timedelta(days=1))
+    world.day = days.today()
+    morning(world)
+    assert NZ_MONEY not in [each.topic for each in the_set(world)] and "Skip today: NZ housing and money" in world.asked[2][1]
+    clock.advance(timedelta(days=1))
+    world.day = days.today()
+    morning(world)
+    assert NZ_MONEY in [each.topic for each in the_set(world)], "one day only"
+
+
+def test_more_like_a_story_that_is_not_there_is_said(world):
+    morning(world)
+    with pytest.raises(UserError, match="no story 12"):
+        run(plain.steer_card(world.request(), {"like": 12}, frozenset()))
+
+
+# --- another one ----------------------------------------------------------------------------------------------------------
+def test_another_one_is_the_next_best_not_shown_its_tldr_written_now_as_a_reply(world):
+    morning(world)
+    shown = {each.url for each in the_set(world)}
+    said = run(plain.another(world.request("another one"), {}, frozenset()))
+    assert said.startswith(f"{len(shown) + 1}. **[") and not any(url in said for url in shown)
+    assert [name for name, _ in world.asked][-1] == pick.WRITE
+
+
+def test_another_one_when_there_are_no_more_is_said(world):
+    world.nexts = []
+    morning(world)
+    with pytest.raises(UserError, match="every story"):
+        run(plain.another(world.request("another one"), {}, frozenset()))
+
+
+def test_a_story_shown_is_never_shown_again_for_a_week(world):
+    morning(world)
+    first = {each.url for each in the_set(world)}
+    clock.advance(timedelta(days=1))
+    world.day = days.today()
+    fresh(world, same_links=True)  # the same stories again the next day
+    morning(world, keep_pages=True)
+    assert not first & {each.url for each in the_set(world)}
+
+
+# --- showing it, and what it knows ----------------------------------------------------------------------------------------
+def test_the_news_said_anywhere_is_its_embed_and_what_it_knows_is_said(world):
+    assert run(plain.show(world.request(), {"what": "today"}, frozenset())) == "📰 No morning news picked today yet."
+    morning(world)
+    run(plain.show(world.request(), {"what": "today"}, frozenset()))
+    assert world.sent[-1].embeds[0].status == design.PREPARED
+    assert run(plain.show(world.request(), {"what": "prefs"}, frozenset())).startswith("📰 Nothing said yet")
+
+
+def test_extraction_is_told_today_s_stories_by_number(world):
+    morning(world)
+    state = run(plain.state(world.request()))
+    assert state.lines[0].startswith("story 1: ") and "(World politics)" in state.lines[0]
+
+
+# --- sources in words -----------------------------------------------------------------------------------------------------
+def test_a_source_is_added_for_a_topic_and_removed_by_name(world):
+    world.pages["https://extra.example/rss"] = rss([("Made-up extra story", "https://extra.example/1", "Wed, 21 Oct 2026 01:00:00 +0000", "")])
+    card = run(plain.source_card(world.request(), {"url": "https://extra.example/rss", "name": "Made-up Extra", "topic": TECH}, frozenset()))
+    run(plain.source_apply(world.request(), card.data))
+    assert "Made-up Extra" in [each.name for each in run(plain.sources_for(world.owner.id))]
+    gone = run(plain.source_card(world.request(), {"remove": True, "name": "Made-up Extra"}, frozenset()))
     run(plain.source_apply(world.request(), gone.data))
-    assert "Made-up news" not in [each.name for each in run(plain.sources_for(world.owner.id))]
+    assert "Made-up Extra" not in [each.name for each in run(plain.sources_for(world.owner.id))]
+    with pytest.raises(UserError, match="Which topic"):
+        run(plain.source_card(world.request(), {"url": "https://extra.example/rss"}, frozenset()))
 
 
-# --- failures, the week, the order ----------------------------------------------------------------------------------
-def test_one_failing_source_is_quiet_every_source_three_days_is_a_look(world):
-    from tasks import reading
+def test_a_source_added_for_an_old_theme_is_read_as_its_topic(world):
+    run(database.run(store.db_set_source, world.owner.id, "https://old.example/rss", "Made-up Old", "programming", store.ADDED, clock.now()))
+    old = next(each for each in run(plain.sources_for(world.owner.id)) if each.name == "Made-up Old")
+    assert old.theme == WEBDEV
 
-    world.failing.add("https://news.example/rss")
-    picked(world)
-    assert run(reading.items(world.owner.id, clock.now())) == []
-    for ahead in (1, 2, 3):
-        run(database.run(store.db_fetched, world.owner.id, world.day + timedelta(days=ahead), 3, 3))
+
+def test_every_source_failing_three_days_running_deserves_a_look(world):
+    for ahead in range(3):
+        run(database.run(store.db_fetched, world.owner.id, world.day - timedelta(days=ahead), 7, 7))
     (item,) = run(reading.items(world.owner.id, clock.now()))
-    assert item.urgency == "problem" and item.ping is False
-
-
-def test_the_week_line():
-    reads = [rules.Read("https://x/1", "A", "S", rules.AI, 5, "x", date(2026, 10, 12), vote=1), rules.Read("https://x/2", "B", "S", rules.NEWS, 4, "x", date(2026, 10, 13))]
-    assert rules.week_line(reads) == "2 read · 1 👍 · AI usage, Tech news"
-
-
-def test_it_comes_after_the_to_dos():
-    from tasks import reading, todos
-
-    assert reading.PLACE > todos.PLACE and reading.ORDER > todos.ORDER
-
-
-# --- retuned to practical (Alex, 16 Oct: "very academic, maybe too high level") -------------------------------------------
-def _candidates(count):
-    return [Candidate(Item(f"https://example.com/{each}", f"Made-up piece {each}", "Made-up blog", "ai", None), WORDS, 5) for each in range(1, count + 1)]
-
-
-def test_the_target_is_practical_and_the_words_move_it():
-    assert rules.target(Profile()) == (2, 3, 4), "difficulty 2 to 3, practicality 4 or more"
-    assert rules.target(rules.tuned(Profile(), level=rules.EASIER)) == (1, 2, 4)
-    assert rules.target(rules.tuned(Profile(), level=rules.HARDER)) == (3, 4, 4)
-    practical = rules.tuned(Profile(), level=rules.PRACTICAL)
-    assert rules.target(practical) == (2, 3, 5) and Profile.from_dict(practical.as_dict()).practical == 1, "kept"
-    assert rules.in_target((3, 4), Profile()) and not rules.in_target((5, 5), Profile()) and not rules.in_target((2, 3), Profile()) and not rules.in_target(None, Profile())
-
-
-def test_every_candidate_is_rated_and_a_pick_out_of_the_target_is_asked_again_from_those_in_it(monkeypatch):
-    asked = []
-
-    async def call_tool(system, user, tools, *, choice, purpose, task="", max_tokens=600):
-        asked.append(user)
-        rated = [{"number": 1, "difficulty": 5, "practicality": 2}, {"number": 2, "difficulty": 2, "practicality": 5}, {"number": 3, "difficulty": 3, "practicality": 3}]
-        first = len(asked) == 1
-        return ("pick", {"ratings": rated, "choice": 1 if first else 2, "tldr": "A line.\nAnother.\nAfter reading, you will be able to try it."})
-
-    monkeypatch.setattr(pick.llm, "call_tool", call_tool)
-    chosen, tldr, rating = run(pick.choose(_candidates(3), "ai", Profile()))
-    assert chosen.item.url.endswith("/2") and rating == (2, 5) and len(asked) == 2
-    assert "Choose from difficulty 2 to 3 with practicality 4 or more." in asked[0] and "only 2 are in that range" in asked[1]
-    assert "web developer" in pick.SYSTEM and "research papers" in pick.SYSTEM and "After reading, you will be able to" in pick.SYSTEM
-
-
-def test_one_request_when_the_pick_is_in_the_target_or_nothing_is(monkeypatch):
-    asked = []
-
-    async def call_tool(system, user, tools, *, choice, purpose, task="", max_tokens=600):
-        asked.append(user)
-        return ("pick", {"ratings": [{"number": 1, "difficulty": 5, "practicality": 1}], "choice": 1, "tldr": "A line."})
-
-    monkeypatch.setattr(pick.llm, "call_tool", call_tool)
-    assert run(pick.choose(_candidates(1), "ai", Profile()))[2] == (5, 1) and len(asked) == 1, "nothing in the target: the closest, no second request"
-
-
-def test_the_tldr_keeps_its_after_reading_line_last():
-    said = "First.\nSecond.\nThird.\nFourth.\nAfter reading, you will be able to set up a made-up tool."
-    assert rules.tidy_tldr(said).splitlines() == ["First.", "Second.", "Third.", "After reading, you will be able to set up a made-up tool."]
-    assert rules.tidy_tldr("Only a line.") == "Only a line.", "a missing last line is not made up"
-
-
-def test_the_ratings_are_kept_with_the_read(world):
-    tldr = "A line.\nAfter reading, you will be able to try it."
-    shown = run(plain._show(world.owner.id, world.day, _candidates(1)[0], tldr, (2, 4)))
-    kept = run(store.current(world.owner.id, world.day))
-    assert (shown.difficulty, shown.practicality) == (2, 4) == (kept.difficulty, kept.practicality)
-
-
-def test_a_feed_cut_at_the_size_cap_is_read_up_to_the_cut(monkeypatch):
-    entries = "".join(f"<item><title>Made-up {each}</title><link>https://example.com/{each}</link></item>" for each in range(1, 4))
-    whole = f"<rss><channel>{entries}<item><title>Made-up 4</title><link>https://example.com/4</link><description>{'x' * 500}</description></item></channel></rss>".encode()
-    cut = whole[: whole.index(b"x" * 100)]
-    monkeypatch.setattr(sources, "MAX_BYTES", len(cut))
-    found = sources.parse_feed(cut, sources.Source("Made-up", "https://example.com/feed", "ai"))
-    assert [each.title for each in found] == ["Made-up 1", "Made-up 2", "Made-up 3"], "the entry open at the cut is left out"
-    with pytest.raises(Exception):
-        sources.parse_feed(b"<rss><channel><item>", sources.Source("Made-up", "https://example.com/feed", "ai"))
-
-
-def test_the_starter_sources_are_news_outlets_not_personal_blogs():
-    names = {each["name"] for each in json.loads(sources.FEEDS.read_text(encoding="utf-8"))["sources"]}
-    assert not names & {"Simon Willison", "Julia Evans", "Martin Fowler", "Josh W. Comeau", "Kent C. Dodds", "Addy Osmani"}, "21 Oct: news, not personal blogs"
-
+    assert item.what.startswith("the morning news's sources") and item.ping is False

@@ -1,6 +1,6 @@
 import re
 import urllib.parse
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, time, timedelta
 
 from core import day as days
@@ -202,3 +202,102 @@ def description(stories: list[Story]) -> str:
 def plain_text(stories: list[Story], day: date) -> str:
     """The set in words, for the log line of a message and for a copy where embeds are not drawn: headlines only."""
     return "\n".join([f"{ICON} {TITLE} · {day:%a} {day.day} {day:%b}", *(f"{number}. {each.title}" for number, each in enumerate(stories, start=1))])
+
+
+# --- steering in words (kept in the database, used by every later pick) ------------------------------------------
+WEIGHT_MOST = 2  # "more NZ politics" twice is as far as it goes; "less AI" twice the other way
+LIKED_KEPT = 8  # stories he asked for more like, the newest kept
+
+
+@dataclass
+class Prefs:
+    """What Alex said about the news: more or less of a topic, stories to have more like, and a topic skipped on a day."""
+
+    weights: dict = field(default_factory=dict)  # topic: -2 to 2
+    like: list = field(default_factory=list)  # [{"title", "topic"}], newest last
+    skips: dict = field(default_factory=dict)  # "2026-10-22": [topic]
+
+    def as_dict(self) -> dict:
+        return {"weights": self.weights, "like": self.like, "skips": self.skips}
+
+    @classmethod
+    def from_dict(cls, data: dict | None) -> "Prefs":
+        data = data or {}
+        weights = {topic: max(-WEIGHT_MOST, min(WEIGHT_MOST, int(value))) for topic, value in (data.get("weights") or {}).items() if topic in ALL_TOPICS}
+        skips = {day: [each for each in topics if each in ALL_TOPICS] for day, topics in (data.get("skips") or {}).items()}
+        return cls(weights, list(data.get("like") or [])[-LIKED_KEPT:], skips)
+
+
+def steered(prefs: Prefs, more: str = "", less: str = "", like: Story | None = None, skip: str = "", skip_on: date | None = None, today: date | None = None) -> Prefs:
+    """The preferences after what was said. A skip is for one day; skips of days gone by are forgotten."""
+    weights = dict(prefs.weights)
+    if more in ALL_TOPICS:
+        weights[more] = min(WEIGHT_MOST, weights.get(more, 0) + 1)
+    if less in ALL_TOPICS:
+        weights[less] = max(-WEIGHT_MOST, weights.get(less, 0) - 1)
+    liked = list(prefs.like)
+    if like is not None:
+        liked = [*[each for each in liked if each.get("title") != like.title], {"title": like.title, "topic": like.topic}][-LIKED_KEPT:]
+        weights[like.topic] = min(WEIGHT_MOST, weights.get(like.topic, 0) + 1) if like.topic not in (more, less) else weights.get(like.topic, 0)
+    skips = {day: list(topics) for day, topics in prefs.skips.items() if today is None or day >= today.isoformat()}
+    if skip in ALL_TOPICS and skip_on is not None:
+        skips[skip_on.isoformat()] = sorted({*skips.get(skip_on.isoformat(), []), skip})
+    return Prefs({topic: value for topic, value in weights.items() if value}, liked, skips)
+
+
+def skipped_on(prefs: Prefs, day: date) -> frozenset[str]:
+    return frozenset(prefs.skips.get(day.isoformat(), []))
+
+
+def _day_name(day: date) -> str:
+    return f"{day:%a} {day.day} {day:%b}"
+
+
+def changes(before: Prefs, after: Prefs) -> list[str]:
+    """What a steering card says it will change, a line each, in the task's own words."""
+    lines = []
+    for topic in ALL_TOPICS:
+        was, now = before.weights.get(topic, 0), after.weights.get(topic, 0)
+        if now > was:
+            lines.append(f"More **{LABELS[topic]}**" + (" (as much as it goes)" if now == WEIGHT_MOST else ""))
+        elif now < was:
+            lines.append(f"Less **{LABELS[topic]}**" + (" (as little as it goes)" if now == -WEIGHT_MOST else ""))
+    for each in after.like:
+        if each not in before.like:
+            lines.append(f"More like **{each['title']}**")
+    for day, topics in sorted(after.skips.items()):
+        new = [topic for topic in topics if topic not in before.skips.get(day, [])]
+        if new:
+            lines.append(f"No **{', '.join(LABELS[each] for each in new)}** on {_day_name(date.fromisoformat(day))}")
+    return lines
+
+
+def guidance(prefs: Prefs, day: date, liked_sets: list[list[str]] = ()) -> str:
+    """What Claude is told about his preferences, as plain data."""
+    lines = []
+    more = [LABELS[topic] for topic, value in prefs.weights.items() if value > 0]
+    less = [LABELS[topic] for topic, value in prefs.weights.items() if value < 0]
+    if more:
+        lines.append("He wants more of: " + ", ".join(more) + " (prefer extras from these).")
+    if less:
+        lines.append("He wants less of: " + ", ".join(less) + " (keep its one slot, never an extra from it).")
+    if prefs.like:
+        lines.append("Stories he asked for more like: " + "; ".join(each["title"] for each in prefs.like[-5:]) + ".")
+    for headlines in list(liked_sets)[-3:]:
+        lines.append("A set he said was good: " + "; ".join(headlines) + ".")
+    skipped = skipped_on(prefs, day)
+    if skipped:
+        lines.append("Skip today: " + ", ".join(LABELS[each] for each in sorted(skipped)) + " (no story from it).")
+    return "\n".join(lines) or "Nothing said yet: an even mix."
+
+
+def profile_text(prefs: Prefs, today: date) -> str:
+    """ "What do you know about my news?": the preferences as they stand."""
+    lines = [f"{ICON} **{TITLE}** · what you've said"]
+    for topic in ALL_TOPICS:
+        value = prefs.weights.get(topic, 0)
+        if value:
+            lines.append(f"{'More' if value > 0 else 'Less'} **{LABELS[topic]}**")
+    lines += [f"More like **{each['title']}**" for each in prefs.like[-3:]]
+    lines += [f"No **{', '.join(LABELS[each] for each in topics)}** on {_day_name(date.fromisoformat(day))}" for day, topics in sorted(prefs.skips.items()) if day >= today.isoformat()]
+    return "\n".join(lines) if len(lines) > 1 else f"{ICON} Nothing said yet: an even mix of every topic."
