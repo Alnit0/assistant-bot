@@ -6,6 +6,9 @@ backfilled from the git log.
 
 ## 2026-10-21
 
+- 👍 on a dose's reminder takes it, on a reminder that went off or an expiry marks it done, and on a routine's own
+  card does all of it (the card turns green, 🟩 Done; take the 👍 away to undo). Typing still works. Behind
+  THUMBS_UP, which also takes the dropdown off a routine.
 - A new look for the morning briefing, behind DESIGN_ROUND=7 (round 5 stays): the date, then your day in time
   order as coloured cards (events, each dose with ⬜ Later, 🟥 Due or 🟩 Taken and the time, routines), and a
   second message with your to-dos and your diary streak.

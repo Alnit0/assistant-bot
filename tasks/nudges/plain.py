@@ -425,7 +425,7 @@ async def fire_job(job) -> None:
         return
     await database.run(store.db_posted, fired_id, channel_id, message_id)
     row = rules.fired_row(fired_id)
-    await cards.edit(channel_id, message_id, Card(rules.fired_text(nudge, job.due_at, late), (row,), rules.fired_layout(nudge, job.due_at, late, row)))
+    await cards.edit(channel_id, message_id, Card(rules.fired_text(nudge, job.due_at, late), (row,), rules.fired_layout(nudge, job.due_at, late, row), thumbs_up=row[0]))
     await messages.record(message_id, channel_id, lifetime=messages.DAY, task=TASK, user_id=nudge.user_id)
     # The bot's latest word in the hub is about this reminder: "done" straight after is its (core/llm.py)
     llm.task_answered(channel_id, TASK)
@@ -469,7 +469,7 @@ async def on_back(press: cards.Press) -> str:
     if fired is None or nudge is None:
         return "gone"
     row = rules.fired_row(fired.id)
-    await press.update(Card(rules.fired_text(nudge, fired.due_at, fired.late), (row,), rules.fired_layout(nudge, fired.due_at, fired.late, row)))
+    await press.update(Card(rules.fired_text(nudge, fired.due_at, fired.late), (row,), rules.fired_layout(nudge, fired.due_at, fired.late, row), thumbs_up=row[0]))
     return "back"
 
 

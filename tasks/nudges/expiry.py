@@ -430,7 +430,8 @@ def post_card(expiry: Expiry, today: date, row: tuple) -> Card:
     left = days_left(expiry, today)
     text = "\n".join([neutral(expiry.due, today), f"**{expiry.name}** · {in_words(left)}"])
     box = design.Box(design.DUE, (design.Text("\n".join([design.card_title(f"{RENEW_ICON} {expiry.name}"), f"due {design.time(short(expiry.due, today))} · {in_words(left)}", design.small("Done when it is renewed")])), design.Row(tuple(row))))
-    return Card(text, (row,), design.fit(design.notifying(neutral(expiry.due, today), box)))
+    # 👍 on it is Done (renewed) while it offers Done; not while it asks how long to snooze
+    return Card(text, (row,), design.fit(design.notifying(neutral(expiry.due, today), box)), thumbs_up=row[0] if row and row[0].action == RENEWED else None)
 
 
 async def post_nudge(expiry: Expiry, again: bool = False) -> str:

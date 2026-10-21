@@ -253,6 +253,8 @@ SMART_INBOX = flag(os.getenv("SMART_INBOX"), False)
 PLAN_MY_DAY = flag(os.getenv("PLAN_MY_DAY"), False)
 # The week view in #calendar (tasks/week, core/weekview.py): this week pinned, next week below. Off: not loaded
 WEEK_VIEW = flag(os.getenv("WEEK_VIEW"), False)
+# 👍 on a message that asks one simple yes does what its button does (core/confirmations.py); a routine's own card loses its dropdown
+THUMBS_UP = flag(os.getenv("THUMBS_UP"), False)
 CALENDAR_CHANNEL_ID = int(os.getenv("CALENDAR_CHANNEL_ID")) if (os.getenv("CALENDAR_CHANNEL_ID") or "").isdigit() else None
 # Birthdays, part of reminders (tasks/nudges/birthdays.py; with NUDGES_ENABLED). Off: not loaded
 BIRTHDAYS_ENABLED = flag(os.getenv("BIRTHDAYS_ENABLED"), False)

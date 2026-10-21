@@ -150,6 +150,11 @@ async def own_card(user_id: int, habit_id: int) -> Card | None:
     from the morning) until it is done; None before then, after, and on a day it is off."""
     now = clock.now()
     found = next((each for each in await today_of(user_id) if each.habit.id == habit_id), None)
+    from core import thumbsup
+
+    if thumbsup.enabled() and found is not None and rules.state(found, now) != rules.NOT_YET:
+        # A plain embed a 👍 confirms; done, it stays the day in green (Alex, 21 Oct)
+        return rules.routine_embed(found, now)
     if found is None or rules.state(found, now) in (rules.NOT_YET, rules.FINISHED):
         return None
     return Card(rules.routine_text(found), rules.buttons([found]), rules.routine_card(found, now))
@@ -590,6 +595,34 @@ async def _tick_by_id(press: cards.Press, which: str) -> str:
 async def on_tick(press: cards.Press) -> str:
     """A button of the plain look: that item is done."""
     return await _tick_by_id(press, press.arg)
+
+
+async def on_all_done(press: cards.Press) -> str:
+    """👍 on a routine's own card (core/thumbsup.py): every item still open today is done; taking the 👍
+    away opens those same items again."""
+    day, now = days.today(), clock.now()
+    habit_id = int(press.arg) if press.arg.isdigit() else 0
+    found = next((each for each in await today_of(press.user.id) if each.habit.id == habit_id), None)
+    if found is None or found.finished:
+        changed(press.user.id)
+        return "already dealt with"
+    ticked = []
+    for item in found.open_items:
+        if await press.db.run(store.db_tick, press.user.id, item.id, day, now):
+            ticked.append(item.id)
+    press.offer_undo(cards.Button("Undo", TASK, rules.ALL_UNDO, f"{habit_id}:{','.join(str(each) for each in ticked)}"))
+    changed(press.user.id)
+    return f"✅ {found.habit.name} · all done"
+
+
+async def on_all_undone(press: cards.Press) -> str:
+    """The 👍 was taken away: the items it ticked are open again."""
+    _, _, items = press.arg.partition(":")
+    day = days.today()
+    for each in (int(one) for one in items.split(",") if one.isdigit()):
+        await press.db.run(store.db_untick, each, day)
+    changed(press.user.id)
+    return "↩️ not done after all"
 
 
 async def on_picked(press: cards.Press) -> str:

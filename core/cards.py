@@ -2,7 +2,7 @@ import logging
 import re
 import time
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from core import config, database, design, dms, messages, outgoing, surface
 from core.context import Context
@@ -134,6 +134,9 @@ class Card:
     # `heading` (the message's own line, "" for none). `text` still says it all, for the log and the checks
     embeds: tuple["Embed", ...] = ()
     heading: str = ""
+    # A message that asks one simple yes (a dose's reminder, a routine's own card): the button a 👍 on it
+    # stands for (core/thumbsup.py). Noted when the card is sent or rewritten, forgotten when it goes
+    thumbs_up: "Button | None" = None
 
 
 @dataclass(frozen=True)
@@ -237,7 +240,7 @@ def fitted(card: Card) -> Card:
     if not card.layout or not design.problem(card.layout):
         return card
     log.warning("A card's layout was made to fit: %s", design.problem(card.layout))
-    return Card(card.text, card.rows, design.fit(card.layout), card.embeds, card.heading)
+    return replace(card, layout=design.fit(card.layout))
 
 
 def check_select(row: Select) -> None:
@@ -316,6 +319,8 @@ class Press:
     _interaction: object | None = field(default=None, repr=False)
     shown: list[str] = field(default_factory=list)  # what the presser was shown, for the log
     row_id: int | None = None  # this press's row in message_log, for a handler with a cost to record on it
+    # What would undo this press, when a 👍 made it (core/thumbsup.py): taking the 👍 away runs it
+    undo: "Button | None" = None
 
     # Database access, as on Context
     db = database
@@ -331,6 +336,13 @@ class Press:
         card = dms.guarded(self.channel_id, card)
         self.shown.append(card.text)
         await self._answer.update(card)
+        from core import thumbsup
+
+        thumbsup.follow(self.message_id, self.channel_id, card)
+
+    def offer_undo(self, button: "Button") -> None:
+        """Say what would undo this press: used when a 👍 made it, so taking the 👍 away undoes it."""
+        self.undo = button
 
     async def say(self, text: str) -> None:
         """Tell the presser something only they see."""
@@ -350,6 +362,9 @@ class Press:
         """Delete the message the component is on."""
         self.shown.append("message removed")
         await self._answer.remove()
+        from core import thumbsup
+
+        thumbsup.drop(self.message_id)
 
 
 Handler = Callable[[Press], Awaitable[str | None]]
@@ -364,6 +379,11 @@ class _Action:
 
 
 _actions: dict[tuple[str, str], _Action] = {}
+
+
+def action_for(task: str, action: str) -> "_Action | None":
+    """What runs for a component with this task and action, or None if its task is not loaded."""
+    return _actions.get((task, action))
 
 
 def register(task: str, action: str, handler: Handler, *, permission: str = "", opens_form: bool = False, private: bool = False) -> None:
@@ -465,6 +485,10 @@ async def send(channel_id: int, card: Card, *, silent: bool = False) -> int | No
         return None
     message_id = await surface.send_card(channel_id, card, text, silent=silent)
     await messages.record(message_id, channel_id)
+    if card.thumbs_up is not None:
+        from core import thumbsup
+
+        thumbsup.register(message_id, channel_id, card.thumbs_up)
     return message_id
 
 
@@ -476,19 +500,26 @@ async def edit(channel_id: int, message_id: int, card: Card) -> bool:
     check(card)
     card = dms.guarded(channel_id, card)
     plain = Card(outgoing.clean(card.text) or card.text, card.rows)
+    from core import thumbsup
+
     try:
         await surface.edit_card(channel_id, message_id, card, plain)
     except surface.Gone:
+        thumbsup.drop(message_id)
         return False
     except surface.Failed as error:
         log.warning("Could not edit card %s: %s", message_id, error)
         return False
+    thumbsup.follow(message_id, channel_id, card)
     return True
 
 
 async def delete(channel_id: int, message_id: int) -> bool:
     """Delete a card. Best effort: False if it had already gone or can't be reached.
     The caller asks core/lifecycle.py first if this is the bot tidying up by itself."""
+    from core import thumbsup
+
+    thumbsup.drop(message_id)
     if surface.place(channel_id) is None:
         return False
     try:

@@ -8,6 +8,23 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-17 (evening)
 
+## 👍 as yes (21 Oct, evening; pushed, not restarted)
+
+Behind `THUMBS_UP` (off unless set): `core/thumbsup.py`, an in-memory
+registry fed by `core/cards.py` from `Card.thumbs_up`; the 👍 reaction is
+the builtin task's, through the existing reaction path (checked at once,
+the quiet period, ✅, undo; `Reaction.tracks` ignores an untracked message
+in silence). Five cards ask one yes: a dose's reminder and a dose with no
+time's message (Taken), a reminder that went off and an expiry's nudge
+(Done), a routine's own card (`habits.all_done`, undo `all_undo`). With it
+on, a routine has no dropdown (both layouts) and its own card is a plain
+embed that stays green with 🟩 Done for the day. Not given one: the
+checklist and the lists (several things on one message), confirm cards
+(Save stays a press). Text is unchanged: a typed taken or done that deals
+with the thing takes its card away or rewrites it, and the 👍 after it is
+nothing; a 👍 first, then typed taken, is what typing after a press always
+was (the pills rule asks before a second log).
+
 ## Round 7: the briefing as embeds (21 Oct, afternoon; not restarted)
 
 Built behind `DESIGN_ROUND=7` (docs/DESIGN-LOG.md, round 7): two messages

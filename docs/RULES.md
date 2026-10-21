@@ -420,6 +420,12 @@ The rules are in `docs/specs/pills.md` and the Pills section of
 - 🐞 is the one instant reaction (`Reaction.instant`): no debounce, no ✅,
   no undo. No other reaction may skip the debounce
 - A reaction action that fails adds ⚠️, with details in #bot-log
+- 👍 (behind `THUMBS_UP`) is yes to a message that asks one simple yes: a
+  card names the button it stands for (`Card.thumbs_up`), core/cards.py
+  notes it in `core/thumbsup.py` (in memory, 24 hours) and forgets it
+  when the card is rewritten without one or deleted, and the 👍 runs that
+  button's own handler. On any other message it is ignored in silence
+  (`Reaction.tracks`); like every reaction but 🐞 it waits the quiet period
 
 ### Bugs
 

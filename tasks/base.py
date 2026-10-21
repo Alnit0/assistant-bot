@@ -170,6 +170,9 @@ class Reaction:
     # Must be quick and change nothing
     validate: Callable[[discord.Message], None] | None = None
     instant: bool = False  # act at once, with no quiet period and no undo
+    # `(message_id) -> bool`: only a message this says yes to is this reaction's (👍: one that asks one
+    # simple yes). On any other it is ignored in silence: not checked, not waited for, no ✅ and no ⚠️
+    tracks: Callable[[int], bool] | None = None
     # Housekeeping (delete, archive, pin, unpin, channel reset) leaves no trace in the
     # channel: what is said about it deletes itself after about 10 seconds whatever
     # KEEP_CONFIRMATIONS says, and #bot-log is the record

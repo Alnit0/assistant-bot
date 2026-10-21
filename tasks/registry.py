@@ -544,6 +544,9 @@ async def _reactions_quiet(events: list[tuple[discord.RawReactionActionEvent, bo
         return user.id if is_allowed(user, _reactions[emoji][1].permission) else None
 
     for payload, added in events:
+        entry = _reactions.get(_emoji_key(payload.emoji))
+        if added and entry is not None and not _tracked(entry[1], payload.message_id):
+            continue  # done another way while it waited (a 👍 after it was typed): nothing
         change = reactions.Change(
             payload.message_id, payload.channel_id, _emoji_key(payload.emoji), payload.user_id
         )
@@ -656,6 +659,11 @@ async def _reaction_is_valid(payload: discord.RawReactionActionEvent) -> bool:
     return True
 
 
+def _tracked(reaction: Reaction, message_id: int) -> bool:
+    """Whether a reaction is for this message: every message, unless it says which (`Reaction.tracks`)."""
+    return reaction.tracks is None or reaction.tracks(message_id)
+
+
 async def reaction_changed(payload: discord.RawReactionActionEvent, added: bool) -> None:
     """Note a reaction being added or removed.
 
@@ -665,6 +673,8 @@ async def reaction_changed(payload: discord.RawReactionActionEvent, added: bool)
     emoji = _emoji_key(payload.emoji)
     if emoji not in _reactions:
         return
+    if added and not _tracked(_reactions[emoji][1], payload.message_id):
+        return  # not a message this reaction is for: nothing, said or done
     refused = (payload.message_id, emoji, payload.user_id)
     if added:
         if not await _reaction_is_valid(payload):

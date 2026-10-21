@@ -4,8 +4,8 @@ What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
 **Idle, last was** 21 Oct: round 7, the briefing as embeds (behind
-`DESIGN_ROUND=7`), pushed `c531ee2`, self-test 150 of 150. Live NOT
-restarted (Alex restarts by hand): still on `6ba3e80`, round 5.
+`DESIGN_ROUND=7`), then 👍 as yes (behind `THUMBS_UP`), both pushed. Live
+NOT restarted or updated (Alex does it): still on `6ba3e80`, round 5.
 
 **Next, at the next restart** (not overnight): the settle-in week, a
 feature freeze to Sun 25 Oct (fixes and polish from real use only, new

@@ -286,7 +286,8 @@ def card(dose: Dose, listed: list[Dose], prompt: Prompt, now: datetime) -> Card:
     if prompt.is_last_chance:
         row = tuple(button for button in row if button.action != P_SNOOZE)  # there is nothing left to snooze into
     said = text(dose, listed, prompt, now)
-    return Card(said, (row,), drawn(dose, listed, prompt, now, said, row))
+    # 👍 on it is Taken, through the same handler and checks (core/confirmations.py)
+    return Card(said, (row,), drawn(dose, listed, prompt, now, said, row), thumbs_up=row[0])
 
 
 def drawn(dose: Dose, listed: list[Dose], prompt: Prompt, now: datetime, said: str, row: tuple) -> tuple:

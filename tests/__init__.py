@@ -50,6 +50,7 @@ for name, value in {
     "SMART_INBOX": "",  # off, as it is unless set: the smart inbox's tests switch it on
     "PLAN_MY_DAY": "",  # off, as it is unless set: the plan's tests switch it on
     "WEEK_VIEW": "",  # off, as it is unless set: the week view's tests switch it on
+    "THUMBS_UP": "",  # off, as it is unless set: the 👍 tests switch it on
     "CALENDAR_CHANNEL_ID": "",
     "BIRTHDAYS_ENABLED": "",  # off, as it is unless set: the birthdays' tests switch it on
     "GYM_ENABLED": "",  # off, as it is unless set: the gym's tests switch it on

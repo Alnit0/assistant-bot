@@ -159,6 +159,8 @@ class HabitsTask(Task):
     def setup(self, client) -> None:
         cards.register(TASK, rules.TICK, plain.on_tick)
         cards.register(TASK, rules.PICKED, plain.on_picked)
+        cards.register(TASK, rules.ALL_DONE, plain.on_all_done)
+        cards.register(TASK, rules.ALL_UNDO, plain.on_all_undone)
         scheduler.join_routine(hub.MORNING, scheduler.handler_name(TASK, JOB), order=ORDER, name=hub.MORNING_NAME)
 
     async def summary(self, user_id, day):

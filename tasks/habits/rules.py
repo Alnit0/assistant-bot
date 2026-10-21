@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, time
 
 from core import cards, design, recurrence, timeinput
@@ -33,6 +33,10 @@ TITLE = "Personal routines"
 DAY_WORDS = recurrence.DAY_WORDS
 TICK = "tick"  # the button of the plain look, and of a card drawn before the rework
 PICKED = "picked"  # the one Done dropdown of a routine (the list rule)
+ALL_DONE = "all_done"  # 👍 on a routine's own card: every item still open done (core/thumbsup.py)
+ALL_UNDO = "all_undo"  # the 👍 taken away: those items open again
+ROUTINE_ICON = "🌙"
+THUMBS_HINT = "👍 when it's all done"
 NOTHING = f"{ICON} You have no personal routines."
 MAX_ITEMS = 25  # a routine's items: what one dropdown can hold
 MAX_GUIDE = 12  # steps in a group
@@ -276,6 +280,10 @@ def _parts(today: Today, now: datetime, heading: str) -> tuple[list, list]:
         count = f"{today.total} item{'' if today.total == 1 else 's'}"
         return [design.Text("\n".join([heading, when_line(today, now), design.small(count)]))], []
     listing = design.listed(today.open_items)
+    from core import thumbsup  # with 👍 on, no dropdown: a 👍 on its own card does it all, words do one
+
+    if thumbsup.enabled():
+        listing = replace(listing, menu=())
     children: list = [design.Text("\n".join([heading, when_line(today, now)]))]
     for each in listing.shown:
         children += [design.Separator(), design.Text(item_line(each, today.day))]
@@ -292,6 +300,23 @@ def routine_card(today: Today, now: datetime) -> tuple:
     more", what is done counted, and one Done dropdown under them."""
     children, menu = _parts(today, now, design.card_title(f"{ICON} {today.habit.name}", today.done, today.total))
     return design.fit((design.Box(status_of(today, now), (*children, *menu)),))
+
+
+def routine_embed(today: Today, now: datetime) -> cards.Card:
+    """With 👍 on (THUMBS_UP): a routine's own card as one plain embed, no dropdown. Open: "10:00 pm · 🌙 Evening",
+    what is still open a line each, blue, and a 👍 on it does it all. Done: the same line with 🟩 Done, green, until
+    the day ends (its card goes the next morning)."""
+    starts = today.starts()
+    line = f"{timeinput.format_moment(starts) if starts is not None else 'any time'} · {ROUTINE_ICON} {today.habit.name}"
+    if today.finished:
+        embed = cards.Embed(f"{line} · 🟩 Done", status=design.TAKEN)
+        return cards.Card(f"{line} · 🟩 Done", embeds=(embed,))
+    lines = [line, *(f"▫️ {each.text}" for each in today.open_items[:design.MAX_MENU])]
+    if len(today.open_items) > design.MAX_MENU:
+        lines.append(design.small(design.more_line(len(today.open_items) - design.MAX_MENU)))
+    lines.append(design.small(f"✅ {today.done} done · {THUMBS_HINT}" if today.done else THUMBS_HINT))
+    said = "\n".join(lines)
+    return cards.Card(said, embeds=(cards.Embed(said, status=design.ROUTINE),), thumbs_up=cards.Button("Done", TASK, ALL_DONE, str(today.habit.id), emoji="✅", style=cards.SUCCESS))
 
 
 def routine_text(today: Today) -> str:

@@ -1,7 +1,7 @@
 from core.context import Context
 from core.llm import clear_history, format_cost
 from tasks import registry
-from tasks.base import ANY, Keyword, Task
+from tasks.base import ANY, Keyword, Reaction, Task
 from tasks.builtin import commands
 from tasks.builtin.views import TestButtons
 
@@ -134,6 +134,19 @@ async def help_command(ctx: Context) -> None:
         await ctx.reply(build_item_help(kind, task, item))
 
 
+async def thumbs_up(payload, user) -> str | None:
+    """👍 on a message that asks one simple yes: what its button does (core/thumbsup.py)."""
+    from core import thumbsup
+
+    return await thumbsup.confirm(payload.message_id, user) or "nothing waited for a yes"
+
+
+async def thumbs_up_taken_away(payload, user) -> str | None:
+    from core import thumbsup
+
+    return await thumbsup.undo(payload.message_id, user)
+
+
 class BuiltinTask(Task):
     name = "builtin"
     description = "Basic commands: ping, reset, buttons, stats and help"
@@ -142,6 +155,23 @@ class BuiltinTask(Task):
     async def startup(self, client) -> None:
         # #commands is written from the registry, which is complete by now
         await commands.update()
+
+    def reactions(self) -> list[Reaction]:
+        from core import thumbsup
+
+        if not thumbsup.enabled():
+            return []
+        return [
+            Reaction(
+                thumbsup.THUMBS_UP,
+                "yes to a message that asks one thing: a dose's reminder (taken), a reminder or an expiry (done), "
+                "a routine's own card (all of it done). Remove the reaction to undo it where it can be",
+                thumbs_up,
+                examples=[f"react {thumbsup.THUMBS_UP} to a dose's reminder"],
+                undo=thumbs_up_taken_away,
+                tracks=thumbsup.tracked,
+            ),
+        ]
 
     def keywords(self) -> list[Keyword]:
         return [

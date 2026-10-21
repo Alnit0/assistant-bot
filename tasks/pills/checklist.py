@@ -139,10 +139,8 @@ async def read(user_id: int, day: date | None = None) -> tuple[list[Pill], list[
 def dose_card(dose: Dose) -> Card:
     """The message a dose with no time gets: no snooze, there is no time pressure."""
     which = str(dose.occurrence.id)
-    return Card(
-        today.dose_text(dose),
-        ((Button("Taken", TASK, TAKEN, which, emoji="✅", style=cards.SUCCESS), Button("Skip", TASK, SKIP, which, emoji="⏭️", style=cards.PRIMARY)),),
-    )
+    taken = Button("Taken", TASK, TAKEN, which, emoji="✅", style=cards.SUCCESS)
+    return Card(today.dose_text(dose), ((taken, Button("Skip", TASK, SKIP, which, emoji="⏭️", style=cards.PRIMARY)),), thumbs_up=taken)
 
 
 def sheet_card(listed: list[Dose], pills: list[Pill], day: date) -> Card:
