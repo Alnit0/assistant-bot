@@ -18,6 +18,9 @@ from dataclasses import dataclass, field
 SIZE = 5
 PALETTE = ("🟥", "🟧", "🟨", "🟩", "🟦", "🟪")
 BLACK, GREEN = "⬛", "🟩"
+# An invisible first line (a zero-width space): with Discord's Compact display the message's first line sits
+# beside the bot's name, so the grid's first row starts on the line below it (Alex, 21 Oct, on his PC)
+FIRST_LINE = "​"
 WAVES = 8  # frames 1 to 8
 LAST = WAVES + 1  # frame 9, the settle
 SECONDS, FASTEST, SLOWEST = 1.0, 0.5, 3.0  # between frames: the default, and how far it may go each way
@@ -33,9 +36,9 @@ def squares(frame: int) -> list[str]:
 
 
 def frame_text(frame: int) -> str:
-    """A frame as the message's whole text: five rows of five squares and nothing else, so Discord draws them large."""
+    """A frame as the message's whole text: an invisible first line, then five rows of five squares and nothing else."""
     found = squares(frame)
-    return "\n".join("".join(found[row * SIZE:(row + 1) * SIZE]) for row in range(SIZE))
+    return "\n".join([FIRST_LINE, *("".join(found[row * SIZE:(row + 1) * SIZE]) for row in range(SIZE))])
 
 
 def seconds(said: str | None) -> float:

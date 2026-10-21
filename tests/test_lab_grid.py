@@ -31,10 +31,13 @@ def test_a_wave_frame_rolls_the_palette_diagonally():
     assert grid.squares(1)[0] == "🟧" and grid.squares(1)[1] == grid.squares(1)[5] == "🟨", "the diagonal shares a colour"
 
 
-def test_a_frame_is_five_rows_of_five_squares_and_nothing_else():
+def test_a_frame_is_an_invisible_first_line_then_five_rows_of_five_squares_and_nothing_else():
+    """The first line is a zero-width space alone: Compact display puts a first line beside the bot's name (21 Oct)."""
     for frame in range(10):
-        rows = grid.frame_text(frame).split("\n")
+        first, *rows = grid.frame_text(frame).split("\n")
+        assert first == "​"
         assert len(rows) == 5 and all(len(row) == 5 for row in rows), "five squares a row, no text, no spaces"
+        assert rows == ["".join(grid.squares(frame)[index * 5:(index + 1) * 5]) for index in range(5)]
 
 
 def test_there_are_ten_frames_in_all():
