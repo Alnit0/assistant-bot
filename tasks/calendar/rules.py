@@ -22,7 +22,7 @@ from core.errors import UserError
 # show it); the names come after.
 # ---------------------------------------------------------------------------
 TASK = "calendar"
-ICON = "📅"
+ICON = "🗓️"
 TITLE = "Calendar"
 AHEAD_DAYS = 62  # how far ahead the copy reaches
 BEHIND_DAYS = 1  # and back: yesterday, for an event that runs past midnight

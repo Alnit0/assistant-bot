@@ -195,7 +195,7 @@ def test_work_every_weekday_9_to_5_30_is_a_card_then_a_real_google_recurrence(wo
     assert proposal.lines[:3] == ("**Work**", "Weekdays · `9:00 am` to `5:30 pm`", "From Mon 2 Nov · no end")
     assert proposal.lines[3].endswith("Next: Mon 2 Nov, Tue 3 Nov, Wed 4 Nov") and proposal.kind == "new"
     said = save(world, plain.add_save, plain.add_check, proposal)
-    assert said == "📅 Added · **Work** · weekdays · `9:00 am` to `5:30 pm`, from Mon 2 Nov"
+    assert said == "🗓️ Added · **Work** · weekdays · `9:00 am` to `5:30 pm`, from Mon 2 Nov"
     (made,) = world.fake.series()
     assert made["recurrence"] == ["RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR"]
     assert made["start"] == {"dateTime": "2026-11-02T09:00:00", "timeZone": "Pacific/Auckland"}, "local time and its zone"
@@ -229,7 +229,7 @@ def test_a_series_until_a_day_ends_that_day_in_auckland(world):
 
 def test_undo_after_adding_takes_the_whole_series_off(world):
     add_work(world)
-    assert run(plain.undo(world.request("undo that"), {}, frozenset())) == "↩️ 📅 **Work** · taken off the calendar"
+    assert run(plain.undo(world.request("undo that"), {}, frozenset())) == "↩️ 🗓️ **Work** · taken off the calendar"
     assert world.fake.series() == [] and [each for each in kept(world) if each.title == "Work"] == []
 
 
@@ -238,7 +238,7 @@ def test_cancel_work_next_tuesday_cancels_that_day_only_and_undo_brings_it_back(
     add_work(world)
     proposal = card(world, plain.cancel_card, {"search": "work", "day": "10 November", "scope": "one"}, "cancel work next Tuesday")
     assert proposal.lines[0] == "**Work** · Tue 10 Nov · `9:00 am` to `5:30 pm` · 8 hours 30 minutes · cancelled"
-    assert save(world, plain.cancel_save, plain.cancel_check, proposal).startswith("📅 Cancelled · **Work** · Tue 10 Nov")
+    assert save(world, plain.cancel_save, plain.cancel_check, proposal).startswith("🗓️ Cancelled · **Work** · Tue 10 Nov")
     assert times_on(world, date(2026, 11, 10)) == [] and times_on(world, date(2026, 11, 11)) == [(time(9, 0), time(17, 30))]
     run(plain.undo(world.request("undo that"), {}, frozenset()))
     assert times_on(world, date(2026, 11, 10)) == [(time(9, 0), time(17, 30))]
@@ -298,7 +298,7 @@ def test_cancel_work_from_a_day_ends_the_series_there_keeping_the_past(world):
     clock.advance_to(days.at(date(2026, 11, 11), time(7, 0)))
     proposal = card(world, plain.cancel_card, {"search": "work", "day": "1 December", "scope": "following"}, "cancel work from December")
     assert proposal.lines[1] == "Ends · the last one Mon 30 Nov" and proposal.data["op"] == "stop"
-    assert save(world, plain.cancel_save, plain.cancel_check, proposal) == "📅 Ended · **Work** · the last one Mon 30 Nov; past ones kept"
+    assert save(world, plain.cancel_save, plain.cancel_check, proposal) == "🗓️ Ended · **Work** · the last one Mon 30 Nov; past ones kept"
     assert world.fake.series()[0]["recurrence"] == ["RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;UNTIL=20261130T105959Z"]
     assert times_on(world, date(2026, 11, 30)) and not times_on(world, date(2026, 12, 1))
     run(plain.undo(world.request("undo that"), {}, frozenset()))
@@ -315,7 +315,7 @@ def test_delete_completely_is_a_red_card_and_undo_makes_it_again(world):
     add_work(world)
     proposal = card(world, plain.delete_card, {"search": "work"}, "delete work completely")
     assert proposal.destructive and proposal.kind == "remove" and proposal.lines == ("**Work** · weekdays", "-# every time, past ones too")
-    assert save(world, plain.delete_save, plain.delete_check, proposal) == "🗑️ 📅 **Work** · deleted, every time"
+    assert save(world, plain.delete_save, plain.delete_check, proposal) == "🗑️ 🗓️ **Work** · deleted, every time"
     assert world.fake.series() == [] and times_on(world, DAY + timedelta(days=1)) == []
     run(plain.undo(world.request("undo that"), {}, frozenset()))
     (again,) = world.fake.series()

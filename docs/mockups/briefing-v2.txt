@@ -12,7 +12,7 @@
 ┃ -# planned: today's workout, and when you last did it
 
 ┃ accent: grey
-┃ 📅 **Calendar**
+┃ 🗓️ **Calendar**
 ┃ -# planned: what is on today, with times
 
 ┃ accent: grey

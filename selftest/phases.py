@@ -1835,7 +1835,7 @@ async def p9(h: Harness) -> None:
             h.memo["habit"], h.memo["start"] = habit.id, start.isoformat()
             h.check(await slot_card(h, f"habits.r{habit.id}") is None, "a card of its own before its window starts")
 
-    async for attempt in h.step("9.04", "Its window starts: its own card, and the Today card", "A 🔁 Testevening card in the hub with the first three items, Skincare's steps as a guide, and one Done dropdown; the 📅 Today card names it", "personal routines, layout B; the Today card (15 Oct)"):
+    async for attempt in h.step("9.04", "Its window starts: its own card, and the Today card", "A 🔁 Testevening card in the hub with the first three items, Skincare's steps as a guide, and one Done dropdown; the 🗓️ Today card names it", "personal routines, layout B; the Today card (15 Oct)"):
         async with attempt:
             await h.clock_at(datetime.fromisoformat(h.memo["start"]))
             await h.settle(3)
@@ -1881,7 +1881,7 @@ async def p10(h: Harness) -> None:
         async with attempt:
             await h.say("what's on tomorrow?", canned=todo("calendar_show", day="tomorrow"), task="calendar")
             said = await h.find(h.inbox, "Tomorrow")
-            h.check(said is not None and said.text.splitlines()[0] == "📅 **Tomorrow** · 3 events" and "Test standup" in said.text, f"the answer: {said.text[:300] if said else 'none'}")
+            h.check(said is not None and said.text.splitlines()[0] == "🗓️ **Tomorrow** · 3 events" and "Test standup" in said.text, f"the answer: {said.text[:300] if said else 'none'}")
 
     async for attempt in h.step("10.03", "“when is the dentist?”", "The next Test dentist: the first line says when and names nothing, the second names it", "calendar (15 Oct)"):
         async with attempt:
@@ -1893,12 +1893,12 @@ async def p10(h: Harness) -> None:
         async with attempt:
             await h.say("am I free at 6:30 pm tomorrow?", canned=todo("calendar_free", day="tomorrow", time="6:30 pm"), task="calendar")
             said = await h.find(h.inbox, "free at")
-            h.check(said is not None and said.text.startswith("📅 Not free at **6:30 pm** tomorrow") and "Test gym" in said.text, f"the answer: {said.text[:300] if said else 'none'}")
+            h.check(said is not None and said.text.startswith("🗓️ Not free at **6:30 pm** tomorrow") and "Test gym" in said.text, f"the answer: {said.text[:300] if said else 'none'}")
 
-    async for attempt in h.step("10.05", "The Today card has today's events", "The 📅 Today card in the hub: an event in full, or those that are over in one small line", "calendar and the Today card (15 Oct)"):
+    async for attempt in h.step("10.05", "The Today card has today's events", "The 🗓️ Today card in the hub: an event in full, or those that are over in one small line", "calendar and the Today card (15 Oct)"):
         async with attempt:
             today_card = await slot_card(h, "today")
-            h.check(today_card is not None and ("📅 **Test" in today_card.text or "earlier today" in today_card.text), f"the Today card: {today_card.text[:300] if today_card else 'none'}")
+            h.check(today_card is not None and ("🗓️ **Test" in today_card.text or "earlier today" in today_card.text), f"the Today card: {today_card.text[:300] if today_card else 'none'}")
             h.saw(" / ".join(today_card.text.splitlines()[:4])[:200] if today_card else "")
 
 

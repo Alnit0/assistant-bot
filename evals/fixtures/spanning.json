@@ -845,7 +845,7 @@
         ],
         [
           "(pressed the card's button)",
-          "📅 Added · **Haircut** · Sat 17 Oct · `11:00 am` to `12:00 pm` · 1 hour"
+          "🗓️ Added · **Haircut** · Sat 17 Oct · `11:00 am` to `12:00 pm` · 1 hour"
         ]
       ],
       "note": "straight after an event was added",
@@ -1149,7 +1149,7 @@
         ],
         [
           "(pressed the card's button)",
-          "📅 Added · **Haircut** · Sat 17 Oct · `11:00 am` to `12:00 pm` · 1 hour"
+          "🗓️ Added · **Haircut** · Sat 17 Oct · `11:00 am` to `12:00 pm` · 1 hour"
         ]
       ],
       "note": "straight after Save: a change to the event just added",

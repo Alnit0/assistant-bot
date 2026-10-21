@@ -139,6 +139,23 @@ def layout_view(pieces: tuple) -> discord.ui.LayoutView:
     return drawn
 
 
+def embeds(card: Card) -> list[discord.Embed]:
+    """A card's embeds (round 7's briefing) as Discord's, each with its border colour (core/design.py)."""
+    return [
+        discord.Embed(
+            title=(outgoing.clean(each.title) or each.title) if each.title else None,
+            description=(outgoing.clean(each.description) or each.description) if each.description else None,
+            colour=discord.Colour(design.embed_colour(each.status)) if each.status else None,
+        )
+        for each in card.embeds
+    ]
+
+
+def heading(card: Card) -> str | None:
+    """The line above a card's embeds, or None for none."""
+    return (outgoing.clean(card.heading) or card.heading) if card.heading else None
+
+
 def reply_view(card: Card):
     """What a reply is sent with: the layout when the card is drawn as one, else its rows."""
     return layout_view(card.layout) if cards.designed(card) else view(card)
@@ -149,6 +166,8 @@ def drawn(card: Card, was_designed: bool = False) -> dict:
     and it has one; else its text and rows. A message that is Components V2
     already can never go back to plain text, so a plain card rewrites it as a
     layout of that same text and those same rows."""
+    if card.embeds:
+        return {"content": heading(card), "embeds": embeds(card), "view": view(card)}
     if cards.designed(card):
         return {"content": None, "view": layout_view(card.layout)}
     if was_designed:

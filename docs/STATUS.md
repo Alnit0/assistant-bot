@@ -8,6 +8,20 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-17 (evening)
 
+## Round 7: the briefing as embeds (21 Oct, afternoon; not restarted)
+
+Built behind `DESIGN_ROUND=7` (docs/DESIGN-LOG.md, round 7): two messages
+of embeds, `tasks/briefing/embeds.py`, from each task's new `day_items`
+(calendar, pills, personal routines, to-dos, diary); `cards.Embed` and
+`Card.embeds`/`heading`, drawn by `interfaces/discord/render.py`; the
+colours in `design.EMBED_COLOURS`. The second message is its own Live copy
+(`briefing:hub2`), rewritten in place, gone the next morning. Also: the old
+calendar emoji is 🗓️ in every tracked file (a test scans them), and the calendar's own
+week-view answers are its events alone (`weekview.gather(only=...)`); the
+week view in #calendar keeps doses and routines. Not restarted (Alex
+restarts by hand); live's `.env` is as it was, so it stays on round 5 until
+`DESIGN_ROUND=7` is set there.
+
 ## What's on over any span (21 Oct, afternoon)
 
 Alex: the calendar lookup knew a day, this week and next week only.
@@ -366,7 +380,7 @@ bookings there (12:01 am Week view, 3:00 am backup, 3:30 am nightly, the
 ## Shipped (17 Oct, 10:07 pm)
 
 Live on `e127088` with `PLAN_MY_DAY`, `BIRTHDAYS_ENABLED`, `WEEK_VIEW`
-and `CALENDAR_CHANNEL_ID` (📅_calendar) added (live's `.env` as it was:
+and `CALENDAR_CHANNEL_ID` (🗓️_calendar) added (live's `.env` as it was:
 `data\env-before-2026-10-17-evening`), one restart, no pill reminder due
 before morning. Checked: live's own account; the task migrations
 (reminders 3, plan 1, week 1) applied, no errors; #calendar has this week
@@ -415,7 +429,7 @@ recorded answers. Batch spend US$0.27 (about NZ$0.46).
    days faint), next week below (a line a day), edited in place at most
    once a minute; "my week" anywhere, and the calendar's "this week",
    "next week" and "what's on Thursday" in the same layout. Live can
-   view, send, read, edit and pin in `📅_calendar` (checked from
+   view, send, read, edit and pin in `🗓️_calendar` (checked from
    Discord's own answer): nothing to grant. 10 tests.
 8. **Previews**: "Design · Plan my day and birthdays" (16 cards, the
    diary's Write and the week view too) and "Design · Round 6 timeline"
@@ -1255,7 +1269,7 @@ secret iCal link in live's `.env` (`CALENDAR_ICS_URL`).
    search words; `core/names.py` finds the event and the answer is a
    template whose first line names no event (a phone may show it).
 5. **The Today card**: all-day events in one small line at the top,
-   events that are over in one small line ("📅 2 earlier today"), one on
+   events that are over in one small line ("🗓️ 2 earlier today"), one on
    now in full ("on now · until 4:00 pm"), the next in full and the rest
    as times, with to-dos, routines and reminders. Events are not counted
    in its dots. With every event over and nothing else on, no card.

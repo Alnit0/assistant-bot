@@ -79,23 +79,23 @@ TODAY = date(2026, 10, 22)  # a Thursday
 
 def test_a_day_with_events_and_one_with_none():
     said = rules.day_answer(feed(), date(2026, 10, 23), TODAY).splitlines()
-    assert said[0] == "📅 **Tomorrow** · 2 events", "no event named on the first line"
+    assert said[0] == "🗓️ **Tomorrow** · 2 events", "no event named on the first line"
     assert said[1:] == ["**9:00 am to 9:30 am** · **Call with the far office**", "**3:00 pm to 4:00 pm** · **Dentist check-up**"]
-    assert rules.day_answer(feed(), date(2026, 10, 27), TODAY) == "📅 Nothing on Tue 27 Oct."
+    assert rules.day_answer(feed(), date(2026, 10, 27), TODAY) == "🗓️ Nothing on Tue 27 Oct."
     assert rules.day_answer(feed(), date(2026, 10, 26), TODAY).splitlines()[1] == "all day · **Public holiday**"
 
 
 def test_a_week_is_a_day_a_heading_each_by_the_list_rule():
     busy = [rules.Event(f"e{n}", f"Thing {n}", at(TODAY, 9 + n), at(TODAY, 9 + n) + timedelta(minutes=30)) for n in range(5)]
     said = rules.week_answer(busy + feed(), rules.span_days(rules.WEEK, TODAY), TODAY, "this week").splitlines()
-    assert said[0].startswith("📅 **This week** · ")
+    assert said[0].startswith("🗓️ **This week** · ")
     assert said[1] == "**Today**" and "-# +4 more" in said, "five today, the Team sync and the end of last night's shift: three in full"
     assert rules.span_days(rules.NEXT_WEEK, TODAY)[0] == date(2026, 10, 26) and len(rules.span_days(rules.NEXT_WEEK, TODAY)) == 7
 
 
 def test_when_is_finds_the_next_by_its_name_and_never_guesses():
     now = at(TODAY, 12)
-    assert rules.when_answer(rules.next_matching(feed(), "dentist", now), TODAY).splitlines() == ["📅 Next one · Tomorrow, **3:00 pm**", "**Dentist check-up** · 3:00 pm to 4:00 pm"]
+    assert rules.when_answer(rules.next_matching(feed(), "dentist", now), TODAY).splitlines() == ["🗓️ Next one · Tomorrow, **3:00 pm**", "**Dentist check-up** · 3:00 pm to 4:00 pm"]
     assert local(rules.next_matching(feed(), "team sync", now)) == (date(2026, 10, 29), time(9, 0)), "today's has been: the next one"
     with pytest.raises(UserError, match="Nothing like"):
         rules.next_matching(feed(), "piano", now)
@@ -105,9 +105,9 @@ def test_when_is_finds_the_next_by_its_name_and_never_guesses():
 
 
 def test_am_i_free():
-    assert rules.free_answer(feed(), at(date(2026, 10, 23), 15, 30), TODAY).splitlines()[0] == "📅 Not free at **3:30 pm** tomorrow"
-    assert rules.free_answer(feed(), at(date(2026, 10, 23), 12), TODAY) == "📅 You're free at **12:00 pm** tomorrow."
-    assert rules.free_answer(feed(), at(date(2026, 10, 26), 12), TODAY).startswith("📅 You're free"), "an all-day event is not busy"
+    assert rules.free_answer(feed(), at(date(2026, 10, 23), 15, 30), TODAY).splitlines()[0] == "🗓️ Not free at **3:30 pm** tomorrow"
+    assert rules.free_answer(feed(), at(date(2026, 10, 23), 12), TODAY) == "🗓️ You're free at **12:00 pm** tomorrow."
+    assert rules.free_answer(feed(), at(date(2026, 10, 26), 12), TODAY).startswith("🗓️ You're free"), "an all-day event is not busy"
     assert rules.read_time("3") == time(15, 0) and rules.read_time("10:30") == time(10, 30)
 
 
@@ -200,7 +200,7 @@ def test_the_today_card_and_the_briefing(world):
     run(calendar.update(world.owner.id))
     lines = run(calendar.today_lines(world.owner.id, at(TODAY, 8, 50)))
     shown = [line for text in design.texts(today.layout(lines, at(TODAY, 8, 50))) for line in text.splitlines()]
-    assert shown[0] == "### 📅 Today" and "📅 **Team sync**" in shown, "the next event in full"
+    assert shown[0] == "### 🗓️ Today" and "🗓️ **Team sync**" in shown, "the next event in full"
     assert today.layout(lines, at(TODAY, 10, 0)) == (), "every event over and nothing else on: no card"
     said = run(calendar.summary(world.owner.id, TODAY))
     assert said.glance == "2 events · next 9:00 am", "the end of last night's shift is on today too; the Team sync is the next to start"
@@ -211,12 +211,12 @@ def test_an_all_day_event_is_one_small_line_on_top_of_the_today_card():
     from core import today
     from core.today import Line
 
-    lines = [Line("📅", "**Public holiday**", all_day=True), Line("📅", "**Swim**", at(TODAY, 7), at(TODAY, 8), event=True), Line("📝", "**Buy stamps**")]
+    lines = [Line("🗓️", "**Public holiday**", all_day=True), Line("🗓️", "**Swim**", at(TODAY, 7), at(TODAY, 8), event=True), Line("📝", "**Buy stamps**")]
     shown = [line for text in design.texts(today.layout(lines, at(TODAY, 9))) for line in text.splitlines()]
-    assert shown[:2] == ["### 📅 Today ○ 0/1", "-# 📅 all day · **Public holiday**"]
-    assert "-# 📅 1 earlier today" in shown and "📝 **Buy stamps**" in shown
+    assert shown[:2] == ["### 🗓️ Today ○ 0/1", "-# 🗓️ all day · **Public holiday**"]
+    assert "-# 🗓️ 1 earlier today" in shown and "📝 **Buy stamps**" in shown
     now_on = [line for text in design.texts(today.layout(lines, at(TODAY, 7, 30))) for line in text.splitlines()]
-    assert "📅 **Swim**" in now_on and "-# on now · until 8:00 am" in now_on
+    assert "🗓️ **Swim**" in now_on and "-# on now · until 8:00 am" in now_on
 
 
 # --- questions: the day and the words go to extraction, never an event ------------------------------------------------
@@ -224,10 +224,10 @@ def test_questions_are_answered_from_the_copy(world):
     from tasks import calendar
 
     run(calendar.update(world.owner.id))
-    assert run(plain.show(world.request(), {"day": "tomorrow"}, frozenset())).startswith("📅 **Tomorrow** · 2 events")
-    assert run(plain.show(world.request(), {"span": "next_week"}, frozenset())).startswith("📅 **Next week** · ")
+    assert run(plain.show(world.request(), {"day": "tomorrow"}, frozenset())).startswith("🗓️ **Tomorrow** · 2 events")
+    assert run(plain.show(world.request(), {"span": "next_week"}, frozenset())).startswith("🗓️ **Next week** · ")
     assert "Dentist check-up" in run(plain.when(world.request(), {"search": "dentist"}, frozenset()))
-    assert run(plain.free(world.request(), {"day": "tomorrow", "time": "3"}, frozenset())).startswith("📅 Not free at **3:00 pm** tomorrow")
+    assert run(plain.free(world.request(), {"day": "tomorrow", "time": "3"}, frozenset())).startswith("🗓️ Not free at **3:00 pm** tomorrow")
 
 
 def test_extraction_is_told_no_event_name_and_nothing_is_named_to_the_router(world):

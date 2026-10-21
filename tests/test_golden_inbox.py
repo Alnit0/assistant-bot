@@ -56,7 +56,7 @@ def test_i1_four_things_one_card_and_renew_rego_by_friday_is_a_to_do(inbox):
     assert any(line.startswith("📝 To-dos · **Renew rego** · Fri") for line in lines), lines
     assert any(line.startswith("⏰ Reminders · **Call Mum**") and "2:00 pm" in line for line in lines), lines
     assert any(line.startswith("📝 To-dos · **Need milk**") or line.startswith("📝 To-dos · **Milk**") for line in lines), lines
-    assert any(line.startswith("📅 Calendar · **Dentist**") for line in lines), lines
+    assert any(line.startswith("🗓️ Calendar · **Dentist**") for line in lines), lines
     assert todos_now(inbox) == [] and inbox.google.writes() == []
 
 
@@ -105,7 +105,7 @@ def test_i6_a_to_do_and_an_event(inbox):
     card = replay(inbox, "i6")
     lines = first_lines(card)
     assert any(line.startswith("📝 To-dos · **Call the plumber**") for line in lines), lines
-    assert any(line.startswith("📅 Calendar · **Lunch with Sam**") for line in lines), lines
+    assert any(line.startswith("🗓️ Calendar · **Lunch with Sam**") for line in lines), lines
 
 
 def test_i7_to_i9_one_thing_a_list_and_a_question_never_reach_the_inbox(inbox):
@@ -115,7 +115,7 @@ def test_i7_to_i9_one_thing_a_list_and_a_question_never_reach_the_inbox(inbox):
 
 def test_f1_a_booking_screenshot_is_an_event_and_nothing_of_it_is_logged(inbox):
     card = replay(inbox, "f1")
-    assert first_lines(card)[0] == "📥 Inbox · 1 thing" and "📅 Calendar ·" in card.text
+    assert first_lines(card)[0] == "📥 Inbox · 1 thing" and "🗓️ Calendar ·" in card.text
     assert "Thu 5 Nov" in card.text and "3:00 pm" in card.text and buttons(card) == ["Save all", "Cancel"], card.text
     reply = logged_rows()[-1][1] or ""
     assert "Dental" not in reply and smartinbox.FROM_A_FILE in reply

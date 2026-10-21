@@ -850,7 +850,7 @@ def _week_sections(busy: bool) -> list:
              Todo(8, 1, "Return the library books", sunday - timedelta(days=1), monday)], monday, sunday))
         add("habits", "🔁", "Personal routines", habits.week_line([("Morning", [True, True, True, False, True, True, True]), ("Evening", [True, False, True, True, False, True, True])]))
         nxt = monday + timedelta(days=7)
-        add("calendar", "📅", "Calendar", calendar.week_line([
+        add("calendar", "🗓️", "Calendar", calendar.week_line([
             (nxt, [days.at(nxt, time(9)), days.at(nxt, time(18))]), (nxt + timedelta(days=1), [None]), (nxt + timedelta(days=2), [days.at(nxt + timedelta(days=2), time(12, 30))]),
             (nxt + timedelta(days=4), [days.at(nxt + timedelta(days=4), time(9)), days.at(nxt + timedelta(days=4), time(15)), days.at(nxt + timedelta(days=4), time(19))]),
         ]))
@@ -858,7 +858,7 @@ def _week_sections(busy: bool) -> list:
         add("pills", "💊", "Pills", history.week_line(7, 7, 0, 0, 0, 7))
         add("todos", "📝", "To-dos", todos.week_line([done("Buy stamps", monday + timedelta(days=2))], monday, sunday))
         add("habits", "🔁", "Personal routines", habits.week_line([("Morning", [True] * 7)]))
-        add("calendar", "📅", "Calendar", calendar.week_line([(monday + timedelta(days=7 + ahead), []) for ahead in range(7)]))
+        add("calendar", "🗓️", "Calendar", calendar.week_line([(monday + timedelta(days=7 + ahead), []) for ahead in range(7)]))
     return found, monday, sunday
 
 
@@ -1088,7 +1088,7 @@ def inbox_cards() -> list[tuple[str, tuple]]:
     config.DESIGN_ROUND = 5
     try:
         entries = [Entry("nudges", "⏰", "x", ("y",), (), label="Reminders"), Entry("todos", "📝", "x", ("y",), (), label="To-dos"),
-                   Entry("calendar", "📅", "x", ("y",), (), label="Calendar")]
+                   Entry("calendar", "🗓️", "x", ("y",), (), label="Calendar")]
         rego_asks = {"task": "nudges", "lines": ["**Renew rego** · at ❔", "❓ At what time?"], "ready": False}
         rego = {"task": "nudges", "lines": ["**Renew rego** · Fri 6 Nov at **9:00 am**", "-# next: Fri 6 Nov at 9:00 am"], "ready": True}
         mum = {"task": "nudges", "lines": ["**Call Mum** · Sun 8 Nov at **2:00 pm**", "-# next: Sun 8 Nov at 2:00 pm"], "ready": True}
@@ -1099,7 +1099,7 @@ def inbox_cards() -> list[tuple[str, tuple]]:
         saved = "\n".join([
             "✅ Saved · 4 of 4", "✅ Saved · ⏰ **Renew rego** · Fri 6 Nov at **9:00 am** · next 9:00 am",
             "✅ Saved · ⏰ **Call Mum** · Sun 8 Nov at **2:00 pm** · next 2:00 pm", "✅ Added · 📝 **Need milk**",
-            "📅 Added · **Dentist** · Thu 5 Nov · `3:00 pm` to `4:00 pm` · 1 hour",
+            "🗓️ Added · **Dentist** · Thu 5 Nov · `3:00 pm` to `4:00 pm` · 1 hour",
         ])
         undo = design.Row((Button("Undo", smartinbox.CARDS, "undo", "1", emoji="↩️", style="primary"),))
 
@@ -1140,7 +1140,7 @@ BRAINSTORM_TITLE = "Design · Brainstorm"
 BRAINSTORM_TOP = (
     ("32 · Hours by message", "“2h on the Made-up Co site” after you finish:", "⏱️ **Made-up Co** · 2h logged · 9h this week\n-# Sunday: the week's hours by client"),
     ("1 · Plan my day", "“plan my day”:", "☀️ **Your day** · 8:00 Pill B · 9:00 standup · free 9:15 to 12:30 · 12:30 lunch\n-# then 3 more, and 2 to-dos with no time"),
-    ("2 · Free time finder", "“when am I free for 2 hours this week?”:", "📅 **Free for 2 hours** · Tue 6:00 pm · Thu 7:30 pm · Sat all afternoon\n-# from every calendar, after work"),
+    ("2 · Free time finder", "“when am I free for 2 hours this week?”:", "🗓️ **Free for 2 hours** · Tue 6:00 pm · Thu 7:30 pm · Sat all afternoon\n-# from every calendar, after work"),
     ("25 · Bin day", "Said once, “bins Tuesday, recycling every other week”:", "⏰ **Bins out tonight** · rubbish and recycling\n-# Monday 8:00 pm, the evening before"),
     ("38 · Birthdays", "Said once, “Sam's birthday 3 May”:", "🎂 **Sam's birthday** · Sat 3 May, in a week\n-# your gift note: a book on climbing"),
     ("26 · The usual", "“need the usual and eggs”:", "📝 To-dos · **Milk**, **Bread**, **Coffee**, **Eggs** · any day\n-# the usual: milk, bread, coffee (change it in words)"),

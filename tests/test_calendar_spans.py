@@ -96,7 +96,7 @@ EVENTS = [
 def test_a_range_of_a_week_or_less_is_grouped_by_day_all_day_first():
     said = rules.span_answer(EVENTS, rules.span_of(rules.DAY_SPAN, WEDNESDAY, plain.read_day, "2 November", "6 November"), WEDNESDAY)
     assert said.splitlines() == [
-        "📅 **Mon 2 Nov to Fri 6 Nov** · 3 events",
+        "🗓️ **Mon 2 Nov to Fri 6 Nov** · 3 events",
         "**Tue 3 Nov**", "all day · **Conference**", "**12:00 pm to 1:00 pm** · **Lunch with Sam**",
         "**Fri 6 Nov**", "**3:00 pm to 4:00 pm** · **Dentist**",
     ]
@@ -105,7 +105,7 @@ def test_a_range_of_a_week_or_less_is_grouped_by_day_all_day_first():
 def test_a_month_is_grouped_by_week_each_event_once_with_its_day():
     said = rules.span_answer(EVENTS, asked("what's on in November?"), WEDNESDAY)
     assert said.splitlines() == [
-        "📅 **November** · 4 events",
+        "🗓️ **November** · 4 events",
         "**Week of Mon 2 Nov**",
         "Tue 3 Nov · all day · **Conference**",
         "Tue 3 Nov · **12:00 pm to 1:00 pm** · **Lunch with Sam**",
@@ -117,7 +117,7 @@ def test_a_month_is_grouped_by_week_each_event_once_with_its_day():
 
 def test_a_year_is_one_list_in_date_order_and_a_long_one_says_how_many_more():
     said = rules.span_answer(EVENTS, rules.span_of(rules.YEAR, WEDNESDAY, plain.read_day), WEDNESDAY).splitlines()
-    assert said[0] == "📅 **2026** · 5 events" and not any(line.startswith("**Week of") for line in said)
+    assert said[0] == "🗓️ **2026** · 5 events" and not any(line.startswith("**Week of") for line in said)
     assert [line.rsplit("**", 2)[-2] for line in said[1:]] == ["Conference", "Lunch with Sam", "Dentist", "Hen do", "Book club"]
     many = [timed(f"Made-up {number}", date(2027, 1, 1) + timedelta(days=number), 9) for number in range(30)]
     long = rules.span_answer(many, asked("what's on in 2027?"), WEDNESDAY).splitlines()
@@ -125,11 +125,11 @@ def test_a_year_is_one_list_in_date_order_and_a_long_one_says_how_many_more():
 
 
 def test_nothing_on_is_said_for_each_kind_of_span():
-    assert rules.span_answer([], asked("what's on in December?"), WEDNESDAY) == "📅 Nothing on in December."
-    assert rules.span_answer([], asked("what's on in 2027?"), WEDNESDAY) == "📅 Nothing on in 2027."
-    assert rules.span_answer([], asked("what's on from Monday to Friday?"), WEDNESDAY) == "📅 Nothing on from Mon 26 Oct to Fri 30 Oct."
-    assert rules.span_answer([], asked("what's on the week of 28 November?"), WEDNESDAY) == "📅 Nothing on in the week of Mon 23 Nov."
-    assert rules.span_answer([], asked("what's on Friday?"), WEDNESDAY) == "📅 Nothing on Fri 23 Oct."
+    assert rules.span_answer([], asked("what's on in December?"), WEDNESDAY) == "🗓️ Nothing on in December."
+    assert rules.span_answer([], asked("what's on in 2027?"), WEDNESDAY) == "🗓️ Nothing on in 2027."
+    assert rules.span_answer([], asked("what's on from Monday to Friday?"), WEDNESDAY) == "🗓️ Nothing on from Mon 26 Oct to Fri 30 Oct."
+    assert rules.span_answer([], asked("what's on the week of 28 November?"), WEDNESDAY) == "🗓️ Nothing on in the week of Mon 23 Nov."
+    assert rules.span_answer([], asked("what's on Friday?"), WEDNESDAY) == "🗓️ Nothing on Fri 23 Oct."
 
 
 # --- the copy, or every calendar read for the span ----------------------------------------------------------------------
@@ -141,7 +141,7 @@ def test_a_span_the_copy_covers_is_answered_from_it(world):
     run(calendar.update(world.owner.id))
     calls = len(world.fake.calls)
     said = shown(world, {"span": "month", "month": "November"})
-    assert said.splitlines()[:2] == ["📅 **November** · 3 events", "**Week of Mon 2 Nov**"]
+    assert said.splitlines()[:2] == ["🗓️ **November** · 3 events", "**Week of Mon 2 Nov**"]
     assert len(world.fake.calls) == calls, "no read: the copy covers November"
 
 
@@ -150,7 +150,7 @@ def test_a_year_ahead_reads_every_calendar_for_it(world):
     world.fake.calendars[BOT_ID]["w2"] = {"id": "w2", "status": "confirmed", "summary": "Made-up flight",
                                          "start": {"dateTime": "2027-02-01T08:00:00+13:00"}, "end": {"dateTime": "2027-02-01T11:00:00+13:00"}}
     said = shown(world, {"span": "year", "year": "2027"})
-    assert said.splitlines() == ["📅 **2027** · 2 events", "Mon 1 Feb · **8:00 am to 11:00 am** · **Made-up flight**", "Sat 13 Mar · all day · **Made-up wedding**"]
+    assert said.splitlines() == ["🗓️ **2027** · 2 events", "Mon 1 Feb · **8:00 am to 11:00 am** · **Made-up flight**", "Sat 13 Mar · all day · **Made-up wedding**"]
     assert ("GET", BOT_ID) in world.fake.calls
 
 
@@ -175,6 +175,18 @@ def test_a_day_this_week_and_next_week_keep_the_week_view_where_it_is_on(world, 
     monkeypatch.setattr(plain, "_week_view", week_view)
     for data in ({"day": "tomorrow"}, {"span": "week"}, {"span": "next_week"}):
         assert shown(world, data) == "the week view"
-    assert shown(world, {"span": "week", "day": "28 November"}).startswith("📅 ")
-    assert shown(world, {"span": "month", "month": "November"}).startswith("📅 **November**")
+    assert shown(world, {"span": "week", "day": "28 November"}).startswith("🗓️ ")
+    assert shown(world, {"span": "month", "month": "November"}).startswith("🗓️ **November**")
     assert seen == ["day", "week", "next_week"]
+
+
+def test_the_hub_s_day_is_today_s_events_and_one_offs_coming_up_in_the_next_week(world):
+    """Round 7 (`day_items`): today's events, then one-off events in the next 7 days as coming up."""
+    from core import actions
+
+    run(calendar.update(world.owner.id))
+    found = run(calendar.day_items(world.owner.id, date(2026, 11, 2)))
+    assert [(each.kind, each.text, each.repeats) for each in found] == [
+        (actions.EVENT, "Made-up standup", False), (actions.EVENT, "Made-up lunch", False), (actions.EVENT, "Made-up review", False),
+    ]
+    assert found[0].at is not None and found[0].until > found[0].at

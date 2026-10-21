@@ -92,6 +92,17 @@ async def plan_pieces(user_id: int, day: date) -> list:
     return pieces
 
 
+async def day_items(user_id: int, day: date) -> list:
+    """For the hub in round 7: the day's to-dos as the list shows them, overdue first, then the day's and any
+    day's, then those done that day."""
+    from core import actions
+
+    found = rules.on(await store.every(user_id), day)
+    return [actions.DayItem(actions.TODO, each.text) for each in [*found.overdue, *found.today]] + [
+        actions.DayItem(actions.TODO, each.text, state=actions.TAKEN) for each in found.done
+    ]
+
+
 class TodosTask(Task):
     """The to-do list, in plain words, with a card in the hub."""
 
@@ -159,6 +170,9 @@ class TodosTask(Task):
 
     async def plan(self, user_id, day):
         return await plan_pieces(user_id, day)
+
+    async def day_items(self, user_id, day):
+        return await day_items(user_id, day)
 
 
 task = TodosTask()

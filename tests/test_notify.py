@@ -184,17 +184,17 @@ def test_in_quiet_hours_everything_is_held_but_a_kind_that_gets_through_and_only
 
 def test_what_is_held_is_posted_without_a_sound_never_pushed_and_kept_for_the_morning(world, phone, night):
     clock.advance_to(day.at(world.day, time(22, 30)))
-    post(NOTE, line="📅 Event · 10:30 pm", key="event-1")
+    post(NOTE, line="🗓️ Event · 10:30 pm", key="event-1")
     assert world.sent[-1].silent is True and phone == [], "nothing sounds and nothing is pushed"
     clock.advance_to(day.at(world.day, time(22, 45)))
-    post(NOTE, line="📅 Event · 10:30 pm · again", key="event-1")
+    post(NOTE, line="🗓️ Event · 10:30 pm · again", key="event-1")
     post(NOTE, line="⚠️ Something needs a look", item=Item("backup failed", PROBLEM), key="backup")
     assert world.sent[-1].silent is True and phone == [], "something wrong is held too: level 1 respects quiet hours"
     post(line="💊 Dose due · 10:45 pm", key="dose-1")
     assert world.sent[-1].silent is False and len(phone) == 1, "a pill reminder gets through, with its sound and its push"
     morning = world.day + timedelta(days=1)
     first, second = run(notify.held_overnight(world.owner.id, morning))
-    assert (first.kind, first.line, first.times) == (NOTE, "📅 Event · 10:30 pm", 2), "asked for again for the same thing, it is one line"
+    assert (first.kind, first.line, first.times) == (NOTE, "🗓️ Event · 10:30 pm", 2), "asked for again for the same thing, it is one line"
     assert second.line == "⚠️ Something needs a look"
     assert run(notify.held_overnight(world.owner.id, world.day)) == [], "the night before held nothing"
     assert run(notify.held_overnight(2, morning)) == [], "only mine"
@@ -256,12 +256,12 @@ def test_a_pill_reminder_in_quiet_hours_gets_through_with_its_sound(world, phone
 def test_the_briefing_lists_what_was_held_overnight_until_it_is_dealt_with(world, phone, night):
     add(world, PILL_A)
     clock.advance_to(day.at(world.day, time(22, 30)))
-    post(NOTE, line="📅 Event · 10:30 pm", key="event-1")
-    post(NOTE, line="📅 Event · 10:30 pm", key="event-1")
+    post(NOTE, line="🗓️ Event · 10:30 pm", key="event-1")
+    post(NOTE, line="🗓️ Event · 10:30 pm", key="event-1")
     clock.advance_to(day.at(world.day + timedelta(days=1), time(6, 0)))
     run(scheduler.run_all_due())  # the day turns over: the new day's doses are there
     lines = run(briefing.card_for(world.owner.id)).text.splitlines()
-    assert rules.HELD in lines and "📅 Event · 10:30 pm · 2 times" in lines, "what was held back, in its neutral words"
+    assert rules.HELD in lines and "🗓️ Event · 10:30 pm · 2 times" in lines, "what was held back, in its neutral words"
     assert "-# quiet hours (10:00 pm to 6:00 am): posted without a sound" in lines
     assert lines.index(rules.HELD) < next(at for at, line in enumerate(lines) if "**Pills**" in line), "before the sections"
     run(notify.dealt_with(world.owner.id, NOTE, "event-1"))

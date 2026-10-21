@@ -279,6 +279,7 @@ class Task:
                 tally=self.tally if type(self).tally is not Task.tally else None, label=self.title,
                 today=self.today if type(self).today is not Task.today else None,
                 plan=self.plan if type(self).plan is not Task.plan else None,
+                day_items=self.day_items if type(self).day_items is not Task.day_items else None,
                 week=self.week if type(self).week is not Task.week else None,
                 private=self.private, sticks=self.sticks, place=self.place, keeps=self.keeps, leads=tuple(self.leads),
                 home=self.home, home_files=self.home_files,
@@ -322,6 +323,12 @@ class Task:
         """This task's things on a day for a plan (core/planning.py), as
         `planning.Piece`s: fixed ones with their times (never moved), all-day
         ones, and to-dos to be placed. It only reads and asks Claude nothing.
+        Only used if overridden."""
+        return []
+
+    async def day_items(self, user_id: int, day) -> list:
+        """This task's things of the day for the hub in round 7, as `actions.DayItem`s: events, doses,
+        routines, to-dos and what is tracked, each with its state. It only reads and asks Claude nothing.
         Only used if overridden."""
         return []
 

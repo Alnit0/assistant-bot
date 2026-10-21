@@ -30,7 +30,7 @@ def pieces_for(day):
         Piece("todos", "t1", "📝", "Made-up to-do", flexible=True),
     ]
     if day.weekday() == 2:
-        found += [Piece("calendar", "e1", "📅", "Made-up dentist", at(day, 15), at(day, 16)), Piece("nudges", "n1", "⏰", "Made-up call", at(day, 12, 30))]
+        found += [Piece("calendar", "e1", "🗓️", "Made-up dentist", at(day, 15), at(day, 16)), Piece("nudges", "n1", "⏰", "Made-up call", at(day, 12, 30))]
     if day.weekday() == 4:
         found.append(Piece("birthdays", "b1", "🎂", "Mum's birthday", all_day=True))
     return found
@@ -148,14 +148,15 @@ def test_the_bot_s_own_schedule_redraws_at_12_01_am_and_my_week_answers_in_place
     assert world.sent[-1].channel == 100 and world.sent[-1].card.text.startswith("## 🗓️ This week")
 
 
-def test_the_calendar_answers_a_week_or_a_day_in_the_same_layout(world):
+def test_the_calendar_answers_a_week_or_a_day_in_the_same_layout_with_its_events_alone(world):
+    """Its own answers are calendar events only (Alex, 21 Oct): doses and routines are the hub's; my week keeps them."""
     from core.actions import Request
     from tasks.calendar import plain as calendar_plain
 
     asyncio.run(calendar_plain.show(Request(world.owner, 100, "next week"), {"span": "next_week"}, frozenset()))
-    assert world.sent[-1].card.text.startswith("## 🗓️ Next week")
+    assert world.sent[-1].card.text.startswith("## 🗓️ Next week") and "💊" not in world.sent[-1].card.text and "dose" not in world.sent[-1].card.text
     asyncio.run(calendar_plain.show(Request(world.owner, 100, "what's on Thursday"), {"day": "Thursday"}, frozenset()))
-    assert world.sent[-1].card.text.startswith("**Thu ") and "💊 3 doses" in world.sent[-1].card.text
+    assert world.sent[-1].card.text.startswith("**Thu ") and "💊" not in world.sent[-1].card.text and "routine" not in world.sent[-1].card.text
 
 
 def test_off_unless_switched_on_and_given_a_channel(monkeypatch):

@@ -348,3 +348,35 @@ place. Each event carries a private extended property
 out, so a birthday is never a calendar item in the hub, the Today card,
 the timeline or the week view. The plan no longer lists birthdays either.
 Preview: `selftest/tonight.py --plan` draws the box and the list.
+
+## Round 7: the briefing as two messages of embeds (21 Oct)
+
+**What Alex asked, word for word (the heart of it):** "Redesign it to send
+two messages with Discord embeds, using the border colour to signal what
+each card means." Message 1: the date as the message's text
+(`🗓️ **Wednesday 21 October**`), then an embed a thing in time order: blue
+routine (work, personal routines), green done or taken, red due now,
+yellow a notable event (coming up, or all day), grey later. Events on one
+line (`9:00 am · Work · until 5:00 pm`), all-day ones with a title
+(`🎉 Hen do`) and their days; a dose a line with its square (⬜ Later,
+🟥 Due, 🟩 Taken with the time); a routine `10:00 pm · 🌙 Evening`. At one
+time: events, doses, routines. Message 2, no text: the to-dos in pink
+(☐ and ☑), the diary's streak in blue; not sent with neither. "The existing
+hub that shows counts and summary text is replaced entirely." Behind
+`DESIGN_ROUND=7`; round 5 stays the default, round 6 as it is.
+
+**What was done:** `tasks/briefing/embeds.py` lays the two messages out
+from each task's `day_items` (a new part of the task contract,
+`actions.DayItem`: a kind and a state, never a task's name), and
+`interfaces/discord/render.py` draws `cards.Embed`s as Discord's embeds (no
+discord.py outside the interface layer). Each message is kept up to date
+in place, as the briefing was. Choices made where the ask was silent, to
+look at: a skipped or missed dose is grey (⏭️ Skipped, ⬛ Missed); a dose
+with no time says "any time"; a routine once done is green with 🟩 Done;
+one-off events in the next 7 days are in message 1 as coming up, last;
+over ten things (Discord's limit for a message) the tenth embed is a grey
+one of the rest. Not done: an emoji by the kind of event (💼 for work),
+which needs a word list on the title (CLAUDE.md: never); an event's own
+emoji in its title shows. Needs a look, the weather and the spend line are
+not in round 7's briefing (the ask replaces the hub entirely); a problem
+still reaches the status line and a ping.

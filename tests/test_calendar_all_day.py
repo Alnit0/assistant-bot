@@ -35,13 +35,13 @@ def test_an_all_day_event_over_two_days_is_a_card_then_in_the_bot_calendar(world
     assert proposal.question is None and proposal.kind == "new"
     assert proposal.lines == (f"**{TITLE}**", TWO_DAYS, design.small("on the Bot calendar")), "the user's own title, curly apostrophe kept"
     done = run(plain.add_save(world.request(), proposal.data))
-    assert done == f"📅 Added · **{TITLE}** · {TWO_DAYS}"
+    assert done == f"🗓️ Added · **{TITLE}** · {TWO_DAYS}"
     (made,) = world.fake.calendars[BOT_ID].values()
     assert made["start"] == {"date": "2026-11-21"} and made["end"] == {"date": "2026-11-23"}, "all day: the API's end is the day after"
     assert run(plain.add_check(world.request(), proposal.data)) == ""
     event = next(each for each in kept(world) if each.title == TITLE)
     assert event.all_day and (event.first_day.isoformat(), event.last_day.isoformat()) == ("2026-11-21", "2026-11-22")
-    assert run(plain.undo(world.request("undo that"), {}, frozenset())) == f"↩️ 📅 **{TITLE}** · taken off the calendar"
+    assert run(plain.undo(world.request("undo that"), {}, frozenset())) == f"↩️ 🗓️ **{TITLE}** · taken off the calendar"
     assert world.fake.calendars[BOT_ID] == {}
 
 
@@ -117,11 +117,11 @@ def test_an_all_day_event_is_moved_on_a_card_keeping_its_days_and_undo_puts_it_b
     assert action == "calendar_move"
     card = run(plain.move_card(world.request("move the hen do to 28 November"), data, frozenset()))
     assert card.kind == "change" and card.lines == ("**Hen do**", design.change(TWO_DAYS, MOVED))
-    assert run(plain.move_save(world.request(), card.data)) == f"📅 Moved · **Hen do** · {MOVED}"
+    assert run(plain.move_save(world.request(), card.data)) == f"🗓️ Moved · **Hen do** · {MOVED}"
     assert run(plain.move_check(world.request(), card.data)) == ""
     made = world.fake.calendars[BOT_ID][ref]
     assert made["start"] == {"date": "2026-11-28"} and made["end"] == {"date": "2026-11-30"}
-    assert run(plain.undo(world.request("undo that"), {}, frozenset())) == f"↩️ 📅 **Hen do** · back to {TWO_DAYS}"
+    assert run(plain.undo(world.request("undo that"), {}, frozenset())) == f"↩️ 🗓️ **Hen do** · back to {TWO_DAYS}"
     assert world.fake.calendars[BOT_ID][ref]["start"] == {"date": "2026-11-21"} and world.fake.calendars[BOT_ID][ref]["end"] == {"date": "2026-11-23"}
     assert next(each for each in kept(world) if each.title == "Hen do").first_day.isoformat() == "2026-11-21", "the copy too"
 
@@ -148,9 +148,9 @@ def test_an_all_day_event_is_deleted_on_a_red_card_and_undo_puts_it_back(world):
     assert action == "calendar_delete"
     card = run(plain.delete_card(world.request("delete the hen do"), data, frozenset()))
     assert card.destructive and card.confirm_label == "Delete" and card.lines == (f"**Hen do** · {TWO_DAYS}",)
-    assert run(plain.delete_save(world.request(), card.data)) == "🗑️ 📅 **Hen do** · deleted"
+    assert run(plain.delete_save(world.request(), card.data)) == "🗑️ 🗓️ **Hen do** · deleted"
     assert run(plain.delete_check(world.request(), card.data)) == "" and world.fake.calendars[BOT_ID] == {}
-    assert run(plain.undo(world.request("undo that"), {}, frozenset())) == "↩️ 📅 **Hen do** · back on the calendar"
+    assert run(plain.undo(world.request("undo that"), {}, frozenset())) == "↩️ 🗓️ **Hen do** · back on the calendar"
     (again,) = world.fake.calendars[BOT_ID].values()
     assert again["summary"] == "Hen do" and again["start"] == {"date": "2026-11-21"} and again["end"] == {"date": "2026-11-23"}
 

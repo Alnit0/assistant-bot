@@ -15,7 +15,7 @@ def test_the_live_message_is_an_all_day_card_and_save_adds_it(inbox):  # noqa: F
     assert card.task == "calendar" and card.action == "calendar_add" and TWO_DAYS in inbox.sent[-1][1].text
     pressed = inbox.Press(card.id, card.message_id)
     run(confirm.on_save(pressed))
-    assert pressed.cards[-1].text.startswith(f"📅 Added · **{TITLE}**")
+    assert pressed.cards[-1].text.startswith(f"🗓️ Added · **{TITLE}**")
     (made,) = inbox.google.calendars[BOT_ID].values()
     assert made["start"] == {"date": "2026-11-21"} and made["end"] == {"date": "2026-11-23"}
     assert not any("Not included" in str(getattr(each[1], "text", each[1])) for each in inbox.sent)

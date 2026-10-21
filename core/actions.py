@@ -250,6 +250,29 @@ class Summary:
     heading: str = ""
 
 
+# Round 7 of the hub (DESIGN_ROUND=7): a thing of the day as a task hands it over (`Entry.day_items`), drawn
+# by the briefing as one embed whose border colour says what it is. The kinds and states are the hub's words,
+# never a task's name: the briefing lays them out without knowing whose they are
+EVENT, DOSE, ROUTINE, TODO, TRACKING = "event", "dose", "routine", "todo", "tracking"
+PENDING, TAKEN, SKIPPED, MISSED = "pending", "taken", "skipped", "missed"
+
+
+@dataclass(frozen=True)
+class DayItem:
+    """One thing of a day for the hub, in the task's own words."""
+
+    kind: str  # EVENT, DOSE, ROUTINE, TODO or TRACKING
+    text: str  # its name ("Work", "Morning dose", "Evening"); for TRACKING the whole line ("Diary · Streak: 4 days")
+    at: datetime | None = None  # when it is, or starts (UTC); None for one at no time
+    until: datetime | None = None  # an event's end
+    first_day: date | None = None  # an all-day event's first local day (and the day of one coming up)
+    last_day: date | None = None  # and its last
+    state: str = PENDING  # a dose: PENDING, TAKEN, SKIPPED or MISSED; a to-do or a routine: TAKEN once done
+    done_at: datetime | None = None  # when a dose was taken, as the user said
+    repeats: bool = False  # an event that comes round again (work): routine, not notable
+    icon: str = ""  # a TRACKING line's own icon ("📓")
+
+
 @dataclass(frozen=True)
 class Attachment:
     """A file sent with a message, for a task's plain-words code: its name, its
@@ -458,6 +481,9 @@ class Entry:
     # `async (user_id, day) -> list of planning.Piece`: this task's things on a day for a plan
     # (core/planning.py): fixed ones with their times, all-day ones, and to-dos to be placed
     plan: Callable[[int, date], Awaitable[list]] | None = None
+    # `async (user_id, day) -> list of DayItem`: this task's things of the day for the hub in round 7 (the
+    # briefing's two messages): events, doses, routines, to-dos and what is tracked, each with its state
+    day_items: Callable[[int, date], Awaitable[list]] | None = None
     # `async (user_id, monday, upto) -> weekly.Week | None`: this task's week, Monday up to that
     # day, in a line of its own words, for the Sunday summary of everything (core/weekly.py)
     week: Callable[[int, date, date], Awaitable[object]] | None = None

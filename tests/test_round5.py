@@ -31,7 +31,7 @@ def round_5(monkeypatch):
 def _sections():
     pills = Section("pills", "💊", "Pills", Summary(glance="2 of 6 taken", done=2, total=6, lines=("**Next:** Pill A · `12:00 pm`",), overview="6 doses · first 7:00 am"))
     weather = Section("weather", "🌤️", "Weather", Summary(glance="14° to 20°", lines=("61% rain after 1pm",)))
-    calendar = Section("calendar", "📅", "Calendar", Summary(glance="4 events · next 12:30 pm", overview="4 events · first 9:00 am"))
+    calendar = Section("calendar", "🗓️", "Calendar", Summary(glance="4 events · next 12:30 pm", overview="4 events · first 9:00 am"))
     return [pills, weather, calendar]
 
 
@@ -43,7 +43,7 @@ def test_the_briefing_is_the_morning_overview(round_5):
     shown = design.texts(briefing.layout(_sections(), DAY, so_far=("●●○○○○ 2/6", "-# 💊 2/6")))
     assert shown[0] == "## ☀️ Thursday 15 October ●●○○○○ 2/6", "the date with the day's dots: Today is only the Today card"
     assert shown[1].startswith("### 🌤️ Weather"), "the weather keeps its box"
-    assert shown[2] == "### 🗓️ The day\n💊 **Pills** · 6 doses · first 7:00 am\n📅 **Calendar** · 4 events · first 9:00 am"
+    assert shown[2] == "### 🗓️ The day\n💊 **Pills** · 6 doses · first 7:00 am\n🗓️ **Calendar** · 4 events · first 9:00 am"
     assert not any("taken" in each or "Next:" in each for each in shown), "no live progress: the cards have it"
     assert not any(briefing.FOOT in each for each in shown), "no footer"
 
@@ -86,7 +86,7 @@ def test_the_today_card_has_no_count_of_its_own(round_5):
 
     now = days.at(DAY, time(9))
     lines = [Line("🔁", "**Morning**", days.at(DAY, time(10))), Line("📝", "**Buy stamps**", done=True)]
-    assert design.texts(today.layout(lines, now))[0].startswith("### 📅 Today\n") or design.texts(today.layout(lines, now))[0] == "### 📅 Today"
+    assert design.texts(today.layout(lines, now))[0].startswith("### 🗓️ Today\n") or design.texts(today.layout(lines, now))[0] == "### 🗓️ Today"
 
 
 def test_a_missed_dose_holds_the_status_line_only_until_the_evening(round_5, make_db, owner, dev_clock):

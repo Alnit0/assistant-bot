@@ -222,21 +222,21 @@ def _sections():
     pills = Section("pills", "💊", "Pills", Summary(done=1, total=3, left=("Pill A (dose 2 of 3) `12:00 pm`", "Pill C `9:00 pm`", "Pill D"), left_at=(local(12), local(21), None)))
     nudges = Section("nudges", "⏰", "Reminders", Summary(left=("Put the bins out `5:00 pm`",), left_at=(local(17),)))
     todos = Section("todos", "📝", "To-dos", Summary(done=0, total=1, left=("Book a haircut",)))
-    calendar = Section("calendar", "📅", "Calendar", Summary(left=("Test gym `6:00 pm`",), left_at=(local(18),)))
+    calendar = Section("calendar", "🗓️", "Calendar", Summary(left=("Test gym `6:00 pm`",), left_at=(local(18),)))
     return [pills, nudges, todos, calendar]
 
 
 def test_what_s_left_today_is_in_time_order_across_tasks_with_what_has_no_time_last():
     assert briefing.left(_sections(), "", local(11)).splitlines() == [
         "☀️ **Left today** · ●○○○ 1/4",
-        "💊 Pill A (dose 2 of 3) `12:00 pm`", "⏰ Put the bins out `5:00 pm`", "📅 Test gym `6:00 pm`", "💊 Pill C `9:00 pm`",
+        "💊 Pill A (dose 2 of 3) `12:00 pm`", "⏰ Put the bins out `5:00 pm`", "🗓️ Test gym `6:00 pm`", "💊 Pill C `9:00 pm`",
         "💊 Pill D", "📝 Book a haircut",
     ]
 
 
 def test_what_s_on_tonight_is_what_is_due_from_5_pm_and_the_untimed_in_one_small_line():
     assert briefing.left(_sections(), briefing.TONIGHT, local(11)).splitlines() == [
-        "☀️ **Left tonight** · ●○○○ 1/4", "⏰ Put the bins out `5:00 pm`", "📅 Test gym `6:00 pm`", "💊 Pill C `9:00 pm`",
+        "☀️ **Left tonight** · ●○○○ 1/4", "⏰ Put the bins out `5:00 pm`", "🗓️ Test gym `6:00 pm`", "💊 Pill C `9:00 pm`",
         "-# and 2 with no time, any time today",
     ]
     assert briefing.left(_sections(), briefing.AFTERNOON, local(11)).splitlines()[:2] == ["☀️ **Left this afternoon** · ●○○○ 1/4", "💊 Pill A (dose 2 of 3) `12:00 pm`"]

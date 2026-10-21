@@ -3,9 +3,9 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Idle, last was** 21 Oct: all-day events (added, moved, deleted), then
-what's on over any span (a month, a year, a range), shipped `6ba3e80` at
-12:27 pm; the self-test after: 150 steps, none failed.
+**Now (21 Oct, afternoon):** round 7, the briefing as two messages of
+embeds (`DESIGN_ROUND=7`), 🗓️ everywhere, the calendar's answers its
+events alone. Committing and pushing; NOT restarted (Alex restarts).
 
 **Next, at the next restart** (not overnight): the settle-in week, a
 feature freeze to Sun 25 Oct (fixes and polish from real use only, new

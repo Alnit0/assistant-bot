@@ -32,7 +32,7 @@ log = logging.getLogger("assistant")
 #     📝 To-dos · **Renew rego** · Friday
 #     ⏰ Reminders · **Call Mum** · Sunday `2:00 pm`
 #     📝 To-dos · **Milk** · any day
-#     📅 Calendar · **Dentist** · Thursday `3:00 pm` to `4:00 pm`
+#     🗓️ Calendar · **Dentist** · Thursday `3:00 pm` to `4:00 pm`
 #     [✅ Save all] [↩️ Cancel]
 #     -# or tell me what to change: make the rego one a reminder at 9am Friday
 #

@@ -51,7 +51,7 @@ choices.
     cards that belong under it (to-dos) are posted again under it, so
     the order holds; the to-dos card jumps down once each time.
 69. Two "Today" counts sit side by side and disagree: the briefing's
-    "☀️ Today ●●●○… 5/18" and the Today card's "📅 Today ●●○○ 2/8"
+    "☀️ Today ●●●○… 5/18" and the Today card's "🗓️ Today ●●○○ 2/8"
     (they count different things). → The Today card loses its count;
     the briefing's is the day's.
 70. The same thing is listed in full in three places: an overdue to-do

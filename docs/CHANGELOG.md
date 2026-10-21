@@ -6,6 +6,11 @@ backfilled from the git log.
 
 ## 2026-10-21
 
+- A new look for the morning briefing, behind DESIGN_ROUND=7 (round 5 stays): the date, then your day in time
+  order as coloured cards (events, each dose with ⬜ Later, 🟥 Due or 🟩 Taken and the time, routines), and a
+  second message with your to-dos and your diary streak.
+- The calendar's emoji is 🗓️ everywhere, and asking what's on (a day, this week) lists calendar events only: no
+  doses or routines.
 - Ask what's on over any span: a day, a week (the week of 28 November), a month (in November, next month,
   December), a year (in 2027, next year) or a range (from Monday to Friday, 21 to 25 November). Events come in
   date order, all-day and timed alike: by day up to a week, by week up to two months, one list for longer.

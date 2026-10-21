@@ -104,6 +104,17 @@ async def plan_pieces(user_id: int, day: date) -> list:
     return found
 
 
+async def day_items(user_id: int, day: date) -> list:
+    """For the hub in round 7: each routine due that day, at its time or its window's start (none any time),
+    done once it is finished."""
+    from core import actions
+
+    return [
+        actions.DayItem(actions.ROUTINE, each.habit.name, each.starts(), each.ends(), state=actions.TAKEN if each.finished else actions.PENDING)
+        for each in rules.due(await store.every(user_id), await store.ticked(user_id, day), day)
+    ]
+
+
 class HabitsTask(Task):
     """Personal routines: my own checklists on chosen days."""
 
@@ -174,6 +185,9 @@ class HabitsTask(Task):
 
     async def plan(self, user_id, day):
         return await plan_pieces(user_id, day)
+
+    async def day_items(self, user_id, day):
+        return await day_items(user_id, day)
 
 
 task = HabitsTask()

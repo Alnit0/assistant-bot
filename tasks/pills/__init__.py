@@ -54,6 +54,28 @@ async def plan_pieces(user_id: int, on) -> list:
     return found
 
 
+async def day_items(user_id: int, on) -> list:
+    """For the hub in round 7: each of today's doses with its time and its state (taken with the time it was
+    taken, skipped, missed, or still to take); one past the day's limit, never taken, is missed."""
+    from core import actions
+    from core import occurrences
+    from tasks.pills import today as pills_today
+
+    if on != day.today():
+        return []
+    states = {occurrences.DONE: actions.TAKEN, occurrences.SKIPPED: actions.SKIPPED, occurrences.MISSED: actions.MISSED}
+    _, listed, _ = await checklist.read(user_id, on)
+    found = []
+    for dose in listed:
+        name = dose.pill.plan.name + (f" (dose {dose.number} of {dose.of})" if dose.of > 1 else "")
+        state = states.get(dose.occurrence.state, actions.PENDING)
+        at = dose.due.at or dose.occurrence.due_at or (day.at(on, dose.occurrence.planned_time) if dose.occurrence.planned_time else None)
+        if state == actions.PENDING and at is not None and pills_today.shown_time(dose) is None:
+            state = actions.MISSED  # past the day's limit: nobody could take it now
+        found.append(actions.DayItem(actions.DOSE, name, at, state=state, done_at=dose.occurrence.actual_at if state == actions.TAKEN else None))
+    return found
+
+
 class PillsTask(Task):
     """Pills: what to take, when, and what was taken. Setting them up, and the daily checklist."""
 
@@ -191,6 +213,9 @@ class PillsTask(Task):
 
     async def plan(self, user_id, on):
         return await plan_pieces(user_id, on)
+
+    async def day_items(self, user_id, on):
+        return await day_items(user_id, on)
 
     async def week(self, user_id, monday, upto):
         return await history.week_of_pills(user_id, monday, upto)

@@ -121,6 +121,7 @@ def text(found: list[Day], today: date, title: str) -> str:
     return "\n".join(said)
 
 
-async def gather(user_id: int, days: list[date]) -> list[Day]:
-    """Each day of the list from every task's contract."""
-    return [of(day, await planning.gather(user_id, day)) for day in days]
+async def gather(user_id: int, days: list[date], only: str = "") -> list[Day]:
+    """Each day of the list from every task's contract; with `only`, that task's things alone (the calendar's
+    own answers are its events, never a dose or a routine: Alex, 21 Oct)."""
+    return [of(day, [each for each in await planning.gather(user_id, day) if not only or each.task == only]) for day in days]

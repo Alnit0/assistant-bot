@@ -41,7 +41,7 @@ def test_off_unless_set_and_not_loaded():
 def test_the_morning_what_is_due_now_in_full_the_next_in_full_the_rest_small_and_any_time_last():
     pieces = today.layout(a_day(), at(7, 10))
     lines = lines_of(pieces)
-    assert lines[0] == "### 📅 Today ●○○○○○○ 1/7", "notes are not counted"
+    assert lines[0] == "### 🗓️ Today ●○○○○○○ 1/7", "notes are not counted"
     full = [line for line in lines if not line.startswith(("-#", "###"))]
     assert full[0] == "🔁 **Morning** · at 7:00 am · 0/3", "due now, first"
     assert full[1] == "⏰ **Call the bank**", "the next timed thing, in full"
@@ -59,13 +59,13 @@ def test_a_window_closed_undone_says_so():
 
 def test_when_everything_is_done_the_card_is_one_small_line():
     done = [Line("🔁", "**Morning**", at(7), done=True), Line("📝", "**Buy stamps**", done=True), Line("⏰", "**Bins out**", at(8), note=True)]
-    assert lines_of(today.layout(done, at(9))) == ["-# 📅 Today · all done ✅ 2"]
+    assert lines_of(today.layout(done, at(9))) == ["-# 🗓️ Today · all done ✅ 2"]
     assert today.layout([], at(9)) == ()
 
 
 def test_the_plain_text_marks_each_line():
     said = today.text(a_day(), at(7, 10)).splitlines()
-    assert said[0] == "## 📅 Today" and said[1] == "▫️ 🔁 **Morning** · at 7:00 am · 0/3" and "🗒️ ⏰ **Call the bank** · 11:00 am" in said and "✅ 📝 **Reply to Sam**" in said
+    assert said[0] == "## 🗓️ Today" and said[1] == "▫️ 🔁 **Morning** · at 7:00 am · 0/3" and "🗒️ ⏰ **Call the bank** · 11:00 am" in said and "✅ 📝 **Reply to Sam**" in said
 
 
 def test_gather_asks_every_task_with_a_today_and_leaves_out_one_that_fails(monkeypatch):

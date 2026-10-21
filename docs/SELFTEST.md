@@ -296,7 +296,7 @@ Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `DESIGN_ROUND=4`, `TODOS_EN
 | 9.01 | Set a reminder: “remind me at <in 20 minutes> to call the bank”, then Save | ✅ pass | A ⏰ card with Save; after Save it is booked for that time | 9:20 am | recorded answer | reminders (15 Oct) |
 | 9.02 | It goes off in the hub, and Done deals with it | ✅ pass | At its time a reminder in the hub whose first line names nothing (“⏰ Reminder · <time>”), with Done and Snooze; Done takes the buttons away |  |  | reminders (15 Oct) |
 | 9.03 | Make a routine with a window: “make a testevening routine <in 30 minutes> to <in 3 hours>: brush teeth, floss, skincare: cleanser, toner, serum”, then Save | ✅ pass | A card naming the window and the 3 items, the group with its steps; after Save no card of its own yet (its window is still to come) |  | recorded answer | personal routines, layout B (15 Oct) |
-| 9.04 | Its window starts: its own card, and the Today card | ✅ pass | A 🔁 Testevening card in the hub with the first three items, Skincare's steps as a guide, and one Done dropdown; the 📅 Today card names it | ### 🔁 Testevening ○○○ 0/3 / -# 9:50 am to 12:20 pm / **Brush teeth** / **Floss** |  | personal routines, layout B; the Today card (15 Oct) |
+| 9.04 | Its window starts: its own card, and the Today card | ✅ pass | A 🔁 Testevening card in the hub with the first three items, Skincare's steps as a guide, and one Done dropdown; the 🗓️ Today card names it | ### 🔁 Testevening ○○○ 0/3 / -# 9:50 am to 12:20 pm / **Brush teeth** / **Floss** |  | personal routines, layout B; the Today card (15 Oct) |
 | 9.05 | Done: pick Skincare in the dropdown, then “did brush teeth and floss” | ✅ pass | The pick ticks the whole group (“✅ 1 done” on the card); the words tick the rest, and the routine's card is tidied away |  | recorded answer | personal routines (15 Oct) |
 
 ## p10
@@ -309,7 +309,7 @@ Settings: `CARDS_V2=true`, `REMINDERS_ENABLED=true`, `DESIGN_ROUND=4`, `TODAY_CA
 | 10.02 | “what's on tomorrow?” | ✅ pass | In place: a first line with the day and a count and no event's name, then the made-up events with their times |  | recorded answer | calendar (15 Oct) |
 | 10.03 | “when is the dentist?” | ✅ pass | The next Test dentist: the first line says when and names nothing, the second names it |  | recorded answer | calendar (15 Oct) |
 | 10.04 | “am I free at 6:30 pm tomorrow?” | ✅ pass | Not free: Test gym is on then |  | recorded answer | calendar (15 Oct) |
-| 10.05 | The Today card has today's events | ✅ pass | The 📅 Today card in the hub: an event in full, or those that are over in one small line | ### 📅 Today / 📅 **Test dentist** / **3:00 pm** · <t:1792720800:R> / -# 📅 1 earlier today |  | calendar and the Today card (15 Oct) |
+| 10.05 | The Today card has today's events | ✅ pass | The 🗓️ Today card in the hub: an event in full, or those that are over in one small line | ### 🗓️ Today / 🗓️ **Test dentist** / **3:00 pm** · <t:1792720800:R> / -# 🗓️ 1 earlier today |  | calendar and the Today card (15 Oct) |
 
 ## The cross-task conversations, as Claude last answered them (offline: no request sent, no bot started)
 

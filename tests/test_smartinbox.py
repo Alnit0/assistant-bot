@@ -138,7 +138,7 @@ def test_a_mixed_message_is_one_card_listing_every_item_where_it_goes_and_its_da
     assert firsts[1].startswith("📝 To-dos · **Renew rego** · ") and "Fri" in firsts[1], firsts
     assert firsts[2].startswith("⏰ Reminders · **Call Mum**") and "2:00 pm" in firsts[2], firsts
     assert firsts[3].startswith("📝 To-dos · **Milk**"), firsts
-    assert firsts[4] == "📅 Calendar · **Dentist**" and firsts[5].startswith("Thu 5 Nov · `3:00 pm`"), firsts
+    assert firsts[4] == "🗓️ Calendar · **Dentist**" and firsts[5].startswith("Thu 5 Nov · `3:00 pm`"), firsts
     assert lines[-1] == smartinbox.HINT
     assert buttons(card) == ["Save all", "Cancel"]
     assert [row[0].style for row in card.rows] == ["success"] and card.rows[0][1].style == "secondary", "Save green, Cancel grey"

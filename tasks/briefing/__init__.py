@@ -3,13 +3,13 @@ import logging
 
 from datetime import timedelta
 
-from core import attention, cards, clock, config, database, health, hub, livelists, messages, money, notify, repeats, scheduler, summaries, tidy, timeinput, whatsnew
+from core import actions, attention, cards, clock, config, database, design, health, hub, livelists, messages, money, notify, repeats, scheduler, summaries, tidy, timeinput, whatsnew
 from core import day as days
 from core.actions import SEE, Action, Field, LiveReply, Request, Shown
 from core.cards import Card
 from core.context import Context
 from tasks.base import ANY, Keyword, Task
-from tasks.briefing import rules
+from tasks.briefing import embeds, rules
 from tasks.briefing.rules import ICON, TASK
 
 log = logging.getLogger("assistant")
@@ -36,6 +36,10 @@ JOB = "post"
 IN_THE_HUB = "briefing:hub"  # the Live copy in the hub; asked for elsewhere it is "briefing"
 ELSEWHERE = "briefing"
 SLOT = "briefing"  # its place in the hub: one at a time (core/messages.py, with the tidy on)
+# Round 7 (DESIGN_ROUND=7): a second message under it, everything else (to-dos, the diary), its own place
+IN_THE_HUB_MORE = "briefing:hub2"
+SLOT_MORE = "briefing2"
+ITEMS_TIME_LIMIT = 2.0  # seconds a task gets to hand over its day's items
 ONLY_FOR = (
     "The summary of the user's day across everything the bot keeps (\"brief me\", \"what's on today?\"). Not one "
     "task's own list (what pills are left is the pills task), and not when the briefing is posted (that is the "
@@ -73,8 +77,35 @@ def answers_questions() -> bool:
     return enabled() and bool(config.DAY_QUESTIONS)
 
 
+def embeds_round() -> bool:
+    """Round 7: the briefing as two messages of embeds (tasks/briefing/embeds.py)."""
+    return design.current() == design.EMBEDS_ROUND
+
+
+async def day_items(user_id: int, day) -> list:
+    """Every task's things of the day for round 7 (`Entry.day_items`). One that can't be read is left out and logged."""
+    found: list = []
+    for entry in actions.catalogue():
+        if entry.day_items is None:
+            continue
+        try:
+            found += list(await asyncio.wait_for(entry.day_items(user_id, day), ITEMS_TIME_LIMIT))
+        except Exception:
+            log.exception("The day of %s could not be read for the hub", entry.name)
+    return found
+
+
+async def both_for(user_id: int) -> tuple[Card, Card | None]:
+    """Round 7: message 1 (the date and the day's things in time order) and message 2 (everything else), or None."""
+    today = days.today()
+    items = await day_items(user_id, today)
+    return embeds.your_day(items, today, clock.now()), embeds.everything_else(items)
+
+
 async def card_for(user_id: int) -> Card | None:
-    """The briefing as it reads now, or None with nothing to say."""
+    """The briefing as it reads now, or None with nothing to say. In round 7, its first message."""
+    if embeds_round():
+        return (await both_for(user_id))[0]
     today = days.today()
     now = clock.now()
     gathered_items = await attention.gather(user_id, now)
@@ -124,6 +155,11 @@ async def _shown(user_id: int) -> Card:
     return shown
 
 
+async def _shown_more(user_id: int) -> Card:
+    """Round 7's second message as it reads now; once all it held has gone, the line that says so."""
+    return (await both_for(user_id))[1] or embeds.nothing_else()
+
+
 def _hub_id(role: str = "hub") -> int | None:
     found = config.CHANNELS.get(role)
     return int(found) if found else hub.channel_id()
@@ -149,10 +185,26 @@ async def post_in_hub(user_id: int, channel_id: int, notify: bool = False) -> in
     # One briefing in the hub at a time (core/messages.py, with the tidy on)
     await messages.record(message_id, channel_id, lifetime=messages.REPLACED, slot=SLOT, task=TASK)
     await livelists.placed(user_id, IN_THE_HUB, channel_id, message_id, TASK)
+    await _post_more(user_id, channel_id)
     if old is not None and old.message_id != message_id:
         # The new one is up first, then the old goes: never a moment with none
         await cards.delete(old.channel_id, old.message_id)
     return message_id
+
+
+async def _post_more(user_id: int, channel_id: int) -> None:
+    """Round 7: the second message straight after the first, silently, when it has anything; the one
+    before it goes once it is up (or goes anyway, with nothing to put in its place)."""
+    old = await database.run(livelists.db_get, user_id, IN_THE_HUB_MORE)
+    more = (await both_for(user_id))[1] if embeds_round() else None
+    message_id = await cards.send(channel_id, more, silent=True) if more is not None else None
+    if message_id is not None:
+        await messages.record(message_id, channel_id, lifetime=messages.REPLACED, slot=SLOT_MORE, task=TASK)
+        await livelists.placed(user_id, IN_THE_HUB_MORE, channel_id, message_id, TASK)
+    if old is not None and old.message_id != message_id:
+        await cards.delete(old.channel_id, old.message_id)
+        if message_id is None:
+            await livelists.forget({old.message_id})
 
 
 async def post_job(job: scheduler.Job) -> None:
@@ -174,6 +226,8 @@ def summary_changed(task: str, user_id: int) -> None:
     for key in (IN_THE_HUB, ELSEWHERE):
         # Needs a look is live: every change redraws it, at most one edit every 30 seconds (Discord's limits)
         livelists.changed(user_id, key, lambda: _shown(user_id), slow=True)
+    if embeds_round():
+        livelists.changed(user_id, IN_THE_HUB_MORE, lambda: _shown_more(user_id), slow=True)
 
 
 async def look_again() -> bool:
@@ -209,6 +263,8 @@ async def show(request: Request, data: dict, guessed: frozenset):
     user_id = request.user.id
     if request.channel_id == _hub_id():
         if await livelists.refresh(user_id, IN_THE_HUB, lambda: _shown(user_id)):
+            if embeds_round():
+                await livelists.refresh(user_id, IN_THE_HUB_MORE, lambda: _shown_more(user_id))
             await tidy.pointer(request.channel_id, rules.UP_TO_DATE)
             return Shown("the briefing in the hub was brought up to date in place")
         if await post_in_hub(user_id, request.channel_id) is None:
@@ -349,7 +405,7 @@ class BriefingTask(Task):
         if not enabled():
             return
         # A copy that is up shows now, not how things stood when the bot stopped
-        for user_id in await database.run(lambda conn: [row[0] for row in conn.execute("SELECT DISTINCT user_id FROM live_lists WHERE key IN (?, ?)", (IN_THE_HUB, ELSEWHERE))]):
+        for user_id in await database.run(lambda conn: [row[0] for row in conn.execute("SELECT DISTINCT user_id FROM live_lists WHERE key IN (?, ?, ?)", (IN_THE_HUB, ELSEWHERE, IN_THE_HUB_MORE))]):
             summary_changed("", user_id)
 
 

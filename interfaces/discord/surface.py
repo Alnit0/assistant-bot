@@ -190,7 +190,10 @@ async def send_card(channel_id: int, card, text: str, *, silent: bool = False) -
     channel = _must(channel_id)
     built = render.view(card)
     try:
-        if cards.designed(card):
+        if card.embeds:
+            more = {"view": built} if built is not None else {}
+            message = await channel.send(render.heading(card), embeds=render.embeds(card), silent=silent, **more)
+        elif cards.designed(card):
             message = await channel.send(view=render.layout_view(card.layout), silent=silent)
         elif built is None:
             message = await channel.send(text, silent=silent)
@@ -204,9 +207,17 @@ async def send_card(channel_id: int, card, text: str, *, silent: bool = False) -
 async def edit_card(channel_id: int, message_id: int, card, plain) -> None:
     message = _must(channel_id).get_partial_message(message_id)
     try:
-        if cards.designed(card):
-            await message.edit(**render.drawn(card))
-            return
+        if cards.designed(card) or card.embeds:
+            # Embeds on a message that is Components V2 are refused (400): the plain words, as a layout, below
+            try:
+                await message.edit(**render.drawn(card))
+                return
+            except discord.HTTPException as error:
+                if not card.embeds or error.status != 400:
+                    raise
+                log.info("Card %s could not take embeds (%s): rewriting it as a layout", message_id, error)
+                await message.edit(**render.drawn(plain, was_designed=True))
+                return
         try:
             await message.edit(**render.drawn(plain))
         except discord.NotFound:

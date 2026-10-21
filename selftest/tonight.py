@@ -43,8 +43,8 @@ def _day_pieces(day: date = DAY) -> list[Piece]:
         Piece("pills", "p1.1", "💊", "Pill A", at(8, 0, day), fold="dose"),
         Piece("pills", "p1.2", "💊", "Pill A", at(13, 0, day), fold="dose"),
         Piece("pills", "p2.1", "💊", "Pill B", at(8, 0, day), fold="dose"),
-        Piece("calendar", "e1", "📅", "Made-up standup", at(9, 0, day), at(9, 15, day)),
-        Piece("calendar", "e2", "📅", "Made-up lunch", at(12, 30, day), at(13, 30, day)),
+        Piece("calendar", "e1", "🗓️", "Made-up standup", at(9, 0, day), at(9, 15, day)),
+        Piece("calendar", "e2", "🗓️", "Made-up lunch", at(12, 30, day), at(13, 30, day)),
         Piece("nudges", "n1", "⏰", "Made-up call", at(17, 0, day)),
         Piece("habits", "h1", "🔁", "Evening", at(20, 0, day), at(20, 30, day), note="8:00 pm to 11:00 pm", fold="routine"),
         Piece("nudges", "e1", "🪪", "Made-up passport due", all_day=True),  # birthdays are never a calendar item (19 Oct)
@@ -77,13 +77,13 @@ def plan_cards() -> list[tuple[str, tuple]]:
     start, end = planning.window(DAY, at(7, 50))
     first = planning.place(DAY, _day_pieces(), lengths, start, end)
     out = planning.place(DAY, _day_pieces(), lengths, start, end, out=[(at(14), at(16))], parts={"t3": "evening"})
-    full = planning.place(DAY, [Piece("calendar", "e9", "📅", "Made-up conference", at(6), at(23)), *_day_pieces()[8:]], lengths, start, end)
+    full = planning.place(DAY, [Piece("calendar", "e9", "🗓️", "Made-up conference", at(6), at(23)), *_day_pieces()[8:]], lengths, start, end)
     blocks = len(out.slots)
     today_lines = [
         Line("🔁", "**Evening** · 8:00 pm to 11:00 pm · 0/3", at(20), at(23)),
         *(Line(slot.piece.icon, f"**{slot.piece.text}** · planned", slot.start, slot.end) for slot in out.slots),
         Line("⏰", "**Made-up call**", at(17), note=True),
-        Line("📅", "**Made-up standup**", at(9), at(9, 15), event=True),
+        Line("🗓️", "**Made-up standup**", at(9), at(9, 15), event=True),
     ]
     today_lines.sort(key=lambda each: each.at)
     mum = Birthday(1, 1, "Mum", 3, 12, 1966)
@@ -185,9 +185,9 @@ def _round_6_day(now: datetime, busy: bool = False) -> tuple[timeline.Header, li
         T.Item(T.DOSE, "💊", "Pill C", at(21), later=h < 21, button="Taken" if h >= 21 else ""),
         T.Item(T.ROUTINE, "🔁", "Morning", at(6, 30), at(9), ("Skincare ✓ · Stretch · Glass of water",), done=h >= 8.75, done_at=at(8, 45), button="Done: pick one" if 6.5 <= h < 8.75 else ""),
         T.Item(T.ROUTINE, "🔁", "Evening", at(20), at(23), ("Brush teeth · Floss · Read",), button="Done: pick one" if h >= 20 else ""),
-        T.Item(T.EVENT, "📅", "Standup", at(9), at(9, 15)),
-        T.Item(T.EVENT, "📅", "Lunch", at(12, 30), at(13, 30)),
-        T.Item(T.EVENT, "📅", "Gym", at(18), at(19)),
+        T.Item(T.EVENT, "🗓️", "Standup", at(9), at(9, 15)),
+        T.Item(T.EVENT, "🗓️", "Lunch", at(12, 30), at(13, 30)),
+        T.Item(T.EVENT, "🗓️", "Gym", at(18), at(19)),
         T.Item(T.REMINDER, "⏰", "Call the bank", at(10, 30), done=h >= 11.6, done_at=at(11, 35), button="Done" if 10.5 <= h < 11.6 else ""),
         T.Item(T.REMINDER, "⏰", "Put the bins out", at(17), done=h >= 17.1, done_at=at(17, 5), button="Done" if 17 <= h < 17.1 else ""),
         T.Item(T.TODO, "📝", "Write the essay · planned", at(13, 45), at(15, 15), ("1h 30m",), button="Done" if h >= 13.75 else ""),
@@ -198,7 +198,7 @@ def _round_6_day(now: datetime, busy: bool = False) -> tuple[timeline.Header, li
     if busy:
         items += [
             T.Item(T.EVENT, "💼", "Work", at(8), at(17)),
-            T.Item(T.EVENT, "📅", "Made-up client call", at(14), at(14, 30)),
+            T.Item(T.EVENT, "🗓️", "Made-up client call", at(14), at(14, 30)),
             T.Item(T.REMINDER, "⏰", "Pay the power bill", at(16)),
             T.Item(T.DUE, "🔁", "Car registration due", all_day=True),
             T.Item(T.TODO, "📝", "Weekly shop · planned", at(19, 15), at(20, 15), ("1h",)),

@@ -49,8 +49,8 @@ def test_an_earlier_bedtime_when_tomorrow_starts_early_never_more_than_an_hour()
 
 def test_the_wind_down_words_with_nothing_open():
     night = date(2026, 10, 21)
-    lines = bedtime.wind_down_text(at(night, 23), [], ("📅 Made-up standup", at(night + timedelta(days=1), 9)), None)
-    assert lines == ["🌙 Wind down · bed at 11:00 pm", "-# tomorrow: 📅 Made-up standup 9:00 am"]
+    lines = bedtime.wind_down_text(at(night, 23), [], ("🗓️ Made-up standup", at(night + timedelta(days=1), 9)), None)
+    assert lines == ["🌙 Wind down · bed at 11:00 pm", "-# tomorrow: 🗓️ Made-up standup 9:00 am"]
 
 
 # --- in words, and its schedule rows ------------------------------------------------------------------------------------------
@@ -112,13 +112,13 @@ def test_the_wind_down_message_with_what_is_open_and_an_earlier_time_for_an_earl
     clock.advance_to(at(world.day, 22, 30))
     tomorrow = world.day + timedelta(days=1)
     world.pieces[world.day] = [Piece("pills", "p1.3", "💊", "Pill A", at(world.day, 22, 45)), Piece("nudges", "n1", "⏰", "Made-up", at(world.day, 22, 50))]
-    world.pieces[tomorrow] = [Piece("calendar", "e1", "📅", "Made-up early flight", at(tomorrow, 7, 0), at(tomorrow, 9)), Piece("pills", "p1.1", "💊", "Pill A", at(tomorrow, 8))]
+    world.pieces[tomorrow] = [Piece("calendar", "e1", "🗓️", "Made-up early flight", at(tomorrow, 7, 0), at(tomorrow, 9)), Piece("pills", "p1.1", "💊", "Pill A", at(tomorrow, 8))]
     run(bedtime.wind_job(SimpleNamespace(payload={})))
     assert world.posted == [("bedtime.nudge", "🌙 Wind down")], "the lock screen names nothing"
     text = world.edited[-1].text
     assert text.splitlines()[0] == "🌙 Wind down · bed at 11:00 pm"
     assert "still open tonight: 💊 1 dose still due · ⏰ 1 reminder still to come" in text
-    assert "tomorrow: 📅 Made-up early flight 7:00 am" in text and "bed at 10:15 pm gives you 8 hours" in text
+    assert "tomorrow: 🗓️ Made-up early flight 7:00 am" in text and "bed at 10:15 pm gives you 8 hours" in text
     assert "Pill A" not in text, "no pill's name"
     run(bedtime.wind_job(SimpleNamespace(payload={})))
     assert len(world.posted) == 1, "once a night"

@@ -23,7 +23,7 @@ log = logging.getLogger("assistant")
 # more"). When everything is done the card is one small line. It has no
 # buttons: each thing is done on its own card, or in words.
 # ---------------------------------------------------------------------------
-ICON = "📅"
+ICON = "🗓️"
 TITLE = "Today"
 TIME_LIMIT = 2.0  # seconds a task gets
 

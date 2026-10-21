@@ -224,11 +224,11 @@ def test_adding_is_a_card_with_its_title_day_time_length_and_clashes(world):
 def test_save_adds_it_to_the_bot_calendar_and_the_copy_and_undo_takes_it_away(world):
     proposal = _add(world, "lunch with Sam Thursday at 1 for 90 minutes", {"title": "lunch with Sam", "day": "Thursday", "time": "1 pm", "length": 90})
     said = run(plain.add_save(world.request(), proposal.data))
-    assert said == "📅 Added · **Lunch with Sam** · Thu 5 Nov · `1:00 pm` to `2:30 pm` · 90 minutes"
+    assert said == "🗓️ Added · **Lunch with Sam** · Thu 5 Nov · `1:00 pm` to `2:30 pm` · 90 minutes"
     assert world.fake.writes() == [("POST", BOT_ID)]
     assert run(plain.add_check(world.request(), proposal.data)) == ""
     assert "Lunch with Sam" in [each.title for each in kept(world)], "in the copy at once"
-    assert run(plain.undo(world.request("undo that"), {}, frozenset())) == "↩️ 📅 **Lunch with Sam** · taken off the calendar"
+    assert run(plain.undo(world.request("undo that"), {}, frozenset())) == "↩️ 🗓️ **Lunch with Sam** · taken off the calendar"
     assert world.fake.calendars[BOT_ID] == {} and "Lunch with Sam" not in [each.title for each in kept(world)]
 
 
@@ -261,16 +261,16 @@ def test_moving_an_event_the_bot_added_and_undo(world):
     assert run(plain.move_check(world.request(), proposal.data)) == ""
     moved = next(each for each in kept(world) if each.title == "Dentist")
     assert days.local_time(moved.start) == time(16, 0)
-    assert run(plain.undo(world.request("undo that"), {}, frozenset())).startswith("↩️ 📅 **Dentist** · back to Fri 6 Nov · `3:00 pm`")
+    assert run(plain.undo(world.request("undo that"), {}, frozenset())).startswith("↩️ 🗓️ **Dentist** · back to Fri 6 Nov · `3:00 pm`")
 
 
 def test_deleting_is_a_red_card_and_undo_puts_it_back(world):
     _added(world)
     proposal = run(plain.delete_card(world.request("delete the dentist"), {"search": "dentist"}, frozenset()))
     assert proposal.destructive and proposal.confirm_label == "Delete" and proposal.kind == "remove"
-    assert run(plain.delete_save(world.request(), proposal.data)) == "🗑️ 📅 **Dentist** · deleted"
+    assert run(plain.delete_save(world.request(), proposal.data)) == "🗑️ 🗓️ **Dentist** · deleted"
     assert run(plain.delete_check(world.request(), proposal.data)) == "" and "Dentist" not in [each.title for each in kept(world)]
-    assert run(plain.undo(world.request("undo that"), {}, frozenset())) == "↩️ 📅 **Dentist** · back on the calendar"
+    assert run(plain.undo(world.request("undo that"), {}, frozenset())) == "↩️ 🗓️ **Dentist** · back on the calendar"
     assert len(world.fake.calendars[BOT_ID]) == 1
 
 

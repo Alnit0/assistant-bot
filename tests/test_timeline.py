@@ -45,7 +45,7 @@ def test_a_long_event_is_on_now_with_its_end_and_free_time_is_never_inside_it():
 def test_done_things_leave_their_cards_for_the_done_line_and_to_dos_with_no_time_come_last():
     items = [
         Item(timeline.DOSE, "💊", "Pill B", at(7), done=True, done_at=at(7, 5)),
-        Item(timeline.EVENT, "📅", "Standup", at(9), at(9, 15)),
+        Item(timeline.EVENT, "🗓️", "Standup", at(9), at(9, 15)),
         Item(timeline.REMINDER, "⏰", "Call the bank", at(10, 30), button="Done"),
     ]
     messages = timeline.hub(Header(DAY, 1, 2, "14° to 20° · drizzle"), items, at(10, 0), at(22), ["**Buy stamps**"])

@@ -130,11 +130,29 @@ class Card:
     text: str
     rows: tuple[tuple[Button, ...] | Select, ...] = ()
     layout: tuple = ()
+    # Round 7's briefing (DESIGN_ROUND=7): the message as embeds, each with its border colour, under
+    # `heading` (the message's own line, "" for none). `text` still says it all, for the log and the checks
+    embeds: tuple["Embed", ...] = ()
+    heading: str = ""
+
+
+@dataclass(frozen=True)
+class Embed:
+    """One embed of a message: a title in bold, a description, and a status (core/design.py) that picks
+    its border colour. Plain data: interfaces/discord/render.py draws it."""
+
+    description: str = ""
+    title: str = ""
+    status: str = ""
+
+
+MAX_EMBEDS = 10  # a message holds at most this many
+MAX_EMBED_TEXT = 4096  # characters in an embed's description
 
 
 def designed(card: Card) -> bool:
-    """Whether this card is drawn as Components V2."""
-    return bool(card.layout) and config.CARDS_V2
+    """Whether this card is drawn as Components V2 (one of embeds never is)."""
+    return bool(card.layout) and config.CARDS_V2 and not card.embeds
 
 
 def make_id(kind: str, task: str, action: str, arg: str = "") -> str:
@@ -187,6 +205,8 @@ def check(card: Card) -> None:
     a mistake in the code, not the user's."""
     if len(card.rows) > MAX_ROWS:
         raise ValueError(f"A card has at most {MAX_ROWS} rows, not {len(card.rows)}")
+    if len(card.embeds) > MAX_EMBEDS or any(len(each.description) > MAX_EMBED_TEXT for each in card.embeds):
+        raise ValueError(f"A message has at most {MAX_EMBEDS} embeds of at most {MAX_EMBED_TEXT} characters")
     seen: set[str] = set()
     for row in card.rows:
         if isinstance(row, Select):
@@ -217,7 +237,7 @@ def fitted(card: Card) -> Card:
     if not card.layout or not design.problem(card.layout):
         return card
     log.warning("A card's layout was made to fit: %s", design.problem(card.layout))
-    return Card(card.text, card.rows, design.fit(card.layout))
+    return Card(card.text, card.rows, design.fit(card.layout), card.embeds, card.heading)
 
 
 def check_select(row: Select) -> None:

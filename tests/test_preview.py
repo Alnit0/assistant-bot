@@ -79,7 +79,7 @@ def test_the_routines_preview_shows_layout_a_layout_b_and_the_today_card_by_the_
     (menu,) = design.menus(evening_b)
     assert len(menu.options) == 8
     done = found[-1][1]
-    assert [text for text in design.texts(done)] == ["-# 📅 Today · all done ✅ 6"], "2 routines and 4 to-dos; the reminders are notes"
+    assert [text for text in design.texts(done)] == ["-# 🗓️ Today · all done ✅ 6"], "2 routines and 4 to-dos; the reminders are notes"
     assert "A or B?" in preview.routines_opening()
 
 

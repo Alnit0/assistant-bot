@@ -117,6 +117,27 @@ def colour(status: str) -> int:
     return COLOURS[ACCENTS[status]]
 
 
+# Round 7 (DESIGN_ROUND=7, Alex, 21 Oct): the briefing as two messages of embeds, each embed's border saying
+# what it is. A task still gives a status, never a colour: these are the hub's statuses for an embed
+ROUTINE = "routine"  # comes round every day or week (work, a personal routine): blue
+TAKEN = "taken"  # done or taken: green
+DUE_NOW = "due_now"  # due, needs a look now: red
+NOTABLE = "notable"  # an event worth noticing (one coming up, or all day): yellow
+LATER = "later"  # later, not yet relevant: grey
+PREPARED = "prepared"  # something the bot prepared for you: purple
+TODOS = "todos"  # your to-dos: pink
+TRACKING = "tracking"  # what you track (the diary): blue
+EMBED_COLOURS = {
+    ROUTINE: 0x5865F2, TAKEN: 0x57F287, DUE_NOW: 0xED4245, NOTABLE: 0xFEE75C, LATER: 0x4E5058,
+    PREPARED: 0x9B59B6, TODOS: 0xEB459E, TRACKING: 0x5865F2,
+}
+
+
+def embed_colour(status: str) -> int:
+    """An embed's border colour, as a number: a round 7 status, else a box's accent."""
+    return EMBED_COLOURS[status] if status in EMBED_COLOURS else colour(status)
+
+
 def section() -> Separator:
     """The separator between sections of a standing message."""
     return Separator(SECTION_LINE, SECTION_LARGE)
@@ -756,6 +777,10 @@ LATEST = ROUNDS[-1]
 # Rounds drawn for a preview only (round 6, the timeline hub: core/timeline.py, 17 Oct). Chosen, the hub's own cards
 # are drawn as the latest built round's: nothing of live's changes until one is built and shipped
 PREVIEW_ROUNDS = (6,)
+# Rounds built behind the setting and never the fallback (round 7: the briefing as embeds, 21 Oct). Everything
+# but the briefing draws as round 5 in it; round 5 stays the default
+CHOSEN_ROUNDS = (7,)
+EMBEDS_ROUND = 7
 
 
 def current() -> int:
@@ -763,7 +788,7 @@ def current() -> int:
     from core import config  # read when drawn, so a test or a restart can change it
 
     wanted = getattr(config, "DESIGN_ROUND", LATEST)
-    return wanted if wanted in ROUNDS or wanted in PREVIEW_ROUNDS else LATEST
+    return wanted if wanted in ROUNDS or wanted in PREVIEW_ROUNDS or wanted in CHOSEN_ROUNDS else LATEST
 
 
 def _standing_r1(title: str, context: str, boxes: list, later: list | tuple = (), hint: str = "", under: tuple = ()) -> tuple:

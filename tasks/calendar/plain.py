@@ -91,12 +91,12 @@ async def _week_view(request: Request, span: str, data: dict, today) -> Shown:
 
     if span in (WEEK, NEXT_WEEK):
         first = today if span == WEEK else today + timedelta(days=7)
-        found = await weekview.gather(request.user.id, weekview.week_of(first))
+        found = await weekview.gather(request.user.id, weekview.week_of(first), only=rules.TASK)
         title = weekview.THIS_WEEK if span == WEEK else weekview.NEXT_WEEK
         layout = weekview.this_week(found, today) if span == WEEK else weekview.next_week(found, today)
         card = Card(weekview.text(found, today, title), (), layout)
     else:
-        (found,) = await weekview.gather(request.user.id, [read_day(data.get("day"), today)])
+        (found,) = await weekview.gather(request.user.id, [read_day(data.get("day"), today)], only=rules.TASK)
         card = Card(weekview.short_line(found, today), (), weekview.one_day(found, today))
     message_id = await cards.send(request.channel_id, card)
     return Shown(card.text if message_id is not None else "not shown")

@@ -149,6 +149,39 @@ async def plan_pieces(user_id: int, day: date) -> list:
     ]
 
 
+UPCOMING_DAYS = 7  # one-off events this many days ahead are in the hub's day as coming up (round 7)
+
+
+def _series_of(event) -> str:
+    """What every happening of one event shares: its series, or its key less the happening's start."""
+    return event.series or event.key.rsplit("@", 1)[0]
+
+
+async def day_items(user_id: int, day: date) -> list:
+    """For the hub in round 7: each event of the day, and each one-off event in the next UPCOMING_DAYS days as
+    coming up. One that comes round again (its series, or the same event more than once in the copy) is
+    marked as repeating: routine, not notable."""
+    from collections import Counter
+
+    from core import actions
+
+    events = await store.events(user_id)
+    seen = Counter(_series_of(each) for each in events)
+
+    def item(each) -> "actions.DayItem":
+        repeats = bool(each.series) or seen[_series_of(each)] > 1
+        if each.all_day:
+            return actions.DayItem(actions.EVENT, each.title, first_day=each.first_day, last_day=each.last_day, repeats=repeats)
+        return actions.DayItem(actions.EVENT, each.title, each.start, each.end, repeats=repeats)
+
+    found = [item(each) for each in rules.on_day(events, day)]
+    for each in rules.in_span(events, day + timedelta(days=1), day + timedelta(days=UPCOMING_DAYS)):
+        starts = each.first_day if each.all_day else days.day_of(each.start)
+        if starts > day and not (each.series or seen[_series_of(each)] > 1):
+            found.append(item(each))
+    return found
+
+
 async def show_word(ctx: Context) -> str:
     await ctx.reply(rules.day_answer(await store.events(ctx.user.id), days.today(), days.today()))
     return "shown"
@@ -221,6 +254,9 @@ class CalendarTask(Task):
 
     async def plan(self, user_id, day):
         return await plan_pieces(user_id, day)
+
+    async def day_items(self, user_id, day):
+        return await day_items(user_id, day)
 
 
 task = CalendarTask()

@@ -68,6 +68,17 @@ async def show_word(ctx: Context) -> str:
     return "listed"
 
 
+async def day_items(user_id: int, day: date) -> list:
+    """For the hub in round 7: one line, the streak; nothing before the first entry. Never a mood or words."""
+    from core import actions
+
+    written = await database.run(store.db_days, user_id)
+    if not written:
+        return []
+    run = rules.streak(written, day)
+    return [actions.DayItem(actions.TRACKING, f"Diary · Streak: {run} day{'' if run == 1 else 's'}", icon="📓", state=actions.TAKEN if day in written else actions.PENDING)]
+
+
 class DiaryTask(Task):
     """Alex's diary: his words about his day, a mood, a streak, read back on request."""
 
@@ -126,6 +137,9 @@ class DiaryTask(Task):
     async def summary(self, user_id, day):
         return await summary(user_id, day)
 
+
+    async def day_items(self, user_id, day):
+        return await day_items(user_id, day)
 
     async def week(self, user_id, monday, upto):
         return await week(user_id, monday, upto)

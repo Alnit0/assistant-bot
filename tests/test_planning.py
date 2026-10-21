@@ -23,7 +23,7 @@ def todo(ref, text, rank=planning.ANY_DAY, done=False):
 
 
 def fixed(ref, text, start, end=None, task="calendar"):
-    return Piece(task, ref, "📅", text, start, end)
+    return Piece(task, ref, "🗓️", text, start, end)
 
 
 def plan(pieces, lengths=None, start=None, end=None, **more):
@@ -141,8 +141,8 @@ def test_the_card_is_in_time_order_with_fixed_marked_slots_bold_and_gaps_small()
     assert shown[1] == "-# all day · 🎂 Made-up birthday"
     assert shown[2] == "**7:00 am · 📝 Email Sam** · 15 min"
     assert shown[3] == "-# free 7:15 am to 8:00 am"
-    assert shown[4] == "8:00 am · 📅 Pill A, Pill B · fixed", "two doses at one time are one line"
-    assert shown[6] == "9:00 am · 📅 Made-up standup · fixed"
+    assert shown[4] == "8:00 am · 🗓️ Pill A, Pill B · fixed", "two doses at one time are one line"
+    assert shown[6] == "9:00 am · 🗓️ Made-up standup · fixed"
     assert shown[-1] == "-# free 9:30 am to 12:00 pm"
     assert planning.summary_line(found, DAY - timedelta(days=1)).startswith("**Tomorrow · Mon 19 Oct** · ")
     assert planning.summary_line(found, DAY - timedelta(days=3)).startswith("**Mon 19 Oct** · ")
