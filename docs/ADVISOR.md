@@ -144,7 +144,8 @@ Messages go through fast paths (buttons, exact typed words), then sticky follow-
 - **The gym** (live 18 Oct, overnight, with its weight tracker, training insights and pain tracker): his logbook sent to #inbox to import; "Design · Gym"; the sheet mirror waits for a sheet shared with the service account (`docs/GYM-SHEET-SETUP.md`).
 - **The bedtime nudge** (live 18 Oct, silent until he says "bedtime 11pm").
 - **Round 7 and 👍 as yes** (live since 21 Oct, 3:23 pm, `DESIGN_ROUND=7`, `THUMBS_UP=true`): his first mornings with them.
-- **The morning news** (built and pushed, not shipped): his look at "Design · Morning news" on his phone, and "turn on the morning news" when he wants it live. Live already has `READING_ENABLED=true` (the old daily read has run there), so updating live to this code turns it on: set it false first to wait.
+- **The diary's one confirmation a day** (live since 21 Oct, 10:07 pm): a save edits the day's "Saved" line; a press on the ask or on Wind down posts the diary's own line.
+- **The morning news** (live since 21 Oct, 10:07 pm, `a025112`; `READING_ENABLED=true`): his first morning. It is one message at 6 am in a news channel he made in the hub's category (`NEWS_CHANNEL_ID`, in live's `.env` only), picked at 5:30 ("Morning news", renamed from the daily read's row). In its own channel for now; moving it into the hub as its own message is planned. The hub's second message has its one line. Round 7's briefing shows no What's new box, so the line left for 22 Oct is not seen.
 - **His list of more changes** (21 Oct, when he called the feature freeze off): not heard yet.
 - **Round 6** (17 Oct): his look at "Design · Round 6 timeline", and whether to build it into the hub (a card per dose, or the one moving pills card).
 - **Plan my day, birthdays, the week view, the diary's Write** shipped 17 Oct: his first days with them ("Design · Plan my day and birthdays").

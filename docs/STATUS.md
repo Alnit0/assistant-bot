@@ -8,6 +8,24 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-17 (evening)
 
+
+## Shipped: the morning news (21 Oct, 10:07 pm)
+
+Live on `a025112` (from `f525879`; `-Back` returns there), with
+`READING_ENABLED=true` and `NEWS_CHANNEL_ID` added to live's `.env`, nothing
+else changed. Alex made the news channel himself in the hub's category under a
+name of his own (live could not make channels); live posts there, makes none.
+The migrations ran: the cards' table and back (never used), the messages'
+table, the 5:30 row renamed "Morning news". The old daily read's reads and their
+votes are kept; no source had been changed in words. Checked after: the
+account, the hub (the 6 am briefing message there, still the round 5 one that
+can't take embeds, as since 3:24 pm), the bookings (pick 5:30, the post 6:00 as
+a step before the briefing, Wind down 10:30 pm), one small Haiku call. A trial
+pick on live's code and data, nothing posted or kept: 39 of 39 feeds, 213
+stories to the pick, 8 chosen, none paywalled after, 2,078 characters of 6,000.
+Round 7's briefing draws no What's new box: the line left for 22 Oct is not
+seen.
+
 ## The morning news (21 Oct, evening; a batch, not shipped)
 
 The daily read and the planned News headlines as one task, on

@@ -3,11 +3,11 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Batch (21 Oct, night): the diary's asks, then the morning news shipped.**
-Done: the rename of live's 5:30 row to "Morning news" (`c1a880a`); a press
-on the diary's ask or on Wind down never becomes the day's line. **In
-progress:** the ship, after Wind down posts at 10:30 pm (#news is the
-channel Alex made, its id only in live's `.env`).
+**Idle, last batch was** 21 Oct (night): the morning news shipped (live on
+`a025112` since 10:07 pm, `READING_ENABLED=true`, `NEWS_CHANNEL_ID` set to the
+channel Alex made); the diary's one confirmation a day and its asks fixed.
+First morning: pick 5:30, one message at 6:00. Round 7's briefing shows no
+What's new box.
 
 **The feature freeze is called off** (Alex, 21 Oct): no settle-in week.
 **Next:** Alex's list of changes (not heard yet); his first morning
@@ -20,8 +20,8 @@ set). The sheet mirror waits for a sheet (docs/GYM-SHEET-SETUP.md).
 **Sundays:** run `/suggest` (the brainstorm with the wishlist).
 **Nightly 17 Oct, 3:30 am:** 149 of 150 on `98697d4`, none failed.
 
-**Live:** `f525879` since 21 Oct, 3:23 pm (`DESIGN_ROUND=7`, `THUMBS_UP=true`);
-previous `6ba3e80` (`-Back`, then `DESIGN_ROUND=5` and no `THUMBS_UP`).
+**Live:** `a025112` since 21 Oct, 10:07 pm (`DESIGN_ROUND=7`, `THUMBS_UP=true`,
+`READING_ENABLED=true`, `NEWS_CHANNEL_ID`); previous `f525879` (`-Back`).
 **Drafts and worktrees:** `docs/drafts/gym-onboarding.md`; three old
 worktrees, all merged
 
