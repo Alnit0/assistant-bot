@@ -1165,6 +1165,94 @@ def news_opening() -> str:
 
 
 # ---------------------------------------------------------------------------
+# Round 8 of the hub (DESIGN_ROUND=8): `python -m selftest.preview --round-8`, a post of its own, "Design · Round
+# 8". The hub as it is drawn by the real code (tasks/briefing/hub8.py) from made-up data only, at five moments of
+# one day, and round 7's drawing of the 11:30 am moment beside it. Pill A to Pill C, made-up event titles.
+# ---------------------------------------------------------------------------
+ROUND_8_TITLE = "Design · Round 8"
+ROUND_8_WORDS = (
+    "Crammed, no text heirarchy used, no headings or dividers, Emojis feel misplaced, taken/later emoji feels out of "
+    "place, card color does the same job better. Too cluttered"
+)
+_NEWS_LINK = "https://example.com/made-up/news"
+
+
+def _round_8_day(hour: int, minute: int = 0, busy: bool = False) -> list:
+    """One made-up day's things as the tasks hand them over, as they stand at a time of it."""
+    from core.actions import DOSE, EVENT, PREPARED, ROUTINE, SKIPPED, TAKEN, TODO, TRACKING, DayItem
+    from core.cards import Button
+
+    now = _at(hour, minute)
+
+    def dose(name, at, number, of, taken_at):
+        if taken_at is not None and taken_at <= now:
+            return DayItem(DOSE, name, at, state=TAKEN, done_at=taken_at, number=number, of=of)
+        button = Button("Taken", "pills", "sheet_taken", "0", emoji="✅", style="success") if at <= now else None
+        return DayItem(DOSE, name, at, number=number, of=of, button=button)
+
+    items = [
+        dose("Pill A", _at(8), 1, 1, _at(8, 12)),
+        dose("Pill B", _at(11), 1, 2, _at(11, 40)),
+        dose("Pill B", _at(14), 2, 2, _at(14, 5)),
+        dose("Pill C", _at(14), 1, 1, _at(14, 10)),
+        DayItem(EVENT, "Work", _at(8, 30), _at(16, 30), repeats=True),
+        DayItem(EVENT, "Made-up workshop", _at(13), _at(14)),
+        DayItem(ROUTINE, "Morning", _at(7, 30), state=TAKEN if now >= _at(7, 40) else "pending"),
+        DayItem(ROUTINE, "Evening", _at(21, 30), state=TAKEN if now >= _at(21, 50) else "pending"),
+        DayItem(TRACKING, "Diary · Streak: 4 days", icon="📓", title="Diary", count=4),
+        DayItem(PREPARED, "📰 8 stories in #news", icon="📰", title="Morning news", link=_NEWS_LINK, count=8),
+    ]
+    if busy:
+        items += [
+            DayItem(DOSE, "Pill D", _at(9), state=SKIPPED, number=1, of=1),
+            DayItem(EVENT, "Made-up dentist", _at(15, 0) + timedelta(days=1), _at(16, 0) + timedelta(days=1)),
+            DayItem(EVENT, "Made-up hen do", first_day=_day() + timedelta(days=2), last_day=_day() + timedelta(days=3)),
+            *[DayItem(TODO, each) for each in ("Buy stamps", "Call the plumber", "Return the library books", "Book a haircut", "Renew the rego")],
+            DayItem(TODO, "Pay the power bill", state=TAKEN),
+        ]
+    return items
+
+
+def round_8_cards() -> list:
+    from tasks.briefing import embeds, hub8
+
+    def eight(hour, minute=0, busy=False):
+        drawn = hub8.layout(_round_8_day(hour, minute, busy), _day(), _at(hour, minute))
+        return drawn.first if drawn.second is None else Several((Card(hub8.words(drawn.first), (), drawn.first), Card(hub8.words(drawn.second), (), drawn.second)))
+
+    seven = _round_8_day(11, 30)
+    found = [
+        ("7:00 am, before anything is taken: the next thing under the date, every dose later (grey edge)", eight(7)),
+        ("11:30 am, a dose due and work on now: the dose due bold with its one Taken, the box red; Pill A struck through, taken small under it", eight(11, 30)),
+        ("…the same 11:30 am as round 7 draws it, for comparison (live now)", Several((embeds.your_day(seven, _day(), _at(11, 30)), embeds.everything_else(seven)))),
+        ("3:00 pm, every dose taken: the Pills box green; the workshop over, struck and faint", eight(15)),
+        ("10:00 pm, the evening routine done: nothing left to come, so no Next line", eight(22)),
+        ("A busy day at 11:30 am: a skipped dose, to-dos (the first three, then a count), and one-off events coming up in the days ahead", eight(11, 30, busy=True)),
+    ]
+    for label, pieces in found:
+        for each in (pieces if isinstance(pieces, Several) else (pieces,)):
+            layout = each.layout if isinstance(each, Card) else each
+            wrong = design.problem(layout) if layout else ""
+            if wrong:
+                raise ValueError(f"{label}: {wrong}")
+    return found
+
+
+def round_8_opening() -> str:
+    return "\n".join([
+        f"## {ROUND_8_TITLE}",
+        f"Your words on round 7's hub: “{ROUND_8_WORDS}”. You also saw it repeat itself: each line of the day its own embed, then a Pills card and a Today card under it with the same doses and events again.",
+        "**Round 8** goes back to round 5's boxes (a heading each, rules between items, small text for detail) and keeps round 7's one good idea: **the box's edge colour says its state**. Red, a dose due; green, every dose taken; grey, later; yellow, a one-off event today; blue, an ordinary day; pink, to-dos.",
+        "**One message**, nothing in it twice: the date and the next thing, then 💊 Pills, 🗓️ Today and To-dos, and one small last line (the diary's streak, the news). No Pills card, Today card or to-dos card under it. State is said by the text alone: taken struck through with its time small under it, the next due bold, later plain. No squares, and one emoji a box, on its heading. Exact times only.",
+        "Each drawing below is the real code from made-up data (Pill A to Pill D, made-up events). The buttons here do nothing.",
+    ])
+
+
+def round_8_closing() -> str:
+    return "📱 Please look at this on your phone. When you want it live, say **ship round 8**."
+
+
+# ---------------------------------------------------------------------------
 # The smart inbox (SMART_INBOX): `python -m selftest.preview --inbox`, a post of
 # its own. Made-up items only, drawn by core/smartinbox.py's own card; each
 # item's lines are the words its task's own code wrote for them in the tests.
@@ -1274,6 +1362,13 @@ def main() -> int:
             print(f"{len(found)} messages built, each within one message.")
             return 0
         print("Posted:", asyncio.run(post_preview(DIARY_TITLE, diary_opening(), found)))
+        return 0
+    if "--round-8" in args:
+        found = round_8_cards()
+        if "--check" in args:
+            print(f"{len(found)} messages built, each within one message.")
+            return 0
+        print("Posted:", asyncio.run(post_preview(ROUND_8_TITLE, round_8_opening(), [*found, ("", Card(round_8_closing()))])))
         return 0
     if "--brainstorm" in args:
         found = brainstorm_cards()

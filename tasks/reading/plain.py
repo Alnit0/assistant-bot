@@ -279,15 +279,16 @@ async def post_job(job) -> None:
 # --- how it is shown in the hub -------------------------------------------------------------------------------------
 async def day_items(user_id: int, day: date) -> list:
     """For round 7's hub: one line in the briefing's second message, "📰 8 stories in #news", that links to the day's
-    message. Before round 7 the news is not in the hub (Alex, 21 Oct): it is asked for in words."""
-    if design.current() != design.EMBEDS_ROUND:
+    message (round 8: the same, in its small last line). Before round 7 the news is not in the hub (Alex, 21 Oct): it is
+    asked for in words."""
+    if design.current() not in (design.EMBEDS_ROUND, design.ONE_MESSAGE_ROUND):
         return []
     up = await database.run(store.db_posts_up, user_id, day)
     if not up:
         return []
     channel_id, message_id, _ = up[0]
     count = sum(len(stories) for _, _, stories in up)
-    return [DayItem(PREPARED, news.pointer(count, NEWS), icon=ICON, title=TITLE, link=surface.link(channel_id, message_id))]
+    return [DayItem(PREPARED, news.pointer(count, NEWS), icon=ICON, title=TITLE, link=surface.link(channel_id, message_id), count=count)]
 
 
 async def today_stories(user_id: int) -> list[Story]:

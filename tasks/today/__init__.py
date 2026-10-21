@@ -1,4 +1,4 @@
-from core import clock, config, database, hub, hubcard, repeats, scheduler, summaries, today
+from core import clock, config, database, design, hub, hubcard, repeats, scheduler, summaries, today
 from core.cards import Card
 from tasks.base import Task
 
@@ -17,6 +17,8 @@ hubcard.order(TASK, ORDER, lambda user_id: lambda: card(user_id))
 
 
 async def card(user_id: int) -> Card | None:
+    if design.one_message_hub():
+        return None  # round 8: the day's events and routines are the Today box of the hub's one message
     now = clock.now()
     lines = await today.gather(user_id, now)
     pieces = today.layout(lines, now)

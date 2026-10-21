@@ -3,12 +3,14 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Idle, last batch was** 22 Oct (overnight): the hub's lost embeds (the
-cause was 21 Oct's round 5 message; live's hub is fresh at 6 am, and a
-briefing that can't take embeds is now posted again), "will it rain?"
-with a card open, "is the gym on tonight?", a correction after a
-schedule's Save with Undo, the week view's past days, reactions kept over
-a restart. Pushed, not shipped. NZ$1.09 of NZ$2.00.
+**Batch: hub round 8** (22 Oct, day; unattended; commits and pushes, no
+ship, live not restarted). Round 5's boxes with round 7's coloured edges,
+one message, behind `DESIGN_ROUND=8`. Cap NZ$0.50, no Claude calls.
+- Done: 1, round 8 built (`tasks/briefing/hub8.py`), tests
+  (`tests/test_round8.py`); the calendar tests' clock fixed (it broke
+  once 22 Oct 8:50 am had passed)
+- Next: 2, the preview "Design · Round 8"; 3, the day in the hub in round
+  8 (dev bot); 4, the docs, then Idle
 
 **Next ship:** the 22 Oct batch (a core migration), and **set
 LAB_GRID=false in live's .env** (Alex found the animation too choppy,

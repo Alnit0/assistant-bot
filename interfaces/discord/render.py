@@ -131,7 +131,7 @@ def layout_view(pieces: tuple) -> discord.ui.LayoutView:
             return discord.ui.ActionRow(*(_CardButton(button) for button in piece.buttons))
         if isinstance(piece, Select):
             return discord.ui.ActionRow(_CardSelect(piece))
-        return discord.ui.Container(*(built(child) for child in piece.children), accent_colour=discord.Colour(design.colour(piece.status)))
+        return discord.ui.Container(*(built(child) for child in piece.children), accent_colour=discord.Colour(design.embed_colour(piece.status)))
 
     drawn = discord.ui.LayoutView(timeout=None)
     for piece in pieces:

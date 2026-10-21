@@ -2,7 +2,7 @@ import logging
 from dataclasses import replace
 from datetime import date, datetime, time, timedelta
 
-from core import attention, cards, clock, config, database, discord_utils, hub, lifecycle, live, llm, messages, occurrences, restart, scheduler, summaries, timeinput, timetable
+from core import attention, cards, clock, config, database, design, discord_utils, hub, lifecycle, live, llm, messages, occurrences, restart, scheduler, summaries, timeinput, timetable
 from core import day as days
 from core import schedule as core_schedule
 from core.cards import Button, Card
@@ -199,8 +199,6 @@ async def post(user_id: int, channel_id: int | None = None) -> int | None:
 
 def all_done(listed: list[Dose]) -> bool:
     """Round 5: today has doses and each is taken or skipped (a missed one keeps the checklist up)."""
-    from core import design
-
     return design.current() >= 5 and bool(listed) and all(dose.occurrence.state in (DONE, SKIPPED) for dose in listed)
 
 
@@ -215,10 +213,11 @@ async def refresh(user_id: int) -> None:
     sheet = next((message for message in held if message.kind == CHECKLIST), None)
     if sheet is None:
         return
-    if all_done(listed):
+    if all_done(listed) or design.one_message_hub():
         # Round 5: every dose taken or skipped, so the checklist leaves the hub. Its record stays, so
         # the day still counts as posted; a dose to take again (a new pill, an undo) brings it back,
-        # as a checklist that has gone is posted again below
+        # as a checklist that has gone is posted again below. Round 8: the doses are the briefing's
+        # Pills box, so one still up (from before the switch, or asked for by name) leaves at its next change
         await cards.delete(sheet.channel_id, sheet.message_id)
         return
     if not await cards.edit(sheet.channel_id, sheet.message_id, sheet_card(listed, pills, day)):
@@ -258,7 +257,7 @@ async def channel_cleared(channel_id: int, gone: set[int]) -> None:
     day = days.today(clock.now())
     for user_id in await database.run(store.db_users):
         held = await database.run(store.db_messages, user_id, day)
-        if any(message.channel_id == channel_id and message.message_id in gone for message in held):
+        if any(message.channel_id == channel_id and message.message_id in gone for message in held) and not design.one_message_hub():
             await post(user_id, channel_id)
 
 
@@ -443,6 +442,10 @@ async def _post_if_due(user_id: int) -> tuple[bool, str, bool]:
     and not when the checklist is there already or there is nothing to take."""
     pills, listed, day = await view(user_id)
     held = await database.run(store.db_messages, user_id, day)
+    if design.one_message_hub():
+        # Round 8: today's doses are the Pills box of the hub's one message; nothing of the checklist's is posted
+        await refresh(user_id)
+        return False, "round 8: today's doses are in the hub's briefing", False
     there = morning_copy(held, day)
     if there is not None:
         await refresh(user_id)

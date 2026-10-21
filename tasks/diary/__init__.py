@@ -76,7 +76,7 @@ async def day_items(user_id: int, day: date) -> list:
     if not written:
         return []
     run = rules.streak(written, day)
-    return [actions.DayItem(actions.TRACKING, f"Diary · Streak: {run} day{'' if run == 1 else 's'}", icon="📓", state=actions.TAKEN if day in written else actions.PENDING)]
+    return [actions.DayItem(actions.TRACKING, f"Diary · Streak: {run} day{'' if run == 1 else 's'}", icon="📓", state=actions.TAKEN if day in written else actions.PENDING, title="Diary", count=run)]
 
 
 class DiaryTask(Task):

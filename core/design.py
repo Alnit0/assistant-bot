@@ -346,7 +346,7 @@ def problem(pieces) -> str:
         if isinstance(piece, Box):
             if not piece.children:
                 return "a box with nothing in it"
-            if piece.status not in ACCENTS:
+            if piece.status not in ACCENTS and piece.status not in EMBED_COLOURS:
                 return f"“{piece.status}” is not a status"
             if any(isinstance(child, Box) for child in piece.children):
                 return "a box inside a box"
@@ -377,7 +377,7 @@ def _tidied(pieces) -> tuple:
         elif isinstance(piece, Box):
             children = _tidied(piece.children)
             if children:
-                out.append(Box(piece.status if piece.status in ACCENTS else QUIET, children))
+                out.append(Box(piece.status if piece.status in ACCENTS or piece.status in EMBED_COLOURS else QUIET, children))
         elif isinstance(piece, Row):
             if piece.buttons:
                 out.append(Row(tuple(piece.buttons[:MAX_BUTTONS_IN_ROW])))
@@ -772,8 +772,10 @@ def asking(
 # the look built before round 3: a box an item, `# ` for a standing message,
 # the heading inside a decision's box. Kept as it was; never restyled.
 # ---------------------------------------------------------------------------
-ROUNDS = (1, 3, 4, 5)  # the rounds that were built, oldest first (config's default stays the one that is shipped)
-LATEST = ROUNDS[-1]
+ROUNDS = (1, 3, 4, 5, 8)  # the rounds that were built, oldest first (config's default stays the one that is shipped)
+# What a setting that names no built round falls back to: round 5, the last whole look every card was drawn in. Round 8
+# redraws only the hub (the rest draws as round 5 in it), so it is never the fallback
+LATEST = 5
 # Rounds drawn for a preview only (round 6, the timeline hub: core/timeline.py, 17 Oct). Chosen, the hub's own cards
 # are drawn as the latest built round's: nothing of live's changes until one is built and shipped
 PREVIEW_ROUNDS = (6,)
@@ -781,6 +783,10 @@ PREVIEW_ROUNDS = (6,)
 # but the briefing draws as round 5 in it; round 5 stays the default
 CHOSEN_ROUNDS = (7,)
 EMBEDS_ROUND = 7
+# Round 8 (Alex, 22 Oct): the hub as ONE message of boxes (round 5's headings, rules and small text) with round 7's
+# colours on their edges (EMBED_COLOURS, unchanged in meaning). The briefing is the whole hub: the pills checklist,
+# the Today card and the to-dos card are not posted beside it (tasks/briefing/hub8.py)
+ONE_MESSAGE_ROUND = 8
 
 
 def current() -> int:
@@ -789,6 +795,11 @@ def current() -> int:
 
     wanted = getattr(config, "DESIGN_ROUND", LATEST)
     return wanted if wanted in ROUNDS or wanted in PREVIEW_ROUNDS or wanted in CHOSEN_ROUNDS else LATEST
+
+
+def one_message_hub() -> bool:
+    """Round 8: the briefing is the whole hub, so a task's own hub card (the checklist, Today, to-dos) is not posted."""
+    return current() == ONE_MESSAGE_ROUND
 
 
 def _standing_r1(title: str, context: str, boxes: list, later: list | tuple = (), hint: str = "", under: tuple = ()) -> tuple:

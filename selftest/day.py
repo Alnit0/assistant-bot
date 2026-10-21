@@ -222,13 +222,19 @@ def changes(before: dict | None, after: dict) -> str:
 
 # Where a message belongs in the hub, top to bottom: the briefing, the task cards in their fixed order, then the moment
 PLACES = ("briefing:hub", "pills", "today", "nudges", "habits", "gym", "todos")
+BRIEFINGS = ("briefing:hub", "briefing:hub8")  # the hub's briefing: rounds before 8, and round 8's one message
+# Round 8 (DESIGN_ROUND=8): the briefing is the whole hub, so none of these is in it, and no square is in its words
+ROUND_8 = 8
+ROUND_8_KEY = "briefing:hub8"
+NOT_IN_ROUND_8 = ("today:hub", "todos:hub")
+SQUARES = ("🟩", "🟥", "⬜", "⏭️", "⬛")
 
 
 def place(message: dict) -> int:
     """0 the briefing, 1 to 6 a task card in its order, 9 anything else (the moment).
     A hub card's key is "<task>:hub", or "<task>.<slot>:hub" for one of several."""
     key = message.get("key") or ""
-    if key == "briefing:hub":
+    if key in BRIEFINGS:
         return 0
     if message.get("kind") == "checklist":
         return 1
@@ -253,6 +259,17 @@ def rule_problems(snapshot: dict) -> list[str]:
     for each in snapshot["messages"]:
         if each.get("day") and each["day"] != snapshot["day"]:
             problems.append(f"left from {each['day']}: “{heading(each['raw'])}”")
+    return problems + round_8_problems(snapshot)
+
+
+def round_8_problems(snapshot: dict) -> list[str]:
+    """In round 8 (its one message in the hub): nothing shown twice (no pills checklist, Today card or to-dos card
+    beside it) and no status square in it. Nothing for a snapshot of another round."""
+    if not any(each.get("key") == ROUND_8_KEY for each in snapshot["messages"]):
+        return []
+    problems = [f"shown twice in round 8: {each.get('key') or 'the pills checklist'}" for each in snapshot["messages"] if each.get("key") in NOT_IN_ROUND_8 or each.get("kind") == "checklist"]
+    said = " ".join(" ".join(lines_of(each["raw"])) for each in snapshot["messages"] if each.get("key") == ROUND_8_KEY)
+    problems += [f"a status square in round 8's hub: {square}" for square in SQUARES if square in said]
     return problems
 
 
@@ -388,6 +405,17 @@ async def story(h) -> None:
         h.check(went is not None, "no pill reminder in the hub")
         await h.press(went.id, "Taken")
 
+    async def hub_taken() -> None:
+        """Round 8: the one Taken, on the dose due in the hub's own message."""
+        from core import livelists
+        from tasks import briefing
+
+        placed = await database.run(livelists.db_get, h.user.id, briefing.own_keys()[0])
+        h.check(placed is not None, "no round 8 hub message")
+        await h.press(placed.message_id, "Taken")
+        shown = await h.get(h.hub, placed.message_id)
+        h.check(shown is not None and "taken " in shown.all_text, f"after Taken: {shown.all_text[:300] if shown else 'gone'}")
+
     async def nudge(button: str) -> object:
         went = await h.find(h.hub, "Reminder ·")
         h.check(went is not None, "no reminder in the hub")
@@ -423,7 +451,11 @@ async def story(h) -> None:
     await _at(h, the_day, 9, 5)
     await step("d.14", "Pill A's first dose, late: “took pill a” in the hub", lambda: h.say("took pill a", channel=h.hub, canned=log({"pill": "Pill A", "did": "taken"})))
     await _at(h, the_day, 9, 10)
-    await step("d.15", "To-dos: Buy stamps in the Done dropdown", lambda: pick("todos", "Buy stamps"))
+    if config.DESIGN_ROUND == ROUND_8:
+        # Round 8 has no to-dos card, so no dropdown: a to-do is done by words
+        await step("d.15", "To-dos: “bought stamps”", lambda: h.say("bought stamps", channel=h.hub, canned=todo("todo_done", todos=[{"todo": "buy stamps"}]), task="todos"))
+    else:
+        await step("d.15", "To-dos: Buy stamps in the Done dropdown", lambda: pick("todos", "Buy stamps"))
     await _at(h, the_day, 9, 30)
     await save("d.26", "dentist at 4pm for an hour", todo("calendar_add", title="dentist", time="4:00 pm", length=60), "calendar")
     await save("d.30", "Test swimming every Sunday at 7pm", todo("calendar_add", title="Test swimming", repeat="days", weekdays=["sun"], time="7:00 pm", length=60), "calendar")
@@ -441,10 +473,15 @@ async def story(h) -> None:
     await _at(h, the_day, 11, 35)
     await step("d.18", "The snoozed reminder again: Done", lambda: nudge("Done"))
     await _at(h, the_day, 11, 40)
-    await step("d.31", "A fix marked shipped from outside the bot: in Needs a look within a minute", lambda: bug_outside(h, shipped=True))
+    if config.DESIGN_ROUND < 7:
+        # Since round 7 the hub has no Needs a look (Alex, 21 Oct): a problem reaches him through the status line and a ping
+        await step("d.31", "A fix marked shipped from outside the bot: in Needs a look within a minute", lambda: bug_outside(h, shipped=True))
     await snap(3)
     await _at(h, the_day, 12, 10)
-    await step("d.19", "Pill A's noon dose: Taken on its reminder", reminder_taken)
+    if config.DESIGN_ROUND == ROUND_8:
+        await step("d.19", "Pill A's noon dose: Taken in the hub's Pills box", hub_taken)
+    else:
+        await step("d.19", "Pill A's noon dose: Taken on its reminder", reminder_taken)
     await _at(h, the_day, 13, 0)
     await save("d.27", "move the dentist to 4:30pm", todo("calendar_move", search="dentist", time="4:30 pm"), "calendar")
     await _at(h, the_day, 14, 0)
@@ -454,10 +491,14 @@ async def story(h) -> None:
     await _at(h, the_day, 14, 30)
     await step("d.33", "A screenshot of a booking, sorted into an event, then Save all", lambda: inbox_file(h))
     await _at(h, the_day, 14, 45)
-    await step("d.34", "The bug closed from outside the bot: gone from Needs a look within a minute", lambda: bug_outside(h, shipped=False))
+    if config.DESIGN_ROUND < 7:
+        await step("d.34", "The bug closed from outside the bot: gone from Needs a look within a minute", lambda: bug_outside(h, shipped=False))
     await snap(4)
     await _at(h, the_day, 16, 0)
-    await step("d.21", "To-dos: Call the plumber in the Done dropdown", lambda: pick("todos", "Call the plumber"))
+    if config.DESIGN_ROUND == ROUND_8:
+        await step("d.21", "To-dos: “called the plumber”", lambda: h.say("called the plumber", channel=h.hub, canned=todo("todo_done", todos=[{"todo": "call the plumber"}]), task="todos"))
+    else:
+        await step("d.21", "To-dos: Call the plumber in the Done dropdown", lambda: pick("todos", "Call the plumber"))
     await _at(h, the_day, 17, 5)
     await step("d.22", "The 5:00 reminder: Done", lambda: nudge("Done"))
     await snap(5)
@@ -480,7 +521,9 @@ async def story(h) -> None:
 async def _briefing_text(h) -> str:
     from core import livelists
 
-    placed = await database.run(livelists.db_get, h.user.id, "briefing:hub")
+    from tasks import briefing
+
+    placed = await database.run(livelists.db_get, h.user.id, briefing.own_keys()[0])
     shown = await h.get(h.hub, placed.message_id) if placed is not None else None
     return shown.all_text if shown is not None else ""
 

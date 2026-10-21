@@ -56,23 +56,30 @@ async def plan_pieces(user_id: int, on) -> list:
 
 async def day_items(user_id: int, on) -> list:
     """For the hub in round 7: each of today's doses with its time and its state (taken with the time it was
-    taken, skipped, missed, or still to take); one past the day's limit, never taken, is missed."""
-    from core import actions
+    taken, skipped, missed, or still to take); one past the day's limit, never taken, is missed. Round 8 also
+    draws the one Taken button on a dose that can be taken now (round 4's rule), the same as the checklist's."""
+    from core import actions, clock
     from core import occurrences
+    from tasks.pills import sheet
     from tasks.pills import today as pills_today
 
     if on != day.today():
         return []
     states = {occurrences.DONE: actions.TAKEN, occurrences.SKIPPED: actions.SKIPPED, occurrences.MISSED: actions.MISSED}
     _, listed, _ = await checklist.read(user_id, on)
+    now = clock.now()
     found = []
     for dose in listed:
-        name = dose.pill.plan.name + (f" (dose {dose.number} of {dose.of})" if dose.of > 1 else "")
         state = states.get(dose.occurrence.state, actions.PENDING)
         at = dose.due.at or dose.occurrence.due_at or (day.at(on, dose.occurrence.planned_time) if dose.occurrence.planned_time else None)
         if state == actions.PENDING and at is not None and pills_today.shown_time(dose) is None:
             state = actions.MISSED  # past the day's limit: nobody could take it now
-        found.append(actions.DayItem(actions.DOSE, name, at, state=state, done_at=dose.occurrence.actual_at if state == actions.TAKEN else None))
+        shown = pills_today.shown_time(dose)
+        can_take = state == actions.PENDING and (dose.is_untimed or (shown is not None and shown <= now))
+        found.append(actions.DayItem(
+            actions.DOSE, dose.pill.plan.name, at, state=state, done_at=dose.occurrence.actual_at if state == actions.TAKEN else None,
+            number=dose.number, of=dose.of, button=sheet.taken_button(dose) if can_take else None,
+        ))
     return found
 
 

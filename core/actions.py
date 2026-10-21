@@ -274,6 +274,13 @@ class DayItem:
     icon: str = ""  # a TRACKING line's own icon ("📓"), a PREPARED one's ("📰")
     title: str = ""  # a PREPARED one's title ("Morning news"); its `text` is the whole of what it says
     link: str = ""  # a PREPARED one's link: its line opens it ("📰 8 stories in #news", to the first card)
+    # Round 8 (DESIGN_ROUND=8): a dose's place among the pill's doses today ("dose 2 of 3"; `of` 1 for one a day),
+    # a TRACKING or PREPARED line's number (the streak, the stories), and the one button for what can be done to
+    # it now (a dose's Taken, round 4's rule: a cards.Button, drawn under its line)
+    number: int = 0
+    of: int = 0
+    count: int | None = None
+    button: object = None
 
 
 @dataclass(frozen=True)

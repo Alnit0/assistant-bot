@@ -117,6 +117,9 @@ def world(make_db, dev_clock, monkeypatch, owner):
     make_db({"calendar": store.MIGRATIONS})
     monkeypatch.setattr(config, "CALENDAR_ENABLED", True)
     monkeypatch.setattr(config, "CALENDAR_ICS_URL", str(FEED))
+    # The real time held before the made-up morning, so the clock can still move forward to it once that day has
+    # passed (22 Oct: from 8:50 am that day every test here stopped, the clock refusing to go back)
+    monkeypatch.setattr(clock, "real_now", lambda: at(TODAY, 0, 0))
     clock.advance_to(at(TODAY, 8, 50))
     return SimpleNamespace(owner=owner, request=lambda text="said": Request(owner, INBOX, text))
 

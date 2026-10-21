@@ -59,12 +59,14 @@ def _read_day(said: str, on: "days.date"):
 # ---------------------------------------------------------------------------
 async def hub_card(user_id: int) -> Card | None:
     """Today's to-dos as the hub's card, or None on a day with nothing for today."""
+    from core import design
+
+    if design.one_message_hub():
+        return None  # round 8: the open to-dos are the To-dos box of the hub's one message
     on = today()
     found = rules.on(await every(user_id), on)
     if found.is_empty:
         return None
-    from core import design
-
     if design.current() >= 5 and not found.overdue and not found.today:
         return None  # round 5: every to-do of today's done, so the card leaves the hub; a new one brings it back
     return Card(rules.text(found, on), rules.buttons(found), rules.layout(found, on))

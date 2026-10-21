@@ -9,7 +9,7 @@ from core.actions import SEE, Action, Field, LiveReply, Request, Shown
 from core.cards import Card
 from core.context import Context
 from tasks.base import ANY, Keyword, Task
-from tasks.briefing import embeds, rules
+from tasks.briefing import embeds, hub8, rules
 from tasks.briefing.rules import ICON, TASK
 
 log = logging.getLogger("assistant")
@@ -39,6 +39,12 @@ SLOT = "briefing"  # its place in the hub: one at a time (core/messages.py, with
 # Round 7 (DESIGN_ROUND=7): a second message under it, everything else (to-dos, the diary), its own place
 IN_THE_HUB_MORE = "briefing:hub2"
 SLOT_MORE = "briefing2"
+# Round 8 (DESIGN_ROUND=8): the hub as one message of boxes (tasks/briefing/hub8.py), and the To-dos box as a second
+# only when it would not fit. Its own places, so a message of another kind (round 7's embeds, an earlier round's
+# layout) is known for what it is: Discord can't turn one kind into the other, so it goes and a fresh one is posted
+IN_THE_HUB_8 = "briefing:hub8"
+IN_THE_HUB_8_MORE = "briefing:hub8b"
+HUB_KEYS = (IN_THE_HUB, IN_THE_HUB_MORE, IN_THE_HUB_8, IN_THE_HUB_8_MORE)
 ITEMS_TIME_LIMIT = 2.0  # seconds a task gets to hand over its day's items
 ONLY_FOR = (
     "The summary of the user's day across everything the bot keeps (\"brief me\", \"what's on today?\"). Not one "
@@ -96,16 +102,36 @@ async def day_items(user_id: int, day) -> list:
     return found
 
 
+def one_message_round() -> bool:
+    """Round 8: the hub as one message of boxes (tasks/briefing/hub8.py)."""
+    return design.one_message_hub()
+
+
+def two_messages() -> bool:
+    """Rounds 7 and 8: drawn from the day's items, with a second message under the first when there is one."""
+    return embeds_round() or one_message_round()
+
+
+def own_keys() -> tuple[str, str]:
+    """Where this round keeps the hub's first message and its second among the Live lists."""
+    return (IN_THE_HUB_8, IN_THE_HUB_8_MORE) if one_message_round() else (IN_THE_HUB, IN_THE_HUB_MORE)
+
+
 async def both_for(user_id: int) -> tuple[Card, Card | None]:
-    """Round 7: message 1 (the date and the day's things in time order) and message 2 (everything else), or None."""
+    """Round 7: message 1 (the date and the day's things in time order) and message 2 (everything else), or None.
+    Round 8: the one message, and the To-dos box as a second only when it would not fit."""
     today = days.today()
     items = await day_items(user_id, today)
+    if one_message_round():
+        drawn = hub8.layout(items, today, clock.now())
+        second = Card(hub8.words(drawn.second), (), drawn.second) if drawn.second else None
+        return Card(hub8.words(drawn.first), (), drawn.first), second
     return embeds.your_day(items, today, clock.now()), embeds.everything_else(items)
 
 
 async def card_for(user_id: int) -> Card | None:
-    """The briefing as it reads now, or None with nothing to say. In round 7, its first message."""
-    if embeds_round():
+    """The briefing as it reads now, or None with nothing to say. In rounds 7 and 8, its first message."""
+    if two_messages():
         return (await both_for(user_id))[0]
     today = days.today()
     now = clock.now()
@@ -168,12 +194,15 @@ def _hub_id(role: str = "hub") -> int | None:
 
 async def post_in_hub(user_id: int, channel_id: int, notify: bool = False) -> int | None:
     """A fresh briefing in the hub, in place of the one that was there: one at
-    a time. Returns its message id, or None with nothing to say."""
+    a time. Returns its message id, or None with nothing to say. In rounds 7
+    and 8 its second message follows it; whatever was up before (of this round's
+    kind or another's) goes once the new ones are up."""
     shown = await card_for(user_id)
     if shown is None:
         return None
     _said[user_id] = shown.text
-    old = await database.run(livelists.db_get, user_id, IN_THE_HUB)
+    first_key, more_key = own_keys()
+    olds = [found for found in [await database.run(livelists.db_get, user_id, key) for key in HUB_KEYS] if found is not None]
     if notify:
         # What notifies names nothing: posted as the one neutral line, and written in after
         message_id = await cards.send(channel_id, Card(rules.notice(timeinput.format_moment(clock.now()))))
@@ -185,27 +214,23 @@ async def post_in_hub(user_id: int, channel_id: int, notify: bool = False) -> in
         return None
     # One briefing in the hub at a time (core/messages.py, with the tidy on)
     await messages.record(message_id, channel_id, lifetime=messages.REPLACED, slot=SLOT, task=TASK)
-    await livelists.placed(user_id, IN_THE_HUB, channel_id, message_id, TASK)
-    await _post_more(user_id, channel_id)
-    if old is not None and old.message_id != message_id:
-        # The new one is up first, then the old goes: never a moment with none
-        await cards.delete(old.channel_id, old.message_id)
+    await livelists.placed(user_id, first_key, channel_id, message_id, TASK)
+    fresh = {message_id}
+    # Rounds 7 and 8: the second message straight after the first, silently, when it has anything
+    more = (await both_for(user_id))[1] if two_messages() else None
+    more_id = await cards.send(channel_id, more, silent=True) if more is not None else None
+    if more_id is not None:
+        await messages.record(more_id, channel_id, lifetime=messages.REPLACED, slot=SLOT_MORE, task=TASK)
+        await livelists.placed(user_id, more_key, channel_id, more_id, TASK)
+        fresh.add(more_id)
+    # The new ones are up first, then the old go: never a moment with none
+    gone = {old.message_id for old in olds if old.message_id not in fresh}
+    for old in olds:
+        if old.message_id in gone:
+            await cards.delete(old.channel_id, old.message_id)
+    if gone:
+        await livelists.forget(gone)
     return message_id
-
-
-async def _post_more(user_id: int, channel_id: int) -> None:
-    """Round 7: the second message straight after the first, silently, when it has anything; the one
-    before it goes once it is up (or goes anyway, with nothing to put in its place)."""
-    old = await database.run(livelists.db_get, user_id, IN_THE_HUB_MORE)
-    more = (await both_for(user_id))[1] if embeds_round() else None
-    message_id = await cards.send(channel_id, more, silent=True) if more is not None else None
-    if message_id is not None:
-        await messages.record(message_id, channel_id, lifetime=messages.REPLACED, slot=SLOT_MORE, task=TASK)
-        await livelists.placed(user_id, IN_THE_HUB_MORE, channel_id, message_id, TASK)
-    if old is not None and old.message_id != message_id:
-        await cards.delete(old.channel_id, old.message_id)
-        if message_id is None:
-            await livelists.forget({old.message_id})
 
 
 async def post_job(job: scheduler.Job) -> None:
@@ -222,16 +247,44 @@ async def post_job(job: scheduler.Job) -> None:
 
 
 async def _refresh_hub(user_id: int) -> bool:
-    """Round 7: the hub's copy rewritten in place; one posted before round 7 (a layout, which can never take
-    embeds) is posted again as embeds, with its second message, and the old goes. False if there is none."""
-    found = await database.run(livelists.db_get, user_id, IN_THE_HUB)
+    """Rounds 7 and 8: the hub's copy rewritten in place. One of another kind (a layout under round 7, which can
+    never take embeds; round 7's embeds or an earlier round's layout under round 8) is posted again in this round's,
+    with its second message, and the old goes: Discord can't turn one kind into the other. False if there is none."""
+    first_key, _ = own_keys()
+    found = await database.run(livelists.db_get, user_id, first_key)
     if found is None:
-        return False
+        other = next((each for each in [await database.run(livelists.db_get, user_id, key) for key in HUB_KEYS if key not in own_keys()] if each is not None), None)
+        if other is None:
+            return False
+        log.info("The hub's briefing is of another round's kind: posted again in round %s's", design.current())
+        return await post_in_hub(user_id, other.channel_id) is not None
     try:
-        return await cards.edit(found.channel_id, found.message_id, await _shown(user_id), fall_back=False)
+        edited = await cards.edit(found.channel_id, found.message_id, await _shown(user_id), fall_back=False)
     except cards.Unfit:
         log.info("The hub's briefing was posted before round 7 and can't take embeds: posted again as embeds")
         return await post_in_hub(user_id, found.channel_id) is not None
+    if edited and one_message_round():
+        await _settle_more(user_id, found.channel_id)
+    return edited
+
+
+async def _settle_more(user_id: int, channel_id: int) -> None:
+    """Round 8: the To-dos box as a second message only while it would not fit in the first: edited in place, posted
+    when it is needed and was not there, taken away when it fits again."""
+    _, more_key = own_keys()
+    more = (await both_for(user_id))[1]
+    there = await database.run(livelists.db_get, user_id, more_key)
+    if more is None:
+        if there is not None:
+            await cards.delete(there.channel_id, there.message_id)
+            await livelists.forget({there.message_id})
+        return
+    if there is not None and await cards.edit(there.channel_id, there.message_id, more):
+        return
+    more_id = await cards.send(channel_id, more, silent=True)
+    if more_id is not None:
+        await messages.record(more_id, channel_id, lifetime=messages.REPLACED, slot=SLOT_MORE, task=TASK)
+        await livelists.placed(user_id, more_key, channel_id, more_id, TASK)
 
 
 def summary_changed(task: str, user_id: int) -> None:
@@ -239,7 +292,7 @@ def summary_changed(task: str, user_id: int) -> None:
     place. Several changes close together are one edit (core/live.py)."""
     for key in (IN_THE_HUB, ELSEWHERE):
         # Needs a look is live: every change redraws it, at most one edit every 30 seconds (Discord's limits)
-        if key == IN_THE_HUB and embeds_round():
+        if key == IN_THE_HUB and two_messages():
             live.schedule(("list", user_id, key), lambda: _refresh_hub(user_id), slow=True)
         else:
             livelists.changed(user_id, key, lambda: _shown(user_id), slow=True)
@@ -279,7 +332,7 @@ async def show(request: Request, data: dict, guessed: frozenset):
     place (one is posted if there is none); elsewhere, a copy there."""
     user_id = request.user.id
     if request.channel_id == _hub_id():
-        if await livelists.refresh(user_id, IN_THE_HUB, lambda: _shown(user_id)):
+        if await (_refresh_hub(user_id) if one_message_round() else livelists.refresh(user_id, IN_THE_HUB, lambda: _shown(user_id))):
             if embeds_round():
                 await livelists.refresh(user_id, IN_THE_HUB_MORE, lambda: _shown_more(user_id))
             await tidy.pointer(request.channel_id, rules.UP_TO_DATE)
@@ -423,7 +476,7 @@ class BriefingTask(Task):
         if not enabled():
             return
         # A copy that is up shows now, not how things stood when the bot stopped
-        for user_id in await database.run(lambda conn: [row[0] for row in conn.execute("SELECT DISTINCT user_id FROM live_lists WHERE key IN (?, ?, ?)", (IN_THE_HUB, ELSEWHERE, IN_THE_HUB_MORE))]):
+        for user_id in await database.run(lambda conn: [row[0] for row in conn.execute("SELECT DISTINCT user_id FROM live_lists WHERE key IN (?, ?, ?, ?, ?)", (*HUB_KEYS, ELSEWHERE))]):
             summary_changed("", user_id)
 
 

@@ -104,7 +104,8 @@ def dose_state(item: DayItem, now: datetime) -> tuple[str, str]:
 def dose_embed(item: DayItem, now: datetime) -> Embed:
     said, status = dose_state(item, now)
     when = _t(item.at) if item.at is not None else "any time"
-    return Embed(f"{when} · {DOSE_ICON} {item.text} · {said}", status=status)
+    name = item.text + (f" (dose {item.number} of {item.of})" if item.of > 1 else "")
+    return Embed(f"{when} · {DOSE_ICON} {name} · {said}", status=status)
 
 
 def routine_embed(item: DayItem) -> Embed:
