@@ -34,6 +34,8 @@ PICK_JOB = "pick"
 LIKED, UNLIKED = "liked", "unliked"  # 👍 on the news, and taken away (core/thumbsup.py)
 FEED_TIMEOUT = 20  # seconds a feed gets
 PAGE_TIMEOUT = 15  # seconds a chosen article's page gets
+USABLE_WORDS = 80  # less readable text than this on a page that loaded is as a page that failed: its snippet stands in
+TRIES = 3  # pages read at most for one slot, a paywalled one replaced by the next of its topic
 SHOWN_FOR = 7  # days a story shown is never shown again
 
 
@@ -48,7 +50,7 @@ def changed(user_id: int) -> None:
 # --- the sources ---------------------------------------------------------------------------------------------------
 async def sources_for(user_id: int) -> list[sources.Source]:
     """The starter feeds, with what was added or removed in words (an old daily read's theme read as its topic)."""
-    found = {each.url: sources.Source(each.name, each.url, FROM_THEME.get(each.theme, each.theme)) for each in sources.starter()}
+    found = {each.url: sources.Source(each.name, each.url, FROM_THEME.get(each.theme, each.theme), each.region) for each in sources.starter()}
     for url, name, theme, state in await database.run(store.db_source_changes, user_id):
         if state == store.REMOVED:
             found.pop(url, None)
@@ -72,14 +74,43 @@ async def read_feeds(user_id: int, day: date) -> tuple[list, list[str]]:
     return found, failed
 
 
-async def text_of(item) -> str:
-    """A chosen article's text, for its TL;DR; its feed snippet when the page can't be read or is behind a paywall."""
+async def text_of(item) -> str | None:
+    """A chosen article's text, for its TL;DR. None when the page is behind a paywall (it says it is not free, or it
+    reads as one): that story is dropped, never summarised from its snippet. The feed snippet stands in only for a page
+    that fails to load, times out, or has no readable text on it."""
     try:
-        page = await asyncio.wait_for(sources.article(item.url), PAGE_TIMEOUT)
+        text, paid = await asyncio.wait_for(sources.article_page(item.url), PAGE_TIMEOUT)
     except Exception as problem:
         log.info("Morning news: an article's page could not be read (%s)", type(problem).__name__)
-        page = ""
-    return page if rules.readable(page) else (item.snippet or item.title)
+        return item.snippet or item.title
+    if paid or rules.paywalled(text):
+        log.info("Morning news: a chosen article is behind a paywall: dropped")
+        return None
+    return text if len(text.split()) >= USABLE_WORDS else (item.snippet or item.title)
+
+
+async def settled(found: list, chosen: list[int], nexts: list[int], us: set[int], us_most: int) -> list[tuple[int, str]]:
+    """Each chosen story with its text, a paywalled one replaced by the next of its topic (the ranked next first, then
+    the topic's others in order), TRIES pages at most a slot, never past the day's US-only allowance. A slot with
+    nothing free to read is left out."""
+    texts = await asyncio.gather(*(text_of(found[index]) for index in chosen))
+    used = set(chosen)
+    kept = [(index, text) for index, text in zip(chosen, texts) if text is not None]
+    for index, text in zip(chosen, texts):
+        if text is not None:
+            continue
+        topic = found[index].theme
+        others = [alt for alt in dict.fromkeys([*nexts, *range(len(found))]) if alt not in used and found[alt].theme == topic]
+        for alt in others[: TRIES - 1]:
+            used.add(alt)
+            if alt in us and sum(1 for each, _ in kept if each in us) >= us_most:
+                continue
+            got = await text_of(found[alt])
+            if got is not None:
+                kept.append((alt, got))
+                break
+    order = {index: position for position, index in enumerate(chosen)}
+    return sorted(kept, key=lambda pair: order.get(pair[0], len(order) + news.TOPICS.index(found[pair[0]].theme) if found[pair[0]].theme in news.TOPICS else 99))
 
 
 # --- the morning's set --------------------------------------------------------------------------------------------
@@ -91,15 +122,18 @@ async def build(user_id: int, day: date) -> tuple[list[Story], list[str]]:
     prefs = await database.run(store.db_prefs, user_id)
     liked = await database.run(store.db_liked_sets, user_id)
     skipped = news.skipped_on(prefs, day)
-    picked = await pick.choose(found, day, news.guidance(prefs, day, liked), skipped)
+    picked = await pick.choose(found, day, news.guidance(prefs, day, liked), skipped, prefs.us_most)
     if picked is None:
         return [], failed
-    chosen, nexts = picked
-    texts = await asyncio.gather(*(text_of(found[index]) for index in chosen))
-    tldrs = await pick.write([(found[index], text) for index, text in zip(chosen, texts)])
-    stories = [Story(found[index].url, found[index].title, found[index].source, found[index].theme, tldr) for index, tldr in zip(chosen, tldrs)]
+    chosen, nexts, us = picked
+    kept = await settled(found, chosen, nexts, us, prefs.us_most)
+    if not kept:
+        return [], failed
+    tldrs = await pick.write([(found[index], text) for index, text in kept])
+    stories = [Story(found[index].url, found[index].title, found[index].source, found[index].theme, tldr) for (index, _), tldr in zip(kept, tldrs)]
     await database.run(store.db_put_news, user_id, day, stories, clock.now())
-    await database.run(store.db_put_spares, user_id, day, [found[index] for index in nexts])
+    used = {index for index, _ in kept}
+    await database.run(store.db_put_spares, user_id, day, [found[index] for index in nexts if index not in used])
     changed(user_id)
     return stories, failed
 
@@ -181,10 +215,16 @@ async def another(request: Request, data: dict, guessed: frozenset) -> str:
     found = await database.run(store.db_news, request.user.id, day)
     if found is None:
         raise UserError(f"{ICON} No morning news picked today yet.")
-    item = await database.run(store.db_next_spare, request.user.id, day)
-    if item is None:
-        raise UserError(f"{ICON} That's every story worth showing today.")
-    (tldr,) = await pick.write([(item, await text_of(item))])
+    for _ in range(TRIES):
+        item = await database.run(store.db_next_spare, request.user.id, day)
+        if item is None:
+            raise UserError(f"{ICON} That's every story worth showing today.")
+        text = await text_of(item)
+        if text is not None:
+            break  # one behind a paywall is passed over, never summarised
+    else:
+        raise UserError(f"{ICON} The next stories are all behind paywalls today.")
+    (tldr,) = await pick.write([(item, text)])
     shown_already = len(found[0]) + 1
     return news.story_line(shown_already, Story(item.url, item.title, item.source, item.theme, tldr))
 
@@ -210,7 +250,8 @@ async def steer_card(request: Request, data: dict, guessed: frozenset) -> Propos
         like = stories[number - 1]
     skip = str(data.get("skip") or "")
     skip_on = _skip_day(data.get("skip_day"), clock.now()) if skip else None
-    after = news.steered(before, str(data.get("more") or ""), str(data.get("less") or ""), like, skip, skip_on, today())
+    us = str(data.get("us") or "")
+    after = news.steered(before, str(data.get("more") or ""), str(data.get("less") or ""), like, skip, skip_on, today(), us if us in ("more", "less") else "")
     lines = news.changes(before, after)
     if not lines:
         raise UserError(f"{ICON} That is how the morning news is already.")
@@ -282,7 +323,8 @@ def actions() -> list:
         Action(
             "news_steer",
             "Shape what the morning news picks from now on: \"more like 3\" -> like 3 (story 3 of today's); \"less AI\" -> less ai; "
-            "\"more NZ politics\" -> more nz_politics; \"skip housing tomorrow\" -> skip nz_money, skip_day tomorrow (one day only). "
+            "\"more NZ politics\" -> more nz_politics; \"skip housing tomorrow\" -> skip nz_money, skip_day tomorrow (one day only); "
+            "\"more US politics\" -> us more (US politics is not a topic of its own: it is world_politics). "
             f"Topics: {topic_words} (housing, house prices, interest rates, the OCR and the economy are nz_money).",
             (
                 Field("like", "The number of today's story to have more like, as said (\"more like 3\" -> 3).", INTEGER),
@@ -290,6 +332,7 @@ def actions() -> list:
                 Field("less", "A topic to have less of.", choices=topics),
                 Field("skip", "A topic to leave out on one day.", choices=topics),
                 Field("skip_day", "The day to leave it out, exactly as said (\"tomorrow\", \"Friday\"). Leave out when no day is said."),
+                Field("us", "US politics: more (\"more US politics\", \"more on American politics\") or less. Only when US politics is named.", choices=("more", "less")),
             ),
             prepare=steer_card, apply=steer_apply, verify=steer_check, purpose=SET_UP, say=("less AI", "more like 3"),
         ),

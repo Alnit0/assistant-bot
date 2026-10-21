@@ -34,6 +34,7 @@ class Source:
     name: str
     url: str
     theme: str
+    region: str = ""  # "us" for a feed of US politics alone (feeds.json): its stories count as US-only (news.US)
 
 
 def _made_up() -> dict | None:
@@ -46,7 +47,7 @@ def _made_up() -> dict | None:
 def starter() -> list[Source]:
     """The sources in feeds.json (or in the made-up file, for the replay)."""
     data = _made_up() or json.loads(FEEDS.read_text(encoding="utf-8"))
-    found = [Source(each["name"], each["url"], each.get("topic") or each.get("theme", "")) for each in data["sources"]]
+    found = [Source(each["name"], each["url"], each.get("topic") or each.get("theme", ""), each.get("region", "")) for each in data["sources"]]
     return [each for each in found if each.theme in ALL_TOPICS or each.theme in THEMES]
 
 
@@ -151,14 +152,14 @@ def parse_feed(raw: bytes, source: Source) -> list[Item]:
         link, title = (entry.findtext(f"{ns}link") or "").strip(), (entry.findtext(f"{ns}title") or "").strip()
         tags = [each.text or "" for each in entry.findall("category")] + [each.text or "" for each in entry.findall(f"{DC}subject")]
         said = entry.findtext(f"{ns}description") or entry.findtext(f"{CONTENT}encoded")
-        found.append(Item(link, title, source.name, source.theme, _when(entry.findtext("pubDate") or entry.findtext(f"{DC}date")), _snippet(said), _paid(link, tags)))
+        found.append(Item(link, title, source.name, source.theme, _when(entry.findtext("pubDate") or entry.findtext(f"{DC}date")), _snippet(said), _paid(link, tags), region=source.region))
     for entry in (each for each in entries if each.tag == f"{ATOM}entry"):
         links = entry.findall(f"{ATOM}link")
         link = next((each.get("href", "") for each in links if each.get("rel", "alternate") == "alternate"), links[0].get("href", "") if links else "")
         title = (entry.findtext(f"{ATOM}title") or "").strip()
         tags = [each.get("term", "") for each in entry.findall(f"{ATOM}category")]
         said = entry.findtext(f"{ATOM}summary") or entry.findtext(f"{ATOM}content")
-        found.append(Item(link.strip(), title, source.name, source.theme, _when(entry.findtext(f"{ATOM}published") or entry.findtext(f"{ATOM}updated")), _snippet(said), _paid(link, tags)))
+        found.append(Item(link.strip(), title, source.name, source.theme, _when(entry.findtext(f"{ATOM}published") or entry.findtext(f"{ATOM}updated")), _snippet(said), _paid(link, tags), region=source.region))
     if tag not in ("rss", f"{ATOM}feed", "{http://www.w3.org/1999/02/22-rdf-syntax-ns#}RDF") and not found:
         raise ValueError("not a feed")
     return [each for each in found if each.url.startswith("http") and each.title]
@@ -225,3 +226,21 @@ def page_text(raw: bytes) -> str:
 async def article(url: str) -> str:
     """An article's readable text. Raises on a failure; may be short or a paywall (rules.readable says)."""
     return page_text(await get(url))
+
+
+# The page's own word that it is not free: schema.org's isAccessibleForFree, false, in its JSON-LD. On 21 Oct it
+# agreed with the feeds' own markers on every NZ Herald and Newsroom page checked (60 of 60)
+_LD = re.compile(r"<script[^>]+application/ld\+json[^>]*>(.*?)</script>", re.IGNORECASE | re.DOTALL)
+_NOT_FREE = re.compile(r'"isAccessibleForFree"\s*:\s*"?false"?', re.IGNORECASE)
+
+
+def page_paid(raw: bytes) -> bool:
+    """Whether a page says in its JSON-LD that it is not free to read."""
+    page = raw.decode("utf-8", errors="replace")
+    return any(_NOT_FREE.search(block) for block in _LD.findall(page))
+
+
+async def article_page(url: str) -> tuple[str, bool]:
+    """An article's readable text, and whether the page says it is not free. Raises on a failure."""
+    raw = await get(url)
+    return page_text(raw), page_paid(raw)

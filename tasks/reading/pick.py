@@ -42,6 +42,8 @@ CHOOSE_SYSTEM = (
     "listicles, rumours, celebrity gossip and sport.\n"
     "- Follow what the person said they want more or less of, and the sets they liked.\n"
     f"- Also rank up to {NEXT_KEPT} more, best first, for when the person asks for another one.\n"
+    "- Name every headline, chosen or not, that is about US domestic politics alone (US elections, Congress, the White "
+    "House, US parties or courts, with no other country in it): the person wants at most a few of those.\n"
     "- Call the pick_news tool with the numbers."
 )
 WRITE_SYSTEM = (
@@ -62,8 +64,9 @@ def choose_tool(count: int) -> dict:
             "properties": {
                 "chosen": {**numbers, "description": f"7 or 8 headline numbers, 1 to {count}: one a topic slot, then the extras."},
                 "next": {**numbers, "description": f"Up to {NEXT_KEPT} more numbers, best first, none of them chosen."},
+                "us_only": {**numbers, "description": "Every headline number about US domestic politics alone, chosen or not."},
             },
-            "required": ["chosen", "next"],
+            "required": ["chosen", "next", "us_only"],
         },
     }
 
@@ -107,8 +110,9 @@ def write_turn(found: list[tuple[object, str]]) -> str:
     return "\n\n".join(parts)
 
 
-async def choose(items: list, day: date, guidance: str, skipped: frozenset[str] = frozenset()) -> tuple[list[int], list[int]] | None:
-    """(the chosen indexes, as Python checked them; the next best, in Claude's order), or None when no usable answer came."""
+async def choose(items: list, day: date, guidance: str, skipped: frozenset[str] = frozenset(), us_most: int = news.US_MOST) -> tuple[list[int], list[int], set[int]] | None:
+    """(the chosen indexes, as Python checked them; the next best, in Claude's order; the US-only ones), or None when no
+    usable answer came."""
     if not items:
         return None
     called = await llm.call_tool(
@@ -123,12 +127,13 @@ async def choose(items: list, day: date, guidance: str, skipped: frozenset[str] 
     if called is None or not isinstance(called[1], dict):
         log.warning("Morning news: the pick came back with no call")
         return None
-    chosen = news.checked_pick(called[1].get("chosen"), items, skipped)
+    us = news.us_only(items, called[1].get("us_only"))
+    chosen = news.checked_pick(called[1].get("chosen"), items, skipped, us, us_most)
     if not chosen:
         return None
     nexts = [number - 1 for number in called[1].get("next") or [] if isinstance(number, int) and 1 <= number <= len(items)]
     nexts = [index for index in dict.fromkeys(nexts) if index not in chosen and items[index].theme not in skipped][:NEXT_KEPT]
-    return chosen, nexts
+    return chosen, nexts, us
 
 
 _LINK = re.compile(r"https?://\S+")

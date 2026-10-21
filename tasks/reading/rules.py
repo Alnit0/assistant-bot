@@ -34,6 +34,12 @@ class Item:
     snippet: str = ""  # the feed's own words about it, a few sentences at most
     paid: bool = False  # the feed marks it premium or for subscribers: never picked
     outlets: int = 1  # how many feeds carried the same story (news.eligible)
+    region: str = ""  # "us" from a feed of US politics alone (feeds.json)
+
+
+def paywalled(text: str) -> bool:
+    """Whether a page's text reads as a paywall or a sign-in, wherever it is in the page."""
+    return bool(_PAYWALL.search(text[:4000] + text[-2000:]))
 
 
 def readable(text: str) -> bool:

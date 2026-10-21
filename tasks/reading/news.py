@@ -35,6 +35,10 @@ ABOUT = {
 FROM_THEME = {"ai": AI, "programming": WEBDEV, "news": TECH}
 MAX_STORIES = 8  # one a topic, then 1 or 2 extras (the wildcard is one)
 MAX_EXTRAS = 2
+# US-only politics (Alex, 21 Oct): one a day at most unless he asks for more in words. A story is US-only when it
+# comes from a feed of US politics alone (feeds.json, region us) or Claude names it as about US politics alone
+US = "us"
+US_MOST = 1
 TLDR_WORDS, TLDR_MOST = 30, 40  # about 30, never more than 40
 SNIPPET_WORDS = 40  # of each item's feed snippet, for the pick
 PER_FEED = 12  # the newest of each feed, for the pick
@@ -127,27 +131,45 @@ def eligible(items: list, since: datetime, shown: set[str] = frozenset()) -> lis
 
 
 # --- Python's check of the pick and the TL;DRs ----------------------------------------------------------------------
-def checked_pick(numbers, items: list, skipped: frozenset[str] = frozenset()) -> list[int]:
+def us_only(items: list, named=()) -> set[int]:
+    """The indexes of the US-only politics stories: from a feed of US politics alone, or named so by Claude (1-based)."""
+    found = {index for index, each in enumerate(items) if each.region == US}
+    return found | {number - 1 for number in named or [] if isinstance(number, int) and 1 <= number <= len(items)}
+
+
+def checked_pick(numbers, items: list, skipped: frozenset[str] = frozenset(), us: set[int] = frozenset(), us_most: int = US_MOST) -> list[int]:
     """Claude's chosen item numbers (1-based), made right: only items that were given, each once; one a topic where any
     exist that day (a topic Claude left out gets its first item in the list, the newest; a topic with none, or skipped
     for today, is left out, never padded); then at most MAX_EXTRAS extras, the wildcard only ever as one; MAX_STORIES
-    at most. In the order the topics come, then the extras. Returns 0-based indexes."""
+    at most; and at most `us_most` US-only politics stories (`us`, 0-based), a slot falling back to the topic's first
+    story that is not. In the order the topics come, then the extras. Returns 0-based indexes."""
     asked = [number - 1 for number in (numbers or []) if isinstance(number, int) and 1 <= number <= len(items)]
     asked = list(dict.fromkeys(asked))
     asked = [index for index in asked if items[index].theme not in skipped]
     slots: dict[str, int] = {}
     extras: list[int] = []
+    taken = {"us": 0}
+
+    def room(index: int) -> bool:
+        return index not in us or taken["us"] < us_most
+
     for index in asked:
         topic = items[index].theme
+        if topic not in ALL_TOPICS or not room(index):
+            continue
         if topic in TOPICS and topic not in slots:
             slots[topic] = index
-        elif topic in ALL_TOPICS:
+        elif len(extras) < MAX_EXTRAS:
             extras.append(index)
+        else:
+            continue
+        taken["us"] += index in us
     for topic in TOPICS:
         if topic not in slots and topic not in skipped:
-            first = next((index for index, each in enumerate(items) if each.theme == topic), None)
+            first = next((index for index, each in enumerate(items) if each.theme == topic and room(index) and index not in extras), None)
             if first is not None:
                 slots[topic] = first
+                taken["us"] += first in us
     chosen = [slots[topic] for topic in TOPICS if topic in slots]
     extras = [index for index in extras if index not in chosen][:MAX_EXTRAS]
     return (chosen + extras)[:MAX_STORIES]
@@ -216,19 +238,25 @@ class Prefs:
     weights: dict = field(default_factory=dict)  # topic: -2 to 2
     like: list = field(default_factory=list)  # [{"title", "topic"}], newest last
     skips: dict = field(default_factory=dict)  # "2026-10-22": [topic]
+    us: int = 0  # "more US politics": one more US-only politics story a day, a time (WEIGHT_MOST at most)
 
     def as_dict(self) -> dict:
-        return {"weights": self.weights, "like": self.like, "skips": self.skips}
+        return {"weights": self.weights, "like": self.like, "skips": self.skips, "us": self.us}
+
+    @property
+    def us_most(self) -> int:
+        """How many US-only politics stories a day: one, and one more for each time he asked for more."""
+        return US_MOST + self.us
 
     @classmethod
     def from_dict(cls, data: dict | None) -> "Prefs":
         data = data or {}
         weights = {topic: max(-WEIGHT_MOST, min(WEIGHT_MOST, int(value))) for topic, value in (data.get("weights") or {}).items() if topic in ALL_TOPICS}
         skips = {day: [each for each in topics if each in ALL_TOPICS] for day, topics in (data.get("skips") or {}).items()}
-        return cls(weights, list(data.get("like") or [])[-LIKED_KEPT:], skips)
+        return cls(weights, list(data.get("like") or [])[-LIKED_KEPT:], skips, max(0, min(WEIGHT_MOST, int(data.get("us") or 0))))
 
 
-def steered(prefs: Prefs, more: str = "", less: str = "", like: Story | None = None, skip: str = "", skip_on: date | None = None, today: date | None = None) -> Prefs:
+def steered(prefs: Prefs, more: str = "", less: str = "", like: Story | None = None, skip: str = "", skip_on: date | None = None, today: date | None = None, us: str = "") -> Prefs:
     """The preferences after what was said. A skip is for one day; skips of days gone by are forgotten."""
     weights = dict(prefs.weights)
     if more in ALL_TOPICS:
@@ -242,7 +270,8 @@ def steered(prefs: Prefs, more: str = "", less: str = "", like: Story | None = N
     skips = {day: list(topics) for day, topics in prefs.skips.items() if today is None or day >= today.isoformat()}
     if skip in ALL_TOPICS and skip_on is not None:
         skips[skip_on.isoformat()] = sorted({*skips.get(skip_on.isoformat(), []), skip})
-    return Prefs({topic: value for topic, value in weights.items() if value}, liked, skips)
+    us_more = max(0, min(WEIGHT_MOST, prefs.us + (1 if us == "more" else -1 if us == "less" else 0)))
+    return Prefs({topic: value for topic, value in weights.items() if value}, liked, skips, us_more)
 
 
 def skipped_on(prefs: Prefs, day: date) -> frozenset[str]:
@@ -262,6 +291,9 @@ def changes(before: Prefs, after: Prefs) -> list[str]:
             lines.append(f"More **{LABELS[topic]}**" + (" (as much as it goes)" if now == WEIGHT_MOST else ""))
         elif now < was:
             lines.append(f"Less **{LABELS[topic]}**" + (" (as little as it goes)" if now == -WEIGHT_MOST else ""))
+    if after.us != before.us:
+        stories = "story" if after.us_most == 1 else "stories"
+        lines.append(f"{'Up to' if after.us > before.us else 'Back to'} **{after.us_most}** US politics {stories} a day")
     for each in after.like:
         if each not in before.like:
             lines.append(f"More like **{each['title']}**")
@@ -288,7 +320,8 @@ def guidance(prefs: Prefs, day: date, liked_sets: list[list[str]] = ()) -> str:
     skipped = skipped_on(prefs, day)
     if skipped:
         lines.append("Skip today: " + ", ".join(LABELS[each] for each in sorted(skipped)) + " (no story from it).")
-    return "\n".join(lines) or "Nothing said yet: an even mix."
+    lines.append(f"At most {prefs.us_most} {'story' if prefs.us_most == 1 else 'stories'} about US politics alone.")
+    return "\n".join(lines)
 
 
 def profile_text(prefs: Prefs, today: date) -> str:
@@ -298,6 +331,8 @@ def profile_text(prefs: Prefs, today: date) -> str:
         value = prefs.weights.get(topic, 0)
         if value:
             lines.append(f"{'More' if value > 0 else 'Less'} **{LABELS[topic]}**")
+    if prefs.us:
+        lines.append(f"Up to **{prefs.us_most}** US politics stories a day")
     lines += [f"More like **{each['title']}**" for each in prefs.like[-3:]]
     lines += [f"No **{', '.join(LABELS[each] for each in topics)}** on {_day_name(date.fromisoformat(day))}" for day, topics in sorted(prefs.skips.items()) if day >= today.isoformat()]
     return "\n".join(lines) if len(lines) > 1 else f"{ICON} Nothing said yet: an even mix of every topic."

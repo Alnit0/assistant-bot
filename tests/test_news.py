@@ -156,3 +156,61 @@ def test_the_starter_feeds_cover_every_topic_and_the_wildcard():
     topics = {each.theme for each in sources.starter()}
     assert topics == set(news.ALL_TOPICS) and 30 <= len(sources.starter()) <= 40
     assert sum(1 for each in sources.starter() if each.theme == WEBDEV) in (2, 3)
+
+
+# --- paid articles, as each feed marks them (21 Oct) ------------------------------------------------------------------------
+def test_an_nz_herald_premium_story_is_marked_by_its_link_alone():
+    """The NZ Herald's feeds carry no category: a premium story's link has /premium/ (on 21 Oct, 30 of 30 agreed with each
+    page's own isAccessibleForFree)."""
+    raw = b"""<rss><channel>
+    <item><title>Made-up free Herald story</title><link>https://www.nzherald.co.nz/nz/made-up-free-story/ABC123/</link><pubDate>Wed, 21 Oct 2026 01:00:00 +0000</pubDate><description>Free.</description></item>
+    <item><title>Made-up premium Herald story</title><link>https://www.nzherald.co.nz/business/made-up-premium-story/premium/DEF456/</link><pubDate>Wed, 21 Oct 2026 01:00:00 +0000</pubDate><description>Paid.</description></item>
+    </channel></rss>"""
+    free, paid = sources.parse_feed(raw, sources.Source("NZ Herald Business", "x", NZ_MONEY))
+    assert (free.paid, paid.paid) == (False, True)
+    since = datetime(2026, 10, 20, 1, tzinfo=UTC)
+    assert [each.title for each in news.eligible([free, paid], since)] == ["Made-up free Herald story"], "dropped before the pick"
+
+
+def test_a_newsroom_premium_story_is_marked_by_its_category():
+    raw = b"""<rss><channel><item><title>Made-up Newsroom story</title><link>https://newsroom.co.nz/2026/10/21/made-up/</link><category>Politics</category><category>Premium</category><pubDate>Wed, 21 Oct 2026 01:00:00 +0000</pubDate></item></channel></rss>"""
+    (found,) = sources.parse_feed(raw, sources.Source("Newsroom", "x", NZ_POLITICS))
+    assert found.paid
+
+
+def test_a_page_says_it_is_not_free_in_its_json_ld():
+    paid = b'<html><head><script type="application/ld+json">{"@type":"NewsArticle","isAccessibleForFree":"False"}</script></head><body>x</body></html>'
+    free = b'<html><head><script type="application/ld+json">{"@type":"NewsArticle","isAccessibleForFree":true}</script></head><body>x</body></html>'
+    assert sources.page_paid(paid) and not sources.page_paid(free) and not sources.page_paid(b"<html>no json-ld</html>")
+
+
+# --- US-only politics: one a day ---------------------------------------------------------------------------------------
+def test_at_most_one_us_only_politics_story_a_day_a_slot_falling_back_to_one_that_is_not():
+    items = [
+        item("Made-up senate passes a budget bill", WORLD_POLITICS, "Made-up US Politics"),  # 1: US-only
+        item("Made-up governor race in a swing state", WORLD_POLITICS),  # 2: named by Claude
+        item("Made-up election called in a northern republic", WORLD_POLITICS),  # 3
+        *ITEMS[1:6],
+    ]
+    us = news.us_only(items, named=[2])
+    assert us == {1} | {0} if items[0].region else us == {1}
+    us = {0, 1}
+    picked = news.checked_pick([1, 2, 4, 5, 6, 7, 8], items, us=us)
+    assert [index for index in picked if index in us] == [0], "one: the extra that was US-only went"
+    picked = news.checked_pick([1, 2, 4, 5, 6, 7, 8], items, us=us, us_most=2)
+    assert sorted(index for index in picked if index in us) == [0, 1], "asked for more: two"
+    picked = news.checked_pick([4, 5, 6, 7, 8], items, us={0, 1})
+    assert items[next(index for index in picked if items[index].theme == WORLD_POLITICS)].title.startswith("Made-up senate"), "a slot left empty takes the topic's first, US or not, within the one"
+
+
+def test_a_feed_of_us_politics_alone_makes_its_stories_us_only():
+    raw = b"""<rss><channel><item><title>Made-up house vote</title><link>https://us.example/1</link><pubDate>Wed, 21 Oct 2026 01:00:00 +0000</pubDate></item></channel></rss>"""
+    (found,) = sources.parse_feed(raw, sources.Source("Made-up US Politics", "x", WORLD_POLITICS, "us"))
+    assert found.region == "us" and news.us_only([found]) == {0}
+    assert {each.name for each in sources.starter() if each.region == "us"} == {"Politico", "NPR Politics", "The Guardian US Politics", "BBC US and Canada"}
+
+
+def test_more_us_politics_is_a_preference_of_its_own():
+    after = news.steered(news.Prefs(), us="more")
+    assert after.us_most == 2 and news.changes(news.Prefs(), after) == ["Up to **2** US politics stories a day"]
+    assert news.steered(after, us="less").us_most == 1 and news.Prefs.from_dict(after.as_dict()).us == 1

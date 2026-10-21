@@ -8,9 +8,9 @@ headlines as one task, on tasks/reading; not shipped). Steps:
 1. Feeds and reading them (39 feeds, topics, the window, paid, duplicates): done
 2. The pick, the TL;DRs, the store, the 5:30 job, the hub embed, 👍, steering,
    and the golden conversations (21 of 21 live, cross-task routers 86 of 86): done
-3. A real morning's run and its cost: STOPPED (21 Oct, 4:19 pm): the API's
-   usage limit is reached until 1 Nov. Live uses the same key, so its next
-   request to Claude fails. Waits on Alex raising it in the Anthropic console
+2b. Resumed (the limit raised): paywalled pages dropped, never summarised;
+   at most one US-only politics story a day: done (checks 23 of 23)
+3. A real morning's run and its cost
 4. The preview post, the dev-bot self-test, the docs: not started
 Live: round 7 and 👍 since 3:23 pm (`DESIGN_ROUND=7`, `THUMBS_UP=true`).
 

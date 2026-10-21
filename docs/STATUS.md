@@ -42,13 +42,29 @@ generated"). Step 1 done: the feeds and reading them.
 - **interest.co.nz** writes its dates as "20th Oct 26, 3:59pm" in NZ time:
   the feed reader reads that too (with it, the main NZ money feed had none
   in the window). DW is RSS 1.0, read now too.
-- **Paid articles, in Python:** an item whose feed tags it premium,
-  subscriber, paywall or members only (NZ Herald and Newsroom tag theirs
-  "premium"), or whose link has `/premium/`, is dropped before Claude sees
-  anything; a chosen article's page that reads as a paywall
-  (`rules.readable`) falls back to its feed snippet for the TL;DR, as the
-  link is still the outlet's own. 25 of 919 items were dropped this way on
-  21 Oct.
+- **Paid articles, in Python (Alex, 21 Oct, resumed: dropped, never
+  summarised from a snippet):** before the pick, an item whose feed marks it
+  paid is dropped: its link has `/premium/` (the NZ Herald: its three feeds
+  carry no category at all, and on 21 Oct the link agreed with each page's
+  own `isAccessibleForFree` on all 30 items, 14 free and 16 premium), or a
+  category says premium, subscriber, paywall or members only (Newsroom tags
+  its own "Premium": 30 of 30 agreed with the pages). After the pick, a chosen
+  page that says in its JSON-LD it is not free, or reads as a paywall, is
+  dropped too and the next story of its topic takes the slot (3 pages at
+  most). The feed snippet stands in only for a page that fails to load,
+  times out, or has no readable text. Both feeds tell their paid items apart
+  reliably, so neither is dropped. Page words alone could not be used: every
+  Herald page has "Subscribe" and "premium" in it, free or not.
+- **US-only politics, at most one a day:** a story is US-only when it comes
+  from a feed of US politics alone (feeds.json `region: us`: Politico, NPR
+  Politics, The Guardian US Politics, BBC US and Canada), or when Claude names
+  it in the pick as about US domestic politics alone (elections, Congress, the
+  White House, US parties or courts, no other country in it). Python keeps the
+  first and leaves the rest out, a slot falling back to the topic's first
+  story that is not; "more US politics" raises the allowance by one (twice at
+  most), "less" lowers it, a preference of its own.
+- **Before any request to Claude:** one small Haiku call checks the API
+  answers (a usage limit would stop the batch at once, written in NOW).
 - **The same story from several outlets** is one (most of the shorter
   headline's telling words in the other, three at least); how many outlets
   carried it is kept and given to Claude as a sign of the day's biggest
@@ -63,9 +79,9 @@ generated"). Step 1 done: the feeds and reading them.
   day, its 👍/👎 buttons, saving it for later, shorter or deeper, the week's
   reads and the old tuning; the old tables stay, unwritten. The six old
   daily-read fixtures of spanning.json went with it.
-- **Stopped at step 3** (4:19 pm): the account's API usage limit is reached
-  until 1 Nov (the answer says so); live shares the key. Nothing more was
-  sent. The batch goes on from step 3 once the limit is raised.
+- **Stopped at step 3** (4:19 pm): the account's API usage limit was reached;
+  live shares the key. Alex raised it and added credits; the batch went on
+  from step 3, the paywall and US-only changes first.
 
 ## 👍 as yes (21 Oct, evening; pushed, not restarted)
 

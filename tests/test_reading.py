@@ -200,13 +200,63 @@ def test_a_tldr_over_forty_words_is_cut_and_one_missing_is_the_snippet(world):
     assert all(len(each.tldr.split()) <= news.TLDR_MOST for each in the_set(world))
 
 
-def test_a_page_behind_a_paywall_falls_back_to_its_snippet(world):
+NOT_FREE = '<script type="application/ld+json">{"@type": "NewsArticle", "isAccessibleForFree": false}</script>'
+
+
+def test_a_page_behind_a_paywall_is_dropped_never_summarised_and_its_topic_takes_its_next(world):
+    """Alex, 21 Oct: dropped before it is summarised, never from its snippet. The page says so in its JSON-LD, or reads
+    as a paywall; the topic's next story takes the slot."""
     fresh(world, same_links=True)
     world.same_links = False
-    world.pages[link(TECH, 0).split("?")[0]] = article_page("Made-up chip maker unveils a faster processor", WORDS, "<p>Subscribe to continue reading.</p>")
+    world.chosen = [7]  # the tech slot's first story, as the pick has the items in its order
+    paywalled = link(TECH, 0).split("?")[0]
+    world.pages[paywalled] = f"<html><head>{NOT_FREE}</head><body><article><p>{WORDS}</p></article></body></html>".encode()
+    world.pages[link(AI, 0).split("?")[0]] = article_page("Made-up lab releases an open reasoning model", WORDS, "<p>Subscribe to continue reading.</p>")
     morning(world, keep_pages=True)
     write_turn = world.asked[1][1]
-    assert "A made-up snippet about made-up chip maker" in write_turn
+    stories = the_set(world)
+    assert paywalled not in {each.url for each in stories} and "A made-up snippet about made-up chip maker" not in write_turn
+    assert "Made-up chip maker unveils" not in write_turn and "Made-up phone recall over battery faults" in write_turn, "the topic's next story"
+    assert "Made-up lab releases an open reasoning model" not in write_turn and "Made-up regulator drafts rules for chatbots" in write_turn
+    assert [each.topic for each in stories].count(TECH) == 1
+
+
+def test_a_page_that_fails_to_load_is_summarised_from_its_snippet(world):
+    fresh(world, same_links=True)
+    world.same_links = False
+    world.failing.add(link(TECH, 0).split("?")[0])
+    morning(world, keep_pages=True)
+    assert "A made-up snippet about made-up chip maker unveils a faster processor." in world.asked[1][1]
+
+
+def test_one_us_only_politics_story_a_day_unless_he_asks_for_more(world):
+    fresh(world, same_links=True)
+    world.same_links = False
+    stamp = (clock.now() - timedelta(hours=1)).strftime("%a, %d %b %Y %H:%M:%S +0000")
+    world.pages["https://us-politics.example/rss"] = rss([
+        ("Made-up senate vote on a spending bill", "https://us-politics.example/1", stamp, ""),
+        ("Made-up governor race tightens in a swing state", "https://us-politics.example/2", stamp, ""),
+    ])
+    FEEDS.append(sources.Source("Made-up US Politics", "https://us-politics.example/rss", WORLD_POLITICS, "us"))
+    try:
+        world.chosen = [1, 2, 3, 4, 5, 6, 7, 8]  # the two US ones come first, as the newest
+        morning(world, keep_pages=True)
+        titles = [each.title for each in the_set(world)]
+        assert sum(1 for each in titles if each.startswith(("Made-up senate", "Made-up governor"))) == 1
+        steer(world, us="more")
+        clock.advance(timedelta(days=1))
+        world.day = days.today()
+        stamp = (clock.now() - timedelta(hours=1)).strftime("%a, %d %b %Y %H:%M:%S +0000")
+        world.pages["https://us-politics.example/rss"] = rss([
+            ("Made-up house speaker vote fails again", "https://us-politics.example/3", stamp, ""),
+            ("Made-up court rules on a state election map", "https://us-politics.example/4", stamp, ""),
+        ])
+        morning(world)
+        titles = [each.title for each in the_set(world)]
+        assert sum(1 for each in titles if each.startswith(("Made-up house speaker", "Made-up court rules"))) == 2, "asked for more: two"
+        assert "At most 2 stories about US politics alone" in world.asked[2][1]
+    finally:
+        FEEDS.pop()
 
 
 def test_nothing_of_an_article_reaches_a_log(world, caplog):

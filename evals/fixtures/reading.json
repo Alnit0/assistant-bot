@@ -476,6 +476,43 @@
         "several": false,
         "chat_part": ""
       }
+    },
+    {
+      "golden": "m22",
+      "message": "more US politics in my news",
+      "note": "the US-only allowance, raised in words",
+      "names": {
+        "todos": [
+          "Finish the essay",
+          "Call the garage",
+          "Read the housing report"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "habits": [
+          "Morning",
+          "Evening"
+        ],
+        "calendar": [
+          "Haircut",
+          "Test standup"
+        ]
+      },
+      "tasks": [
+        "reading"
+      ],
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "reading"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
     }
   ],
   "extraction": [
@@ -629,6 +666,26 @@
         {
           "name": "The Verge",
           "remove": true,
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "m23",
+      "task": "reading",
+      "message": "more US politics",
+      "state": "The user's morning news today (the stories are numbered as shown):\n- story 1: Made-up election called in a northern republic (World politics)\n- story 2: Made-up parliament passes the water reform bill (NZ politics)\n- story 3: Made-up earthquake shakes an island chain (World news)\n- story 4: Made-up chip maker unveils a faster processor (Tech)\n- story 5: Made-up lab releases an open reasoning model (AI)\n- story 6: Made-up Reserve Bank holds the OCR steady (NZ housing and money)\n- story 7: Made-up summit ends with a trade pact (World politics)\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
+      "action": "news_steer",
+      "data": {
+        "us": "more"
+      },
+      "note": "US politics is world_politics, its allowance its own",
+      "recorded": [
+        "news_steer",
+        {
+          "more": "world_politics",
+          "us": "more",
           "guessed": [],
           "not_included": []
         }

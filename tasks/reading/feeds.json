@@ -1,5 +1,5 @@
 {
-  "about": "The morning news's starter feeds (tasks/reading), each with one topic: nz_politics, nz_money (house prices, interest rates, the OCR, the economy), world, world_politics, tech, ai, and webdev for the wildcard. Chosen 21 Oct 2026, each checked to work from the home server; outlets whose articles are mostly free to read. Alex adds or removes one in words; those changes are kept in the database, on top of this list.",
+  "about": "The morning news's starter feeds (tasks/reading), each with one topic: nz_politics, nz_money (house prices, interest rates, the OCR, the economy), world, world_politics, tech, ai, and webdev for the wildcard. Chosen 21 Oct 2026, each checked to work from the home server; outlets whose articles are mostly free to read. Alex adds or removes one in words; those changes are kept in the database, on top of this list. A feed of US politics alone has region us: its stories count as US-only (one a day unless Alex asks for more).",
   "sources": [
     {
       "name": "RNZ Politics",
@@ -99,12 +99,14 @@
     {
       "name": "Politico",
       "url": "https://rss.politico.com/politics-news.xml",
-      "topic": "world_politics"
+      "topic": "world_politics",
+      "region": "us"
     },
     {
       "name": "NPR Politics",
       "url": "https://feeds.npr.org/1014/rss.xml",
-      "topic": "world_politics"
+      "topic": "world_politics",
+      "region": "us"
     },
     {
       "name": "The Guardian Politics",
@@ -114,12 +116,14 @@
     {
       "name": "The Guardian US Politics",
       "url": "https://www.theguardian.com/us-news/us-politics/rss",
-      "topic": "world_politics"
+      "topic": "world_politics",
+      "region": "us"
     },
     {
       "name": "BBC US and Canada",
       "url": "https://feeds.bbci.co.uk/news/world/us_and_canada/rss.xml",
-      "topic": "world_politics"
+      "topic": "world_politics",
+      "region": "us"
     },
     {
       "name": "BBC Politics",
