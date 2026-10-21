@@ -8,9 +8,9 @@ ship, live not restarted). Round 5's boxes with round 7's coloured edges,
 one message, behind `DESIGN_ROUND=8`. Cap NZ$0.50, no Claude calls.
 - Done: 1, round 8 built (`tasks/briefing/hub8.py`), tests
   (`tests/test_round8.py`); the calendar tests' clock fixed (it broke
-  once 22 Oct 8:50 am had passed)
-- Next: 2, the preview "Design · Round 8"; 3, the day in the hub in round
-  8 (dev bot); 4, the docs, then Idle
+  once 22 Oct 8:50 am had passed); 2, the preview "Design · Round 8"
+  posted in the Design forum (five moments, round 7's 11:30 am beside it)
+- Next: 3, the day in the hub in round 8 (dev bot); 4, the docs, then Idle
 
 **Next ship:** the 22 Oct batch (a core migration), and **set
 LAB_GRID=false in live's .env** (Alex found the animation too choppy,
