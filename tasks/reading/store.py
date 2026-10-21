@@ -159,7 +159,16 @@ def to_messages(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX reading_news_posts_message ON reading_news_posts (message_id)")
 
 
-MIGRATIONS = [create_tables, add_ratings, add_news, add_cards, to_messages]
+def name_morning_news(conn: sqlite3.Connection) -> None:
+    """The 5:30 am schedule made for the old daily read was called "Daily read pick": it is the morning news's now.
+    Only the name the code gave it changes; its time, days and anything he set stay, and a name he gave it stays."""
+    conn.execute(
+        "UPDATE schedules SET name = 'Morning news', changed_at = strftime('%Y-%m-%dT%H:%M:%S+00:00', 'now') "
+        "WHERE default_key = 'reading.pick' AND name = 'Daily read pick'"
+    )
+
+
+MIGRATIONS = [create_tables, add_ratings, add_news, add_cards, to_messages, name_morning_news]
 SENDING, UP, GONE = "sending", "up", "gone"  # a message: being posted (a start cut off then: never posted again), up, deleted
 DAY_SLOT = 0  # the day's message; each another one is the next slot
 ADDED, REMOVED = "added", "removed"

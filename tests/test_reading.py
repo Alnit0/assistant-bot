@@ -641,3 +641,25 @@ def test_every_source_failing_three_days_running_deserves_a_look(world):
         run(database.run(store.db_fetched, world.owner.id, world.day - timedelta(days=ahead), 7, 7))
     (item,) = run(reading.items(world.owner.id, clock.now()))
     assert item.what.startswith("the morning news's sources") and item.ping is False
+
+
+# --- live's old daily read, moved over ------------------------------------------------------------------------------
+def test_the_old_daily_read_s_schedule_is_called_morning_news_at_5_30_and_its_data_stays(make_db):
+    """Live's 5:30 am row was made as "Daily read pick": renamed, its time kept; a name he gave a row stays; the old
+    reads with their votes and the sources changed in words are kept."""
+    import sqlite3
+
+    make_db({"reading": store.MIGRATIONS[:3]})  # as live is today: before the cards
+    with database.connect() as conn:
+        mine = conn.execute("SELECT id FROM users LIMIT 1").fetchone()[0]
+        row = "INSERT INTO schedules (user_id, name, at, zone, days, notify, channel, state, missed, origin, default_key, created_at, changed_at) VALUES (?, ?, '05:30', 'Pacific/Auckland', '0,1,2,3,4,5,6', 'silent', 'hub', 'on', 'late', 'default', ?, 'x', 'x')"
+        conn.execute(row, (mine, "Daily read pick", "reading.pick"))
+        conn.execute(row, (mine, "Daily read pick", "other.job"))
+        conn.execute("INSERT INTO reading_reads (user_id, day, url, title, source, theme, minutes, tldr, vote, shown_at) VALUES (?, '2026-10-20', 'https://a.example/x', 'Made-up', 'W', 'ai', 3, 'x', 1, 'x')", (mine,))
+        conn.execute("INSERT INTO reading_sources (user_id, url, name, theme, state, at) VALUES (?, 'https://a.example/feed', 'Made-up feed', 'ai', 'added', 'x')", (mine,))
+    make_db({"reading": store.MIGRATIONS})  # the update: the rest of the migrations
+    with database.connect() as conn:
+        names = conn.execute("SELECT name, at, default_key FROM schedules WHERE name IN ('Morning news', 'Daily read pick') ORDER BY default_key").fetchall()
+        assert names == [("Daily read pick", "05:30", "other.job"), ("Morning news", "05:30", "reading.pick")]
+        assert conn.execute("SELECT vote FROM reading_reads").fetchall() == [(1,)], "the old 👍 and 👎 stay"
+        assert conn.execute("SELECT name, state FROM reading_sources").fetchall() == [("Made-up feed", "added")]
