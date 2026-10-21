@@ -10,6 +10,13 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 
 
+
+## The next ship's to-do
+
+- **`LAB_GRID=false` in live's `.env`**, as part of the next ship (no
+  restart just for it). Alex, 21 Oct, on the lab grid: "It works, the animation isn't really anywhere as good as I had hoped. It may have applications for notifying or changing things but not animating".
+  The lab grid's code stays.
+
 ## An animated grid, a proof of concept (21 Oct, night; pushed, not shipped)
 
 Alex asked whether the bot can animate by editing a message over and over:

@@ -10,6 +10,8 @@ reads typed words and in a DM, owner only. On live it ran at 1.40 s a frame
 still in its #inbox for him to compare. Since 10:47 pm each frame starts
 with an invisible line (Compact display put the first row beside the bot's
 name); one grid of it is in live's #inbox for him.
+Alex's verdict: it works, not good enough to animate with. `LAB_GRID` goes
+off in live at the next ship (STATUS, the next ship's to-do).
 
 **The feature freeze is called off** (Alex, 21 Oct): no settle-in week.
 **Next:** Alex's list of changes (not heard yet); his first morning

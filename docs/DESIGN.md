@@ -406,6 +406,12 @@ button counts) and 4,000 characters; a row takes 5 buttons. So:
 
 `dev mock` refuses a sketch that breaks a limit, with the reason.
 
+**Compact display** (found 21 Oct with the lab grid): Discord's Compact
+message display puts a plain-text message's first line beside the bot's
+name, and trims a leading line break, so a block meant to start on its own
+line (a grid, a table of emoji) starts beside the name. A zero-width space
+(U+200B) alone on the first line fixes it. Embeds are not affected.
+
 ## In code
 
 - `core/design.py`: the values, the records a layout is made of

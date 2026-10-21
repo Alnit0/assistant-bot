@@ -450,3 +450,8 @@ the dev bot's settings only. One message of 5 by 5 square emoji and nothing else
 black, then an eight-frame diagonal rainbow wave (🟥 🟧 🟨 🟩 🟦 🟪 rolling across), then all green, and it stops. Each
 frame is one edit of the same message; one grid at a time across the bot. Both runs left in the dev bot's #inbox for
 him to compare on his phone.
+
+**What Alex said, word for word, after trying it on live:** "It works, the animation isn't really anywhere as good as I had hoped. It may have applications for notifying or changing things but not animating".
+
+**What follows:** no animation by editing; the grid's code stays in the lab, and `LAB_GRID` goes off in live at the
+next ship. Short state changes by edit (a square turning green) are kept in mind, only when he asks.
