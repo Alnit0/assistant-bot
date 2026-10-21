@@ -55,6 +55,17 @@ generated"). Step 1 done: the feeds and reading them.
   news. Tracking parameters come off every link.
 - **What goes to Claude:** the newest 12 of each feed and 35 of each topic
   (200 on 21 Oct), each headline with its feed snippet cut to 40 words.
+- **Step 2 (done, `4613f8b`):** the pick and the TL;DRs (two Haiku calls,
+  Python's checks), the store (three new tables in one appended migration),
+  the 5:30 am job, round 7's purple embed in message 2 (message 2 now sent
+  with the news alone; before round 7 not in the hub), 👍 a good set with
+  undo, steering on a card, another one as a reply. Gone: the one article a
+  day, its 👍/👎 buttons, saving it for later, shorter or deeper, the week's
+  reads and the old tuning; the old tables stay, unwritten. The six old
+  daily-read fixtures of spanning.json went with it.
+- **Stopped at step 3** (4:19 pm): the account's API usage limit is reached
+  until 1 Nov (the answer says so); live shares the key. Nothing more was
+  sent. The batch goes on from step 3 once the limit is raised.
 
 ## 👍 as yes (21 Oct, evening; pushed, not restarted)
 
