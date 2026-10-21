@@ -44,7 +44,7 @@ def world(make_db, monkeypatch, owner, dev_clock):
             raise surface.Failed("503 Service Unavailable (error code: 0): upstream connect error")
         return seen.next_id
 
-    async def edit(channel_id, message_id, card):
+    async def edit(channel_id, message_id, card, fall_back=True):
         cards.check(card)
         if seen.no_edit:
             seen.no_edit -= 1

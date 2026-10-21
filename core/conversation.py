@@ -832,7 +832,10 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
                 trace.note("reply check: the message replied to is no task's own, so nothing claims it")
 
         if not settled:
-            on_screen = confirm.on_screen(open_card) if open_card is not None else ""
+            # A card whose task has just read the message against it, and found it neither answers nor changes
+            # it, is not shown to the router again: shown it, the router took "Will it rain?" for no task's,
+            # being no answer to the card (golden 28a to 28c, 22 Oct). The exchanges still show the card
+            on_screen = confirm.on_screen(open_card) if open_card is not None and not read_against_card else ""
             if not on_screen and shown_list is not None:
                 on_screen = f"the {shown_list.task} list, just shown"
             routed = await routing.route(

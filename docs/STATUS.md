@@ -17,6 +17,95 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
   restart just for it). Alex, 21 Oct, on the lab grid: "It works, the animation isn't really anywhere as good as I had hoped. It may have applications for notifying or changing things but not animating".
   The lab grid's code stays.
 
+## The hub's lost embeds, then understanding (21 to 22 Oct, overnight; pushed, not shipped)
+
+1. **The hub read as plain lines** (Alex's screenshot of live, 21 Oct). The
+   cause: 21 Oct's 6 am briefing was posted under round 5, as a Components V2
+   layout, and Discord never lets such a message take embeds. Since round 7
+   went live at 3:23 pm every rewrite of it was refused and written in as the
+   plain words instead: all 43 "could not take embeds" lines in live's log are
+   that one message. The lab grid's commits (`a025112`, `fec4cbb`, `1aa9688`)
+   touched no shared message code. A fresh post is embeds, and edits keep it
+   so: the dev bot's day in round 7 read both messages back as the same two
+   embed messages at all eight moments. **The fix** (not shipped: the 22 Oct
+   6 am post is fresh, so live's hub mends itself then): the hub's briefing
+   that can't take embeds is posted again as embeds, with its second
+   message, and the old one goes (`cards.edit(fall_back=False)`, which raises
+   `cards.Unfit`, `surface.Unfit`). Other cards keep the plain fallback.
+2. **"Will it rain?" with a card open** (golden 28a, and 28b with a to-do
+   card, 28c with a pills card and a to-do card): the weather's answer, the
+   card stays open. Two causes, both in the code that reads a message while
+   a card is open, none in the router's rules: the card's task has already
+   read the message against its card when the router is asked, so the
+   router is no longer shown that card again (it still sees the exchanges);
+   and the real router, after a card, answered chat while naming the weather.
+3. **"Is the gym on tonight?"** (x16, x16a "is anything on tonight?", x16b
+   "have I got the gym tomorrow?"): from data, with no event name sent to
+   Claude, with the gym on and off. In the tasks' own lines: whether a thing
+   is on in part of today is the briefing's (tonight in time order across
+   tasks, the calendar's events among them); whether an event is on another
+   day is the calendar's (`calendar_show` for that day).
+4. **A correction straight after Save, for schedules** (question 8; golden
+   2d0 to 2f): straight after a schedule is saved or changed in words, "no,
+   7pm", "actually 6:30" or "make it 8" is a change card for that schedule
+   (the old time struck through, the new one bold), Save writes it, and the
+   "Saved" line has an Undo that puts the schedule back as it was (unless it
+   was changed again since). A question next ("will it rain?") never sticks.
+   Pills' way of knowing what was just saved is in the core now
+   (`actions.just_saved_one`), its second user being schedules.
+5. **The week view's past days:** the calendar's copy starts at this week's
+   Monday (yesterday on a Monday, for an event past midnight), so Monday seen
+   on a Thursday has its events (`rules.first_kept`).
+6. **A reaction made just before a stop** (BACKLOG Soon 14): the changes
+   waiting out the quiet period are kept in the database
+   (`reaction_waiting`, a core migration), each let go once its batch is dealt
+   with; at the start what is still waiting goes through the quiet period
+   again, checked as before and with its undo, and one older than the quiet
+   period and 10 minutes is dropped and said in the log.
+
+### Decided (22 Oct, overnight)
+
+- **One checkpoint for steps 0 to 5**, not one a step: the steps share files
+  (the golden fixtures and their tests, the briefing, the calendar), and a
+  commit of part of the working copy would not be what the full test run
+  ran on. Nothing was lost: no crash in between.
+- **A correction after a schedule's Save is a change card with Save**, as
+  pills do (2b), not a change made at once: "Every change to one of my things
+  is a confirm card; only Save writes". The Undo is under the "Saved" that
+  follows, for every schedule change saved, not only a correction.
+- **A time with no am or pm on a schedule's change** ("make it 8" after 6:00
+  pm) is the reading nearer the time it runs at now, marked ❓ as a guess on
+  the card; before, it was refused with "8am or 8pm?" in a warning.
+- **The waiting reactions keep Discord's ids** (and the user's own id where
+  known); a row goes once its batch is dealt with, however that went, so a
+  reaction is acted on once at most.
+
+- **No ship tonight.** The only cause was the old message: nothing in code
+  live runs drops embeds, so step 0's ship conditions were not met.
+- **Posted again, not in the same place:** Discord can't put a message above
+  others, so the briefing that is posted again is at the bottom of the hub
+  until the next morning's. It happens once, on the first change after a
+  round with layouts is followed by round 7.
+- **Chat naming one task is that task** (`routing.parse`): chat with exactly
+  one task named, sure of it, is that task, as nothing with a task named
+  already was. "Chat wins" (9 Oct) was for a router that named tasks freely;
+  none of the recorded answers names a task with chat, and plain chat names
+  none. Two tasks, or a tie, with chat is still chat.
+- **The open card is not shown to the router again** once its task has read
+  the message against it and found it neither answers nor changes it. A card
+  nobody has read the message against yet (not the latest message, or older
+  than five minutes) is still shown.
+
+### Spend (22 Oct, overnight)
+
+- Claude: about US$0.47 to here (NZ$0.81): the API check, the router
+  diagnosis of 28a (with and without the card, gym on and off), recording
+  28 to 28c and x16 to x16b, and the recheck of the calendar's and the
+  briefing's routers (29 of 48: the 17 calendar adding fixtures need a Bot
+  calendar this folder has not got; "what's on next year?" goes to chat on
+  the old lines too) and the calendar's extractions (17 of 18). Each run
+  under NZ$0.40.
+
 ## An animated grid, a proof of concept (21 Oct, night; pushed, not shipped)
 
 Alex asked whether the bot can animate by editing a message over and over:

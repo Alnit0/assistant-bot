@@ -109,6 +109,58 @@
       }
     },
     {
+      "golden": "2d0",
+      "message": "move the pills checklist to 6pm",
+      "tasks": [
+        "schedule"
+      ],
+      "note": "a schedule changed in words: the schedule task's card",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "schedule"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      },
+      "names": {
+        "schedule": [
+          "Nightly backup",
+          "Pills checklist"
+        ]
+      }
+    },
+    {
+      "golden": "2f",
+      "message": "Will it rain?",
+      "tasks": [
+        "weather"
+      ],
+      "note": "straight after a schedule's Save: a question never sticks; the router decides, and it is the weather's",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "weather"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      },
+      "exchanges": [
+        [
+          "move the pills checklist to 6pm",
+          "card: schedule · change: **Pills checklist** / time · `6:00 am` → `6:00 pm` / -# Next after this: Pills checklist today 6:00 pm"
+        ],
+        [
+          "(pressed the card's button)",
+          "✅ Saved · 🗓️ **Pills checklist** · time · `6:00 am` → `6:00 pm`"
+        ]
+      ]
+    },
+    {
       "golden": "3",
       "message": "set a tea timer for 5",
       "tasks": [
@@ -578,8 +630,7 @@
       "tasks": [
         "briefing"
       ],
-      "on_screen": "a Pills card (pill_add) from the user saying: add iron to my pills at 8",
-      "note": "a card is open and asks whether 8 is morning or evening: a question about the day is the day's, and the card stays open",
+      "note": "a card is open (its task has read the message against it first, so the router sees it only in the exchanges) and asks whether 8 is morning or evening: a question about the day is the day's, and the card stays open",
       "recorded": {
         "kind": "task",
         "tasks": [
@@ -587,8 +638,19 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
-      }
+      },
+      "exchanges": [
+        [
+          "(pressed the card's button)",
+          "✅ Saved · 💊 **Zinc** · daily, any time"
+        ],
+        [
+          "add iron to my pills at 8",
+          "card: pills · new: **iron** · daily at ❔"
+        ]
+      ]
     },
     {
       "golden": "28a",
@@ -596,8 +658,35 @@
       "tasks": [
         "weather"
       ],
-      "on_screen": "a Pills card (pill_add) from the user saying: add iron to my pills at 8",
-      "note": "a card is open: the weather is the weather task's, and the card stays open",
+      "note": "a card is open (its task has read the message against it first, so the router sees it only in the exchanges): the weather is the weather task's, and the card stays open",
+      "recorded": {
+        "kind": "chat",
+        "tasks": [
+          "weather"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      },
+      "exchanges": [
+        [
+          "(pressed the card's button)",
+          "✅ Saved · 💊 **Zinc** · daily, any time"
+        ],
+        [
+          "add iron to my pills at 8",
+          "card: pills · new: **iron** · daily at ❔"
+        ]
+      ]
+    },
+    {
+      "golden": "28b",
+      "message": "Will it rain?",
+      "tasks": [
+        "weather"
+      ],
+      "note": "a to-do card is open: the weather is the weather task's, and the card stays open (the open card's task read it first, so the router sees the card only in the exchanges)",
       "recorded": {
         "kind": "task",
         "tasks": [
@@ -605,8 +694,43 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
-      }
+      },
+      "exchanges": [
+        [
+          "add call Ryan Friday",
+          "card: todos · new: **Call Ryan** · Fri 6 Nov"
+        ]
+      ]
+    },
+    {
+      "golden": "28c",
+      "message": "Will it rain?",
+      "tasks": [
+        "weather"
+      ],
+      "note": "a pills card, then a to-do card, are open (the latest is on screen): the weather is the weather task's, and both stay open (the open card's task read it first, so the router sees the card only in the exchanges)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "weather"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      },
+      "exchanges": [
+        [
+          "add iron to my pills at 8",
+          "card: pills · new: **iron** · daily at ❔ ❓"
+        ],
+        [
+          "add call Ryan Friday",
+          "card: todos · new: **Call Ryan** · Fri 6 Nov"
+        ]
+      ]
     },
     {
       "message": "What pills are left",
@@ -903,6 +1027,142 @@
         }
       ],
       "after_answer": true
+    },
+    {
+      "golden": "2d0",
+      "task": "schedule",
+      "message": "move the pills checklist to 6pm",
+      "action": "schedule_change",
+      "data": {
+        "schedules": [
+          {
+            "schedule": "pills checklist",
+            "time": "6:00 pm"
+          }
+        ]
+      },
+      "state": "The user's schedules now (use the name): Nightly backup (every day at 3:00 am, the bot's own); Pills checklist (every day at 6:00 am, silent, #hub). Can be scheduled: pills checklist.",
+      "note": "a schedule moved in words",
+      "recorded": [
+        "schedule_change",
+        {
+          "schedules": [
+            {
+              "schedule": "Pills checklist",
+              "time": "6:00 pm"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "2d",
+      "task": "schedule",
+      "message": "no, 7pm",
+      "action": "schedule_change",
+      "data": {
+        "schedules": [
+          {
+            "time": "7:00 pm"
+          }
+        ]
+      },
+      "state": "The user's schedules now (use the name): Nightly backup (every day at 3:00 am, the bot's own); Pills checklist (every day at 6:00 pm, silent, #hub). Can be scheduled: pills checklist.",
+      "note": "straight after the schedule was saved: a correction of it (the code knows which: the card just saved)",
+      "after_answer": true,
+      "recorded": [
+        "schedule_change",
+        {
+          "schedules": [
+            {
+              "schedule": "Pills checklist",
+              "time": "7:00 pm"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "2e",
+      "task": "schedule",
+      "message": "actually 6:30",
+      "action": "schedule_change",
+      "data": {
+        "schedules": [
+          {
+            "time": "6:30 pm"
+          }
+        ]
+      },
+      "state": "The user's schedules now (use the name): Nightly backup (every day at 3:00 am, the bot's own); Pills checklist (every day at 6:00 pm, silent, #hub). Can be scheduled: pills checklist.",
+      "note": "straight after the schedule was saved at 6:00 pm: 6:30 pm",
+      "after_answer": true,
+      "recorded": [
+        "schedule_change",
+        {
+          "schedules": [
+            {
+              "schedule": "Pills checklist",
+              "time": "6:30 pm"
+            }
+          ],
+          "guessed": [
+            "time"
+          ],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "2e1",
+      "task": "schedule",
+      "message": "make it 8",
+      "action": "schedule_change",
+      "data": {
+        "schedules": [
+          {
+            "time": "8:00 pm"
+          }
+        ]
+      },
+      "state": "The user's schedules now (use the name): Nightly backup (every day at 3:00 am, the bot's own); Pills checklist (every day at 6:00 pm, silent, #hub). Can be scheduled: pills checklist.",
+      "note": "straight after the schedule was saved at 6:00 pm: 8:00 pm",
+      "after_answer": true,
+      "recorded": [
+        "schedule_change",
+        {
+          "schedules": [
+            {
+              "schedule": "Pills checklist",
+              "time": "8:00 pm"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "2f",
+      "task": "schedule",
+      "message": "Will it rain?",
+      "action": "none",
+      "state": "The user's schedules now (use the name): Nightly backup (every day at 3:00 am, the bot's own); Pills checklist (every day at 6:00 pm, silent, #hub). Can be scheduled: pills checklist.",
+      "note": "straight after the schedule was saved: a question that is not the schedule's",
+      "after_answer": true,
+      "also_ok": {
+        "action": "not_this"
+      },
+      "recorded": [
+        "not_this",
+        {
+          "reason": "The message asks about weather, not about scheduling or the bot's automatic tasks."
+        }
+      ]
     },
     {
       "golden": "3",
@@ -1739,7 +1999,61 @@
       "recorded": [
         "not_this",
         {
-          "reason": "Message is not about pills or the open card"
+          "reason": "The user is asking about weather, not about pills or the open card."
+        }
+      ]
+    },
+    {
+      "golden": "28b",
+      "task": "todos",
+      "message": "Will it rain?",
+      "state": "The user's to-dos now: none",
+      "card": {
+        "action": "todo_add",
+        "data": {
+          "todos": [
+            {
+              "text": "Call Ryan",
+              "day": "2026-11-06"
+            }
+          ]
+        },
+        "guessed": [],
+        "said": "add call Ryan Friday"
+      },
+      "action": "not_this",
+      "note": "with a to-do card open: not about the card, nor about to-dos",
+      "recorded": [
+        "not_this",
+        {
+          "reason": "Weather question, not about the to-do list"
+        }
+      ]
+    },
+    {
+      "golden": "28c",
+      "task": "todos",
+      "message": "Will it rain?",
+      "state": "The user's to-dos now: none",
+      "card": {
+        "action": "todo_add",
+        "data": {
+          "todos": [
+            {
+              "text": "Call Ryan",
+              "day": "2026-11-06"
+            }
+          ]
+        },
+        "guessed": [],
+        "said": "add call Ryan Friday"
+      },
+      "action": "not_this",
+      "note": "with a to-do card open: not about the card, nor about to-dos",
+      "recorded": [
+        "not_this",
+        {
+          "reason": "Weather question, not about the to-do list"
         }
       ]
     },

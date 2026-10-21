@@ -77,6 +77,9 @@ class ScheduleTask(Task):
     identity = ("what", "time")
     on_repeat = repeats.SHOW_EXISTING
 
+    def setup(self, client) -> None:
+        plain.register()  # Undo under a change's "Saved"
+
     async def action_state(self, request):
         return await plain.state(request)
 

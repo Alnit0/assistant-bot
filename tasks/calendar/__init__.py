@@ -51,7 +51,7 @@ async def update(user_id: int) -> str:
         await database.run(store.db_failed, user_id, "no calendar is set", now)
         return "no calendar is set"
     today = days.day_of(now)
-    first, last = today - timedelta(days=rules.BEHIND_DAYS), today + timedelta(days=rules.AHEAD_DAYS)
+    first, last = rules.first_kept(today), today + timedelta(days=rules.AHEAD_DAYS)
     failed = []
     await database.run(store.db_keep_only, user_id, [each.origin for each in found])
     for each in found:

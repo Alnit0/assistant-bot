@@ -396,7 +396,7 @@ def test_every_golden_conversation_in_the_fixture_file_has_a_test_here():
     ids = {entry["golden"] for entry in [*FIXTURES["router"], *FIXTURES["extraction"]]}
     tested = {name.split("_")[1] for name in globals() if name.startswith("test_") and name.split("_")[1][0].isdigit()}
     assert ids <= tested, f"no test for: {sorted(ids - tested)}"
-    assert {"1", "1a", "1b", "1c", "1d", "2", "2a", "2b", "3", "4", "5", "6", "7", "8", "9", "10", "10a", "11", "12", "13", "14", "15", "16", "17", "18", "18a", "18b", "19", "19a", "20", "21", "22", "23", "23a", "24", "25", "2c", "18c", "26", "27", "27a", "28", "28a", "29", "30"} == tested
+    assert {"1", "1a", "1b", "1c", "1d", "2", "2a", "2b", "3", "4", "5", "6", "7", "8", "9", "10", "10a", "11", "12", "13", "14", "15", "16", "17", "18", "18a", "18b", "19", "19a", "20", "21", "22", "23", "23a", "24", "25", "2c", "18c", "26", "27", "27a", "28", "28a", "28b", "28c", "29", "30", "2d", "2d0", "2e", "2e1", "2f"} == tested
 
 
 # --- QA 2026-10-10: "already so" ends in the task's own line, whichever way it was found --------------------
@@ -1379,6 +1379,168 @@ def test_28_what_answers_or_changes_the_card_is_still_read_against_it(my_day):
     bot.say(SAID["2"])
     assert card(bot)[0][1].lower() == "**iron** · daily at `8:00 am`"
     assert [(asked.purpose, asked.task) for asked in bot.requests[before:]] == [("extraction", "pills")]
+
+
+# 28b and 28c (22 Oct): 28a with a to-do card open, and with a pills card and a to-do card open. The real router
+# answers "Will it rain?" as chat with the weather named while a card is open (core/routing.py `parse`)
+from tests.test_smartinbox import inbox, made_up_key  # noqa: E402,F401  (the bot with every task the inbox sorts into)
+
+TODO_CARD = ("todo_add", {"todos": [{"text": "call Ryan", "day": "Friday"}], "guessed": [], "not_included": []})
+PILL_CARD = ("pill_add", {"pills": [{"name": "iron", "times": ["8:00"]}], "guessed": ["pills[0].times"], "not_included": []})
+
+
+@pytest.fixture
+def rainy(inbox, monkeypatch, make_db):  # noqa: F811
+    """The inbox's tasks with the weather answering from a forecast kept from the recorded one."""
+    from core import config
+    from tasks import weather
+    from tasks.weather import store as weather_store
+
+    make_db({"weather": weather_store.MIGRATIONS})
+    monkeypatch.setattr(config, "WEATHER_ENABLED", True)
+    monkeypatch.setattr(config, "WEATHER_SOURCE", str(Path(__file__).parent / "fixtures" / "weather_drizzle.json"))
+    actions.set_catalogue([*actions.catalogue(), *weather.task.entries()])
+    assert run(weather.update(inbox.owner.id)) == ""
+    return inbox
+
+
+def _opened(bot, task, extracted, said, card_open=False):
+    # A card already open reads the message against itself first: not this, so the router is asked
+    bot.claude(*([("not_this", {"reason": "not about the open card"})] if card_open else []), route(task), extracted)
+    bot.say(said)
+    return open_cards()[-1]
+
+
+def _rained(bot, golden, task):
+    before = len(bot.requests)
+    bot.claude(EXTRACTED[golden], ROUTED[golden], EXTRACTED["24"])
+    bot.say(SAID[golden])
+    assert _said(bot).startswith("🌤️ 61% chance of rain for the rest of today"), _said(bot)
+    assert [(asked.purpose, asked.task) for asked in bot.requests[before:]] == [("extraction", task), ("router", ""), ("extraction", "weather")]
+    assert bot.chats == [], "plain chat cannot see the forecast: never asked"
+
+
+def test_28b_the_weather_with_a_to_do_card_open_is_the_weather_s_and_the_card_stays(rainy):
+    held = _opened(rainy, "todos", TODO_CARD, "add call Ryan Friday")
+    _rained(rainy, "28b", "todos")
+    assert [each.id for each in open_cards() if each.status == "open"] == [held.id], "the to-do card stays open"
+
+
+def test_28c_with_a_pills_card_and_a_to_do_card_open_both_stay(rainy):
+    pill = _opened(rainy, "pills", PILL_CARD, "add iron to my pills at 8")
+    todo = _opened(rainy, "todos", TODO_CARD, "add call Ryan Friday", card_open=True)
+    assert todo.id != pill.id and todo.task == "todos"
+    _rained(rainy, "28c", "todos")
+    assert {each.id for each in open_cards() if each.status == "open"} == {pill.id, todo.id}, "both stay open"
+
+
+# --- 2d to 2f (22 Oct, question 8): a correction straight after Save, for schedules, as pills have (2b) ------------------
+@pytest.fixture
+def scheduled(my_day, monkeypatch):
+    """The day's bot with the schedule task: the pills checklist at 6:00 am, mine to change."""
+    from core import backup, scheduler
+    from tasks.schedule import plain as schedule_plain
+    from tasks.schedule import task as schedule_task
+
+    async def ran(job):
+        pass
+
+    monkeypatch.setattr(scheduler, "_standing", {("pills", checklist.JOB): checklist.DEFAULT, (backup.JOB_TASK, backup.JOB_KIND): backup.DEFAULT})
+    scheduler.register_handler("pills", checklist.JOB, ran, "pills checklist")
+    run(scheduler.book())
+    monkeypatch.setattr(schedule_plain, "list_changed", lambda user_id: None)
+    schedule_task.setup(None)
+    actions.set_catalogue([*actions.catalogue(), *schedule_task.entries()])
+    return my_day
+
+
+def _checklist_at(bot):
+    from tasks.schedule import plain as schedule_plain
+
+    return next(each.at for each in run(schedule_plain.every()) if each.name == "Pills checklist")
+
+
+def _moved_to_6pm_and_saved(bot):
+    from datetime import time
+
+    bot.claude(ROUTED["2d0"], EXTRACTED["2d0"])
+    bot.say(SAID["2d0"])
+    assert press(bot) == "✅ Saved · 🗓️ **Pills checklist** · time · `6:00 am` → `6:00 pm`"
+    assert _checklist_at(bot) == time(18, 0)
+
+
+def _undo_under(bot, message_id):
+    from tasks.schedule import plain as schedule_plain
+
+    (shown,) = [card for edited, card in bot.edited_cards if edited == message_id and card.rows][-1:]
+    (undo,) = [button for row in shown.rows for button in row]
+    assert (undo.label, undo.task, undo.action) == ("Undo", "schedule", "undo")
+    pressed = bot.Press(undo.arg)
+    return run(schedule_plain.on_undo(pressed))
+
+
+def test_2d_straight_after_a_schedule_s_save_no_7pm_is_a_change_card_for_it_with_save_and_then_undo(scheduled):
+    from datetime import time
+
+    from core import design
+
+    bot = scheduled
+    _moved_to_6pm_and_saved(bot)
+    before = len(bot.requests)
+    bot.claude(EXTRACTED["2d"])
+    bot.say(SAID["2d"], straight_after=True)
+    assert [(asked.purpose, asked.task) for asked in bot.requests[before:]] == [("extraction", "schedule")], "the schedule's first: no router"
+    lines, buttons = card(bot)
+    assert lines[:3] == ["🗓️ Schedule · change", "**Pills checklist**", "time · `6:00 pm` → `7:00 pm`"], lines
+    assert design.changed(lines[2]) == "time · ~~6:00 pm~~ → **7:00 pm**", "the old time struck through, the new one bold"
+    assert buttons == ["Save", "Cancel"] and not any("❓" in line for line in lines), "what was just saved is known, not guessed"
+    assert _checklist_at(bot) == time(18, 0), "nothing changes until Save"
+    saved = open_cards()[-1]
+    assert press(bot) == "✅ Saved · 🗓️ **Pills checklist** · time · `6:00 pm` → `7:00 pm`" and _checklist_at(bot) == time(19, 0)
+    assert _undo_under(bot, saved.message_id) == "↩️ Undone · 🗓️ **Pills checklist** · time · `7:00 pm` → `6:00 pm`"
+    assert _checklist_at(bot) == time(18, 0)
+
+
+def test_2d0_move_the_pills_checklist_to_6pm_is_a_change_card_and_save_writes_it(scheduled):
+    from datetime import time
+
+    _moved_to_6pm_and_saved(scheduled)
+    assert _checklist_at(scheduled) == time(18, 0)
+
+
+def test_2e_actually_6_30_straight_after_a_schedule_s_save_changes_that_row(scheduled):
+    _corrected(scheduled, "2e", (18, 30))
+
+
+def test_2e1_make_it_8_straight_after_a_schedule_s_save_changes_that_row(scheduled):
+    _corrected(scheduled, "2e1", (20, 0))
+
+
+def _corrected(bot, golden, at):
+    from datetime import time
+
+    _moved_to_6pm_and_saved(bot)
+    bot.claude(EXTRACTED[golden])
+    bot.say(SAID[golden], straight_after=True)
+    lines, buttons = card(bot)
+    # No am or pm said: the reading nearest the 6:00 pm just saved, marked as a guess
+    assert lines[1] == "**Pills checklist** ❓" and lines[2].startswith("time · `6:00 pm` → ") and buttons == ["Save", "Cancel"], lines
+    press(bot)
+    assert _checklist_at(bot) == time(*at)
+
+
+def test_2f_a_question_straight_after_a_schedule_s_save_never_sticks_to_it(scheduled):
+    from datetime import time
+
+    bot = scheduled
+    _moved_to_6pm_and_saved(bot)
+    before = len(bot.requests)
+    # The schedule reads it first, as it just answered: not a change of its own, so the router decides
+    bot.claude(EXTRACTED["2f"], ROUTED["2f"], EXTRACTED["24"])
+    bot.say(SAID["2f"], straight_after=True)
+    assert _said(bot).startswith("🌤️ 61% chance of rain for the rest of today"), _said(bot)
+    assert [(asked.purpose, asked.task) for asked in bot.requests[before:]] == [("extraction", "schedule"), ("router", ""), ("extraction", "weather")]
+    assert _checklist_at(bot) == time(18, 0) and not [each for each in open_cards() if each.status == "open"], "the schedule is as saved"
 
 
 def test_the_golden_conversations_never_go_by_the_real_time_of_day(bot):

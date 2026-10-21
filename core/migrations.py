@@ -130,6 +130,25 @@ def _create_reaction_state(conn: sqlite3.Connection) -> None:
     )
 
 
+def _create_reaction_waiting(conn: sqlite3.Connection) -> None:
+    # The reaction changes still waiting out the quiet period (core/reactions.py), so one made just
+    # before a stop is dealt with after it, once. Discord's ids only: a row goes once it is dealt with
+    conn.execute(
+        """
+        CREATE TABLE reaction_waiting (
+            id INTEGER PRIMARY KEY,
+            message_id INTEGER NOT NULL,
+            channel_id INTEGER NOT NULL,
+            emoji TEXT NOT NULL,
+            discord_user_id INTEGER NOT NULL,
+            user_id INTEGER REFERENCES users(id),
+            added INTEGER NOT NULL,
+            at TEXT NOT NULL
+        )
+        """
+    )
+
+
 def _add_timing_to_message_log(conn: sqlite3.Connection) -> None:
     # Where the time went while a chat message was answered, as JSON (core/timing.py)
     conn.execute("ALTER TABLE message_log ADD COLUMN timing TEXT")
@@ -572,6 +591,7 @@ MIGRATIONS = [
     _seed_pinged,
     _create_inbox_kept,
     _create_wishes,
+    _create_reaction_waiting,
 ]
 
 

@@ -25,10 +25,10 @@ log = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 ONLY_FOR = (
     "Events in the user's own calendar, to read: what is on a day, a week, a month, a year or a range of days (\"what's on tomorrow?\", \"what's on "
-    "Friday?\", \"what's on this week?\", \"what's on in November?\", \"what's on from Monday to Friday?\", \"my calendar\"), when an event is, or whether it is on (\"when is the dentist?\", \"is the gym on tonight?\"), and whether "
+    "Friday?\", \"what's on this week?\", \"what's on in November?\", \"what's on from Monday to Friday?\", \"my calendar\"), when an event is, or whether it is on another day (\"when is the dentist?\", \"have I got the gym tomorrow?\"), and whether "
     "they are free at a time (\"am I free at 3 tomorrow?\"). Events only. It adds and changes nothing: a new event "
-    "said with a time (\"dentist Friday 3pm\") is a reminder. The rest of today across everything (\"what's on "
-    "tonight?\", \"what have I got this afternoon?\") is the briefing. Not pills, not reminders "
+    "said with a time (\"dentist Friday 3pm\") is a reminder. The rest of today across everything, or whether something is on in it (\"what's on "
+    "tonight?\", \"what have I got this afternoon?\", \"is the gym on tonight?\"), is the briefing. Not pills, not reminders "
     "the user set, not to-dos, not personal routines, and not when the bot's own jobs run (that is the schedule task)."
 )
 EXAMPLES = ("what's on tomorrow?", "when is the dentist?", "am I free at 3 tomorrow?")
@@ -64,8 +64,8 @@ async def show(request: Request, data: dict, guessed: frozenset):
 
 
 def _in_copy(asked: rules.Span, today) -> bool:
-    """Whether the copy kept every 15 minutes covers the span (yesterday to AHEAD_DAYS ahead)."""
-    return asked.first >= today - timedelta(days=rules.BEHIND_DAYS) and asked.last <= today + timedelta(days=rules.AHEAD_DAYS)
+    """Whether the copy kept every 15 minutes covers the span (this week's Monday, or yesterday, to AHEAD_DAYS ahead)."""
+    return asked.first >= rules.first_kept(today) and asked.last <= today + timedelta(days=rules.AHEAD_DAYS)
 
 
 async def _read_span(asked: rules.Span) -> tuple[list, str]:
@@ -141,7 +141,8 @@ def reading_actions() -> list:
             "\"what's on this week?\" -> span week; \"next week\" -> span next_week; \"the week of 28 November\" -> span week, day 28 November; "
             "\"what's on in November?\" -> span month, month November; \"next month\" -> span next_month; \"December\" -> span month, month December; "
             "\"what's on in 2027?\" -> span year, year 2027; \"next year\" -> span next_year; \"from Monday to Friday\" -> day Monday, until Friday; "
-            "\"21 to 25 November\" -> day 21 November, until 25 November; \"my calendar\" -> nothing). "
+            "\"21 to 25 November\" -> day 21 November, until 25 November; \"my calendar\" -> nothing), and whether an event is on a "
+            "day, with no time asked about (\"have I got the gym tomorrow?\", \"is the dentist on Friday?\" -> day tomorrow, day Friday). "
             "A question only: a new event said with a title and all day (\"hen do Saturday, all day\") is adding, never this.",
             (
                 Field("day", _DAY + " For a week: a day in it (\"the week of 28 November\" -> 28 November). For a range: its first day."),
@@ -578,12 +579,12 @@ def writing_actions() -> list:
 
 ONLY_FOR_WRITING = (
     "Events in the user's own calendar: reading what is on a day, a week, a month, a year or a range of days (\"what's on tomorrow?\", \"what's on this week?\", "
-    "\"what's on in November?\", \"what's on from Monday to Friday?\", \"my calendar\"), when an event is or whether it is on (\"when is the dentist?\", \"is the gym on tonight?\"), whether they "
+    "\"what's on in November?\", \"what's on from Monday to Friday?\", \"my calendar\"), when an event is or whether it is on another day (\"when is the dentist?\", \"have I got the gym tomorrow?\"), whether they "
     "are free (\"am I free at 3 tomorrow?\"), and adding an event: an appointment or a plan said with a day and a time and no "
     "\"remind me\" (\"dentist Friday 3pm\", \"lunch with Sam Thursday at 1\", \"put the plumber on my calendar\", \"book lunch with Sam\", "
     "\"make a dentist appointment for Friday at 3pm\"), a repeating event "
     "(\"work every weekday 9 to 5:30\", \"swimming Mondays and Thursdays at 6pm\"), and moving, cancelling (\"cancel work next Tuesday\", "
     "\"stop work\"), deleting or undoing one. An all-day event (\"all day event 21 and 22 November\") is the calendar too, with no time. A request to be reminded (\"remind me about the dentist Friday\") is a reminder, not the calendar. "
-    "The rest of today across everything (\"what's on tonight?\") is the briefing. Not pills, not to-dos (a thing to do with no "
+    "The rest of today across everything, or whether something is on in it (\"what's on tonight?\", \"is the gym on tonight?\"), is the briefing. Not pills, not to-dos (a thing to do with no "
     "time), not personal routines, and not when the bot's own jobs run (that is the schedule task)."
 )

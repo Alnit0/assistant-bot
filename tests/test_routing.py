@@ -128,7 +128,9 @@ def test_what_changes_goes_in_the_user_turn():
         ({"kind": "task", "tasks": ["shopping"], "confidence": "tie"}, Route(("shopping",))),  # a tie of one is no tie
         ({"kind": "task", "tasks": ["shopping", "shopping"], "confidence": "high"}, Route(("shopping",))),
         ({"kind": "chat", "tasks": [], "confidence": "high"}, Route()),
-        ({"kind": "chat", "tasks": ["shopping"], "confidence": "high"}, Route()),  # chat wins
+        ({"kind": "chat", "tasks": ["shopping"], "confidence": "high"}, Route(("shopping",))),  # one task named: that task (22 Oct)
+        ({"kind": "chat", "tasks": ["shopping", "packing"], "confidence": "high"}, Route()),  # two: chat wins
+        ({"kind": "chat", "tasks": ["shopping"], "confidence": "tie"}, Route()),
         ({"kind": "task", "tasks": [], "confidence": "high"}, Route()),
     ],
 )

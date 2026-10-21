@@ -92,12 +92,68 @@ def test_the_typed_word_and_the_contract():
 
 
 # --- change -----------------------------------------------------------------------------------------------------
+def test_a_time_with_no_am_or_pm_is_the_reading_nearest_the_one_it_runs_at_marked_as_a_guess(world):
+    assert rules.nearest((time(8, 0), time(20, 0)), time(18, 0)) == time(20, 0)
+    assert rules.nearest((time(7, 0), time(19, 0)), time(6, 0)) == time(7, 0)
+    assert rules.nearest((time(11, 0), time(23, 0)), time(1, 0)) == time(23, 0), "round the clock: 11 pm is two hours from 1 am"
+    asked = change(world, "make the pills checklist 7", {"schedule": "pills checklist", "time": "7:00"})
+    assert asked.lines[:2] == ("**Pills checklist** ❓", "time · `6:00 am` → `7:00 am`") and asked.warnings == ()
+
+
+def test_undo_under_a_change_s_saved_puts_it_back_unless_it_was_changed_again_since(world, monkeypatch):
+    from core import cards, confirm
+    from core.confirm import Stored
+
+    asked = change(world, "move the pills checklist to 7", {"schedule": "pills checklist", "time": "7:00 am"})
+    said = run(plain.change_save(world.request(), asked.data))
+    edits = []
+
+    async def edit(channel_id, message_id, card, fall_back=True):
+        edits.append((message_id, card))
+        return True
+
+    monkeypatch.setattr(cards, "edit", edit)
+    run(said.placed(4242))
+    ((message_id, shown),) = edits
+    (undo,) = [button for row in shown.rows for button in row]
+    assert (message_id, shown.text, undo.label, undo.arg) == (4242, said.text, "Undo", "4242")
+    saved = Stored(1, world.owner.id, INBOX, 4242, "card", "schedule", "schedule_change", asked.data, (), "said", "saved", None, clock.now(), None, None, None)
+    monkeypatch.setattr(confirm, "db_by_message", lambda conn, message_id: saved if message_id == 4242 else None)
+
+    class Press:
+        user, arg, shown = world.owner, "4242", []
+
+        async def update(self, card):
+            self.shown.append(card.text)
+
+    assert run(plain.on_undo(Press())) == "↩️ Undone · 🗓️ **Pills checklist** · time · `7:00 am` → `6:00 am`"
+    assert schedules()["Pills checklist"].at == time(6, 0)
+    run(plain.change_save(world.request(), change(world, "move it to 8", {"schedule": "pills checklist", "time": "8:00 am"}).data))
+    assert run(plain.on_undo(Press())) == "↩️ Nothing to undo: it was changed again since", "what is there now is kept"
+    assert schedules()["Pills checklist"].at == time(8, 0)
+    Press.arg = "999"
+    assert run(plain.on_undo(Press())) == "↩️ Nothing to undo here"
+
+
+def test_straight_after_a_save_it_is_the_schedule_just_saved_known_not_guessed(world):
+    from core.actions import Saved
+
+    run(plain.add_save(world.request(), run(plain.add_card(world.request("also post the pills checklist at 6 pm"), {"what": "pills checklist", "time": "6:00 pm"}, frozenset())).data))
+    two = [each.name for each in run(plain.every()) if not each.locked]
+    assert len(two) == 2, "two of mine: \"it\" alone could be either"
+    evening = next(name for name in two if name != "Pills checklist")
+    just = Saved("schedule", "schedule_add", {"name": evening})
+    asked = run(plain.change_card(Request(world.owner, INBOX, "no, 7pm", just_saved=just), {"schedules": [{"schedule": "@that", "time": "7:00 pm"}]}, frozenset()))
+    assert asked.lines[:2] == (f"**{evening}**", "time · `6:00 pm` → `7:00 pm`") and asked.question is None
+    asked = run(plain.change_card(Request(world.owner, INBOX, "no, 7pm"), {"schedules": [{"schedule": "@that", "time": "7:00 pm"}]}, frozenset()))
+    assert asked.question is not None, "with nothing just saved, which one is asked"
+
 def test_moving_one_is_a_card_with_old_to_new_and_when_it_next_runs_and_only_save_writes_it(world):
     asked = change(world, "move the pills checklist to 7", {"schedule": "pills checklist", "time": "7:00 am"})
     assert asked.lines == ("**Pills checklist**", "time · `6:00 am` → `7:00 am`", "-# Next after this: Pills checklist tomorrow 7:00 am")
     assert asked.kind == "change" and asked.question is None and schedules()["Pills checklist"].at == time(6, 0), "nothing is written by asking"
     said = run(plain.change_save(world.request(), asked.data))
-    assert said == "✅ Saved · 🗓️ **Pills checklist** · time · `6:00 am` → `7:00 am`"
+    assert said.text == "✅ Saved · 🗓️ **Pills checklist** · time · `6:00 am` → `7:00 am`" and said.placed is not None, "with its Undo"
     assert run(plain.change_check(world.request(), asked.data)) == "" and schedules()["Pills checklist"].at == time(7, 0)
     tomorrow = world.today + timedelta(days=1)
     assert booked() == [f"{tomorrow.isoformat()}T07:00"], "the run that was booked follows the schedule at once"

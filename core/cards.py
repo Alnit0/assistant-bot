@@ -509,8 +509,13 @@ async def send(channel_id: int, card: Card, *, silent: bool = False) -> int | No
     return message_id
 
 
-async def edit(channel_id: int, message_id: int, card: Card) -> bool:
-    """Rewrite a card in place. False if it has gone or can't be reached."""
+Unfit = surface.Unfit  # a message that can't take the card as drawn (edit's `fall_back` off)
+
+
+async def edit(channel_id: int, message_id: int, card: Card, *, fall_back: bool = True) -> bool:
+    """Rewrite a card in place. False if it has gone or can't be reached. A card of embeds on a message
+    that can't take them (posted as a layout) is written in as plain words, or, with `fall_back` off,
+    raises Unfit and the message is left as it was."""
     if surface.place(channel_id) is None:
         return False
     card = fitted(card)
@@ -520,7 +525,9 @@ async def edit(channel_id: int, message_id: int, card: Card) -> bool:
     from core import thumbsup
 
     try:
-        await surface.edit_card(channel_id, message_id, card, plain)
+        await surface.edit_card(channel_id, message_id, card, plain, fall_back=fall_back)
+    except surface.Unfit:
+        raise
     except surface.Gone:
         thumbsup.drop(message_id)
         return False

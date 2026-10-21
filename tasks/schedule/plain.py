@@ -1,9 +1,9 @@
 from dataclasses import replace
 from datetime import time
 
-from core import clock, config, database, livelists, names, scheduler, timeinput, timetable
-from core.actions import SET, Choice, LiveReply, Proposal, Question, Request, flag, is_guessed, is_reference
-from core.cards import Card
+from core import cards, clock, config, confirm, database, livelists, names, scheduler, timeinput, timetable
+from core.actions import SET, Answer, Choice, LiveReply, Proposal, Question, Request, flag, is_guessed, is_reference, just_saved_one
+from core.cards import Button, Card
 from core.errors import UserError
 from core.timetable import NOTIFY, ON, PAUSED, REMOVED, SILENT, Schedule
 from tasks.schedule import rules
@@ -23,6 +23,9 @@ from tasks.schedule.rules import ICON, PAUSE, RESUME, TASK, Listed
 KEY = "schedule"
 LIST = "schedules"
 REF = "s"  # a schedule as the card's own data names it: "s3"
+UNDO = "undo"  # the button under a change's "Saved": the schedules as they were before it
+BEFORE = "before"  # in a change card's data: each schedule's settings before the change, for its Undo
+GUESSED = ""  # what `changed` adds to its problems for a time it read as nearest: no warning, a ❓ on the card
 
 
 def ref(schedule: Schedule) -> str:
@@ -103,15 +106,25 @@ def find(schedules: list[Schedule], wanted: str, said: str = "") -> Schedule:
     return found
 
 
-def _resolve(schedules: list[Schedule], items: list[dict], said: str) -> tuple[list[tuple[dict, Schedule, bool]], list[str], list[tuple[dict, list[Schedule]]]]:
+def _saved_held(data: dict) -> list:
+    """The schedules a saved card was about: a change's (their refs), or an add's (the new one's name)."""
+    return [item.get("schedule") for item in data.get(LIST, []) if isinstance(item, dict)] or [data.get("name")]
+
+
+def _resolve(schedules: list[Schedule], items: list[dict], said: str, just_saved: str | None = None) -> tuple[list[tuple[dict, Schedule, bool]], list[str], list[tuple[dict, list[Schedule]]]]:
     """Each item with the schedule it means and whether that was a pick of the
     code's own ("it", with only one it could be); what couldn't be found, in
-    words; and each item whose name fits more than one, to be asked about."""
+    words; and each item whose name fits more than one, to be asked about.
+    `just_saved` is the schedule on the card saved a moment ago: "it" straight
+    after a Save ("no, 7pm") is that one, which is known, not a pick."""
     found, problems, unclear = [], [], []
     mine = [each for each in schedules if not each.locked]
     for item in items:
         wanted = str(item.get("schedule", ""))
         try:
+            if (is_reference(wanted) or not wanted.strip()) and just_saved:
+                found.append((item, find(schedules, just_saved), False))
+                continue
             if is_reference(wanted) or not wanted.strip():
                 # "it" is the code's to work out: the only one there is, or a question
                 if len(mine) != 1:
@@ -171,7 +184,15 @@ def changed(schedule: Schedule, item: dict, today) -> tuple[Schedule, list[str]]
             problems.append(str(error))
 
     if item.get("time"):
-        attempt(lambda: replace(after, at=rules.read_time(str(item["time"]))))
+        try:
+            after = replace(after, at=timeinput.parse_time(str(item["time"])))
+        except timeinput.AmbiguousTime as which:
+            # "make it 8" with no am or pm: the reading nearest the time it runs at now, as a person would
+            # read it, and marked as a guess on the card
+            after = replace(after, at=rules.nearest(which.options, schedule.at))
+            problems.append(GUESSED)
+        except UserError as error:
+            problems.append(f"“{item['time']}” is not a time I can read: {error}")
     if item.get("days"):
         attempt(lambda: replace(after, days=rules.changed_days(after.days, rules.read_days(item["days"]), item.get("days_change") or SET)))
         if not after.days:
@@ -206,7 +227,7 @@ async def change_card(request: Request, data: dict, guessed: frozenset) -> Propo
         schedule = by_id.get(int(str(item["schedule"])[len(REF):])) if str(item.get("schedule", "")).startswith(REF) else None
         if schedule is not None:
             held[schedule.id] = item
-    found, warnings, unclear = _resolve(schedules, data[LIST], request.text)
+    found, warnings, unclear = _resolve(schedules, data[LIST], request.text, just_saved_one(request, TASK, _saved_held))
     marked: set[int] = set()
     for index, (item, schedule, picked) in enumerate(found):
         if schedule.locked:
@@ -214,8 +235,10 @@ async def change_card(request: Request, data: dict, guessed: frozenset) -> Propo
             continue
         before = _from_stored(schedule, held[schedule.id]) if schedule.id in held else schedule
         after, problems = changed(before, item, today)
-        warnings += [f"{schedule.name}: {problem}" for problem in problems]
-        held[schedule.id] = {"schedule": ref(schedule), **_stored(after)}
+        if GUESSED in problems:
+            marked.add(schedule.id)
+        warnings += [f"{schedule.name}: {problem}" for problem in problems if problem != GUESSED]
+        held[schedule.id] = {"schedule": ref(schedule), **_stored(after), BEFORE: _stored(schedule)}
         if picked or is_guessed(guessed, LIST, index):
             marked.add(schedule.id)
     lines, kept, coming = [], [], []
@@ -257,7 +280,55 @@ async def change_save(request: Request, data: dict) -> str:
     await request.db.run(write)
     await scheduler.book()  # the runs that are booked follow the schedule at once
     list_changed(request.user.id)
-    return f"✅ Saved · {ICON} " + "\n".join(said)
+    text = f"✅ Saved · {ICON} " + "\n".join(said)
+
+    async def placed(message_id: int) -> None:
+        # The "Saved" line gets its Undo: the schedules as they were before this change
+        await cards.edit(request.channel_id, message_id, Card(text, ((Button("Undo", TASK, UNDO, str(message_id), emoji="↩️", style=cards.PRIMARY),),)))
+
+    return Answer(text, placed) if said else text
+
+
+async def on_undo(press: cards.Press) -> str:
+    """Undo under a change's "Saved": each schedule it changed goes back to how it was, unless it
+    was changed again since (then it is left, and said so)."""
+    saved = await database.run(confirm.db_by_message, int(press.arg)) if press.arg.isdigit() else None
+    if saved is None or saved.task != TASK or saved.user_id != press.user.id:
+        line = "↩️ Nothing to undo here"
+        await press.update(Card(line))
+        return line
+    schedules = {each.id: each for each in await every()}
+    today = rules.local_today(clock.now())
+    said, left = [], []
+
+    def write(conn):
+        for item in saved.data.get(LIST, []):
+            schedule = schedules.get(int(str(item["schedule"])[len(REF):]))
+            if schedule is None or schedule.locked or not item.get(BEFORE):
+                continue
+            if _stored(schedule) != _stored(_from_stored(schedule, item)):
+                left.append(schedule.name)  # changed again since: what is there now is kept
+                continue
+            back = _from_stored(schedule, item[BEFORE])
+            timetable.db_update(
+                conn, schedule.id, clock.now(), at=back.at, days=back.days, notify=back.notify, channel=back.channel,
+                state=back.state, paused_until=back.paused_until,
+            )
+            said.append(f"**{schedule.name}** · " + " · ".join(rules.change_lines(schedule, back, today)))
+
+    await database.run(write)
+    if said:
+        await scheduler.book()
+        list_changed(press.user.id)
+    line = (f"↩️ Undone · {ICON} " + "\n".join(said)) if said else "↩️ Nothing to undo: it was changed again since"
+    if said and left:
+        line += f"\n-# {', '.join(left)} was changed again since: left as it is"
+    await press.update(Card(line))
+    return line
+
+
+def register() -> None:
+    cards.register(TASK, UNDO, on_undo)
 
 
 async def change_check(request: Request, data: dict) -> str:
@@ -371,7 +442,7 @@ async def add_check(request: Request, data: dict) -> str:
 # ---------------------------------------------------------------------------
 async def remove_card(request: Request, data: dict, guessed: frozenset) -> Proposal:
     schedules = await every()
-    found, warnings, unclear = _resolve(schedules, data[LIST], request.text)
+    found, warnings, unclear = _resolve(schedules, data[LIST], request.text, just_saved_one(request, TASK, _saved_held))
     lines, kept = [], []
     for index, (item, schedule, picked) in enumerate(found):
         if schedule.locked:

@@ -153,6 +153,15 @@ def read_time(text: str) -> time:
         raise UserError(f"“{text}” is not a time I can read: {error}") from error
 
 
+def nearest(options: tuple[time, time], now: time) -> time:
+    """Of a time's two readings (morning, evening), the one nearer `now` round the clock; the morning on a tie."""
+    def apart(at: time) -> int:
+        gap = abs((at.hour * 60 + at.minute) - (now.hour * 60 + now.minute))
+        return min(gap, 24 * 60 - gap)
+
+    return min(options, key=apart)
+
+
 def read_days(words) -> tuple[int, ...]:
     """Weekdays as handed over (mon … sun) as numbers, Monday 0."""
     found = []

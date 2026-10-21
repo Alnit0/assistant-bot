@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from core import actions, config, design
+from core import actions, config, database, design, livelists
 from core import day as days
 from core.actions import DOSE, EVENT, MISSED, ROUTINE, SKIPPED, TAKEN, TODO, TRACKING, DayItem, Entry
 from core.cards import MAX_EMBEDS, Card, Embed
@@ -152,6 +152,51 @@ def test_real_doses_as_the_pills_task_hands_them_over(seven):
     (one,) = posted(seven)
     assert lines(one.card) == ["8:00 am · 💊 Morning dose · 🟩 Taken 8:05 am", "8:00 pm · 💊 Evening dose · ⬜ Later"]
     assert statuses(one.card) == [design.TAKEN, design.LATER]
+
+
+def test_a_change_rewrites_both_messages_in_place_as_embeds(seven):
+    """Through a day's changes the two messages stay where they are, edited, and stay embeds."""
+    briefing.task.setup(None)
+    add(seven, {"name": "Morning dose", "times": ["8:00 am"]})
+    actions.set_catalogue([*actions.catalogue(), _entry("made_up_list", [DayItem(TODO, "Buy stamps")])])
+    first = run(briefing.post_in_hub(seven.owner.id, HUB))
+    two = posted(seven)[1].id
+    at(seven, 9, 0)
+    log(seven, {"pill": "morning dose", "did": "taken", "at": "8:05 am"})
+    ones = [card for message_id, card in seven.edited if message_id == first]
+    assert ones and ones[-1].embeds and lines(ones[-1])[0].endswith("🟩 Taken 8:05 am"), "edited in place, still embeds"
+    assert len(posted(seven)) == 2 and first not in seven.deleted and two not in seven.deleted, "nothing posted again"
+
+
+def test_a_hub_message_from_before_round_seven_is_posted_again_as_embeds(seven, monkeypatch):
+    """A briefing posted under round 5 is a layout, which Discord never lets take embeds (live, 21 Oct: the
+    hub's message read as plain lines all day): the first change posts it again, as embeds, and the old goes."""
+    from core import cards
+
+    briefing.task.setup(None)
+    add(seven, {"name": "Morning dose", "times": ["8:00 am"]})
+    monkeypatch.setattr(config, "DESIGN_ROUND", 5)
+    old = run(briefing.post_in_hub(seven.owner.id, HUB))
+    assert seven.sent[-1].card.layout and not seven.sent[-1].card.embeds, "round 5's look"
+    monkeypatch.setattr(config, "DESIGN_ROUND", 7)
+    edit = cards.edit
+
+    async def refusing(channel_id, message_id, card, *, fall_back=True):
+        if message_id == old and card.embeds:
+            if not fall_back:
+                raise cards.Unfit("message can't take embeds", 400, 50035)
+            return await edit(channel_id, message_id, card.__class__(card.text, card.rows))
+        return await edit(channel_id, message_id, card)
+
+    monkeypatch.setattr(cards, "edit", refusing)
+    async def changed():
+        briefing.summary_changed("pills", seven.owner.id)
+
+    run(changed())
+    (fresh,) = posted(seven)
+    assert fresh.id != old and fresh.card.heading.startswith("🗓️ **") and fresh.silent and old in seven.deleted
+    assert run(database.run(livelists.db_get, seven.owner.id, briefing.IN_THE_HUB)).message_id == fresh.id
+    assert not [card for message_id, card in seven.edited if message_id == old], "never left as plain words"
 
 
 def test_round_five_is_untouched(on):  # noqa: F811

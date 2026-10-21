@@ -1,6 +1,7 @@
 import sqlite3
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 
 from core import clock
 
@@ -18,6 +19,9 @@ Key = tuple[int, str, int]
 
 DONE_EMOJI = "✅"  # added to a message once a reaction action has been applied
 FAILED_EMOJI = "⚠️"
+# A reaction still waiting out the quiet period is kept in the database, so one made just before a
+# stop is dealt with after it. One older than the quiet period and this at the start is too old to act on
+STALE_AFTER = timedelta(minutes=10)
 
 
 def emoji_key(emoji) -> str:
@@ -33,6 +37,29 @@ class Change:
     channel_id: int
     emoji: str  # as emoji_key gives it
     discord_user_id: int
+
+
+@dataclass(frozen=True)
+class Waiting:
+    """A reaction change kept while it waits out the quiet period (reaction_waiting). It carries
+    what a handler reads of Discord's event (message_id, channel_id, emoji, user_id: Discord's id
+    of who reacted), so one made before a restart is dealt with after it as it would have been."""
+
+    row_id: int
+    message_id: int
+    channel_id: int
+    emoji: str
+    user_id: int
+    added: bool
+    at: datetime
+
+
+def resumable(waiting: list["Waiting"], now: datetime, quiet_seconds: float) -> tuple[list["Waiting"], list["Waiting"]]:
+    """At the start: (what still waits, in order, to go through the quiet period again; what is
+    too old, older than the quiet period and STALE_AFTER, to act on: dropped and said in the log)."""
+    cut = now - timedelta(seconds=quiet_seconds) - STALE_AFTER
+    ordered = sorted(waiting, key=lambda each: (each.at, each.row_id))
+    return [each for each in ordered if each.at >= cut], [each for each in ordered if each.at < cut]
 
 
 def key_for(
@@ -114,3 +141,26 @@ def db_forget(conn: sqlite3.Connection, key: Key) -> int:
     return conn.execute(
         "SELECT COUNT(*) FROM reaction_state WHERE message_id = ?", (message_id,)
     ).fetchone()[0]
+
+
+# ---------------------------------------------------------------------------
+# What is waiting out the quiet period (blocking; called through database.run)
+# ---------------------------------------------------------------------------
+def db_wait(conn: sqlite3.Connection, change: Change, user_id: int | None, added: bool, at: datetime) -> int:
+    """Keep a change while it waits. Returns its row, to be let go once it is dealt with."""
+    cursor = conn.execute(
+        "INSERT INTO reaction_waiting (message_id, channel_id, emoji, discord_user_id, user_id, added, at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (change.message_id, change.channel_id, change.emoji, change.discord_user_id, user_id, int(added), at.isoformat()),
+    )
+    return cursor.lastrowid
+
+
+def db_waiting(conn: sqlite3.Connection) -> list[Waiting]:
+    rows = conn.execute("SELECT id, message_id, channel_id, emoji, discord_user_id, added, at FROM reaction_waiting ORDER BY id").fetchall()
+    return [Waiting(row[0], row[1], row[2], row[3], row[4], bool(row[5]), datetime.fromisoformat(row[6])) for row in rows]
+
+
+def db_done_waiting(conn: sqlite3.Connection, row_ids: list[int]) -> None:
+    for row_id in row_ids:
+        conn.execute("DELETE FROM reaction_waiting WHERE id = ?", (row_id,))
+

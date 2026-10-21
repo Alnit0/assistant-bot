@@ -70,7 +70,7 @@ def test_the_real_cards_note_and_forget_the_yes(monkeypatch):
     async def send_card(channel_id, card, text, silent=False):
         return 4242
 
-    async def edit_card(channel_id, message_id, card, plain):
+    async def edit_card(channel_id, message_id, card, plain, fall_back=True):
         return None
 
     async def delete(channel_id, message_id):
@@ -170,7 +170,7 @@ def test_a_thumbs_up_on_a_tracked_message_waits_its_quiet_period(thumbs):
     message_id = posted(thumbs.world)
     payload = reacted("👍", message_id)
     asyncio.run(registry.reaction_changed(payload, True))
-    assert thumbs.debounced == [(payload, True)] and thumbs.refused == []
+    assert [event[:2] for event in thumbs.debounced] == [(payload, True)] and thumbs.refused == []
 
 
 def test_a_thumbs_up_on_an_untracked_message_is_ignored_in_silence(thumbs):

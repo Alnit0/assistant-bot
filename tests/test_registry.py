@@ -245,13 +245,13 @@ def test_a_valid_reaction_waits_out_the_quiet_period(reactions_watched):
     asyncio.run(registry.reaction_changed(added, True))
     asyncio.run(registry.reaction_changed(removed, False))
     assert reactions_watched.refused == []
-    assert reactions_watched.debounced == [(added, True), (removed, False)]
+    assert [event[:2] for event in reactions_watched.debounced] == [(added, True), (removed, False)]
 
 
 def test_a_reaction_with_no_check_goes_straight_to_the_debouncer(reactions_watched):
     payload = reaction("📌")
     asyncio.run(registry.reaction_changed(payload, True))
-    assert reactions_watched.debounced == [(payload, True)]
+    assert [event[:2] for event in reactions_watched.debounced] == [(payload, True)]
 
 
 def test_an_instant_reaction_runs_at_once_and_is_never_debounced(reactions_watched, monkeypatch):
@@ -388,7 +388,7 @@ def test_someone_who_is_not_allowed_is_not_told_why(reactions_watched, stranger,
     payload = reaction("📦", user_id=22)
     asyncio.run(registry.reaction_changed(payload, True))
     assert reactions_watched.refused == [], "ignored without comment, as before"
-    assert reactions_watched.debounced == [(payload, True)]
+    assert [event[:2] for event in reactions_watched.debounced] == [(payload, True)]
 
 
 # --- what Claude is told ---------------------------------------------------

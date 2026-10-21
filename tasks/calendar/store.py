@@ -5,7 +5,7 @@ from core import database
 from tasks.calendar.rules import Event
 
 # ---------------------------------------------------------------------------
-# The copy of the calendar: each happening from yesterday to two months
+# The copy of the calendar: each happening from this week's Monday (or yesterday, on a Monday) to two months
 # ahead (a title and its times, nothing more), replaced whole on every good
 # read, and when the feed was last read and since when it has failed. Every
 # row has a user_id.

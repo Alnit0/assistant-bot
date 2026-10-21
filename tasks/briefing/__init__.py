@@ -3,7 +3,7 @@ import logging
 
 from datetime import timedelta
 
-from core import actions, attention, cards, clock, config, database, design, health, hub, livelists, messages, money, notify, repeats, scheduler, summaries, tidy, timeinput, whatsnew
+from core import actions, attention, cards, clock, config, database, design, health, hub, live, livelists, messages, money, notify, repeats, scheduler, summaries, tidy, timeinput, whatsnew
 from core import day as days
 from core.actions import SEE, Action, Field, LiveReply, Request, Shown
 from core.cards import Card
@@ -50,7 +50,8 @@ EXAMPLES = ("brief me", "what's on today?")
 ONLY_FOR_THE_DAY = (
     "The user's day as a whole, across everything the bot keeps: what is on today (\"brief me\", \"what's on "
     "today?\"), what is still left to do today or in part of it (\"what's left today?\", \"what's on tonight?\", "
-    "\"what have I got this afternoon?\", \"what's next?\"), and how yesterday or this week went "
+    "\"what have I got this afternoon?\", \"what's next?\"), whether anything, or a thing, is on in part of today "
+    "(\"is anything on tonight?\", \"is the gym on tonight?\"), and how yesterday or this week went "
     "overall (\"how did I go yesterday?\", \"how's this week going?\"). Not one named task's own list or history "
     "(which pills are left, or which were taken yesterday, is the pills task), not the weather (the weather "
     "task), and not when the briefing is posted (the schedule task)."
@@ -220,12 +221,28 @@ async def post_job(job: scheduler.Job) -> None:
     scheduler.note(job, "posted" if posted is not None else "not posted: nothing to say today")
 
 
+async def _refresh_hub(user_id: int) -> bool:
+    """Round 7: the hub's copy rewritten in place; one posted before round 7 (a layout, which can never take
+    embeds) is posted again as embeds, with its second message, and the old goes. False if there is none."""
+    found = await database.run(livelists.db_get, user_id, IN_THE_HUB)
+    if found is None:
+        return False
+    try:
+        return await cards.edit(found.channel_id, found.message_id, await _shown(user_id), fall_back=False)
+    except cards.Unfit:
+        log.info("The hub's briefing was posted before round 7 and can't take embeds: posted again as embeds")
+        return await post_in_hub(user_id, found.channel_id) is not None
+
+
 def summary_changed(task: str, user_id: int) -> None:
     """A task's summary may have changed: each copy that is up is rewritten in
     place. Several changes close together are one edit (core/live.py)."""
     for key in (IN_THE_HUB, ELSEWHERE):
         # Needs a look is live: every change redraws it, at most one edit every 30 seconds (Discord's limits)
-        livelists.changed(user_id, key, lambda: _shown(user_id), slow=True)
+        if key == IN_THE_HUB and embeds_round():
+            live.schedule(("list", user_id, key), lambda: _refresh_hub(user_id), slow=True)
+        else:
+            livelists.changed(user_id, key, lambda: _shown(user_id), slow=True)
     if embeds_round():
         livelists.changed(user_id, IN_THE_HUB_MORE, lambda: _shown_more(user_id), slow=True)
 
@@ -348,7 +365,8 @@ class BriefingTask(Task):
                 "day_left",
                 "The user asks what is still to do today, across everything (\"what's left today?\", \"what do I still "
                 "have to do today?\", \"am I done for today?\"), or in part of today (\"what's on tonight?\" -> part tonight; "
-                "\"what have I got this afternoon?\" -> part afternoon; \"what's next?\" -> part next). Not what is on today as a "
+                "\"what have I got this afternoon?\" -> part afternoon; \"what's next?\" -> part next), or whether anything or a "
+                "thing is on in it (\"is anything on tonight?\", \"is the gym on tonight?\" -> part tonight). Not what is on today as a "
                 "whole: that is briefing_show.",
                 (Field("part", "Only when a part of today is asked about: morning, afternoon, evening, tonight, or next (what comes next).", choices=(*rules.PARTS, rules.NEXT)),),
                 needs_card=False,

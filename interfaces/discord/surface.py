@@ -3,7 +3,7 @@ import logging
 import discord
 
 from core import cards, discord_utils
-from core.surface import Failed, Gone, Name, Place, Refused
+from core.surface import Failed, Gone, Name, Place, Refused, Unfit
 from interfaces.discord import render
 
 log = logging.getLogger("assistant")
@@ -220,7 +220,7 @@ async def send_card(channel_id: int, card, text: str, *, silent: bool = False) -
     return message.id
 
 
-async def edit_card(channel_id: int, message_id: int, card, plain) -> None:
+async def edit_card(channel_id: int, message_id: int, card, plain, *, fall_back: bool = True) -> None:
     message = _must(channel_id).get_partial_message(message_id)
     try:
         if cards.designed(card) or card.embeds:
@@ -231,6 +231,8 @@ async def edit_card(channel_id: int, message_id: int, card, plain) -> None:
             except discord.HTTPException as error:
                 if not card.embeds or error.status != 400:
                     raise
+                if not fall_back:
+                    raise Unfit(f"message {message_id} can't take embeds", error.status, error.code) from error
                 log.info("Card %s could not take embeds (%s): rewriting it as a layout", message_id, error)
                 await message.edit(**render.drawn(plain, was_designed=True))
                 return

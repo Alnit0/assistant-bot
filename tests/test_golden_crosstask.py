@@ -150,6 +150,72 @@ def test_x31_what_s_on_tonight_is_tonight_across_every_task_in_time_order(hub_da
     assert bot.chats == [], "never from chat"
 
 
+# --- x16, x16a, x16b (22 Oct): whether a thing is on, from data, with the gym on and off --------------------------------
+def _gym_tonight_and_tomorrow(bot, make_db, monkeypatch, tmp_path, gym_on):
+    """The evening of x31 with a made-up calendar beside it: Test gym at 6 pm today and tomorrow. With `gym_on`
+    the gym task is loaded too, as on live: the gym's own task must not take a question about the calendar's."""
+    from tasks import calendar
+    from tasks.calendar import store
+
+    def event(uid, on):
+        stamp = f"{on:%Y%m%d}"
+        return ["BEGIN:VEVENT", f"UID:{uid}@example.test", "SUMMARY:Test gym", f"DTSTART;TZID=Pacific/Auckland:{stamp}T180000",
+                f"DTEND;TZID=Pacific/Auckland:{stamp}T190000", "END:VEVENT"]
+
+    today = days.today()
+    feed = tmp_path / "gym.ics"
+    lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//assistant-bot//x16//EN", *event("gym-1", today), *event("gym-2", today + timedelta(days=1)), "END:VCALENDAR"]
+    feed.write_text("".join(line + chr(13) + chr(10) for line in lines), encoding="utf-8")
+    make_db({"calendar": store.MIGRATIONS})
+    monkeypatch.setattr(config, "CALENDAR_ENABLED", True)
+    monkeypatch.setattr(config, "CALENDAR_ICS_URL", str(feed))
+    extra = [*calendar.task.entries()]
+    if gym_on:
+        from tasks import gym
+        from tasks.gym import store as gym_store
+
+        make_db({"gym": gym_store.MIGRATIONS})
+        monkeypatch.setattr(config, "GYM_ENABLED", True)
+        extra += [*gym.task.entries()]
+    actions.set_catalogue([*actions.catalogue(), *extra])
+    run(calendar.update(bot.owner.id))
+    _evening(bot)
+
+
+def _never_named(bot, before):
+    """No request to Claude held the event's name: the hint is the word typed, the answer the code's."""
+    assert not [asked.purpose for asked in bot.requests[before:] if "Test gym" in asked.user], "an event's name went to Claude"
+    assert bot.chats == [], "plain chat can see none of my data: it was never asked"
+
+
+@pytest.mark.parametrize("golden, said", [("x16", "is the gym on tonight?"), ("x16a", "is anything on tonight?")])
+@pytest.mark.parametrize("gym_on", [False, True])
+def test_x16_whether_something_is_on_tonight_is_tonight_in_time_order_the_gym_among_it(hub_day, make_db, monkeypatch, tmp_path, gym_on, golden, said):
+    bot = hub_day
+    _gym_tonight_and_tomorrow(bot, make_db, monkeypatch, tmp_path, gym_on)
+    before = len(bot.requests)
+    bot.claude(ROUTED[golden], EXTRACTED[(golden, "briefing")])
+    bot.say(said)
+    assert _said(bot).splitlines() == [
+        "☀️ **Left tonight** · ○○ 0/2", "⏰ Put the bins out `5:00 pm`", "🗓️ Test gym `6:00 pm`", "💊 Pill C `9:00 pm`",
+        "-# and 1 with no time, any time today",
+    ], _said(bot)
+    assert _asked(bot, before) == [("router", ""), ("extraction", "briefing")], "one request each: chat never handed it back"
+    _never_named(bot, before)
+
+
+@pytest.mark.parametrize("gym_on", [False, True])
+def test_x16b_have_i_got_the_gym_tomorrow_is_tomorrow_s_events(hub_day, make_db, monkeypatch, tmp_path, gym_on):
+    bot = hub_day
+    _gym_tonight_and_tomorrow(bot, make_db, monkeypatch, tmp_path, gym_on)
+    before = len(bot.requests)
+    bot.claude(ROUTED["x16b"], EXTRACTED[("x16b", "calendar")])
+    bot.say("have I got the gym tomorrow?")
+    assert "Test gym" in _said(bot) and "6:00 pm" in _said(bot), _said(bot)
+    assert _asked(bot, before) == [("router", ""), ("extraction", "calendar")]
+    _never_named(bot, before)
+
+
 def test_x37_what_s_next_is_the_first_thing_still_to_come(hub_day):
     bot = hub_day
     _evening(bot)

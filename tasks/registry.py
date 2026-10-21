@@ -8,7 +8,7 @@ from dataclasses import dataclass
 import discord
 
 import tasks
-from core import day, dms, scheduler
+from core import clock, day, dms, scheduler
 from core.config import CHANNELS, ENABLED_TASKS
 from core.context import Context
 from core import actions, confirm, database, devmode, discord_utils, lifecycle, livelists, outgoing, reactions, summaries, tidy
@@ -254,6 +254,10 @@ def setup(client: discord.Client) -> None:
 
 async def startup(client: discord.Client) -> None:
     """Give each task its turn once the bot is connected. A failure is reported, not fatal."""
+    try:
+        await resume_waiting()
+    except Exception:
+        log.exception("The reactions waiting from before the restart could not be read")
     for task in _tasks:
         try:
             await task.startup(client)
@@ -525,8 +529,19 @@ async def _mark(channel_id: int, message_id: int, emoji: str, add: bool = True) 
         pass  # the message has gone, or we may not react here
 
 
-async def _reactions_quiet(events: list[tuple[discord.RawReactionActionEvent, bool]]) -> None:
-    """Things have gone quiet: bring what is applied into line with the reactions that are there."""
+async def _reactions_quiet(events: list[tuple]) -> None:
+    """Things have gone quiet: bring what is applied into line with the reactions that are there.
+    Each event is (Discord's event, added) and the row it waits in (reaction_waiting), let go once
+    the batch is dealt with, however that goes: it is acted on once."""
+    try:
+        await _settle_reactions([(event[0], event[1]) for event in events])
+    finally:
+        rows = [event[2] for event in events if len(event) > 2 and event[2] is not None]
+        if rows:
+            await database.run(reactions.db_done_waiting, rows)
+
+
+async def _settle_reactions(events: list[tuple[discord.RawReactionActionEvent, bool]]) -> None:
     changes: list[tuple[reactions.Key, bool]] = []
     payloads: dict[reactions.Key, discord.RawReactionActionEvent] = {}
     users: dict[reactions.Key, User] = {}
@@ -691,7 +706,41 @@ async def reaction_changed(payload: discord.RawReactionActionEvent, added: bool)
         if added:
             await dispatch_reaction(payload)
         return
-    _reaction_debouncer.trigger((payload, added))
+    await _wait_out(payload, added)
+
+
+async def _wait_out(payload, added: bool) -> None:
+    """Keep the change in the database (a stop before the quiet period ends loses nothing), then
+    let it wait out the quiet period. One that can't be kept still waits, in memory only."""
+    user = await get_user_by_discord_id(payload.user_id)
+    change = reactions.Change(payload.message_id, payload.channel_id, _emoji_key(payload.emoji), payload.user_id)
+    try:
+        row_id = await database.run(reactions.db_wait, change, user.id if user is not None else None, added, clock.real_now())
+    except Exception:
+        log.exception("A reaction waiting out the quiet period could not be kept in the database")
+        row_id = None
+    _reaction_debouncer.trigger((payload, added, row_id))
+
+
+async def resume_waiting() -> None:
+    """At the start: the reactions that were waiting out the quiet period when the bot stopped wait
+    it out again and are dealt with as they would have been (checked as then, with ✅ and undo).
+    One older than the quiet period and reactions.STALE_AFTER is dropped, and said in the log."""
+    waiting = await database.run(reactions.db_waiting)
+    if not waiting:
+        return
+    kept, dropped = reactions.resumable(waiting, clock.real_now(), _reaction_debouncer.delay)
+    for each in dropped:
+        log.info(
+            "A reaction from before the restart was too old to act on, dropped: %s %s message %s at %s",
+            each.emoji, "on" if each.added else "taken off", each.message_id, each.at.isoformat(timespec="seconds"),
+        )
+    if dropped:
+        await database.run(reactions.db_done_waiting, [each.row_id for each in dropped])
+    for each in kept:
+        _reaction_debouncer.trigger((each, each.added, each.row_id))
+    if kept:
+        log.info("%d reaction change(s) from before the restart wait out the quiet period again", len(kept))
 
 
 async def _apply_reaction(key: reactions.Key, payload: discord.RawReactionActionEvent, user: User) -> None:

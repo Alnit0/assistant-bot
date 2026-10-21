@@ -3,7 +3,7 @@ from datetime import date, datetime, time, timedelta
 
 from core import clock, database, day, dms, hub, livelists, occurrences, repeats, tidy, timeinput, trace
 from core import schedule as core_schedule
-from core.actions import BOOLEAN, INTEGER, ITEMS, LAST, LIST, MINUTES, TIME, TIMES, Action, Answer, Choice, Field, LiveReply, Proposal, Question, Request, Shown, State
+from core.actions import BOOLEAN, INTEGER, ITEMS, LAST, LIST, MINUTES, TIME, TIMES, Action, Answer, Choice, Field, LiveReply, Proposal, Question, Request, Shown, State, just_saved_one
 from core.actions import EACH_DAY, SEE, SET_UP, flag, is_guessed
 from core.actions import is_reference, point_at
 from core.errors import UserError
@@ -341,12 +341,7 @@ def just_saved_pill(request: Request) -> str | None:
     the one mentioned last on it, or the only one it held. None when no card
     was just saved, it was another task's, or it held several with none
     mentioned last: then nothing is known, and nothing is made up."""
-    saved = request.just_saved
-    if saved is None or saved.task != TASK:
-        return None
-    held = [item.get("pill") or item.get("name") for item in saved.data.get("pills", []) if isinstance(item, dict)]
-    held = [str(each) for each in held if each]
-    return saved.data.get(LAST) or (held[0] if len(held) == 1 else None)
+    return just_saved_one(request, TASK, lambda data: [item.get("pill") or item.get("name") for item in data.get("pills", []) if isinstance(item, dict)])
 
 
 async def _pointed(request: Request, items: list[dict], key: str) -> tuple[list[dict], str | None]:

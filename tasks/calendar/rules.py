@@ -25,7 +25,7 @@ TASK = "calendar"
 ICON = "🗓️"
 TITLE = "Calendar"
 AHEAD_DAYS = 62  # how far ahead the copy reaches
-BEHIND_DAYS = 1  # and back: yesterday, for an event that runs past midnight
+BEHIND_DAYS = 1  # and back at least: yesterday, for an event that runs past midnight
 SOON = timedelta(minutes=30)  # an event this close is worth a look (attention level 3)
 STALE = timedelta(hours=6)  # a feed not read for this long needs a look
 NO_TITLE = "(no title)"
@@ -36,6 +36,12 @@ BY_DAY_UP_TO = 7  # days: a span this long or shorter is grouped by day
 BY_WEEK_UP_TO = 62  # days: longer than a week and up to this, grouped by week; longer, one list in date order
 LONGEST_SPAN = 2 * 366  # days a question may cover
 SPAN_SHOWN = 25  # events listed in full for a span longer than a week, then "+N more"
+
+
+def first_kept(today: date) -> date:
+    """The first day the copy keeps: this week's Monday, so the week view's earlier days this week show
+    their events (22 Oct); yesterday when that is earlier (on a Monday), for an event past midnight."""
+    return min(today - timedelta(days=today.weekday()), today - timedelta(days=BEHIND_DAYS))
 
 
 @dataclass(frozen=True)

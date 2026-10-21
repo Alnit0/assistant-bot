@@ -1,4 +1,4 @@
-"""A day in the hub: `python -m selftest.day [--post [file]] [--check file]`.
+"""A day in the hub: `python -m selftest.day [--round N] [--switch N] [--post [file]] [--check file]`.
 
 The dev bot is run through one made-up day on the dev clock, 6 am to
 midnight, with every switch live has on, and the hub is read back at set
@@ -20,6 +20,7 @@ a file's transcript and the rule checks without running anything.
 """
 import asyncio
 import json
+import os
 import sys
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
@@ -29,6 +30,7 @@ from core import day as days
 from tasks.reading.news import story_id
 
 TITLE = "Design · A day in the hub"
+SWITCH_TO = "DAY_SWITCH_ROUND"  # `--switch N`: the round that comes in after the 6 am snapshot
 NAME = "day"
 # Live's switches as of 16 Oct (live's .env) with calendar writing too, and made-up sources in place of real
 # ones: the weather, the calendar's link, the Bot calendar (a file in place of Google), the morning news's feeds
@@ -404,6 +406,10 @@ async def story(h) -> None:
 
     # --- the day ----------------------------------------------------------------------------------------
     await snap(0)
+    if SWITCH_TO in os.environ:
+        # `--switch N`: the morning was posted in the round before, and round N comes in now, as a ship would
+        # bring it (the hub's briefing from before round 7 can't take embeds: it is posted again)
+        config.DESIGN_ROUND = int(os.environ[SWITCH_TO])
     await _at(h, the_day, 7, 5)
     await step("d.11", "Pill B: Taken on its reminder", reminder_taken)
     await _at(h, the_day, 7, 20)
@@ -555,7 +561,7 @@ def may_run(now: datetime) -> str:
     return ""
 
 
-def run_day(anyway: bool = False, round_: int | None = None) -> Path | None:
+def run_day(anyway: bool = False, round_: int | None = None, switch: int | None = None) -> Path | None:
     from selftest import __main__ as launcher
     from selftest import stages
     from core import instance_lock
@@ -589,7 +595,7 @@ def run_day(anyway: bool = False, round_: int | None = None) -> Path | None:
     channels = asyncio.run(launcher.prepare_channels())
     saved = launcher.set_aside(stamp)
     try:
-        found = launcher.run_phase(NAME, {**SETTINGS, **made_up, **({"DESIGN_ROUND": str(round_)} if round_ else {})}, channels, False, 0.0, {}, stamp)
+        found = launcher.run_phase(NAME, {**SETTINGS, **made_up, **({"DESIGN_ROUND": str(round_)} if round_ else {}), **({SWITCH_TO: str(switch)} if switch else {})}, channels, False, 0.0, {}, stamp)
     finally:
         launcher.put_back(saved, stamp)
         try:
@@ -765,7 +771,8 @@ def main() -> int:
         print("Posted:", asyncio.run(post(snapshots, heading if "--reply" in args else "")))
         return 0
     wanted = args[args.index("--round") + 1] if "--round" in args and args.index("--round") + 1 < len(args) else ""
-    out = run_day(anyway="--anyway" in args, round_=int(wanted) if wanted.isdigit() else None)
+    switch = args[args.index("--switch") + 1] if "--switch" in args and args.index("--switch") + 1 < len(args) else ""
+    out = run_day(anyway="--anyway" in args, round_=int(wanted) if wanted.isdigit() else None, switch=int(switch) if switch.isdigit() else None)
     if out is None:
         return 3
     print(transcript(json.loads(out.read_text(encoding="utf-8"))["snapshots"]))

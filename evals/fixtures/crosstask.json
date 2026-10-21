@@ -322,9 +322,107 @@
       "golden": "x16",
       "message": "is the gym on tonight?",
       "tasks": [
+        "briefing"
+      ],
+      "note": "whether a thing is on in part of today: the briefing's answer for tonight, in time order across tasks, the events among them (22 Oct; it was the calendar's, then chat handed it back). The calendar hints gym is one of its events: the word typed, never the event",
+      "names": {
+        "todos": [
+          "Renew the passport",
+          "Buy milk",
+          "Call the plumber"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Skincare",
+          "Cleanse",
+          "Tone",
+          "Moisturise",
+          "Brush teeth",
+          "Floss",
+          "Read for 10 minutes"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B",
+          "Pill C"
+        ],
+        "calendar": [
+          "Test standup",
+          "Test lunch",
+          "Test gym",
+          "Test dentist"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "briefing"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x16a",
+      "message": "is anything on tonight?",
+      "tasks": [
+        "briefing"
+      ],
+      "note": "whether anything is on tonight: the briefing's answer for tonight",
+      "names": {
+        "todos": [
+          "Renew the passport",
+          "Buy milk",
+          "Call the plumber"
+        ],
+        "habits": [
+          "Morning",
+          "Evening",
+          "Stretch",
+          "Glass of water",
+          "Skincare",
+          "Cleanse",
+          "Tone",
+          "Moisturise",
+          "Brush teeth",
+          "Floss",
+          "Read for 10 minutes"
+        ],
+        "pills": [
+          "Pill A",
+          "Pill B",
+          "Pill C"
+        ],
+        "calendar": [
+          "Test standup",
+          "Test lunch",
+          "Test gym",
+          "Test dentist"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "briefing"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "x16b",
+      "message": "have I got the gym tomorrow?",
+      "tasks": [
         "calendar"
       ],
-      "note": "a question about an event: the calendar, which hints that gym is the start of one of its events (15 Oct: it went to chat without the hint)",
+      "note": "whether an event is on another day: the calendar's",
       "names": {
         "todos": [
           "Renew the passport",
@@ -363,6 +461,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -1414,6 +1513,66 @@
           "guessed": [
             "time"
           ],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "x16",
+      "task": "briefing",
+      "message": "is the gym on tonight?",
+      "action": "day_left",
+      "data": {
+        "part": "tonight"
+      },
+      "state": "",
+      "note": "the code lists what is on tonight, the gym among it",
+      "recorded": [
+        "day_left",
+        {
+          "part": "tonight",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "x16a",
+      "task": "briefing",
+      "message": "is anything on tonight?",
+      "action": "day_left",
+      "data": {
+        "part": "tonight"
+      },
+      "state": "",
+      "note": "the code lists what is on tonight",
+      "recorded": [
+        "day_left",
+        {
+          "part": "tonight",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "x16b",
+      "task": "calendar",
+      "message": "have I got the gym tomorrow?",
+      "action": "calendar_show",
+      "data": {
+        "day": "tomorrow"
+      },
+      "also_ok": {
+        "action": "calendar_when"
+      },
+      "state": "",
+      "note": "tomorrow's events, or when the gym is next: either is from the calendar's own data",
+      "recorded": [
+        "calendar_show",
+        {
+          "day": "tomorrow",
+          "guessed": [],
           "not_included": []
         }
       ]

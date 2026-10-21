@@ -389,5 +389,5 @@ async def undo(kind: str, ref: str, title: str, detail: dict, writer) -> str:
 async def refresh(user_id: int, writer) -> None:
     """The Bot calendar's part of the copy read again at once: a series is many happenings."""
     today = days.today()
-    events = await writer.events(today - timedelta(days=rules.BEHIND_DAYS), today + timedelta(days=rules.AHEAD_DAYS))
+    events = await writer.events(rules.first_kept(today), today + timedelta(days=rules.AHEAD_DAYS))
     await database.run(store.db_keep_from, user_id, source.BOT, events)

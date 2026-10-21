@@ -559,6 +559,18 @@ REFERENCE = "@that"
 LAST = "_last"  # in a card's data: what the user mentioned last, for the next "it"
 
 
+def just_saved_one(request: "Request", task: str, held: Callable[[dict], list]) -> str | None:
+    """What "it" means straight after a Save ("no, 7pm"), as the task's card named it: the thing
+    mentioned last on the card saved a moment ago, or the only one it held (`held` gives the names
+    or refs in the saved data). None when no card was just saved, it was another task's, or it held
+    several with none mentioned last: then nothing is known, and nothing is made up."""
+    saved = request.just_saved
+    if saved is None or saved.task != task:
+        return None
+    found = [str(each) for each in held(saved.data) if each]
+    return saved.data.get(LAST) or (found[0] if len(found) == 1 else None)
+
+
 def is_reference(value) -> bool:
     return isinstance(value, str) and value.strip().lower() in (REFERENCE, "@it", "@this", "@them", "@those")
 

@@ -279,8 +279,11 @@ def parse(raw, names: list[str]) -> Route:
     reports = raw.get("reports_doing") is True
     if raw.get("kind") == NOTHING and not tasks:
         return Route(problem=problem, nothing=True, reports=reports)
-    # Nothing with a task named is a task: something was asked for
-    if raw.get("kind") == CHAT or not tasks:
+    # Nothing with a task named is a task: something was asked for. So is chat with one task named, sure of
+    # it: plain chat names none, and the real router answered "Will it rain?" so after a card was shown,
+    # the weather named (golden 28a, 22 Oct). Chat naming two, or a tie, is still chat
+    named_one = raw.get("kind") == CHAT and len(tasks) == 1 and raw.get("confidence") == HIGH
+    if (raw.get("kind") == CHAT and not named_one) or not tasks:
         return Route(problem=problem, reports=reports)
     aside = raw.get("chat_part")
     return Route(

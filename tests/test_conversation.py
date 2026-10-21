@@ -93,7 +93,7 @@ def world(make_db, monkeypatch, owner):
     live.reset()
     conversation.setup()
 
-    seen = SimpleNamespace(sent=[], deleted=[], edited=[], requests=[], chats=[], next_id=5000, bot_messages=[], order=[], reactions=[])
+    seen = SimpleNamespace(sent=[], deleted=[], edited=[], edited_cards=[], requests=[], chats=[], next_id=5000, bot_messages=[], order=[], reactions=[])
 
     async def send(channel_id, card, silent=False):
         cards.check(card)
@@ -107,8 +107,9 @@ def world(make_db, monkeypatch, owner):
         seen.deleted.append(message_id)
         return True
 
-    async def edit(channel_id, message_id, card):
+    async def edit(channel_id, message_id, card, fall_back=True):
         seen.edited.append((message_id, card.text))
+        seen.edited_cards.append((message_id, card))
         return True
 
     monkeypatch.setattr(cards, "send", send)

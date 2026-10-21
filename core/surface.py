@@ -50,6 +50,10 @@ class Refused(Failed):
     """The interface would not let this bot in at all (a token it refuses)."""
 
 
+class Unfit(Failed):
+    """The message on hand can't be drawn as asked (one posted as a layout can never take embeds)."""
+
+
 @dataclass(frozen=True)
 class Place:
     """Somewhere messages may be: a channel, a thread, a direct message."""
@@ -198,9 +202,11 @@ async def send_card(channel_id: int, card, text: str, *, silent: bool = False) -
     return await _door().send_card(channel_id, card, text, silent=silent)
 
 
-async def edit_card(channel_id: int, message_id: int, card, plain) -> None:
-    """Rewrite a card in place: `plain` is the same card as words and rows only. Raises Gone or Failed."""
-    await _door().edit_card(channel_id, message_id, card, plain)
+async def edit_card(channel_id: int, message_id: int, card, plain, *, fall_back: bool = True) -> None:
+    """Rewrite a card in place: `plain` is the same card as words and rows only. Raises Gone or Failed.
+    A card of embeds on a message that can't take them is drawn as `plain` instead, or, with `fall_back`
+    off, raises Unfit and changes nothing."""
+    await _door().edit_card(channel_id, message_id, card, plain, fall_back=fall_back)
 
 
 def answer(source):
