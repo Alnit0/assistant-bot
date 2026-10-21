@@ -32,6 +32,10 @@ pure; tasks/lab/animate.py, through the door).
   (`permission="lab"`), any channel, typed only.
 - **The busy line** is posted silently and deleted by a stored job after the
   usual seconds (`tidy.later`, `lifecycle.delete_after()`).
+- **On in live** (Alex, 21 Oct, to try from his phone): `LAB_GRID=true` in
+  live's `.env`. "lab grid" answers in every channel the bot reads typed
+  words in and in a direct message, owner only: its registration says
+  anywhere already, so nothing about it changed.
 - **The check on the dev bot** is `python -m selftest.labgrid`: a phase of its
   own (the harness types "lab grid" as the owner in the self-test's #inbox),
   the dev database set aside and put back, the channel not purged first, so

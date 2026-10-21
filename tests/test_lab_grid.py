@@ -152,5 +152,18 @@ def test_the_word_is_only_there_with_lab_grid_on(monkeypatch):
     assert found.permission == "lab" and found.takes_args and found.usage == "[seconds]" and found.exact
 
 
+def test_the_word_answers_in_every_channel_and_in_a_direct_message(monkeypatch):
+    """Alex, 21 Oct: on live, from his phone, wherever he is. Its registration says anywhere."""
+    from core import dms
+    from tasks import lab, registry
+
+    monkeypatch.setattr(config, "LAB_GRID", True)
+    (found,) = [each for each in lab.task.keywords() if "lab grid" in ([each.words] if isinstance(each.words, str) else each.words)]
+    assert registry.where(found) == "anywhere"
+    assert registry.works_in(found, 123456) and registry.works_in(found, config.INBOX_CHANNEL_ID)
+    monkeypatch.setattr(dms, "is_dm", lambda channel_id: channel_id == 777)
+    assert registry.works_in(found, 777), "a direct message too"
+
+
 def test_off_unless_switched_on():
     assert config.LAB_GRID is False
