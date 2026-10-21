@@ -3,15 +3,14 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Idle, last was** 21 Oct: round 7, the briefing as embeds (behind
-`DESIGN_ROUND=7`), then 👍 as yes (behind `THUMBS_UP`), both pushed. Live
-NOT restarted or updated (Alex does it): still on `6ba3e80`, round 5.
+**Idle, last was** 21 Oct: round 7, the hub as two messages of embeds,
+built and pushed (`d327729`, behind `DESIGN_ROUND=7`); 👍 as yes, built
+and pushed (`b2fa0a4`, behind `THUMBS_UP`). Neither is live: live is
+still on `6ba3e80` with `DESIGN_ROUND=5` (Alex updates and restarts it).
 
-**Next, at the next restart** (not overnight): the settle-in week, a
-feature freeze to Sun 25 Oct (fixes and polish from real use only, new
-ideas to the backlog; into CLAUDE.md too), #guide with a pinned message
-a live feature and the setup checklist card (docs/SETUP-CHECKLIST.md),
-and the Sunday feature-use report (`/catchup` on Sundays, and here).
+**The feature freeze is called off** (Alex, 21 Oct): no settle-in week.
+**Next:** Alex's list of changes (not heard yet); 👍 goes live when he
+updates live and sets `THUMBS_UP=true`.
 
 **For Alex to try:** send the gym logbook to #inbox; "starting a
 workout"; "weighed 82.4"; "bedtime 11pm" (the bedtime stays silent until

@@ -4,6 +4,8 @@
 
 **Kept up to date by Claude Code** at the end of every batch (see "Maintaining this file" at the bottom). Last brought fully up to date: 17 Oct 2026, overnight.
 
+Design history, interaction decisions and planned features are in `docs/ADVISOR-CONTEXT.md`: read it too.
+
 Never write here: a real pill name, a real event name, a bot's display name, a location more precise than "Auckland", a token, topic, link or ID.
 
 ---
@@ -93,12 +95,14 @@ Messages go through fast paths (buttons, exact typed words), then sticky follow-
 
 **Round 6 (a preview, 17 Oct, `DESIGN_ROUND=6` in `design.PREVIEW_ROUNDS`):** the timeline hub as Alex set it out: the briefing a header (date with dots, weather and what's next, a faint done line, Needs a look only for a real problem), then one card an item in time order (doses at their times, moved ones struck through with why; routines, events with "on now · until"; reminders, planned to-dos, the diary from 6 pm, what is due, free gaps of 90 minutes or more), to-dos with no time last. `core/timeline.py` is the layout; "Design · Round 6 timeline" shows it beside round 5's real hub at 7 am, 12 pm and 8 pm, a busy day, the one-moving-pills-card variant and the conversation tidy. Not in the hub yet: that waits for his pick.
 
+**Round 7 (built and pushed 21 Oct, `d327729`, behind `DESIGN_ROUND=7`; not live):** the hub's briefing as two messages of Discord embeds, each embed's border colour saying what it is: blue routines, repeating events and the diary; green done or taken; red due; yellow notable or one-off events; grey later, skipped or missed; purple AI tasks; pink to-dos. Message 1, the timeline: the date as its text, then an embed a thing in time order (events, then doses, then routines at the same time; doses with 🟩 Taken and the time, 🟥 Due, ⬜ Later; over ten, a grey "More today"). Message 2, tracking: the to-dos in pink and the diary's streak in blue, not sent with neither. Two messages because Discord allows 10 embeds a message. Gone from it: Needs a look, the weather line, yesterday's spend. More in `docs/ADVISOR-CONTEXT.md` and `docs/DESIGN-LOG.md`.
+
 **The week view (17 Oct):** this week pinned in #calendar, a box a day (today amber, past days faint, doses and routines counted in one small line), next week below, a line a day, edited at most once a minute; "my week" anywhere; the calendar's week and day answers in the same layout.
 
 **The design loop** (`docs/DESIGN-LOG.md` is the record: each round, his feedback word for word, what changed)
 - The Design forum has a post a round, tagged Live, Preview or Retired, drawn by the real code from made-up data (`python -m selftest.preview --post-round N`), plus other previews ("Design · …").
 - **The day-in-the-hub replay** (`python -m selftest.day [--round N]`) runs the dev bot through one made-up day and reads the hub back at eight moments with the status line live would show; `--post` puts it in the forum. Use it for every round.
-- Live changes only when he says "ship round N" (`DESIGN_ROUND=N` in live's `.env`, one restart). Every built round stays selectable (1, 3, 4, 5).
+- Live changes only when he says "ship round N" (`DESIGN_ROUND=N` in live's `.env`, one restart). Every built round stays selectable (1, 3, 4, 5, and 7).
 - At the start of any design batch, Claude Code reads his replies in each round's post (`--replies-round N`) and copies them word for word into the log.
 
 ## 8. Decisions worth remembering
@@ -135,7 +139,10 @@ Messages go through fast paths (buttons, exact typed words), then sticky follow-
 **Waiting on Alex**
 - **The gym** (live 18 Oct, overnight, with its weight tracker, training insights and pain tracker): his logbook sent to #inbox to import; "Design · Gym"; the sheet mirror waits for a sheet shared with the service account (`docs/GYM-SHEET-SETUP.md`).
 - **The bedtime nudge** (live 18 Oct, silent until he says "bedtime 11pm").
-- **The settle-in week** (next, at the next restart): a feature freeze to Sun 25 Oct, #guide, the setup checklist, the Sunday feature-use report.
+- **Round 7** (the hub as two messages of embeds): built, not live (`d327729`); live is on round 5 until he sets `DESIGN_ROUND=7` and updates live.
+- **👍 as yes** (reaction-based confirmation): the prompt was ready and it is now built and pushed (`b2fa0a4`, behind `THUMBS_UP`), not live.
+- **His list of more changes** (21 Oct, when he called the feature freeze off): not heard yet.
+- **News headlines:** designed (RSS, one Haiku call a day, a purple embed in message 2), not built.
 - **Round 6** (17 Oct): his look at "Design · Round 6 timeline", and whether to build it into the hub (a card per dose, or the one moving pills card).
 - **Plan my day, birthdays, the week view, the diary's Write** shipped 17 Oct: his first days with them ("Design · Plan my day and birthdays").
 - **x5**: is "I need to call the bank on Friday" a to-do or a reminder? It goes to reminders.
