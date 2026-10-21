@@ -3,12 +3,11 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Idle, last batch was** 21 Oct (night): an animated grid, a proof of
-concept, "lab grid [seconds]" in the lab behind `LAB_GRID` (on in `.env.dev`
-only), pushed, not shipped. Checked on the dev bot (`python -m
-selftest.labgrid`): 1.41 s a frame on average at 1.0, 0.97 s at 0.5, none
-rate-limited. Both grids are in the dev bot's #inbox for Alex to compare.
-Live on `a025112` since 10:07 pm (the morning news).
+**Idle, last batch was** 21 Oct (night): the lab's animated grid shipped
+(Alex, to try from his phone): "lab grid [seconds]" answers anywhere the bot
+reads typed words and in a DM, owner only. On live it ran at 1.40 s a frame
+(1.0 asked), none rate-limited, settled green. The dev bot's two grids are
+still in its #inbox for him to compare.
 
 **The feature freeze is called off** (Alex, 21 Oct): no settle-in week.
 **Next:** Alex's list of changes (not heard yet); his first morning
@@ -21,8 +20,9 @@ set). The sheet mirror waits for a sheet (docs/GYM-SHEET-SETUP.md).
 **Sundays:** run `/suggest` (the brainstorm with the wishlist).
 **Nightly 17 Oct, 3:30 am:** 149 of 150 on `98697d4`, none failed.
 
-**Live:** `a025112` since 21 Oct, 10:07 pm (`DESIGN_ROUND=7`, `THUMBS_UP=true`,
-`READING_ENABLED=true`, `NEWS_CHANNEL_ID`); previous `f525879` (`-Back`).
+**Live:** `fec4cbb` since 21 Oct, 10:39 pm (`DESIGN_ROUND=7`, `THUMBS_UP=true`,
+`READING_ENABLED=true`, `NEWS_CHANNEL_ID`, `LAB_GRID=true`); previous `a025112`
+(`-Back`).
 **Drafts and worktrees:** `docs/drafts/gym-onboarding.md`; three old
 worktrees, all merged
 
