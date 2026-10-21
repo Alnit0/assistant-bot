@@ -380,3 +380,19 @@ which needs a word list on the title (CLAUDE.md: never); an event's own
 emoji in its title shows. Needs a look, the weather and the spend line are
 not in round 7's briefing (the ask replaces the hub entirely); a problem
 still reaches the status line and a ping.
+
+## The morning news (21 Oct)
+
+**What Alex decided, word for word where quoted:** the daily read and the planned News headlines become one feature: "it
+makes sense to only have one set of news generated". Topics, a fixed slot each: world politics, NZ politics, world news,
+tech, AI, and NZ housing and money (house prices, interest rates, the OCR, the economy, in the spirit of a bank's morning
+market brief). Web development and programming a wildcard, only on a day with something notable. 7 or 8 stories a day:
+one a topic, then 1 or 2 extras for the biggest news. Each story a bold headline that is the link, the topic in italics,
+a TL;DR of about 30 words (never more than 40). Compact: one purple embed, numbered, in round 7's message 2 after the
+to-dos and the diary's streak. 👍 on it means "good set today"; no per-story 👍 or 👎. Steering in words: "more like 3",
+"less AI", "skip housing tomorrow", "more NZ politics", "another one". Then, resumed: a paywalled article is dropped,
+never summarised from its feed snippet; at most one US-only politics story a day unless he asks for more.
+
+**What was done:** tasks/reading rebuilt as the morning news (tasks/reading/news.py, pick.py, plain.py), 39 feeds;
+message 2 now also sent with the news alone. Preview: "Design · Morning news" (a weekday, a Monday, a quiet day, a day
+with a topic empty), with a note asking him to look on his phone. Waiting on his look, and "turn on the morning news".

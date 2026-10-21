@@ -125,7 +125,12 @@ From the sketches of 15 Oct ("Design · Gym onboarding sketches";
 79. When an exercise goes as planned, is one tap (Done as planned)
     right, with words or the Different… box for anything else? → Yes.
 
-## Reading (`READING_ENABLED` stays off; preview "Design · Daily read")
+## Reading (answered 21 Oct by the morning news: the daily read's one article a day went)
+
+All five below are answered by the morning news (docs/DESIGN-LOG.md, 21 Oct): six topics a slot each and a wildcard (86),
+39 news feeds in place of the sixteen blogs and sites (87), picked at 5:30 am and in the hub at 6:00 (88), a TL;DR of about
+30 words for every story in place of one long read (89), and 7 or 8 a day, "another one" for more (90).
+
 
 86. Themes and balance: AI usage, programming and tech news, about a
     third each over a week, shaped by 👍, 👎 and what you say? → Yes,

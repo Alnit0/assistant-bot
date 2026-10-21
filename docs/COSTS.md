@@ -316,13 +316,21 @@ cross-task fixtures and the routers of calendar and briefing after the
 line changes), five runs, the largest US$0.227 (NZ$0.40). The self-test
 and the day in the hub used recorded answers only.
 
-## 9. The daily read (15 Oct, built, off)
+## 9. The morning news (21 Oct; in place of the daily read of 15 Oct)
 
-One request a day when on (`purpose` reading): Claude chooses among up
-to five articles, about 450 words of each, and writes the TL;DR. About
-US$0.004 a day, and the same for each "another one". The router and
-extraction cost as for any task. Its recorded checks cost US$0.071; one
-real pick, end to end on the real feeds, US$0.005.
+Two requests a morning when on (`purpose` reading, Haiku), measured on one
+real morning, 21 Oct, from all 39 feeds (920 items, 203 to Claude):
+
+| Request | In | Out | Seconds | US$ |
+|---|---|---|---|---|
+| The pick: the headlines with their snippets, the slots, his preferences | 14,385 | 156 | 2.1 | 0.0152 |
+| The TL;DRs: the 8 chosen articles' text, 600 words of each at most | 5,208 | 491 | 5.6 | 0.0077 |
+| **One morning** | | | 22.6 in all | **0.0228 (NZ$0.04)** |
+
+About NZ$1.20 a month. Each "another one" is one more TL;DR request, about
+US$0.002. The router and extraction cost as for any task. Nothing is cached
+yet (each system prompt is under the 2,048 tokens Haiku needs): not worth it
+at this size. The golden checks of this batch cost US$0.29 in all.
 
 ## 10. The smart inbox (17 Oct)
 

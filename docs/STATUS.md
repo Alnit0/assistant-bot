@@ -82,6 +82,15 @@ generated"). Step 1 done: the feeds and reading them.
 - **Stopped at step 3** (4:19 pm): the account's API usage limit was reached;
   live shares the key. Alex raised it and added credits; the batch went on
   from step 3, the paywall and US-only changes first.
+- **Steps 3 and 4 (done):** one real morning, both calls, US$0.0228
+  (NZ$0.04; docs/COSTS.md section 9): 39 feeds read in 3.5 s, 203 items to
+  Claude, 8 stories, one paywalled page replaced by its topic's next. The
+  preview and the day-in-the-hub replay moved to the morning news (the
+  harness gives a purpose's canned answer a tool each); "Design · Morning
+  news" posted from made-up headlines (a weekday, a Monday, a quiet day, a
+  topic empty), asking him to look on his phone. The dev-bot self-test: 150
+  steps, none failed, 197 recorded answers read back. The batch's spend:
+  about US$0.39 (NZ$0.67) of the NZ$2.00 cap.
 
 ## 👍 as yes (21 Oct, evening; pushed, not restarted)
 

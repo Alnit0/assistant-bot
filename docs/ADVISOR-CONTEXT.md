@@ -17,7 +17,7 @@ What each border colour means, everywhere an embed is used (round 7's hub, a rou
 - **Red** (#ED4245): due
 - **Yellow** (#FEE75C): notable or one-off events
 - **Grey** (#4E5058): later, skipped (and missed)
-- **Purple** (#9B59B6): AI tasks (news, gym, the daily read)
+- **Purple** (#9B59B6): AI tasks (the morning news, the gym)
 - **Pink** (#EB459E): to-dos
 
 In the code: `core/design.py` (`EMBED_COLOURS`). A task gives a status, never a colour.
@@ -54,15 +54,15 @@ Unicode emoji squares only, no custom emoji:
 
 - **Two messages**, because of the 10-embed limit.
 - **Message 1 (the timeline):** the date as its text, then an embed a thing in time order. At the same time: events first, then doses, then routines. Repeating events blue, notable ones yellow. Doses coloured by their state, with the time taken inline. Routines blue. Over ten, the tenth embed becomes a grey "More today" of the rest.
-- **Message 2 (tracking):** the to-dos in pink, the diary's streak in blue. Not sent when there is neither. Both messages are rewritten in place all day.
+- **Message 2 (tracking):** the to-dos in pink, the diary's streak in blue, then the morning news in purple. Sent when any of them has something. Both messages are rewritten in place all day.
 - "Brief me" outside the hub shows message 1 only.
 - **Gone from the old briefing:** the Needs a look line (a problem still reaches him through the status line and a ping), the weather line, and yesterday's spend.
-- Behind `DESIGN_ROUND=7`, built and pushed (`d327729`), not live: live is still on round 5.
+- Behind `DESIGN_ROUND=7`: live since 21 Oct, 3:23 pm (`f525879`), with `THUMBS_UP=true`.
 
 ## 6. Planned features
 
-- **News headlines** (designed, not built): from RSS, 30 to 50 feeds, one Haiku call a day to pick the 5 to 8 best. Categories: NZ news, NZ business, world, politics, tech, web and development, science. A purple embed in the hub's message 2.
-- **👍 as yes** (built and pushed 21 Oct, `b2fa0a4`, behind `THUMBS_UP`, not live): a registry of the messages that ask one simple yes (`core/thumbsup.py`), the 👍 through the bot's existing reaction path (`on_raw_reaction_add`, checked at once, a short quiet period, ✅, undo). On a dose's reminder it is Taken; on a reminder that went off or an expiry, Done; on a routine's own card, all of it done (the card turns green, 🟩 Done). It replaces the routines' dropdown; text still works.
+- **The morning news** (built 21 Oct, behind `READING_ENABLED`, not shipped; the daily read and News headlines as one: "it makes sense to only have one set of news generated"): 39 feeds, a topic each; at 5:30 am one Haiku call picks 7 or 8 (a story each for world politics, NZ politics, world news, tech, AI, NZ housing and money, then 1 or 2 extras; web development a wildcard), a second writes the TL;DRs. Paywalled articles never picked; one US-only politics story a day unless asked for more. One purple embed in message 2; 👍 a good set; steering in words (more like 3, less AI, more NZ politics, skip housing tomorrow, more US politics, another one). About NZ$0.04 a morning. **Live already has `READING_ENABLED=true`** (the old daily read has been running there): updating live to this code turns the morning news on.
+- **👍 as yes** (live since 21 Oct, 3:23 pm, `THUMBS_UP=true`): a registry of the messages that ask one simple yes (`core/thumbsup.py`), the 👍 through the bot's existing reaction path (`on_raw_reaction_add`, checked at once, a short quiet period, ✅, undo). On a dose's reminder it is Taken; on a reminder that went off or an expiry, Done; on a routine's own card, all of it done (the card turns green, 🟩 Done). It replaces the routines' dropdown; text still works.
 - **An emoji for each event:** one Haiku call per new event title to pick one. On the list, not blocking.
 - **Later:** money through Akahu, steps through a bridge from the phone, food logging (only if it would really be used).
 

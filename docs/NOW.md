@@ -3,16 +3,11 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Batch (21 Oct, evening): the morning news** (the daily read and News
-headlines as one task, on tasks/reading; not shipped). Steps:
-1. Feeds and reading them (39 feeds, topics, the window, paid, duplicates): done
-2. The pick, the TL;DRs, the store, the 5:30 job, the hub embed, 👍, steering,
-   and the golden conversations (21 of 21 live, cross-task routers 86 of 86): done
-2b. Resumed (the limit raised): paywalled pages dropped, never summarised;
-   at most one US-only politics story a day: done (checks 23 of 23)
-3. A real morning's run and its cost
-4. The preview post, the dev-bot self-test, the docs: not started
-Live: round 7 and 👍 since 3:23 pm (`DESIGN_ROUND=7`, `THUMBS_UP=true`).
+**Idle, last batch was** 21 Oct (evening): the morning news, the daily
+read and News headlines as one task (tasks/reading, `READING_ENABLED`),
+built and pushed, not shipped. Preview "Design · Morning news" posted;
+self-test 150 of 150; one morning US$0.023 (NZ$0.04). Live already has
+`READING_ENABLED=true`: updating live turns the news on.
 
 **The feature freeze is called off** (Alex, 21 Oct): no settle-in week.
 **Next:** Alex's list of changes (not heard yet); his first morning

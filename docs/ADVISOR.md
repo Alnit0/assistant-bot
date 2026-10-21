@@ -95,7 +95,9 @@ Messages go through fast paths (buttons, exact typed words), then sticky follow-
 
 **Round 6 (a preview, 17 Oct, `DESIGN_ROUND=6` in `design.PREVIEW_ROUNDS`):** the timeline hub as Alex set it out: the briefing a header (date with dots, weather and what's next, a faint done line, Needs a look only for a real problem), then one card an item in time order (doses at their times, moved ones struck through with why; routines, events with "on now · until"; reminders, planned to-dos, the diary from 6 pm, what is due, free gaps of 90 minutes or more), to-dos with no time last. `core/timeline.py` is the layout; "Design · Round 6 timeline" shows it beside round 5's real hub at 7 am, 12 pm and 8 pm, a busy day, the one-moving-pills-card variant and the conversation tidy. Not in the hub yet: that waits for his pick.
 
-**Round 7 (built and pushed 21 Oct, `d327729`, behind `DESIGN_ROUND=7`; not live):** the hub's briefing as two messages of Discord embeds, each embed's border colour saying what it is: blue routines, repeating events and the diary; green done or taken; red due; yellow notable or one-off events; grey later, skipped or missed; purple AI tasks; pink to-dos. Message 1, the timeline: the date as its text, then an embed a thing in time order (events, then doses, then routines at the same time; doses with 🟩 Taken and the time, 🟥 Due, ⬜ Later; over ten, a grey "More today"). Message 2, tracking: the to-dos in pink and the diary's streak in blue, not sent with neither. Two messages because Discord allows 10 embeds a message. Gone from it: Needs a look, the weather line, yesterday's spend. More in `docs/ADVISOR-CONTEXT.md` and `docs/DESIGN-LOG.md`.
+**Round 7 (built and pushed 21 Oct, `d327729`, behind `DESIGN_ROUND=7`; not live):** the hub's briefing as two messages of Discord embeds, each embed's border colour saying what it is: blue routines, repeating events and the diary; green done or taken; red due; yellow notable or one-off events; grey later, skipped or missed; purple AI tasks; pink to-dos. Message 1, the timeline: the date as its text, then an embed a thing in time order (events, then doses, then routines at the same time; doses with 🟩 Taken and the time, 🟥 Due, ⬜ Later; over ten, a grey "More today"). Message 2, tracking: the to-dos in pink and the diary's streak in blue, not sent with neither. Two messages because Discord allows 10 embeds a message. Gone from it: Needs a look, the weather line, yesterday's spend. More in `docs/ADVISOR-CONTEXT.md` and `docs/DESIGN-LOG.md`. Live since 21 Oct, 3:23 pm (`f525879`).
+
+**The morning news** (built 21 Oct, behind `READING_ENABLED`, on feature/pills, not shipped): the daily read and News headlines as one task on tasks/reading. 7 or 8 stories a morning, one for each of world politics, NZ politics, world news, tech, AI and NZ housing and money, then 1 or 2 extras for the biggest news; web development a wildcard only on a notable day. Each a bold headline that is the link, the topic in italics, a TL;DR of about 30 words. One purple embed in round 7's message 2 (sent with the news alone too); not in the hub before round 7. 👍 on it is a good set. Preview: "Design · Morning news".
 
 **The week view (17 Oct):** this week pinned in #calendar, a box a day (today amber, past days faint, doses and routines counted in one small line), next week below, a line a day, edited at most once a minute; "my week" anywhere; the calendar's week and day answers in the same layout.
 
@@ -133,23 +135,23 @@ Messages go through fast paths (buttons, exact typed words), then sticky follow-
 - **The wishlist** (17 Oct, `core/wishes.py`): a quiet row each time live could not do what was asked, task and why only; "add to my wishlist: …" adds his own; the count in the week's summary; `/suggest` reruns `docs/BRAINSTORM.md` with it (Sundays).
 - **Bugs changed outside the bot** (a fix marked shipped from the command line) show in Needs a look within a minute (`tasks/bugs/watch.py`).
 - **The test suite** runs in about 40 seconds; `TESTS_AS_ON_LIVE=1` about 80.
+- **The morning news** (21 Oct): language is Claude's (the pick, the TL;DRs), rules are Python's: one story a topic where any exist, never padded, never more than 8, only items it was given, each TL;DR cut to 40 words, every link the item's own. Paywalled articles dropped before they are summarised (the NZ Herald's `/premium/` link, Newsroom's Premium category, a page's own `isAccessibleForFree`), never from a snippet; at most one story about US politics alone a day unless he asks for more. One morning costs US$0.023 (NZ$0.04), two Haiku calls.
+- **Before a batch's first request to Claude**, one small Haiku call checks the API answers: the account's usage limit stopped a batch on 21 Oct, and live shares the key.
 
 ## 9. Open threads (update every batch)
 
 **Waiting on Alex**
 - **The gym** (live 18 Oct, overnight, with its weight tracker, training insights and pain tracker): his logbook sent to #inbox to import; "Design · Gym"; the sheet mirror waits for a sheet shared with the service account (`docs/GYM-SHEET-SETUP.md`).
 - **The bedtime nudge** (live 18 Oct, silent until he says "bedtime 11pm").
-- **Round 7** (the hub as two messages of embeds): built, not live (`d327729`); live is on round 5 until he sets `DESIGN_ROUND=7` and updates live.
-- **👍 as yes** (reaction-based confirmation): the prompt was ready and it is now built and pushed (`b2fa0a4`, behind `THUMBS_UP`), not live.
+- **Round 7 and 👍 as yes** (live since 21 Oct, 3:23 pm, `DESIGN_ROUND=7`, `THUMBS_UP=true`): his first mornings with them.
+- **The morning news** (built and pushed, not shipped): his look at "Design · Morning news" on his phone, and "turn on the morning news" when he wants it live. Live already has `READING_ENABLED=true` (the old daily read has run there), so updating live to this code turns it on: set it false first to wait.
 - **His list of more changes** (21 Oct, when he called the feature freeze off): not heard yet.
-- **News headlines:** designed (RSS, one Haiku call a day, a purple embed in message 2), not built.
 - **Round 6** (17 Oct): his look at "Design · Round 6 timeline", and whether to build it into the hub (a card per dose, or the one moving pills card).
 - **Plan my day, birthdays, the week view, the diary's Write** shipped 17 Oct: his first days with them ("Design · Plan my day and birthdays").
 - **x5**: is "I need to call the bank on Friday" a to-do or a reminder? It goes to reminders.
 - **The smart inbox and the brainstorm** (17 Oct): questions 93 to 98; which of the brainstorm's top 10 to build ("Design · Brainstorm").
 - **Round 5** (live since 15 Oct with the suggested answers): his yes or no item by item on "Design · Round 5" (questions 68 to 75).
 - **The fix for when doses were taken** (`effbe2e`) ships at the next restart.
-- **The daily read** (built 15 Oct, `READING_ENABLED` off): his look at "Design · Daily read" and questions 86 to 90 (themes, sources, time, length, how many).
 - **What's new for 16 Oct** has four older lines queued besides the four new ones: whether they go.
 - **Calendar ids:** which calendar his events are really on (the Gmail one showed 1 event against 5 that week); then `CALENDAR_READ` lists it and the iCal link goes (`docs/GOOGLE-SETUP.md`).
 - **Questions 91 and 92** from the day in the hub with everything on.

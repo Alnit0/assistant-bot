@@ -20,6 +20,7 @@ from datetime import date, datetime, time, timedelta
 from core import config, design
 from core import day as days
 from core.actions import Choice, Entry, Proposal, Question, Summary
+from core.cards import Card
 from core.occurrences import DONE, MISSED, PENDING, Occurrence
 from core.schedule import AFTER_PREVIOUS, ANY_TIME, PLANNED, Due, Schedule
 from core.summaries import Section
@@ -727,7 +728,13 @@ async def post_preview(title: str, intro: str, found: list[tuple[str, tuple]], t
         for label, pieces in found:
             if label:
                 await made.thread.send(f"### {label}", allowed_mentions=quiet)
-            await made.thread.send(view=render.layout_view(pieces), allowed_mentions=quiet)
+            if isinstance(pieces, Card) and pieces.embeds:
+                # Round 7's messages of embeds (the briefing, the morning news), drawn as live draws them
+                await made.thread.send(render.heading(pieces), embeds=render.embeds(pieces), allowed_mentions=quiet)
+            elif isinstance(pieces, Card):
+                await made.thread.send(pieces.text, allowed_mentions=quiet)
+            else:
+                await made.thread.send(view=render.layout_view(pieces), allowed_mentions=quiet)
             await asyncio.sleep(1)  # paced: well under Discord's rate limit
         return made.thread.jump_url
 
@@ -1020,55 +1027,80 @@ def diary_opening() -> str:
 
 
 # ---------------------------------------------------------------------------
-# The daily read (READING_ENABLED, off): `python -m selftest.preview --reading`,
-# a post of its own. Mock articles only, drawn by the task's own card.
+# The morning news (READING_ENABLED, off; 21 Oct): `python -m selftest.preview --news`, a post of its own.
+# Round 7's second message drawn by the real code (tasks/briefing/embeds.py, tasks/reading/news.py) from
+# made-up headlines only: an ordinary weekday, a Monday, a quiet day with no wildcard, a day with a topic empty.
 # ---------------------------------------------------------------------------
-READING_TITLE = "Design · Daily read"
-READING = Entry("reading", "📖", "Daily read", "x", ("y",), ())
+NEWS_TITLE = "Design · Morning news"
+NEWS_ENTRY = Entry("reading", "📰", "Morning news", "x", ("y",), ())
+_MADE_UP = {
+    "world_politics": ["Made-up: a northern republic calls a snap election after its coalition splits", "Made-up: two neighbours sign a border pact after a decade of talks"],
+    "nz_politics": ["Made-up: parliament passes the water reform bill on a split vote", "Made-up: a minister steps down over a report on school funding"],
+    "world": ["Made-up: an earthquake shakes an island chain, thousands without power", "Made-up: a river delta braces for its worst floods in fifty years"],
+    "tech": ["Made-up: a chip maker unveils a processor it says is twice as fast", "Made-up: a phone maker recalls a battery pack over overheating"],
+    "ai": ["Made-up: a lab releases an open reasoning model anyone can run", "Made-up: a regulator drafts the first rules for chatbots in schools"],
+    "nz_money": ["Made-up: the Reserve Bank holds the OCR, signals cuts next year", "Made-up: house prices slip for a sixth month as listings climb"],
+    "webdev": ["Made-up: a widely used package registry patches a serious security hole"],
+}
+_TLDR = {
+    "world_politics": "The coalition split over the budget, so voters go to the polls in six weeks. Worth a read for what it means for the region's trade talks.",
+    "nz_politics": "The bill moves water services to four regional bodies from next July. It matters for rates bills and who answers for outages.",
+    "world": "A strong quake cut power across the islands overnight. No deaths reported so far; aid flights are being readied from Auckland.",
+    "tech": "The new processor is due in laptops next spring. The speed claim is the company's own, so the independent tests are the thing to watch.",
+    "ai": "The model's weights are free to download and it runs on one good graphics card. It could change what small teams can build cheaply.",
+    "nz_money": "The OCR stays at 3.5 percent, with cuts pencilled in for next year. Fixed mortgage rates may ease before then, banks say.",
+    "webdev": "A flaw let attackers publish fake versions of popular packages. Update your lockfiles today if you install from it.",
+}
 
 
-def reading_cards() -> list[tuple[str, tuple]]:
+def _news(day, picks) -> list:
+    from tasks.reading.news import Story
+
+    return [Story(f"https://example.com/made-up/{topic}/{number}", _MADE_UP[topic][number], f"Made-up {topic}", topic, _TLDR[topic] if number == 0 else _TLDR[topic].split(".")[0] + ".") for topic, number in picks]
+
+
+def _message_two(day, stories, todos=True):
+    from core.actions import PREPARED, TODO, TRACKING, DayItem
+    from tasks.briefing import embeds
+    from tasks.reading import news
+
+    items = [DayItem(TODO, "Buy stamps"), DayItem(TODO, "Call the plumber", state="taken")] if todos else []
+    items += [DayItem(TRACKING, "Diary · Streak: 4 days", icon="📓")]
+    items.append(DayItem(PREPARED, news.description(stories), icon="📰", title="Morning news"))
+    return embeds.everything_else(items)
+
+
+def news_cards() -> list:
     from core import confirm
     from core.actions import Proposal
-    from tasks.reading import plain, rules
-    from tasks.reading.rules import Read
+    from tasks.reading import news
 
     day = _day()
-    ai = Read("https://example.com/made-up/agents", "Made-up: how to give an agent the right tools", "Made-up AI blog", rules.AI, 9,
-              "Walks through building a small agent from one tool to five, and where it went wrong.\nShows the prompts used at each step, with the failures left in.\nUseful if you are wiring tools to a model yourself.", day)
-    code = Read("https://example.com/made-up/grid", "Made-up: CSS grid, from first principles", "Made-up web magazine", rules.PROGRAMMING, 14,
-                "Builds three common layouts with grid alone, explaining each line as it goes.\nEnds with the two mistakes that break layouts on phones.", day)
-    news = Read("https://example.com/made-up/chips", "Made-up: why a chip shortage is back, explained", "Made-up tech news", rules.NEWS, 6,
-                "Explains what changed in the supply chain this month, and what it means for the price of a laptop.\nSticks to what is known, with the rumours marked as such.", day)
-    down = Read(**{**news.__dict__, "vote": -1})
-    other = Read("https://example.com/made-up/testing", "Made-up: testing code that calls a model", "Made-up engineering blog", rules.PROGRAMMING, 7,
-                 "How one team records model answers once and replays them in their tests.\nCovers what to record, what to check, and when to record again.", day)
-    saved = confirm.render(READING, Proposal(lines=(f"📝 **Read: {code.title}** · any day", design.small(code.url)), data={}), 1).layout
-
-    def line_card(text):
-        return (design.Text(text),)
-
-    found = [
-        ("An AI usage pick: its card in the hub at 6:00 am, the title a link, the source and the reading time, the TL;DR small, 👍 and 👎", plain.card(ai).layout),
-        ("A programming pick (the next day's theme: the week keeps the three balanced)", plain.card(code).layout),
-        ("A tech news pick: the significant story, explained", plain.card(news).layout),
-        ("The briefing (round 5): one line in the overview box; the card has the rest", (design.topic(design.card_title("🗓️ The day"), lines=["💊 **Pills** · 6 doses · first 7:00 am", f"📖 **Daily read** · {rules.overview(news)}"], status=design.QUIET),)),
-        ("👎 pressed: noted (less like this), and Another one appears", plain.card(down).layout),
-        ("“another one” (or the button): a different article in its place", plain.card(other).layout),
-        ("“save it for later”: a card first, Save adds a to-do with the link", saved),
-        ("After Save", line_card("📝 Saved for later · on your to-dos")),
+    weekday = _news(day, [("world_politics", 0), ("nz_politics", 0), ("world", 0), ("tech", 0), ("ai", 0), ("nz_money", 0), ("nz_politics", 1), ("webdev", 0)])
+    monday = _news(day, [("world_politics", 1), ("nz_politics", 1), ("world", 1), ("tech", 1), ("ai", 1), ("nz_money", 1), ("world", 0), ("world_politics", 0)])
+    quiet = _news(day, [("world_politics", 0), ("nz_politics", 0), ("world", 0), ("tech", 0), ("ai", 0), ("nz_money", 0), ("world", 1)])
+    empty = _news(day, [("world_politics", 0), ("nz_politics", 0), ("world", 0), ("tech", 0), ("nz_money", 0), ("nz_politics", 1)])
+    steer = news.changes(news.Prefs(), news.steered(news.Prefs(), less="ai", like=weekday[2]))
+    another = news.story_line(9, _news(day, [("tech", 1)])[0])
+    return [
+        ("An ordinary weekday: one a topic, then two extras (here NZ politics, and the web development wildcard on a day with a security hole). In round 7's second message, after the to-dos and the diary", _message_two(day, weekday)),
+        ("A Monday: since Saturday 5:30 am, so the weekend's biggest stories; no wildcard", _message_two(day, monday, todos=False)),
+        ("A quiet day: seven, one a topic and one extra, no wildcard. The news alone is enough for the second message to be sent", _message_two(day, quiet, todos=False)),
+        ("A day with a topic empty (AI had nothing new): six and an extra, never padded", _message_two(day, empty, todos=False)),
+        ("“another one”: the next best story not shown, as a reply", Card(another)),
+        ("“less AI, more like 3”: a card first, Save keeps it for every later pick", confirm.render(NEWS_ENTRY, Proposal(lines=tuple(steer), data={}, kind="change"), 1).layout),
     ]
-    return checked(found)
 
 
-def reading_opening() -> str:
+def news_opening() -> str:
     return "\n".join([
-        f"## {READING_TITLE}",
-        "One article a day to keep learning: **AI usage** (practical use of AI tools, prompting, agents), **programming** (tutorials, deep dives, web development) and **tech news** (the significant stories, explained), balanced over each week. Explainers and deep dives over hot takes, listicles and rumours.",
-        "**Each morning** before the briefing: the feeds are read (a list in a config file; add or remove one in words), new articles' pages read down to their text (a paywall or a teaser is skipped), and one is picked for the day's theme with a TL;DR written from the article itself. No text, no TL;DR: another is picked.",
-        "**In words:** another one, something shorter, something deeper, save it for later, what have I read this week, more like this, less news, more about agents, harder or easier.",
-        "**Where:** one line in the briefing's overview box, and a small card of its own under the to-dos, with 👍 and 👎 (buttons never go on the briefing).",
-        "-# Mock articles only. Behind READING_ENABLED (off). The buttons here do nothing. Questions 86 to 90.",
+        f"## {NEWS_TITLE}",
+        "The daily read and the news headlines are now **one morning news**: 7 or 8 stories a day, one for each of **world politics**, **NZ politics**, **world news**, **tech**, **AI** and **NZ housing and money** (house prices, interest rates, the OCR, the economy), then one or two extras for the day's biggest news. **Web development** is a wildcard: only on a day with something notable.",
+        "**Each story:** the headline in bold is the link, the topic in italics, then a TL;DR of about 30 words: what happened, and why you might read it. Paywalled articles are never picked; at most one story about US politics alone a day.",
+        "**Where:** round 7's second message, one purple embed after the to-dos and the diary; 👍 on it says it was a good set, which the next picks lean on. Before round 7 it is not in the hub: say “the news”.",
+        "**In words:** another one, more like 3, less AI, more NZ politics, skip housing tomorrow, more US politics, what do you know about my news, add or remove a source.",
+        "📱 **Please look at this on your phone:** the embed is built for a phone's width. A screenshot of it there, or a word on what is too long or too dense, is the feedback this round needs.",
+        "-# Made-up headlines and links only. Behind READING_ENABLED. The buttons here do nothing.",
     ])
 
 
@@ -1197,12 +1229,12 @@ def main() -> int:
             return 0
         print("Posted:", asyncio.run(post_preview(INBOX_TITLE, inbox_opening(), found)))
         return 0
-    if "--reading" in args:
-        found = reading_cards()
+    if "--news" in args:
+        found = news_cards()
         if "--check" in args:
             print(f"{len(found)} messages built, each within one message.")
             return 0
-        print("Posted:", asyncio.run(post_preview(READING_TITLE, reading_opening(), found)))
+        print("Posted:", asyncio.run(post_preview(NEWS_TITLE, news_opening(), found)))
         return 0
     if "--gym" in args:
         found = gym_cards()

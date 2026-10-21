@@ -161,7 +161,11 @@ class Harness:
         names = [tool.get("name") for tool in tools]
         canned = self._canned
         if canned is None and purpose in self.background:
-            return self.background[purpose]
+            found = self.background[purpose]
+            # A purpose with several tools (the morning news: its pick, then its TL;DRs) has an answer a tool
+            if isinstance(found, dict):
+                return next((found[name] for name in names if name in found), None)
+            return found
         if canned is not None:
             if ROUTE_TOOL in names:
                 return ROUTE_TOOL, canned["route"]

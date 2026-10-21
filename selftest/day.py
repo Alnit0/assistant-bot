@@ -30,7 +30,7 @@ from core import day as days
 TITLE = "Design · A day in the hub"
 NAME = "day"
 # Live's switches as of 16 Oct (live's .env) with calendar writing too, and made-up sources in place of real
-# ones: the weather, the calendar's link, the Bot calendar (a file in place of Google), the daily read's feeds
+# ones: the weather, the calendar's link, the Bot calendar (a file in place of Google), the morning news's feeds
 BOT_CALENDAR = "made-up-bot@group.calendar.example"
 SETTINGS = {
     "CARDS_V2": "true", "DESIGN_ROUND": "5", "REMINDERS_ENABLED": "true", "BRIEFING_ENABLED": "true", "HUB_TIDY": "true",
@@ -41,8 +41,20 @@ SETTINGS = {
     "CALENDAR_WRITE": "true", "CALENDAR_BOT_ID": BOT_CALENDAR, "CALENDAR_READ": "ics,google:CALENDAR_BOT_ID",
     "SMART_INBOX": "true",
 }
-TLDR_FIRST = "Builds a small agent from one tool to five, showing the prompt at each step.\nThe failures are left in, which is the useful part."
-TLDR_SECOND = "How one team records model answers once and replays them in tests.\nCovers what to record and when to record again."
+# The morning news's made-up day (21 Oct: one feed a topic), and its two recorded answers at 5:30 am
+NEWS = (
+    ("world_politics", "Made-up: a northern republic calls a snap election"),
+    ("nz_politics", "Made-up: parliament passes the water reform bill"),
+    ("world", "Made-up: an earthquake shakes an island chain"),
+    ("tech", "Made-up: a chip maker unveils a faster processor"),
+    ("ai", "Made-up: a lab releases an open reasoning model"),
+    ("nz_money", "Made-up: the Reserve Bank holds the OCR steady"),
+    ("webdev", "Made-up: a browser ships a major release"),
+    ("world", "Made-up: a summit ends with a trade pact"),
+)
+NEWS_PICK = ("pick_news", {"chosen": [1, 2, 3, 4, 5, 6, 8], "next": [7], "us_only": []})
+NEWS_TLDRS = ("write_tldrs", {"tldrs": [{"number": number, "tldr": f"Made-up TL;DR {number}: what happened, and why it is worth a look this morning."} for number in range(1, 9)]})
+NEWS_ANOTHER = ("write_tldrs", {"tldrs": [{"number": 1, "tldr": "Made-up TL;DR: the browser's release, and what it changes for anyone building for the web."}]})
 
 
 def day_of_run(today: date) -> date:
@@ -52,22 +64,27 @@ def day_of_run(today: date) -> date:
 
 
 def reading_source(day: date) -> dict:
-    """Made-up feeds and pages for the daily read, dated the day before the replay's day."""
-    stamp = f"{day - timedelta(days=1):%Y-%m-%d}T20:00:00+00:00"
-    words = " ".join(["Made-up words about building with models, explained step by step."] * 70)
+    """Made-up feeds and pages for the morning news, a feed a topic, dated in the small hours of the replay's day."""
+    stamp = f"{day - timedelta(days=1):%Y-%m-%d}T12:00:00+00:00"
+    words = " ".join(["Made-up words about what happened, set out plainly for a reader."] * 40)
 
     def page(title):
         return f"<html><body><article><h1>{title}</h1><p>{words}</p></article></body></html>"
 
-    items = [("https://example.com/made-up/agents", "Made-up: giving an agent the right tools"), ("https://example.com/made-up/testing", "Made-up: testing code that calls a model")]
-    feed = "<rss version='2.0'><channel><title>Made-up</title>" + "".join(f"<item><title>{title}</title><link>{link}</link><pubDate>{stamp}</pubDate></item>" for link, title in items) + "</channel></rss>"
-    return {"sources": [{"name": "Made-up AI blog", "url": "https://example.com/made-up/feed", "theme": "ai"}],
-            "pages": {"https://example.com/made-up/feed": feed, **{link: page(title) for link, title in items}}}
+    links = [(topic, f"https://example.com/made-up/{number}", title) for number, (topic, title) in enumerate(NEWS, start=1)]
+    feeds = {}
+    for topic, link, title in links:
+        feeds.setdefault(topic, []).append(f"<item><title>{title}</title><link>{link}</link><pubDate>{stamp}</pubDate><description>A made-up snippet.</description></item>")
+    return {
+        "sources": [{"name": f"Made-up {topic}", "url": f"https://example.com/made-up/feed/{topic}", "topic": topic} for topic in feeds],
+        "pages": {**{f"https://example.com/made-up/feed/{topic}": "<rss version='2.0'><channel><title>Made-up</title>" + "".join(items) + "</channel></rss>" for topic, items in feeds.items()},
+                  **{link: page(title) for _, link, title in links}},
+    }
 # The moments the hub is read, and the story's own line for what happened since the one before
 MOMENTS = (
-    ((6, 0), "The night: yesterday closed; the daily read picked at 5:30; the 6 am tidy, then the briefing and the morning cards, the read's card last"),
+    ((6, 0), "The night: yesterday closed; the morning news picked at 5:30; the 6 am tidy, then the briefing (in round 7 the news in its second message) and the morning cards"),
     ((7, 30), "Quiet hours ended at 7; the morning routine's window opened at 6:30 and its card came up; Pill B's 7:00 reminder, Taken by its button at 7:05; Skincare ticked in the routine's dropdown at 7:20"),
-    ((9, 45), "Pill A's 8:00 reminder went off and was left; 👎 on the daily read at 7:40, then Another one; Stretch and Glass of water ticked at 8:45, so the routine's card went; “took pill a” at 9:05, an hour late; Buy stamps done at 9:10; the 9:00 standup; “dentist at 4pm for an hour” added to the Bot calendar at 9:30, and Test swimming every Sunday at 7pm; the 9:00 renewals check: the rego is due in 7 days"),
+    ((9, 45), "Pill A's 8:00 reminder went off and was left; “another one” for the morning news at 7:40; Stretch and Glass of water ticked at 8:45, so the routine's card went; “took pill a” at 9:05, an hour late; Buy stamps done at 9:10; the 9:00 standup; “dentist at 4pm for an hour” added to the Bot calendar at 9:30, and Test swimming every Sunday at 7pm; the 9:00 renewals check: the rego is due in 7 days"),
     ((12, 0), "The 10:30 reminder snoozed for an hour, then Done at 11:35; “skip pill d” at 11:00; Pill A's second dose moved to 12:05, three hours after the first; a fix marked shipped from outside the bot at 11:40, in Needs a look within a minute"),
     ((15, 0), "Pill A's second dose taken by its reminder at 12:10; the 12:30 lunch; “move the dentist to 4:30pm” at 1:00; “paid the power bill” at 2:00; two things in one message in #inbox at 1:30, and a screenshot of a booking at 2:30, each sorted onto one card and saved; the bug closed from outside the bot at 2:45; the 3:00 event was cancelled; the third dose is due at 3:10"),
     ((18, 30), "Pill A's third dose was never taken: missed at 5:00, its latest time; Call the plumber done at 4:00; the dentist at 4:30; the 5:00 reminder done at 5:05; the gym at 6"),
@@ -200,7 +217,7 @@ def changes(before: dict | None, after: dict) -> str:
 
 
 # Where a message belongs in the hub, top to bottom: the briefing, the task cards in their fixed order, then the moment
-PLACES = ("briefing:hub", "pills", "today", "nudges", "habits", "gym", "todos", "reading")
+PLACES = ("briefing:hub", "pills", "today", "nudges", "habits", "gym", "todos")
 
 
 def place(message: dict) -> int:
@@ -310,8 +327,8 @@ async def story(h) -> None:
     if setting_up > clock.now():
         clock.advance_to(setting_up)
     await h.run_due()
-    # The daily read's pick at 5:30 is a job's request, with no message: its recorded answer
-    h.background["reading"] = ("pick", {"choice": 1, "tldr": TLDR_FIRST})
+    # The morning news's pick at 5:30 is a job's two requests, with no message: their recorded answers
+    h.background["reading"] = {"pick_news": NEWS_PICK, "write_tldrs": NEWS_TLDRS}
 
     async def save(key: str, said: str, canned, task: str) -> None:
         async for attempt in h.step(key, f"“{said}”, then Save", "a card, and after Save it is kept", "a day in the hub (set up)"):
@@ -372,12 +389,11 @@ async def story(h) -> None:
         h.check(went is not None, "no reminder in the hub")
         return await h.press(went.id, button)
 
-    async def thumbs_down_then_another() -> None:
-        shown = await h.find(h.hub, "Daily read")
-        h.check(shown is not None, "no daily read card in the hub")
-        await h.press(shown.id, "", arg=f"{the_day.isoformat()}:down")
-        h.background["reading"] = ("pick", {"choice": 1, "tldr": TLDR_SECOND})
-        await h.press(shown.id, "Another one", arg=the_day.isoformat())
+    async def another_story() -> None:
+        h.background["reading"] = {"write_tldrs": NEWS_ANOTHER}
+        await h.say("another one", channel=h.hub, canned=todo("news_another"), task="reading")
+        said = await h.find(h.hub, "Made-up: a browser ships a major release")
+        h.check(said is not None, "no other story in the hub")
 
     async def pick(slot: str, option: str) -> None:
         shown = await slot_card(h, slot) if slot != "todos" else await todos_card(h)
@@ -393,7 +409,7 @@ async def story(h) -> None:
     await snap(1)
     await _at(h, the_day, 8, 45)
     await _at(h, the_day, 7, 40)
-    await step("d.25", "The daily read: 👎, then Another one", thumbs_down_then_another)
+    await step("d.25", "The morning news: “another one”", another_story)
     await _at(h, the_day, 8, 45)
     await step("d.13", "“did stretch and glass of water”", lambda: h.say("did stretch and glass of water", channel=h.hub, canned=todo("habit_tick", items=["stretch", "glass of water"]), task="habits"))
     await _at(h, the_day, 9, 5)
@@ -602,7 +618,7 @@ def opening(snapshots: list[dict]) -> str:
         "what happened since the moment before, and then every message in the hub, top to bottom, as you would see it.",
         "-# Made-up data only: Pill A to Pill D (6 doses: one late, one missed, one skipped), six to-dos (two overdue), "
         "two reminders (one snoozed), a morning and an evening routine (one with a group), a calendar with an all-day event, "
-        "three timed and one cancelled, an event added to the Bot calendar and moved, the daily read (👎 then another one), "
+        "three timed and one cancelled, an event added to the Bot calendar and moved, the morning news (and another one), "
         "a diary entry, and the week's summary at 7 pm, all set up at 4 pm the day before. "
         "Since 17 Oct: an expiry (the rego, due in 7 days), a repeating Bot calendar event (Test swimming, Sundays), a fix marked "
         "shipped and then closed from outside the bot (each in Needs a look within a minute), and the smart inbox: two things in one "
