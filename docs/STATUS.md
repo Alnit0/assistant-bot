@@ -6,13 +6,15 @@ No history is kept here: what changed is `docs/CHANGELOG.md`, and this
 file as it stood until midday on 2026-10-14 (every batch, every answer,
 all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
-**Updated:** 2026-10-17 (evening)
+**Updated:** 2026-10-22 (overnight)
 
 
 
 
 ## The next ship's to-do
 
+- **The 22 Oct overnight batch** (below): with a core migration
+  (`reaction_waiting`), so `update-live.ps1` runs it.
 - **`LAB_GRID=false` in live's `.env`**, as part of the next ship (no
   restart just for it). Alex, 21 Oct, on the lab grid: "It works, the animation isn't really anywhere as good as I had hoped. It may have applications for notifying or changing things but not animating".
   The lab grid's code stays.
@@ -65,6 +67,9 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 ### Decided (22 Oct, overnight)
 
+- **The self-test with recorded answers**, though prompts changed: the
+  month's self-test spend is gone (recorded answers until November), and the
+  changed lines were checked by the live understanding checks above.
 - **One checkpoint for steps 0 to 5**, not one a step: the steps share files
   (the golden fixtures and their tests, the briefing, the calendar), and a
   commit of part of the working copy would not be what the full test run
@@ -98,13 +103,25 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 ### Spend (22 Oct, overnight)
 
-- Claude: about US$0.47 to here (NZ$0.81): the API check, the router
-  diagnosis of 28a (with and without the card, gym on and off), recording
-  28 to 28c and x16 to x16b, and the recheck of the calendar's and the
-  briefing's routers (29 of 48: the 17 calendar adding fixtures need a Bot
-  calendar this folder has not got; "what's on next year?" goes to chat on
-  the old lines too) and the calendar's extractions (17 of 18). Each run
-  under NZ$0.40.
+- Claude: about US$0.64 (NZ$1.09) of the NZ$2.00 cap, every run under
+  NZ$0.40: the API check, the router diagnosis of 28a (with and without the
+  card, gym on and off, repeated to see how steady it is: 19 of 20 at the
+  end), recording 28 to 28c, x16 to x16b and 2d0 to 2f (7 of 7), the
+  recheck of the calendar's and the briefing's routers (29 of 48: the 17
+  calendar adding fixtures need a Bot calendar this folder has not got;
+  "what's on next year?" goes to chat on the old lines too; "am I done for
+  today?" 7 of 8 on the new lines) and the calendar's extractions (17 of
+  18: "am I free at 3" gives 3:00 pm, a field not touched). No request to
+  Claude between 5:15 and 6:15 am: the batch's last was at 12:05 am.
+- The self-test (`522cb72`, the dev bot, recorded answers, US$0): 146 of
+  150, 3 failed (5.01b, then 5.03 and 5.07 after it); the run crossed real
+  midnight, and the briefing stage alone passed 22 of 22 straight after
+  (BACKLOG, Soon). 218 recorded answers read back right. Its bug D15 closed
+  itself when the step passed again.
+- Two dev-bot days in the hub (US$0): round 7 fresh (both messages embeds,
+  the same two edited at all eight moments) and round 5's morning then
+  round 7 (posted again as embeds at the first change; the run hit its time
+  limit before 11:45 pm). "Design · Hub embeds check" posted.
 
 ## An animated grid, a proof of concept (21 Oct, night; pushed, not shipped)
 

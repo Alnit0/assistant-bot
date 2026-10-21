@@ -2,7 +2,7 @@
 
 **Read this first** when Alex starts a new chat with Claude (the advisor). It holds what the code and the other docs don't: how we work together, the thinking behind decisions, and what's open right now.
 
-**Kept up to date by Claude Code** at the end of every batch (see "Maintaining this file" at the bottom). Last brought fully up to date: 17 Oct 2026, overnight.
+**Kept up to date by Claude Code** at the end of every batch (see "Maintaining this file" at the bottom). Last brought fully up to date: 17 Oct 2026, overnight; sections 4, 8 and 9 on 22 Oct, overnight.
 
 Design history, interaction decisions and planned features are in `docs/ADVISOR-CONTEXT.md`: read it too.
 
@@ -55,7 +55,7 @@ He is **not relying on the bot for reminders yet**. The hub is a daily overview 
 - **Shipping:** only by `scripts\update-live.ps1 -Ref <commit>` from a pushed commit (it refuses one not on `origin/feature/pills`, puts back the self-test's report, installs packages, checks migrations, restarts); `-Back` returns to the commit before. Batch rule: ship at most once, after the full test run and a dev-bot self-test, at least 10 minutes from any pill reminder; check the account, the hub and the bookings after.
 - **The old backup:** the work folder still holds the `.env` and `data\` from before the switch-over. They go once Alex says live has had a good day in its own folder.
 - **Branch:** all work is on `feature/pills`. Nothing is merged into `main` yet; `docs/REVIEW.md` is the checkpoint for that.
-- **Live now:** `fec4cbb` since 21 Oct, 10:39 pm (`-Back` returns to `a025112`), with `DESIGN_ROUND=7`, `THUMBS_UP=true`, `READING_ENABLED=true`, `NEWS_CHANNEL_ID` and `LAB_GRID=true`.
+- **Live now:** `1aa9688` since 21 Oct, 10:47 pm (`-Back` returns to `fec4cbb`), with `DESIGN_ROUND=7`, `THUMBS_UP=true`, `READING_ENABLED=true`, `NEWS_CHANNEL_ID` and `LAB_GRID=true`. `feature/pills` is ahead of it with the 22 Oct overnight batch (not shipped).
 - **Two bots:** live, and the dev bot (own token in `.env.dev`). A lock a bot lets both run at once. Every start checks it logged in as the expected account and exits with code 4 if not; the service stops on exit 4 rather than looping.
 - **Windows Update:** active hours 6 am to 12 am, updates paused until 19 Nov (the longest allowed). It restarted the PC twice on the night of 15 Oct; live in its own folder means a reboot only ever brings back the version shipped. A monthly reminder to update by hand is in the backlog.
 - **Claude Code** runs on the EliteDesk, started with `claude --remote-control "assistant-bot"`. Alex drives it from the Claude app on his PC or phone. For a fresh start: `/clear`, never `/exit` (that needs a Remote Desktop visit). It pings his phone through ntfy hooks when it finishes or needs him (quiet 10 pm to 7 am).
@@ -138,6 +138,12 @@ Messages go through fast paths (buttons, exact typed words), then sticky follow-
 - **The test suite** runs in about 40 seconds; `TESTS_AS_ON_LIVE=1` about 80.
 - **The morning news** (21 Oct): language is Claude's (the pick, the TL;DRs), rules are Python's: one story a topic where any exist, never padded, never more than 8, only items it was given, each TL;DR cut to 40 words, every link the item's own. Paywalled articles dropped before they are summarised (the NZ Herald's `/premium/` link, Newsroom's Premium category, a page's own `isAccessibleForFree`), never from a snippet; at most one story about US politics alone a day unless he asks for more. One morning costs US$0.023 (NZ$0.04), two Haiku calls.
 - **Before a batch's first request to Claude**, one small Haiku call checks the API answers: the account's usage limit stopped a batch on 21 Oct, and live shares the key.
+- **A hub message posted as a layout can never take embeds** (22 Oct): on 21 Oct the 6 am briefing was round 5's, and once round 7 went live every edit wrote it in as plain lines. Now the hub's briefing that can't take embeds is posted again as embeds (at the bottom until the next morning: Discord can't put a message above others). A fresh 6 am post was always embeds.
+- **An open card its task has already read is not shown to the router again** (22 Oct, golden 28a to 28c): shown it, the router took "will it rain?" for no task's. And chat with one task named, sure of it, is that task (it was "chat wins" since 9 Oct).
+- **Whether a thing is on tonight is the briefing's** ("is the gym on tonight?", "is anything on tonight?": tonight in time order across tasks); whether an event is on another day is the calendar's.
+- **A correction straight after a schedule's Save** ("no, 7pm") is a change card for that schedule, as pills have; a schedule change's "Saved" has an Undo. A time with no am or pm is the reading nearer the time it runs at, marked ❓. Knowing what was just saved is in the core (`actions.just_saved_one`).
+- **The calendar's copy starts at this week's Monday**, so the week view's past days have their events.
+- **Reactions waiting out the quiet period are kept in the database** and resumed at a start; one older than the quiet period and 10 minutes is dropped and logged.
 
 ## 9. Open threads (update every batch)
 
@@ -145,7 +151,8 @@ Messages go through fast paths (buttons, exact typed words), then sticky follow-
 - **The gym** (live 18 Oct, overnight, with its weight tracker, training insights and pain tracker): his logbook sent to #inbox to import; "Design · Gym"; the sheet mirror waits for a sheet shared with the service account (`docs/GYM-SHEET-SETUP.md`).
 - **The bedtime nudge** (live 18 Oct, silent until he says "bedtime 11pm").
 - **Round 7 and 👍 as yes** (live since 21 Oct, 3:23 pm, `DESIGN_ROUND=7`, `THUMBS_UP=true`): his first mornings with them.
-- **The lab's animated grid** (live since 21 Oct, 10:39 pm, `LAB_GRID=true`): "lab grid [seconds]" anywhere, owner only, for him to try from his phone; about 1.4 s a frame at 1.0 (each edit's round trip comes on top of the wait). The real use to follow: a progress grid for slow work.
+- **The next ship** carries the 22 Oct overnight batch (the hub's repost of a briefing that can't take embeds; "will it rain?" with a card open; "is the gym on tonight?"; a correction after a schedule's Save with Undo; the week view's past days; reactions over a restart, with a core migration) and **set LAB_GRID=false in live's .env** (Alex found the animation too choppy, about 1 frame a second).
+- **Round 7's first proper morning, 22 Oct:** the 6 am post is fresh, so it is embeds; the plain lines of 21 Oct were that morning's round 5 message ("Design · Hub embeds check").
 - **The diary's one confirmation a day** (live since 21 Oct, 10:07 pm): a save edits the day's "Saved" line; a press on the ask or on Wind down posts the diary's own line.
 - **The morning news** (live since 21 Oct, 10:07 pm, `a025112`; `READING_ENABLED=true`): his first morning. It is one message at 6 am in a news channel he made in the hub's category (`NEWS_CHANNEL_ID`, in live's `.env` only), picked at 5:30 ("Morning news", renamed from the daily read's row). In its own channel for now; moving it into the hub as its own message is planned. The hub's second message has its one line. Round 7's briefing shows no What's new box, so the line left for 22 Oct is not seen.
 - **His list of more changes** (21 Oct, when he called the feature freeze off): not heard yet.

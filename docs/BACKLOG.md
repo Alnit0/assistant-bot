@@ -39,10 +39,9 @@ the full self-test run.
    thing in three places, the briefing's boxes moving about.
 3. **What the briefing shows**: whatever Alex's look at the real hub
    turns up.
-4. **How well it understands**: a correction straight after Save for
-   schedules, as pills have ("no, 7pm": question 8, yes, later); task
-   ties asked too often (G4); "is the gym on tonight?" comes back as
-   chat (x16, a known miss: chat hands it back, one request more).
+4. **How well it understands**: task ties asked too often (G4). (A
+   correction straight after Save for schedules, and "is the gym on
+   tonight?", were done on 22 Oct.)
 5. **Personal routines reworked** with groups of steps, one button a
    group (question 63, to discuss first; `HABITS_ENABLED` stays off),
    and **gym onboarding** designed before gym is built (24 to 28). The
@@ -51,8 +50,10 @@ the full self-test run.
 
 ### Soon
 
-- **"Will it rain?" with a card open (golden 28a)** goes to chat, every time, with the gym on and off (18 Oct,
-  the router check): found, not tonight's. The card stays open either way.
+- **A full self-test that crosses real midnight** fails 5.01b (the briefing's line about yesterday is
+  missing), and 5.03 and 5.07 after it (22 Oct, the run that started at 11:58 pm): the briefing stage alone
+  passed 22 of 22 straight after. Something in it reads the real date; worth finding before a run is
+  started late at night again.
 - **Gym, next**: a photo of a handwritten log is read by the smart inbox's vision and sorted into a gym item
   in words, as any item is; worth a recorded check with a made-up photo. The sheet mirror waits for Alex's
   sheet (docs/GYM-SHEET-SETUP.md).
@@ -62,8 +63,6 @@ the full self-test run.
   moved by the existing rules, and the conversation tidy (10 minutes after an exchange; What's new and restart
   notes gone by noon). Gathered through the contract (`Entry.plan`, the Today lines), with the done line's
   names and times from each task.
-- **The week view's past days** (17 Oct): the calendar's copy keeps yesterday to two months ahead, so this
-  week's Monday seen on a Thursday has no events. Keeping a week back would fill it.
 - **Pills in a plan for today** are the doses still to take; the week view's count for today shrinks as doses
   are taken. A count of the day's planned doses would read steadier.
 
@@ -114,8 +113,6 @@ the full self-test run.
     if workouts go by weekday, and by reminders after pills). Comes
     with the scheduler (6a): one "which days" for both.
 13. **G4**: task ties are asked too readily.
-14. **A reaction made just before a stop is lost**: keep waiting
-    reactions in the database.
 16. **The outgoing check does not cover every message**, and **some
     refusals are still a bare line, not a card**.
 17. **R5 to R22 and R25 in `docs/TESTING.md`** still describe the old
@@ -476,11 +473,6 @@ handed over where "it" was said), which the code puts right.
   suite grows slow again: find the test that blocks when two workers
   run at once.
 
-- **A reaction made just before a stop is lost** (found checking
-  restarts, 2026-10-12; left on Alex's word): the 30 seconds a reaction
-  waits are kept in memory, so one made just before a restart is never
-  acted on and gets no ✅. Take it off and put it on again. Keeping the
-  waiting reactions in the database would fix it.
 - Done 2026-10-13, behind `CARDS_V2`: reminders, the checklist and
   the confirm, question and asks-first cards in Components V2.
 - **Cards not yet drawn the new way** (`CARDS_V2`): the reset card and

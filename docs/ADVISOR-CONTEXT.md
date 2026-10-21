@@ -4,7 +4,7 @@
 
 Never write here: a real pill name, a real event name, a diary's words, a bot's display name, a location more precise than "Auckland", a token, topic, link or ID.
 
-Last brought up to date: 21 Oct 2026, evening.
+Last brought up to date: 22 Oct 2026, overnight.
 
 ---
 
@@ -57,6 +57,7 @@ Unicode emoji squares only, no custom emoji:
 - **Message 2 (tracking):** the to-dos in pink, the diary's streak in blue, then the morning news's one line in purple ("📰 8 stories in #news", its title opening the day's news message). Sent when any of them has something, the news's line alone included. Both messages are rewritten in place all day.
 - **The morning news is one message in its own channel (for now), not in the hub** (Alex, 21 Oct: first "could each news article be its own card?", then, seeing the gaps between cards, "Can we simply combine the cards into one message?"). #news is a channel of its own beside the hub. One message a day, one purple embed a story, 8 at most: "<topic> · <outlet>" as the author line, the headline as the title linked to the article, the TL;DR as the description (about 30 words, 40 at most); no fields, no footer, no numbers. A fixed topic order (NZ politics, Housing and money, World news, World politics, Tech, AI, Web dev), an extra after its topic's first. Discord's 6,000 characters are for a message's embeds together: the longest TL;DRs shorten to fit, a headline never. Yesterday's deleted each morning; "another one" is a one-story message of its own. Earlier designs turned down: one embed with a numbered list, one embed with a field a topic, a message a story.
 - "Brief me" outside the hub shows message 1 only.
+- **A message posted as a layout (rounds 4 to 6) can never take embeds.** On 21 Oct the 6 am briefing was round 5's, so after round 7 went live it read as plain lines all day. Since 22 Oct (not shipped yet) such a hub briefing is posted again as embeds on its first change; a fresh 6 am post is embeds anyway.
 - **Gone from the old briefing:** the Needs a look line (a problem still reaches him through the status line and a ping), the weather line, and yesterday's spend.
 - Behind `DESIGN_ROUND=7`: live since 21 Oct, 3:23 pm (`f525879`), with `THUMBS_UP=true`.
 

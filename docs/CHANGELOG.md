@@ -4,6 +4,18 @@ What changed, newest first. One entry per task, as one to three bullets on
 what changed for the user. Entries before 2026-10-07's last one were
 backfilled from the git log.
 
+## 2026-10-22
+
+- The hub's briefing in round 7 is never left as plain lines: one posted before round 7 (as on 21 Oct, when the
+  6 am message was round 5's) is posted again as coloured cards on its first change. Not on live yet; live's hub is
+  fresh at 6 am anyway.
+- Better understanding: "will it rain?" with a card open gets the weather and the card stays open; "is the gym on
+  tonight?" and "is anything on tonight?" answer with tonight in time order; "have I got the gym tomorrow?" with
+  tomorrow's events. Straight after a schedule is saved, "no, 7pm" (or "actually 6:30", "make it 8") is a change
+  card for it, and its Saved line has an Undo.
+- The pinned week view shows this week's earlier days with their events, and a 👍 made just before a restart is
+  acted on after it (one older than ten minutes past its wait is dropped).
+
 ## 2026-10-21
 
 - The morning news, built and not yet on: 7 or 8 stories each morning (world and NZ politics, world news, tech, AI, NZ
