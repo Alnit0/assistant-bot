@@ -424,3 +424,17 @@ card is "liked or read", silent, kept for later picks. The hub's message 2 has o
 #news", that opens the first card. Steering in #news, #inbox or a direct message, and by replying to a card ("more
 like this", "less of this"). Posted as a reply in "Design · Morning news", headed "The card version". Waiting on his
 look on his phone.
+
+### The morning news: the one-message version (21 Oct, night)
+
+**What Alex said, word for word, on the card version:** "There's a gap here that looks bad because each card is its own
+message. Can we simply combine the cards into one message?" and "Perhaps we disregard the thumb system for news?"
+
+**What was done:** the day's stories post in #news at 6 am as one message, an embed a story (the same card: "<topic> ·
+<outlet>", the headline as the title linked to the article, the TL;DR), 8 at most, in the topic order. Discord's 6,000
+characters count for the message's embeds together: on a day that would go over, the longest TL;DRs are shortened, a
+headline never. Yesterday's message is deleted first. No 👍 for the news at all: the picks learn from words alone.
+"Another one" is a one-story message of its own. A story is named by its words and Python finds it among today's
+headlines, asking which when none or several fit. The preview's TL;DRs sat under the wrong headlines (its made-up data
+gave a topic's second story the first one's first sentence); the real code now ties each TL;DR to its story by id.
+Posted as a reply in "Design · Morning news", headed "The one-message version". Waiting on his look on his phone.

@@ -108,3 +108,15 @@ def test_the_round_4_preview_fits_shows_round_3_beside_it_and_names_only_made_up
     assert "one Taken that logs at once" in preview.round_4_opening()
     todos = next(pieces for label, pieces in found if label.startswith("To-dos") and label.endswith("round 4"))
     assert len(design.menus(todos)) == 1 and design.buttons(todos) == [], "to-dos: one Done dropdown"
+
+
+def test_the_morning_news_preview_gives_each_story_its_own_tldr_and_a_plain_outlet():
+    """21 Oct: a topic's second story once took the first one's first sentence, so a TL;DR sat under another headline."""
+    tldrs = {}
+    for _, pieces in preview.news_cards():
+        for card in pieces if isinstance(pieces, preview.Several) else [pieces]:
+            for embed in getattr(card, "embeds", ()):
+                if embed.author:
+                    assert tldrs.setdefault(embed.title, embed.description) == embed.description, embed.title
+                    assert "made-up" not in embed.author.lower() and "_" not in embed.author, embed.author
+    assert len(set(tldrs.values())) == len(tldrs) >= 13, "a TL;DR for every story, never one shared"

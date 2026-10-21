@@ -1,7 +1,7 @@
 """The morning news (tasks/reading, behind READING_ENABLED, off; Alex, 21 Oct): the daily read and News headlines as one
 task. The 5:30 am job reads every feed, Claude picks 7 or 8 (one a topic, then extras) and writes their TL;DRs, the set
-is kept; at 6 am each story is a card of its own in #news (yesterday's deleted) and round 7's hub has one line that links
-to the first; 👍 on a card, steering in words and by a reply to a card, another one, sources.
+is kept; at 6 am the day's stories are one message in #news, an embed each (yesterday's deleted), and round 7's hub has
+one line that links to it; steering in words (a story found by Python from its words), another one, sources. No 👍.
 
 Made-up feeds, pages and headlines only: nothing here reaches the network or Claude.
 """
@@ -13,7 +13,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from core import cards, clock, config, database, design, live, scheduler, surface, thumbsup
+from core import cards, clock, config, database, design, live, scheduler, surface
 from core import day as days
 from core.actions import PREPARED, Request
 from core.errors import UserError
@@ -86,7 +86,7 @@ def run(coroutine):
 def world(make_db, monkeypatch, owner, dev_clock):
     make_db({"reading": store.MIGRATIONS})
     clock.advance_to(days.at(date(2026, 10, 21) + timedelta(days=21), time(5, 30)))  # a Wednesday
-    seen = SimpleNamespace(owner=owner, sent=[], asked=[], pages={}, failing=set(), chosen=None, nexts=None, tldr=None)
+    seen = SimpleNamespace(owner=owner, sent=[], asked=[], pages={}, failing=set(), chosen=None, nexts=None, tldr=None, shuffle=None)
     seen.day = days.today()
     seen.same_links = True  # the first morning's links are the plain ones; later mornings' are the day's
     for topic, titles in HEADLINES.items():
@@ -105,8 +105,9 @@ def world(make_db, monkeypatch, owner, dev_clock):
             count = len(numbered)
             chosen = seen.chosen if seen.chosen is not None else [index + 1 for index, line in enumerate(numbered) if "one-" not in line][: 8]
             return (pick.CHOOSE, {"chosen": chosen, "next": seen.nexts if seen.nexts is not None else list(range(1, count + 1))})
-        found = [int(line[1:line.index("]")]) for line in user.splitlines() if line.startswith("[")]
-        return (pick.WRITE, {"tldrs": [{"number": number, "tldr": seen.tldr or f"Made-up TL;DR {number}: what happened and why it matters to you today."} for number in found]})
+        found = [line[1:line.index("]")] for line in user.splitlines() if line.startswith("[")]
+        answers = [{"id": story, "tldr": seen.tldr or f"Made-up TL;DR {story}: what happened and why it matters to you today."} for story in found]
+        return (pick.WRITE, {"tldrs": seen.shuffle(answers) if seen.shuffle else answers})
 
     async def send(channel_id, card, silent=False):
         cards.check(card)
@@ -119,7 +120,6 @@ def world(make_db, monkeypatch, owner, dev_clock):
     monkeypatch.setattr(cards, "send", send)
     monkeypatch.setattr(cards, "_actions", {})
     monkeypatch.setattr(plain, "changed", lambda user_id: None)
-    plain.register()
     live.reset()
     seen.request = lambda text="": Request(owner, 100, text)
     return seen
@@ -170,7 +170,25 @@ def test_the_cards_are_a_step_of_the_morning_routine_before_the_briefing(monkeyp
 
 
 def test_news_is_its_own_channel_and_listens_there():
-    assert reading.task.home == "news" and reading.task.home_examples == ("another one", "more like this")
+    assert reading.task.home == "news" and reading.task.home_examples == ("another one", "less AI")
+
+
+def test_each_tldr_is_tied_to_its_story_by_its_id_whatever_order_the_answers_come_in(world):
+    """Made-up answers in a shuffled order: each TL;DR still sits under its own story (G: the preview's mix-up)."""
+    import random
+
+    world.shuffle = lambda answers: random.Random(7).sample(answers, len(answers))
+    morning(world)
+    for each in the_set(world):
+        assert each.tldr.startswith(f"Made-up TL;DR {each.id}:"), (each.title, each.tldr)
+
+
+def test_a_tldr_set_that_names_a_story_not_given_or_one_twice_is_refused(world, caplog):
+    world.shuffle = lambda answers: [answers[0], {**answers[1], "id": answers[0]["id"]}, *answers[2:]]
+    with caplog.at_level(logging.WARNING, logger="assistant"):
+        morning(world)
+    assert not any(each.tldr.startswith("Made-up TL;DR") for each in the_set(world)), "every one is its own snippet"
+    assert "the set is refused" in caplog.text
 
 
 # --- the morning --------------------------------------------------------------------------------------------------------
@@ -296,14 +314,14 @@ def test_on_a_monday_the_window_is_since_saturday_5_30_am(world):
     assert "Made-up weekend storm closes a port" in world.asked[0][1]
 
 
-# --- #news: a card a story --------------------------------------------------------------------------------------------
+# --- #news: one message a day --------------------------------------------------------------------------------------
 HUB_ID, NEWS_ID = 400, 500
 
 
 @pytest.fixture
 def room(world, monkeypatch):
-    """A hub, #news made the first time it is needed, cards that record where they went, deletes that record."""
-    world.places, world.made, world.deleted, world.where, world.fail_at = {HUB_ID: "hub"}, [], [], [], None
+    """A hub, #news made the first time it is needed, messages that record where they went, deletes that record."""
+    world.places, world.made, world.deleted, world.where, world.fail = {HUB_ID: "hub"}, [], [], [], False
     kept = dict(config.CHANNELS)
 
     def place(channel_id):
@@ -317,7 +335,7 @@ def room(world, monkeypatch):
 
     async def send(channel_id, card, silent=False):
         cards.check(card)
-        if world.fail_at is not None and len(world.sent) >= world.fail_at:
+        if world.fail:
             raise surface.Failed("made-up failure")
         world.sent.append(card)
         world.where.append(channel_id)
@@ -332,14 +350,11 @@ def room(world, monkeypatch):
     monkeypatch.setattr(cards, "send", send)
     monkeypatch.setattr(cards, "delete", delete)
     monkeypatch.setattr(config, "DEV_DATABASE", False)
-    monkeypatch.setattr(config, "THUMBS_UP", True)
     monkeypatch.setattr(config, "DESIGN_ROUND", 7)
     config.CHANNELS.pop("news", None)
     config.CHANNELS["hub"] = HUB_ID
     plain._cannot_make.clear()
-    thumbsup.reset()
     yield world
-    thumbsup.reset()
     plain._cannot_make.clear()
     config.CHANNELS.clear()
     config.CHANNELS.update(kept)
@@ -356,58 +371,50 @@ def post(world):
     return job.notes[-1]
 
 
-def headlines(world):
-    return [each.embeds[0].title for each in world.sent]
-
-
-def test_at_6_am_each_story_is_its_own_card_in_news_made_beside_the_hub_in_the_topics_order(room):
+def test_at_6_am_the_day_s_stories_are_one_message_in_news_made_beside_the_hub_in_the_topics_order(room):
     morning(room)
-    assert post(room) == "8 cards posted"
-    assert room.made == [(HUB_ID, "news")] and set(room.where) == {NEWS_ID} and config.CHANNELS["news"] == NEWS_ID
-    topics = [each.embeds[0].author.split(" · ")[0] for each in room.sent]
-    assert topics[0] == "NZ politics" and len(topics) == 8
+    assert post(room) == "posted, 8 stories"
+    assert room.made == [(HUB_ID, "news")] and room.where == [NEWS_ID] and config.CHANNELS["news"] == NEWS_ID
+    (message,) = room.sent
+    topics = [each.author.split(" · ")[0] for each in message.embeds]
+    assert len(topics) == 8 and topics[0] == "NZ politics"
     order = [news.CARD_NAMES[each] for each in news.CARD_ORDER]
     assert [order.index(each) for each in topics] == sorted(order.index(each) for each in topics), "the fixed topic order"
-    (embed,) = room.sent[0].embeds
-    assert embed.status == design.PREPARED and embed.url.startswith("https://") and embed.description.startswith("Made-up TL;DR")
+    assert all(each.status == design.PREPARED and each.url.startswith("https://") and each.description.startswith("Made-up TL;DR") for each in message.embeds)
+    assert not message.thumbs_up and "Made-up TL;DR" not in message.text, "no 👍; what is logged is the headlines"
 
 
 def test_twice_or_after_a_restart_a_day_is_never_posted_again(room):
     morning(room)
     post(room)
-    assert post(room) == "posted already" and len(room.sent) == 8
+    assert post(room) == "posted already" and len(room.sent) == 1
 
 
-def test_a_card_cut_off_mid_post_by_a_start_is_never_posted_twice(room):
+def test_a_message_cut_off_mid_post_by_a_start_is_never_posted_twice(room):
     morning(room)
-    first = news.in_order(the_set(room))[0]
-    run(database.run(store.db_card_sending, room.owner.id, room.day, first, NEWS_ID))  # noted, then the start was cut off
+    run(database.run(store.db_post_sending, room.owner.id, room.day, store.DAY_SLOT, the_set(room), NEWS_ID))  # noted, then cut off
     run(plain.news_channel(room.owner.id))
-    post(room)
-    assert first.title not in headlines(room) and len(room.sent) == 7
+    assert post(room) == "posted already" and room.sent == []
 
 
-def test_a_post_that_fails_is_tried_again_and_what_went_up_stays_up(room):
+def test_a_post_that_fails_is_tried_again_and_posts_once(room):
     morning(room)
-    room.fail_at = 3
+    room.fail = True
     with pytest.raises(surface.Failed):
         post(room)
-    assert len(room.sent) == 3
-    room.fail_at = None
-    assert post(room) == "5 cards posted, 3 there already"
-    assert len(headlines(room)) == len(set(headlines(room))) == 8
+    room.fail = False
+    assert post(room) == "posted, 8 stories" and len(room.sent) == 1
 
 
-def test_the_next_morning_yesterday_s_cards_are_deleted_first_only_the_bot_s_own(room):
+def test_the_next_morning_yesterday_s_message_is_deleted_first_only_the_bot_s_own(room):
     morning(room)
     post(room)
-    yesterday = [message_id for _, message_id, _ in run(database.run(store.db_cards_up, room.owner.id, room.day))]
+    run(plain.another(Request(room.owner, NEWS_ID, "another one"), {}, frozenset()))
     clock.advance(timedelta(days=1))
     room.day = days.today()
     morning(room)
-    assert post(room).endswith("; 8 of earlier days deleted")
-    assert room.deleted == [(NEWS_ID, message_id) for message_id in yesterday]
-    assert not any(thumbsup.is_signal(each) for each in yesterday) and len(run(database.run(store.db_cards_up, room.owner.id, room.day))) == 8
+    assert post(room) == "posted, 8 stories; 2 of earlier days deleted"
+    assert room.deleted == [(NEWS_ID, 1001), (NEWS_ID, 1002)] and len(room.sent) == 3
 
 
 def test_the_dev_bot_never_makes_news(room, monkeypatch):
@@ -432,19 +439,33 @@ def test_news_channel_id_is_used_when_it_is_set(room):
     config.CHANNELS["news"] = 600
     morning(room)
     post(room)
-    assert room.made == [] and set(room.where) == {600}
+    assert room.made == [] and room.where == [600]
 
 
-def test_a_card_is_the_task_s_own_live_message(room):
+def test_the_news_message_is_the_task_s_own_live_message(room):
     morning(room)
     post(room)
     assert run(reading.task.message_class(1001)).name == "LIVE" and run(reading.task.message_class(4)) is None
 
 
+def test_the_longest_realistic_day_fits_one_message(room):
+    """Eight stories, headlines of 200 characters, outlets' long names, TL;DRs of 40 long words: inside 6,000 together."""
+    from core.cards import MAX_EMBED_TOTAL, embed_size
+
+    long_tldr = " ".join(["Internationalisation"] * 40)
+    stories = [news.Story(f"https://news.example/{number}", f"Made-up {number} " + "headline " * 22, "Made-up Wire of the Long Name and Its Regional Editions", topic, long_tldr)
+               for number, topic in enumerate([NZ_POLITICS, NZ_POLITICS, NZ_MONEY, WORLD, WORLD_POLITICS, TECH, AI, WEBDEV])]
+    card = news.one_message(stories, room.day)
+    cards.check(card)
+    assert sum(embed_size(each) for each in card.embeds) <= news.MESSAGE_BUDGET < MAX_EMBED_TOTAL and len(card.embeds) == 8
+    assert [each.title for each in card.embeds] == [" ".join(each.title.split()) for each in news.in_order(stories)], "never a headline cut"
+    assert any(each.description.endswith("…") for each in card.embeds), "the longest TL;DRs shortened to fit"
+
+
 # --- the hub: round 7's second message ----------------------------------------------------------------------------------
-def test_in_round_7_the_hub_has_one_purple_line_that_links_to_the_first_card(room, monkeypatch):
+def test_in_round_7_the_hub_has_one_purple_line_that_links_to_the_news_message(room, monkeypatch):
     morning(room)
-    assert run(plain.day_items(room.owner.id, room.day)) == [], "nothing until the cards are up"
+    assert run(plain.day_items(room.owner.id, room.day)) == [], "nothing until the message is up"
     post(room)
     monkeypatch.setattr(config, "DESIGN_ROUND", 5)
     assert run(plain.day_items(room.owner.id, room.day)) == []
@@ -455,10 +476,9 @@ def test_in_round_7_the_hub_has_one_purple_line_that_links_to_the_first_card(roo
     (embed,) = card.embeds
     assert (embed.title, embed.url, embed.description, embed.status) == ("📰 8 stories in #news", f"https://discord.example/{NEWS_ID}/1001", "", design.PREPARED)
     assert card.thumbs_up is None, "no 👍 on the hub's line"
-    assert design.embed_colour(embed.status) == 0x9B59B6
 
 
-def test_message_two_puts_the_news_after_the_to_dos_and_the_diary(room):
+def test_message_two_puts_the_news_after_the_to_dos_and_the_diary_and_is_sent_with_it_alone(room):
     from core.actions import TODO, TRACKING, DayItem
 
     morning(room)
@@ -466,42 +486,8 @@ def test_message_two_puts_the_news_after_the_to_dos_and_the_diary(room):
     (item,) = run(plain.day_items(room.owner.id, room.day))
     card = embeds.everything_else([item, DayItem(TODO, "Buy stamps"), DayItem(TRACKING, "Diary · Streak: 3 days", icon="📓")])
     assert [each.status for each in card.embeds] == [design.TODOS, design.TRACKING, design.PREPARED]
-    assert embeds.everything_else([item]) is not None, "sent with the news's line alone"
-
-
-# --- 👍 on a card: liked or read --------------------------------------------------------------------------------------
-def test_thumbs_up_on_a_card_is_liked_or_read_silent_and_taken_away_it_goes(room):
-    from tasks.builtin import BuiltinTask
-
-    morning(room)
-    post(room)
-    assert thumbsup.is_signal(1001) and thumbsup.pending(1001) is None, "its own kind: no yes waits on it"
-    (reaction,) = BuiltinTask().reactions()
-    assert reaction.silent(1001) and not reaction.silent(4)
-    assert run(thumbsup.confirm(1001, room.owner)) == "📰 noted: liked or read"
-    liked = news.in_order(the_set(room))[0]
-    assert run(database.run(store.db_liked_stories, room.owner.id)) == [liked.title]
-    run(thumbsup.undo(1001, room.owner))
-    assert run(database.run(store.db_liked_stories, room.owner.id)) == []
-    run(thumbsup.confirm(1001, room.owner))
-    assert run(database.run(store.db_liked_stories, room.owner.id)) == [liked.title], "as often as he likes"
-
-
-def test_a_liked_story_is_given_to_the_next_morning_s_pick(room):
-    morning(room)
-    post(room)
-    run(thumbsup.confirm(1002, room.owner))
-    clock.advance(timedelta(days=1))
-    room.day = days.today()
-    morning(room)
-    assert "Stories he liked or read (a 👍 on its card):" in room.asked[-2][1]
-
-
-def test_after_a_start_the_cards_up_have_their_thumbs_up_again(room):
-    morning(room)
-    post(room)
-    thumbsup.reset()
-    assert run(plain.note_cards()) == 8 and thumbsup.is_signal(1001)
+    alone = embeds.everything_else([item])
+    assert [each.title for each in alone.embeds] == ["📰 8 stories in #news"], "the news's line alone: nothing else in it"
 
 
 # --- steering in words ------------------------------------------------------------------------------------------------
@@ -515,7 +501,7 @@ def steer(world, **data):
 def test_more_like_the_housing_one_less_ai_and_more_nz_politics_are_kept_and_given_to_every_later_pick(world):
     morning(world)
     housing = next(each for each in the_set(world) if each.topic == NZ_MONEY)
-    card = steer(world, like_topic=NZ_MONEY)
+    card = steer(world, story="the Reserve Bank")
     assert card.lines == ("More **NZ housing and money**", f"More like **{housing.title}**")
     third = housing
     steer(world, less=AI)
@@ -544,62 +530,57 @@ def test_skip_housing_tomorrow_leaves_it_out_tomorrow_only(world):
     assert NZ_MONEY in [each.topic for each in the_set(world)], "one day only"
 
 
-def test_more_like_the_one_about_words_of_its_headline(world):
+def test_more_like_the_one_about_words_of_its_headline_is_found_by_python(world):
     morning(world)
-    card = run(plain.steer_card(world.request(), {"like_words": "water reform"}, frozenset()))
-    assert card.lines[-1] == "More like **Made-up parliament passes the water reform bill**"
+    card = run(plain.steer_card(world.request(), {"story": "water reform"}, frozenset()))
+    assert card.question is None and card.lines[-1] == "More like **Made-up parliament passes the water reform bill**"
+    housing = run(plain.steer_card(world.request(), {"story": "housing"}, frozenset()))
+    assert housing.question is None and "More like **Made-up Reserve Bank holds the OCR steady**" in housing.lines, "a topic's name counts"
 
 
-def test_more_like_3_is_asked_about_gently_by_topic(world):
+def test_words_that_name_no_story_or_several_ask_which_listing_today_s(world):
     morning(world)
-    with pytest.raises(UserError, match="no numbers: say it by its topic, like “more like the housing one”, or reply to its card. Today's are NZ politics, Housing and money"):
-        run(plain.steer_card(world.request(), {"like_number": 3}, frozenset()))
+    none = run(plain.steer_card(world.request(), {"story": "zebra crossing"}, frozenset()))
+    assert none.question.text == "Which story? Say a few words of its headline."
+    assert none.lines[0].startswith("NZ politics: **Made-up parliament") and len(none.lines) == 8, "today's by topic and headline"
+    several = run(plain.steer_card(world.request(), {"story": "made-up"}, frozenset()))
+    assert several.question.text == "Which of these?" and len(several.question.choices) == 4
+    picked = several.question.choices[0]
+    again = run(plain.steer_card(world.request(), picked.data, frozenset()))
+    assert again.question is None and again.lines[-1].startswith("More like **"), "a button answers it"
+    number = run(plain.steer_card(world.request(), {"story": "3"}, frozenset()))
+    assert number.question is not None, "a number names no story: asked"
 
 
-def test_more_like_this_as_a_reply_to_a_card_is_that_story_and_less_of_this_its_topic(room):
-    morning(room)
-    post(room)
-    first = news.in_order(the_set(room))[0]
-    replied = Request(room.owner, NEWS_ID, "more like this", replied_to=1001)
-    card = run(plain.steer_card(replied, {"this": "like"}, frozenset()))
-    assert card.lines[-1] == f"More like **{first.title}**"
-    less = run(plain.steer_card(Request(room.owner, NEWS_ID, "less of this", replied_to=1001), {"this": "less"}, frozenset()))
-    assert less.lines == (f"Less **{news.LABELS[first.topic]}**",)
-    with pytest.raises(UserError, match="Reply to its card"):
-        run(plain.steer_card(Request(room.owner, NEWS_ID, "more like this"), {"this": "like"}, frozenset()))
-
-
-def test_more_like_a_topic_or_words_that_are_not_there_is_said(world):
-    fresh(world, same_links=True)
-    world.same_links = False
-    world.failing.add(feed_url(AI))
-    morning(world, keep_pages=True)
-    with pytest.raises(UserError, match="no AI story today"):
-        run(plain.steer_card(world.request(), {"like_topic": AI}, frozenset()))
-    with pytest.raises(UserError, match="by its topic"):
-        run(plain.steer_card(world.request(), {"like_words": "zebra crossing"}, frozenset()))
+def test_the_news_names_matching_is_pure_and_ignores_small_words():
+    stories = [news.Story("https://a.example/1", "Made-up banks cut fixed mortgage interest rates", "W", NZ_MONEY, "x"),
+               news.Story("https://a.example/2", "Made-up parliament passes the water reform bill", "W", NZ_POLITICS, "x"),
+               news.Story("https://a.example/3", "Made-up lab releases an open reasoning model", "W", AI, "x")]
+    assert news.named(stories, "the one about the interest rates") == [stories[0]]
+    assert news.named(stories, "AI") == [stories[2]]
+    assert news.named(stories, "the one about the") == []
 
 
 # --- another one ----------------------------------------------------------------------------------------------------------
-def test_another_one_is_a_new_card_in_news_counted_in_the_hub_s_line(room):
+def test_another_one_is_its_own_one_story_message_in_news_counted_in_the_hub_s_line(room):
     morning(room)
     post(room)
     shown = {each.url for each in the_set(room)}
     said = run(plain.another(Request(room.owner, 100, "another one"), {}, frozenset()))
-    assert said.also == f"📰 One more in #news: https://discord.example/{NEWS_ID}/1009"
+    assert said.also == f"📰 One more in #news: https://discord.example/{NEWS_ID}/1002"
     (embed,) = room.sent[-1].embeds
     assert room.where[-1] == NEWS_ID and embed.url not in shown and [name for name, _ in room.asked][-1] == pick.WRITE
     (item,) = run(plain.day_items(room.owner.id, room.day))
-    assert item.text == "📰 9 stories in #news"
+    assert item.text == "📰 9 stories in #news" and item.link.endswith("/1001"), "the line still opens the day's message"
     in_news = run(plain.another(Request(room.owner, NEWS_ID, "another one"), {}, frozenset()))
-    assert in_news.also == "", "said in #news: the card is the answer"
+    assert in_news.also == "", "said in #news: the message is the answer"
 
 
-def test_another_one_with_no_news_is_its_card_where_it_was_asked(room, monkeypatch):
+def test_another_one_with_no_news_is_its_message_where_it_was_asked(room, monkeypatch):
     monkeypatch.setattr(config, "DEV_DATABASE", True)
     morning(room)
     run(plain.another(Request(room.owner, 100, "another one"), {}, frozenset()))
-    assert room.where == [100] and room.sent[-1].embeds[0].author
+    assert room.where == [100] and len(room.sent[-1].embeds) == 1
 
 
 def test_another_one_when_there_are_no_more_is_said(world):
@@ -620,11 +601,11 @@ def test_a_story_shown_is_never_shown_again_for_a_week(world):
 
 
 # --- showing it, and what it knows ----------------------------------------------------------------------------------------
-def test_the_news_said_anywhere_points_to_its_cards_and_what_it_knows_is_said(room):
+def test_the_news_said_anywhere_points_to_its_message_and_what_it_knows_is_said(room):
     assert run(plain.show(room.request(), {"what": "today"}, frozenset())) == "📰 No morning news picked today yet."
     morning(room)
     run(plain.show(room.request(), {"what": "today"}, frozenset()))
-    assert len(room.sent[-1].embeds) == 8 and room.sent[-1].embeds[0].status == design.PREPARED, "no #news yet: the cards here, one message"
+    assert len(room.sent[-1].embeds) == 8 and room.sent[-1].embeds[0].status == design.PREPARED, "no #news yet: the message here"
     post(room)
     assert run(plain.show(room.request(), {"what": "today"}, frozenset())) == f"📰 8 stories in #news: https://discord.example/{NEWS_ID}/1002"
     assert run(plain.show(room.request(), {"what": "prefs"}, frozenset())).startswith("📰 Nothing said yet")

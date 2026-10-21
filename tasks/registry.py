@@ -725,8 +725,7 @@ async def _apply_reaction(key: reactions.Key, payload: discord.RawReactionAction
         # Remember it, so taking the reaction away later can undo it
         await database.run(reactions.db_mark_applied, key, payload.channel_id)
         await _mark(payload.channel_id, payload.message_id, reactions.FAILED_EMOJI, add=False)
-        if reaction.silent is None or not reaction.silent(payload.message_id):
-            await _mark(payload.channel_id, payload.message_id, reactions.DONE_EMOJI)
+        await _mark(payload.channel_id, payload.message_id, reactions.DONE_EMOJI)
     await emit(
         "action_finished",
         ActionResult("reaction", reaction.emoji, "ok", user.id, payload.channel_id, reply=reply),

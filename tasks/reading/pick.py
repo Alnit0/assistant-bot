@@ -18,8 +18,10 @@ log = logging.getLogger("assistant")
 #            Python checks the answer (news.checked_pick): only numbers it
 #            gave, one a topic where any exist, never more than 8
 #   write    a TL;DR of about 30 words each, from each chosen article's text
-#            (or its snippet). Python checks each one's length; the link is
-#            always the item's own, never a word of Claude's
+#            (or its snippet), given and answered by each story's own id
+#            (news.story_id), never by its place: Python refuses the whole
+#            set if an answer names an id not given or one twice, and checks
+#            each one's length; the link is always the item's own
 #
 # What an article says goes to Claude here and nowhere else: never a log,
 # #bot-log, a notification or the status line.
@@ -50,7 +52,8 @@ WRITE_SYSTEM = (
     "You write the TL;DR of each news story for a person's morning news. Each is about 30 words, never more than 40: "
     "what happened, and why the person should read it. Write it only from the text given for that story; never add a "
     "fact that is not there, never guess, and never use clickbait. Plain English, UK spelling, one paragraph, no "
-    "headings, no em dashes, no links. Call the write_tldrs tool with one TL;DR for each story's number."
+    "headings, no em dashes, no links. Call the write_tldrs tool with one TL;DR for each story, with that story's id "
+    "exactly as given in its square brackets."
 )
 
 
@@ -81,8 +84,11 @@ WRITE_TOOL = {
                 "type": "array",
                 "items": {
                     "type": "object",
-                    "properties": {"number": {"type": "integer"}, "tldr": {"type": "string", "description": "About 30 words, never more than 40."}},
-                    "required": ["number", "tldr"],
+                    "properties": {
+                        "id": {"type": "string", "description": "The story's id, exactly as given in its square brackets (\"s1a2b3c\")."},
+                        "tldr": {"type": "string", "description": "About 30 words, never more than 40, from that story's own text."},
+                    },
+                    "required": ["id", "tldr"],
                 },
             }
         },
@@ -101,12 +107,12 @@ def choose_turn(items: list, day: date, guidance: str) -> str:
 
 
 def write_turn(found: list[tuple[object, str]]) -> str:
-    """Each chosen story's headline and text (its article's, or its snippet), numbered."""
+    """Each chosen story's headline and text (its article's, or its snippet), under its own id."""
     parts = []
-    for number, (item, text) in enumerate(found, start=1):
+    for item, text in found:
         words = text.split()
         shown = " ".join(words[:TEXT_WORDS]) + (" …" if len(words) > TEXT_WORDS else "")
-        parts.append(f"[{number}] {item.title} · {item.source}\n{shown}")
+        parts.append(f"[{news.story_id(item.url)}] {item.title} · {item.source}\n{shown}")
     return "\n\n".join(parts)
 
 
@@ -140,8 +146,9 @@ _LINK = re.compile(r"https?://\S+")
 
 
 async def write(found: list[tuple[object, str]]) -> list[str]:
-    """A TL;DR for each (item, text), in order, as Python checked it; one that came back unusable is its snippet,
-    shortened. Never a link: any address in Claude's words is taken out."""
+    """A TL;DR for each (item, text), in order, found by each story's id and checked; one that came back unusable is
+    its snippet, shortened, and every one is when an answer named a story not given or one twice. Never a link: any
+    address in Claude's words is taken out."""
     if not found:
         return []
     called = await llm.call_tool(
@@ -153,10 +160,13 @@ async def write(found: list[tuple[object, str]]) -> list[str]:
         task="reading",
         max_tokens=110 * len(found) + 100,
     )
-    said: dict[int, str] = {}
-    for each in (called[1].get("tldrs") or []) if called and isinstance(called[1], dict) else []:
-        if isinstance(each, dict) and isinstance(each.get("number"), int):
-            said[each["number"]] = news.checked_tldr(_LINK.sub("", str(each.get("tldr") or "")))
+    ids = [news.story_id(item.url) for item, _ in found]
+    answers = (called[1].get("tldrs") or []) if called and isinstance(called[1], dict) else []
+    answers = [{**each, "tldr": _LINK.sub("", str(each.get("tldr") or ""))} if isinstance(each, dict) else each for each in answers]
+    said = news.checked_tldrs(ids, answers)
     if called is None:
         log.warning("Morning news: the TL;DRs came back with no call; the snippets stand in")
-    return [said.get(number) or news.checked_tldr(" ".join(item.snippet.split()[: news.TLDR_WORDS])) or item.title for number, (item, _) in enumerate(found, start=1)]
+    elif said is None:
+        log.warning("Morning news: a TL;DR named a story it was not given, or one twice: the set is refused, the snippets stand in")
+    said = said or {}
+    return [said.get(story) or news.checked_tldr(" ".join(item.snippet.split()[: news.TLDR_WORDS])) or item.title for story, (item, _) in zip(ids, found)]

@@ -173,9 +173,6 @@ class Reaction:
     # `(message_id) -> bool`: only a message this says yes to is this reaction's (👍: one that asks one
     # simple yes). On any other it is ignored in silence: not checked, not waited for, no ✅ and no ⚠️
     tracks: Callable[[int], bool] | None = None
-    # `(message_id) -> bool`: applied with no ✅ on that message (a news card's 👍 is a signal, said nowhere);
-    # taking the reaction away still runs `undo`
-    silent: Callable[[int], bool] | None = None
     # Housekeeping (delete, archive, pin, unpin, channel reset) leaves no trace in the
     # channel: what is said about it deletes itself after about 10 seconds whatever
     # KEEP_CONFIRMATIONS says, and #bot-log is the record

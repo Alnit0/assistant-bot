@@ -914,7 +914,7 @@
       "golden": "m14",
       "task": "reading",
       "message": "another one",
-      "state": "The user's morning news today, a card a story in #news, a line each by its topic (the stories have no numbers):\n- NZ politics (nz_politics): Made-up parliament passes the water reform bill\n- Housing and money (nz_money): Made-up Reserve Bank holds the OCR steady\n- Housing and money (nz_money): Made-up banks cut fixed mortgage interest rates\n- World news (world): Made-up earthquake shakes an island chain\n- World politics (world_politics): Made-up election called in a northern republic\n- Tech (tech): Made-up chip maker unveils a faster processor\n- AI (ai): Made-up lab releases an open reasoning model\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
+      "state": "The user's morning news today, one message in #news, a story a line by its topic (the stories have no numbers):\n- NZ politics (nz_politics): Made-up parliament passes the water reform bill\n- Housing and money (nz_money): Made-up Reserve Bank holds the OCR steady\n- Housing and money (nz_money): Made-up banks cut fixed mortgage interest rates\n- World news (world): Made-up earthquake shakes an island chain\n- World politics (world_politics): Made-up election called in a northern republic\n- Tech (tech): Made-up chip maker unveils a faster processor\n- AI (ai): Made-up lab releases an open reasoning model\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
       "action": "news_another",
       "data": {},
       "note": "",
@@ -930,7 +930,7 @@
       "golden": "m16",
       "task": "reading",
       "message": "less AI",
-      "state": "The user's morning news today, a card a story in #news, a line each by its topic (the stories have no numbers):\n- NZ politics (nz_politics): Made-up parliament passes the water reform bill\n- Housing and money (nz_money): Made-up Reserve Bank holds the OCR steady\n- Housing and money (nz_money): Made-up banks cut fixed mortgage interest rates\n- World news (world): Made-up earthquake shakes an island chain\n- World politics (world_politics): Made-up election called in a northern republic\n- Tech (tech): Made-up chip maker unveils a faster processor\n- AI (ai): Made-up lab releases an open reasoning model\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
+      "state": "The user's morning news today, one message in #news, a story a line by its topic (the stories have no numbers):\n- NZ politics (nz_politics): Made-up parliament passes the water reform bill\n- Housing and money (nz_money): Made-up Reserve Bank holds the OCR steady\n- Housing and money (nz_money): Made-up banks cut fixed mortgage interest rates\n- World news (world): Made-up earthquake shakes an island chain\n- World politics (world_politics): Made-up election called in a northern republic\n- Tech (tech): Made-up chip maker unveils a faster processor\n- AI (ai): Made-up lab releases an open reasoning model\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
       "action": "news_steer",
       "data": {
         "less": "ai"
@@ -949,7 +949,7 @@
       "golden": "m17",
       "task": "reading",
       "message": "more NZ politics",
-      "state": "The user's morning news today, a card a story in #news, a line each by its topic (the stories have no numbers):\n- NZ politics (nz_politics): Made-up parliament passes the water reform bill\n- Housing and money (nz_money): Made-up Reserve Bank holds the OCR steady\n- Housing and money (nz_money): Made-up banks cut fixed mortgage interest rates\n- World news (world): Made-up earthquake shakes an island chain\n- World politics (world_politics): Made-up election called in a northern republic\n- Tech (tech): Made-up chip maker unveils a faster processor\n- AI (ai): Made-up lab releases an open reasoning model\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
+      "state": "The user's morning news today, one message in #news, a story a line by its topic (the stories have no numbers):\n- NZ politics (nz_politics): Made-up parliament passes the water reform bill\n- Housing and money (nz_money): Made-up Reserve Bank holds the OCR steady\n- Housing and money (nz_money): Made-up banks cut fixed mortgage interest rates\n- World news (world): Made-up earthquake shakes an island chain\n- World politics (world_politics): Made-up election called in a northern republic\n- Tech (tech): Made-up chip maker unveils a faster processor\n- AI (ai): Made-up lab releases an open reasoning model\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
       "action": "news_steer",
       "data": {
         "more": "nz_politics"
@@ -968,7 +968,7 @@
       "golden": "m18",
       "task": "reading",
       "message": "skip housing tomorrow",
-      "state": "The user's morning news today, a card a story in #news, a line each by its topic (the stories have no numbers):\n- NZ politics (nz_politics): Made-up parliament passes the water reform bill\n- Housing and money (nz_money): Made-up Reserve Bank holds the OCR steady\n- Housing and money (nz_money): Made-up banks cut fixed mortgage interest rates\n- World news (world): Made-up earthquake shakes an island chain\n- World politics (world_politics): Made-up election called in a northern republic\n- Tech (tech): Made-up chip maker unveils a faster processor\n- AI (ai): Made-up lab releases an open reasoning model\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
+      "state": "The user's morning news today, one message in #news, a story a line by its topic (the stories have no numbers):\n- NZ politics (nz_politics): Made-up parliament passes the water reform bill\n- Housing and money (nz_money): Made-up Reserve Bank holds the OCR steady\n- Housing and money (nz_money): Made-up banks cut fixed mortgage interest rates\n- World news (world): Made-up earthquake shakes an island chain\n- World politics (world_politics): Made-up election called in a northern republic\n- Tech (tech): Made-up chip maker unveils a faster processor\n- AI (ai): Made-up lab releases an open reasoning model\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
       "action": "news_steer",
       "data": {
         "skip": "nz_money",
@@ -989,7 +989,7 @@
       "golden": "m19",
       "task": "reading",
       "message": "no tech news on Friday",
-      "state": "The user's morning news today, a card a story in #news, a line each by its topic (the stories have no numbers):\n- NZ politics (nz_politics): Made-up parliament passes the water reform bill\n- Housing and money (nz_money): Made-up Reserve Bank holds the OCR steady\n- Housing and money (nz_money): Made-up banks cut fixed mortgage interest rates\n- World news (world): Made-up earthquake shakes an island chain\n- World politics (world_politics): Made-up election called in a northern republic\n- Tech (tech): Made-up chip maker unveils a faster processor\n- AI (ai): Made-up lab releases an open reasoning model\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
+      "state": "The user's morning news today, one message in #news, a story a line by its topic (the stories have no numbers):\n- NZ politics (nz_politics): Made-up parliament passes the water reform bill\n- Housing and money (nz_money): Made-up Reserve Bank holds the OCR steady\n- Housing and money (nz_money): Made-up banks cut fixed mortgage interest rates\n- World news (world): Made-up earthquake shakes an island chain\n- World politics (world_politics): Made-up election called in a northern republic\n- Tech (tech): Made-up chip maker unveils a faster processor\n- AI (ai): Made-up lab releases an open reasoning model\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
       "action": "news_steer",
       "data": {
         "skip": "tech",
@@ -1010,7 +1010,7 @@
       "golden": "m20",
       "task": "reading",
       "message": "what do you know about what I like in the news?",
-      "state": "The user's morning news today, a card a story in #news, a line each by its topic (the stories have no numbers):\n- NZ politics (nz_politics): Made-up parliament passes the water reform bill\n- Housing and money (nz_money): Made-up Reserve Bank holds the OCR steady\n- Housing and money (nz_money): Made-up banks cut fixed mortgage interest rates\n- World news (world): Made-up earthquake shakes an island chain\n- World politics (world_politics): Made-up election called in a northern republic\n- Tech (tech): Made-up chip maker unveils a faster processor\n- AI (ai): Made-up lab releases an open reasoning model\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
+      "state": "The user's morning news today, one message in #news, a story a line by its topic (the stories have no numbers):\n- NZ politics (nz_politics): Made-up parliament passes the water reform bill\n- Housing and money (nz_money): Made-up Reserve Bank holds the OCR steady\n- Housing and money (nz_money): Made-up banks cut fixed mortgage interest rates\n- World news (world): Made-up earthquake shakes an island chain\n- World politics (world_politics): Made-up election called in a northern republic\n- Tech (tech): Made-up chip maker unveils a faster processor\n- AI (ai): Made-up lab releases an open reasoning model\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
       "action": "news_show",
       "data": {
         "what": "prefs"
@@ -1029,7 +1029,7 @@
       "golden": "m21",
       "task": "reading",
       "message": "stop using The Verge",
-      "state": "The user's morning news today, a card a story in #news, a line each by its topic (the stories have no numbers):\n- NZ politics (nz_politics): Made-up parliament passes the water reform bill\n- Housing and money (nz_money): Made-up Reserve Bank holds the OCR steady\n- Housing and money (nz_money): Made-up banks cut fixed mortgage interest rates\n- World news (world): Made-up earthquake shakes an island chain\n- World politics (world_politics): Made-up election called in a northern republic\n- Tech (tech): Made-up chip maker unveils a faster processor\n- AI (ai): Made-up lab releases an open reasoning model\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
+      "state": "The user's morning news today, one message in #news, a story a line by its topic (the stories have no numbers):\n- NZ politics (nz_politics): Made-up parliament passes the water reform bill\n- Housing and money (nz_money): Made-up Reserve Bank holds the OCR steady\n- Housing and money (nz_money): Made-up banks cut fixed mortgage interest rates\n- World news (world): Made-up earthquake shakes an island chain\n- World politics (world_politics): Made-up election called in a northern republic\n- Tech (tech): Made-up chip maker unveils a faster processor\n- AI (ai): Made-up lab releases an open reasoning model\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
       "action": "news_source",
       "data": {
         "remove": true,
@@ -1039,8 +1039,8 @@
       "recorded": [
         "news_source",
         {
-          "remove": true,
           "name": "The Verge",
+          "remove": true,
           "guessed": [],
           "not_included": []
         }
@@ -1050,7 +1050,7 @@
       "golden": "m23",
       "task": "reading",
       "message": "more US politics",
-      "state": "The user's morning news today, a card a story in #news, a line each by its topic (the stories have no numbers):\n- NZ politics (nz_politics): Made-up parliament passes the water reform bill\n- Housing and money (nz_money): Made-up Reserve Bank holds the OCR steady\n- Housing and money (nz_money): Made-up banks cut fixed mortgage interest rates\n- World news (world): Made-up earthquake shakes an island chain\n- World politics (world_politics): Made-up election called in a northern republic\n- Tech (tech): Made-up chip maker unveils a faster processor\n- AI (ai): Made-up lab releases an open reasoning model\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
+      "state": "The user's morning news today, one message in #news, a story a line by its topic (the stories have no numbers):\n- NZ politics (nz_politics): Made-up parliament passes the water reform bill\n- Housing and money (nz_money): Made-up Reserve Bank holds the OCR steady\n- Housing and money (nz_money): Made-up banks cut fixed mortgage interest rates\n- World news (world): Made-up earthquake shakes an island chain\n- World politics (world_politics): Made-up election called in a northern republic\n- Tech (tech): Made-up chip maker unveils a faster processor\n- AI (ai): Made-up lab releases an open reasoning model\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
       "action": "news_steer",
       "data": {
         "us": "more"
@@ -1070,16 +1070,16 @@
       "golden": "m28",
       "task": "reading",
       "message": "more like the housing one",
-      "state": "The user's morning news today, a card a story in #news, a line each by its topic (the stories have no numbers):\n- NZ politics (nz_politics): Made-up parliament passes the water reform bill\n- Housing and money (nz_money): Made-up Reserve Bank holds the OCR steady\n- Housing and money (nz_money): Made-up banks cut fixed mortgage interest rates\n- World news (world): Made-up earthquake shakes an island chain\n- World politics (world_politics): Made-up election called in a northern republic\n- Tech (tech): Made-up chip maker unveils a faster processor\n- AI (ai): Made-up lab releases an open reasoning model\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
+      "state": "The user's morning news today, one message in #news, a story a line by its topic (the stories have no numbers):\n- NZ politics (nz_politics): Made-up parliament passes the water reform bill\n- Housing and money (nz_money): Made-up Reserve Bank holds the OCR steady\n- Housing and money (nz_money): Made-up banks cut fixed mortgage interest rates\n- World news (world): Made-up earthquake shakes an island chain\n- World politics (world_politics): Made-up election called in a northern republic\n- Tech (tech): Made-up chip maker unveils a faster processor\n- AI (ai): Made-up lab releases an open reasoning model\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
       "action": "news_steer",
       "data": {
-        "like_topic": "nz_money"
+        "story": "the housing one"
       },
       "note": "housing is nz_money",
       "recorded": [
         "news_steer",
         {
-          "like_topic": "nz_money",
+          "story": "the housing one",
           "guessed": [],
           "not_included": []
         }
@@ -1089,34 +1089,33 @@
       "golden": "m29",
       "task": "reading",
       "message": "more like the one about the water reform",
-      "state": "The user's morning news today, a card a story in #news, a line each by its topic (the stories have no numbers):\n- NZ politics (nz_politics): Made-up parliament passes the water reform bill\n- Housing and money (nz_money): Made-up Reserve Bank holds the OCR steady\n- Housing and money (nz_money): Made-up banks cut fixed mortgage interest rates\n- World news (world): Made-up earthquake shakes an island chain\n- World politics (world_politics): Made-up election called in a northern republic\n- Tech (tech): Made-up chip maker unveils a faster processor\n- AI (ai): Made-up lab releases an open reasoning model\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
+      "state": "The user's morning news today, one message in #news, a story a line by its topic (the stories have no numbers):\n- NZ politics (nz_politics): Made-up parliament passes the water reform bill\n- Housing and money (nz_money): Made-up Reserve Bank holds the OCR steady\n- Housing and money (nz_money): Made-up banks cut fixed mortgage interest rates\n- World news (world): Made-up earthquake shakes an island chain\n- World politics (world_politics): Made-up election called in a northern republic\n- Tech (tech): Made-up chip maker unveils a faster processor\n- AI (ai): Made-up lab releases an open reasoning model\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
       "action": "news_steer",
       "data": {
-        "like_words": "water reform"
+        "story": "the one about the water reform"
       },
       "recorded": [
         "news_steer",
         {
-          "like_topic": "nz_politics",
+          "story": "the one about the water reform",
           "guessed": [],
           "not_included": []
         }
-      ],
-      "known_miss": "claude-haiku-4-5 reads \"the one about the water reform\" as its topic (like_topic nz_politics), three runs of four since the cards (21 Oct, night). The outcome is right while one NZ politics story is up, as the code takes the topic's first; with two it could be the other: in the gap list (docs/BACKLOG.md)"
+      ]
     },
     {
       "golden": "m30",
       "task": "reading",
       "message": "more like the AI story",
-      "state": "The user's morning news today, a card a story in #news, a line each by its topic (the stories have no numbers):\n- NZ politics (nz_politics): Made-up parliament passes the water reform bill\n- Housing and money (nz_money): Made-up Reserve Bank holds the OCR steady\n- Housing and money (nz_money): Made-up banks cut fixed mortgage interest rates\n- World news (world): Made-up earthquake shakes an island chain\n- World politics (world_politics): Made-up election called in a northern republic\n- Tech (tech): Made-up chip maker unveils a faster processor\n- AI (ai): Made-up lab releases an open reasoning model\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
+      "state": "The user's morning news today, one message in #news, a story a line by its topic (the stories have no numbers):\n- NZ politics (nz_politics): Made-up parliament passes the water reform bill\n- Housing and money (nz_money): Made-up Reserve Bank holds the OCR steady\n- Housing and money (nz_money): Made-up banks cut fixed mortgage interest rates\n- World news (world): Made-up earthquake shakes an island chain\n- World politics (world_politics): Made-up election called in a northern republic\n- Tech (tech): Made-up chip maker unveils a faster processor\n- AI (ai): Made-up lab releases an open reasoning model\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
       "action": "news_steer",
       "data": {
-        "like_topic": "ai"
+        "story": "the AI story"
       },
       "recorded": [
         "news_steer",
         {
-          "like_topic": "ai",
+          "story": "the AI story",
           "guessed": [],
           "not_included": []
         }
@@ -1126,19 +1125,17 @@
       "golden": "m31",
       "task": "reading",
       "message": "more like 3",
-      "state": "The user's morning news today, a card a story in #news, a line each by its topic (the stories have no numbers):\n- NZ politics (nz_politics): Made-up parliament passes the water reform bill\n- Housing and money (nz_money): Made-up Reserve Bank holds the OCR steady\n- Housing and money (nz_money): Made-up banks cut fixed mortgage interest rates\n- World news (world): Made-up earthquake shakes an island chain\n- World politics (world_politics): Made-up election called in a northern republic\n- Tech (tech): Made-up chip maker unveils a faster processor\n- AI (ai): Made-up lab releases an open reasoning model\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
+      "state": "The user's morning news today, one message in #news, a story a line by its topic (the stories have no numbers):\n- NZ politics (nz_politics): Made-up parliament passes the water reform bill\n- Housing and money (nz_money): Made-up Reserve Bank holds the OCR steady\n- Housing and money (nz_money): Made-up banks cut fixed mortgage interest rates\n- World news (world): Made-up earthquake shakes an island chain\n- World politics (world_politics): Made-up election called in a northern republic\n- Tech (tech): Made-up chip maker unveils a faster processor\n- AI (ai): Made-up lab releases an open reasoning model\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
       "action": "news_steer",
       "data": {
-        "like_number": 3
+        "story": "3"
       },
-      "note": "a number: the code asks which, by topic",
+      "note": "a number names no story: the code asks which, listing today's",
       "recorded": [
         "news_steer",
         {
-          "like_number": 3,
-          "guessed": [
-            "like_number"
-          ],
+          "story": "3",
+          "guessed": [],
           "not_included": []
         }
       ]
@@ -1146,18 +1143,18 @@
     {
       "golden": "m39",
       "task": "reading",
-      "message": "more like this",
-      "state": "The user's morning news today, a card a story in #news, a line each by its topic (the stories have no numbers):\n- NZ politics (nz_politics): Made-up parliament passes the water reform bill\n- Housing and money (nz_money): Made-up Reserve Bank holds the OCR steady\n- Housing and money (nz_money): Made-up banks cut fixed mortgage interest rates\n- World news (world): Made-up earthquake shakes an island chain\n- World politics (world_politics): Made-up election called in a northern republic\n- Tech (tech): Made-up chip maker unveils a faster processor\n- AI (ai): Made-up lab releases an open reasoning model\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
+      "message": "more like the one about the interest rates",
+      "state": "The user's morning news today, one message in #news, a story a line by its topic (the stories have no numbers):\n- NZ politics (nz_politics): Made-up parliament passes the water reform bill\n- Housing and money (nz_money): Made-up Reserve Bank holds the OCR steady\n- Housing and money (nz_money): Made-up banks cut fixed mortgage interest rates\n- World news (world): Made-up earthquake shakes an island chain\n- World politics (world_politics): Made-up election called in a northern republic\n- Tech (tech): Made-up chip maker unveils a faster processor\n- AI (ai): Made-up lab releases an open reasoning model\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
       "action": "news_steer",
       "data": {
-        "this": "like"
+        "story": "the one about the interest rates"
       },
       "replied": true,
-      "note": "a reply to a story's card: the code knows which",
+      "note": "a reply to the news message: steered like any other message",
       "recorded": [
         "news_steer",
         {
-          "this": "like",
+          "story": "the one about the interest rates",
           "guessed": [],
           "not_included": []
         }
@@ -1166,37 +1163,18 @@
     {
       "golden": "m40",
       "task": "reading",
-      "message": "less of this",
-      "state": "The user's morning news today, a card a story in #news, a line each by its topic (the stories have no numbers):\n- NZ politics (nz_politics): Made-up parliament passes the water reform bill\n- Housing and money (nz_money): Made-up Reserve Bank holds the OCR steady\n- Housing and money (nz_money): Made-up banks cut fixed mortgage interest rates\n- World news (world): Made-up earthquake shakes an island chain\n- World politics (world_politics): Made-up election called in a northern republic\n- Tech (tech): Made-up chip maker unveils a faster processor\n- AI (ai): Made-up lab releases an open reasoning model\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
+      "message": "less AI",
+      "state": "The user's morning news today, one message in #news, a story a line by its topic (the stories have no numbers):\n- NZ politics (nz_politics): Made-up parliament passes the water reform bill\n- Housing and money (nz_money): Made-up Reserve Bank holds the OCR steady\n- Housing and money (nz_money): Made-up banks cut fixed mortgage interest rates\n- World news (world): Made-up earthquake shakes an island chain\n- World politics (world_politics): Made-up election called in a northern republic\n- Tech (tech): Made-up chip maker unveils a faster processor\n- AI (ai): Made-up lab releases an open reasoning model\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
       "action": "news_steer",
       "data": {
-        "this": "less"
+        "less": "ai"
       },
       "replied": true,
-      "note": "a reply to a story's card: less of its topic",
+      "note": "a reply to the news message: steered like any other message",
       "recorded": [
         "news_steer",
         {
-          "this": "less",
-          "guessed": [],
-          "not_included": []
-        }
-      ]
-    },
-    {
-      "golden": "m41",
-      "task": "reading",
-      "message": "less like this",
-      "state": "The user's morning news today, a card a story in #news, a line each by its topic (the stories have no numbers):\n- NZ politics (nz_politics): Made-up parliament passes the water reform bill\n- Housing and money (nz_money): Made-up Reserve Bank holds the OCR steady\n- Housing and money (nz_money): Made-up banks cut fixed mortgage interest rates\n- World news (world): Made-up earthquake shakes an island chain\n- World politics (world_politics): Made-up election called in a northern republic\n- Tech (tech): Made-up chip maker unveils a faster processor\n- AI (ai): Made-up lab releases an open reasoning model\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
-      "action": "news_steer",
-      "data": {
-        "this": "less"
-      },
-      "replied": true,
-      "recorded": [
-        "news_steer",
-        {
-          "this": "less",
+          "less": "ai",
           "guessed": [],
           "not_included": []
         }
@@ -1206,15 +1184,15 @@
       "golden": "m42",
       "task": "reading",
       "message": "more like the one about the interest rates",
-      "state": "The user's morning news today, a card a story in #news, a line each by its topic (the stories have no numbers):\n- NZ politics (nz_politics): Made-up parliament passes the water reform bill\n- Housing and money (nz_money): Made-up Reserve Bank holds the OCR steady\n- Housing and money (nz_money): Made-up banks cut fixed mortgage interest rates\n- World news (world): Made-up earthquake shakes an island chain\n- World politics (world_politics): Made-up election called in a northern republic\n- Tech (tech): Made-up chip maker unveils a faster processor\n- AI (ai): Made-up lab releases an open reasoning model\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
+      "state": "The user's morning news today, one message in #news, a story a line by its topic (the stories have no numbers):\n- NZ politics (nz_politics): Made-up parliament passes the water reform bill\n- Housing and money (nz_money): Made-up Reserve Bank holds the OCR steady\n- Housing and money (nz_money): Made-up banks cut fixed mortgage interest rates\n- World news (world): Made-up earthquake shakes an island chain\n- World politics (world_politics): Made-up election called in a northern republic\n- Tech (tech): Made-up chip maker unveils a faster processor\n- AI (ai): Made-up lab releases an open reasoning model\n- sources: RNZ Politics, NZ Herald Politics, BBC World, The Guardian World, Ars Technica, The Verge, TechCrunch AI, interest.co.nz",
       "action": "news_steer",
       "data": {
-        "like_words": "interest rates"
+        "story": "the one about the interest rates"
       },
       "recorded": [
         "news_steer",
         {
-          "like_words": "interest rates",
+          "story": "the one about the interest rates",
           "guessed": [],
           "not_included": []
         }

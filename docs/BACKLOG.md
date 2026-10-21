@@ -318,9 +318,8 @@ at step 4.
 |---|---|---|---|
 | G4 | Task ties are asked too readily: the router sees two exchanges and no record of what I have or did lately | router | medium |
 | G7 | Questions still sent as their own message: only timers now ("Which timer? Say its name.", C8). The pills ones are on the card (C7, 2026-10-12) | timers | small |
-| G22 | "More like the one about the water reform" is read as its topic (like_topic), not words of its headline: m29, a known miss since the news cards (21 Oct). Right while one story of that topic is up; with two the code may take the other | reading extraction | small |
 
-Done: dev bugs are numbered D1, D2… with a "dev" tag and a live number
+Done: G22 (21 Oct, night: a story named by its words is found by Python among today's headlines, and asked about when none or several fit; m29 4 of 4). Dev bugs are numbered D1, D2… with a "dev" tag and a live number
 is never reused; and, in batch 1 (2026-10-10), G2 (a reply to an older
 card), G5 (✅ on a message that needs nothing), G6 (a neutral "not
 understood"), G8 (a name Claude works out for a pronoun is put back for

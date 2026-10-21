@@ -26,6 +26,7 @@ from pathlib import Path
 
 from core import clock, config, database
 from core import day as days
+from tasks.reading.news import story_id
 
 TITLE = "Design · A day in the hub"
 NAME = "day"
@@ -53,8 +54,9 @@ NEWS = (
     ("world", "Made-up: a summit ends with a trade pact"),
 )
 NEWS_PICK = ("pick_news", {"chosen": [1, 2, 3, 4, 5, 6, 8], "next": [7], "us_only": []})
-NEWS_TLDRS = ("write_tldrs", {"tldrs": [{"number": number, "tldr": f"Made-up TL;DR {number}: what happened, and why it is worth a look this morning."} for number in range(1, 9)]})
-NEWS_ANOTHER = ("write_tldrs", {"tldrs": [{"number": 1, "tldr": "Made-up TL;DR: the browser's release, and what it changes for anyone building for the web."}]})
+# Each TL;DR answers by its story's own id (tasks/reading/pick.py), from the story's made-up link
+NEWS_TLDRS = ("write_tldrs", {"tldrs": [{"id": story_id(f"https://example.com/made-up/{number}"), "tldr": f"Made-up TL;DR {number}: what happened, and why it is worth a look this morning."} for number in range(1, 9)]})
+NEWS_ANOTHER = ("write_tldrs", {"tldrs": [{"id": story_id("https://example.com/made-up/7"), "tldr": "Made-up TL;DR: the browser's release, and what it changes for anyone building for the web."}]})
 
 
 def day_of_run(today: date) -> date:

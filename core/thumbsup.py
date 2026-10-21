@@ -28,13 +28,6 @@ log = logging.getLogger("assistant")
 # builtin task's (tasks/builtin): checked at once, acted on after the quiet
 # period, ✅ added, and taking it away undoes it where the action said how
 # (`Press.offer_undo`). Behind THUMBS_UP: off, no card notes anything.
-#
-# A 👍 that is a signal is a kind of its own (21 Oct, the morning news's
-# cards: "liked or read"): no yes is asked, nothing is confirmed, and it is
-# silent (no ✅, nothing said). Adding it runs `on`, taking it away runs
-# `off`, as often as he likes; it lasts as long as its message. A task notes
-# its messages (`signal`) when it posts them and again when the bot starts
-# (it keeps them in its own tables), and forgets them when they go.
 # ---------------------------------------------------------------------------
 THUMBS_UP = "👍"
 LIFETIME = timedelta(hours=24)
@@ -54,16 +47,8 @@ class Pending:
     until: datetime
 
 
-@dataclass(frozen=True)
-class Signal:
-    channel_id: int | None
-    on: object  # a cards.Button: what a 👍 notes
-    off: object  # and what taking it away does
-
-
 _pending: dict[int, Pending] = {}
 _undo: dict[int, tuple[int | None, object]] = {}  # a message a 👍 was applied to: (its channel, the undo button)
-_signals: dict[int, Signal] = {}
 
 
 def register(message_id: int | None, channel_id: int | None, button, now: datetime | None = None) -> None:
@@ -99,47 +84,12 @@ def pending(message_id: int | None, now: datetime | None = None) -> Pending | No
 
 
 def tracked(message_id: int | None) -> bool:
-    return pending(message_id) is not None or is_signal(message_id)
+    return pending(message_id) is not None
 
 
 def reset() -> None:
     _pending.clear()
     _undo.clear()
-    _signals.clear()
-
-
-# --- a 👍 that is a signal ----------------------------------------------------------------------------------------
-def signal(message_id: int | None, channel_id: int | None, on, off) -> None:
-    """A message a 👍 on is a signal: `on` when it is added, `off` when it is taken away (cards.Buttons)."""
-    if message_id is None or not enabled():
-        return
-    _signals[message_id] = Signal(channel_id, on, off)
-
-
-def forget_signal(message_id: int | None) -> None:
-    _signals.pop(message_id, None)
-
-
-def is_signal(message_id: int | None) -> bool:
-    """A message whose 👍 is a signal: it is applied silently, with no ✅."""
-    return message_id is not None and message_id in _signals
-
-
-async def signalled(message_id: int, user, added: bool) -> str | None:
-    """A 👍 added to a signal's message, or taken away: its `on` or its `off`, run as a press. None when
-    the message is no signal's (or its task is not loaded): nothing is done."""
-    from core import cards
-    from core.permissions import is_allowed
-
-    found = _signals.get(message_id)
-    button = (found.on if added else found.off) if found is not None else None
-    registered = cards.action_for(button.task, button.action) if button is not None else None
-    if registered is None:
-        return None
-    if not is_allowed(user, registered.permission):
-        raise UserError("That isn't yours.")
-    press = ReactionPress(user, button.task, button.action, button.arg, found.channel_id, message_id)
-    return await registered.handler(press) or "noted"
 
 
 async def confirm(message_id: int, user) -> str | None:
@@ -148,8 +98,6 @@ async def confirm(message_id: int, user) -> str | None:
     is raised (the reaction gets ⚠️), and the yes is noted again so another try can work."""
     from core import cards
 
-    if is_signal(message_id):
-        return await signalled(message_id, user, True)
     found = pending(message_id)
     if found is None:
         return None
@@ -177,8 +125,6 @@ async def undo(message_id: int, user) -> str:
     """The 👍 was taken away after it was applied: what the action said would undo it, run as a press."""
     from core import cards
 
-    if is_signal(message_id):
-        return await signalled(message_id, user, False) or "undone"
     channel_id, button = _undo.pop(message_id, (None, None))
     registered = cards.action_for(button.task, button.action) if button is not None else None
     if registered is None:

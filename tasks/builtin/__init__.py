@@ -165,12 +165,11 @@ class BuiltinTask(Task):
             Reaction(
                 thumbsup.THUMBS_UP,
                 "yes to a message that asks one thing: a dose's reminder (taken), a reminder or an expiry (done), "
-                "a routine's own card (all of it done); on a news card, liked or read. Remove the reaction to undo it where it can be",
+                "a routine's own card (all of it done). Remove the reaction to undo it where it can be",
                 thumbs_up,
                 examples=[f"react {thumbsup.THUMBS_UP} to a dose's reminder"],
                 undo=thumbs_up_taken_away,
                 tracks=thumbsup.tracked,
-                silent=thumbsup.is_signal,
             ),
         ]
 

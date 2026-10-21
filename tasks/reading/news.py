@@ -1,3 +1,4 @@
+import hashlib
 import re
 import urllib.parse
 from dataclasses import dataclass, field, replace
@@ -12,7 +13,8 @@ from core.cards import Card, Embed
 # headlines become one feature, "it makes sense to only have one set of news
 # generated"). Pure: the topics and their slots, which feed items may go to
 # Claude (the window, paid articles, the same story from several outlets),
-# Python's check of Claude's pick and of each TL;DR, and a story's card.
+# Python's check of Claude's pick and of each TL;DR, the day's message, and
+# which story words name.
 # No network, no database, no Claude here.
 # ---------------------------------------------------------------------------
 WORLD_POLITICS, NZ_POLITICS, WORLD, TECH, AI, NZ_MONEY = "world_politics", "nz_politics", "world", "tech", "ai", "nz_money"
@@ -45,7 +47,7 @@ TLDR_WORDS, TLDR_MOST = 30, 40  # about 30, never more than 40
 SNIPPET_WORDS = 40  # of each item's feed snippet, for the pick
 PER_FEED = 12  # the newest of each feed, for the pick
 PER_TOPIC = 35  # the newest of each topic, for the pick: every topic has its share
-TITLE_MOST = 110  # characters of a headline as a card's title: well inside Discord's 256
+MESSAGE_BUDGET = 5800  # characters of the day's message, every embed together: inside Discord's 6,000
 RUN_AT = time(5, 30)
 ICON = "📰"
 TITLE = "Morning news"
@@ -60,7 +62,16 @@ class Story:
     source: str
     topic: str
     tldr: str
-    outlets: int = 1  # how many outlets carried it: of a topic's two, the bigger one comes first
+    outlets: int = 1  # how many outlets carried it: a sign of the day's biggest news
+
+    @property
+    def id(self) -> str:
+        return story_id(self.url)
+
+
+def story_id(url: str) -> str:
+    """A story's own id, from its link: what ties its TL;DR to it, never its place in a list."""
+    return "s" + hashlib.sha1(url.encode("utf-8")).hexdigest()[:6]
 
 
 # --- which items go to Claude ------------------------------------------------------------------------------------
@@ -177,6 +188,21 @@ def checked_pick(numbers, items: list, skipped: frozenset[str] = frozenset(), us
     return (chosen + extras)[:MAX_STORIES]
 
 
+def checked_tldrs(ids: list[str], answers) -> dict[str, str] | None:
+    """Claude's TL;DRs by each story's id, each checked (`checked_tldr`). None, and the whole set refused, when any
+    answer names an id that was not given or names one twice: a TL;DR is never shown under another story's headline.
+    A story with no answer is left out of what comes back (its snippet stands in)."""
+    found: dict[str, str] = {}
+    for each in answers or []:
+        if not isinstance(each, dict):
+            return None
+        story = str(each.get("id") or "")
+        if story not in ids or story in found:
+            return None
+        found[story] = checked_tldr(each.get("tldr"))
+    return found
+
+
 def checked_tldr(text) -> str:
     """A TL;DR as shown: one paragraph, no headings or em dashes, at most TLDR_MOST words (cut at a sentence's end
     where one is near, else with an ellipsis). "" for nothing usable."""
@@ -194,12 +220,13 @@ def checked_tldr(text) -> str:
     return cut.rstrip(",;:") + "…"
 
 
-# --- a story's card (Alex, 21 Oct: "could each news article be its own card? I can thumb it if I liked it or read it") ---
+# --- the day's message (Alex, 21 Oct: "There's a gap here that looks bad because each card is its own message. Can we
+# simply combine the cards into one message?") ---------------------------------------------------------------------------
 CARD_NAMES = {
     NZ_POLITICS: "NZ politics", NZ_MONEY: "Housing and money", WORLD: "World news", WORLD_POLITICS: "World politics",
     TECH: "Tech", AI: "AI", WEBDEV: "Web dev",
 }
-CARD_ORDER = (NZ_POLITICS, NZ_MONEY, WORLD, WORLD_POLITICS, TECH, AI, WEBDEV)  # the order the cards are posted in
+CARD_ORDER = (NZ_POLITICS, NZ_MONEY, WORLD, WORLD_POLITICS, TECH, AI, WEBDEV)  # the order the stories are shown in
 
 
 def in_order(stories: list[Story]) -> list[Story]:
@@ -208,35 +235,73 @@ def in_order(stories: list[Story]) -> list[Story]:
 
 
 def _title(title: str) -> str:
+    """A headline as a title: whole (only one over Discord's own 256 is ever cut)."""
+    from core.cards import MAX_EMBED_TITLE
+
     title = " ".join(title.split())
-    return title if len(title) <= TITLE_MOST else title[: TITLE_MOST - 1].rstrip() + "…"
+    return title if len(title) <= MAX_EMBED_TITLE else title[: MAX_EMBED_TITLE - 1].rstrip() + "…"
 
 
 def author(story: Story) -> str:
-    """ "NZ politics · RNZ": the card's small line above its headline."""
+    """ "NZ politics · RNZ": the small line above a story's headline."""
     return f"{CARD_NAMES.get(story.topic, story.topic)} · {' '.join(story.source.split())}"[:120]
 
 
-def story_embed(story: Story) -> Embed:
+def story_embed(story: Story, tldr: str | None = None) -> Embed:
     """One story: its topic and outlet above, the headline as the title that is the link, the TL;DR under it.
     No fields, no footer, no number; purple, as everything the bot prepared."""
-    return Embed(checked_tldr(story.tldr), _title(story.title), design.PREPARED, author(story), story.url)
+    return Embed(checked_tldr(story.tldr if tldr is None else tldr), _title(story.title), design.PREPARED, author(story), story.url)
 
 
-def story_card(story: Story) -> Card:
-    """A story's own message in #news. Its text (what is logged) is the headline alone, never the TL;DR."""
-    return Card(f"{ICON} {author(story)}: {_title(story.title)}", embeds=(story_embed(story),))
+def _shorter(tldr: str) -> str:
+    words = tldr.rstrip("…").split()
+    return " ".join(words[:-3]).rstrip(",;:.") + "…"
 
 
-def all_in_one(stories: list[Story], day: date) -> Card:
-    """The day's cards as one message of embeds, where #news is not there to hold them ("the news" with no #news)."""
-    shown = in_order(stories)[:10]
-    return Card(plain_text(shown, day), embeds=tuple(story_embed(each) for each in shown))
+def one_message(stories: list[Story], day: date) -> Card:
+    """The day's stories as one message: an embed a story, in CARD_ORDER, MAX_STORIES at most. Discord counts every
+    embed of a message against its 6,000 characters: over MESSAGE_BUDGET, the longest TL;DR is shortened, again and
+    again, until it fits. A headline is never cut. Its text (what is logged) is the headlines alone."""
+    shown = in_order(stories)[:MAX_STORIES]
+    tldrs = [checked_tldr(each.tldr) for each in shown]
+
+    def size() -> int:
+        return sum(len(author(each)) + len(_title(each.title)) + len(tldr) for each, tldr in zip(shown, tldrs))
+
+    while size() > MESSAGE_BUDGET:
+        longest = max(range(len(tldrs)), key=lambda index: len(tldrs[index]))
+        if len(tldrs[longest].split()) <= 6:
+            break  # nothing left to shorten: cards.check refuses it, never Discord
+        tldrs[longest] = _shorter(tldrs[longest])
+    return Card(plain_text(shown, day), embeds=tuple(story_embed(each, tldr) for each, tldr in zip(shown, tldrs)))
 
 
 def pointer(count: int, channel: str) -> str:
     """The hub's one line: "📰 8 stories in #news"."""
     return f"{ICON} {count} {'story' if count == 1 else 'stories'} in #{channel}"
+
+
+# --- which story words name ("more like the one about the water reform", G22) ---------------------------------------
+_SMALL = _STOP | frozenset("one ones story stories article piece news item".split())
+
+
+def _words(text: str) -> set[str]:
+    found = set()
+    for word in re.findall(r"[a-z0-9']+", text.lower().replace("’", "'")):
+        word = word.strip("'")
+        if word in _SMALL or len(word) < 2:
+            continue
+        found.add(word[:-1] if len(word) > 3 and word.endswith("s") else word)
+    return found
+
+
+def named(stories: list[Story], said: str) -> list[Story]:
+    """The stories the words name: those sharing the most words with its headline and its topic's names, small words
+    left out. One is that story; none, or several as close, and the user is asked. Claude never picks it."""
+    wanted = _words(said)
+    scored = [(len(wanted & _words(f"{each.title} {CARD_NAMES.get(each.topic, '')} {LABELS.get(each.topic, '')}")), each) for each in stories]
+    best = max((score for score, _ in scored), default=0)
+    return [each for score, each in scored if score and score == best]
 
 
 def plain_text(stories: list[Story], day: date) -> str:
@@ -322,7 +387,7 @@ def changes(before: Prefs, after: Prefs) -> list[str]:
     return lines
 
 
-def guidance(prefs: Prefs, day: date, liked: list[str] = ()) -> str:
+def guidance(prefs: Prefs, day: date) -> str:
     """What Claude is told about his preferences, as plain data."""
     lines = []
     more = [LABELS[topic] for topic, value in prefs.weights.items() if value > 0]
@@ -333,8 +398,6 @@ def guidance(prefs: Prefs, day: date, liked: list[str] = ()) -> str:
         lines.append("He wants less of: " + ", ".join(less) + " (keep its one slot, never an extra from it).")
     if prefs.like:
         lines.append("Stories he asked for more like: " + "; ".join(each["title"] for each in prefs.like[-5:]) + ".")
-    if liked:
-        lines.append("Stories he liked or read (a 👍 on its card): " + "; ".join(list(liked)[-LIKED_KEPT:]) + ".")
     skipped = skipped_on(prefs, day)
     if skipped:
         lines.append("Skip today: " + ", ".join(LABELS[each] for each in sorted(skipped)) + " (no story from it).")

@@ -92,6 +92,40 @@ generated"). Step 1 done: the feeds and reading them.
   steps, none failed, 197 recorded answers read back. The batch's spend:
   about US$0.39 (NZ$0.67) of the NZ$2.00 cap.
 
+## The morning news as one message (21 Oct, night; pushed, not shipped)
+
+Alex, on the card version: "There's a gap here that looks bad because each
+card is its own message. Can we simply combine the cards into one message?"
+and "Perhaps we disregard the thumb system for news?"
+
+### Decided (21 Oct, one message)
+
+- **One message a day** in #news (`reading_news_posts`, slot 0; each another
+  one the next slot, a one-story message): an embed a story, 8 at most, in
+  the topic order. Noted before it goes and up after, so a retry or a start
+  never posts it twice; yesterday's messages deleted first. The cards' table
+  (never shipped) was dropped by an appended migration (`to_messages`).
+- **Inside Discord's limits:** `cards.check` counts a message's embeds
+  together against 6,000. `news.one_message` keeps under 5,800 by shortening
+  the longest TL;DR, again and again; a headline is never cut (only one over
+  Discord's own 256). The longest realistic day is a test.
+- **No 👍 for the news:** the signal kind left `core/thumbsup.py`, and
+  `Reaction.silent` with it (both back as before the cards); nothing per
+  story is kept; the pick is told only what he said in words.
+- **TL;DRs by id:** each story is given to Claude under its own id
+  (`news.story_id`, from its link) and answered by it; a set that names an id
+  not given, or one twice, is refused and each story's own snippet stands in.
+  The preview's mix-up was its made-up data (a topic's second story took the
+  first one's first sentence): fixed, with a test.
+- **G22 closed:** a story is the `story` field, every word after "more like"
+  as said; Python finds it among today's headlines and topic names by the
+  words they share (small words left out, `news.named`). One is that story;
+  none or several and the card asks which (a Question, a button each), today's
+  stories listed by topic and headline. m29 passed 4 of 4; reading's golden
+  checks 39 of 39.
+- **The hub line "on its own" with the diary:** the preview's data (it kept
+  the diary's line); the real code was right, now a test.
+
 ## The morning news as cards (21 Oct, night; pushed, not shipped)
 
 Alex, on the field version: "I don't like the layout, could each news article

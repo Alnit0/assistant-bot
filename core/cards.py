@@ -155,7 +155,7 @@ class Embed:
 MAX_EMBEDS = 10  # a message holds at most this many
 MAX_EMBED_TEXT = 4096  # characters in an embed's description
 MAX_EMBED_TITLE = MAX_EMBED_AUTHOR = 256  # characters in its title, and in its author line
-MAX_EMBED_TOTAL = 6000  # characters in one embed: its author line, title and description
+MAX_EMBED_TOTAL = 6000  # characters in a message's embeds together: each one's author line, title and description
 
 
 def embed_size(embed: "Embed") -> int:
@@ -225,8 +225,8 @@ def check(card: Card) -> None:
             raise ValueError(f"An embed's title and author line are at most {MAX_EMBED_TITLE} characters each")
         if each.url and (not each.title or not each.url.startswith(("https://", "http://"))):
             raise ValueError("An embed's link is a web address, on a title")
-        if embed_size(each) > MAX_EMBED_TOTAL:
-            raise ValueError(f"An embed has at most {MAX_EMBED_TOTAL} characters in all")
+    if sum(embed_size(each) for each in card.embeds) > MAX_EMBED_TOTAL:
+        raise ValueError(f"A message's embeds have at most {MAX_EMBED_TOTAL} characters in all")
     seen: set[str] = set()
     for row in card.rows:
         if isinstance(row, Select):

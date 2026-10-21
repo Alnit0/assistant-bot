@@ -718,16 +718,8 @@ class Several(tuple):
     """Cards each sent as a message of its own, one after another (the morning news's cards in #news)."""
 
 
-class Reacted(tuple):
-    """(card, emoji): a card sent, then the bot's own reaction on it, to show what a reaction there looks like."""
-
-
-class ReplyTo(tuple):
-    """(said, card): what he would say, sent as a Discord reply to the last card sent, then the bot's answer."""
-
-
 class HubLine(tuple):
-    """(card maker,): round 7's second message with the news's line, linked to the first card sent in the post."""
+    """(card maker,): round 7's second message with the news's line, linked to the first message sent as Several."""
 
 
 async def _send_pieces(thread, found: list[tuple[str, object]]) -> None:
@@ -758,13 +750,6 @@ async def _send_pieces(thread, found: list[tuple[str, object]]) -> None:
             for each in pieces:
                 message = await one(each)
                 first_card = first_card or message
-        elif isinstance(pieces, Reacted):
-            message = await one(pieces[0])
-            await message.add_reaction(pieces[1])
-        elif isinstance(pieces, ReplyTo):
-            said, answer = pieces
-            await thread.send(f"> {said}", reference=sent[-1], allowed_mentions=quiet)
-            await one(answer)
         elif isinstance(pieces, HubLine):
             await one(pieces[0](first_card.jump_url if first_card is not None else ""))
         else:
@@ -1071,55 +1056,67 @@ def diary_opening() -> str:
 
 # ---------------------------------------------------------------------------
 # The morning news (READING_ENABLED, off; 21 Oct): `python -m selftest.preview --news`, a post of its own, and
-# `--news-reply`, the card version as a reply in it. Each story a card of its own as #news has it, drawn by the
-# real code (tasks/reading/news.py, tasks/briefing/embeds.py) from made-up headlines only: an ordinary weekday, a
-# Monday, a quiet day with no wildcard, a day with a topic empty; the hub's one line; a 👍; a reply; another one.
+# `--news-reply`, the one-message version as a reply in it. The day's stories as one message, an embed a story, as
+# #news has it, drawn by the real code (tasks/reading/news.py, tasks/briefing/embeds.py) from made-up headlines
+# only: an ordinary weekday, a Monday, a quiet day with no wildcard, a day with a topic empty; the hub's one line;
+# another one. Each made-up story has its own TL;DR (21 Oct: a topic's second once took the first one's first
+# sentence, so a TL;DR sat under another story's headline).
 # ---------------------------------------------------------------------------
 NEWS_TITLE = "Design · Morning news"
 NEWS_ENTRY = Entry("reading", "📰", "Morning news", "x", ("y",), ())
+# (topic, number): (headline, outlet, TL;DR), all made up
 _MADE_UP = {
-    "world_politics": ["Made-up: a northern republic calls a snap election after its coalition splits", "Made-up: two neighbours sign a border pact after a decade of talks"],
-    "nz_politics": ["Made-up: parliament passes the water reform bill on a split vote", "Made-up: a minister steps down over a report on school funding"],
-    "world": ["Made-up: an earthquake shakes an island chain, thousands without power", "Made-up: a river delta braces for its worst floods in fifty years"],
-    "tech": ["Made-up: a chip maker unveils a processor it says is twice as fast", "Made-up: a phone maker recalls a battery pack over overheating"],
-    "ai": ["Made-up: a lab releases an open reasoning model anyone can run", "Made-up: a regulator drafts the first rules for chatbots in schools"],
-    "nz_money": ["Made-up: the Reserve Bank holds the OCR, signals cuts next year", "Made-up: house prices slip for a sixth month as listings climb"],
-    "webdev": ["Made-up: a widely used package registry patches a serious security hole"],
-}
-_TLDR = {
-    "world_politics": "The coalition split over the budget, so voters go to the polls in six weeks. Worth a read for what it means for the region's trade talks.",
-    "nz_politics": "The bill moves water services to four regional bodies from next July. It matters for rates bills and who answers for outages.",
-    "world": "A strong quake cut power across the islands overnight. No deaths reported so far; aid flights are being readied from Auckland.",
-    "tech": "The new processor is due in laptops next spring. The speed claim is the company's own, so the independent tests are the thing to watch.",
-    "ai": "The model's weights are free to download and it runs on one good graphics card. It could change what small teams can build cheaply.",
-    "nz_money": "The OCR stays at 3.5 percent, with cuts pencilled in for next year. Fixed mortgage rates may ease before then, banks say.",
-    "webdev": "A flaw let attackers publish fake versions of popular packages. Update your lockfiles today if you install from it.",
+    ("world_politics", 0): ("Made-up: a northern republic calls a snap election after its coalition splits", "Example Times",
+                            "The coalition split over the budget, so voters go to the polls in six weeks. Worth a read for what it means for the region's trade talks."),
+    ("world_politics", 1): ("Made-up: two neighbours sign a border pact after a decade of talks", "The Example Post",
+                            "The pact settles a long-running dispute over a river crossing and opens it to trucks next year. Expect it to come up in the region's trade talks."),
+    ("nz_politics", 0): ("Made-up: parliament passes the water reform bill on a split vote", "Daily Example",
+                         "The bill moves water services to four regional bodies from next July. It matters for rates bills and who answers for outages."),
+    ("nz_politics", 1): ("Made-up: a minister steps down over a report on school funding", "Example Herald",
+                         "A review found money for school buildings was counted twice. The minister quit after the report came out; the deputy takes over the portfolio."),
+    ("world", 0): ("Made-up: an earthquake shakes an island chain, thousands without power", "Example World Service",
+                   "A strong quake cut power across the islands overnight. No deaths reported so far; aid flights are being readied from Auckland."),
+    ("world", 1): ("Made-up: a river delta braces for its worst floods in fifty years", "Example News",
+                   "Heavy rain upstream has the delta's towns moving people to higher ground. The peak is due at the weekend, and crops along the banks are at risk."),
+    ("tech", 0): ("Made-up: a chip maker unveils a processor it says is twice as fast", "Example Technica",
+                  "The new processor is due in laptops next spring. The speed claim is the company's own, so the independent tests are the thing to watch."),
+    ("tech", 1): ("Made-up: a phone maker recalls a battery pack over overheating", "The Example Verge",
+                  "Some battery packs sold since March can overheat while charging. Owners can check the serial number on the maker's site and get a free replacement."),
+    ("ai", 0): ("Made-up: a lab releases an open reasoning model anyone can run", "Example AI Weekly",
+                "The model's weights are free to download and it runs on one good graphics card. It could change what small teams can build cheaply."),
+    ("ai", 1): ("Made-up: a regulator drafts the first rules for chatbots in schools", "Example Times",
+                "The draft would make schools say when pupils are using a chatbot and keep their data in the country. Submissions are open until the end of the month."),
+    ("nz_money", 0): ("Made-up: the Reserve Bank holds the OCR, signals cuts next year", "Example Money",
+                      "The OCR stays at 3.5 percent, with cuts pencilled in for next year. Fixed mortgage rates may ease before then, banks say."),
+    ("nz_money", 1): ("Made-up: house prices slip for a sixth month as listings climb", "Daily Example",
+                      "Prices fell another half a percent last month as more homes came up for sale. Buyers have more choice, and more time to bargain, than a year ago."),
+    ("webdev", 0): ("Made-up: a widely used package registry patches a serious security hole", "Example Dev News",
+                    "A flaw let attackers publish fake versions of popular packages. Update your lockfiles today if you install from it."),
 }
 
 
 def _news(day, picks) -> list:
     from tasks.reading.news import Story
 
-    return [Story(f"https://example.com/made-up/{topic}/{number}", _MADE_UP[topic][number], f"Made-up {topic}", topic, _TLDR[topic] if number == 0 else _TLDR[topic].split(".")[0] + ".") for topic, number in picks]
+    return [Story(f"https://example.com/made-up/{topic}/{number}", *_MADE_UP[(topic, number)][:2], topic, _MADE_UP[(topic, number)][2]) for topic, number in picks]
 
 
-def _hub_line(count: int, todos: bool = True):
-    """Round 7's second message with the news's one line, made once the first card's link is known."""
+def _hub_line(count: int, todos: bool = True, diary: bool = True):
+    """Round 7's second message with the news's one line, made once the day's message's link is known."""
     from core.actions import PREPARED, TODO, TRACKING, DayItem
     from tasks.briefing import embeds
     from tasks.reading import news
 
     def made(link: str) -> Card:
         items = [DayItem(TODO, "Buy stamps"), DayItem(TODO, "Call the plumber", state="taken")] if todos else []
-        items += [DayItem(TRACKING, "Diary · Streak: 4 days", icon="📓"), DayItem(PREPARED, news.pointer(count, "news"), icon="📰", title="Morning news", link=link)]
+        items += [DayItem(TRACKING, "Diary · Streak: 4 days", icon="📓")] if diary else []
+        items.append(DayItem(PREPARED, news.pointer(count, "news"), icon="📰", title="Morning news", link=link))
         return embeds.everything_else(items)
 
     return made
 
 
 def news_cards() -> list:
-    from core import confirm
-    from core.actions import Proposal
     from tasks.reading import news
 
     day = _day()
@@ -1127,38 +1124,31 @@ def news_cards() -> list:
     monday = _news(day, [("world_politics", 1), ("nz_politics", 1), ("world", 1), ("tech", 1), ("ai", 1), ("nz_money", 1), ("world", 0), ("world_politics", 0)])
     quiet = _news(day, [("world_politics", 0), ("nz_politics", 0), ("world", 0), ("tech", 0), ("ai", 0), ("nz_money", 0), ("world", 1)])
     empty = _news(day, [("world_politics", 0), ("nz_politics", 0), ("world", 0), ("tech", 0), ("nz_money", 0), ("nz_politics", 1)])
-
-    def in_news(stories):
-        return Several(news.story_card(each) for each in news.in_order(stories))
-
-    housing = next(each for each in weekday if each.topic == "nz_money")
-    like_this = news.changes(news.Prefs(), news.steered(news.Prefs(), like=housing))
-    another = _news(day, [("tech", 1)])[0]
+    another = _news(day, [("tech", 1)])
     return [
-        ("An ordinary weekday in #news: a card a story, in a fixed order (NZ politics, Housing and money, World news, World politics, Tech, AI, Web dev), an extra straight after its topic's first", in_news(weekday)),
-        ("The hub that morning: round 7's second message, the news one line after the to-dos and the diary; its title opens the first card above", HubLine((_hub_line(len(weekday)),))),
-        ("A Monday: since Saturday 5:30 am, the weekend's biggest stories; no wildcard", in_news(monday)),
-        ("A quiet day: seven, no wildcard", in_news(quiet)),
-        ("A day with a topic empty (AI had nothing new): six and an extra, never padded. The news's line alone is enough for the second message to be sent", in_news(empty)),
-        ("…and its hub line on its own", HubLine((_hub_line(len(empty), todos=False),))),
-        ("👍 on a card: liked or read. Silent (no ✅, no reply), kept for the next picks; take it away and it goes", Reacted((news.story_card(housing), "👍"))),
-        ("A reply to that card steers by it: “more like this” is a card first, Save keeps it", ReplyTo(("more like this", confirm.render(NEWS_ENTRY, Proposal(lines=tuple(like_this), data={}, kind="change"), 1).layout))),
-        ("“another one” (in #news, #inbox or a direct message): a new card in #news, under the others", news.story_card(another)),
-        ("…said in #inbox, the answer there points to it", Card(f"📰 One more in #news: (its link)")),
+        ("An ordinary weekday in #news: the day's stories as one message, in a fixed order (NZ politics, Housing and money, World news, World politics, Tech, AI, Web dev), an extra straight after its topic's first", Several((news.one_message(weekday, day),))),
+        ("The hub that morning: round 7's second message, the news one line after the to-dos and the diary; its title opens the message above", HubLine((_hub_line(len(weekday)),))),
+        ("A Monday: since Saturday 5:30 am, the weekend's biggest stories; no wildcard", news.one_message(monday, day)),
+        ("A quiet day: seven, no wildcard", news.one_message(quiet, day)),
+        ("A day with a topic empty (AI had nothing new): six and an extra, never padded", news.one_message(empty, day)),
+        ("…and on a day with no to-dos and no diary, the hub's second message is the news's line alone (it is still sent)", HubLine((_hub_line(len(empty), todos=False, diary=False),))),
+        ("“another one” (in #news, #inbox or a direct message): the next best story as a message of its own in #news, under the day's", news.one_message(another, day)),
+        ("…said in #inbox, the answer there points to it", Card("📰 One more in #news: (its link)")),
     ]
 
 
 def news_reply_intro() -> str:
     return "\n".join([
-        "## The card version (21 Oct)",
-        "From your look: “I don't like the layout, could each news article be its own card? I can thumb it if I liked it or read it, the hierarchy is poor too.”",
-        "**#news**, a channel of its own beside the hub (the bot makes it if it is missing). At 6 am **each story is its own card**: "
-        "its topic and outlet small at the top, the headline as the title that opens the article, the TL;DR under it (about 30 words, "
-        "never more than 40). Purple, no numbers, nothing else. Yesterday's cards are deleted first.",
-        "**👍 on a card** is liked or read: kept for the next picks, silent. **The hub** has one line, “📰 8 stories in #news”, that opens the first card.",
-        "**In words**, in #news, #inbox or a direct message: “more like the housing one”, “more like the one about the interest rates”, “less AI”, “another one”; "
-        "and **replying to a card**, “more like this” or “less of this”.",
-        "📱 Please look on your phone. Made-up headlines and links only; the buttons here do nothing.",
+        "## The one-message version (21 Oct)",
+        "From your look: “There's a gap here that looks bad because each card is its own message. Can we simply combine the cards into one message?” and “Perhaps we disregard the thumb system for news?”",
+        "**One message** in #news at 6 am: an embed a story, the same card as before (its topic and outlet small at the top, the headline "
+        "as the title that opens the article, the TL;DR under it), 8 at most. Yesterday's message is deleted first. **No 👍**: the picks "
+        "learn from what you say. The hub's line opens the message.",
+        "**Fixed:** a TL;DR under another story's headline. The preview's made-up data gave a topic's second story the first one's first "
+        "sentence; and the real code now ties each TL;DR to its story by the story's own id, refusing the set if one doesn't match.",
+        "**In words**, in #news, #inbox, a direct message or as a reply to the news: “more like the housing one”, “more like the one about the "
+        "interest rates” (the code finds the story from the words, and asks which when it isn't sure), “less AI”, “another one”.",
+        "📱 Please look on your phone. Made-up headlines, outlets and links only.",
     ])
 
 
@@ -1167,10 +1157,10 @@ def news_opening() -> str:
         f"## {NEWS_TITLE}",
         "The daily read and the news headlines are now **one morning news**: 7 or 8 stories a day, one for each of **world politics**, **NZ politics**, **world news**, **tech**, **AI** and **NZ housing and money** (house prices, interest rates, the OCR, the economy), then one or two extras for the day's biggest news. **Web development** is a wildcard: only on a day with something notable.",
         "**Each story:** its topic and outlet small, the headline as the title that is the link, then a TL;DR of about 30 words: what happened, and why you might read it. Paywalled articles are never picked; at most one story about US politics alone a day.",
-        "**Where:** #news, a card a story at 6 am, yesterday's deleted; 👍 on a card says he liked or read it, which the next picks lean on. Round 7's hub has one line that opens the first card. Before round 7 it is not in the hub: say “the news”.",
-        "**In words:** another one, more like the housing one, less AI, more NZ politics, skip housing tomorrow, more US politics; replying to a card, more like this or less of this; what do you know about my news, add or remove a source.",
-        "📱 **Please look at this on your phone:** the embed is built for a phone's width. A screenshot of it there, or a word on what is too long or too dense, is the feedback this round needs.",
-        "-# Made-up headlines and links only. Behind READING_ENABLED. The buttons here do nothing.",
+        "**Where:** #news, the day's stories as one message at 6 am, yesterday's deleted. Round 7's hub has one line that opens it. Before round 7 it is not in the hub: say “the news”.",
+        "**In words:** another one, more like the housing one, less AI, more NZ politics, skip housing tomorrow, more US politics; what do you know about my news, add or remove a source.",
+        "📱 **Please look at this on your phone:** it is built for a phone's width. A screenshot of it there, or a word on what is too long or too dense, is the feedback this round needs.",
+        "-# Made-up headlines, outlets and links only. Behind READING_ENABLED.",
     ])
 
 
