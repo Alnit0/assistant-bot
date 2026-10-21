@@ -68,7 +68,7 @@ def test_a_point_event_has_no_until_and_an_all_day_or_coming_one_a_title_and_its
         ("🎉 Dentist", "Fri 23 Oct · 3:00 pm to 4:00 pm", design.NOTABLE),
         ("🎉 Hen do", "Sat 21 Nov to Sun 22 Nov · all day", design.NOTABLE),
     ], "all day first, coming up last, in date order; no calendar emoji on a line"
-    assert not any("🗓️" in each.description or "📅" in each.description for each in card.embeds)
+    assert not any("🗓️" in each.description or "\U0001F4C5" in each.description for each in card.embeds)
 
 
 @pytest.mark.parametrize("item, line, status", [

@@ -3,9 +3,9 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Now (21 Oct, afternoon):** round 7, the briefing as two messages of
-embeds (`DESIGN_ROUND=7`), 🗓️ everywhere, the calendar's answers its
-events alone. Committing and pushing; NOT restarted (Alex restarts).
+**Idle, last was** 21 Oct: round 7, the briefing as embeds (behind
+`DESIGN_ROUND=7`), pushed `c531ee2`, self-test 150 of 150. Live NOT
+restarted (Alex restarts by hand): still on `6ba3e80`, round 5.
 
 **Next, at the next restart** (not overnight): the settle-in week, a
 feature freeze to Sun 25 Oct (fixes and polish from real use only, new
