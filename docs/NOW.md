@@ -3,11 +3,12 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Batch (21 Oct, night): an animated grid, a proof of concept** (lab,
-`LAB_GRID`, on in `.env.dev` only; no Claude, no ship). Steps: 1 the grid
-and "lab grid [seconds]", with tests (done); 2 the check on the dev bot at
-1.0 and 0.5 seconds; 3 the measurements, the docs, idle.
-**In progress:** step 2.
+**Idle, last batch was** 21 Oct (night): an animated grid, a proof of
+concept, "lab grid [seconds]" in the lab behind `LAB_GRID` (on in `.env.dev`
+only), pushed, not shipped. Checked on the dev bot (`python -m
+selftest.labgrid`): 1.41 s a frame on average at 1.0, 0.97 s at 0.5, none
+rate-limited. Both grids are in the dev bot's #inbox for Alex to compare.
+Live on `a025112` since 10:07 pm (the morning news).
 
 **The feature freeze is called off** (Alex, 21 Oct): no settle-in week.
 **Next:** Alex's list of changes (not heard yet); his first morning

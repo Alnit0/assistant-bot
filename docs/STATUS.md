@@ -32,6 +32,21 @@ pure; tasks/lab/animate.py, through the door).
   (`permission="lab"`), any channel, typed only.
 - **The busy line** is posted silently and deleted by a stored job after the
   usual seconds (`tidy.later`, `lifecycle.delete_after()`).
+- **The check on the dev bot** is `python -m selftest.labgrid`: a phase of its
+  own (the harness types "lab grid" as the owner in the self-test's #inbox),
+  the dev database set aside and put back, the channel not purged first, so
+  both grids stay there for Alex. Not part of the nightly self-test.
+
+### Measured (21 Oct, 10:27 pm, the dev bot's #inbox)
+
+- **1.0 s a frame:** 10 of 10 frames; the gap he sees 1.41 s on average,
+  1.53 s at most; none rate-limited or failed.
+- **0.5 s a frame:** 10 of 10 frames; 0.97 s on average, 1.19 s at most;
+  none rate-limited or failed.
+- Each gap is the wait plus the edit's own round trip (0.4 to 0.5 s here),
+  as the wait starts once the edit has returned: the grid runs slower than
+  the number said. Taking the edit's time off the next wait would keep the
+  beat; not done, it is a proof of concept.
 
 ## Shipped: the morning news (21 Oct, 10:07 pm)
 
