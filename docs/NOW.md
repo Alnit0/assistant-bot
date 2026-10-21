@@ -3,11 +3,13 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Idle, last was** 21 Oct: round 7, the hub as two messages of embeds
-(`d327729`), and 👍 as yes (`b2fa0a4`), both live since 3:23 pm with
-`DESIGN_ROUND=7` and `THUMBS_UP=true`. Today's briefing was posted in
-round 5 and shows round 7's words in a plain box; tomorrow's 6 am
-briefing is the first full round 7 one, two messages of embeds.
+**Batch (21 Oct, evening): the morning news** (the daily read and News
+headlines as one task, on tasks/reading; not shipped). Steps:
+1. Feeds and reading them (39 feeds, topics, the window, paid, duplicates): done
+2. The pick, the TL;DRs, the store, the 5:30 job, the hub embed, 👍, steering
+3. Golden conversations, live checks, the cost of one morning
+4. The preview post, the dev-bot self-test, the docs
+Live: round 7 and 👍 since 3:23 pm (`DESIGN_ROUND=7`, `THUMBS_UP=true`).
 
 **The feature freeze is called off** (Alex, 21 Oct): no settle-in week.
 **Next:** Alex's list of changes (not heard yet); his first morning

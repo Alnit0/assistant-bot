@@ -1,5 +1,7 @@
 import asyncio
+import html as html_module
 import json
+import re
 import logging
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -9,6 +11,7 @@ from email.utils import parsedate_to_datetime
 from html.parser import HTMLParser
 from pathlib import Path
 
+from tasks.reading.news import ALL_TOPICS, SNIPPET_WORDS
 from tasks.reading.rules import THEMES, Item
 
 log = logging.getLogger("assistant")
@@ -43,7 +46,8 @@ def _made_up() -> dict | None:
 def starter() -> list[Source]:
     """The sources in feeds.json (or in the made-up file, for the replay)."""
     data = _made_up() or json.loads(FEEDS.read_text(encoding="utf-8"))
-    return [Source(each["name"], each["url"], each["theme"]) for each in data["sources"] if each.get("theme") in THEMES]
+    found = [Source(each["name"], each["url"], each.get("topic") or each.get("theme", "")) for each in data["sources"]]
+    return [each for each in found if each.theme in ALL_TOPICS or each.theme in THEMES]
 
 
 def _get(url: str) -> bytes:
@@ -62,6 +66,11 @@ async def get(url: str) -> bytes:
     return await asyncio.to_thread(_get, url)
 
 
+# A feed's own way of writing a time: "20th Oct 26, 3:59pm", in New Zealand time (interest.co.nz)
+_LOCAL = re.compile(r"(\d{1,2})(?:st|nd|rd|th)? ([A-Za-z]{3})[a-z]* (\d{2}|\d{4}),? (\d{1,2}):(\d{2}) ?([ap]m)", re.IGNORECASE)
+_MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
+
+
 def _when(text: str | None) -> datetime | None:
     if not text:
         return None
@@ -72,8 +81,38 @@ def _when(text: str | None) -> datetime | None:
         try:
             found = parsedate_to_datetime(text)
         except (TypeError, ValueError):
-            return None
+            local = _LOCAL.fullmatch(text)
+            if local is None or local[2].lower() not in _MONTHS:
+                return None
+            from core.config import TIMEZONE
+
+            year = int(local[3]) + (2000 if len(local[3]) == 2 else 0)
+            hour = int(local[4]) % 12 + (12 if local[6].lower() == "pm" else 0)
+            try:
+                return datetime(year, _MONTHS.index(local[2].lower()) + 1, int(local[1]), hour, int(local[5]), tzinfo=TIMEZONE).astimezone(timezone.utc)
+            except ValueError:
+                return None
     return found if found.tzinfo else found.replace(tzinfo=timezone.utc)
+
+
+RSS1 = "{http://purl.org/rss/1.0/}"
+DC = "{http://purl.org/dc/elements/1.1/}"
+CONTENT = "{http://purl.org/rss/1.0/modules/content/}"
+# How a feed marks an article for subscribers only (NZ Herald and Newsroom tag theirs "premium"): a net for feeds,
+# never for understanding what Alex says
+_PAID = re.compile(r"\b(premium|subscriber|subscribers|paywall|paywalled|members[- ]only|paid content)\b", re.IGNORECASE)
+
+
+def _snippet(html: str | None) -> str:
+    """A feed's description as plain words, cut to SNIPPET_WORDS."""
+    if not html:
+        return ""
+    words = re.sub(r"<[^>]+>", " ", html_module.unescape(html)).split()
+    return " ".join(words[:SNIPPET_WORDS]) + (" …" if len(words) > SNIPPET_WORDS else "")
+
+
+def _paid(link: str, tags: list[str]) -> bool:
+    return "/premium/" in link.lower() or any(_PAID.search(tag or "") for tag in tags)
 
 
 def _closed_entries(raw: bytes) -> tuple[str, list]:
@@ -105,14 +144,21 @@ def parse_feed(raw: bytes, source: Source) -> list[Item]:
             raise
         tag, entries = _closed_entries(raw)
     found = []
-    for entry in (each for each in entries if each.tag == "item"):
-        link, title = (entry.findtext("link") or "").strip(), (entry.findtext("title") or "").strip()
-        found.append(Item(link, title, source.name, source.theme, _when(entry.findtext("pubDate"))))
+    if not entries and tag == "{http://www.w3.org/1999/02/22-rdf-syntax-ns#}RDF":
+        entries = list(ET.fromstring(raw).iter(f"{RSS1}item"))  # RSS 1.0 (DW): its items are in its own namespace
+    for entry in (each for each in entries if each.tag in ("item", f"{RSS1}item")):
+        ns = RSS1 if entry.tag == f"{RSS1}item" else ""
+        link, title = (entry.findtext(f"{ns}link") or "").strip(), (entry.findtext(f"{ns}title") or "").strip()
+        tags = [each.text or "" for each in entry.findall("category")] + [each.text or "" for each in entry.findall(f"{DC}subject")]
+        said = entry.findtext(f"{ns}description") or entry.findtext(f"{CONTENT}encoded")
+        found.append(Item(link, title, source.name, source.theme, _when(entry.findtext("pubDate") or entry.findtext(f"{DC}date")), _snippet(said), _paid(link, tags)))
     for entry in (each for each in entries if each.tag == f"{ATOM}entry"):
         links = entry.findall(f"{ATOM}link")
         link = next((each.get("href", "") for each in links if each.get("rel", "alternate") == "alternate"), links[0].get("href", "") if links else "")
         title = (entry.findtext(f"{ATOM}title") or "").strip()
-        found.append(Item(link.strip(), title, source.name, source.theme, _when(entry.findtext(f"{ATOM}published") or entry.findtext(f"{ATOM}updated"))))
+        tags = [each.get("term", "") for each in entry.findall(f"{ATOM}category")]
+        said = entry.findtext(f"{ATOM}summary") or entry.findtext(f"{ATOM}content")
+        found.append(Item(link.strip(), title, source.name, source.theme, _when(entry.findtext(f"{ATOM}published") or entry.findtext(f"{ATOM}updated")), _snippet(said), _paid(link, tags)))
     if tag not in ("rss", f"{ATOM}feed", "{http://www.w3.org/1999/02/22-rdf-syntax-ns#}RDF") and not found:
         raise ValueError("not a feed")
     return [each for each in found if each.url.startswith("http") and each.title]

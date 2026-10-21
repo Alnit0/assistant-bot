@@ -1,90 +1,200 @@
 {
-  "about": "The daily read's starter sources (tasks/reading): practical, for a working web developer curious about AI. Reviewed 16 Oct 2026: the academic and research ones went, practical ones came in, each checked to work. Alex adds or removes one in words; those changes are kept in the database, on top of this list.",
+  "about": "The morning news's starter feeds (tasks/reading), each with one topic: nz_politics, nz_money (house prices, interest rates, the OCR, the economy), world, world_politics, tech, ai, and webdev for the wildcard. Chosen 21 Oct 2026, each checked to work from the home server; outlets whose articles are mostly free to read. Alex adds or removes one in words; those changes are kept in the database, on top of this list.",
   "sources": [
     {
-      "name": "Simon Willison",
-      "url": "https://simonwillison.net/atom/everything/",
-      "theme": "ai"
+      "name": "RNZ Politics",
+      "url": "https://www.rnz.co.nz/rss/political.xml",
+      "topic": "nz_politics"
     },
     {
-      "name": "One Useful Thing",
-      "url": "https://www.oneusefulthing.org/feed",
-      "theme": "ai"
+      "name": "NZ Herald Politics",
+      "url": "https://www.nzherald.co.nz/arc/outboundfeeds/rss/section/nz/politics/?outputType=xml&_website=nzh",
+      "topic": "nz_politics"
     },
     {
-      "name": "Julia Evans",
-      "url": "https://jvns.ca/atom.xml",
-      "theme": "programming"
+      "name": "Newsroom",
+      "url": "https://newsroom.co.nz/feed/",
+      "topic": "nz_politics"
     },
     {
-      "name": "Martin Fowler",
-      "url": "https://martinfowler.com/feed.atom",
-      "theme": "programming"
+      "name": "1News",
+      "url": "https://www.1news.co.nz/arc/outboundfeeds/rss/?outputType=xml",
+      "topic": "nz_politics"
     },
     {
-      "name": "Smashing Magazine",
-      "url": "https://www.smashingmagazine.com/feed/",
-      "theme": "programming"
+      "name": "RNZ National",
+      "url": "https://www.rnz.co.nz/rss/national.xml",
+      "topic": "nz_politics"
     },
     {
-      "name": "CSS-Tricks",
-      "url": "https://css-tricks.com/feed/",
-      "theme": "programming"
+      "name": "interest.co.nz",
+      "url": "https://www.interest.co.nz/rss",
+      "topic": "nz_money"
     },
     {
-      "name": "Josh W. Comeau",
-      "url": "https://www.joshwcomeau.com/rss.xml",
-      "theme": "programming"
+      "name": "RNZ Business",
+      "url": "https://www.rnz.co.nz/rss/business.xml",
+      "topic": "nz_money"
     },
     {
-      "name": "web.dev",
-      "url": "https://web.dev/feed.xml",
-      "theme": "programming"
+      "name": "NZ Herald Business",
+      "url": "https://www.nzherald.co.nz/arc/outboundfeeds/rss/section/business/?outputType=xml&_website=nzh",
+      "topic": "nz_money"
+    },
+    {
+      "name": "NZ Herald Personal Finance",
+      "url": "https://www.nzherald.co.nz/arc/outboundfeeds/rss/section/business/personal-finance/?outputType=xml&_website=nzh",
+      "topic": "nz_money"
+    },
+    {
+      "name": "Newsroom Business",
+      "url": "https://newsroom.co.nz/category/business/feed/",
+      "topic": "nz_money"
+    },
+    {
+      "name": "Reserve Bank of New Zealand",
+      "url": "https://www.rbnz.govt.nz/feeds/news",
+      "topic": "nz_money"
+    },
+    {
+      "name": "BBC World",
+      "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
+      "topic": "world"
+    },
+    {
+      "name": "The Guardian World",
+      "url": "https://www.theguardian.com/world/rss",
+      "topic": "world"
+    },
+    {
+      "name": "Al Jazeera",
+      "url": "https://www.aljazeera.com/xml/rss/all.xml",
+      "topic": "world"
+    },
+    {
+      "name": "NPR World",
+      "url": "https://feeds.npr.org/1004/rss.xml",
+      "topic": "world"
+    },
+    {
+      "name": "ABC News (Australia)",
+      "url": "https://www.abc.net.au/news/feed/2942460/rss.xml",
+      "topic": "world"
+    },
+    {
+      "name": "DW",
+      "url": "https://rss.dw.com/rdf/rss-en-world",
+      "topic": "world"
+    },
+    {
+      "name": "RNZ World",
+      "url": "https://www.rnz.co.nz/rss/world.xml",
+      "topic": "world"
+    },
+    {
+      "name": "France 24",
+      "url": "https://www.france24.com/en/rss",
+      "topic": "world"
+    },
+    {
+      "name": "Politico",
+      "url": "https://rss.politico.com/politics-news.xml",
+      "topic": "world_politics"
+    },
+    {
+      "name": "NPR Politics",
+      "url": "https://feeds.npr.org/1014/rss.xml",
+      "topic": "world_politics"
+    },
+    {
+      "name": "The Guardian Politics",
+      "url": "https://www.theguardian.com/politics/rss",
+      "topic": "world_politics"
+    },
+    {
+      "name": "The Guardian US Politics",
+      "url": "https://www.theguardian.com/us-news/us-politics/rss",
+      "topic": "world_politics"
+    },
+    {
+      "name": "BBC US and Canada",
+      "url": "https://feeds.bbci.co.uk/news/world/us_and_canada/rss.xml",
+      "topic": "world_politics"
+    },
+    {
+      "name": "BBC Politics",
+      "url": "https://feeds.bbci.co.uk/news/politics/rss.xml",
+      "topic": "world_politics"
     },
     {
       "name": "Ars Technica",
-      "url": "https://feeds.arstechnica.com/arstechnica/technology-lab",
-      "theme": "news"
+      "url": "https://feeds.arstechnica.com/arstechnica/index",
+      "topic": "tech"
     },
     {
       "name": "The Verge",
       "url": "https://www.theverge.com/rss/index.xml",
-      "theme": "news"
+      "topic": "tech"
     },
     {
-      "name": "Hacker News",
-      "url": "https://hnrss.org/frontpage",
-      "theme": "news"
+      "name": "TechCrunch",
+      "url": "https://techcrunch.com/feed/",
+      "topic": "tech"
     },
     {
       "name": "The Register",
       "url": "https://www.theregister.com/headlines.atom",
-      "theme": "news"
+      "topic": "tech"
     },
     {
-      "name": "Addy Osmani",
-      "url": "https://addyosmani.com/rss.xml",
-      "theme": "ai"
+      "name": "BBC Technology",
+      "url": "https://feeds.bbci.co.uk/news/technology/rss.xml",
+      "topic": "tech"
     },
     {
-      "name": "GitHub blog",
-      "url": "https://github.blog/feed/",
-      "theme": "ai"
+      "name": "Engadget",
+      "url": "https://www.engadget.com/rss.xml",
+      "topic": "tech"
     },
     {
-      "name": "Vercel blog",
-      "url": "https://vercel.com/atom",
-      "theme": "ai"
+      "name": "TechCrunch AI",
+      "url": "https://techcrunch.com/category/artificial-intelligence/feed/",
+      "topic": "ai"
     },
     {
-      "name": "Kent C. Dodds",
-      "url": "https://kentcdodds.com/blog/rss.xml",
-      "theme": "programming"
+      "name": "The Verge AI",
+      "url": "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml",
+      "topic": "ai"
     },
     {
-      "name": "Frontend Masters blog",
-      "url": "https://frontendmasters.com/blog/feed/",
-      "theme": "programming"
+      "name": "Ars Technica AI",
+      "url": "https://arstechnica.com/ai/feed/",
+      "topic": "ai"
+    },
+    {
+      "name": "MIT Technology Review AI",
+      "url": "https://www.technologyreview.com/topic/artificial-intelligence/feed",
+      "topic": "ai"
+    },
+    {
+      "name": "The Guardian AI",
+      "url": "https://www.theguardian.com/technology/artificialintelligenceai/rss",
+      "topic": "ai"
+    },
+    {
+      "name": "The New Stack",
+      "url": "https://thenewstack.io/feed/",
+      "topic": "webdev"
+    },
+    {
+      "name": "InfoQ",
+      "url": "https://feed.infoq.com/",
+      "topic": "webdev"
+    },
+    {
+      "name": "BleepingComputer",
+      "url": "https://www.bleepingcomputer.com/feed/",
+      "topic": "webdev"
     }
   ]
 }

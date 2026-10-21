@@ -52,8 +52,11 @@ class Item:
     url: str
     title: str
     source: str
-    theme: str
+    theme: str  # the morning news's topic (tasks/reading/news.py), or the old daily read's theme
     published: datetime | None = None
+    snippet: str = ""  # the feed's own words about it, a few sentences at most
+    paid: bool = False  # the feed marks it premium or for subscribers: never picked
+    outlets: int = 1  # how many feeds carried the same story (tasks/reading/news.py eligible)
 
 
 @dataclass(frozen=True)

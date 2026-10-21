@@ -106,10 +106,10 @@ def test_off_unless_switched_on():
     assert config.READING_ENABLED is False
 
 
-def test_the_starter_sources_are_a_config_file_each_with_a_theme():
+def test_the_starter_sources_are_a_config_file_each_with_a_topic():
+    """21 Oct: the morning news's feeds (tests/test_news.py has the rest)."""
     data = json.loads(sources.FEEDS.read_text(encoding="utf-8"))
-    assert len(data["sources"]) >= 9 and {each["theme"] for each in data["sources"]} == set(rules.THEMES)
-    assert all(each["url"].startswith("https://") for each in data["sources"])
+    assert all(each["url"].startswith("https://") and each["topic"] for each in data["sources"])
 
 
 def test_rss_and_atom_feeds_are_read():
@@ -368,8 +368,7 @@ def test_a_feed_cut_at_the_size_cap_is_read_up_to_the_cut(monkeypatch):
         sources.parse_feed(b"<rss><channel><item>", sources.Source("Made-up", "https://example.com/feed", "ai"))
 
 
-def test_the_starter_sources_are_practical_ones():
+def test_the_starter_sources_are_news_outlets_not_personal_blogs():
     names = {each["name"] for each in json.loads(sources.FEEDS.read_text(encoding="utf-8"))["sources"]}
-    assert not names & {"Latent Space", "Hugging Face blog", "Eugene Yan", "Dan Luu"}, "academic or research, or failing"
-    assert {"Addy Osmani", "GitHub blog", "Vercel blog", "Kent C. Dodds", "Frontend Masters blog", "Simon Willison"} <= names
+    assert not names & {"Simon Willison", "Julia Evans", "Martin Fowler", "Josh W. Comeau", "Kent C. Dodds", "Addy Osmani"}, "21 Oct: news, not personal blogs"
 

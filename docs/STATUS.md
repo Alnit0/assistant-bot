@@ -8,6 +8,54 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 **Updated:** 2026-10-17 (evening)
 
+## The morning news (21 Oct, evening; a batch, not shipped)
+
+The daily read and the planned News headlines as one task, on
+tasks/reading (Alex: "it makes sense to only have one set of news
+generated"). Step 1 done: the feeds and reading them.
+
+### Decided (21 Oct, the morning news)
+
+- **Live's switch is already on:** live's `.env` has `READING_ENABLED=true`
+  (the daily read has been running there, not off as the docs said). Left as
+  it is (not to be touched in this batch), so the morning news goes live the
+  moment live is next updated to this batch's code: Alex's call, said in the
+  report.
+- **Feeds kept, 39** (`tasks/reading/feeds.json`, checked from the home
+  server on 21 Oct): NZ politics RNZ Politics, NZ Herald Politics, Newsroom,
+  1News, RNZ National; NZ housing and money interest.co.nz, RNZ Business, NZ
+  Herald Business, NZ Herald Personal Finance, Newsroom Business, Reserve
+  Bank of New Zealand; world news BBC World, The Guardian World, Al Jazeera,
+  NPR World, ABC News (Australia), DW, RNZ World, France 24; world politics
+  Politico, NPR Politics, The Guardian Politics, The Guardian US Politics,
+  BBC US and Canada, BBC Politics; tech Ars Technica, The Verge, TechCrunch,
+  The Register, BBC Technology, Engadget; AI TechCrunch AI, The Verge AI, Ars
+  Technica AI, MIT Technology Review AI, The Guardian AI; the wildcard The
+  New Stack, InfoQ, BleepingComputer.
+- **Feeds dropped:** The Spinoff (its feeds answer 404), The Post (not a
+  feed), Good Returns and OneRoof (broken XML), Stuff (no dates in its feed),
+  VentureBeat AI (refuses with 429), The Conversation's politics and DevClass
+  (nothing in the last 24 hours), 1News Business (404), NZ Herald Property
+  (empty), interest.co.nz's section feeds (404, 410). The old starter list
+  went but for Ars Technica, The Verge and The Register: personal blogs,
+  article sites and Hacker News, not news.
+- **interest.co.nz** writes its dates as "20th Oct 26, 3:59pm" in NZ time:
+  the feed reader reads that too (with it, the main NZ money feed had none
+  in the window). DW is RSS 1.0, read now too.
+- **Paid articles, in Python:** an item whose feed tags it premium,
+  subscriber, paywall or members only (NZ Herald and Newsroom tag theirs
+  "premium"), or whose link has `/premium/`, is dropped before Claude sees
+  anything; a chosen article's page that reads as a paywall
+  (`rules.readable`) falls back to its feed snippet for the TL;DR, as the
+  link is still the outlet's own. 25 of 919 items were dropped this way on
+  21 Oct.
+- **The same story from several outlets** is one (most of the shorter
+  headline's telling words in the other, three at least); how many outlets
+  carried it is kept and given to Claude as a sign of the day's biggest
+  news. Tracking parameters come off every link.
+- **What goes to Claude:** the newest 12 of each feed and 35 of each topic
+  (200 on 21 Oct), each headline with its feed snippet cut to 40 words.
+
 ## 👍 as yes (21 Oct, evening; pushed, not restarted)
 
 Behind `THUMBS_UP` (off unless set): `core/thumbsup.py`, an in-memory
