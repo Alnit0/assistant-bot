@@ -274,6 +274,7 @@ class DayItem:
     icon: str = ""  # a TRACKING line's own icon ("📓"), a PREPARED one's ("📰")
     title: str = ""  # a PREPARED one's title ("Morning news"); its `text` is the whole of what it says
     yes: object | None = None  # a cards.Button a 👍 on its message stands for (core/thumbsup.py)
+    fields: tuple = ()  # a PREPARED one's embed fields, (name, value) in order (the morning news: one a topic)
 
 
 @dataclass(frozen=True)

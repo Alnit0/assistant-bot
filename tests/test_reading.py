@@ -286,10 +286,12 @@ def test_in_round_7_it_is_one_purple_embed_in_message_two_and_before_it_is_not_i
     assert run(plain.day_items(world.owner.id, world.day)) == []
     monkeypatch.setattr(config, "DESIGN_ROUND", 7)
     (item,) = run(plain.day_items(world.owner.id, world.day))
-    assert item.kind == PREPARED and item.title == "Morning news" and item.text.startswith("1. **[")
+    assert item.kind == PREPARED and item.title == "Morning news" and item.text == ""
     card = embeds.everything_else([item])
+    cards.check(card)
     (embed,) = card.embeds
-    assert (embed.title, embed.status) == ("📰 Morning news", design.PREPARED) and len(embed.description) <= news.EMBED_BUDGET
+    assert (embed.title, embed.status, embed.description) == ("📰 Morning news", design.PREPARED, "")
+    assert [name for name, _ in embed.fields][:2] == ["NZ politics", "Housing and money"], "a field a topic, in its fixed order"
     assert design.embed_colour(embed.status) == 0x9B59B6
 
 
@@ -338,11 +340,12 @@ def steer(world, **data):
     return card
 
 
-def test_more_like_3_less_ai_and_more_nz_politics_are_kept_and_given_to_every_later_pick(world):
+def test_more_like_the_housing_one_less_ai_and_more_nz_politics_are_kept_and_given_to_every_later_pick(world):
     morning(world)
-    third = the_set(world)[2]
-    card = steer(world, like=3)
-    assert card.lines == (f"More **{news.LABELS[third.topic]}**", f"More like **{third.title}**")
+    housing = next(each for each in the_set(world) if each.topic == NZ_MONEY)
+    card = steer(world, like_topic=NZ_MONEY)
+    assert card.lines == ("More **NZ housing and money**", f"More like **{housing.title}**")
+    third = housing
     steer(world, less=AI)
     steer(world, more=NZ_POLITICS)
     with pytest.raises(UserError, match="already"):
@@ -369,10 +372,27 @@ def test_skip_housing_tomorrow_leaves_it_out_tomorrow_only(world):
     assert NZ_MONEY in [each.topic for each in the_set(world)], "one day only"
 
 
-def test_more_like_a_story_that_is_not_there_is_said(world):
+def test_more_like_the_one_about_words_of_its_headline(world):
     morning(world)
-    with pytest.raises(UserError, match="no story 12"):
-        run(plain.steer_card(world.request(), {"like": 12}, frozenset()))
+    card = run(plain.steer_card(world.request(), {"like_words": "water reform"}, frozenset()))
+    assert card.lines[-1] == "More like **Made-up parliament passes the water reform bill**"
+
+
+def test_more_like_3_is_asked_about_gently_by_topic(world):
+    morning(world)
+    with pytest.raises(UserError, match="no numbers now: say it by its topic, like “more like the housing one”. Today's are NZ politics, Housing and money"):
+        run(plain.steer_card(world.request(), {"like_number": 3}, frozenset()))
+
+
+def test_more_like_a_topic_or_words_that_are_not_there_is_said(world):
+    fresh(world, same_links=True)
+    world.same_links = False
+    world.failing.add(feed_url(AI))
+    morning(world, keep_pages=True)
+    with pytest.raises(UserError, match="no AI story today"):
+        run(plain.steer_card(world.request(), {"like_topic": AI}, frozenset()))
+    with pytest.raises(UserError, match="by its topic"):
+        run(plain.steer_card(world.request(), {"like_words": "zebra crossing"}, frozenset()))
 
 
 # --- another one ----------------------------------------------------------------------------------------------------------
@@ -380,7 +400,8 @@ def test_another_one_is_the_next_best_not_shown_its_tldr_written_now_as_a_reply(
     morning(world)
     shown = {each.url for each in the_set(world)}
     said = run(plain.another(world.request("another one"), {}, frozenset()))
-    assert said.startswith(f"{len(shown) + 1}. **[") and not any(url in said for url in shown)
+    topic, headline, tldr = said.splitlines()
+    assert topic.startswith("-# ") and headline.startswith("**[") and tldr.startswith("-# ") and not any(url in said for url in shown)
     assert [name for name, _ in world.asked][-1] == pick.WRITE
 
 
@@ -410,10 +431,10 @@ def test_the_news_said_anywhere_is_its_embed_and_what_it_knows_is_said(world):
     assert run(plain.show(world.request(), {"what": "prefs"}, frozenset())).startswith("📰 Nothing said yet")
 
 
-def test_extraction_is_told_today_s_stories_by_number(world):
+def test_extraction_is_told_today_s_stories_by_topic_with_no_numbers(world):
     morning(world)
     state = run(plain.state(world.request()))
-    assert state.lines[0].startswith("story 1: ") and "(World politics)" in state.lines[0]
+    assert state.lines[0] == "NZ politics (nz_politics): Made-up parliament passes the water reform bill" and "no numbers" in state.heading
 
 
 # --- sources in words -----------------------------------------------------------------------------------------------------

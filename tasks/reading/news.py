@@ -59,6 +59,7 @@ class Story:
     source: str
     topic: str
     tldr: str
+    outlets: int = 1  # how many outlets carried it: of a topic's two, the bigger one comes first
 
 
 # --- which items go to Claude ------------------------------------------------------------------------------------
@@ -192,7 +193,57 @@ def checked_tldr(text) -> str:
     return cut.rstrip(",;:") + "…"
 
 
-# --- the embed ---------------------------------------------------------------------------------------------------
+# --- the embed: one field a topic (Alex, 21 Oct: "too cluttered in its ordered list layout, it needs more hierarchy") ----
+FIELD_NAMES = {
+    NZ_POLITICS: "NZ politics", NZ_MONEY: "Housing and money", WORLD: "World news", WORLD_POLITICS: "World politics",
+    TECH: "Tech", AI: "AI", WEBDEV: "Web dev",
+}
+FIELD_ORDER = (NZ_POLITICS, NZ_MONEY, WORLD, WORLD_POLITICS, TECH, AI, WEBDEV)
+FIELD_BUDGET = 1000  # characters of a field's value: inside Discord's 1024
+TOTAL_BUDGET = 5600  # characters of the whole embed: inside Discord's 6000
+SUBTEXT = "-# "  # the TL;DR under its headline, small (Discord's subtext)
+# How the TL;DR is drawn in a field: "subtext" (small), or "italics" if subtext is ever seen not to render in an embed's
+# field (21 Oct: Discord stores it as sent, checked by posting and reading back; how each app draws it is for Alex's eyes)
+TLDR_AS = "subtext"
+
+
+def tldr_line(text: str) -> str:
+    return f"*{text}*" if TLDR_AS == "italics" else f"{SUBTEXT}{text}"
+
+
+def _story_value(story: Story, most: int) -> str:
+    return f"**[{_title(story.title)}]({story.url})**\n{tldr_line(_short(story.tldr, most))}"
+
+
+def fields(stories: list[Story], title: str = "") -> tuple[tuple[str, str], ...]:
+    """One field a topic that has a story, in FIELD_ORDER: each story its headline in bold as the link, then its TL;DR
+    small on the next line; a topic's two stories the bigger first (more outlets; a tie, as picked), a blank line between.
+    Inside Discord's limits: the TL;DRs are shortened (30 words, then 24, then 18) only if a field or the whole would not
+    fit, and on a day that still would not, a topic's second story goes."""
+    by_topic: dict[str, list[Story]] = {}
+    for story in stories:
+        by_topic.setdefault(story.topic, []).append(story)
+    for topic in by_topic:
+        by_topic[topic].sort(key=lambda each: -each.outlets)  # a stable sort: a tie keeps the pick's order
+
+    def drawn(most: int, keep: int) -> tuple[tuple[str, str], ...]:
+        return tuple(
+            (FIELD_NAMES[topic], "\n\n".join(_story_value(each, most) for each in by_topic[topic][:keep]))
+            for topic in FIELD_ORDER if topic in by_topic
+        )
+
+    def fits(found) -> bool:
+        return all(len(value) <= FIELD_BUDGET for _, value in found) and len(title) + sum(len(name) + len(value) for name, value in found) <= TOTAL_BUDGET
+
+    for keep in (2, 1):
+        for most in (TLDR_MOST, TLDR_WORDS, 24, 18):
+            found = drawn(most, keep)
+            if fits(found):
+                return found
+    return tuple((name, value[:FIELD_BUDGET]) for name, value in drawn(12, 1))
+
+
+# --- the embed, as it was before the hierarchy (a numbered list): kept for "another one"'s reply and the log -------------
 def _title(title: str) -> str:
     title = " ".join(title.split()).replace("[", "(").replace("]", ")")
     return title if len(title) <= TITLE_MOST else title[: TITLE_MOST - 1].rstrip() + "…"
@@ -201,6 +252,11 @@ def _title(title: str) -> str:
 def story_line(number: int, story: Story, tldr: str | None = None) -> str:
     """ "1. **[Headline](link)** · *NZ politics*" and its TL;DR under it."""
     return f"{number}. **[{_title(story.title)}]({story.url})** · *{LABELS.get(story.topic, story.topic)}*\n{story.tldr if tldr is None else tldr}"
+
+
+def another_line(story: Story) -> str:
+    """ "another one", as a reply: its topic small, the headline in bold as the link, the TL;DR small under it."""
+    return f"-# {FIELD_NAMES.get(story.topic, story.topic)}\n**[{_title(story.title)}]({story.url})**\n{tldr_line(story.tldr)}"
 
 
 def _short(tldr: str, most: int) -> str:

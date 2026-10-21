@@ -147,7 +147,7 @@ def everything_else(items: list[DayItem]) -> Card | None:
     drawn += [Embed(f"{each.icon} {each.text}".strip(), status=design.TRACKING) for each in items if each.kind == TRACKING]
     # What the bot prepared (the morning news), last and purple; a 👍 on the message is its yes
     prepared = [each for each in items if each.kind == PREPARED]
-    drawn += [Embed(each.text, f"{each.icon} {each.title}".strip(), design.PREPARED) for each in prepared]
+    drawn += [Embed(each.text, f"{each.icon} {each.title}".strip(), design.PREPARED, tuple(each.fields)) for each in prepared]
     if not drawn:
         return None
     yes = next((each.yes for each in prepared if each.yes is not None), None)

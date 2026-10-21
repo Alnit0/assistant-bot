@@ -92,6 +92,34 @@ generated"). Step 1 done: the feeds and reading them.
   steps, none failed, 197 recorded answers read back. The batch's spend:
   about US$0.39 (NZ$0.67) of the NZ$2.00 cap.
 
+## The morning news's hierarchy (21 Oct, evening; pushed, not shipped)
+
+Alex, on his phone: "It's too cluttered in its ordered list layout, it needs
+more hierarchy". One purple embed, a full-width field a topic in a fixed
+order; each story the headline in bold as the link and the TL;DR as subtext.
+
+### Decided (21 Oct, the hierarchy)
+
+- **Subtext kept:** a made-up embed with both versions (subtext, italics) was
+  posted to the dev bot's own inbox and read back: Discord keeps the fields
+  full width and every `-# ` line and every link exactly as sent. How each
+  app draws them can't be read back through the API, so subtext (his first
+  choice) stays, and italics is one setting away (`news.TLDR_AS`). That post
+  is there for his look on his phone and on the desktop.
+- **Limits:** a field's value at most 1,000 characters (Discord's 1,024), the
+  whole embed at most 5,600 (6,000): the TL;DRs shorten (30, 24, 18 words)
+  only if they would not fit, then a topic's second story goes. The longest
+  realistic day (eight stories, two topics with two, headlines of 110,
+  links of 150, TL;DRs of 40 words) fits whole. `cards.check` refuses an
+  embed over Discord's own limits.
+- **"The bigger one first":** of a topic's two, the one more outlets carried
+  (a story keeps its count); a tie, as Claude picked.
+- **Steering by a story:** `like_topic` (its topic) or `like_words` (words of
+  its headline, found by core/names.py); "more like 3" is `like_number`, and
+  the reply asks which by topic. Claude first read "more like the housing
+  one" as "more housing": the fields' own lines now tell "more like …" from
+  "more …". Golden checks 29 of 29.
+
 ## 👍 as yes (21 Oct, evening; pushed, not restarted)
 
 Behind `THUMBS_UP` (off unless set): `core/thumbsup.py`, an in-memory

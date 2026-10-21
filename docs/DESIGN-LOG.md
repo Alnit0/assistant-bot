@@ -396,3 +396,16 @@ never summarised from its feed snippet; at most one US-only politics story a day
 **What was done:** tasks/reading rebuilt as the morning news (tasks/reading/news.py, pick.py, plain.py), 39 feeds;
 message 2 now also sent with the news alone. Preview: "Design · Morning news" (a weekday, a Monday, a quiet day, a day
 with a topic empty), with a note asking him to look on his phone. Waiting on his look, and "turn on the morning news".
+
+### The morning news: the hierarchy version (21 Oct, evening)
+
+**What Alex said, word for word, after looking on his phone:** "It's too cluttered in its ordered list layout, it needs
+more hierarchy".
+
+**What was done:** the numbered list went. Still one purple embed in round 7's message 2, now a full-width field a topic
+that has a story, named in plain words with no emoji (NZ politics, Housing and money, World news, World politics, Tech,
+AI, Web dev), in that fixed order; a topic with nothing that day has no field. In each field a story is its headline in
+bold as the link and its TL;DR under it as Discord's subtext; a topic with two has both, the bigger first (more outlets),
+a blank line between. Steering has no numbers: "more like the housing one", "more like the one about the water reform";
+"more like 3" asks which, by topic. Reposted as a reply in "Design · Morning news" (the same four days). Waiting on his
+look on his phone, and his eyes on the subtext (below).

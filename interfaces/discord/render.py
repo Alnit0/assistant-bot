@@ -140,15 +140,19 @@ def layout_view(pieces: tuple) -> discord.ui.LayoutView:
 
 
 def embeds(card: Card) -> list[discord.Embed]:
-    """A card's embeds (round 7's briefing) as Discord's, each with its border colour (core/design.py)."""
-    return [
-        discord.Embed(
+    """A card's embeds (round 7's briefing) as Discord's, each with its border colour (core/design.py) and its
+    fields, full width, in order."""
+    drawn = []
+    for each in card.embeds:
+        embed = discord.Embed(
             title=(outgoing.clean(each.title) or each.title) if each.title else None,
             description=(outgoing.clean(each.description) or each.description) if each.description else None,
             colour=discord.Colour(design.embed_colour(each.status)) if each.status else None,
         )
-        for each in card.embeds
-    ]
+        for name, value in each.fields:
+            embed.add_field(name=outgoing.clean(name) or name, value=outgoing.clean(value) or value, inline=False)
+        drawn.append(embed)
+    return drawn
 
 
 def heading(card: Card) -> str | None:

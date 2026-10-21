@@ -5,9 +5,10 @@ history is `docs/STATUS.md`. Read first, with `/catchup`.
 
 **Idle, last batch was** 21 Oct (evening): the morning news, the daily
 read and News headlines as one task (tasks/reading, `READING_ENABLED`),
-built and pushed, not shipped. Preview "Design · Morning news" posted;
-self-test 150 of 150; one morning US$0.023 (NZ$0.04). Live already has
-`READING_ENABLED=true`: updating live turns the news on.
+built and pushed, not shipped; then its hierarchy version (a field a
+topic, the TL;DR as subtext), reposted as a reply in "Design · Morning
+news"; self-test 150 of 150. Live already has `READING_ENABLED=true`:
+updating live turns the news on.
 
 **The feature freeze is called off** (Alex, 21 Oct): no settle-in week.
 **Next:** Alex's list of changes (not heard yet); his first morning

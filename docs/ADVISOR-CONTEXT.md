@@ -55,6 +55,7 @@ Unicode emoji squares only, no custom emoji:
 - **Two messages**, because of the 10-embed limit.
 - **Message 1 (the timeline):** the date as its text, then an embed a thing in time order. At the same time: events first, then doses, then routines. Repeating events blue, notable ones yellow. Doses coloured by their state, with the time taken inline. Routines blue. Over ten, the tenth embed becomes a grey "More today" of the rest.
 - **Message 2 (tracking):** the to-dos in pink, the diary's streak in blue, then the morning news in purple. Sent when any of them has something. Both messages are rewritten in place all day.
+- **The morning news's embed** (Alex, 21 Oct: "too cluttered in its ordered list layout, it needs more hierarchy"): no numbered list; a full-width field a topic, named in plain words with no emoji, in a fixed order (NZ politics, Housing and money, World news, World politics, Tech, AI, Web dev); each story its headline in bold as the link, the TL;DR under it as subtext; two in a topic, the bigger first. Steering names a story by topic or headline words, never a number.
 - "Brief me" outside the hub shows message 1 only.
 - **Gone from the old briefing:** the Needs a look line (a problem still reaches him through the status line and a ping), the weather line, and yesterday's spend.
 - Behind `DESIGN_ROUND=7`: live since 21 Oct, 3:23 pm (`f525879`), with `THUMBS_UP=true`.

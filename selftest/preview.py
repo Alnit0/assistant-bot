@@ -813,7 +813,12 @@ async def reply_preview(title: str, intro: str, found: list[tuple[str, tuple]]) 
         for label, pieces in found:
             if label:
                 await thread.send(f"### {label}", allowed_mentions=quiet)
-            await thread.send(view=render.layout_view(pieces), allowed_mentions=quiet)
+            if isinstance(pieces, Card) and pieces.embeds:
+                await thread.send(render.heading(pieces), embeds=render.embeds(pieces), allowed_mentions=quiet)
+            elif isinstance(pieces, Card):
+                await thread.send(pieces.text, allowed_mentions=quiet)
+            else:
+                await thread.send(view=render.layout_view(pieces), allowed_mentions=quiet)
             await asyncio.sleep(1)  # paced: well under Discord's rate limit
         return thread.jump_url
 
@@ -1066,7 +1071,7 @@ def _message_two(day, stories, todos=True):
 
     items = [DayItem(TODO, "Buy stamps"), DayItem(TODO, "Call the plumber", state="taken")] if todos else []
     items += [DayItem(TRACKING, "Diary · Streak: 4 days", icon="📓")]
-    items.append(DayItem(PREPARED, news.description(stories), icon="📰", title="Morning news"))
+    items.append(DayItem(PREPARED, "", icon="📰", title="Morning news", fields=news.fields(stories, "📰 Morning news")))
     return embeds.everything_else(items)
 
 
@@ -1080,16 +1085,30 @@ def news_cards() -> list:
     monday = _news(day, [("world_politics", 1), ("nz_politics", 1), ("world", 1), ("tech", 1), ("ai", 1), ("nz_money", 1), ("world", 0), ("world_politics", 0)])
     quiet = _news(day, [("world_politics", 0), ("nz_politics", 0), ("world", 0), ("tech", 0), ("ai", 0), ("nz_money", 0), ("world", 1)])
     empty = _news(day, [("world_politics", 0), ("nz_politics", 0), ("world", 0), ("tech", 0), ("nz_money", 0), ("nz_politics", 1)])
-    steer = news.changes(news.Prefs(), news.steered(news.Prefs(), less="ai", like=weekday[2]))
-    another = news.story_line(9, _news(day, [("tech", 1)])[0])
+    housing = next(each for each in weekday if each.topic == "nz_money")
+    steer = news.changes(news.Prefs(), news.steered(news.Prefs(), less="ai", like=housing))
+    another = news.another_line(_news(day, [("tech", 1)])[0])
     return [
         ("An ordinary weekday: one a topic, then two extras (here NZ politics, and the web development wildcard on a day with a security hole). In round 7's second message, after the to-dos and the diary", _message_two(day, weekday)),
         ("A Monday: since Saturday 5:30 am, so the weekend's biggest stories; no wildcard", _message_two(day, monday, todos=False)),
         ("A quiet day: seven, one a topic and one extra, no wildcard. The news alone is enough for the second message to be sent", _message_two(day, quiet, todos=False)),
         ("A day with a topic empty (AI had nothing new): six and an extra, never padded", _message_two(day, empty, todos=False)),
         ("“another one”: the next best story not shown, as a reply", Card(another)),
-        ("“less AI, more like 3”: a card first, Save keeps it for every later pick", confirm.render(NEWS_ENTRY, Proposal(lines=tuple(steer), data={}, kind="change"), 1).layout),
+        ("“less AI”, then “more like the housing one”: a card first, Save keeps it for every later pick", confirm.render(NEWS_ENTRY, Proposal(lines=tuple(steer), data={}, kind="change"), 1).layout),
     ]
+
+
+def news_reply_intro() -> str:
+    return "\n".join([
+        "## The hierarchy version (21 Oct)",
+        "From your look on your phone: “It's too cluttered in its ordered list layout, it needs more hierarchy”. The numbered list is gone: "
+        "**a field a topic**, full width, in a fixed order (NZ politics, Housing and money, World news, World politics, Tech, AI, Web dev), "
+        "named in plain words; each story its headline in bold as the link, then its TL;DR small under it; a topic with two has both, "
+        "the bigger first. A topic with nothing that day has no field.",
+        "**In words, without numbers:** “more like the housing one”, “more like the one about the water reform”, “less AI”, “another one”. "
+        "“more like 3” now asks which, by topic.",
+        "📱 Please look again on your phone. The same four days as above, made-up headlines only.",
+    ])
 
 
 def news_opening() -> str:
@@ -1228,6 +1247,13 @@ def main() -> int:
             print(f"{len(found)} messages built, each within one message.")
             return 0
         print("Posted:", asyncio.run(post_preview(INBOX_TITLE, inbox_opening(), found)))
+        return 0
+    if "--news-reply" in args:
+        found = news_cards()
+        if "--check" in args:
+            print(f"{len(found)} messages built, each within one message.")
+            return 0
+        print("Posted:", asyncio.run(reply_preview(NEWS_TITLE, news_reply_intro(), found)))
         return 0
     if "--news" in args:
         found = news_cards()

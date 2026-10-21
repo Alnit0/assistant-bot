@@ -130,7 +130,7 @@ async def build(user_id: int, day: date) -> tuple[list[Story], list[str]]:
     if not kept:
         return [], failed
     tldrs = await pick.write([(found[index], text) for index, text in kept])
-    stories = [Story(found[index].url, found[index].title, found[index].source, found[index].theme, tldr) for (index, _), tldr in zip(kept, tldrs)]
+    stories = [Story(found[index].url, found[index].title, found[index].source, found[index].theme, tldr, found[index].outlets) for (index, _), tldr in zip(kept, tldrs)]
     await database.run(store.db_put_news, user_id, day, stories, clock.now())
     used = {index for index, _ in kept}
     await database.run(store.db_put_spares, user_id, day, [found[index] for index in nexts if index not in used])
@@ -168,12 +168,13 @@ async def day_items(user_id: int, day: date) -> list:
     if found is None or not found[0]:
         return []
     stories, liked = found
-    return [DayItem(PREPARED, news.description(stories), icon=ICON, title=TITLE, state=TAKEN if liked else "pending", yes=yes_button(day))]
+    return [DayItem(PREPARED, "", icon=ICON, title=TITLE, state=TAKEN if liked else "pending", yes=yes_button(day), fields=news.fields(stories, f"{ICON} {TITLE}"))]
 
 
 def news_card(stories: list[Story], day: date) -> Card:
     """The set as one purple embed of its own, for "the news" said anywhere."""
-    embed = Embed(news.description(stories), f"{ICON} {TITLE} · {day:%a} {day.day} {day:%b}", design.PREPARED)
+    title = f"{ICON} {TITLE} · {day:%a} {day.day} {day:%b}"
+    embed = Embed("", title, design.PREPARED, news.fields(stories, title))
     return Card(news.plain_text(stories, day), embeds=(embed,), thumbs_up=yes_button(day))
 
 
@@ -225,8 +226,32 @@ async def another(request: Request, data: dict, guessed: frozenset) -> str:
     else:
         raise UserError(f"{ICON} The next stories are all behind paywalls today.")
     (tldr,) = await pick.write([(item, text)])
-    shown_already = len(found[0]) + 1
-    return news.story_line(shown_already, Story(item.url, item.title, item.source, item.theme, tldr))
+    return news.another_line(Story(item.url, item.title, item.source, item.theme, tldr))
+
+
+async def _liked_story(user_id: int, data: dict):
+    """The story "more like the housing one" or "more like the one about the water reform" means: by its topic, or by
+    words of its headline (core/names.py); a number is asked about, gently, by topic (the stories have none since 21 Oct)."""
+    if data.get("like_number") is None and not data.get("like_topic") and not data.get("like_words"):
+        return None
+    found = await database.run(store.db_news, user_id, today())
+    stories = found[0] if found else []
+    if not stories:
+        raise UserError(f"{ICON} No morning news picked today yet.")
+    topics = ", ".join(dict.fromkeys(news.FIELD_NAMES[each.topic] for each in sorted(stories, key=lambda each: news.FIELD_ORDER.index(each.topic))))
+    if data.get("like_topic"):
+        of_topic = [each for each in stories if each.topic == data["like_topic"]]
+        if not of_topic:
+            raise UserError(f"{ICON} There's no {news.FIELD_NAMES.get(data['like_topic'], 'such')} story today. Today's are {topics}.")
+        return sorted(of_topic, key=lambda each: -each.outlets)[0]
+    if data.get("like_words"):
+        try:
+            return names.find(stories, str(data["like_words"]), lambda each: each.title)
+        except names.Ambiguous as which:
+            raise UserError(f"{ICON} Which one: " + " or ".join(f"**{each.title}**" for each in which.candidates[:3]) + "?")
+        except (names.Unknown, names.Unnamed):
+            raise UserError(f"{ICON} Which story? Say it by its topic ({topics}) or a few words of its headline.")
+    raise UserError(f"{ICON} Which story? The news has no numbers now: say it by its topic, like “more like the housing one”. Today's are {topics}.")
 
 
 def _skip_day(said, now) -> date:
@@ -240,14 +265,7 @@ def _skip_day(said, now) -> date:
 async def steer_card(request: Request, data: dict, guessed: frozenset) -> Proposal:
     """ "more like 3", "less AI", "more NZ politics", "skip housing tomorrow": a card that says what changes."""
     before = await database.run(store.db_prefs, request.user.id)
-    like = None
-    if data.get("like") is not None:
-        found = await database.run(store.db_news, request.user.id, today())
-        stories = found[0] if found else []
-        number = data["like"] if isinstance(data["like"], int) else 0
-        if not 1 <= number <= len(stories):
-            raise UserError(f"{ICON} There is no story {number} today." if stories else f"{ICON} No morning news picked today yet.")
-        like = stories[number - 1]
+    like = await _liked_story(request.user.id, data)
     skip = str(data.get("skip") or "")
     skip_on = _skip_day(data.get("skip_day"), clock.now()) if skip else None
     us = str(data.get("us") or "")
@@ -306,9 +324,9 @@ async def source_check(request: Request, data: dict) -> str:
 
 async def state(request: Request) -> State:
     found = await database.run(store.db_news, request.user.id, today())
-    lines = [f"story {number}: {each.title} ({LABELS[each.topic]})" for number, each in enumerate(found[0], start=1)] if found else ["today's news: not picked yet"]
+    lines = [f"{news.FIELD_NAMES[each.topic]} ({each.topic}): {each.title}" for each in sorted(found[0], key=lambda each: news.FIELD_ORDER.index(each.topic))] if found else ["today's news: not picked yet"]
     lines.append("sources: " + ", ".join(each.name for each in await sources_for(request.user.id)))
-    return State("The user's morning news today (the stories are numbered as shown)", tuple(lines), "nothing yet")
+    return State("The user's morning news today, a story a line by its topic (the stories have no numbers)", tuple(lines), "nothing yet")
 
 
 def actions() -> list:
@@ -322,13 +340,16 @@ def actions() -> list:
         ),
         Action(
             "news_steer",
-            "Shape what the morning news picks from now on: \"more like 3\" -> like 3 (story 3 of today's); \"less AI\" -> less ai; "
+            "Shape what the morning news picks from now on: \"more like the housing one\" -> like_topic nz_money; \"more like the one "
+            "about the water reform\" -> like_words water reform (today's stories are in the state, by topic); \"less AI\" -> less ai; "
             "\"more NZ politics\" -> more nz_politics; \"skip housing tomorrow\" -> skip nz_money, skip_day tomorrow (one day only); "
             "\"more US politics\" -> us more (US politics is not a topic of its own: it is world_politics). "
             f"Topics: {topic_words} (housing, house prices, interest rates, the OCR and the economy are nz_money).",
             (
-                Field("like", "The number of today's story to have more like, as said (\"more like 3\" -> 3).", INTEGER),
-                Field("more", "A topic to have more of.", choices=topics),
+                Field("like_topic", "\"More like\" one of today's stories, named by its topic: the topic (\"more like the housing one\" -> nz_money; \"more like the AI story\" -> ai). Said with \"like\", it is this, never more.", choices=topics),
+                Field("like_words", "\"More like\" one of today's stories, named by words of its headline: those words, exactly as said (\"more like the one about the water reform\" -> water reform). \"The one about …\" is always this, even when its topic is plain: never like_topic."),
+                Field("like_number", "Only when the user names a story by a number (\"more like 3\" -> 3): they are asked which, by topic.", INTEGER),
+                Field("more", "A topic to have more of, said without \"like\" (\"more NZ politics\", \"more AI news\"). Never for \"more like …\", which is like_topic or like_words.", choices=topics),
                 Field("less", "A topic to have less of.", choices=topics),
                 Field("skip", "A topic to leave out on one day.", choices=topics),
                 Field("skip_day", "The day to leave it out, exactly as said (\"tomorrow\", \"Friday\"). Leave out when no day is said."),
@@ -361,9 +382,9 @@ def actions() -> list:
 ONLY_FOR = (
     "The user's morning news: today's set of 7 or 8 news stories (world and NZ politics, world news, tech, AI, NZ housing and "
     "money). Showing it (\"the news\"), one more story (\"another one\"), and steering what it picks from now on: more like one "
-    "of today's stories by its number (\"more like 3\"), more or less of a topic (\"less AI\", \"more NZ politics\"), leaving a "
+    "of today's stories by its topic or its headline (\"more like the housing one\", \"more like the one about the water reform\"), more or less of a topic (\"less AI\", \"more NZ politics\"), leaving a "
     "topic out on a day (\"skip housing tomorrow\"); what it knows about what they like; adding or removing a news source. Not "
     "a to-do or a reminder (those tasks, even about reading something), not the diary, and not a question about a news topic "
     "itself (chat)."
 )
-EXAMPLES = ("another one", "less AI", "skip housing tomorrow")
+EXAMPLES = ("another one", "more like the housing one", "less AI")

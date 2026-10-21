@@ -214,3 +214,50 @@ def test_more_us_politics_is_a_preference_of_its_own():
     after = news.steered(news.Prefs(), us="more")
     assert after.us_most == 2 and news.changes(news.Prefs(), after) == ["Up to **2** US politics stories a day"]
     assert news.steered(after, us="less").us_most == 1 and news.Prefs.from_dict(after.as_dict()).us == 1
+
+
+# --- the hierarchy (Alex, 21 Oct: "It's too cluttered in its ordered list layout, it needs more hierarchy") ----------------
+def test_a_field_a_topic_in_its_fixed_order_its_headline_a_link_its_tldr_small():
+    stories = [story(0, topic=topic) for topic in (WORLD_POLITICS, NZ_POLITICS, WORLD, TECH, AI, NZ_MONEY)]
+    found = news.fields(stories)
+    assert [name for name, _ in found] == ["NZ politics", "Housing and money", "World news", "World politics", "Tech", "AI"], "no Web dev field: nothing that day"
+    headline, tldr = found[0][1].split("\n")
+    assert headline.startswith("**[") and headline.endswith(")**") and tldr.startswith("-# ")
+    assert not any(any(ord(char) > 0x2000 for char in name) for name, _ in found), "no emoji in a field's name"
+
+
+def test_a_topic_with_two_stories_has_both_the_bigger_first_a_blank_line_between():
+    small = Story("https://news.example/a", "Made-up minister quits", "Wire", NZ_POLITICS, "Words.", outlets=1)
+    big = Story("https://news.example/b", "Made-up bill passes", "Wire", NZ_POLITICS, "Words.", outlets=4)
+    ((name, value),) = news.fields([small, big])
+    assert name == "NZ politics" and value.split("\n\n")[0].startswith("**[Made-up bill passes]") and value.count("\n\n") == 1
+
+
+def test_the_longest_realistic_day_fits_every_field_and_the_whole_embed():
+    """Eight stories (two topics with two), headlines of 110 characters, links of 150, TL;DRs of 40 words."""
+    from core.cards import MAX_EMBED_TOTAL, MAX_FIELD_VALUE, Card, Embed, check, embed_size
+
+    topics = [NZ_POLITICS, NZ_POLITICS, NZ_MONEY, WORLD, WORLD, WORLD_POLITICS, TECH, AI]
+    longest = [story(number, title_words=25, url_length=150, tldr_words=40, topic=topic) for number, topic in enumerate(topics)]
+    found = news.fields(longest, "📰 Morning news")
+    assert all(len(value) <= news.FIELD_BUDGET < MAX_FIELD_VALUE for _, value in found)
+    assert sum(value.count("**[") for _, value in found) == 8, "every story kept"
+    embed = Embed("", "📰 Morning news", "prepared", found)
+    assert embed_size(embed) <= news.TOTAL_BUDGET < MAX_EMBED_TOTAL
+    check(Card("x", embeds=(embed,)))
+
+
+def test_even_a_day_far_past_realistic_never_breaks_a_limit():
+    from core.cards import Card, Embed, check
+
+    absurd = [story(number, title_words=40, url_length=600, tldr_words=40, topic=topic) for number, topic in enumerate([NZ_POLITICS, NZ_POLITICS, AI, AI, TECH, WORLD, WORLD_POLITICS, NZ_MONEY])]
+    check(Card("x", embeds=(Embed("", "📰 Morning news", "prepared", news.fields(absurd, "📰 Morning news")),)))
+
+
+def test_discord_draws_each_field_full_width():
+    from core.cards import Card, Embed
+    from interfaces.discord import render
+
+    (drawn,) = render.embeds(Card("x", embeds=(Embed("", "📰 Morning news", "prepared", (("NZ politics", "**[A](https://news.example/a)**\n-# Words."),)),)))
+    (field,) = drawn.fields
+    assert (field.name, field.value, field.inline) == ("NZ politics", "**[A](https://news.example/a)**\n-# Words.", False)
