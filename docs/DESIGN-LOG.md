@@ -455,3 +455,22 @@ him to compare on his phone.
 
 **What follows:** no animation by editing; the grid's code stays in the lab, and `LAB_GRID` goes off in live at the
 next ship. Short state changes by edit (a square turning green) are kept in mind, only when he asks.
+
+## Round 8: round 5's boxes with round 7's coloured edges (22 Oct)
+
+**What Alex said, word for word, about round 7's live hub (22 Oct):** "Crammed, no text heirarchy used, no headings or dividers, Emojis feel misplaced, taken/later emoji feels out of place, card color does the same job better. Too cluttered"
+
+He also saw that the hub repeated itself: each line of the timeline its own embed, then a Pills card and a Today card under it with the same doses and events again. He agreed to the design: back to round 5's boxes (headings, rules between items, small text), keeping round 7's one good idea, the coloured edge that says a box's state.
+
+**What was built** (`tasks/briefing/hub8.py`, behind `DESIGN_ROUND=8`; rounds 5, 6 and 7 as they were):
+
+- **One message**, nothing in it twice. At the top, outside any box, the date as the page title ("## Thursday 22 October") and one small line, "Next:" and the next thing still to come with its time.
+- **💊 Pills** (only with doses today): round 3's dots and count on the heading, then a dose a line in time order with a rule between ("Pill B · dose 1 of 2 · 11:00 am"). State by text style alone: taken struck through with "taken 8:28 am" small under it, skipped and missed struck through and said small, the dose due (or, with none due, the next) bold with its one Taken (round 4's rule), later doses plain. The edge: red with a dose due, green once every dose is dealt with and none missed, grey otherwise. Exact times only.
+- **🗓️ Today** (only with events or routines today): events and routines in time order, never a dose. "Event · 8:00 am until 4:00 pm"; while on, "on now · until 4:00 pm"; a routine "Evening · 10:30 pm". Done or over struck through and faint; what is on now and the next still to come bold. One-off events in the next 7 days in one small line last ("Coming up: …"). The edge: yellow with a one-off event today, blue otherwise.
+- **To-dos** (only with open ones): pink, the first three, then "and N more".
+- **Last, outside any box:** one small line, the diary's streak and the morning news ("Diary streak 4 · 8 stories in #news", the news part linking to its message). No emoji.
+- **No squares** (🟩 🟥 ⬜ ⏭️ ⬛) anywhere in the hub, and one emoji a box, on its heading.
+- In round 8 the pills checklist, the Today card and the to-dos card are not posted; one still up from before leaves at its next change. Too big for one message, the To-dos box goes to a second message; a box is never split.
+- A hub message of another kind (round 7's embeds, an earlier round's layout) is deleted and posted fresh at the first change: Discord can't turn one kind into the other.
+
+**Preview:** "Design · Round 8" in the Design forum, drawn by the real code from made-up data: 7 am, 11:30 am, 3 pm, 10 pm and a busy day, with round 7's drawing of 11:30 am beside it.

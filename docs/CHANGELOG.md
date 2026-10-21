@@ -6,6 +6,10 @@ backfilled from the git log.
 
 ## 2026-10-22
 
+- Round 8 of the hub, built and not yet on: one message of boxes with headings, rules and small text, each box's
+  edge coloured by its state (Pills red when a dose is due, green when all are taken; Today yellow with a one-off
+  event; To-dos pink). Taken doses struck through with their time, the next due bold with its Taken, no squares,
+  and nothing shown twice: no separate pills, Today or to-dos card. Preview: "Design · Round 8".
 - The hub's briefing in round 7 is never left as plain lines: one posted before round 7 (as on 21 Oct, when the
   6 am message was round 5's) is posted again as coloured cards on its first change. Not on live yet; live's hub is
   fresh at 6 am anyway.

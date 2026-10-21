@@ -4,13 +4,13 @@
 
 Never write here: a real pill name, a real event name, a diary's words, a bot's display name, a location more precise than "Auckland", a token, topic, link or ID.
 
-Last brought up to date: 22 Oct 2026, overnight.
+Last brought up to date: 22 Oct 2026, day (hub round 8).
 
 ---
 
-## 1. Colour language (embed border colours)
+## 1. Colour language (embed borders and box edges)
 
-What each border colour means, everywhere an embed is used (round 7's hub, a routine's own card):
+What each colour means, on an embed's border (round 7's hub, a routine's own card) and on a box's edge (round 8's hub):
 
 - **Blue** (#5865F2): routines, repeating events, the diary
 - **Green** (#57F287): done or taken
@@ -24,7 +24,7 @@ In the code: `core/design.py` (`EMBED_COLOURS`). A task gives a status, never a 
 
 ## 2. Status indicators
 
-Unicode emoji squares only, no custom emoji:
+**Not used in the hub from round 8** (22 Oct): there, state is said by text style (taken struck through with its time small, the next due bold, later plain) and by the box's edge colour. Elsewhere (a routine's own card, reminders), Unicode emoji squares only, no custom emoji:
 
 - 🟩 Taken, with the time inline: "🟩 Taken 8:12 am"
 - 🟥 Due
@@ -50,16 +50,19 @@ Unicode emoji squares only, no custom emoji:
 - Slash commands were turned down: the / key is awkward on a phone, and the Apps menu is hard to find on a computer.
 - Custom emoji pictures for status badges were turned down: "These feel silly, we could just use red, green and grey squares".
 
-## 5. The hub's design (round 7)
+## 5. The hub's design (round 8)
 
-- **Two messages**, because of the 10-embed limit.
-- **Message 1 (the timeline):** the date as its text, then an embed a thing in time order. At the same time: events first, then doses, then routines. Repeating events blue, notable ones yellow. Doses coloured by their state, with the time taken inline. Routines blue. Over ten, the tenth embed becomes a grey "More today" of the rest.
-- **Message 2 (tracking):** the to-dos in pink, the diary's streak in blue, then the morning news's one line in purple ("📰 8 stories in #news", its title opening the day's news message). Sent when any of them has something, the news's line alone included. Both messages are rewritten in place all day.
+- **Round 8** (built 22 Oct, behind `DESIGN_ROUND=8`, preview "Design · Round 8"; not live until Alex says "ship round 8"): round 5's boxes with round 7's coloured edges. **One message**, nothing in it twice, kept in place all day and rewritten as things change.
+- **The top**, outside any box: the date as the page title ("## Thursday 22 October"), then one small line "Next:" and the next thing still to come at its time.
+- **💊 Pills** (only with doses today): round 3's dots and count on the heading; a dose a line in time order with a rule between ("Pill B · dose 1 of 2 · 11:00 am"). Taken: struck through, "taken 8:28 am" small under it. Skipped or missed: struck through, said small. The dose due (or, with none due, the next) bold with its one Taken; later doses plain. Edge: red with a dose due, green once all are dealt with and none missed, grey otherwise. Exact times only.
+- **🗓️ Today** (only with events or routines today): events and routines in time order, never a dose ("Event · 8:00 am until 4:00 pm", "on now · until 4:00 pm", "Evening · 10:30 pm"); done or over struck and faint; on now and the next bold; one-off events in the next 7 days in one small line last. Edge: yellow with a one-off event today, blue otherwise. An event's own title, no emoji of ours.
+- **To-dos** (only with open ones): pink, the first three, then "and N more". Done by words (no dropdown in round 8).
+- **Last**, outside any box: one small line, "Diary streak 4 · 8 stories in #news" (the news part links to its message). No emoji.
+- One emoji a box, on its heading; no squares anywhere in the hub. The pills checklist, the Today card and the to-dos card are not posted beside it. Too big for one message, the To-dos box is a second message; a box is never split. A hub message of another kind (round 7's embeds, an earlier layout) is posted fresh at the first change, the old one deleted. "Brief me" outside the hub shows the same message.
+- **Round 7 (live since 21 Oct, 3:23 pm, `f525879`) is replaced by it**, because of Alex's words on 22 Oct: "Crammed, no text heirarchy used, no headings or dividers, Emojis feel misplaced, taken/later emoji feels out of place, card color does the same job better. Too cluttered". It also repeated itself: an embed a line of the day, then a Pills card and a Today card under it showing the same doses and events. Round 7 was two messages of embeds (the timeline with squares, then the to-dos and the diary); it stays selectable, as do rounds 5 and 6.
 - **The morning news is one message in its own channel (for now), not in the hub** (Alex, 21 Oct: first "could each news article be its own card?", then, seeing the gaps between cards, "Can we simply combine the cards into one message?"). #news is a channel of its own beside the hub. One message a day, one purple embed a story, 8 at most: "<topic> · <outlet>" as the author line, the headline as the title linked to the article, the TL;DR as the description (about 30 words, 40 at most); no fields, no footer, no numbers. A fixed topic order (NZ politics, Housing and money, World news, World politics, Tech, AI, Web dev), an extra after its topic's first. Discord's 6,000 characters are for a message's embeds together: the longest TL;DRs shorten to fit, a headline never. Yesterday's deleted each morning; "another one" is a one-story message of its own. Earlier designs turned down: one embed with a numbered list, one embed with a field a topic, a message a story.
-- "Brief me" outside the hub shows message 1 only.
-- **A message posted as a layout (rounds 4 to 6) can never take embeds.** On 21 Oct the 6 am briefing was round 5's, so after round 7 went live it read as plain lines all day. Since 22 Oct (not shipped yet) such a hub briefing is posted again as embeds on its first change; a fresh 6 am post is embeds anyway.
-- **Gone from the old briefing:** the Needs a look line (a problem still reaches him through the status line and a ping), the weather line, and yesterday's spend.
-- Behind `DESIGN_ROUND=7`: live since 21 Oct, 3:23 pm (`f525879`), with `THUMBS_UP=true`.
+- **A message posted as a layout (rounds 4 to 6) can never take embeds, and one of embeds never becomes a layout.** On 21 Oct the 6 am briefing was round 5's, so after round 7 went live it read as plain lines all day. Since 22 Oct (not shipped yet) a hub briefing of another kind is posted again in the round's own kind at its first change.
+- **Gone from the hub since round 7:** the Needs a look line (a problem still reaches him through the status line and a ping), the weather line, and yesterday's spend.
 
 ## 6. Planned features
 
@@ -78,6 +81,7 @@ Unicode emoji squares only, no custom emoji:
 - A proposed new name for the bot (it has another now; the names are never written in the docs).
 - A 👍 on the news ("Perhaps we disregard the thumb system for news?", 21 Oct), and a message a news story (the gaps between them looked bad).
 - Animation by editing a message over and over (21 Oct, the lab grid): about one frame a second at best, too choppy. "It works, the animation isn't really anywhere as good as I had hoped. It may have applications for notifying or changing things but not animating".
+- Round 7's hub of embeds (22 Oct): "Crammed, no text heirarchy used, no headings or dividers, Emojis feel misplaced, taken/later emoji feels out of place, card color does the same job better. Too cluttered". The status squares in the hub went with it (round 8).
 - The feature freeze, called off on 21 Oct: "I feel like we're wasting development time, I'm using the bot daily and I have a list of changes I want made".
 
 ## 8. Maintaining this file

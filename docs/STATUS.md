@@ -6,7 +6,7 @@ No history is kept here: what changed is `docs/CHANGELOG.md`, and this
 file as it stood until midday on 2026-10-14 (every batch, every answer,
 all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
-**Updated:** 2026-10-22 (overnight)
+**Updated:** 2026-10-22 (day, hub round 8)
 
 
 
@@ -15,9 +15,44 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 - **The 22 Oct overnight batch** (below): with a core migration
   (`reaction_waiting`), so `update-live.ps1` runs it.
+- **Hub round 8** (below), only when Alex says "ship round 8": then
+  `DESIGN_ROUND=8` in live's `.env` with the ship.
 - **`LAB_GRID=false` in live's `.env`**, as part of the next ship (no
   restart just for it). Alex, 21 Oct, on the lab grid: "It works, the animation isn't really anywhere as good as I had hoped. It may have applications for notifying or changing things but not animating".
   The lab grid's code stays.
+
+## Hub round 8 (22 Oct, day; pushed, not shipped)
+
+Alex on round 7's live hub, 22 Oct: "Crammed, no text heirarchy used, no headings or dividers, Emojis feel misplaced, taken/later emoji feels out of place, card color does the same job better. Too cluttered". Round 8 is round 5's boxes with round 7's coloured edges, ONE message, behind `DESIGN_ROUND=8` (`tasks/briefing/hub8.py`; `docs/DESIGN-LOG.md`, Round 8).
+
+- **Built:** the date and a small Next line; 💊 Pills, 🗓️ Today, To-dos; one small last line (diary streak, news). Taken struck through with its time, the due dose bold with its one Taken, edges red, green, grey, yellow, blue and pink as `design.EMBED_COLOURS` says. No squares, one emoji a box. The checklist, the Today card and the to-dos card are not posted in round 8. A hub message of another kind is posted fresh at the first change. Rounds 5, 6 and 7 unchanged.
+- **Tests:** `tests/test_round8.py` (39): the edge colour rules, taken struck through, no doses in Today, no squares, the fresh post from round 7's embeds and from round 5's layout, the overflow rule, nothing posted twice, the day run's own checks.
+- **Preview:** "Design · Round 8" in the Design forum (7 am, 11:30 am, 3 pm, 10 pm, a busy day; round 7's 11:30 am beside it).
+- **The day in the hub, round 8** (`python -m selftest.day --round 8`, the dev bot, recorded answers): 41 steps, 40 passed. d.25 ("another one", the news) failed as it did in round 7's run on 21 Oct: the story goes to #news, not the hub. All eight snapshots: the same one hub message all day, edited in place, nothing shown twice, no square. Pill A's noon dose was Taken on the hub's own button; to-dos done by words.
+- **A limit hit:** a full day (6 doses, 8 events and routines) is over Discord's 40 components a message with the To-dos box in, so on the made-up day the To-dos box was a second message all day, as the rule says. Fewer things, and it is one message.
+- **Also:** `tests/test_calendar.py` broke at 8:50 am on 22 Oct (its made-up morning had passed and the clock only moves forward); its fixture now holds the real time before that morning. Others like it are in BACKLOG, Soon.
+
+### Decided (22 Oct, round 8)
+
+1. **Bold is the whole line** of the dose due (or the next) and of what is on now and the next event or routine; other lines are plain, names included, so bold alone says what matters now.
+2. **Every dose due is bold**; with none due, the next to take. A dose with no time is not red (it is any time), but it has its Taken.
+3. **The Pills edge is green** once every dose is taken or skipped and none missed (a skip is dealt with, as round 5's all-done says); a missed one keeps it grey.
+4. **An event with no end** is over once it has started.
+5. **"### To-dos" has no emoji**, as the brief wrote it; the other two boxes have theirs.
+6. **No Done dropdown in the To-dos box**, and the to-dos card is not posted in round 8 either (nothing twice): a to-do is done by words.
+7. **Personal routines' own cards and reminders still post** in round 8: they are the moment, not the overview.
+8. **A checklist still up at the switch, or asked for by name ("pills"), leaves at its next change.**
+9. **The hub message takes no 👍**, as the checklist never did; 👍 on reminders works as before.
+10. **Round 8 is in `design.ROUNDS`, but the fallback for a round never built stays 5** (`design.LATEST`).
+11. **Round 8's message has its own Live-list places** (`briefing:hub8`, `briefing:hub8b`) to tell the kinds apart: no migration.
+12. **Nothing at all today:** "Nothing on today." small under the date.
+13. **The Next line** names a dose, an event or a routine still to come today, with its time, never a dose number.
+14. **The day run** skips d.31 and d.34 in rounds 7 and 8 (the hub has no Needs a look since round 7); in round 8 the to-dos are done by words and Pill A's noon dose is Taken in the hub.
+15. **ADVISOR.md section 2** already said whether to /clear is said above the block, never inside; no marker was there, so it is unchanged.
+
+### Spend (22 Oct, round 8)
+
+- NZ$0.00 of the NZ$0.50 cap: no request to Claude. The day run and the preview used recorded answers and made-up data.
 
 ## The hub's lost embeds, then understanding (21 to 22 Oct, overnight; pushed, not shipped)
 

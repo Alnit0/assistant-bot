@@ -50,6 +50,10 @@ the full self-test run.
 
 ### Soon
 
+- **Tests that move the dev clock to a fixed day stop once that day has passed**: `tests/test_calendar.py`
+  failed 6 tests from 22 Oct, 8:50 am (the clock only moves forward). Fixed there by holding the real time
+  before the made-up morning; about a dozen other test files move the clock to a fixed day in Oct or Nov
+  2026 and will do the same in turn. Hold the real time in their fixtures the same way.
 - **A full self-test that crosses real midnight** fails 5.01b (the briefing's line about yesterday is
   missing), and 5.03 and 5.07 after it (22 Oct, the run that started at 11:58 pm): the briefing stage alone
   passed 22 of 22 straight after. Something in it reads the real date; worth finding before a run is
