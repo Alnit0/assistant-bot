@@ -6,22 +6,30 @@ No history is kept here: what changed is `docs/CHANGELOG.md`, and this
 file as it stood until midday on 2026-10-14 (every batch, every answer,
 all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
-**Updated:** 2026-10-22 (day, hub round 8)
+**Updated:** 2026-10-22 (11 am, round 8 shipped)
 
 
 
 
 ## The next ship's to-do
 
-- **The 22 Oct overnight batch** (below): with a core migration
-  (`reaction_waiting`), so `update-live.ps1` runs it.
-- **Hub round 8** (below), only when Alex says "ship round 8": then
-  `DESIGN_ROUND=8` in live's `.env` with the ship.
-- **`LAB_GRID=false` in live's `.env`**, as part of the next ship (no
-  restart just for it). Alex, 21 Oct, on the lab grid: "It works, the animation isn't really anywhere as good as I had hoped. It may have applications for notifying or changing things but not animating".
-  The lab grid's code stays.
+- Nothing waiting.
 
-## Hub round 8 (22 Oct, day; pushed, not shipped)
+## Shipped: hub round 8 and the 22 Oct overnight batch (22 Oct, 10:58 am)
+
+Alex: "Ship round 8". Live on `0412922` (from `1aa9688`; `-Back` returns
+there), with `DESIGN_ROUND=8` and `LAB_GRID=false` in live's `.env`, nothing
+else changed. At least 30 minutes from the next pill reminder (11:28 am). The
+update script migrated a copy first; at the start live saved the database
+before migration 30 (`reaction_waiting`) and applied it. Checked after: one
+bot running, live's own account check passed, and the hub's round 7 briefing
+was of another kind, so it was posted again in round 8 at the start. Only
+the usual start-up warnings (the guilds intent, two rate-limit retries). The
+lab grid's code stays; Alex, 21 Oct: "It works, the animation isn't really anywhere as good as I had hoped. It may have applications for notifying or changing things but not animating".
+To check: tonight's 3:30 am self-test's line, and tomorrow's 6 am briefing
+in round 8.
+
+## Hub round 8 (22 Oct, day; shipped 10:58 am)
 
 Alex on round 7's live hub, 22 Oct: "Crammed, no text heirarchy used, no headings or dividers, Emojis feel misplaced, taken/later emoji feels out of place, card color does the same job better. Too cluttered". Round 8 is round 5's boxes with round 7's coloured edges, ONE message, behind `DESIGN_ROUND=8` (`tasks/briefing/hub8.py`; `docs/DESIGN-LOG.md`, Round 8).
 
@@ -54,7 +62,7 @@ Alex on round 7's live hub, 22 Oct: "Crammed, no text heirarchy used, no heading
 
 - NZ$0.00 of the NZ$0.50 cap: no request to Claude. The day run and the preview used recorded answers and made-up data.
 
-## The hub's lost embeds, then understanding (21 to 22 Oct, overnight; pushed, not shipped)
+## The hub's lost embeds, then understanding (21 to 22 Oct, overnight; shipped 22 Oct, 10:58 am)
 
 1. **The hub read as plain lines** (Alex's screenshot of live, 21 Oct). The
    cause: 21 Oct's 6 am briefing was posted under round 5, as a Components V2

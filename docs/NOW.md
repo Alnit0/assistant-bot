@@ -4,21 +4,15 @@ What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
 **Idle, last batch was** 22 Oct (day): hub round 8, round 5's boxes with
-round 7's coloured edges, one message, behind `DESIGN_ROUND=8`; preview
-"Design · Round 8"; the day in the hub in round 8 on the dev bot, 40 of
-41 (d.25 as in round 7). Pushed, not shipped. NZ$0.00 of NZ$0.50.
+round 7's coloured edges, one message. **Shipped 22 Oct, 10:58 am** with
+the 22 Oct overnight batch (migration 30 applied). NZ$0.00 of NZ$0.50.
 
-Before it, 22 Oct (overnight): the hub's lost embeds, "will it rain?"
-with a card open, "is the gym on tonight?", a correction after a
-schedule's Save with Undo, the week view's past days, reactions kept over
-a restart. Pushed, not shipped.
+**Next ship:** nothing waiting.
 
-**Next ship:** the 22 Oct batches (a core migration; round 8 only when
-he says ship it), and **set LAB_GRID=false in live's .env** (Alex found
-the animation too choppy, about 1 frame a second).
-
-**Live:** `1aa9688` since 21 Oct, 10:47 pm (`DESIGN_ROUND=7`, `THUMBS_UP`,
-`READING_ENABLED`, `NEWS_CHANNEL_ID`, `LAB_GRID=true`); previous `fec4cbb`.
+**Live:** `0412922` since 22 Oct, 10:58 am (`DESIGN_ROUND=8`, `THUMBS_UP`,
+`READING_ENABLED`, `NEWS_CHANNEL_ID`, `LAB_GRID=false`); previous `1aa9688`.
+**After the ship, to check:** tonight's 3:30 am self-test's line in live's
+`data\selftest\history.csv`; tomorrow's 6 am briefing in round 8.
 **Drafts and worktrees:** `docs/drafts/gym-onboarding.md`; three old
 worktrees, all merged
 
@@ -26,8 +20,7 @@ worktrees, all merged
 "weighed 82.4"; "bedtime 11pm". **Sundays:** `/suggest`.
 
 **Waiting on Alex**
-- "Design · Round 8" on his phone, then "ship round 8" (the ship sets
-  `DESIGN_ROUND=8` in live's `.env`)
+- His look at the hub in round 8 on live
 - The news; his list of changes; "Design · Hub embeds check"
 - His look at Design · Round 6 timeline; x5 (to-do or reminder?)
 - Questions 93 to 98, 86 to 90, 76 to 79, 63, 24 to 28; Q68 to Q75
