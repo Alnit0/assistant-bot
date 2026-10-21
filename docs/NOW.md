@@ -3,11 +3,11 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Idle, last batch was** 21 Oct (night): the morning news shipped (live on
-`a025112` since 10:07 pm, `READING_ENABLED=true`, `NEWS_CHANNEL_ID` set to the
-channel Alex made); the diary's one confirmation a day and its asks fixed.
-First morning: pick 5:30, one message at 6:00. Round 7's briefing shows no
-What's new box.
+**Batch (21 Oct, night): an animated grid, a proof of concept** (lab,
+`LAB_GRID`, on in `.env.dev` only; no Claude, no ship). Steps: 1 the grid
+and "lab grid [seconds]", with tests (done); 2 the check on the dev bot at
+1.0 and 0.5 seconds; 3 the measurements, the docs, idle.
+**In progress:** step 2.
 
 **The feature freeze is called off** (Alex, 21 Oct): no settle-in week.
 **Next:** Alex's list of changes (not heard yet); his first morning

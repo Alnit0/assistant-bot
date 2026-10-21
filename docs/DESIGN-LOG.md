@@ -438,3 +438,15 @@ headline never. Yesterday's message is deleted first. No 👍 for the news at al
 headlines, asking which when none or several fit. The preview's TL;DRs sat under the wrong headlines (its made-up data
 gave a topic's second story the first one's first sentence); the real code now ties each TL;DR to its story by id.
 Posted as a reply in "Design · Morning news", headed "The one-message version". Waiting on his look on his phone.
+
+### An animated grid, a proof of concept (21 Oct, night)
+
+**What Alex said:** he asked whether the bot can animate things by editing a message over and over, and for a proof of
+concept: "let's get a basic command that displays something". The later real use is a progress grid that fills while
+the bot works on something slow (the smart inbox reading a file, the gym logbook import) and then becomes the answer.
+
+**What was done:** "lab grid" (and "lab grid 0.5": the seconds between frames, 0.5 to 3), behind `LAB_GRID`, on in
+the dev bot's settings only. One message of 5 by 5 square emoji and nothing else, so Discord draws them large: all
+black, then an eight-frame diagonal rainbow wave (🟥 🟧 🟨 🟩 🟦 🟪 rolling across), then all green, and it stops. Each
+frame is one edit of the same message; one grid at a time across the bot. Both runs left in the dev bot's #inbox for
+him to compare on his phone.

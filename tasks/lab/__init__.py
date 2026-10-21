@@ -1,7 +1,8 @@
 import discord
 
+from core import config
 from tasks.base import Keyword, Task
-from tasks.lab import common, ratelimits, state
+from tasks.lab import animate, common, ratelimits, state
 
 # Importing these adds their subcommands to the /lab group
 from tasks.lab import buttons, channels, charts, misc, react, status, tour  # noqa: F401  isort: skip
@@ -30,6 +31,8 @@ class LabTask(Task):
             # Typed only: these two have no slash command
             *tour.KEYWORDS,
             *channels.KEYWORDS,
+            # The animated grid, a proof of concept, behind LAB_GRID (off)
+            *(animate.KEYWORDS if config.LAB_GRID else ()),
         ]
 
     def app_commands(self) -> list:

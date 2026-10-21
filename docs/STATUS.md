@@ -9,6 +9,30 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 **Updated:** 2026-10-17 (evening)
 
 
+
+## An animated grid, a proof of concept (21 Oct, night; pushed, not shipped)
+
+Alex asked whether the bot can animate by editing a message over and over:
+"let's get a basic command that displays something". `lab grid [seconds]`,
+behind `LAB_GRID` (on in `.env.dev` only), in the lab (tasks/lab/grid.py,
+pure; tasks/lab/animate.py, through the door).
+
+### Decided (21 Oct, the grid)
+
+- **A rate limit is seen in the log, not the edit:** discord.py waits out a
+  429 and sends the edit again by itself, so the edit itself never fails for
+  it. The lab's monitor (tasks/lab/ratelimits.py) counts discord.py's
+  rate-limit warnings; one counted while an edit was in flight makes that
+  edit rate-limited, and the run stops there. The frame that discord.py
+  retried is up by then: the run never sends one again itself.
+- **Its own asyncio task:** "lab grid" is answered at once and the grid
+  runs on; the one-at-a-time lock is let go when it ends, however it ends.
+- **A plain typed word, not the lab's `Run`:** the lab's runs post lines of
+  their own, and the grid's message must hold the squares alone. Owner only
+  (`permission="lab"`), any channel, typed only.
+- **The busy line** is posted silently and deleted by a stored job after the
+  usual seconds (`tidy.later`, `lifecycle.delete_after()`).
+
 ## Shipped: the morning news (21 Oct, 10:07 pm)
 
 Live on `a025112` (from `f525879`; `-Back` returns there), with
