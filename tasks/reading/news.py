@@ -4,13 +4,15 @@ from dataclasses import dataclass, field, replace
 from datetime import date, datetime, time, timedelta
 
 from core import day as days
+from core import design
+from core.cards import Card, Embed
 
 # ---------------------------------------------------------------------------
 # The morning news (Alex, 21 Oct: the daily read and the planned News
 # headlines become one feature, "it makes sense to only have one set of news
 # generated"). Pure: the topics and their slots, which feed items may go to
 # Claude (the window, paid articles, the same story from several outlets),
-# Python's check of Claude's pick and of each TL;DR, and the embed's words.
+# Python's check of Claude's pick and of each TL;DR, and a story's card.
 # No network, no database, no Claude here.
 # ---------------------------------------------------------------------------
 WORLD_POLITICS, NZ_POLITICS, WORLD, TECH, AI, NZ_MONEY = "world_politics", "nz_politics", "world", "tech", "ai", "nz_money"
@@ -43,8 +45,7 @@ TLDR_WORDS, TLDR_MOST = 30, 40  # about 30, never more than 40
 SNIPPET_WORDS = 40  # of each item's feed snippet, for the pick
 PER_FEED = 12  # the newest of each feed, for the pick
 PER_TOPIC = 35  # the newest of each topic, for the pick: every topic has its share
-EMBED_BUDGET = 3800  # characters of the embed's description: well inside Discord's 4096
-TITLE_MOST = 110
+TITLE_MOST = 110  # characters of a headline as a card's title: well inside Discord's 256
 RUN_AT = time(5, 30)
 ICON = "📰"
 TITLE = "Morning news"
@@ -193,88 +194,49 @@ def checked_tldr(text) -> str:
     return cut.rstrip(",;:") + "…"
 
 
-# --- the embed: one field a topic (Alex, 21 Oct: "too cluttered in its ordered list layout, it needs more hierarchy") ----
-FIELD_NAMES = {
+# --- a story's card (Alex, 21 Oct: "could each news article be its own card? I can thumb it if I liked it or read it") ---
+CARD_NAMES = {
     NZ_POLITICS: "NZ politics", NZ_MONEY: "Housing and money", WORLD: "World news", WORLD_POLITICS: "World politics",
     TECH: "Tech", AI: "AI", WEBDEV: "Web dev",
 }
-FIELD_ORDER = (NZ_POLITICS, NZ_MONEY, WORLD, WORLD_POLITICS, TECH, AI, WEBDEV)
-FIELD_BUDGET = 1000  # characters of a field's value: inside Discord's 1024
-TOTAL_BUDGET = 5600  # characters of the whole embed: inside Discord's 6000
-SUBTEXT = "-# "  # the TL;DR under its headline, small (Discord's subtext)
-# How the TL;DR is drawn in a field: "subtext" (small), or "italics" if subtext is ever seen not to render in an embed's
-# field (21 Oct: Discord stores it as sent, checked by posting and reading back; how each app draws it is for Alex's eyes)
-TLDR_AS = "subtext"
+CARD_ORDER = (NZ_POLITICS, NZ_MONEY, WORLD, WORLD_POLITICS, TECH, AI, WEBDEV)  # the order the cards are posted in
 
 
-def tldr_line(text: str) -> str:
-    return f"*{text}*" if TLDR_AS == "italics" else f"{SUBTEXT}{text}"
+def in_order(stories: list[Story]) -> list[Story]:
+    """The day's stories in CARD_ORDER, an extra straight after its topic's first (the pick's order within a topic)."""
+    return sorted(stories, key=lambda each: CARD_ORDER.index(each.topic) if each.topic in CARD_ORDER else len(CARD_ORDER))
 
 
-def _story_value(story: Story, most: int) -> str:
-    return f"**[{_title(story.title)}]({story.url})**\n{tldr_line(_short(story.tldr, most))}"
-
-
-def fields(stories: list[Story], title: str = "") -> tuple[tuple[str, str], ...]:
-    """One field a topic that has a story, in FIELD_ORDER: each story its headline in bold as the link, then its TL;DR
-    small on the next line; a topic's two stories the bigger first (more outlets; a tie, as picked), a blank line between.
-    Inside Discord's limits: the TL;DRs are shortened (30 words, then 24, then 18) only if a field or the whole would not
-    fit, and on a day that still would not, a topic's second story goes."""
-    by_topic: dict[str, list[Story]] = {}
-    for story in stories:
-        by_topic.setdefault(story.topic, []).append(story)
-    for topic in by_topic:
-        by_topic[topic].sort(key=lambda each: -each.outlets)  # a stable sort: a tie keeps the pick's order
-
-    def drawn(most: int, keep: int) -> tuple[tuple[str, str], ...]:
-        return tuple(
-            (FIELD_NAMES[topic], "\n\n".join(_story_value(each, most) for each in by_topic[topic][:keep]))
-            for topic in FIELD_ORDER if topic in by_topic
-        )
-
-    def fits(found) -> bool:
-        return all(len(value) <= FIELD_BUDGET for _, value in found) and len(title) + sum(len(name) + len(value) for name, value in found) <= TOTAL_BUDGET
-
-    for keep in (2, 1):
-        for most in (TLDR_MOST, TLDR_WORDS, 24, 18):
-            found = drawn(most, keep)
-            if fits(found):
-                return found
-    return tuple((name, value[:FIELD_BUDGET]) for name, value in drawn(12, 1))
-
-
-# --- the embed, as it was before the hierarchy (a numbered list): kept for "another one"'s reply and the log -------------
 def _title(title: str) -> str:
-    title = " ".join(title.split()).replace("[", "(").replace("]", ")")
+    title = " ".join(title.split())
     return title if len(title) <= TITLE_MOST else title[: TITLE_MOST - 1].rstrip() + "…"
 
 
-def story_line(number: int, story: Story, tldr: str | None = None) -> str:
-    """ "1. **[Headline](link)** · *NZ politics*" and its TL;DR under it."""
-    return f"{number}. **[{_title(story.title)}]({story.url})** · *{LABELS.get(story.topic, story.topic)}*\n{story.tldr if tldr is None else tldr}"
+def author(story: Story) -> str:
+    """ "NZ politics · RNZ": the card's small line above its headline."""
+    return f"{CARD_NAMES.get(story.topic, story.topic)} · {' '.join(story.source.split())}"[:120]
 
 
-def another_line(story: Story) -> str:
-    """ "another one", as a reply: its topic small, the headline in bold as the link, the TL;DR small under it."""
-    return f"-# {FIELD_NAMES.get(story.topic, story.topic)}\n**[{_title(story.title)}]({story.url})**\n{tldr_line(story.tldr)}"
+def story_embed(story: Story) -> Embed:
+    """One story: its topic and outlet above, the headline as the title that is the link, the TL;DR under it.
+    No fields, no footer, no number; purple, as everything the bot prepared."""
+    return Embed(checked_tldr(story.tldr), _title(story.title), design.PREPARED, author(story), story.url)
 
 
-def _short(tldr: str, most: int) -> str:
-    words = tldr.split()
-    return tldr if len(words) <= most else " ".join(words[:most]).rstrip(",;:.") + "…"
+def story_card(story: Story) -> Card:
+    """A story's own message in #news. Its text (what is logged) is the headline alone, never the TL;DR."""
+    return Card(f"{ICON} {author(story)}: {_title(story.title)}", embeds=(story_embed(story),))
 
 
-def description(stories: list[Story]) -> str:
-    """Every story, numbered 1 to 8, inside EMBED_BUDGET: the TL;DRs are shortened (30 words, then 24) only if the
-    whole would not fit, and on a day that still would not, the last stories go."""
-    for most in (TLDR_MOST, TLDR_WORDS, 24, 18):
-        said = "\n".join(story_line(number, each, _short(each.tldr, most)) for number, each in enumerate(stories, start=1))
-        if len(said) <= EMBED_BUDGET:
-            return said
-    while stories and len(said) > EMBED_BUDGET:
-        stories = stories[:-1]
-        said = "\n".join(story_line(number, each, _short(each.tldr, 18)) for number, each in enumerate(stories, start=1))
-    return said
+def all_in_one(stories: list[Story], day: date) -> Card:
+    """The day's cards as one message of embeds, where #news is not there to hold them ("the news" with no #news)."""
+    shown = in_order(stories)[:10]
+    return Card(plain_text(shown, day), embeds=tuple(story_embed(each) for each in shown))
+
+
+def pointer(count: int, channel: str) -> str:
+    """The hub's one line: "📰 8 stories in #news"."""
+    return f"{ICON} {count} {'story' if count == 1 else 'stories'} in #{channel}"
 
 
 def plain_text(stories: list[Story], day: date) -> str:
@@ -360,7 +322,7 @@ def changes(before: Prefs, after: Prefs) -> list[str]:
     return lines
 
 
-def guidance(prefs: Prefs, day: date, liked_sets: list[list[str]] = ()) -> str:
+def guidance(prefs: Prefs, day: date, liked: list[str] = ()) -> str:
     """What Claude is told about his preferences, as plain data."""
     lines = []
     more = [LABELS[topic] for topic, value in prefs.weights.items() if value > 0]
@@ -371,8 +333,8 @@ def guidance(prefs: Prefs, day: date, liked_sets: list[list[str]] = ()) -> str:
         lines.append("He wants less of: " + ", ".join(less) + " (keep its one slot, never an extra from it).")
     if prefs.like:
         lines.append("Stories he asked for more like: " + "; ".join(each["title"] for each in prefs.like[-5:]) + ".")
-    for headlines in list(liked_sets)[-3:]:
-        lines.append("A set he said was good: " + "; ".join(headlines) + ".")
+    if liked:
+        lines.append("Stories he liked or read (a 👍 on its card): " + "; ".join(list(liked)[-LIKED_KEPT:]) + ".")
     skipped = skipped_on(prefs, day)
     if skipped:
         lines.append("Skip today: " + ", ".join(LABELS[each] for each in sorted(skipped)) + " (no story from it).")

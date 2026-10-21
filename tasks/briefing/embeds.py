@@ -22,8 +22,9 @@ from core.cards import MAX_EMBEDS, Card, Embed
 #               grey embed of the rest, a line each
 #   message 2   no text: the to-dos in one pink embed (☐ open, ☑ done),
 #               what is tracked (the diary's streak) in blue, and what the
-#               bot prepared (the morning news) in purple. None with none of
-#               them: it is not sent
+#               bot prepared in purple: the morning news as one line, "📰 8
+#               stories in #news", linking to its first card. None with none
+#               of them: it is not sent
 # ---------------------------------------------------------------------------
 DATE_ICON = "🗓️"
 DOSE_ICON = "💊"
@@ -145,13 +146,11 @@ def everything_else(items: list[DayItem]) -> Card | None:
             lines.append(design.small(design.more_line(len(todos) - TODOS_SHOWN)))
         drawn.append(Embed("\n".join(lines), TODOS_TITLE, design.TODOS))
     drawn += [Embed(f"{each.icon} {each.text}".strip(), status=design.TRACKING) for each in items if each.kind == TRACKING]
-    # What the bot prepared (the morning news), last and purple; a 👍 on the message is its yes
-    prepared = [each for each in items if each.kind == PREPARED]
-    drawn += [Embed(each.text, f"{each.icon} {each.title}".strip(), design.PREPARED, tuple(each.fields)) for each in prepared]
+    # What the bot prepared (the morning news's line), last and purple, its title the link to where it is
+    drawn += [Embed("", each.text, design.PREPARED, url=each.link) for each in items if each.kind == PREPARED]
     if not drawn:
         return None
-    yes = next((each.yes for each in prepared if each.yes is not None), None)
-    return Card("\n".join(_said(each) for each in drawn), embeds=tuple(drawn), thumbs_up=yes)
+    return Card("\n".join(_said(each) for each in drawn), embeds=tuple(drawn))
 
 
 def nothing_else() -> Card:

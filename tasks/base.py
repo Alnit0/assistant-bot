@@ -173,6 +173,9 @@ class Reaction:
     # `(message_id) -> bool`: only a message this says yes to is this reaction's (👍: one that asks one
     # simple yes). On any other it is ignored in silence: not checked, not waited for, no ✅ and no ⚠️
     tracks: Callable[[int], bool] | None = None
+    # `(message_id) -> bool`: applied with no ✅ on that message (a news card's 👍 is a signal, said nowhere);
+    # taking the reaction away still runs `undo`
+    silent: Callable[[int], bool] | None = None
     # Housekeeping (delete, archive, pin, unpin, channel reset) leaves no trace in the
     # channel: what is said about it deletes itself after about 10 seconds whatever
     # KEEP_CONFIRMATIONS says, and #bot-log is the record
@@ -285,7 +288,7 @@ class Task:
                 day_items=self.day_items if type(self).day_items is not Task.day_items else None,
                 week=self.week if type(self).week is not Task.week else None,
                 private=self.private, sticks=self.sticks, place=self.place, keeps=self.keeps, leads=tuple(self.leads),
-                home=self.home, home_files=self.home_files,
+                home=self.home, home_examples=tuple(self.home_examples), home_files=self.home_files,
             )
         ]
 
@@ -343,6 +346,7 @@ class Task:
     keeps = ""  # a kind of statement asking for nothing that is still its to keep (actions.Entry.keeps)
     leads: tuple[str, ...] = ()  # how a message may start that makes it this task's (actions.Entry.leads)
     home = ""  # the task's own channel, by its name in config.CHANNELS (actions.Entry.home)
+    home_examples: tuple[str, ...] = ()  # two messages that need not name it there (actions.Entry.home_examples)
     home_files = ""  # the action that takes a spreadsheet sent there (actions.Entry.home_files)
 
     async def week(self, user_id: int, monday: date, upto: date):

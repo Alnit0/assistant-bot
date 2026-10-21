@@ -182,6 +182,8 @@ CHANNELS: dict[str, int] = {
         "hub": os.getenv("HUB_CHANNEL_ID"),
         "commands": os.getenv("COMMANDS_CHANNEL_ID"),
         "calendar": os.getenv("CALENDAR_CHANNEL_ID"),
+        # The morning news's cards; unset, live makes #news beside the hub (tasks/reading)
+        "news": os.getenv("NEWS_CHANNEL_ID"),
     }.items()
     if value
 }

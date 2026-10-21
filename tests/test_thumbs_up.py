@@ -234,3 +234,34 @@ def test_typing_taken_still_works_and_a_thumbs_up_after_it_is_nothing(on):
     taken = [dose for dose in run(checklist.read(on.owner.id))[1] if dose.occurrence.state == occurrences.DONE]
     assert len(taken) == 1, "logged once: the 👍 after the words did nothing more"
     assert run(thumbsup.confirm(message_id, on.owner)) is None
+
+
+# --- a 👍 that is a signal (a news card: liked or read): its own kind, silent ---------------------------------------
+def test_a_signal_s_thumbs_up_runs_on_and_off_silently_and_asks_no_yes(thumbs):
+    world = thumbs.world
+
+    async def noted(press):
+        world.yes.append(("on", press.arg))
+        return "noted"
+
+    async def unnoted(press):
+        world.yes.append(("off", press.arg))
+        return "not noted"
+
+    cards.register("made_up", "on", noted)
+    cards.register("made_up", "off", unnoted)
+    thumbsup.signal(4242, HUB, Button("Liked", "made_up", "on", "4242"), Button("Not liked", "made_up", "off", "4242"))
+    assert thumbsup.tracked(4242) and thumbsup.pending(4242) is None, "no yes waits on it"
+    asyncio.run(registry.dispatch_reaction(reacted("👍", 4242)))
+    assert world.yes == [("on", "4242")] and ("✅", True) not in thumbs.marks, "silent: no ✅"
+    assert run(thumbsup.undo(4242, world.owner)) == "not noted"
+    assert run(thumbsup.confirm(4242, world.owner)) == "noted" and thumbsup.tracked(4242), "as often as he likes"
+    thumbsup.forget_signal(4242)
+    assert not thumbsup.tracked(4242) and run(thumbsup.confirm(4242, world.owner)) is None
+
+
+def test_a_signal_needs_thumbs_up_on(monkeypatch):
+    monkeypatch.setattr(config, "THUMBS_UP", False)
+    thumbsup.reset()
+    thumbsup.signal(4243, HUB, Button("Liked", "made_up", "on", "1"), Button("Not liked", "made_up", "off", "1"))
+    assert not thumbsup.tracked(4243)

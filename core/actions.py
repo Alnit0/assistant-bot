@@ -273,8 +273,7 @@ class DayItem:
     repeats: bool = False  # an event that comes round again (work): routine, not notable
     icon: str = ""  # a TRACKING line's own icon ("📓"), a PREPARED one's ("📰")
     title: str = ""  # a PREPARED one's title ("Morning news"); its `text` is the whole of what it says
-    yes: object | None = None  # a cards.Button a 👍 on its message stands for (core/thumbsup.py)
-    fields: tuple = ()  # a PREPARED one's embed fields, (name, value) in order (the morning news: one a topic)
+    link: str = ""  # a PREPARED one's link: its line opens it ("📰 8 stories in #news", to the first card)
 
 
 @dataclass(frozen=True)
@@ -512,6 +511,8 @@ class Entry:
     # (core/conversation.py listens_in), and the router is told a message there is most likely this task's
     # (routing.home_line), while anything else is still answered as anywhere. Empty for none
     home: str = ""
+    # Two messages that need not name the task there, for the router's line ("bench 40 for 10")
+    home_examples: tuple[str, ...] = ()
     # The action that takes a spreadsheet (CSV or XLSX) sent in the home channel, at once and without the
     # router ("gym_import"); empty for none
     home_files: str = ""

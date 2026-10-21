@@ -1,7 +1,7 @@
 from datetime import date, datetime
 
-from core import config, database, repeats, scheduler, timetable
-from core.actions import EACH_DAY
+from core import config, database, hub, repeats, scheduler, timetable
+from core.actions import EACH_DAY, Request
 from core.attention import PROBLEM, Item
 from core.context import Context
 from core.design import QUIET
@@ -20,8 +20,11 @@ from tasks.reading.rules import TASK
 #
 #   5:30 am   picked (`plain.pick_job`), before the 6 am briefing; the time
 #             is its schedule's, changed in words like any other
-#   6:00 am   round 7's hub: one purple embed in the briefing's second
-#             message, 👍 on it for a good set. Before round 7 not in the hub
+#   6:00 am   a card a story in #news (`plain.post_job`, a step of the
+#             morning routine before the briefing; 21 Oct, night: "could each
+#             news article be its own card?"), 👍 on one for liked or read;
+#             round 7's hub one line, "📰 8 stories in #news". Before round 7
+#             not in the hub
 # ---------------------------------------------------------------------------
 PICK_DEFAULT = timetable.Default("Morning news", news.RUN_AT)
 PLACE = 80  # after to-dos: pills, Today, reminders, personal routines, gym, calendar, diary, to-dos, the news
@@ -29,13 +32,14 @@ PLACE = 80  # after to-dos: pills, Today, reminders, personal routines, gym, cal
 
 async def items(user_id: int, now: datetime) -> list[Item]:
     """Only every source failing three days running deserves a look; one failing is quiet."""
+    found = [Item(each, PROBLEM, when=now, ping=False, short=("📰",)) for each in plain._cannot_make]
     if rules.all_failed(await database.run(store.db_failed_days, user_id, rules.FAILED_DAYS)):
-        return [Item("the morning news's sources have all failed for 3 days", PROBLEM, when=now, ping=False, short=("📰",))]
-    return []
+        found.append(Item("the morning news's sources have all failed for 3 days", PROBLEM, when=now, ping=False, short=("📰",)))
+    return found
 
 
 async def week(user_id: int, monday: date, upto: date):
-    """For the week of everything: how many mornings had news, and how many he said were good."""
+    """For the week of everything: how many mornings had news, and how many stories he liked or read."""
     from datetime import timedelta
 
     from core.weekly import Week
@@ -44,18 +48,15 @@ async def week(user_id: int, monday: date, upto: date):
     sets = [each for each in found if each is not None and each[0]]
     if not sets:
         return None
-    good = sum(1 for _, liked in sets if liked)
+    good = await database.run(store.db_liked_between, user_id, monday, upto)
     return Week(f"{len(sets)} morning{'' if len(sets) == 1 else 's'} of news" + (f" · 👍 {good}" if good else ""), status=QUIET)
 
 
 async def show_word(ctx: Context) -> str:
-    found = await database.run(store.db_news, ctx.user.id, plain.today())
-    if found is None or not found[0]:
-        await ctx.reply(f"{ICON} No morning news picked today yet.")
-        return "none"
-    from core import cards
-
-    await cards.send(ctx.channel_id, plain.news_card(found[0], plain.today()))
+    said = await plain.show(Request(ctx.user, ctx.channel_id, ctx.text), {"what": "today"}, frozenset())
+    if isinstance(said, str):
+        await ctx.reply(said)
+        return "said"
     return "shown"
 
 
@@ -72,6 +73,8 @@ class ReadingTask(Task):
     show = ""
     identity = ()
     on_repeat = repeats.ALLOW_ANOTHER
+    home = plain.NEWS  # #news listens like #inbox, the news first
+    home_examples = ("another one", "more like this")
 
     def switched_on(self) -> bool:
         return bool(config.READING_ENABLED)
@@ -89,14 +92,27 @@ class ReadingTask(Task):
         return store.MIGRATIONS
 
     def job_handlers(self):
-        return {plain.PICK_JOB: plain.pick_job}
+        return {plain.PICK_JOB: plain.pick_job, plain.POST_JOB: plain.post_job}
 
     def job_labels(self):
-        return {plain.PICK_JOB: "morning news"}
+        return {plain.PICK_JOB: "morning news", plain.POST_JOB: "morning news cards"}
 
     def setup(self, client) -> None:
         plain.register()
         scheduler.default_schedule(TASK, plain.PICK_JOB, PICK_DEFAULT)
+        scheduler.join_routine(hub.MORNING, scheduler.handler_name(TASK, plain.POST_JOB), order=hub.PREPARED_ORDER, name=hub.MORNING_NAME)
+
+    async def startup(self, client) -> None:
+        # The cards up have their 👍 again, and #news (made before) listens again
+        await plain.note_cards()
+        owner = await database.run(scheduler._db_owner)
+        if owner is not None:
+            await plain.recall_channel(owner)
+
+    async def message_class(self, message_id):
+        from core.lifecycle import MessageClass
+
+        return MessageClass.LIVE if await database.run(store.db_card_of, message_id) is not None else None
 
     async def attention(self, user_id, now):
         return await items(user_id, now)

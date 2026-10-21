@@ -11,6 +11,7 @@ from core.config import HUB_CHANNEL_ID
 MORNING = "pills.checklist"
 MORNING_NAME = "Morning routine"
 TIDY_ORDER, BRIEFING_ORDER = 10, 20
+PREPARED_ORDER = 15  # what the bot prepared, posted where it lives (#news), before the briefing that points to it
 # The task cards under the pills checklist, in the hub's fixed order (pills, then reminders,
 # personal routines, gym, to-dos): each task joins the routine with its own order from
 # CARDS_ORDER on (+10, +20, +30, +40 in that order), so it runs after the checklist

@@ -14,6 +14,11 @@ from core.config import CHANNELS
 # ---------------------------------------------------------------------------
 
 
+def keep(role: str, channel_id: int) -> None:
+    """A channel the bot made itself (#news), known by its role from now on as one named in .env is."""
+    CHANNELS[role] = int(channel_id)
+
+
 def holds_messages(channel) -> bool:
     """True for a channel whose pins and history can be read: a text or news
     channel, a thread (a forum's post is one) or a DM. False for a forum,

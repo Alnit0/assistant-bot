@@ -121,12 +121,19 @@ def main() -> int:
             return "ok   "
         return "miss " if fixture.known_miss else "FAIL "
 
+    def _home(fixture, entries):
+        """A fixture's [task, channel], with that task's own examples as the bot gives them."""
+        if not fixture.home:
+            return None
+        owner = next((each for each in entries if each.name == fixture.home[0]), None)
+        return (*fixture.home, owner.home_examples if owner is not None else ())
+
     async def _call_router(fixture, entries):
         from core import llm
 
         return await llm.call_tool(
             routing.system_blocks(entries),
-            routing.user_turn(fixture.message, fixture.on_screen, [tuple(pair) for pair in fixture.exchanges or []], hints=routing.name_hints(fixture.message, fixture.names or {}), home=tuple(fixture.home) if fixture.home else None),
+            routing.user_turn(fixture.message, fixture.on_screen, [tuple(pair) for pair in fixture.exchanges or []], hints=routing.name_hints(fixture.message, fixture.names or {}), home=_home(fixture, entries)),
             [routing.tool(entries)],
             choice={"type": "tool", "name": routing.TOOL},
             purpose=costs.PURPOSE_ROUTER,

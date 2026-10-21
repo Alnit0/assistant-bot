@@ -2,10 +2,10 @@ import asyncio
 import logging
 from datetime import date, timedelta
 
-from core import cards, clock, database, design, names, scheduler, summaries, thumbsup, timeinput
+from core import cards, channels, clock, config, database, design, names, scheduler, summaries, surface, thumbsup, timeinput
 from core import day as days
-from core.actions import BOOLEAN, EACH_DAY, INTEGER, PREPARED, SEE, SET_UP, TAKEN, Action, DayItem, Field, Proposal, Request, Shown, State
-from core.cards import Button, Card, Embed
+from core.actions import BOOLEAN, EACH_DAY, INTEGER, PREPARED, SEE, SET_UP, Action, DayItem, Field, Proposal, Request, Shown, State
+from core.cards import Button
 from core.errors import UserError
 from tasks.reading import news, pick, rules, sources, store
 from tasks.reading.news import ALL_TOPICS, FROM_THEME, ICON, LABELS, TITLE, Story
@@ -14,24 +14,37 @@ from tasks.reading.rules import TASK
 log = logging.getLogger("assistant")
 
 # ---------------------------------------------------------------------------
-# The morning news (behind READING_ENABLED, off): its morning job, its card
+# The morning news (behind READING_ENABLED, off): its morning jobs, its cards
 # and its words.
 #
 #   5:30 am       every feed read at once (a timeout each; one that fails is
 #                 noted in the run log and skipped), the window's free items
 #                 each story once (tasks/reading/news.py), Claude picks 7 or 8
 #                 and writes their TL;DRs (tasks/reading/pick.py), the set kept
-#   6:00 am       in round 7's hub, one purple embed in the briefing's second
-#                 message (`day_items`); a 👍 on it is "good set today"
-#   in words      another one, more like 3, less AI, more NZ politics, skip
-#                 housing tomorrow, what do you know about what I like, the
-#                 news, add or remove a source
+#   6:00 am       a step of the morning routine, before the briefing: the
+#                 cards of earlier days deleted from #news, then a card a
+#                 story (Alex, 21 Oct: "could each news article be its own
+#                 card?"), in the topics' order; round 7's hub has one line
+#                 that links to the first (`day_items`)
+#   👍 on a card  he liked or read it: a signal for later picks, silent
+#                 (core/thumbsup.py, a kind of its own); taken away, it goes
+#   in words      in #news, #inbox or a direct message: another one (a new
+#                 card in #news), more like the housing one, less AI, skip
+#                 housing tomorrow; as a reply to a card, more like this or
+#                 less of this; what do you know about what I like, the news,
+#                 add or remove a source
+#
+# #news is NEWS_CHANNEL_ID if set, else the one the bot made beside the hub
+# (kept in reading_news_channel), else made now. The dev bot never makes one
+# (docs/RULES.md): without NEWS_CHANNEL_ID in .env.dev it posts no cards.
 #
 # What an article says goes to Claude and into the set's own message only:
 # never a log, #bot-log, a notification or the status line.
 # ---------------------------------------------------------------------------
 PICK_JOB = "pick"
-LIKED, UNLIKED = "liked", "unliked"  # 👍 on the news, and taken away (core/thumbsup.py)
+POST_JOB = "post"  # the cards in #news, a step of the morning routine
+NEWS = "news"  # the channel, by its role in config.CHANNELS and its name
+LIKED, UNLIKED = "liked", "unliked"  # 👍 on a card, and taken away (core/thumbsup.py)
 FEED_TIMEOUT = 20  # seconds a feed gets
 PAGE_TIMEOUT = 15  # seconds a chosen article's page gets
 USABLE_WORDS = 80  # less readable text than this on a page that loaded is as a page that failed: its snippet stands in
@@ -120,7 +133,7 @@ async def build(user_id: int, day: date) -> tuple[list[Story], list[str]]:
     shown = await database.run(store.db_news_shown, user_id, day - timedelta(days=SHOWN_FOR))
     found = news.eligible(items, news.window_start(clock.now()), shown)
     prefs = await database.run(store.db_prefs, user_id)
-    liked = await database.run(store.db_liked_sets, user_id)
+    liked = await database.run(store.db_liked_stories, user_id)
     skipped = news.skipped_on(prefs, day)
     picked = await pick.choose(found, day, news.guidance(prefs, day, liked), skipped, prefs.us_most)
     if picked is None:
@@ -153,43 +166,171 @@ async def pick_job(job) -> None:
     scheduler.note(job, (f"{len(stories)} stories" if stories else "not picked: nothing could be picked today") + missing)
 
 
-# --- how it is shown --------------------------------------------------------------------------------------------------
-def yes_button(day: date) -> Button | None:
-    """What a 👍 on the set stands for: a good set that day. None with 👍 off."""
-    return Button("Good set", TASK, LIKED, day.isoformat(), emoji="👍", style=cards.SUCCESS) if thumbsup.enabled() else None
+# --- #news -----------------------------------------------------------------------------------------------------------
+_cannot_make: list[str] = []  # why #news could not be made, for Needs a look (in memory: the next try says again)
 
 
+def may_make() -> bool:
+    """Only live makes #news: the dev bot never makes a channel (docs/RULES.md)."""
+    return not config.DEV_DATABASE
+
+
+async def news_channel(user_id: int) -> int | None:
+    """#news: NEWS_CHANNEL_ID, else the one made before, else made now beside the hub. None if there is none."""
+    said = config.CHANNELS.get(NEWS)
+    if said and surface.place(int(said)) is not None:
+        return int(said)
+    kept = await database.run(store.db_news_channel, user_id)
+    if kept is not None and surface.place(kept) is not None:
+        channels.keep(NEWS, kept)
+        return kept
+    hub = config.CHANNELS.get("hub")
+    if not may_make() or not hub or surface.place(int(hub)) is None:
+        return None
+    try:
+        made = await surface.make_place(int(hub), NEWS, "The morning news: a card a story")
+    except surface.Failed as problem:
+        log.warning("Morning news: #news could not be made (%s)", problem.status or problem)
+        _cannot_make[:] = [f"#{NEWS} can't be made: the bot may not make channels (make #{NEWS} beside the hub, or give it Manage Channels)"]
+        return None
+    _cannot_make.clear()
+    await database.run(store.db_set_news_channel, user_id, made, clock.now())
+    channels.keep(NEWS, made)
+    return made
+
+
+async def recall_channel(user_id: int) -> int | None:
+    """At a start: the #news made before, known by its role again (it listens); nothing is made here."""
+    kept = await database.run(store.db_news_channel, user_id)
+    if kept is not None and not config.CHANNELS.get(NEWS) and surface.place(kept) is not None:
+        channels.keep(NEWS, kept)
+    return config.CHANNELS.get(NEWS)
+
+
+def _noted(message_id: int, channel_id: int) -> None:
+    """A card's 👍 is a signal (core/thumbsup.py): liked or read, and taken away."""
+    arg = str(message_id)
+    thumbsup.signal(message_id, channel_id, Button("Liked", TASK, LIKED, arg, emoji="👍"), Button("Not liked", TASK, UNLIKED, arg))
+
+
+async def note_cards() -> int:
+    """At a start: every card still up has its 👍 again (the registry is in memory)."""
+    found = await database.run(store.db_cards_up)
+    for channel_id, message_id, _ in found:
+        _noted(message_id, channel_id)
+    return len(found)
+
+
+async def clear_before(user_id: int, day: date) -> int:
+    """The cards of earlier days deleted from where they went up: only the bot's own news cards. One that can't be
+    deleted now stays noted, for the next morning."""
+    gone = 0
+    for when, url, channel_id, message_id in await database.run(store.db_cards_before, user_id, day):
+        try:
+            await cards.delete(channel_id, message_id)
+        except surface.Gone:
+            pass
+        except surface.Failed as problem:
+            log.info("Morning news: an old card could not be deleted (%s)", problem.status or problem)
+            continue
+        thumbsup.forget_signal(message_id)
+        await database.run(store.db_card_gone, user_id, when, url)
+        gone += 1
+    return gone
+
+
+async def post_card(user_id: int, day: date, story: Story, channel_id: int) -> int | None:
+    """One story's card, noted before it goes (never posted twice) and up after. None if it could not go."""
+    await database.run(store.db_card_sending, user_id, day, story, channel_id)
+    try:
+        message_id = await cards.send(channel_id, news.story_card(story), silent=True)
+    except surface.Failed:
+        message_id = None
+    if message_id is None:
+        await database.run(store.db_card_unsent, user_id, day, story.url)
+        return None
+    await database.run(store.db_card_up, user_id, day, story.url, message_id)
+    _noted(message_id, channel_id)
+    return message_id
+
+
+async def post_day(user_id: int, day: date, stories: list[Story]) -> tuple[int, int, int] | None:
+    """The day's cards in #news, in the topics' order, after the earlier days' are deleted: (posted now, there
+    already, cleared). A card noted already (up, or cut off mid-post by a start) is never posted again. Raises
+    surface.Failed when one could not go, so the job runs once more a minute later; what went up stays up.
+    None when there is no #news."""
+    channel_id = await news_channel(user_id)
+    if channel_id is None:
+        return None
+    cleared = await clear_before(user_id, day)
+    there = await database.run(store.db_cards, user_id, day)
+    posted = 0
+    for story in news.in_order(stories):
+        if story.url in there:
+            continue
+        if await post_card(user_id, day, story, channel_id) is None:
+            changed(user_id)
+            raise surface.Failed(f"a card could not be posted in #{NEWS}")
+        posted += 1
+    changed(user_id)
+    return posted, len(there), cleared
+
+
+async def post_job(job) -> None:
+    """The morning routine's step at 6 am: the day's cards in #news (picked now if 5:30's pick has not). Safe to
+    run twice."""
+    user_id = job.user_id or await database.run(scheduler._db_owner)
+    if user_id is None:
+        scheduler.note(job, "not posted: there is nobody to post for")
+        return
+    day = today()
+    found = await database.run(store.db_news, user_id, day)
+    if found is None:
+        await build(user_id, day)
+        found = await database.run(store.db_news, user_id, day)
+    if found is None or not found[0]:
+        scheduler.note(job, "not posted: no morning news today")
+        return
+    done = await post_day(user_id, day, found[0])
+    if done is None:
+        scheduler.note(job, f"not posted: there is no #{NEWS}" + ("" if may_make() else " (the dev bot makes none: NEWS_CHANNEL_ID)"))
+        return
+    posted, there, cleared = done
+    scheduler.note(job, (f"{posted} cards posted" if posted else "posted already") + (f", {there} there already" if posted and there else "") + (f"; {cleared} of earlier days deleted" if cleared else ""))
+
+
+# --- how it is shown in the hub -------------------------------------------------------------------------------------
 async def day_items(user_id: int, day: date) -> list:
-    """For round 7's hub: the day's set as one purple embed in the briefing's second message. Before round 7 the news is
-    not in the hub (Alex, 21 Oct): it is asked for in words."""
+    """For round 7's hub: one line in the briefing's second message, "📰 8 stories in #news", that links to the first
+    card. Before round 7 the news is not in the hub (Alex, 21 Oct): it is asked for in words."""
     if design.current() != design.EMBEDS_ROUND:
         return []
-    found = await database.run(store.db_news, user_id, day)
-    if found is None or not found[0]:
+    up = await database.run(store.db_cards_up, user_id, day)
+    if not up:
         return []
-    stories, liked = found
-    return [DayItem(PREPARED, "", icon=ICON, title=TITLE, state=TAKEN if liked else "pending", yes=yes_button(day), fields=news.fields(stories, f"{ICON} {TITLE}"))]
+    channel_id, message_id, _ = up[0]
+    return [DayItem(PREPARED, news.pointer(len(up), NEWS), icon=ICON, title=TITLE, link=surface.link(channel_id, message_id))]
 
 
-def news_card(stories: list[Story], day: date) -> Card:
-    """The set as one purple embed of its own, for "the news" said anywhere."""
-    title = f"{ICON} {TITLE} · {day:%a} {day.day} {day:%b}"
-    embed = Embed("", title, design.PREPARED, news.fields(stories, title))
-    return Card(news.plain_text(stories, day), embeds=(embed,), thumbs_up=yes_button(day))
+async def today_stories(user_id: int) -> list[Story]:
+    """Today's stories as he sees them: the cards up (another one too), else the day's set."""
+    up = await database.run(store.db_cards_up, user_id, today())
+    if up:
+        return [story for _, _, story in up]
+    found = await database.run(store.db_news, user_id, today())
+    return list(found[0]) if found else []
 
 
-# --- 👍 on the set ------------------------------------------------------------------------------------------------------
+# --- 👍 on a card -----------------------------------------------------------------------------------------------------
 async def on_liked(press: cards.Press) -> str:
-    """👍 on the news (core/thumbsup.py): a good set that day, kept as a light signal for the next picks."""
-    day = date.fromisoformat(press.arg)
-    if not await database.run(store.db_like_news, press.user.id, day, True):
-        return "that day's news is gone"
-    press.offer_undo(Button("Undo", TASK, UNLIKED, press.arg))
-    return f"{ICON} noted: a good set"
+    """👍 on a story's card (core/thumbsup.py, a signal): he liked or read it, kept for the next picks. Silent."""
+    if not await database.run(store.db_like_card, press.user.id, int(press.arg), True, clock.now()):
+        return "that card is no story of his"
+    return f"{ICON} noted: liked or read"
 
 
 async def on_unliked(press: cards.Press) -> str:
-    await database.run(store.db_like_news, press.user.id, date.fromisoformat(press.arg), False)
+    await database.run(store.db_like_card, press.user.id, int(press.arg), False, clock.now())
     return f"{ICON} not noted after all"
 
 
@@ -200,18 +341,25 @@ def register() -> None:
 
 # --- plain words --------------------------------------------------------------------------------------------------------
 async def show(request: Request, data: dict, guessed: frozenset):
-    """Today's news anywhere, or what it knows about what he likes."""
+    """Today's news anywhere (where its cards are, or the cards here when #news has none), or what it knows about
+    what he likes."""
     if data.get("what") == "prefs":
         return news.profile_text(await database.run(store.db_prefs, request.user.id), today())
+    up = await database.run(store.db_cards_up, request.user.id, today())
+    if up:
+        channel_id, message_id, _ = up[0]
+        place = surface.place(channel_id)
+        return f"{news.pointer(len(up), NEWS)}: {surface.link(channel_id, message_id) or (place.mention if place else '')}".rstrip(": ")
     found = await database.run(store.db_news, request.user.id, today())
     if found is None or not found[0]:
         return f"{ICON} No morning news picked today yet."
-    message_id = await cards.send(request.channel_id, news_card(found[0], today()))
+    message_id = await cards.send(request.channel_id, news.all_in_one(found[0], today()))
     return Shown(news.plain_text(found[0], today()) if message_id is not None else "not shown")
 
 
-async def another(request: Request, data: dict, guessed: frozenset) -> str:
-    """ "another one": the best story not shown yet today, its TL;DR written now, as a reply."""
+async def another(request: Request, data: dict, guessed: frozenset):
+    """ "another one": the best story not shown yet today, its TL;DR written now, as a new card in #news (here, as
+    a card, when there is no #news)."""
     day = today()
     found = await database.run(store.db_news, request.user.id, day)
     if found is None:
@@ -226,24 +374,42 @@ async def another(request: Request, data: dict, guessed: frozenset) -> str:
     else:
         raise UserError(f"{ICON} The next stories are all behind paywalls today.")
     (tldr,) = await pick.write([(item, text)])
-    return news.another_line(Story(item.url, item.title, item.source, item.theme, tldr))
+    story = Story(item.url, item.title, item.source, item.theme, tldr)
+    channel_id = await news_channel(request.user.id) or request.channel_id
+    message_id = await post_card(request.user.id, day, story, channel_id)
+    if message_id is None:
+        await database.run(store.db_unshow_spare, request.user.id, day, item.url)
+        raise UserError(f"{ICON} The story couldn't be posted: try again in a minute.")
+    changed(request.user.id)
+    if channel_id == request.channel_id:
+        return Shown(f"another one: {story.title}")
+    return Shown(f"another one: {story.title}", also=f"{ICON} One more in #{NEWS}: {surface.link(channel_id, message_id)}")
+
+
+async def _replied_story(request: Request, data: dict):
+    """The story "more like this" or "less of this" means: the card replied to. None when nothing points at one."""
+    if not data.get("this"):
+        return None
+    found = await database.run(store.db_card_of, request.replied_to)
+    if found is None or found[0] != request.user.id:
+        raise UserError(f"{ICON} Which story? Reply to its card in #{NEWS} with “more like this”, or say it by its topic.")
+    return found[2]
 
 
 async def _liked_story(user_id: int, data: dict):
     """The story "more like the housing one" or "more like the one about the water reform" means: by its topic, or by
-    words of its headline (core/names.py); a number is asked about, gently, by topic (the stories have none since 21 Oct)."""
+    words of its headline (core/names.py); a number is asked about, gently, by topic (the stories have none)."""
     if data.get("like_number") is None and not data.get("like_topic") and not data.get("like_words"):
         return None
-    found = await database.run(store.db_news, user_id, today())
-    stories = found[0] if found else []
+    stories = await today_stories(user_id)
     if not stories:
         raise UserError(f"{ICON} No morning news picked today yet.")
-    topics = ", ".join(dict.fromkeys(news.FIELD_NAMES[each.topic] for each in sorted(stories, key=lambda each: news.FIELD_ORDER.index(each.topic))))
+    topics = ", ".join(dict.fromkeys(news.CARD_NAMES[each.topic] for each in news.in_order(stories)))
     if data.get("like_topic"):
-        of_topic = [each for each in stories if each.topic == data["like_topic"]]
+        of_topic = [each for each in news.in_order(stories) if each.topic == data["like_topic"]]
         if not of_topic:
-            raise UserError(f"{ICON} There's no {news.FIELD_NAMES.get(data['like_topic'], 'such')} story today. Today's are {topics}.")
-        return sorted(of_topic, key=lambda each: -each.outlets)[0]
+            raise UserError(f"{ICON} There's no {news.CARD_NAMES.get(data['like_topic'], 'such')} story today. Today's are {topics}.")
+        return of_topic[0]
     if data.get("like_words"):
         try:
             return names.find(stories, str(data["like_words"]), lambda each: each.title)
@@ -251,7 +417,7 @@ async def _liked_story(user_id: int, data: dict):
             raise UserError(f"{ICON} Which one: " + " or ".join(f"**{each.title}**" for each in which.candidates[:3]) + "?")
         except (names.Unknown, names.Unnamed):
             raise UserError(f"{ICON} Which story? Say it by its topic ({topics}) or a few words of its headline.")
-    raise UserError(f"{ICON} Which story? The news has no numbers now: say it by its topic, like “more like the housing one”. Today's are {topics}.")
+    raise UserError(f"{ICON} Which story? The news has no numbers: say it by its topic, like “more like the housing one”, or reply to its card. Today's are {topics}.")
 
 
 def _skip_day(said, now) -> date:
@@ -263,9 +429,13 @@ def _skip_day(said, now) -> date:
 
 
 async def steer_card(request: Request, data: dict, guessed: frozenset) -> Proposal:
-    """ "more like 3", "less AI", "more NZ politics", "skip housing tomorrow": a card that says what changes."""
+    """ "more like the housing one", "less AI", "skip housing tomorrow", and as a reply to a card "more like this" or
+    "less of this": a card that says what changes."""
     before = await database.run(store.db_prefs, request.user.id)
-    like = await _liked_story(request.user.id, data)
+    pointed = await _replied_story(request, data)
+    like = pointed if pointed is not None and data.get("this") == "like" else await _liked_story(request.user.id, data)
+    if pointed is not None and data.get("this") == "less":
+        data = {**data, "less": pointed.topic}
     skip = str(data.get("skip") or "")
     skip_on = _skip_day(data.get("skip_day"), clock.now()) if skip else None
     us = str(data.get("us") or "")
@@ -323,10 +493,10 @@ async def source_check(request: Request, data: dict) -> str:
 
 
 async def state(request: Request) -> State:
-    found = await database.run(store.db_news, request.user.id, today())
-    lines = [f"{news.FIELD_NAMES[each.topic]} ({each.topic}): {each.title}" for each in sorted(found[0], key=lambda each: news.FIELD_ORDER.index(each.topic))] if found else ["today's news: not picked yet"]
+    stories = await today_stories(request.user.id)
+    lines = [f"{news.CARD_NAMES[each.topic]} ({each.topic}): {each.title}" for each in news.in_order(stories)] if stories else ["today's news: not picked yet"]
     lines.append("sources: " + ", ".join(each.name for each in await sources_for(request.user.id)))
-    return State("The user's morning news today, a story a line by its topic (the stories have no numbers)", tuple(lines), "nothing yet")
+    return State("The user's morning news today, a card a story in #news, a line each by its topic (the stories have no numbers)", tuple(lines), "nothing yet")
 
 
 def actions() -> list:
@@ -335,7 +505,7 @@ def actions() -> list:
     return [
         Action(
             "news_another",
-            "One more story from today's morning news, the next best not shown yet (\"another one\", \"one more story\", \"anything else in the news?\").",
+            "One more story from today's morning news, the next best not shown yet, as a new card in #news (\"another one\", \"one more story\", \"anything else in the news?\").",
             (), needs_card=False, run=another, purpose=EACH_DAY, say=("another one",),
         ),
         Action(
@@ -343,19 +513,21 @@ def actions() -> list:
             "Shape what the morning news picks from now on: \"more like the housing one\" -> like_topic nz_money; \"more like the one "
             "about the water reform\" -> like_words water reform (today's stories are in the state, by topic); \"less AI\" -> less ai; "
             "\"more NZ politics\" -> more nz_politics; \"skip housing tomorrow\" -> skip nz_money, skip_day tomorrow (one day only); "
-            "\"more US politics\" -> us more (US politics is not a topic of its own: it is world_politics). "
+            "\"more US politics\" -> us more (US politics is not a topic of its own: it is world_politics); as a reply to a story's card, "
+            "\"more like this\" -> this like and \"less of this\" -> this less. "
             f"Topics: {topic_words} (housing, house prices, interest rates, the OCR and the economy are nz_money).",
             (
-                Field("like_topic", "\"More like\" one of today's stories, named by its topic: the topic (\"more like the housing one\" -> nz_money; \"more like the AI story\" -> ai). Said with \"like\", it is this, never more.", choices=topics),
-                Field("like_words", "\"More like\" one of today's stories, named by words of its headline: those words, exactly as said (\"more like the one about the water reform\" -> water reform). \"The one about …\" is always this, even when its topic is plain: never like_topic."),
+                Field("like_topic", "\"More like\" one of today's stories, named by its topic: the topic (\"more like the housing one\" -> nz_money; \"more like the AI story\" -> ai). Only when a topic itself is said: \"the one about …\" is like_words. Said with \"like\", it is like_topic, never more.", choices=topics),
+                Field("like_words", "\"More like\" one of today's stories, named by words of its headline: those words, exactly as said (\"more like the one about the water reform\" -> water reform). \"The one about …\" is always like_words, even when its topic is plain: never like_topic, and never this."),
                 Field("like_number", "Only when the user names a story by a number (\"more like 3\" -> 3): they are asked which, by topic.", INTEGER),
+                Field("this", "A story pointed at, not named (\"more like this\" -> like; \"less of this\", \"less like this\" -> less): the card the user replied to, which the code knows.", choices=("like", "less")),
                 Field("more", "A topic to have more of, said without \"like\" (\"more NZ politics\", \"more AI news\"). Never for \"more like …\", which is like_topic or like_words.", choices=topics),
                 Field("less", "A topic to have less of.", choices=topics),
                 Field("skip", "A topic to leave out on one day.", choices=topics),
                 Field("skip_day", "The day to leave it out, exactly as said (\"tomorrow\", \"Friday\"). Leave out when no day is said."),
                 Field("us", "US politics: more (\"more US politics\", \"more on American politics\") or less. Only when US politics is named.", choices=("more", "less")),
             ),
-            prepare=steer_card, apply=steer_apply, verify=steer_check, purpose=SET_UP, say=("less AI", "more like 3"),
+            prepare=steer_card, apply=steer_apply, verify=steer_check, purpose=SET_UP, say=("less AI", "more like the housing one"),
         ),
         Action(
             "news_show",
@@ -380,11 +552,12 @@ def actions() -> list:
 
 
 ONLY_FOR = (
-    "The user's morning news: today's set of 7 or 8 news stories (world and NZ politics, world news, tech, AI, NZ housing and "
-    "money). Showing it (\"the news\"), one more story (\"another one\"), and steering what it picks from now on: more like one "
-    "of today's stories by its topic or its headline (\"more like the housing one\", \"more like the one about the water reform\"), more or less of a topic (\"less AI\", \"more NZ politics\"), leaving a "
+    "The user's morning news: today's 7 or 8 news stories, a card each in #news (world and NZ politics, world news, tech, AI, NZ "
+    "housing and money). Showing it (\"the news\"), one more story (\"another one\"), and steering what it picks from now on: more "
+    "like one of today's stories by its topic or its headline (\"more like the housing one\", \"more like the one about the water "
+    "reform\"), or, replying to a story's card, \"more like this\" or \"less of this\"; more or less of a topic (\"less AI\", \"more NZ politics\"), leaving a "
     "topic out on a day (\"skip housing tomorrow\"); what it knows about what they like; adding or removing a news source. Not "
-    "a to-do or a reminder (those tasks, even about reading something), not the diary, and not a question about a news topic "
-    "itself (chat)."
+    "a to-do or a reminder (those tasks, even about reading something), not how a story made the user feel (\"that story about "
+    "the floods upset me\": the diary's, to keep), and not a question about a news topic itself (chat)."
 )
 EXAMPLES = ("another one", "more like the housing one", "less AI")

@@ -92,6 +92,47 @@ generated"). Step 1 done: the feeds and reading them.
   steps, none failed, 197 recorded answers read back. The batch's spend:
   about US$0.39 (NZ$0.67) of the NZ$2.00 cap.
 
+## The morning news as cards (21 Oct, night; pushed, not shipped)
+
+Alex, on the field version: "I don't like the layout, could each news article
+be its own card? I can thumb it if I liked it or read it, the hierarchy is poor
+too." Each story is its own purple card in #news at 6 am; the hub has one line.
+
+### Decided (21 Oct, the cards)
+
+- **#news:** `NEWS_CHANNEL_ID` if set; else the one live made before (kept in
+  `reading_news_channel`, known again at a start); else made now in the hub's
+  category (one called news there already is taken, never a second). The dev
+  bot never makes a channel (docs/RULES.md): without `NEWS_CHANNEL_ID` in
+  `.env.dev` it posts no cards, and "another one" or "the news" is the card
+  where it was asked. A bot that may not make channels: Needs a look says so.
+  #news is the task's own channel (`home`), so plain words there go to the
+  news first, and anything plainly else (a reminder, a to-do, a feeling) as
+  anywhere.
+- **When:** a step of the morning routine before the briefing
+  (`hub.PREPARED_ORDER`), so message 2 has the line from its first draw. If
+  5:30's pick has not run, the step picks first.
+- **Never twice:** a card is noted (`sending`) before it is posted and `up`
+  after. A post that fails is unnoted and the step raises, so it runs once more
+  a minute later and posts only what is missing; a card cut off mid-post by a
+  start stays noted and is never posted again (one missing card rather than two).
+- **Yesterday's deleted:** only the cards the task noted, before the day's go
+  up; one that can't be deleted stays noted for the next morning.
+- **👍:** a kind of its own in `core/thumbsup.py` (`signal`), not the yes: no
+  ✅, nothing said (`Reaction.silent`), on and off as often as he likes. Noted
+  when a card goes up and again at a start. Kept per story
+  (`reading_news_cards.liked`); the latest 8 go to the pick. Needs
+  `THUMBS_UP` (live has it). The hub's line has no 👍.
+- **Steering by a reply:** "more like this" and "less of this" are the
+  `this` field (like, less), and the code takes the story from the card
+  replied to; with no card replied to, it asks.
+- **Golden checks 39 of 40:** m29 ("more like the one about the water
+  reform") is now read as its topic (like_topic), three runs in four, after
+  rewording twice: marked a known miss and G22 in docs/BACKLOG.md. It finds
+  the right story while one of its topic is up. The new ones: in #news
+  (another one, less AI, a reminder, a to-do, a feeling, the garage), a reply
+  (more like this, less of this, less like this), the interest rates.
+
 ## The morning news's hierarchy (21 Oct, evening; pushed, not shipped)
 
 Alex, on his phone: "It's too cluttered in its ordered list layout, it needs

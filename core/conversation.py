@@ -842,7 +842,7 @@ async def handle(ctx: Context, capabilities: str = "") -> Handled:
                 exchanges=_exchanges(ctx.channel_id),
                 attached=attached,
                 hints=await _hints(ctx.text, entries, request),
-                home=(home.name, home.home) if home is not None else None,
+                home=(home.name, home.home, home.home_examples) if home is not None else None,
             )
             turn.router = {"tasks": list(routed.tasks), "tie": routed.tie, "chat": routed.chat, "chat_part": routed.chat_part, "problem": routed.problem}
             if routed.several:

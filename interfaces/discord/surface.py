@@ -99,6 +99,22 @@ def link(channel_id: int | None, message_id: int | None) -> str:
     return f"https://discord.com/channels/{guild}/{channel_id}/{message_id}" if guild and message_id else ""
 
 
+async def make_place(beside: int, name: str, reason: str = "") -> int:
+    channel = _must(beside)
+    guild = getattr(channel, "guild", None)
+    if guild is None:
+        raise Failed(f"channel {beside} is in no server")
+    category = getattr(channel, "category", None)
+    there = next((each for each in (category.text_channels if category is not None else guild.text_channels) if each.name == name), None)
+    if there is not None:
+        return there.id
+    try:
+        made = await guild.create_text_channel(name, category=category, reason=reason or None)
+    except discord.HTTPException as error:
+        raise _failed(error) from error
+    return made.id
+
+
 # --- messages ---------------------------------------------------------------------------------------------------------
 async def send(channel_id: int, text: str, *, silent: bool = False, suppress_embeds: bool = False) -> int | None:
     more = {name: True for name, wanted in (("silent", silent), ("suppress_embeds", suppress_embeds)) if wanted}

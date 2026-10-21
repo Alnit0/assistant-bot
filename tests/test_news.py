@@ -1,6 +1,6 @@
 """The morning news, pure (tasks/reading/news.py) and its feeds (tasks/reading/sources.py): the window, paid articles
-dropped, the same story from several outlets as one, Python's check of the pick and of each TL;DR, and the embed kept
-well inside Discord's limit. Made-up headlines and made-up links only."""
+dropped, the same story from several outlets as one, Python's check of the pick and of each TL;DR, and a story's card
+inside Discord's limits. Made-up headlines and made-up links only."""
 from datetime import date, datetime, time, timedelta, timezone
 
 import pytest
@@ -104,30 +104,11 @@ def test_a_tldr_is_at_most_40_words_cut_at_a_sentence_where_it_can_be():
     assert news.checked_tldr("") == ""
 
 
-# --- the embed ----------------------------------------------------------------------------------------------------------
-def story(number, title_words=12, url_length=150, tldr_words=40, topic=NZ_MONEY):
-    title = " ".join(["Made-up"] + ["headline"] * (title_words - 1))[: news.TITLE_MOST + 20]
+# --- a story's card ----------------------------------------------------------------------------------------------------
+def story(number, title_words=12, url_length=150, tldr_words=40, topic=NZ_MONEY, source="Made-up Wire"):
+    title = " ".join(["Made-up"] + ["headline"] * (title_words - 1))
     url = "https://news.example/" + "a" * (url_length - 21)
-    return Story(url, title, "Made-up Wire", topic, " ".join(["word"] * tldr_words))
-
-
-def test_a_story_reads_headline_link_topic_and_its_tldr():
-    line = news.story_line(1, Story("https://news.example/x", "Made-up [bank] holds rates", "Wire", NZ_MONEY, "Rates stay where they are."))
-    assert line == "1. **[Made-up (bank) holds rates](https://news.example/x)** · *NZ housing and money*\nRates stay where they are."
-
-
-def test_the_longest_realistic_day_fits_well_inside_discord_s_limit():
-    """Eight stories, headlines of 110 characters, links of 150, TL;DRs of 40 words: inside the budget, every story kept."""
-    longest = [story(number, title_words=25, url_length=150, tldr_words=40) for number in range(8)]
-    said = news.description(longest)
-    assert len(said) <= news.EMBED_BUDGET < 4096 and said.count("**[") == 8
-    ordinary = [story(number, title_words=10, url_length=90, tldr_words=30) for number in range(8)]
-    assert news.description(ordinary).count("word") == 8 * 30, "an ordinary day: not one word cut"
-
-
-def test_even_a_day_far_past_realistic_never_goes_over():
-    absurd = [story(number, title_words=40, url_length=600, tldr_words=40) for number in range(8)]
-    assert len(news.description(absurd)) <= news.EMBED_BUDGET
+    return Story(url, title, source, topic, " ".join(["word"] * tldr_words))
 
 
 # --- reading feeds ----------------------------------------------------------------------------------------------------
@@ -216,48 +197,62 @@ def test_more_us_politics_is_a_preference_of_its_own():
     assert news.steered(after, us="less").us_most == 1 and news.Prefs.from_dict(after.as_dict()).us == 1
 
 
-# --- the hierarchy (Alex, 21 Oct: "It's too cluttered in its ordered list layout, it needs more hierarchy") ----------------
-def test_a_field_a_topic_in_its_fixed_order_its_headline_a_link_its_tldr_small():
-    stories = [story(0, topic=topic) for topic in (WORLD_POLITICS, NZ_POLITICS, WORLD, TECH, AI, NZ_MONEY)]
-    found = news.fields(stories)
-    assert [name for name, _ in found] == ["NZ politics", "Housing and money", "World news", "World politics", "Tech", "AI"], "no Web dev field: nothing that day"
-    headline, tldr = found[0][1].split("\n")
-    assert headline.startswith("**[") and headline.endswith(")**") and tldr.startswith("-# ")
-    assert not any(any(ord(char) > 0x2000 for char in name) for name, _ in found), "no emoji in a field's name"
+# --- a card a story (Alex, 21 Oct: "could each news article be its own card? I can thumb it if I liked it or read it") ----
+def test_a_card_is_its_topic_and_outlet_its_headline_the_link_and_its_tldr():
+    from core import design
+
+    card = news.story_card(Story("https://news.example/x", "Made-up bank holds rates", "Made-up Wire", NZ_MONEY, "Rates stay where they are."))
+    (embed,) = card.embeds
+    assert (embed.author, embed.title, embed.url, embed.description) == ("Housing and money · Made-up Wire", "Made-up bank holds rates", "https://news.example/x", "Rates stay where they are.")
+    assert embed.status == design.PREPARED and design.embed_colour(embed.status) == design.EMBED_COLOURS[design.PREPARED], "purple"
+    assert "Rates stay" not in card.text, "what is logged is the headline, never the TL;DR"
 
 
-def test_a_topic_with_two_stories_has_both_the_bigger_first_a_blank_line_between():
-    small = Story("https://news.example/a", "Made-up minister quits", "Wire", NZ_POLITICS, "Words.", outlets=1)
-    big = Story("https://news.example/b", "Made-up bill passes", "Wire", NZ_POLITICS, "Words.", outlets=4)
-    ((name, value),) = news.fields([small, big])
-    assert name == "NZ politics" and value.split("\n\n")[0].startswith("**[Made-up bill passes]") and value.count("\n\n") == 1
+def test_the_cards_go_in_the_fixed_topic_order_an_extra_straight_after_its_topic_s_first():
+    picked = [story(0, topic=WORLD_POLITICS), story(1, topic=NZ_POLITICS), story(2, topic=WORLD), story(3, topic=TECH), story(4, topic=AI),
+              story(5, topic=NZ_MONEY), story(6, topic=WEBDEV), story(7, topic=NZ_POLITICS)]
+    picked = [Story(f"https://news.example/{number}", each.title, each.source, each.topic, each.tldr) for number, each in enumerate(picked)]
+    assert [each.url[-1] for each in news.in_order(picked)] == ["1", "7", "5", "2", "0", "3", "4", "6"]
 
 
-def test_the_longest_realistic_day_fits_every_field_and_the_whole_embed():
-    """Eight stories (two topics with two), headlines of 110 characters, links of 150, TL;DRs of 40 words."""
-    from core.cards import MAX_EMBED_TOTAL, MAX_FIELD_VALUE, Card, Embed, check, embed_size
+def test_the_longest_realistic_headline_and_tldr_fit_discord_s_limits():
+    """A headline of 200 characters (cut to 110), a link of 300, a TL;DR of 40 long words, an outlet's long name."""
+    from core.cards import MAX_EMBED_AUTHOR, MAX_EMBED_TITLE, MAX_EMBED_TOTAL, check, embed_size
 
-    topics = [NZ_POLITICS, NZ_POLITICS, NZ_MONEY, WORLD, WORLD, WORLD_POLITICS, TECH, AI]
-    longest = [story(number, title_words=25, url_length=150, tldr_words=40, topic=topic) for number, topic in enumerate(topics)]
-    found = news.fields(longest, "📰 Morning news")
-    assert all(len(value) <= news.FIELD_BUDGET < MAX_FIELD_VALUE for _, value in found)
-    assert sum(value.count("**[") for _, value in found) == 8, "every story kept"
-    embed = Embed("", "📰 Morning news", "prepared", found)
-    assert embed_size(embed) <= news.TOTAL_BUDGET < MAX_EMBED_TOTAL
-    check(Card("x", embeds=(embed,)))
+    long_tldr = " ".join(["Internationalisation"] * 40)
+    longest = Story("https://news.example/" + "a" * 279, "Made-up " + "x" * 192, "Made-up Wire of the Long Name and Its Several Regional Editions", WORLD_POLITICS, long_tldr)
+    card = news.story_card(longest)
+    check(card)
+    (embed,) = card.embeds
+    assert len(embed.title) <= news.TITLE_MOST < MAX_EMBED_TITLE and len(embed.author) < MAX_EMBED_AUTHOR
+    assert len(embed.description.split()) == 40 and embed_size(embed) < MAX_EMBED_TOTAL
 
 
-def test_even_a_day_far_past_realistic_never_breaks_a_limit():
+def test_a_tldr_over_40_words_is_cut_on_its_card():
+    (embed,) = news.story_card(story(0, tldr_words=60)).embeds
+    assert len(embed.description.split()) <= news.TLDR_MOST
+
+
+def test_the_check_refuses_an_embed_over_discord_s_limits():
     from core.cards import Card, Embed, check
 
-    absurd = [story(number, title_words=40, url_length=600, tldr_words=40, topic=topic) for number, topic in enumerate([NZ_POLITICS, NZ_POLITICS, AI, AI, TECH, WORLD, WORLD_POLITICS, NZ_MONEY])]
-    check(Card("x", embeds=(Embed("", "📰 Morning news", "prepared", news.fields(absurd, "📰 Morning news")),)))
+    check(Card("x", embeds=(Embed("x" * 4096, "t" * 256, author="a" * 256, url="https://news.example/x"),)))  # each at its most: 4,608 in all
+    for embed in (Embed("x", "t" * 257), Embed("x", "t", author="a" * 257), Embed("x" * 4097), Embed("x", "", url="https://news.example/x"), Embed("x", "t", url="news.example/x")):
+        with pytest.raises(ValueError):
+            check(Card("x", embeds=(embed,)))
 
 
-def test_discord_draws_each_field_full_width():
-    from core.cards import Card, Embed
+def test_discord_draws_the_author_line_and_the_title_s_link():
     from interfaces.discord import render
 
-    (drawn,) = render.embeds(Card("x", embeds=(Embed("", "📰 Morning news", "prepared", (("NZ politics", "**[A](https://news.example/a)**\n-# Words."),)),)))
-    (field,) = drawn.fields
-    assert (field.name, field.value, field.inline) == ("NZ politics", "**[A](https://news.example/a)**\n-# Words.", False)
+    (drawn,) = render.embeds(news.story_card(Story("https://news.example/a", "Made-up A", "Wire", AI, "Words.")))
+    assert (drawn.author.name, drawn.title, drawn.url, drawn.description, drawn.fields) == ("AI · Wire", "Made-up A", "https://news.example/a", "Words.", [])
+
+
+def test_the_hub_s_line_says_how_many_and_where():
+    assert news.pointer(8, "news") == "📰 8 stories in #news" and news.pointer(1, "news") == "📰 1 story in #news"
+
+
+def test_liked_stories_are_given_to_the_pick():
+    said = news.guidance(news.Prefs(), WEDNESDAY, ["Made-up bill passes", "Made-up lab ships a model"])
+    assert "Stories he liked or read (a 👍 on its card): Made-up bill passes; Made-up lab ships a model." in said

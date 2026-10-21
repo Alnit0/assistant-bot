@@ -28,6 +28,7 @@ for name, value in {
     "ARCHIVE_CHANNEL_ID": "200",
     "REMINDERS_CHANNEL_ID": "",
     "GYM_CHANNEL_ID": "",
+    "NEWS_CHANNEL_ID": "",
     "ADMIN_CHANNEL_ID": "",
     "DOCUMENTS_CHANNEL_ID": "",
     "DEV_CHANNEL_ID": "",

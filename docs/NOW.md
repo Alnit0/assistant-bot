@@ -3,12 +3,12 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Idle, last batch was** 21 Oct (evening): the morning news, the daily
-read and News headlines as one task (tasks/reading, `READING_ENABLED`),
-built and pushed, not shipped; then its hierarchy version (a field a
-topic, the TL;DR as subtext), reposted as a reply in "Design · Morning
-news"; self-test 150 of 150. Live already has `READING_ENABLED=true`:
-updating live turns the news on.
+**Idle, last batch was** 21 Oct (night): the morning news as cards, a
+story a card in #news at 6 am (live makes #news beside the hub), 👍 liked
+or read, the hub one line; pushed, not shipped. Preview "The card version"
+in "Design · Morning news"; golden 39 of 40 (m29 a known miss, G22);
+self-test 150 of 150; NZ$0.62. Live has `READING_ENABLED=true`: updating
+live turns the news on, and makes #news.
 
 **The feature freeze is called off** (Alex, 21 Oct): no settle-in week.
 **Next:** Alex's list of changes (not heard yet); his first morning

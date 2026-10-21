@@ -179,6 +179,12 @@ async def unreact(channel_id: int, message_id: int, emoji: str) -> None:
     await _door().unreact(channel_id, message_id, emoji)
 
 
+async def make_place(beside: int, name: str, reason: str = "") -> int:
+    """A text channel of this name in the same category as `beside` (#news beside the hub): the one
+    there already, or a new one. Its id. Raises Failed (a bot that may not make channels, for one)."""
+    return await _door().make_place(beside, name, reason)
+
+
 # --- cards (core/cards.py is who asks) -------------------------------------------------------------------------------
 def drawn(card):
     """A card as the interface draws it, to hand to a reply. None for one with nothing to press."""

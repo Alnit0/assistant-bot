@@ -714,6 +714,63 @@ def routines_opening() -> str:
     ])
 
 
+class Several(tuple):
+    """Cards each sent as a message of its own, one after another (the morning news's cards in #news)."""
+
+
+class Reacted(tuple):
+    """(card, emoji): a card sent, then the bot's own reaction on it, to show what a reaction there looks like."""
+
+
+class ReplyTo(tuple):
+    """(said, card): what he would say, sent as a Discord reply to the last card sent, then the bot's answer."""
+
+
+class HubLine(tuple):
+    """(card maker,): round 7's second message with the news's line, linked to the first card sent in the post."""
+
+
+async def _send_pieces(thread, found: list[tuple[str, object]]) -> None:
+    import discord
+
+    from interfaces.discord import render
+
+    quiet = discord.AllowedMentions.none()
+    sent: list = []
+
+    async def one(pieces, **more):
+        if isinstance(pieces, Card) and pieces.embeds:
+            # Round 7's messages of embeds (the briefing, the morning news), drawn as live draws them
+            message = await thread.send(render.heading(pieces), embeds=render.embeds(pieces), allowed_mentions=quiet, **more)
+        elif isinstance(pieces, Card):
+            message = await thread.send(pieces.text, allowed_mentions=quiet, **more)
+        else:
+            message = await thread.send(view=render.layout_view(pieces), allowed_mentions=quiet, **more)
+        sent.append(message)
+        await asyncio.sleep(1)  # paced: well under Discord's rate limit
+        return message
+
+    first_card = None
+    for label, pieces in found:
+        if label:
+            await thread.send(f"### {label}", allowed_mentions=quiet)
+        if isinstance(pieces, Several):
+            for each in pieces:
+                message = await one(each)
+                first_card = first_card or message
+        elif isinstance(pieces, Reacted):
+            message = await one(pieces[0])
+            await message.add_reaction(pieces[1])
+        elif isinstance(pieces, ReplyTo):
+            said, answer = pieces
+            await thread.send(f"> {said}", reference=sent[-1], allowed_mentions=quiet)
+            await one(answer)
+        elif isinstance(pieces, HubLine):
+            await one(pieces[0](first_card.jump_url if first_card is not None else ""))
+        else:
+            await one(pieces)
+
+
 async def post_preview(title: str, intro: str, found: list[tuple[str, tuple]], tag: str = PREVIEW) -> str:
     """A post of its own in the Design forum, tagged (Preview unless said)."""
     import discord
@@ -725,17 +782,7 @@ async def post_preview(title: str, intro: str, found: list[tuple[str, tuple]], t
         forum = await _with_tags(await _design_forum(client))
         applied = [each for each in forum.available_tags if each.name == tag_named(tag)]
         made = await forum.create_thread(name=title, content=intro, applied_tags=applied, allowed_mentions=quiet)
-        for label, pieces in found:
-            if label:
-                await made.thread.send(f"### {label}", allowed_mentions=quiet)
-            if isinstance(pieces, Card) and pieces.embeds:
-                # Round 7's messages of embeds (the briefing, the morning news), drawn as live draws them
-                await made.thread.send(render.heading(pieces), embeds=render.embeds(pieces), allowed_mentions=quiet)
-            elif isinstance(pieces, Card):
-                await made.thread.send(pieces.text, allowed_mentions=quiet)
-            else:
-                await made.thread.send(view=render.layout_view(pieces), allowed_mentions=quiet)
-            await asyncio.sleep(1)  # paced: well under Discord's rate limit
+        await _send_pieces(made.thread, found)
         return made.thread.jump_url
 
     return await _as_dev_bot(work)
@@ -810,16 +857,7 @@ async def reply_preview(title: str, intro: str, found: list[tuple[str, tuple]]) 
             raise SystemExit(f"No post called {title!r} in the Design forum: nothing posted.")
         thread = threads[0]
         await thread.send(intro, allowed_mentions=quiet)
-        for label, pieces in found:
-            if label:
-                await thread.send(f"### {label}", allowed_mentions=quiet)
-            if isinstance(pieces, Card) and pieces.embeds:
-                await thread.send(render.heading(pieces), embeds=render.embeds(pieces), allowed_mentions=quiet)
-            elif isinstance(pieces, Card):
-                await thread.send(pieces.text, allowed_mentions=quiet)
-            else:
-                await thread.send(view=render.layout_view(pieces), allowed_mentions=quiet)
-            await asyncio.sleep(1)  # paced: well under Discord's rate limit
+        await _send_pieces(thread, found)
         return thread.jump_url
 
     return await _as_dev_bot(work)
@@ -1032,9 +1070,10 @@ def diary_opening() -> str:
 
 
 # ---------------------------------------------------------------------------
-# The morning news (READING_ENABLED, off; 21 Oct): `python -m selftest.preview --news`, a post of its own.
-# Round 7's second message drawn by the real code (tasks/briefing/embeds.py, tasks/reading/news.py) from
-# made-up headlines only: an ordinary weekday, a Monday, a quiet day with no wildcard, a day with a topic empty.
+# The morning news (READING_ENABLED, off; 21 Oct): `python -m selftest.preview --news`, a post of its own, and
+# `--news-reply`, the card version as a reply in it. Each story a card of its own as #news has it, drawn by the
+# real code (tasks/reading/news.py, tasks/briefing/embeds.py) from made-up headlines only: an ordinary weekday, a
+# Monday, a quiet day with no wildcard, a day with a topic empty; the hub's one line; a 👍; a reply; another one.
 # ---------------------------------------------------------------------------
 NEWS_TITLE = "Design · Morning news"
 NEWS_ENTRY = Entry("reading", "📰", "Morning news", "x", ("y",), ())
@@ -1064,15 +1103,18 @@ def _news(day, picks) -> list:
     return [Story(f"https://example.com/made-up/{topic}/{number}", _MADE_UP[topic][number], f"Made-up {topic}", topic, _TLDR[topic] if number == 0 else _TLDR[topic].split(".")[0] + ".") for topic, number in picks]
 
 
-def _message_two(day, stories, todos=True):
+def _hub_line(count: int, todos: bool = True):
+    """Round 7's second message with the news's one line, made once the first card's link is known."""
     from core.actions import PREPARED, TODO, TRACKING, DayItem
     from tasks.briefing import embeds
     from tasks.reading import news
 
-    items = [DayItem(TODO, "Buy stamps"), DayItem(TODO, "Call the plumber", state="taken")] if todos else []
-    items += [DayItem(TRACKING, "Diary · Streak: 4 days", icon="📓")]
-    items.append(DayItem(PREPARED, "", icon="📰", title="Morning news", fields=news.fields(stories, "📰 Morning news")))
-    return embeds.everything_else(items)
+    def made(link: str) -> Card:
+        items = [DayItem(TODO, "Buy stamps"), DayItem(TODO, "Call the plumber", state="taken")] if todos else []
+        items += [DayItem(TRACKING, "Diary · Streak: 4 days", icon="📓"), DayItem(PREPARED, news.pointer(count, "news"), icon="📰", title="Morning news", link=link)]
+        return embeds.everything_else(items)
+
+    return made
 
 
 def news_cards() -> list:
@@ -1085,29 +1127,38 @@ def news_cards() -> list:
     monday = _news(day, [("world_politics", 1), ("nz_politics", 1), ("world", 1), ("tech", 1), ("ai", 1), ("nz_money", 1), ("world", 0), ("world_politics", 0)])
     quiet = _news(day, [("world_politics", 0), ("nz_politics", 0), ("world", 0), ("tech", 0), ("ai", 0), ("nz_money", 0), ("world", 1)])
     empty = _news(day, [("world_politics", 0), ("nz_politics", 0), ("world", 0), ("tech", 0), ("nz_money", 0), ("nz_politics", 1)])
+
+    def in_news(stories):
+        return Several(news.story_card(each) for each in news.in_order(stories))
+
     housing = next(each for each in weekday if each.topic == "nz_money")
-    steer = news.changes(news.Prefs(), news.steered(news.Prefs(), less="ai", like=housing))
-    another = news.another_line(_news(day, [("tech", 1)])[0])
+    like_this = news.changes(news.Prefs(), news.steered(news.Prefs(), like=housing))
+    another = _news(day, [("tech", 1)])[0]
     return [
-        ("An ordinary weekday: one a topic, then two extras (here NZ politics, and the web development wildcard on a day with a security hole). In round 7's second message, after the to-dos and the diary", _message_two(day, weekday)),
-        ("A Monday: since Saturday 5:30 am, so the weekend's biggest stories; no wildcard", _message_two(day, monday, todos=False)),
-        ("A quiet day: seven, one a topic and one extra, no wildcard. The news alone is enough for the second message to be sent", _message_two(day, quiet, todos=False)),
-        ("A day with a topic empty (AI had nothing new): six and an extra, never padded", _message_two(day, empty, todos=False)),
-        ("“another one”: the next best story not shown, as a reply", Card(another)),
-        ("“less AI”, then “more like the housing one”: a card first, Save keeps it for every later pick", confirm.render(NEWS_ENTRY, Proposal(lines=tuple(steer), data={}, kind="change"), 1).layout),
+        ("An ordinary weekday in #news: a card a story, in a fixed order (NZ politics, Housing and money, World news, World politics, Tech, AI, Web dev), an extra straight after its topic's first", in_news(weekday)),
+        ("The hub that morning: round 7's second message, the news one line after the to-dos and the diary; its title opens the first card above", HubLine((_hub_line(len(weekday)),))),
+        ("A Monday: since Saturday 5:30 am, the weekend's biggest stories; no wildcard", in_news(monday)),
+        ("A quiet day: seven, no wildcard", in_news(quiet)),
+        ("A day with a topic empty (AI had nothing new): six and an extra, never padded. The news's line alone is enough for the second message to be sent", in_news(empty)),
+        ("…and its hub line on its own", HubLine((_hub_line(len(empty), todos=False),))),
+        ("👍 on a card: liked or read. Silent (no ✅, no reply), kept for the next picks; take it away and it goes", Reacted((news.story_card(housing), "👍"))),
+        ("A reply to that card steers by it: “more like this” is a card first, Save keeps it", ReplyTo(("more like this", confirm.render(NEWS_ENTRY, Proposal(lines=tuple(like_this), data={}, kind="change"), 1).layout))),
+        ("“another one” (in #news, #inbox or a direct message): a new card in #news, under the others", news.story_card(another)),
+        ("…said in #inbox, the answer there points to it", Card(f"📰 One more in #news: (its link)")),
     ]
 
 
 def news_reply_intro() -> str:
     return "\n".join([
-        "## The hierarchy version (21 Oct)",
-        "From your look on your phone: “It's too cluttered in its ordered list layout, it needs more hierarchy”. The numbered list is gone: "
-        "**a field a topic**, full width, in a fixed order (NZ politics, Housing and money, World news, World politics, Tech, AI, Web dev), "
-        "named in plain words; each story its headline in bold as the link, then its TL;DR small under it; a topic with two has both, "
-        "the bigger first. A topic with nothing that day has no field.",
-        "**In words, without numbers:** “more like the housing one”, “more like the one about the water reform”, “less AI”, “another one”. "
-        "“more like 3” now asks which, by topic.",
-        "📱 Please look again on your phone. The same four days as above, made-up headlines only.",
+        "## The card version (21 Oct)",
+        "From your look: “I don't like the layout, could each news article be its own card? I can thumb it if I liked it or read it, the hierarchy is poor too.”",
+        "**#news**, a channel of its own beside the hub (the bot makes it if it is missing). At 6 am **each story is its own card**: "
+        "its topic and outlet small at the top, the headline as the title that opens the article, the TL;DR under it (about 30 words, "
+        "never more than 40). Purple, no numbers, nothing else. Yesterday's cards are deleted first.",
+        "**👍 on a card** is liked or read: kept for the next picks, silent. **The hub** has one line, “📰 8 stories in #news”, that opens the first card.",
+        "**In words**, in #news, #inbox or a direct message: “more like the housing one”, “more like the one about the interest rates”, “less AI”, “another one”; "
+        "and **replying to a card**, “more like this” or “less of this”.",
+        "📱 Please look on your phone. Made-up headlines and links only; the buttons here do nothing.",
     ])
 
 
@@ -1115,9 +1166,9 @@ def news_opening() -> str:
     return "\n".join([
         f"## {NEWS_TITLE}",
         "The daily read and the news headlines are now **one morning news**: 7 or 8 stories a day, one for each of **world politics**, **NZ politics**, **world news**, **tech**, **AI** and **NZ housing and money** (house prices, interest rates, the OCR, the economy), then one or two extras for the day's biggest news. **Web development** is a wildcard: only on a day with something notable.",
-        "**Each story:** the headline in bold is the link, the topic in italics, then a TL;DR of about 30 words: what happened, and why you might read it. Paywalled articles are never picked; at most one story about US politics alone a day.",
-        "**Where:** round 7's second message, one purple embed after the to-dos and the diary; 👍 on it says it was a good set, which the next picks lean on. Before round 7 it is not in the hub: say “the news”.",
-        "**In words:** another one, more like 3, less AI, more NZ politics, skip housing tomorrow, more US politics, what do you know about my news, add or remove a source.",
+        "**Each story:** its topic and outlet small, the headline as the title that is the link, then a TL;DR of about 30 words: what happened, and why you might read it. Paywalled articles are never picked; at most one story about US politics alone a day.",
+        "**Where:** #news, a card a story at 6 am, yesterday's deleted; 👍 on a card says he liked or read it, which the next picks lean on. Round 7's hub has one line that opens the first card. Before round 7 it is not in the hub: say “the news”.",
+        "**In words:** another one, more like the housing one, less AI, more NZ politics, skip housing tomorrow, more US politics; replying to a card, more like this or less of this; what do you know about my news, add or remove a source.",
         "📱 **Please look at this on your phone:** the embed is built for a phone's width. A screenshot of it there, or a word on what is too long or too dense, is the feedback this round needs.",
         "-# Made-up headlines and links only. Behind READING_ENABLED. The buttons here do nothing.",
     ])

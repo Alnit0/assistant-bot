@@ -7,9 +7,10 @@ backfilled from the git log.
 ## 2026-10-21
 
 - The morning news, built and not yet on: 7 or 8 stories each morning (world and NZ politics, world news, tech, AI, NZ
-  housing and money, and web development when something notable happens), each a headline link with a short TL;DR, in
-  one purple card in the hub's second message. 👍 for a good set; say another one, more like 3, less AI or skip housing
-  tomorrow. It replaces the daily read.
+  housing and money, and web development when something notable happens), each its own card in #news at 6 am (the
+  topic and outlet, the headline as the link, a short TL;DR); yesterday's go, and the hub has one line that opens the
+  first. 👍 a card you liked or read; say another one, more like the housing one, less AI or skip housing tomorrow,
+  or reply to a card with more like this. It replaces the daily read.
 - 👍 on a dose's reminder takes it, on a reminder that went off or an expiry marks it done, and on a routine's own
   card does all of it (the card turns green, 🟩 Done; take the 👍 away to undo). Typing still works. Behind
   THUMBS_UP, which also takes the dropdown off a routine.

@@ -140,7 +140,7 @@ def seen(message: discord.Message, bot_id: int) -> Seen:
     _walk(message.components, texts, buttons, accents, menus)
     embeds = []
     for embed in message.embeds:
-        body = "\n".join([embed.description or "", *(f"{each.name}: {each.value}" for each in embed.fields)])
+        body = "\n".join([getattr(embed.author, "name", None) or "", embed.description or "", *(f"{each.name}: {each.value}" for each in embed.fields)]).strip("\n")
         embeds.append((embed.title or "", body))
     reference = message.reference.message_id if message.reference else None
     return Seen(

@@ -147,19 +147,20 @@ class Embed:
     description: str = ""
     title: str = ""
     status: str = ""
-    # Full-width fields under it, in order: (name, value). The morning news has one a topic (21 Oct)
-    fields: tuple[tuple[str, str], ...] = ()
+    # A small line above the title (a news card's "NZ politics · RNZ"), and where the title links to
+    author: str = ""
+    url: str = ""
 
 
 MAX_EMBEDS = 10  # a message holds at most this many
 MAX_EMBED_TEXT = 4096  # characters in an embed's description
-MAX_FIELDS, MAX_FIELD_NAME, MAX_FIELD_VALUE = 25, 256, 1024  # an embed's fields, Discord's limits
-MAX_EMBED_TOTAL = 6000  # characters in one embed: its title, description and every field's name and value
+MAX_EMBED_TITLE = MAX_EMBED_AUTHOR = 256  # characters in its title, and in its author line
+MAX_EMBED_TOTAL = 6000  # characters in one embed: its author line, title and description
 
 
 def embed_size(embed: "Embed") -> int:
     """What Discord counts against MAX_EMBED_TOTAL."""
-    return len(embed.title) + len(embed.description) + sum(len(name) + len(value) for name, value in embed.fields)
+    return len(embed.author) + len(embed.title) + len(embed.description)
 
 
 def designed(card: Card) -> bool:
@@ -220,8 +221,10 @@ def check(card: Card) -> None:
     if len(card.embeds) > MAX_EMBEDS or any(len(each.description) > MAX_EMBED_TEXT for each in card.embeds):
         raise ValueError(f"A message has at most {MAX_EMBEDS} embeds of at most {MAX_EMBED_TEXT} characters")
     for each in card.embeds:
-        if len(each.fields) > MAX_FIELDS or any(not name or len(name) > MAX_FIELD_NAME or not value or len(value) > MAX_FIELD_VALUE for name, value in each.fields):
-            raise ValueError(f"An embed has at most {MAX_FIELDS} fields, each named, a value of at most {MAX_FIELD_VALUE} characters")
+        if len(each.title) > MAX_EMBED_TITLE or len(each.author) > MAX_EMBED_AUTHOR:
+            raise ValueError(f"An embed's title and author line are at most {MAX_EMBED_TITLE} characters each")
+        if each.url and (not each.title or not each.url.startswith(("https://", "http://"))):
+            raise ValueError("An embed's link is a web address, on a title")
         if embed_size(each) > MAX_EMBED_TOTAL:
             raise ValueError(f"An embed has at most {MAX_EMBED_TOTAL} characters in all")
     seen: set[str] = set()

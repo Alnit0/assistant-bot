@@ -7,7 +7,11 @@ from tasks.reading.rules import Item
 
 # ---------------------------------------------------------------------------
 # The daily read in the database. Every row has a user_id.
-#   reading_news        the morning news's set a day (its stories as JSON), and whether 👍 said it was good
+#   reading_news        the morning news's set a day (its stories as JSON); `liked` is the hub's old 👍 (before
+#                       the cards), kept, no longer written
+#   reading_news_cards  a story's card (21 Oct, night): where it went up, whether it is still there, and whether
+#                       a 👍 on it says he liked or read it
+#   reading_news_channel  the #news the bot made beside the hub
 #   reading_news_spares the stories ranked next that day, for "another one"
 #   reading_news_prefs  what Alex said about the news (more, less, more like, a day skipped), as JSON
 #   reading_sources     sources added or removed in words, on top of feeds.json
@@ -110,7 +114,31 @@ def add_news(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE TABLE reading_news_prefs (user_id INTEGER PRIMARY KEY REFERENCES users(id), data TEXT NOT NULL, updated_at TEXT NOT NULL)")
 
 
-MIGRATIONS = [create_tables, add_ratings, add_news]
+def add_cards(conn: sqlite3.Connection) -> None:
+    """The morning news as a card a story in #news (21 Oct, night): each card, and the channel the bot made."""
+    conn.execute(
+        """
+        CREATE TABLE reading_news_cards (
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            day TEXT NOT NULL,
+            url TEXT NOT NULL,
+            position INTEGER NOT NULL,
+            story TEXT NOT NULL,
+            channel_id INTEGER NOT NULL,
+            message_id INTEGER,
+            state TEXT NOT NULL,
+            liked INTEGER NOT NULL DEFAULT 0,
+            liked_at TEXT,
+            PRIMARY KEY (user_id, day, url)
+        )
+        """
+    )
+    conn.execute("CREATE INDEX reading_news_cards_message ON reading_news_cards (message_id)")
+    conn.execute("CREATE TABLE reading_news_channel (user_id INTEGER PRIMARY KEY REFERENCES users(id), channel_id INTEGER NOT NULL, made_at TEXT NOT NULL)")
+
+
+MIGRATIONS = [create_tables, add_ratings, add_news, add_cards]
+SENDING, UP, GONE = "sending", "up", "gone"  # a card: being posted (a start cut off then: never posted again), up, deleted
 ADDED, REMOVED = "added", "removed"
 
 
@@ -160,15 +188,94 @@ def db_put_news(conn: sqlite3.Connection, user_id: int, day: date, stories: list
     )
 
 
-def db_like_news(conn: sqlite3.Connection, user_id: int, day: date, liked: bool) -> bool:
-    """👍 on the day's set (or taken away). False if there is no set that day."""
-    return conn.execute("UPDATE reading_news SET liked = ? WHERE user_id = ? AND day = ?", (int(liked), user_id, day.isoformat())).rowcount > 0
+# --- the cards in #news -------------------------------------------------------------------------------------------
+def _story(text: str):
+    from tasks.reading.news import Story
+
+    return Story(**json.loads(text))
 
 
-def db_liked_sets(conn: sqlite3.Connection, user_id: int, limit: int = 5) -> list[list[str]]:
-    """The headlines of the latest sets he said were good, oldest first: a light signal for the pick."""
-    rows = conn.execute("SELECT stories FROM reading_news WHERE user_id = ? AND liked = 1 ORDER BY day DESC LIMIT ?", (user_id, limit)).fetchall()
-    return [[each.title for each in _stories(row[0])] for row in reversed(rows)]
+def db_cards(conn: sqlite3.Connection, user_id: int, day: date) -> dict[str, str]:
+    """The day's cards so far: url to its state (SENDING, UP or GONE)."""
+    return dict(conn.execute("SELECT url, state FROM reading_news_cards WHERE user_id = ? AND day = ?", (user_id, day.isoformat())))
+
+
+def db_card_sending(conn: sqlite3.Connection, user_id: int, day: date, story, channel_id: int) -> None:
+    """Noted before it is posted: a start cut off mid-post finds it and never posts it twice. Last in its day's order."""
+    from dataclasses import asdict
+
+    position = conn.execute("SELECT COALESCE(MAX(position) + 1, 0) FROM reading_news_cards WHERE user_id = ? AND day = ?", (user_id, day.isoformat())).fetchone()[0]
+    conn.execute(
+        "INSERT OR IGNORE INTO reading_news_cards (user_id, day, url, position, story, channel_id, state) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (user_id, day.isoformat(), story.url, position, json.dumps(asdict(story), ensure_ascii=False), channel_id, SENDING),
+    )
+
+
+def db_card_up(conn: sqlite3.Connection, user_id: int, day: date, url: str, message_id: int) -> None:
+    conn.execute("UPDATE reading_news_cards SET message_id = ?, state = ? WHERE user_id = ? AND day = ? AND url = ?", (message_id, UP, user_id, day.isoformat(), url))
+
+
+def db_card_unsent(conn: sqlite3.Connection, user_id: int, day: date, url: str) -> None:
+    """A post that failed for certain: the card may be posted on the next try."""
+    conn.execute("DELETE FROM reading_news_cards WHERE user_id = ? AND day = ? AND url = ? AND state = ?", (user_id, day.isoformat(), url, SENDING))
+
+
+def db_cards_before(conn: sqlite3.Connection, user_id: int, day: date) -> list[tuple[str, str, int, int]]:
+    """(day, url, channel_id, message_id) of every card still up from an earlier day."""
+    return list(conn.execute("SELECT day, url, channel_id, message_id FROM reading_news_cards WHERE user_id = ? AND day < ? AND state = ? ORDER BY day, position", (user_id, day.isoformat(), UP)))
+
+
+def db_card_gone(conn: sqlite3.Connection, user_id: int, day: str, url: str) -> None:
+    conn.execute("UPDATE reading_news_cards SET state = ? WHERE user_id = ? AND day = ? AND url = ?", (GONE, user_id, day, url))
+
+
+def db_cards_up(conn: sqlite3.Connection, user_id: int | None = None, day: date | None = None) -> list[tuple[int, int, object]]:
+    """(channel_id, message_id, story) of the cards up, in their order: a day's, or every one (for a start)."""
+    where, args = "state = ?", [UP]
+    if user_id is not None:
+        where, args = where + " AND user_id = ?", [*args, user_id]
+    if day is not None:
+        where, args = where + " AND day = ?", [*args, day.isoformat()]
+    rows = conn.execute(f"SELECT channel_id, message_id, story FROM reading_news_cards WHERE {where} ORDER BY day, position", args)
+    return [(row[0], row[1], _story(row[2])) for row in rows]
+
+
+def db_card_of(conn: sqlite3.Connection, message_id: int | None):
+    """(user_id, day, story, liked) of the card that message is, or None."""
+    if message_id is None:
+        return None
+    row = conn.execute("SELECT user_id, day, story, liked FROM reading_news_cards WHERE message_id = ?", (message_id,)).fetchone()
+    return (row[0], date.fromisoformat(row[1]), _story(row[2]), bool(row[3])) if row else None
+
+
+def db_like_card(conn: sqlite3.Connection, user_id: int, message_id: int, liked: bool, now: datetime) -> bool:
+    """👍 on a story's card (or taken away): he liked or read it. False if that is no card of his."""
+    return conn.execute(
+        "UPDATE reading_news_cards SET liked = ?, liked_at = ? WHERE user_id = ? AND message_id = ?", (int(liked), now.isoformat() if liked else None, user_id, message_id)
+    ).rowcount > 0
+
+
+def db_liked_stories(conn: sqlite3.Connection, user_id: int, limit: int = 8) -> list[str]:
+    """The headlines of the latest stories he liked or read, oldest first: a signal for the next picks."""
+    rows = conn.execute("SELECT story FROM reading_news_cards WHERE user_id = ? AND liked = 1 ORDER BY liked_at DESC LIMIT ?", (user_id, limit)).fetchall()
+    return [_story(row[0]).title for row in reversed(rows)]
+
+
+def db_liked_between(conn: sqlite3.Connection, user_id: int, first: date, last: date) -> int:
+    row = conn.execute("SELECT COUNT(*) FROM reading_news_cards WHERE user_id = ? AND liked = 1 AND day BETWEEN ? AND ?", (user_id, first.isoformat(), last.isoformat())).fetchone()
+    return row[0]
+
+
+def db_news_channel(conn: sqlite3.Connection, user_id: int) -> int | None:
+    row = conn.execute("SELECT channel_id FROM reading_news_channel WHERE user_id = ?", (user_id,)).fetchone()
+    return row[0] if row else None
+
+
+def db_set_news_channel(conn: sqlite3.Connection, user_id: int, channel_id: int, now: datetime) -> None:
+    conn.execute(
+        "INSERT INTO reading_news_channel (user_id, channel_id, made_at) VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET channel_id = excluded.channel_id, made_at = excluded.made_at",
+        (user_id, channel_id, now.isoformat()),
+    )
 
 
 def db_news_shown(conn: sqlite3.Connection, user_id: int, since: date) -> set[str]:

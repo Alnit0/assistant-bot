@@ -409,3 +409,18 @@ bold as the link and its TL;DR under it as Discord's subtext; a topic with two h
 a blank line between. Steering has no numbers: "more like the housing one", "more like the one about the water reform";
 "more like 3" asks which, by topic. Reposted as a reply in "Design · Morning news" (the same four days). Waiting on his
 look on his phone, and his eyes on the subtext (below).
+
+### The morning news: the card version (21 Oct, night)
+
+**What Alex said, word for word, on the hierarchy version:** "I don't like the layout, could each news article be its
+own card? I can thumb it if I liked it or read it, the hierarchy is poor too."
+
+**What was done:** the news left the hub for #news, a channel of its own beside it (live makes it if it is missing). At
+6 am, after the 5:30 pick, each story is its own message with one purple embed: "<topic> · <outlet>" as its author
+line, the headline as its title linked to the article, the TL;DR as its description (about 30 words, never more than
+40); no fields, no footer, no numbers. In a fixed topic order (NZ politics, Housing and money, World news, World
+politics, Tech, AI, Web dev), an extra straight after its topic's first. Yesterday's cards are deleted first. 👍 on a
+card is "liked or read", silent, kept for later picks. The hub's message 2 has one purple line, "📰 8 stories in
+#news", that opens the first card. Steering in #news, #inbox or a direct message, and by replying to a card ("more
+like this", "less of this"). Posted as a reply in "Design · Morning news", headed "The card version". Waiting on his
+look on his phone.
