@@ -25,6 +25,10 @@ log = logging.getLogger("assistant")
 # entry or mood, a reply to the ask) goes through `_show_saved`, which edits the
 # day's one line and posts a new one only when that can't be edited. An Undo on
 # any other line of that day says it is handled already: never a second undo.
+# The day's line is only ever a message the diary posted itself: a press on the
+# evening ask, or on bedtime's Wind down carrying the diary's row, saves, posts
+# or edits the diary's own line, and takes only the diary's part off the ask
+# (`_answer_ask`). The diary deletes nothing but its own lines and its own ask.
 # ---------------------------------------------------------------------------
 MOOD, UNDO = "mood", "undo"
 WRITE, WRITTEN = "write", "written"  # the ✍️ Write button and what its form sends back
@@ -73,11 +77,42 @@ def changed(user_id: int) -> None:
     summaries.changed(TASK, user_id)
 
 
-async def _clear_ask(user_id: int, day: date) -> None:
-    """Writing or choosing a mood answers the evening ask: it leaves the hub."""
+async def _ask_left(channel_id: int, message_id: int) -> tuple[Card | None, bool]:
+    """The ask's message without the diary's part, and whether it is the diary's own ask: its own words stay; on a
+    message of another task's carrying the diary's row (bedtime's Wind down), its own words without the diary's
+    line. (None, False) when it can't be read back."""
+    try:
+        found = await surface.fetch(channel_id, message_id)
+    except surface.Failed:
+        return None, False
+    lines = str(getattr(found, "content", "") or "").split("\n")
+    if lines and lines[0].startswith(rules.ASK):
+        return Card("\n".join(lines)), True
+    return Card("\n".join(each for each in lines if each.strip() != rules.ASK) or rules.ASK), False
+
+
+async def _answer_ask(user_id: int, day: date, press=None) -> bool:
+    """Writing or choosing a mood answers the day's ask. Pressed on the ask itself: the press takes the diary's
+    buttons (and, on Wind down, its line) off it, its words left. Otherwise the diary's own ask leaves the hub, and
+    a Wind down carrying the diary's row is edited back to its own words. True when the press was on the ask."""
+    ask = await database.run(store.db_ask, user_id, day)
+    on_it = press is not None and ask is not None and ask[1] is not None and ask[1] == press.message_id
     there = await database.run(store.db_clear_ask, user_id, day, clock.now())
+    if on_it:
+        left, _ = await _ask_left(ask[0], ask[1])
+        await press.update(left or Card(rules.ASK))
+        return True
     if there is not None and there[0] and there[1]:
-        await cards.delete(there[0], there[1])
+        left, own = await _ask_left(there[0], there[1])
+        if own:
+            await cards.delete(there[0], there[1])
+        elif left is not None:
+            await cards.edit(there[0], there[1], left)
+    return False
+
+
+async def _clear_ask(user_id: int, day: date) -> None:
+    await _answer_ask(user_id, day)
 
 
 # --- the day's one confirmation ------------------------------------------------------------------------------
@@ -94,16 +129,29 @@ async def saved_card(user_id: int, day: date, kept: Entry, added: bool = False) 
 
 
 async def _retire(channel_id: int, message_id: int) -> None:
-    """An older line of the day, once another is the one: it goes (its Undo is answered as handled if it stays)."""
+    """An older line of the day, once another is the one: it goes (its Undo is answered as handled if it stays).
+    Only ever a line the diary posted: `_own_line` has made sure."""
     await cards.delete(channel_id, message_id)
 
 
-async def _show_saved(user_id: int, day: date, channel_id: int | None, card: Card, press=None) -> int | None:
-    """The day's one confirmation, shown as `card`. Pressed on a card (the form's, a mood's): that card is it, and
-    an older one goes. Otherwise the one there is edited in place, with a short pointer when it is in another
-    channel; a new one is posted only when it can't be edited (gone, or not allowed), and the old one goes. The
-    message's id, or None if nothing could be shown."""
+async def _own_line(user_id: int, day: date) -> tuple[int, int] | None:
+    """The day's noted line, if it is one the diary posted: one noted from the ask (ea521ed did, for a press on it)
+    is no line of the diary's, and the note is cleared."""
     there = await database.run(store.db_saved, user_id, day)
+    ask = await database.run(store.db_ask, user_id, day)
+    if there is not None and ask is not None and ask[1] == there[1]:
+        await database.run(store.db_set_saved, user_id, day, None, None)
+        return None
+    return there
+
+
+async def _show_saved(user_id: int, day: date, channel_id: int | None, card: Card, press=None) -> int | None:
+    """The day's one confirmation, shown as `card`. Pressed on one of the diary's own lines (a mood's, the form's
+    after a mood): that line is it, and an older one goes; never pressed on an ask (`_answer_ask` takes those).
+    Otherwise the one there is edited in place, with a short pointer when it is in another channel; a new one is
+    posted only when it can't be edited (gone, or not allowed), and the old one goes. The message's id, or None if
+    nothing could be shown."""
+    there = await _own_line(user_id, day)
     if press is not None:
         await press.update(card)
         if there is not None and there[1] != press.message_id:
@@ -136,7 +184,8 @@ async def keep(user_id: int, channel_id: int | None, on: date, words: str, said_
     except Exception:
         log.exception("Diary: an entry could not be saved")  # never with its words
         raise UserError(NOT_SAVED) from None
-    await _clear_ask(user_id, on)
+    if await _answer_ask(user_id, on, press):
+        press = None  # pressed on the ask: the diary's own line is posted or edited, the ask keeps its words
     changed(user_id)
     card = await saved_card(user_id, on, kept, added=was_there)
     message_id = await _show_saved(user_id, on, channel_id, card, press)
@@ -249,7 +298,7 @@ async def set_mood(request: Request, data: dict, guessed: frozenset):
 async def undo(request: Request, data: dict, guessed: frozenset) -> str:
     """ "undo that" after an entry or a mood change: the last message written, or the mood as it was."""
     day = _day(data.get("day"), today())
-    there = await database.run(store.db_saved, request.user.id, day)
+    there = await _own_line(request.user.id, day)
     line = await _undo_last(database.run, request.user.id, day)
     if line is None:
         raise UserError("There is nothing in the diary to undo.")
@@ -310,16 +359,12 @@ async def on_mood(press: cards.Press) -> str:
         return "not a mood of this scale"
     day = date.fromisoformat(day_text)
     kept = await press.db.run(store.db_set_mood, press.user.id, day, mood.CURRENT.name, said, clock.now())
-    asked = await press.db.run(store.db_ask, press.user.id, day)
-    await press.db.run(store.db_clear_ask, press.user.id, day, clock.now())
+    on_ask = await _answer_ask(press.user.id, day, press)
     changed(press.user.id)
     # A mood with no words yet: one small offer of a few words, on the day's line
     card = await saved_card(press.user.id, day, kept)
-    await _show_saved(press.user.id, day, press.channel_id, card, press)
-    line = card.text.split("\n")[0]
-    if asked is not None and asked[1] and asked[1] != press.message_id and asked[0]:
-        await cards.delete(asked[0], asked[1])  # the evening ask, if this was the line under an entry
-    return line
+    await _show_saved(press.user.id, day, press.channel_id, card, None if on_ask else press)
+    return card.text.split("\n")[0]
 
 
 HANDLED = "Already handled: the day's newest line has its Undo"
@@ -329,7 +374,7 @@ async def on_undo(press: cards.Press) -> str:
     """The day's Undo: the last change to its entry, once. On any other line of that day (an older copy, posted twice
     before 21 Oct) it is handled already: nothing is undone, and that line loses its button."""
     day = date.fromisoformat(press.arg)
-    there = await press.db.run(store.db_saved, press.user.id, day)
+    there = await _own_line(press.user.id, day)
     if there is not None and there[1] != press.message_id:
         line = f"{ICON} {HANDLED}"
         await press.update(Card(line))

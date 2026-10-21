@@ -47,9 +47,17 @@ def world(make_db, monkeypatch, owner, dev_clock):
         seen.deleted.append(message_id)
         return True
 
+    seen.words = {}  # what a posted message says, by id, for a read-back
+
+    async def fetch(channel_id, message_id):
+        return SimpleNamespace(id=message_id, content=seen.words.get(message_id, rules.ASK))
+
+    from core import surface
+
     monkeypatch.setattr(cards, "send", send)
     monkeypatch.setattr(cards, "edit", edit)
     monkeypatch.setattr(cards, "delete", delete)
+    monkeypatch.setattr(surface, "fetch", fetch)
     monkeypatch.setattr(cards, "_actions", {})
     monkeypatch.setattr(hub, "channel_id", lambda: HUB)
     monkeypatch.setattr(plain, "changed", lambda user_id: None)
@@ -605,3 +613,76 @@ def test_the_streak_and_mood_stay_right_when_words_follow_a_mood(world):
     typed = FormPress(world, world.day.isoformat(), message_id=7401, fields={"words": "Made-up: and some words."})
     run(plain.on_written(typed))
     assert typed.shown[-1].text == "📔 Saved · 😊 Good · streak 3"
+
+
+# --- a press on an ask: the diary's own evening ask, or bedtime's Wind down carrying the diary's row --------------------
+WIND_DOWN = "🌙 Wind down · made-up: bed by 11:00 pm"
+
+
+def asked(world, message_id, words):
+    """The day's ask posted as `message_id` saying `words` (the diary's own, or Wind down with the diary's row)."""
+    run(database.run(store.db_claim_ask, world.owner.id, world.day, clock.now()))
+    run(database.run(store.db_asked, world.owner.id, world.day, HUB, message_id))
+    world.words[message_id] = words
+
+
+def one_saved_line(world):
+    (line,) = saved_lines(world)
+    assert [[button.label for button in row] for row in line.card.rows][-1][-1] == "Undo"
+    assert sum(1 for row in line.card.rows for button in row if button.label == "Undo") == 1, "one Undo"
+    return line
+
+
+def test_write_on_the_ask_saves_posts_the_diary_s_own_line_and_leaves_the_ask_s_words(world):
+    asked(world, 7500, rules.ASK)
+    typed = FormPress(world, world.day.isoformat(), message_id=7500, fields={"words": "Made-up: a quiet evening."})
+    run(plain.on_written(typed))
+    one_saved_line(world)
+    assert typed.shown[-1].text == rules.ASK and typed.shown[-1].rows == (), "the ask keeps its words, loses its buttons"
+    assert world.deleted == [] and entry(world).text == "Made-up: a quiet evening."
+
+
+def test_a_mood_on_the_ask_saves_posts_the_diary_s_own_line_and_leaves_the_ask_s_words(world):
+    asked(world, 7501, rules.ASK)
+    picked = Press(world, f"{world.day.isoformat()}:good", message_id=7501)
+    run(plain.on_mood(picked))
+    line = one_saved_line(world)
+    assert line.card.text.startswith("📔 Saved · 😊 Good") and picked.shown[-1].text == rules.ASK and picked.shown[-1].rows == ()
+    assert world.deleted == [] and run(database.run(store.db_saved, world.owner.id, world.day)) == (HUB, line.id)
+
+
+def test_a_mood_on_wind_down_keeps_bedtime_s_own_text_and_posts_the_diary_s_own_line(world):
+    asked(world, 7600, f"{WIND_DOWN}\n{rules.ASK}")
+    picked = Press(world, f"{world.day.isoformat()}:ok", message_id=7600)
+    run(plain.on_mood(picked))
+    one_saved_line(world)
+    assert picked.shown[-1].text == WIND_DOWN and picked.shown[-1].rows == (), "bedtime's text, without the diary's line or row"
+    assert world.deleted == [] and run(database.run(store.db_saved, world.owner.id, world.day))[1] != 7600
+
+
+def test_write_on_wind_down_keeps_bedtime_s_own_text_and_posts_the_diary_s_own_line(world):
+    asked(world, 7601, f"{WIND_DOWN}\n{rules.ASK}")
+    typed = FormPress(world, world.day.isoformat(), message_id=7601, fields={"words": "Made-up: an early night."})
+    run(plain.on_written(typed))
+    one_saved_line(world)
+    assert typed.shown[-1].text == WIND_DOWN and typed.shown[-1].rows == ()
+    assert world.deleted == [], "Wind down is bedtime's: never deleted"
+
+
+def test_a_typed_entry_with_wind_down_up_strips_its_diary_row_and_never_deletes_it(world):
+    asked(world, 7602, f"{WIND_DOWN}\n{rules.ASK}")
+    write(world)
+    assert world.deleted == [] and (7602, WIND_DOWN) in [(message_id, card.text) for message_id, card in world.edited]
+    one_saved_line(world)
+
+
+def test_a_line_noted_from_an_ask_is_not_the_diary_s_own_and_is_never_deleted_or_edited(world):
+    """ea521ed noted the pressed ask as the day's line: such a note is cleared, and the diary's own line is posted."""
+    asked(world, 7603, f"{WIND_DOWN}\n{rules.ASK}")
+    write(world)
+    run(database.run(store.db_set_saved, world.owner.id, world.day, HUB, 7603))  # as ea521ed left it
+    world.sent.clear()
+    write(world, "Made-up: a second note.")
+    assert 7603 not in world.deleted and not any(message_id == 7603 and card.text.startswith("📔") for message_id, card in world.edited)
+    line = one_saved_line(world)
+    assert run(database.run(store.db_saved, world.owner.id, world.day)) == (INBOX, line.id)

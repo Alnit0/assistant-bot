@@ -118,6 +118,19 @@ line posted another one as well.
   "Undo that" typed takes the button off the day's line.
 - A typed mood ("actually today was ok") keeps its own wording on the line
   ("Mood · Bad → OK").
+- **A press on an ask is never the day's line** (found on review of ea521ed:
+  Write on the ask deleted the pressed ask before it could show "Saved", and
+  a mood on bedtime's Wind down made that bedtime message the day's line,
+  which a later failed edit could delete). A press on the diary's own ask or
+  on Wind down carrying the diary's row saves, posts or edits the diary's own
+  line, and takes only the diary's part off the ask: the ask keeps its words
+  without buttons; Wind down goes back to its own words without the diary's
+  line (it has no buttons of its own today). A typed save with Wind down up
+  edits it back the same way, never deletes it; the diary's own ask still
+  leaves the hub. Which is which is read back from the message (`surface.fetch`:
+  its words start with the ask or not). A line noted from an ask (as ea521ed
+  did) is no line of the diary's: the note is cleared, never deleted or
+  edited. The diary deletes only its own lines and its own ask.
 
 ## The morning news as one message (21 Oct, night; pushed, not shipped)
 

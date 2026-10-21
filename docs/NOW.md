@@ -3,13 +3,11 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Idle, last batch was** 21 Oct (night): the diary's one confirmation a
-day (a save edits the day's "Saved" line; an older line's Undo is handled
-already), pushed, not shipped. Before it, the morning news as one message
-(`c82cdc3`), not shipped: **the ship stopped at its checks** (21 Oct,
-9:35 pm): live's account can't create channels in the hub's category (no
-Manage Channels). Give it that, or make a text channel `news` there; then
-ship. The 9 pm ship cut-off is gone (it was never Alex's).
+**Batch (21 Oct, night): the diary's asks, then the morning news shipped.**
+Done: the rename of live's 5:30 row to "Morning news" (`c1a880a`); a press
+on the diary's ask or on Wind down never becomes the day's line. **In
+progress:** the ship, after Wind down posts at 10:30 pm (#news is the
+channel Alex made, its id only in live's `.env`).
 
 **The feature freeze is called off** (Alex, 21 Oct): no settle-in week.
 **Next:** Alex's list of changes (not heard yet); his first morning
