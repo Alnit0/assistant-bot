@@ -1,7 +1,7 @@
 import logging
 from datetime import date, timedelta
 
-from core import cards, clock, config, database, hub, messages, notify, scheduler, summaries, timeinput
+from core import cards, clock, config, database, hub, messages, notify, scheduler, summaries, surface, timeinput
 from core.actions import BOOLEAN, Field, Proposal, Request, Shown, State
 from core.attention import TIMED, Item
 from core.cards import Button, Card
@@ -19,6 +19,12 @@ log = logging.getLogger("assistant")
 # exactly as sent, in the database and nowhere else; every line said back names
 # none of them. The core is told the words are private (Entry.private), so the
 # message log, #bot-log and the router's memory keep a note in their place.
+#
+# One confirmation a diary day (21 Oct: a mood, then words in the form, showed
+# two "Saved" lines): every way of saving (the form, a mood button, a typed
+# entry or mood, a reply to the ask) goes through `_show_saved`, which edits the
+# day's one line and posts a new one only when that can't be edited. An Undo on
+# any other line of that day says it is handled already: never a second undo.
 # ---------------------------------------------------------------------------
 MOOD, UNDO = "mood", "undo"
 WRITE, WRITTEN = "write", "written"  # the ✍️ Write button and what its form sends back
@@ -74,10 +80,53 @@ async def _clear_ask(user_id: int, day: date) -> None:
         await cards.delete(there[0], there[1])
 
 
+# --- the day's one confirmation ------------------------------------------------------------------------------
+async def saved_card(user_id: int, day: date, kept: Entry, added: bool = False) -> Card:
+    """The day's line as it stands: "📔 Saved · 😊 Good · streak 4" and Undo; with no mood yet, a button a level;
+    a mood with no words yet, an offer of a few words. Never the words."""
+    line = rules.saved_line(kept, await _streak(user_id, today()), added=added)
+    undo = _undo_button(day)
+    if mood.on() and not kept.has_mood:
+        return Card(f"{line}\n-# how was it?", (mood.buttons(TASK, MOOD, day.isoformat()), (undo,)))
+    if not kept.text:
+        return Card(f"{line}\n-# a few words too?", ((write_button(day, ADD_LABEL), undo),))
+    return Card(line, ((undo,),))
+
+
+async def _retire(channel_id: int, message_id: int) -> None:
+    """An older line of the day, once another is the one: it goes (its Undo is answered as handled if it stays)."""
+    await cards.delete(channel_id, message_id)
+
+
+async def _show_saved(user_id: int, day: date, channel_id: int | None, card: Card, press=None) -> int | None:
+    """The day's one confirmation, shown as `card`. Pressed on a card (the form's, a mood's): that card is it, and
+    an older one goes. Otherwise the one there is edited in place, with a short pointer when it is in another
+    channel; a new one is posted only when it can't be edited (gone, or not allowed), and the old one goes. The
+    message's id, or None if nothing could be shown."""
+    there = await database.run(store.db_saved, user_id, day)
+    if press is not None:
+        await press.update(card)
+        if there is not None and there[1] != press.message_id:
+            await _retire(*there)
+        await database.run(store.db_set_saved, user_id, day, press.channel_id, press.message_id)
+        return press.message_id
+    if there is not None and await cards.edit(there[0], there[1], card):
+        if channel_id is not None and there[0] != channel_id:
+            await cards.send(channel_id, Card(f"{ICON} Kept · the day's line is up to date: {surface.link(*there)}".rstrip(": ")))
+        return there[1]
+    if there is not None:
+        await _retire(*there)
+    message_id = await cards.send(channel_id, card)
+    if message_id is not None:
+        await database.run(store.db_set_saved, user_id, day, channel_id, message_id)
+    return message_id
+
+
 # --- writing ------------------------------------------------------------------------------------------------
-async def keep(user_id: int, channel_id: int | None, on: date, words: str, said_mood=None) -> str:
+async def keep(user_id: int, channel_id: int | None, on: date, words: str, said_mood=None, press=None) -> str:
     """Words kept for a day, added to its entry (a second Write, or another message, appends); the mood
-    if the words gave one; the line said, with Undo and, with no mood yet, a button a level. Never the words."""
+    if the words gave one; the day's one line shown (`_show_saved`), with Undo and, with no mood yet, a button a
+    level. Never the words."""
     try:
         kept = await database.run(store.db_append, user_id, on, words.strip(), clock.now())
         was_there = kept.notes > 1
@@ -89,14 +138,9 @@ async def keep(user_id: int, channel_id: int | None, on: date, words: str, said_
         raise UserError(NOT_SAVED) from None
     await _clear_ask(user_id, on)
     changed(user_id)
-    line = rules.saved_line(kept, await _streak(user_id, on), added=was_there)
-    undo_row = (_undo_button(on),)
-    if not mood.on() or kept.has_mood:
-        message_id = await cards.send(channel_id, Card(line, (undo_row,)))
-    else:
-        # No mood yet: the line asks, with a button a level
-        message_id = await cards.send(channel_id, Card(f"{line}\n-# how was it?", (mood.buttons(TASK, MOOD, on.isoformat()), undo_row)))
-    return line if message_id is not None else "not shown"
+    card = await saved_card(user_id, on, kept, added=was_there)
+    message_id = await _show_saved(user_id, on, channel_id, card, press)
+    return card.text.split("\n")[0] if message_id is not None else "not shown"
 
 
 async def write(request: Request, data: dict, guessed: frozenset):
@@ -137,11 +181,8 @@ async def on_written(press: cards.Press) -> str:
     words = str((press.fields or {}).get("words") or "").strip()
     if not words:
         raise UserError("Nothing was written: the diary is as it was.")
-    line = await keep(press.user.id, press.channel_id, day, words)
-    there = await store.entry(press.user.id, day)
-    if there is not None:
-        # The ask, or the line after a mood: its button has done its job
-        await press.update(Card(rules.saved_line(there, await _streak(press.user.id, today())), ((_undo_button(day),),)))
+    # The card the form was opened from (the ask, or the line after a mood) becomes the day's one line
+    line = await keep(press.user.id, press.channel_id, day, words, press=press)
     return "written in the form" if line != "not shown" else "not shown"
 
 
@@ -201,17 +242,20 @@ async def set_mood(request: Request, data: dict, guessed: frozenset):
     kept = await database.run(store.db_set_mood, request.user.id, day, mood.CURRENT.name, said, clock.now())
     await _clear_ask(request.user.id, day)
     changed(request.user.id)
-    message_id = await cards.send(request.channel_id, Card(rules.mood_line(kept), ((_undo_button(day),),)))
+    message_id = await _show_saved(request.user.id, day, request.channel_id, Card(rules.mood_line(kept), ((_undo_button(day),),)))
     return Shown(rules.mood_line(kept) if message_id is not None else "not shown")
 
 
 async def undo(request: Request, data: dict, guessed: frozenset) -> str:
     """ "undo that" after an entry or a mood change: the last message written, or the mood as it was."""
     day = _day(data.get("day"), today())
+    there = await database.run(store.db_saved, request.user.id, day)
     line = await _undo_last(database.run, request.user.id, day)
     if line is None:
         raise UserError("There is nothing in the diary to undo.")
     changed(request.user.id)
+    if there is not None:
+        await cards.edit(there[0], there[1], Card(line))  # its Undo has been used: never a second undo
     return line
 
 
@@ -269,22 +313,33 @@ async def on_mood(press: cards.Press) -> str:
     asked = await press.db.run(store.db_ask, press.user.id, day)
     await press.db.run(store.db_clear_ask, press.user.id, day, clock.now())
     changed(press.user.id)
-    line = rules.saved_line(kept, await _streak(press.user.id, today()))
-    if kept.text:
-        await press.update(Card(line, ((_undo_button(day),),)))
-    else:
-        # A mood with no words yet: one small offer, on this line only, never again
-        await press.update(Card(f"{line}\n-# a few words too?", ((write_button(day, ADD_LABEL), _undo_button(day)),)))
+    # A mood with no words yet: one small offer of a few words, on the day's line
+    card = await saved_card(press.user.id, day, kept)
+    await _show_saved(press.user.id, day, press.channel_id, card, press)
+    line = card.text.split("\n")[0]
     if asked is not None and asked[1] and asked[1] != press.message_id and asked[0]:
         await cards.delete(asked[0], asked[1])  # the evening ask, if this was the line under an entry
     return line
 
 
+HANDLED = "Already handled: the day's newest line has its Undo"
+
+
 async def on_undo(press: cards.Press) -> str:
+    """The day's Undo: the last change to its entry, once. On any other line of that day (an older copy, posted twice
+    before 21 Oct) it is handled already: nothing is undone, and that line loses its button."""
     day = date.fromisoformat(press.arg)
+    there = await press.db.run(store.db_saved, press.user.id, day)
+    if there is not None and there[1] != press.message_id:
+        line = f"{ICON} {HANDLED}"
+        await press.update(Card(line))
+        return line
     line = await _undo_last(press.db.run, press.user.id, day) or f"{ICON} Nothing to undo"
     changed(press.user.id)
     await press.update(Card(line))
+    if press.message_id is not None:
+        # This line is the day's from now on: another copy's Undo is handled already, and a later save edits this one
+        await press.db.run(store.db_set_saved, press.user.id, day, press.channel_id, press.message_id)
     return line
 
 

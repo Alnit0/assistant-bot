@@ -144,7 +144,7 @@ def test_a_mood_by_button_and_its_undo(world):
 def test_a_mood_changed_in_words_shows_old_to_new_and_undo_puts_it_back(world):
     write(world, said_mood="bad")
     run(plain.set_mood(world.request("actually today was ok"), {"mood": "ok"}, frozenset()))
-    assert world.sent[-1].card.text == "📔 Mood · ~~😞 Bad~~ → **😐 OK**"
+    assert world.edited[-1][1].text == "📔 Mood · ~~😞 Bad~~ → **😐 OK**", "the day's line, edited"
     assert run(plain.undo(world.request("undo that"), {}, frozenset())) == "📔 Mood · back to 😞 Bad"
 
 
@@ -152,7 +152,7 @@ def test_undo_after_a_first_entry_takes_it_away(world):
     """Question 85: a message only about the day is kept with a quiet line and an Undo; Undo removes it."""
     assert write(world, said_mood="bad") == "📔 Saved · 😞 Bad"
     assert [[button.label for button in row] for row in world.sent[-1].card.rows] == [["Undo"]]
-    said = run(plain.on_undo(Press(world, world.day.isoformat())))
+    said = run(plain.on_undo(Press(world, world.day.isoformat(), message_id=world.sent[-1].id)))
     assert said.startswith("📔 Undone") and MADE_UP not in said
     assert entry(world) is None, "nothing kept"
 
@@ -502,3 +502,106 @@ def test_what_is_typed_in_the_form_is_never_in_the_log(world, monkeypatch):
 
     registered = core_cards._actions[(plain.TASK, plain.WRITTEN)]
     assert registered.private and core_cards._actions[(plain.TASK, plain.WRITE)].opens_form
+
+
+# --- one confirmation a day (21 Oct: a mood, then words in the form, showed two "Saved" lines) ---------------------------
+def saved_lines(world):
+    """The "Saved" lines posted (never edited ones): what Alex would see as separate confirmations."""
+    return [each for each in world.sent if each.card.text.startswith("📔 Saved") or each.card.text.startswith("📔 Added")]
+
+
+def test_a_mood_then_words_in_the_form_is_one_confirmation_edited_in_place(world):
+    mood_press = FormPress(world, f"{world.day.isoformat()}:good", message_id=7101)
+    run(plain.on_mood(mood_press))
+    typed = FormPress(world, world.day.isoformat(), message_id=7101, fields={"words": "Made-up: a quiet evening."})
+    run(plain.on_written(typed))
+    assert saved_lines(world) == [], "never a second, separate Saved line"
+    (card,) = typed.shown
+    assert card.text == "📔 Saved · 😊 Good" and [[button.label for button in row] for row in card.rows] == [["Undo"]], "the same message, one Undo"
+    assert run(database.run(store.db_saved, world.owner.id, world.day)) == (HUB, 7101)
+    assert entry(world).text == "Made-up: a quiet evening." and entry(world).mood == "good", "the mood kept with the words"
+
+
+def test_words_then_a_mood_is_one_confirmation_edited_in_place(world):
+    typed = FormPress(world, world.day.isoformat(), message_id=7201, fields={"words": "Made-up: a long walk."})
+    run(plain.on_written(typed))
+    assert saved_lines(world) == [] and typed.shown[-1].text.startswith("📔 Saved"), "the form's own card is the line"
+    picked = Press(world, f"{world.day.isoformat()}:ok", message_id=7201)
+    run(plain.on_mood(picked))
+    assert saved_lines(world) == [] and picked.shown[-1].text == "📔 Saved · 😐 OK"
+    assert run(database.run(store.db_saved, world.owner.id, world.day)) == (HUB, 7201)
+
+
+def test_typed_in_the_inbox_on_a_day_with_a_confirmation_edits_it(world):
+    first = write(world)  # a typed entry: the day's line is posted, once
+    (posted,) = saved_lines(world)
+    assert first.startswith("📔 Saved")
+    write(world, "Made-up: and later, a second note.", said_mood="good")
+    assert len(saved_lines(world)) == 1, "the second save edits, never posts another"
+    message_id, card = world.edited[-1]
+    assert message_id == posted.id and card.text == "📔 Added to today · 😊 Good" and card.rows[-1][-1].label == "Undo"
+
+
+def test_a_typed_mood_after_words_edits_the_day_s_line(world):
+    write(world)
+    (posted,) = saved_lines(world)
+    run(plain.set_mood(world.request("actually today was ok"), {"mood": "ok"}, frozenset()))
+    assert len(world.sent) == 1 and world.edited[-1][0] == posted.id and world.edited[-1][1].text == "📔 Mood · 😐 OK"
+
+
+def test_the_line_in_another_channel_is_edited_and_a_short_pointer_said_here(world):
+    run(plain.on_mood(Press(world, f"{world.day.isoformat()}:good", message_id=7301)))  # in the hub
+    write(world)  # then typed in #inbox
+    assert world.edited[-1][0] == 7301 and saved_lines(world) == []
+    (pointer,) = world.sent
+    assert pointer.channel == INBOX and pointer.card.text.startswith("📔 Kept · ") and not pointer.card.rows, "no second Undo"
+
+
+def test_a_line_that_can_t_be_edited_is_posted_again_once_and_the_old_one_goes(world, monkeypatch):
+    write(world)
+    (posted,) = saved_lines(world)
+
+    async def refused(channel_id, message_id, card):
+        return False  # gone, or not allowed
+
+    monkeypatch.setattr(cards, "edit", refused)
+    write(world, "Made-up: a second note.")
+    assert len(saved_lines(world)) == 2 and world.deleted == [posted.id], "a fresh one, and the old one taken away"
+    assert run(database.run(store.db_saved, world.owner.id, world.day)) == (INBOX, saved_lines(world)[-1].id)
+
+
+def test_the_day_s_undo_undoes_once_and_an_older_copy_s_undo_is_handled_already(world):
+    write(world, said_mood="good")
+    write(world, "Made-up: a second note.")
+    (posted,) = saved_lines(world)
+    said = run(plain.on_undo(Press(world, world.day.isoformat(), message_id=posted.id)))
+    assert said.startswith("📔 Undone") and entry(world).notes == 1
+    older = Press(world, world.day.isoformat(), message_id=6001)  # a duplicate posted before the fix
+    assert run(plain.on_undo(older)) == f"📔 {plain.HANDLED}" and entry(world).notes == 1, "never a second undo"
+    assert older.shown[-1].rows == (), "and its button goes"
+
+
+def test_two_old_duplicates_from_before_the_fix_undo_once_between_them(world):
+    write(world, said_mood="good")
+    write(world, "Made-up: a second note.")
+    run(database.run(store.db_set_saved, world.owner.id, world.day, None, None))  # as an entry kept before 21 Oct
+    first = run(plain.on_undo(Press(world, world.day.isoformat(), message_id=6101)))
+    second = run(plain.on_undo(Press(world, world.day.isoformat(), message_id=6102)))
+    assert first.startswith("📔 Undone") and second == f"📔 {plain.HANDLED}" and entry(world).notes == 1
+
+
+def test_undo_typed_takes_the_button_off_the_day_s_line(world):
+    write(world)
+    (posted,) = saved_lines(world)
+    run(plain.undo(world.request("undo that"), {}, frozenset()))
+    message_id, card = world.edited[-1]
+    assert message_id == posted.id and card.rows == () and card.text.startswith("📔 Undone")
+
+
+def test_the_streak_and_mood_stay_right_when_words_follow_a_mood(world):
+    for back in (2, 1):  # two days written before
+        run(database.run(store.db_append, world.owner.id, world.day - timedelta(days=back), "Made-up: an earlier day.", clock.now()))
+    run(plain.on_mood(Press(world, f"{world.day.isoformat()}:good", message_id=7401)))
+    typed = FormPress(world, world.day.isoformat(), message_id=7401, fields={"words": "Made-up: and some words."})
+    run(plain.on_written(typed))
+    assert typed.shown[-1].text == "📔 Saved · 😊 Good · streak 3"

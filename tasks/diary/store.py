@@ -8,7 +8,9 @@ from tasks.diary.rules import Entry
 # The diary in the database: the only place its words are kept. One entry a
 # diary day (several messages append to it), each mood with the scale it was
 # recorded on. A deleted entry is gone: its words are blanked, not kept.
-# One evening ask a day at most (diary_asks). Every row has a user_id.
+# One evening ask a day at most (diary_asks). One confirmation a day: the
+# entry keeps where its "Saved" line is (saved_channel, saved_message), so
+# every way of writing edits that one. Every row has a user_id.
 # ---------------------------------------------------------------------------
 
 
@@ -52,7 +54,13 @@ def add_undo(conn: sqlite3.Connection) -> None:
         conn.execute(f"ALTER TABLE diary_entries ADD COLUMN {column}")
 
 
-MIGRATIONS = [create_tables, add_undo]
+def add_saved(conn: sqlite3.Connection) -> None:
+    """Where the day's one confirmation is, so a second save edits it rather than posting another (21 Oct)."""
+    conn.execute("ALTER TABLE diary_entries ADD COLUMN saved_channel INTEGER")
+    conn.execute("ALTER TABLE diary_entries ADD COLUMN saved_message INTEGER")
+
+
+MIGRATIONS = [create_tables, add_undo, add_saved]
 
 _COLUMNS = "id, user_id, day, text, mood_scale, mood, mood_before, scale_before, notes"
 
@@ -140,6 +148,16 @@ def db_undo_mood(conn: sqlite3.Connection, user_id: int, day: date, now: datetim
 def db_delete(conn: sqlite3.Connection, user_id: int, day: date) -> bool:
     """The day's entry is gone, words and all. True if there was one."""
     return conn.execute("DELETE FROM diary_entries WHERE user_id = ? AND day = ?", (user_id, day.isoformat())).rowcount > 0
+
+
+def db_saved(conn: sqlite3.Connection, user_id: int, day: date) -> tuple[int, int] | None:
+    """(channel, message) of the day's confirmation, or None: no entry, or none noted (before 21 Oct)."""
+    row = conn.execute("SELECT saved_channel, saved_message FROM diary_entries WHERE user_id = ? AND day = ?", (user_id, day.isoformat())).fetchone()
+    return (row[0], row[1]) if row and row[1] else None
+
+
+def db_set_saved(conn: sqlite3.Connection, user_id: int, day: date, channel_id: int | None, message_id: int | None) -> None:
+    conn.execute("UPDATE diary_entries SET saved_channel = ?, saved_message = ? WHERE user_id = ? AND day = ?", (channel_id, message_id, user_id, day.isoformat()))
 
 
 def db_ask(conn: sqlite3.Connection, user_id: int, day: date) -> tuple | None:

@@ -92,6 +92,33 @@ generated"). Step 1 done: the feeds and reading them.
   steps, none failed, 197 recorded answers read back. The batch's spend:
   about US$0.39 (NZ$0.67) of the NZ$2.00 cap.
 
+## The diary: one confirmation a day (21 Oct, night; pushed, not shipped)
+
+Alex saw two "Saved" lines for one day: a mood picked (the card edited into
+"Saved · mood · streak N" with Undo), then words in the Write form, which
+posted a second, separate "Saved" line with its own Undo. The form's handler
+kept the words through the typed path's code, which always posted a line,
+and then edited the pressed card too; a typed entry or mood on a day with a
+line posted another one as well.
+
+### Decided (21 Oct, the diary's confirmation)
+
+- **Where the line is:** on the day's entry (`saved_channel`,
+  `saved_message`, an appended migration): no other place fit, and the hub's
+  Live lists would have made a short message after it stick to the diary.
+- **Pressed on a card** (a mood, the form): that card is the day's line, and
+  an older one goes. **Typed or a reply:** the day's line is edited in place;
+  in another channel than the one typed in, a short pointer there ("📔 Kept ·
+  the day's line is up to date", a link, no Undo). A new line is posted only
+  when the edit fails (gone, not allowed), and the old one is deleted.
+- **Undo:** the day's line's Undo undoes the last change, as before, once;
+  an Undo on any other line of that day (a duplicate from before the fix) says
+  "Already handled" and loses its button. On an entry kept before the fix, the
+  first Undo pressed becomes the day's line, so a second copy's is handled.
+  "Undo that" typed takes the button off the day's line.
+- A typed mood ("actually today was ok") keeps its own wording on the line
+  ("Mood · Bad → OK").
+
 ## The morning news as one message (21 Oct, night; pushed, not shipped)
 
 Alex, on the card version: "There's a gap here that looks bad because each
