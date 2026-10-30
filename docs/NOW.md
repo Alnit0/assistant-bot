@@ -5,8 +5,8 @@ history is `docs/STATUS.md`. Read first, with `/catchup`.
 
 **Idle, last batch was** 30 Oct: the gym fixes batch (one box a set,
 Cancel as an undo, one tap every time, a clean table, last time's
-numbers). Committed and pushed on `feature/pills` (the commit is the one
-that changed this file), **not shipped**. NZ$0.04 of NZ$1.50.
+numbers). Committed as `fa55e65` and pushed on `feature/pills`, **not
+shipped**. NZ$0.04 of NZ$1.50.
 
 **Waiting on Alex's phone check of Design · Gym logging**, and his own
 try of the dev bot's flow: the gym is on for the dev bot (`.env.dev`),
