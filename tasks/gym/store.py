@@ -253,11 +253,14 @@ class Session:
     off_plan: str | None
     channel_id: int | None
     message_id: int | None  # the workout's header
-    cards: dict = field(default_factory=dict)  # its other messages: "exercises" (a card each, in order), "summary", "cancelled"
+    cards: dict = field(default_factory=dict)  # its other messages: "exercises" (a card each, in order), "footer", "summary", "cancelled", "asked"
 
 
-# Cancelled: as if never started (Cancel is an undo): never counted, never numbered, never in a history
-OPEN, FINISHED, OFF_PLAN, NOT_DONE, CANCELLED = "open", "finished", "off_plan", "not_done", "cancelled"
+# Cancelled: as if never started (Cancel is an undo): never counted, never numbered, never in a history.
+# Unfinished: left open past its day and closed at midnight: its sets kept and in the history, said to be
+# unfinished, but never done (the rotation and the counts of sessions done leave it out)
+OPEN, FINISHED, OFF_PLAN, NOT_DONE, CANCELLED, UNFINISHED = "open", "finished", "off_plan", "not_done", "cancelled", "unfinished"
+DONE_STATUSES = (FINISHED, OFF_PLAN)
 _SESSION = "id, user_id, workout_id, name, day, number, status, source, off_plan, channel_id, message_id, cards"
 
 
@@ -268,7 +271,7 @@ def _session(row) -> Session:
 def db_add_session(conn: sqlite3.Connection, user_id: int, workout_id: int | None, name: str, day: date, status: str, now: datetime, source: str = "live", off_plan: str | None = None) -> int:
     number = None
     if workout_id is not None or status != OFF_PLAN:
-        number = 1 + conn.execute("SELECT COUNT(*) FROM gym_sessions WHERE user_id = ? AND lower(name) = lower(?) AND status IN (?, ?, ?)", (user_id, name, FINISHED, OPEN, OFF_PLAN)).fetchone()[0]
+        number = 1 + conn.execute("SELECT COUNT(*) FROM gym_sessions WHERE user_id = ? AND lower(name) = lower(?) AND status IN (?, ?, ?, ?)", (user_id, name, FINISHED, OPEN, OFF_PLAN, UNFINISHED)).fetchone()[0]
     return conn.execute(
         "INSERT INTO gym_sessions (user_id, workout_id, name, day, number, status, source, off_plan, started_at, finished_at, plan_id) VALUES "
         "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (SELECT id FROM gym_plans WHERE user_id = ? AND active = 1 AND removed_at IS NULL))",
@@ -294,9 +297,19 @@ def db_session_on(conn: sqlite3.Connection, user_id: int, workout_id: int | None
 
 
 def db_sessions(conn: sqlite3.Connection, user_id: int, since: date | None = None) -> list[Session]:
-    rows = conn.execute(f"SELECT {_SESSION} FROM gym_sessions WHERE user_id = ? AND day >= ? AND status IN (?, ?, ?) ORDER BY day, id",
-                        (user_id, (since or date(1900, 1, 1)).isoformat(), FINISHED, OPEN, OFF_PLAN)).fetchall()
+    """The history: every session but a cancelled one, an unfinished one included (said so where it is shown)."""
+    rows = conn.execute(f"SELECT {_SESSION} FROM gym_sessions WHERE user_id = ? AND day >= ? AND status IN (?, ?, ?, ?) ORDER BY day, id",
+                        (user_id, (since or date(1900, 1, 1)).isoformat(), FINISHED, OPEN, OFF_PLAN, UNFINISHED)).fetchall()
     return [_session(row) for row in rows]
+
+
+def db_open_user_ids(conn: sqlite3.Connection) -> list[int]:
+    return [row[0] for row in conn.execute("SELECT DISTINCT user_id FROM gym_sessions WHERE status = ?", (OPEN,))]
+
+
+def db_open_sessions(conn: sqlite3.Connection, user_id: int) -> list[Session]:
+    """Every session open, oldest first: one at most from 30 Oct, more only from before."""
+    return [_session(row) for row in conn.execute(f"SELECT {_SESSION} FROM gym_sessions WHERE user_id = ? AND status = ? ORDER BY id", (user_id, OPEN))]
 
 
 def db_set_status(conn: sqlite3.Connection, session_id: int, status: str, now: datetime | None) -> None:

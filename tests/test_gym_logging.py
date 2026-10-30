@@ -107,10 +107,12 @@ def test_a_card_s_table_is_a_row_a_set_within_a_phone_s_width():
 def test_start_posts_a_header_then_a_card_an_exercise_in_plan_order_and_nothing_else(gym):
     started, ids = started_with_messages(gym)
     exercises = run(session.exercises_of(started))
-    assert [each.id for each in gym.sent] == [started.message_id, *ids] and len(ids) == len(exercises) == 3
+    footer = started.cards["footer"]
+    assert [each.id for each in gym.sent] == [started.message_id, *ids, footer] and len(ids) == len(exercises) == 3, "header, cards, then the foot"
     header = now(gym, started.message_id)
     assert "## 🏋️ Lower 1 · session 2" in shown(header) and "0 of 3 exercises done" in shown(header)
-    assert labels(header) == ["Undo", "Finish", "Cancel"] and design.buttons(header.layout)[0].disabled, "Undo greyed: nothing to undo"
+    assert labels(header) == ["Undo", "Cancel"] and design.buttons(header.layout)[0].disabled, "Undo greyed: nothing to undo; Finish is at the foot"
+    assert labels(now(gym, footer)) == ["Finish"] and not design.texts(now(gym, footer).layout), "the foot holds Finish alone"
     squat = now(gym, ids[0])
     assert shown(squat).startswith("### Squat\n-# 1 warm-up 8-10 · 1 working 4-6 reps\n-# Last · Thu 8 Oct · 40 x 10, 80 x 6\n```\n1  -\n2  -\n```")
     assert labels(squat) == ["1", "2"], "a button a set, no word Set, and no Note: notes go on sets"
@@ -283,7 +285,7 @@ def test_cancel_after_two_sets_puts_everything_back_deletes_the_cards_and_undo_b
     assert run(database.run(store.db_queue, gym.owner.id)) == queue_before and run(session.next_workout(gym.owner.id)).name == "Lower 1", "the rotation unchanged"
     assert run(database.run(store.db_sets, started.id)) == [] and run(database.run(store.db_bests, gym.owner.id)) == bests_before
     assert started.id not in [each.id for each in run(database.run(store.db_sessions, gym.owner.id))], "never counted"
-    assert sorted(gym.deleted) == sorted([started.message_id, *ids]), "the header and every card gone"
+    assert sorted(gym.deleted) == sorted([started.message_id, *ids, started.cards["footer"]]), "the header, every card and the foot gone"
     line = gym.sent[-1].card
     assert line.text == "🏋️ **Lower 1** cancelled · 2 sets taken off, nothing logged · Lower 1 is still next" and [each.label for row in line.rows for each in row] == ["Undo"]
     undo, line_id = line.rows[0][0], gym.sent[-1].id
@@ -292,7 +294,7 @@ def test_cancel_after_two_sets_puts_everything_back_deletes_the_cards_and_undo_b
     assert not pressed.shown.updates, "the line is deleted, never edited"
     back = run(database.run(store.db_session, started.id))
     assert back.status == store.OPEN and line_id in gym.deleted, "the line gone"
-    assert len(back.cards["exercises"]) == 3 and back.message_id not in (None, started.message_id), "posted again"
+    assert len(back.cards["exercises"]) == 3 and back.message_id not in (None, started.message_id) and back.cards["footer"] == gym.sent[-1].id, "posted again, the foot last"
     assert "1  40 x 10\n2  100 x 6" in shown(now(gym, back.cards["exercises"][0])) and labels(now(gym, back.cards["exercises"][0])) == ["1", "2"]
 
 
@@ -312,7 +314,8 @@ def test_finish_takes_the_buttons_off_and_posts_the_summary_under_the_cards(gym)
     tap(gym, started, 0, 0, {"weight": "40", "reps": "10", "note": ""})
     posted = len(gym.sent)
     assert run(session.on_finish(press_on(gym, str(started.id)))) == "workout finished"
-    assert all(not design.buttons(now(gym, each).layout) for each in [started.message_id, *ids]), "no buttons left"
+    assert all(not design.buttons(now(gym, each).layout) for each in [started.message_id, *ids, started.cards["footer"]]), "no buttons left"
+    assert "finished" in shown(now(gym, started.cards["footer"])), "the foot says so"
     assert len(gym.sent) == posted + 1, "the summary, one new message"
     summary = gym.sent[-1].card
     table = shown(summary).split("```\n")[1].split("\n```")[0].splitlines()
@@ -323,7 +326,89 @@ def test_finish_takes_the_buttons_off_and_posts_the_summary_under_the_cards(gym)
     pressed = press_on(gym, design.buttons(summary.layout)[0].arg, message_id=gym.sent[-1].id)
     run(session.on_undo(pressed))
     assert not pressed.shown.updates, "the summary is deleted, never edited"
-    assert gym.sent[-1].id in gym.deleted and labels(now(gym, started.message_id)) == ["Undo", "Finish", "Cancel"], "open again, its buttons back"
+    assert gym.sent[-1].id in gym.deleted and labels(now(gym, started.message_id)) == ["Undo", "Cancel"], "open again, its buttons back"
+    assert labels(now(gym, started.cards["footer"])) == ["Finish"]
+
+
+# --- one workout open at a time --------------------------------------------------------------------------------------------------
+def ask_again(gym, said="starting a workout"):
+    request = actions.Request(gym.owner, GYM, said)
+    return run(plain.start(request, {}, frozenset()))
+
+
+def test_asking_for_a_workout_while_one_is_open_starts_nothing_and_asks_in_one_line(gym):
+    started, _ = started_with_messages(gym)
+    posted = len(gym.sent)
+    assert isinstance(ask_again(gym), actions.Shown), "nothing more said"
+    assert len(gym.sent) == posted + 1 and len(run(database.run(store.db_open_sessions, gym.owner.id))) == 1, "one line, still one open"
+    line = gym.sent[-1].card
+    assert line.text.startswith("🏋️ **Lower 1** is still open") and [each.label for row in line.rows for each in row] == ["Carry on", "Start fresh"]
+    ask_again(gym)
+    assert gym.sent[-2].id in gym.deleted and len(gym.sent) == posted + 2, "asked again: the earlier line goes, never two"
+    with pytest.raises(session.AlreadyOpen):
+        run(session.start(gym.owner.id))
+
+
+def test_carry_on_posts_the_open_workout_again_at_the_bottom_and_deletes_the_old_copies(gym):
+    started, ids = started_with_messages(gym)
+    tap(gym, started, 0, 0, {"weight": "40", "reps": "10", "note": ""})
+    ask_again(gym)
+    line = gym.sent[-1]
+    run(session.on_carry_on(press_on(gym, line.card.rows[0][0].arg, message_id=line.id)))
+    back = run(database.run(store.db_session, started.id))
+    old = [started.message_id, *ids, started.cards["footer"], line.id]
+    assert all(each in gym.deleted for each in old), "the old copies and the line gone"
+    assert [each.id for each in gym.sent[-5:]] == [back.message_id, *back.cards["exercises"], back.cards["footer"]], "header, cards, foot, at the bottom"
+    assert back.status == store.OPEN and "1  40 x 10" in shown(now(gym, back.cards["exercises"][0])), "as it was"
+
+
+def test_start_fresh_cancels_the_open_one_as_cancel_does_then_starts_the_new_one(gym):
+    queue_before = run(database.run(store.db_queue, gym.owner.id))
+    started, ids = started_with_messages(gym)
+    tap(gym, started, 0, 0, {"weight": "40", "reps": "10", "note": ""})
+    ask_again(gym)
+    line = gym.sent[-1]
+    said = run(session.on_start_fresh(press_on(gym, line.card.rows[0][1].arg, message_id=line.id)))
+    assert said == "started fresh: Lower 1"
+    old = run(database.run(store.db_session, started.id))
+    assert old.status == store.CANCELLED and run(database.run(store.db_sets, started.id)) == [] and run(database.run(store.db_queue, gym.owner.id)) == queue_before
+    assert all(each in gym.deleted for each in [started.message_id, *ids, started.cards["footer"]])
+    assert now(gym, line.id).text.startswith("🏋️ **Lower 1** cancelled · 1 set taken off"), "the line is now its cancelled line, with Undo"
+    fresh = run(database.run(store.db_open_session, gym.owner.id))
+    assert fresh.id != started.id and len(run(database.run(store.db_open_sessions, gym.owner.id))) == 1
+    undo = now(gym, line.id).rows[0][0]
+    assert run(session.undo(int(undo.arg), gym.owner.id)) == "↩️ **Lower 1** is open: finish or cancel it first", "never two open"
+    assert run(database.run(store.db_session, started.id)).status == store.CANCELLED
+
+
+def test_a_workout_left_open_from_the_day_before_is_closed_at_midnight_as_unfinished(gym, monkeypatch):
+    from datetime import timedelta
+
+    from tasks import gym as gym_task
+
+    started, ids = started_with_messages(gym)
+    tap(gym, started, 0, 0, {"weight": "40", "reps": "10", "note": ""})
+    queue_before = run(database.run(store.db_queue, gym.owner.id))
+    tomorrow = gym.today + timedelta(days=1)
+    run(gym_task.task.new_day(gym.today, tomorrow))
+    closed = run(database.run(store.db_session, started.id))
+    assert closed.status == store.UNFINISHED and [each.reps for each in run(database.run(store.db_sets, started.id))] == [10], "its sets kept"
+    assert run(database.run(store.db_queue, gym.owner.id)) == queue_before and run(session.next_workout(gym.owner.id)).name == "Lower 1", "never done"
+    assert all(not design.buttons(now(gym, each).layout) for each in [started.message_id, *ids, started.cards["footer"]]), "no buttons left"
+    assert "unfinished" in shown(now(gym, started.message_id)) and "unfinished" in shown(now(gym, started.cards["footer"]))
+    run(gym_task.task.new_day(gym.today, tomorrow))
+    assert run(database.run(store.db_session, started.id)).status == store.UNFINISHED, "safe to run twice"
+    asked = run(plain.ask(gym.request("sessions this month"), {"question": "sessions", "span": "month"}, frozenset()))
+    assert "(unfinished)" in asked, "in the history, said to be unfinished"
+    assert "last session today" not in run(gym_task.summary(gym.owner.id, gym.today)).overview, "not counted as done"
+
+
+def test_a_start_the_next_day_closes_one_left_open_first_without_the_midnight_close(gym):
+    from datetime import timedelta
+
+    started, _ = started_with_messages(gym)
+    fresh = run(session.start(gym.owner.id, day=gym.today + timedelta(days=1)))
+    assert run(database.run(store.db_session, started.id)).status == store.UNFINISHED and fresh.status == store.OPEN
 
 
 # --- words ------------------------------------------------------------------------------------------------------------------------

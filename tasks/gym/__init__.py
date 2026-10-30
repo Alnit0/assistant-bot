@@ -35,7 +35,7 @@ async def summary(user_id: int, day: date) -> Summary | None:
     if nxt is None:
         return None
     monday = day - timedelta(days=day.weekday())
-    done = [each for each in await database.run(store.db_sessions, user_id) if each.status != store.OPEN]
+    done = [each for each in await database.run(store.db_sessions, user_id) if each.status in store.DONE_STATUSES]
     parts = [f"next: {nxt.name}"]
     before = [each for each in done if each.day <= day]
     if before:
@@ -55,7 +55,7 @@ async def week(user_id: int, monday: date, upto: date):
 
     target = await database.run(store.db_target, user_id)
     insight = await insights.week_line(user_id, upto)  # an imbalance, stalls, a lighter week
-    count = sum(1 for each in await database.run(store.db_sessions, user_id, monday) if each.day <= upto and each.status != store.OPEN)
+    count = sum(1 for each in await database.run(store.db_sessions, user_id, monday) if each.day <= upto and each.status in store.DONE_STATUSES)
     if not target and not insight:
         return None
     if target:
@@ -67,7 +67,8 @@ async def plan_pieces(user_id: int, day: date) -> list:
     """For the week view and a plan: a session done that day, all day."""
     from core import planning
 
-    return [planning.Piece(TASK, f"g{each.id}", ICON, each.name, all_day=True, done=True) for each in await database.run(store.db_sessions, user_id, day) if each.day == day]
+    return [planning.Piece(TASK, f"g{each.id}", ICON, each.name + (" (unfinished)" if each.status == store.UNFINISHED else ""), all_day=True, done=each.status != store.UNFINISHED)
+            for each in await database.run(store.db_sessions, user_id, day) if each.day == day]
 
 
 async def plan_word(ctx: Context) -> str:
@@ -118,9 +119,16 @@ class GymTask(Task):
         return [
             ButtonNote("1, 2, 3", "a button a set on each exercise's card in #gym: a pop-up for that one set with Weight (kg), Reps and a Note of several lines, every box empty, last time's numbers in the labels; ✅ 2 once logged (its numbers are in the table), to put it right"),
             ButtonNote("↩️ Undo", "on the workout's header: the last set or note logged taken back, one a press"),
-            ButtonNote("🏁 Finish", "on the header: what is not logged is not done, the buttons go, the summary with your bests is posted under the cards, and the next workout comes round. Undo on the summary"),
+            ButtonNote("🏁 Finish", "at the foot, under the exercises: what is not logged is not done, the buttons go, the summary with your bests is posted under it, and the next workout comes round. Undo on the summary"),
             ButtonNote("Cancel", "on the header: as if the workout was never started, nothing logged, the same workout still next; its messages go and one line says so, with Undo"),
+            ButtonNote("▶️ Carry on", "when a workout is asked for while one is open: the open one posted again at the bottom, its old copies gone"),
+            ButtonNote("🔄 Start fresh", "the same: the open one cancelled as Cancel does, then the new one started"),
         ]
+
+    async def new_day(self, ended, started) -> None:
+        """A workout left open from the day before is closed as unfinished: its sets kept, never done."""
+        for user_id in await database.run(store.db_open_user_ids):
+            await session.close_unfinished(user_id, started)
 
     def migrations(self):
         return store.MIGRATIONS

@@ -6,6 +6,10 @@ backfilled from the git log.
 
 ## 2026-10-30
 
+- Gym (not yet on): Finish is at the foot, under the exercises. One workout open at a time: asking for one while
+  one is open posts one line with Carry on and Start fresh; one left open is closed at midnight as unfinished,
+  its sets kept, never counted as done. Before, a new start finished the open one and posted its summary.
+
 - Gym set buttons (not yet on): a logged set's button is "✅ 2", its numbers being in the table; the set pop-up's
   Note takes several lines; the exercise card's Note button is gone, so notes go on sets, and "note on squat: …"
   goes on that exercise's latest set in the open workout.

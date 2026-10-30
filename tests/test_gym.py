@@ -213,11 +213,12 @@ def test_starting_posts_the_next_workout_in_gym_with_last_time_and_a_pain_flag(w
     started = run(session.start(world.owner.id))
     assert started.name == "Lower 1" and started.number == 2
     assert all(each.channel == GYM for each in world.sent)
-    header, squat, leg_press, deadlift = (each.card for each in world.sent)
+    header, squat, leg_press, deadlift, footer = (each.card for each in world.sent)
     assert "## 🏋️ Lower 1 · session 2" in "\n".join(design.texts(header.layout))
     assert "-# Last · Thu 8 Oct · 120 x 21" in "\n".join(design.texts(leg_press.layout))
     assert "-# ⚠️ Last time: “knee felt a bit off”" in "\n".join(design.texts(deadlift.layout)), "a note about pain comes up again"
-    assert [button.label for button in design.buttons(header.layout)] == ["Undo", "Finish", "Cancel"]
+    assert [button.label for button in design.buttons(header.layout)] == ["Undo", "Cancel"]
+    assert [button.label for button in design.buttons(footer.layout)] == ["Finish"], "Finish at the foot, under the exercises"
 
 
 def test_do_another_instead_keeps_the_queue_skip_sends_to_the_back_off_plan_leaves_it(world):

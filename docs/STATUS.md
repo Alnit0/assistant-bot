@@ -6,7 +6,7 @@ No history is kept here: what changed is `docs/CHANGELOG.md`, and this
 file as it stood until midday on 2026-10-14 (every batch, every answer,
 all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
-**Updated:** 2026-10-30 (late evening, ticked set buttons and notes on sets, committed on `feature/pills`, not shipped)
+**Updated:** 2026-10-30 (night, Finish at the foot and one workout at a time, committed on `feature/pills`, not shipped)
 
 
 
@@ -15,6 +15,53 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
 - The gym fixes batch and its rework a set at a time (below), with the gym's migration 6 as extended. Nothing in
   live's `.env` changes.
+
+## The gym: Finish at the foot, one workout at a time (30 Oct, night; not shipped)
+
+Two fixes from Alex's phone test of the per-exercise cards:
+
+- **Finish is at the foot**: a start posts the header (Undo, Cancel), the exercise cards, then a small message
+  holding only Finish, edited in place like the rest. The summary is posted under it; Cancel deletes it too.
+- **One workout open at a time.** Asked for while one is open, nothing starts: one line with **Carry on** (the
+  open one posted again at the bottom, the old copies deleted) and **Start fresh** (it is cancelled as Cancel
+  does, then the new one starts). One left open from an earlier day is closed at midnight as **unfinished**.
+
+**What caused the extra workout**: starting while one was open did not refuse. It finished the open one quietly
+(the `quietly` it was given did nothing): its summary was posted, it counted as done and moved the rotation on,
+and the new workout was posted under it. On the dev bot, a workout started at 9:08 pm on the code before was
+still open when Alex started at 10:12 pm, so its summary and the new one appeared; he started again 30 seconds
+later and the same happened to that one. The self-test's own workout messages from 9:24 pm were in the same
+channel too, and their buttons named the self-test's own sessions, which the dev bot read as its own (two taps
+said "That workout is finished").
+
+### Decided (30 Oct, night)
+
+1. **The foot is Finish alone**, no text and no box. Once the workout is over a message can't be left empty, so it
+   becomes a small line, "🏁 Lower 1 · finished" (or "closed at midnight, unfinished"), and the summary goes under it.
+2. **The "already open" line** goes where he asked (in #gym, or #inbox); asked again, the earlier line is deleted
+   first, so there is never more than one. Finish, Cancel, Carry on and Start fresh take it away.
+3. **Start fresh** cancels exactly as Cancel does, and the line itself becomes the cancelled line with Undo (no
+   second line), then it starts what was asked for (a workout named, or the next).
+4. **Never two open**: Undo of a cancel or a Finish while another workout is open is refused, "Lower 1 is open:
+   finish or cancel it first". A session booked at a time ("gym tomorrow 6pm") with one open is not posted; the
+   job's log says why.
+5. **Unfinished** is a status of its own (`unfinished`; the status column is text, so no migration). Its sets and
+   bests are kept; the rotation is untouched; its buttons go, the header says "unfinished · N of M" and the foot
+   says so; nothing is posted at night. In the history: "sessions this month" lists it "(unfinished)" and does not
+   count it; the briefing's last session and the week's count leave it out; the week view shows it not done. It
+   keeps its session number.
+6. **The midnight close** is the gym's `new_day` (core/day.py), safe to run twice; a start also closes one from an
+   earlier day first, so nothing depends on the close having run.
+7. **The self-test closes and deletes**: new step 11.09 (Carry on, Start fresh, never two open) and 11.10, which
+   closes any workout it left and deletes every message of its workouts from the channel. The first run of 11.09
+   failed on a slip in the step (an `await` inside `all()`); 11.10 caught the workout it left and closed it.
+   Self-test bug D18 opened and closed by the self-test. Second run 11 of 11.
+8. **The dev bot cleaned**: its one open workout (one set logged) closed as unfinished in `data/dev.db` (a copy
+   kept first); its three workouts finished by the old start stay as they are, so its rotation has moved on. No
+   workout message was left in its #inbox to delete.
+9. **Live, read only**: four gym sessions, all finished, none open. Nothing changed.
+
+Spend: NZ$0 (no request to Claude; the self-test on recorded answers).
 
 ## The gym: ticked set buttons, notes on sets (30 Oct, late evening; not shipped)
 

@@ -170,7 +170,12 @@ async def start(request: Request, data: dict, guessed: frozenset):
     """ "starting a workout", "gym now", "do Lower 2 instead", "extra session": the card in #gym."""
     plan = await _plan_or_say(request)
     workout = session.find_workout(plan, str(data["workout"])) if data.get("workout") else None
-    started = await session.start(request.user.id, workout)
+    try:
+        started = await session.start(request.user.id, workout)
+    except session.AlreadyOpen as open_:
+        # One at a time: nothing started, one line asking (Carry on, Start fresh) and nothing else
+        await session.ask_open(open_.session, request.channel_id, workout.id if workout else None)
+        return Shown(f"{open_.session.name} is still open: asked to carry on or start fresh")
     line = f"{ICON} **{started.name}**" + (f" · session {started.number}" if started.number else "")
     if request.channel_id != session.gym_channel():
         line += " · its card is in #gym"
@@ -562,8 +567,9 @@ async def ask(request: Request, data: dict, guessed: frozenset) -> str:
         span = str(data.get("span") or "month")
         since = today - timedelta(days=today.weekday()) if span == "week" else today.replace(day=1)
         found = await database.run(store.db_sessions, request.user.id, since)
-        listed = ", ".join(f"{each.name} {each.day.day} {each.day:%b}" for each in found[-8:])
-        return f"{ICON} **{len(found)} session{'' if len(found) == 1 else 's'}** this {span}" + (f" · {listed}" if listed else "")
+        done = sum(1 for each in found if each.status != store.UNFINISHED)  # one closed at midnight is listed, not counted
+        listed = ", ".join(f"{each.name} {each.day.day} {each.day:%b}" + (" (unfinished)" if each.status == store.UNFINISHED else "") for each in found[-8:])
+        return f"{ICON} **{done} session{'' if done == 1 else 's'}** this {span}" + (f" · {listed}" if listed else "")
     said = str(data.get("exercise") or "").strip()
     if not said:
         raise UserError(f"{ICON} Which exercise?")

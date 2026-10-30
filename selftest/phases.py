@@ -1904,7 +1904,9 @@ async def p10(h: Harness) -> None:
 
 # ---------------------------------------------------------------------------
 # Start 11: logging at the gym a set at a time (30 Oct, reworked after Alex's
-# look), the gym's #gym being the self-test's own #inbox for this start. A
+# look; Finish at the foot and one workout at a time after his phone test),
+# the gym's #gym being the self-test's own #inbox for this start. It closes
+# every workout it opens and deletes their messages at the end (11.10). A
 # made-up plan (Test A: Test press with a session before, Test row of six
 # sets, Test curl; Test B: Test squat). Real presses on the real messages and
 # real pop-ups sent; notes on sets only (no Note button), so nothing asks
@@ -1939,6 +1941,44 @@ async def gym_messages(h: Harness):
     return found, await h.get(h.inbox, found.message_id), [await h.get(h.inbox, each) for each in found.cards.get("exercises", [])]
 
 
+async def gym_footer(h: Harness, session_id: int):
+    """A workout's foot, with Finish, as Discord has it now."""
+    from tasks.gym import store
+
+    found = await database.run(store.db_session, session_id)
+    return await h.get(h.inbox, found.cards.get("footer")) if found is not None else None
+
+
+async def gym_tidy(h: Harness) -> tuple[list[int], int]:
+    """Every workout the stage opened closed (cancelled, as Cancel does), then every message of every one of its
+    workouts deleted, so nothing is left in the channel Alex tests in: its buttons would name the self-test's
+    own sessions. (The ids of those it had to close, how many messages went.)"""
+    from tasks.gym import session as gym_session, store
+
+    closed = []
+    for left in await database.run(store.db_open_sessions, h.user.id):
+        await gym_session.cancel(left)
+        closed.append(left.id)
+
+    def every(conn):
+        return [(row[0], row[1]) for row in conn.execute("SELECT message_id, cards FROM gym_sessions WHERE user_id = ?", (h.user.id,))]
+
+    gone = 0
+    for header_id, kept in await database.run(every):
+        import json
+
+        found = json.loads(kept or "{}")
+        for message_id in [header_id, *found.get("exercises", []), *(found.get(key) for key in ("footer", "summary", "cancelled", "asked"))]:
+            if not message_id:
+                continue
+            try:
+                await (await h.inbox.fetch_message(int(message_id))).delete()
+                gone += 1
+            except Exception:
+                pass  # already gone
+    return closed, gone
+
+
 async def gym_set(h: Harness, card_id: int, arg: str, label: str, **typed: str):
     """One tap on a set's button, its pop-up checked to have opened, then sent."""
     pressed = await h.press(card_id, label, channel=h.inbox, arg=arg)
@@ -1963,16 +2003,18 @@ async def p11(h: Harness) -> None:
 
     green = design.colour(design.DONE)
 
-    async for attempt in h.step("11.01", "“starting a workout” with a made-up plan", "A header (Test A, 0 of 3 exercises done, Undo greyed, Finish, Cancel), then a card an exercise in plan order and nothing else: Test press with last time, Test row and Test curl First time, a button a set and no Note button", "gym logging a set at a time (30 Oct)"):
+    async for attempt in h.step("11.01", "“starting a workout” with a made-up plan", "A header (Test A, 0 of 3 exercises done, Undo greyed, Cancel), then a card an exercise in plan order, then a foot with Finish alone, and nothing else: Test press with last time, Test row and Test curl First time, a button a set and no Note button", "gym logging a set at a time (30 Oct)"):
         async with attempt:
             h.check(config.GYM_ENABLED and config.CHANNELS.get("gym") == h.inbox.id, "the gym is not on, or #gym is not the self-test's #inbox, in this start")
             await gym_seed(h)
             await h.say("starting a workout", canned=("gym_start", {"guessed": [], "not_included": []}), task="gym")
             session, header, found = await gym_messages(h)
             h.check(header is not None and len(found) == 3 and all(found), f"the messages: {session}")
-            newest = [each.id for each in await h.recent(h.inbox, 5)]
-            h.check(newest[:4] == [each.id for each in reversed(found)] + [header.id] and newest[4] in h.typed, f"something else was posted: {newest}")
-            h.check("Test A" in header.text and "0 of 3 exercises done" in header.text and without_emoji(header.labels) == ["Undo", "Finish", "Cancel"], f"the header: {header.text[:300]} {header.labels}")
+            footer = await gym_footer(h, session.id)
+            newest = [each.id for each in await h.recent(h.inbox, 6)]
+            h.check(footer is not None and newest[:5] == [footer.id] + [each.id for each in reversed(found)] + [header.id] and newest[5] in h.typed, f"something else was posted, or the foot is not last: {newest}")
+            h.check("Test A" in header.text and "0 of 3 exercises done" in header.text and without_emoji(header.labels) == ["Undo", "Cancel"], f"the header: {header.text[:300]} {header.labels}")
+            h.check(without_emoji(footer.labels) == ["Finish"] and not footer.text.strip(), f"the foot: {footer.text[:100]!r} {footer.labels}")
             press, row, curl = found
             h.check("Test press" in press.text and "Last · " in press.text and "50 x 10, 50 x 9, 50 x 8" in press.text and "1  -" in press.text, f"Test press: {press.text[:400]}")
             h.check("First time" in row.text and "First time" in curl.text, f"First time for the two never done: {row.text[:200]} / {curl.text[:200]}")
@@ -1980,6 +2022,7 @@ async def p11(h: Harness) -> None:
             h.check([len(each) for each in row.rows] == [5, 1], f"Test row's rows: {row.rows}")
             h.check(all(green not in each.accents for each in found), "an edge is green before anything was logged")
             h.memo["gym_ids"] = [header.id, *(each.id for each in found)]
+            h.memo["gym_footer"] = footer.id
             h.memo["gym_session"] = session.id
             h.saw(" / ".join(press.labels))
 
@@ -2009,7 +2052,7 @@ async def p11(h: Harness) -> None:
             h.check("1  52.5 x 10" in after.text and "2  52.5 x 9" in after.text and "3  -" in after.text, f"the table: {after.text[:400]}")
             logged = await database.run(store.db_set_logged_at, session_id)
             h.check([(name, position) for name, position, _ in logged] == [("Test press", 0), ("Test press", 1)] and all(when for _, _, when in logged), f"the records: {logged}")
-            h.check(await latest_is(h, ids[-1]), "something was posted under the cards")
+            h.check(await latest_is(h, h.memo["gym_footer"]), "something was posted under the foot")
 
     async for attempt in h.step("11.04", "Set 1 put right", "One tap on ✅ 1: its pop-up says now 52.5 and last 50; sent as 55 x 10, set 1 is put right and set 2 kept", "gym logging a set at a time (30 Oct)"):
         async with attempt:
@@ -2042,13 +2085,14 @@ async def p11(h: Harness) -> None:
             h.check(green in press.accents, f"Test press's edge: {press.accents}")
             h.check("1 of 3 exercises done" in (await h.get(h.inbox, ids[0])).text, "the header's progress")
 
-    async for attempt in h.step("11.07", "Finish", "The buttons gone from the header and every card; the summary, every exercise and every set, posted as one new message under them with Undo; Test A finished", "gym logging a set at a time (30 Oct)"):
+    async for attempt in h.step("11.07", "Finish", "Finish pressed on the foot: the buttons gone from the header, every card and the foot; the summary, every exercise and every set, posted as one new message under the foot with Undo; Test A finished", "gym logging a set at a time (30 Oct)"):
         async with attempt:
-            ids = h.memo["gym_ids"]
-            await h.press(ids[0], "Finish", channel=h.inbox)
+            ids = [*h.memo["gym_ids"], h.memo["gym_footer"]]
+            await h.press(h.memo["gym_footer"], "Finish", channel=h.inbox)
             left = [each for each in ids if (await h.get(h.inbox, each)).labels]
             h.check(not left, f"a button is left on the workout: {left}")
-            (summary,) = await h.recent(h.inbox, 1)
+            summary, above = await h.recent(h.inbox, 2)
+            h.check(above.id == h.memo["gym_footer"], f"the summary is not under the foot: {above.id}")
             h.check(summary.id not in ids and "🏁 Test A" in summary.text and without_emoji(summary.labels) == ["Undo"], f"the summary: {summary.text[:400]} {summary.labels}")
             table = summary.text.split("```")[1].strip("\n").splitlines() if "```" in summary.text else []
             h.check([line.split()[1] for line in table if line.startswith("Test ")] == ["press", "row", "curl"] and all(len(line) <= 32 for line in table), f"the table: {table}")
@@ -2060,6 +2104,7 @@ async def p11(h: Harness) -> None:
             await h.say("starting a workout", canned=("gym_start", {"guessed": [], "not_included": []}), task="gym")
             session, header, found = await gym_messages(h)
             h.check(session is not None and session.name == "Test B" and len(found) == 1, f"the session: {session}")
+            h.memo["gym_b_footer"] = session.cards.get("footer")
             await gym_set(h, found[0].id, f"{session.id}:0:0", "1", weight="60", reps="10", note="")
             await gym_set(h, found[0].id, f"{session.id}:0:1", "2", weight="60", reps="9", note="")
             await h.press(header.id, "Cancel", channel=h.inbox)
@@ -2067,7 +2112,8 @@ async def p11(h: Harness) -> None:
             h.check(gone.status == store.CANCELLED and await database.run(store.db_sets, session.id) == [], f"the session: {gone.status}")
             h.check(await database.run(store.db_queue, h.user.id) == queue_before, "the queue moved")
             h.check(session.id not in [each.id for each in await database.run(store.db_sessions, h.user.id)], "the cancelled session is counted")
-            h.check(await h.get(h.inbox, header.id) is None and await h.get(h.inbox, found[0].id) is None, "the header or the card is still there")
+            footer_id = (await database.run(store.db_session, session.id)).cards.get("footer") or h.memo.get("gym_b_footer")
+            h.check(await h.get(h.inbox, header.id) is None and await h.get(h.inbox, found[0].id) is None and await h.get(h.inbox, footer_id) is None, "the header, the card or the foot is still there")
             (line,) = await h.recent(h.inbox, 1)
             h.check("Test B" in line.text and "cancelled" in line.text and "Test B is still next" in line.text and without_emoji(line.labels) == ["Undo"], f"the line: {line.text[:300]} {line.labels}")
             await h.press(line.id, "Undo", channel=h.inbox)
@@ -2076,6 +2122,41 @@ async def p11(h: Harness) -> None:
             h.check(bool(found) and found[0].labels[:2] == ["✅ 1", "✅ 2"], f"the card again: {found[0].labels if found else None}")
             await h.press(header.id, "Cancel", channel=h.inbox)
             h.check((await database.run(store.db_session, session.id)).status == store.CANCELLED, "cancelled again")
+
+    async for attempt in h.step("11.09", "Asking for a workout while one is open", "Test B open, then “starting a workout” again: nothing started, one line with Carry on and Start fresh. Carry on posts the open workout again at the bottom and deletes the old copies and the line; asked again, Start fresh cancels it (the line becomes its cancelled line) and starts a new one; never two open", "gym: one workout at a time (30 Oct)"):
+        async with attempt:
+            await h.say("starting a workout", canned=("gym_start", {"guessed": [], "not_included": []}), task="gym")
+            first, header, found = await gym_messages(h)
+            await h.say("starting a workout", canned=("gym_start", {"guessed": [], "not_included": []}), task="gym")
+            (line,) = await h.recent(h.inbox, 1)
+            h.check(len(await database.run(store.db_open_sessions, h.user.id)) == 1, "two workouts open")
+            h.check("still open" in line.text and without_emoji(line.labels) == ["Carry on", "Start fresh"], f"the line: {line.text[:200]} {line.labels}")
+            old = [header.id, *(each.id for each in found), first.cards.get("footer")]
+            await h.press(line.id, "Carry on", channel=h.inbox)
+            again, header, found = await gym_messages(h)
+            footer = await gym_footer(h, again.id)
+            newest = [each.id for each in await h.recent(h.inbox, 3)]
+            h.check(again.id == first.id and newest == [footer.id, found[0].id, header.id], f"not at the bottom: {newest}")
+            still = [each for each in [*old, line.id] if await h.get(h.inbox, each) is not None]
+            h.check(not still, f"an old copy or the line is still there: {still}")
+            await h.say("starting a workout", canned=("gym_start", {"guessed": [], "not_included": []}), task="gym")
+            (line,) = await h.recent(h.inbox, 1)
+            await h.press(line.id, "Start fresh", channel=h.inbox)
+            fresh, header, found = await gym_messages(h)
+            h.check(fresh is not None and fresh.id != first.id and (await database.run(store.db_session, first.id)).status == store.CANCELLED, f"start fresh: {fresh}")
+            h.check(len(await database.run(store.db_open_sessions, h.user.id)) == 1, "two workouts open")
+            said = await h.get(h.inbox, line.id)
+            h.check(said is not None and "cancelled" in said.text and without_emoji(said.labels) == ["Undo"], f"the line: {said.text[:200] if said else 'gone'}")
+            await h.press(header.id, "Cancel", channel=h.inbox)
+
+    async for attempt in h.step("11.10", "Nothing left behind", "Every workout the stage opened is closed, and every message of its workouts deleted from the channel, so none of its buttons is left where Alex tests", "gym: one workout at a time (30 Oct)"):
+        async with attempt:
+            closed, gone = await gym_tidy(h)
+            h.check(not closed, f"workouts were left open: {closed} (closed now)")
+            h.check(await database.run(store.db_open_sessions, h.user.id) == [], "a workout is still open")
+            left = [each for each in await h.recent(h.inbox, 30) if any(custom_id.startswith("gym") or ":gym:" in custom_id for _, custom_id in each.buttons)]
+            h.check(not left, f"gym buttons left in the channel: {[each.id for each in left]}")
+            h.saw(f"{gone} messages deleted")
 
 
 PHASES = {"p1": p1, "p2": p2, "p3": p3, "p4": p4, "p5": p5, "p6": p6, "p7": p7, "p8": p8, "p9": p9, "p10": p10, "p11": p11}

@@ -3,7 +3,7 @@
     python -m selftest.gym_logging_preview [--check]
 
 Logging a set at a time (30 Oct, reworked after Alex's look; ticked set buttons and notes on sets only after his
-try): the workout's header and three exercise cards,
+try; Finish at the foot after his next): the workout's header, three exercise cards and its foot,
 drawn by the gym's own code against a temporary database holding the made-up logbook of tests/gym_files.py,
 imported on what the real API answered for it (evals/fixtures/gym_import.json, offline): one exercise untouched,
 one with one set logged, one complete. The set's pop-up can't be posted, so it is said in words. No request to
@@ -81,10 +81,11 @@ def build() -> list[tuple[str, tuple]]:
         await session.on_logged(press(f"{started.id}:1:0", {"weight": "40", "reps": "12", "note": ""}))
         now = await database.run(store.db_session, started.id)
         squat, row, deadlift = (messages[each] for each in now.cards["exercises"])
-        found.append(("The header: the workout, how many exercises are done, and Undo, Finish and Cancel. It is edited in place as you go", messages[now.message_id].layout))
+        found.append(("The header: the workout, how many exercises are done, Undo and Cancel. It is edited in place as you go", messages[now.message_id].layout))
         found.append(("Squat, complete: every set logged, so its edge turns green. A logged set's button is ticked, ✅ 2, since its numbers are in the table, and one tap opens it again to put it right. A set's note is small under the table", squat.layout))
         found.append(("Test row (made up), one set logged: the table has a row a planned set from the start, so the card never grows as you log. Purple until every set is in", row.layout))
         found.append(("Romanian deadlift, untouched: last time's sets on the small line, then a dash a set, and a button a set, five to a row; no Note button, a note goes in a set's pop-up", deadlift.layout))
+        found.append(("The foot, under the last exercise: Finish alone, so it is where you end up when you are done. The summary is posted under it", messages[now.cards["footer"]].layout))
 
     asyncio.run(story())
     for label, pieces in found:
@@ -96,9 +97,10 @@ def build() -> list[tuple[str, tuple]]:
 
 def opening() -> str:
     return "\n".join([
-        "## Updated: ticked set buttons, notes on sets",
+        "## Updated: Finish at the foot, one workout at a time",
         "Each exercise is its own card under the workout's header, with a button a set. Finish set 1, tap **1**, log it; rest; finish set 2, tap **2**, log it. Only that exercise's card and the header change, in place, and nothing else is posted while the workout is open.",
         "**The set's pop-up** (Discord's own, so it can't be posted here): its title is the exercise and the set, “Squat · set 2”. Three boxes, every one empty, no placeholder: **Weight (kg)** and **Reps**, one line each, and **Note**, a box of several lines. Notes go only here: the card has no Note button now. Last session's numbers for that same set are in the labels, “Weight (kg) · last 80” and “Reps · last 6”; with no last session they are just the names. Leave Weight empty for a bodyweight move. When you put a set right, the labels also say what it is now, “Weight (kg) · now 82.5 · last 80”.",
+        "**Finish** is now at the foot, under the exercises; the header keeps Undo and Cancel. **One workout at a time:** asking for one while one is open starts nothing and posts one line with **Carry on** (the open one posted again at the bottom) and **Start fresh** (it is cancelled, then the new one starts). One left open is closed at midnight as unfinished, its sets kept.",
         "A note said in words, “note on squat: last set felt heavy”, goes on that exercise's set logged most recently, after a confirm card.",
         "**Finish** takes the buttons off and posts the summary, every exercise and every set, under the cards. **Cancel** deletes the header and cards and leaves one line with Undo; the same workout is still next.",
         "**Try it on the dev bot:** start a workout in its #inbox (its #gym), log two sets of one exercise, put one right, add a note in a set's pop-up, then Finish or Cancel.",

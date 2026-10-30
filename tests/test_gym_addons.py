@@ -163,5 +163,5 @@ def test_the_card_shows_the_pattern_the_next_time(world, monkeypatch):
         session_id = run(database.run(store.db_add_session, world.owner.id, None, "Lower 1", world.today - timedelta(days=day), store.FINISHED, clock.now()))
         run(database.run(store.db_add_note, world.owner.id, session_id, Note("Romanian deadlift", "knee again", True, body_part="knee")))
     run(session.start(world.owner.id))
-    shown = "\n".join(design.texts(world.sent[-1].layout))
+    shown = "\n".join(design.texts(world.sent[-2].layout))  # the last exercise's card, above the foot
     assert "⚠️ knee flagged" in shown and "romanian deadlifts" in shown and "maybe try hip thrust instead" in shown

@@ -61,7 +61,9 @@ the full self-test run.
   sets only): with the exercise Note gone, pain said at the gym no longer reaches the pain pattern or "⚠️ Last
   time"; reading a set's note for pain would be one small request to Claude a note, for Alex's word. (7) The
   router sends "gym tomorrow 6pm" (gy13) to reminders, with or without the 30 Oct "only for" line; its old
-  recording is kept.
+  recording is kept. (8) The self-test's own database numbers its workouts as the dev bot's does, so a button
+  left on one of its messages names a dev bot workout; start 11 now deletes its workout messages at its end
+  (11.10), but a run stopped before then leaves them.
 - **Tests that move the dev clock to a fixed day stop once that day has passed**: `tests/test_calendar.py`
   failed 6 tests from 22 Oct, 8:50 am (the clock only moves forward). Fixed there by holding the real time
   before the made-up morning; about a dozen other test files move the clock to a fixed day in Oct or Nov

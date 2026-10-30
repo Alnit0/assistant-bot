@@ -516,3 +516,7 @@ and read as clumps of text.
 **After Alex's try (30 Oct, late):** a logged set's button is "✅ 2", not "✅ 60 x 8", since the table already has
 the numbers; one to look at "⚠️ 2". The Note button is gone: notes go in a set's pop-up, whose Note box now takes
 several lines. Five buttons to a row, so none moves. Another new message in the same post shows it.
+
+**After his phone test (30 Oct, night):** Finish moved to a foot of its own under the last exercise, where his
+thumb is when he is done; the header keeps Undo and Cancel. One workout at a time: asked for again, one line with
+Carry on and Start fresh. Another new message in the same post shows the header, cards and foot.

@@ -25,10 +25,14 @@ log = logging.getLogger("assistant")
 #                          to the back of the queue, the summary posted under; Undo
 #   Cancel                 as if never started: nothing logged, the queue as it
 #                          was, the messages gone, one line with Undo
+#   start while one open   one line: Carry on (it is posted again at the bottom)
+#                          or Start fresh (it is cancelled, the new one started)
+#   midnight               one left open from the day before: unfinished, its
+#                          sets kept, never done in the rotation
 #
-# A workout is a header (its name, how many exercises are done, Undo, Finish
-# and Cancel) and a card an exercise, each its own message, edited in place:
-# nothing else is posted while it is open. An exercise's card reads from
+# A workout is a header (its name, how many exercises are done, Undo and
+# Cancel), a card an exercise and a foot with Finish, each its own message,
+# edited in place: nothing else is posted while it is open. An exercise's card reads from
 # reference to today: its name, the plan, last time's sets, then today's sets
 # as a table with a row a planned set from the start (so the card never grows
 # as sets are logged), and a button a set ("1", "2"…, "✅ 2" once logged, to
@@ -37,6 +41,7 @@ log = logging.getLogger("assistant")
 # labels. Notes go on sets only; an exercise's note from before still shows.
 # ---------------------------------------------------------------------------
 LOG, LOGGED, NOTE, NOTED, FINISH, UNDO, UNDO_LAST, CANCEL = "log", "logged", "note", "noted", "finish", "undo", "undo_last", "cancel"
+CARRY_ON, START_FRESH = "carry_on", "start_fresh"
 NO_PLAN_SETS = 3  # rows and buttons for an exercise with no planned sets (one done instead)
 MOST_SETS = 20  # buttons a card holds: four rows of five
 NOTE_ON_CARD = 64  # characters of a note on the card: about a line on a phone
@@ -243,19 +248,29 @@ async def notes_today(session: store.Session) -> dict[str, Note]:
 
 
 async def header_card(session: store.Session) -> Card:
-    """The workout's name, how many exercises are done, and Undo, Finish and Cancel while it is open."""
+    """The workout's name, how many exercises are done, and Undo and Cancel while it is open (Finish is at the
+    foot, under the exercises)."""
     exercises = await exercises_of(session)
     logged = await database.run(store.db_sets, session.id)
     done = sum(1 for each in exercises if complete(each, mine(logged, each.name)))
     progress = f"{done} of {len(exercises)} exercise{'' if len(exercises) == 1 else 's'} done"
-    lines = [design.page_title(title_of(session)), design.small(f"{session.day:%a} {session.day.day} {session.day:%b} · " + (progress if session.status == store.OPEN else f"finished · {progress}"))]
+    ended = "unfinished" if session.status == store.UNFINISHED else "finished"
+    lines = [design.page_title(title_of(session)), design.small(f"{session.day:%a} {session.day.day} {session.day:%b} · " + (progress if session.status == store.OPEN else f"{ended} · {progress}"))]
     children = [design.Text("\n".join(lines))]
     if session.status == store.OPEN:
         last = await database.run(store.db_last_session_undo, session.id)
-        children.append(design.Row((undo_button(last, UNDO_LAST, str(session.id)), Button("Finish", TASK, FINISH, str(session.id), emoji="🏁", style=cards.SUCCESS),
-                                    cards.cancel(TASK, CANCEL, str(session.id)))))
+        children.append(design.Row((undo_button(last, UNDO_LAST, str(session.id)), cards.cancel(TASK, CANCEL, str(session.id)))))
     status = design.PREPARED if session.status == store.OPEN else design.DONE
     return Card(f"{title_of(session)} · {progress}", (), design.fit((design.Box(status, tuple(children)),)))
+
+
+def footer_card(session: store.Session) -> Card:
+    """The workout's foot, under the last exercise: Finish alone while it is open; then a small line saying how it
+    ended (the summary goes under it)."""
+    if session.status == store.OPEN:
+        return Card(f"🏁 Finish {session.name}", (), design.fit((design.Row((Button("Finish", TASK, FINISH, str(session.id), emoji="🏁", style=cards.SUCCESS),)),)))
+    said = "closed at midnight, unfinished: its sets are kept" if session.status == store.UNFINISHED else "finished"
+    return Card(f"🏁 {session.name} · {said}", (), design.fit((design.Text(design.small(f"🏁 {session.name} · {said}")),)))
 
 
 # --- drawing: every message edited in place ---------------------------------------------------------------------------------------
@@ -292,8 +307,16 @@ async def draw_exercise(session: store.Session, index: int, exercises: list[Exer
         await database.run(store.db_set_cards, session.id, {**now.cards, "exercises": ids})
 
 
+async def draw_footer(session: store.Session) -> None:
+    session = await database.run(store.db_session, session.id) or session
+    placed = await _put(session, session.cards.get("footer"), footer_card(session))
+    if placed is not None and placed != session.cards.get("footer"):
+        now = await database.run(store.db_session, session.id)
+        await database.run(store.db_set_cards, session.id, {**now.cards, "footer": placed})
+
+
 async def draw(session: store.Session) -> None:
-    """The header and every exercise's card brought up to date in place; on a start, posted in order."""
+    """The header, every exercise's card and the foot brought up to date in place; on a start, posted in order."""
     session = await database.run(store.db_session, session.id) or session
     if gym_channel() is None and not session.channel_id:
         return
@@ -301,6 +324,7 @@ async def draw(session: store.Session) -> None:
     exercises = await exercises_of(session)
     for index in range(len(exercises)):
         await draw_exercise(await database.run(store.db_session, session.id), index, exercises)
+    await draw_footer(session)
 
 
 async def draw_one(session: store.Session, name: str) -> None:
@@ -316,12 +340,14 @@ async def draw_one(session: store.Session, name: str) -> None:
 
 
 async def _remove(session: store.Session) -> None:
-    """The header and every exercise's card deleted (a cancelled workout's; they come back with its Undo)."""
-    for message_id in [session.message_id, *session.cards.get("exercises", [])]:
+    """The header, every exercise's card and the foot deleted (a cancelled workout's, they come back with its
+    Undo; or an open one's, to be posted again at the bottom)."""
+    session = await database.run(store.db_session, session.id) or session
+    for message_id in [session.message_id, *session.cards.get("exercises", []), session.cards.get("footer")]:
         if session.channel_id and message_id:
             await cards.delete(session.channel_id, message_id)
     await database.run(store.db_placed, session.id, session.channel_id, None)
-    await database.run(store.db_set_cards, session.id, {key: value for key, value in session.cards.items() if key != "exercises"})
+    await database.run(store.db_set_cards, session.id, {key: value for key, value in session.cards.items() if key not in ("exercises", "footer")})
 
 
 async def _drop(session: store.Session, key: str) -> None:
@@ -329,9 +355,10 @@ async def _drop(session: store.Session, key: str) -> None:
     now = await database.run(store.db_session, session.id)
     if now is None or not now.cards.get(key):
         return
-    if now.channel_id:
-        await cards.delete(now.channel_id, now.cards[key])
-    await database.run(store.db_set_cards, now.id, {name: value for name, value in now.cards.items() if name != key})
+    channel_id = now.cards.get(f"{key}_in") or now.channel_id  # a line said where it was asked for, else in #gym
+    if channel_id:
+        await cards.delete(channel_id, now.cards[key])
+    await database.run(store.db_set_cards, now.id, {name: value for name, value in now.cards.items() if name not in (key, f"{key}_in")})
 
 
 async def _post(session: store.Session, key: str, card: Card) -> None:
@@ -343,21 +370,99 @@ async def _post(session: store.Session, key: str, card: Card) -> None:
 
 
 # --- starting -------------------------------------------------------------------------------------------------------------------
+class AlreadyOpen(UserError):
+    """Start asked for while a workout is open: one at a time, so nothing is started (the open one is asked about)."""
+
+    def __init__(self, session: store.Session):
+        super().__init__(f"{ICON} **{session.name}** is still open")
+        self.session = session
+
+
 async def start(user_id: int, workout: Workout | None = None, day: date | None = None) -> store.Session:
-    """A session of `workout` (the next in the queue unless said): its header and a card an exercise in #gym.
-    One open session at a time: one left open is finished first, as it stands."""
+    """A session of `workout` (the next in the queue unless said): its header, a card an exercise and its foot
+    with Finish, in #gym. One open at a time: one open today raises AlreadyOpen; one left from an earlier day is
+    closed as unfinished first (the midnight close, in case it has not run)."""
     if gym_channel() is None:
         raise UserError(f"{ICON} There is no #gym channel set (GYM_CHANNEL_ID).")
     workout = workout or await next_workout(user_id)
     if workout is None:
         raise UserError(f"{ICON} You have no gym plan yet: send your logbook (a CSV or XLSX) to import it.")
+    today = day or days.today()
+    await close_unfinished(user_id, today)
     left = await database.run(store.db_open_session, user_id)
     if left is not None:
-        await finish(left, quietly=True)
-    session_id = await database.run(store.db_add_session, user_id, workout.id, workout.name, day or days.today(), store.OPEN, clock.now())
+        raise AlreadyOpen(left)
+    session_id = await database.run(store.db_add_session, user_id, workout.id, workout.name, today, store.OPEN, clock.now())
     await draw(await database.run(store.db_session, session_id))
     changed(user_id)
     return await database.run(store.db_session, session_id)
+
+
+async def close_unfinished(user_id: int, today: date) -> list[int]:
+    """Every workout left open from a day before `today` closed as unfinished: its sets kept (and its bests), the
+    rotation untouched, its buttons taken off and its foot saying so; nothing posted. Safe to run twice. The ids."""
+    closed = []
+    for left in await database.run(store.db_open_sessions, user_id):
+        if left.day >= today:
+            continue
+        await database.run(store.db_set_status, left.id, store.UNFINISHED, clock.now())
+        await database.run(store.db_put_bests, user_id, rules.bests(await database.run(store.db_sets, left.id)), left.id)
+        await _drop(left, "asked")
+        await draw(await database.run(store.db_session, left.id))
+        closed.append(left.id)
+    if closed:
+        changed(user_id)
+    return closed
+
+
+def asked_card(left: store.Session, workout_id: int | None) -> Card:
+    """The one line when a workout is asked for while one is open: Carry on, or Start fresh."""
+    line = f"{ICON} **{left.name}** is still open · carry on with it, or start fresh (it is cancelled)"
+    return Card(line, ((Button("Carry on", TASK, CARRY_ON, str(left.id), emoji="▶️", style=cards.PRIMARY),
+                        Button("Start fresh", TASK, START_FRESH, f"{left.id}:{workout_id or ''}", emoji="🔄", style=cards.PRIMARY)),))
+
+
+async def ask_open(left: store.Session, channel_id: int | None, workout_id: int | None) -> int | None:
+    """That line posted (an earlier one of the same workout deleted first, so they never pile up); its id."""
+    await _drop(left, "asked")
+    message_id = await cards.send(channel_id or left.channel_id or gym_channel(), asked_card(left, workout_id), silent=True)
+    if message_id is not None:
+        now = await database.run(store.db_session, left.id)
+        await database.run(store.db_set_cards, left.id, {**now.cards, "asked": message_id, "asked_in": channel_id or left.channel_id or gym_channel()})
+    return message_id
+
+
+async def bring_forward(session: store.Session) -> None:
+    """Carry on: the open workout's header, cards and foot posted again at the bottom, the old copies deleted."""
+    await _drop(session, "asked")
+    await _remove(session)
+    await draw(await database.run(store.db_session, session.id))
+
+
+async def on_carry_on(press: cards.Press) -> str:
+    session = await press.db.run(store.db_session, int(press.arg)) if press.arg.isdigit() else None
+    if session is None or session.status != store.OPEN:
+        await press.update(Card(f"{ICON} That workout is not open any more."))
+        return "not open"
+    await bring_forward(session)
+    return "workout brought forward"
+
+
+async def on_start_fresh(press: cards.Press) -> str:
+    """Start fresh: the open workout cancelled exactly as Cancel does (this line becomes its cancelled line, with
+    Undo), then the one asked for started."""
+    left_id, _, workout_id = press.arg.partition(":")
+    left = await press.db.run(store.db_session, int(left_id)) if left_id.isdigit() else None
+    user_id = left.user_id if left is not None else press.user.id
+    if left is not None and left.status == store.OPEN:
+        now = await database.run(store.db_session, left.id)
+        await database.run(store.db_set_cards, left.id, {key: value for key, value in now.cards.items() if key not in ("asked", "asked_in")})
+        await cancel(await database.run(store.db_session, left.id), in_place=(press.channel_id, press.message_id))
+    workout = None
+    if workout_id.isdigit():
+        workout = next((each for each in await store.plan(user_id) if each.id == int(workout_id)), None)
+    started = await start(user_id, workout)
+    return f"started fresh: {started.name}"
 
 
 async def skip(user_id: int, workout: Workout) -> list[Workout]:
@@ -633,10 +738,11 @@ async def on_noted(press: cards.Press) -> str:
 
 
 # --- Finish ---------------------------------------------------------------------------------------------------------------------
-async def finish(session: store.Session, quietly: bool = False) -> tuple[str, int]:
+async def finish(session: store.Session) -> tuple[str, int]:
     """End a session: every planned set not logged is not done; personal bests; the workout to the back of the
-    queue; the buttons taken off the header and every card, and the summary posted under them, with Undo. The
-    summary's words and an undo's id."""
+    queue; the buttons taken off the header, every card and the foot, and the summary posted under them, with
+    Undo. The summary's words and an undo's id."""
+    await _drop(session, "asked")
     exercises = await exercises_of(session)
     logged = await database.run(store.db_sets, session.id)
     missing = [planned_set(each, index) for each in exercises for index in range(len(each.sets)) if index not in by_position(mine(logged, each.name))]
@@ -705,11 +811,11 @@ async def on_finish(press: cards.Press) -> str:
 
 
 # --- Cancel ---------------------------------------------------------------------------------------------------------------------
-async def cancel(session: store.Session) -> tuple[str, int]:
+async def cancel(session: store.Session, in_place: tuple[int | None, int | None] | None = None) -> tuple[str, int]:
     """Cancel is an undo of Start: everything back as it was before it. Nothing of the session is logged or
     counted (what was logged in it is taken off, kept to put back), it is never numbered or done, and the queue
-    is not touched, so the same workout is still next. Its header and cards are deleted and one line says so,
-    with Undo."""
+    is not touched, so the same workout is still next. Its header, cards and foot are deleted and one line says
+    so, with Undo (`in_place`: that line written over a message of the workout's own, Start fresh's)."""
     sets = await database.run(store.db_sets, session.id)
     notes = await database.run(store.db_notes, session.id)
     await database.run(store.db_clear_session, session.id)
@@ -721,8 +827,15 @@ async def cancel(session: store.Session) -> tuple[str, int]:
     taken = sum(1 for each in sets if each.done)
     said = (f"{taken} set{'' if taken == 1 else 's'} taken off, nothing logged" if taken else "nothing logged") + (f" · {nxt.name} is still next" if nxt else "")
     line = f"{ICON} **{session.name}** cancelled · {said}"
+    await _drop(session, "asked")
     await _remove(session)
-    await _post(await database.run(store.db_session, session.id), "cancelled", Card(line, ((undo_button(undo_id),),)))
+    said_card = Card(line, ((undo_button(undo_id),),))
+    channel_id, message_id = in_place or (None, None)
+    if channel_id and message_id and await cards.edit(channel_id, message_id, said_card):
+        now = await database.run(store.db_session, session.id)
+        await database.run(store.db_set_cards, session.id, {**now.cards, "cancelled": message_id, "cancelled_in": channel_id})
+    else:
+        await _post(await database.run(store.db_session, session.id), "cancelled", said_card)
     changed(session.user_id)
     return line, undo_id
 
@@ -742,6 +855,11 @@ async def undo(undo_id: int, user_id: int) -> str:
         return "↩️ Nothing to undo"
     _, kind, payload = found
     session = await database.run(store.db_session, payload["session"])
+    if kind in ("finish", "cancel"):
+        # Opening it again would make two open at once
+        other = await database.run(store.db_open_session, user_id)
+        if other is not None and other.id != payload["session"]:
+            return f"↩️ **{other.name}** is open: finish or cancel it first"
     redraw = "all"
     if kind == "log":
         await database.run(store.db_delete_sets, payload["sets"])
@@ -817,3 +935,5 @@ def register() -> None:
     cards.register(TASK, CANCEL, on_cancel)
     cards.register(TASK, UNDO, on_undo)
     cards.register(TASK, UNDO_LAST, on_undo_last)
+    cards.register(TASK, CARRY_ON, on_carry_on)
+    cards.register(TASK, START_FRESH, on_start_fresh)
