@@ -31,7 +31,7 @@
           "gym"
         ],
         "confidence": "high",
-        "reports_doing": false,
+        "reports_doing": true,
         "several": false,
         "chat_part": ""
       }
@@ -85,7 +85,7 @@
           "gym"
         ],
         "confidence": "high",
-        "reports_doing": true,
+        "reports_doing": false,
         "several": false,
         "chat_part": ""
       }
@@ -528,7 +528,7 @@
           "gym"
         ],
         "confidence": "high",
-        "reports_doing": true,
+        "reports_doing": false,
         "several": false,
         "chat_part": ""
       }
@@ -583,6 +583,24 @@
         ],
         "confidence": "high",
         "reports_doing": true,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "gy24",
+      "message": "note on squat: last set felt heavy",
+      "tasks": [
+        "gym"
+      ],
+      "note": "the gym: notes go on sets, a note said alone is the latest set's (30 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "gym"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
         "several": false,
         "chat_part": ""
       }
@@ -1258,6 +1276,35 @@
               "exercise": "Romanian deadlift",
               "weight": 60,
               "reps": 8
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "gy24",
+      "task": "gym",
+      "message": "note on squat: last set felt heavy",
+      "state": "The user's gym plan (workouts in rotation order, each with its exercises):\n- next in turn: Lower 1\n- Upper 1: Bench press, Incline press, Lat pulldown - wide grip, Lateral raise\n- Lower 1: Squat, Leg press (high foot), Romanian deadlift\n- Upper 2: Overhead press, Seated row\n- Lower 2: Deadlift, Leg curl\n- (a session of Lower 1 is open, started Fri)",
+      "action": "gym_log",
+      "data": {
+        "sets": [
+          {
+            "exercise": "Squat",
+            "note": "last set felt heavy"
+          }
+        ]
+      },
+      "note": "the gym: notes go on sets, a note said alone is the latest set's (30 Oct)",
+      "recorded": [
+        "gym_log",
+        {
+          "sets": [
+            {
+              "exercise": "Squat",
+              "note": "last set felt heavy"
             }
           ],
           "guessed": [],

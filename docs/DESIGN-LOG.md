@@ -512,3 +512,7 @@ and read as clumps of text.
   line with Undo.
 
 **Preview:** a new message in "Design · Gym logging": the header and three cards (untouched, one set, complete).
+
+**After Alex's try (30 Oct, late):** a logged set's button is "✅ 2", not "✅ 60 x 8", since the table already has
+the numbers; one to look at "⚠️ 2". The Note button is gone: notes go in a set's pop-up, whose Note box now takes
+several lines. Five buttons to a row, so none moves. Another new message in the same post shows it.

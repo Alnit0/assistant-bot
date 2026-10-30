@@ -6,6 +6,10 @@ backfilled from the git log.
 
 ## 2026-10-30
 
+- Gym set buttons (not yet on): a logged set's button is "✅ 2", its numbers being in the table; the set pop-up's
+  Note takes several lines; the exercise card's Note button is gone, so notes go on sets, and "note on squat: …"
+  goes on that exercise's latest set in the open workout.
+
 - Gym logging a set at a time (not yet on), in place of the one card below: a workout is a header (progress,
   Undo, Finish, Cancel) and a card an exercise, each edited in place. A button a set opens a pop-up for that one
   set (Weight, Reps, Note, every box empty, last time's numbers in the labels); "✅ 60 x 8" once logged, one tap

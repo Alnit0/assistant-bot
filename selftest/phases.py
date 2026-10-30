@@ -1907,8 +1907,8 @@ async def p10(h: Harness) -> None:
 # look), the gym's #gym being the self-test's own #inbox for this start. A
 # made-up plan (Test A: Test press with a session before, Test row of six
 # sets, Test curl; Test B: Test squat). Real presses on the real messages and
-# real pop-ups sent; no exercise Note, so nothing asks Claude but the start's
-# recorded answer.
+# real pop-ups sent; notes on sets only (no Note button), so nothing asks
+# Claude but the start's recorded answer.
 # ---------------------------------------------------------------------------
 async def gym_seed(h: Harness) -> None:
     from tasks.gym import rules, store
@@ -1963,7 +1963,7 @@ async def p11(h: Harness) -> None:
 
     green = design.colour(design.DONE)
 
-    async for attempt in h.step("11.01", "“starting a workout” with a made-up plan", "A header (Test A, 0 of 3 exercises done, Undo greyed, Finish, Cancel), then a card an exercise in plan order and nothing else: Test press with last time, Test row and Test curl First time, a button a set and Note", "gym logging a set at a time (30 Oct)"):
+    async for attempt in h.step("11.01", "“starting a workout” with a made-up plan", "A header (Test A, 0 of 3 exercises done, Undo greyed, Finish, Cancel), then a card an exercise in plan order and nothing else: Test press with last time, Test row and Test curl First time, a button a set and no Note button", "gym logging a set at a time (30 Oct)"):
         async with attempt:
             h.check(config.GYM_ENABLED and config.CHANNELS.get("gym") == h.inbox.id, "the gym is not on, or #gym is not the self-test's #inbox, in this start")
             await gym_seed(h)
@@ -1976,13 +1976,14 @@ async def p11(h: Harness) -> None:
             press, row, curl = found
             h.check("Test press" in press.text and "Last · " in press.text and "50 x 10, 50 x 9, 50 x 8" in press.text and "1  -" in press.text, f"Test press: {press.text[:400]}")
             h.check("First time" in row.text and "First time" in curl.text, f"First time for the two never done: {row.text[:200]} / {curl.text[:200]}")
-            h.check(press.labels == ["1", "2", "3", "Note"] and row.labels == ["1", "2", "3", "4", "5", "6", "Note"], f"the buttons: {press.labels} / {row.labels}")
+            h.check(press.labels == ["1", "2", "3"] and row.labels == ["1", "2", "3", "4", "5", "6"], f"the buttons (no Note): {press.labels} / {row.labels}")
+            h.check([len(each) for each in row.rows] == [5, 1], f"Test row's rows: {row.rows}")
             h.check(all(green not in each.accents for each in found), "an edge is green before anything was logged")
             h.memo["gym_ids"] = [header.id, *(each.id for each in found)]
             h.memo["gym_session"] = session.id
             h.saw(" / ".join(press.labels))
 
-    async for attempt in h.step("11.02", "A set's pop-up", "One tap on Test press's 1: a pop-up titled Test press · set 1 with Weight (kg) · last 50, Reps · last 10 and Note, every box empty", "gym logging a set at a time (30 Oct)"):
+    async for attempt in h.step("11.02", "A set's pop-up", "One tap on Test press's 1: a pop-up titled Test press · set 1 with Weight (kg) · last 50, Reps · last 10 and Note, every box empty, Note the one of several lines", "gym logging a set at a time (30 Oct)"):
         async with attempt:
             session_id = h.memo["gym_session"]
             pressed = await h.press(h.memo["gym_ids"][1], "1", channel=h.inbox, arg=f"{session_id}:0:0")
@@ -1991,30 +1992,34 @@ async def p11(h: Harness) -> None:
             h.check(form.title == "Test press · set 1" and [each.label for each in form.fields] == ["Weight (kg) · last 50", "Reps · last 10", "Note"], f"the pop-up: {form.title} {[each.label for each in form.fields]}")
             h.check(all(not each.value and not each.placeholder for each in form.fields), "a box is filled in or has a placeholder")
             h.check(all(not (text_input.default or text_input.placeholder) for text_input in pressed.form.inputs.values()), "a box Discord is sent is filled in")
-            h.saw(" | ".join(each.label for each in form.fields))
+            styles = [getattr(text_input.style, "name", str(text_input.style)) for text_input in pressed.form.inputs.values()]
+            h.check(styles == ["short", "short", "paragraph"], f"the boxes' styles: {styles}")
+            h.saw(" | ".join(each.label for each in form.fields) + " · " + "/".join(styles))
 
-    async for attempt in h.step("11.03", "Set 1 then set 2 of one exercise", "Each one tap; Test press's card edited in place, its buttons ✅ 52.5 x 10 and ✅ 52.5 x 9, its height the same, each set its own record with its time; nothing posted", "gym logging a set at a time (30 Oct)"):
+    async for attempt in h.step("11.03", "Set 1 then set 2 of one exercise", "Each one tap; Test press's card edited in place, its buttons ✅ 1 and ✅ 2 (the numbers in the table), its height the same, each set its own record with its time; nothing posted", "gym logging a set at a time (30 Oct)"):
         async with attempt:
             session_id, ids = h.memo["gym_session"], h.memo["gym_ids"]
             before = await h.get(h.inbox, ids[1])
             await gym_set(h, ids[1], f"{session_id}:0:0", "1", weight="52.5", reps="10", note="")
             await gym_set(h, ids[1], f"{session_id}:0:1", "2", weight="52.5", reps="9", note="")
             after = await h.get(h.inbox, ids[1])
-            h.check(after.labels == ["✅ 52.5 x 10", "✅ 52.5 x 9", "3", "Note"], f"the buttons: {after.labels}")
+            h.check(after.labels == ["✅ 1", "✅ 2", "3"], f"the buttons: {after.labels}")
+            h.check([len(each) for each in after.rows] == [len(each) for each in before.rows], f"a button moved: {before.rows} then {after.rows}")
             h.check(len(after.text.splitlines()) == len(before.text.splitlines()), f"the card grew: {before.text!r} then {after.text!r}")
             h.check("1  52.5 x 10" in after.text and "2  52.5 x 9" in after.text and "3  -" in after.text, f"the table: {after.text[:400]}")
             logged = await database.run(store.db_set_logged_at, session_id)
             h.check([(name, position) for name, position, _ in logged] == [("Test press", 0), ("Test press", 1)] and all(when for _, _, when in logged), f"the records: {logged}")
             h.check(await latest_is(h, ids[-1]), "something was posted under the cards")
 
-    async for attempt in h.step("11.04", "Set 1 put right", "One tap on ✅ 52.5 x 10: its pop-up says now 52.5 and last 50; sent as 55 x 10, set 1 is put right and set 2 kept", "gym logging a set at a time (30 Oct)"):
+    async for attempt in h.step("11.04", "Set 1 put right", "One tap on ✅ 1: its pop-up says now 52.5 and last 50; sent as 55 x 10, set 1 is put right and set 2 kept", "gym logging a set at a time (30 Oct)"):
         async with attempt:
             session_id, ids = h.memo["gym_session"], h.memo["gym_ids"]
-            pressed = await gym_set(h, ids[1], f"{session_id}:0:0", "52.5 x 10", weight="55", reps="10", note="")
+            pressed = await gym_set(h, ids[1], f"{session_id}:0:0", "1", weight="55", reps="10", note="")
             h.check([each.label for each in pressed.form.form.fields][:2] == ["Weight (kg) · now 52.5 · last 50", "Reps · now 10 · last 10"], f"the labels: {[each.label for each in pressed.form.form.fields]}")
             logged = await database.run(store.db_sets, session_id)
             h.check([(each.position, each.weight, each.reps) for each in logged] == [(0, 55.0, 10), (1, 52.5, 9)], f"logged: {[(each.position, each.weight, each.reps) for each in logged]}")
-            h.check((await h.get(h.inbox, ids[1])).labels[0] == "✅ 55 x 10", "the button")
+            fixed = await h.get(h.inbox, ids[1])
+            h.check(fixed.labels[0] == "✅ 1" and "1  55 x 10" in fixed.text, f"the button and the table: {fixed.labels} {fixed.text[:300]}")
 
     async for attempt in h.step("11.05", "A set on another exercise", "Test curl's set 1 with a set note: its own card shows it, the note small under the table; Test press's card as it was", "gym logging a set at a time (30 Oct)"):
         async with attempt:
@@ -2022,16 +2027,16 @@ async def p11(h: Harness) -> None:
             press_before = await h.get(h.inbox, ids[1])
             await gym_set(h, ids[3], f"{session_id}:2:0", "1", weight="20", reps="12", note="slow")
             curl = await h.get(h.inbox, ids[3])
-            h.check(curl.labels[0] == "✅ 20 x 12" and "set 1: slow" in curl.text, f"Test curl: {curl.text[:400]} {curl.labels}")
+            h.check(curl.labels[0] == "✅ 1" and "set 1: slow" in curl.text, f"Test curl: {curl.text[:400]} {curl.labels}")
             h.check((await h.get(h.inbox, ids[1])).text == press_before.text, "Test press's card changed")
 
-    async for attempt in h.step("11.06", "An exercise with six sets", "Test row: six set buttons and Note; set 6 opens its own pop-up and logs; every set of Test press logged turns its edge green and the header says 1 of 3 done", "gym logging a set at a time (30 Oct)"):
+    async for attempt in h.step("11.06", "An exercise with six sets", "Test row: six set buttons, five to a row; set 6 opens its own pop-up and logs; every set of Test press logged turns its edge green and the header says 1 of 3 done", "gym logging a set at a time (30 Oct)"):
         async with attempt:
             session_id, ids = h.memo["gym_session"], h.memo["gym_ids"]
             pressed = await gym_set(h, ids[2], f"{session_id}:1:5", "6", weight="40", reps="9", note="")
             h.check(pressed.form.form.title == "Test row · set 6", f"the pop-up: {pressed.form.form.title}")
             row = await h.get(h.inbox, ids[2])
-            h.check(row.labels == ["1", "2", "3", "4", "5", "✅ 40 x 9", "Note"], f"Test row: {row.labels}")
+            h.check(row.labels == ["1", "2", "3", "4", "5", "✅ 6"] and [len(each) for each in row.rows] == [5, 1], f"Test row: {row.labels} {row.rows}")
             await gym_set(h, ids[1], f"{session_id}:0:2", "3", weight="52.5", reps="8", note="")
             press = await h.get(h.inbox, ids[1])
             h.check(green in press.accents, f"Test press's edge: {press.accents}")
@@ -2068,7 +2073,7 @@ async def p11(h: Harness) -> None:
             await h.press(line.id, "Undo", channel=h.inbox)
             back, header, found = await gym_messages(h)
             h.check(back is not None and back.id == session.id and len(await database.run(store.db_sets, session.id)) == 2 and await h.get(h.inbox, line.id) is None, "after Undo")
-            h.check(bool(found) and found[0].labels[:2] == ["✅ 60 x 10", "✅ 60 x 9"], f"the card again: {found[0].labels if found else None}")
+            h.check(bool(found) and found[0].labels[:2] == ["✅ 1", "✅ 2"], f"the card again: {found[0].labels if found else None}")
             await h.press(header.id, "Cancel", channel=h.inbox)
             h.check((await database.run(store.db_session, session.id)).status == store.CANCELLED, "cancelled again")
 

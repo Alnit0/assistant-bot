@@ -101,6 +101,7 @@ class Seen:
     silent: bool = False
     reference: int | None = None
     menus: list[tuple[str, str, list[tuple[str, str]]]] = field(default_factory=list)  # (placeholder, custom id, [(label, value)])
+    rows: list[list[str]] = field(default_factory=list)  # each row of buttons' labels, top to bottom
 
     @property
     def labels(self) -> list[str]:
@@ -115,9 +116,15 @@ class Seen:
         return "\n".join([self.text, *(f"{title}\n{body}" for title, body in self.embeds)])
 
 
-def _walk(components, texts: list[str], buttons: list, accents: list, menus: list | None = None) -> None:
+def _walk(components, texts: list[str], buttons: list, accents: list, menus: list | None = None, rows: list | None = None) -> None:
     for each in components or []:
         kind = type(each).__name__
+        if kind == "ActionRow" and rows is not None:
+            before = len(buttons)
+            _walk(getattr(each, "children", None) or [], texts, buttons, accents, menus)
+            if len(buttons) > before:
+                rows.append([label for label, _ in buttons[before:]])
+            continue
         if kind == "Container":
             colour = getattr(each, "accent_colour", None)
             accents.append(getattr(colour, "value", colour))
@@ -132,12 +139,12 @@ def _walk(components, texts: list[str], buttons: list, accents: list, menus: lis
         for name in ("children", "components", "accessory"):
             inner = getattr(each, name, None)
             if inner is not None:
-                _walk(inner if isinstance(inner, (list, tuple)) else [inner], texts, buttons, accents, menus)
+                _walk(inner if isinstance(inner, (list, tuple)) else [inner], texts, buttons, accents, menus, rows)
 
 
 def seen(message: discord.Message, bot_id: int) -> Seen:
-    texts, buttons, accents, menus = [], [], [], []
-    _walk(message.components, texts, buttons, accents, menus)
+    texts, buttons, accents, menus, rows = [], [], [], [], []
+    _walk(message.components, texts, buttons, accents, menus, rows)
     embeds = []
     for embed in message.embeds:
         body = "\n".join([getattr(embed.author, "name", None) or "", embed.description or "", *(f"{each.name}: {each.value}" for each in embed.fields)]).strip("\n")
@@ -149,6 +156,7 @@ def seen(message: discord.Message, bot_id: int) -> Seen:
         buttons=buttons,
         v2=bool(getattr(message.flags, "components_v2", False)),
         accents=accents,
+        rows=rows,
         reactions=[str(reaction.emoji) for reaction in message.reactions if reaction.me],
         embeds=embeds,
         edited=message.edited_at is not None,

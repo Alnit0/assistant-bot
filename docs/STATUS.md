@@ -6,7 +6,7 @@ No history is kept here: what changed is `docs/CHANGELOG.md`, and this
 file as it stood until midday on 2026-10-14 (every batch, every answer,
 all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
-**Updated:** 2026-10-30 (evening, the gym a set at a time, committed on `feature/pills`, not shipped)
+**Updated:** 2026-10-30 (late evening, ticked set buttons and notes on sets, committed on `feature/pills`, not shipped)
 
 
 
@@ -16,7 +16,45 @@ all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 - The gym fixes batch and its rework a set at a time (below), with the gym's migration 6 as extended. Nothing in
   live's `.env` changes.
 
+## The gym: ticked set buttons, notes on sets (30 Oct, late evening; not shipped)
+
+Alex tried the per-exercise cards and asked for three changes, on top of the section below:
+
+- **A logged set's button is a tick and its number**, "✅ 1", "✅ 2": its numbers are already in the table. One
+  tap still opens it to put it right.
+- **The set pop-up's Note is a box of several lines** (Discord's paragraph style); Weight and Reps stay one line.
+- **Notes live on sets only**: the card's Note button is gone. "note on [exercise]: …" in words goes on that
+  exercise's set logged most recently in the open workout.
+
+### Decided (30 Oct, ticks and notes)
+
+1. **The tick keeps the number**: "✅ 2", so every button still says which set it is.
+2. **A set to look at is "⚠️ 2"** (it was "⚠️ 60 x ?"): the same marker, with the number like the rest; the small
+   line under the table still says what needs a look.
+3. **Nothing moves**: five buttons to a row, and the rows depend only on the planned sets (six sets: 5 then 1).
+   With Note gone, a card of 20 sets is four full rows.
+4. **Notes kept**: exercise notes already stored still show under the table, and an old card's Note button and
+   pop-up still work. Nothing is deleted.
+5. **A note in words** is a confirm card ("**Squat** · set 2", the note small); Save puts it after the set's own
+   note, never over it, and Undo takes it back. No set of it logged yet: "log one first". Not in the workout:
+   it says so. With no workout open, a note alone has no set to go on, as before.
+6. **"Most recent"** is when the set was logged (`gym_sets.logged_at`), then its place.
+7. **The gym's "only for" line** gained "a note on an exercise (…)": without it the router answered nothing for
+   "note on squat: …". Its gym router fixtures: 31 of 32. The one wrong, gy13 "gym tomorrow 6pm" going to
+   reminders, does the same without the new line (two runs), so it was already so; its recording kept, in BACKLOG.
+   New eval gy24 recorded, router and extraction right. Three recordings' `reports_doing` refreshed.
+8. **Pain**: a set's note is not read for pain (that would be a request to Claude a set), so pain said at the gym
+   no longer reaches the pain pattern or "⚠️ Last time" now that the exercise Note is gone. Not built unasked:
+   in BACKLOG for Alex's word.
+9. **The self-test reads button rows** (`Seen.rows`) to check that no button moved, and each box's style.
+10. **The dev bot was restarted** on the new commit, as approved, and left running.
+
+Spend: NZ$0.36 (US$0.21: gy24 once, the gym router fixtures once, and eight single router checks). Self-test start 11:
+9 of 9, recorded answers, US$0. Preview: a new message in Design · Gym logging.
+
 ## The gym, a set at a time (30 Oct, evening; not shipped)
+
+(Its button labels and the Note button are changed by the section above.)
 
 Alex checked "Design · Gym logging": it missed his main point. He logs each set as he does it (finish set 1,
 tap, log it; rest; set 2, tap, log it), and the one card read as clumps of text. This replaces Fix 1 and the

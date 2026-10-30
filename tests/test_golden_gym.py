@@ -1,7 +1,8 @@
 """The gym's golden conversations, end to end through the conversation's own code on what the router and
 extraction really answered (evals/fixtures/gym.json): a whole session described after the fact in messy words
 (gy9), a partial one days later with a note about pain (gy16), yesterday's in a few words (gy15), starting
-a workout (gy1), cancelling it (gy19), and a numbered set or three alike in words (gy22, gy23). Made-up plan
+a workout (gy1), cancelling it (gy19), a numbered set or three alike in words (gy22, gy23), and a note said
+alone, on the latest set (gy24). Made-up plan
 (tests/gym_files.py)."""
 import asyncio
 import json
@@ -124,6 +125,20 @@ def test_gy22_a_numbered_set_in_words_is_that_set_alone_in_the_open_workout(gym_
     asyncio.run(plain.describe_save(Request(gym_bot.user, 100), card.data))
     logged = asyncio.run(database.run(store.db_sets, opened.id))
     assert [(each.position, each.weight, each.reps) for each in logged] == [(0, 40.0, 10), (1, 82.5, 6)], "set 1 kept, set 2 put in"
+
+
+def test_gy24_a_note_said_alone_goes_on_the_latest_set_of_the_open_workout(gym_bot):
+    from core.actions import Request
+    from tasks.gym.rules import DoneSet
+
+    gym_bot.claude(("route", ROUTER["gy1"]), tuple(EXTRACTED["gy1"]))
+    gym_bot.say(MESSAGE["gy1"])
+    opened = asyncio.run(database.run(store.db_open_session, gym_bot.user.id))
+    asyncio.run(session.log_sets(opened, "Squat", [DoneSet("Squat", reps=10, weight=40.0, position=0)], None, part={0}))
+    card = replay(gym_bot, "gy24")
+    assert card.action == "gym_log" and "**Squat** · set 1" in shown(gym_bot)
+    asyncio.run(plain.describe_save(Request(gym_bot.user, 100), card.data))
+    assert [each.note for each in asyncio.run(database.run(store.db_sets, opened.id))] == ["last set felt heavy"]
 
 
 def test_gy23_three_sets_of_the_same_in_words_are_three_sets(gym_bot):

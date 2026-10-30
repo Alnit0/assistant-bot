@@ -57,7 +57,11 @@ the full self-test run.
   (4) `python -m core.instance_lock` run in the work folder says "no bot is running" and warns about live's
   process, since live keeps its lock in its own folder. (5) A set logged in words while typing in #gym gets its
   confirm card there, under the workout's cards (in #inbox nothing lands in #gym); Save could log it at once
-  for an open workout, or the card could go to #inbox.
+  for an open workout, or the card could go to #inbox. (6) Pain in a set's note is not read (30 Oct, notes on
+  sets only): with the exercise Note gone, pain said at the gym no longer reaches the pain pattern or "⚠️ Last
+  time"; reading a set's note for pain would be one small request to Claude a note, for Alex's word. (7) The
+  router sends "gym tomorrow 6pm" (gy13) to reminders, with or without the 30 Oct "only for" line; its old
+  recording is kept.
 - **Tests that move the dev clock to a fixed day stop once that day has passed**: `tests/test_calendar.py`
   failed 6 tests from 22 Oct, 8:50 am (the clock only moves forward). Fixed there by holding the real time
   before the made-up morning; about a dozen other test files move the clock to a fixed day in Oct or Nov

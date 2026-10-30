@@ -31,13 +31,14 @@ log = logging.getLogger("assistant")
 # nothing else is posted while it is open. An exercise's card reads from
 # reference to today: its name, the plan, last time's sets, then today's sets
 # as a table with a row a planned set from the start (so the card never grows
-# as sets are logged), and a button a set ("1", "2"…, "✅ 60 x 8" once logged,
-# to put it right) and Note. A set's button opens a pop-up for that one set:
-# Weight (kg), Reps and Note, every box empty, last time's numbers in the labels.
+# as sets are logged), and a button a set ("1", "2"…, "✅ 2" once logged, to
+# put it right). A set's button opens a pop-up for that one set: Weight (kg),
+# Reps and a Note of several lines, every box empty, last time's numbers in the
+# labels. Notes go on sets only; an exercise's note from before still shows.
 # ---------------------------------------------------------------------------
 LOG, LOGGED, NOTE, NOTED, FINISH, UNDO, UNDO_LAST, CANCEL = "log", "logged", "note", "noted", "finish", "undo", "undo_last", "cancel"
 NO_PLAN_SETS = 3  # rows and buttons for an exercise with no planned sets (one done instead)
-MOST_SETS = 20  # buttons a card holds: four rows of five, and Note
+MOST_SETS = 20  # buttons a card holds: four rows of five
 NOTE_ON_CARD = 64  # characters of a note on the card: about a line on a phone
 LAST_ON_CARD = 120  # characters of last time's sets: two lines on a phone at most
 LABEL = 45  # characters of a pop-up box's label (Discord's limit)
@@ -192,8 +193,8 @@ def notes_lines(name: str, sets: list[DoneSet], note: Note | None, named: bool =
 
 
 def set_buttons(session: store.Session, index: int, exercise: Exercise, sets: list[DoneSet]) -> list[design.Row]:
-    """A button a set, "1", "2"…, then Note; a logged set's button shows it ("✅ 60 x 8") and opens it again to
-    put it right. Five to a row."""
+    """A button a set, "1", "2"…: a logged set's is ticked ("✅ 2", its numbers are in the table) and one to look
+    at marked ("⚠️ 2"); each opens its set again to put it right. Five to a row, so no button moves on a tap."""
     found = by_position(sets)
     buttons = []
     for position in range(set_count(exercise, sets)):
@@ -201,8 +202,7 @@ def set_buttons(session: store.Session, index: int, exercise: Exercise, sets: li
         if each is None or (not each.done and not each.look and each.weight is None):
             buttons.append(Button(str(position + 1), TASK, LOG, f"{session.id}:{index}:{position}", style=cards.PRIMARY))
         else:
-            buttons.append(Button(rules.set_cell(each), TASK, LOG, f"{session.id}:{index}:{position}", emoji="✅" if logged_well(each) else "⚠️", style=cards.PRIMARY))
-    buttons.append(Button("Note", TASK, NOTE, f"{session.id}:{index}", style=cards.PRIMARY))
+            buttons.append(Button(str(position + 1), TASK, LOG, f"{session.id}:{index}:{position}", emoji="✅" if logged_well(each) else "⚠️", style=cards.PRIMARY))
     return [design.Row(tuple(buttons[at:at + design.MAX_BUTTONS_IN_ROW])) for at in range(0, len(buttons), design.MAX_BUTTONS_IN_ROW)]
 
 
@@ -399,7 +399,7 @@ async def set_form(session: store.Session, index: int, exercise: Exercise, posit
     fields = (
         Field("weight", box_label("Weight (kg)", _weight_said(now), _weight_said(previous)), required=False),
         Field("reps", box_label("Reps", str(now.reps) if now is not None and now.reps is not None else None, str(previous.reps) if previous is not None else None), required=False),
-        Field("note", "Note", required=False),
+        Field("note", "Note", required=False, long=True),
     )
     tail = f" · set {position + 1}"
     return Form(rules.shortened(exercise.name, cards.MAX_FORM_TITLE - len(tail)) + tail, TASK, LOGGED, fields, arg=f"{session.id}:{index}:{position}")
@@ -562,7 +562,7 @@ async def _on_old_form(press: cards.Press) -> str:
     return f"logged {sum(1 for each in found if each.done)} sets" + (f", {len(look)} to look at" if look else "")
 
 
-# --- an exercise's note ------------------------------------------------------------------------------------------------------------
+# --- an exercise's note: only from a card posted before notes went on sets -------------------------------------------------------
 async def on_note(press: cards.Press) -> str:
     session_id, which, _ = _where(press.arg)
     session = await _open_session(press, session_id)
@@ -587,6 +587,32 @@ async def set_note(session: store.Session, exercise: str, text: str) -> int | No
     ids = [await database.run(store.db_add_note, session.user_id, session.id, await read_note(exercise, text))] if text else []
     payload = {"session": session.id, "exercise": exercise, "notes": ids, "restore": [asdict(note) for _, note in before]}
     return await database.run(store.db_remember, session.user_id, "note", payload, clock.now())
+
+
+async def latest_set(session: store.Session, exercise: str) -> DoneSet | None:
+    """The set of an exercise logged most recently in a workout (by when it was logged, then its place), the one
+    a note said in words goes on; None when none is logged yet."""
+    logged = [each for each in mine(await database.run(store.db_sets, session.id), exercise) if each.done or each.look or each.weight is not None]
+    if not logged:
+        return None
+    when = {(name.lower(), position): at or "" for name, position, at in await database.run(store.db_set_logged_at, session.id)}
+    return max(logged, key=lambda each: (when.get((each.exercise.lower(), each.position), ""), each.position))
+
+
+def with_note(each: DoneSet, text: str) -> DoneSet:
+    """A set with a note said after it: put after the note it has, nothing taken off."""
+    return replace(each, note=" · ".join(part for part in (each.note, text) if part))
+
+
+async def note_on_set(session: store.Session, exercise: str, position: int, text: str) -> int | None:
+    """A note added to one logged set of a workout, its card redrawn: an undo's id, None when the set is not there."""
+    there = by_position(mine(await database.run(store.db_sets, session.id), exercise)).get(position)
+    if there is None:
+        return None
+    undo_id = await log_sets(session, there.exercise, [with_note(there, text)], None, part={position})
+    await draw_one(session, there.exercise)
+    changed(session.user_id)
+    return undo_id
 
 
 async def on_noted(press: cards.Press) -> str:

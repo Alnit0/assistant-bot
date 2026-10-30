@@ -27,7 +27,7 @@ ONLY_FOR = (
     "skipping one (\"skip Upper 1\"), something else done instead (\"did a 30 min run instead\"), swapping an "
     "exercise (\"swap bench for dumbbell press today\"), changing the plan (\"make RDLs 6-10\", \"add face pulls "
     "to Upper 1\"), logging sets or a whole session in words, during or after (\"bench 20 for 15, 40 for 9, 40 for "
-    "8\", \"did Upper 1 this morning: …\"), finishing (\"finish the workout\"), cancelling one (\"cancel workout\"), questions about their lifts "
+    "8\", \"did Upper 1 this morning: …\"), a note on an exercise (\"note on bench: last set was a grind\"), finishing (\"finish the workout\"), cancelling one (\"cancel workout\"), questions about their lifts "
     "(\"what did I do on bench last time?\", \"my notes on RDLs\", \"best leg press\", \"how's my bench going?\", "
     "\"sessions this month\", \"how's my training going?\"), pain or discomfort noted in workouts or the diary (\"any pain?\", "
     "\"pain history\"), a weekly target (\"aim for 3 a week\"), planning a session at a time (\"gym "
@@ -408,8 +408,12 @@ async def describe_card(request: Request, data: dict, guessed: frozenset) -> Pro
     if previous and data.get("corrections") and not data.get("sets"):
         kept = _apply_corrections(previous, data["corrections"])
         return await _describe_proposal(request, plan, kept)
-    workout = session.find_workout(plan, str(data["workout"])) if data.get("workout") else None
     items = list(data.get("sets") or [])
+    if items and not previous.get("sets") and all(each.get("reps") is None and not each.get("skipped") for each in items) and any(each.get("note") for each in items):
+        opened = await database.run(store.db_open_session, request.user.id)
+        if opened is not None:
+            return await _set_notes_proposal(opened, items)
+    workout = session.find_workout(plan, str(data["workout"])) if data.get("workout") else None
     candidate = workout or closest(plan, [str(each.get("exercise") or "") for each in items if each.get("exercise")])
     exercises = list(candidate.exercises) if candidate else []
     by_name, skipped, notes, extra = _sets_of(items, exercises)
@@ -425,6 +429,38 @@ async def describe_card(request: Request, data: dict, guessed: frozenset) -> Pro
         "guessed_workout": workout is None and candidate is not None,
     }
     return await _describe_proposal(request, plan, kept)
+
+
+async def _set_notes_proposal(opened: store.Session, items: list[dict]) -> Proposal:
+    """A note said on its own in an open workout ("note on squat: knee was sore"): notes go on sets, so it is the
+    note of that exercise's set logged most recently."""
+    exercises = await session.exercises_of(opened)
+    notes, lines = [], [f"**{opened.name}** · today"]
+    for item in items:
+        said, text = str(item.get("exercise") or "").strip(), str(item.get("note") or "").strip()
+        if not said or not text:
+            continue
+        found = session.find_exercise(exercises, said)
+        if found is None:
+            raise UserError(f"{ICON} “{said}” is not in **{opened.name}**: a note goes on one of its sets.")
+        latest = await session.latest_set(opened, found.name)
+        if latest is None:
+            raise UserError(f"{ICON} No set of **{found.name}** logged yet: a note goes on a set, so log one first.")
+        notes.append({"exercise": found.name, "position": latest.position, "text": text})
+        lines.append(f"**{found.name}** · set {latest.position + 1}")
+        lines.append(design.small(("⚠️ " if item.get("pain") else "") + f"note: “{text}”"))
+    data = {"set_notes": notes, "session": opened.id, "workout": opened.name, "day": opened.day.isoformat(), "workout_id": opened.workout_id, "sets": {}, "skipped": [], "notes": [], "extra": []}
+    return Proposal(lines=tuple(lines), data=data, kind="change")
+
+
+async def _set_notes_save(request: Request, data: dict) -> str:
+    opened = await database.run(store.db_session, data["session"])
+    if opened is None:
+        raise UserError(f"{ICON} That workout has gone.")
+    kept = [each for each in data["set_notes"] if await session.note_on_set(opened, each["exercise"], each["position"], each["text"]) is not None]
+    if not kept:
+        raise UserError(f"{ICON} That set is not logged any more: nothing kept.")
+    return "\n".join(f"{ICON} Note kept · **{each['exercise']}** set {each['position'] + 1}" for each in kept)
 
 
 async def _describe_proposal(request: Request, plan: list[Workout], kept: dict) -> Proposal:
@@ -449,6 +485,8 @@ async def _describe_proposal(request: Request, plan: list[Workout], kept: dict) 
 
 
 async def describe_save(request: Request, data: dict) -> str:
+    if data.get("set_notes"):
+        return await _set_notes_save(request, data)
     day = date.fromisoformat(data["day"])
     there = await database.run(store.db_session_on, request.user.id, data["workout_id"], day) if data["workout_id"] else None
     queue_before = await database.run(store.db_queue, request.user.id)
@@ -486,6 +524,9 @@ async def describe_save(request: Request, data: dict) -> str:
 
 
 async def describe_check(request: Request, data: dict) -> str:
+    if data.get("set_notes"):
+        there = {(each.exercise, each.position): each.note for each in await database.run(store.db_sets, data["session"])}
+        return "" if all(each["text"] in there.get((each["exercise"], each["position"]), "") for each in data["set_notes"]) else "a note is not there"
     day = date.fromisoformat(data["day"])
     sessions = [each for each in await database.run(store.db_sessions, request.user.id, day) if each.day == day and each.name == data["workout"]]
     if not sessions:

@@ -1,6 +1,7 @@
 """Logging at the gym on a phone, a set at a time (30 Oct, reworked after Alex's look): a header and a card an
 exercise, each its own message edited in place and nothing else posted; a button a set opening a pop-up for that
-one set (Weight (kg), Reps, Note, every box empty, last time's numbers in the labels), read by Python; a card that
+one set (Weight (kg), Reps, a Note of several lines, every box empty, last time's numbers in the labels), read by
+Python, a logged set's button ticked ("✅ 2") and notes on sets only; a card that
 never grows as sets are logged, purple until every set is in and then green; Undo, Finish and Cancel on the
 header; the same in words. Made-up data only (tests/gym_files.py)."""
 from types import SimpleNamespace
@@ -112,7 +113,7 @@ def test_start_posts_a_header_then_a_card_an_exercise_in_plan_order_and_nothing_
     assert labels(header) == ["Undo", "Finish", "Cancel"] and design.buttons(header.layout)[0].disabled, "Undo greyed: nothing to undo"
     squat = now(gym, ids[0])
     assert shown(squat).startswith("### Squat\n-# 1 warm-up 8-10 · 1 working 4-6 reps\n-# Last · Thu 8 Oct · 40 x 10, 80 x 6\n```\n1  -\n2  -\n```")
-    assert labels(squat) == ["1", "2", "Note"], "a button a set, no word Set"
+    assert labels(squat) == ["1", "2"], "a button a set, no word Set, and no Note: notes go on sets"
     assert all(box.status == design.PREPARED for each in ids for box in now(gym, each).layout), "purple, not started"
     assert all(not design.problem(now(gym, each).layout) for each in [started.message_id, *ids])
 
@@ -124,9 +125,12 @@ def test_first_time_on_a_card_and_six_sets_wrap_to_a_second_row(gym):
     started, ids = started_with_messages(gym)
     row = now(gym, ids[-1])
     assert "### Test row\n-# 6 sets · 8-12 reps\n-# First time" in shown(row)
-    assert [len(each.buttons) for each in row.layout[0].children if isinstance(each, design.Row)] == [5, 2], "1 to 5, then 6 and Note"
+    assert [len(each.buttons) for each in row.layout[0].children if isinstance(each, design.Row)] == [5, 1], "1 to 5, then 6"
     form, _, _ = tap(gym, started, 3, 0, {"weight": "", "reps": "", "note": ""})
     assert [field.label for field in form.fields] == ["Weight (kg)", "Reps", "Note"], "no last time: plain labels"
+    tap(gym, started, 3, 5, {"weight": "30", "reps": "12", "note": ""})
+    rows = [[button.label for button in each.buttons] for each in now(gym, ids[-1]).layout[0].children if isinstance(each, design.Row)]
+    assert rows == [["1", "2", "3", "4", "5"], ["6"]], "set 6 logged: no button moved"
 
 
 # --- a set's pop-up -------------------------------------------------------------------------------------------------------------------
@@ -139,6 +143,7 @@ def test_a_set_s_pop_up_is_that_set_alone_every_box_empty_last_time_in_the_label
     assert form.title == "Squat · set 2"
     assert [field.label for field in form.fields] == ["Weight (kg) · last 80", "Reps · last 6", "Note"]
     assert all(not field.value and not field.placeholder and not field.required for field in form.fields), "nothing to delete before typing"
+    assert [field.long for field in form.fields] == [False, False, True], "the Note box takes several lines; Weight and Reps one"
 
 
 def test_log_set_1_then_set_2_edits_only_that_card_and_the_header_and_its_height_never_changes(gym):
@@ -150,7 +155,7 @@ def test_log_set_1_then_set_2_edits_only_that_card_and_the_header_and_its_height
     assert said == "set 1 logged: 40 x 10"
     assert {message_id for message_id, _ in gym.edited} == {ids[0], started.message_id}, "only that exercise's card and the header"
     first = now(gym, ids[0])
-    assert labels(first) == ["40 x 10", "2", "Note"] and design.buttons(first.layout)[0].emoji == "✅"
+    assert labels(first) == ["1", "2"] and design.buttons(first.layout)[0].emoji == "✅", "a tick, the numbers are in the table"
     assert len(shown(first).splitlines()) == len(before.splitlines()), "the card's height never changes"
     tap(gym, started, 0, 1, {"weight": "82.5", "reps": "6", "note": ""})
     both = now(gym, ids[0])
@@ -179,7 +184,8 @@ def test_a_set_on_another_exercise_has_its_own_card(gym):
     edits = len(gym.edited)
     tap(gym, started, 2, 0, {"weight": "70", "reps": "9", "note": ""})
     assert {message_id for message_id, _ in gym.edited[edits:]} == {ids[2], started.message_id}
-    assert labels(now(gym, ids[0]))[0] == "40 x 10" and labels(now(gym, ids[2]))[0] == "70 x 9"
+    assert "1  40 x 10" in shown(now(gym, ids[0])) and "1  70 x 9" in shown(now(gym, ids[2]))
+    assert design.buttons(now(gym, ids[2]).layout)[0].emoji == "✅" and design.buttons(now(gym, ids[1]).layout)[0].emoji is None
 
 
 def test_a_box_that_cannot_be_read_says_on_its_card_which_set_needs_a_look(gym):
@@ -187,7 +193,7 @@ def test_a_box_that_cannot_be_read_says_on_its_card_which_set_needs_a_look(gym):
     _, said, _ = tap(gym, started, 0, 1, {"weight": "eighty", "reps": "6", "note": ""})
     assert said == "set 2 kept to look at"
     card = now(gym, ids[0])
-    assert "-# ⚠️ set 2 needs a look: “eighty”" in shown(card) and design.buttons(card.layout)[1].emoji == "⚠️"
+    assert "-# ⚠️ set 2 needs a look: “eighty”" in shown(card) and design.buttons(card.layout)[1].emoji == "⚠️" and labels(card)[1] == "2"
     (kept,) = run(database.run(store.db_sets, started.id))
     assert (kept.weight, kept.reps, kept.note, kept.look) == (None, 6, "eighty", True), "nothing made up"
 
@@ -200,7 +206,7 @@ def test_every_box_empty_logs_nothing_and_clears_a_set_that_was_there(gym):
     assert run(database.run(store.db_sets, started.id)) == []
 
 
-def test_the_exercise_note_is_shown_under_its_table(gym):
+def test_an_old_card_s_note_button_still_works_and_an_exercise_note_still_shows_under_its_table(gym):
     started, ids = started_with_messages(gym)
     opened = press_on(gym, f"{started.id}:2")
     run(session.on_note(opened))
@@ -208,7 +214,31 @@ def test_the_exercise_note_is_shown_under_its_table(gym):
     cards.check_form(form)
     assert form.title == "Romanian deadlift · note" and [field.label for field in form.fields] == ["Note"]
     assert run(session.on_noted(press_on(gym, form.arg, {"note": "knee hurt a bit"}))) == "note kept"
-    assert "-# ⚠️ “knee hurt a bit”" in shown(now(gym, ids[2])), "read for pain"
+    assert "-# ⚠️ “knee hurt a bit”" in shown(now(gym, ids[2])), "read for pain, nothing deleted"
+
+
+def test_a_note_said_in_words_goes_on_the_set_of_that_exercise_logged_most_recently(gym):
+    started, ids = started_with_messages(gym)
+    tap(gym, started, 0, 1, {"weight": "80", "reps": "6", "note": "grip"})
+    tap(gym, started, 0, 0, {"weight": "40", "reps": "10", "note": ""})
+    request = actions.Request(gym.owner, GYM)
+    proposal = run(plain.describe_card(request, {"sets": [{"exercise": "squat", "note": "last set felt heavy"}]}, frozenset()))
+    assert proposal.lines == ("**Lower 1** · today", "**Squat** · set 1", "-# note: “last set felt heavy”"), "set 1 was logged last"
+    posted = len(gym.sent)
+    assert run(plain.describe_save(request, proposal.data)) == "🏋️ Note kept · **Squat** set 1"
+    assert run(plain.describe_check(request, proposal.data)) == ""
+    assert [(each.position, each.weight, each.reps, each.note) for each in run(database.run(store.db_sets, started.id))] == [(0, 40.0, 10, "last set felt heavy"), (1, 80.0, 6, "grip")]
+    assert "-# set 1: last set felt heavy" in shown(now(gym, ids[0])) and len(gym.sent) == posted
+    tap(gym, started, 0, 1, {"weight": "80", "reps": "6", "note": "grip"})
+    again = run(plain.describe_card(request, {"sets": [{"exercise": "squat", "note": "slow"}]}, frozenset()))
+    run(plain.describe_save(request, again.data))
+    assert run(database.run(store.db_sets, started.id))[1].note == "grip · slow", "put after the note it had"
+
+
+def test_a_note_in_words_with_no_set_logged_asks_for_a_set_first(gym):
+    started_with_messages(gym)
+    with pytest.raises(UserError, match="No set of \\*\\*Romanian deadlift\\*\\* logged yet"):
+        run(plain.describe_card(actions.Request(gym.owner, GYM), {"sets": [{"exercise": "romanian deadlift", "note": "felt good"}]}, frozenset()))
 
 
 # --- the header: Undo -------------------------------------------------------------------------------------------------------------
@@ -220,9 +250,9 @@ def test_the_header_undo_takes_back_the_last_set_one_a_press(gym):
     assert not undo.disabled and undo.action == session.UNDO_LAST
     pressed = press_on(gym, undo.arg, message_id=started.message_id)
     assert run(session.on_undo_last(pressed)) == "↩️ Taken back: that log" and not pressed.shown.updates
-    assert labels(now(gym, ids[0])) == ["40 x 10", "2", "Note"]
+    assert [each.emoji for each in design.buttons(now(gym, ids[0]).layout)] == ["✅", None]
     run(session.on_undo_last(pressed))
-    assert labels(now(gym, ids[0])) == ["1", "2", "Note"] and design.buttons(now(gym, started.message_id).layout)[0].disabled
+    assert [each.emoji for each in design.buttons(now(gym, ids[0]).layout)] == [None, None] and design.buttons(now(gym, started.message_id).layout)[0].disabled
 
 
 def test_an_old_undo_message_from_before_is_still_answered_in_place(gym):
@@ -263,7 +293,7 @@ def test_cancel_after_two_sets_puts_everything_back_deletes_the_cards_and_undo_b
     back = run(database.run(store.db_session, started.id))
     assert back.status == store.OPEN and line_id in gym.deleted, "the line gone"
     assert len(back.cards["exercises"]) == 3 and back.message_id not in (None, started.message_id), "posted again"
-    assert labels(now(gym, back.cards["exercises"][0])) == ["40 x 10", "100 x 6", "Note"]
+    assert "1  40 x 10\n2  100 x 6" in shown(now(gym, back.cards["exercises"][0])) and labels(now(gym, back.cards["exercises"][0])) == ["1", "2"]
 
 
 def test_cancel_with_nothing_logged_and_the_next_start_has_the_same_number(gym):
@@ -303,7 +333,7 @@ def test_a_numbered_set_in_words_is_that_set_and_leaves_the_others(gym):
     proposal = run(plain.describe_card(gym.request("squat 2 82.5 x 6"), {"sets": [{"exercise": "squat", "set": 2, "reps": 6, "weight": 82.5}]}, frozenset()))
     run(plain.describe_save(gym.request(), proposal.data))
     assert [(each.position, each.weight, each.reps) for each in run(database.run(store.db_sets, started.id))] == [(0, 40.0, 10), (1, 82.5, 6)]
-    assert labels(now(gym, ids[0]))[:2] == ["40 x 10", "82.5 x 6"]
+    assert "1  40 x 10\n2  82.5 x 6" in shown(now(gym, ids[0])) and [each.emoji for each in design.buttons(now(gym, ids[0]).layout)][:2] == ["✅", "✅"]
     assert "set" in [each.name for each in next(action for action in plain.actions() if action.name == "gym_log").fields[2].item_fields]
 
 
