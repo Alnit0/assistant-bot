@@ -1902,4 +1902,142 @@ async def p10(h: Harness) -> None:
             h.saw(" / ".join(today_card.text.splitlines()[:4])[:200] if today_card else "")
 
 
-PHASES = {"p1": p1, "p2": p2, "p3": p3, "p4": p4, "p5": p5, "p6": p6, "p7": p7, "p8": p8, "p9": p9, "p10": p10}
+# ---------------------------------------------------------------------------
+# Start 11: logging at the gym (30 Oct), the gym's #gym being the self-test's
+# own #inbox for this start. A made-up plan (Test A: Test press with a session
+# before, Test row of five sets, Test curl; Test B: Test squat). Real presses
+# on the real card and real forms sent; no note in a Notes box, so nothing
+# asks Claude but the start's recorded answer.
+# ---------------------------------------------------------------------------
+async def gym_seed(h: Harness) -> None:
+    from tasks.gym import rules, store
+    from tasks.gym.rules import DoneSet, Exercise, Note, PlannedSet, Workout
+
+    def sets(count: int) -> tuple:
+        return tuple(PlannedSet(rules.WORKING, "", "", 8, 12) for _ in range(count))
+
+    plan = [Workout("Test A", (Exercise("Test press", sets(3), rules.MACHINE), Exercise("Test row", sets(5), rules.MACHINE), Exercise("Test curl", sets(3), rules.MACHINE))),
+            Workout("Test B", (Exercise("Test squat", sets(3), rules.MACHINE),))]
+    ids = await database.run(store.db_replace_plan, h.user.id, plan, clock.now(), "Test plan")
+    before = days.today() - timedelta(days=3)
+    session_id = await database.run(store.db_add_session, h.user.id, ids[0], "Test A", before, store.FINISHED, clock.now(), "words")
+    done = [DoneSet("Test press", rules.WORKING, "", "", 8, 12, reps, 50.0, position=index, note="slow last rep" if index == 1 else "") for index, reps in enumerate((10, 9, 8))]
+    await database.run(store.db_add_sets, h.user.id, session_id, done)
+    await database.run(store.db_add_note, h.user.id, session_id, Note("Test press", "seat at 4"))
+    await database.run(store.db_set_queue, h.user.id, ids, clock.now())
+    h.memo["gym_before"] = before.isoformat()
+
+
+async def gym_card(h: Harness):
+    from tasks.gym import store
+
+    found = await database.run(store.db_open_session, h.user.id)
+    return found, (await h.get(h.inbox, found.message_id) if found is not None and found.message_id else None)
+
+
+def names_of(card) -> list[str]:
+    """A card's buttons without their emoji (✅ or 📝 in front of an exercise)."""
+    return [label.split(" ", 1)[-1] for label in card.labels]
+
+
+async def latest_is(h: Harness, message_id: int) -> bool:
+    """Whether the card is still the last message in the channel: nothing posted under it."""
+    newest = await h.recent(h.inbox, 1)
+    return bool(newest) and newest[0].id == message_id
+
+
+async def p11(h: Harness) -> None:
+    from tasks.gym import store
+
+    async for attempt in h.step("11.01", "“starting a workout” with a made-up plan", "Test A's card in #gym: Test press with last time's numbers and notes small, Test row and Test curl First time, a Log button an exercise, then Undo, Finish workout and Cancel workout", "gym logging (30 Oct)"):
+        async with attempt:
+            h.check(config.GYM_ENABLED and config.CHANNELS.get("gym") == h.inbox.id, "the gym is not on, or #gym is not the self-test's #inbox, in this start")
+            await gym_seed(h)
+            await h.say("starting a workout", canned=("gym_start", {"guessed": [], "not_included": []}), task="gym")
+            session, card = await gym_card(h)
+            h.check(card is not None and "Test A" in card.text, f"the card: {card.text[:300] if card else 'none'}")
+            h.check("-# last " in card.text and "50x10 · 50x9 · 50x8" in card.text and "“seat at 4”" in card.text and "set 2: slow last rep" in card.text, f"last time on the card: {card.text[:500]}")
+            h.check(card.text.count("First time") == 2, f"First time for the two never done: {card.text[:500]}")
+            h.check(names_of(card) == ["Test press", "Test row", "Test curl", "Undo", "Finish workout", "Cancel workout"], f"the buttons: {card.labels}")
+            h.memo["gym_card"] = card.id
+            h.saw(" / ".join(card.labels))
+
+    async for attempt in h.step("11.02", "An exercise with a session before: its form", "One tap opens the form: a box a set, all empty, “Set 1 · last 50 x 10” and so on, and Notes", "gym logging (30 Oct)"):
+        async with attempt:
+            pressed = await h.press(h.memo["gym_card"], "Test press", channel=h.inbox)
+            h.check(pressed.form is not None, f"the press opened no form; it said {pressed.said}")
+            form = pressed.form.form
+            h.check([each.label for each in form.fields] == ["Set 1 · last 50 x 10", "Set 2 · last 50 x 9", "Set 3 · last 50 x 8", "Notes"], f"the boxes: {[each.label for each in form.fields]}")
+            h.check(all(not each.value and not each.placeholder for each in form.fields), "a box is filled in or has a placeholder")
+            h.check(all(not (text_input.default or text_input.placeholder) for text_input in pressed.form.inputs.values()), "a box Discord is sent is filled in")
+            h.memo["gym_press"] = True
+            h.saw(" | ".join(each.label for each in form.fields))
+
+    async for attempt in h.step("11.03", "A three-set exercise with a set note", "Sent: the three sets logged, the note on set 2; the card edited in place with the table and the note small under it; nothing posted under it", "gym logging (30 Oct)"):
+        async with attempt:
+            pressed = await h.press(h.memo["gym_card"], "Test press", channel=h.inbox)
+            await h.submit(pressed, set0="52.5 x 10", set1="52.5 x 9 felt heavy", set2="52.5x8", note="")
+            session, card = await gym_card(h)
+            logged = await database.run(store.db_sets, session.id)
+            h.check([(each.weight, each.reps, each.note) for each in logged] == [(52.5, 10, ""), (52.5, 9, "felt heavy"), (52.5, 8, "")], f"logged: {[(each.weight, each.reps, each.note) for each in logged]}")
+            h.check(card.id == h.memo["gym_card"] and "```" in card.text and "52.5x10" in card.text and "set 2: felt heavy" in card.text and "✅ Test press logged · 3 sets" in card.text, f"the card: {card.text[:600]}")
+            h.check(await latest_is(h, card.id), "something was posted under the card")
+            table = card.text.split("```")[1].strip("\n").splitlines()
+            h.check(all(len(line) <= 32 for line in table), f"a table row over 32 characters: {table}")
+
+    async for attempt in h.step("11.04", "Two logs in a row, one tap each", "Test curl, then Test press again: each one tap opens its form; the buttons the same, in the same order, before and after; still one card, the last message", "gym logging (30 Oct)"):
+        async with attempt:
+            _, before = await gym_card(h)
+            for name, typed in (("Test curl", {"set0": "20 x 12", "set1": "20 x 11", "set2": ""}), ("Test press", {"set0": "52.5 x 11", "set1": "52.5 x 9 felt heavy", "set2": "52.5 x 8"})):
+                pressed = await h.press(h.memo["gym_card"], name, channel=h.inbox)
+                h.check(pressed.form is not None, f"one tap on {name} did not open its form; it said {pressed.said}")
+                await h.submit(pressed, **typed, note="")
+                _, after = await gym_card(h)
+                h.check(names_of(after) == names_of(before), f"the buttons moved: {before.labels} then {after.labels}")
+                h.check(after.id == before.id and await latest_is(h, after.id), "the card was posted again, or something was posted under it")
+            h.check("Test curl" in after.text and "20x12" in after.text and "Test curl · set" not in after.text, f"the card: {after.text[:600]}")
+
+    async for attempt in h.step("11.05", "A five-set exercise: two forms", "Test row: sets 1 to 4 and Notes, then one more tap on the same button for set 5; all five logged", "gym logging (30 Oct)"):
+        async with attempt:
+            pressed = await h.press(h.memo["gym_card"], "Test row", channel=h.inbox)
+            h.check(pressed.form is not None and [each.label for each in pressed.form.form.fields] == ["Set 1", "Set 2", "Set 3", "Set 4", "Notes"], f"the first form: {[each.label for each in pressed.form.form.fields] if pressed.form else pressed.said}")
+            await h.submit(pressed, set0="40 x 12", set1="40 x 12", set2="40 x 11", set3="40 x 10", note="")
+            session, card = await gym_card(h)
+            h.check("tap it again for sets 5 to 5" in card.text, f"the card: {card.text[-300:]}")
+            pressed = await h.press(h.memo["gym_card"], "Test row", channel=h.inbox)
+            h.check(pressed.form is not None and [each.label for each in pressed.form.form.fields] == ["Set 5"], f"the second form: {[each.label for each in pressed.form.form.fields] if pressed.form else pressed.said}")
+            await h.submit(pressed, set4="40 x 9")
+            rows = [each for each in await database.run(store.db_sets, session.id) if each.exercise == "Test row"]
+            h.check([(each.position, each.reps) for each in rows] == [(0, 12), (1, 12), (2, 11), (3, 10), (4, 9)], f"Test row: {[(each.position, each.reps) for each in rows]}")
+
+    async for attempt in h.step("11.06", "Finish: the summary table on the card", "The card becomes the summary: 🏁, a table with a dash for the set not done, within 32 characters a row; Undo; nothing posted under it", "gym logging (30 Oct)"):
+        async with attempt:
+            await h.press(h.memo["gym_card"], "Finish workout", channel=h.inbox)
+            card = await h.get(h.inbox, h.memo["gym_card"])
+            table = card.text.split("```")[1].strip("\n").splitlines() if "```" in card.text else []
+            h.check(card.text.startswith("## 🏁 Test A") and any(line.startswith("Test curl") and line.split()[-1] == "-" for line in table), f"the summary: {card.text[:600]}")
+            h.check(all(len(line) <= 32 for line in table) and names_of(card) == ["Undo"] and await latest_is(h, card.id), f"the table or the buttons: {table} {card.labels}")
+
+    async for attempt in h.step("11.07", "Cancel after one logged exercise", "Test B started and Test squat logged, then Cancel workout: the set taken off, the session not counted, the queue as it was before the start, Test B still next; Undo puts it back", "gym logging (30 Oct)"):
+        async with attempt:
+            queue_before = await database.run(store.db_queue, h.user.id)
+            await h.say("starting a workout", canned=("gym_start", {"guessed": [], "not_included": []}), task="gym")
+            session, card = await gym_card(h)
+            h.check(session is not None and session.name == "Test B", f"the session: {session}")
+            pressed = await h.press(card.id, "Test squat", channel=h.inbox)
+            await h.submit(pressed, set0="60 x 10", set1="60 x 9", set2="", note="")
+            await h.press(card.id, "Cancel workout", channel=h.inbox)
+            gone = await database.run(store.db_session, session.id)
+            h.check(gone.status == store.CANCELLED and await database.run(store.db_sets, session.id) == [], f"the session: {gone.status}")
+            h.check(await database.run(store.db_queue, h.user.id) == queue_before, "the queue moved")
+            h.check(session.id not in [each.id for each in await database.run(store.db_sessions, h.user.id)], "the cancelled session is counted")
+            card = await h.get(h.inbox, card.id)
+            h.check("cancelled" in card.text and "Test B is still next" in card.text and names_of(card) == ["Undo"], f"the card: {card.text[:300]} {card.labels}")
+            await h.press(card.id, "Undo", channel=h.inbox)
+            back = await database.run(store.db_session, session.id)
+            h.check(back.status == store.OPEN and len(await database.run(store.db_sets, session.id)) == 2, f"after Undo: {back.status}")
+            await h.press(card.id, "Cancel workout", channel=h.inbox)
+            h.check((await database.run(store.db_session, session.id)).status == store.CANCELLED, "cancelled again")
+
+
+PHASES = {"p1": p1, "p2": p2, "p3": p3, "p4": p4, "p5": p5, "p6": p6, "p7": p7, "p8": p8, "p9": p9, "p10": p10, "p11": p11}

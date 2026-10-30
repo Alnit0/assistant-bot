@@ -4,6 +4,16 @@ What changed, newest first. One entry per task, as one to three bullets on
 what changed for the user. Entries before 2026-10-07's last one were
 backfilled from the git log.
 
+## 2026-10-30
+
+- Gym logging for the phone (not yet on): the Log pop-up has an empty box a set, with last time's numbers in
+  its name, and Notes; "60 x 8 felt heavy" keeps "felt heavy" as that set's note. More than four sets: one more
+  tap on the same button for the rest.
+- The workout is one card edited in place, its buttons all at its foot and never moving, nothing posted under
+  it; what was logged is a table that fits a phone, and Finish turns the card into the summary.
+- Cancel workout (a button, or "cancel workout"): as if it was never started, the same workout still next,
+  with Undo. Before, "cancel workout" was read as a skip.
+
 ## 2026-10-22
 
 - Round 8 of the hub, built and not yet on: one message of boxes with headings, rules and small text, each box's

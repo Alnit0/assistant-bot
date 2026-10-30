@@ -514,6 +514,42 @@
         "several": false,
         "chat_part": ""
       }
+    },
+    {
+      "golden": "gy19",
+      "message": "cancel workout",
+      "tasks": [
+        "gym"
+      ],
+      "note": "the gym: Cancel is an undo of Start, never a skip (30 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "gym"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "gy20",
+      "message": "not doing the gym after all, cancel it",
+      "tasks": [
+        "gym"
+      ],
+      "note": "the gym: Cancel is an undo of Start, never a skip (30 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "gym"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "several": false,
+        "chat_part": ""
+      }
     }
   ],
   "extraction": [
@@ -1057,6 +1093,59 @@
           "previous": true,
           "guessed": [],
           "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "gy19",
+      "task": "gym",
+      "message": "cancel workout",
+      "state": "The user's gym plan (workouts in rotation order, each with its exercises):\n- next in turn: Lower 1\n- Upper 1: Bench press, Incline press, Lat pulldown - wide grip, Lateral raise\n- Lower 1: Squat, Leg press (high foot), Romanian deadlift\n- Upper 2: Overhead press, Seated row\n- Lower 2: Deadlift, Leg curl\n- (a session of Lower 1 is open, started Fri)",
+      "action": "gym_cancel",
+      "data": {},
+      "note": "the gym: Cancel is an undo of Start, never a skip (30 Oct)",
+      "recorded": [
+        "gym_cancel",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "gy20",
+      "task": "gym",
+      "message": "not doing the gym after all, cancel it",
+      "state": "The user's gym plan (workouts in rotation order, each with its exercises):\n- next in turn: Lower 1\n- Upper 1: Bench press, Incline press, Lat pulldown - wide grip, Lateral raise\n- Lower 1: Squat, Leg press (high foot), Romanian deadlift\n- Upper 2: Overhead press, Seated row\n- Lower 2: Deadlift, Leg curl\n- (a session of Lower 1 is open, started Fri)",
+      "action": "gym_cancel",
+      "data": {},
+      "note": "the gym: Cancel is an undo of Start, never a skip (30 Oct)",
+      "recorded": [
+        "gym_cancel",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "gy21",
+      "task": "gym",
+      "message": "skip Upper 1, I'll do it next week",
+      "state": "The user's gym plan (workouts in rotation order, each with its exercises):\n- next in turn: Lower 1\n- Upper 1: Bench press, Incline press, Lat pulldown - wide grip, Lateral raise\n- Lower 1: Squat, Leg press (high foot), Romanian deadlift\n- Upper 2: Overhead press, Seated row\n- Lower 2: Deadlift, Leg curl\n- (a session of Lower 1 is open, started Fri)",
+      "action": "gym_skip",
+      "data": {
+        "workout": "Upper 1"
+      },
+      "note": "the gym: Cancel is an undo of Start, never a skip (30 Oct)",
+      "recorded": [
+        "gym_skip",
+        {
+          "workout": "Upper 1",
+          "guessed": [],
+          "not_included": [
+            "I'll do it next week"
+          ]
         }
       ]
     }

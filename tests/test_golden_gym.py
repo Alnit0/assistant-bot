@@ -96,3 +96,15 @@ def test_gy1_starting_a_workout_posts_the_next_one_in_gym(gym_bot):
     gym_bot.say(MESSAGE["gy1"])
     opened = asyncio.run(database.run(store.db_open_session, gym_bot.user.id))
     assert opened is not None and opened.name == "Lower 1"
+
+
+def test_gy19_cancel_workout_is_an_undo_of_start_never_a_skip(gym_bot):
+    # 26 Oct on live: "cancel workout" was read as a skip and sent the workout to the back of the queue
+    gym_bot.claude(("route", ROUTER["gy1"]), tuple(EXTRACTED["gy1"]))
+    gym_bot.say(MESSAGE["gy1"])
+    queue_before = asyncio.run(database.run(store.db_queue, gym_bot.user.id))
+    gym_bot.claude(("route", ROUTER["gy19"]), tuple(EXTRACTED["gy19"]))
+    gym_bot.say(MESSAGE["gy19"])
+    assert shown(gym_bot).startswith("🏋️ **Lower 1** cancelled · nothing logged · Lower 1 is still next")
+    assert asyncio.run(database.run(store.db_queue, gym_bot.user.id)) == queue_before
+    assert asyncio.run(database.run(store.db_open_session, gym_bot.user.id)) is None

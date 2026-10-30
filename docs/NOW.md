@@ -3,16 +3,22 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Idle, last batch was** 22 Oct (day): hub round 8, round 5's boxes with
-round 7's coloured edges, one message. **Shipped 22 Oct, 10:58 am** with
-the 22 Oct overnight batch (migration 30 applied). NZ$0.00 of NZ$0.50.
+**Idle, last batch was** 30 Oct: the gym fixes batch (one box a set,
+Cancel as an undo, one tap every time, a clean table, last time's
+numbers). Committed and pushed on `feature/pills` (the commit is the one
+that changed this file), **not shipped**. NZ$0.04 of NZ$1.50.
 
-**Next ship:** nothing waiting.
+**Waiting on Alex's phone check of Design · Gym logging**, and his own
+try of the dev bot's flow: the gym is on for the dev bot (`.env.dev`),
+its #gym its own #inbox, a made-up plan in its database. Start the dev
+bot to try it (`python main.py --dev`); it is not running.
+
+**Next ship:** the gym fixes batch, with the gym's migration 6 (set
+notes, the card's line). Nothing in live's `.env` changes.
 
 **Live:** `0412922` since 22 Oct, 10:58 am (`DESIGN_ROUND=8`, `THUMBS_UP`,
 `READING_ENABLED`, `NEWS_CHANNEL_ID`, `LAB_GRID=false`); previous `1aa9688`.
-**After the ship, to check:** tonight's 3:30 am self-test's line in live's
-`data\selftest\history.csv`; tomorrow's 6 am briefing in round 8.
+Nothing shipped since 22 Oct.
 **Drafts and worktrees:** `docs/drafts/gym-onboarding.md`; three old
 worktrees, all merged
 
@@ -20,6 +26,7 @@ worktrees, all merged
 "weighed 82.4"; "bedtime 11pm". **Sundays:** `/suggest`.
 
 **Waiting on Alex**
+- Design · Gym logging on his phone; the dev bot's gym flow
 - His look at the hub in round 8 on live
 - The news; his list of changes; "Design · Hub embeds check"
 - His look at Design · Round 6 timeline; x5 (to-do or reminder?)

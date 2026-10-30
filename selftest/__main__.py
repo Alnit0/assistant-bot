@@ -117,7 +117,7 @@ SWITCHES = {
     "NIGHTLY_SELFTEST": "false", "HUB_TIDY": "false", "QUIET_HOURS_ENABLED": "false", "QUIET_HOURS": "22:00-07:00", "NOTIFY_NTFY": "false",
     "NTFY_BOT_TOPIC": "", "WEATHER_ENABLED": "false", "TODOS_ENABLED": "false", "NUDGES_ENABLED": "false", "HABITS_ENABLED": "false", "TODAY_CARD": "false", "ROUTINES_LAYOUT": "b", "CALENDAR_ENABLED": "false", "CALENDAR_ICS_URL": "",
     "CALENDAR_READ": "", "CALENDAR_WRITE": "false", "CALENDAR_MAIN_ID": "", "CALENDAR_BOT_ID": "", "GOOGLE_SA_KEY_PATH": "", "GOOGLE_CALENDAR_FAKE": "",
-    "DIARY_ENABLED": "false", "SMART_INBOX": "false", "PLAN_MY_DAY": "false", "BIRTHDAYS_ENABLED": "false", "WEEK_VIEW": "false", "THUMBS_UP": "false", "LAB_GRID": "false", "CALENDAR_CHANNEL_ID": "", "GYM_ENABLED": "false", "GYM_SHEET": "false", "GYM_WEIGHT": "false", "BEDTIME_ENABLED": "false", "GYM_SHEET_ID": "","READING_ENABLED": "false", "READING_SOURCE": "", "DESIGN_ROUND": "3", "DAILY_SPEND_LIMIT_NZD": "1.00", "SELFTEST_MONTHLY_LIMIT_NZD": "3.50", "USD_TO_NZD": "1.70",
+    "DIARY_ENABLED": "false", "SMART_INBOX": "false", "PLAN_MY_DAY": "false", "BIRTHDAYS_ENABLED": "false", "WEEK_VIEW": "false", "THUMBS_UP": "false", "LAB_GRID": "false", "CALENDAR_CHANNEL_ID": "", "GYM_ENABLED": "false", "GYM_CHANNEL_ID": "", "GYM_SHEET": "false", "GYM_WEIGHT": "false", "BEDTIME_ENABLED": "false", "GYM_SHEET_ID": "","READING_ENABLED": "false", "READING_SOURCE": "", "DESIGN_ROUND": "3", "DAILY_SPEND_LIMIT_NZD": "1.00", "SELFTEST_MONTHLY_LIMIT_NZD": "3.50", "USD_TO_NZD": "1.70",
 }
 
 # (name, the settings it starts with, seconds to stay off before it)
@@ -136,6 +136,8 @@ PHASES = (
     ("p9", {"CARDS_V2": "true", "REMINDERS_ENABLED": "true", "DESIGN_ROUND": "4", "TODOS_ENABLED": "true", "NUDGES_ENABLED": "true", "HABITS_ENABLED": "true", "TODAY_CARD": "true"}, 0),
     # The calendar, from a file of made-up events: never Alex's link (SWITCHES blanks it for every start)
     ("p10", {"CARDS_V2": "true", "REMINDERS_ENABLED": "true", "DESIGN_ROUND": "4", "TODAY_CARD": "true", "CALENDAR_ENABLED": "true", "CALENDAR_ICS_URL": str(config.BASE_DIR / "tests" / "fixtures" / "calendar_selftest.ics")}, 0),
+    # Logging at the gym (30 Oct): its #gym is the self-test's own #inbox for this start (run_phase), never live's
+    ("p11", {"CARDS_V2": "true", "REMINDERS_ENABLED": "true", "GYM_ENABLED": "true", "DESIGN_ROUND": "8"}, 0),
 )
 
 
@@ -415,6 +417,8 @@ def run_phase(name: str, settings: dict, channels: dict[str, int], claude: bool,
     if os.environ.get("SELFTEST_BACK"):
         env["SELFTEST_BACK"] = os.environ["SELFTEST_BACK"]
     env.update({ENV_NAMES[role]: str(channel_id) for role, channel_id in channels.items()})
+    if settings.get("GYM_ENABLED") == "true":
+        env["GYM_CHANNEL_ID"] = str(channels["inbox"])  # the self-test's own channel: it makes none and uses none of live's
     env.update({"SELFTEST": "1", "SELFTEST_CLAUDE": "1" if claude else "0", "SELFTEST_BUDGET": str(budget), "SELFTEST_MEMO": json.dumps(memo), "KEEP_CONFIRMATIONS": "true", "PYTHONIOENCODING": "utf-8", "COMMANDS_CHANNEL_ID": ""})  # and live's #commands is not rewritten by the test
     started = time.monotonic()
     try:

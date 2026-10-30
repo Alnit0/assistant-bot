@@ -474,3 +474,22 @@ He also saw that the hub repeated itself: each line of the timeline its own embe
 - A hub message of another kind (round 7's embeds, an earlier round's layout) is deleted and posted fresh at the first change: Discord can't turn one kind into the other.
 
 **Preview:** "Design · Round 8" in the Design forum, drawn by the real code from made-up data: 7 am, 11:30 am, 3 pm, 10 pm and a busy day, with round 7's drawing of 11:30 am beside it.
+
+## Gym logging on a phone (30 Oct)
+
+Alex, after a week of real use: the gym is his top priority; logging must be fast and reliable on his phone.
+His next tap after a log sometimes landed on the bot's update instead of opening the pop-up.
+
+- **One card, edited in place**, nothing posted under it, one purple box. Every button at its foot and always
+  there: a Log button an exercise (📝, ✅ once logged), then Undo (greyed until there is something to undo),
+  Finish workout and Cancel workout. Discord keeps a message's foot where it is when what is above grows, so
+  the buttons never move between taps.
+- **What was logged is a table** in a code block, a row an exercise and a column a set, each row within 32
+  characters, a dash for a set not done; set notes and the exercise's note small under it. Finish turns the
+  card into the summary, the same table for every exercise.
+- **Each exercise still to do** has one plan line, why the weight, and last time's date, sets and notes small
+  (or First time). What the last press did is one small line over the buttons.
+- **The pop-up**: an empty box a set, "Set 1 · last 60 x 8" as its name, and Notes. More than four sets: one
+  more tap on the same button for the rest (Discord can't open a pop-up from another's Submit).
+
+**Preview:** "Design · Gym logging" in the Design forum, drawn by the real code from the made-up logbook.

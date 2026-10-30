@@ -27,7 +27,7 @@ ONLY_FOR = (
     "skipping one (\"skip Upper 1\"), something else done instead (\"did a 30 min run instead\"), swapping an "
     "exercise (\"swap bench for dumbbell press today\"), changing the plan (\"make RDLs 6-10\", \"add face pulls "
     "to Upper 1\"), logging sets or a whole session in words, during or after (\"bench 20 for 15, 40 for 9, 40 for "
-    "8\", \"did Upper 1 this morning: …\"), finishing (\"finish the workout\"), questions about their lifts "
+    "8\", \"did Upper 1 this morning: …\"), finishing (\"finish the workout\"), cancelling one (\"cancel workout\"), questions about their lifts "
     "(\"what did I do on bench last time?\", \"my notes on RDLs\", \"best leg press\", \"how's my bench going?\", "
     "\"sessions this month\", \"how's my training going?\"), pain or discomfort noted in workouts or the diary (\"any pain?\", "
     "\"pain history\"), a weekly target (\"aim for 3 a week\"), planning a session at a time (\"gym "
@@ -218,6 +218,15 @@ async def finish(request: Request, data: dict, guessed: frozenset) -> str:
     if open_ is None:
         raise UserError(f"{ICON} No workout is open.")
     said, _ = await session.finish(open_)
+    return said
+
+
+async def cancel(request: Request, data: dict, guessed: frozenset) -> str:
+    """ "cancel workout": as if it was never started. Nothing logged, the same workout still next (never skip)."""
+    open_ = await database.run(store.db_open_session, request.user.id)
+    if open_ is None:
+        raise UserError(f"{ICON} No workout is open.")
+    said, _ = await session.cancel(open_)
     return said
 
 
@@ -643,7 +652,7 @@ def actions() -> list:
                prepare=import_card, apply=import_save, verify=import_check, purpose=SET_UP, say=("here's my gym logbook",)),
         Action("gym_start", "Start a workout: the next in turn (\"starting a workout\", \"gym now\", \"what's my workout?\", \"extra session\"), or a named one instead (\"do Lower 2 instead\" -> workout Lower 2).",
                (Field("workout", "A workout named, as the user said it. Leave out for the next in turn."),), needs_card=False, run=start, purpose=EACH_DAY, say=("starting a workout",)),
-        Action("gym_skip", "Skip a workout: it goes to the back of the queue (\"skip Upper 1\"; \"skip today's\" -> nothing named).",
+        Action("gym_skip", "Skip a workout: it goes to the back of the queue (\"skip Upper 1\"; \"skip today's\" -> nothing named). Not cancelling the workout that is open (gym_cancel).",
                (Field("workout", "The workout named, as said."),), needs_card=False, run=skip, purpose=EACH_DAY, say=("skip Upper 1",)),
         Action("gym_off_plan", "Something else done instead of a workout (\"did a 30 min run instead\" -> activity 30 min run).",
                (Field("activity", "What was done, in the user's words.", required=True), Field("day", _DAY)), needs_card=False, run=off_plan, purpose=EACH_DAY, say=("did a 30 min run instead",)),
@@ -658,6 +667,7 @@ def actions() -> list:
                 Field("corrections", "On the open card only: a set put right.", ITEMS, item_fields=(Field("exercise", _EXERCISE, required=True), Field("set", "Which set of it, counting from 1.", INTEGER, required=True), Field("reps", "The reps it should be.", INTEGER), Field("weight", "The weight it should be, in kg.", NUMBER)))),
                prepare=describe_card, apply=describe_save, verify=describe_check, purpose=EACH_DAY, say=("bench 20 for 15, 40 for 9, 40 for 8",)),
         Action("gym_finish", "Finish the workout that is open (\"finish the workout\", \"done at the gym\").", (), needs_card=False, run=finish, purpose=EACH_DAY, say=("finish the workout",)),
+        Action("gym_cancel", "Cancel the workout that is open, as if it was never started: nothing logged, and the same workout is still next (\"cancel workout\", \"cancel the workout\", \"not doing it after all\"). Never a skip.", (), needs_card=False, run=cancel, purpose=EACH_DAY, say=("cancel workout",)),
         Action("gym_ask", "A question about the user's lifts: last time (\"what did I do on bench last time?\" -> last), notes (\"my notes on RDLs\"), best (\"best leg press\"), trend (\"how's my bench going?\"), sessions (\"sessions this month\" -> span month), training (\"how's my training going?\"), pain (\"any pain?\", \"pain history\").",
                (Field("question", "last, notes, best, trend or sessions.", choices=QUESTIONS, required=True), Field("exercise", _EXERCISE), Field("span", "week or month, for sessions.", choices=("week", "month"))),
                needs_card=False, run=ask, purpose=SEE, say=("how's my bench going?",)),

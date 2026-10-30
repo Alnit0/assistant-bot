@@ -360,10 +360,14 @@ def test_a_start_of_the_self_test_logs_in_as_the_dev_bot_when_there_is_one():
     in_files = set(dotenv_values(config.BASE_DIR / ".env")) | set(dotenv_values(config.BASE_DIR / ".env.dev"))
     env = {name: value for name, value in config.environment_for_child().items() if name not in in_files}
     env.update({"SELFTEST": "1", "INBOX_CHANNEL_ID": "7", "HUB_CHANNEL_ID": "8", "BOT_LOG_CHANNEL_ID": "9", "COMMANDS_CHANNEL_ID": ""})
-    code = "from core import config, instance_lock; print(config.SEPARATE_BOT, config.TOKEN == config.test_bot_token(), instance_lock.LOCK_PATH.name, config.EXPECTED_BOT_ID == config.test_bot_id(), sorted(config.CHANNELS))"
+    code = "from core import config, instance_lock; print(config.SEPARATE_BOT, config.TOKEN == config.test_bot_token(), instance_lock.LOCK_PATH.name, config.EXPECTED_BOT_ID == config.test_bot_id(), sorted(config.CHANNELS)); print(config.CHANNELS.get('gym'))"
     done = subprocess.run([sys.executable, "-c", code, "--dev"], cwd=config.BASE_DIR, env=env, capture_output=True, text=True, timeout=60)
     assert done.stdout.split()[:4] == ["True", "True", "bot-dev.lock", "True"], done.stdout + done.stderr
-    assert "gym" not in done.stdout and "archive" not in done.stdout, "and it has none of live's channels"
+    # A #gym only when .env.dev names one of its own (30 Oct: the dev bot's own #inbox), never live's
+    own_gym = (dotenv_values(config.BASE_DIR / ".env.dev").get("GYM_CHANNEL_ID") or "").strip()
+    live_gym = (dotenv_values(config.BASE_DIR / ".env").get("GYM_CHANNEL_ID") or "").strip()
+    assert done.stdout.splitlines()[-1] == (own_gym or "None") and (not own_gym or own_gym != live_gym), "and it has none of live's channels"
+    assert "archive" not in done.stdout, "and it has none of live's channels"
     # And with live's token forced on it, it is live's account: live's lock, so it can never run beside live
     forced = subprocess.run([sys.executable, "-c", code, "--dev"], cwd=config.BASE_DIR, env={**env, "DISCORD_TOKEN": "not-the-dev-bot's"}, capture_output=True, text=True, timeout=60)
     assert forced.stdout.split()[:3] == ["False", "False", "bot.lock"], forced.stdout + forced.stderr

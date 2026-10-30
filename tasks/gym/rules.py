@@ -66,6 +66,7 @@ class DoneSet:
     per_hand: bool = False
     position: int = 0
     id: int = 0
+    note: str = ""  # that set's own note, typed after its numbers ("60 x 8 felt heavy"), or a box that couldn't be read
 
     @property
     def done(self) -> bool:
@@ -153,6 +154,99 @@ def result(cell) -> tuple[float | None, int | None, bool]:
     if found := _RESULT_REPS_FIRST.match(text):
         return float(found[2].replace(",", ".")), int(found[1]), (found[3] or "").lower() == "s"
     return None, reps(text), False
+
+
+# One box of the Log form, a set: "60 x 8", "60kg × 8", "60*8 felt heavy", "14s for 10", "8" (reps alone, for a
+# bodyweight move). Only numbers and their units are read; whatever follows them is that set's own note
+_BOX = re.compile(r"^\s*(\d{1,4}(?:[.,]\d{1,2})?)\s*(kgs?|s)?\s*(?:x|×|\*|for)\s*(\d{1,3})(?:\s*reps?)?\b\s*(.*)$", re.IGNORECASE | re.DOTALL)
+_BOX_REPS = re.compile(r"^\s*(\d{1,3})(?:\s*reps?)?(?![\d.,]|\s*(?:kgs?|s|x|×|\*|for|@)\b|\s*[x×*@])\s*(.*)$", re.IGNORECASE | re.DOTALL)
+_NOTE_EDGE = " ,;:-–.·"
+
+
+@dataclass(frozen=True)
+class Typed:
+    """What one set's box said: its numbers, and the rest as its note. `readable` False keeps the whole text as
+    the note and reads no number from it."""
+
+    weight: float | None = None
+    reps: int | None = None
+    per_hand: bool = False
+    note: str = ""
+    readable: bool = True
+
+
+def typed_set(text: str, reps_alone: bool) -> Typed:
+    """One set's box, read: weight × reps (x, X, ×, * or "for", "kg" or not), or reps alone when `reps_alone`
+    (a bodyweight move), and anything after the numbers as the set's note. Nothing is ever made up: what can't
+    be read is not readable, its words kept whole."""
+    said = " ".join(str(text or "").split())
+    found = _BOX.match(said)
+    if found:
+        weight_kg, reps_done = float(found[1].replace(",", ".")), int(found[3])
+        if weight_kg <= MAX_WEIGHT and 0 < reps_done <= MAX_REPS:
+            return Typed(weight_kg, reps_done, (found[2] or "").lower() == "s", found[4].strip(_NOTE_EDGE + " "))
+        return Typed(note=said, readable=False)
+    found = _BOX_REPS.match(said) if reps_alone else None
+    if found and 0 < int(found[1]) <= MAX_REPS:
+        return Typed(None, int(found[1]), False, found[2].strip(_NOTE_EDGE + " "))
+    return Typed(note=said, readable=False)
+
+
+def short_set(each: DoneSet, spaced: bool = False) -> str:
+    """A set in a few characters, for a table cell or a label: "60x8" ("60 x 8" spaced), reps alone with no
+    weight ("8"), "-" not done."""
+    if not each.done:
+        return "-"
+    if each.weight is None:
+        return str(each.reps)
+    return f"{each.weight:g} x {each.reps}" if spaced else f"{each.weight:g}x{each.reps}"
+
+
+def shortened(text: str, limit: int) -> str:
+    """Within `limit` characters, an ellipsis where it was cut."""
+    text = " ".join(str(text or "").split())
+    return text if len(text) <= limit else text[: max(1, limit - 1)].rstrip() + "…"
+
+
+TABLE_WIDTH = 32  # characters a row: what a phone shows of a code block without scrolling
+_NAME_AT_LEAST = 10  # characters of an exercise's name kept before sets go on to a line of their own
+
+
+def table(rows: list[tuple[str, list[str]]], width: int = TABLE_WIDTH) -> list[str]:
+    """The sets as a table for a code block: a row an exercise, a column a set ("S1", "S2"…), each row within
+    `width` characters. A long name is shortened with an ellipsis; sets that still don't fit go on to a line of
+    their own under it, in the same columns."""
+    if not rows:
+        return []
+    count = max(len(cells) for _, cells in rows)
+    columns = [max([len(f"S{index + 1}")] + [len(cells[index]) for _, cells in rows if index < len(cells)]) for index in range(count)]
+    longest = max(len(name) for name, _ in rows)
+    fitting = count
+    while fitting > 1 and _NAME_AT_LEAST + sum(each + 1 for each in columns[:fitting]) > width:
+        fitting -= 1
+    groups = [range(start, min(count, start + fitting)) for start in range(0, count, fitting)]
+    # A line's first column is as wide as the widest that comes in that place on any line, so they line up
+    slots = [max(columns[index] for index in range(slot, count, fitting)) for slot in range(fitting)]
+    while fitting > 1 and _NAME_AT_LEAST + sum(each + 1 for each in slots) > width:
+        fitting -= 1
+        groups = [range(start, min(count, start + fitting)) for start in range(0, count, fitting)]
+        slots = [max(columns[index] for index in range(slot, count, fitting)) for slot in range(fitting)]
+    name_width = max(_NAME_AT_LEAST, min(longest, width - sum(each + 1 for each in slots)))
+
+    def line(first: str, cells: list[str], group) -> str:
+        return (first.ljust(name_width) + "".join(" " + (cells[index] if index < len(cells) else "").ljust(slots[slot]) for slot, index in enumerate(group))).rstrip()
+
+    lines = [line("", [f"S{index + 1}" for index in range(count)], groups[0])]
+    for name, cells in rows:
+        for number, group in enumerate(groups):
+            if number and all(index >= len(cells) for index in group):
+                continue
+            lines.append(line(shortened(name, name_width) if number == 0 else "", cells, group))
+    return lines
+
+
+def code_block(lines: list[str]) -> str:
+    return "```\n" + "\n".join(lines) + "\n```" if lines else ""
 
 
 _SLASHED = re.compile(r"^\s*(\d{1,2})/(\d{1,2})/(\d{2,4})\s*$")

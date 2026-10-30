@@ -127,21 +127,22 @@ def test_only_the_warnings_and_errors_logged_during_the_run_are_listed(tmp_path)
 # --- what it will and won't do ---------------------------------------------------------------------------------
 def test_the_phases_run_the_old_look_twice_then_the_new_then_the_old_again_with_reminders_on():
     names = [name for name, _, _ in runner.PHASES]
-    assert names == ["p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8", "p9", "p10"] == list(phases.PHASES)
+    assert names == ["p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8", "p9", "p10", "p11"] == list(phases.PHASES)
     looks = [settings["CARDS_V2"] for _, settings, _ in runner.PHASES]
     assert looks[:4] == ["false", "false", "true", "false"], "off, a restart, on, and back off"
-    assert [settings.get("BRIEFING_ENABLED", "false") for _, settings, _ in runner.PHASES] == ["false", "false", "false", "false", "true", "true", "true", "false", "false", "false"], "the briefing off, then on"
-    assert [settings.get("HUB_TIDY", "false") for _, settings, _ in runner.PHASES] == ["false"] * 5 + ["true", "true", "false", "false", "false"], "the tidy off, then on"
-    assert [settings.get("TODOS_ENABLED", "false") for _, settings, _ in runner.PHASES] == ["false"] * 6 + ["true", "true", "true", "false"], "to-dos in their own start and the round 4 ones"
-    assert runner.SWITCHES["DESIGN_ROUND"] == "3" and [settings.get("DESIGN_ROUND", "3") for _, settings, _ in runner.PHASES] == ["3"] * 6 + ["4", "4", "4", "4"], "round 4 from the to-dos start on, whatever live's .env says"
+    assert [settings.get("BRIEFING_ENABLED", "false") for _, settings, _ in runner.PHASES] == ["false", "false", "false", "false", "true", "true", "true", "false", "false", "false", "false"], "the briefing off, then on"
+    assert [settings.get("HUB_TIDY", "false") for _, settings, _ in runner.PHASES] == ["false"] * 5 + ["true", "true", "false", "false", "false", "false"], "the tidy off, then on"
+    assert [settings.get("TODOS_ENABLED", "false") for _, settings, _ in runner.PHASES] == ["false"] * 6 + ["true", "true", "true", "false", "false"], "to-dos in their own start and the round 4 ones"
+    assert runner.SWITCHES["DESIGN_ROUND"] == "3" and [settings.get("DESIGN_ROUND", "3") for _, settings, _ in runner.PHASES] == ["3"] * 6 + ["4", "4", "4", "4", "8"], "round 4 from the to-dos start on (the gym's in round 8), whatever live's .env says"
     assert all(runner.SWITCHES[name] == "false" for name in ("TODOS_ENABLED", "NUDGES_ENABLED", "HABITS_ENABLED", "TODAY_CARD"))
-    assert [settings.get("HABITS_ENABLED", "false") for _, settings, _ in runner.PHASES] == ["false"] * 8 + ["true", "false"], "routines and reminders in start 9 only"
+    assert [settings.get("HABITS_ENABLED", "false") for _, settings, _ in runner.PHASES] == ["false"] * 8 + ["true", "false", "false"], "routines and reminders in start 9 only"
     assert runner.SWITCHES["CALENDAR_ENABLED"] == "false" and runner.SWITCHES["CALENDAR_ICS_URL"] == "", "never live's calendar link in a self-test"
     assert all(runner.SWITCHES[name] == "" for name in ("CALENDAR_READ", "CALENDAR_MAIN_ID", "CALENDAR_BOT_ID", "GOOGLE_SA_KEY_PATH")), "never live's Google calendars in a self-test"
     calendar = [settings for name, settings, _ in runner.PHASES if settings.get("CALENDAR_ENABLED") == "true"]
     assert len(calendar) == 1 and calendar[0]["CALENDAR_ICS_URL"].endswith("calendar_selftest.ics"), "the calendar start reads made-up events"
-    assert [settings.get("DESIGN_ROUND", "") for _, settings, _ in runner.PHASES] == [""] * 6 + ["4", "4", "4", "4"], "round 4 from the to-dos start on"
+    assert [settings.get("DESIGN_ROUND", "") for _, settings, _ in runner.PHASES] == [""] * 6 + ["4", "4", "4", "4", "8"], "round 4 from the to-dos start on"
     assert all(settings["REMINDERS_ENABLED"] == "true" for _, settings, _ in runner.PHASES)
+    assert runner.SWITCHES["GYM_CHANNEL_ID"] == "" and [name for name, settings, _ in runner.PHASES if settings.get("GYM_ENABLED") == "true"] == ["p11"], "never live's #gym; the gym in its own start"
     assert [off for _, _, off in runner.PHASES][1] > 60, "long enough off for a job to count as late"
 
 
@@ -298,13 +299,13 @@ def test_a_start_that_stops_is_said_and_fails_the_run_even_with_every_step_passe
 def test_only_the_stages_touched_since_each_last_passed_are_run_and_one_never_passed_always_is():
     from selftest import stages
 
-    assert stages.touched({"day": [], "briefing": [], "tidy": [], "todos": [], "round4": [], "hub": [], "calendar": []}) == {}
-    assert stages.touched({"day": ["docs/QA-RUN.md"], "briefing": ["tests/test_briefing.py"], "tidy": [], "todos": [], "round4": [], "hub": [], "calendar": []}) == {}
-    found = stages.touched({"day": ["tasks/briefing/rules.py"], "briefing": ["tasks/briefing/rules.py"], "tidy": ["tasks/briefing/rules.py"], "todos": ["tasks/briefing/rules.py"], "round4": ["tasks/briefing/rules.py"], "hub": ["tasks/briefing/rules.py"], "calendar": ["tasks/briefing/rules.py"]})
+    assert stages.touched({"day": [], "briefing": [], "tidy": [], "todos": [], "round4": [], "hub": [], "calendar": [], "gym": []}) == {}
+    assert stages.touched({"day": ["docs/QA-RUN.md"], "briefing": ["tests/test_briefing.py"], "tidy": [], "todos": [], "round4": [], "hub": [], "calendar": [], "gym": []}) == {}
+    found = stages.touched({"day": ["tasks/briefing/rules.py"], "briefing": ["tasks/briefing/rules.py"], "tidy": ["tasks/briefing/rules.py"], "todos": ["tasks/briefing/rules.py"], "round4": ["tasks/briefing/rules.py"], "hub": ["tasks/briefing/rules.py"], "calendar": ["tasks/briefing/rules.py"], "gym": ["tasks/briefing/rules.py"]})
     assert found == {"briefing": "tasks/briefing/rules.py"}
-    assert list(stages.touched({"day": ["core/cards.py"], "briefing": ["core/cards.py"], "tidy": ["core/cards.py"], "todos": ["core/cards.py"], "round4": ["core/cards.py"], "hub": ["core/cards.py"], "calendar": ["core/cards.py"]})) == ["day", "briefing", "tidy", "todos", "round4", "hub", "calendar"]
-    assert stages.touched({"day": [], "briefing": None, "tidy": [], "todos": [], "round4": [], "hub": [], "calendar": []}) == {"briefing": "it has not passed here yet"}
-    many = stages.touched({"day": [f"tasks/pills/{n}.py" for n in "abcde"], "briefing": [], "tidy": [], "todos": [], "round4": [], "hub": [], "calendar": []})
+    assert list(stages.touched({"day": ["core/cards.py"], "briefing": ["core/cards.py"], "tidy": ["core/cards.py"], "todos": ["core/cards.py"], "round4": ["core/cards.py"], "hub": ["core/cards.py"], "calendar": ["core/cards.py"], "gym": ["core/cards.py"]})) == ["day", "briefing", "tidy", "todos", "round4", "hub", "calendar", "gym"]
+    assert stages.touched({"day": [], "briefing": None, "tidy": [], "todos": [], "round4": [], "hub": [], "calendar": [], "gym": []}) == {"briefing": "it has not passed here yet"}
+    many = stages.touched({"day": [f"tasks/pills/{n}.py" for n in "abcde"], "briefing": [], "tidy": [], "todos": [], "round4": [], "hub": [], "calendar": [], "gym": []})
     assert many == {"day": "tasks/pills/a.py, tasks/pills/b.py, tasks/pills/c.py and 2 more"}
 
 

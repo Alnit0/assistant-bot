@@ -216,9 +216,9 @@ def test_starting_posts_the_next_workout_in_gym_with_suggestions_last_time_and_a
     assert posted.channel == GYM
     shown = "\n".join(design.texts(posted.card.layout))
     assert "## 🏋️ Lower 1 · session 2" in shown
-    assert "last: 120 kg × 21" in shown and "over 10-15: up to land in range" in shown, "a bigger jump for 21 reps on 10-15"
-    assert "⚠️ last note: “knee felt a bit off”" in shown, "a note about pain comes up again"
-    assert [button.label for button in design.buttons(posted.card.layout)][-1] == "Finish workout"
+    assert "last Thu 8 Oct: 120x21" in shown and "over 10-15: up to land in range" in shown, "a bigger jump for 21 reps on 10-15"
+    assert "⚠️ “knee felt a bit off”" in shown, "a note about pain comes up again"
+    assert [button.label for button in design.buttons(posted.card.layout)][-3:] == ["Undo", "Finish workout", "Cancel workout"]
 
 
 def test_do_another_instead_keeps_the_queue_skip_sends_to_the_back_off_plan_leaves_it(world):
@@ -233,27 +233,29 @@ def test_do_another_instead_keeps_the_queue_skip_sends_to_the_back_off_plan_leav
     assert run(session.next_workout(world.owner.id)).name == "Lower 2", "an off-plan session leaves the queue as it was"
 
 
-def test_the_log_form_has_a_line_a_set_with_the_suggestion_and_logs_what_is_typed(world):
+def test_the_log_form_has_an_empty_box_a_set_with_last_time_in_its_label_and_logs_what_is_typed(world):
     imported(world)
     started = run(session.start(world.owner.id))
     squat = next(each for each in run(session.exercises_of(started)) if each.name == "Squat")
     form = run(session.form_for(started, squat))
-    assert [field.label for field in form.fields] == ["Set 1 · warm-up · 8-10 reps", "Set 2 · working · 4-6 reps", "A note (optional)"]
-    assert form.fields[1].value == "82.5 kg × " and form.fields[0].value == "40 kg × ", "the working set's suggestion, the warm-up about half"
+    assert [field.label for field in form.fields] == ["Set 1 · last 40 x 10", "Set 2 · last 80 x 6", "Notes"]
+    assert all(not field.value and not field.placeholder for field in form.fields), "nothing to delete before typing"
     cards.check_form(form)
     press = SimpleNamespace(arg=form.arg, fields={"set0": "40 x 10", "set1": "82.5 x 6", "note": ""}, db=database, user=world.owner, channel_id=GYM, message_id=1, update=None)
     assert run(session.on_logged(press)) == "logged 2 sets"
     logged = run(database.run(store.db_sets, started.id))
     assert [(each.exercise, each.weight, each.reps) for each in logged] == [("Squat", 40.0, 10), ("Squat", 82.5, 6)]
-    assert world.sent[-1].card.text == "✅ **Squat** · 40 kg × 10, 82.5 kg × 6"
-    with pytest.raises(UserError, match="couldn't read"):
-        run(session.on_logged(SimpleNamespace(**{**vars(press), "fields": {"set0": "lots", "set1": "", "note": ""}})))
+    assert len(world.sent) == 1, "nothing posted under the card"
+    assert "-# ✅ Squat logged · 2 sets" in "\n".join(design.texts(world.edited[-1][1].layout)), "said on the card"
+    assert run(session.on_logged(SimpleNamespace(**{**vars(press), "fields": {"set0": "lots", "set1": "", "note": ""}}))) == "logged 0 sets, set 1 to look at"
+    (kept,) = run(database.run(store.db_sets, started.id))
+    assert (kept.reps, kept.weight, kept.note) == (None, None, "lots"), "kept as that set's note, no number made up"
 
 
-def test_more_sets_than_a_form_holds_are_one_long_box():
+def test_a_form_from_before_30_oct_one_long_box_is_still_read():
     exercise = Exercise("Bench press", tuple(PlannedSet(rules.WORKING, "", "", 5, 8) for _ in range(6)))
-    found, unread = session.read_form({"sets": "40 x 8\n40 x 7\n\n40 kg × \n9"}, exercise, [(each, 40.0) for each in exercise.sets])
-    assert [(each.weight, each.reps) for each in found] == [(40.0, 8), (40.0, 7), (40.0, 9)] and not unread
+    found, look = session.read_form({"sets": "40 x 8\n40 x 7\n\n9"}, exercise)
+    assert [(each.weight, each.reps, each.position) for each in found] == [(40.0, 8, 0), (40.0, 7, 1), (None, None, 3)] and look == [4]
 
 
 def test_finish_marks_what_is_not_logged_calls_out_a_best_and_undo_puts_it_back(world):
@@ -262,7 +264,7 @@ def test_finish_marks_what_is_not_logged_calls_out_a_best_and_undo_puts_it_back(
     sets = [DoneSet("Squat", rules.WORKING, "To failure", rules.TO_FAILURE, 4, 6, 6, 85.0)]
     run(session.log_sets(started, "Squat", sets, None))
     said, undo_id = run(session.finish(started))
-    assert said.splitlines()[0].startswith("🏁 **Lower 1** · session 2 · 1 sets") and "not done" in said.splitlines()[0]
+    assert said.splitlines()[0] == "🏁 **Lower 1** · session 2" and " · 1 set · " in said.splitlines()[1] and "not done" in said.splitlines()[1]
     assert "🏆 **Squat** · heaviest for 4-6: 85 kg" in said
     assert run(session.next_workout(world.owner.id)).name == "Upper 2", "the queue moved on"
     assert run(session.undo(undo_id, world.owner.id)) == "↩️ The workout is open again"

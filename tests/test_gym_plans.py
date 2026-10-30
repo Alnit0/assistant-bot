@@ -152,13 +152,14 @@ def test_each_session_keeps_the_plan_active_when_it_was_logged(world):
 def test_the_plan_kept_before_becomes_the_first_with_its_sessions():
     conn = sqlite3.connect(":memory:")
     conn.execute("CREATE TABLE users (id INTEGER PRIMARY KEY)")
-    for step in store.MIGRATIONS[:-1]:
+    plans_at = store.MIGRATIONS.index(store.add_plans)
+    for step in store.MIGRATIONS[:plans_at]:
         step(conn)
     for position, name in enumerate(("Upper 1", "Lower 1")):
         conn.execute("INSERT INTO gym_workouts (user_id, name, position) VALUES (1, ?, ?)", (name, position))
     for day in ("2026-09-01", "2026-09-15"):
         conn.execute("INSERT INTO gym_sessions (user_id, name, day, status, source, started_at) VALUES (1, 'Upper 1', ?, 'finished', 'import', 'x')", (day,))
-    store.MIGRATIONS[-1](conn)
+    store.add_plans(conn)
     (plan,) = plans.db_plans(conn, 1)
     assert plan.active and plan.name.endswith(" — Upper/Lower 3-week")
     assert [each.name for each in store.db_plan(conn, 1)] == ["Upper 1", "Lower 1"]

@@ -28,7 +28,7 @@ Never write here: a real pill name, a real event name, a bot's display name, a l
 
 **Prompts for Claude Code**
 - Always complete and ready to paste. **No placeholders**, and never leave options (A/B) for him to delete: ask him first, then write one prompt.
-- Prompts never carry notes for Alex inside the code block; whether to /clear first is said in bold above the block.
+- Notes for Alex, such as "/clear first", go in bold above the code block, never inside it: the block holds only what is pasted.
 - **Always say up front** whether a prompt will commit, push, run a self-test, or ship to live.
 - Batches run unattended: Claude Code decides and notes under "Decided" in docs/STATUS.md rather than stopping, unless live or data is at risk.
 - Spend limits in NZ$: per run under NZ$0.40, a batch cap stated in the prompt.
@@ -46,6 +46,8 @@ Never write here: a real pill name, a real event name, a bot's display name, a l
 1. **What the hub shows and how it reads**: the briefing, the design, progress.
 2. **How well the bot understands what he says.**
 3. Everything else. **Notifications and ntfy are low priority.**
+
+**30 Oct:** after a week of real use, **the gym is his top priority**, and the bot's focus is health and wellbeing (pills, gym, routines, events). Gym logging has to be fast and reliable on his phone.
 
 He is **not relying on the bot for reminders yet**. The hub is a daily overview he checks, plus a place to talk to the bot to do more.
 
@@ -145,6 +147,7 @@ Messages go through fast paths (buttons, exact typed words), then sticky follow-
 - **Whether a thing is on tonight is the briefing's** ("is the gym on tonight?", "is anything on tonight?": tonight in time order across tasks); whether an event is on another day is the calendar's.
 - **A correction straight after a schedule's Save** ("no, 7pm") is a change card for that schedule, as pills have; a schedule change's "Saved" has an Undo. A time with no am or pm is the reading nearer the time it runs at, marked ❓. Knowing what was just saved is in the core (`actions.just_saved_one`).
 - **The calendar's copy starts at this week's Monday**, so the week view's past days have their events.
+- **Gym logging (30 Oct, not shipped):** the workout is one card edited in place, nothing posted under it, every button at its foot and always there (a Log button an exercise, ✅ once logged, then Undo greyed until there is something to undo, Finish, Cancel), so a tap never lands on something that moved. The pop-up has an empty box a set ("60 x 8 felt heavy": Python reads the numbers, the rest is that set's note) and Notes; last time's numbers are in each box's name and on the card. More than 4 sets: the rest in a second pop-up from the same button, one more tap (Discord can't open a pop-up from another's Submit). **Cancel is an undo of Start**: nothing counted, the same workout next, Undo when something had been logged. "cancel workout" in words is Cancel, never a skip (it was a skip on 26 Oct).
 - **Reactions waiting out the quiet period are kept in the database** and resumed at a start; one older than the quiet period and 10 minutes is dropped and logged.
 
 ## 9. Open threads (update every batch)
@@ -154,7 +157,7 @@ Messages go through fast paths (buttons, exact typed words), then sticky follow-
 - **The bedtime nudge** (live 18 Oct, silent until he says "bedtime 11pm").
 - **Round 8** (live since 22 Oct, 10:58 am): his look at the hub in round 8 on live.
 - **👍 as yes** (live since 21 Oct, 3:23 pm, `THUMBS_UP=true`): his first days with it. Round 7 is live until round 8 ships; his verdict on it is in section 7.
-- **The next ship** carries the 22 Oct overnight batch (the hub's repost of a briefing that can't take embeds; "will it rain?" with a card open; "is the gym on tonight?"; a correction after a schedule's Save with Undo; the week view's past days; reactions over a restart, with a core migration) and **set LAB_GRID=false in live's .env** (Alex found the animation too choppy, about 1 frame a second).
+- **Gym logging** (30 Oct, on `feature/pills`, not shipped): his phone check of "Design · Gym logging" and his own try of the dev bot's flow (the gym is on for the dev bot, its #gym its own #inbox, a made-up plan in its database). The next ship carries it, with the gym's migration 6 (set notes, the card's line).
 - **The diary's one confirmation a day** (live since 21 Oct, 10:07 pm): a save edits the day's "Saved" line; a press on the ask or on Wind down posts the diary's own line.
 - **The morning news** (live since 21 Oct, 10:07 pm, `a025112`; `READING_ENABLED=true`): his first morning. It is one message at 6 am in a news channel he made in the hub's category (`NEWS_CHANNEL_ID`, in live's `.env` only), picked at 5:30 ("Morning news", renamed from the daily read's row). In its own channel for now; moving it into the hub as its own message is planned. The hub's second message has its one line. Round 7's briefing shows no What's new box, so the line left for 22 Oct is not seen.
 - **His list of more changes** (21 Oct, when he called the feature freeze off): not heard yet.

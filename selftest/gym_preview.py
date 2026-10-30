@@ -70,9 +70,9 @@ def build() -> list[tuple[str, tuple]]:
         squat = next(each for each in await session.exercises_of(started) if each.name == "Squat")
         form = await session.form_for(started, squat)
         boxes = "\n".join(f"**{each.label}**\n> {each.value or ' '}" for each in form.fields)
-        found.append(("📝 Log on Squat opens a form (Discord's own pop-up): a box a set with the suggested weight filled in, you type the reps (and change the weight), and a note", (design.Box(design.DECISION, (design.Text(f"### 📝 {form.title}\n{boxes}"),)),)))
+        found.append(("📝 Log on Squat opens a form (Discord's own pop-up): an empty box a set, last time's numbers in its name, and Notes (since 30 Oct: Design · Gym logging)", (design.Box(design.DECISION, (design.Text(f"### 📝 {form.title}\n{boxes}"),)),)))
         await session.log_sets(started, "Squat", [rules.DoneSet("Squat", rules.WARM_UP, "Warm-up", rules.WARMING, 8, 10, 10, 40.0), rules.DoneSet("Squat", rules.WORKING, "To failure", rules.TO_FAILURE, 4, 6, 6, 85.0, position=1)], None)
-        found.append(("After the form: one line under the card, with Undo, and the card drawn again with the exercise done", (design.Text("✅ **Squat** · 40 kg × 10, 85 kg × 6"), design.Row(session.undo_row(1)))))
+        found.append(("Before 30 Oct, after the form: one line under the card, with Undo. Since then it is the card's own small line (Design · Gym logging)", (design.Text("✅ **Squat** · 40 kg × 10, 85 kg × 6"), design.Row(session.undo_row(1)))))
         said, _ = await session.finish(started)
         found.append(("🏁 Finish workout: what was not logged is not done, a summary with today against last time and the bests beaten, and the next workout comes round. Undo after it", (design.Box(design.DONE, (design.Text(said), design.Row(session.undo_row(2)))),)))
         described = [
@@ -99,7 +99,7 @@ def opening() -> str:
         "Your goals, in your words: help upkeep data entry, data retrieval, create consistency, lower administration, see progress, easy access to notes, make life easier. Flexible, never naggy.",
         "**Import:** send your logbook (CSV or XLSX, or paste its rows). Claude reads the headings and a few rows to map the columns; Python reads every value. The plan (workouts in rotation order) and the log (dated sessions) come apart, on one card.",
         "**The rotation:** no fixed days. Say starting a workout, gym now or what's my workout: the next one's card in #gym. Do Lower 2 instead, skip Upper 1, did a 30 min run instead, swap bench for dumbbell press today, make RDLs 6-10.",
-        "**Logging:** a Log button on each exercise (a form, the suggested weight filled in), or say it in words, during or after, even days later. Finish gives a summary with your bests and moves the queue on. Undo for each.",
+        "**Logging:** a Log button on each exercise (a form, an empty box a set), or say it in words, during or after, even days later. Finish gives a summary with your bests and moves the queue on. Undo for each.",
         "**Suggested weight:** double progression from your last to-failure set, said in a few words on the card. **Questions:** what did I do on bench last time, my notes on RDLs, best leg press, how's my bench going, sessions this month. **Gym tomorrow 6pm** books it on the Bot calendar.",
         "-# Made-up logbook only. The buttons here do nothing.",
     ])

@@ -6,14 +6,103 @@ No history is kept here: what changed is `docs/CHANGELOG.md`, and this
 file as it stood until midday on 2026-10-14 (every batch, every answer,
 all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
-**Updated:** 2026-10-22 (11 am, round 8 shipped)
+**Updated:** 2026-10-30 (evening, the gym fixes batch, committed on `feature/pills`, not shipped)
 
 
 
 
 ## The next ship's to-do
 
-- Nothing waiting.
+- The gym fixes batch (below), with the gym's migration 6. Nothing in live's `.env` changes.
+
+## The gym fixes batch (30 Oct; not shipped)
+
+Alex, 30 Oct, after a week of real use: the gym is his top priority, and the bot's focus is health and
+wellbeing. Make logging fast and reliable on his phone. Live runs `0412922` (since 22 Oct, 10:58 am); nothing
+has shipped since.
+
+- **One box a set:** the pop-up has a box a set ("Set 1 · last 60 x 8") and Notes, every box empty. Python
+  reads "60 x 8", "60x8", "60 X 8", "60 × 8", "60*8", "60kg x 8", "14s for 10", reps alone for a bodyweight
+  move; what follows the numbers is that set's own note (`gym_sets.note`). Empty is not done; a box that can't
+  be read is kept whole as that set's note, nothing made up, and the card says which set to look at.
+- **Cancel is an undo:** there was no Cancel. Now Cancel workout on the card and "cancel workout" in words
+  (`gym_cancel`): as if never started, the same workout still next; Undo when something had been logged.
+- **One tap every time:** the workout is one card edited in place, nothing posted under it, every button at
+  its foot and always there. What caused the double tap is below.
+- **A clean table** of what was logged (a row an exercise, a column a set, a dash not done, each row within 32
+  characters), notes small under it; the same on the summary, which Finish now makes of the card itself.
+- **Last time's numbers** in each box's name and on the card under each exercise still to do ("First time"
+  with none); the pre-filled weights are gone.
+
+**What caused the double tap** (live's message log, read only): every press reached the bot and got its
+pop-up within 0.3 to 0.43 s, so nothing timed out. But after each log the bot posted a separate "✅ … Undo"
+message under the card, and drew the card again with that exercise's Log button gone and lines changed.
+Discord scrolls to the new message and the card's buttons shift, so the next tap landed on what had moved: on
+26 Oct the same Log button was pressed twice 3 to 7 s apart three times, and once a neighbouring exercise's
+button between two presses of the one he meant.
+
+**Live's rotation** (read only): on 26 Oct "cancel workout" was read as **skip**, sending that workout to the
+back; Alex said "undo", which put the queue back. Then "I want to do [it] again" was read as a skip of the
+next workout, and a third message as another skip, which brought the order back to where it was before the
+start. He did the workout, Finish moved it to the back, as it should. Nothing was marked done that wasn't, and
+the queue is right now, so **no correction migration was written** (Decided 4). A Finish pressed by mistake
+was undone straight away; that was right too.
+
+### Decided (30 Oct, gym fixes)
+
+1. **Cancel is new**: a grey "Cancel workout" on the card (`cards.cancel`) and `gym_cancel` in words; it acts
+   at once, as Finish does, with Undo. `gym_skip`'s description says it is never a cancel.
+2. **A cancelled session is kept, status `cancelled`**, its sets and notes taken off into the undo's record:
+   never counted, numbered, in a history or the briefing; the next start has the same number. Bests rebuilt.
+3. **Undo after a cancel only when something had been logged**, as asked; with nothing logged nothing is lost.
+4. **No data migration for live**: its data needs no correction (above). Writing one would change right data.
+5. **Discord can't open a pop-up from another pop-up's Submit**, so "a second pop-up straight after submit"
+   is not possible. Sets 1 to 4 and Notes are the first; the card then says "tap it again for sets 5 to N" and
+   the same button, which has not moved, opens the rest (five boxes a form). One more tap, no new button.
+6. **Reps alone** are a set for a bodyweight move, or one whose kind isn't known and was never logged with a
+   weight; otherwise that box needs a look.
+7. **A box that can't be read** is saved as a set not done, its text its note; the rest are saved.
+8. **An empty box is not stored**: the table shows a dash for it.
+9. **Set notes are not read by Claude** (no pain flag from them); the Notes box is read as before. In BACKLOG.
+10. **The migration is the gym's own** (its 6th, `add_set_notes_and_card_line`), not `core/migrations.py`:
+    task tables are migrated by the task's list (RULES, Structure). Columns: `gym_sets.note`,
+    `gym_sessions.said`, `undo_id`, `pending`.
+11. **The purple edge**: the workout card had an amber, grey or green box an exercise; there was no purple.
+    Now it is one box with the purple edge (`design.PREPARED`), as the brief said, headings kept.
+12. **Every button at the card's foot, always there**: a Log button an exercise (📝, ✅ once logged, to put it
+    right), then Undo (greyed until there is something to undo), Finish workout, Cancel workout. Too many for
+    one message: the dropdown, in the same place.
+13. **Finish makes the card the summary** (table, notes, bests, Undo); nothing posted. "finish the workout" in
+    words still answers with the summary.
+14. **The card shows one plan line an exercise** ("1 warm-up 8-10 at 40 kg · 2 working 4-6 at 82.5 kg") in
+    place of a line a set, so it is shorter on a phone; why the weight, pain flags and notes stay.
+15. **The table**: names at least 10 characters (an ellipsis when cut); sets that don't fit go on a line of
+    their own under the row, in the same columns.
+16. **Undo messages and forms from before** still work (an Undo of its own message rewrites it, as before).
+17. **The preview posts the cards themselves**, drawn by Discord on his phone, rather than screenshots; a
+    pop-up can't be posted, so each is drawn as its boxes.
+18. **The self-test has a gym start** (start 11, stage `gym`, in the full run too): its #gym is the
+    self-test's own #inbox for that start; `GYM_CHANNEL_ID` is blanked for every other start.
+19. **The dev bot has the gym on** (`.env.dev`: `GYM_ENABLED=true`, its #gym its own #inbox) and the made-up
+    logbook imported into its database on recorded answers. I did not start it: Alex starts it to try.
+20. **Eval fixtures gy19 to gy21** ("cancel workout", a longer cancel, a skip with more words), recorded from
+    the real API: 5 of 5 right.
+21. **Left as it is**: a gym plan's name has an em dash in it (`plans.plan_name`); in BACKLOG.
+
+### Checked (30 Oct, gym fixes)
+
+- **Self-test, stage `gym`** (start 11, the dev bot, recorded answers, live left up): 8 of 8, at 4:59 pm with
+  3.8 GB free. Steps: a workout started with a made-up plan; an exercise with a session before (every box
+  empty, last time in the names and on the card); a three-set log with a set note; two logs in a row, one tap
+  each, the buttons the same and nothing under the card; a five-set exercise in two forms; Finish's summary
+  table; Cancel after one logged exercise (the queue as it was) and its Undo. A first run at 4:49 pm failed 7:
+  the step compared button labels without the emoji the harness reads in front of them; the test was fixed.
+- **Full test run** before the commit: in the commit's message.
+
+### Spend (30 Oct, gym fixes)
+
+- NZ$0.04 of the NZ$1.50 cap (US$0.0231): one eval run of 5 Haiku requests. The self-test runs and the
+  preview used recorded answers and made-up data.
 
 ## Shipped: hub round 8 and the 22 Oct overnight batch (22 Oct, 10:58 am)
 

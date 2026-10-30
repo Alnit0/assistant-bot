@@ -50,6 +50,12 @@ the full self-test run.
 
 ### Soon
 
+- **The gym, from the 30 Oct batch:** (1) "I want to do [the workout] again" with one already open was read
+  as a skip of the next one (26 Oct on live); it should keep the open one, or start the one named. (2) A set's
+  own note is not read for pain (only the Notes box is): a set note about pain makes no pain flag. (3) A gym
+  plan's name has a long dash between the day and the split (`plans.plan_name`), which Alex reads.
+  (4) `python -m core.instance_lock` run in the work folder says "no bot is running" and warns about live's
+  process, since live keeps its lock in its own folder.
 - **Tests that move the dev clock to a fixed day stop once that day has passed**: `tests/test_calendar.py`
   failed 6 tests from 22 Oct, 8:50 am (the clock only moves forward). Fixed there by holding the real time
   before the made-up morning; about a dozen other test files move the clock to a fixed day in Oct or Nov
