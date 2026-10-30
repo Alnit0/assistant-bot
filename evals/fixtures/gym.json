@@ -550,6 +550,42 @@
         "several": false,
         "chat_part": ""
       }
+    },
+    {
+      "golden": "gy22",
+      "message": "squat 2 82.5 x 6",
+      "tasks": [
+        "gym"
+      ],
+      "note": "the gym: a set at a time, a numbered set its own (30 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "gym"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "gy23",
+      "message": "did 3 sets of 60 x 8 on romanian deadlift",
+      "tasks": [
+        "gym"
+      ],
+      "note": "the gym: a set at a time, a numbered set its own (30 Oct)",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "gym"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "several": false,
+        "chat_part": ""
+      }
     }
   ],
   "extraction": [
@@ -659,20 +695,16 @@
             {
               "exercise": "Bench press",
               "weight": 40,
-              "reps": 9,
-              "set_type": "working"
+              "reps": 9
             },
             {
               "exercise": "Bench press",
               "weight": 40,
-              "reps": 8,
-              "set_type": "working"
+              "reps": 8
             }
           ],
           "guessed": [
-            "sets[0].set_type",
-            "sets[1].set_type",
-            "sets[2].set_type"
+            "sets[0].set_type"
           ],
           "not_included": []
         }
@@ -1146,6 +1178,90 @@
           "not_included": [
             "I'll do it next week"
           ]
+        }
+      ]
+    },
+    {
+      "golden": "gy22",
+      "task": "gym",
+      "message": "squat 2 82.5 x 6",
+      "state": "The user's gym plan (workouts in rotation order, each with its exercises):\n- next in turn: Lower 1\n- Upper 1: Bench press, Incline press, Lat pulldown - wide grip, Lateral raise\n- Lower 1: Squat, Leg press (high foot), Romanian deadlift\n- Upper 2: Overhead press, Seated row\n- Lower 2: Deadlift, Leg curl\n- (a session of Lower 1 is open, started Fri)",
+      "action": "gym_log",
+      "data": {
+        "sets": [
+          {
+            "exercise": "Squat",
+            "set": 2,
+            "reps": 6,
+            "weight": 82.5
+          }
+        ]
+      },
+      "note": "the gym: a set at a time, a numbered set its own (30 Oct)",
+      "recorded": [
+        "gym_log",
+        {
+          "sets": [
+            {
+              "exercise": "Squat",
+              "set": 2,
+              "weight": 82.5,
+              "reps": 6
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "golden": "gy23",
+      "task": "gym",
+      "message": "did 3 sets of 60 x 8 on romanian deadlift",
+      "state": "The user's gym plan (workouts in rotation order, each with its exercises):\n- next in turn: Lower 1\n- Upper 1: Bench press, Incline press, Lat pulldown - wide grip, Lateral raise\n- Lower 1: Squat, Leg press (high foot), Romanian deadlift\n- Upper 2: Overhead press, Seated row\n- Lower 2: Deadlift, Leg curl\n- (a session of Lower 1 is open, started Fri)",
+      "action": "gym_log",
+      "data": {
+        "sets": [
+          {
+            "exercise": "Romanian deadlift",
+            "reps": 8,
+            "weight": 60
+          },
+          {
+            "exercise": "Romanian deadlift",
+            "reps": 8,
+            "weight": 60
+          },
+          {
+            "exercise": "Romanian deadlift",
+            "reps": 8,
+            "weight": 60
+          }
+        ]
+      },
+      "note": "the gym: a set at a time, a numbered set its own (30 Oct)",
+      "recorded": [
+        "gym_log",
+        {
+          "sets": [
+            {
+              "exercise": "Romanian deadlift",
+              "weight": 60,
+              "reps": 8
+            },
+            {
+              "exercise": "Romanian deadlift",
+              "weight": 60,
+              "reps": 8
+            },
+            {
+              "exercise": "Romanian deadlift",
+              "weight": 60,
+              "reps": 8
+            }
+          ],
+          "guessed": [],
+          "not_included": []
         }
       ]
     }

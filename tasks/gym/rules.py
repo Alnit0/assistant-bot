@@ -67,6 +67,7 @@ class DoneSet:
     position: int = 0
     id: int = 0
     note: str = ""  # that set's own note, typed after its numbers ("60 x 8 felt heavy"), or a box that couldn't be read
+    look: bool = False  # a box of it could not be read: kept as its note, and its card says to look at it
 
     @property
     def done(self) -> bool:
@@ -190,6 +191,47 @@ def typed_set(text: str, reps_alone: bool) -> Typed:
     if found and 0 < int(found[1]) <= MAX_REPS:
         return Typed(None, int(found[1]), False, found[2].strip(_NOTE_EDGE + " "))
     return Typed(note=said, readable=False)
+
+
+_REPS_BOX = re.compile(r"^\s*(\d{1,3})\s*(?:reps?)?\s*$", re.IGNORECASE)
+
+
+def typed_weight(text: str) -> tuple[float | None, bool, bool]:
+    """The set pop-up's Weight box: (kg, per hand, readable). "60", "60kg", "22.5", "14s" (per hand); an empty
+    box is no weight (a bodyweight move), and readable. Nothing is made up from what can't be read."""
+    said = " ".join(str(text or "").split())
+    if not said:
+        return None, False, True
+    found = _WEIGHT.match(said)
+    if not found or float(found[1].replace(",", ".")) > MAX_WEIGHT:
+        return None, False, False
+    return float(found[1].replace(",", ".")), (found[2] or "").lower() == "s", True
+
+
+def typed_reps(text: str) -> tuple[int | None, bool]:
+    """The set pop-up's Reps box: (reps, readable). "8", "8 reps"; an empty box is no reps, and readable."""
+    said = " ".join(str(text or "").split())
+    if not said:
+        return None, True
+    found = _REPS_BOX.match(said)
+    if not found or not 0 < int(found[1]) <= MAX_REPS:
+        return None, False
+    return int(found[1]), True
+
+
+def set_cell(each: "DoneSet | None") -> str:
+    """One set on an exercise's card: "60 x 8", "8" (reps alone), "60 x ?" (a box to look at), "-" not done."""
+    if each is None:
+        return "-"
+    if not each.done:
+        return f"{each.weight:g} x ?" if each.weight is not None else "?" if each.look else "-"
+    return short_set(each, spaced=True) + (" each" if each.per_hand and each.weight is not None else "")
+
+
+def sets_table(cells: list[str]) -> list[str]:
+    """An exercise's sets for a code block, a row a set: its number, then weight x reps, or a dash not done."""
+    width = len(str(len(cells)))
+    return [f"{str(number).rjust(width)}  {cell}"[:TABLE_WIDTH] for number, cell in enumerate(cells, start=1)]
 
 
 def short_set(each: DoneSet, spaced: bool = False) -> str:

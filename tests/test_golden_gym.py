@@ -1,7 +1,8 @@
 """The gym's golden conversations, end to end through the conversation's own code on what the router and
 extraction really answered (evals/fixtures/gym.json): a whole session described after the fact in messy words
-(gy9), a partial one days later with a note about pain (gy16), yesterday's in a few words (gy15), and starting
-a workout (gy1). Made-up plan (tests/gym_files.py)."""
+(gy9), a partial one days later with a note about pain (gy16), yesterday's in a few words (gy15), starting
+a workout (gy1), cancelling it (gy19), and a numbered set or three alike in words (gy22, gy23). Made-up plan
+(tests/gym_files.py)."""
 import asyncio
 import json
 from datetime import time
@@ -108,3 +109,24 @@ def test_gy19_cancel_workout_is_an_undo_of_start_never_a_skip(gym_bot):
     assert shown(gym_bot).startswith("🏋️ **Lower 1** cancelled · nothing logged · Lower 1 is still next")
     assert asyncio.run(database.run(store.db_queue, gym_bot.user.id)) == queue_before
     assert asyncio.run(database.run(store.db_open_session, gym_bot.user.id)) is None
+
+
+def test_gy22_a_numbered_set_in_words_is_that_set_alone_in_the_open_workout(gym_bot):
+    from core.actions import Request
+    from tasks.gym.rules import DoneSet
+
+    gym_bot.claude(("route", ROUTER["gy1"]), tuple(EXTRACTED["gy1"]))
+    gym_bot.say(MESSAGE["gy1"])
+    opened = asyncio.run(database.run(store.db_open_session, gym_bot.user.id))
+    asyncio.run(session.log_sets(opened, "Squat", [DoneSet("Squat", reps=10, weight=40.0)], None, part={0}))
+    card = replay(gym_bot, "gy22")
+    assert card.action == "gym_log" and "**Squat** · 82.5 kg × 6" in shown(gym_bot)
+    asyncio.run(plain.describe_save(Request(gym_bot.user, 100), card.data))
+    logged = asyncio.run(database.run(store.db_sets, opened.id))
+    assert [(each.position, each.weight, each.reps) for each in logged] == [(0, 40.0, 10), (1, 82.5, 6)], "set 1 kept, set 2 put in"
+
+
+def test_gy23_three_sets_of_the_same_in_words_are_three_sets(gym_bot):
+    card = replay(gym_bot, "gy23")
+    assert "**Romanian deadlift** · 60 kg × 8, 60 kg × 8, 60 kg × 8" in shown(gym_bot)
+    assert [each["position"] for each in card.data["sets"]["Romanian deadlift"]] == [0, 1, 2]

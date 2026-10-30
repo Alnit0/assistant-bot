@@ -6,16 +6,108 @@ No history is kept here: what changed is `docs/CHANGELOG.md`, and this
 file as it stood until midday on 2026-10-14 (every batch, every answer,
 all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
-**Updated:** 2026-10-30 (evening, the gym fixes batch, committed on `feature/pills`, not shipped)
+**Updated:** 2026-10-30 (evening, the gym a set at a time, committed on `feature/pills`, not shipped)
 
 
 
 
 ## The next ship's to-do
 
-- The gym fixes batch (below), with the gym's migration 6. Nothing in live's `.env` changes.
+- The gym fixes batch and its rework a set at a time (below), with the gym's migration 6 as extended. Nothing in
+  live's `.env` changes.
+
+## The gym, a set at a time (30 Oct, evening; not shipped)
+
+Alex checked "Design · Gym logging": it missed his main point. He logs each set as he does it (finish set 1,
+tap, log it; rest; set 2, tap, log it), and the one card read as clumps of text. This replaces Fix 1 and the
+single workout card of the gym fixes batch below; Fixes 2 to 5 stay (Cancel as an undo, nothing moving under
+his thumb, the phone-width table, empty boxes with last time's numbers outside them).
+
+- **A header, then a card an exercise**, each its own message, edited in place; nothing else is posted while
+  the workout is open. The header: the workout, "2 of 5 exercises done", Undo (greyed until there is something
+  to undo), Finish and Cancel.
+- **An exercise's card**, reference first: its name, the plan small ("3 sets · 8-10 reps"), last session small
+  ("Last · Mon 26 Oct · 60 x 8, 60 x 8, 60 x 6", or "First time"), then today's sets as the code-block table, a
+  row a planned set from the start ("1  60 x 8", "2  -"), so the card never grows as sets are logged; set notes
+  and the exercise's note small under it. A button a set ("1", "2", "3"…, "✅ 60 x 8" once logged, one tap to
+  put it right), then Note; five to a row. Purple, green once every planned set is logged.
+- **The set's pop-up**: "Squat · set 2", Weight (kg), Reps and Note, every box empty, last session's numbers for
+  that set in the labels ("Weight (kg) · last 60", "Reps · last 8"). Python reads them; a box it can't read is
+  kept as the set's note, nothing made up, and the card says which set needs a look.
+- **Finish** takes the buttons off the header and every card, marks the workout done in the rotation and posts
+  the summary table under the cards. **Cancel** undoes Start exactly, deletes the header and cards, and posts
+  one line with Undo.
+- **Words**: "[exercise] 2 60 x 8" (a new `set` field), "did 3 sets of 60 x 8 on [exercise]", "cancel workout"
+  and "finish" do the same as the buttons.
+- **Data**: each set its own row with weight, reps, note, whether it needs a look, and when it was logged. The
+  gym's migration 6 of this batch was extended, not a 7th added.
+
+### Decided (30 Oct, a set at a time)
+
+1. **Migration 6 extended in place**, as asked: it never shipped. It now adds `gym_sets.note`, `look` and
+   `logged_at` and `gym_sessions.cards`; the first form's `said`, `undo_id` and `pending` are gone. The dev
+   bot's own database had the first form, so its three new columns were added by hand (a copy is kept);
+   live's has neither, and gets the whole migration at the next ship. Existing logs keep working.
+2. **Where the messages are**: the header is `gym_sessions.message_id`; the cards are `gym_sessions.cards`, in
+   plan order, by place, so a swap today keeps its card.
+3. **Button labels**: a set to log is its number alone; a logged one "✅ 60 x 8"; one to look at "⚠️ 60 x ?".
+   **Note is blurple**, not grey: grey is for Cancel only (the card rule in `core/cards.py`).
+4. **Putting a set right**: its pop-up's boxes are still empty, and its labels say what it is now as well
+   ("Weight (kg) · now 60 · last 55"), so nothing needs deleting. Every box left empty clears that set (Undo
+   brings it back); empty on a set not logged logs nothing.
+5. **A weight with no reps**, or a note alone, is kept and marked to look at ("set 2 needs a look: no reps").
+6. **The edge**: purple until every planned set is logged and read; a set to look at keeps it purple.
+7. **The card's height**: every row is there from the start, so logging a set changes no line. A note adds its
+   small line under the table, which is where the brief puts notes.
+8. **The plan line is sets and reps only**: the suggested weight and its "why" are off the card (last time is
+   in the labels). Pain still shows: last time's note when it spoke of pain ("⚠️ Last time: …"), and the
+   pattern lines when an exercise has been flagged twice or more.
+9. **The header's Undo takes back the latest set or note of this workout, one a press**, so several presses
+   step back; greyed when nothing is left. "undo that" in words still undoes the last gym change.
+10. **After Finish** the header says "finished · N of M exercises done" with a green edge, the cards keep their
+    tables, and the summary has Undo. Undoing Finish deletes the summary and puts the buttons back.
+11. **Cancel always leaves Undo** now (the brief's one line "with an Undo button"); before, only when something
+    had been logged. Undo deletes the line and posts the header and cards again, as they were.
+12. **Words still go through a confirm card** with Save (CLAUDE.md: every change to one of my things is a confirm
+    card); the buttons log at once, as before. In an open workout, words put in only the sets they say, so a
+    set logged on its button stays.
+13. **"finish", "cancel workout" and "undo" said in #gym post nothing more there**: the workout's own messages
+    already show it. A set logged in words in #gym still gets its confirm card there; said in #inbox, #gym only
+    sees its cards edited. In BACKLOG: the words' confirm card in #gym.
+14. **Old buttons and pop-ups** from the one card still work: its Log button opens the exercise's first set not
+    logged, and its pop-up (a box a set) still logs. Old Undo messages are answered in place. The dropdown is gone.
+15. **Rows**: an exercise with no planned sets has three; a card holds 20 sets at most (four rows of five, Note).
+16. **Eval fixtures gy22 and gy23** ("squat 2 82.5 x 6", "did 3 sets of 60 x 8 on romanian deadlift"), and gy8
+    run again for the new field: 6 of 6 right, recorded.
+17. **The preview is a new message in the same post**, "Design · Gym logging": the header and three cards drawn by
+    the real code, the pop-up said in words (Discord can't post one). For one untouched, one with one set and one
+    complete, its made-up Lower 1 has Leg press taken out and a made-up four-set Test row put in.
+18. **The dev bot is started after the commit**, in its own window, as Alex approved this once.
+
+### Checked (30 Oct, a set at a time)
+
+- **Self-test, stage `gym`** (start 11, rewritten: the dev bot, recorded answers, live left up): 9 of 9 (the 8
+  gym steps and the understanding check) at 7:13 pm with 3.8 GB free. Steps: start (the header and three cards
+  posted, nothing else); a set's pop-up (every box empty, last time in the labels); set 1 then set 2, one tap
+  each, the card's height the same, each set its own record with its time; set 1 put right; a set on another
+  exercise; a six-set exercise (set 6's own pop-up), and the edge green once an exercise is complete; Finish (no
+  button left, the summary under the cards); Cancel after two sets (the queue unchanged, the cards gone, one line
+  with Undo, and Undo brings them back). The first run at 7:10 pm failed 11.07 on a mistake in the step itself,
+  and its log showed a real bug: Undo on the cancelled line looked the line up after deleting it and then tried
+  to edit it (a 404). Fixed, with a unit test; the self-test opened D17 and closed it on the second run.
+- The self-test's own monthly spend is NZ$3.68, over its NZ$3.50 limit, so it ran on recorded answers only,
+  which is what this run needed anyway.
+- **Full test run** before the commit: in the commit's message.
+
+### Spend (30 Oct, a set at a time)
+
+- NZ$0.05 of the NZ$1.00 cap (US$0.0293): one eval run of 6 Haiku requests (gy8, gy22, gy23). The self-test
+  runs and the preview used recorded answers and made-up data.
 
 ## The gym fixes batch (30 Oct; not shipped)
+
+Fix 1 (a box a set in one pop-up) and the single workout card were replaced the same evening by a set at a
+time (above); its Decided 5, 10, 12, 13 and 14 are superseded there.
 
 Alex, 30 Oct, after a week of real use: the gym is his top priority, and the bot's focus is health and
 wellbeing. Make logging fast and reliable on his phone. Live runs `0412922` (since 22 Oct, 10:58 am); nothing

@@ -1913,8 +1913,8 @@ report is `docs/SELFTEST.md`, written again by every full run.
   with nothing failed is noted with its commit in
   `data/selftest/passed.json`. Later stages came with later work:
   `todos`, `round4`, `hub`, `calendar` and `gym` (start 11, 30 Oct:
-  logging at the gym on the real card, the self-test's own #inbox as
-  its #gym; what is in `tasks/gym/` touches it)
+  logging a set at a time on the real header and cards, the
+  self-test's own #inbox as its #gym; what is in `tasks/gym/` touches it)
 - **Memory**: the PC has 8 GB, and a run has been stopped by it
   before. The run says how much is free before it starts, and with
   under 1.9 GB free it does not start (`--anyway` goes ahead). Measured

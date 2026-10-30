@@ -493,3 +493,22 @@ His next tap after a log sometimes landed on the bot's update instead of opening
   more tap on the same button for the rest (Discord can't open a pop-up from another's Submit).
 
 **Preview:** "Design · Gym logging" in the Design forum, drawn by the real code from the made-up logbook.
+
+### A set at a time (30 Oct, evening)
+
+Alex checked "Design · Gym logging": it missed his main point. He logs each set on its own, as he does it:
+finish set 1, tap, log it; rest; finish set 2, tap, log it. The one card logged a whole exercise in one pop-up
+and read as clumps of text.
+
+- **A header, then a card an exercise**, each its own message edited in place, nothing else posted while the
+  workout is open. The header: the workout, "2 of 5 exercises done", Undo, Finish, Cancel.
+- **A card reads top to bottom, reference first**: the name, the plan small, last session small (its date and
+  each set), then today's sets as the table, a row a planned set from the start ("1  60 x 8", "2  -"), so its
+  height never changes; notes small under it. A button a set, just its number, then Note; "✅ 60 x 8" once
+  logged, and one tap opens it again to put it right. Purple while not complete, green once every set is in.
+- **The pop-up is one set**: "Squat · set 2", Weight (kg), Reps, Note, every box empty, last session's numbers for
+  that set in the labels.
+- **Finish** takes the buttons off and posts the summary under the cards; **Cancel** deletes them and leaves one
+  line with Undo.
+
+**Preview:** a new message in "Design · Gym logging": the header and three cards (untouched, one set, complete).

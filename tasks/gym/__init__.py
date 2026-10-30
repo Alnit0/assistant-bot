@@ -116,9 +116,11 @@ class GymTask(Task):
 
     def buttons(self) -> list[ButtonNote]:
         return [
-            ButtonNote("📝 Log", "an exercise's button at the foot of the workout card in #gym: a form with an empty box a set (\"60 x 8\", a note after it if you like) and Notes, last time's numbers in each box's name; ✅ once logged, to put it right"),
-            ButtonNote("🏁 Finish workout", "on the workout card: what is not logged is not done, the card becomes the summary with your bests, and the next workout comes round. Undo after it"),
-            ButtonNote("↩️ Cancel workout", "on the workout card: as if it was never started, nothing logged and the same workout still next. Undo when something had been logged"),
+            ButtonNote("1, 2, 3", "a button a set on each exercise's card in #gym: a pop-up for that one set with Weight (kg), Reps and Note, every box empty, last time's numbers in the labels; ✅ 60 x 8 once logged, to put it right"),
+            ButtonNote("Note", "on an exercise's card: a note on the exercise today, read for pain"),
+            ButtonNote("↩️ Undo", "on the workout's header: the last set or note logged taken back, one a press"),
+            ButtonNote("🏁 Finish", "on the header: what is not logged is not done, the buttons go, the summary with your bests is posted under the cards, and the next workout comes round. Undo on the summary"),
+            ButtonNote("Cancel", "on the header: as if the workout was never started, nothing logged, the same workout still next; its messages go and one line says so, with Undo"),
         ]
 
     def migrations(self):

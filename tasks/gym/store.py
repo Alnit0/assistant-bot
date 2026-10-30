@@ -1,6 +1,6 @@
 import json
 import sqlite3
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime
 
 from core import database
@@ -137,16 +137,17 @@ def add_plans(conn: sqlite3.Connection) -> None:
     plans.add_tables(conn)
 
 
-def add_set_notes_and_card_line(conn: sqlite3.Connection) -> None:
-    """30 Oct: a note a set (typed after its numbers in its own box); the workout card's own line (what the last
-    press did) with its Undo, and an exercise with more sets than one form holds waiting for its next form."""
+def add_set_notes_and_cards(conn: sqlite3.Connection) -> None:
+    """30 Oct, not shipped before it was extended the same day: each set logged on its own, with its note, when it
+    was logged, and whether a box of it couldn't be read; a workout's messages (its header and a card an
+    exercise) to edit in place."""
     conn.execute("ALTER TABLE gym_sets ADD COLUMN note TEXT NOT NULL DEFAULT ''")
-    conn.execute("ALTER TABLE gym_sessions ADD COLUMN said TEXT NOT NULL DEFAULT ''")
-    conn.execute("ALTER TABLE gym_sessions ADD COLUMN undo_id INTEGER")
-    conn.execute("ALTER TABLE gym_sessions ADD COLUMN pending TEXT NOT NULL DEFAULT ''")
+    conn.execute("ALTER TABLE gym_sets ADD COLUMN look INTEGER NOT NULL DEFAULT 0")
+    conn.execute("ALTER TABLE gym_sets ADD COLUMN logged_at TEXT")
+    conn.execute("ALTER TABLE gym_sessions ADD COLUMN cards TEXT NOT NULL DEFAULT '{}'")
 
 
-MIGRATIONS = [create_tables, add_weights, add_muscles, add_pain, add_plans, add_set_notes_and_card_line]  # appended, never in between
+MIGRATIONS = [create_tables, add_weights, add_muscles, add_pain, add_plans, add_set_notes_and_cards]  # appended, never in between
 
 
 def _sets_json(sets) -> str:
@@ -251,19 +252,17 @@ class Session:
     source: str
     off_plan: str | None
     channel_id: int | None
-    message_id: int | None
-    said: str = ""  # the card's own line: what the last press on it did
-    undo_id: int | None = None  # what the card's Undo takes back; None, Undo is greyed out
-    pending: str = ""  # an exercise whose next form is still to come: "<the set it starts at>:<its name, lower case>"
+    message_id: int | None  # the workout's header
+    cards: dict = field(default_factory=dict)  # its other messages: "exercises" (a card each, in order), "summary", "cancelled"
 
 
 # Cancelled: as if never started (Cancel is an undo): never counted, never numbered, never in a history
 OPEN, FINISHED, OFF_PLAN, NOT_DONE, CANCELLED = "open", "finished", "off_plan", "not_done", "cancelled"
-_SESSION = "id, user_id, workout_id, name, day, number, status, source, off_plan, channel_id, message_id, said, undo_id, pending"
+_SESSION = "id, user_id, workout_id, name, day, number, status, source, off_plan, channel_id, message_id, cards"
 
 
 def _session(row) -> Session:
-    return Session(row[0], row[1], row[2], row[3], date.fromisoformat(row[4]), row[5], row[6], row[7], row[8], row[9], row[10], row[11] or "", row[12], row[13] or "")
+    return Session(row[0], row[1], row[2], row[3], date.fromisoformat(row[4]), row[5], row[6], row[7], row[8], row[9], row[10], json.loads(row[11] or "{}"))
 
 
 def db_add_session(conn: sqlite3.Connection, user_id: int, workout_id: int | None, name: str, day: date, status: str, now: datetime, source: str = "live", off_plan: str | None = None) -> int:
@@ -304,12 +303,8 @@ def db_set_status(conn: sqlite3.Connection, session_id: int, status: str, now: d
     conn.execute("UPDATE gym_sessions SET status = ?, finished_at = ? WHERE id = ?", (status, now.isoformat() if now else None, session_id))
 
 
-def db_card_line(conn: sqlite3.Connection, session_id: int, said: str, undo_id: int | None) -> None:
-    conn.execute("UPDATE gym_sessions SET said = ?, undo_id = ? WHERE id = ?", (said, undo_id, session_id))
-
-
-def db_set_pending(conn: sqlite3.Connection, session_id: int, pending: str) -> None:
-    conn.execute("UPDATE gym_sessions SET pending = ? WHERE id = ?", (pending, session_id))
+def db_set_cards(conn: sqlite3.Connection, session_id: int, cards: dict) -> None:
+    conn.execute("UPDATE gym_sessions SET cards = ? WHERE id = ?", (json.dumps(cards), session_id))
 
 
 def db_placed(conn: sqlite3.Connection, session_id: int, channel_id: int, message_id: int) -> None:
@@ -317,7 +312,8 @@ def db_placed(conn: sqlite3.Connection, session_id: int, channel_id: int, messag
 
 
 def db_session_of_message(conn: sqlite3.Connection, message_id: int) -> Session | None:
-    row = conn.execute(f"SELECT {_SESSION} FROM gym_sessions WHERE message_id = ?", (message_id,)).fetchone()
+    """The session a message is one of: its header, an exercise's card, its summary or its cancelled line."""
+    row = conn.execute(f"SELECT {_SESSION} FROM gym_sessions WHERE message_id = ? OR instr(cards, ?) > 0 ORDER BY id DESC LIMIT 1", (message_id, str(message_id))).fetchone()
     return _session(row) if row else None
 
 
@@ -343,18 +339,21 @@ def db_delete_session(conn: sqlite3.Connection, session_id: int) -> None:
     conn.execute("DELETE FROM gym_sessions WHERE id = ?", (session_id,))
 
 
-_SET = "id, exercise, set_type, purpose, category, low, high, reps, weight, per_hand, position, note"
+_SET = "id, exercise, set_type, purpose, category, low, high, reps, weight, per_hand, position, note, look"
 
 
 def _done(row) -> DoneSet:
-    return DoneSet(row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], bool(row[9]), row[10], row[0], row[11] or "")
+    return DoneSet(row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], bool(row[9]), row[10], row[0], row[11] or "", bool(row[12]))
 
 
-def db_add_sets(conn: sqlite3.Connection, user_id: int, session_id: int, sets: list[DoneSet]) -> list[int]:
+def db_add_sets(conn: sqlite3.Connection, user_id: int, session_id: int, sets: list[DoneSet], now: datetime | None = None) -> list[int]:
+    """Each set its own row, with when it was logged (`now`; none for an import)."""
     return [
         conn.execute(
-            "INSERT INTO gym_sets (user_id, session_id, exercise, position, set_type, purpose, category, low, high, reps, weight, per_hand, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (user_id, session_id, each.exercise, each.position, each.set_type, each.purpose, each.category, each.low, each.high, each.reps, each.weight, int(each.per_hand), each.note or ""),
+            "INSERT INTO gym_sets (user_id, session_id, exercise, position, set_type, purpose, category, low, high, reps, weight, per_hand, note, look, logged_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (user_id, session_id, each.exercise, each.position, each.set_type, each.purpose, each.category, each.low, each.high, each.reps, each.weight, int(each.per_hand),
+             each.note or "", int(each.look), now.isoformat() if now else None),
         ).lastrowid
         for each in sets
     ]
@@ -403,6 +402,12 @@ def db_notes(conn: sqlite3.Connection, session_id: int) -> list[Note]:
     return [Note(row[0], row[1], bool(row[2]), row[3], row[4], row[5]) for row in conn.execute("SELECT exercise, text, pain, target_low, target_high, body_part FROM gym_notes WHERE session_id = ? ORDER BY id", (session_id,))]
 
 
+def db_exercise_note_rows(conn: sqlite3.Connection, session_id: int, exercise: str) -> list[tuple[int, Note]]:
+    """(id, note) of each note on one exercise in a session."""
+    rows = conn.execute("SELECT id, exercise, text, pain, target_low, target_high, body_part FROM gym_notes WHERE session_id = ? AND lower(exercise) = lower(?) ORDER BY id", (session_id, exercise)).fetchall()
+    return [(row[0], Note(row[1], row[2], bool(row[3]), row[4], row[5], row[6] or "")) for row in rows]
+
+
 def db_exercise_notes(conn: sqlite3.Connection, user_id: int, names: list[str]) -> list[tuple[date, Note]]:
     lowered = [each.lower() for each in names]
     marks = ",".join("?" * len(lowered))
@@ -446,6 +451,17 @@ def db_remember(conn: sqlite3.Connection, user_id: int, kind: str, payload: dict
 def db_undo_of(conn: sqlite3.Connection, undo_id: int) -> tuple[int, str, dict] | None:
     row = conn.execute("SELECT user_id, kind, payload FROM gym_undo WHERE id = ? AND undone = 0", (undo_id,)).fetchone()
     return (row[0], row[1], json.loads(row[2])) if row else None
+
+
+def db_last_session_undo(conn: sqlite3.Connection, session_id: int) -> int | None:
+    """What a workout's Undo takes back: the latest set or note logged in it and not undone yet."""
+    row = conn.execute("SELECT id FROM gym_undo WHERE undone = 0 AND kind IN ('log', 'note') AND json_extract(payload, '$.session') = ? ORDER BY id DESC LIMIT 1", (session_id,)).fetchone()
+    return row[0] if row else None
+
+
+def db_set_logged_at(conn: sqlite3.Connection, session_id: int) -> list[tuple[str, int, str | None]]:
+    """(exercise, position, when logged) of each set of a session, for a check."""
+    return conn.execute("SELECT exercise, position, logged_at FROM gym_sets WHERE session_id = ? ORDER BY position, id", (session_id,)).fetchall()
 
 
 def db_last_undo(conn: sqlite3.Connection, user_id: int) -> int | None:

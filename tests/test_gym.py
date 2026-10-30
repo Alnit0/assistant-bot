@@ -208,17 +208,16 @@ def test_an_unsure_column_is_asked_about_on_the_card(world, monkeypatch):
 
 
 # --- the rotation, the card, the form, Finish ---------------------------------------------------------------------------------
-def test_starting_posts_the_next_workout_in_gym_with_suggestions_last_time_and_a_pain_flag(world):
+def test_starting_posts_the_next_workout_in_gym_with_last_time_and_a_pain_flag(world):
     imported(world)
     started = run(session.start(world.owner.id))
     assert started.name == "Lower 1" and started.number == 2
-    posted = world.sent[-1]
-    assert posted.channel == GYM
-    shown = "\n".join(design.texts(posted.card.layout))
-    assert "## 🏋️ Lower 1 · session 2" in shown
-    assert "last Thu 8 Oct: 120x21" in shown and "over 10-15: up to land in range" in shown, "a bigger jump for 21 reps on 10-15"
-    assert "⚠️ “knee felt a bit off”" in shown, "a note about pain comes up again"
-    assert [button.label for button in design.buttons(posted.card.layout)][-3:] == ["Undo", "Finish workout", "Cancel workout"]
+    assert all(each.channel == GYM for each in world.sent)
+    header, squat, leg_press, deadlift = (each.card for each in world.sent)
+    assert "## 🏋️ Lower 1 · session 2" in "\n".join(design.texts(header.layout))
+    assert "-# Last · Thu 8 Oct · 120 x 21" in "\n".join(design.texts(leg_press.layout))
+    assert "-# ⚠️ Last time: “knee felt a bit off”" in "\n".join(design.texts(deadlift.layout)), "a note about pain comes up again"
+    assert [button.label for button in design.buttons(header.layout)] == ["Undo", "Finish", "Cancel"]
 
 
 def test_do_another_instead_keeps_the_queue_skip_sends_to_the_back_off_plan_leaves_it(world):
@@ -231,25 +230,6 @@ def test_do_another_instead_keeps_the_queue_skip_sends_to_the_back_off_plan_leav
     assert [each.name for each in order][0] == "Lower 2" and order[-1].name == "Lower 1"
     run(session.off_plan(world.owner.id, "30 min run", world.today))
     assert run(session.next_workout(world.owner.id)).name == "Lower 2", "an off-plan session leaves the queue as it was"
-
-
-def test_the_log_form_has_an_empty_box_a_set_with_last_time_in_its_label_and_logs_what_is_typed(world):
-    imported(world)
-    started = run(session.start(world.owner.id))
-    squat = next(each for each in run(session.exercises_of(started)) if each.name == "Squat")
-    form = run(session.form_for(started, squat))
-    assert [field.label for field in form.fields] == ["Set 1 · last 40 x 10", "Set 2 · last 80 x 6", "Notes"]
-    assert all(not field.value and not field.placeholder for field in form.fields), "nothing to delete before typing"
-    cards.check_form(form)
-    press = SimpleNamespace(arg=form.arg, fields={"set0": "40 x 10", "set1": "82.5 x 6", "note": ""}, db=database, user=world.owner, channel_id=GYM, message_id=1, update=None)
-    assert run(session.on_logged(press)) == "logged 2 sets"
-    logged = run(database.run(store.db_sets, started.id))
-    assert [(each.exercise, each.weight, each.reps) for each in logged] == [("Squat", 40.0, 10), ("Squat", 82.5, 6)]
-    assert len(world.sent) == 1, "nothing posted under the card"
-    assert "-# ✅ Squat logged · 2 sets" in "\n".join(design.texts(world.edited[-1][1].layout)), "said on the card"
-    assert run(session.on_logged(SimpleNamespace(**{**vars(press), "fields": {"set0": "lots", "set1": "", "note": ""}}))) == "logged 0 sets, set 1 to look at"
-    (kept,) = run(database.run(store.db_sets, started.id))
-    assert (kept.reps, kept.weight, kept.note) == (None, None, "lots"), "kept as that set's note, no number made up"
 
 
 def test_a_form_from_before_30_oct_one_long_box_is_still_read():

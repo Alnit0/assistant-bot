@@ -66,15 +66,15 @@ def build() -> list[tuple[str, tuple]]:
         found.append(("Your logbook sent in #inbox (a CSV, an XLSX with a tab a workout, or rows pasted): the plan and the log apart, on one card. A DNF workout is planned and not done; a note about pain is shown the next time", confirm.render(entry, proposal, 1).layout))
         await plain.import_save(Request(owner, 1), proposal.data)
         started = await session.start(owner.id)
-        found.append(("“starting a workout”: the next in the queue, its card in #gym. Each set with its suggested weight and why, last time and its note small, ⚠️ when that note was about pain; a Log button on each exercise, Finish last", sent[-1].layout))
+        found.append(("“starting a workout”: the next in the queue, in #gym: a header, then a card an exercise (since 30 Oct: Design · Gym logging). The last exercise's card: last time small, ⚠️ when its note was about pain; a button a set and Note", sent[-1].layout))
         squat = next(each for each in await session.exercises_of(started) if each.name == "Squat")
-        form = await session.form_for(started, squat)
+        form = await session.set_form(started, 0, squat, 0)
         boxes = "\n".join(f"**{each.label}**\n> {each.value or ' '}" for each in form.fields)
-        found.append(("📝 Log on Squat opens a form (Discord's own pop-up): an empty box a set, last time's numbers in its name, and Notes (since 30 Oct: Design · Gym logging)", (design.Box(design.DECISION, (design.Text(f"### 📝 {form.title}\n{boxes}"),)),)))
+        found.append(("A set's button opens a pop-up for that one set (Discord's own): Weight (kg), Reps and Note, every box empty, last time's numbers in the labels", (design.Box(design.DECISION, (design.Text(f"### {form.title}\n{boxes}"),)),)))
         await session.log_sets(started, "Squat", [rules.DoneSet("Squat", rules.WARM_UP, "Warm-up", rules.WARMING, 8, 10, 10, 40.0), rules.DoneSet("Squat", rules.WORKING, "To failure", rules.TO_FAILURE, 4, 6, 6, 85.0, position=1)], None)
-        found.append(("Before 30 Oct, after the form: one line under the card, with Undo. Since then it is the card's own small line (Design · Gym logging)", (design.Text("✅ **Squat** · 40 kg × 10, 85 kg × 6"), design.Row(session.undo_row(1)))))
+        found.append(("Before 30 Oct, after the form: one line under the card, with Undo. Since then only the exercise's own card changes (Design · Gym logging)", (design.Text("✅ **Squat** · 40 kg × 10, 85 kg × 6"), design.Row((session.undo_button(1),)))))
         said, _ = await session.finish(started)
-        found.append(("🏁 Finish workout: what was not logged is not done, a summary with today against last time and the bests beaten, and the next workout comes round. Undo after it", (design.Box(design.DONE, (design.Text(said), design.Row(session.undo_row(2)))),)))
+        found.append(("🏁 Finish: what was not logged is not done, the summary with the bests beaten under the cards, and the next workout comes round. Undo after it", (design.Box(design.DONE, (design.Text(said), design.Row((session.undo_button(2),)))),)))
         described = [
             {"exercise": "Bench press", "set_type": "warm-up", "reps": 15, "weight": 20}, {"exercise": "Bench press", "reps": 9, "weight": 40}, {"exercise": "Bench press", "reps": 8, "weight": 40},
             {"exercise": "Incline press", "reps": 10, "weight": 14, "per_hand": True}, {"exercise": "Lateral raise", "skipped": True, "note": "shoulder felt off", "pain": True},

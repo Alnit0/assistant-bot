@@ -55,7 +55,9 @@ the full self-test run.
   own note is not read for pain (only the Notes box is): a set note about pain makes no pain flag. (3) A gym
   plan's name has a long dash between the day and the split (`plans.plan_name`), which Alex reads.
   (4) `python -m core.instance_lock` run in the work folder says "no bot is running" and warns about live's
-  process, since live keeps its lock in its own folder.
+  process, since live keeps its lock in its own folder. (5) A set logged in words while typing in #gym gets its
+  confirm card there, under the workout's cards (in #inbox nothing lands in #gym); Save could log it at once
+  for an open workout, or the card could go to #inbox.
 - **Tests that move the dev clock to a fixed day stop once that day has passed**: `tests/test_calendar.py`
   failed 6 tests from 22 Oct, 8:50 am (the clock only moves forward). Fixed there by holding the real time
   before the made-up morning; about a dozen other test files move the clock to a fixed day in Oct or Nov

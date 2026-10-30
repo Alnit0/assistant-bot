@@ -218,7 +218,12 @@ async def finish(request: Request, data: dict, guessed: frozenset) -> str:
     if open_ is None:
         raise UserError(f"{ICON} No workout is open.")
     said, _ = await session.finish(open_)
-    return said
+    return _in_gym(request, said)
+
+
+def _in_gym(request: Request, said: str):
+    """Said in #gym, where the workout's own messages already say it: nothing more is posted there."""
+    return Shown(said) if request.channel_id is not None and request.channel_id == session.gym_channel() else said
 
 
 async def cancel(request: Request, data: dict, guessed: frozenset) -> str:
@@ -227,14 +232,14 @@ async def cancel(request: Request, data: dict, guessed: frozenset) -> str:
     if open_ is None:
         raise UserError(f"{ICON} No workout is open.")
     said, _ = await session.cancel(open_)
-    return said
+    return _in_gym(request, said)
 
 
 async def undo(request: Request, data: dict, guessed: frozenset) -> str:
     last = await database.run(store.db_last_undo, request.user.id)
     if last is None:
         raise UserError(f"{ICON} There is nothing to undo.")
-    return await session.undo(last, request.user.id)
+    return _in_gym(request, await session.undo(last, request.user.id))
 
 
 # --- swaps and plan changes -----------------------------------------------------------------------------------------------------
@@ -359,7 +364,9 @@ def _sets_of(items: list[dict], exercises: list[Exercise]) -> tuple[dict[str, li
             continue
         planned = list(found.sets) if found is not None else []
         mine = by_name.setdefault(name, [])
-        index = len(mine)
+        numbered = item.get("set")
+        # "bench 2 60 x 8": that set of it; otherwise the set after the last one said
+        index = int(numbered) - 1 if isinstance(numbered, (int, float)) and 0 < int(numbered) <= session.MOST_SETS else (max(each.position for each in mine) + 1 if mine else 0)
         set_type = item.get("set_type") if item.get("set_type") in rules.SET_TYPES else (planned[index].set_type if index < len(planned) else rules.WORKING)
         plan_set = planned[index] if index < len(planned) else PlannedSet(set_type)
         weight_kg = float(item["weight"]) if item.get("weight") not in (None, "") else None
@@ -458,7 +465,9 @@ async def describe_save(request: Request, data: dict) -> str:
     before = await database.run(store.db_bests, request.user.id)
     for name, sets in data["sets"].items():
         notes = [Note(**each) for each in data["notes"] if each["exercise"] == name]
-        await session.log_sets(current, name, [DoneSet(**each) for each in sets], notes[-1] if notes else None)
+        done = [DoneSet(**each) for each in sets]
+        # In an open workout, only the sets said are put in (the others logged on its card stay)
+        await session.log_sets(current, name, done, notes[-1] if notes else None, part={each.position for each in done} if current.status == store.OPEN else None)
     for name in data["skipped"]:
         notes = [Note(**each) for each in data["notes"] if each["exercise"] == name]
         if notes:
@@ -637,6 +646,7 @@ def actions() -> list:
 
     set_item = (
         Field("exercise", _EXERCISE, required=True),
+        Field("set", "Which set of the exercise this is, counting from 1, only when the user numbers it (\"bench 2 60 x 8\" -> set 2). Leave out otherwise.", INTEGER),
         Field("set_type", "warm-up or working, when said or clear from the order (a lighter first set is a warm-up).", choices=rules.SET_TYPES),
         Field("reps", "The reps done.", INTEGER),
         Field("weight", "The weight in kg, as a number (\"14s\" -> 14).", NUMBER),

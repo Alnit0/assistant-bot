@@ -6,6 +6,13 @@ backfilled from the git log.
 
 ## 2026-10-30
 
+- Gym logging a set at a time (not yet on), in place of the one card below: a workout is a header (progress,
+  Undo, Finish, Cancel) and a card an exercise, each edited in place. A button a set opens a pop-up for that one
+  set (Weight, Reps, Note, every box empty, last time's numbers in the labels); "✅ 60 x 8" once logged, one tap
+  to put it right. Each card's table has a row a set from the start, so it never grows; green once complete.
+- Finish takes the buttons off and posts the summary under the cards; Cancel deletes them and leaves one line
+  with Undo. "squat 2 60 x 8" in words logs that set alone.
+
 - Gym logging for the phone (not yet on): the Log pop-up has an empty box a set, with last time's numbers in
   its name, and Notes; "60 x 8 felt heavy" keeps "felt heavy" as that set's note. More than four sets: one more
   tap on the same button for the rest.

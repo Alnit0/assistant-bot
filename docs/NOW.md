@@ -3,18 +3,19 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Idle, last batch was** 30 Oct: the gym fixes batch (one box a set,
-Cancel as an undo, one tap every time, a clean table, last time's
-numbers). Committed as `fa55e65` and pushed on `feature/pills`, **not
-shipped**. NZ$0.04 of NZ$1.50.
+**Idle, last batch was** 30 Oct, evening: the gym a set at a time (a header
+and a card an exercise, a pop-up a set), replacing the one workout card.
+Committed as the commit after `24ff649` and pushed on `feature/pills`, **not shipped**.
+NZ$0.05 of NZ$1.00.
 
-**Waiting on Alex's phone check of Design · Gym logging**, and his own
-try of the dev bot's flow: the gym is on for the dev bot (`.env.dev`),
-its #gym its own #inbox, a made-up plan in its database. Start the dev
-bot to try it (`python main.py --dev`); it is not running.
+**Waiting on Alex's phone check of the per-exercise gym cards** (the new
+message in Design · Gym logging), and his try on the dev bot: it is
+**running**, started after the commit in its own window (Alex approved this
+once). The gym is on for it, its #gym its own #inbox, a made-up plan in its
+database. Stop it when done (close its window).
 
-**Next ship:** the gym fixes batch, with the gym's migration 6 (set
-notes, the card's line). Nothing in live's `.env` changes.
+**Next ship:** the gym fixes batch and its rework, with the gym's migration
+6 as extended. Nothing in live's `.env` changes.
 
 **Live:** `0412922` since 22 Oct, 10:58 am (`DESIGN_ROUND=8`, `THUMBS_UP`,
 `READING_ENABLED`, `NEWS_CHANNEL_ID`, `LAB_GRID=false`); previous `1aa9688`.
@@ -26,7 +27,7 @@ worktrees, all merged
 "weighed 82.4"; "bedtime 11pm". **Sundays:** `/suggest`.
 
 **Waiting on Alex**
-- Design · Gym logging on his phone; the dev bot's gym flow
+- The per-exercise gym cards on his phone; the dev bot's gym flow
 - His look at the hub in round 8 on live
 - The news; his list of changes; "Design · Hub embeds check"
 - His look at Design · Round 6 timeline; x5 (to-do or reminder?)
