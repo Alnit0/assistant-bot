@@ -5,7 +5,7 @@ history is `docs/STATUS.md`. Read first, with `/catchup`.
 
 **Idle, last batch was** 30 Oct, evening: the gym a set at a time (a header
 and a card an exercise, a pop-up a set), replacing the one workout card.
-Committed as the commit after `24ff649` and pushed on `feature/pills`, **not shipped**.
+Committed as `8776fdb` and pushed on `feature/pills`, **not shipped**.
 NZ$0.05 of NZ$1.00.
 
 **Waiting on Alex's phone check of the per-exercise gym cards** (the new
