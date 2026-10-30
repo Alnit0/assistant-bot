@@ -3,16 +3,17 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Idle, last batch was** 30 Oct, late evening: ticked set buttons ("✅ 2"),
-a Note box of several lines, notes on sets only (no Note button), on top of
-the gym a set at a time (`8776fdb`). Committed as `a4d1e62` and pushed on
-`feature/pills`, **not shipped**. NZ$0.36 of NZ$0.50.
+**Idle, last batch was** 30 Oct, night: Finish at the foot, one workout
+open at a time (Carry on, Start fresh), unfinished at midnight; on top of
+ticked set buttons (`a4d1e62`) and the gym a set at a time (`8776fdb`).
+Committed as `d9951f4` and pushed on `feature/pills`, **not shipped**. NZ$0.
 
 **Waiting on Alex's phone check of the per-exercise gym cards** (the newest
 message in Design · Gym logging), and his try on the dev bot: it is
-**running** `a4d1e62`, restarted after the commit in its own window (Alex
+**running** `d9951f4`, restarted after the commit in its own window (Alex
 approved this). Test in the Mori server's #selftest-inbox (its #gym), a
-made-up plan in its database. Stop it when done (close its window).
+made-up plan in its database, no workout open. Stop it when done (close
+its window).
 
 **Next ship:** the gym fixes batch and its reworks, with the gym's migration
 6 as extended. Nothing in live's `.env` changes.
