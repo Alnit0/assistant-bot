@@ -6,9 +6,29 @@ No history is kept here: what changed is `docs/CHANGELOG.md`, and this
 file as it stood until midday on 2026-10-14 (every batch, every answer,
 all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
-**Updated:** 2026-11-03 (morning: Pill Skip committed on `feature/pills`, not shipped; live on `e098a81` since 9:12 am)
+**Updated:** 2026-11-03 (afternoon: Pill Skip shipped, live on `caf6091` since 12:42 pm)
 
-## Pill Skip (3 Nov, morning; committed, not shipped)
+## Pill Skip shipped (3 Nov, 12:42 pm)
+
+On Alex's word after his check of "Design · Pill Skip": live moved from `e098a81` to `caf6091` (`2c16f67` and
+`caf6091`), 12 minutes after a pill look and well before the next. The pills' migration 9 (`no_snooze`) ran at the
+start; no snooze was waiting. Live's own account, no errors since the start; 18 schedules on, every job booked, none
+failed. A What's new line is queued for 4 Nov's briefing. Before the ship, every file changed since `e098a81` was
+checked against live's pill names (read-only): none needed changing.
+
+### Decided (3 Nov, the ship)
+
+1. **The restart waited for 12:41 pm**, past the 12:30 pm look that ended a dose's rounds (it posts nothing, but
+   was counted as a reminder) and 1 h 49 min before the next look at 2:30 pm.
+2. **The first try stopped at pip** before anything was restarted: the script's output had been sent to a file
+   with `*>`, which makes Windows PowerShell treat pip's notice of a newer release (on stderr) as an error. The
+   folder was put back on `e098a81`, as the script does itself, and the script was run again with pip's version
+   check off and its output not redirected. So live's versions file has the line for `e098a81` twice; `-Back`
+   still returns to `e098a81`.
+3. **The What's new line was cut short** by PowerShell, which dropped its double quotes; that one row was
+   replaced with the whole line by a short script (the command line only adds and lists).
+
+## Pill Skip (3 Nov, morning; shipped at 12:42 pm)
 
 After two weeks Alex never pressed Snooze: the reminders already come again 15, 30 and 45 minutes later. What he
 needed was Skip.

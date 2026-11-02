@@ -6,7 +6,9 @@ backfilled from the git log.
 
 ## 2026-11-03
 
-- Pills (not shipped): a reminder has Taken and Skip, no Snooze. Skip skips that dose, stops its reminders and
+- Shipped Pill Skip: live on `caf6091` since 12:42 pm. Pill reminders have Taken and Skip, and "skip all" skips
+  the rest of the day's doses.
+- Pills: a reminder has Taken and Skip, no Snooze. Skip skips that dose, stops its reminders and
   says so on the card in place, with Undo to bring it back. "skip all of Pill A" or "skip all my pills" skips
   every dose still to take today after one confirm card, with Undo; "skip the 2 pm one" skips the dose due then.
 
