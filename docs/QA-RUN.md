@@ -879,8 +879,8 @@ Have your phone locked beside you for step 2. The clock is moved with
 |---|---|---|---|
 | 1 | Say `add Testrem to my pills at 3pm and 9pm, at least 4 hours apart, with food`. Press **Save**. Type `dev clock 2:59pm` | Nothing yet: no message about Testrem beyond the card and the checklist | R78 |
 | 2 | Type `dev clock 3:00pm`. Look at the lock screen, then at the hub | The lock screen says "💊 Dose due · 3:00 pm" and nothing about Testrem. In the hub the message reads: that line, "**Testrem** · dose 1 of 2", "Due `3:00 pm`", "with food", and **Taken**, **Taken at…**, **Snooze 15m**, **Skip** | R78 |
-| 3 | Press **Snooze 15m**. Type `dev clock 3:15pm` | The message gains "Snoozed until 3:15 pm". After the move a fresh message takes its place (the old one is gone) and the phone buzzes again with the same neutral line | R78 |
-| 4 | Press **Taken at…**, type `3:05pm`, submit | The message goes; the checklist shows Testrem dose 1 taken 3:05 pm, and dose 2 at `9:00 pm` | R78 |
+| 3 | Press **Skip**, then **Undo**. Type `dev clock 3:15pm` | Skip: the same message says dose 1 was skipped, with Undo, and nothing new is posted. Undo: it is the reminder again with Taken and Skip. After the move a fresh message takes its place (the old one is gone) and the phone buzzes again with the same neutral line | R7, R8, R78 |
+| 4 | Say `took testrem at 3:05pm` | The message goes; the checklist shows Testrem dose 1 taken 3:05 pm, and dose 2 at `9:00 pm` | R78 |
 | 5 | Type `dev clock 9:00pm`, then `dev clock 9:15pm`, `dev clock 9:30pm`, `dev clock 9:45pm` | A prompt at 9:00 pm, then three more, each replacing the last: "2nd reminder", "2 of 3", "3 of 3", with a line saying when the next comes. Only ever one message for the dose | R78 |
 | 6 | Type `dev clock 10:00pm` | The message goes and nothing more is sent. The checklist still shows 💊 Testrem (dose 2 of 2) · `9:00 pm`: not missed (changed 2026-10-14) | R78 |
 | 7 | Say `took testrem` | At once, with no card: "✅ **Testrem** (dose 2 of 2) · taken 10:00 pm" | R78 |

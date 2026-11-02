@@ -13,6 +13,11 @@ low priority, nothing dropped without a reason.
 
 ### Next
 
+- **"that was dose 2" after a cancelled card read as nothing to answer** (self-test 1.17b on a real request,
+  3 Nov, Pill Skip batch): the router said no reply was needed, so the message got none. Routing was not changed
+  in that batch; on recorded answers the step passes. A golden conversation for it, and the router's rules, next
+  time understanding is worked on.
+
 Put in the order of the priorities of 2026-10-14 (the hub's look and
 how it reads, then how well it understands, then everything else).
 What was here and is done has gone: the QA of blocks 27 to 42 as one

@@ -650,7 +650,11 @@ its `home_files` action.
   "no latest time" and "no end date" take a value away.
 - **Reminders** are off unless `REMINDERS_ENABLED=true` is in `.env`
   (then restart). On, a dose with a time gets a message in the hub at
-  that time, with **Taken**, **Taken at…**, **Snooze 15m** and **Skip**.
+  that time, with **Taken** and **Skip** (no Snooze since 3 Nov: it comes
+  again by itself). **Skip** skips that dose and stops its reminders; the
+  card says so in place, with **Undo**, which makes it the reminder again.
+  "skip all of Pill A" or "skip all my pills" skips every dose still to
+  take today, after one confirm card, with Undo on its line.
   The phone shows only "💊 Dose due · 11:12 am". Left alone it comes
   again every 15 minutes, three times, and then it goes and nothing
   more is sent for that dose. The dose is still to take: it is missed

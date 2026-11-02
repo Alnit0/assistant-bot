@@ -2,7 +2,7 @@ import asyncio
 import logging
 import sqlite3
 from dataclasses import dataclass, replace
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from core import actions, attention, cards, clock, config, confirm, database, design, discord_utils, hub, lifecycle, llm, messages, notify, occurrences, restart, scheduler, surface, timeinput
 from core import day as days
@@ -20,8 +20,10 @@ log = logging.getLogger("assistant")
 
 # ---------------------------------------------------------------------------
 # Pills: reminders (the spec's prompts). Each dose with a time gets a message
-# of its own when it is due, so that it notifies: Taken, Taken at…, Snooze,
-# Skip. Left alone, it is posted again every 15 minutes, three more times,
+# of its own when it is due, so that it notifies: Taken and Skip (there is no
+# Snooze since 3 Nov: the reminders below already ask again, and it was never
+# pressed). Skip rewrites the card in place to say so, with Undo, which brings
+# the reminder back. Left alone, it is posted again every 15 minutes, three more times,
 # and then it goes and nothing more is sent for that dose. The dose itself is
 # still to take: reminders running out is no deadline, and a dose is missed
 # only once it can no longer be taken today (tasks/pills/doses.py). Only ever
@@ -46,7 +48,7 @@ log = logging.getLogger("assistant")
 # Nothing here keeps time in memory. What is to be done is worked out every
 # time from the day's doses (tasks/pills/today.py), what is kept about each
 # prompt (`pills_prompts`: when it was first and last posted, how many
-# reminders have gone, a snooze) and the clock; `run` does what is due and
+# reminders have gone) and the clock; `run` does what is due and
 # books one job for the next moment anything is. So a restart, a late job or
 # a job run twice all come to the same: a dose still due gets one prompt,
 # never one for each reminder that was missed, and nothing is ever posted
@@ -64,10 +66,12 @@ log = logging.getLogger("assistant")
 JOB = "remind"
 EVERY = timedelta(minutes=15)  # between a prompt and the reminder after it
 REMINDERS = 3  # how many times it is posted again before the dose is missed
-SNOOZE = timedelta(minutes=15)
 TAKE_BY_WITHIN = timedelta(hours=2)  # the take-by line shows only when it is this close
 
-P_TAKEN, P_AT, P_SNOOZE, P_SKIP = "prompt_taken", "prompt_at", "prompt_snooze", "prompt_skip"
+P_TAKEN, P_AT, P_SKIP, P_UNDO = "prompt_taken", "prompt_at", "prompt_skip", "prompt_undo"
+# A reminder's Snooze, gone since 3 Nov: a card still up from before answers it with the card as it is now
+P_SNOOZE = "prompt_snooze"
+SKIPPED_FOR = timedelta(minutes=30)  # how long a skipped card stays in the hub with its Undo (as long as a card waits)
 RETRY_MINUTES = (1, 2, 5)  # after the first, second and third try that failed; then every 5
 LOOK_BACK = 50  # how many of the hub's latest messages are read for a try that went through after all
 LAST_CHANCE = timedelta(minutes=30)  # before a dose stops fitting the day: one more nudge, the last
@@ -100,7 +104,6 @@ class Prompt:
     asked_at: datetime  # when it was first posted
     last_at: datetime  # when the copy now up was posted
     reminders: int = 0  # how many times it has been posted again; past REMINDERS once they are over (OVER, LAST_UP, FINISHED)
-    snoozed_until: datetime | None = None
     # A post that Discord refused: `reminders` is then the one being tried, and `message_id` the copy still up
     attempts: int = 0  # how many tries have failed
     tried_at: datetime | None = None  # when the last of them was
@@ -195,11 +198,6 @@ def decide(dose: Dose, prompt: Prompt | None, now: datetime, by: datetime | None
         return (LAST, by, prompt.reminders) if now >= nudge else (WAIT, nudge, prompt.reminders)
     if prompt is None:
         return (POST, next_look, 0) if now >= due else (WAIT, due, 0)
-    if prompt.snoozed_until is not None:
-        if now < prompt.snoozed_until:
-            return WAIT, prompt.snoozed_until, prompt.reminders
-        # The snooze is over: a fresh copy, which is not one of the reminders
-        return POST, next_look, prompt.reminders
     if prompt.message_id is None:
         return POST, next_look, prompt.reminders
     again = minute(prompt.last_at) + EVERY
@@ -261,9 +259,7 @@ def text(dose: Dose, listed: list[Dose], prompt: Prompt, now: datetime) -> str:
     take_by = _take_by(dose, now)
     if take_by:
         lines.append(take_by)
-    if prompt.snoozed_until is not None:
-        lines.append(f"-# 💤 Snoozed until {timeinput.format_moment(prompt.snoozed_until)}")
-    elif prompt.reminders:
+    if prompt.reminders:
         left = REMINDERS - prompt.reminders
         coming = timeinput.format_moment(prompt.last_at + EVERY)
         more = "none after it" if not left else (f"one more at {coming}" if left == 1 else f"{left} more, the next at {coming}")
@@ -272,32 +268,58 @@ def text(dose: Dose, listed: list[Dose], prompt: Prompt, now: datetime) -> str:
 
 
 def card(dose: Dose, listed: list[Dose], prompt: Prompt, now: datetime) -> Card:
+    """The reminder, in every round and on the last chance too: Taken and Skip, and
+    nothing else (3 Nov: the reminders ask again by themselves, so Snooze was never
+    pressed; a time taken is said in words, or as a reply to the line Taken leaves)."""
     which = str(dose.occurrence.id)
-    row = (
-        Button("Taken", TASK, P_TAKEN, which, emoji="✅", style=cards.SUCCESS),
-        Button("Taken at…", TASK, P_AT, which, emoji="🕐", style=cards.PRIMARY),
-        Button("Snooze 15m", TASK, P_SNOOZE, which, emoji="⏰", style=cards.PRIMARY),
-        Button("Skip", TASK, P_SKIP, which, emoji="⏭️", style=cards.PRIMARY),
-    )
-    if design.current() >= 4:
-        # Round 4: one Taken, at once (a reply to the line it leaves puts the time right) and Snooze;
-        # Skip and a time are said in words
-        row = (Button("Taken", TASK, P_TAKEN, which, emoji="✅", style=cards.SUCCESS), Button("Snooze 15m", TASK, P_SNOOZE, which, emoji="⏰", style=cards.PRIMARY))
-    if prompt.is_last_chance:
-        row = tuple(button for button in row if button.action != P_SNOOZE)  # there is nothing left to snooze into
+    row = (Button("Taken", TASK, P_TAKEN, which, emoji="✅", style=cards.SUCCESS), Button("Skip", TASK, P_SKIP, which, emoji="⏭️", style=cards.PRIMARY))
     said = text(dose, listed, prompt, now)
     # 👍 on it is Taken, through the same handler and checks (core/confirmations.py)
     return Card(said, (row,), drawn(dose, listed, prompt, now, said, row), thumbs_up=row[0])
 
 
+def undo_arg(prompt: Prompt) -> str:
+    """What Undo on a skipped card needs to put the reminder back as it was: the
+    dose, which reminder was up, and when it was first and last asked (to the
+    minute, as every look is), in the button's own id, so it works after a restart."""
+    asked, last = (int(moment.timestamp() // 60) for moment in (prompt.asked_at, prompt.last_at))
+    return f"{prompt.occurrence_id}:{prompt.reminders}:{asked}:{last}"
+
+
+def from_undo_arg(arg: str) -> tuple[int, int, datetime, datetime] | None:
+    """`undo_arg` read back: (occurrence id, reminders, asked at, last at), or None."""
+    parts = arg.split(":")
+    if len(parts) != 4 or not all(part.isdigit() for part in parts):
+        return None
+    occurrence_id, reminders, asked, last = (int(part) for part in parts)
+    return occurrence_id, reminders, *(datetime.fromtimestamp(minutes * 60, tz=timezone.utc) for minutes in (asked, last))
+
+
+def skipped_card(dose: Dose, listed: list[Dose], undo: str | None) -> Card:
+    """A reminder once Skip was pressed, in place: the dose is skipped and no more
+    reminders come for it today. Undo (while it is offered) puts it back."""
+    lines = [today.line(dose), "-# No more reminders for this dose today"]
+    row = (Button("Undo", TASK, P_UNDO, undo, emoji="↩️", style=cards.PRIMARY),) if undo is not None else ()
+    said = "\n".join(lines)
+    if design.current() < 3:
+        return Card(said, (row,) if row else (), design.plain(said, (row,) if row else ()))
+    mine = [each for each in listed if each.pill.id == dose.pill.id]
+    done = sum(each.occurrence.state in (occurrences.DONE, occurrences.SKIPPED) for each in mine)
+    heading = design.card_title(f"💊 {dose.pill.plan.name}", done, len(mine) if len(mine) > 1 else None)
+    which = design.name(f"Dose {dose.number}") + " · " if dose.of > 1 else ""
+    at = f" · was due {design.time(timeinput.format_moment(dose.due.at))}" if dose.due.at is not None else ""
+    body = "\n".join([heading, f"⏭️ {which}skipped{at}", lines[1]])
+    box = design.Box(design.QUIET, (design.Text(body), design.Row(row)) if row else (design.Text(body),))
+    return Card(said, (row,) if row else (), design.bolded((box,)))
+
+
 def drawn(dose: Dose, listed: list[Dose], prompt: Prompt, now: datetime, said: str, row: tuple) -> tuple:
     """The reminder as Components V2 (CARDS_V2), in the round 3 type scale: the
     neutral line stays on top, outside the box and with no page title (it is
-    what a lock screen shows); under it one box, amber while it is due and grey
-    while it is snoozed, its card title the pill with its day's dots, then the
+    what a lock screen shows); under it one box, amber, its card title the pill with its day's dots, then the
     dose and its time in bold with how far off it is, then the small lines.
     In round 1 (DESIGN_ROUND=1): the pill's name and the lines as they read, in the box."""
-    status = design.QUIET if prompt.snoozed_until is not None else design.DUE
+    status = design.DUE
     if design.current() < 3:
         first, name, *rest = said.split("\n")
         return design.notifying(first, design.item(status, name, *rest, row=row))
@@ -317,13 +339,14 @@ def drawn(dose: Dose, listed: list[Dose], prompt: Prompt, now: datetime, said: s
 # ---------------------------------------------------------------------------
 # What is kept (blocking; called through database.run)
 # ---------------------------------------------------------------------------
-_COLUMNS = "occurrence_id, user_id, day, channel_id, message_id, asked_at, last_at, reminders, snoozed_until, attempts, tried_at"
+# The table's `snoozed_until` is left from Snooze (gone 3 Nov): emptied by a migration, never read or written
+_COLUMNS = "occurrence_id, user_id, day, channel_id, message_id, asked_at, last_at, reminders, attempts, tried_at"
 
 
 def _prompt(row: tuple) -> Prompt:
     return Prompt(
-        row[0], row[1], date.fromisoformat(row[2]), row[3], row[4], from_db(row[5]), from_db(row[6]), row[7], from_db(row[8]) if row[8] else None,
-        row[9] or 0, from_db(row[10]) if row[10] else None,
+        row[0], row[1], date.fromisoformat(row[2]), row[3], row[4], from_db(row[5]), from_db(row[6]), row[7],
+        row[8] or 0, from_db(row[9]) if row[9] else None,
     )
 
 
@@ -346,11 +369,10 @@ def db_by_message(conn: sqlite3.Connection, message_id: int) -> Prompt | None:
 
 def db_keep(conn: sqlite3.Connection, prompt: Prompt) -> None:
     conn.execute(
-        f"INSERT OR REPLACE INTO pills_prompts ({_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        f"INSERT OR REPLACE INTO pills_prompts ({_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (
             prompt.occurrence_id, prompt.user_id, prompt.day.isoformat(), prompt.channel_id, prompt.message_id,
-            to_db(prompt.asked_at), to_db(prompt.last_at), prompt.reminders, to_db(prompt.snoozed_until) if prompt.snoozed_until else None,
-            prompt.attempts, to_db(prompt.tried_at) if prompt.tried_at else None,
+            to_db(prompt.asked_at), to_db(prompt.last_at), prompt.reminders, prompt.attempts, to_db(prompt.tried_at) if prompt.tried_at else None,
         ),
     )
 
@@ -421,7 +443,7 @@ async def _keep_failed(dose: Dose, channel_id: int, old: Prompt | None, reminder
         old.asked_at if old else minute(now),
         # A last chance counts its half hour from its first try; a reminder keeps the time of the copy that is up
         minute(now) if old is None or (reminders == LAST_UP and first) else old.last_at,
-        reminders, None, (old.attempts if old else 0) + 1, minute(now),  # to the minute, as every look is
+        reminders, (old.attempts if old else 0) + 1, minute(now),  # to the minute, as every look is
     )
     await database.run(db_keep, failed)
     log.warning("Pills reminders: dose %s could not be posted (try %s): %s. Tried again at %s", dose.occurrence.id, failed.attempts, why, timeinput.format_moment(retry_at(failed)))
@@ -509,10 +531,10 @@ async def _run(user_id: int) -> tuple[datetime | None, int]:
             # still to take, so what is kept stays, as over: it is never asked about a second time
             if prompt.message_id is not None and lifecycle.deletes(MessageClass.ALERT):
                 await cards.delete(prompt.channel_id, prompt.message_id)
-            await database.run(db_keep, replace(prompt, message_id=None, reminders=OVER, snoozed_until=None))
+            await database.run(db_keep, replace(prompt, message_id=None, reminders=OVER))
             log.info("Pills reminders: dose %s was not answered after %s reminders: it is still to take, and gets one last chance", dose.occurrence.id, REMINDERS)
             # When that is (if at all) is worked out from what is now kept
-            _, again, _ = decide(dose, replace(prompt, message_id=None, reminders=OVER, snoozed_until=None), now, fits_until(dose, listed))
+            _, again, _ = decide(dose, replace(prompt, message_id=None, reminders=OVER), now, fits_until(dose, listed))
         elif what == LAST:
             sent = await _post(dose, listed, replace(prompt, message_id=None), LAST_UP, now)
             if sent is True:
@@ -668,10 +690,75 @@ async def on_taken(press: cards.Press) -> str:
 
 
 async def on_skip(press: cards.Press) -> str:
-    dose, _, _ = await _dose(press)
+    """Skip: that one dose is skipped, its reminders stop, and the card says so in
+    place, with Undo. Nothing new is posted under it."""
+    dose, _, prompt = await _dose(press)
     if dose is None or not dose.is_pending:
         return await _gone(press)
-    return await _done(press, dose, checklist.SKIP, clock.now(), occurrences.BUTTON)
+    now = clock.now()
+    after = await checklist.mark(dose, checklist.SKIP, now, occurrences.BUTTON)
+    # No longer a reminder: what is kept about it goes first, so the look below leaves this message be
+    await database.run(db_forget, dose.occurrence.id)
+    _, listed, _ = await checklist.view(press.user.id)
+    shown = next((each for each in listed if each.occurrence.id == dose.occurrence.id), after)
+    kept = prompt or Prompt(dose.occurrence.id, dose.pill.user_id, dose.occurrence.day, press.channel_id or 0, press.message_id, minute(now), minute(now))
+    await press.update(skipped_card(shown, listed, undo_arg(kept)))
+    if press.message_id is not None:
+        from tasks.pills import store  # reminders is imported by the task's own modules
+
+        # The card is now about that dose: a reply to it ("actually I took it") means it
+        await database.run(store.db_add_lines, press.user.id, press.message_id, [(dose.pill.id, dose.occurrence.id)])
+        await messages.expire_in(press.message_id, SKIPPED_FOR)
+    await notify.dealt_with(dose.pill.user_id, KIND, str(dose.occurrence.id))
+    await checklist.refresh(press.user.id)
+    await run()
+    said = checklist.marked_text(after, checklist.SKIP)
+    llm.remember(press.channel_id, f"(pressed Skip on the reminder for {rules.plain(dose.label)})", said)
+    llm.task_answered(press.channel_id, TASK)
+    return said
+
+
+def unskipped_text(dose: Dose) -> str:
+    return f"↩️ {dose.label} · not skipped after all"
+
+
+async def on_undo(press: cards.Press) -> str:
+    """Undo on a skipped card: the dose is to take again and the card is its
+    reminder once more, in place, as it was when Skip was pressed; its reminders
+    carry on from there. One no longer skipped (or of a day that is over) only
+    loses its button."""
+    read = from_undo_arg(press.arg)
+    _, listed, _ = await checklist.view(press.user.id)
+    dose = next((each for each in listed if read is not None and each.occurrence.id == read[0]), None)
+    if dose is None or dose.occurrence.state != occurrences.SKIPPED or dose.occurrence.automatic:
+        held = await database.run(db_prompt, dose.occurrence.id) if dose is not None else None
+        if held is not None and held.message_id == press.message_id:
+            await press.update(card(dose, listed, held, clock.now()))  # undone already: it is the reminder again
+        elif dose is not None:
+            await press.update(skipped_card(dose, listed, None) if dose.occurrence.state == occurrences.SKIPPED else Card(today.line(dose)))
+        else:
+            await press.update(Card(cards.GONE))
+        return "nothing to undo"
+    occurrence_id, reminders, asked, last = read
+    after = await checklist.mark(dose, checklist.NOT_TAKEN, clock.now(), occurrences.BUTTON)
+    now = clock.now()
+    _, listed, _ = await checklist.view(press.user.id)
+    dose = next((each for each in listed if each.occurrence.id == occurrence_id), None)
+    if dose is not None and press.message_id is not None and press.channel_id is not None and enabled() and wants_prompt(dose, now):
+        prompt = Prompt(occurrence_id, dose.pill.user_id, dose.occurrence.day, press.channel_id, press.message_id, asked, last, reminders)
+        await database.run(db_keep, prompt)
+        await press.update(card(dose, listed, prompt, now))
+        # A reminder again: it goes when it is answered or posted afresh, not at the skipped card's time
+        await messages.last_the_day(press.message_id)
+    else:
+        # Reminders are off, or it is past its time: the line says so and nothing is to remind about
+        await press.update(Card(unskipped_text(after)))
+    await checklist.refresh(press.user.id)
+    await run()
+    said = unskipped_text(after)
+    llm.remember(press.channel_id, f"(pressed Undo on the skipped reminder for {rules.plain(after.label)})", said)
+    llm.task_answered(press.channel_id, TASK)
+    return said
 
 
 FORM_TITLE = "When did you take it?"
@@ -701,21 +788,20 @@ async def on_taken_at(press: cards.Press) -> str:
     return await _done(press, dose, checklist.TAKEN, at, occurrences.FORM)
 
 
-async def on_snooze(press: cards.Press) -> str:
+async def on_old_snooze(press: cards.Press) -> str:
+    """Snooze on a reminder from before 3 Nov: there is no snooze now. The card is
+    drawn as it is today (Taken and Skip), and its reminders go on as before."""
     dose, listed, prompt = await _dose(press)
     if dose is None or not dose.is_pending or prompt is None:
         return await _gone(press)
-    now = clock.now()
-    snoozed = replace(prompt, snoozed_until=minute(now) + SNOOZE)
-    await database.run(db_keep, snoozed)
-    await press.update(card(dose, listed, snoozed, now))
-    await run()
-    return f"snoozed until {timeinput.format_moment(snoozed.snoozed_until)}"
+    await press.update(card(dose, listed, prompt, clock.now()))
+    return "Snooze is gone: the card drawn again with Taken and Skip"
 
 
 def register() -> None:
     cards.register(TASK, P_TAKEN, on_taken)
     cards.register(TASK, P_SKIP, on_skip)
-    cards.register(TASK, P_SNOOZE, on_snooze)
+    cards.register(TASK, P_UNDO, on_undo)
+    cards.register(TASK, P_SNOOZE, on_old_snooze)
     cards.register(TASK, P_AT, on_taken_at, opens_form=True)
     checklist.on_change(changed)

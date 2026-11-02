@@ -3,11 +3,12 @@ from core import config, day, hub, livelists, tidy
 from core.lifecycle import MessageClass
 from core.actions import EACH_DAY
 from tasks.base import INBOX, ButtonNote, Keyword, Task
-from tasks.pills import checklist, plain, reminders, rules, sheet, shortcut, store
+from tasks.pills import checklist, plain, reminders, rules, sheet, shortcut, skipping, store
 from tasks.pills import attention as pills_attention
 from tasks.pills import summary as pills_summary
 
 HUB = "hub"
+SKIP_NOTE = "On a reminder: skip that dose and stop its reminders; the card says so, with ↩️ Undo to bring it back"
 # Where the words work: #inbox, and the hub once it is set in .env
 WHERE = [INBOX] + ([HUB] if HUB in CHANNELS else [])
 
@@ -141,22 +142,20 @@ class PillsTask(Task):
         if config.CARDS_V2 and design.current() >= 4:
             # Round 4: one Taken a dose that can be taken now; Skip and a time are said in words
             return [
-                ButtonNote("✅ Taken", "under a dose that can be taken now, on today's checklist and on a reminder: ticks it off at once; reply to the line it leaves with a time to put it right. To skip one, say so (“skip Pill A”), and “undo that” puts it back"),
-                ButtonNote("⏰ Snooze 15m", "on a reminder: ask again in 15 minutes"),
+                ButtonNote("✅ Taken", "under a dose that can be taken now, on today's checklist and on a reminder: ticks it off at once; reply to the line it leaves with a time to put it right. To skip one on the checklist, say so (“skip Pill A”, “skip all of Pill A”), and “undo that” puts it back"),
+                ButtonNote("⏭️ Skip", SKIP_NOTE),
             ]
         if config.CARDS_V2:
             # The new look: each pill on the checklist has its next dose's buttons under it
             return [
                 ButtonNote("✅ Taken", "under each pill on today's checklist, and on a reminder: tick its next dose off as taken now"),
-                ButtonNote("🕐 Taken at…", "under each pill on the checklist, and on a reminder: tick the dose off at a time you type"),
-                ButtonNote("⏭️ Skip", "under each pill on the checklist, and on a reminder: leave that dose out today"),
-                ButtonNote("⏰ Snooze 15m", "on a reminder: ask again in 15 minutes"),
+                ButtonNote("🕐 Taken at…", "under each pill on the checklist: tick the dose off at a time you type"),
+                ButtonNote("⏭️ Skip", "under each pill on the checklist: leave that dose out today. " + SKIP_NOTE),
             ]
         return [
             ButtonNote("✅ Taken", "under today's checklist, for a dose with no set time: tick it off as taken now"),
-            ButtonNote("⏭️ Skip", "under today's checklist: leave that dose out today"),
-            ButtonNote("🕐 Taken at…", "on a reminder: tick the dose off at a time you type"),
-            ButtonNote("⏰ Snooze 15m", "on a reminder: ask again in 15 minutes"),
+            ButtonNote("✅ Taken", "on a reminder: tick that dose off as taken now"),
+            ButtonNote("⏭️ Skip", "under today's checklist: leave that dose out today. " + SKIP_NOTE),
         ]
 
     def migrations(self):
@@ -210,6 +209,7 @@ class PillsTask(Task):
         checklist.register()
         sheet.register()
         reminders.register()
+        skipping.register()
         history.register()
 
     async def summary(self, user_id, day):

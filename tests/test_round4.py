@@ -119,12 +119,12 @@ def test_skip_is_said_in_words_and_undo_that_puts_it_back(world, r4):
     assert states(world)[("Evening pill", 1)] == occurrences.PENDING and "not skipped after all" in undone, undone
 
 
-# --- the reminder: one Taken and Snooze -------------------------------------------------------------------------
-def test_round_4_a_reminder_has_one_taken_and_snooze(world, r4):
+# --- the reminder: Taken and Skip ------------------------------------------------------------------------------
+def test_round_4_a_reminder_has_taken_and_skip(world, r4):
     add(world, PILL_A)
     at(world, 8, 0)
     drawn = world.edited[-1][1]
-    assert [(button.label, button.action) for button in design.buttons(drawn.layout)] == [("Taken", reminders.P_TAKEN), ("Snooze 15m", reminders.P_SNOOZE)]
+    assert [(button.label, button.action) for button in design.buttons(drawn.layout)] == [("Taken", reminders.P_TAKEN), ("Skip", reminders.P_SKIP)]
 
 
 def test_round_4_taken_on_a_reminder_leaves_a_line_a_reply_corrects(world, r4):
@@ -221,5 +221,5 @@ def test_round_4_commands_says_one_taken_and_skip_in_words(monkeypatch):
     monkeypatch.setattr(config, "CARDS_V2", True)
     monkeypatch.setattr(config, "DESIGN_ROUND", 4)
     said = {note.label: note.description for note in pills_task.buttons()}
-    assert set(said) == {"✅ Taken", "⏰ Snooze 15m"} and "skip Pill A" in said["✅ Taken"]
+    assert set(said) == {"✅ Taken", "⏭️ Skip"} and "skip Pill A" in said["✅ Taken"] and "Undo" in said["⏭️ Skip"]
     assert "reply to the line it leaves with a time" in said["✅ Taken"]

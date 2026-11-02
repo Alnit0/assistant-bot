@@ -157,6 +157,12 @@ def weekdays(conn: sqlite3.Connection) -> None:
     conn.execute("ALTER TABLE pills_pills ADD COLUMN weekdays TEXT NOT NULL DEFAULT ''")
 
 
+def no_snooze(conn: sqlite3.Connection) -> None:
+    # Snooze went from the reminders on 3 Nov: a snooze still waiting is let go, and that
+    # dose gets its next reminder in its usual turn (the column stays, empty, and unread)
+    conn.execute("UPDATE pills_prompts SET snoozed_until = NULL WHERE snoozed_until IS NOT NULL")
+
+
 MIGRATIONS = [
     create_tables,
     one_schedule_model,
@@ -166,6 +172,7 @@ MIGRATIONS = [
     prompts,
     weekdays,
     prompt_attempts,
+    no_snooze,
 ]
 
 

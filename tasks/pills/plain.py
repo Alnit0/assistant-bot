@@ -7,7 +7,7 @@ from core.actions import BOOLEAN, INTEGER, ITEMS, LAST, LIST, MINUTES, TIME, TIM
 from core.actions import EACH_DAY, SEE, SET_UP, flag, is_guessed
 from core.actions import is_reference, point_at
 from core.errors import UserError
-from tasks.pills import checklist, history, listing, rules, store, taken, today
+from tasks.pills import checklist, history, listing, rules, skipping, store, taken, today
 from tasks.pills import doses as limits
 from tasks.pills.store import DOSE
 from tasks.pills.today import Dose
@@ -1116,6 +1116,9 @@ async def _step(request: Request, item: dict) -> Step:
     named, picked = item.get("pill"), False
     # Where I point beats what is newest: a reply to a dose's message or to the checklist
     pointed, pointed_dose = await _replied_to(request, listed, today_)
+    if item["did"] == checklist.SKIP and str(item.get("at") or "").strip() and not item.get("day") and item.get("dose") is None:
+        # "skip the 2 pm one": the dose is the one due then, found from the day's doses
+        return await _skip_at(request, item, pills, listed, pointed)
     if is_reference(named) or not str(named or "").strip():
         # "it" is worked out here and never by Claude
         last, picked = await _unnamed(request, listed, pointed, now, item["did"])
@@ -1134,6 +1137,66 @@ async def _step(request: Request, item: dict) -> Step:
         # It would add a dose, and is asked about anyway: one logged a moment ago is said first
         step.another = await logged_lately(listed, step.dose, now)
     return step
+
+
+AT_TIME_NEAR = timedelta(hours=1)  # "the 2 pm one" with no dose due at exactly 2 pm: the nearest within this
+
+
+def at_time(listed: list[Dose], wanted: tuple[time, ...], pill_id: int | None = None) -> list[Dose]:
+    """The doses still to take that a time names ("the 2 pm one"): those planned
+    or due at that time, to the minute; failing that, the nearest within an hour.
+    Of one pill, or of every pill (then possibly several, one a pill)."""
+    pending = [dose for dose in listed if dose.is_pending and (pill_id is None or dose.pill.id == pill_id)]
+
+    def moments(dose: Dose) -> list[datetime]:
+        found = [day.at(dose.occurrence.day, dose.occurrence.planned_time)] if dose.occurrence.planned_time else []
+        return found + ([dose.due.at.replace(second=0, microsecond=0)] if dose.due.at is not None else [])
+
+    def apart(dose: Dose) -> timedelta | None:
+        gaps = [abs(moment - day.at(dose.occurrence.day, each)) for moment in moments(dose) for each in wanted]
+        return min(gaps) if gaps else None
+
+    scored = [(gap, dose) for dose in pending if (gap := apart(dose)) is not None and gap <= AT_TIME_NEAR]
+    if not scored:
+        return []
+    best = min(gap for gap, _ in scored)
+    scored = [(gap, dose) for gap, dose in scored if gap == best]
+    # One a pill: its earliest such dose
+    chosen: dict[int, Dose] = {}
+    for _, dose in sorted(scored, key=lambda pair: pair[1].number):
+        chosen.setdefault(dose.pill.id, dose)
+    return sorted(chosen.values(), key=lambda dose: dose.pill.plan.name.lower())
+
+
+async def _skip_at(request: Request, item: dict, pills: list[Pill], listed: list[Dose], pointed: Pill | None) -> Step:
+    """"skip the 2 pm one" (or "skip Pill A's 2 pm one"): the dose due then is
+    skipped, worked out from the day's doses; two pills due then are asked about."""
+    named, pill = item.get("pill"), None
+    if str(named or "").strip() and not is_reference(named):
+        try:
+            pill = rules.find(pills, str(named), request.text)
+        except rules.Ambiguous as unclear:
+            return Step(f"⚠️ {unclear}", which=tuple(unclear.candidates))
+        except UserError as error:
+            return Step(f"⚠️ {error}")
+    elif pointed is not None:
+        pill = pointed
+    said = str(item["at"]).strip()
+    try:
+        wanted: tuple[time, ...] = (timeinput.parse_time(said),)
+    except timeinput.AmbiguousTime as unsure:
+        wanted = unsure.options
+    except UserError:
+        return Step(f"⚠️ “{said}” is not a time I can read.", pill=pill)
+    found = at_time(listed, wanted, pill.id if pill is not None else None)
+    shown = " or ".join(timeinput.format_time(each) for each in wanted)
+    if not found:
+        whose = f"of **{pill.plan.name}** " if pill is not None else ""
+        return Step(f"💊 Nothing {whose}is left to take at {shown} today.", pill=pill)
+    if len(found) > 1:
+        return Step(f"⚠️ More than one pill is due at {shown}: which?", which=tuple(dose.pill for dose in found))
+    (dose,) = found
+    return Step(dose=dose, did=checklist.SKIP, at=clock.now(), pill=dose.pill)
 
 
 def _on_its_day(item: dict, dose: Dose, today_: date, now: datetime) -> Step:
@@ -1941,14 +2004,21 @@ ACTIONS = (
         "pill A at 9am\" -> pill pill A, did taken, dose 1, at 9:00 am. \"dose 2 at 12:15pm\" -> pill @that, did taken, "
         "dose 2, at 12:15 pm. \"that was dose 1\", \"no, that was my first dose\", \"it was dose 1 not dose 2\" (about a dose "
         "ALREADY logged: they say which of the day's doses it really was) -> pill @that, did taken, dose 1, correction true, and no time: "
-        "the code moves that log, nothing new is logged. Never for changing when a pill is taken from now on: that is pill_edit.",
+        "the code moves that log, nothing new is logged. \"skip the 2 pm one\" -> pill @that, did skipped, at 2:00 pm: the code finds "
+        "the dose due then. Never for changing when a pill is taken from now on: that is pill_edit. Never for skipping ALL of a pill's "
+        "doses, or all of today's: that is pill_skip_all.",
         (
             Field(
                 "doses", "Each pill that was taken, skipped or not taken, one item each, in the order said.", ITEMS, required=True,
                 item_fields=(
                     _WHICH,
                     Field("did", "What happened to today's dose.", choices=(checklist.TAKEN, checklist.SKIP, checklist.NOT_TAKEN), required=True),
-                    Field("at", "For taken only: the time it was taken, if the user gave one. Leave out for just now.", TIME),
+                    Field(
+                        "at",
+                        "For taken: the time it was taken, if the user gave one; leave out for just now. For skipped: only when the "
+                        "user names the dose by its time (\"skip the 2 pm one\"): that time.",
+                        TIME,
+                    ),
                     Field(
                         "day",
                         "Only when the user SAYS the dose was the day before: \"last night\", \"yesterday evening\" -> last_night; "
@@ -1980,6 +2050,22 @@ ACTIONS = (
         prepare=log_card,
         apply=log_saved,
         verify=log_check,
+    ),
+    Action(
+        "pill_skip_all",
+        "ONLY when the user says all, every, everything or the rest: skip every dose still to take today, of one pill (\"skip all "
+        "of Pill A\", \"skip all Pill A today\", \"skip the rest of Pill A\") -> pills [Pill A]; or of every pill (\"skip all my "
+        "pills\", \"skip all\", \"skip everything today\") -> pills left out. The code works out which doses that is. Without one "
+        "of those words it is one dose, pill_log, even with today in it: \"skip Pill A\", \"skip Pill A today\", \"skip the 2 pm one\".",
+        (Field("pills", "Each pill named, one item each. Leave out when no pill is named: every pill.", ITEMS, item_fields=(_WHICH,)),),
+        # Several doses at once: always a card to look over, unless nothing is left (one line)
+        card_if=skipping.asks,
+        run=skipping.said,
+        prepare=skipping.card,
+        apply=skipping.save,
+        verify=skipping.check,
+        purpose=EACH_DAY,
+        say=("skip all of Pill A today", "skip all my pills"),
     ),
     Action(
         "pill_today",

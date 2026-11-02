@@ -6,7 +6,58 @@ No history is kept here: what changed is `docs/CHANGELOG.md`, and this
 file as it stood until midday on 2026-10-14 (every batch, every answer,
 all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
-**Updated:** 2026-11-03 (morning, shipped: live on `e098a81` since 9:12 am)
+**Updated:** 2026-11-03 (morning: Pill Skip committed on `feature/pills`, not shipped; live on `e098a81` since 9:12 am)
+
+## Pill Skip (3 Nov, morning; committed, not shipped)
+
+After two weeks Alex never pressed Snooze: the reminders already come again 15, 30 and 45 minutes later. What he
+needed was Skip.
+
+- **Every pill reminder has two buttons, Taken and Skip**, in every round and on the last chance too. Skip skips
+  that one dose, stops its reminders and rewrites the card in place (grey, "No more reminders for this dose
+  today", **Undo**). Undo makes the same message the reminder again, as it was, and its reminders carry on.
+  👍 is still Taken; skipping in words still works, and "skip the 2 pm one" finds the dose due then.
+- **"skip all"** (`pill_skip_all`, `tasks/pills/skipping.py`): "skip all of Pill A", "skip all Pill A today" is
+  every dose of that pill still to take today; "skip all my pills", "skip all" every pill's. Python works it out
+  from the day's doses; taken ones are left alone. One confirm card lists them by time; Save skips them all and
+  its line has Undo, which brings them all back with their reminders. Nothing left is one line.
+- **A migration** (`no_snooze`, the ninth of the pills) empties any snooze still waiting; that dose gets its next
+  reminder in its usual turn. The column stays, unread.
+- Golden conversations 31 to 31c, five eval cases, self-test steps 1.18, 1.19, 1.21b and 1.21c (and 1.15, 1.20,
+  3.02, 3.11, 4.01 changed), and "Design · Pill Skip" in the Design forum.
+
+**Spend:** NZ$0.77 in all (US$0.45). The live eval: pills extraction twice (US$0.13 each, the second after a fix),
+golden 31 to 31c (US$0.03 with a rerun of 31c). The self-test: two runs stopped by my own step bugs (US$0.08 each,
+real requests), then the full run on recorded answers, NZ$0.
+
+### Decided (3 Nov, Pill Skip)
+
+1. **Exactly two buttons everywhere.** Before round 4 a reminder also had Taken at…; it went too, since "every
+   reminder card has exactly two buttons". A time is said in words, or as a reply to the line Taken leaves. The
+   Taken at… and Snooze handlers stay registered so a card posted before the ship still answers: an old Snooze
+   press redraws the card with Taken and Skip and changes nothing else.
+2. **The last chance keeps its words and its timing**; its buttons are the same two (in round 4 and later it had
+   Taken alone, once Snooze was taken off it).
+3. **A skipped card stays half an hour** (as long as Taken's correctable line), then the hub tidy takes it. Undo
+   puts it back to last the day. The Undo button carries the dose, which reminder was up and when it was first
+   and last asked, so it works after a restart. Undo once the dose has changed only takes the button away.
+4. **"skip all" is an action of its own**, not a flag on `pill_log`: its card, its read-back and its Undo stand
+   alone, and `pill_log` stays one dose at a time. The first eval run sent "skip magnesium today" to it; its
+   description now says it is only for all, every, everything or the rest, and the second run had that right.
+5. **"the 2 pm one"** is the dose planned or due at that time to the minute; failing that, the nearest within an
+   hour. Two pills due then are asked about on the card (a button a pill).
+6. **Golden 31c needs its context.** With nothing before it, the router sent "skip the 3 pm one" to reminders
+   (nudges), a fair reading. Straight after a dose was dealt with it goes to pills, and that is the golden.
+   Whether a bare "skip the 3 pm one" should be asked as a tie is a question (99).
+7. **The self-test ran on recorded answers** in the end, to keep the batch under NZ$1.00: the language was checked
+   live by the eval (pills 61 of 62, the miss the old "dose 2 at 12:15pm", whose earlier recording is kept; golden
+   31 to 31c 8 of 8). On a real request in a stopped run, 1.17b ("that was dose 2" after a cancelled card) was read
+   as needing no reply: routing is unchanged here, so it is in the backlog, not fixed.
+8. **No dose is left skipped by the new steps**: 1.19 undoes 1.18, 3.02 and 4.01 undo their own Skip, and Testskip
+   is deleted with its history after its Undo. Step 1.08's "skip forte" (from before) still leaves one skipped dose
+   of a removed pill on the dev bot: unchanged.
+9. **The preview is drawn in round 8**, what live uses, from made-up Pill A and Pill B.
+
 
 
 

@@ -765,6 +765,84 @@
         "reports_doing": false,
         "chat_part": ""
       }
+    },
+    {
+      "golden": "31",
+      "message": "skip all of Pill A today",
+      "tasks": [
+        "pills"
+      ],
+      "note": "Pill Skip, 3 Nov: every dose of Pill A still to take today (three left), on one card. Which doses is Python's",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "31a",
+      "message": "skip all my pills",
+      "tasks": [
+        "pills"
+      ],
+      "note": "Pill Skip, 3 Nov: no pill named is every pill: Pill A and Pill B, every dose still to take today",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "31b",
+      "message": "skip all Pill A today",
+      "tasks": [
+        "pills"
+      ],
+      "note": "Pill Skip, 3 Nov: after dose 1 was taken. The same extraction: the code leaves the taken dose alone",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "31c",
+      "message": "skip the 3 pm one",
+      "tasks": [
+        "pills"
+      ],
+      "note": "Pill Skip, 3 Nov: one dose named by its time, straight after a dose was dealt with. The code finds the dose due then. With no context at all the router read it as a reminder's (nudges): a question for Alex",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "pills"
+        ],
+        "confidence": "high",
+        "reports_doing": true,
+        "several": false,
+        "chat_part": ""
+      },
+      "exchanges": [
+        [
+          "(pressed Taken on the reminder for Pill A (dose 1 of 3))",
+          "✅ **Pill A** (dose 1 of 3) · taken 8:02 am · 2 left today"
+        ]
+      ]
     }
   ],
   "extraction": [
@@ -2082,6 +2160,106 @@
       "recorded": [
         "pill_taken",
         {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "skip all of Pill A today",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:30 am, 3:00 pm · at least 3h apart · not after 4:00 pm [active]",
+      "action": "pill_skip_all",
+      "data": {
+        "pills": [
+          {
+            "pill": "pl1"
+          }
+        ]
+      },
+      "golden": "31",
+      "note": "Pill Skip, 3 Nov: every dose of Pill A still to take today (three left), on one card. Which doses is Python's",
+      "recorded": [
+        "pill_skip_all",
+        {
+          "pills": [
+            {
+              "pill": "pl1"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "skip all my pills",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:30 am, 3:00 pm · at least 3h apart · not after 4:00 pm [active]\n- pl2: 💊 Pill B · 2× daily · 11:30 am, 6:00 pm [active]",
+      "action": "pill_skip_all",
+      "data": {},
+      "golden": "31a",
+      "note": "Pill Skip, 3 Nov: no pill named is every pill: Pill A and Pill B, every dose still to take today",
+      "recorded": [
+        "pill_skip_all",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "skip all Pill A today",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:30 am, 3:00 pm · at least 3h apart · not after 4:00 pm [active]",
+      "action": "pill_skip_all",
+      "data": {
+        "pills": [
+          {
+            "pill": "pl1"
+          }
+        ]
+      },
+      "golden": "31b",
+      "note": "Pill Skip, 3 Nov: after dose 1 was taken. The same extraction: the code leaves the taken dose alone",
+      "recorded": [
+        "pill_skip_all",
+        {
+          "pills": [
+            {
+              "pill": "pl1"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "skip the 3 pm one",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:30 am, 3:00 pm · at least 3h apart · not after 4:00 pm [active]",
+      "action": "pill_log",
+      "data": {
+        "doses": [
+          {
+            "did": "skipped",
+            "at": "3:00 pm"
+          }
+        ]
+      },
+      "golden": "31c",
+      "note": "Pill Skip, 3 Nov: one dose named by its time, straight after a dose was dealt with. The code finds the dose due then. With no context at all the router read it as a reminder's (nudges): a question for Alex",
+      "recorded": [
+        "pill_log",
+        {
+          "doses": [
+            {
+              "pill": "pl1",
+              "did": "skipped",
+              "at": "3:00 pm"
+            }
+          ],
           "guessed": [],
           "not_included": []
         }

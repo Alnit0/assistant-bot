@@ -67,6 +67,11 @@ async def dose_id(h: Harness, pill: str, seq: int) -> str:
     return next(str(each.id) for each in found if each.item_id == ids[pill] and each.seq == seq)
 
 
+def bare(shown) -> list[str]:
+    """A message's button labels without their emoji (the plain look puts the emoji in the label)."""
+    return [label.split()[-1] if label.split() else "" for label in shown.labels]
+
+
 async def card(h: Harness, channel=None):
     """The open card in a channel: (what is kept about it, the message as Discord has it)."""
     channel = channel or h.inbox
@@ -430,7 +435,7 @@ async def p1(h: Harness) -> None:
             await no_marks(h, mine)
             h.saw(latest[0].text[:100])
 
-    async for attempt in h.step("1.15", "8:00 am: the reminder for Testa", "One new message in the hub that notifies. Its first line is “💊 Dose due · 8:00 am” and names no pill; it was posted as that line and written in after (an edit); under it Testa, dose 1 of 3, with Taken, Taken at…, Snooze 15m, Skip", "T41 (38.2), asked"):
+    async for attempt in h.step("1.15", "8:00 am: the reminder for Testa", "One new message in the hub that notifies. Its first line is “💊 Dose due · 8:00 am” and names no pill; it was posted as that line and written in after (an edit); under it Testa, dose 1 of 3, with exactly two buttons: Taken and Skip", "T41 (38.2), asked; Pill Skip 3 Nov"):
         async with attempt:
             await h.clock_to(8, 0, 5)
             up = await prompts(h)
@@ -442,7 +447,7 @@ async def p1(h: Harness) -> None:
             h.check("Testa" in shown.text and "dose 1 of 3" in shown.text, f"it reads: {shown.text[:200]}")
             h.check(shown.edited, "it was not edited after being posted: the pill was in the notification")
             h.check(not shown.silent, "it was posted silently: it would not notify")
-            h.check([label.split()[-1] if label else "" for label in shown.labels] and all(any(word in label for label in shown.labels) for word in ("Taken", "Taken at", "Snooze", "Skip")), f"its buttons are {shown.labels}")
+            h.check(bare(shown) == ["Taken", "Skip"], f"its buttons are {shown.labels}")
             h.memo["prompt"] = shown.id
             h.saw(first)
 
@@ -493,7 +498,7 @@ async def p1(h: Harness) -> None:
             h.check(await h.doses() == before and (await card(h))[0] is None, "after Cancel a dose changed or the card is still open")
             await no_marks(h, mine)
 
-    async for attempt in h.step("1.18", "The next reminder, and Snooze 15m", "When dose 2 falls due a reminder is posted; Snooze rewrites the same message with “Snoozed until …”", "T42 (38.3)"):
+    async for attempt in h.step("1.18", "The next reminder, and Skip on it", "When dose 2 falls due a reminder is posted; Skip rewrites that same message in place: Testa, dose 2 skipped, “No more reminders for this dose today”, and one button, Undo. Nothing new is posted, and no reminder is kept for it", "Pill Skip 3 Nov"):
         async with attempt:
             due = await remind_due(h)
             h.check(due is not None, "no reminder is booked")
@@ -501,31 +506,40 @@ async def p1(h: Harness) -> None:
             up = await prompts(h)
             h.check(len(up) == 1 and up[0].message_id, f"{len(up)} prompts are kept")
             h.memo["prompt"] = up[0].message_id
-            pressed = await h.press(up[0].message_id, "Snooze")
+            before = len(await h.recent(h.hub, 10))
+            pressed = await h.press(up[0].message_id, "Skip")
             shown = await h.get(h.hub, up[0].message_id)
-            h.check(shown is not None and "Snoozed until" in shown.text, f"after Snooze: {shown.text[:200] if shown else 'gone'}")
+            h.check(shown is not None and "skipped" in shown.text and "No more reminders for this dose today" in shown.text, f"after Skip: {shown.text[:200] if shown else 'gone'}; said {pressed.said}")
+            h.check(bare(shown) == ["Undo"], f"its buttons are {shown.labels}")
             h.check(pressed.edits >= 1, "the message was not edited in place")
-            h.saw(next((line for line in shown.text.splitlines() if "Snoozed" in line), ""))
+            h.check((await h.doses()).get(("Testa", 2)) == SKIPPED and not await prompts(h), f"the doses are {await h.doses()}; {len(await prompts(h))} prompts kept")
+            h.check(len(await h.recent(h.hub, 10)) == before and (await h.recent(h.hub, 1))[0].id == shown.id, "something new was posted under it")
+            h.saw(next((line for line in shown.text.splitlines() if "skipped" in line), "")[:100])
 
-    async for attempt in h.step("1.19", "15 minutes later the reminder is posted again", "A new message takes the place of the snoozed one (so the phone buzzes again); only ever one prompt", "T42 (38.3)"):
+    async for attempt in h.step("1.19", "Undo on the skipped card", "The same message is the reminder for dose 2 again, with Taken and Skip; dose 2 is to take again, and one reminder is kept for it, that message", "Pill Skip 3 Nov"):
         async with attempt:
+            pressed = await h.press(h.memo["prompt"], "Undo")
+            shown = await h.get(h.hub, h.memo["prompt"])
+            h.check(shown is not None and bare(shown) == ["Taken", "Skip"] and "Testa" in shown.text, f"after Undo: {shown.text[:200] if shown else 'gone'} with {shown.labels if shown else []}; said {pressed.said}")
+            h.check((await h.doses()).get(("Testa", 2)) == PENDING, f"the doses are {await h.doses()}")
+            up = await prompts(h)
+            h.check(len(up) == 1 and up[0].message_id == h.memo["prompt"], f"the prompt kept is {up[0].message_id if up else None}, the card {h.memo['prompt']}")
+            h.check(await h.count(h.hub, NEUTRAL) == 1, f"{await h.count(h.hub, NEUTRAL)} reminders are in the hub")
+
+    async for attempt in h.step("1.20", "A time said in words, with the reminder up: “took testa at …”", "15 minutes on the reminder is posted again (one only); then dose 2 is taken at that time and the reminder goes", "T42, T43 (38.3, 38.4); Taken at… and Snooze left the reminder 3 Nov"):
+        async with attempt:
+            # 15 minutes on, as Snooze once moved it: the reminder comes again, and 5 minutes ago is past dose 2's time
             await h.clock_by(minutes=15, seconds=10)
             up = await prompts(h)
-            h.check(len(up) == 1 and up[0].message_id and up[0].message_id != h.memo["prompt"], f"the prompt kept is {up[0].message_id if up else None}, before {h.memo['prompt']}")
-            h.check(await h.get(h.hub, h.memo["prompt"]) is None, "the snoozed message is still there")
-            h.check(await h.count(h.hub, NEUTRAL) == 1, f"{await h.count(h.hub, NEUTRAL)} reminders are in the hub")
+            h.check(len(up) == 1 and up[0].message_id and up[0].message_id != h.memo["prompt"], f"the reminder was not posted again: {up[0].message_id if up else None}, before {h.memo['prompt']}")
             h.memo["prompt"] = up[0].message_id
-
-    async for attempt in h.step("1.20", "Taken at… on the reminder, with a time typed", "A form opens; with the time sent, the reminder goes and dose 2 is taken at that time", "T43 (38.4)"):
-        async with attempt:
-            pressed = await h.press(h.memo["prompt"], "Taken at")
-            h.check(pressed.form is not None, f"no form opened; it said {pressed.said}")
             at = config.now_nz() - timedelta(minutes=5)
-            typed = f"{at:%I:%M%p}".lstrip("0").lower()
-            sent = await h.submit(pressed, at=typed)
-            h.check(await h.get(h.hub, h.memo["prompt"]) is None, f"the reminder is still up; the form said {sent.said}")
+            said = f"{at:%I:%M %p}".lstrip("0").lower()
+            mine = await h.say(f"took testa at {said.replace(' ', '')}", canned=log({"pill": "Testa", "did": "taken", "at": said}), route={"kind": "task", "tasks": [TASK], "confidence": "high", "reports_doing": True, "chat_part": ""})
+            h.check(await h.get(h.hub, h.memo["prompt"]) is None and not await prompts(h), "the reminder is still up")
             h.check((await h.doses()).get(("Testa", 2)) == DONE, f"the doses are {await h.doses()}")
-            h.memo["dose2_at"] = f"{at:%I:%M %p}".lstrip("0").lower()
+            await no_marks(h, mine)
+            h.memo["dose2_at"] = said
             sheet = await h.get(h.hub, h.memo["sheet_d1"])
             h.check(sheet is not None and h.memo["dose2_at"] in sheet.text.lower(), f"the checklist does not show {h.memo['dose2_at']}: {sheet.text[:260] if sheet else 'gone'}")
             h.saw(f"taken at {h.memo['dose2_at']}")
@@ -541,6 +555,41 @@ async def p1(h: Harness) -> None:
             h.check(states.get(("Testa", 2)) == DONE and states.get(("Testa", 3)) == PENDING, f"the doses are {states}")
             await no_marks(h, mine)
             h.saw(said.text[:110])
+
+    async for attempt in h.step("1.21b", "A made-up pill with three doses this evening: “skip all of testskip”", "Testskip is set up at 9, 10 and 11 pm. Then one card lists its three doses by time (“⏭️ `9:00 pm` · Testskip (dose 1 of 3)” …) with Save and Cancel; nothing is skipped by asking", "Pill Skip 3 Nov"):
+        async with attempt:
+            await h.say("add testskip to my pills at 9pm, 10pm and 11pm", canned=add({"name": "Testskip", "times": ["9:00 pm", "10:00 pm", "11:00 pm"]}))
+            stored, shown = await card(h)
+            h.check(shown is not None and any("Save" in label for label in shown.labels), f"no card to add it: {[each.text[:80] for each in await h.recent(h.inbox, 3)]}")
+            await h.press(shown.id, "Save", h.inbox)
+            h.check("Testskip" in await h.pills(), "Testskip was not added")
+            mine = await h.say("skip all of testskip", canned=about("pill_skip_all", {"pill": "Testskip"}))
+            stored, shown = await card(h)
+            lines = [line for line in (shown.text.splitlines() if shown else []) if "Testskip" in line and "dose" in line]
+            h.check(len(lines) == 3 and "9:00 pm" in lines[0] and "11:00 pm" in lines[2], f"the card: {shown.text[:300] if shown else 'none'}")
+            h.check(any("Save" in label for label in shown.labels) and any("Cancel" in label for label in shown.labels), f"its buttons are {shown.labels}")
+            mine_doses = {key: state for key, state in (await h.doses()).items() if key[0] == "Testskip"}
+            h.check(set(mine_doses.values()) == {PENDING} and len(mine_doses) == 3, f"Testskip's doses are {mine_doses}")
+            h.memo["skip_all_card"] = shown.id
+            h.saw(lines[0][:80] if lines else "")
+
+    async for attempt in h.step("1.21c", "Save on the “skip all” card, then Undo", "Save: all three doses are skipped and the line says so, with Undo. Undo: all three are to take again, and the line says so with no button. Then Testskip is deleted with its history, so nothing is left skipped", "Pill Skip 3 Nov"):
+        async with attempt:
+            await h.press(h.memo["skip_all_card"], "Save", h.inbox)
+            shown = await h.get(h.inbox, h.memo["skip_all_card"])
+            mine_doses = {key: state for key, state in (await h.doses()).items() if key[0] == "Testskip"}
+            h.check(set(mine_doses.values()) == {SKIPPED}, f"after Save Testskip's doses are {mine_doses}")
+            h.check(shown is not None and "Skipped 3 doses today" in shown.text and bare(shown) == ["Undo"], f"after Save: {shown.text[:200] if shown else 'gone'} with {shown.labels if shown else []}")
+            await h.press(h.memo["skip_all_card"], "Undo", h.inbox)
+            shown = await h.get(h.inbox, h.memo["skip_all_card"])
+            mine_doses = {key: state for key, state in (await h.doses()).items() if key[0] == "Testskip"}
+            h.check(set(mine_doses.values()) == {PENDING}, f"after Undo Testskip's doses are {mine_doses}")
+            h.check(shown is not None and "Not skipped after all" in shown.text and not shown.buttons, f"after Undo: {shown.text[:200] if shown else 'gone'}")
+            await h.say("delete testskip and its history", canned=about("pill_delete", {"pill": "Testskip"}))
+            stored, shown = await card(h)
+            h.check(shown is not None and any("Delete for good" in label for label in shown.labels), f"no delete card: {shown.text[:160] if shown else 'none'}")
+            await h.press(shown.id, "Delete for good", h.inbox)
+            h.check("Testskip" not in await h.pills() and not any(key[0] == "Testskip" for key in await h.doses()), "Testskip or one of its doses is still there")
 
     async for attempt in h.step("1.22", "A question about my data: “what pills do I have left today?”", "The pills task answers (the checklist, or a line pointing at it); my message is left with no ⚠️", "fixture"):
         async with attempt:
@@ -828,11 +877,14 @@ async def p3(h: Harness) -> None:
             h.check(len(await held(h, "checklist")) == 1, "more than one checklist is kept for today")
             h.check(config.CARDS_V2, "CARDS_V2 is not on")
 
-    async for attempt in h.step("3.02", "An old-look reminder, Snooze pressed with the new look on", "Discord accepts the edit: the same message now says “Snoozed until …”", "asked: switching looks"):
+    async for attempt in h.step("3.02", "An old-look reminder, Skip then Undo pressed with the new look on", "Discord accepts both edits: the same message says the dose was skipped, with Undo; then it is the reminder again, with Taken and Skip", "asked: switching looks; Pill Skip 3 Nov"):
         async with attempt:
-            pressed = await h.press(h.memo["plain_prompt"], "Snooze")
+            pressed = await h.press(h.memo["plain_prompt"], "Skip")
             shown = await h.get(h.hub, h.memo["plain_prompt"])
-            h.check(shown is not None and "Snoozed until" in shown.text, f"after Snooze: {shown.text[:200] if shown else 'gone'}; said {pressed.said}")
+            h.check(shown is not None and "skipped" in shown.text and bare(shown) == ["Undo"], f"after Skip: {shown.text[:200] if shown else 'gone'}; said {pressed.said}")
+            pressed = await h.press(h.memo["plain_prompt"], "Undo")
+            shown = await h.get(h.hub, h.memo["plain_prompt"])
+            h.check(shown is not None and bare(shown) == ["Taken", "Skip"], f"after Undo: {shown.text[:200] if shown else 'gone'} with {shown.labels if shown else []}; said {pressed.said}")
             h.saw(f"the message is {'Components V2' if shown.v2 else 'plain'} afterwards")
 
     async for attempt in h.step("3.03", "An old-look card, Save pressed with the new look on", "Discord accepts the edit: the card becomes its confirmation and Testa's dose is 2 tablets", "asked: switching looks"):
@@ -952,7 +1004,7 @@ async def p3(h: Harness) -> None:
             h.check(len(sheet.accents) == 1 and sheet.accents[0] in (accent(design.DUE), accent(design.ANY_TIME)), f"one box, amber or blue: {[hex(each) if each else None for each in sheet.accents]}")
             h.check(not await held(h, "dose"), "a separate dose message was posted")
 
-    async for attempt in h.step("3.11", "A reminder in the new look", "When dose 2 falls due: posted as the one neutral line and drawn after (an edit), an amber box naming Testa, four buttons. Left up for the next start", "T52 (41.4)"):
+    async for attempt in h.step("3.11", "A reminder in the new look", "When dose 2 falls due: posted as the one neutral line and drawn after (an edit), an amber box naming Testa, two buttons (Taken and Skip). Left up for the next start", "T52 (41.4)"):
         async with attempt:
             due = await remind_due(h)
             h.check(due is not None, "no reminder is booked")
@@ -962,7 +1014,7 @@ async def p3(h: Harness) -> None:
             shown = await h.get(h.hub, up[0].message_id)
             h.check(shown is not None and shown.text.startswith(NEUTRAL) and "Testa" not in shown.text.splitlines()[0], f"it reads: {shown.text[:160] if shown else 'gone'}")
             h.check(shown.v2 and shown.edited and accent(design.DUE) in shown.accents, f"it is {'drawn' if shown.v2 else 'plain'}, {'edited' if shown.edited else 'never edited'}, colours {[hex(each) if each else None for each in shown.accents]}")
-            h.check("Testa" in shown.text and len(shown.buttons) == 4, f"its buttons are {shown.labels}")
+            h.check("Testa" in shown.text and bare(shown) == ["Taken", "Skip"], f"its buttons are {shown.labels}")
             h.memo["v2_prompt"] = shown.id
 
     async for attempt in h.step("3.12", "Left for the next start, in the new look: an open change card", "A blurple change card “dose · 2 tablets → 3 tablets” with Save", "asked: switching back"):
@@ -1082,13 +1134,16 @@ async def p3(h: Harness) -> None:
 # Start 4: back to the old look
 # ---------------------------------------------------------------------------
 async def p4(h: Harness) -> None:
-    async for attempt in h.step("4.01", "A new-look reminder, Snooze pressed with the new look off", "Discord accepts the edit, and the message stays Components V2 (one can never go back to plain text): it now says “Snoozed until …”", "asked: switching back; T58"):
+    async for attempt in h.step("4.01", "A new-look reminder, Skip then Undo pressed with the new look off", "Discord accepts both edits, and the message stays Components V2 (one can never go back to plain text): skipped with Undo, then the reminder again with Taken and Skip", "asked: switching back; T58; Pill Skip 3 Nov"):
         async with attempt:
             h.check(not config.CARDS_V2, "CARDS_V2 is still on")
-            pressed = await h.press(h.memo["v2_prompt"], "Snooze")
+            pressed = await h.press(h.memo["v2_prompt"], "Skip")
             shown = await h.get(h.hub, h.memo["v2_prompt"])
-            h.check(shown is not None and "Snoozed until" in shown.text, f"after Snooze: {shown.text[:200] if shown else 'gone'}; said {pressed.said}")
+            h.check(shown is not None and "skipped" in shown.text and bare(shown) == ["Undo"], f"after Skip: {shown.text[:200] if shown else 'gone'}; said {pressed.said}")
             h.check(shown.v2, "the message is no longer Components V2")
+            pressed = await h.press(h.memo["v2_prompt"], "Undo")
+            shown = await h.get(h.hub, h.memo["v2_prompt"])
+            h.check(shown is not None and bare(shown) == ["Taken", "Skip"] and shown.v2, f"after Undo: {shown.text[:200] if shown else 'gone'} with {shown.labels if shown else []}; said {pressed.said}")
 
     async for attempt in h.step("4.02", "A new-look card, Save pressed with the new look off", "Discord accepts the edit: the card becomes its confirmation and Testa's dose is 3 tablets", "asked: switching back"):
         async with attempt:

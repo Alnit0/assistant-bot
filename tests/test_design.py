@@ -378,19 +378,22 @@ def test_a_reminder_is_first_posted_as_the_one_neutral_line_and_the_pill_is_draw
     line, box = drawn.layout
     assert line == design.Text("💊 Dose due · 8:00 am"), "the same line stays on top, outside the box"
     assert box.status == design.DUE and box.children[0].content.splitlines() == ["### 💊 Pill A ○○○ 0/3", "**Dose 1** · due **8:00 am**", "-# with food", "-# ⚠️ Take by 10:00 am so the doses after it still fit"]
-    assert [button.label for button in box.children[1].buttons] == ["Taken", "Taken at…", "Snooze 15m", "Skip"]
+    assert [button.label for button in box.children[1].buttons] == ["Taken", "Skip"]
     assert kinds(drawn.layout) == [10, (17, [10, 1])]
 
 
-def test_a_snoozed_reminder_is_grey_and_one_asked_again_is_still_amber(world, v2):
+def test_a_reminder_asked_again_is_still_amber_and_once_skipped_it_is_grey_with_undo(world, v2):
     add(world, PILL_A)
     at(world, 8, 0)
     at(world, 8, 15)
     again = world.edited[-1][1]
     assert again.layout[0].content == "💊 Dose due · 8:00 am · 2nd reminder" and again.layout[1].status == design.DUE
     pressed, _ = Press(world, prompts(world)[0][0], run(database.run(reminders.db_prompts, world.owner.id))[0].occurrence_id), None
-    run(cards._actions[("pills", reminders.P_SNOOZE)].handler(pressed))
-    assert pressed.shown[-1].layout[1].status == design.QUIET and "-# 💤 Snoozed until 8:30 am" in pressed.shown[-1].layout[1].children[0].content
+    run(cards._actions[("pills", reminders.P_SKIP)].handler(pressed))
+    (box,) = pressed.shown[-1].layout
+    assert box.status == design.QUIET and "Dose 1" in box.children[0].content and "skipped · was due **8:00 am**" in box.children[0].content
+    assert [button.label for button in box.children[1].buttons] == ["Undo"]
+    assert "💊 Dose due" not in pressed.shown[-1].text, "nothing about it is to notify now"
 
 
 # --- today's checklist -----------------------------------------------------------------------------------------

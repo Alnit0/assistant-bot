@@ -239,6 +239,10 @@ Write them the way I'd really say them.
 | 28b | A to-do card open; then "Will it rain?" | The weather's answer; the to-do card stays open |
 | 28c | A pills card and then a to-do card open; then "Will it rain?" | The weather's answer; both cards stay open |
 | 29 | "What pills are left" | The answer itself, where I asked: how many are left and the dots, then each dose still to take with its time. Never only "the checklist is in the hub" |
+| 31 | Pill A has three doses left today; "skip all of Pill A today" | One card listing the three by time, Save and Cancel. Save skips all three; its line says so, with Undo, which brings them back with their reminders |
+| 31a | Pill A and Pill B, every dose still to take; "skip all my pills" | One card listing every dose of both, in the order of the day |
+| 31b | Dose 1 of Pill A taken; "skip all Pill A today" | The card lists doses 2 and 3 only: the taken one is left alone |
+| 31c | Straight after a dose was dealt with, "skip the 3 pm one" | The dose due at 3:00 pm is skipped at once, and one line says so. Which dose is the code's, from the day's doses |
 | 24 | "will it rain?" | The weather task answers from the forecast it keeps: the highest chance in the hours still to come and roughly when. Nothing is fetched to answer, and chat is never asked |
 | 25 | "what's the weather this afternoon?" | That part of the day from the kept forecast; how warm only if the forecast has it by the hour. A part that is over says so |
 

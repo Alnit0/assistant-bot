@@ -280,7 +280,13 @@
               "start": "tomorrow",
               "days": 7
             }
-          ]
+          ],
+          "guessed": [
+            "times[0]",
+            "times[1]",
+            "times[2]"
+          ],
+          "not_included": []
         }
       ]
     },
@@ -349,24 +355,11 @@
       },
       "note": "QA 2026-10-10, already so by adding: the pill is there with the same settings. pill_add with what was said (the code finds nothing would change), or a decline of the kind already_so about Pill A: either way the user gets the pills task's own line, with the pill shown",
       "recorded": [
-        "pill_add",
+        "none",
         {
-          "pills": [
-            {
-              "name": "pill A",
-              "per_day": 3,
-              "times": [
-                "8:00 am",
-                "11:30 am",
-                "3:00 pm"
-              ],
-              "min_gap_minutes": 180,
-              "latest": "4:00 pm",
-              "notes": "without food"
-            }
-          ],
-          "guessed": [],
-          "not_included": []
+          "why": "already_so",
+          "reason": "Pill A already exists with exactly these settings: 3 times daily at 8am, 11:30am, 3pm, at least 3 hours apart, not after 4pm, without food",
+          "about": "pl1"
         }
       ],
       "also_ok": {
@@ -399,7 +392,7 @@
         {
           "pills": [
             {
-              "pill": "pl2",
+              "pill": "Iron",
               "times": [
                 "9:00 pm"
               ],
@@ -441,7 +434,7 @@
         "none",
         {
           "why": "already_so",
-          "reason": "Iron is already at 8:00 am; no change needed",
+          "reason": "Iron is already taken daily at 8:00 am",
           "about": "pl2"
         }
       ]
@@ -459,7 +452,7 @@
         "none",
         {
           "why": "already_so",
-          "reason": "Iron is already scheduled at 8:00 am as stated; the request asks to leave it unchanged",
+          "reason": "Iron is already set to 8:00 am daily, as the user confirmed. No change requested.",
           "about": "pl2"
         }
       ]
@@ -488,7 +481,10 @@
               "min_gap_minutes": 180
             }
           ],
-          "guessed": [],
+          "guessed": [
+            "times[0]",
+            "times[1]"
+          ],
           "not_included": []
         }
       ]
@@ -543,7 +539,7 @@
         {
           "pills": [
             {
-              "name": "Pill G",
+              "name": "pill G",
               "per_day": 3,
               "min_gap_minutes": 150
             }
@@ -579,9 +575,7 @@
               "min_gap_minutes": 90
             }
           ],
-          "guessed": [
-            "per_day: inferred as 2 from 'twice a day'"
-          ],
+          "guessed": [],
           "not_included": []
         }
       ]
@@ -640,7 +634,8 @@
             }
           ],
           "guessed": [
-            "per_day: interpreted 'twice a day' as 2 doses"
+            "per_day",
+            "min_gap_minutes"
           ],
           "not_included": []
         }
@@ -797,12 +792,6 @@
         "pill_add",
         {
           "pills": [
-            {
-              "name": "Iron",
-              "times": [
-                "8:00 am"
-              ]
-            },
             {
               "name": "Zinc",
               "per_day": 1
@@ -1312,9 +1301,7 @@
               "at": "9:00 am"
             }
           ],
-          "guessed": [
-            "at[0]"
-          ],
+          "guessed": [],
           "not_included": []
         }
       ]
@@ -1625,7 +1612,8 @@
               "pill": "pl1",
               "did": "taken",
               "dose": 1,
-              "at": "8:30 am"
+              "at": "8:30 am",
+              "correction": true
             }
           ],
           "guessed": [],
@@ -1747,8 +1735,8 @@
       "recorded": [
         "pill_taken",
         {
-          "last": true,
           "pill": "Pill A",
+          "last": true,
           "guessed": [],
           "not_included": []
         }
@@ -1824,6 +1812,135 @@
       "recorded": [
         "pill_today",
         {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "skip the rest of Pill A today",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:30 am, 3:00 pm · at least 3h apart · not after 4:00 pm [active]\n- pl2: 💊 Pill B · 2× daily · 11:30 am, 6:00 pm [active]",
+      "action": "pill_skip_all",
+      "data": {
+        "pills": [
+          {
+            "pill": "pl1"
+          }
+        ]
+      },
+      "note": "Pill Skip: the rest of one pill is all of it that is left",
+      "recorded": [
+        "pill_skip_all",
+        {
+          "pills": [
+            {
+              "pill": "pl1"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "skip everything today",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:30 am, 3:00 pm · at least 3h apart · not after 4:00 pm [active]\n- pl2: 💊 Pill B · 2× daily · 11:30 am, 6:00 pm [active]",
+      "action": "pill_skip_all",
+      "data": {},
+      "note": "Pill Skip: every pill",
+      "recorded": [
+        "pill_skip_all",
+        {
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "skip all of Pill A and Pill B",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:30 am, 3:00 pm · at least 3h apart · not after 4:00 pm [active]\n- pl2: 💊 Pill B · 2× daily · 11:30 am, 6:00 pm [active]",
+      "action": "pill_skip_all",
+      "data": {
+        "pills": [
+          {
+            "pill": "pl1"
+          },
+          {
+            "pill": "pl2"
+          }
+        ]
+      },
+      "note": "Pill Skip: two pills named, every dose of each",
+      "recorded": [
+        "pill_skip_all",
+        {
+          "pills": [
+            {
+              "pill": "pl1"
+            },
+            {
+              "pill": "pl2"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "skip my 11:30 one of Pill B",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:30 am, 3:00 pm · at least 3h apart · not after 4:00 pm [active]\n- pl2: 💊 Pill B · 2× daily · 11:30 am, 6:00 pm [active]",
+      "action": "pill_log",
+      "data": {
+        "doses": [
+          {
+            "did": "skipped",
+            "at": "11:30 am"
+          }
+        ]
+      },
+      "note": "Pill Skip: a pill and its dose's time",
+      "recorded": [
+        "pill_log",
+        {
+          "doses": [
+            {
+              "pill": "pl2",
+              "did": "skipped",
+              "at": "11:30 am"
+            }
+          ],
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "pills",
+      "message": "skip Pill B",
+      "state": "The user's pills now (use the id, or the name):\n- pl1: 💊 Pill A · 3× daily · 8:00 am, 11:30 am, 3:00 pm · at least 3h apart · not after 4:00 pm [active]\n- pl2: 💊 Pill B · 2× daily · 11:30 am, 6:00 pm [active]",
+      "action": "pill_log",
+      "data": {
+        "doses": [
+          {
+            "did": "skipped"
+          }
+        ]
+      },
+      "note": "Pill Skip: one dose, no 'all': still pill_log",
+      "recorded": [
+        "pill_log",
+        {
+          "doses": [
+            {
+              "pill": "pl2",
+              "did": "skipped"
+            }
+          ],
           "guessed": [],
           "not_included": []
         }

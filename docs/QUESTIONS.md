@@ -11,8 +11,10 @@ added here, nowhere else.
 
 ## Open
 
-Nothing here now: question 11 was closed on 15 Oct (the screenshot
-named no pill; see "Decided" in `docs/STATUS.md`).
+99. "skip the 3 pm one" said with nothing before it: the router reads it as
+    a reminder's (yours, not a pill's). Straight after a dose it goes to
+    pills. Should a bare one ask which (pills or reminders), or is it fine
+    as it is? (Pill Skip, 3 Nov)
 
 ## The smart inbox (live from 17 Oct, `SMART_INBOX`; preview "Design · Smart inbox")
 

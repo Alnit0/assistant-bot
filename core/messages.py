@@ -232,6 +232,14 @@ async def expire_in(message_id: int | None, after: timedelta) -> None:
     await book_expiry()
 
 
+async def last_the_day(message_id: int | None) -> None:
+    """A message given a time to go (`expire_in`) that is wanted again after all
+    (a skipped reminder brought back by Undo): it lasts the day once more."""
+    if not enabled() or message_id is None:
+        return
+    await database.run(lambda conn: conn.execute("UPDATE bot_messages SET lifetime = ?, expires_at = NULL WHERE message_id = ? AND gone_at IS NULL", (DAY, message_id)))
+
+
 async def card_opened(message_id: int | None) -> None:
     """A confirm card went up: what it answers waits for it to be saved,
     cancelled or to expire."""

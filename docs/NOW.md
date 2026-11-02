@@ -3,9 +3,12 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Idle, last batch was** 3 Nov, morning: **shipped** the gym a set at a time
-(a card per exercise, Finish at the foot, one workout open at a time) with
-the tests pinned to their own day (`e098a81`). NZ$0.
+**Idle, last batch was** 3 Nov, morning: **Pill Skip**, committed on
+`feature/pills`, not shipped: a reminder has Taken and Skip (no Snooze),
+Skip says so on the card with Undo, and "skip all" skips every dose still
+to take today after one card. Self-test 162 steps, 0 failed. NZ$0.77.
+**Waiting on Alex's check of Design · Pill Skip.** Before it, the gym a set
+at a time was shipped (`e098a81`).
 
 **Live:** `e098a81` since 3 Nov, 9:12 am (`-Back` returns to `0412922`).
 `LAB_GRID=false`; **the morning news is paused** (`READING_ENABLED=false`;
@@ -22,6 +25,7 @@ three old worktrees, all merged
 "bedtime 11pm". **Sundays:** `/suggest`.
 
 **Waiting on Alex**
+- His check of Design · Pill Skip; question 99 (a bare "skip the 3 pm one")
 - His first real workout with the new gym cards
 - His look at the hub in round 8 on live
 - His list of changes; "Design · Hub embeds check"

@@ -3,7 +3,7 @@ the reminders after it, missed, the latest time, the lock-screen line, and a res
 dev clock, moved forward as `dev clock` moves it, with the real scheduler running the real jobs;
 only Discord is a list of messages. REMINDERS_ENABLED is off unless a test switches it on."""
 import asyncio
-from datetime import time, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 from types import SimpleNamespace
 
 import pytest
@@ -244,7 +244,7 @@ def test_at_its_time_a_dose_gets_one_prompt_and_what_the_phone_shows_names_no_pi
     assert sent.channel == HUB and not sent.silent and not sent.card.rows and "Evening" not in sent.card.text
     ((prompt_id, lines, buttons),) = prompts(world)
     assert prompt_id == sent.id and lines == ["💊 Dose due · 8:00 pm", "**Evening pill**", "Due `8:00 pm`"]
-    assert buttons == ["Taken", "Taken at…", "Snooze 15m", "Skip"]
+    assert buttons == ["Taken", "Skip"], "exactly two: no Snooze, and a time is said in words"
 
 
 def test_every_line_that_notifies_is_the_neutral_one_whatever_the_pill_dose_or_reminder(world):
@@ -300,13 +300,66 @@ def test_taken_ticks_it_off_now_removes_the_prompt_and_moves_the_doses_after_it(
     assert remind_job() == [day.at(world.day, time(12, 0))]
 
 
-def test_skip_skips_it_and_removes_the_prompt(world):
+def test_skip_skips_it_stops_its_reminders_and_says_so_on_the_card_in_place_with_undo(world):
     add(world, EVENING)
     at(world, 20, 0)
+    posted = len(world.sent)
+    ((card_id, _, _),) = prompts(world)
     pressed, said = press(world, reminders.P_SKIP)
-    assert pressed.removed and states(world)[("Evening pill", 1)] == SKIPPED and prompts(world) == [] and remind_job() == []
+    assert not pressed.removed and card_id not in world.deleted, "the card stays, edited in place"
+    assert len(world.sent) == posted, "nothing new is posted under it"
+    assert states(world)[("Evening pill", 1)] == SKIPPED and prompts(world) == [] and remind_job() == []
+    shown = pressed.shown[-1]
+    assert shown.text.splitlines() == ["⏭️ **Evening pill** · skipped", "-# No more reminders for this dose today"]
+    assert [(button.label, button.action) for row in shown.rows for button in row] == [("Undo", reminders.P_UNDO)]
+    assert shown.thumbs_up is None, "👍 on a skipped card does nothing"
     at(world, 20, 30)
-    assert len(notices(world)) == 1, "nothing more about a dose that was dealt with"
+    assert len(notices(world)) == 1 and card_id not in world.deleted, "nothing more about a dose that was dealt with, and the skipped card is left be"
+
+
+def undo(world, pressed):
+    """Undo on a skipped card, as Discord would press it: the arg its button carries."""
+    (button,) = [button for row in pressed.shown[-1].rows for button in row]
+    again = Press(world, pressed.message_id, 0)
+    again.arg = button.arg
+    return again, run(cards._actions[("pills", reminders.P_UNDO)].handler(again))
+
+
+def test_undo_on_a_skipped_card_makes_it_the_reminder_again_in_place_and_its_reminders_carry_on(world):
+    add(world, EVENING)
+    at(world, 20, 0)
+    at(world, 20, 15)
+    ((card_id, lines, _),) = prompts(world)
+    assert lines[0] == "💊 Dose due · 8:00 pm · 2nd reminder"
+    pressed, _ = press(world, reminders.P_SKIP)
+    at(world, 20, 20)
+    again, said = undo(world, pressed)
+    assert said == "↩️ **Evening pill** · not skipped after all" and states(world)[("Evening pill", 1)] == PENDING
+    ((back_id, lines, buttons),) = prompts(world)
+    assert back_id == card_id and buttons == ["Taken", "Skip"], "the same message, a reminder again"
+    assert lines[0] == "💊 Dose due · 8:00 pm · 2nd reminder", "as it was when Skip was pressed"
+    assert remind_job() == [day.at(world.day, time(20, 30)).astimezone(remind_job()[0].tzinfo)], "and the next reminder in its turn"
+    at(world, 20, 30)
+    assert notices(world)[-1] == "💊 Dose due · 8:00 pm · 3rd reminder" and card_id in world.deleted
+
+
+def test_undo_pressed_twice_leaves_the_reminder_as_it_is(world):
+    add(world, EVENING)
+    at(world, 20, 0)
+    pressed, _ = press(world, reminders.P_SKIP)
+    first, _ = undo(world, pressed)
+    again, said = undo(world, pressed)
+    assert said == "nothing to undo" and states(world)[("Evening pill", 1)] == PENDING
+    assert [button.label for row in again.shown[-1].rows for button in row] == ["Taken", "Skip"], "pressed twice: still the reminder"
+
+
+def test_undo_arg_carries_the_reminder_as_it_was_and_reads_back(world):
+    asked, last = datetime(2026, 11, 3, 7, 0, tzinfo=timezone.utc), datetime(2026, 11, 3, 7, 30, tzinfo=timezone.utc)
+    prompt = reminders.Prompt(1234, 1, date(2026, 11, 3), HUB, 99, asked, last, 2)
+    arg = reminders.undo_arg(prompt)
+    assert reminders.from_undo_arg(arg) == (1234, 2, asked, last)
+    assert len(cards.make_id("b", "pills", reminders.P_UNDO, arg)) <= cards.MAX_ID
+    assert reminders.from_undo_arg("1234") is None and reminders.from_undo_arg("a:b:c:d") is None
 
 
 def test_taken_at_opens_a_one_box_form_and_the_time_typed_is_checked_as_a_time_said_is(world):
@@ -364,19 +417,28 @@ def test_cancel_on_that_card_logs_nothing_and_leaves_the_reminder_up(world):
     assert notices(world)[-1] == "💊 Dose due · 11:30 am · 2nd reminder", "and it goes on reminding"
 
 
-def test_snooze_keeps_the_prompt_says_until_when_and_a_fresh_copy_comes_when_it_ends(world):
+def test_snooze_on_a_card_from_before_it_went_draws_the_card_again_with_taken_and_skip(world):
     add(world, EVENING)
-    at(world, 20, 5)
+    at(world, 20, 0)
     ((first, _, _),) = prompts(world)
-    pressed, _ = press(world, reminders.P_SNOOZE)
-    assert not pressed.removed and pressed.shown[-1].text.splitlines()[-1] == "-# 💤 Snoozed until 8:20 pm"
-    assert [button.label for button in pressed.shown[-1].rows[0]] == ["Taken", "Taken at…", "Snooze 15m", "Skip"]
-    at(world, 20, 19)
-    assert len(notices(world)) == 1, "nothing while it is snoozed"
-    at(world, 20, 20)
-    ((second, lines, _),) = prompts(world)
-    assert second != first and first in world.deleted, "a fresh copy, so the phone buzzes: the old one goes"
-    assert notices(world)[-1] == "💊 Dose due · 8:00 pm" and lines == ["💊 Dose due · 8:00 pm", "**Evening pill**", "Due `8:00 pm`"], "a snooze is not one of the reminders"
+    pressed, said = press(world, reminders.P_SNOOZE)
+    assert not pressed.removed and [button.label for button in pressed.shown[-1].rows[0]] == ["Taken", "Skip"]
+    assert states(world)[("Evening pill", 1)] == PENDING and "Snoozed" not in pressed.shown[-1].text
+    at(world, 20, 15)
+    assert notices(world)[-1] == "💊 Dose due · 8:00 pm · 2nd reminder" and first in world.deleted, "its reminders go on as before"
+
+
+def test_a_snooze_kept_from_before_the_ship_is_let_go_and_the_dose_gets_its_next_reminder(world):
+    add(world, EVENING)
+    at(world, 20, 0)
+    ((first, _, _),) = prompts(world)
+    # As live's table can hold it on the day of the ship: a snooze waiting until 8:30
+    run(database.run(lambda conn: conn.execute("UPDATE pills_prompts SET snoozed_until = ?", (scheduler.to_db(day.at(world.day, time(20, 30))),))))
+    run(database.run(store.no_snooze))
+    assert run(database.run(lambda conn: conn.execute("SELECT snoozed_until FROM pills_prompts").fetchall())) == [(None,)]
+    at(world, 20, 15)
+    ((second, lines, buttons),) = prompts(world)
+    assert second != first and lines[0] == "💊 Dose due · 8:00 pm · 2nd reminder" and buttons == ["Taken", "Skip"]
 
 
 # --- left alone ----------------------------------------------------------------------------------------------
@@ -426,7 +488,7 @@ def test_a_dose_left_alone_gets_one_last_chance_half_an_hour_before_it_stops_fit
         "💊 Last chance today · take by midnight", "**Evening pill**", "Due `8:00 pm`",
         "-# ⚠️ After midnight it can no longer be taken today", "-# ⏰ The last reminder for this dose · first asked 8:00 pm",
     ]
-    assert buttons == ["Taken", "Taken at…", "Skip"], "nothing left to snooze into"
+    assert buttons == ["Taken", "Skip"], "the same two as every reminder"
     at(world, 23, 45)
     assert len(world.sent) == 5 and [each[0] for each in prompts(world)] == [nudge], "one, and only one"
     pressed, said = press(world, reminders.P_TAKEN)
@@ -765,9 +827,6 @@ def test_what_to_do_about_a_dose_is_worked_out_from_what_is_kept_and_the_clock(w
     assert reminders.decide(dose, up, due + minutes(220), by) == (reminders.WAIT, by, reminders.LAST_UP)
     finished = reminders.Prompt(dose.occurrence.id, 1, world.day, HUB, None, due, due + minutes(210), reminders.FINISHED)
     assert reminders.decide(dose, finished, due + minutes(225), by) == (reminders.WAIT, None, reminders.FINISHED)
-    snoozed = reminders.Prompt(dose.occurrence.id, 1, world.day, HUB, 7, due, due, 1, due + minutes(20))
-    assert reminders.decide(dose, snoozed, due + minutes(19)) == (reminders.WAIT, due + minutes(20), 1)
-    assert reminders.decide(dose, snoozed, due + minutes(20)) == (reminders.POST, due + minutes(35), 1), "a fresh copy, the same reminder"
     gone = reminders.Prompt(dose.occurrence.id, 1, world.day, HUB, None, due, due, 2)
     assert reminders.decide(dose, gone, due + minutes(1)) == (reminders.POST, due + minutes(16), 2)
 
@@ -904,7 +963,7 @@ def test_a_reminder_discord_refuses_is_tried_again_after_1_2_and_5_minutes_then_
     assert world.tries == 5, "not before its turn"
     at(world, 20, 18)
     ((_, lines, buttons),) = prompts(world)
-    assert notices(world) == ["💊 Dose due · 8:00 pm"] and lines[1] == "**Evening pill**" and "Snooze 15m" in buttons, "the first prompt, late, once"
+    assert notices(world) == ["💊 Dose due · 8:00 pm"] and lines[1] == "**Evening pill**" and buttons == ["Taken", "Skip"], "the first prompt, late, once"
     assert (kept(world)[0].attempts, kept(world)[0].tried_at) == (0, None)
     at(world, 20, 33)
     assert notices(world)[-1] == "💊 Dose due · 8:00 pm · 2nd reminder", "and its reminders follow from when it went up"
@@ -1018,7 +1077,7 @@ def test_how_long_until_the_next_try(world):
     due = day.at(world.day, time(20, 0))
     waits = []
     for attempts in (1, 2, 3, 4, 9):
-        failed = reminders.Prompt(listed[0].occurrence.id, 1, world.day, HUB, None, due, due, 0, None, attempts, due)
+        failed = reminders.Prompt(listed[0].occurrence.id, 1, world.day, HUB, None, due, due, 0, attempts, due)
         waits.append((reminders.retry_at(failed) - due).total_seconds() / 60)
         assert reminders.decide(listed[0], failed, due) == (reminders.WAIT, reminders.retry_at(failed), 0)
     assert waits == [1, 2, 5, 5, 5]

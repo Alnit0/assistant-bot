@@ -396,7 +396,7 @@ def test_every_golden_conversation_in_the_fixture_file_has_a_test_here():
     ids = {entry["golden"] for entry in [*FIXTURES["router"], *FIXTURES["extraction"]]}
     tested = {name.split("_")[1] for name in globals() if name.startswith("test_") and name.split("_")[1][0].isdigit()}
     assert ids <= tested, f"no test for: {sorted(ids - tested)}"
-    assert {"1", "1a", "1b", "1c", "1d", "2", "2a", "2b", "3", "4", "5", "6", "7", "8", "9", "10", "10a", "11", "12", "13", "14", "15", "16", "17", "18", "18a", "18b", "19", "19a", "20", "21", "22", "23", "23a", "24", "25", "2c", "18c", "26", "27", "27a", "28", "28a", "28b", "28c", "29", "30", "2d", "2d0", "2e", "2e1", "2f"} == tested
+    assert {"1", "1a", "1b", "1c", "1d", "2", "2a", "2b", "3", "4", "5", "6", "7", "8", "9", "10", "10a", "11", "12", "13", "14", "15", "16", "17", "18", "18a", "18b", "19", "19a", "20", "21", "22", "23", "23a", "24", "25", "2c", "18c", "26", "27", "27a", "28", "28a", "28b", "28c", "29", "30", "2d", "2d0", "2e", "2e1", "2f", "31", "31a", "31b", "31c"} == tested
 
 
 # --- QA 2026-10-10: "already so" ends in the task's own line, whichever way it was found --------------------
@@ -1617,3 +1617,70 @@ def test_a_reply_with_a_time_to_last_night_s_line_puts_that_night_s_time_right(b
     _, then, _ = run(checklist.read(bot.owner.id, last_night))
     zinc_then = next(dose for dose in then if dose.pill.plan.name == "Zinc")
     assert zinc_then.occurrence.state == "done" and day.local_time(zinc_then.occurrence.actual_at) == time(22, 30), "10:30 that night: the half of the day nearest when it was logged"
+
+
+# --- 31: Pill Skip (3 Nov): "skip all" is every dose still to take today; one dose by its time ---------------------
+SKIP_A = {"name": "Pill A", "per_day": 3, "times": ["8:00 am", "11:30 am", "3:00 pm"]}
+SKIP_B = {"name": "Pill B", "times": ["11:30 am", "6:00 pm"]}
+
+
+def _skip_day(bot, dev_clock, *pills):
+    """Made-up pills, set up, early on a fresh day: every dose still to take."""
+    from tasks.pills import plain as pills_plain
+
+    dev_clock.advance_to(day.at(day.today() + timedelta(days=1), time(7, 0)))
+    for each in pills:
+        request = Request(bot.owner, 100, "add")
+        proposal = run(pills_plain.add_card(request, {"pills": [each]}, frozenset()))
+        run(pills_plain.add_save(request, proposal.data))
+
+
+def _states(bot):
+    return {(dose.pill.plan.name, dose.number): dose.occurrence.state for dose in run(checklist.view(bot.owner.id))[1]}
+
+
+def test_31_skip_all_of_one_pill_with_three_doses_left_is_one_card_listing_each_by_time(bot, dev_clock):
+    _skip_day(bot, dev_clock, SKIP_A)
+    bot.claude(ROUTED["31"], EXTRACTED["31"])
+    bot.say(SAID["31"])
+    lines, labels = card(bot)
+    assert [line for line in lines if line.startswith("⏭️")] == [
+        "⏭️ `8:00 am` · **Pill A** (dose 1 of 3)", "⏭️ `11:30 am` · **Pill A** (dose 2 of 3)", "⏭️ `3:00 pm` · **Pill A** (dose 3 of 3)",
+    ], lines
+    assert "Save" in labels and any("Cancel" in label for label in labels)
+    assert set(_states(bot).values()) == {"pending"}, "nothing is skipped until Save"
+    said = press(bot)
+    assert said.splitlines()[0] == "⏭️ Skipped 3 doses today" and set(_states(bot).values()) == {"skipped"}
+
+
+def test_31a_skip_all_with_two_pills_is_every_dose_of_both(bot, dev_clock):
+    _skip_day(bot, dev_clock, SKIP_A, SKIP_B)
+    bot.claude(ROUTED["31a"], EXTRACTED["31a"])
+    bot.say(SAID["31a"])
+    lines, _ = card(bot)
+    assert len([line for line in lines if line.startswith("⏭️")]) == 5 and any("**Pill B** (dose 2 of 2)" in line for line in lines)
+    press(bot)
+    assert set(_states(bot).values()) == {"skipped"}
+
+
+def test_31b_skip_all_after_one_dose_was_taken_leaves_the_taken_one_alone(bot, dev_clock):
+    from tasks.pills import plain as pills_plain
+
+    _skip_day(bot, dev_clock, SKIP_A)
+    dev_clock.advance(timedelta(hours=1))
+    run(pills_plain.log_doses(Request(bot.owner, 100, "took Pill A"), {"doses": [{"pill": "Pill A", "did": "taken"}]}, frozenset()))
+    bot.claude(ROUTED["31b"], EXTRACTED["31b"])
+    bot.say(SAID["31b"])
+    lines, _ = card(bot)
+    assert [line for line in lines if line.startswith("⏭️")] == ["⏭️ `11:30 am` · **Pill A** (dose 2 of 3)", "⏭️ `3:00 pm` · **Pill A** (dose 3 of 3)"], lines
+    press(bot)
+    assert _states(bot) == {("Pill A", 1): "done", ("Pill A", 2): "skipped", ("Pill A", 3): "skipped"}
+
+
+def test_31c_skip_one_dose_by_its_time_skips_the_dose_due_then_with_no_card(bot, dev_clock):
+    _skip_day(bot, dev_clock, SKIP_A)
+    bot.claude(ROUTED["31c"], EXTRACTED["31c"])
+    bot.say(SAID["31c"])
+    said = _said(bot)
+    assert said.startswith("⏭️ **Pill A** (dose 3 of 3) · skipped"), said
+    assert _states(bot) == {("Pill A", 1): "pending", ("Pill A", 2): "pending", ("Pill A", 3): "skipped"}
