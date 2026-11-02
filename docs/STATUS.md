@@ -6,15 +6,30 @@ No history is kept here: what changed is `docs/CHANGELOG.md`, and this
 file as it stood until midday on 2026-10-14 (every batch, every answer,
 all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
-**Updated:** 2026-10-30 (night, Finish at the foot and one workout at a time, committed on `feature/pills`, not shipped)
+**Updated:** 2026-11-03 (morning, shipped: live on `e098a81` since 9:12 am)
 
 
 
 
-## The next ship's to-do
+## Shipped 3 Nov, 9:12 am: the gym a set at a time
 
-- The gym fixes batch and its rework a set at a time (below), with the gym's migration 6 as extended. Nothing in
-  live's `.env` changes.
+Live moved from `0412922` to `e098a81`: the gym fixes batch, the gym a set at a time and the two fixes below,
+with the gym's migration 6. `READING_ENABLED=false` in live's `.env` (the morning news paused, nothing deleted);
+`LAB_GRID=false` as before. Checked after: the account, no errors, the bookings, the gym's 5 workouts and 81 sets
+read by its own code, none open, no news booked for 4 Nov. A What's new line is queued for 4 Nov's briefing.
+
+### Decided (3 Nov)
+
+1. **The first test run failed on dates, not code**: three test setups moved the clock to Mon 2 Nov, past by then,
+   and the gym's tests read a made-up October logbook as this month. Their made-up data and recorded answers name
+   their days ("21 November", "Tue 13 Oct"), so worked out from today they would break again: they are pinned to
+   their own day by a test fixture (`pinned_clock`); the clock's guard is unchanged. gy16 expects "yesterday" on a
+   Wednesday. Committed as `e098a81` with a full run of 4257 passed, then shipped.
+2. **The 22 Oct overnight batch was already live** (in `0412922`), and so was `LAB_GRID=false`: this ship carried
+   the gym work only.
+3. **The news's 5:30 am pick row is left booked**, unrun: with the news off nothing handles it, so it never runs and
+   costs nothing. Its 6 am post step was taken out of the morning routine at the start.
+4. **What's new is for 4 Nov**, since 3 Nov's briefing had gone out at 6 am.
 
 ## The gym: Finish at the foot, one workout at a time (30 Oct, night; not shipped)
 

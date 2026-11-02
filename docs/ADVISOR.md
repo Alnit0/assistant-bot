@@ -28,7 +28,7 @@ Never write here: a real pill name, a real event name, a bot's display name, a l
 
 **Prompts for Claude Code**
 - Always complete and ready to paste. **No placeholders**, and never leave options (A/B) for him to delete: ask him first, then write one prompt.
-- Notes for Alex, such as "/clear first", go in bold above the code block, never inside it: the block holds only what is pasted.
+- Prompts are handed over as a file holding only the prompt text; every step Alex must do is listed in the advisor's message under one "Your steps" heading.
 - **Always say up front** whether a prompt will commit, push, run a self-test, or ship to live.
 - Batches run unattended: Claude Code decides and notes under "Decided" in docs/STATUS.md rather than stopping, unless live or data is at risk.
 - Spend limits in NZ$: per run under NZ$0.40, a batch cap stated in the prompt.
@@ -57,7 +57,7 @@ He is **not relying on the bot for reminders yet**. The hub is a daily overview 
 - **Shipping:** only by `scripts\update-live.ps1 -Ref <commit>` from a pushed commit (it refuses one not on `origin/feature/pills`, puts back the self-test's report, installs packages, checks migrations, restarts); `-Back` returns to the commit before. Batch rule: ship at most once, after the full test run and a dev-bot self-test, at least 10 minutes from any pill reminder; check the account, the hub and the bookings after.
 - **The old backup:** the work folder still holds the `.env` and `data\` from before the switch-over. They go once Alex says live has had a good day in its own folder.
 - **Branch:** all work is on `feature/pills`. Nothing is merged into `main` yet; `docs/REVIEW.md` is the checkpoint for that.
-- **Live now:** `0412922` since 22 Oct, 10:58 am (`-Back` returns to `1aa9688`), with `DESIGN_ROUND=8`, `THUMBS_UP=true`, `READING_ENABLED=true`, `NEWS_CHANNEL_ID` and `LAB_GRID=false`: hub round 8 and the 22 Oct overnight batch, on Alex's “Ship round 8”. Next to check: the 3:30 am self-test's line and the 6 am briefing in round 8.
+- **Live now:** `e098a81` since 3 Nov, 9:12 am (`-Back` returns to `0412922`), with `DESIGN_ROUND=8`, `THUMBS_UP=true`, `READING_ENABLED=false` (the morning news paused; its code, feeds and data kept), `NEWS_CHANNEL_ID` and `LAB_GRID=false`: the gym a set at a time (a card per exercise, Finish at the foot, one workout open at a time, the gym's migration 6), on Alex's word after his phone check. The 22 Oct overnight batch has been live since 22 Oct (in `0412922`). Next to check: the 3:30 am self-test's line of 4 Nov.
 - **Two bots:** live, and the dev bot (own token in `.env.dev`). A lock a bot lets both run at once. Every start checks it logged in as the expected account and exits with code 4 if not; the service stops on exit 4 rather than looping.
 - **Windows Update:** active hours 6 am to 12 am, updates paused until 19 Nov (the longest allowed). It restarted the PC twice on the night of 15 Oct; live in its own folder means a reboot only ever brings back the version shipped. A monthly reminder to update by hand is in the backlog.
 - **Claude Code** runs on the EliteDesk, started with `claude --remote-control "assistant-bot"`. Alex drives it from the Claude app on his PC or phone. For a fresh start: `/clear`, never `/exit` (that needs a Remote Desktop visit). It pings his phone through ntfy hooks when it finishes or needs him (quiet 10 pm to 7 am).
@@ -157,9 +157,9 @@ Messages go through fast paths (buttons, exact typed words), then sticky follow-
 - **The bedtime nudge** (live 18 Oct, silent until he says "bedtime 11pm").
 - **Round 8** (live since 22 Oct, 10:58 am): his look at the hub in round 8 on live.
 - **👍 as yes** (live since 21 Oct, 3:23 pm, `THUMBS_UP=true`): his first days with it. Round 7 is live until round 8 ships; his verdict on it is in section 7.
-- **Gym logging a set at a time** (30 Oct, on `feature/pills`, not shipped): his phone check of the per-exercise cards in "Design · Gym logging" (ticked set buttons and notes on sets, after his first try; Finish at the foot and one workout at a time, after his phone test), and his try on the dev bot, which is running on it (the gym on, its #gym its own #inbox, a made-up plan in its database). The next ship carries it, with the gym's migration 6 as extended (set notes, a set's look and time, the workout's messages).
+- **Gym logging a set at a time** (live since 3 Nov, 9:12 am, `e098a81`, after his phone check): his first real workout with the new cards (a card per exercise, a pop-up per set, Finish at the foot, Carry on or Start fresh while one is open, unfinished at midnight).
 - **The diary's one confirmation a day** (live since 21 Oct, 10:07 pm): a save edits the day's "Saved" line; a press on the ask or on Wind down posts the diary's own line.
-- **The morning news** (live since 21 Oct, 10:07 pm, `a025112`; `READING_ENABLED=true`): his first morning. It is one message at 6 am in a news channel he made in the hub's category (`NEWS_CHANNEL_ID`, in live's `.env` only), picked at 5:30 ("Morning news", renamed from the daily read's row). In its own channel for now; moving it into the hub as its own message is planned. The hub's second message has its one line. Round 7's briefing shows no What's new box, so the line left for 22 Oct is not seen.
+- **The morning news is paused** (3 Nov, `READING_ENABLED=false` in live's `.env`): Alex isn't using it and wants no credits spent on it. Its code, feeds, data and #news channel are kept; it may come back. Its 5:30 am pick row waits unrun while it is off (no handler).
 - **His list of more changes** (21 Oct, when he called the feature freeze off): not heard yet.
 - **Round 6** (17 Oct): his look at "Design · Round 6 timeline", and whether to build it into the hub (a card per dose, or the one moving pills card).
 - **Plan my day, birthdays, the week view, the diary's Write** shipped 17 Oct: his first days with them ("Design · Plan my day and birthdays").

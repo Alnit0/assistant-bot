@@ -3,34 +3,28 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Idle, last batch was** 30 Oct, night: Finish at the foot, one workout
-open at a time (Carry on, Start fresh), unfinished at midnight; on top of
-ticked set buttons (`a4d1e62`) and the gym a set at a time (`8776fdb`).
-Committed as `d9951f4` and pushed on `feature/pills`, **not shipped**. NZ$0.
+**Idle, last batch was** 3 Nov, morning: **shipped** the gym a set at a time
+(a card per exercise, Finish at the foot, one workout open at a time) with
+the tests pinned to their own day (`e098a81`). NZ$0.
 
-**Waiting on Alex's phone check of the per-exercise gym cards** (the newest
-message in Design · Gym logging), and his try on the dev bot: it is
-**running** `d9951f4`, restarted after the commit in its own window (Alex
-approved this). Test in the Mori server's #selftest-inbox (its #gym), a
-made-up plan in its database, no workout open. Stop it when done (close
-its window).
+**Live:** `e098a81` since 3 Nov, 9:12 am (`-Back` returns to `0412922`).
+`LAB_GRID=false`; **the morning news is paused** (`READING_ENABLED=false`;
+its code, feeds and data kept). The gym's migration 6 ran; its logs read as
+before. A What's new line for 4 Nov's briefing says both.
 
-**Next ship:** the gym fixes batch and its reworks, with the gym's migration
-6 as extended. Nothing in live's `.env` changes.
+**Waiting on Alex's first real workout with the new gym cards.** Then the
+next nightly self-test's line (3:30 am, 4 Nov) is checked and reported.
 
-**Live:** `0412922` since 22 Oct, 10:58 am (`DESIGN_ROUND=8`, `THUMBS_UP`,
-`READING_ENABLED`, `NEWS_CHANNEL_ID`, `LAB_GRID=false`); previous `1aa9688`.
-Nothing shipped since 22 Oct.
-**Drafts and worktrees:** `docs/drafts/gym-onboarding.md`; three old
-worktrees, all merged
+**The dev bot:** stopped. **Drafts and worktrees:** `docs/drafts/gym-onboarding.md`;
+three old worktrees, all merged
 
-**For Alex to try:** the gym logbook to #inbox; "starting a workout";
-"weighed 82.4"; "bedtime 11pm". **Sundays:** `/suggest`.
+**For Alex to try:** "starting a workout" in #gym; "weighed 82.4";
+"bedtime 11pm". **Sundays:** `/suggest`.
 
 **Waiting on Alex**
-- The per-exercise gym cards on his phone; the dev bot's gym flow
+- His first real workout with the new gym cards
 - His look at the hub in round 8 on live
-- The news; his list of changes; "Design · Hub embeds check"
+- His list of changes; "Design · Hub embeds check"
 - His look at Design · Round 6 timeline; x5 (to-do or reminder?)
 - Questions 93 to 98, 86 to 90, 76 to 79, 63, 24 to 28; Q68 to Q75
 - Reset the old iCal link in Google Calendar; QA item 0 (DMs)
