@@ -192,6 +192,19 @@ def dev_clock():
 
 
 @pytest.fixture
+def pinned_clock(dev_clock, monkeypatch):
+    """The test's clock set to a moment of its own, earlier than the real time or not, then ticking from there: for
+    tests whose made-up data or recorded answers name their days ("21 November", "Tue 13 Oct") and only read right
+    on that day. The test's clock alone: `clock.advance` still never goes back. Returns pin(moment)."""
+
+    def pin(moment):
+        monkeypatch.setattr(clock, "_offset", moment - clock.real_now())
+        return clock.now()
+
+    return pin
+
+
+@pytest.fixture
 def owner() -> users.User:
     return users.User(1, 1, "Owner", "Pacific/Auckland", users.ROLE_OWNER, "2026-01-01T00:00:00+00:00")
 

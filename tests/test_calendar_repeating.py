@@ -147,7 +147,7 @@ def made_up_key(scratch):
 
 
 @pytest.fixture
-def world(make_db, dev_clock, monkeypatch, owner, made_up_key):
+def world(make_db, dev_clock, pinned_clock, monkeypatch, owner, made_up_key):
     make_db({"calendar": store.MIGRATIONS})
     fake = SeriesGoogle()
     for name, value in (("CALENDAR_ENABLED", True), ("CALENDAR_ICS_URL", ""), ("CALENDAR_READ", "google:CALENDAR_BOT_ID"),
@@ -155,7 +155,7 @@ def world(make_db, dev_clock, monkeypatch, owner, made_up_key):
         monkeypatch.setattr(config, name, value)
     monkeypatch.setattr(google, "_send", fake.send)
     google._token.clear()
-    clock.advance_to(days.at(DAY, time(7, 0)))
+    pinned_clock(days.at(DAY, time(7, 0)))
     live.reset()
     world = SimpleNamespace(owner=owner, fake=fake)
     world.request = lambda text="said": Request(owner, 100, text)

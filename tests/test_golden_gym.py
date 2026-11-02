@@ -83,7 +83,8 @@ def test_gy16_a_partial_session_days_later_with_its_note_on_the_right_exercise(g
     said = shown(gym_bot)
     assert "**Bench press** · 40 kg × 9, 40 kg × 9, 40 kg × 8" in said
     assert "⚠️ note: “knee was sore”" in said
-    assert "**Upper 1** · Tue " in said, "last Tuesday, worked out by Python"
+    tuesday = "yesterday" if days.today().weekday() == 2 else "Tue "  # on a Wednesday, last Tuesday was yesterday
+    assert f"**Upper 1** · {tuesday}" in said, "last Tuesday, worked out by Python"
 
 
 def test_gy15_yesterday_in_a_few_words_is_the_workout_its_exercises_make(gym_bot):

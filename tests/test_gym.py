@@ -73,7 +73,7 @@ async def fake_claude(system, user, tools, **more):
 
 
 @pytest.fixture
-def world(make_db, monkeypatch, owner, dev_clock):
+def world(make_db, monkeypatch, owner, dev_clock, pinned_clock):
     make_db({"gym": store.MIGRATIONS})
     monkeypatch.setattr(config, "GYM_ENABLED", True)
     monkeypatch.setitem(config.CHANNELS, "gym", GYM)
@@ -96,8 +96,8 @@ def world(make_db, monkeypatch, owner, dev_clock):
     monkeypatch.setattr(session, "changed", lambda user_id: None)
     session.register()
     live.reset()
-    seen.today = date(2026, 10, 20) if days.today() < date(2026, 10, 20) else days.today() + timedelta(days=1)
-    clock.advance_to(days.at(seen.today, time(7, 0)))
+    seen.today = date(2026, 10, 20)  # the made-up logbook's week (tests/gym_files.py): its answers name its days
+    pinned_clock(days.at(seen.today, time(7, 0)))
     seen.request = lambda text="said", previous=None, attachments=(): Request(owner, INBOX, text, previous=previous, attachments=attachments)
     return seen
 

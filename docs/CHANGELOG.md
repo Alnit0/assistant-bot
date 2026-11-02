@@ -4,6 +4,11 @@ What changed, newest first. One entry per task, as one to three bullets on
 what changed for the user. Entries before 2026-10-07's last one were
 backfilled from the git log.
 
+## 2026-11-03
+
+- Tests only: the inbox, calendar and gym tests whose made-up data names its days are pinned to their own day
+  (`pinned_clock`) instead of failing once that day had passed; gy16 reads right on a Wednesday.
+
 ## 2026-10-30
 
 - Gym (not yet on): Finish is at the foot, under the exercises. One workout open at a time: asking for one while

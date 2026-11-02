@@ -45,7 +45,7 @@ EXTRACTED = (todo("renew rego", "Friday"), reminder("call Mum", "2:00 pm", "Sund
 
 
 @pytest.fixture
-def inbox(bot, make_db, monkeypatch, dev_clock, scratch, made_up_key):  # noqa: F811
+def inbox(bot, make_db, monkeypatch, dev_clock, pinned_clock, scratch, made_up_key):  # noqa: F811
     """The bot with every task the inbox sorts into: to-dos, reminders and expiries, the calendar (writing to a
     Bot calendar in memory), personal routines, pills, the diary; at noon on a Monday."""
     from tasks import briefing, calendar, diary, habits, nudges, todos
@@ -70,7 +70,7 @@ def inbox(bot, make_db, monkeypatch, dev_clock, scratch, made_up_key):  # noqa: 
     monkeypatch.setattr(hub, "channel_id", lambda: HUB)
     monkeypatch.setattr(nudges_plain, "changed", lambda user_id: None)
     monkeypatch.setattr(scheduler, "_standing", {})
-    dev_clock.advance_to(days.at(MONDAY, time(12, 0)))
+    pinned_clock(days.at(MONDAY, time(12, 0)))
     actions.set_catalogue([*pills_task.entries(), *timers_task.entries(), *briefing.task.entries(), *todos.task.entries(),
                            *nudges.task.entries(), *habits.task.entries(), *calendar.task.entries(), *diary.task.entries()])
     for kind, handler in nudges.task.job_handlers().items():
