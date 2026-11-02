@@ -3,8 +3,8 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Idle, last batch was** 3 Nov, morning: **Pill Skip**, committed on
-`feature/pills`, not shipped: a reminder has Taken and Skip (no Snooze),
+**Idle, last batch was** 3 Nov, morning: **Pill Skip**, `2c16f67` on
+`feature/pills`, pushed, not shipped: a reminder has Taken and Skip (no Snooze),
 Skip says so on the card with Undo, and "skip all" skips every dose still
 to take today after one card. Self-test 162 steps, 0 failed. NZ$0.77.
 **Waiting on Alex's check of Design · Pill Skip.** Before it, the gym a set
