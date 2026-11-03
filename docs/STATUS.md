@@ -6,7 +6,69 @@ No history is kept here: what changed is `docs/CHANGELOG.md`, and this
 file as it stood until midday on 2026-10-14 (every batch, every answer,
 all of "Decided overnight") is `docs/archive/STATUS-2026-10-14.md`.
 
-**Updated:** 2026-11-03 (afternoon: Pill Skip shipped, live on `caf6091` since 12:42 pm)
+**Updated:** 2026-11-03 (afternoon: Calendar events committed on `feature/pills`, not shipped; live on `caf6091` since 12:42 pm)
+
+## Calendar events (3 Nov, afternoon; committed, not shipped)
+
+After two weeks Alex found adding events too narrow: no description or place, several days misread, and a weekly
+event refused or sent to routines. On live a recurring event said with its place had the place "Not included", a
+two-day all-day event was asked for a time, and chat told him events could not repeat (its list of what the bot
+can do did not say so), so he made the gym a personal routine.
+
+- **Where and notes:** `location` and `description`, in his own words, written to the Google event's own fields;
+  the copy keeps the location (migration `add_location`, the calendar's fourth) and every answer says it ("📍 ...").
+- **The card shows every field it will save,** each on a small line of its own and only those with a value:
+  Date or Starts, Time (or all day), Length, Location, Description, Repeat; the name in bold above them.
+- **Several days:** "from Friday to Sunday", "12 to 14 November", "3 days from Thursday" (`days`, the sum Python's)
+  are one event, all day unless times are said, or from a time on the first day to one on the last. Answers and
+  the week view say "day 2 of 3" on each of its days.
+- **Weekly:** every N weeks, chosen days, until a day or a number of times, or no end, as a real RRULE (most of it
+  there since 19 Oct; now with place and notes, and all day too). Cancel one, stop from today, move one: each card
+  says whether it is one occurrence or the whole series, and every calendar Save's line has Undo.
+- **Event or routine:** the calendar's, routines' and reminders' "only for" lines say which is which; one that could
+  be either is the router's tie, its buttons "Calendar event" and "Routine" (`Entry.choice`).
+- Golden conversations 32 to 34a, eleven eval cases (w40 to w51), self-test steps 10.06 to 10.09, and
+  "Design · Calendar events" in the Design forum. Self-test 166 steps, 0 failed, on recorded answers (a run before
+  it failed my own new steps 10.06 to 10.08, a check of the card's text and a date kept unreadably; fixed, and D19
+  and D20 closed by the self-test).
+
+**Spend:** about NZ$0.97 in all (US$0.565), every run under NZ$0.40: the live evals of `calendar_write` (US$0.146),
+the goldens and the reruns after each change to the "only for" lines (US$0.21), routines, reminders, cross-task
+and calendar routers (US$0.11), and checks of three misses against the code before this batch (US$0.10). The
+self-test on recorded answers, NZ$0.
+
+### Decided (3 Nov, Calendar events)
+
+1. **The name stays a bold line above the fields**, as on every card; each field it will save is a small line
+   ("Location · Community hall"), and a line with no value is left off. "Next: ..." and "on the Bot calendar"
+   stay small lines under them.
+2. **Where it is shows as "📍 Place" after the name** in every answer, and in the week view's answer about one day
+   (its words grow, its layout does not). The week itself, the hub and the Today card are as they were.
+3. **Several days with no time are all day, with no question;** "At what time?" stays for one day. A start time
+   over several days with no end time is asked in a line ("When does it end on Sun 8 Nov?"), never made up.
+4. **"day 2 of 3":** a timed event that ends by 6:00 am on its last day has not made that day one of its own (a
+   late night stays one day). On its later days the week view shows a timed one as all day, "until 2:00 pm" on its last.
+5. **Event or routine is the router's,** from the "only for" lines: an event, the calendar, a booking, a length, an
+   end or a pace (until, N times, every N weeks: personal routines have none) is the calendar, never a tie;
+   something to tick off is a routine; a day and a time and nothing else is a tie. The tie keeps its grey ↩️
+   Neither as its Cancel beside the two answers, as every question card has one.
+6. **"delete the gym" or "delete all of them" ends a series from today, past ones kept,** as "stop" does; only
+   "completely" or "past ones too" deletes every time, on a red card. A series none of which has come yet is deleted.
+7. **"them" or "it" with no name** is the event the calendar last answered about or changed, worked out by the code
+   (no event's name goes to Claude). A short message straight after the calendar answered goes to it first, so
+   "delete all of them" is an extraction case, not a router one.
+8. **A holiday on a fixed date is handed over as its date** by Claude ("until Christmas" -> 25 December), which is
+   language; no other date is ever worked out. A month alone ("until December") is asked on the card: its first day or its last.
+9. **A repeating all-day event is made, never refused,** and can be cancelled a day at a time, stopped or deleted;
+   moving one in words is still said not to be possible, with what to do instead.
+10. **The titles and places keep his words, article and all** ("The quiz night", "The community hall").
+11. **The self-test writes to a made-up Bot calendar in a file** (start 10, `data\selftest\dev-bot-calendar.json`,
+    a made-up id, no key), whose stand-in for Google now expands a series as the API does; 10.09 deletes everything
+    made there. The run was on recorded answers, the language having been checked live by the evals.
+12. **Two eval misses were not this batch's,** each checked against the code from before it, with live's switches:
+    "work starts at 8:30 from next week" can be read as plan my day, and "remind me to take my zinc at 8pm" as a
+    reminder. Both are marked known misses and are in the backlog.
+
 
 ## Pill Skip shipped (3 Nov, 12:42 pm)
 

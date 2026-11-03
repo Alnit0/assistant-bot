@@ -243,6 +243,16 @@ Write them the way I'd really say them.
 | 31a | Pill A and Pill B, every dose still to take; "skip all my pills" | One card listing every dose of both, in the order of the day |
 | 31b | Dose 1 of Pill A taken; "skip all Pill A today" | The card lists doses 2 and 3 only: the taken one is left alone |
 | 31c | Straight after a dose was dealt with, "skip the 3 pm one" | The dose due at 3:00 pm is skipped at once, and one line says so. Which dose is the code's, from the day's doses |
+| 32 | "add the quiz night on Friday at 7pm at the community hall, notes: bring the forms" | A calendar card with each field on a line of its own, Location and Description among them; Save writes both to the event |
+| 32a | "camping trip from Friday to Sunday" | One event over the three days, all day, nothing asked |
+| 32b | "create an event called the gym every Tuesday at 4 pm for one hour" | A weekly event on a card (every Tue, no end, an hour), never refused or sent to routines; Save makes a real repeating event |
+| 32c | "swimming every Monday and Thursday at 7 am for 45 minutes" | Every Mon and Thu, 45 minutes |
+| 32d | "put book club in my calendar every second Wednesday at 6pm until 16 December" | Every 2 weeks on Wed, until Wed 16 Dec |
+| 33 | "book a yoga class every Wednesday at 6pm for an hour" | The calendar: a booking with a length is an event |
+| 33a | "stretch every morning" | A personal routine, never the calendar |
+| 33b | "yoga every Thursday at 6pm" | It could be either: one question, with Calendar event and Routine; Calendar event makes the event's card |
+| 34 | The gym every Tuesday; "cancel the gym next Tuesday" | That occurrence only, on a card that says so |
+| 34a | …or "stop the weekly gym" | The whole series ends from today, on a card that says so; past ones kept |
 | 24 | "will it rain?" | The weather task answers from the forecast it keeps: the highest chance in the hours still to come and roughly when. Nothing is fetched to answer, and chat is never asked |
 | 25 | "what's the weather this afternoon?" | That part of the day from the kept forecast; how warm only if the forecast has it by the hour. A part that is over says so |
 

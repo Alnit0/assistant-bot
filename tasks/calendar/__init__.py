@@ -142,11 +142,24 @@ async def plan_pieces(user_id: int, day: date) -> list:
     """For a plan (core/planning.py): each event that day, fixed; an all-day one at no time."""
     from core import planning
 
-    return [
-        planning.Piece(TASK, each.ref or each.key, ICON, each.title, all_day=True) if each.all_day
-        else planning.Piece(TASK, each.ref or each.key, ICON, each.title, each.start, each.end)
-        for each in rules.on_day(await store.events(user_id), day)
-    ]
+    return [piece(each, day) for each in rules.on_day(await store.events(user_id), day)]
+
+
+def piece(event, day: date):
+    """One event on a day for a plan and the week view: an event over several days says which of its days this
+    is ("Camping · day 2 of 3"), and a timed one is at its time on its first day only (all day after, "until
+    2:00 pm" on its last)."""
+    from core import planning
+
+    part = rules.part_of(event, day)
+    text = event.title + (f" · {rules.part_text(event, day)}" if part else "")
+    place = rules.place_text(event)
+    if event.all_day:
+        return planning.Piece(TASK, event.ref or event.key, ICON, text, all_day=True, place=place)
+    if part and part[0] > 1:
+        last = part[0] == part[1] and days.day_of(event.end) == day
+        return planning.Piece(TASK, event.ref or event.key, ICON, text + (f" · until {timeinput.format_moment(event.end)}" if last else ""), all_day=True, place=place)
+    return planning.Piece(TASK, event.ref or event.key, ICON, text, event.start, event.end, place=place)
 
 
 UPCOMING_DAYS = 7  # one-off events this many days ahead are in the hub's day as coming up (round 7)
@@ -193,8 +206,12 @@ class CalendarTask(Task):
     name = TASK
     place = 50  # pills, Today, reminders, personal routines, gym, calendar, diary, to-dos
     title = TITLE
-    description = "Calendar: your events on the Today card, in the briefing and in answers; add, move and delete in the Bot calendar"
+    description = (
+        "Calendar: your events on the Today card, in the briefing and in answers; add events in the Bot calendar with where they are and "
+        "notes, over several days, or repeating (weekly, every N weeks or on chosen days, with an end or none), and move, cancel, stop or delete them"
+    )
     icon = ICON
+    choice = "Calendar event"  # its button when a message could be an event or a personal routine
     examples = plain.EXAMPLES
 
     @property

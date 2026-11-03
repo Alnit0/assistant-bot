@@ -55,6 +55,7 @@ class Event:
     origin: str = ""  # which calendar it came from ("link", "bot"): never the calendar's id
     ref: str = ""  # the event's id in that calendar, for the Bot calendar's events (to move or delete)
     series: str = ""  # for one happening of a repeating event in the Bot calendar: the series' id
+    location: str = ""  # where it is, as the calendar has it ("" for none): shown in answers, never to Claude
 
     @property
     def repeats(self) -> bool:
@@ -100,13 +101,14 @@ def parse(text: str, first: date, last: date) -> list[Event]:
         if end is None and each.get("DURATION") is not None:
             end = start + each.decoded("DURATION")
         key = f"{each.get('UID', '')}@{start.isoformat()}"
+        location = " ".join(str(each.get("LOCATION") or "").split())
         if isinstance(start, datetime):
             begins = _moment(start)
             ends = _moment(end) if isinstance(end, datetime) else begins
-            found.append(Event(key, title, begins, max(ends, begins)))
+            found.append(Event(key, title, begins, max(ends, begins), location=location))
         else:
             last_day = (end - timedelta(days=1)) if isinstance(end, date) and not isinstance(end, datetime) and end > start else start
-            found.append(Event(key, title, first_day=start, last_day=last_day))
+            found.append(Event(key, title, first_day=start, last_day=last_day, location=location))
     return ordered(found)
 
 
@@ -175,13 +177,43 @@ def days_text(first: date, last: date, today: date) -> str:
     return f"{day_name(first, today)} to {day_name(last, today)} · all day · {(last - first).days + 1} days"
 
 
-def span_text(start: datetime, end: datetime, today: date) -> str:
-    """ "Fri 16 Oct · `3:00 pm` to `4:00 pm` · 1 hour" """
-    day = days.day_of(start)
-    minutes = int((end - start).total_seconds() // 60)
+def length_text(minutes: int) -> str:
+    """How long: "45 minutes", "1 hour", "1 hour 30 minutes" as "90 minutes", "2 hours 30 minutes", "2 days", "1 day 20 hours"."""
+    if minutes >= 24 * 60:
+        whole, rest = divmod(minutes, 24 * 60)
+        said = f"{whole} day{'s' if whole != 1 else ''}"
+        return said + (f" {length_text(rest)}" if rest else "")
     hours = f"{minutes // 60} hour{'s' if minutes // 60 != 1 else ''}"
-    length = hours if minutes % 60 == 0 else f"{hours} {minutes % 60} minutes" if minutes >= 120 else f"{minutes} minutes"
+    return hours if minutes % 60 == 0 else f"{hours} {minutes % 60} minutes" if minutes >= 120 else f"{minutes} minutes"
+
+
+def span_text(start: datetime, end: datetime, today: date) -> str:
+    """ "Fri 16 Oct · `3:00 pm` to `4:00 pm` · 1 hour"; over several days, each end with its day."""
+    day, last = days.day_of(start), days.day_of(end)
+    length = length_text(int((end - start).total_seconds() // 60))
+    if last > day and (end - start) >= timedelta(hours=24):
+        return f"{day_name(day, today)} `{timeinput.format_moment(start)}` to {day_name(last, today)} `{timeinput.format_moment(end)}` · {length}"
     return f"{day_name(day, today)} · `{timeinput.format_moment(start)}` to `{timeinput.format_moment(end)}` · {length}"
+
+
+def field_lines(fields) -> tuple[str, ...]:
+    """A new event's card: each field it will save on a small line of its own ("Location · Community hall"),
+    in the order given, and only those with a value."""
+    return tuple(design.small(f"{label} · {value}") for label, value in fields if value)
+
+
+def times_text(start: datetime, end: datetime, today: date) -> str:
+    """A timed event's start and end, for its card: "`4:00 pm` to `5:00 pm`", or over several days each
+    with its day ("`6:00 pm` Fri 13 Nov to `2:00 pm` Sun 15 Nov")."""
+    first, last = days.day_of(start), days.day_of(end)
+    if last > first and (end - start) >= timedelta(hours=24) or last > first + timedelta(days=1):
+        return f"`{timeinput.format_moment(start)}` {day_name(first, today)} to `{timeinput.format_moment(end)}` {day_name(last, today)}"
+    return f"`{timeinput.format_moment(start)}` to `{timeinput.format_moment(end)}`"
+
+
+def dates_text(first: date, last: date, today: date) -> str:
+    """ "Tue 10 Nov", or "Fri 13 Nov to Sun 15 Nov"."""
+    return day_name(first, today) if last == first else f"{day_name(first, today)} to {day_name(last, today)}"
 
 
 NOT_MINE = "{icon} I can only change events I added, and **{title}** is on another calendar. Say “add …” and I'll add a new one."
@@ -240,9 +272,47 @@ def count_text(count: int) -> str:
     return f"{count} event{'' if count == 1 else 's'}"
 
 
+LATE_NIGHT = time(6, 0)  # a timed event that ends by this on its last day has not made that day one of its own
+
+
+def days_of(event: Event) -> tuple[date, date]:
+    """The first and last local day an event is one of its days: an all-day one's own; a timed one's from
+    its start to its end, a last day it only reaches before LATE_NIGHT not counted (a late night is one day)."""
+    if event.all_day:
+        return event.first_day, event.last_day
+    first = days.day_of(event.start)
+    last = days.day_of(event.end - timedelta(microseconds=1)) if event.end > event.start else first
+    if last > first and days.local_time(event.end) <= LATE_NIGHT:
+        last -= timedelta(days=1)
+    return first, max(first, last)
+
+
+def part_of(event: Event, day: date) -> tuple[int, int] | None:
+    """Which of its days `day` is for an event over several days, and how many (2, 3: "day 2 of 3"); None
+    for an event of one day, or a day that is not one of its own."""
+    first, last = days_of(event)
+    total = (last - first).days + 1
+    if total < 2 or not first <= day <= last:
+        return None
+    return (day - first).days + 1, total
+
+
+def part_text(event: Event, day: date) -> str:
+    """ "day 2 of 3", or "" (part_of)."""
+    found = part_of(event, day)
+    return f"day {found[0]} of {found[1]}" if found else ""
+
+
+def place_text(event: Event) -> str:
+    """Where it is, as an answer shows it: "📍 Community hall", or ""."""
+    return f"📍 {event.location}" if event.location else ""
+
+
 def event_line(event: Event, day: date) -> str:
+    """One event on a day in an answer: when, its name, which of its days this is, and where."""
     when = when_text(event, day)
-    return f"{design.time(when) if when[0].isdigit() else when} · **{event.title}**"
+    extra = [each for each in (part_text(event, day), place_text(event)) if each]
+    return " · ".join([f"{design.time(when) if when[0].isdigit() else when}", f"**{event.title}**", *extra])
 
 
 # --- answers to questions (templates; the first line names no event) -----------------------------------------------
@@ -343,7 +413,7 @@ def span_line(event: Event, span: Span, today: date) -> str:
     if event.all_day:
         first, last = max(event.first_day, span.first), min(event.last_day, span.last)
         on = day_name(first, today) + (f" to {day_name(last, today)}" if last != first else "")
-        return f"{on} · all day · **{event.title}**"
+        return " · ".join([on, "all day", f"**{event.title}**", *([place_text(event)] if event.location else [])])
     day = max(days.day_of(event.start), span.first)
     return f"{day_name(day, today)} · {event_line(event, day)}"
 
@@ -426,11 +496,12 @@ def matching_on(events, words: str, day: date) -> Event:
 
 
 def when_answer(event: Event, today: date) -> str:
+    place = [place_text(event)] if event.location else []
     if event.all_day:
         day = event.first_day if event.first_day >= today else today
-        return "\n".join([f"{ICON} Next one · {day_name(day, today)}, all day", f"**{event.title}**"])
+        return "\n".join([f"{ICON} Next one · {day_name(day, today)}, all day", " · ".join([f"**{event.title}**", *place])])
     day = days.day_of(event.start)
-    return "\n".join([f"{ICON} Next one · {day_name(day, today)}, {design.time(timeinput.format_moment(event.start))}", f"**{event.title}** · {when_text(event, day)}"])
+    return "\n".join([f"{ICON} Next one · {day_name(day, today)}, {design.time(timeinput.format_moment(event.start))}", " · ".join([f"**{event.title}**", when_text(event, day), *place])])
 
 
 def free_answer(events, moment: datetime, today: date) -> str:

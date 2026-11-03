@@ -140,6 +140,8 @@ def test_the_phases_run_the_old_look_twice_then_the_new_then_the_old_again_with_
     assert all(runner.SWITCHES[name] == "" for name in ("CALENDAR_READ", "CALENDAR_MAIN_ID", "CALENDAR_BOT_ID", "GOOGLE_SA_KEY_PATH")), "never live's Google calendars in a self-test"
     calendar = [settings for name, settings, _ in runner.PHASES if settings.get("CALENDAR_ENABLED") == "true"]
     assert len(calendar) == 1 and calendar[0]["CALENDAR_ICS_URL"].endswith("calendar_selftest.ics"), "the calendar start reads made-up events"
+    assert calendar[0]["CALENDAR_BOT_ID"].startswith("made-up") and calendar[0]["GOOGLE_CALENDAR_FAKE"].replace("\\", "/").endswith("data/selftest/dev-bot-calendar.json"), "it writes to a made-up Bot calendar in a file, never Google"
+    assert "GOOGLE_SA_KEY_PATH" not in calendar[0], "no key: nothing can reach Google from a self-test"
     assert [settings.get("DESIGN_ROUND", "") for _, settings, _ in runner.PHASES] == [""] * 6 + ["4", "4", "4", "4", "8"], "round 4 from the to-dos start on"
     assert all(settings["REMINDERS_ENABLED"] == "true" for _, settings, _ in runner.PHASES)
     assert runner.SWITCHES["GYM_CHANNEL_ID"] == "" and [name for name, settings, _ in runner.PHASES if settings.get("GYM_ENABLED") == "true"] == ["p11"], "never live's #gym; the gym in its own start"

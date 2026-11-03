@@ -285,7 +285,7 @@ class Task:
                 day_items=self.day_items if type(self).day_items is not Task.day_items else None,
                 week=self.week if type(self).week is not Task.week else None,
                 private=self.private, sticks=self.sticks, place=self.place, keeps=self.keeps, leads=tuple(self.leads),
-                home=self.home, home_examples=tuple(self.home_examples), home_files=self.home_files,
+                home=self.home, home_examples=tuple(self.home_examples), home_files=self.home_files, choice=self.choice,
             )
         ]
 
@@ -345,6 +345,7 @@ class Task:
     home = ""  # the task's own channel, by its name in config.CHANNELS (actions.Entry.home)
     home_examples: tuple[str, ...] = ()  # two messages that need not name it there (actions.Entry.home_examples)
     home_files = ""  # the action that takes a spreadsheet sent there (actions.Entry.home_files)
+    choice = ""  # its button on a tie, where its title would not do ("Calendar event"; actions.Entry.choice)
 
     async def week(self, user_id: int, monday: date, upto: date):
         """This task's week, Monday up to `upto` (a `weekly.Week`: a line, its dots,

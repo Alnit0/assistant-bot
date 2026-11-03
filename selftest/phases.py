@@ -1956,6 +1956,97 @@ async def p10(h: Harness) -> None:
             h.check(today_card is not None and ("🗓️ **Test" in today_card.text or "earlier today" in today_card.text), f"the Today card: {today_card.text[:300] if today_card else 'none'}")
             h.saw(" / ".join(today_card.text.splitlines()[:4])[:200] if today_card else "")
 
+    await p10_weekly(h)
+
+
+# The dev bot's own Bot calendar in this start: a made-up one in a file (GOOGLE_CALENDAR_FAKE, data/selftest), never
+# Google and never Alex's. Everything the steps make on it is deleted at the end (10.09), whatever failed before.
+WEEKLY = "create an event called test pilates every Tuesday at 4 pm for one hour"
+
+
+def made_up_calendar() -> dict:
+    import json
+    from pathlib import Path
+
+    where = Path(config.GOOGLE_CALENDAR_FAKE)
+    kept = json.loads(where.read_text(encoding="utf-8")) if where.exists() else {}
+    return kept.get("calendars", {}).get(config.CALENDAR_BOT_ID, {})
+
+
+async def pilates_days(h: Harness) -> list:
+    from tasks.calendar import series, source
+    from tasks.calendar import store as calendar_store
+
+    await series.refresh(h.user.id, source.bot())
+    return sorted(days.day_of(each.start) for each in await calendar_store.events(h.user.id) if each.title == "Test pilates")
+
+
+async def p10_weekly(h: Harness) -> None:
+    """Calendar events, 3 Nov: a weekly event made in words, one occurrence cancelled, the series stopped."""
+    from tasks.calendar import source
+
+    async for attempt in h.step("10.06", f"“{WEEKLY}”, then Save", "A card with each field a small line (Starts, Time `4:00 pm` to `5:00 pm`, Length 1 hour, Repeat every Tue · no end) and the next three dates; after Save a real weekly series (RRULE, BYDAY=TU) on the dev bot's made-up Bot calendar, nothing on any other", "calendar events (3 Nov)"):
+        async with attempt:
+            h.check(config.CALENDAR_WRITE and config.CALENDAR_BOT_ID.startswith("made-up") and bool(config.GOOGLE_CALENDAR_FAKE), "the Bot calendar in this start is not the made-up one")
+            for ref in list(made_up_calendar()):
+                await source.bot().delete(ref)  # left by a run that stopped before its clean-up
+            mine = await h.say(WEEKLY, canned=todo("calendar_add", title="test pilates", repeat="days", weekdays=["tue"], time="4:00 pm", length=60), task="calendar")
+            stored, shown = await card(h)
+            h.check(shown is not None and "Test pilates" in shown.text, f"the card: {shown.text[:300] if shown else 'none'}")
+            # A time is drawn bold in the card's round (design.time), in backticks in its plain text: the words alone are checked
+            plain_text = shown.text.replace("**", "").replace("`", "")
+            for line in ("Time · 4:00 pm to 5:00 pm", "Length · 1 hour", "Repeat · every Tue · no end"):
+                h.check(line in plain_text, f"no “{line}” on the card: {shown.text[:400]}")
+            await no_marks(h, mine)
+            await h.press(shown.id, "Save", h.inbox)
+            made = list(made_up_calendar().values())
+            h.check(len(made) == 1 and made[0].get("recurrence") == ["RRULE:FREQ=WEEKLY;BYDAY=TU"], f"the made-up Bot calendar holds {made}")
+            found = await pilates_days(h)
+            h.check(len(found) >= 3 and all(each.weekday() == 1 for each in found), f"its days in the copy: {found}")
+            h.memo["pilates"] = [each.isoformat() for each in found]  # the memo is kept as JSON
+            h.saw(f"every Tue from {found[0]:%a %d %b}")
+
+    async for attempt in h.step("10.07", "Cancel one occurrence of it, then Save", "A card that says “One occurrence only: the rest stay as they are”; after Save that Tuesday is gone and the ones either side are there", "calendar events (3 Nov)"):
+        async with attempt:
+            from datetime import date
+
+            found = [date.fromisoformat(each) for each in h.memo.get("pilates", [])] or await pilates_days(h)
+            h.check(len(found) >= 3, f"no series to cancel one of: {found}")
+            gone = found[1]
+            said = f"cancel test pilates on {gone.day} {gone:%B}"
+            await h.say(said, canned=todo("calendar_cancel", search="test pilates", day=f"{gone.day} {gone:%B}", scope="one"), task="calendar")
+            stored, shown = await card(h)
+            h.check(shown is not None and "One occurrence only: the rest stay as they are" in shown.text, f"the card: {shown.text[:300] if shown else 'none'}")
+            await h.press(shown.id, "Save", h.inbox)
+            after = await pilates_days(h)
+            h.check(gone not in after and found[0] in after and found[2] in after, f"its days now: {after}")
+            h.saw(f"{gone:%a %d %b} cancelled")
+
+    async for attempt in h.step("10.08", "“stop test pilates”, then Save", "A card that says it is the whole series (none from the next one on; past ones kept); after Save the series has an end (UNTIL) and nothing of it comes after", "calendar events (3 Nov)"):
+        async with attempt:
+            from datetime import date, time
+
+            # The dev clock to the morning after its first Tuesday: one has been, so stopping it keeps that one (with none
+            # gone by, stopping it would end it before its first, and the bot says to delete it instead)
+            first = [date.fromisoformat(each) for each in h.memo.get("pilates", [])] or await pilates_days(h)
+            h.check(bool(first), "no series to stop")
+            clock.advance_to(days.at(first[0] + timedelta(days=1), time(9, 0)))
+            await h.say("stop test pilates", canned=todo("calendar_cancel", search="test pilates", scope="following"), task="calendar")
+            stored, shown = await card(h)
+            h.check(shown is not None and "The whole series" in shown.text and "past ones kept" in shown.text, f"the card: {shown.text[:300] if shown else 'none'}")
+            await h.press(shown.id, "Save", h.inbox)
+            made = list(made_up_calendar().values())
+            h.check(len(made) == 1 and "UNTIL=" in (made[0].get("recurrence") or [""])[0], f"the series is now {made}")
+            h.saw((made[0].get("recurrence") or [""])[0][:60] if made else "")
+
+    async for attempt in h.step("10.09", "Everything the self-test made on the dev bot's calendar is deleted", "The made-up Bot calendar holds no event and no exception, and the copy no Test pilates", "calendar events (3 Nov)"):
+        async with attempt:
+            for ref in list(made_up_calendar()):
+                await source.bot().delete(ref)
+            clock.reset()  # the dev clock as it was before 10.08 moved it
+            left = await pilates_days(h)
+            h.check(made_up_calendar() == {} and left == [], f"left behind: {list(made_up_calendar())} and {left}")
+
 
 # ---------------------------------------------------------------------------
 # Start 11: logging at the gym a set at a time (30 Oct, reworked after Alex's

@@ -389,7 +389,7 @@ def end_fields() -> tuple:
 
     return (
         Field("every_weeks", "Every N weeks, for weekdays, weekends or days (\"every 2 weeks on Monday\" -> 2). Leave out for every week.", INTEGER),
-        Field("until", "The last day, exactly as the user said it (\"until 5 August\", \"until the end of the year\"). Never work out a date.", STRING),
+        Field("until", "The last day, exactly as the user said it (\"until 5 August\", \"until the end of the year\"); a holiday on a fixed date as that date (\"until Christmas\" -> 25 December, \"until New Year's Eve\" -> 31 December). Never work out any other date.", STRING),
         Field("times", "How many times in all, when the user says (\"for 6 weeks\" on one day a week -> 6; \"10 times\" -> 10).", INTEGER),
     )
 

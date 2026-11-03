@@ -68,16 +68,31 @@ def _fake(method: str, url: str, body: bytes | None) -> tuple[int, bytes]:
 
     where = Path(config.GOOGLE_CALENDAR_FAKE)
     kept = json.loads(where.read_text(encoding="utf-8")) if where.exists() else {"calendars": {}, "next": 0}
-    path = urllib.parse.urlparse(url).path.split("/calendars/", 1)[-1].split("/")
+    parsed = urllib.parse.urlparse(url)
+    path = parsed.path.split("/calendars/", 1)[-1].split("/")
     calendar_id, ref = urllib.parse.unquote(path[0]), (urllib.parse.unquote(path[2]) if len(path) > 2 else "")
     found = kept["calendars"].setdefault(calendar_id, {})
+    changed = kept.setdefault("exceptions", {}).setdefault(calendar_id, {})  # a series' happenings changed or cancelled
     payload = json.loads(body) if body else {}
     status, answer = 200, {}
     if method == "GET" and not ref:
-        answer = {"items": list(found.values())}
+        query = dict(urllib.parse.parse_qsl(parsed.query))
+        low, high = (datetime.fromisoformat(query[name]) for name in ("timeMin", "timeMax")) if "timeMin" in query else (None, None)
+        items = []
+        for each in found.values():
+            items += _happenings(each, changed, low, high) if each.get("recurrence") and low is not None else [each]
+        answer = {"items": items}
     elif method == "POST":
         kept["next"] += 1
         answer = found[f"e{kept['next']}"] = {"id": f"e{kept['next']}", "status": "confirmed", **payload}
+    elif ref not in found and _happening(found, changed, ref) is not None:
+        # One happening of a series, by its own id: changing it makes an exception, as the API does
+        if method == "PATCH":
+            changed.setdefault(ref, {}).update(payload)
+        elif method == "DELETE":
+            changed.setdefault(ref, {})["status"] = "cancelled"
+        answer = _happening(found, changed, ref) if method != "DELETE" else None
+        status = 204 if method == "DELETE" else 200
     elif ref not in found:
         status = 404
     elif method == "GET":
@@ -87,9 +102,75 @@ def _fake(method: str, url: str, body: bytes | None) -> tuple[int, bytes]:
         answer = found[ref]
     elif method == "DELETE":
         del found[ref]
+        for each in [key for key in changed if key.startswith(f"{ref}_")]:
+            del changed[each]
         status, answer = 204, None
     where.write_text(json.dumps(kept), encoding="utf-8")
     return status, (json.dumps(answer).encode() if answer is not None else b"")
+
+
+def _series_start(item: dict) -> tuple[datetime, timedelta, bool]:
+    """A series' first start as a moment (an all-day one at midnight UTC), its length, and whether it is all day."""
+    from zoneinfo import ZoneInfo
+
+    start, end = item["start"], item["end"]
+    if "date" in start and "dateTime" not in start:
+        first = datetime.fromisoformat(start["date"]).replace(tzinfo=timezone.utc)
+        return first, datetime.fromisoformat(end["date"]).replace(tzinfo=timezone.utc) - first, True
+    zone = ZoneInfo(start.get("timeZone") or str(config.TIMEZONE))
+    first = datetime.fromisoformat(start["dateTime"].replace("Z", "+00:00"))
+    first = first if first.tzinfo else first.replace(tzinfo=zone)
+    last = datetime.fromisoformat(end["dateTime"].replace("Z", "+00:00"))
+    last = last if last.tzinfo else last.replace(tzinfo=zone)
+    return first, last - first, False
+
+
+def _instance(item: dict, moment: datetime, length: timedelta, all_day: bool, changed: dict) -> dict:
+    """One happening of a series as the API answers it with singleEvents, its exception applied."""
+    ref = f"{item['id']}_{moment.astimezone(timezone.utc):%Y%m%d}" if all_day else f"{item['id']}_{moment.astimezone(timezone.utc):%Y%m%dT%H%M%SZ}"
+    when = ({"date": moment.date().isoformat()}, {"date": (moment + length).date().isoformat()}) if all_day else (
+        {"dateTime": moment.isoformat()}, {"dateTime": (moment + length).isoformat()})
+    found = {"id": ref, "recurringEventId": item["id"], "status": "confirmed", "summary": item.get("summary", ""), "start": when[0], "end": when[1],
+             **{key: item[key] for key in ("location", "description") if key in item}}
+    found.update(changed.get(ref, {}))
+    return found
+
+
+def _happenings(item: dict, changed: dict, low: datetime, high: datetime) -> list[dict]:
+    """A series' happenings from `low` to `high` (the made-up Google of the dev bot only), as the API expands an
+    RRULE in the series' own time zone, with its exceptions; cancelled ones left out."""
+    from dateutil import rrule as dateutil_rrule
+
+    if item.get("status") == "cancelled":
+        return []
+    first, length, all_day = _series_start(item)
+    line = next((each for each in item["recurrence"] if each.startswith("RRULE:")), "")
+    if all_day and "UNTIL=" in line and "T" not in line.split("UNTIL=", 1)[1].split(";")[0]:
+        line = line.replace(line.split("UNTIL=", 1)[1].split(";")[0], line.split("UNTIL=", 1)[1].split(";")[0] + "T000000Z")
+    rule = dateutil_rrule.rrulestr(line, dtstart=first)
+    found = []
+    for moment in rule.between(low - length, high, inc=True):
+        each = _instance(item, moment, length, all_day, changed)
+        if each["status"] != "cancelled":
+            found.append(each)
+    return found
+
+
+def _happening(found: dict, changed: dict, ref: str) -> dict | None:
+    """One happening of a series by its id ("e3_20261110T030000Z"), or None if it is no happening of one."""
+    master_id, _, stamp = ref.rpartition("_")
+    item = found.get(master_id)
+    if item is None or not item.get("recurrence") or not stamp:
+        return None
+    first, length, all_day = _series_start(item)
+    try:
+        moment = datetime.strptime(stamp, "%Y%m%d").replace(tzinfo=timezone.utc) if all_day else datetime.strptime(stamp, "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+    for each in _happenings({**item, "status": "confirmed"}, {}, moment - timedelta(seconds=1), moment + timedelta(seconds=1)):
+        if each["id"] == ref:
+            return _instance(item, datetime.fromisoformat(each["start"].get("dateTime") or each["start"]["date"] + "T00:00:00+00:00"), length, all_day, changed)
+    return None
 
 
 def _access_token() -> str:
@@ -156,15 +237,21 @@ def to_event(item: dict, origin: str) -> Event | None:
     start, end = item.get("start") or {}, item.get("end") or {}
     ref = str(item.get("id") or "")
     series = str(item.get("recurringEventId") or "")  # one happening of a repeating event (singleEvents)
+    location = " ".join(str(item.get("location") or "").split())
     if "dateTime" in start:
         begins = _moment(start["dateTime"])
         ends = _moment(end["dateTime"]) if "dateTime" in end else begins
-        return Event(f"{origin}:{ref}@{begins.isoformat()}", title, begins, max(ends, begins), origin=origin, ref=ref, series=series)
+        return Event(f"{origin}:{ref}@{begins.isoformat()}", title, begins, max(ends, begins), origin=origin, ref=ref, series=series, location=location)
     if "date" in start:
         first = date.fromisoformat(start["date"])
         last = date.fromisoformat(end["date"]) - timedelta(days=1) if "date" in end else first
-        return Event(f"{origin}:{ref}@{first.isoformat()}", title, first_day=first, last_day=max(last, first), origin=origin, ref=ref, series=series)
+        return Event(f"{origin}:{ref}@{first.isoformat()}", title, first_day=first, last_day=max(last, first), origin=origin, ref=ref, series=series, location=location)
     return None
+
+
+def details(location: str = "", description: str = "") -> dict:
+    """An event's location and description as the API takes them: only those that were said. Pure."""
+    return {**({"location": location} if location else {}), **({"description": description} if description else {})}
 
 
 def local_time(moment: datetime) -> dict:
@@ -208,16 +295,16 @@ class GoogleSource:
         if not self.can_write:
             raise NotAllowed("only the Bot calendar is ever written to, and only with CALENDAR_WRITE on")
 
-    async def add(self, title: str, start: datetime, end: datetime) -> Event:
+    async def add(self, title: str, start: datetime, end: datetime, location: str = "", description: str = "") -> Event:
         self._writable()
-        body = {"summary": title, "start": {"dateTime": start.isoformat()}, "end": {"dateTime": end.isoformat()}}
+        body = {"summary": title, "start": {"dateTime": start.isoformat()}, "end": {"dateTime": end.isoformat()}, **details(location, description)}
         made = await asyncio.to_thread(_call, "POST", self._path("events"), None, body)
         return to_event(made, self.origin)
 
-    async def add_all_day(self, title: str, first: date, last: date) -> Event:
+    async def add_all_day(self, title: str, first: date, last: date, location: str = "", description: str = "") -> Event:
         """An all-day event from its first local day to its last (the API's end is the day after)."""
         self._writable()
-        body = {"summary": title, "start": {"date": first.isoformat()}, "end": {"date": (last + timedelta(days=1)).isoformat()}}
+        body = {"summary": title, "start": {"date": first.isoformat()}, "end": {"date": (last + timedelta(days=1)).isoformat()}, **details(location, description)}
         made = await asyncio.to_thread(_call, "POST", self._path("events"), None, body)
         return to_event(made, self.origin)
 

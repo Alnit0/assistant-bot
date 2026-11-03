@@ -13,6 +13,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -29,6 +30,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -45,6 +47,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -61,6 +64,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -73,12 +77,14 @@
       "recorded": {
         "kind": "task",
         "tasks": [
-          "pills"
+          "nudges"
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
-      }
+      },
+      "known_miss": "with live's own switches on (3 Nov), the router reads remind me as a reminder's, before the calendar events batch too (three runs of three): in the backlog"
     },
     {
       "message": "move the pills checklist to 7",
@@ -93,6 +99,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     }

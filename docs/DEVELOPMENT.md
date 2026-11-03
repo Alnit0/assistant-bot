@@ -2038,6 +2038,25 @@ with the bot: it is for working on this repository.
 - **To test by hand**: `powershell -File scripts\notify.ps1 -Kind
   finished -Text "hello"`.
 
+## Calendar events
+
+With `CALENDAR_WRITE` and a Bot calendar (`CALENDAR_BOT_ID`), events are added in words, only ever to the Bot
+calendar, each on a card that shows every field it will save on a line of its own:
+
+- "quiz night Friday at 7pm at the community hall, notes: bring the forms": a place and notes, written to the
+  event's own fields in Google Calendar; answers say where ("📍 Community hall")
+- "camping from Friday to Sunday", "12 to 14 November", "3 days from Thursday": one event over the days, all day
+  unless times are said ("Friday 6pm to Sunday 2pm"); each day says "day 2 of 3"
+- "the gym every Tuesday at 4 pm for one hour", "every Monday and Thursday at 7 am", "every second Wednesday
+  until 16 December", "10 times": a real repeating event, with no end unless one is said
+- "cancel the gym next Tuesday" (that one), "move Tuesday's gym to 5 pm" (that one), "stop the weekly gym" or
+  "delete all of them" (from today, past ones kept), "delete the gym completely" (every time): each card says
+  which, and Save's line has Undo
+
+Something to tick off ("stretch every morning") is a personal routine; one that could be either ("yoga every
+Thursday at 6pm") is asked, with Calendar event and Routine. The self-test's start 10 writes to a made-up Bot
+calendar in `data\selftest` and deletes what it made (10.09).
+
 ## Weather
 
 On unless `WEATHER_ENABLED=false`. Set where it is for in `.env`:

@@ -12,7 +12,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from core import clock, config, database, live
+from core import clock, config, database, design, live
 from core import day as days
 from core.actions import Request
 from core.errors import UserError
@@ -216,7 +216,8 @@ def _add(world, said, data):
 def test_adding_is_a_card_with_its_title_day_time_length_and_clashes(world):
     proposal = _add(world, "dentist Friday 2:45pm for an hour", {"title": "dentist", "day": "Friday", "time": "2:45 pm"})
     assert proposal.lines[0] == "**Dentist**"
-    assert proposal.lines[1] == "Fri 6 Nov · `2:45 pm` to `3:45 pm` · 1 hour", "an hour unless said"
+    assert proposal.lines[1:4] == (design.small("Date · Fri 6 Nov"), design.small("Time · `2:45 pm` to `3:45 pm`"), design.small("Length · 1 hour")), "an hour unless said"
+    assert proposal.lines[4:] == (design.small("on the Bot calendar"),), "no location or description said: no line for them"
     assert proposal.warnings == ("Clashes with **Made-up review** · 2:30 pm to 3:30 pm",), "checked against every calendar"
     assert proposal.kind == "new" and not proposal.destructive
 
@@ -244,7 +245,7 @@ def test_no_time_the_card_asks(world):
     """Asked on the card, never in a message of its own: the answer is read against the card
     (live, 21 Oct; tests/test_calendar_all_day.py)."""
     proposal = _add(world, "dentist Friday", {"title": "dentist", "day": "Friday"})
-    assert proposal.question.text == "At what time?" and proposal.lines[1] == "Fri 6 Nov · ❔"
+    assert proposal.question.text == "At what time?" and proposal.lines[1:3] == (design.small("Date · Fri 6 Nov"), design.small("Time · ❔"))
 
 
 # --- moving and deleting --------------------------------------------------------------------------------------------------

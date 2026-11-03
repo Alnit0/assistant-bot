@@ -523,10 +523,17 @@ class Entry:
     # The action that takes a spreadsheet (CSV or XLSX) sent in the home channel, at once and without the
     # router ("gym_import"); empty for none
     home_files: str = ""
+    # What its button says when a message could be this task's or another's (a tie: "Calendar event", "Routine"),
+    # where its title would not do; the title without one
+    choice: str = ""
 
     @property
     def title(self) -> str:
         return self.label or self.name.capitalize()
+
+    @property
+    def choice_label(self) -> str:
+        return self.choice or self.title
 
     def action(self, name: str) -> Action | None:
         return next((action for action in self.actions if action.name == name), None)

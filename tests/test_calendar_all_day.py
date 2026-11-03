@@ -21,6 +21,9 @@ LIVE = "Add an all day event 21 and 22 November, Sam & Jo’s Hen/Stag"
 NO_TIME = "Add an event 21 and 22 November, Sam & Jo’s Hen/Stag"
 TITLE = "Sam & Jo’s Hen/Stag"
 TWO_DAYS = "Sat 21 Nov to Sun 22 Nov · all day · 2 days"
+# The card: each field it will save on a small line of its own (3 Nov)
+TWO_DAYS_LINES = (design.small("Dates · Sat 21 Nov to Sun 22 Nov"), design.small("Time · all day"), design.small("Length · 2 days"))
+ONE_DAY = "Add an event 21 November, Sam & Jo’s Hen/Stag"
 
 
 def said(golden, message):
@@ -33,7 +36,7 @@ def said(golden, message):
 def test_an_all_day_event_over_two_days_is_a_card_then_in_the_bot_calendar(world):
     proposal = _add(world, LIVE, said("w25", LIVE))
     assert proposal.question is None and proposal.kind == "new"
-    assert proposal.lines == (f"**{TITLE}**", TWO_DAYS, design.small("on the Bot calendar")), "the user's own title, curly apostrophe kept"
+    assert proposal.lines == (f"**{TITLE}**", *TWO_DAYS_LINES, design.small("on the Bot calendar")), "the user's own title, curly apostrophe kept"
     done = run(plain.add_save(world.request(), proposal.data))
     assert done == f"🗓️ Added · **{TITLE}** · {TWO_DAYS}"
     (made,) = world.fake.calendars[BOT_ID].values()
@@ -47,38 +50,64 @@ def test_an_all_day_event_over_two_days_is_a_card_then_in_the_bot_calendar(world
 
 def test_one_all_day_said_with_a_weekday(world):
     proposal = _add(world, "hen do Saturday, all day", said("w26", "hen do Saturday, all day"))
-    assert proposal.lines[:2] == ("**Hen do**", "Sat 7 Nov · all day")
+    assert proposal.lines[:3] == ("**Hen do**", design.small("Date · Sat 7 Nov"), design.small("Time · all day")), "one day: no length line"
 
 
-def test_with_no_time_the_card_asks_with_all_day_a_button(world):
+def test_several_days_with_no_time_said_are_all_day_with_no_question(world):
     proposal = _add(world, NO_TIME, {"title": TITLE, "day": "21 November", "last_day": "22 November"})
+    assert proposal.question is None and proposal.lines[1:4] == TWO_DAYS_LINES, "all day unless times are given (3 Nov)"
+
+
+def test_with_no_time_for_one_day_the_card_asks_with_all_day_a_button(world):
+    proposal = _add(world, ONE_DAY, {"title": TITLE, "day": "21 November"})
     assert proposal.question.text == "At what time?" and [each.label for each in proposal.question.choices] == ["All day"]
-    assert proposal.lines[:2] == (f"**{TITLE}**", "Sat 21 Nov to Sun 22 Nov · ❔")
-    pressed = run(plain.add_card(world.request(NO_TIME), proposal.question.choices[0].data, frozenset()))
-    assert pressed.question is None and pressed.lines[1] == TWO_DAYS
+    assert proposal.lines[:3] == (f"**{TITLE}**", design.small("Date · Sat 21 Nov"), design.small("Time · ❔"))
+    pressed = run(plain.add_card(world.request(ONE_DAY), proposal.question.choices[0].data, frozenset()))
+    assert pressed.question is None and pressed.lines[1:3] == (design.small("Date · Sat 21 Nov"), design.small("Time · all day"))
 
 
-@pytest.mark.parametrize("typed", [{"all_day": True}, "recorded"])
-def test_all_day_typed_as_the_answer_is_read_against_the_card(world, typed):
-    asked = _add(world, NO_TIME, {"title": TITLE, "day": "21 November", "last_day": "22 November"})
-    data = said("w27", "All day") if typed == "recorded" else typed
+def test_all_day_typed_as_the_answer_is_read_against_the_card(world):
+    asked = _add(world, ONE_DAY, {"title": TITLE, "day": "21 November"})
     request = Request(world.owner, 100, "All day", previous=asked.data, asked=("time",))
-    answered = run(plain.add_card(request, data, frozenset()))
-    assert answered.question is None and answered.lines[:2] == (f"**{TITLE}**", TWO_DAYS), "what the card had kept, all day now"
+    answered = run(plain.add_card(request, {"all_day": True}, frozenset()))
+    assert answered.question is None and answered.lines[:3] == (f"**{TITLE}**", design.small("Date · Sat 21 Nov"), design.small("Time · all day")), "what the card had kept, all day now"
+
+
+def test_all_day_as_the_real_api_read_it_against_a_card_of_two_days(world):
+    """w27 was recorded against the card of 21 Oct, which asked for a time over two days: All day is both days."""
+    card = next(each["card"]["data"] for each in FIXTURES["extraction"] if each.get("golden") == "w27" and each["message"] == "All day")
+    request = Request(world.owner, 100, "All day", previous=card, asked=("time",))
+    answered = run(plain.add_card(request, said("w27", "All day"), frozenset()))
+    assert answered.question is None and answered.lines[1:4] == TWO_DAYS_LINES
 
 
 def test_a_time_typed_as_the_answer_makes_it_a_timed_event(world):
-    asked = _add(world, NO_TIME, {"title": TITLE, "day": "21 November", "last_day": "22 November"})
+    asked = _add(world, ONE_DAY, {"title": TITLE, "day": "21 November"})
     request = Request(world.owner, 100, "3pm", previous=asked.data, asked=("time",))
-    answered = run(plain.add_card(request, said("w27", "3pm"), frozenset()))
-    assert answered.lines[1] == "Sat 21 Nov · `3:00 pm` to `4:00 pm` · 1 hour"
+    answered = run(plain.add_card(request, {"time": "3:00 pm"}, frozenset()))
+    assert answered.lines[1:4] == (design.small("Date · Sat 21 Nov"), design.small("Time · `3:00 pm` to `4:00 pm`"), design.small("Length · 1 hour"))
+
+
+def test_a_start_time_over_two_days_with_no_end_asks_when_it_ends(world):
+    """w27's "3pm" as the real API read it: from 3 pm on the 21st, and no time on the 22nd. Never made up."""
+    card = next(each["card"]["data"] for each in FIXTURES["extraction"] if each.get("golden") == "w27" and each["message"] == "3pm")
+    request = Request(world.owner, 100, "3pm", previous=card, asked=("time",))
+    with pytest.raises(UserError, match="When does it end on Sun 22 Nov"):
+        run(plain.add_card(request, said("w27", "3pm"), frozenset()))
 
 
 def test_days_that_cannot_be_an_all_day_event_are_said(world):
     with pytest.raises(UserError, match="more than 31 days"):
         _add(world, "party 22 November to 21 November all day", {"title": "party", "day": "22 November", "last_day": "21 November", "all_day": True})
-    with pytest.raises(UserError, match="repeating all-day"):
-        _add(world, "party every Saturday all day", {"title": "party", "day": "Saturday", "repeat": "weekly", "all_day": True})
+
+
+def test_a_repeating_all_day_event_is_never_refused(world):
+    """ "Never refuse a recurring event" (3 Nov): every Saturday, all day, is a real all-day recurrence."""
+    proposal = _add(world, "market day every Saturday all day", {"title": "market day", "day": "Saturday", "repeat": "days", "weekdays": ["sat"], "all_day": True})
+    assert proposal.lines[1:4] == (design.small("Starts · Sat 7 Nov"), design.small("Time · all day"), design.small("Repeat · every Sat · no end"))
+    run(plain.add_save(world.request(), proposal.data))
+    (made,) = world.fake.calendars[BOT_ID].values()
+    assert made["start"] == {"date": "2026-11-07"} and made["end"] == {"date": "2026-11-08"} and made["recurrence"] == ["RRULE:FREQ=WEEKLY;BYDAY=SA"]
 
 
 def test_a_curly_apostrophe_typed_is_the_straight_one_handed_back():

@@ -52,7 +52,8 @@ ONLY_FOR_WITH_CALENDAR = (
     "minutes to check the oven\", \"every Monday at 9am put the bins out\" (a thing to do at a time, again and again), "
     "moving one (\"move that to 6\"), removing one, ticking off one that went off (\"done\" straight after it), and "
     "seeing them. Also things that expire or must be renewed on a day, with nudges before it: \"Kiwa domain expires 3 March, yearly\", \"passport expires June 2031\", \"rego due 14 Nov, every year\", \"renewed the Kiwa domain\", \"what's expiring soon?\". A thing to do with no day it expires on (\"renew the passport\") is a to-do. An appointment or a plan said with a day and a time and no \"remind me\" (\"dentist Friday 3pm\") "
-    "is an event for the calendar task. Not pills or their reminders (that is the pills task), not a thing to do with "
+    "is an event for the calendar task, and so is one that repeats and names an event, the calendar, a booking or a length "
+    "(\"the gym every Tuesday at 4 pm for one hour\"). Not pills or their reminders (that is the pills task), not a thing to do with "
     "no time that the user does not ask to be reminded of (the to-dos task), and not when the bot posts its own "
     "things (the schedule task)."
 )

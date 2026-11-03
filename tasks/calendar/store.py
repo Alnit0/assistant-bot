@@ -6,7 +6,7 @@ from tasks.calendar.rules import Event
 
 # ---------------------------------------------------------------------------
 # The copy of the calendar: each happening from this week's Monday (or yesterday, on a Monday) to two months
-# ahead (a title and its times, nothing more), replaced whole on every good
+# ahead (a title, its times and its location, nothing more), replaced whole on every good
 # read, and when the feed was last read and since when it has failed. Every
 # row has a user_id.
 # ---------------------------------------------------------------------------
@@ -72,7 +72,12 @@ def add_series(conn: sqlite3.Connection) -> None:
     conn.execute("ALTER TABLE calendar_changes ADD COLUMN detail TEXT")
 
 
-MIGRATIONS = [create_tables, add_origins, add_series]
+def add_location(conn: sqlite3.Connection) -> None:
+    """Where an event is (its location, as the calendar has it), for the answers: "" for none."""
+    conn.execute("ALTER TABLE calendar_events ADD COLUMN location TEXT NOT NULL DEFAULT ''")
+
+
+MIGRATIONS = [create_tables, add_origins, add_series, add_location]
 ADDED, MOVED, DELETED = "added", "moved", "deleted"
 # A repeating event: one happening cancelled, the series changed (its times, its end, split in two), or the
 # whole series deleted (undo makes it again from what `detail` kept)
@@ -88,16 +93,16 @@ def _day(text: str | None) -> date | None:
 
 
 def db_events(conn: sqlite3.Connection, user_id: int) -> list[Event]:
-    rows = conn.execute("SELECT key, title, start_at, end_at, first_day, last_day, origin, ref, series FROM calendar_events WHERE user_id = ? ORDER BY id", (user_id,)).fetchall()
-    return [Event(key, title, _when(start), _when(end), _day(first), _day(last), origin, ref, series) for key, title, start, end, first, last, origin, ref, series in rows]
+    rows = conn.execute("SELECT key, title, start_at, end_at, first_day, last_day, origin, ref, series, location FROM calendar_events WHERE user_id = ? ORDER BY id", (user_id,)).fetchall()
+    return [Event(key, title, _when(start), _when(end), _day(first), _day(last), origin, ref, series, location) for key, title, start, end, first, last, origin, ref, series, location in rows]
 
 
 def _row(user_id: int, each: Event) -> tuple:
     return (user_id, each.key, each.title, each.start.isoformat() if each.start else None, each.end.isoformat() if each.end else None,
-            each.first_day.isoformat() if each.first_day else None, each.last_day.isoformat() if each.last_day else None, each.origin, each.ref, each.series)
+            each.first_day.isoformat() if each.first_day else None, each.last_day.isoformat() if each.last_day else None, each.origin, each.ref, each.series, each.location)
 
 
-_INSERT = "INSERT INTO calendar_events (user_id, key, title, start_at, end_at, first_day, last_day, origin, ref, series) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+_INSERT = "INSERT INTO calendar_events (user_id, key, title, start_at, end_at, first_day, last_day, origin, ref, series, location) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
 
 def db_keep_from(conn: sqlite3.Connection, user_id: int, origin: str, events: list[Event]) -> None:

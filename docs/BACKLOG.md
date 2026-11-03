@@ -13,6 +13,15 @@ low priority, nothing dropped without a reason.
 
 ### Next
 
+- **"work starts at 8:30 from next week" can go to plan my day** (eval w18, 3 Nov, with live's switches on): the
+  router reads a new start time from next week as a plan. It did before the calendar events batch too. A golden
+  conversation for it, next time understanding is worked on (known miss in `calendar_write.json`).
+- **"remind me to take my zinc at 8pm" goes to reminders, not pills** (eval trap in `nudges.json`, 3 Nov, with live's
+  switches): three runs of three, before the calendar events batch too; "remind me" leads to reminders by code since
+  15 Oct, so which is right is a question as much as a fix (known miss).
+- **Moving a repeating all-day event in words** is still said not to be possible (calendar events, 3 Nov): cancel a
+  day of it, or stop it and add it again.
+
 - **"that was dose 2" after a cancelled card read as nothing to answer** (self-test 1.17b on a real request,
   3 Nov, Pill Skip batch): the router said no reply was needed, so the message got none. Routing was not changed
   in that batch; on recorded answers the step passes. A golden conversation for it, and the router's rules, next

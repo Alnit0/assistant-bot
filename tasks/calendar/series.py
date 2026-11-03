@@ -67,10 +67,16 @@ def _rule_of(master: dict) -> str:
     return next((each for each in master.get("recurrence") or [] if each.startswith("RRULE:")), "")
 
 
+def _first_day(master: dict) -> date:
+    """A series' first local day: its start's day, or an all-day one's date."""
+    start = master["start"]
+    return date.fromisoformat(start["date"]) if "date" in start and "dateTime" not in start else days.day_of(_api_moment(start))
+
+
 def repeat_of(master: dict) -> recurrence.Repeat:
     """A series' repeat, from its RRULE: its first day, and its end day in local time."""
     line = _rule_of(master)
-    first = days.day_of(_api_moment(master["start"]))
+    first = _first_day(master)
     until = None
     for part in line.removeprefix("RRULE:").split(";"):
         if part.startswith("UNTIL="):
@@ -85,8 +91,16 @@ def ended(repeat: recurrence.Repeat, last: date | None) -> recurrence.Repeat:
     return replace(repeat, until=last, times=None)
 
 
-def rule_line(repeat: recurrence.Repeat) -> str:
-    return recurrence.rrule(repeat, _end_of(repeat.until) if repeat.until is not None else None)
+def rule_line(repeat: recurrence.Repeat, all_day: bool = False) -> str:
+    """The RRULE line; an all-day series' UNTIL is its last day as a date (its days have no time)."""
+    line = recurrence.rrule(repeat, _end_of(repeat.until) if repeat.until is not None else None)
+    if all_day and repeat.until is not None and repeat.times is None:
+        line = line.replace(f"UNTIL={_end_of(repeat.until):%Y%m%dT%H%M%SZ}", f"UNTIL={repeat.until:%Y%m%d}")
+    return line
+
+
+def _all_day(master: dict) -> bool:
+    return "date" in (master.get("start") or {}) and "dateTime" not in (master.get("start") or {})
 
 
 def _end_words(repeat: recurrence.Repeat) -> str:
@@ -113,34 +127,74 @@ def said_repeat(data: dict, first: date, until: date | None) -> recurrence.Repea
     return recurrence.with_end(made, data, first, until)
 
 
-def add_card(title: str, repeat: recurrence.Repeat, at: time, minutes: int, today: date, now: datetime, warnings: list[str]) -> Proposal:
-    """The card for a new series: the pattern and the time, the start date, the next three dates, and its end."""
+def _started(repeat: recurrence.Repeat, first: date) -> recurrence.Repeat:
+    """The repeat from its first day to come; one gone by already today is not made: a number of times goes on
+    from the first to come."""
+    started = replace(repeat, first=first)
+    if repeat.times is not None and repeat.first is not None and first > repeat.first:
+        started = replace(started, times=max(1, repeat.times - len([day for day in recurrence.dates(repeat, repeat.first, repeat.times) if day < first])))
+    return started
+
+
+def _repeat_words(repeat: recurrence.Repeat, today: date) -> str:
+    """ "every Tue · no end", "every 2 weeks on Wed · until Fri 25 Dec", "every Mon and Thu · 6 times"."""
+    return f"{_pattern(repeat, today)} · {_end_words(repeat)}"
+
+
+def add_card(title: str, repeat: recurrence.Repeat, at: time, minutes: int, today: date, now: datetime, warnings: list[str], location: str = "", description: str = "") -> Proposal:
+    """The card for a new series: every field it will save on a line of its own (its first day, the time, the
+    length, where, the description, how often and its end), then the next three dates."""
     coming = [day for day in recurrence.dates(repeat, repeat.first, SHOWN_NEXT + 1) if days.at(day, at) > now][:SHOWN_NEXT]
     if not coming:
         raise UserError(f"{ICON} That never comes round: every one of them has gone by.")
     first = coming[0]
     start = days.at(first, at)
     end = start + timedelta(minutes=minutes)
-    started = replace(repeat, first=first)
-    if repeat.times is not None and repeat.first is not None and first > repeat.first:
-        # One gone by already today is not made: the count goes on from the first to come
-        started = replace(started, times=max(1, repeat.times - len([day for day in recurrence.dates(repeat, repeat.first, repeat.times) if day < first])))
+    started = _started(repeat, first)
+    lines = rules.field_lines([
+        ("Starts", _short(first)), ("Time", rules.times_text(start, end, today)), ("Length", rules.length_text(minutes)),
+        ("Location", location), ("Description", description), ("Repeat", _repeat_words(started, today)),
+    ])
     return Proposal(
-        lines=(
-            f"**{title}**",
-            f"{_upper(_pattern(started, today))} · {_times(start, end)}",
-            f"From {_short(first)} · {_end_words(started)}",
-            design.small("Next: " + ", ".join(_short(day) for day in coming)),
-            design.small("on the Bot calendar"),
-        ),
-        data={"title": title, "start": start.isoformat(), "end": end.isoformat(), "rrule": rule_line(started), "pattern": _pattern(started, today)},
+        lines=(f"**{title}**", *lines, design.small("Next: " + ", ".join(_short(day) for day in coming)), design.small("on the Bot calendar")),
+        data={"title": title, "start": start.isoformat(), "end": end.isoformat(), "rrule": rule_line(started), "pattern": _pattern(started, today),
+              "location": location, "description": description},
         warnings=tuple(warnings), kind="new",
     )
 
 
+def add_all_day_card(title: str, repeat: recurrence.Repeat, length: int, today: date, location: str = "", description: str = "") -> Proposal:
+    """A new all-day series ("every Saturday, all day"): its first day, all day, its length in days, where, the
+    description, how often and its end, then the next three dates."""
+    coming = [day for day in recurrence.dates(repeat, repeat.first, SHOWN_NEXT + 1) if day >= today][:SHOWN_NEXT]
+    if not coming:
+        raise UserError(f"{ICON} That never comes round: every one of them has gone by.")
+    first = coming[0]
+    started = _started(repeat, first)
+    lines = rules.field_lines([
+        ("Starts", _short(first)), ("Time", "all day"), ("Length", f"{length} days" if length > 1 else ""),
+        ("Location", location), ("Description", description), ("Repeat", _repeat_words(started, today)),
+    ])
+    return Proposal(
+        lines=(f"**{title}**", *lines, design.small("Next: " + ", ".join(_short(day) for day in coming)), design.small("on the Bot calendar")),
+        data={"title": title, "all_day": True, "first": first.isoformat(), "last": (first + timedelta(days=length - 1)).isoformat(),
+              "rrule": rule_line(started, all_day=True), "pattern": _pattern(started, today), "location": location, "description": description},
+        kind="new",
+    )
+
+
 async def add_save(request: Request, data: dict, writer) -> str:
+    from tasks.calendar.google import details
+
+    more = details(str(data.get("location") or ""), str(data.get("description") or ""))
+    if data.get("all_day"):
+        first, last = date.fromisoformat(data["first"]), date.fromisoformat(data["last"])
+        made = await writer.insert({"summary": data["title"], "start": {"date": first.isoformat()}, "end": {"date": (last + timedelta(days=1)).isoformat()}, "recurrence": [data["rrule"]], **more})
+        await database.run(store.db_change, request.user.id, store.ADDED, made["id"], data["title"], (None, None), (None, None), clock.now())
+        await refresh(request.user.id, writer)
+        return f"{ICON} Added · **{data['title']}** · {data['pattern']} · all day, from {_short(first)}"
     start, end = datetime.fromisoformat(data["start"]), datetime.fromisoformat(data["end"])
-    made = await writer.insert({"summary": data["title"], "start": local_time(start), "end": local_time(end), "recurrence": [data["rrule"]]})
+    made = await writer.insert({"summary": data["title"], "start": local_time(start), "end": local_time(end), "recurrence": [data["rrule"]], **more})
     await database.run(store.db_change, request.user.id, store.ADDED, made["id"], data["title"], (None, None), (start, end), clock.now())
     await refresh(request.user.id, writer)
     return f"{ICON} Added · **{data['title']}** · {data['pattern']} · {_times(start, end)}, from {_short(days.day_of(start))}"
@@ -163,7 +217,7 @@ def cut_day(data: dict, event: rules.Event) -> date:
     """Where a change from a day on starts: the day said ("from 1 November"), else the happening's own."""
     from tasks.calendar import plain
 
-    return plain.read_day(data["day"], days.today()) if data.get("day") else days.day_of(event.start)
+    return plain.read_day(data["day"], days.today()) if data.get("day") else _day_of(event)
 
 
 def _new_times(data: dict, event: rules.Event, day: date) -> tuple[datetime, datetime]:
@@ -201,7 +255,7 @@ async def move_card(request: Request, data: dict, event: rules.Event, writer) ->
         return Proposal(lines=(f"**{event.title}**", design.change(rules.span_text(event.start, event.end, today), rules.span_text(start, end, today))), data=data, kind="change", question=_ask(data, day, today))
     if scope == ONE:
         return Proposal(
-            lines=(f"**{event.title}**", design.change(rules.span_text(event.start, event.end, today), rules.span_text(start, end, today)), design.small("just this day: the rest as they are")),
+            lines=(f"**{event.title}**", design.change(rules.span_text(event.start, event.end, today), rules.span_text(start, end, today)), design.small(ONE_ONLY)),
             data={"op": ONE, "ref": event.ref, "title": event.title, "was": [event.start.isoformat(), event.end.isoformat()], "start": start.isoformat(), "end": end.isoformat()}, kind="change",
         )
     master = await writer.raw(event.series)
@@ -222,11 +276,11 @@ async def move_card(request: Request, data: dict, event: rules.Event, writer) ->
     if whole:
         new_start = days.at(days.day_of(first_start), days.local_time(start))
         return Proposal(
-            lines=(f"**{event.title}**", f"Every time · {design.change(was, now_times)}", design.small(_pattern(repeat, today))),
+            lines=(f"**{event.title}**", f"Every time · {design.change(was, now_times)}", design.small(f"The whole series · {_pattern(repeat, today)}")),
             data={**common, "op": ALL, "start": new_start.isoformat(), "end": (new_start + (end - start)).isoformat()}, kind="change",
         )
     return Proposal(
-        lines=(f"**{event.title}**", f"From {_short(day)} · {design.change(was, now_times)}", design.small("before then: as it was")),
+        lines=(f"**{event.title}**", f"From {_short(day)} · {design.change(was, now_times)}", design.small("The whole series from then on; before then as it was")),
         data={**common, "op": FOLLOWING, "from": day.isoformat(), "start": start.isoformat(), "end": end.isoformat()}, kind="change",
     )
 
@@ -279,7 +333,7 @@ async def series_save(request: Request, data: dict, writer) -> str:
         said = f"{ICON} Changed · **{data['title']}** · from {_short(day)} {_times(start, end)}; before then as it was"
     else:  # stop: the series ends the day before
         last = date.fromisoformat(data["last"])
-        await writer.patch(data["series"], {"recurrence": [rule_line(ended(repeat, last))]})
+        await writer.patch(data["series"], {"recurrence": [rule_line(ended(repeat, last), all_day=_all_day(master))]})
         said = f"{ICON} Ended · **{data['title']}** · the last one {_short(last)}; past ones kept"
     await database.run(store.db_change, request.user.id, store.SERIES_CHANGED, data["series"], data["title"], (None, None), (None, None), clock.now(), {"before": data["before"], "made": made})
     await refresh(request.user.id, writer)
@@ -296,17 +350,31 @@ async def series_check(request: Request, data: dict, writer) -> str:
 
 
 # --- cancel and stop ----------------------------------------------------------------------------------------------
+ONE_ONLY = "One occurrence only: the rest stay as they are"
+
+
+def _when_of(event: rules.Event, today: date) -> str:
+    """A happening's day and times ("Tue 10 Nov · `4:00 pm` to `5:00 pm` · 1 hour"), or its days, all day."""
+    return rules.days_text(event.first_day, event.last_day, today) if event.all_day else rules.span_text(event.start, event.end, today)
+
+
+def _day_of(event: rules.Event) -> date:
+    return event.first_day if event.all_day else days.day_of(event.start)
+
+
 async def cancel_card(request: Request, data: dict, event: rules.Event, writer) -> Proposal:
-    """ "cancel work next Tuesday": that happening; "stop work", "cancel work from November": the series ends."""
+    """ "cancel the gym next Tuesday": that one occurrence; "stop the gym", "delete all of them", "cancel the gym
+    from November": the whole series ends there, past ones kept. Either card says which it is."""
     today = days.today()
-    day = days.day_of(event.start)
+    day = _day_of(event)
     scope = scope_of(data)
     if not scope:
-        return Proposal(lines=(f"**{event.title}** · {rules.span_text(event.start, event.end, today)}",), data=data, kind="change", question=_ask(data, day, today))
+        return Proposal(lines=(f"**{event.title}** · {_when_of(event, today)}",), data=data, kind="change", question=_ask(data, day, today))
     if scope == ONE:
         return Proposal(
-            lines=(f"**{event.title}** · {rules.span_text(event.start, event.end, today)} · cancelled", design.small("just this day: the rest as they are")),
-            data={"op": "cancel_one", "ref": event.ref, "title": event.title, "was": [event.start.isoformat(), event.end.isoformat()]}, kind="change",
+            lines=(f"**{event.title}** · {_when_of(event, today)} · cancelled", design.small(ONE_ONLY)),
+            data={"op": "cancel_one", "ref": event.ref, "title": event.title, "day": day.isoformat(),
+                  "was": [event.start.isoformat(), event.end.isoformat()] if not event.all_day else [None, None]}, kind="change",
         )
     master = await writer.raw(event.series)
     if master is None:
@@ -315,10 +383,13 @@ async def cancel_card(request: Request, data: dict, event: rules.Event, writer) 
     since = cut_day(data, event) if scope == FOLLOWING else today
     last = last_before(repeat, since)
     if last is None:
-        raise UserError(f"{ICON} That would end **{event.title}** before its first one: say delete {event.title.lower()} to remove it.")
+        if not data.get("from_delete"):
+            raise UserError(f"{ICON} That would end **{event.title}** before its first one: say delete {event.title.lower()} completely to remove it.")
+        return await delete_card(event, writer)  # none has come round yet: ending it from today is deleting it
     return Proposal(
-        lines=(f"**{event.title}** · {_pattern(repeat, today)}", f"Ends · the last one {_short(last)}", design.small(f"none from {_short(since)}; past ones kept")),
-        data={"op": "stop", "series": event.series, "title": event.title, "last": last.isoformat(), "before": {"start": master["start"], "end": master["end"], "recurrence": master.get("recurrence") or []}},
+        lines=(f"**{event.title}** · {_pattern(repeat, today)}", f"Ends · the last one {_short(last)}", design.small(f"The whole series: none from {_short(since)}; past ones kept")),
+        data={"op": "stop", "series": event.series, "title": event.title, "last": last.isoformat(), "all_day": _all_day(master),
+              "before": {"start": master["start"], "end": master["end"], "recurrence": master.get("recurrence") or []}},
         kind="change",
     )
 
@@ -326,9 +397,11 @@ async def cancel_card(request: Request, data: dict, event: rules.Event, writer) 
 async def cancel_save(request: Request, data: dict, writer) -> str:
     if data["op"] == "cancel_one":
         await writer.patch(data["ref"], {"status": "cancelled"})
-        await database.run(store.db_change, request.user.id, store.CANCELLED_ONE, data["ref"], data["title"], tuple(datetime.fromisoformat(each) for each in data["was"]), (None, None), clock.now())
+        was = tuple(datetime.fromisoformat(each) if each else None for each in data["was"])
+        await database.run(store.db_change, request.user.id, store.CANCELLED_ONE, data["ref"], data["title"], was, (None, None), clock.now())
         await refresh(request.user.id, writer)
-        return f"{ICON} Cancelled · **{data['title']}** · {_short(days.day_of(datetime.fromisoformat(data['was'][0])))}; the rest as they are"
+        day = date.fromisoformat(data["day"]) if data.get("day") else days.day_of(was[0])
+        return f"{ICON} Cancelled · **{data['title']}** · {_short(day)}; the rest as they are"
     return await series_save(request, data, writer)
 
 
@@ -346,7 +419,7 @@ async def delete_card(event: rules.Event, writer) -> Proposal:
         raise UserError(f"{ICON} **{event.title}** isn't in the Bot calendar any more.")
     today = days.today()
     return Proposal(
-        lines=(f"**{event.title}** · {_pattern(repeat_of(master), today)}", design.small("every time, past ones too")),
+        lines=(f"**{event.title}** · {_pattern(repeat_of(master), today)}", design.small("The whole series: every time, past ones too")),
         data={"op": "series_delete", "series": event.series, "title": event.title},
         kind="remove", destructive=True, confirm_label="Delete",
     )

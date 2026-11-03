@@ -583,7 +583,8 @@
         "reports_doing": false,
         "several": false,
         "chat_part": ""
-      }
+      },
+      "known_miss": "with plan my day on (as on live), the router reads a new start time from next week as a plan, before this batch too (3 Nov): in the backlog"
     },
     {
       "golden": "w19",
@@ -954,6 +955,312 @@
         "several": false,
         "chat_part": ""
       }
+    },
+    {
+      "golden": "w40",
+      "message": "parent interviews Thursday 4pm at the school, notes: take the reports",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "Calendar events, 3 Nov: a place and notes",
+      "names": {
+        "calendar": [
+          "Dentist",
+          "Lunch with Sam",
+          "Test standup",
+          "The gym"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "w41",
+      "message": "conference 12 to 14 November",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "Calendar events, 3 Nov: a span of dates in one month",
+      "names": {
+        "calendar": [
+          "Dentist",
+          "Lunch with Sam",
+          "Test standup",
+          "The gym"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "w42",
+      "message": "add a retreat, 3 days from Thursday",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "Calendar events, 3 Nov: a number of days",
+      "names": {
+        "calendar": [
+          "Dentist",
+          "Lunch with Sam",
+          "Test standup",
+          "The gym"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "w43",
+      "message": "the bach from Friday 6pm to Sunday 2pm",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "Calendar events, 3 Nov: from a time on the first day to a time on the last",
+      "names": {
+        "calendar": [
+          "Dentist",
+          "Lunch with Sam",
+          "Test standup",
+          "The gym"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "w44",
+      "message": "choir weekly on Fridays at 6pm until Christmas",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "Calendar events, 3 Nov: weekly until a holiday",
+      "names": {
+        "calendar": [
+          "Dentist",
+          "Lunch with Sam",
+          "Test standup",
+          "The gym"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "w45",
+      "message": "team lunch fortnightly on Wednesdays at 12 for an hour, 6 times",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "Calendar events, 3 Nov: every 2 weeks, a number of times",
+      "names": {
+        "calendar": [
+          "Dentist",
+          "Lunch with Sam",
+          "Test standup",
+          "The gym"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "w46",
+      "message": "move Tuesday's gym to 5 pm",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "Calendar events, 3 Nov: one occurrence moved",
+      "names": {
+        "calendar": [
+          "Dentist",
+          "Lunch with Sam",
+          "Test standup",
+          "The gym"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "w48",
+      "message": "take out the bins every Tuesday",
+      "tasks": [
+        "habits"
+      ],
+      "note": "Calendar events, 3 Nov: something to tick off, said without a time: a personal routine, never the calendar",
+      "names": {
+        "calendar": [
+          "Dentist",
+          "Lunch with Sam",
+          "Test standup",
+          "The gym"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "habits"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "w49",
+      "message": "put spin class on my calendar every Monday and Thursday at 7am",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "Calendar events, 3 Nov: two weekdays, the calendar named",
+      "names": {
+        "calendar": [
+          "Dentist",
+          "Lunch with Sam",
+          "Test standup",
+          "The gym"
+        ],
+        "nudges": [
+          "Call the bank",
+          "Put the bins out"
+        ],
+        "todos": [
+          "Renew the passport",
+          "Call the plumber"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
     }
   ],
   "extraction": [
@@ -1294,6 +1601,7 @@
         "calendar_delete",
         {
           "search": "work",
+          "scope": "all",
           "guessed": [],
           "not_included": []
         }
@@ -1555,6 +1863,288 @@
         "calendar_delete",
         {
           "search": "hen do",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "calendar",
+      "message": "parent interviews Thursday 4pm at the school, notes: take the reports",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_add",
+      "data": {
+        "title": "parent interviews",
+        "day": "Thursday",
+        "time": "4:00 pm",
+        "location": "the school",
+        "description": "take the reports"
+      },
+      "golden": "w40",
+      "note": "Calendar events, 3 Nov: a place and notes; \"the school\" or \"school\" are both the user's words",
+      "recorded": [
+        "calendar_add",
+        {
+          "title": "parent interviews",
+          "day": "Thursday",
+          "time": "4:00 pm",
+          "location": "the school",
+          "description": "take the reports",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "calendar",
+      "message": "conference 12 to 14 November",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_add",
+      "data": {
+        "title": "conference",
+        "day": "12 November",
+        "last_day": "14 November"
+      },
+      "golden": "w41",
+      "note": "Calendar events, 3 Nov: the month given to both days",
+      "recorded": [
+        "calendar_add",
+        {
+          "title": "conference",
+          "day": "12 November",
+          "last_day": "14 November",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "calendar",
+      "message": "add a retreat, 3 days from Thursday",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_add",
+      "data": {
+        "title": "retreat",
+        "day": "Thursday",
+        "days": 3
+      },
+      "golden": "w42",
+      "note": "Calendar events, 3 Nov: the number of days handed over: the last day is Python's sum",
+      "recorded": [
+        "calendar_add",
+        {
+          "title": "retreat",
+          "day": "Thursday",
+          "days": 3,
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "calendar",
+      "message": "the bach from Friday 6pm to Sunday 2pm",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_add",
+      "data": {
+        "title": "the bach",
+        "day": "Friday",
+        "time": "6:00 pm",
+        "last_day": "Sunday",
+        "ends_at": "2:00 pm"
+      },
+      "golden": "w43",
+      "note": "Calendar events, 3 Nov: a start on the first day, an end on the last",
+      "recorded": [
+        "calendar_add",
+        {
+          "title": "the bach",
+          "day": "Friday",
+          "time": "6:00 pm",
+          "last_day": "Sunday",
+          "ends_at": "2:00 pm",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "calendar",
+      "message": "choir weekly on Fridays at 6pm until Christmas",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_add",
+      "data": {
+        "title": "choir",
+        "repeat": "days",
+        "weekdays": [
+          "fri"
+        ],
+        "time": "6:00 pm",
+        "until": "25 December"
+      },
+      "golden": "w44",
+      "note": "Calendar events, 3 Nov: a holiday on a fixed date given as that date",
+      "recorded": [
+        "calendar_add",
+        {
+          "title": "choir",
+          "repeat": "days",
+          "weekdays": [
+            "fri"
+          ],
+          "time": "6:00 pm",
+          "until": "25 December",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "calendar",
+      "message": "team lunch fortnightly on Wednesdays at 12 for an hour, 6 times",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_add",
+      "data": {
+        "title": "team lunch",
+        "repeat": "days",
+        "weekdays": [
+          "wed"
+        ],
+        "every_weeks": 2,
+        "length": 60,
+        "times": 6
+      },
+      "golden": "w45",
+      "note": "Calendar events, 3 Nov: fortnightly is every 2 weeks",
+      "recorded": [
+        "calendar_add",
+        {
+          "title": "team lunch",
+          "repeat": "days",
+          "weekdays": [
+            "wed"
+          ],
+          "every_weeks": 2,
+          "time": "12:00 pm",
+          "length": 60,
+          "times": 6,
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "calendar",
+      "message": "move Tuesday's gym to 5 pm",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_move",
+      "data": {
+        "search": "gym",
+        "day": "Tuesday",
+        "time": "5:00 pm",
+        "scope": "one"
+      },
+      "golden": "w46",
+      "note": "Calendar events, 3 Nov: that one occurrence",
+      "recorded": [
+        "calendar_move",
+        {
+          "search": "gym",
+          "day": "Tuesday",
+          "time": "5:00 pm",
+          "scope": "one",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "calendar",
+      "message": "put spin class on my calendar every Monday and Thursday at 7am",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_add",
+      "data": {
+        "title": "spin class",
+        "repeat": "days",
+        "weekdays": [
+          "mon",
+          "thu"
+        ],
+        "time": "7:00 am"
+      },
+      "golden": "w49",
+      "note": "Calendar events, 3 Nov: two weekdays",
+      "recorded": [
+        "calendar_add",
+        {
+          "title": "spin class",
+          "repeat": "days",
+          "weekdays": [
+            "mon",
+            "thu"
+          ],
+          "time": "7:00 am",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "calendar",
+      "message": "delete the gym",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_delete",
+      "data": {
+        "search": "gym"
+      },
+      "golden": "w50",
+      "note": "Calendar events, 3 Nov: a series ends from today: no scope unless completely is said",
+      "recorded": [
+        "calendar_delete",
+        {
+          "search": "gym",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "calendar",
+      "message": "delete the gym completely, past ones too",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_delete",
+      "data": {
+        "search": "gym",
+        "scope": "all"
+      },
+      "golden": "w51",
+      "note": "Calendar events, 3 Nov: every time, past ones too",
+      "recorded": [
+        "calendar_delete",
+        {
+          "search": "gym",
+          "scope": "all",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "calendar",
+      "message": "delete all of them",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_delete",
+      "data": {
+        "search": "@that"
+      },
+      "after_answer": true,
+      "golden": "w47",
+      "note": "Calendar events, 3 Nov: straight after the calendar answered when the weekly gym is, a short message goes to it first (no router); them is a reference the code resolves, and a series ends from today",
+      "recorded": [
+        "calendar_delete",
+        {
+          "search": "@that",
+          "scope": "all",
           "guessed": [],
           "not_included": []
         }

@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta
 
 from core import clock, config, database, design, recurrence, timeinput
 from core import day as days
-from core.actions import BOOLEAN, TIME, Choice, Field, Proposal, Question, Request, Shown, State
+from core.actions import BOOLEAN, TIME, Choice, Field, Proposal, Question, Request, Shown, State, is_reference
 from core.errors import UserError
 from tasks.calendar import rules, series, source, store
 from tasks.calendar.rules import ICON, NEXT_WEEK, SPANS, WEEK
@@ -96,10 +96,20 @@ async def _week_view(request: Request, span: str, data: dict, today) -> Shown:
         layout = weekview.this_week(found, today) if span == WEEK else weekview.next_week(found, today)
         card = Card(weekview.text(found, today, title), (), layout)
     else:
-        (found,) = await weekview.gather(request.user.id, [read_day(data.get("day"), today)], only=rules.TASK)
+        day = read_day(data.get("day"), today)
+        (found,) = await weekview.gather(request.user.id, [day], only=rules.TASK)
+        found = _with_places(found)
         card = Card(weekview.short_line(found, today), (), weekview.one_day(found, today))
     message_id = await cards.send(request.channel_id, card)
     return Shown(card.text if message_id is not None else "not shown")
+
+
+def _with_places(found):
+    """A day asked about (the week view's one box): each event that has a location says it after its name,
+    as the answers do ("📍 Community hall"). The box is the same; only the words of its lines grow."""
+    from dataclasses import replace
+
+    return replace(found, notable=tuple(replace(each, text=f"{each.text} · {each.place}") if each.place else each for each in found.notable))
 
 
 async def when(request: Request, data: dict, guessed: frozenset) -> str:
@@ -107,7 +117,9 @@ async def when(request: Request, data: dict, guessed: frozenset) -> str:
     words = str(data.get("search") or "").strip()
     if not words:
         raise UserError("When is what?")
-    return rules.when_answer(rules.next_matching(await store.events(request.user.id), words, clock.now()), days.today())
+    found = rules.next_matching(await store.events(request.user.id), words, clock.now())
+    remember(request.user.id, found.title)
+    return rules.when_answer(found, days.today())
 
 
 async def free(request: Request, data: dict, guessed: frozenset) -> str:
@@ -216,38 +228,110 @@ def _moment(text):
     return datetime.fromisoformat(text) if text else None
 
 
+REPEAT_KEYS = ("repeat", "weekdays", "every_days", "month_day", "nth", "weekday", "every_weeks", "until", "times")
+WHERE = "on the Bot calendar"
+
+
+def _own(said, request: Request, previous: dict, key: str) -> str:
+    """A location or a description as the user said it: the words extraction gave as they stand in the message
+    (its casing; rules.title_from), else as given; kept from the card it answers when nothing new was said."""
+    words = " ".join(str(said or "").split())
+    if not words:
+        return str(previous.get(key) or "")
+    found = rules.title_from(words, request.text)
+    return found or words[:1].upper() + words[1:]
+
+
+def _said(request: Request, data: dict, title: str) -> dict:
+    """What a new event's card keeps, so a typed or pressed answer to its question loses nothing said before."""
+    previous = request.previous or {}
+    kept = {"title": title}
+    for key in ("day", "last_day", "days", "time", "ends_at", "length", *REPEAT_KEYS):
+        value = data.get(key) if data.get(key) not in (None, "", []) else previous.get(key)
+        if value not in (None, "", []):
+            kept[key] = value
+    kept["location"] = _own(data.get("location"), request, previous, "location")
+    kept["description"] = _own(data.get("description"), request, previous, "description")
+    return kept
+
+
+def _repeats(said: dict) -> bool:
+    return bool((said.get("repeat") and said.get("repeat") != recurrence.ONCE) or said.get("weekdays"))
+
+
+def _until(said: dict, today):
+    """The last day of a repeat as said ("until 25 December"), or None. A month alone ("until December") is
+    asked on the card: its first day or its last."""
+    if not said.get("until"):
+        return None, None
+    try:
+        return timeinput.parse_date(str(said["until"]), today), None
+    except Exception:
+        pass
+    try:
+        month = timeinput.parse_month(str(said["until"]), today)
+    except Exception:
+        raise UserError(f"“{said['until']}” is not a day I can read.")
+    last = (month.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+    first_said, last_said = f"{month.day} {month:%B}", f"{last.day} {last:%B}"
+    question = Question(
+        f"Until which day in {month:%B}?",
+        (Choice(f"Until {month.day} {month:%b}", {**said, "until": first_said}, ("until",)), Choice(f"Until {last.day} {last:%b}", {**said, "until": last_said}, ("until",))),
+    )
+    return None, question
+
+
 async def add_card(request: Request, data: dict, guessed: frozenset) -> Proposal:
-    """ "dentist Friday 3pm for an hour": a card with the title, the day, the time and the length,
-    and what it clashes with in every calendar. "All day event 21 and 22 November, the hen do": an
-    all-day one. With no time said, the card asks for one, with All day a button; a typed answer
-    ("All day", "3pm") is read against the card, what it asked kept (`request.previous`)."""
+    """ "dentist Friday 3pm for an hour at the community hall": a card with every field it will save, each on
+    a small line of its own (rules.field_lines), and what it clashes with in every calendar. Over several days
+    ("from Friday to Sunday", "12 to 14 November", "3 days from Thursday"): all day, or from a time on the
+    first to a time on the last. Repeating ("every Tuesday at 4 pm for an hour"): a real recurrence
+    (series.py). With no time said for one day, the card asks for one, with All day a button; a typed
+    answer ("All day", "3pm") is read against the card, what it asked kept (`request.previous`)."""
     _writer()
     previous = request.previous or {}
     title = rules.title_from(data.get("title"), request.text) or rules.title_from(data.get("title") or previous.get("title"), str(previous.get("title") or ""))
     if not title:
         raise UserError(f"{ICON} What is it called? Say it with its name, like “dentist Friday 3pm”.")
-    said = {"title": title, "day": data.get("day") or previous.get("day") or "", "last_day": data.get("last_day") or previous.get("last_day") or ""}
+    said = _said(request, data, title)
     today = days.today()
-    if data.get("all_day"):
-        return _all_day_card(said, data, today)
+    first, last = _days_of(said, today)
+    until, asked = _until(said, today)
+    if asked is not None:
+        return Proposal(lines=(f"**{title}**", *rules.field_lines([("Starts", rules.day_name(first, today))]), design.small(WHERE)), data=said, kind="new", question=asked)
+    over_days = last > first
+    if data.get("all_day") or (over_days and not data.get("time")):
+        return _all_day_card(said, today, first, last, until)
     if not data.get("time"):
-        first, last = _days_of(said, today)
-        line = rules.day_name(first, today) + (f" to {rules.day_name(last, today)}" if last != first else "")
         question = Question("At what time?", (Choice("All day", {**said, "all_day": True}, ("time", "all_day")),))
-        return Proposal(lines=(f"**{title}**", f"{line} · ❔", design.small("on the Bot calendar")), data={**said, "time": ""}, kind="new", question=question)
-    day = read_day(said["day"], today)
+        lines = rules.field_lines([("Date", rules.dates_text(first, last, today)), ("Time", "❔"), ("Location", said["location"]), ("Description", said["description"])])
+        return Proposal(lines=(f"**{title}**", *lines, design.small(WHERE)), data={**said, "time": ""}, kind="new", question=question)
     at = rules.read_span(str(data["time"]), str(data["ends_at"]))[0] if data.get("ends_at") else rules.read_time(str(data["time"]))
-    start = days.at(day, at)
-    end = _ends(data, start, DEFAULT_LENGTH)
+    start = days.at(first, at)
+    if over_days:
+        if not data.get("ends_at"):
+            raise UserError(f"{ICON} When does it end on {rules.day_name(last, today)}? Say both times, like “Friday 6pm to Sunday 2pm”.")
+        end = days.at(last, rules.read_time(str(data["ends_at"])))
+        if end <= start:
+            raise UserError(f"{ICON} It ends before it starts: say its first day and time, then its last.")
+    else:
+        end = _ends(data, start, DEFAULT_LENGTH)
     warnings = list(_clash_lines(await store.events(request.user.id), start, end, today))
-    repeat = series.said_repeat(data, day, read_day(data["until"], today) if data.get("until") else None)
-    if repeat is not None:
-        return series.add_card(title, repeat, at, int((end - start).total_seconds() // 60), today, clock.now(), [])
+    if _repeats(said):
+        repeat = series.said_repeat(said, first, until)
+        if repeat is not None:
+            return series.add_card(title, repeat, at, int((end - start).total_seconds() // 60), today, clock.now(), [], said["location"], said["description"])
     if start < clock.now():
         warnings.insert(0, "That time has gone by")
+    minutes = int((end - start).total_seconds() // 60)
+    lines = rules.field_lines([
+        ("Date", rules.dates_text(first, days.day_of(end) if over_days else first, today)), ("Time", rules.times_text(start, end, today)),
+        ("Length", rules.length_text(minutes)), ("Location", said["location"]), ("Description", said["description"]),
+    ])
     return Proposal(
-        lines=(f"**{title}**", rules.span_text(start, end, today), design.small("on the Bot calendar")),
-        data={"title": title, "start": _iso(start), "end": _iso(end)}, warnings=tuple(warnings), kind="new",
+        lines=(f"**{title}**", *lines, design.small(WHERE)),
+        data={"title": title, "start": _iso(start), "end": _iso(end), "location": said["location"], "description": said["description"]},
+        warnings=tuple(warnings), kind="new",
     )
 
 
@@ -256,9 +340,14 @@ LONGEST_DAYS = 31  # an all-day event's days at most
 
 def _days_of(said: dict, today):
     """The first and last day of an event as said ("21 and 22 November": day 21 November, last_day 22
-    November); one day when no last day is said."""
+    November; "3 days from Thursday": day Thursday, days 3, the sum Python's); one day when no last day is said."""
     first = read_day(said.get("day"), today)
-    last = read_day(said["last_day"], first) if said.get("last_day") else first
+    if said.get("last_day"):
+        last = read_day(said["last_day"], first)
+    elif str(said.get("days") or "").isdigit() and int(said["days"]) > 1:
+        last = first + timedelta(days=min(int(said["days"]), LONGEST_DAYS + 1) - 1)
+    else:
+        last = first
     if last < first:
         raise UserError(f"{ICON} It ends before it starts: {rules.day_name(last, today)} is before {rules.day_name(first, today)}.")
     if (last - first).days >= LONGEST_DAYS:
@@ -266,15 +355,20 @@ def _days_of(said: dict, today):
     return first, last
 
 
-def _all_day_card(said: dict, data: dict, today) -> Proposal:
-    """An all-day event on the Bot calendar, over one day or several. Never a to-do or a reminder:
-    "event" or "all day" was said."""
-    if data.get("repeat"):
-        raise UserError(f"{ICON} I can't add a repeating all-day event yet: say it with a time, or one day at a time.")
-    first, last = _days_of(said, today)
+def _all_day_card(said: dict, today, first, last, until) -> Proposal:
+    """An all-day event on the Bot calendar, over one day or several, or one that repeats ("every Saturday,
+    all day"). Never a to-do or a reminder: "event" or "all day" was said, or several days."""
+    if _repeats(said):
+        repeat = series.said_repeat(said, first, until)
+        if repeat is not None:
+            return series.add_all_day_card(said["title"], repeat, (last - first).days + 1, today, said["location"], said["description"])
     warnings = ("That day has gone by",) if last < today else ()
+    lines = rules.field_lines([
+        ("Date" if last == first else "Dates", rules.dates_text(first, last, today)), ("Time", "all day"),
+        ("Length", f"{(last - first).days + 1} days" if last > first else ""), ("Location", said["location"]), ("Description", said["description"]),
+    ])
     return Proposal(
-        lines=(f"**{said['title']}**", rules.days_text(first, last, today), design.small("on the Bot calendar")),
+        lines=(f"**{said['title']}**", *lines, design.small(WHERE)),
         data={**said, "all_day": True, "first": first.isoformat(), "last": last.isoformat()}, warnings=warnings, kind="new",
     )
 
@@ -292,16 +386,17 @@ def _ends(data: dict, start: datetime, default: int) -> datetime:
 async def add_save(request: Request, data: dict) -> str:
     if data.get("rrule"):
         return await series.add_save(request, data, _writer())
+    where, notes = str(data.get("location") or ""), str(data.get("description") or "")
     if data.get("first"):
-        made = await _writer().add_all_day(data["title"], date.fromisoformat(data["first"]), date.fromisoformat(data["last"]))
+        made = await _writer().add_all_day(data["title"], date.fromisoformat(data["first"]), date.fromisoformat(data["last"]), where, notes)
         when_said = rules.days_text(made.first_day, made.last_day, days.today())
     else:
-        made = await _writer().add(data["title"], _moment(data["start"]), _moment(data["end"]))
+        made = await _writer().add(data["title"], _moment(data["start"]), _moment(data["end"]), where, notes)
         when_said = rules.span_text(made.start, made.end, days.today())
     await database.run(store.db_put, request.user.id, made)
     await database.run(store.db_change, request.user.id, store.ADDED, made.ref, made.title, (None, None), (made.start, made.end), clock.now())
     _changed(request.user.id)
-    return f"{ICON} Added · **{made.title}** · {when_said}"
+    return f"{ICON} Added · **{made.title}** · {when_said}" + (f" · {rules.place_text(made)}" if made.location else "")
 
 
 async def _last_ref(request: Request, kind: str) -> str:
@@ -314,11 +409,30 @@ async def add_check(request: Request, data: dict) -> str:
     return "" if ref and await _writer().get(ref) is not None else "it is not in the Bot calendar"
 
 
-async def _mine(request: Request, words, day_said=None) -> rules.Event:
+_last_named: dict[int, str] = {}  # user id -> the event the calendar last answered about or changed, for "it" and "them"
+
+
+def remember(user_id: int, title: str) -> None:
+    """The event an answer or a change was about, for the "it" or "them" that may follow (in memory: a restart
+    forgets it, and the last change in the Bot calendar is used instead)."""
+    if title:
+        _last_named[user_id] = title
+
+
+async def _last_changed(request: Request) -> str:
+    last = await database.run(store.db_last_change, request.user.id)
+    return last[3] if last is not None else ""
+
+
+async def _mine(request: Request, words, day_said=None, all_day_series: bool = False) -> rules.Event:
     """The next event whose name fits the words (a repeating one: its happening on the day said, if
     one was; pass no day for a change from a day on, where the day is where the series is cut);
     one on another calendar is said, never changed. An all-day one the bot added is its own too (21 Oct);
-    a repeating all-day one (a birthday's is hidden, never found) is said, never changed."""
+    a repeating all-day one (a birthday's is hidden, never found) may be cancelled, stopped or deleted
+    (`all_day_series`), and is said, never changed, when it would be moved."""
+    if is_reference(words):
+        # "delete all of them", "cancel it": the event the calendar last answered about or changed, by the code
+        words = _last_named.get(request.user.id) or await _last_changed(request)
     if not str(words or "").strip():
         raise UserError(f"{ICON} Which event?")
     events = await store.events(request.user.id)
@@ -327,8 +441,9 @@ async def _mine(request: Request, words, day_said=None) -> rules.Event:
         found = rules.matching_on(events, str(words), read_day(day_said, days.today()))
     if not found.mine:
         raise UserError(rules.NOT_MINE.format(icon=ICON, title=found.title))
-    if found.all_day and found.repeats:
-        raise UserError(f"{ICON} **{found.title}** repeats all day: I can't change that one in words yet.")
+    if found.all_day and found.repeats and not all_day_series:
+        raise UserError(f"{ICON} **{found.title}** repeats all day: I can't move that one in words yet. Cancel one day of it, or stop it, and add it again.")
+    remember(request.user.id, found.title)
     return found
 
 
@@ -414,10 +529,15 @@ async def move_check(request: Request, data: dict) -> str:
 
 
 async def delete_card(request: Request, data: dict, guessed: frozenset) -> Proposal:
+    """ "delete the dentist": a one-off, on its red card. A repeating one ("delete the gym", "delete all of them")
+    ends from today with its past kept, as "stop the gym" does; only "delete the gym completely" takes every
+    time, past ones too, on a red card."""
     writer = _writer()
-    event = await _mine(request, data.get("search"), data.get("day"))
+    event = await _mine(request, data.get("search"), data.get("day"), all_day_series=True)
     if event.repeats:
-        return await series.delete_card(event, writer)
+        if series.scope_of(data) == series.ALL:
+            return await series.delete_card(event, writer)
+        return await series.cancel_card(request, {**data, "scope": series.FOLLOWING, "day": "", "from_delete": True}, event, writer)
     if event.all_day:
         return Proposal(
             lines=(f"**{event.title}** · {rules.days_text(event.first_day, event.last_day, days.today())}",),
@@ -433,13 +553,19 @@ async def delete_card(request: Request, data: dict, guessed: frozenset) -> Propo
 async def delete_save(request: Request, data: dict) -> str:
     if data.get("op") == "series_delete":
         return await series.delete_save(request, data, _writer())
-    await _writer().delete(data["ref"])
+    if data.get("op") == "stop":
+        return await series.cancel_save(request, data, _writer())
+    writer = _writer()
+    # What undo makes again: the event as the calendar keeps it (its location and description too)
+    raw = await writer.raw(data["ref"]) or {}
+    body = {key: raw[key] for key in ("summary", "start", "end", "description", "location") if key in raw}
+    await writer.delete(data["ref"])
     await database.run(store.db_drop, request.user.id, source.BOT, data["ref"])
     if data.get("all_day"):
-        await database.run(store.db_change, request.user.id, store.DELETED, data["ref"], data["title"], (None, None), (None, None), clock.now(), {"all_day": True, "before": data["was"]})
+        await database.run(store.db_change, request.user.id, store.DELETED, data["ref"], data["title"], (None, None), (None, None), clock.now(), {"all_day": True, "before": data["was"], "body": body})
     else:
         was = tuple(_moment(each) for each in data["was"])
-        await database.run(store.db_change, request.user.id, store.DELETED, data["ref"], data["title"], was, (None, None), clock.now())
+        await database.run(store.db_change, request.user.id, store.DELETED, data["ref"], data["title"], was, (None, None), clock.now(), {"body": body})
     _changed(request.user.id)
     return f"🗑️ {ICON} **{data['title']}** · deleted"
 
@@ -447,6 +573,8 @@ async def delete_save(request: Request, data: dict) -> str:
 async def delete_check(request: Request, data: dict) -> str:
     if data.get("op") == "series_delete":
         return await series.delete_check(request, data, _writer())
+    if data.get("op") == "stop":
+        return await series.cancel_check(request, data, _writer())
     return "" if await _writer().get(data["ref"]) is None else "it is still in the Bot calendar"
 
 
@@ -454,7 +582,7 @@ async def cancel_card(request: Request, data: dict, guessed: frozenset) -> Propo
     """ "cancel work next Tuesday", "stop work": a repeating event's happening or its series from a
     day; a one-off is deleted, on its red card."""
     writer = _writer()
-    event = await _mine(request, data.get("search"), None if series.scope_of(data) == series.FOLLOWING else data.get("day"))
+    event = await _mine(request, data.get("search"), None if series.scope_of(data) == series.FOLLOWING else data.get("day"), all_day_series=True)
     if not event.repeats:
         return await delete_card(request, data, guessed)
     return await series.cancel_card(request, data, event, writer)
@@ -493,6 +621,14 @@ async def undo(request: Request, data: dict, guessed: frozenset) -> str:
         back = await writer.move(ref, before[0], before[1])
         await database.run(store.db_put, request.user.id, back)
         said = f"↩️ {ICON} **{title}** · back to {rules.span_text(back.start, back.end, days.today())}"
+    elif detail.get("body"):
+        # Made again as it was, its location and description with it
+        from tasks.calendar.google import to_event
+
+        again = to_event(await writer.insert(detail["body"]), source.BOT)
+        if again is not None:
+            await database.run(store.db_put, request.user.id, again)
+        said = f"↩️ {ICON} **{title}** · back on the calendar"
     elif detail.get("all_day"):
         again = await writer.add_all_day(title, *_dates(detail["before"]))
         await database.run(store.db_put, request.user.id, again)
@@ -508,19 +644,26 @@ async def undo(request: Request, data: dict, guessed: frozenset) -> str:
 
 
 async def add_undo(request: Request, data: dict) -> str:
-    """Take back an add saved a moment ago: the last change in the Bot calendar, undone."""
+    """Take back a change saved a moment ago (an add, a move, a cancel, a stop or a delete): the last change in
+    the Bot calendar, undone. The Undo on every calendar Save's line."""
     return await undo(request, {}, frozenset())
 
 
 def writing_actions() -> list:
-    from core.actions import EACH_DAY, MINUTES, Action
+    from core.actions import EACH_DAY, INTEGER, MINUTES, Action
 
-    which = Field("search", "The words naming the event, exactly as the user said them, without \"my\", \"the\" or \"next\". Never complete or correct them.", required=True)
-    ends_at = Field("ends_at", "When it ends, only when the user says (\"9 to 5:30\" -> 5:30; \"10 to 2\" -> 2).", TIME)
+    which = Field(
+        "search",
+        "The words naming the event, exactly as the user said them, without \"my\", \"the\" or \"next\", and without words for when or how "
+        "often it is (\"the weekly gym\" -> gym; \"Tuesday's gym\" -> gym, day Tuesday). \"it\", \"that\", \"them\" or \"all of them\" "
+        "with no name: @that (the code knows which). Never complete or correct them.",
+        required=True,
+    )
+    ends_at = Field("ends_at", "When it ends, only when the user says (\"9 to 5:30\" -> 5:30; \"10 to 2\" -> 2; over several days, the time on the last day: \"Friday 6pm to Sunday 2pm\" -> 2pm).", TIME)
     scope = Field(
         "scope",
-        "For a repeating event: one (that day only: \"next Tuesday\", \"on the 20th\", \"just today\"), following (from a day on: "
-        "\"from next week\", \"from now on\", \"stop\"), all (every time: \"always\", \"every day\"). Leave out when it could be either.",
+        "For a repeating event: one (that day only: \"next Tuesday\", \"on the 20th\", \"just today\", \"Tuesday's\"), following (from a day on: "
+        "\"from next week\", \"from now on\", \"stop\", \"stop the weekly gym\"), all (every time: \"always\", \"every day\"). Leave out when it could be either.",
         choices=series.SCOPES,
     )
     which_day = Field("day", "For a repeating event, the day of the one meant or the first day of the change, as the user said it (\"next Tuesday\"; \"from next week\" -> next Monday). Never work out a date.")
@@ -529,19 +672,28 @@ def writing_actions() -> list:
             "calendar_add",
             "Add an event to the calendar: an appointment or a plan with a day and a time and no \"remind me\" (\"dentist Friday 3pm\" -> "
             "title dentist, day Friday, time 3pm; \"lunch with Sam Thursday at 1 for 90 minutes\" -> title lunch with Sam, length 90; "
-            "\"put the plumber on my calendar tomorrow at 10\"; \"book lunch with Sam Thursday at 1\", \"make a dentist appointment for Friday at 3pm\": make, book and put are adding), or a repeating one (\"work every weekday 9 to 5:30\" -> title work, "
-            "repeat weekdays, time 9, ends_at 5:30; \"swimming Mondays and Thursdays at 6pm until December\" -> repeat days, weekdays mon thu, until December), "
-            "or an all-day one, over one day or several (\"add an all day event 21 and 22 November, Sam's party\" -> title Sam's party, day 21 November, "
-            "last_day 22 November, all_day; \"hen do Saturday, all day\" -> title hen do, day Saturday, all_day; \"conference Friday to Sunday, all day\"). Said as an event or all day, it is an event even with no time, never a to-do. "
-            "With no time said, leave time out: the card asks.",
+            "\"put the plumber on my calendar tomorrow at 10\"; \"book lunch with Sam Thursday at 1\", \"make a dentist appointment for Friday at 3pm\", \"create an event called the quiz Friday at 7\": make, book, put and create are adding), "
+            "with where it is and any notes (\"at the community hall\" -> location community hall; \"notes: bring the forms\" -> description bring the forms), "
+            "or a repeating one, weekly, every N weeks or on chosen days, with an end or none (\"work every weekday 9 to 5:30\" -> title work, "
+            "repeat weekdays, time 9, ends_at 5:30; \"the gym every Tuesday at 4 pm for one hour\" -> title the gym, repeat days, weekdays tue, time 4 pm, length 60; "
+            "\"swimming every Monday and Thursday at 7 am\" -> repeat days, weekdays mon thu; \"book club every second Wednesday at 6pm until 16 December\" -> repeat days, weekdays wed, every_weeks 2, until 16 December; "
+            "\"choir weekly on Fridays at 6 until Christmas\" -> repeat days, weekdays fri, until 25 December: a holiday on a fixed date is given as that date, and no other date is ever worked out; \"10 times\" -> times 10), "
+            "or one over several days: all day unless times are said (\"add an all day event 21 and 22 November, Sam's party\" -> title Sam's party, day 21 November, "
+            "last_day 22 November, all_day; \"camping from Friday to Sunday\" -> day Friday, last_day Sunday; \"conference 12 to 14 November\" -> day 12 November, last_day 14 November; "
+            "\"retreat 3 days from Thursday\" -> day Thursday, days 3; \"the bach Friday 6pm to Sunday 2pm\" -> day Friday, time 6pm, last_day Sunday, ends_at 2pm; \"hen do Saturday, all day\" -> title hen do, day Saturday, all_day). "
+            "Said as an event, a booking, on the calendar, with a length, or all day, it is an event even with no time, never a to-do or a personal routine. "
+            "With no time said for one day, leave time out: the card asks.",
             (
-                Field("title", "What it is, in the user's own words exactly as said (\"dentist\", \"lunch with Sam\"), without the day, the time or the length, and without add, make, book or put (\"book lunch with Sam\" -> lunch with Sam; \"make a dentist appointment\" -> dentist appointment; \"an all day event\" is not part of it).", required=True),
+                Field("title", "What it is, in the user's own words exactly as said (\"dentist\", \"lunch with Sam\"), without the day, the time, the length, where it is or its notes, and without add, make, book, put, create or \"an event called\" (\"book lunch with Sam\" -> lunch with Sam; \"make a dentist appointment\" -> dentist appointment; \"create an event called the gym\" -> the gym; \"an all day event\" is not part of it).", required=True),
                 Field("day", _DAY + " For an event over several days, its first day."),
-                Field("last_day", "For an event over several days, its last day exactly as said (\"21 and 22 November\" -> day 21 November, last_day 22 November; \"Friday to Sunday\" -> day Friday, last_day Sunday). Never work out a date. Leave out for one day."),
+                Field("last_day", "For an event over several days, its last day exactly as said, with its month when the first day's is shared (\"21 and 22 November\" -> day 21 November, last_day 22 November; \"12 to 14 November\" -> day 12 November, last_day 14 November; \"Friday to Sunday\" -> day Friday, last_day Sunday). Never work out a date. Leave out for one day."),
+                Field("days", "For an event over several days said as a number of days (\"3 days from Thursday\" -> 3, day Thursday). Leave out otherwise.", INTEGER),
                 Field("all_day", "True when the user says all day or all-day (\"an all day event\"; \"All day\" as the answer to the card's \"At what time?\"). Leave out otherwise.", BOOLEAN),
                 Field("time", "When it starts, as the user said it.", TIME),
-                Field("length", "How long, only when the user says (\"for an hour\" -> 60, \"for 90 minutes\" -> 90).", MINUTES),
+                Field("length", "How long, only when the user says (\"for an hour\" -> 60, \"for one hour\" -> 60, \"for 90 minutes\" -> 90).", MINUTES),
                 ends_at,
+                Field("location", "Where it is, in the user's own words exactly as said, without at, in or location (\"at the community hall\" -> community hall; \"Location Hobby shop\" -> Hobby shop). Leave out when none is said."),
+                Field("description", "Notes or a description for the event, in the user's own words exactly as said, without notes or description (\"notes: bring the forms\" -> bring the forms). Leave out when none is said."),
                 *recurrence.fields(),
                 *recurrence.end_fields(),
             ),
@@ -551,23 +703,25 @@ def writing_actions() -> list:
             "calendar_move",
             "Move an event the bot added to the calendar to another day, time or length (\"move the dentist to 4pm\" -> search dentist, time 4pm; "
             "\"move lunch with Sam to Monday\" -> day Monday; an all-day one: \"move the hen do to 28 November\" -> search hen do, day 28 November), or change the times of a repeating one (\"work next Friday is 10 to 2\" -> "
-            "search work, day next Friday, time 10, ends_at 2, scope one; \"work starts at 8:30 from next week\" -> day next Monday, time 8:30, scope following).",
+            "search work, day next Friday, time 10, ends_at 2, scope one; \"move Tuesday's gym to 5 pm\" -> search gym, day Tuesday, time 5 pm, scope one; \"work starts at 8:30 from next week\" -> day next Monday, time 8:30, scope following).",
             (which, Field("day", _DAY + " For a repeating event: the day of the one meant, or the first day of the change. For one over several days, its new first day."),
              Field("last_day", "For an event over several days, a new last day, only when said (\"to 28 and 29 November\" -> day 28 November, last_day 29 November). Never work out a date."),
              Field("time", "The new start, as the user said it.", TIME), Field("length", "A new length, only when said.", MINUTES), ends_at, scope),
-            prepare=move_card, apply=move_save, verify=move_check, purpose=EACH_DAY, say=("move the dentist to 4pm",),
+            prepare=move_card, apply=move_save, verify=move_check, undo=add_undo, purpose=EACH_DAY, say=("move the dentist to 4pm",),
         ),
         Action(
             "calendar_delete",
-            "Delete an event the bot added to the calendar (\"delete the dentist from my calendar\"), or a repeating one completely, every time (\"delete work completely\").",
-            (which,), prepare=delete_card, apply=delete_save, verify=delete_check, purpose=EACH_DAY, say=("delete the dentist from my calendar",),
+            "Delete an event the bot added to the calendar (\"delete the dentist from my calendar\"). A repeating one ends from today, past ones kept "
+            "(\"delete the gym\", \"delete all of them\"); only \"completely\" or \"past ones too\" takes every time (\"delete work completely\" -> scope all).",
+            (which, Field("scope", "all only when the user says completely, every one ever, or past ones too. Leave out otherwise.", choices=(series.ALL,))),
+            prepare=delete_card, apply=delete_save, verify=delete_check, undo=add_undo, purpose=EACH_DAY, say=("delete the dentist from my calendar",),
         ),
         Action(
             "calendar_cancel",
-            "Cancel an event the bot added: one day of a repeating event (\"cancel work next Tuesday\" -> search work, day next Tuesday, scope one), "
-            "a repeating event from a day on, past ones kept (\"stop work\" -> scope following; \"cancel work from November\" -> day 1 November, scope following), "
+            "Cancel an event the bot added: one day of a repeating event (\"cancel work next Tuesday\" -> search work, day next Tuesday, scope one; \"cancel the gym next Tuesday\" -> search gym, day next Tuesday, scope one), "
+            "a repeating event from a day on, past ones kept (\"stop work\" -> scope following; \"stop the weekly gym\" -> search gym, scope following; \"cancel work from November\" -> day 1 November, scope following), "
             "or a one-off (\"cancel lunch with Sam\").",
-            (which, which_day, scope), prepare=cancel_card, apply=cancel_save, verify=cancel_check, purpose=EACH_DAY, say=("cancel work next Tuesday",),
+            (which, which_day, scope), prepare=cancel_card, apply=cancel_save, verify=cancel_check, undo=add_undo, purpose=EACH_DAY, say=("cancel work next Tuesday",),
         ),
         Action(
             "calendar_undo",
@@ -582,9 +736,13 @@ ONLY_FOR_WRITING = (
     "\"what's on in November?\", \"what's on from Monday to Friday?\", \"my calendar\"), when an event is or whether it is on another day (\"when is the dentist?\", \"have I got the gym tomorrow?\"), whether they "
     "are free (\"am I free at 3 tomorrow?\"), and adding an event: an appointment or a plan said with a day and a time and no "
     "\"remind me\" (\"dentist Friday 3pm\", \"lunch with Sam Thursday at 1\", \"put the plumber on my calendar\", \"book lunch with Sam\", "
-    "\"make a dentist appointment for Friday at 3pm\"), a repeating event "
-    "(\"work every weekday 9 to 5:30\", \"swimming Mondays and Thursdays at 6pm\"), and moving, cancelling (\"cancel work next Tuesday\", "
+    "\"make a dentist appointment for Friday at 3pm\", \"create an event\"), with where it is and notes (\"at the community hall\"), a repeating event, weekly, every N weeks or on chosen days "
+    "(\"work every weekday 9 to 5:30\", \"swimming Mondays and Thursdays at 6pm\", \"the gym every Tuesday at 4 pm for one hour\", \"book club every second Wednesday\"), one over several days (\"camping from Friday to Sunday\"), and moving, cancelling (\"cancel work next Tuesday\", "
     "\"stop work\"), deleting or undoing one. An all-day event (\"all day event 21 and 22 November\") is the calendar too, with no time. A request to be reminded (\"remind me about the dentist Friday\") is a reminder, not the calendar. "
+    "Something that repeats is the calendar, and never a tie, when it names an event, the calendar, a booking or a length (\"for one hour\", \"yoga class every Wednesday at 6pm for an hour\"), "
+    "has an end or a pace a personal routine never has (\"until Christmas\", \"6 times\", \"every second Wednesday\", \"fortnightly\"), or says create an event; "
+    "something to tick off as done (\"take out the bins every Tuesday\", \"stretch every morning\") is a personal routine, not the calendar. One that could be either, "
+    "said with a day and a time and nothing else (\"yoga every Thursday at 6pm\"), is a genuine tie between the calendar and personal routines. "
     "The rest of today across everything, or whether something is on in it (\"what's on tonight?\", \"is the gym on tonight?\"), is the briefing. Not pills, not to-dos (a thing to do with no "
     "time), not personal routines, and not when the bot's own jobs run (that is the schedule task)."
 )

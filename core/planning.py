@@ -73,6 +73,8 @@ class Piece:
     note: str = ""  # a few words after its name ("6:00 pm to 9:00 pm")
     # What comes every day, counted rather than listed where a week is shown (core/weekview.py): "dose", "routine"
     fold: str = ""
+    # Where it is (an event's location), for an answer about that one day only; never shown in a week or a plan
+    place: str = ""
 
     @property
     def end(self) -> datetime | None:

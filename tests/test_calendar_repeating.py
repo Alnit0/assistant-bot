@@ -60,6 +60,7 @@ class SeriesGoogle:
             ref = f"{master['id']}_{moment.astimezone(timezone.utc):%Y%m%dT%H%M%SZ}"
             item = {"id": ref, "recurringEventId": master["id"], "status": "confirmed", "summary": master["summary"],
                     "start": {"dateTime": moment.isoformat()}, "end": {"dateTime": (moment + (end - start)).isoformat()}}
+            item.update({key: master[key] for key in ("location", "description") if key in master})
             item.update(self.exceptions.get(ref, {}))
             if item["status"] != "cancelled" and self._start(item["end"]) > low and self._start(item["start"]) < high:
                 found.append(item)
@@ -192,8 +193,8 @@ def add_work(world, **more):
 # --- made in words, as a real recurrence ------------------------------------------------------------------------------
 def test_work_every_weekday_9_to_5_30_is_a_card_then_a_real_google_recurrence(world):
     proposal = card(world, plain.add_card, WORK, "work every weekday 9 to 5:30")
-    assert proposal.lines[:3] == ("**Work**", "Weekdays · `9:00 am` to `5:30 pm`", "From Mon 2 Nov · no end")
-    assert proposal.lines[3].endswith("Next: Mon 2 Nov, Tue 3 Nov, Wed 4 Nov") and proposal.kind == "new"
+    assert proposal.lines[:5] == ("**Work**", "-# Starts · Mon 2 Nov", "-# Time · `9:00 am` to `5:30 pm`", "-# Length · 8 hours 30 minutes", "-# Repeat · weekdays · no end"), "a field a line (3 Nov)"
+    assert proposal.lines[5].endswith("Next: Mon 2 Nov, Tue 3 Nov, Wed 4 Nov") and proposal.kind == "new"
     said = save(world, plain.add_save, plain.add_check, proposal)
     assert said == "🗓️ Added · **Work** · weekdays · `9:00 am` to `5:30 pm`, from Mon 2 Nov"
     (made,) = world.fake.series()
@@ -205,18 +206,19 @@ def test_work_every_weekday_9_to_5_30_is_a_card_then_a_real_google_recurrence(wo
 
 @pytest.mark.parametrize("said, lines, rule", [
     ({"title": "swim", "repeat": "days", "weekdays": ["mon", "thu"], "every_weeks": 2, "time": "6pm"},
-     ("Every 2 weeks on Mon and Thu · `6:00 pm` to `7:00 pm`", "From Mon 2 Nov · no end", "Next: Mon 2 Nov, Thu 5 Nov, Mon 16 Nov"),
+     ("-# Starts · Mon 2 Nov", "-# Time · `6:00 pm` to `7:00 pm`", "-# Repeat · every 2 weeks on Mon and Thu · no end", "Next: Mon 2 Nov, Thu 5 Nov, Mon 16 Nov"),
      "RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,TH"),
     ({"title": "rent", "repeat": "monthly", "month_day": 1, "time": "10am", "times": 6},
-     ("Monthly on the 1st · `10:00 am` to `11:00 am`", "From Tue 1 Dec · 6 times", "Next: Tue 1 Dec, Fri 1 Jan, Mon 1 Feb"),
+     ("-# Starts · Tue 1 Dec", "-# Time · `10:00 am` to `11:00 am`", "-# Repeat · monthly on the 1st · 6 times", "Next: Tue 1 Dec, Fri 1 Jan, Mon 1 Feb"),
      "RRULE:FREQ=MONTHLY;BYMONTHDAY=1;COUNT=6"),
     ({"title": "class", "repeat": "days", "weekdays": ["wed"], "time": "7pm", "until": "16 December"},
-     ("Every Wed · `7:00 pm` to `8:00 pm`", "From Wed 4 Nov · until Wed 16 Dec", "Next: Wed 4 Nov, Wed 11 Nov, Wed 18 Nov"),
+     ("-# Starts · Wed 4 Nov", "-# Time · `7:00 pm` to `8:00 pm`", "-# Repeat · every Wed · until Wed 16 Dec", "Next: Wed 4 Nov, Wed 11 Nov, Wed 18 Nov"),
      "RRULE:FREQ=WEEKLY;BYDAY=WE;UNTIL=20261216T105959Z"),
 ])
 def test_every_kind_of_repeat_shows_its_pattern_start_next_three_and_end(world, said, lines, rule):
     proposal = card(world, plain.add_card, said, said["title"])
-    assert (proposal.lines[1], proposal.lines[2]) == lines[:2] and proposal.lines[3].endswith(lines[2])
+    assert (proposal.lines[1], proposal.lines[2], proposal.lines[4]) == lines[:3] and proposal.lines[5].endswith(lines[3])
+    assert proposal.lines[3] == "-# Length · 1 hour"
     assert proposal.data["rrule"] == rule
     save(world, plain.add_save, plain.add_check, proposal, said["title"])
     assert world.fake.series()[0]["recurrence"] == [rule]
@@ -313,8 +315,8 @@ def test_stopping_before_its_first_one_says_delete_instead(world):
 
 def test_delete_completely_is_a_red_card_and_undo_makes_it_again(world):
     add_work(world)
-    proposal = card(world, plain.delete_card, {"search": "work"}, "delete work completely")
-    assert proposal.destructive and proposal.kind == "remove" and proposal.lines == ("**Work** · weekdays", "-# every time, past ones too")
+    proposal = card(world, plain.delete_card, {"search": "work", "scope": "all"}, "delete work completely")
+    assert proposal.destructive and proposal.kind == "remove" and proposal.lines == ("**Work** · weekdays", "-# The whole series: every time, past ones too")
     assert save(world, plain.delete_save, plain.delete_check, proposal) == "🗑️ 🗓️ **Work** · deleted, every time"
     assert world.fake.series() == [] and times_on(world, DAY + timedelta(days=1)) == []
     run(plain.undo(world.request("undo that"), {}, frozenset()))

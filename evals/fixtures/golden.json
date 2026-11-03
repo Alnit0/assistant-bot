@@ -843,6 +843,201 @@
           "✅ **Pill A** (dose 1 of 3) · taken 8:02 am · 2 left today"
         ]
       ]
+    },
+    {
+      "golden": "32",
+      "message": "add the quiz night on Friday at 7pm at the community hall, notes: bring the forms",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "Calendar events, 3 Nov: an event with where it is and a description",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "32a",
+      "message": "camping trip from Friday to Sunday",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "Calendar events, 3 Nov: a weekend over several days: one event, all day",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "32b",
+      "message": "create an event called the gym every Tuesday at 4 pm for one hour",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "Calendar events, 3 Nov: Alex's own example, refused before: a weekly event",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "32c",
+      "message": "swimming every Monday and Thursday at 7 am for 45 minutes",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "Calendar events, 3 Nov: two weekdays, with a length: an event",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "32d",
+      "message": "put book club in my calendar every second Wednesday at 6pm until 16 December",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "Calendar events, 3 Nov: every second week with an end date",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "33",
+      "message": "book a yoga class every Wednesday at 6pm for an hour",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "Calendar events, 3 Nov: event or routine: a booking with a length is an event, never a tie",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "33a",
+      "message": "stretch every morning",
+      "tasks": [
+        "habits"
+      ],
+      "note": "Calendar events, 3 Nov: event or routine: something to tick off is a personal routine",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "habits"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "33b",
+      "message": "yoga every Thursday at 6pm",
+      "tasks": [
+        "calendar",
+        "habits"
+      ],
+      "tie": true,
+      "note": "Calendar events, 3 Nov: event or routine: a day and a time and nothing else could be either: a tie, asked with two buttons",
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar",
+          "habits"
+        ],
+        "confidence": "tie",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "34",
+      "message": "cancel the gym next Tuesday",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "Calendar events, 3 Nov: one occurrence of a series the bot added",
+      "names": {
+        "calendar": [
+          "The gym",
+          "Dentist"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
+    },
+    {
+      "golden": "34a",
+      "message": "stop the weekly gym",
+      "tasks": [
+        "calendar"
+      ],
+      "note": "Calendar events, 3 Nov: the whole series ends from today, past ones kept",
+      "names": {
+        "calendar": [
+          "The gym",
+          "Dentist"
+        ]
+      },
+      "recorded": {
+        "kind": "task",
+        "tasks": [
+          "calendar"
+        ],
+        "confidence": "high",
+        "reports_doing": false,
+        "several": false,
+        "chat_part": ""
+      }
     }
   ],
   "extraction": [
@@ -2261,6 +2456,287 @@
             }
           ],
           "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "calendar",
+      "message": "add the quiz night on Friday at 7pm at the community hall, notes: bring the forms",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_add",
+      "data": {
+        "title": "the quiz night",
+        "day": "Friday",
+        "time": "7:00 pm",
+        "location": "the community hall",
+        "description": "bring the forms"
+      },
+      "golden": "32",
+      "note": "Calendar events, 3 Nov: the location and the description in the user's own words (\"the quiz night\": the title is the user's own words, article and all)",
+      "recorded": [
+        "calendar_add",
+        {
+          "title": "the quiz night",
+          "day": "Friday",
+          "time": "7:00 pm",
+          "location": "the community hall",
+          "description": "bring the forms",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "calendar",
+      "message": "camping trip from Friday to Sunday",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_add",
+      "data": {
+        "title": "camping trip",
+        "day": "Friday",
+        "last_day": "Sunday"
+      },
+      "golden": "32a",
+      "note": "Calendar events, 3 Nov: its first and last day as said; all day is the code's, with no time said",
+      "recorded": [
+        "calendar_add",
+        {
+          "title": "camping trip",
+          "day": "Friday",
+          "last_day": "Sunday",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "calendar",
+      "message": "create an event called the gym every Tuesday at 4 pm for one hour",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_add",
+      "data": {
+        "repeat": "days",
+        "weekdays": [
+          "tue"
+        ],
+        "time": "4:00 pm",
+        "length": 60
+      },
+      "golden": "32b",
+      "note": "Calendar events, 3 Nov: weekly on Tuesdays, an hour long, no end",
+      "recorded": [
+        "calendar_add",
+        {
+          "title": "the gym",
+          "repeat": "days",
+          "weekdays": [
+            "tue"
+          ],
+          "time": "4:00 pm",
+          "length": 60,
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "calendar",
+      "message": "swimming every Monday and Thursday at 7 am for 45 minutes",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_add",
+      "data": {
+        "title": "swimming",
+        "repeat": "days",
+        "weekdays": [
+          "mon",
+          "thu"
+        ],
+        "time": "7:00 am",
+        "length": 45
+      },
+      "golden": "32c",
+      "note": "Calendar events, 3 Nov: two weekdays",
+      "recorded": [
+        "calendar_add",
+        {
+          "title": "swimming",
+          "repeat": "days",
+          "weekdays": [
+            "mon",
+            "thu"
+          ],
+          "time": "7:00 am",
+          "length": 45,
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "calendar",
+      "message": "put book club in my calendar every second Wednesday at 6pm until 16 December",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_add",
+      "data": {
+        "title": "book club",
+        "repeat": "days",
+        "weekdays": [
+          "wed"
+        ],
+        "every_weeks": 2,
+        "time": "6:00 pm",
+        "until": "16 December"
+      },
+      "golden": "32d",
+      "note": "Calendar events, 3 Nov: every 2 weeks, until a day said",
+      "recorded": [
+        "calendar_add",
+        {
+          "title": "book club",
+          "repeat": "days",
+          "weekdays": [
+            "wed"
+          ],
+          "every_weeks": 2,
+          "time": "6:00 pm",
+          "until": "16 December",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "calendar",
+      "message": "book a yoga class every Wednesday at 6pm for an hour",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_add",
+      "data": {
+        "title": "yoga class",
+        "repeat": "days",
+        "weekdays": [
+          "wed"
+        ],
+        "time": "6:00 pm",
+        "length": 60
+      },
+      "golden": "33",
+      "note": "Calendar events, 3 Nov: an event, weekly",
+      "recorded": [
+        "calendar_add",
+        {
+          "title": "yoga class",
+          "repeat": "days",
+          "weekdays": [
+            "wed"
+          ],
+          "time": "6:00 pm",
+          "length": 60,
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "calendar",
+      "message": "yoga every Thursday at 6pm",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_add",
+      "data": {
+        "title": "yoga",
+        "repeat": "days",
+        "weekdays": [
+          "thu"
+        ],
+        "time": "6:00 pm"
+      },
+      "golden": "33b",
+      "note": "Calendar events, 3 Nov: Calendar event pressed on the tie: the calendar reads it",
+      "recorded": [
+        "calendar_add",
+        {
+          "title": "yoga",
+          "day": "Thursday",
+          "time": "6:00 pm",
+          "repeat": "days",
+          "weekdays": [
+            "thu"
+          ],
+          "guessed": [
+            "repeat",
+            "weekdays"
+          ],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "calendar",
+      "message": "cancel the gym next Tuesday",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_cancel",
+      "data": {
+        "search": "gym",
+        "day": "next Tuesday",
+        "scope": "one"
+      },
+      "golden": "34",
+      "note": "Calendar events, 3 Nov: that one occurrence",
+      "recorded": [
+        "calendar_cancel",
+        {
+          "search": "gym",
+          "day": "next Tuesday",
+          "scope": "one",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "calendar",
+      "message": "stop the weekly gym",
+      "state": "The user's calendar (events are found by code: their names are never given here):\n- today: 2 events",
+      "action": "calendar_cancel",
+      "data": {
+        "search": "gym",
+        "scope": "following"
+      },
+      "golden": "34a",
+      "note": "Calendar events, 3 Nov: the series from today on",
+      "recorded": [
+        "calendar_cancel",
+        {
+          "search": "gym",
+          "scope": "following",
+          "guessed": [],
+          "not_included": []
+        }
+      ]
+    },
+    {
+      "task": "habits",
+      "message": "stretch every morning",
+      "action": "habit_add",
+      "data": {
+        "repeat": "daily"
+      },
+      "golden": "33a",
+      "note": "Calendar events, 3 Nov: event or routine: something to tick off is a personal routine, read by the routines",
+      "recorded": [
+        "habit_add",
+        {
+          "routine": "morning",
+          "items": [
+            {
+              "text": "stretch"
+            }
+          ],
+          "repeat": "daily",
+          "any_time": true,
+          "guessed": [
+            "repeat"
+          ],
           "not_included": []
         }
       ]

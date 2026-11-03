@@ -14,6 +14,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -31,6 +32,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -48,6 +50,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -65,6 +68,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -100,6 +104,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -117,6 +122,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -134,6 +140,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -182,6 +189,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -230,6 +238,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -247,6 +256,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -264,6 +274,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -281,6 +292,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -298,6 +310,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -315,6 +328,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -479,6 +493,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -502,6 +517,7 @@
         ],
         "confidence": "high",
         "reports_doing": true,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -550,6 +566,7 @@
         ],
         "confidence": "high",
         "reports_doing": true,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -567,6 +584,7 @@
         ],
         "confidence": "high",
         "reports_doing": true,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -589,7 +607,8 @@
           "todos"
         ],
         "confidence": "high",
-        "reports_doing": true,
+        "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -607,6 +626,7 @@
         ],
         "confidence": "high",
         "reports_doing": true,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -630,6 +650,7 @@
         ],
         "confidence": "high",
         "reports_doing": true,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -647,6 +668,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -670,6 +692,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -687,6 +710,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -704,6 +728,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -721,6 +746,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -738,6 +764,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -755,6 +782,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -772,6 +800,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -789,6 +818,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -812,6 +842,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -835,6 +866,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -853,6 +885,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -871,6 +904,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -889,6 +923,7 @@
         ],
         "confidence": "high",
         "reports_doing": false,
+        "several": false,
         "chat_part": ""
       }
     },
@@ -939,6 +974,7 @@
         ],
         "confidence": "high",
         "reports_doing": true,
+        "several": true,
         "chat_part": ""
       }
     },
@@ -989,6 +1025,7 @@
         ],
         "confidence": "high",
         "reports_doing": true,
+        "several": true,
         "chat_part": ""
       }
     },

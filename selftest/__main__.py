@@ -120,6 +120,8 @@ SWITCHES = {
     "DIARY_ENABLED": "false", "SMART_INBOX": "false", "PLAN_MY_DAY": "false", "BIRTHDAYS_ENABLED": "false", "WEEK_VIEW": "false", "THUMBS_UP": "false", "LAB_GRID": "false", "CALENDAR_CHANNEL_ID": "", "GYM_ENABLED": "false", "GYM_CHANNEL_ID": "", "GYM_SHEET": "false", "GYM_WEIGHT": "false", "BEDTIME_ENABLED": "false", "GYM_SHEET_ID": "","READING_ENABLED": "false", "READING_SOURCE": "", "DESIGN_ROUND": "3", "DAILY_SPEND_LIMIT_NZD": "1.00", "SELFTEST_MONTHLY_LIMIT_NZD": "3.50", "USD_TO_NZD": "1.70",
 }
 
+MADE_UP_BOT_CALENDAR = "made-up-dev-bot@group.calendar.example"  # the dev bot's own Bot calendar in start 10: a file, never Google
+
 # (name, the settings it starts with, seconds to stay off before it)
 PHASES = (
     ("p1", {"CARDS_V2": "false", "REMINDERS_ENABLED": "true"}, 0),
@@ -135,7 +137,9 @@ PHASES = (
     # Reminders I set, personal routines (layout B) and the Today card, in round 4
     ("p9", {"CARDS_V2": "true", "REMINDERS_ENABLED": "true", "DESIGN_ROUND": "4", "TODOS_ENABLED": "true", "NUDGES_ENABLED": "true", "HABITS_ENABLED": "true", "TODAY_CARD": "true"}, 0),
     # The calendar, from a file of made-up events: never Alex's link (SWITCHES blanks it for every start)
-    ("p10", {"CARDS_V2": "true", "REMINDERS_ENABLED": "true", "DESIGN_ROUND": "4", "TODAY_CARD": "true", "CALENDAR_ENABLED": "true", "CALENDAR_ICS_URL": str(config.BASE_DIR / "tests" / "fixtures" / "calendar_selftest.ics")}, 0),
+    # The calendar: its made-up feed, and (3 Nov) a made-up Bot calendar in a file to write to, never Google or Alex's
+    ("p10", {"CARDS_V2": "true", "REMINDERS_ENABLED": "true", "DESIGN_ROUND": "4", "TODAY_CARD": "true", "CALENDAR_ENABLED": "true", "CALENDAR_ICS_URL": str(config.BASE_DIR / "tests" / "fixtures" / "calendar_selftest.ics"),
+             "CALENDAR_WRITE": "true", "CALENDAR_BOT_ID": MADE_UP_BOT_CALENDAR, "CALENDAR_READ": "ics,google:CALENDAR_BOT_ID", "GOOGLE_CALENDAR_FAKE": str(config.BASE_DIR / "data" / "selftest" / "dev-bot-calendar.json")}, 0),
     # Logging at the gym (30 Oct): its #gym is the self-test's own #inbox for this start (run_phase), never live's
     ("p11", {"CARDS_V2": "true", "REMINDERS_ENABLED": "true", "GYM_ENABLED": "true", "DESIGN_ROUND": "8"}, 0),
 )

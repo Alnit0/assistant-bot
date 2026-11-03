@@ -14,7 +14,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from core import actions, confirm, database, day, timeinput
+from core import actions, config, confirm, database, day, timeinput
 from tasks.pills import checklist
 from core.actions import Request
 from tests import demo
@@ -24,6 +24,7 @@ from tasks.timers import plain as timers_plain
 from tasks.timers import store as timers_store
 from tasks.timers import task as timers_task
 from tests.test_conversation import card_lines, open_cards, pack, route, run, shop_add_all, world  # noqa: F401
+from tests.test_calendar_repeating import made_up_key  # noqa: F401
 
 FIXTURES = json.loads((Path(__file__).parent.parent / "evals" / "fixtures" / "golden.json").read_text(encoding="utf-8"))
 ROUTED = {entry["golden"]: ("route", entry["recorded"]) for entry in FIXTURES["router"]}
@@ -396,7 +397,7 @@ def test_every_golden_conversation_in_the_fixture_file_has_a_test_here():
     ids = {entry["golden"] for entry in [*FIXTURES["router"], *FIXTURES["extraction"]]}
     tested = {name.split("_")[1] for name in globals() if name.startswith("test_") and name.split("_")[1][0].isdigit()}
     assert ids <= tested, f"no test for: {sorted(ids - tested)}"
-    assert {"1", "1a", "1b", "1c", "1d", "2", "2a", "2b", "3", "4", "5", "6", "7", "8", "9", "10", "10a", "11", "12", "13", "14", "15", "16", "17", "18", "18a", "18b", "19", "19a", "20", "21", "22", "23", "23a", "24", "25", "2c", "18c", "26", "27", "27a", "28", "28a", "28b", "28c", "29", "30", "2d", "2d0", "2e", "2e1", "2f", "31", "31a", "31b", "31c"} == tested
+    assert {"1", "1a", "1b", "1c", "1d", "2", "2a", "2b", "3", "4", "5", "6", "7", "8", "9", "10", "10a", "11", "12", "13", "14", "15", "16", "17", "18", "18a", "18b", "19", "19a", "20", "21", "22", "23", "23a", "24", "25", "2c", "18c", "26", "27", "27a", "28", "28a", "28b", "28c", "29", "30", "2d", "2d0", "2e", "2e1", "2f", "31", "31a", "31b", "31c", "32", "32a", "32b", "32c", "32d", "33", "33a", "33b", "34", "34a"} == tested
 
 
 # --- QA 2026-10-10: "already so" ends in the task's own line, whichever way it was found --------------------
@@ -1684,3 +1685,137 @@ def test_31c_skip_one_dose_by_its_time_skips_the_dose_due_then_with_no_card(bot,
     said = _said(bot)
     assert said.startswith("⏭️ **Pill A** (dose 3 of 3) · skipped"), said
     assert _states(bot) == {("Pill A", 1): "pending", ("Pill A", 2): "pending", ("Pill A", 3): "skipped"}
+
+
+# --- 32 to 34: calendar events (3 Nov): where, notes, several days, weekly, event or routine, one or all ---------------
+@pytest.fixture
+def events(bot, monkeypatch, make_db, made_up_key):  # noqa: F811
+    """The golden world with the calendar writing to a made-up Bot calendar (Google in memory, a series expanded as the
+    API does) and personal routines beside it. Every event and place is made up."""
+    from tasks.calendar import google
+    from tasks.calendar import store as calendar_store
+    from tasks.calendar import task as calendar_task
+    from tasks.habits import store as habits_store
+    from tasks.habits import task as habits_task
+    from tests.test_calendar_repeating import BOT_ID, MAIN_ID, SeriesGoogle
+
+    make_db({"calendar": calendar_store.MIGRATIONS, "habits": habits_store.MIGRATIONS})
+    for name, value in (("CALENDAR_ENABLED", True), ("CALENDAR_ICS_URL", ""), ("CALENDAR_READ", "google:CALENDAR_BOT_ID"), ("GOOGLE_SA_KEY_PATH", str(made_up_key)),
+                        ("CALENDAR_BOT_ID", BOT_ID), ("CALENDAR_MAIN_ID", MAIN_ID), ("CALENDAR_WRITE", True), ("HABITS_ENABLED", True)):
+        monkeypatch.setattr(config, name, value)
+    bot.google = SeriesGoogle()
+    monkeypatch.setattr(google, "_send", bot.google.send)
+    google._token.clear()
+    actions.set_catalogue([*demo.ENTRIES, *pills_task.entries(), *timers_task.entries(), *calendar_task.entries(), *habits_task.entries()])
+    bot.bot_calendar = lambda: list(bot.google.calendars[BOT_ID].values())
+    return bot
+
+
+def _event_card(bot, golden):
+    bot.claude(ROUTED[golden], EXTRACTED[golden])
+    bot.say(SAID[golden])
+    lines, labels = card(bot)
+    assert open_cards()[-1].task == "calendar", lines
+    return lines, labels
+
+
+def _the_gym_every_tuesday(bot):
+    from tasks.calendar import plain as calendar_plain
+
+    data = {"title": "the gym", "repeat": "days", "weekdays": ["tue"], "time": "4 pm", "length": 60}
+    proposal = run(calendar_plain.add_card(Request(bot.owner, 100, SAID["32b"]), data, frozenset()))
+    run(calendar_plain.add_save(Request(bot.owner, 100, SAID["32b"]), proposal.data))
+
+
+def _gym_days(bot):
+    from tasks.calendar import store as calendar_store
+
+    return sorted(day.day_of(each.start) for each in run(calendar_store.events(bot.owner.id)) if each.title == "The gym")
+
+
+def test_32_an_event_with_where_it_is_and_a_description_shows_each_on_its_own_line_and_saves_both(events):
+    lines, labels = _event_card(events, "32")
+    assert "-# Location · The community hall" in lines and "-# Description · Bring the forms" in lines, lines
+    assert "-# Date · Fri 6 Nov" in lines and "-# Time · `7:00 pm` to `8:00 pm`" in lines and not any("Repeat" in line for line in lines), "only the lines with a value"
+    assert "Save" in labels
+    said = press(events)
+    assert "📍 The community hall" in said
+    (made,) = events.bot_calendar()
+    assert made["location"] == "The community hall" and made["description"] == "Bring the forms", "the user's own words, as said"
+
+
+def test_32a_a_weekend_from_friday_to_sunday_is_one_event_all_day(events):
+    lines, _ = _event_card(events, "32a")
+    assert lines[2:5] == ["-# Dates · Fri 6 Nov to Sun 8 Nov", "-# Time · all day", "-# Length · 3 days"], lines
+    assert open_cards()[-1].question is None, "no time said over several days: all day, nothing asked"
+    press(events)
+    (made,) = events.bot_calendar()
+    assert made["start"] == {"date": "2026-11-06"} and made["end"] == {"date": "2026-11-09"}
+
+
+def test_32b_the_gym_every_tuesday_at_4_pm_for_one_hour_is_a_weekly_event_never_refused(events):
+    lines, _ = _event_card(events, "32b")
+    assert "-# Repeat · every Tue · no end" in lines and "-# Time · `4:00 pm` to `5:00 pm`" in lines and "-# Length · 1 hour" in lines, lines
+    press(events)
+    (made,) = events.bot_calendar()
+    assert made["recurrence"] == ["RRULE:FREQ=WEEKLY;BYDAY=TU"], "a real recurrence on the Bot calendar, repeating until stopped"
+    assert _gym_days(events)[:2] == [timeinput.parse_date("10 November", day.today()), timeinput.parse_date("17 November", day.today())]
+
+
+def test_32c_two_weekdays_with_a_length(events):
+    lines, _ = _event_card(events, "32c")
+    assert "-# Repeat · every Mon and Thu · no end" in lines and "-# Length · 45 minutes" in lines, lines
+    press(events)
+    assert events.bot_calendar()[0]["recurrence"] == ["RRULE:FREQ=WEEKLY;BYDAY=MO,TH"]
+
+
+def test_32d_every_second_week_with_an_end_date(events):
+    lines, _ = _event_card(events, "32d")
+    assert "-# Repeat · every 2 weeks on Wed · until Wed 16 Dec" in lines, lines
+    press(events)
+    assert events.bot_calendar()[0]["recurrence"] == ["RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=WE;UNTIL=20261216T105959Z"]
+
+
+def test_33_a_booking_with_a_length_that_repeats_is_a_calendar_event(events):
+    lines, _ = _event_card(events, "33")
+    assert lines[1] == "**Yoga class**" and "-# Repeat · every Wed · no end" in lines, lines
+
+
+def test_33a_something_to_tick_off_every_morning_is_a_personal_routine_never_the_calendar(events):
+    events.claude(ROUTED["33a"], EXTRACTED["33a"])
+    events.say(SAID["33a"])
+    assert open_cards()[-1].task == "habits" and events.bot_calendar() == []
+
+
+def test_33b_one_that_could_be_either_asks_with_two_buttons_calendar_event_and_routine(events):
+    from core import conversation
+
+    events.claude(ROUTED["33b"])
+    events.say(SAID["33b"])
+    _, labels = card(events)
+    assert labels == ["Calendar event", "Routine", "Neither"], labels
+    asked = open_cards()[-1]
+    events.claude(EXTRACTED["33b"])
+    pressed = events.Press(f"{asked.id}:calendar")
+    run(conversation.on_pick(pressed))
+    lines, _ = card(events)
+    assert open_cards()[-1].task == "calendar" and "-# Repeat · every Thu · no end" in lines, lines
+
+
+def test_34_cancel_the_gym_next_tuesday_cancels_that_occurrence_only(events):
+    _the_gym_every_tuesday(events)
+    before = _gym_days(events)
+    lines, _ = _event_card(events, "34")
+    assert "-# One occurrence only: the rest stay as they are" in lines, lines
+    press(events)
+    assert _gym_days(events) == before[1:], "the next Tuesday's alone is gone"
+
+
+def test_34a_stop_the_weekly_gym_ends_the_whole_series_from_today(events, dev_clock):
+    _the_gym_every_tuesday(events)
+    first = _gym_days(events)[0]
+    dev_clock.advance(timedelta(days=7))  # the first Tuesday has been
+    lines, _ = _event_card(events, "34a")
+    assert any(line.startswith("-# The whole series: none from") for line in lines) and "Ends · the last one Tue 10 Nov" in lines, lines
+    said = press(events)
+    assert "past ones kept" in said and _gym_days(events) == [first], "the one gone by kept, none after"

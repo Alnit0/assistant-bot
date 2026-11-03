@@ -36,6 +36,14 @@ ONLY_FOR = (
     "skincare\", \"undo floss\"), removing a routine, and seeing them. Not the bot's own morning routine of posts "
     "(that is the schedule task), not pills, not a reminder at a time (that is reminders), and not a one-off to-do."
 )
+# With the calendar taking new events: what repeats and is an event goes there, and one that could be either is a tie
+NOT_EVENTS = (
+    " Something that repeats and names an event, the calendar, a booking or a length (\"the gym every Tuesday at 4 pm for one hour\", "
+    "\"create an event every Monday\", \"yoga class every Wednesday at 6pm for an hour\"), or that has an end or a pace a personal routine never has "
+    "(\"choir on Fridays until Christmas\", \"6 times\", \"every second Wednesday\"), is a calendar event, not a personal routine and never a tie; something to tick off as done (\"take out the bins "
+    "every Tuesday\", \"stretch every morning\") is a personal routine. One that could be either, said with a day and a time and nothing "
+    "else (\"yoga every Thursday at 6pm\"), is a genuine tie between personal routines and the calendar."
+)
 EXAMPLES = ("make an evening routine 6pm to 11pm: brush teeth, floss", "did floss", "add skincare to my evening routine: cleanser, toner, serum")
 
 _WHICH = "Which personal routine, exactly as the user said it (\"evening\"). Never complete or correct it. Leave out if none was named."

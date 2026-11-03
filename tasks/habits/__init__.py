@@ -123,7 +123,14 @@ class HabitsTask(Task):
     title = TITLE
     description = "Personal routines: your own named routines of steps and groups, each on its days at a time, in a window or any time"
     icon = ICON
-    only_for = plain.ONLY_FOR
+    choice = "Routine"  # its button when a message could be a calendar event or a personal routine
+
+    @property
+    def only_for(self) -> str:
+        # With the calendar taking new events (CALENDAR_WRITE), something that repeats may be an event there
+        calendar_adds = config.CALENDAR_ENABLED and config.CALENDAR_WRITE and bool(config.CALENDAR_BOT_ID)
+        return plain.ONLY_FOR + (plain.NOT_EVENTS if calendar_adds else "")
+
     examples = plain.EXAMPLES
     show = "habit_show"
     identity = ()

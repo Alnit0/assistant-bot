@@ -177,7 +177,7 @@ def _designed(heading: str, proposal: Proposal, row: tuple, hint: str) -> tuple:
 def render_tie(entries: list[Entry], card_id: int, said: str) -> Card:
     """The question on a genuine tie: one button for each task it could be for."""
     row = tuple(
-        Button(entry.title, CARDS, "pick", f"{card_id}:{entry.name}", emoji=entry.icon, style=cards.PRIMARY)
+        Button(entry.choice_label, CARDS, "pick", f"{card_id}:{entry.name}", emoji=entry.icon, style=cards.PRIMARY)
         for entry in entries
     )
     row = row + (cards.cancel(CARDS, "cancel", str(card_id), "Neither"),)

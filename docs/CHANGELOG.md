@@ -6,6 +6,10 @@ backfilled from the git log.
 
 ## 2026-11-03
 
+- Calendar (not shipped): events can have where they are and notes, and the card shows each field it will save on
+  a line of its own. "from Friday to Sunday" or "3 days from Thursday" is one event, all day unless times are said,
+  "day 2 of 3" on each day. Weekly events, every N weeks, on chosen days, until a day or a number of times; cancel
+  one, stop the series or move one, each with Undo. A message that could be an event or a routine asks which.
 - Shipped Pill Skip: live on `caf6091` since 12:42 pm. Pill reminders have Taken and Skip, and "skip all" skips
   the rest of the day's doses.
 - Pills: a reminder has Taken and Skip, no Snooze. Skip skips that dose, stops its reminders and
