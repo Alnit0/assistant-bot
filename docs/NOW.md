@@ -3,18 +3,18 @@
 What is happening this minute. Updated after every step of a batch;
 history is `docs/STATUS.md`. Read first, with `/catchup`.
 
-**Idle, last batch was** 3 Nov, afternoon: **Pill Skip shipped**, on Alex's
-word after his check of Design · Pill Skip: a reminder has Taken and Skip (no
-Snooze), Skip says so on the card with Undo, and "skip all" skips every dose
-still to take today after one card.
+**Idle, last batch was** 3 Nov, afternoon: **Calendar events**, `1568c6c` on
+`feature/pills`, pushed, not shipped: where and notes, one event over several
+days ("day 2 of 3"), weekly events with an end or none, cancel one, stop or move
+one with Undo, and event or routine asked when it could be either. Self-test
+166 steps, 0 failed. NZ$0.97. **Waiting on Alex's check of Design · Calendar
+events.** Before it, Pill Skip was shipped (`caf6091`).
 
 **Live:** `caf6091` since 3 Nov, 12:42 pm (`-Back` returns to `e098a81`).
 The pills' migration 9 ran; no snooze was left. `LAB_GRID=false`; **the
 morning news is paused** (`READING_ENABLED=false`; its code, feeds and data
 kept). What's new lines for 4 Nov's briefing say the gym, the news and Pill
 Skip.
-
-**Waiting on Alex's first days with Taken and Skip.**
 
 **Waiting on Alex's first real workout with the new gym cards.** The next
 nightly self-test's line (3:30 am, 4 Nov) is checked and reported, for both
@@ -27,6 +27,7 @@ three old worktrees, all merged
 "bedtime 11pm". **Sundays:** `/suggest`.
 
 **Waiting on Alex**
+- His check of Design · Calendar events
 - His first days with Taken and Skip; question 99 (a bare "skip the 3 pm one")
 - His first real workout with the new gym cards
 - His look at the hub in round 8 on live
